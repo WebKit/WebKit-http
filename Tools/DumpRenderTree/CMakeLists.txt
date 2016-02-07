@@ -5,6 +5,7 @@ set(DumpRenderTree_SOURCES
     CyclicRedundancyCheck.cpp
     DumpRenderTreeCommon.cpp
     GCController.cpp
+    JavaScriptThreading.cpp
     PixelDumpSupport.cpp
     TestRunner.cpp
     WorkQueue.cpp
@@ -13,7 +14,6 @@ set(DumpRenderTree_SOURCES
 set(DumpRenderTree_LIBRARIES
     JavaScriptCore
     WTF
-    WebCore
     WebCoreTestSupport
     WebKit
 )
@@ -94,3 +94,4 @@ ENDIF (HAIKU)
 add_executable(DumpRenderTree ${DumpRenderTree_SOURCES})
 target_link_libraries(DumpRenderTree ${DumpRenderTree_LIBRARIES})
 set_target_properties(DumpRenderTree PROPERTIES FOLDER "Tools")
+

@@ -5,8 +5,8 @@
 # Animation tests that fail:
 webkit.org/b/129562 [ Debug ] animations/animation-direction-reverse-fill-mode.html [ Skip ]
 webkit.org/b/129562 [ Debug ] animations/fill-mode-reverse.html [ Skip ]
-animations/additive-transform-animations.html [ Failure ]
-animations/play-state-paused.html [ Failure ]
+animations/additive-transform-animations.html [ Pass Failure ]
+animations/play-state-paused.html [ Pass Failure ]
 
 # Animation tests that time out:
 animations/animation-direction-normal.html
@@ -83,7 +83,6 @@ css3/flexbox/flexbox-baseline-margins.html [ Failure ]
 css3/flexbox/flexbox-baseline.html [ Failure ]
 css3/font-feature-settings-rendering.html [ Failure ]
 css3/masking/mask-base64.html [ ImageOnlyFailure ]
-css3/masking/mask-svg-clipped-fragmentId.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-image/shape-image-001.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-image/shape-image-002.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-image/shape-image-003.html [ ImageOnlyFailure ]
@@ -202,7 +201,7 @@ storage/domstorage/localstorage/access-storage-after-window-close.html
 storage/domstorage/localstorage/set-value-in-storage-after-window-close.html
 storage/domstorage/localstorage/window-open.html
 storage/domstorage/localstorage/access-storage-then-set-value-in-storage-after-window-close.html
-inspector-protocol
+inspector
 fast/loader/ping-error.html
 fast/loader/stateobjects/popstate-fires-with-page-cache.html
 fast/loader/stateobjects/replacestate-in-iframe.html
@@ -579,8 +578,8 @@ http/tests/uri/css-href.php [ Failure ]
 http/tests/appcache/crash-when-navigating-away-then-back.html
 http/tests/cache/display-image-unset-allows-cached-image-load.html
 http/tests/cache/history-only-cached-subresource-loads.html
-http/tests/inspector-protocol/access-inspected-object.html
-http/tests/inspector-protocol/loading-iframe-document-node.html
+http/tests/inspector/console/access-inspected-object.html
+http/tests/inspector/page/loading-iframe-document-node.html
 http/tests/misc/iframe-reparenting-id-collision.html
 http/tests/misc/set-window-opener-to-null.html
 http/tests/misc/slow-preload-cancel.html
@@ -1056,21 +1055,23 @@ fast/events/popup-blocking-timers5.html
 fast/events/popup-blocking-timers6.html
 fast/events/popup-when-select-change.html
 fast/events/related-target-focusevent.html
-fast/events/touch/basic-single-touch-events.html
-fast/events/touch/multi-touch-grouped-targets.html
-fast/events/touch/multi-touch-inside-iframes.html
-fast/events/touch/multi-touch-inside-nested-iframes.html
-fast/events/touch/send-oncancel-event.html
-fast/events/touch/tap-highlight-color.html
-fast/events/touch/touch-active-state.html
-fast/events/touch/touch-coords-in-zoom-and-scroll.html
-fast/events/touch/touch-inside-iframe.html
-fast/events/touch/touch-scaled-scrolled.html
-fast/events/touch/touch-slider-no-js-touch-listener.html
-fast/events/touch/touch-slider.html
-fast/events/touch/touch-stale-node-crash.html
-fast/events/touch/touch-target-limited.html
-fast/events/touch/touch-target.html
+
+fast/events/touch/basic-single-touch-events.html [ Skip ]
+fast/events/touch/multi-touch-grouped-targets.html [ Skip ]
+fast/events/touch/multi-touch-inside-iframes.html [ Skip ]
+fast/events/touch/multi-touch-inside-nested-iframes.html [ Skip ]
+fast/events/touch/send-oncancel-event.html [ Skip ]
+fast/events/touch/tap-highlight-color.html [ Skip ]
+fast/events/touch/touch-active-state.html [ Skip ]
+fast/events/touch/touch-coords-in-zoom-and-scroll.html [ Skip ]
+fast/events/touch/touch-inside-iframe.html [ Skip ]
+fast/events/touch/touch-scaled-scrolled.html [ Skip ]
+fast/events/touch/touch-slider-no-js-touch-listener.html [ Skip ]
+fast/events/touch/touch-slider.html [ Skip ]
+fast/events/touch/touch-stale-node-crash.html [ Skip ]
+fast/events/touch/touch-target-limited.html [ Skip ]
+fast/events/touch/touch-target.html [ Skip ]
+
 fast/filter-image/filter-image-animation.html
 fast/forms/formmethod-attribute-input-2.html
 fast/forms/formtarget-attribute-input-2.html
@@ -1708,18 +1709,19 @@ platform/ios-simulator/ios/fast/coordinates/mouse-event.html
 # iOS-specific tests that time out or fail in WebKitTestRunner due to missing DRT-specific functionality:
 platform/ios-simulator/ios/fast/coordinates/touch-event-zoomed.html
 platform/ios-simulator/ios/fast/coordinates/touch-event.html
-platform/ios-simulator/ios/fast/events/touch/input-touch-target.html
-platform/ios-simulator/ios/fast/events/touch/inserted-fragment-touch-target.html
-platform/ios-simulator/ios/fast/events/touch/moved-touch-target.html
-platform/ios-simulator/ios/fast/events/touch/multi-touch-some-without-handlers.html
-platform/ios-simulator/ios/fast/events/touch/ontouchstart-active-selector.html
-platform/ios-simulator/ios/fast/events/touch/removed-fragment-touch-target.html
-platform/ios-simulator/ios/fast/events/touch/removed-touch-target.html
-platform/ios-simulator/ios/fast/events/touch/text-node-touch-target.html
-platform/ios-simulator/ios/fast/events/touch/textarea-touch-target.html
-platform/ios-simulator/ios/fast/events/touch/touch-event-frames.html
-platform/ios-simulator/ios/fast/events/touch/touch-event-pageXY.html
-platform/ios-simulator/ios/fast/events/touch/zoomed-touch-event-pageXY.html
+
+fast/events/touch/input-touch-target.html
+fast/events/touch/inserted-fragment-touch-target.html
+fast/events/touch/moved-touch-target.html
+fast/events/touch/multi-touch-some-without-handlers.html
+fast/events/touch/ontouchstart-active-selector.html
+fast/events/touch/removed-fragment-touch-target.html
+fast/events/touch/removed-touch-target.html
+fast/events/touch/text-node-touch-target.html
+fast/events/touch/textarea-touch-target.html
+fast/events/touch/touch-event-frames.html
+fast/events/touch/touch-event-pageXY.html
+
 platform/ios-simulator/ios/fast/forms/range-input-container-touches.html
 platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html
 platform/ios-simulator/ios/fast/forms/range-input-touches.html

@@ -226,6 +226,8 @@ struct TextAutoSizingTraits : WTF::GenericHashTraits<TextAutoSizingKey> {
 class MediaSession;
 #endif
 
+const uint64_t HTMLMediaElementInvalidID = 0;
+
 enum PageshowEventPersistence {
     PageshowEventNotPersisted = 0,
     PageshowEventPersisted = 1
@@ -725,7 +727,6 @@ public:
     void unscheduleStyleRecalc();
     bool hasPendingStyleRecalc() const;
     bool hasPendingForcedStyleRecalc() const;
-    void styleRecalcTimerFired();
     void optimizedStyleSheetUpdateTimerFired();
 
     void registerNodeListForInvalidation(LiveNodeList&);
@@ -1261,7 +1262,7 @@ public:
     WEBCORE_EXPORT void addAudioProducer(MediaProducer*);
     WEBCORE_EXPORT void removeAudioProducer(MediaProducer*);
     MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
-    WEBCORE_EXPORT void updateIsPlayingMedia();
+    WEBCORE_EXPORT void updateIsPlayingMedia(uint64_t = HTMLMediaElementInvalidID);
     void pageMutedStateDidChange();
     WeakPtr<Document> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
@@ -1278,6 +1279,7 @@ public:
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToPropagate() const;
     bool shouldEnforceContentDispositionAttachmentSandbox() const;
+    void applyContentDispositionAttachmentSandbox();
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
@@ -1370,7 +1372,6 @@ private:
     void setCachedDOMCookies(const String&);
     bool isDOMCookieCacheValid() const { return m_cookieCacheExpiryTimer.isActive(); }
     void invalidateDOMCookieCache();
-    void domCookieCacheExpiryTimerFired();
     virtual void didLoadResourceSynchronously(const ResourceRequest&) override final;
 
     unsigned m_referencingNodeCount;

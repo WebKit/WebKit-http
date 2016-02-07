@@ -131,9 +131,6 @@ WK_EXTERN NSString * const _WKShouldOpenExternalURLsKey WK_AVAILABLE(WK_MAC_TBA,
 
 @property (nonatomic, readonly) _WKWebViewPrintFormatter *_webViewPrintFormatter;
 
-// Indicating whether link preview is allowed. The default value is YES.
-@property (nonatomic, getter=_allowsLinkPreview, setter=_setAllowsLinkPreview:) BOOL _allowsLinkPreview WK_AVAILABLE(NA, WK_IOS_TBA);
-
 - (void)_beginInteractiveObscuredInsetsChange;
 - (void)_endInteractiveObscuredInsetsChange;
 - (void)_hideContentUntilNextUpdate;
@@ -177,6 +174,8 @@ WK_EXTERN NSString * const _WKShouldOpenExternalURLsKey WK_AVAILABLE(WK_MAC_TBA,
 // Default value is 0. A value of 0 means the window's backing scale factor will be used and automatically update when the window moves screens.
 @property (nonatomic, setter=_setOverrideDeviceScaleFactor:) CGFloat _overrideDeviceScaleFactor WK_AVAILABLE(WK_MAC_TBA, NA);
 #endif
+
+- (void)_killWebContentProcessAndResetState;
 
 - (void)_getMainResourceDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;
 - (void)_getWebArchiveDataWithCompletionHandler:(void (^)(NSData *, NSError *))completionHandler;

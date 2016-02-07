@@ -1,6 +1,16 @@
 # This file should contain entries for expectations that are specific
 # to the Apple Mac port running WebKit1 (DumpRenderTree)
 
+#//////////////////////////////////////////////////////////////////////////////////////////
+# Platform-specific tests. Skipped globally, then re-enabled here.
+#//////////////////////////////////////////////////////////////////////////////////////////
+
+fast/forms/attributed-strings.html [ Pass ]
+
+#//////////////////////////////////////////////////////////////////////////////////////////
+# End platform-specific directories.
+#//////////////////////////////////////////////////////////////////////////////////////////
+
 ###### This file has two sections. When adding new tests, make sure to
 ###### add to the right section:
 
@@ -77,6 +87,9 @@ plugins/snapshotting
 # WK1 doesn't do pending WebGL policies 
 fast/canvas/webgl/useWhilePending.html [ Skip ]
 
+# Mac-WK1 only caches frames containing HTML at the moment.
+http/tests/navigation/page-cache-iframe-no-current-historyItem.html
+
 # Animated image throttling behaves differently on WK1.
 fast/images/animated-gif-body-outside-viewport.html [ Skip ]
 fast/images/animated-gif-window-resizing.html [ Skip ]
@@ -85,7 +98,7 @@ fast/images/animated-gif-zooming.html [ Skip ]
 # Mavericks and prior do not support contentInset
 [ Mavericks ] platform/mac/fast/events/content-inset-hit-testing.html [ Skip ]
 [ Mavericks ] platform/mac/fast/events/content-inset-hit-testing-in-frame.html [ Skip ]
-[ Mavericks ] platform/mac/fast/scrolling/scroll-select-bottom-test.html [ Skip ]
+[ Mavericks ] fast/scrolling/latching/scroll-select-bottom-test.html [ Skip ]
 [ Mavericks ] platform/mac-wk1/fast/backgrounds/top-content-inset-fixed-attachment.html [ Skip ]
 
 # WK1 uses the native scrollview for scrolling by page.
@@ -110,7 +123,7 @@ fast/events/mouse-force-changed.html [ Skip ]
 fast/events/mouse-force-down.html [ Skip ]
 fast/events/mouse-force-up.html [ Skip ]
 
-[ Yosemite+ ] platform/mac/fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+[ Yosemite+ ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
 
 # ShouldOpenExternalURLs not yet supported in WK1
 loader/navigation-policy [ Skip ]

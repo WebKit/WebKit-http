@@ -164,10 +164,9 @@ FrameView::FrameView(Frame& frame)
     : m_frame(frame)
     , m_canHaveScrollbars(true)
     , m_layoutTimer(*this, &FrameView::layoutTimerFired)
-    , m_layoutRoot(nullptr)
     , m_layoutPhase(OutsideLayout)
     , m_inSynchronousPostLayout(false)
-    , m_postLayoutTasksTimer(*this, &FrameView::postLayoutTimerFired)
+    , m_postLayoutTasksTimer(*this, &FrameView::performPostLayoutTasks)
     , m_updateEmbeddedObjectsTimer(*this, &FrameView::updateEmbeddedObjectsTimerFired)
     , m_isTransparent(false)
     , m_baseBackgroundColor(Color::white)
@@ -177,7 +176,7 @@ FrameView::FrameView(Frame& frame)
     , m_wasScrolledByUser(false)
     , m_inProgrammaticScroll(false)
     , m_safeToPropagateScrollToParent(true)
-    , m_delayedScrollEventTimer(*this, &FrameView::delayedScrollEventTimerFired)
+    , m_delayedScrollEventTimer(*this, &FrameView::sendScrollEvent)
     , m_isTrackingRepaints(false)
     , m_shouldUpdateWhileOffscreen(true)
     , m_exposedRect(FloatRect::infiniteRect())
@@ -1129,11 +1128,6 @@ void FrameView::setIsInWindow(bool isInWindow)
         renderView->setIsInWindow(isInWindow);
 }
 
-RenderObject* FrameView::layoutRoot(bool onlyDuringLayout) const
-{
-    return onlyDuringLayout && layoutPending() ? nullptr : m_layoutRoot;
-}
-
 inline void FrameView::forceLayoutParentViewIfNeeded()
 {
     RenderWidget* ownerRenderer = frame().ownerRenderer();
@@ -1189,7 +1183,6 @@ void FrameView::layout(bool allowSubtree)
 
     if (inChildFrameLayoutWithFrameFlattening) {
         startLayoutAtMainFrameViewIfNeeded(allowSubtree);
-        LOG(Layout, "  frame flattening, starting from root");
         RenderElement* root = m_layoutRoot ? m_layoutRoot : frame().document()->renderView();
         if (!root || !root->needsLayout())
             return;
@@ -1821,11 +1814,6 @@ IntPoint FrameView::maximumScrollPosition() const
         maximumOffset.setY(minimumScrollPosition().y());
     
     return maximumOffset;
-}
-
-void FrameView::delayedScrollEventTimerFired()
-{
-    sendScrollEvent();
 }
 
 void FrameView::viewportContentsChanged()
@@ -2593,7 +2581,7 @@ static bool isObjectAncestorContainerOf(RenderObject* ancestor, RenderObject* de
 void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
 {
     ASSERT(renderView());
-    RenderView& renderView = *this->renderView();
+    const RenderView& renderView = *this->renderView();
 
     // Try to catch unnecessary work during render tree teardown.
     ASSERT(!renderView.documentBeingDestroyed());
@@ -2891,7 +2879,7 @@ IntRect FrameView::extendedBackgroundRectForPainting() const
     if (!renderView)
         return IntRect();
     
-    LayoutRect extendedRect = renderView->unextendedBackgroundRect(renderView);
+    LayoutRect extendedRect = renderView->unextendedBackgroundRect();
     if (!tiledBacking->hasMargins())
         return snappedIntRect(extendedRect);
     
@@ -3162,11 +3150,6 @@ void FrameView::willEndLiveResize()
 {
     ScrollView::willEndLiveResize();
     adjustTiledBackingCoverage();
-}
-
-void FrameView::postLayoutTimerFired()
-{
-    performPostLayoutTasks();
 }
 
 void FrameView::autoSizeIfEnabled()
@@ -3807,6 +3790,7 @@ void FrameView::startLayoutAtMainFrameViewIfNeeded(bool allowSubtree)
     while (parentView->parentFrameView())
         parentView = parentView->parentFrameView();
 
+    LOG(Layout, "  frame flattening, starting from root");
     parentView->layout(allowSubtree);
 }
 

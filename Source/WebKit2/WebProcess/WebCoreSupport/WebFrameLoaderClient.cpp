@@ -464,7 +464,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad()
 
     // Notify the UIProcess.
 
-    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), documentLoader.response().certificateInfo(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), documentLoader.response().certificateInfo(), m_frame->coreFrame()->document()->isPluginDocument(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
     webPage->didCommitLoad(m_frame);
 }
 
@@ -1533,7 +1533,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     bool plugInSupportsMIMEType = false;
     if (WebPage* webPage = m_frame->page()) {
         const PluginData& pluginData = webPage->corePage()->pluginData();
-        if (pluginData.supportsWebVisibleMimeType(mimeType, PluginData::AllPlugins) && webFrame()->coreFrame()->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
+        if (pluginData.supportsWebVisibleMimeType(mimeType, PluginData::AllPlugins) && webFrame()->coreFrame()->loader().subframeLoader().allowPlugins())
             plugInSupportsMIMEType = true;
         else if (pluginData.supportsWebVisibleMimeType(mimeType, PluginData::OnlyApplicationPlugins))
             plugInSupportsMIMEType = true;

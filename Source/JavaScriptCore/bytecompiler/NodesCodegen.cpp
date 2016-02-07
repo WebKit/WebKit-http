@@ -35,7 +35,6 @@
 #include "JIT.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
-#include "JSNameScope.h"
 #include "JSONObject.h"
 #include "LabelScope.h"
 #include "Lexer.h"
@@ -2553,7 +2552,7 @@ void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     RefPtr<RegisterID> returnRegister = m_value ? generator.emitNode(dst, m_value) : generator.emitLoad(dst, jsUndefined());
     generator.emitProfileType(returnRegister.get(), ProfileTypeBytecodeFunctionReturnStatement, divotStart(), divotEnd());
-    if (generator.labelScopeDepth()) {
+    if (generator.isInFinallyBlock()) {
         returnRegister = generator.emitMove(generator.newTemporary(), returnRegister.get());
         generator.emitPopScopes(generator.scopeRegister(), 0);
     }
@@ -2575,9 +2574,9 @@ void WithNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     RefPtr<RegisterID> scope = generator.emitNode(m_expr);
     generator.emitExpressionInfo(m_divot, m_divot - m_expressionLength, m_divot);
-    generator.emitPushWithScope(generator.scopeRegister(), scope.get());
+    generator.emitPushWithScope(scope.get());
     generator.emitNode(dst, m_statement);
-    generator.emitPopWithScope(generator.scopeRegister());
+    generator.emitPopWithScope();
 }
 
 // ------------------------------ CaseClauseNode --------------------------------
@@ -2888,6 +2887,12 @@ void ProgramNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
     generator.emitEnd(dstRegister.get());
 }
 
+// ------------------------------ ModuleProgramNode --------------------
+
+void ModuleProgramNode::emitBytecode(BytecodeGenerator&, RegisterID*)
+{
+}
+
 // ------------------------------ EvalNode -----------------------------
 
 void EvalNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
@@ -3038,7 +3043,37 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
     return generator.moveToDestinationIfNeeded(dst, constructor.get());
 }
 #endif
-    
+
+// ------------------------------ ImportDeclarationNode -----------------------
+
+void ImportDeclarationNode::emitBytecode(BytecodeGenerator&, RegisterID*)
+{
+}
+
+// ------------------------------ ExportAllDeclarationNode --------------------
+
+void ExportAllDeclarationNode::emitBytecode(BytecodeGenerator&, RegisterID*)
+{
+}
+
+// ------------------------------ ExportDefaultDeclarationNode ----------------
+
+void ExportDefaultDeclarationNode::emitBytecode(BytecodeGenerator&, RegisterID*)
+{
+}
+
+// ------------------------------ ExportLocalDeclarationNode ------------------
+
+void ExportLocalDeclarationNode::emitBytecode(BytecodeGenerator&, RegisterID*)
+{
+}
+
+// ------------------------------ ExportNamedDeclarationNode ------------------
+
+void ExportNamedDeclarationNode::emitBytecode(BytecodeGenerator&, RegisterID*)
+{
+}
+
 // ------------------------------ DestructuringAssignmentNode -----------------
 RegisterID* DestructuringAssignmentNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {

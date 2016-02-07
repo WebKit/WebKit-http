@@ -291,12 +291,13 @@ private:
 
     virtual bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*) const override;
 
-    virtual void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags) override;
+    virtual void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t) override;
     virtual void setPageActivityState(WebCore::PageActivityState::Flags) override;
 
 #if ENABLE(MEDIA_SESSION)
     virtual void hasMediaSessionWithActiveMediaElementsDidChange(bool) override;
     virtual void mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata&) override;
+    virtual void focusedContentMediaElementDidChange(uint64_t) override;
 #endif
 
 #if ENABLE(SUBTLE_CRYPTO)
@@ -326,7 +327,7 @@ private:
 #if ENABLE(VIDEO)
     virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) override;
 #if USE(GSTREAMER)
-    virtual void requestInstallMissingMediaPlugins(const String&, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&) override;
+    virtual void requestInstallMissingMediaPlugins(const String& /*details*/, const String& /*description*/, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&) override;
 #endif
 #endif
 

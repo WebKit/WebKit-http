@@ -572,6 +572,10 @@ public:
     void sendViewportAttributesChanged();
 #endif
 
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+    void commitPageTransitionViewport();
+#endif
+
 #if ENABLE(CONTEXT_MENUS)
     WebContextMenu* contextMenu();
     WebContextMenu* contextMenuAtPointInWindow(const WebCore::IntPoint&);
@@ -608,10 +612,6 @@ public:
 
 #if PLATFORM(EFL)
     void setThemePath(const String&);
-#endif
-
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    void commitPageTransitionViewport();
 #endif
 
 #if PLATFORM(GTK)
@@ -909,7 +909,7 @@ public:
 #if ENABLE(VIDEO)
     void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&);
 #if USE(GSTREAMER)
-    void requestInstallMissingMediaPlugins(const String& details, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
+    void requestInstallMissingMediaPlugins(const String& details, const String& description, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
 #endif
 #endif
 

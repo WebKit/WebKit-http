@@ -135,7 +135,7 @@ WebNetscapePluginStream::WebNetscapePluginStream(FrameLoader* frameLoader)
     , m_newStreamSuccessful(false)
     , m_frameLoader(frameLoader)
     , m_pluginFuncs(0)
-    , m_deliverDataTimer(*this, &WebNetscapePluginStream::deliverDataTimerFired)
+    , m_deliverDataTimer(*this, &WebNetscapePluginStream::deliverData)
 {
     memset(&m_stream, 0, sizeof(NPStream));
 }
@@ -155,7 +155,7 @@ WebNetscapePluginStream::WebNetscapePluginStream(NSURLRequest *request, NPP plug
     , m_frameLoader(0)
     , m_request(adoptNS([request mutableCopy]))
     , m_pluginFuncs(0)
-    , m_deliverDataTimer(*this, &WebNetscapePluginStream::deliverDataTimerFired)
+    , m_deliverDataTimer(*this, &WebNetscapePluginStream::deliverData)
 {
     memset(&m_stream, 0, sizeof(NPStream));
 
@@ -295,6 +295,12 @@ void WebNetscapePluginStream::stop()
     
     if (!m_loader->isDone())
         cancelLoadAndDestroyStreamWithError(m_loader->cancelledError());
+}
+
+void WebNetscapePluginStream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse&, std::function<void (WebCore::ResourceRequest&&)>&& callback)
+{
+    // FIXME: We should notify the plug-in with NPP_URLRedirectNotify here.
+    callback(WTF::move(request));
 }
 
 void WebNetscapePluginStream::didReceiveResponse(NetscapePlugInStreamLoader*, const ResourceResponse& response)
@@ -550,11 +556,6 @@ void WebNetscapePluginStream::deliverData()
                 destroyStream();
         }
     }
-}
-
-void WebNetscapePluginStream::deliverDataTimerFired()
-{
-    deliverData();
 }
 
 void WebNetscapePluginStream::deliverDataToFile(NSData *data)

@@ -633,12 +633,17 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.Object
 
     createColorMarkers(range)
     {
-        return this._codeMirror.createColorMarkers(range);
+        return createCodeMirrorColorTextMarkers(this._codeMirror, range);
     }
 
     createGradientMarkers(range)
     {
-        return this._codeMirror.createGradientMarkers(range);
+        return createCodeMirrorGradientTextMarkers(this._codeMirror, range);
+    }
+
+    createCubicBezierMarkers(range)
+    {
+        return createCodeMirrorCubicBezierTextMarkers(this._codeMirror, range);
     }
 
     editingControllerForMarker(editableMarker)
@@ -648,6 +653,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.Object
             return new WebInspector.CodeMirrorColorEditingController(this._codeMirror, editableMarker);
         case WebInspector.TextMarker.Type.Gradient:
             return new WebInspector.CodeMirrorGradientEditingController(this._codeMirror, editableMarker);
+        case WebInspector.TextMarker.Type.CubicBezier:
+            return new WebInspector.CodeMirrorBezierEditingController(this._codeMirror, editableMarker);
         default:
             return new WebInspector.CodeMirrorEditingController(this._codeMirror, editableMarker);
         }
@@ -738,8 +745,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.Object
                 var originalLineEndings = [];
                 var formattedLineEndings = [];
                 var mapping = {original: [0], formatted: [0]};
-                var builder = new FormatterContentBuilder(mapping, originalLineEndings, formattedLineEndings, 0, 0, indentString);
-                var formatter = new Formatter(this._codeMirror, builder);
+                var builder = new WebInspector.FormatterContentBuilder(mapping, originalLineEndings, formattedLineEndings, 0, 0, indentString);
+                var formatter = new WebInspector.Formatter(this._codeMirror, builder);
                 formatter.format(start, end);
 
                 this._formatterSourceMap = WebInspector.FormatterSourceMap.fromBuilder(builder);

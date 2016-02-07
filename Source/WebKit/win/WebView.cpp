@@ -120,6 +120,7 @@
 #include <WebCore/HitTestResult.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/JSElement.h>
+#include <WebCore/JSScriptProfile.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/Logging.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -539,7 +540,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         else
             cfurlCacheDirectory = WebCore::localUserSpecificStorageDirectory().createCFString();
     }
-    cacheDirectory = String(cfurlCacheDirectory);
+    cacheDirectory = String(cfurlCacheDirectory.get());
     CFIndex cacheMemoryCapacity = 0;
     CFIndex cacheDiskCapacity = 0;
 #elif USE(CURL)
@@ -2726,7 +2727,7 @@ HRESULT WebView::canShowMIMEType(/* [in] */ BSTR mimeType, /* [retval][out] */ B
 bool WebView::canShowMIMEType(const String& mimeType)
 {
     Frame* coreFrame = core(m_mainFrame);
-    bool allowPlugins = coreFrame && coreFrame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin);
+    bool allowPlugins = coreFrame && coreFrame->loader().subframeLoader().allowPlugins();
 
     bool canShow = MIMETypeRegistry::isSupportedImageMIMEType(mimeType)
         || MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType)
@@ -5246,6 +5247,12 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setEnableInheritURIQueryComponent(enabled);
+
+    hr = prefsPrivate->allowDisplayAndRunningOfInsecureContent(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setAllowDisplayOfInsecureContent(!!enabled);
+    settings.setAllowRunningOfInsecureContent(!!enabled);
 
     hr = prefsPrivate->javaScriptRuntimeFlags(&javaScriptRuntimeFlags);
     if (FAILED(hr))

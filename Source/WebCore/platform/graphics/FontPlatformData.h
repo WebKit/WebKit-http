@@ -110,6 +110,7 @@ public:
     bool useGDI() const { return m_useGDI; }
 #elif PLATFORM(COCOA)
     CTFontRef font() const { return m_font.get(); }
+    WEBCORE_EXPORT CTFontRef registeredFont() const; // Returns nullptr iff the font is not registered, such as web fonts (otherwise returns font()).
     void setFont(CTFontRef);
 
     CTFontRef ctFont() const;
@@ -120,7 +121,7 @@ public:
 
 #if USE(APPKIT)
     // FIXME: Remove this when all NSFont usage is removed.
-    NSFont *nsFont() const { return reinterpret_cast<NSFont *>(const_cast<__CTFont*>(m_font.get())); }
+    NSFont *nsFont() const { return (NSFont *)m_font.get(); }
     void setNSFont(NSFont *font) { setFont(reinterpret_cast<CTFontRef>(font)); }
 #endif
 #endif
@@ -154,7 +155,7 @@ public:
         ASSERT(m_font || !m_cgFont || isEmoji());
         uintptr_t flags = static_cast<uintptr_t>(m_isHashTableDeletedValue << 4 | isEmoji() << 3 | m_orientation << 2 | m_syntheticBold << 1 | m_syntheticOblique);
 #if USE(APPKIT)
-        uintptr_t fontHash = reinterpret_cast<uintptr_t>(const_cast<__CTFont*>(m_font.get()));
+        uintptr_t fontHash = (uintptr_t)m_font.get();
 #else
         uintptr_t fontHash = reinterpret_cast<uintptr_t>(CFHash(m_font.get()));
 #endif

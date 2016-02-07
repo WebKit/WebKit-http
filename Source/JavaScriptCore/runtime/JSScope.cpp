@@ -28,7 +28,6 @@
 
 #include "JSGlobalObject.h"
 #include "JSLexicalEnvironment.h"
-#include "JSNameScope.h"
 #include "JSWithScope.h"
 #include "JSCInlines.h"
 
@@ -125,14 +124,6 @@ JSObject* JSScope::objectAtScope(JSScope* scope)
     return object;
 }
 
-int JSScope::depth()
-{
-    int depth = 0;
-    for (JSScope* scope = this; scope; scope = scope->next())
-        ++depth;
-    return depth;
-}
-
 // When an exception occurs, the result of isUnscopable becomes false.
 static inline bool isUnscopable(ExecState* exec, JSScope* scope, JSObject* object, const Identifier& ident)
 {
@@ -217,6 +208,13 @@ bool JSScope::isCatchScope()
     return lexicalEnvironment->symbolTable()->scopeType() == SymbolTable::ScopeType::CatchScope;
 }
 
+bool JSScope::isFunctionNameScopeObject()
+{
+    JSLexicalEnvironment* lexicalEnvironment = jsDynamicCast<JSLexicalEnvironment*>(this);
+    if (!lexicalEnvironment)
+        return false;
+    return lexicalEnvironment->symbolTable()->scopeType() == SymbolTable::ScopeType::FunctionNameScope;
+}
 
 const char* resolveModeName(ResolveMode mode)
 {

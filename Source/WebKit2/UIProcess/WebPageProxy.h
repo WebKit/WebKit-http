@@ -529,6 +529,7 @@ public:
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
+    void commitPageTransitionViewport();
 #endif
 #if PLATFORM(EFL)
     void setThemePath(const String&);
@@ -608,10 +609,6 @@ public:
     PlatformWidget viewWidget();
     const WebCore::Color& backgroundColor() const { return m_backgroundColor; }
     void setBackgroundColor(const WebCore::Color& color) { m_backgroundColor = color; }
-#endif
-
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    void commitPageTransitionViewport();
 #endif
 
     void handleMouseEvent(const NativeWebMouseEvent&);
@@ -880,7 +877,7 @@ public:
 
     WebPageCreationParameters creationParameters();
 
-#if USE(COORDINATED_GRAPHICS)
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void findZoomableAreaForPoint(const WebCore::IntPoint&, const WebCore::IntSize&);
 #endif
 
@@ -1027,11 +1024,12 @@ public:
     bool isShowingNavigationGestureSnapshot() const { return m_isShowingNavigationGestureSnapshot; }
 
     bool isPlayingAudio() const { return !!(m_mediaState & WebCore::MediaProducer::IsPlayingAudio); }
-    void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags);
+    void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t);
 
 #if ENABLE(MEDIA_SESSION)
     void hasMediaSessionWithActiveMediaElementsDidChange(bool);
     void mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata&);
+    void focusedContentMediaElementDidChange(uint64_t);
 #endif
 
 #if PLATFORM(MAC)
@@ -1126,7 +1124,7 @@ private:
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, const UserData&);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, const String& url);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
-    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, const UserData&);
+    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, const UserData&);
     void didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, const UserData&);
@@ -1480,7 +1478,7 @@ private:
 #if ENABLE(VIDEO)
     void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&);
 #if USE(GSTREAMER)
-    void requestInstallMissingMediaPlugins(const String& details);
+    void requestInstallMissingMediaPlugins(const String& details, const String& description);
 #endif
 #endif
 

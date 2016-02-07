@@ -1,3 +1,657 @@
+2015-08-07  Alex Christensen  <achristensen@webkit.org>
+
+        Build more testing binaries with CMake on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=147799
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/CMakeLists.txt:
+        Build TestNetscapePlugin.
+        * DumpRenderTree/PlatformWin.cmake:
+        Build ImageDiff and add files necessary for TestNetscapePlugin on Windows.
+        * DumpRenderTree/TestNetscapePlugIn/ForwardingHeaders: Added.
+        * DumpRenderTree/TestNetscapePlugIn/ForwardingHeaders/WebKit: Added.
+        * DumpRenderTree/TestNetscapePlugIn/ForwardingHeaders/WebKit/npapi.h: Copied from DumpRenderTree/TestNetscapePlugIn/unix/ForwardingHeaders/WebKit/npapi.h.
+        * DumpRenderTree/TestNetscapePlugIn/ForwardingHeaders/WebKit/npfunctions.h: Copied from DumpRenderTree/TestNetscapePlugIn/unix/ForwardingHeaders/WebKit/npfunctions.h.
+        * DumpRenderTree/TestNetscapePlugIn/ForwardingHeaders/WebKit/npruntime.h: Copied from DumpRenderTree/TestNetscapePlugIn/unix/ForwardingHeaders/WebKit/npruntime.h.
+        * DumpRenderTree/TestNetscapePlugIn/unix/ForwardingHeaders/WebKit/npapi.h: Removed.
+        * DumpRenderTree/TestNetscapePlugIn/unix/ForwardingHeaders/WebKit/npfunctions.h: Removed.
+        * DumpRenderTree/TestNetscapePlugIn/unix/ForwardingHeaders/WebKit/npruntime.h: Removed.
+
+2015-08-07  Jason Marcell  <jmarcell@apple.com>
+
+        Refactor BuildbotQueue.compareIterations and BuildbotQueue.compareIterationsByRevisions to be more generic
+        https://bugs.webkit.org/show_bug.cgi?id=147667
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.compareIterations): Refactored to work more generically with repositories
+        other than "openSource" and "internal".
+        (BuildbotQueue.prototype.compareIterationsByRevisions): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        (Dashboard.get sortedPlatforms): Added. Returns a sorted array of platforms.
+        (Dashboard.get sortedRepositories): Added. Returns a sorted array of repositories.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady): Using Dashboard.sortedPlatforms instead of sortedPlatforms.
+        (sortedPlatforms): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsMain.js:
+        (buildQueuesTable): Using Dashboard.sortedPlatforms instead of sortedPlatforms.
+        (sortedPlatforms): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Utilities.js:
+        (sortDictionariesByOrder): Added. Takes an array of dictionaries that have an "order" property
+        and sorts them by this property returning the new sorted array.
+
+2015-08-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Lightweight locks should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=147545
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Lock.cpp: Added.
+        (TestWebKitAPI::runLockTest):
+        (TestWebKitAPI::TEST):
+
+2015-08-07  Anders Carlsson  <andersca@apple.com>
+
+        Fix a tyop.
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::viewSupportsOptions):
+
+2015-08-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Update AppEngine app version numbers to the latest commit.
+
+        * QueueStatusServer/app.yaml:
+        * TestResultServer/app.yaml:
+
+2015-08-07  Anders Carlsson  <andersca@apple.com>
+
+        Simplify WKTR's view options
+        https://bugs.webkit.org/show_bug.cgi?id=147791
+
+        Reviewed by Sam Weinig.
+
+        Instead of using a WKDictionaryRef, just use a struct for the options.
+
+        * WebKitTestRunner/PlatformWebView.h:
+        (WTR::PlatformWebView::options):
+        (WTR::PlatformWebView::viewSupportsOptions): Deleted.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::ensureViewSupportsOptions):
+        (WTR::TestController::updateLayoutTypeForTest):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/ViewOptions.h: Added.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::PlatformWebView):
+        (WTR::PlatformWebView::viewSupportsOptions):
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::viewSupportsOptions):
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::viewSupportsOptions):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::PlatformWebView):
+        (WTR::PlatformWebView::viewSupportsOptions):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformConfigureViewForTest):
+
+2015-08-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Running tests for a long time results in some tests running very slowly (throttling)
+        https://bugs.webkit.org/show_bug.cgi?id=147718
+
+        Reviewed by Chris Dumez.
+
+        Follow-up, make DumpRenderTree consistent with WebKitTestRunner.
+        Although COCOA ports default this setting to be disabled in WebKit1,
+        we should make both test harnesses disable the setting for consistency.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+
+2015-08-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Use a specific version of Speedometer in run-benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=147769
+
+        Reviewed by Chris Dumez.
+
+        Use the current latest revision as we work towards the bug 147768 (Update frameworks in Speedometer).
+
+        * Scripts/webkitpy/benchmark_runner/data/plans/speedometer.plan:
+
+2015-08-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        twisted_http_server.py should support --port
+        https://bugs.webkit.org/show_bug.cgi?id=147771
+
+        Reviewed by Chris Dumez.
+
+        Added the option. This makes the script more useful on its own.
+
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server/twisted_http_server.py:
+
+2015-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WTF unit tests are timing out in the bots
+        https://bugs.webkit.org/show_bug.cgi?id=147777
+
+        Reviewed by Filip Pizlo.
+
+        Add a way to mark google unit tests as slow and add
+        WTF_Lock.ContentedShortSection to the list. In case of slow test
+        we use the double of the given timeout for that particular test.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+        (TestRunner._run_google_test):
+
+2015-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] run-gtk-tests should not stop when a google test case fails
+        https://bugs.webkit.org/show_bug.cgi?id=147778
+
+        Reviewed by Philippe Normand.
+
+        For glib based tests we run the test runner with the -k option,
+        but for google tests we are aborting as soon as we find a failure.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner._run_google_test_suite): Use a global return code that
+        is set to 1 when any test has failed.
+
+2015-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GStreamer] Do not automatically show PackageKit codec installation notifications
+        https://bugs.webkit.org/show_bug.cgi?id=135973
+
+        Reviewed by Philippe Normand.
+
+        Handle the missing media plugins installation permission request
+        in MiniBrowser and add a test case for the new API.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewDecidePermissionRequest):
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebExtensions.cpp:
+        (permissionRequestCallback):
+        (testInstallMissingPluginsPermissionRequest):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (methodCallCallback):
+
+2015-08-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Running tests for a long time results in some tests running very slowly (throttling)
+        https://bugs.webkit.org/show_bug.cgi?id=147718
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        Ensure throttling settings are disabled for tests for all ports, as
+        COCOA ports default to having these setting enabled. Note, there is
+        still other timer throttling not covered by these setting.
+
+2015-08-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        http_server_driver and benchmark_builder should not be in run-benchmark's plan files
+        https://bugs.webkit.org/show_bug.cgi?id=147752
+
+        Reviewed by Chris Dumez.
+
+        Removed BenchmarkBuilderFactory since we have exactly one subclass of BenchmarkBuilder.
+
+        Also made HTTPServerDriverFactory instantiate the appropriate HTTP server based on the platform name instead of HTTP server name.
+        This allows us to remove --http-server-driver option from run-benchmark, which was added to support the HTTP server for iOS.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder: Removed.
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder.py: Moved from benchmark_runner/benchmark_builder/generic_benchmark_builder.py.
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/__init__.py: Removed.
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/benchmark_builder_factory.py: Removed.
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py: Moved to benchmark_runner/benchmark_builder.py.
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__): No longer takes http_server_driver_override as an argument since this is not handled by
+        HTTPServerDriverFactory taking the platform name as an argument.
+        (BenchmarkRunner.execute): Directly instantiate BenchmarkBuilder.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-cssquery.plan: Removed http_server_driver and benchmark_builder.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-dom.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-jslib.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/jetstream.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/jsbench.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/kraken.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/octane.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/speedometer.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/sunspider.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/__init__.py:
+        (http_server_driver_loader): Register http server drivers via supported platform names instead of http server names.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver.py:
+        (HTTPServerDriver): Replaced name by platforms.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver): Ditto.
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        (parse_args): Removed --http-server-driver option.
+        (start): Ditto.
+
+2015-08-06  Chris Dumez  <cdumez@apple.com>
+
+        Toggle GPS state based on page visibility to save battery
+        https://bugs.webkit.org/show_bug.cgi?id=147685
+
+        Reviewed by Benjamin Poulain.
+
+        Add testRunner.isGeolocationProviderActive() test support function.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (isGeolocationProviderActiveCallback):
+        (TestRunner::staticFunctions):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/MockGeolocationProvider.h:
+        * DumpRenderTree/mac/MockGeolocationProvider.mm:
+        (-[MockGeolocationProvider isActive]):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::isGeolocationProviderActive):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::isGeolocationProviderActive):
+        * WebKitTestRunner/GeolocationProviderMock.h:
+        (WTR::GeolocationProviderMock::isActive):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::isGeolocationProviderActive):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::isGeolocationProviderActive):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::isGeolocationProviderActive):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2015-08-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Automate JSBench with run-benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=147716
+
+        Reviewed by Chris Dumez.
+
+        Added JSBench plan to run-benchmark.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py:
+        (GenericBenchmarkBuilder.prepare): Pass in the archive type to _fetch_remote_archive.
+        (GenericBenchmarkBuilder._fetch_remote_archive): Added the support for extracting files from tar.gz in addition to zip.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Dromaeo.patch: Fixed the coding style.
+        * Scripts/webkitpy/benchmark_runner/data/patches/JSBench.patch: Added.
+        * Scripts/webkitpy/benchmark_runner/data/patches/JetStream.patch: Fixed the coding style.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Kraken.patch: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Octane.patch: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/patches/SunSpider.patch: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-cssquery.plan: Specified the archive type.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-dom.plan: Specified the archive type.
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-jslib.plan: Ditto.
+        * Scripts/webkitpy/benchmark_runner/data/plans/jetstream.plan: Fixed the coding style.
+        * Scripts/webkitpy/benchmark_runner/data/plans/jsbench.plan: Added.
+        * Scripts/webkitpy/benchmark_runner/data/plans/kraken.plan: Specified the archive type.
+        * Scripts/webkitpy/benchmark_runner/data/plans/octane.plan: Ditto.
+
+2015-08-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Pass-through the undefined options in run-jsc
+        https://bugs.webkit.org/show_bug.cgi?id=147717
+
+        Undefined options in run-jsc is just passed to the actual jsc shell.
+        We can execute `Tools/Scripts/run-jsc -d`.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/run-jsc:
+
+2015-08-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Skip GTK+ test /webkit2/WebKitWebView/submit-form.
+
+        It's flaky.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2015-08-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump EFL version to 1.15.0
+        https://bugs.webkit.org/show_bug.cgi?id=147450
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2015-08-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Unksip TestContextMenu GTK+ API test.
+
+        This has been skipped for a long time, and it's very
+        unconvenient. It has never failed for me locally, so let's try
+        again to see if it works in the bots. I'll skip it again if it
+        keeps failing.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2015-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/187972.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        (javaScriptThreadsMutex):
+        (runJavaScriptThread):
+        (startJavaScriptThreads):
+        (stopJavaScriptThreads):
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/glib/WorkQueueGLib.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-08-05  Alex Christensen  <achristensen@webkit.org>
+
+        Build DumpRenderTree with CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=147519
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Build the DumpRenderTree directory now that it builds successfully.
+        * DumpRenderTree/CMakeLists.txt:
+        Added missing source file and don't link with WebCore.lib.
+        * DumpRenderTree/PlatformWin.cmake:
+        Added sources to DumpRenderTreeLib and made DumpRenderTree only build DLLLauncherMain.cpp. 
+        * WinLauncher/CMakeLists.txt:
+        We need libcmt now that we are not linking with WebCore.lib.
+
+2015-08-05  Alexey Proskuryakov  <ap@apple.com>
+
+        AppScale: Use https URLs for subresources and links
+        https://bugs.webkit.org/show_bug.cgi?id=147686
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/filters/webkit_extras.py:
+        * TestResultServer/static-dashboards/dashboard_base.js:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+        * TestResultServer/static-dashboards/flakiness_dashboard_unittests.js:
+        * TestResultServer/static-dashboards/treemap.js:
+        * TestResultServer/static-dashboards/ui.js:
+
+2015-08-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename Mutex to DeprecatedMutex
+        https://bugs.webkit.org/show_bug.cgi?id=147675
+
+        Reviewed by Geoffrey Garen.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        (javaScriptThreadsMutex):
+        (runJavaScriptThread):
+        (startJavaScriptThreads):
+        (stopJavaScriptThreads):
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/glib/WorkQueueGLib.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-08-05  Timothy Hatcher  <timothy@apple.com>
+
+        Update the WebKit nightly icon
+        https://bugs.webkit.org/show_bug.cgi?id=147684
+
+        Reviewed by Sam Weinig.
+
+        * WebKitLauncher/webkit.icns: Replaced.
+
+2015-08-05  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r185111): Clicking phone numbers doesn't prompt to call sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=147678
+        <rdar://problem/21827815>
+
+        Reviewed by Brady Eidson.
+
+        Add a test to ensure that we restore the "should open external URLs" policy on
+        page reload after the web content process crashes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/should-open-external-schemes.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ShouldOpenExternalURLsInNewWindowActions.mm:
+        (TEST):
+
+2015-08-04  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Editing tests have been broken since r186694
+        https://bugs.webkit.org/show_bug.cgi?id=146888
+
+        Reviewed by Brent Fulgham.
+
+        Restored some codes for the context click on GTK+ and EFL port.
+
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::contextClick): Seperated the codes using the PLATFORM guard.
+
+2015-08-04  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Install twisted package for http server when necessary.
+        https://bugs.webkit.org/show_bug.cgi?id=147082
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server/twisted_http_server.py:
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.find_module):
+        (AutoinstallImportHook._install_twisted):
+
+2015-08-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update Apple Windows build for VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147653
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/PluginTest.h: If building with
+        something older than VS2015, define snprintf as _snprintf.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginCommon.props:
+        Remove unneeded macro definition for snprintf.
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo._determine_win_version): Recognize Windows 10.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort): Ditto.
+        * Scripts/webkitpy/port/win_unittest.py:
+        (WinPortTest.test_baseline_search_path): Include Windows 10 in tests.
+        (WinPortTest._assert_version): Ditto.
+
+2015-08-04  Brian Burg  <bburg@apple.com>
+
+        Unreviewed, update email addresses in contributors.json and watchlist.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-08-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Implement NPAPI redirect handling
+        https://bugs.webkit.org/show_bug.cgi?id=138675
+        rdar://problem/15779101
+
+        Patch by Jeffrey Pfau, updated and tweaked by me.
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj.filters:
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt:
+        * DumpRenderTree/TestNetscapePlugIn/PluginTest.cpp:
+        (PluginTest::NPP_URLNotify):
+        (PluginTest::NPP_URLRedirectNotify):
+        (PluginTest::NPP_GetValue):
+        (PluginTest::NPN_GetURLNotify):
+        (PluginTest::NPN_PostURLNotify):
+        (PluginTest::NPN_GetValue):
+        (PluginTest::NPN_ReleaseVariantValue):
+        (PluginTest::NPN_URLRedirectResponse):
+        (PluginTest::NPN_ConvertPoint):
+        * DumpRenderTree/TestNetscapePlugIn/PluginTest.h:
+        * DumpRenderTree/TestNetscapePlugIn/Tests/URLRedirect.cpp: Added.
+        (URLRedirect::URLRedirect):
+        (URLRedirect::ScriptableObject::hasMethod):
+        (URLRedirect::ScriptableObject::get):
+        (URLRedirect::ScriptableObject::serviceAsync):
+        (URLRedirect::ScriptableObject::invoke):
+        (URLRedirect::NPP_GetValue):
+        (URLRedirect::NPP_URLNotify):
+        (URLRedirect::NPP_URLRedirectNotify):
+        * DumpRenderTree/TestNetscapePlugIn/main.cpp:
+        (NP_GetEntryPoints):
+        (NPP_URLNotify):
+        (NPP_URLRedirectNotify):
+        (NPP_GetValue):
+
+2015-08-04  Tim Horton  <timothy_horton@apple.com>
+
+        Move Matt Daiter to committers.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-08-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] build-webkit and MSBuild fight over BuildOutput.htm, causing build failures.
+        https://bugs.webkit.org/show_bug.cgi?id=147636
+
+        Reviewed by Alex Christensen.
+        
+        We no longer need build-webkit to manually troll the log data and pipe it to stdout; MSBuild is already doing this properly.
+        Stop the build-webkit script from interacting with BuildOutput.htm, thereby preventing a potential build failure (especially
+        on EWS machines)
+
+        * Scripts/build-webkit:
+
+2015-08-04  Jason Marcell  <jmarcell@apple.com>
+
+        Refactor to convert openSourceRevision and internalRevision properties on BuildbotIteration into a more generic collection of revisions.
+        https://bugs.webkit.org/show_bug.cgi?id=147280
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration): Removed opensourceRevision, internalRevision. Added revision.
+        Refactored _parseData to handle repositories more generically.
+        (parseRevisionProperty): Moved a comment up to parseRevisionProperty where it seems more relevant.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.compareIterations): Using "revision" property instead of
+        "opensourceRevision" and "internalRevision".
+        (BuildbotQueue.prototype.compareIterationsByRevisions): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._appendPendingRevisionCount): Ditto.
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Ditto.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Changing "internal" boolean
+        parameter to more generic "repository" string parameter. Added "trac" parameter in order to
+        specify the trac instance to use. Using "revision" property instead of "opensourceRevision"
+        and "internalRevision".
+        (BuildbotQueueView.prototype.revisionContentForIteration): Passing the repository name and trac
+        instance to _revisionContentWithPopoverForIteration(). Using "revision" property instead of
+        "opensourceRevision" and "internalRevision".
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js: Adding
+        constants for internal and opensource repositories.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._findIndexOfLargestIterationAtOrBeforeStart): Using "revision" property
+        instead of "opensourceRevision" and "internalRevision".
+        (Analyzer.prototype._countPercentageOfGreen): Ditto.
+        (Analyzer.prototype.webkitTrac.recordedCommits.forEach): Ditto.
+        (Analyzer.prototype._countTimes): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot.prototype.layoutTestResultsDirectoryURLForIteration): Ditto.
+
+2015-08-04  Mark Lam  <mark.lam@apple.com>
+
+        Removed a local debugging line I accidentally left in from a previous commit.
+
+        Not Reviewed.
+
+        * TestWebKitAPI/Tests/WTF/CheckedArithmeticOperations.cpp:
+
+2015-08-04  Mark Lam  <mark.lam@apple.com>
+
+        Unreviewed. Make Saam Barati a WebKit reviewer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-08-04  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed, updated Streams API watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist: Matched .*Readable.*Stream.* and .*QueuingStrategy.* in bindings/js.
+
+2015-08-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [CMake] Add an option to build AllInOne files
+        https://bugs.webkit.org/show_bug.cgi?id=102647
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-08-03  Alexey Proskuryakov  <ap@apple.com>
+
+        AppScale: Add required indices
+        https://bugs.webkit.org/show_bug.cgi?id=147593
+
+        Reviewed by Tim Horton.
+
+        * QueueStatusServer/index.yaml:
+
+2015-08-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Check in LLVM 3.6.2 binary drops for El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=147582
+
+        Reviewed by Alexey Proskuryakov.
+        
+        Recognize 10.11 and use the right drops.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2015-08-03  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Build fix after r187733.
+
+        * WinLauncher/PageLoadTestClient.cpp:
+        (PageLoadTestClient::dumpRunStatistics):
+        wtf/MathExtras.h is now included in HashTable.h, which #defines pow to wtf_pow.
+
+2015-08-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Investigate HashTable::HashTable(const HashTable&) and HashTable::operator=(const HashTable&) performance for hash-based static analyses
+        https://bugs.webkit.org/show_bug.cgi?id=118455
+
+        Reviewed by Filip Pizlo.
+
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-07-31  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare for VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=146579
+
+        Reviewed by Jon Honeycutt.
+
+        * WinLauncher/stdafx.h:
+        Define __STDC_LIMIT_MACROS to have access to INTMAX_MAX.
+
 2015-07-31  Csaba Osztrogonác  <ossy@webkit.org>
 
         [EFL] Fix pixman build on ARM with GCC 4.9.3

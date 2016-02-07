@@ -261,8 +261,11 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _ignoresNonWheelEvents;
     BOOL _ignoresAllEvents;
     BOOL _allowsBackForwardNavigationGestures;
+    BOOL _allowsLinkPreview;
 
     RetainPtr<WKViewLayoutStrategy> _layoutStrategy;
+    WKLayoutMode _lastRequestedLayoutMode;
+    float _lastRequestedViewScale;
     CGSize _minimumViewSize;
 
     RetainPtr<CALayer> _rootLayer;
@@ -2706,7 +2709,7 @@ static void* keyValueObservingContext = &keyValueObservingContext;
         [self _accessibilityRegisterUIProcessTokens];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-        if (_data->_immediateActionGestureRecognizer && ![[self gestureRecognizers] containsObject:_data->_immediateActionGestureRecognizer.get()] && !_data->_ignoresNonWheelEvents)
+        if (_data->_immediateActionGestureRecognizer && ![[self gestureRecognizers] containsObject:_data->_immediateActionGestureRecognizer.get()] && !_data->_ignoresNonWheelEvents && _data->_allowsLinkPreview)
             [self addGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
 #endif
     } else {
@@ -3775,6 +3778,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_clipsToVisibleRect = NO;
     _data->_useContentPreparationRectForVisibleRect = NO;
     _data->_windowOcclusionDetectionEnabled = YES;
+    _data->_lastRequestedLayoutMode = kWKLayoutModeViewSize;
+    _data->_lastRequestedViewScale = 1;
 
     _data->_windowVisibilityObserver = adoptNS([[WKWindowVisibilityObserver alloc] initWithView:self]);
 
@@ -3797,6 +3802,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [workspaceNotificationCenter addObserver:self selector:@selector(_activeSpaceDidChange:) name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    _data->_allowsLinkPreview = YES;
+
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
         _data->_immediateActionGestureRecognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] init]);
         _data->_immediateActionController = adoptNS([[WKImmediateActionController alloc] initWithPage:*_data->_page view:self recognizer:_data->_immediateActionGestureRecognizer.get()]);
@@ -3889,6 +3896,41 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 {
     if (_data->_gestureController)
         _data->_gestureController->didFirstVisuallyNonEmptyLayoutForMainFrame();
+}
+
+- (BOOL)_supportsArbitraryLayoutModes
+{
+    WebPageProxy* page = _data->_page.get();
+    if (!page)
+        return YES;
+    WebFrameProxy* frame = page->mainFrame();
+    if (!frame)
+        return YES;
+
+    // If we have a plugin document in the main frame, avoid using custom WKLayoutModes
+    // and fall back to the defaults, because there's a good chance that it won't work (e.g. with PDFPlugin).
+    if (frame->containsPluginDocument())
+        return NO;
+
+    return YES;
+}
+
+- (void)_didCommitLoadForMainFrame
+{
+    if (![self _supportsArbitraryLayoutModes]) {
+        WKLayoutMode oldRequestedLayoutMode = _data->_lastRequestedLayoutMode;
+        float oldRequestedViewScale = _data->_lastRequestedViewScale;
+        [self _setViewScale:1];
+        [self _setLayoutMode:kWKLayoutModeViewSize];
+
+        // The 'last requested' parameters will have been overwritten by setting them above, but we don't
+        // want this to count as a request (only changes from the client count), so reset them.
+        _data->_lastRequestedLayoutMode = oldRequestedLayoutMode;
+        _data->_lastRequestedViewScale = oldRequestedViewScale;
+    } else if (_data->_lastRequestedLayoutMode != [_data->_layoutStrategy layoutMode]) {
+        [self _setViewScale:_data->_lastRequestedViewScale];
+        [self _setLayoutMode:_data->_lastRequestedLayoutMode];
+    }
 }
 
 - (void)_didFinishLoadForMainFrame
@@ -4221,6 +4263,26 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return _data->_allowsBackForwardNavigationGestures;
 }
 
+- (BOOL)allowsLinkPreview
+{
+    return _data->_allowsLinkPreview;
+}
+
+- (void)setAllowsLinkPreview:(BOOL)allowsLinkPreview
+{
+    if (_data->_allowsLinkPreview == allowsLinkPreview)
+        return;
+
+    _data->_allowsLinkPreview = allowsLinkPreview;
+    
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    if (!allowsLinkPreview)
+        [self removeGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
+    else if (NSGestureRecognizer *immediateActionRecognizer = _data->_immediateActionGestureRecognizer.get())
+        [self addGestureRecognizer:immediateActionRecognizer];
+#endif
+}
+
 - (void)_setIgnoresAllEvents:(BOOL)ignoresAllEvents
 {
     _data->_ignoresAllEvents = ignoresAllEvents;
@@ -4244,8 +4306,10 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     if (ignoresNonWheelEvents)
         [self removeGestureRecognizer:_data->_immediateActionGestureRecognizer.get()];
-    else if (NSGestureRecognizer *immediateActionRecognizer = _data->_immediateActionGestureRecognizer.get())
-        [self addGestureRecognizer:immediateActionRecognizer];
+    else if (NSGestureRecognizer *immediateActionRecognizer = _data->_immediateActionGestureRecognizer.get()) {
+        if (_data->_allowsLinkPreview)
+            [self addGestureRecognizer:immediateActionRecognizer];
+    }
 #endif
 }
 
@@ -4277,6 +4341,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_setLayoutMode:(WKLayoutMode)layoutMode
 {
+    _data->_lastRequestedLayoutMode = layoutMode;
+
+    if (![self _supportsArbitraryLayoutModes] && layoutMode != kWKLayoutModeViewSize)
+        return;
+
     if (layoutMode == [_data->_layoutStrategy layoutMode])
         return;
 
@@ -4301,6 +4370,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_setViewScale:(CGFloat)viewScale
 {
+    _data->_lastRequestedViewScale = viewScale;
+
+    if (![self _supportsArbitraryLayoutModes] && viewScale != 1)
+        return;
+
     if (viewScale <= 0 || isnan(viewScale) || isinf(viewScale))
         [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
 

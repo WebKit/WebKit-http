@@ -532,6 +532,9 @@ private:
         case CheckBadCell:
             compileCheckBadCell();
             break;
+        case CheckIdent:
+            compileCheckIdent();
+            break;
         case GetExecutable:
             compileGetExecutable();
             break;
@@ -2027,6 +2030,20 @@ private:
     void compileCheckNotEmpty()
     {
         speculate(TDZFailure, noValue(), nullptr, m_out.isZero64(lowJSValue(m_node->child1())));
+    }
+
+    void compileCheckIdent()
+    {
+        UniquedStringImpl* uid = m_node->uidOperand();
+        if (uid->isSymbol()) {
+            LValue symbol = lowSymbol(m_node->child1());
+            LValue stringImpl = m_out.loadPtr(symbol, m_heaps.Symbol_privateName);
+            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
+        } else {
+            LValue string = lowStringIdent(m_node->child1());
+            LValue stringImpl = m_out.loadPtr(string, m_heaps.JSString_value);
+            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
+        }
     }
 
     void compileGetExecutable()
@@ -3837,24 +3854,24 @@ private:
         
         MultiGetByOffsetData& data = m_node->multiGetByOffsetData();
 
-        if (data.variants.isEmpty()) {
+        if (data.cases.isEmpty()) {
             // Protect against creating a Phi function with zero inputs. LLVM doesn't like that.
             terminate(BadCache);
             return;
         }
         
-        Vector<LBasicBlock, 2> blocks(data.variants.size());
-        for (unsigned i = data.variants.size(); i--;)
+        Vector<LBasicBlock, 2> blocks(data.cases.size());
+        for (unsigned i = data.cases.size(); i--;)
             blocks[i] = FTL_NEW_BLOCK(m_out, ("MultiGetByOffset case ", i));
         LBasicBlock exit = FTL_NEW_BLOCK(m_out, ("MultiGetByOffset fail"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("MultiGetByOffset continuation"));
         
         Vector<SwitchCase, 2> cases;
         StructureSet baseSet;
-        for (unsigned i = data.variants.size(); i--;) {
-            GetByIdVariant variant = data.variants[i];
-            for (unsigned j = variant.structureSet().size(); j--;) {
-                Structure* structure = variant.structureSet()[j];
+        for (unsigned i = data.cases.size(); i--;) {
+            MultiGetByOffsetCase getCase = data.cases[i];
+            for (unsigned j = getCase.set().size(); j--;) {
+                Structure* structure = getCase.set()[j];
                 baseSet.add(structure);
                 cases.append(SwitchCase(weakStructureID(structure), blocks[i], Weight(1)));
             }
@@ -3865,29 +3882,36 @@ private:
         LBasicBlock lastNext = m_out.m_nextBlock;
         
         Vector<ValueFromBlock, 2> results;
-        for (unsigned i = data.variants.size(); i--;) {
-            m_out.appendTo(blocks[i], i + 1 < data.variants.size() ? blocks[i + 1] : exit);
+        for (unsigned i = data.cases.size(); i--;) {
+            MultiGetByOffsetCase getCase = data.cases[i];
+            GetByOffsetMethod method = getCase.method();
             
-            GetByIdVariant variant = data.variants[i];
-            baseSet.merge(variant.structureSet());
+            m_out.appendTo(blocks[i], i + 1 < data.cases.size() ? blocks[i + 1] : exit);
+            
             LValue result;
-            JSValue constantResult;
-            if (variant.alternateBase()) {
-                constantResult = m_graph.tryGetConstantProperty(
-                    variant.alternateBase(), variant.baseStructure(), variant.offset());
-            }
-            if (constantResult)
-                result = m_out.constInt64(JSValue::encode(constantResult));
-            else {
+            
+            switch (method.kind()) {
+            case GetByOffsetMethod::Invalid:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+                
+            case GetByOffsetMethod::Constant:
+                result = m_out.constInt64(JSValue::encode(method.constant()->value()));
+                break;
+                
+            case GetByOffsetMethod::Load:
+            case GetByOffsetMethod::LoadFromPrototype: {
                 LValue propertyBase;
-                if (variant.alternateBase())
-                    propertyBase = weakPointer(variant.alternateBase());
-                else
+                if (method.kind() == GetByOffsetMethod::Load)
                     propertyBase = base;
-                if (!isInlineOffset(variant.offset()))
+                else
+                    propertyBase = weakPointer(method.prototype()->value().asCell());
+                if (!isInlineOffset(method.offset()))
                     propertyBase = m_out.loadPtr(propertyBase, m_heaps.JSObject_butterfly);
-                result = loadProperty(propertyBase, data.identifierNumber, variant.offset());
-            }
+                result = loadProperty(
+                    propertyBase, data.identifierNumber, method.offset());
+                break;
+            } }
             
             results.append(m_out.anchor(result));
             m_out.jump(continuation);
@@ -6040,19 +6064,6 @@ private:
             m_out.phi(m_out.intPtr, fastButterfly, slowButterfly));
     }
     
-    LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode, LValue base)
-    {
-        JSArrayBufferView* view = m_graph.tryGetFoldableView(provenValue(baseEdge), arrayMode);
-        if (view)
-            return m_out.constInt32(view->length());
-        return m_out.load32NonNegative(base, m_heaps.JSArrayBufferView_length);
-    }
-    
-    LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode)
-    {
-        return typedArrayLength(baseEdge, arrayMode, lowCell(baseEdge));
-    }
-    
     LValue boolify(Edge edge)
     {
         switch (edge.useKind()) {
@@ -7026,7 +7037,16 @@ private:
         speculateStringIdent(edge, string, stringImpl);
         return stringImpl;
     }
-    
+
+    LValue lowSymbol(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
+    {
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == SymbolUse);
+
+        LValue result = lowCell(edge, mode);
+        speculateSymbol(edge, result);
+        return result;
+    }
+
     LValue lowNonNullObject(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
         ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == ObjectUse);
@@ -7423,6 +7443,9 @@ private:
         case StringIdentUse:
             speculateStringIdent(edge);
             break;
+        case SymbolUse:
+            speculateSymbol(edge);
+            break;
         case StringObjectUse:
             speculateStringObject(edge);
             break;
@@ -7519,7 +7542,16 @@ private:
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().stringStructure->id()));
     }
-    
+
+    LValue isNotSymbol(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, ~SpecSymbol))
+            return proven;
+        return m_out.notEqual(
+            m_out.load32(cell, m_heaps.JSCell_structureID),
+            m_out.constInt32(vm().symbolStructure->id()));
+    }
+
     LValue isArrayType(LValue cell, ArrayMode arrayMode)
     {
         switch (arrayMode.type()) {
@@ -7742,7 +7774,17 @@ private:
             NotStringObject, noValue(), 0,
             m_out.notEqual(structureID, weakStructureID(stringObjectStructure)));
     }
-    
+
+    void speculateSymbol(Edge edge, LValue cell)
+    {
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecSymbol | ~SpecCell, isNotSymbol(cell));
+    }
+
+    void speculateSymbol(Edge edge)
+    {
+        speculateSymbol(edge, lowCell(edge));
+    }
+
     void speculateNonNullObject(Edge edge, LValue cell)
     {
         FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecObject, isNotObject(cell));

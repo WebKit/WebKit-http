@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<script type="text/javascript" src="../../http/tests/inspector/inspector-test.js"></script>
+<script type="text/javascript" src="../../http/tests/inspector/resources/inspector-test.js"></script>
 <script>
 function test()
 {
@@ -113,7 +113,8 @@ function test()
         {expression: "input = document.createElement('input'); input.type = 'password'; input"},
         {expression: "text = document.createTextNode('text content'); text"},
         {expression: "comment = document.createComment('comment content'); comment"},
-        {expression: "[document.body, div, span, input, text, comment]"},
+        {expression: "svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); svgElement.classList.add('test'); svgElement"},
+        {expression: "[document.body, div, span, input, text, comment, svgElement]"},
 
         // Node Collections (NodeLists / Collections)
         {expression: "document.all", browserOnly: true}, // HTMLAllCollection
@@ -154,6 +155,8 @@ function test()
         {expression: "set = new Set; for (var i = 0; i <= 100; i++) set.add(i); set.values()"},
         {expression: "map.entries()"},
         {expression: "x = undefined; (function() { x = arguments; })(1, 'two'); x[Symbol.iterator]()"},
+        {expression: "Reflect.enumerate({a:1, b:2, c:3})"},
+        {expression: "Reflect.enumerate([1, 2, 3, 4, 5, 6, 7])"},
 
         // Promise
         {expression: "new Promise(function(){})"},

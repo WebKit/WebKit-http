@@ -117,7 +117,7 @@ public:
     bool isInLayout() const { return m_layoutPhase == InLayout; }
     WEBCORE_EXPORT bool inPaintableState() { return m_layoutPhase != InLayout && m_layoutPhase != InViewSizeAdjust && m_layoutPhase != InPostLayout; }
 
-    RenderObject* layoutRoot(bool onlyDuringLayout = false) const;
+    RenderElement* layoutRoot() const { return m_layoutRoot; }
     void clearLayoutRoot() { m_layoutRoot = nullptr; }
     int layoutCount() const { return m_layoutCount; }
 
@@ -245,7 +245,6 @@ public:
     virtual bool isRubberBandInProgress() const override;
     WEBCORE_EXPORT virtual IntPoint minimumScrollPosition() const override;
     WEBCORE_EXPORT virtual IntPoint maximumScrollPosition() const override;
-    void delayedScrollEventTimerFired();
 
     void viewportContentsChanged();
     WEBCORE_EXPORT void resumeVisibleImageAnimationsIncludingSubframes();
@@ -315,8 +314,6 @@ public:
     WEBCORE_EXPORT void updateControlTints();
 
     void restoreScrollbar();
-
-    void postLayoutTimerFired();
 
     WEBCORE_EXPORT bool wasScrolledByUser() const;
     WEBCORE_EXPORT void setWasScrolledByUser(bool);
@@ -699,7 +696,7 @@ private:
 
     Timer m_layoutTimer;
     bool m_delayedLayout;
-    RenderElement* m_layoutRoot;
+    RenderElement* m_layoutRoot { nullptr };
 
     LayoutPhase m_layoutPhase;
     bool m_layoutSchedulingEnabled;

@@ -176,7 +176,6 @@ namespace JSC {
 
     struct TryData {
         RefPtr<Label> target;
-        unsigned targetScopeDepth;
         HandlerType handlerType;
     };
 
@@ -588,19 +587,17 @@ namespace JSC {
         void emitThrowReferenceError(const String& message);
         void emitThrowTypeError(const String& message);
 
-        void emitPushFunctionNameScope(RegisterID* dst, const Identifier& property, RegisterID* value, unsigned attributes);
+        void emitPushFunctionNameScope(const Identifier& property, RegisterID* value);
         void emitPushCatchScope(const Identifier& property, RegisterID* exceptionValue, VariableEnvironment&);
         void emitPopCatchScope(VariableEnvironment&);
 
         void emitGetScope();
-        RegisterID* emitPushWithScope(RegisterID* dst, RegisterID* scope);
-        void emitPopScope(RegisterID* dst, RegisterID* scope);
-        void emitPopWithScope(RegisterID* srcDst);
-        RegisterID* emitGetParentScope(RegisterID* dst, RegisterID* scope);
+        RegisterID* emitPushWithScope(RegisterID* objectScope);
+        void emitPopWithScope();
 
         void emitDebugHook(DebugHookID, unsigned line, unsigned charOffset, unsigned lineStart);
 
-        bool hasFinaliser() { return m_finallyDepth != 0; }
+        bool isInFinallyBlock() { return m_finallyDepth > 0; }
 
         void pushFinallyContext(StatementNode* finallyBlock);
         void popFinallyContext();
@@ -632,9 +629,12 @@ namespace JSC {
 
     private:
         enum class TDZRequirement { UnderTDZ, NotUnderTDZ };
-        enum class ScopeType { CatchScope, LetConstScope };
-        void pushLexicalScopeInternal(VariableEnvironment&, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType);
+        enum class ScopeType { CatchScope, LetConstScope, FunctionNameScope };
+        enum class ScopeRegisterType { Var, Block };
+        void pushLexicalScopeInternal(VariableEnvironment&, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
         void popLexicalScopeInternal(VariableEnvironment&, TDZRequirement);
+        void emitPopScope(RegisterID* dst, RegisterID* scope);
+        RegisterID* emitGetParentScope(RegisterID* dst, RegisterID* scope);
     public:
         void pushLexicalScope(VariableEnvironmentNode*, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult = nullptr);
         void popLexicalScope(VariableEnvironmentNode*);
@@ -766,6 +766,7 @@ namespace JSC {
         RegisterID m_thisRegister;
         RegisterID m_calleeRegister;
         RegisterID* m_scopeRegister { nullptr };
+        RegisterID* m_topMostScope { nullptr };
         RegisterID* m_argumentsRegister { nullptr };
         RegisterID* m_lexicalEnvironmentRegister { nullptr };
         RegisterID* m_emptyValueRegister { nullptr };
@@ -782,7 +783,6 @@ namespace JSC {
         int m_localScopeDepth { 0 };
         const CodeType m_codeType;
 
-        int calculateTargetScopeDepthForExceptionHandler() const;
         int localScopeDepth() const;
         void pushScopedControlFlowContext();
         void popScopedControlFlowContext();

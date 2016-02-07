@@ -420,11 +420,12 @@ public:
 
     virtual bool shouldUseTiledBackingForFrameView(const FrameView*) const { return false; }
 
-    virtual void isPlayingMediaDidChange(MediaProducer::MediaStateFlags) { }
+    virtual void isPlayingMediaDidChange(MediaProducer::MediaStateFlags, uint64_t) { }
 
 #if ENABLE(MEDIA_SESSION)
     virtual void hasMediaSessionWithActiveMediaElementsDidChange(bool) { }
     virtual void mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata&) { }
+    virtual void focusedContentMediaElementDidChange(uint64_t) { }
 #endif
 
     virtual void setPageActivityState(PageActivityState::Flags) { }
@@ -456,7 +457,7 @@ public:
 #if ENABLE(VIDEO)
     virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) { }
 #if USE(GSTREAMER)
-    virtual void requestInstallMissingMediaPlugins(const String& /*details*/, MediaPlayerRequestInstallMissingPluginsCallback&) { };
+    virtual void requestInstallMissingMediaPlugins(const String& /*details*/, const String& /*description*/, MediaPlayerRequestInstallMissingPluginsCallback&) { };
 #endif
 #endif
 

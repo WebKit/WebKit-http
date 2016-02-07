@@ -1,13 +1,19 @@
+add_definitions(/bigobj)
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/win"
     "${WEBCORE_DIR}/page/win"
     "${WEBCORE_DIR}/platform/cf"
     "${WEBCORE_DIR}/platform/cf/win"
+    "${WEBCORE_DIR}/platform/graphics/egl"
+    "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/win"
     "${WEBCORE_DIR}/platform/network/win"
     "${WEBCORE_DIR}/platform/win"
     "${WEBCORE_DIR}/plugins/win"
+    "${THIRDPARTY_DIR}/ANGLE/include"
+    "${THIRDPARTY_DIR}/ANGLE/include/egl"
 )
 
 enable_language(ASM_MASM)
@@ -39,7 +45,16 @@ list(APPEND WebCore_SOURCES
     platform/cf/win/CertificateCFWin.cpp
 
     platform/graphics/FontPlatformData.cpp
+    platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/WOFFFileFormat.cpp
+
+    platform/graphics/egl/GLContextEGL.cpp
+
+    platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
+    platform/graphics/opengl/Extensions3DOpenGLES.cpp
+    platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
+    platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
+    platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
     platform/graphics/opentype/OpenTypeUtilities.cpp
 
@@ -47,12 +62,14 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/FontCacheWin.cpp
     platform/graphics/win/FontPlatformDataWin.cpp
     platform/graphics/win/FontWin.cpp
+    platform/graphics/win/FullScreenController.cpp
     platform/graphics/win/GraphicsContextWin.cpp
     platform/graphics/win/IconWin.cpp
     platform/graphics/win/ImageWin.cpp
     platform/graphics/win/IntPointWin.cpp
     platform/graphics/win/IntRectWin.cpp
     platform/graphics/win/IntSizeWin.cpp
+    platform/graphics/win/MediaPlayerPrivateFullscreenWindow.cpp
     platform/graphics/win/SimpleFontDataWin.cpp
     platform/graphics/win/TransformationMatrixWin.cpp
     platform/graphics/win/UniscribeController.cpp
@@ -75,6 +92,7 @@ list(APPEND WebCore_SOURCES
     platform/win/DragImageWin.cpp
     platform/win/EventLoopWin.cpp
     platform/win/FileSystemWin.cpp
+    platform/win/GDIObjectCounter.cpp
     platform/win/GDIUtilities.cpp
     platform/win/KeyEventWin.cpp
     platform/win/LanguageWin.cpp
@@ -175,7 +193,9 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     platform/cf/win
 
+    platform/graphics/opengl
     platform/graphics/opentype
+    platform/graphics/texmap
     platform/graphics/transforms
     platform/graphics/win
 

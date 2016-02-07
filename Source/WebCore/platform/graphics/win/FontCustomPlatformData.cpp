@@ -21,6 +21,7 @@
 #include "config.h"
 #include "FontCustomPlatformData.h"
 
+#include "FontDescription.h"
 #include "FontPlatformData.h"
 #include "OpenTypeUtilities.h"
 #include "SharedBuffer.h"
@@ -40,8 +41,11 @@ FontCustomPlatformData::~FontCustomPlatformData()
             RemoveFontMemResourceEx(m_fontReference);
 }
 
-FontPlatformData FontCustomPlatformData::fontPlatformData(int size, bool bold, bool italic, FontOrientation, FontWidthVariant, FontRenderingMode renderingMode)
+FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription& fontDescription, bool bold, bool italic)
 {
+    int size = fontDescription.computedPixelSize();
+    FontRenderingMode renderingMode = fontDescription.renderingMode();
+
     ASSERT(m_fontReference);
 
     LOGFONT& logFont = *static_cast<LOGFONT*>(malloc(sizeof(LOGFONT)));

@@ -57,7 +57,7 @@ public:
         registerStructure(m_graph.m_vm.getterSetterStructure.get());
         
         for (FrozenValue* value : m_graph.m_frozenValues)
-            m_graph.assertIsRegistered(value->structure());
+            assertIsRegistered(value->structure());
         
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
             BasicBlock* block = m_graph.block(blockIndex);
@@ -69,7 +69,7 @@ public:
             
                 switch (node->op()) {
                 case CheckStructure:
-                    registerStructures(node->structureSet());
+                    assertAreRegistered(node->structureSet());
                     break;
                 
                 case NewObject:
@@ -86,15 +86,8 @@ public:
                     break;
                     
                 case MultiGetByOffset:
-                    for (unsigned i = node->multiGetByOffsetData().variants.size(); i--;) {
-                        GetByIdVariant& variant = node->multiGetByOffsetData().variants[i];
-                        registerStructures(variant.structureSet());
-                        // Don't need to watch anything in the structure chain because that would
-                        // have been decomposed into CheckStructure's. Don't need to watch the
-                        // callLinkStatus because we wouldn't use MultiGetByOffset if any of the
-                        // variants did that.
-                        ASSERT(!variant.callLinkStatus());
-                    }
+                    for (const MultiGetByOffsetCase& getCase : node->multiGetByOffsetData().cases)
+                        registerStructures(getCase.set());
                     break;
                     
                 case MultiPutByOffset:
@@ -152,14 +145,26 @@ public:
 private:
     void registerStructures(const StructureSet& set)
     {
-        for (unsigned i = set.size(); i--;)
-            registerStructure(set[i]);
+        for (Structure* structure : set)
+            registerStructure(structure);
     }
     
     void registerStructure(Structure* structure)
     {
         if (structure)
             m_graph.registerStructure(structure);
+    }
+
+    void assertAreRegistered(const StructureSet& set)
+    {
+        for (Structure* structure : set)
+            assertIsRegistered(structure);
+    }
+
+    void assertIsRegistered(Structure* structure)
+    {
+        if (structure)
+            m_graph.assertIsRegistered(structure);
     }
 };
 

@@ -706,7 +706,7 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
     PluginProcessType processType = pluginElement->displayState() == HTMLPlugInElement::WaitingForSnapshot ? PluginProcessTypeSnapshot : PluginProcessTypeNormal;
 #endif
 
-    bool allowOnlyApplicationPlugins = !frame->coreFrame()->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin);
+    bool allowOnlyApplicationPlugins = !frame->coreFrame()->loader().subframeLoader().allowPlugins();
 
     uint64_t pluginProcessToken;
     uint32_t pluginLoadPolicy;
@@ -1299,11 +1299,11 @@ void WebPage::sendViewportAttributesChanged()
     // This also takes care of the relayout.
     setFixedLayoutSize(roundedIntSize(attr.layoutSize));
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    send(Messages::WebPageProxy::DidChangeViewportProperties(attr));
-#else
+#if USE(COORDINATED_GRAPHICS_THREADED)
     if (m_drawingArea->layerTreeHost())
         m_drawingArea->layerTreeHost()->didChangeViewportProperties(attr);
+#else
+    send(Messages::WebPageProxy::DidChangeViewportProperties(attr));
 #endif
 }
 #endif
@@ -1416,6 +1416,14 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
 #endif
     PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame());
     if (pluginView && pluginView->handlesPageScaleFactor()) {
+        // If the main-frame plugin wants to handle the page scale factor, make sure to reset WebCore's page scale.
+        // Otherwise, we can end up with an immutable but non-1 page scale applied by WebCore on top of whatever the plugin does.
+        if (m_page->pageScaleFactor() != 1) {
+            m_page->setPageScaleFactor(1, origin);
+            for (auto* pluginView : m_pluginViews)
+                pluginView->pageScaleFactorDidChange();
+        }
+
         pluginView->setPageScaleFactor(totalScale, origin);
         return;
     }
@@ -1851,10 +1859,10 @@ void WebPage::pageStoppedScrolling()
 #if USE(COORDINATED_GRAPHICS)
 void WebPage::pageDidRequestScroll(const IntPoint& point)
 {
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    send(Messages::WebPageProxy::PageDidRequestScroll(point));
-#elif USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS_THREADED)
     drawingArea()->scroll(IntRect(point, IntSize()), IntSize());
+#elif USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+    send(Messages::WebPageProxy::PageDidRequestScroll(point));
 #endif
 }
 #endif
@@ -2437,6 +2445,9 @@ void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, ui
 void WebPage::didStartPageTransition()
 {
     m_drawingArea->setLayerTreeStateIsFrozen(true);
+#if PLATFORM(IOS)
+    m_hasFocusedDueToUserInteraction = false;
+#endif
 }
 
 void WebPage::didCompletePageTransition()
@@ -4253,7 +4264,7 @@ bool WebPage::canPluginHandleResponse(const ResourceResponse& response)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     uint32_t pluginLoadPolicy;
-    bool allowOnlyApplicationPlugins = !m_mainFrame->coreFrame()->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin);
+    bool allowOnlyApplicationPlugins = !m_mainFrame->coreFrame()->loader().subframeLoader().allowPlugins();
 
     uint64_t pluginProcessToken;
     String newMIMEType;
@@ -4578,7 +4589,7 @@ bool WebPage::canShowMIMEType(const String& MIMEType) const
         return true;
 
     const PluginData& pluginData = m_page->pluginData();
-    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::AllPlugins) && corePage()->mainFrame().loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin))
+    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::AllPlugins) && corePage()->mainFrame().loader().subframeLoader().allowPlugins())
         return true;
 
     // We can use application plugins even if plugins aren't enabled.
@@ -4651,6 +4662,17 @@ void WebPage::didCommitLoad(WebFrame* frame)
     // Only restore the scale factor for standard frame loads (of the main frame).
     if (frame->coreFrame()->loader().loadType() == FrameLoadType::Standard) {
         Page* page = frame->coreFrame()->page();
+
+#if PLATFORM(MAC)
+        // As a very special case, we disable non-default layout modes in WKView for main-frame PluginDocuments.
+        // Ideally we would only worry about this in WKView or the WKViewLayoutStrategies, but if we allow
+        // a round-trip to the UI process, you'll see the wrong scale temporarily. So, we reset it here, and then
+        // again later from the UI process.
+        if (frame->coreFrame()->document()->isPluginDocument()) {
+            scaleView(1);
+            setUseFixedLayout(false);
+        }
+#endif
 
         if (page && page->pageScaleFactor() != 1)
             scalePage(1, IntPoint());

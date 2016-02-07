@@ -35,6 +35,7 @@
 #include "ExceptionCode.h"
 #include "Logging.h"
 #include "SQLError.h"
+#include "SQLStatement.h"
 #include "SQLStatementCallback.h"
 #include "SQLStatementErrorCallback.h"
 #include "SQLTransactionBackend.h"
@@ -257,15 +258,15 @@ void SQLTransaction::executeSQL(const String& sqlStatement, const Vector<SQLValu
     else if (m_readOnly)
         permissions |= DatabaseAuthorizer::ReadOnlyMask;
 
-    auto statement = std::make_unique<SQLStatement>(m_database, WTF::move(callback), WTF::move(callbackError));
-    m_backend->executeSQL(WTF::move(statement), sqlStatement, arguments, permissions);
+    auto statement = std::make_unique<SQLStatement>(m_database, sqlStatement, arguments, WTF::move(callback), WTF::move(callbackError), permissions);
+    m_backend->executeSQL(WTF::move(statement));
 }
 
 bool SQLTransaction::computeNextStateAndCleanupIfNeeded()
 {
     // Only honor the requested state transition if we're not supposed to be
     // cleaning up and shutting down:
-    if (m_database->opened() && !m_database->isInterrupted()) {
+    if (m_database->opened()) {
         setStateToRequestedState();
         ASSERT(m_nextState == SQLTransactionState::End
             || m_nextState == SQLTransactionState::DeliverTransactionCallback

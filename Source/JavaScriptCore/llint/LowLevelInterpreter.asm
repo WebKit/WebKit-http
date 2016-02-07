@@ -1283,14 +1283,8 @@ _llint_op_strcat:
 
 _llint_op_push_with_scope:
     traceExecution()
-    callSlowPath(_llint_slow_path_push_with_scope)
-    dispatch(3)
-
-
-_llint_op_push_name_scope:
-    traceExecution()
-    callSlowPath(_llint_slow_path_push_name_scope)
-    dispatch(5)
+    callSlowPath(_slow_path_push_with_scope)
+    dispatch(4)
 
 
 _llint_op_create_lexical_environment:

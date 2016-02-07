@@ -47,7 +47,6 @@
 #include "JSCJSValue.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
-#include "JSNameScope.h"
 #include "LLIntEntrypoint.h"
 #include "LowLevelInterpreter.h"
 #include "JSCInlines.h"
@@ -340,7 +339,6 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
             
             Structure* baseStructure = 0;
             Structure* prototypeStructure = 0;
-            StructureChain* chain = 0;
             PolymorphicGetByIdList* list = 0;
             
             switch (stubInfo.accessType) {
@@ -370,11 +368,6 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                 dumpStructure(out, "prototypeStruct", baseStructure, ident);
             }
             
-            if (chain) {
-                out.printf(", ");
-                dumpChain(out, chain, ident);
-            }
-            
             if (list) {
                 out.printf(", list = %p: [", list);
                 for (unsigned i = 0; i < list->size(); ++i) {
@@ -382,9 +375,9 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                         out.printf(", ");
                     out.printf("(");
                     dumpStructure(out, "base", list->at(i).structure(), ident);
-                    if (list->at(i).chain()) {
+                    if (!list->at(i).conditionSet().isEmpty()) {
                         out.printf(", ");
-                        dumpChain(out, list->at(i).chain(), ident);
+                        out.print(list->at(i).conditionSet());
                     }
                     out.printf(")");
                 }
@@ -456,10 +449,8 @@ void CodeBlock::printPutByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                 dumpStructure(out, "prev", stubInfo.u.putByIdTransition.previousStructure.get(), ident);
                 out.print(", ");
                 dumpStructure(out, "next", stubInfo.u.putByIdTransition.structure.get(), ident);
-                if (StructureChain* chain = stubInfo.u.putByIdTransition.chain.get()) {
-                    out.print(", ");
-                    dumpChain(out, chain, ident);
-                }
+                if (stubInfo.u.putByIdTransition.rawConditionSet)
+                    out.print(", ", ObjectPropertyConditionSet::fromRawPointer(stubInfo.u.putByIdTransition.rawConditionSet));
                 break;
             case access_put_by_id_list: {
                 out.printf("list = [");
@@ -483,10 +474,8 @@ void CodeBlock::printPutByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                         dumpStructure(out, "prev", access.oldStructure(), ident);
                         out.print(", ");
                         dumpStructure(out, "next", access.newStructure(), ident);
-                        if (access.chain()) {
-                            out.print(", ");
-                            dumpChain(out, access.chain(), ident);
-                        }
+                        if (!access.conditionSet().isEmpty())
+                            out.print(", ", access.conditionSet());
                     } else
                         out.print("unknown");
                     
@@ -655,8 +644,8 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         unsigned i = 0;
         do {
             HandlerInfo& handler = m_rareData->m_exceptionHandlers[i];
-            out.printf("\t %d: { start: [%4d] end: [%4d] target: [%4d] depth: [%4d] } %s\n",
-                i + 1, handler.start, handler.end, handler.target, handler.scopeDepth, handler.typeName());
+            out.printf("\t %d: { start: [%4d] end: [%4d] target: [%4d] } %s\n",
+                i + 1, handler.start, handler.end, handler.target, handler.typeName());
             ++i;
         } while (i < m_rareData->m_exceptionHandlers.size());
     }
@@ -1440,8 +1429,9 @@ void CodeBlock::dumpBytecode(
         case op_push_with_scope: {
             int dst = (++it)->u.operand;
             int newScope = (++it)->u.operand;
+            int currentScope = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "push_with_scope");
-            out.printf("%s, %s", registerName(dst).data(), registerName(newScope).data());
+            out.printf("%s, %s, %s", registerName(dst).data(), registerName(newScope).data(), registerName(currentScope).data());
             break;
         }
         case op_get_parent_scope: {
@@ -1449,15 +1439,6 @@ void CodeBlock::dumpBytecode(
             int parentScope = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "get_parent_scope");
             out.printf("%s, %s", registerName(dst).data(), registerName(parentScope).data());
-            break;
-        }
-        case op_push_name_scope: {
-            int dst = (++it)->u.operand;
-            int r1 = (++it)->u.operand;
-            int k0 = (++it)->u.operand;
-            JSNameScope::Type scopeType = (JSNameScope::Type)(++it)->u.operand;
-            printLocationAndOp(out, exec, location, it, "push_name_scope");
-            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(r1).data(), constantName(k0).data(), (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : "unknownScopeType");
             break;
         }
         case op_create_lexical_environment: {
@@ -1809,15 +1790,13 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         }
         if (size_t count = unlinkedCodeBlock->numberOfExceptionHandlers()) {
             m_rareData->m_exceptionHandlers.resizeToFit(count);
-            size_t nonLocalScopeDepth = scope->depth();
             for (size_t i = 0; i < count; i++) {
                 const UnlinkedHandlerInfo& unlinkedHandler = unlinkedCodeBlock->exceptionHandler(i);
                 HandlerInfo& handler = m_rareData->m_exceptionHandlers[i];
 #if ENABLE(JIT)
-                handler.initialize(unlinkedHandler, nonLocalScopeDepth,
-                    CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(LLInt::getCodePtr(op_catch))));
+                handler.initialize(unlinkedHandler, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(LLInt::getCodePtr(op_catch))));
 #else
-                handler.initialize(unlinkedHandler, nonLocalScopeDepth);
+                handler.initialize(unlinkedHandler);
 #endif
             }
         }
@@ -2693,6 +2672,22 @@ void CodeBlock::getCallLinkInfoMap(CallLinkInfoMap& result)
     getCallLinkInfoMap(locker, result);
 }
 
+void CodeBlock::getByValInfoMap(const ConcurrentJITLocker&, ByValInfoMap& result)
+{
+#if ENABLE(JIT)
+    for (auto* byValInfo : m_byValInfos)
+        result.add(CodeOrigin(byValInfo->bytecodeIndex), byValInfo);
+#else
+    UNUSED_PARAM(result);
+#endif
+}
+
+void CodeBlock::getByValInfoMap(ByValInfoMap& result)
+{
+    ConcurrentJITLocker locker(m_lock);
+    getByValInfoMap(locker, result);
+}
+
 #if ENABLE(JIT)
 StructureStubInfo* CodeBlock::addStubInfo()
 {
@@ -2707,6 +2702,12 @@ StructureStubInfo* CodeBlock::findStubInfo(CodeOrigin codeOrigin)
             return stubInfo;
     }
     return nullptr;
+}
+
+ByValInfo* CodeBlock::addByValInfo()
+{
+    ConcurrentJITLocker locker(m_lock);
+    return m_byValInfos.add();
 }
 
 CallLinkInfo* CodeBlock::addCallLinkInfo()

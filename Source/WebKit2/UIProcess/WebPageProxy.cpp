@@ -160,6 +160,7 @@
 #endif
 
 #if ENABLE(MEDIA_SESSION)
+#include "WebMediaSessionFocusManager.h"
 #include "WebMediaSessionMetadata.h"
 #include <WebCore/MediaSessionMetadata.h>
 #endif
@@ -1577,16 +1578,6 @@ void WebPageProxy::didCommitLayerTree(const RemoteLayerTreeTransaction&)
 }
 #endif
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-void WebPageProxy::commitPageTransitionViewport()
-{
-    if (!isValid())
-        return;
-
-    process().send(Messages::WebPage::CommitPageTransitionViewport(), m_pageID);
-}
-#endif
-
 #if ENABLE(DRAG_SUPPORT)
 void WebPageProxy::dragEntered(DragData& dragData, const String& dragStorageName)
 {
@@ -2973,7 +2964,7 @@ void WebPageProxy::clearLoadDependentCallbacks()
     }
 }
 
-void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t opaqueFrameLoadType, const WebCore::CertificateInfo& certificateInfo, const UserData& userData)
+void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t opaqueFrameLoadType, const WebCore::CertificateInfo& certificateInfo, bool containsPluginDocument, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -3010,7 +3001,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     clearLoadDependentCallbacks();
 
-    frame->didCommitLoad(mimeType, webCertificateInfo);
+    frame->didCommitLoad(mimeType, webCertificateInfo, containsPluginDocument);
 
     if (frame->isMainFrame()) {
         m_mainFrameHasCustomContentProvider = frameHasCustomContentProvider;
@@ -3797,6 +3788,13 @@ void WebPageProxy::didRenderFrame(const WebCore::IntSize& contentsSize, const We
     m_pageClient.didRenderFrame(contentsSize, coveredRect);
 }
 
+void WebPageProxy::commitPageTransitionViewport()
+{
+    if (!isValid())
+        return;
+
+    process().send(Messages::WebPage::CommitPageTransitionViewport(), m_pageID);
+}
 #endif
 
 void WebPageProxy::didChangeViewportProperties(const ViewportAttributes& attr)
@@ -5939,8 +5937,14 @@ void WebPageProxy::navigationGestureSnapshotWasRemoved()
     m_isShowingNavigationGestureSnapshot = false;
 }
 
-void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state)
+void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state, uint64_t sourceElementID)
 {
+#if ENABLE(MEDIA_SESSION)
+    WebMediaSessionFocusManager* focusManager = process().processPool().supplement<WebMediaSessionFocusManager>();
+    ASSERT(focusManager);
+    focusManager->mediaElementIsPlayingDidChange(this, sourceElementID, state & MediaProducer::IsSourceElementPlaying);
+#endif
+
     if (state == m_mediaState)
         return;
 
@@ -5963,6 +5967,13 @@ void WebPageProxy::mediaSessionMetadataDidChange(const WebCore::MediaSessionMeta
 {
     Ref<WebMediaSessionMetadata> webMetadata = WebMediaSessionMetadata::create(metadata);
     m_uiClient->mediaSessionMetadataDidChange(*this, webMetadata.ptr());
+}
+
+void WebPageProxy::focusedContentMediaElementDidChange(uint64_t elementID)
+{
+    WebMediaSessionFocusManager* focusManager = process().processPool().supplement<WebMediaSessionFocusManager>();
+    ASSERT(focusManager);
+    focusManager->setFocusedMediaElement(*this, elementID);
 }
 #endif
 

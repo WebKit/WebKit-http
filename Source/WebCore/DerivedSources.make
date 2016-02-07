@@ -174,6 +174,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/speech/SpeechSynthesisEvent.idl \
     $(WebCore)/Modules/speech/SpeechSynthesisUtterance.idl \
     $(WebCore)/Modules/speech/SpeechSynthesisVoice.idl \
+    $(WebCore)/Modules/streams/CountQueuingStrategy.idl \
     $(WebCore)/Modules/streams/ReadableStream.idl \
     $(WebCore)/Modules/streams/ReadableStreamController.idl \
     $(WebCore)/Modules/streams/ReadableStreamReader.idl \
@@ -732,7 +733,7 @@ ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS
 endif
 
 ifeq ($(PLATFORM_FEATURE_DEFINES),)
-ifeq ($(OS), Windows*)
+ifeq ($(OS), Windows_NT)
 PLATFORM_FEATURE_DEFINES = $(WEBKIT_LIBRARIES)/tools/vsprops/FeatureDefines.props
 else
 PLATFORM_FEATURE_DEFINES = Configurations/FeatureDefines.xcconfig
@@ -977,7 +978,7 @@ ifeq ($(OS),MACOS)
 	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/plugins/QuickTimePluginReplacement.css
 endif
 
-ifeq ($(OS), Windows*)
+ifeq ($(OS), Windows_NT)
     USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/css/themeWin.css $(WebCore)/css/themeWinQuirks.css
 endif
 

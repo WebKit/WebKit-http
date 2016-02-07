@@ -444,7 +444,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_readyState(Complete)
     , m_bParsing(false)
     , m_optimizedStyleSheetUpdateTimer(*this, &Document::optimizedStyleSheetUpdateTimerFired)
-    , m_styleRecalcTimer(*this, &Document::styleRecalcTimerFired)
+    , m_styleRecalcTimer(*this, &Document::updateStyleIfNeeded)
     , m_pendingStyleRecalcShouldForce(false)
     , m_inStyleRecalc(false)
     , m_closeAfterStyleRecalc(false)
@@ -522,7 +522,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_inputCursor(EmptyInputCursor::create())
 #endif
     , m_didAssociateFormControlsTimer(*this, &Document::didAssociateFormControlsTimerFired)
-    , m_cookieCacheExpiryTimer(*this, &Document::domCookieCacheExpiryTimerFired)
+    , m_cookieCacheExpiryTimer(*this, &Document::invalidateDOMCookieCache)
     , m_disabledFieldsetElementsCount(0)
     , m_hasInjectedPlugInsScript(false)
     , m_renderTreeBeingDestroyed(false)
@@ -1751,11 +1751,6 @@ bool Document::hasPendingStyleRecalc() const
 bool Document::hasPendingForcedStyleRecalc() const
 {
     return m_styleRecalcTimer.isActive() && m_pendingStyleRecalcShouldForce;
-}
-
-void Document::styleRecalcTimerFired()
-{
-    updateStyleIfNeeded();
 }
 
 void Document::recalcStyle(Style::Change change)
@@ -3511,11 +3506,18 @@ void Document::removeAudioProducer(MediaProducer* audioProducer)
     updateIsPlayingMedia();
 }
 
-void Document::updateIsPlayingMedia()
+void Document::updateIsPlayingMedia(uint64_t sourceElementID)
 {
     MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
     for (auto audioProducer : m_audioProducers)
         state |= audioProducer->mediaState();
+
+#if ENABLE(MEDIA_SESSION)
+    if (HTMLMediaElement* sourceElement = HTMLMediaElement::elementWithID(sourceElementID)) {
+        if (sourceElement->isPlaying())
+            state |= MediaProducer::IsSourceElementPlaying;
+    }
+#endif
 
     if (state == m_mediaState)
         return;
@@ -3523,7 +3525,7 @@ void Document::updateIsPlayingMedia()
     m_mediaState = state;
 
     if (page())
-        page()->updateIsPlayingMedia();
+        page()->updateIsPlayingMedia(sourceElementID);
 }
 
 void Document::pageMutedStateDidChange()
@@ -4934,7 +4936,7 @@ void Document::initSecurityContext()
     enforceSandboxFlags(m_frame->loader().effectiveSandboxFlags());
 
     if (shouldEnforceContentDispositionAttachmentSandbox())
-        enforceSandboxFlags(SandboxAll);
+        applyContentDispositionAttachmentSandbox();
 
     setSecurityOriginPolicy(SecurityOriginPolicy::create(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url)));
     setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
@@ -6533,11 +6535,6 @@ void Document::invalidateDOMCookieCache()
     m_cachedDOMCookies = String();
 }
 
-void Document::domCookieCacheExpiryTimerFired()
-{
-    invalidateDOMCookieCache();
-}
-
 void Document::didLoadResourceSynchronously(const ResourceRequest&)
 {
     // Synchronous resources loading can set cookies so we invalidate the cookies cache
@@ -6726,6 +6723,16 @@ bool Document::shouldEnforceContentDispositionAttachmentSandbox() const
         responseIsAttachment = documentLoader->response().isAttachment();
 
     return contentDispositionAttachmentSandboxEnabled && responseIsAttachment;
+}
+
+void Document::applyContentDispositionAttachmentSandbox()
+{
+    ASSERT(shouldEnforceContentDispositionAttachmentSandbox());
+
+    if (!isMediaDocument())
+        enforceSandboxFlags(SandboxAll);
+    else
+        enforceSandboxFlags(SandboxOrigin);
 }
 
 } // namespace WebCore

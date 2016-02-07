@@ -37,6 +37,7 @@
 #include "DFGCommon.h"
 #include "DFGEpoch.h"
 #include "DFGLazyJSValue.h"
+#include "DFGMultiGetByOffsetData.h"
 #include "DFGNodeFlags.h"
 #include "DFGNodeOrigin.h"
 #include "DFGNodeType.h"
@@ -63,11 +64,6 @@ struct BasicBlock;
 struct StorageAccessData {
     PropertyOffset offset;
     unsigned identifierNumber;
-};
-
-struct MultiGetByOffsetData {
-    unsigned identifierNumber;
-    Vector<GetByIdVariant, 2> variants;
 };
 
 struct MultiPutByOffsetData {
@@ -1330,6 +1326,17 @@ struct Node {
     {
         ASSERT(hasStoragePointer());
         return reinterpret_cast<void*>(m_opInfo);
+    }
+
+    bool hasUidOperand()
+    {
+        return op() == CheckIdent;
+    }
+
+    UniquedStringImpl* uidOperand()
+    {
+        ASSERT(hasUidOperand());
+        return reinterpret_cast<UniquedStringImpl*>(m_opInfo);
     }
 
     bool hasTransition()

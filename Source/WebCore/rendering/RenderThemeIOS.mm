@@ -416,13 +416,8 @@ bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const Pai
     return false;
 }
 
-int RenderThemeIOS::baselinePosition(const RenderObject& renderer) const
+int RenderThemeIOS::baselinePosition(const RenderBox& box) const
 {
-    if (!is<RenderBox>(renderer))
-        return 0;
-
-    const auto& box = downcast<RenderBox>(renderer);
-
     if (box.style().appearance() == CheckboxPart || box.style().appearance() == RadioPart)
         return box.marginTop() + box.height() - 2; // The baseline is 2px up from the bottom of the checkbox/radio in AppKit.
     if (box.style().appearance() == MenulistPart)
@@ -1266,6 +1261,7 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontD
 
     ASSERT(fontDescriptor);
     RetainPtr<CTFontRef> font = adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), 0, nullptr));
+    font = applyFontFeatureSettings(font.get(), fontDescription.featureSettings());
     fontDescription.setIsAbsoluteSize(true);
     fontDescription.setOneFamily(textStyle);
     fontDescription.setSpecifiedSize(CTFontGetSize(font.get()));

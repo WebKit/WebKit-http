@@ -130,7 +130,7 @@ messages -> WebPageProxy {
     DidReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String url, WebKit::UserData userData)
     DidChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, String url)
     DidFailProvisionalLoadForFrame(uint64_t frameID, struct WebKit::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, WebKit::UserData userData)
-    DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, WebKit::UserData userData)
+    DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, WebKit::UserData userData)
     DidFailLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceError error, WebKit::UserData userData)
     DidFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
     DidFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
@@ -422,11 +422,12 @@ messages -> WebPageProxy {
     ContentFilterDidBlockLoadForFrame(WebCore::ContentFilterUnblockHandler unblockHandler, uint64_t frameID)
 #endif
 
-    IsPlayingMediaDidChange(unsigned state)
+    IsPlayingMediaDidChange(unsigned state, uint64_t sourceElementID)
 
 #if ENABLE(MEDIA_SESSION)
     HasMediaSessionWithActiveMediaElementsDidChange(bool state)
     MediaSessionMetadataDidChange(WebCore::MediaSessionMetadata metadata);
+    FocusedContentMediaElementDidChange(uint64_t elementID)
 #endif
 
 #if PLATFORM(MAC)
@@ -452,6 +453,6 @@ messages -> WebPageProxy {
     FixedLayoutSizeDidChange(WebCore::IntSize fixedLayoutSize)
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
-    RequestInstallMissingMediaPlugins(String details)
+    RequestInstallMissingMediaPlugins(String details, String description)
 #endif
 }

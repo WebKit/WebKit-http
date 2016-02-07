@@ -1183,7 +1183,7 @@ void Page::enableLegacyPrivateBrowsing(bool privateBrowsingEnabled)
     setSessionID(privateBrowsingEnabled ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID());
 }
 
-void Page::updateIsPlayingMedia()
+void Page::updateIsPlayingMedia(uint64_t sourceElementID)
 {
     MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
@@ -1195,7 +1195,7 @@ void Page::updateIsPlayingMedia()
 
     m_mediaState = state;
 
-    chrome().client().isPlayingMediaDidChange(state);
+    chrome().client().isPlayingMediaDidChange(state, sourceElementID);
 }
 
 void Page::setMuted(bool muted)

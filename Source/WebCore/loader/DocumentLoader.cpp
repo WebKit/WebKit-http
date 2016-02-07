@@ -489,6 +489,14 @@ void DocumentLoader::redirectReceived(CachedResource* resource, ResourceRequest&
     willSendRequest(request, redirectResponse);
 }
 
+void DocumentLoader::syntheticRedirectReceived(CachedResource* resource, ResourceRequest& request, const ResourceResponse& redirectResponse, bool& shouldContinue)
+{
+    redirectReceived(resource, request, redirectResponse);
+
+    // If we will soon remove our reference to the CachedRawResource in favor of a SubstituteData load, we don't want to continue receiving synthetic CachedRawResource callbacks.
+    shouldContinue = !m_substituteData.isValid();
+}
+
 void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
 {
     // Note that there are no asserts here as there are for the other callbacks. This is due to the
@@ -552,7 +560,8 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
         m_applicationCacheHost->maybeLoadMainResourceForRedirect(newRequest, m_substituteData);
         if (m_substituteData.isValid()) {
             RELEASE_ASSERT(m_mainResource);
-            m_identifierForLoadWithoutResourceLoader = m_mainResource->identifierForLoadWithoutResourceLoader();
+            ResourceLoader* loader = m_mainResource->loader();
+            m_identifierForLoadWithoutResourceLoader = loader ? loader->identifier() : m_mainResource->identifierForLoadWithoutResourceLoader();
         }
     }
 

@@ -94,7 +94,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
     shown()
     {
-        WebInspector.TextEditor.prototype.shown.call(this);
+        super.shown();
 
         if (WebInspector.showJavaScriptTypeInformationSetting.value) {
             if (this._typeTokenAnnotator)
@@ -111,7 +111,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
     hidden()
     {
-        WebInspector.TextEditor.prototype.hidden.call(this);
+        super.hidden();
 
         this.tokenTrackingController.removeHighlightedRange();
 
@@ -152,7 +152,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         if (this._sourceCode instanceof WebInspector.SourceMapResource)
             return false;
 
-        return WebInspector.TextEditor.prototype.canBeFormatted.call(this);
+        return super.canBeFormatted();
     }
 
     canShowTypeAnnotations()
@@ -1026,8 +1026,12 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             var breakpoint = breakpoints[0];
 
             breakpoint.appendContextMenuItems(contextMenu, event.target);
-            contextMenu.appendSeparator();
-            contextMenu.appendItem(WebInspector.UIString("Reveal in Debugger Tab"), revealInSidebar);
+
+            if (!WebInspector.isShowingDebuggerTab()) {
+                contextMenu.appendSeparator();
+                contextMenu.appendItem(WebInspector.UIString("Reveal in Debugger Tab"), revealInSidebar);
+            }
+
             contextMenu.show();
             return;
         }
@@ -1590,6 +1594,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
     {
         this.createColorMarkers(range);
         this.createGradientMarkers(range);
+        this.createCubicBezierMarkers(range);
 
         this._updateTokenTrackingControllerState();
     }
@@ -1599,7 +1604,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         // Look for the outermost editable marker.
         var editableMarker;
         for (var marker of markers) {
-            if (!marker.range || (marker.type !== WebInspector.TextMarker.Type.Color && marker.type !== WebInspector.TextMarker.Type.Gradient))
+            if (!marker.range || (marker.type !== WebInspector.TextMarker.Type.Color && marker.type !== WebInspector.TextMarker.Type.Gradient && marker.type !== WebInspector.TextMarker.Type.CubicBezier))
                 continue;
 
             if (!editableMarker || (marker.range.startLine < editableMarker.range.startLine || (marker.range.startLine === editableMarker.range.startLine && marker.range.startColumn < editableMarker.range.startColumn)))

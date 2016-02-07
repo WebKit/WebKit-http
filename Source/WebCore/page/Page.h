@@ -436,7 +436,7 @@ public:
     bool usesEphemeralSession() const { return m_sessionID.isEphemeral(); }
 
     MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
-    void updateIsPlayingMedia();
+    void updateIsPlayingMedia(uint64_t);
     bool isMuted() const { return m_muted; }
     WEBCORE_EXPORT void setMuted(bool);
 

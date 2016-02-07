@@ -1826,20 +1826,64 @@ EXPRESSION: comment = document.createComment('comment content'); comment
 }
 
 -----------------------------------------------------
-EXPRESSION: [document.body, div, span, input, text, comment]
+EXPRESSION: svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); svgElement.classList.add('test'); svgElement
+{
+  "_type": "object",
+  "_subtype": "node",
+  "_objectId": "<filtered>",
+  "_description": "rect.test",
+  "_preview": {
+    "_type": "object",
+    "_subtype": "node",
+    "_description": "rect.test",
+    "_lossless": false,
+    "_overflow": true,
+    "_properties": [
+      {
+        "_name": "x",
+        "_type": "object",
+        "_value": "SVGAnimatedLength"
+      },
+      {
+        "_name": "y",
+        "_type": "object",
+        "_value": "SVGAnimatedLength"
+      },
+      {
+        "_name": "width",
+        "_type": "object",
+        "_value": "SVGAnimatedLength"
+      },
+      {
+        "_name": "height",
+        "_type": "object",
+        "_value": "SVGAnimatedLength"
+      },
+      {
+        "_name": "rx",
+        "_type": "object",
+        "_value": "SVGAnimatedLength"
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: [document.body, div, span, input, text, comment, svgElement]
 {
   "_type": "object",
   "_subtype": "array",
   "_objectId": "<filtered>",
   "_description": "Array",
-  "_size": 6,
+  "_size": 7,
   "_preview": {
     "_type": "object",
     "_subtype": "array",
     "_description": "Array",
     "_lossless": false,
     "_overflow": false,
-    "_size": 6,
+    "_size": 7,
     "_properties": [
       {
         "_name": "0",
@@ -1876,6 +1920,12 @@ EXPRESSION: [document.body, div, span, input, text, comment]
         "_type": "object",
         "_subtype": "node",
         "_value": "<!--comment content-->"
+      },
+      {
+        "_name": "6",
+        "_type": "object",
+        "_subtype": "node",
+        "_value": "<rect class=\"test\">"
       }
     ],
     "_entries": null
@@ -3687,6 +3737,162 @@ EXPRESSION: x = undefined; (function() { x = arguments; })(1, 'two'); x[Symbol.i
         "_value": {
           "_type": "string",
           "_description": "two",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      }
+    ]
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: Reflect.enumerate({a:1, b:2, c:3})
+{
+  "_type": "object",
+  "_subtype": "iterator",
+  "_objectId": "<filtered>",
+  "_description": "PropertyName Iterator",
+  "_preview": {
+    "_type": "object",
+    "_subtype": "iterator",
+    "_description": "PropertyName Iterator",
+    "_lossless": true,
+    "_overflow": false,
+    "_properties": [
+      {
+        "_name": "object",
+        "_type": "object",
+        "_valuePreview": {
+          "_type": "object",
+          "_description": "Object",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": [
+            {
+              "_name": "a",
+              "_type": "number",
+              "_value": "1"
+            },
+            {
+              "_name": "b",
+              "_type": "number",
+              "_value": "2"
+            },
+            {
+              "_name": "c",
+              "_type": "number",
+              "_value": "3"
+            }
+          ],
+          "_entries": null
+        },
+        "_internal": true
+      }
+    ],
+    "_entries": [
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "a",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      },
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "b",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      },
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "c",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      }
+    ]
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: Reflect.enumerate([1, 2, 3, 4, 5, 6, 7])
+{
+  "_type": "object",
+  "_subtype": "iterator",
+  "_objectId": "<filtered>",
+  "_description": "PropertyName Iterator",
+  "_preview": {
+    "_type": "object",
+    "_subtype": "iterator",
+    "_description": "PropertyName Iterator",
+    "_lossless": false,
+    "_overflow": true,
+    "_properties": [
+      {
+        "_name": "object",
+        "_type": "object",
+        "_subtype": "array",
+        "_value": "Array",
+        "_internal": true
+      }
+    ],
+    "_entries": [
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "0",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      },
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "1",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      },
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "2",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      },
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "3",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": null,
+          "_entries": null
+        }
+      },
+      {
+        "_value": {
+          "_type": "string",
+          "_description": "4",
           "_lossless": true,
           "_overflow": false,
           "_properties": null,

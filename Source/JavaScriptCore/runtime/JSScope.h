@@ -166,11 +166,11 @@ public:
 
     bool isLexicalScope();
     bool isCatchScope();
+    bool isFunctionNameScopeObject();
 
     ScopeChainIterator begin();
     ScopeChainIterator end();
     JSScope* next();
-    int depth();
 
     JSGlobalObject* globalObject();
     VM* vm();

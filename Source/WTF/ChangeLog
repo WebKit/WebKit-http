@@ -1,3 +1,525 @@
+2015-08-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Lightweight locks should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=147545
+
+        Reviewed by Geoffrey Garen.
+
+        A common idiom in WebKit is to use spinlocks. We use them because the lock acquisition
+        overhead is lower than system locks and because they take dramatically less space than system
+        locks. The speed and space advantages of spinlocks can be astonishing: an uncontended spinlock
+        acquire is up to 10x faster and under microcontention - short critical section with two or
+        more threads taking turns - spinlocks are up to 100x faster. Spinlocks take only 1 byte or 4
+        bytes depending on the flavor, while system locks take 64 bytes or more. Clearly, WebKit
+        should continue to avoid system locks - they are just far too slow and far too big.
+
+        But there is a problem with this idiom. System lock implementations will sleep a thread when
+        it attempts to acquire a lock that is held, while spinlocks will cause the thread to burn CPU.
+        In WebKit spinlocks, the thread will repeatedly call sched_yield(). This is awesome for
+        microcontention, but awful when the lock will not be released for a while. In fact, when
+        critical sections take tens of microseconds or more, the CPU time cost of our spinlocks is
+        almost 100x more than the CPU time cost of a system lock. This case doesn't arise too
+        frequently in our current uses of spinlocks, but that's probably because right now there are
+        places where we make a conscious decision to use system locks - even though they use more
+        memory and are slower - because we don't want to waste CPU cycles when a thread has to wait a
+        while to acquire the lock.
+
+        The solution is to just implement a modern adaptive mutex in WTF. Luckily, this isn't a new
+        concept. This patch implements a mutex that is reminiscent of the kinds of low-overhead locks
+        that JVMs use. The actual implementation here is inspired by some of the ideas from [1]. The
+        idea is simple: the fast path is an inlined CAS to immediately acquire a lock that isn't held,
+        the slow path tries some number of spins to acquire the lock, and if that fails, the thread is
+        put on a queue and put to sleep. The queue is made up of statically allocated thread nodes and
+        the lock itself is a tagged pointer: either it is just bits telling us the complete lock state
+        (not held or held) or it is a pointer to the head of a queue of threads waiting to acquire the
+        lock. This approach gives WTF::Lock three different levels of adaptation: an inlined fast path
+        if the lock is not contended, a short burst of spinning for microcontention, and a full-blown
+        queue for critical sections that are held for a long time.
+
+        On a locking microbenchmark, this new Lock exhibits the following performance
+        characteristics:
+
+        - Lock+unlock on an uncontended no-op critical section: 2x slower than SpinLock and 3x faster
+          than a system mutex.
+
+        - Lock+unlock on a contended no-op critical section: 2x slower than SpinLock and 100x faster
+          than a system mutex.
+
+        - CPU time spent in lock() on a lock held for a while: same as system mutex, 90x less than a
+          SpinLock.
+
+        - Memory usage: sizeof(void*), so on 64-bit it's 8x less than a system mutex but 2x worse than
+          a SpinLock.
+
+        This patch replaces all uses of SpinLock with Lock, since our critical sections are not
+        no-ops so if you do basically anything in your critical section, the Lock overhead will be
+        invisible. Also, in all places where we used SpinLock, we could tolerate 8 bytes of overhead
+        instead of 4. Performance benchmarking using JSC macrobenchmarks shows no difference, which is
+        as it should be: the purpose of this change is to reduce CPU time wasted, not wallclock time.
+        This patch doesn't replace any uses of ByteSpinLock, since we expect that the space benefits
+        of having a lock that just uses a byte are still better than the CPU wastage benefits of
+        Lock. But, this work will enable some future work to create locks that will fit in just 1.6
+        bits: https://bugs.webkit.org/show_bug.cgi?id=147665.
+        
+        Rolling this back in after fixing Lock::unlockSlow() for architectures that have a truly weak
+        CAS. Since the Lock::unlock() fast path can go to slow path spuriously, it may go there even if
+        there aren't any threads on the Lock's queue. So, unlockSlow() must be able to deal with the
+        possibility of a null queue head.
+
+        [1] http://www.filpizlo.com/papers/pizlo-pppj2011-fable.pdf
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks: Added.
+        * benchmarks/LockSpeedTest.cpp: Added.
+        (main):
+        * wtf/Atomics.h:
+        (WTF::Atomic::compareExchangeWeak):
+        (WTF::Atomic::compareExchangeStrong):
+        * wtf/CMakeLists.txt:
+        * wtf/Lock.cpp: Added.
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        * wtf/Lock.h: Added.
+        (WTF::LockBase::lock):
+        (WTF::LockBase::unlock):
+        (WTF::LockBase::isHeld):
+        (WTF::LockBase::isLocked):
+        (WTF::Lock::Lock):
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::release):
+        (WTF::MetaAllocatorHandle::shrink):
+        (WTF::MetaAllocator::allocate):
+        (WTF::MetaAllocator::currentStatistics):
+        (WTF::MetaAllocator::addFreshFreeSpace):
+        (WTF::MetaAllocator::debugFreeSpaceSize):
+        * wtf/MetaAllocator.h:
+        * wtf/SpinLock.h:
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/ThreadingWin.cpp:
+        * wtf/text/AtomicString.cpp:
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::AtomicStringTableLocker::AtomicStringTableLocker):
+
+2015-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/187972.
+
+        * wtf/Atomics.cpp:
+        (WTF::getSwapLock):
+        (WTF::atomicStep):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::infiniteTime):
+        (WTF::MessageQueue<DataType>::append):
+        (WTF::MessageQueue<DataType>::appendAndKill):
+        (WTF::MessageQueue<DataType>::appendAndCheckEmpty):
+        (WTF::MessageQueue<DataType>::prepend):
+        (WTF::MessageQueue<DataType>::removeIf):
+        (WTF::MessageQueue<DataType>::isEmpty):
+        (WTF::MessageQueue<DataType>::kill):
+        (WTF::MessageQueue<DataType>::killed):
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::execute):
+        (WTF::ParallelEnvironment::ThreadPrivate::waitForFinish):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread):
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/ThreadSpecificWin.cpp:
+        (WTF::destructorsList):
+        (WTF::destructorsMutex):
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::ThreadSpecificThreadExit):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::createThread):
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::identifierByPthreadHandle):
+        (WTF::establishIdentifierForPthreadHandle):
+        (WTF::changeThreadPriority):
+        (WTF::waitForThreadCompletion):
+        (WTF::detachThread):
+        (WTF::threadDidExit):
+        (WTF::currentThread):
+        (WTF::Mutex::Mutex):
+        (WTF::Mutex::~Mutex):
+        (WTF::Mutex::lock):
+        (WTF::Mutex::tryLock):
+        (WTF::Mutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::DeprecatedMutex::DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::~DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::lock): Deleted.
+        (WTF::DeprecatedMutex::tryLock): Deleted.
+        (WTF::DeprecatedMutex::unlock): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::initializeCurrentThreadInternal):
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::storeThreadHandleByIdentifier):
+        (WTF::threadHandleForIdentifier):
+        (WTF::clearThreadHandleForIdentifier):
+        (WTF::currentThread):
+        (WTF::Mutex::Mutex):
+        (WTF::Mutex::~Mutex):
+        (WTF::Mutex::lock):
+        (WTF::Mutex::tryLock):
+        (WTF::Mutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::DeprecatedMutex::DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::~DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::lock): Deleted.
+        (WTF::DeprecatedMutex::tryLock): Deleted.
+        (WTF::DeprecatedMutex::unlock): Deleted.
+        * wtf/WorkQueue.h:
+        * wtf/dtoa.cpp:
+        * wtf/dtoa.h:
+        * wtf/efl/DispatchQueueEfl.cpp:
+        (DispatchQueue::dispatch):
+        (DispatchQueue::performWork):
+        (DispatchQueue::performTimerWork):
+        (DispatchQueue::insertTimerWorkItem):
+        (DispatchQueue::wakeUpThread):
+        (DispatchQueue::getNextTimeOut):
+        * wtf/efl/DispatchQueueEfl.h:
+        * wtf/efl/RunLoopEfl.cpp:
+        (WTF::RunLoop::wakeUpEvent):
+        (WTF::RunLoop::wakeUp):
+        * wtf/threads/BinarySemaphore.cpp:
+        (WTF::BinarySemaphore::signal):
+        (WTF::BinarySemaphore::wait):
+        * wtf/threads/BinarySemaphore.h:
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback):
+        (WTF::WorkQueue::platformInvalidate):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::timerCallback):
+        (WTF::WorkQueue::dispatchAfter):
+
+2015-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix Windows.
+
+        * wtf/ThreadSpecificWin.cpp:
+        (WTF::destructorsList):
+        (WTF::destructorsMutex):
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::ThreadSpecificThreadExit):
+
+2015-08-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename Mutex to DeprecatedMutex
+        https://bugs.webkit.org/show_bug.cgi?id=147675
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Atomics.cpp:
+        (WTF::getSwapLock):
+        (WTF::atomicStep):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::infiniteTime):
+        (WTF::MessageQueue<DataType>::append):
+        (WTF::MessageQueue<DataType>::appendAndKill):
+        (WTF::MessageQueue<DataType>::appendAndCheckEmpty):
+        (WTF::MessageQueue<DataType>::prepend):
+        (WTF::MessageQueue<DataType>::removeIf):
+        (WTF::MessageQueue<DataType>::isEmpty):
+        (WTF::MessageQueue<DataType>::kill):
+        (WTF::MessageQueue<DataType>::killed):
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::execute):
+        (WTF::ParallelEnvironment::ThreadPrivate::waitForFinish):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread):
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::createThread):
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::identifierByPthreadHandle):
+        (WTF::establishIdentifierForPthreadHandle):
+        (WTF::changeThreadPriority):
+        (WTF::waitForThreadCompletion):
+        (WTF::detachThread):
+        (WTF::threadDidExit):
+        (WTF::currentThread):
+        (WTF::DeprecatedMutex::DeprecatedMutex):
+        (WTF::DeprecatedMutex::~DeprecatedMutex):
+        (WTF::DeprecatedMutex::lock):
+        (WTF::DeprecatedMutex::tryLock):
+        (WTF::DeprecatedMutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::Mutex::Mutex): Deleted.
+        (WTF::Mutex::~Mutex): Deleted.
+        (WTF::Mutex::lock): Deleted.
+        (WTF::Mutex::tryLock): Deleted.
+        (WTF::Mutex::unlock): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::initializeCurrentThreadInternal):
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::storeThreadHandleByIdentifier):
+        (WTF::threadHandleForIdentifier):
+        (WTF::clearThreadHandleForIdentifier):
+        (WTF::currentThread):
+        (WTF::DeprecatedMutex::DeprecatedMutex):
+        (WTF::DeprecatedMutex::~DeprecatedMutex):
+        (WTF::DeprecatedMutex::lock):
+        (WTF::DeprecatedMutex::tryLock):
+        (WTF::DeprecatedMutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::Mutex::Mutex): Deleted.
+        (WTF::Mutex::~Mutex): Deleted.
+        (WTF::Mutex::lock): Deleted.
+        (WTF::Mutex::tryLock): Deleted.
+        (WTF::Mutex::unlock): Deleted.
+        * wtf/WorkQueue.h:
+        * wtf/dtoa.cpp:
+        * wtf/dtoa.h:
+        * wtf/efl/DispatchQueueEfl.cpp:
+        (DispatchQueue::dispatch):
+        (DispatchQueue::performWork):
+        (DispatchQueue::performTimerWork):
+        (DispatchQueue::insertTimerWorkItem):
+        (DispatchQueue::wakeUpThread):
+        (DispatchQueue::getNextTimeOut):
+        * wtf/efl/DispatchQueueEfl.h:
+        * wtf/efl/RunLoopEfl.cpp:
+        (WTF::RunLoop::wakeUpEvent):
+        (WTF::RunLoop::wakeUp):
+        * wtf/threads/BinarySemaphore.cpp:
+        (WTF::BinarySemaphore::signal):
+        (WTF::BinarySemaphore::wait):
+        * wtf/threads/BinarySemaphore.h:
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback):
+        (WTF::WorkQueue::platformInvalidate):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::timerCallback):
+        (WTF::WorkQueue::dispatchAfter):
+
+2015-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        Fix quirks with CMake and VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147663
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+        Build fix after r187908
+
+2015-08-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update Apple Windows build for VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147653
+
+        Reviewed by Dean Jackson.
+
+        * WTF.vcxproj/WTF.vcxproj.filters: Drive-by-fix to place files in
+        proper project locations in the IDE.
+        * wtf/Platform.h: Don't define the _HAS_EXCEPTIONS macro when building with
+        Visual Studio 2015.
+
+2015-08-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r187815 and r187817.
+        https://bugs.webkit.org/show_bug.cgi?id=147644
+
+        Caused lots of Windows crashes (Requested by smfr on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Turn tryMakeString(), makeString() into variadic
+        templates"
+        https://bugs.webkit.org/show_bug.cgi?id=147142
+        http://trac.webkit.org/changeset/187815
+
+        "Unreviewed build fix."
+        http://trac.webkit.org/changeset/187817
+
+2015-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        Enable WebGL on Windows CMake build.
+        https://bugs.webkit.org/show_bug.cgi?id=143311
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/FeatureDefines.h:
+        Made the CMake feature defines the same as the non-CMake feature defines.
+
+2015-08-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Introduce COMPILER(GCC_OR_CLANG) guard and make COMPILER(GCC) true only for GCC
+        https://bugs.webkit.org/show_bug.cgi?id=146833
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h: Removed redundant COMPILER(CLANG) guard.
+        * wtf/Atomics.cpp:
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+        (WTF::compilerFence):
+        * wtf/Compiler.h:
+         - Renamed COMPILER(GCC) to COMPILER(GCC_OR_CLANG), because it is true for both compiler.
+         - Added COMPILER(GCC) which is true only for GCC.
+         - Moved all GCC related stuff to one block and removed redundant guards accordingly.
+         - Removed the unused default false definition of GCC_VERSION_AT_LEAST for non GCC compilers.
+        * wtf/ExportMacros.h:
+        * wtf/FastMalloc.h:
+        * wtf/Platform.h:
+        * wtf/StdLibExtras.h:
+        * wtf/Vector.h:
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource):
+
+2015-08-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed build fix.
+
+        * wtf/text/StringConcatenate.h: Include <tuple> to avoid missing
+        std::tuple<> class definitions.
+
+2015-08-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WTF] Turn tryMakeString(), makeString() into variadic templates
+        https://bugs.webkit.org/show_bug.cgi?id=147142
+
+        Reviewed by Sam Weinig.
+
+        Built upon the original work by Anders Carlsson, Mark Rowe and Sam Weinig.
+
+        Implement tryMakeString() and makeString() as variadic templates, replacing
+        the argument count-based overloads.
+
+        tryMakeString() now constructs a stack-based tuple of necessary StringTypeAdapter
+        objects and utilizes the StringAdapterTuple struct template to operate on that
+        tuple, recursively calling the necessary operations on each element in the tuple.
+        This effectively mimics the process of previous tryMakeString() implementation,
+        but makes it scalable to a tuple of elements that are to be concatenated.
+
+        StringAppend class template now stores two StringTypeAdapter objects for the
+        two passed-in string objects, packed in a tuple, calling
+        StringAdapterTuple<>::createString() directly when concatenating the two objects
+        into one String.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::StringTypeAdapter<char>::length):
+        (WTF::StringTypeAdapter<char>::is8Bit):
+        (WTF::StringAdapterTuple::sumWithOverflow):
+        (WTF::StringAdapterTuple::is8Bit):
+        (WTF::StringAdapterTuple::writeTo):
+        (WTF::StringAdapterTuple::createString):
+        (WTF::tryMakeString):
+        (WTF::makeString):
+        (WTF::sumWithOverflow): Deleted.
+        * wtf/text/StringOperators.h:
+        (WTF::StringAppend::StringAppend):
+        (WTF::StringAppend::operator String):
+        (WTF::StringAppend::is8Bit):
+        (WTF::StringAppend::writeTo):
+        (WTF::StringAppend::length):
+        (WTF::StringAppend::string1):
+        (WTF::StringAppend::string2):
+
+2015-08-03  Anders Carlsson  <andersca@apple.com>
+
+        Make it possible to use String::utf8() in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=147566
+
+        Reviewed by Tim Horton.
+
+        Add a new utf8() overload that doesn't take any parameters and just calls utf8(LenientConversion), since lldb doesn't support evaluating
+        function calls with default parameters at the moment.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::utf8):
+        * wtf/text/WTFString.h:
+
+2015-08-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Investigate HashTable::HashTable(const HashTable&) and HashTable::operator=(const HashTable&) performance for hash-based static analyses
+        https://bugs.webkit.org/show_bug.cgi?id=118455
+
+        Reviewed by Filip Pizlo.
+
+        Previously, when copying a HashTable, we would start from scratch
+        with an empty table and insert elements one by one, growing-rehashing
+        the table as needed.
+
+        With this patch, we have 2 improvements to remove most of the cost.
+
+        First, we compute a good size from the start. This removes all the
+        reallocations and rehashs.
+        This is where the biggest gain comes from.
+
+        The second part is a simpler version of add() when we know that
+        we cannot find a bucket with the same key and there cannot
+        be any deleted bucket.
+        This removes most branches from the hot loop, cutting another 25%
+        of the time.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::addUniqueForInitialization):
+        (WTF::KeyTraits>::HashTable):
+
+2015-08-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        HashTraits<AtomicString> can use SimpleClassHashTraits
+        https://bugs.webkit.org/show_bug.cgi?id=147528
+
+        Reviewed by Andreas Kling.
+
+        No point in duplicating the code inside SimpleClassHashTraits.
+
+        * wtf/text/AtomicStringHash.h:
+        (WTF::HashTraits<WTF::AtomicString>::constructDeletedValue): Deleted.
+        (WTF::HashTraits<WTF::AtomicString>::isDeletedValue): Deleted.
+
+2015-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Fix compile errors with VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147526
+
+        Reviewed by Myles Maxfield.
+
+        * wtf/StringExtras.h:
+        (snprintf):
+        (wtf_vsnprintf):
+        VS2015 has an implementation of snprintf.
+
+2015-07-31  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare for VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=146579
+
+        Reviewed by Jon Honeycutt.
+
+        * wtf/StdLibExtras.h:
+        (std::exchange):
+        Added preprocessor macros around functions implemented in VS2015's standard library.
+
 2015-07-30  Chris Dumez  <cdumez@apple.com>
 
         Mark more classes as fast allocated

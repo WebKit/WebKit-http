@@ -429,6 +429,9 @@ public:
     void setSession(MediaSession*);
 
     void setShouldDuck(bool);
+
+    static HTMLMediaElement* elementWithID(uint64_t);
+    uint64_t elementID() const { return m_elementID; }
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -612,7 +615,7 @@ private:
     virtual VideoFullscreenMode mediaPlayerFullscreenMode() const override final { return fullscreenMode(); }
 
 #if USE(GSTREAMER)
-    virtual void requestInstallMissingPlugins(const String&, MediaPlayerRequestInstallMissingPluginsCallback&) override final;
+    virtual void requestInstallMissingPlugins(const String& details, const String& description, MediaPlayerRequestInstallMissingPluginsCallback&) override final;
 #endif
 
     void pendingActionTimerFired();
@@ -830,6 +833,7 @@ private:
     String m_kind;
     RefPtr<MediaSession> m_session;
     bool m_shouldDuck { false };
+    uint64_t m_elementID;
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
