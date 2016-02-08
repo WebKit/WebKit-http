@@ -73,6 +73,15 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription&, cons
     return fontForPlatformData(alternateFont);
 }
 
+Vector<String> FontCache::systemFontFamilies()
+{
+    Vector<String> families;
+    QFontDatabase db;
+    for (const QString& family : db.families())
+        families.append(family);
+    return families;
+}
+
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
     const AtomicString fallbackFamily = QFont(/*fontDescription.firstFamily()*/).lastResortFamily(); // FIXME
