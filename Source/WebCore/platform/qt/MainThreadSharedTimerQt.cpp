@@ -29,6 +29,7 @@
 
 
 #include "config.h"
+#include "MainThreadSharedTimer.h"
 
 #include <QBasicTimer>
 #include <QCoreApplication>
@@ -40,8 +41,6 @@ namespace WebCore {
 
 class SharedTimerQt : public QObject {
     Q_OBJECT
-
-    friend void setSharedTimerFiredFunction(void (*f)());
 public:
     static SharedTimerQt* inst();
 
@@ -49,7 +48,7 @@ public:
     void stop();
 
 protected:
-    void timerEvent(QTimerEvent* ev);
+    void timerEvent(QTimerEvent*) override;
 
 private Q_SLOTS:
     void destroy();
@@ -58,22 +57,17 @@ private:
     SharedTimerQt();
     ~SharedTimerQt();
     QBasicTimer m_timer;
-    void (*m_timerFunction)();
 };
 
 SharedTimerQt::SharedTimerQt()
     : QObject()
-    , m_timerFunction(0)
-{}
+{
+}
 
 SharedTimerQt::~SharedTimerQt()
 {
-    if (m_timer.isActive()) {
-        if (m_timerFunction) {
-            (m_timerFunction)();
-            m_timerFunction = 0;
-        }
-    }
+    if (m_timer.isActive())
+        MainThreadSharedTimer::singleton().setFiredFunction(nullptr);
 }
 
 void SharedTimerQt::destroy()
@@ -94,7 +88,7 @@ SharedTimerQt* SharedTimerQt::inst()
 
 void SharedTimerQt::start(double interval)
 {
-    unsigned int intervalInMS = static_cast<unsigned int>(interval * 1000);
+    unsigned intervalInMS = static_cast<unsigned>(interval * 1000);
 
     m_timer.start(intervalInMS, this);
 }
@@ -106,22 +100,14 @@ void SharedTimerQt::stop()
 
 void SharedTimerQt::timerEvent(QTimerEvent* ev)
 {
-    if (!m_timerFunction || ev->timerId() != m_timer.timerId())
+    if (ev->timerId() != m_timer.timerId())
         return;
 
     m_timer.stop();
-    (m_timerFunction)();
+    MainThreadSharedTimer::singleton().fired();
 }
 
-void setSharedTimerFiredFunction(void (*f)())
-{
-    if (!QCoreApplication::instance())
-        return;
-
-    SharedTimerQt::inst()->m_timerFunction = f;
-}
-
-void setSharedTimerFireInterval(double interval)
+void MainThreadSharedTimer::setFireInterval(double interval)
 {
     if (!QCoreApplication::instance())
         return;
@@ -129,7 +115,7 @@ void setSharedTimerFireInterval(double interval)
     SharedTimerQt::inst()->start(interval);
 }
 
-void stopSharedTimer()
+void MainThreadSharedTimer::stop()
 {
     if (!QCoreApplication::instance())
         return;
