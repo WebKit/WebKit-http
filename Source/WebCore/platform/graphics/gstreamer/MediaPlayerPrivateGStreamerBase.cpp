@@ -99,13 +99,6 @@
 
 #include <EGL/egl.h>
 
-struct _EGLDetails {
-    EGLDisplay display;
-    EGLContext context;
-    EGLSurface draw;
-    EGLSurface read;
-};
-
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 #endif
