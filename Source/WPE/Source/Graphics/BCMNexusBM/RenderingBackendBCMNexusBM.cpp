@@ -4,14 +4,44 @@
 #if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
 
 #include <EGL/egl.h>
+#include <refsw/nexus_config.h>
+#include <refsw/nexus_platform.h>
+#include <refsw/nexus_display.h>
+#include <refsw/nexus_core_utils.h>
+#include <refsw/default_nexus.h>
+#include <refsw/nxclient.h>
+#include <cstring>
 
 namespace WPE {
 
 namespace Graphics {
 
-RenderingBackendBCMNexusBM::RenderingBackendBCMNexusBM() = default;
+RenderingBackendBCMNexusBM::RenderingBackendBCMNexusBM() : m_nxplHandle (NULL)
+{
+    NEXUS_DisplayHandle displayHandle (NULL);
+    NxClient_AllocSettings allocSettings;
+    NxClient_JoinSettings joinSettings;
+    NxClient_GetDefaultJoinSettings( &joinSettings );
 
-RenderingBackendBCMNexusBM::~RenderingBackendBCMNexusBM() = default;
+    strcpy( joinSettings.name, "wpe" );
+
+    NEXUS_Error rc = NxClient_Join( &joinSettings );
+    BDBG_ASSERT(!rc);
+
+    NxClient_GetDefaultAllocSettings(&allocSettings);
+    allocSettings.surfaceClient = 1;
+    rc = NxClient_Alloc(&allocSettings, &m_AllocResults);
+    BDBG_ASSERT(!rc);
+
+    NXPL_RegisterNexusDisplayPlatform(&m_nxplHandle, displayHandle);
+}
+
+RenderingBackendBCMNexusBM::~RenderingBackendBCMNexusBM()
+{
+    NXPL_UnregisterNexusDisplayPlatform(m_nxplHandle);
+    NxClient_Free(&m_AllocResults);
+    NxClient_Uninit();
+}
 
 EGLNativeDisplayType RenderingBackendBCMNexusBM::nativeDisplay()
 {
@@ -28,15 +58,27 @@ std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendBCMNexusBM::
     return std::unique_ptr<RenderingBackendBCMNexusBM::OffscreenSurface>(new RenderingBackendBCMNexusBM::OffscreenSurface(*this));
 }
 
-RenderingBackendBCMNexusBM::Surface::Surface(const RenderingBackendBCMNexusBM&, uint32_t, uint32_t, uint32_t, Client&)
+RenderingBackendBCMNexusBM::Surface::Surface(const RenderingBackendBCMNexusBM&, uint32_t width, uint32_t height, uint32_t, Client&)
 {
+    printf("creating window with size %dx%d\n",width, height);
+    NXPL_NativeWindowInfo windowInfo;
+    windowInfo.x = 0;
+    windowInfo.y = 0;
+    windowInfo.width = width;
+    windowInfo.height = height;
+    windowInfo.stretch = false;
+    windowInfo.clientID = 0;
+    m_nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
 }
 
-RenderingBackendBCMNexusBM::Surface::~Surface() = default;
+RenderingBackendBCMNexusBM::Surface::~Surface()
+{
+    NEXUS_SurfaceClient_Release (reinterpret_cast<NEXUS_SurfaceClient*>(m_nativeWindow));
+}
 
 EGLNativeWindowType RenderingBackendBCMNexusBM::Surface::nativeWindow()
 {
-    return nullptr;
+    return m_nativeWindow;
 }
 
 void RenderingBackendBCMNexusBM::Surface::resize(uint32_t, uint32_t)

@@ -43,6 +43,14 @@
 #include <cstdio>
 #include <glib.h>
 #include <unistd.h>
+#include <string.h>
+
+#include <refsw/nexus_config.h>
+#include <refsw/nexus_platform.h>
+#include <refsw/nexus_display.h>
+#include <refsw/nexus_core_utils.h>
+#include <refsw/default_nexus.h>
+#include <refsw/nxclient.h>
 
 namespace WPE {
 
@@ -106,9 +114,20 @@ static const struct wl_nsc_listener nsc_listener = {
     // composition
     [](void*, struct wl_nsc*, struct wl_array*) { },
     // authenticated
-    [](void*, struct wl_nsc*, const char*, uint32_t)
+    [](void*, struct wl_nsc*, const char* certData, uint32_t certLength)
     {
-        printf("authenticated\n");
+        NEXUS_Certificate certificate;
+        memcpy(certificate.data, certData, certLength);
+        certificate.length = certLength;
+
+        NEXUS_ClientAuthenticationSettings authSettings;
+        NEXUS_Platform_GetDefaultClientAuthenticationSettings(&authSettings);
+        authSettings.certificate = certificate;
+
+        if(NEXUS_Platform_AuthenticatedJoin( &authSettings))
+            printf("### Failed to join platform\n");
+        else
+            printf("### authenticated\n");
     },
     // clientID_created
     [](void* data, struct wl_nsc*, struct wl_array* clientIDArray)
@@ -117,11 +136,15 @@ static const struct wl_nsc_listener nsc_listener = {
         auto pClientID = static_cast<uint*>(clientIDArray->data);
 
         nscData.clientID = pClientID[0];
+        printf("client received is %d\n", nscData.clientID);
     },
     // display_geometry
-    [](void*, struct wl_nsc*, uint32_t, uint32_t)
+    [](void* data, struct wl_nsc*, uint32_t width, uint32_t height)
     {
-        printf("display geometry\n");
+        printf("display geometry %dx%d\n", width, height);
+        auto& nscData = *static_cast<ViewBackendWayland::NscData*>(data);
+        nscData.width = width;
+        nscData.height = height;
     },
     // audiosettings
     [](void*, struct wl_nsc*, struct wl_array*) { },
@@ -156,6 +179,10 @@ ViewBackendWayland::ViewBackendWayland()
         m_nscData.nsc = m_display.interfaces().nsc;
         wl_nsc_add_listener(m_nscData.nsc, &nsc_listener, &m_nscData);
         wl_nsc_request_clientID(m_nscData.nsc, WL_NSC_CLIENT_SURFACE);
+        wl_display_roundtrip(m_nscData.display);
+        wl_nsc_authenticate(m_nscData.nsc);
+        wl_display_roundtrip(m_nscData.display);
+        wl_nsc_get_display_geometry(m_nscData.nsc);
         wl_display_roundtrip(m_nscData.display);
     }
 
@@ -193,18 +220,20 @@ void ViewBackendWayland::setClient(Client* client)
     m_bufferData.client = client;
     m_callbackData.client = client;
     m_resizingData.client = client;
+    m_nscData.client = client;
+    m_nscData.client->setSize(m_nscData.width, m_nscData.height);
 }
 
 uint32_t ViewBackendWayland::constructRenderingTarget(uint32_t width, uint32_t height)
 {
-        return m_bufferFactory->constructRenderingTarget(width, height);
+    return m_bufferFactory->constructRenderingTarget(width, height);
 }
 
 void ViewBackendWayland::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
     std::pair<bool, std::pair<uint32_t, struct wl_buffer*>> result = m_bufferFactory->createBuffer(fd, data, size);
     if (!result.first) {
-        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        m_nscData.client->frameComplete();
         return;
     }
 

@@ -5,6 +5,13 @@
 
 #include <WPE/Graphics/RenderingBackend.h>
 
+#include <refsw/nexus_config.h>
+#include <refsw/nexus_platform.h>
+#include <refsw/nexus_display.h>
+#include <refsw/nexus_core_utils.h>
+#include <refsw/default_nexus.h>
+#include <refsw/nxclient.h>
+
 namespace WPE {
 
 namespace Graphics {
@@ -21,6 +28,8 @@ public:
 
         BufferExport lockFrontBuffer() override;
         void releaseBuffer(uint32_t) override;
+    public:
+        void* m_nativeWindow;
     };
 
     class OffscreenSurface final : public RenderingBackend::OffscreenSurface {
@@ -37,6 +46,11 @@ public:
     EGLNativeDisplayType nativeDisplay() override;
     std::unique_ptr<RenderingBackend::Surface> createSurface(uint32_t, uint32_t, uint32_t, RenderingBackend::Surface::Client&) override;
     std::unique_ptr<RenderingBackend::OffscreenSurface> createOffscreenSurface() override;
+
+private:
+    NXPL_PlatformHandle m_nxplHandle;
+    NxClient_AllocResults m_AllocResults;
+    NEXUS_SurfaceClientHandle m_Client;
 };
 
 } // Graphics
