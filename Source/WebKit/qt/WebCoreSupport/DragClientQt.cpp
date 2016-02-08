@@ -92,7 +92,7 @@ void DragClientQt::willPerformDragSourceAction(DragSourceAction, const IntPoint&
 
 void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, DataTransfer& clipboard, Frame& frame, bool)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     QMimeData* clipboardData = clipboard->pasteboard().clipboardData();
     clipboard->pasteboard().invalidateWritableData();
     QObject* view = m_chromeClient->platformPageClient()->ownerWidget();

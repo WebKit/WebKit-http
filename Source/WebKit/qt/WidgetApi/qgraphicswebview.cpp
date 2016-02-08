@@ -1031,7 +1031,7 @@ bool QGraphicsWebView::focusNextPrevChild(bool next)
 */
 void QGraphicsWebView::dragEnterEvent(QGraphicsSceneDragDropEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page)
         d->page->event(ev);
 #else
@@ -1043,7 +1043,7 @@ void QGraphicsWebView::dragEnterEvent(QGraphicsSceneDragDropEvent* ev)
 */
 void QGraphicsWebView::dragLeaveEvent(QGraphicsSceneDragDropEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page) {
         const bool accepted = ev->isAccepted();
         d->page->event(ev);
@@ -1061,7 +1061,7 @@ void QGraphicsWebView::dragLeaveEvent(QGraphicsSceneDragDropEvent* ev)
 */
 void QGraphicsWebView::dragMoveEvent(QGraphicsSceneDragDropEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page) {
         const bool accepted = ev->isAccepted();
         d->page->event(ev);
@@ -1079,7 +1079,7 @@ void QGraphicsWebView::dragMoveEvent(QGraphicsSceneDragDropEvent* ev)
 */
 void QGraphicsWebView::dropEvent(QGraphicsSceneDragDropEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page) {
         const bool accepted = ev->isAccepted();
         d->page->event(ev);

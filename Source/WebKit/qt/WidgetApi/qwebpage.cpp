@@ -877,7 +877,7 @@ void QWebPagePrivate::keyReleaseEvent(QKeyEvent *ev)
 template<class T>
 void QWebPagePrivate::dragEnterEvent(T* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     Qt::DropAction action = dragEntered(ev->mimeData(), QPointF(ev->pos()).toPoint(), ev->possibleActions());
     ev->setDropAction(action);
     ev->acceptProposedAction();
@@ -887,7 +887,7 @@ void QWebPagePrivate::dragEnterEvent(T* ev)
 template<class T>
 void QWebPagePrivate::dragMoveEvent(T *ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     m_lastDropAction = dragUpdated(ev->mimeData(), QPointF(ev->pos()).toPoint(), ev->possibleActions());
     ev->setDropAction(m_lastDropAction);
     if (m_lastDropAction != Qt::IgnoreAction)
@@ -898,7 +898,7 @@ void QWebPagePrivate::dragMoveEvent(T *ev)
 template<class T>
 void QWebPagePrivate::dropEvent(T *ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (performDrag(ev->mimeData(), QPointF(ev->pos()).toPoint(), ev->possibleActions())) {
         ev->setDropAction(m_lastDropAction);
         ev->accept();
@@ -2525,7 +2525,7 @@ bool QWebPage::event(QEvent *ev)
     case QEvent::FocusOut:
         d->focusOutEvent(static_cast<QFocusEvent*>(ev));
         break;
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     case QEvent::DragEnter:
         d->dragEnterEvent(static_cast<QDragEnterEvent*>(ev));
         break;

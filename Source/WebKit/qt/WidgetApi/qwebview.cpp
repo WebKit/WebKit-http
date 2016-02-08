@@ -968,7 +968,7 @@ void QWebView::focusOutEvent(QFocusEvent* ev)
 */
 void QWebView::dragEnterEvent(QDragEnterEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page)
         d->page->event(ev);
 #endif
@@ -978,7 +978,7 @@ void QWebView::dragEnterEvent(QDragEnterEvent* ev)
 */
 void QWebView::dragLeaveEvent(QDragLeaveEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page)
         d->page->event(ev);
 #endif
@@ -988,7 +988,7 @@ void QWebView::dragLeaveEvent(QDragLeaveEvent* ev)
 */
 void QWebView::dragMoveEvent(QDragMoveEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page)
         d->page->event(ev);
 #endif
@@ -998,7 +998,7 @@ void QWebView::dragMoveEvent(QDragMoveEvent* ev)
 */
 void QWebView::dropEvent(QDropEvent* ev)
 {
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     if (d->page)
         d->page->event(ev);
 #endif

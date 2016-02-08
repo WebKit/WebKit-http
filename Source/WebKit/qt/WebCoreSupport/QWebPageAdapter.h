@@ -285,7 +285,7 @@ public:
 #ifndef QT_NO_WHEELEVENT
     void wheelEvent(QWheelEvent*, int wheelScrollLines);
 #endif
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
     Qt::DropAction dragEntered(const QMimeData*, const QPoint&, Qt::DropActions);
     void dragLeaveEvent();
     Qt::DropAction dragUpdated(const QMimeData*, const QPoint&, Qt::DropActions);

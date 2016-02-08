@@ -606,7 +606,7 @@ void QWebPageAdapter::wheelEvent(QWheelEvent *ev, int wheelScrollLines)
 }
 #endif // QT_NO_WHEELEVENT
 
-#ifndef QT_NO_DRAGANDDROP
+#if ENABLE(DRAG_SUPPORT)
 
 Qt::DropAction QWebPageAdapter::dragEntered(const QMimeData *data, const QPoint &pos, Qt::DropActions possibleActions)
 {
@@ -632,7 +632,7 @@ bool QWebPageAdapter::performDrag(const QMimeData *data, const QPoint &pos, Qt::
     return page->dragController().performDrag(&dragData);
 }
 
-#endif // QT_NO_DRAGANDDROP
+#endif // ENABLE(DRAG_SUPPORT)
 
 void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
 {
