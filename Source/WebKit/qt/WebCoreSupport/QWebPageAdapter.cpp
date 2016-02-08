@@ -74,6 +74,7 @@
 #include "Scrollbar.h"
 #include "ScrollbarTheme.h"
 #include "Settings.h"
+#include "TextIterator.h"
 #include "UndoStepQt.h"
 #include "UserAgentQt.h"
 #include "WebEventConversion.h"
@@ -642,8 +643,8 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
     }
 
     Node* node = 0;
-    if (frame.selection().rootEditableElement())
-        node = frame.selection().rootEditableElement()->deprecatedShadowAncestorNode();
+    if (frame.selection().selection().rootEditableElement())
+        node = frame.selection().selection().rootEditableElement()->deprecatedShadowAncestorNode();
 
     Vector<CompositionUnderline> underlines;
     bool hasSelection = false;
@@ -660,10 +661,10 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
         case QInputMethodEvent::Cursor: {
             frame.selection().setCaretVisible(a.length); // if length is 0 cursor is invisible
             if (a.length > 0) {
-                RenderObject* caretRenderer = frame.selection().caretRenderer();
+                RenderObject* caretRenderer = frame.selection().caretRendererWithoutUpdatingLayout();
                 if (caretRenderer) {
                     QColor qcolor = a.value.value<QColor>();
-                    caretRenderer->style()->setColor(Color(makeRGBA(qcolor.red(), qcolor.green(), qcolor.blue(), qcolor.alpha())));
+                    caretRenderer->style().setColor(Color(makeRGBA(qcolor.red(), qcolor.green(), qcolor.blue(), qcolor.alpha())));
                 }
             }
             break;
@@ -672,8 +673,8 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
             hasSelection = true;
             // A selection in the inputMethodEvent is always reflected in the visible text
             if (node) {
-                if (isHTMLTextFormControlElement(node))
-                    toHTMLTextFormControlElement(node)->setSelectionRange(qMin(a.start, (a.start + a.length)), qMax(a.start, (a.start + a.length)));
+                if (is<HTMLTextFormControlElement>(node))
+                    downcast<HTMLTextFormControlElement>(node)->setSelectionRange(qMin(a.start, (a.start + a.length)), qMax(a.start, (a.start + a.length)));
             }
 
             if (!ev->preeditString().isEmpty())
@@ -692,10 +693,10 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
     }
 
     if (node && ev->replacementLength() > 0) {
-        int cursorPos = frame.selection().extent().offsetInContainerNode();
+        int cursorPos = frame.selection().selection().extent().offsetInContainerNode();
         int start = cursorPos + ev->replacementStart();
-        if (isHTMLTextFormControlElement(node))
-            toHTMLTextFormControlElement(node)->setSelectionRange(start, start + ev->replacementLength());
+        if (is<HTMLTextFormControlElement>(node))
+            downcast<HTMLTextFormControlElement>(node)->setSelectionRange(start, start + ev->replacementLength());
         // Commit regardless of whether commitString is empty, to get rid of selection.
         editor.confirmComposition(ev->commitString());
     } else if (!ev->commitString().isEmpty()) {
@@ -722,11 +723,11 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
     RenderObject* renderer = 0;
     RenderTextControl* renderTextControl = 0;
 
-    if (frame->selection().rootEditableElement())
-        renderer = frame->selection().rootEditableElement()->deprecatedShadowAncestorNode()->renderer();
+    if (frame->selection().selection().rootEditableElement())
+        renderer = frame->selection().selection().rootEditableElement()->deprecatedShadowAncestorNode()->renderer();
 
     if (renderer && renderer->isTextControl())
-        renderTextControl = toRenderTextControl(renderer);
+        renderTextControl = downcast<RenderTextControl>(renderer);
 
     switch (property) {
     case Qt::ImMicroFocus: {
@@ -739,15 +740,15 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
     }
     case Qt::ImFont: {
         if (renderTextControl) {
-            RenderStyle* renderStyle = renderTextControl->style();
-            return QVariant(QFont(renderStyle->font().syntheticFont()));
+            RenderStyle& renderStyle = renderTextControl->style();
+            return QVariant(QFont(renderStyle.fontCascade().syntheticFont()));
         }
         return QVariant(QFont());
     }
     case Qt::ImCursorPosition: {
         if (editor.hasComposition())
-            return QVariant(frame->selection().end().offsetInContainerNode());
-        return QVariant(frame->selection().extent().offsetInContainerNode());
+            return QVariant(frame->selection().selection().end().offsetInContainerNode());
+        return QVariant(frame->selection().selection().extent().offsetInContainerNode());
     }
     case Qt::ImSurroundingText: {
         if (renderTextControl) {
@@ -761,8 +762,8 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
     }
     case Qt::ImCurrentSelection: {
         if (!editor.hasComposition() && renderTextControl) {
-            int start = frame->selection().start().offsetInContainerNode();
-            int end = frame->selection().end().offsetInContainerNode();
+            int start = frame->selection().selection().start().offsetInContainerNode();
+            int end = frame->selection().selection().end().offsetInContainerNode();
             if (end > start)
                 return QVariant(QString(renderTextControl->textFormControlElement().value()).mid(start, end - start));
         }
@@ -771,14 +772,14 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
     }
     case Qt::ImAnchorPosition: {
         if (editor.hasComposition())
-            return QVariant(frame->selection().start().offsetInContainerNode());
-        return QVariant(frame->selection().base().offsetInContainerNode());
+            return QVariant(frame->selection().selection().start().offsetInContainerNode());
+        return QVariant(frame->selection().selection().base().offsetInContainerNode());
     }
     case Qt::ImMaximumTextLength: {
-        if (frame->selection().isContentEditable()) {
+        if (frame->selection().selection().isContentEditable()) {
             if (frame->document() && frame->document()->focusedElement()) {
-                if (isHTMLInputElement(frame->document()->focusedElement())) {
-                    HTMLInputElement* inputElement = toHTMLInputElement(frame->document()->focusedElement());
+                if (is<HTMLInputElement>(frame->document()->focusedElement())) {
+                    HTMLInputElement* inputElement = downcast<HTMLInputElement>(frame->document()->focusedElement());
                     return QVariant(inputElement->maxLength());
                 }
             }
