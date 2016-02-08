@@ -39,6 +39,8 @@ struct wl_buffer;
 struct wl_callback;
 struct wl_surface;
 struct xdg_surface;
+struct wl_nsc;
+struct wl_display;
 
 namespace WPE {
 
@@ -79,6 +81,13 @@ public:
         uint32_t height;
     };
 
+    struct NscData {
+        struct wl_display* display;
+        struct wl_nsc* nsc;
+        int authenticated;
+        int clientID;
+    };
+
 private:
     WaylandDisplay& m_display;
 
@@ -89,6 +98,7 @@ private:
     BufferListenerData m_bufferData { nullptr, decltype(m_bufferData.map){ } };
     CallbackListenerData m_callbackData { nullptr, nullptr };
     ResizingData m_resizingData { nullptr, 0, 0 };
+    NscData m_nscData { nullptr, nullptr, 0, 0 };
 
     std::unique_ptr<Graphics::BufferFactory> m_bufferFactory;
 };

@@ -200,6 +200,7 @@ if (USE_WPE_BACKEND_WAYLAND)
         Source/ViewBackend/Wayland/Protocols/ivi-application-protocol.c
         Source/ViewBackend/Wayland/Protocols/wayland-drm-protocol.c
         Source/ViewBackend/Wayland/Protocols/xdg-shell-protocol.c
+        Source/ViewBackend/Wayland/nsc-protocol.c
     )
 
     if (USE_WPE_BUFFER_MANAGEMENT_GBM)

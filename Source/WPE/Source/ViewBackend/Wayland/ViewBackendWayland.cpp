@@ -36,6 +36,7 @@
 #include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
+#include "nsc-client-protocol.h"
 #include <WPE/Pasteboard/Pasteboard.h>
 #include <algorithm>
 #include <cassert>
@@ -97,6 +98,41 @@ const struct wl_callback_listener g_callbackListener = {
     },
 };
 
+static const struct wl_nsc_listener nsc_listener = {
+    // handle_standby_status
+    [](void*, struct wl_nsc*, struct wl_array*) { },
+    // connectID
+    [](void*, struct wl_nsc*, uint32_t) { },
+    // composition
+    [](void*, struct wl_nsc*, struct wl_array*) { },
+    // authenticated
+    [](void*, struct wl_nsc*, const char*, uint32_t)
+    {
+        printf("authenticated\n");
+    },
+    // clientID_created
+    [](void* data, struct wl_nsc*, struct wl_array* clientIDArray)
+    {
+        auto& nscData = *static_cast<ViewBackendWayland::NscData*>(data);
+        auto pClientID = static_cast<uint*>(clientIDArray->data);
+
+        nscData.clientID = pClientID[0];
+    },
+    // display_geometry
+    [](void*, struct wl_nsc*, uint32_t, uint32_t)
+    {
+        printf("display geometry\n");
+    },
+    // audiosettings
+    [](void*, struct wl_nsc*, struct wl_array*) { },
+    // displaystatus
+    [](void*, struct wl_nsc*, struct wl_array*) { },
+    // picturequalitysettings
+    [](void*, struct wl_nsc*, struct wl_array*) { },
+    // displaysettings
+    [](void*, struct wl_nsc*, struct wl_array*) { },
+};
+
 ViewBackendWayland::ViewBackendWayland()
     : m_display(WaylandDisplay::singleton())
 {
@@ -113,6 +149,14 @@ ViewBackendWayland::ViewBackendWayland()
             4200 + getpid(), // a unique identifier
             m_surface);
         ivi_surface_add_listener(m_iviSurface, &g_iviSurfaceListener, &m_resizingData);
+    }
+
+    if (m_display.interfaces().nsc) {
+        m_nscData.display = m_display.display();
+        m_nscData.nsc = m_display.interfaces().nsc;
+        wl_nsc_add_listener(m_nscData.nsc, &nsc_listener, &m_nscData);
+        wl_nsc_request_clientID(m_nscData.nsc, WL_NSC_CLIENT_SURFACE);
+        wl_display_roundtrip(m_nscData.display);
     }
 
     m_bufferFactory = Graphics::BufferFactory::create();
