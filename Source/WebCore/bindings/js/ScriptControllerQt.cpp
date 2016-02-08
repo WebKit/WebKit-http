@@ -38,16 +38,16 @@
 
 #include "BridgeJSC.h"
 #include "DOMWindow.h"
-#include "PluginView.h"
+#include "PluginViewBase.h"
 #include "qt_instance.h"
 #include "runtime_root.h"
 
 namespace WebCore {
 
-PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(WebCore::Widget* widget)
+RefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(Widget* widget)
 {
-    if (widget->isPluginView()) {
-        PluginView* pluginView = toPluginView(widget);
+    if (widget->isPluginViewBase()) {
+        PluginViewBase* pluginView = downcast<PluginViewBase>(widget);
         return pluginView->bindingInstance();
     }
 
@@ -57,7 +57,7 @@ PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWid
         object = widget->platformWidget();
 
     if (!object)
-        return 0;
+        return nullptr;
 
     return JSC::Bindings::QtInstance::getQtInstance(object, bindingRootObject(), JSC::Bindings::QtInstance::QtOwnership);
 }
