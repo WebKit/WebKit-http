@@ -115,6 +115,7 @@ list(APPEND WebCore_SOURCES
     platform/qt/LanguageQt.cpp
     platform/qt/LocalizedStringsQt.cpp
     platform/qt/LoggingQt.cpp
+    platform/qt/MainThreadSharedTimerQt.cpp
     platform/qt/MIMETypeRegistryQt.cpp
     platform/qt/PasteboardQt.cpp
     platform/qt/PlatformKeyboardEventQt.cpp
@@ -127,7 +128,6 @@ list(APPEND WebCore_SOURCES
     platform/qt/ScrollbarThemeQStyle.cpp
     platform/qt/ScrollbarThemeQt.cpp
     platform/qt/SharedBufferQt.cpp
-    platform/qt/SharedTimerQt.cpp
     platform/qt/SoundQt.cpp
     platform/qt/TemporaryLinkStubsQt.cpp
     platform/qt/ThirdPartyCookiesQt.cpp

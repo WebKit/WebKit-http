@@ -137,7 +137,7 @@ void stopSharedTimer()
     SharedTimerQt::inst()->stop();
 }
 
-#include "SharedTimerQt.moc"
+#include "MainThreadSharedTimerQt.moc"
 
 }
 
