@@ -632,6 +632,8 @@ bool QWebPageAdapter::performDrag(const QMimeData *data, const QPoint &pos, Qt::
     return page->dragController().performDrag(&dragData);
 }
 
+#endif // QT_NO_DRAGANDDROP
+
 void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
 {
     WebCore::Frame& frame = page->focusController().focusedOrMainFrame();
@@ -863,8 +865,6 @@ void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyC
         m_useNativeVirtualKeyAsDOMKey = obj->property("_q_useNativeVirtualKeyAsDOMKey").toBool();
     }
 }
-
-#endif // QT_NO_DRAGANDDROP
 
 #define MAP_ACTION_FROM_VALUE(Name, Value) \
     case Value: return QWebPageAdapter::Name
