@@ -951,7 +951,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
     GstElement* videoSink = nullptr;
 #if USE(GSTREAMER_GL)
-    if (webkitGstCheckVersion(1, 5, 0)) {
+    if (webkitGstCheckVersion(1, 7, 1)) {
         gboolean result = TRUE;
         videoSink = gst_bin_new("gstglsinkbin");
         GstElement* upload = gst_element_factory_make("glupload", nullptr);
