@@ -134,7 +134,7 @@ public:
     void cancelLastSampleTimer();
 
     void reportEndOfAppendDataMarkNeeded();
-    void reportEndOfAppendDataMarkReceived(guint64 id);
+    void reportEndOfAppendDataMarkReceived(guint id);
 
 private:
     void resetPipeline();
@@ -179,10 +179,10 @@ private:
     // ahead of time.
 
     // This is the last id marked right after appending to appsrc
-    guint64 m_appendIdMarkedInSrc;
+    guint m_appendIdMarkedInSrc;
 
     // This is the last id received by the probe in the appsink sink pad
-    guint64 m_appendIdReceivedInSink;
+    guint m_appendIdReceivedInSink;
 
     gulong m_appsinkDataEnteringProbeId;
     gulong m_appsrcDataLeavingProbeId;
@@ -1474,10 +1474,10 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
 
 void AppendPipeline::handleEndOfAppendDataMarkReceived(const GstStructure* structure)
 {
-    gst_structure_get(structure, "id", G_TYPE_UINT64, &m_appendIdReceivedInSink, NULL);
+    gst_structure_get(structure, "id", G_TYPE_UINT, &m_appendIdReceivedInSink, NULL);
     ASSERT(m_appendIdReceivedInSink);
 
-    TRACE_MEDIA_MESSAGE("received end of append id %" G_GUINT64_FORMAT " in the sink", m_appendIdReceivedInSink);
+    TRACE_MEDIA_MESSAGE("received end of append id %d in the sink", m_appendIdReceivedInSink);
     if (m_appendStage == Sampling || m_appendStage == Ongoing)
         checkEndOfAppendDataMarkReceived();
 }
@@ -2043,10 +2043,10 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
 void AppendPipeline::handleEndOfAppendDataMarkNeeded()
 {
     GstEvent* event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, gst_structure_new_empty("end-of-append-data-mark"));
-    m_appendIdMarkedInSrc = guint64(gst_event_get_seqnum(event));
+    m_appendIdMarkedInSrc = gst_event_get_seqnum(event);
     m_appendIdReceivedInSink = 0;
 
-    TRACE_MEDIA_MESSAGE("marking end of append with id %" G_GUINT64_FORMAT, m_appendIdMarkedInSrc);
+    TRACE_MEDIA_MESSAGE("marking end of append with id %d", m_appendIdMarkedInSrc);
 
     gst_element_send_event(m_appsrc, event);
 
@@ -2055,12 +2055,12 @@ void AppendPipeline::handleEndOfAppendDataMarkNeeded()
     gst_app_src_push_buffer(GST_APP_SRC(appsrc()), emptyBuffer);
 }
 
-void AppendPipeline::reportEndOfAppendDataMarkReceived(guint64 id)
+void AppendPipeline::reportEndOfAppendDataMarkReceived(guint id)
 {
-    GstStructure* structure = gst_structure_new("end-of-append-data-mark-received", "id", G_TYPE_UINT64, id, NULL);
+    GstStructure* structure = gst_structure_new("end-of-append-data-mark-received", "id", G_TYPE_UINT, id, NULL);
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsink), structure);
     gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("received message with id %" G_GUINT64_FORMAT ", re-posted to bus", id);
+    TRACE_MEDIA_MESSAGE("received message with id %d, re-posted to bus", id);
 }
 
 void AppendPipeline::reportEndOfAppendDataMarkNeeded()
@@ -2316,8 +2316,8 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
         if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
             return GST_PAD_PROBE_OK;
 
-        guint64 id = guint64(gst_event_get_seqnum(event));
-        TRACE_MEDIA_MESSAGE("custom downstream event id=%" G_GUINT64_FORMAT, id);
+        guint id = gst_event_get_seqnum(event);
+        TRACE_MEDIA_MESSAGE("custom downstream event id=%d", id);
 
         return GST_PAD_PROBE_OK;
     }
@@ -2338,9 +2338,9 @@ static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeI
         if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
             return GST_PAD_PROBE_OK;
 
-        guint64 id = guint64(gst_event_get_seqnum(event));
+        guint id = gst_event_get_seqnum(event);
 
-        TRACE_MEDIA_MESSAGE("id=%" G_GUINT64_FORMAT, id);
+        TRACE_MEDIA_MESSAGE("id=%d", id);
 
         appendPipeline->reportEndOfAppendDataMarkReceived(id);
 
@@ -2378,8 +2378,8 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
         if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
             return GST_PAD_PROBE_OK;
 
-        guint64 id = guint64(gst_event_get_seqnum(event));
-        TRACE_MEDIA_MESSAGE("%s: custom downstream event id=%" G_GUINT64_FORMAT, padProbeInformation->m_description, id);
+        guint id = gst_event_get_seqnum(event);
+        TRACE_MEDIA_MESSAGE("%s: custom downstream event id=%d", padProbeInformation->m_description, id);
 
         return GST_PAD_PROBE_OK;
     }
