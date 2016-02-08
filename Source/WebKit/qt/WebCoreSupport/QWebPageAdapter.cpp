@@ -804,6 +804,11 @@ void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyC
 {
     if (event->propertyName() == "_q_viewMode") {
         page->setViewMode(Page::stringToViewMode(obj->property("_q_viewMode").toString()));
+// FIXME:
+//  CustomHTMLTokenizerChunkSize -> private setting defaultParserChunkSize
+//  CustomHTMLTokenizerTimeDelay -> Settings::maxParseDuration
+//  RepaintThrottling -> "Nowadays we throttle layer flushes" (r162837)
+#if 0
     } else if (event->propertyName() == "_q_HTMLTokenizerChunkSize") {
         int chunkSize = obj->property("_q_HTMLTokenizerChunkSize").toInt();
         page->setCustomHTMLTokenizerChunkSize(chunkSize);
@@ -841,6 +846,7 @@ void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyC
                 break;
             }
         }
+#endif
     } else if (event->propertyName() == "_q_webInspectorServerPort") {
 #if ENABLE(INSPECTOR)
         QVariant port = obj->property("_q_webInspectorServerPort");
