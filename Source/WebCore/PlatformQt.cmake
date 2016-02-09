@@ -139,7 +139,6 @@ list(APPEND WebCore_SOURCES
     platform/text/Hyphenation.cpp
     platform/text/LocaleICU.cpp
 
-    platform/text/qt/TextBoundariesQt.cpp
     platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
 
