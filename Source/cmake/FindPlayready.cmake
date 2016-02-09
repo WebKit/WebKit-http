@@ -5,7 +5,7 @@
 #  PLAYREADY_LIBRARIES - link these to use playready.
 #
 # Copyright (C) 2016 Igalia S.L.
-# Copyright (C) 2016 Metrological S.L.
+# Copyright (C) 2016 Metrological
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
