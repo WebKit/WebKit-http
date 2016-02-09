@@ -37,11 +37,8 @@ GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
 namespace WebCore {
 
 // The default location of CDM DRM store.
-// /opt/drm/playready/drmstore.dat
-const DRM_WCHAR g_rgwchCDMDrmStoreName[] = {WCHAR_CAST('/'), WCHAR_CAST('o'), WCHAR_CAST('p'), WCHAR_CAST('t'), WCHAR_CAST('/'),
-                                            WCHAR_CAST('d'), WCHAR_CAST('r'), WCHAR_CAST('m'), WCHAR_CAST('/'), WCHAR_CAST('p'),
-                                            WCHAR_CAST('l'), WCHAR_CAST('a'), WCHAR_CAST('y'), WCHAR_CAST('r'), WCHAR_CAST('e'),
-                                            WCHAR_CAST('a'), WCHAR_CAST('d'), WCHAR_CAST('y'), WCHAR_CAST('/'),
+// /tmp/drmstore.dat
+const DRM_WCHAR g_rgwchCDMDrmStoreName[] = {WCHAR_CAST('/'), WCHAR_CAST('t'), WCHAR_CAST('m'), WCHAR_CAST('p'), WCHAR_CAST('/'),
                                             WCHAR_CAST('d'), WCHAR_CAST('r'), WCHAR_CAST('m'), WCHAR_CAST('s'), WCHAR_CAST('t'),
                                             WCHAR_CAST('o'), WCHAR_CAST('r'), WCHAR_CAST('e'), WCHAR_CAST('.'), WCHAR_CAST('d'),
                                             WCHAR_CAST('a'), WCHAR_CAST('t'), WCHAR_CAST('\0')};
