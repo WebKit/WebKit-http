@@ -104,6 +104,7 @@ list(APPEND WebCore_SOURCES
     platform/network/qt/ResourceRequestQt.cpp
     platform/network/qt/ResourceResponseQt.cpp
     platform/network/qt/SocketStreamHandleQt.cpp
+    platform/network/qt/SynchronousLoaderClientQt.cpp
 
     platform/qt/CursorQt.cpp
     platform/qt/DataTransferItemListQt.cpp
