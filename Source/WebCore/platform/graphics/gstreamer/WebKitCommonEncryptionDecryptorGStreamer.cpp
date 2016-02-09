@@ -315,18 +315,12 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             result = GST_FLOW_NOT_SUPPORTED;
             goto release;
         }
+        reader = gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size);
     }
 
     state = webkit_media_aes_ctr_decrypt_new(self->key, ivBytes);
     if (!state) {
         GST_ERROR_OBJECT(self, "Failed to init AES cipher");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
-    }
-
-    reader = gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size);
-    if (!reader) {
-        GST_ERROR_OBJECT(self, "Failed to allocate subsample reader");
         result = GST_FLOW_NOT_SUPPORTED;
         goto release;
     }
