@@ -44,6 +44,9 @@ WEBKIT_OPTION_END()
 
 if (ENABLE_DXDRM)
     add_definitions(-DUSE_DXDRM=1)
+elseif (ENABLE_PLAYREADY)
+    add_definitions(-DUSE_PLAYREADY=1)
+    find_package(Playready REQUIRED)
 endif ()
 
 set(ENABLE_WEBCORE ON)

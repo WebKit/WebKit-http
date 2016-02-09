@@ -216,18 +216,11 @@ bool DiscretixSession::dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& next
     return (status == DX_SUCCESS);
 }
 
-int DiscretixSession::decrypt(void* data, uint32_t dataLength, const void* encryptionBoxData, uint32_t encryptionBoxLength, uint32_t sampleIndex, uint32_t trackId)
-{
-    EDxDrmStatus status = DxDrmStream_ProcessPiffPacket(m_DxDrmStream, data, dataLength, encryptionBoxData, encryptionBoxLength,
-        static_cast<unsigned>(sampleIndex), trackId);
-
-    return (status == DX_DRM_SUCCESS ? 0 : status);
-}
-
-int DiscretixSession::processPayload(uint32_t trackId, const void* iv, uint32_t ivSize, void* payloadData, uint32_t payloadDataSize)
+int DiscretixSession::processPayload(const void* iv, uint32_t ivSize, void* payloadData, uint32_t payloadDataSize)
 {
     EDxDrmStatus status = DxDrmStream_ProcessPayload(m_DxDrmStream,
-        trackId, iv, ivSize,
+        0, // trackId
+        iv, ivSize,
         0, // blockOffset
         0, // byteOffset
         payloadData, payloadDataSize,

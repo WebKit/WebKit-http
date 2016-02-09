@@ -81,7 +81,7 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     void dispatchDecryptionKey(GstBuffer*) override;
 #endif
-#if USE(DXDRM)
+#if USE(DXDRM) || USE(PLAYREADY)
     void emitSession() override;
 #endif
 

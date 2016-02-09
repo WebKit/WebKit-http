@@ -21,17 +21,25 @@
 
 #include "config.h"
 
-#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && USE(DXDRM)
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && (USE(DXDRM) || USE(PLAYREADY))
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 
+#if USE(DXDRM)
 #include "DiscretixSession.h"
+#elif USE(PLAYREADY)
+#include "PlayreadySession.h"
+#endif
 
 #include <gst/base/gstbasetransform.h>
 #include <gst/base/gstbytereader.h>
 
 struct _WebKitMediaPlayReadyDecrypt {
     GstBaseTransform parent;
+#if USE(DXDRM)
     WebCore::DiscretixSession* sessionMetaData;
+#elif USE(PLAYREADY)
+    WebCore::PlayreadySession* sessionMetaData;
+#endif
     gboolean streamReceived;
 
     GMutex mutex;
@@ -221,22 +229,26 @@ static GstCaps* webkitMediaPlayReadyDecryptTransformCaps(GstBaseTransform* base,
     return transformedCaps;
 }
 
+
 static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransform* base, GstBuffer* buffer)
 {
     WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(base);
     GstFlowReturn result = GST_FLOW_OK;
     GstMapInfo map;
     const GValue* value;
-    guint sampleIndex = 0;
     int errorCode;
-    uint32_t trackID = 0;
-    GstPad* pad;
-    GstCaps* caps;
-    GstMapInfo boxMap;
-    GstBuffer* box = nullptr;
     GstProtectionMeta* protectionMeta = 0;
-    gboolean boxMapped = FALSE;
     gboolean bufferMapped = FALSE;
+    guint ivSize;
+    gboolean encrypted;
+    GstBuffer* ivBuffer = nullptr;
+    GstMapInfo ivMap;
+    unsigned position = 0;
+    guint subSampleCount;
+    GstBuffer* subsamplesBuffer = nullptr;
+    GstMapInfo subSamplesMap;
+    GstByteReader* reader = nullptr;
+
 
     GST_TRACE_OBJECT(self, "Processing buffer");
     g_mutex_lock(&self->mutex);
@@ -272,158 +284,128 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
         goto beach;
     }
 
-    pad = gst_element_get_static_pad(GST_ELEMENT(self), "src");
-    caps = gst_pad_get_current_caps(pad);
-    if (g_str_has_prefix(gst_structure_get_name(gst_caps_get_structure(caps, 0)), "video/"))
-        trackID = 1;
-    else
-        trackID = 2;
-    gst_caps_unref(caps);
-    gst_object_unref(pad);
-
     GST_TRACE_OBJECT(self, "Protection meta: %" GST_PTR_FORMAT, protectionMeta->info);
 
-    if (gst_structure_get_uint(protectionMeta->info, "sample-index", &sampleIndex)) {
-        // Process the PIFF box.
-        value = gst_structure_get_value(protectionMeta->info, "box");
+    if (!gst_structure_get_uint(protectionMeta->info, "iv_size", &ivSize)) {
+        GST_ERROR_OBJECT(self, "failed to get iv_size");
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto beach;
+    }
+
+    if (!gst_structure_get_boolean(protectionMeta->info, "encrypted", &encrypted)) {
+        GST_ERROR_OBJECT(self, "failed to get encrypted flag");
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto beach;
+    }
+
+    // Unencrypted sample.
+    if (!ivSize || !encrypted)
+        goto beach;
+
+    if (!gst_structure_get_uint(protectionMeta->info, "subsample_count", &subSampleCount)) {
+        GST_ERROR_OBJECT(self, "failed to get subsample_count");
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto beach;
+    } else
+        GST_INFO_OBJECT(self, "SAMPLES: %u", subSampleCount);
+
+    value = gst_structure_get_value(protectionMeta->info, "iv");
+    if (!value) {
+        GST_ERROR_OBJECT(self, "Failed to get IV for sample");
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto beach;
+    }
+
+    ivBuffer = gst_value_get_buffer(value);
+    if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
+        GST_ERROR_OBJECT(self, "Failed to map IV");
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto beach;
+    }
+
+    if (subSampleCount) {
+        value = gst_structure_get_value(protectionMeta->info, "subsamples");
         if (!value) {
-            GST_ERROR_OBJECT(self, "Failed to get encryption box for sample");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto beach;
-        }
-
-        box = gst_value_get_buffer(value);
-        boxMapped = gst_buffer_map(box, &boxMap, GST_MAP_READ);
-        if (!boxMapped) {
-            GST_ERROR_OBJECT(self, "Failed to map encryption box");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto beach;
-        }
-
-        GST_TRACE_OBJECT(self, "decrypt sample %u", sampleIndex);
-        if ((errorCode = self->sessionMetaData->decrypt(static_cast<void*>(map.data), static_cast<uint32_t>(map.size),
-            static_cast<void*>(boxMap.data), static_cast<uint32_t>(boxMap.size), static_cast<uint32_t>(sampleIndex), trackID))) {
-            GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
-            GST_MEMDUMP_OBJECT(self, "box", boxMap.data, boxMap.size);
-            result = GST_FLOW_ERROR;
-            goto beach;
-        }
-    } else {
-        // Process CENC data.
-        guint ivSize;
-        gboolean encrypted;
-        GstBuffer* ivBuffer = nullptr;
-        GstMapInfo ivMap;
-        unsigned position = 0;
-        unsigned sampleIndex = 0;
-        guint subSampleCount;
-        GstBuffer* subsamplesBuffer = nullptr;
-        GstMapInfo subSamplesMap;
-        GstByteReader* reader = nullptr;
-
-        if (!gst_structure_get_uint(protectionMeta->info, "iv_size", &ivSize)) {
-            GST_ERROR_OBJECT(self, "failed to get iv_size");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto beach;
-        }
-
-        if (!gst_structure_get_boolean(protectionMeta->info, "encrypted", &encrypted)) {
-            GST_ERROR_OBJECT(self, "failed to get encrypted flag");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto beach;
-        }
-
-        // Unencrypted sample.
-        if (!ivSize || !encrypted)
-            goto beach;
-
-        if (!gst_structure_get_uint(protectionMeta->info, "subsample_count", &subSampleCount)) {
-            GST_ERROR_OBJECT(self, "failed to get subsample_count");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto beach;
-        }
-
-        value = gst_structure_get_value(protectionMeta->info, "iv");
-        if (!value) {
-            GST_ERROR_OBJECT(self, "Failed to get IV for sample");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto beach;
-        }
-
-        ivBuffer = gst_value_get_buffer(value);
-        if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
-            GST_ERROR_OBJECT(self, "Failed to map IV");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto beach;
-        }
-
-        if (subSampleCount) {
-            value = gst_structure_get_value(protectionMeta->info, "subsamples");
-            if (!value) {
-                GST_ERROR_OBJECT(self, "Failed to get subsamples");
-                result = GST_FLOW_NOT_SUPPORTED;
-                goto release;
-            }
-            subsamplesBuffer = gst_value_get_buffer(value);
-            if (!gst_buffer_map(subsamplesBuffer, &subSamplesMap, GST_MAP_READ)) {
-                GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
-                result = GST_FLOW_NOT_SUPPORTED;
-                goto release;
-            }
-        }
-
-        reader = gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size);
-        if (!reader) {
-            GST_ERROR_OBJECT(self, "Failed to allocate subsample reader");
+            GST_ERROR_OBJECT(self, "Failed to get subsamples");
             result = GST_FLOW_NOT_SUPPORTED;
             goto release;
         }
-
-        GST_DEBUG_OBJECT(self, "position: %d, size: %d", position, map.size);
-        while (position < map.size) {
-            guint16 nBytesClear = 0;
-            guint32 nBytesEncrypted = 0;
-
-            if (sampleIndex < subSampleCount) {
-                if (!gst_byte_reader_get_uint16_be(reader, &nBytesClear)
-                    || !gst_byte_reader_get_uint32_be(reader, &nBytesEncrypted)) {
-                    result = GST_FLOW_NOT_SUPPORTED;
-                    GST_DEBUG_OBJECT(self, "unsupported");
-                    goto release;
-                }
-
-                sampleIndex++;
-            } else {
-                nBytesClear = 0;
-                nBytesEncrypted = map.size - position;
-            }
-
-            GST_TRACE_OBJECT(self, "%d bytes clear (todo=%d)", nBytesClear, map.size - position);
-            position += nBytesClear;
-            if (nBytesEncrypted) {
-                GST_TRACE_OBJECT(self, "%d bytes encrypted (todo=%d)", nBytesEncrypted, map.size - position);
-                if ((errorCode = self->sessionMetaData->processPayload(trackID, static_cast<const void*>(ivMap.data), static_cast<uint32_t>(ivMap.size), static_cast<void*>(map.data + position), static_cast<uint32_t>(nBytesEncrypted)))) {
-                    GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
-                    result = GST_FLOW_ERROR;
-                    goto release;
-                }
-                position += nBytesEncrypted;
-            }
+        subsamplesBuffer = gst_value_get_buffer(value);
+        if (!gst_buffer_map(subsamplesBuffer, &subSamplesMap, GST_MAP_READ)) {
+            GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
+            result = GST_FLOW_NOT_SUPPORTED;
+            goto release;
         }
-    release:
-        gst_buffer_unmap(ivBuffer, &ivMap);
-
-        if (reader)
-            gst_byte_reader_free(reader);
-
-        if (subsamplesBuffer)
-            gst_buffer_unmap(subsamplesBuffer, &subSamplesMap);
+        reader = gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size);
     }
 
-beach:
-    if (boxMapped)
-        gst_buffer_unmap(box, &boxMap);
+    if (reader) {
+        guint16 inClear = 0;
+        guint32 inEncrypted = 0;
+        guint32 totalEncrypted = 0;
+        uint8_t* encryptedData;
+        uint8_t* fEncryptedData;
+        unsigned index = 0;
+        unsigned total = 0;
 
+        // Find out the total size of the encrypted data.
+        for (position = 0; position < subSampleCount; position++) {
+            gst_byte_reader_get_uint16_be(reader, &inClear);
+            gst_byte_reader_get_uint32_be(reader, &inEncrypted);
+            totalEncrypted += inEncrypted;
+        }
+        gst_byte_reader_set_pos(reader, 0);
+
+        // Build a new buffer storing the entire encrypted cipher.
+        encryptedData = (uint8_t*) g_malloc(totalEncrypted);
+        fEncryptedData = encryptedData;
+        for (position = 0; position < subSampleCount; position++) {
+            gst_byte_reader_get_uint16_be(reader, &inClear);
+            gst_byte_reader_get_uint32_be(reader, &inEncrypted);
+            memcpy(encryptedData, map.data + index + inClear, inEncrypted);
+            index += inClear + inEncrypted;
+            encryptedData += inEncrypted;
+        }
+        gst_byte_reader_set_pos(reader, 0);
+
+        // Decrypt cipher.
+        if ((errorCode = self->sessionMetaData->processPayload(static_cast<const void*>(ivMap.data), static_cast<uint32_t>(ivMap.size), static_cast<void*>(fEncryptedData), static_cast<uint32_t>(totalEncrypted)))) {
+            GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
+            result = GST_FLOW_ERROR;
+            g_free(fEncryptedData);
+            goto release;
+        }
+
+        // Re-build sub-sample data.
+        index = 0;
+        encryptedData = fEncryptedData;
+        for (position = 0; position < subSampleCount; position++) {
+            gst_byte_reader_get_uint16_be(reader, &inClear);
+            gst_byte_reader_get_uint32_be(reader, &inEncrypted);
+
+            memcpy(map.data + total + inClear, encryptedData + index, inEncrypted);
+            index += inEncrypted;
+            total += inClear + inEncrypted;
+        }
+        g_free(fEncryptedData);
+    } else {
+        if ((errorCode = self->sessionMetaData->processPayload(static_cast<const void*>(ivMap.data), static_cast<uint32_t>(ivMap.size), static_cast<void*>(map.data), static_cast<uint32_t>(map.size)))) {
+            GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
+            result = GST_FLOW_ERROR;
+            goto release;
+        }
+    }
+
+ release:
+    gst_buffer_unmap(ivBuffer, &ivMap);
+
+    if (reader)
+        gst_byte_reader_free(reader);
+
+    if (subsamplesBuffer)
+        gst_buffer_unmap(subsamplesBuffer, &subSamplesMap);
+
+beach:
     if (bufferMapped)
         gst_buffer_unmap(buffer, &map);
 
@@ -489,11 +471,20 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
         GST_INFO_OBJECT(self, "received OOB event");
         g_mutex_lock(&self->mutex);
         const GstStructure* structure = gst_event_get_structure(event);
-        if (gst_structure_has_name(structure, "dxdrm-session")) {
-            GST_INFO_OBJECT(self, "received dxdrm session");
+#if USE(DXDRM)
+        const char* label = "dxdrm-session";
+#else
+        const char* label = "playready-session";
+#endif
+        if (gst_structure_has_name(structure, label)) {
+            GST_INFO_OBJECT(self, "received %s", label);
 
             const GValue* value = gst_structure_get_value(structure, "session");
+#if USE(DXDRM)
             self->sessionMetaData = reinterpret_cast<WebCore::DiscretixSession*>(g_value_get_pointer(value));
+#else
+            self->sessionMetaData = reinterpret_cast<WebCore::PlayreadySession*>(g_value_get_pointer(value));
+#endif
             self->streamReceived = TRUE;
             g_cond_signal(&self->condition);
         }

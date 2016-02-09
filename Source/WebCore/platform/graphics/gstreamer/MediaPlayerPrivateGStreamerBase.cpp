@@ -109,11 +109,15 @@
 #include <runtime/Uint8Array.h>
 #endif
 
-#if USE(DXDRM) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 #include "CDMPRSessionGStreamer.h"
 #endif
+#if USE(DXDRM)
 #include "DiscretixSession.h"
+#elif USE(PLAYREADY)
+#include "PlayreadySession.h"
+#endif
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 #endif
 
@@ -145,7 +149,7 @@ void registerWebKitGStreamerElements()
         gst_element_register(0, "webkitcencdec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CENC_DECRYPT);
 #endif
 
-#if USE(DXDRM)
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && (USE(DXDRM) || USE(PLAYREADY))
     GRefPtr<GstElementFactory> playReadyDecryptorFactory = gst_element_factory_find("webkitplayreadydec");
     if (!playReadyDecryptorFactory)
         gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT);
@@ -242,8 +246,12 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_repaintHandler(0)
     , m_drainHandler(0)
     , m_usingFallbackVideoSink(false)
-#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
+#if ENABLE(ENCRYPTED_MEDIA)
+#if USE(DXDRM)
     , m_dxdrmSession(0)
+#elif USE(PLAYREADY)
+    , m_prSession(0)
+#endif
 #endif
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     , m_cdmSession(0)
@@ -279,17 +287,23 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 
     g_signal_handlers_disconnect_matched(m_volumeElement.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
 
-#if USE(DXDRM)
+
 #if ENABLE(ENCRYPTED_MEDIA)
+#if USE(DXDRM)
     if (m_dxdrmSession != NULL) {
         delete m_dxdrmSession;
     }
+#elif USE(PLAYREADY)
+    if (m_prSession != NULL) {
+        delete m_prSession;
+    }
+#endif
 #elif ENABLE(ENCRYPTED_MEDIA_V2)
     if (m_cdmSession != NULL) {
         delete m_cdmSession;
     }
 #endif
-#endif
+
 
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     if (client())
@@ -356,8 +370,12 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             return false;
 
         LOG_MEDIA_MESSAGE("handling drm-key-needed message");
+#if USE(DXDRM) || USE(PLAYREADY)
 #if USE(DXDRM)
         DiscretixSession* session = dxdrmSession();
+#elif USE(PLAYREADY)
+        PlayreadySession* session = prSession();
+#endif
         if (session && session->keyRequested()) {
             LOG_MEDIA_MESSAGE("key requested already");
             if (session->ready()) {
@@ -1085,7 +1103,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
         return true;
 #endif
 
-#if USE(DXDRM) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
+#if (USE(DXDRM) || USE(PLAYREADY)) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
         return true;
@@ -1108,15 +1126,37 @@ DiscretixSession* MediaPlayerPrivateGStreamerBase::dxdrmSession() const
 #endif
     return session;
 }
+#elif USE(PLAYREADY)
+PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
+{
+    PlayreadySession* session = nullptr;
+#if ENABLE(ENCRYPTED_MEDIA)
+    session = m_prSession;
+#elif ENABLE(ENCRYPTED_MEDIA_V2)
+    if (m_cdmSession) {
+        CDMPRSessionGStreamer* cdmSession = static_cast<CDMPRSessionGStreamer*>(m_cdmSession);
+        session = static_cast<PlayreadySession*>(cdmSession);
+    }
+#endif
+    return session;
+}
+#endif
 
+#if USE(DXDRM) || USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerBase::emitSession()
 {
+#if USE(DXDRM)
     DiscretixSession* session = dxdrmSession();
+    const char* label = "dxdrm-session";
+#elif USE(PLAYREADY)
+    PlayreadySession* session = prSession();
+    const char* label = "playready-session";
+#endif
     if (!session->ready())
         return;
 
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, session, nullptr)));
+        gst_structure_new(label, "session", G_TYPE_POINTER, session, nullptr)));
 }
 #endif
 
@@ -1133,7 +1173,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
 {
     LOG_MEDIA_MESSAGE("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
 
-#if USE(DXDRM)
+#if USE(DXDRM) || USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
         RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
@@ -1141,7 +1181,11 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
         unsigned short errorCode;
         uint32_t systemCode;
 
+#if USE(DXDRM)
         bool result = m_dxdrmSession->dxdrmProcessKey(key.get(), nextMessage, errorCode, systemCode);
+#elif USE(PLAYREADY)
+        bool result = m_prSession->playreadyProcessKey(key.get(), nextMessage, errorCode, systemCode);
+#endif
         if (errorCode || !result) {
             LOG_MEDIA_MESSAGE("Error processing key: errorCode: %u, result: %d", errorCode, result);
             return MediaPlayer::InvalidPlayerState;
@@ -1166,18 +1210,29 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
 {
     LOG_MEDIA_MESSAGE("generating key request for system: %s", keySystem.utf8().data());
-#if USE(DXDRM)
+#if USE(DXDRM) || USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
+#if USE(DXDRM)
         if (!m_dxdrmSession)
             m_dxdrmSession = new DiscretixSession();
+#elif USE(PLAYREADY)
+        if (!m_prSession)
+            m_prSession = new PlayreadySession();
+#endif
         unsigned short errorCode;
         uint32_t systemCode;
         RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
         String destinationURL;
+#if USE(DXDRM)
         RefPtr<Uint8Array> result = m_dxdrmSession->dxdrmGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
-        if (errorCode)
+#elif USE(PLAYREADY)
+        RefPtr<Uint8Array> result = m_prSession->playreadyGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
+#endif
+        if (errorCode) {
+            ERROR_MEDIA_MESSAGE("the key request wasn't properly generated");
             return MediaPlayer::InvalidPlayerState;
+        }
 
         URL url(URL(), destinationURL);
         m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);
@@ -1218,7 +1273,7 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
         return nullptr;
 
     LOG_MEDIA_MESSAGE("creating key session for %s", keySystem.utf8().data());
-#if USE(DXDRM)
+#if USE(DXDRM) || USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
         return std::make_unique<CDMPRSessionGStreamer>();
@@ -1235,7 +1290,7 @@ void MediaPlayerPrivateGStreamerBase::setCDMSession(CDMSession* session)
 
 void MediaPlayerPrivateGStreamerBase::keyAdded()
 {
-#if USE(DXDRM)
+#if USE(DXDRM) || USE(PLAYREADY)
     emitSession();
 #endif
 }

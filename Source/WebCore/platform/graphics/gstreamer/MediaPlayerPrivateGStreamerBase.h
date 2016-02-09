@@ -56,6 +56,8 @@ class IntRect;
 
 #if USE(DXDRM)
 class DiscretixSession;
+#elif USE(PLAYREADY)
+class PlayreadySession;
 #endif
 
 void registerWebKitGStreamerElements();
@@ -155,8 +157,13 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     virtual void dispatchDecryptionKey(GstBuffer*);
 #endif
+
+#if USE(DXDRM) || USE(PLAYREADY)
 #if USE(DXDRM)
     DiscretixSession* dxdrmSession() const;
+#elif USE(PLAYREADY)
+    PlayreadySession* prSession() const;
+#endif
     virtual void emitSession();
 #endif
 
@@ -247,8 +254,12 @@ protected:
 
 private:
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
+#if ENABLE(ENCRYPTED_MEDIA)
+#if USE(DXDRM)
     DiscretixSession* m_dxdrmSession;
+#elif USE(PLAYREADY)
+    PlayreadySession* m_prSession;
+#endif
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)

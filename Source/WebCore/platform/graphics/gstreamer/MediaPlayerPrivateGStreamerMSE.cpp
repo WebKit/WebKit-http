@@ -50,6 +50,8 @@
 
 #if USE(DXDRM)
 #include "DiscretixSession.h"
+#elif USE(PLAYREADY)
+#include "PlayreadySession.h"
 #endif
 
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
@@ -934,16 +936,22 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 }
 #endif
 
-#if USE(DXDRM)
+#if USE(DXDRM) || USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerMSE::emitSession()
 {
+#if USE(DXDRM)
     DiscretixSession* session = dxdrmSession();
+    const char* label = "dxdrm-session";
+#elif USE(PLAYREADY)
+    PlayreadySession* session = prSession();
+    const char* label = "playready-session";
+#endif
     if (!session->ready())
         return;
 
     for (HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> >::iterator it = m_appendPipelinesMap.begin(); it != m_appendPipelinesMap.end(); ++it) {
         gst_element_send_event(it->value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-           gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, session, nullptr)));
+           gst_structure_new(label, "session", G_TYPE_POINTER, session, nullptr)));
         it->value->setAppendStage(AppendPipeline::AppendStage::Ongoing);
     }
 }
