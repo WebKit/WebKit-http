@@ -418,42 +418,11 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
             ${PLAYREADY_INCLUDE_DIRS}
         )
         add_definitions(${PLAYREADY_CFLAGS_OTHER})
-        add_definitions(
-            -DDRM_SUPPORT_SECUREOEMHAL=1
-            -DDRM_SUPPORT_ECCPROFILING=0
-            -DDRM_SUPPORT_INLINEDWORDCPY=0
-            -DDRM_SUPPORT_DATASTORE_PREALLOC=1
-            -DDRM_SUPPORT_NATIVE_64BIT_TYPES=1
-            -DDRM_SUPPORT_TRACING=0
-            -D_DATASTORE_WRITE_THRU=1
-            -DDRM_HDS_COPY_BUFFER_SIZE=32768
-            -DDRM_BUILD_PROFILE=10
-            -DDRM_TEST_SUPPORT_ACTIVATION=0
-            -DDRM_SUPPORT_REACTIVATION=0
-            -DDRM_SUPPORT_ASSEMBLY=0
-            -DDRM_SUPPORT_CRT=1
-            -DDRM_SUPPORT_DEVICE_SIGNING_KEY=0
-            -DDRM_SUPPORT_EMBEDDED_CERTS=0
-            -DDRM_SUPPORT_FORCE_ALIGN=0
-            -DDRM_SUPPORT_LOCKING=0
-            -DDRM_SUPPORT_MULTI_THREADING=0
-            -DDRM_SUPPORT_NONVAULTSIGNING=1
-            -DDRM_SUPPORT_PRECOMPUTE_GTABLE=0
-            -DDRM_SUPPORT_PRIVATE_KEY_CACHE=0
-            -DDRM_SUPPORT_SYMOPT=1
-            -DDRM_SUPPORT_XMLHASH=1
-            -DDRM_USE_IOCTL_HAL_GET_DEVICE_INFO=0
-            -DDRM_TEST_SUPPORT_NET_IO=0
-            -DUSE_PK_NAMESPACES=0
-            -DDRM_INCLUDE_PK_NAMESPACE_USING_STATEMENT=0
-            -D_ADDLICENSE_WRITE_THRU=0
-            -DDRM_KEYFILE_VERSION=3
-            -DDRM_SUPPORT_SECUREOEMHAL_PLAY_ONLY=1
-            -DARCLOCK
-            -DTARGET_LITTLE_ENDIAN=1
-            -DTARGET_SUPPORTS_UNALIGNED_DWORD_POINTERS=0
-            #-DDBG=1
-        )
+        foreach(p ${PLAYREADY_INCLUDE_DIRS})
+            if (EXISTS "${p}/playready.cmake")
+                include("${p}/playready.cmake")
+            endif()
+        endforeach()
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/PlayreadySession.cpp
         )
