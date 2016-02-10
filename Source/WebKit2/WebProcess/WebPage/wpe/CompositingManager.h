@@ -48,6 +48,7 @@ public:
 
     void establishConnection(WebPage&, WTF::RunLoop&);
 
+    Vector<uint8_t> authenticate();
     uint32_t constructRenderingTarget(uint32_t, uint32_t);
     void commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport&);
 

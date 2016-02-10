@@ -53,6 +53,14 @@ void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& run
         Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
 }
 
+Vector<uint8_t> CompositingManager::authenticate()
+{
+    IPC::DataReference data;
+    m_connection->sendSync(Messages::CompositingManagerProxy::Authenticate(),
+        Messages::CompositingManagerProxy::Authenticate::Reply(data), 0);
+    return data.vector();
+}
+
 uint32_t CompositingManager::constructRenderingTarget(uint32_t width, uint32_t height)
 {
     uint32_t handle = 0;
