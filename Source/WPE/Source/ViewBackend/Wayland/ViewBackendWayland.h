@@ -39,8 +39,6 @@ struct wl_buffer;
 struct wl_callback;
 struct wl_surface;
 struct xdg_surface;
-struct wl_nsc;
-struct wl_display;
 
 namespace WPE {
 
