@@ -120,9 +120,8 @@ const struct wl_registry_listener g_registryListener = {
         if (!std::strcmp(interface, "ivi_application"))
             interfaces.ivi_application = static_cast<struct ivi_application*>(wl_registry_bind(registry, name, &ivi_application_interface, 1));
 
-        if (!std::strcmp(interface, "wl_nsc")) {
+        if (!std::strcmp(interface, "wl_nsc"))
             interfaces.nsc = static_cast<struct wl_nsc*>(wl_registry_bind(registry, name, &wl_nsc_interface, version));
-        }
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
@@ -169,7 +168,6 @@ static const struct wl_pointer_listener g_pointerListener = {
     // button
     [](void* data, struct wl_pointer*, uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
     {
-        printf("button pressed\n");
         static_cast<WaylandDisplay::SeatData*>(data)->serial = serial;
 
         if (button >= BTN_MOUSE)
@@ -284,7 +282,6 @@ static const struct wl_keyboard_listener g_keyboardListener = {
     // key
     [](void* data, struct wl_keyboard*, uint32_t serial, uint32_t time, uint32_t key, uint32_t state)
     {
-        printf("key pressed\n");
         // IDK.
         key += 8;
 
