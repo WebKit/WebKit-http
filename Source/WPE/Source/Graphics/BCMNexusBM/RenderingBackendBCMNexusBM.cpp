@@ -36,8 +36,6 @@ RenderingBackendBCMNexusBM::RenderingBackendBCMNexusBM(const uint8_t* data, size
 RenderingBackendBCMNexusBM::~RenderingBackendBCMNexusBM()
 {
     NXPL_UnregisterNexusDisplayPlatform(m_nxplHandle);
-    NxClient_Free(&m_AllocResults);
-    NxClient_Uninit();
 }
 
 EGLNativeDisplayType RenderingBackendBCMNexusBM::nativeDisplay()
@@ -70,7 +68,7 @@ RenderingBackendBCMNexusBM::Surface::Surface(const RenderingBackendBCMNexusBM&, 
 
 RenderingBackendBCMNexusBM::Surface::~Surface()
 {
-    NEXUS_SurfaceClient_Release (reinterpret_cast<NEXUS_SurfaceClient*>(m_nativeWindow));
+    NXPL_DestroyNativeWindow(m_nativeWindow);
 }
 
 EGLNativeWindowType RenderingBackendBCMNexusBM::Surface::nativeWindow()

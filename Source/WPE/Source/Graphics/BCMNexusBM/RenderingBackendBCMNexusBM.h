@@ -49,8 +49,6 @@ public:
 
 private:
     NXPL_PlatformHandle m_nxplHandle;
-    NxClient_AllocResults m_AllocResults;
-    NEXUS_SurfaceClientHandle m_Client;
 };
 
 } // Graphics
