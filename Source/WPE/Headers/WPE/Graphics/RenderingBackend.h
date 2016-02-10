@@ -64,7 +64,7 @@ public:
         virtual EGLNativeWindowType nativeWindow() = 0;
     };
 
-    static WPE_EXPORT std::unique_ptr<RenderingBackend> create();
+    static WPE_EXPORT std::unique_ptr<RenderingBackend> create(const uint8_t*, size_t);
 
     virtual ~RenderingBackend();
 

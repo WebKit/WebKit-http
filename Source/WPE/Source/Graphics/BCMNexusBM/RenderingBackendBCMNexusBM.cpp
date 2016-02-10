@@ -16,24 +16,21 @@ namespace WPE {
 
 namespace Graphics {
 
-RenderingBackendBCMNexusBM::RenderingBackendBCMNexusBM() : m_nxplHandle (NULL)
+RenderingBackendBCMNexusBM::RenderingBackendBCMNexusBM(const uint8_t* data, size_t size)
+    : m_nxplHandle(nullptr)
 {
-    NEXUS_DisplayHandle displayHandle (NULL);
-    NxClient_AllocSettings allocSettings;
-    NxClient_JoinSettings joinSettings;
-    NxClient_GetDefaultJoinSettings( &joinSettings );
+    NEXUS_Certificate certificate;
+    BKNI_Memcpy(certificate.data, data, size);
+    certificate.length = size;
 
-    strcpy( joinSettings.name, "wpe" );
+    NEXUS_ClientAuthenticationSettings authSettings;
+    NEXUS_Platform_GetDefaultClientAuthenticationSettings(&authSettings);
+    authSettings.certificate = certificate;
 
-    NEXUS_Error rc = NxClient_Join( &joinSettings );
-    BDBG_ASSERT(!rc);
+    if (NEXUS_Platform_AuthenticatedJoin(&authSettings))
+        fprintf(stderr, "RenderingBackendBCMNexusBM: failed to join\n");
 
-    NxClient_GetDefaultAllocSettings(&allocSettings);
-    allocSettings.surfaceClient = 1;
-    rc = NxClient_Alloc(&allocSettings, &m_AllocResults);
-    BDBG_ASSERT(!rc);
-
-    NXPL_RegisterNexusDisplayPlatform(&m_nxplHandle, displayHandle);
+    NXPL_RegisterNexusDisplayPlatform(&m_nxplHandle, nullptr);
 }
 
 RenderingBackendBCMNexusBM::~RenderingBackendBCMNexusBM()

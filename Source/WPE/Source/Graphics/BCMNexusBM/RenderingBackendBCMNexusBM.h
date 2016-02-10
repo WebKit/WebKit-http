@@ -40,7 +40,7 @@ public:
         EGLNativeWindowType nativeWindow() override;
     };
 
-    RenderingBackendBCMNexusBM();
+    RenderingBackendBCMNexusBM(const uint8_t*, size_t);
     virtual ~RenderingBackendBCMNexusBM();
 
     EGLNativeDisplayType nativeDisplay() override;
