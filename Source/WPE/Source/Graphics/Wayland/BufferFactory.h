@@ -40,6 +40,7 @@ class BufferFactory {
 public:
     static std::unique_ptr<BufferFactory> create();
 
+    virtual std::pair<const uint8_t*, size_t> authenticate() = 0;
     virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
     virtual std::pair<bool, std::pair<uint32_t, struct wl_buffer*>> createBuffer(int, const uint8_t*, size_t) = 0;
     virtual void destroyBuffer(uint32_t, struct wl_buffer*) = 0;
