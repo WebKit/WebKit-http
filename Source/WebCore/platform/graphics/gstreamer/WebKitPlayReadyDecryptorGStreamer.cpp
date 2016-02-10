@@ -306,8 +306,7 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
         GST_ERROR_OBJECT(self, "failed to get subsample_count");
         result = GST_FLOW_NOT_SUPPORTED;
         goto beach;
-    } else
-        GST_INFO_OBJECT(self, "SAMPLES: %u", subSampleCount);
+    }
 
     value = gst_structure_get_value(protectionMeta->info, "iv");
     if (!value) {

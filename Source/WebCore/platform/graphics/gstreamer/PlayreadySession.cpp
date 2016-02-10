@@ -49,10 +49,9 @@ const DRM_CONST_STRING* g_rgpdstrRights[1] = {&g_dstrWMDRM_RIGHT_PLAYBACK};
 
 PlayreadySession::PlayreadySession()
     : m_key()
-    , m_ready(false)
-    , m_keyRequested(false)
+    , m_eKeyState(KEY_INIT)
+    , m_fCommit(FALSE)
 {
-    m_fCommit = FALSE;
     DRM_RESULT dr = DRM_SUCCESS;
     DRM_ID oSessionID;
     DRM_DWORD cchEncodedSessionID = SIZEOF(m_rgchSessionID);
@@ -88,7 +87,6 @@ PlayreadySession::PlayreadySession()
                           &cchEncodedSessionID,
                           0));
 
-    m_eKeyState = KEY_INIT;
     GST_DEBUG("Playready initialized");
 
  ErrorExit:
@@ -100,6 +98,8 @@ PlayreadySession::PlayreadySession()
 
 PlayreadySession::~PlayreadySession()
 {
+    GST_DEBUG("Releasing resources");
+
     if (DRM_REVOCATION_IsRevocationSupported())
         SAFE_OEM_FREE(m_pbRevocationBuffer);
 
@@ -131,20 +131,24 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
 
     GST_DEBUG("generating key request");
     GST_MEMDUMP("init data", initData->data(), initData->byteLength());
-    m_keyRequested = true;
 
     // The current state MUST be KEY_INIT otherwise error out.
-    //ChkBOOL(m_eKeyState == KEY_INIT, DRM_E_INVALIDARG);
+    ChkBOOL(m_eKeyState == KEY_INIT, DRM_E_INVALIDARG);
 
     ChkDR(Drm_Content_SetProperty(m_poAppContext,
                                   DRM_CSP_AUTODETECT_HEADER,
                                   initData->data(),
                                   initData->byteLength()));
+    GST_DEBUG("init data set on DRM context");
 
     if (DRM_SUCCEEDED(Drm_Reader_Bind(m_poAppContext, g_rgpdstrRights, NO_OF(g_rgpdstrRights), _PolicyCallback, NULL, &m_oDecryptContext))) {
+        GST_DEBUG("Play rights already acquired!");
         m_eKeyState = KEY_READY;
-        goto ErrorExit;
+        systemCode = dr;
+        errorCode = 0;
+        return nullptr;
     }
+    GST_DEBUG("DRM reader bound");
 
     // Try to figure out the size of the license acquisition
     // challenge to be returned.
@@ -160,7 +164,7 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
                                           NULL,
                                           pbChallenge,
                                           &cbChallenge);
-
+ 
     if (dr == DRM_E_BUFFERTOOSMALL) {
         if (cchSilentURL > 0) {
             ChkMem(pchSilentURL = (DRM_CHAR *)Oem_MemAlloc(cchSilentURL + 1));
@@ -173,8 +177,10 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
             ChkMem(pbChallenge = (DRM_BYTE *)Oem_MemAlloc(cbChallenge));
 
         dr = DRM_SUCCESS;
-    } else
-        ChkDR(dr);
+    } else {
+         ChkDR(dr);
+         GST_DEBUG("challenge generated");
+    }
 
     // Supply a buffer to receive the license acquisition challenge.
     ChkDR(Drm_LicenseAcq_GenerateChallenge(m_poAppContext,
@@ -209,6 +215,7 @@ ErrorExit:
         GST_DEBUG("DRM key generation failed");
         errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
     }
+    return result;
 }
 
 //
@@ -247,7 +254,6 @@ bool PlayreadySession::playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>& 
     errorCode = 0;
     m_eKeyState = KEY_READY;
     GST_DEBUG("key processed, now ready for content decryption");
-    m_ready = true;
     systemCode = dr;
     return true;
 

@@ -1219,7 +1219,12 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
 #elif USE(PLAYREADY)
         if (!m_prSession)
             m_prSession = new PlayreadySession();
+        if (m_prSession->ready()) {
+            emitSession();
+            return MediaPlayer::NoError;
+        }
 #endif
+
         unsigned short errorCode;
         uint32_t systemCode;
         RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
@@ -1233,6 +1238,13 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
             ERROR_MEDIA_MESSAGE("the key request wasn't properly generated");
             return MediaPlayer::InvalidPlayerState;
         }
+
+#if USE(PLAYREADY)
+        if (m_prSession->ready()) {
+            emitSession();
+            return MediaPlayer::NoError;
+        }
+#endif
 
         URL url(URL(), destinationURL);
         m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);

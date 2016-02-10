@@ -58,8 +58,8 @@ public:
     RefPtr<Uint8Array> playreadyGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode);
     bool playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode);
 
-    bool keyRequested() const { return m_keyRequested; }
-    bool ready() const { return m_ready; }
+    bool keyRequested() const { return m_eKeyState == KEY_PENDING; }
+    bool ready() const { return m_eKeyState == KEY_READY; }
     int processPayload(const void* iv, uint32_t ivSize, void* payloadData, uint32_t payloadDataSize);
 
 protected:
@@ -67,9 +67,6 @@ protected:
 
 private:
     static DRM_RESULT DRM_CALL _PolicyCallback(const DRM_VOID* f_pvOutputLevelsData, DRM_POLICY_CALLBACK_TYPE f_dwCallbackType, const DRM_VOID* f_pv);
-
-    bool m_ready;
-    bool m_keyRequested;
 
     DRM_APP_CONTEXT* m_poAppContext;
     DRM_DECRYPT_CONTEXT m_oDecryptContext;
