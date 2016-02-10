@@ -140,7 +140,10 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     m_clientRendersNextFrame.store(false);
     m_coordinateUpdateCompletionWithClient.store(false);
     createCompositingThread();
+
     m_compositingManager->establishConnection(webPage, m_compositingRunLoop->runLoop());
+    Vector<uint8_t> authenticationData = m_compositingManager->authenticate();
+    PlatformDisplayWPE::initialize({ authenticationData.data(), authenticationData.size() });
 }
 
 ThreadedCompositor::~ThreadedCompositor()
