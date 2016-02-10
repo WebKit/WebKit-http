@@ -55,16 +55,16 @@ std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendBCMNexusBM::
     return std::unique_ptr<RenderingBackendBCMNexusBM::OffscreenSurface>(new RenderingBackendBCMNexusBM::OffscreenSurface(*this));
 }
 
-RenderingBackendBCMNexusBM::Surface::Surface(const RenderingBackendBCMNexusBM&, uint32_t width, uint32_t height, uint32_t, Client&)
+RenderingBackendBCMNexusBM::Surface::Surface(const RenderingBackendBCMNexusBM&, uint32_t width, uint32_t height, uint32_t targetHandle, Client&)
 {
-    printf("creating window with size %dx%d\n",width, height);
     NXPL_NativeWindowInfo windowInfo;
     windowInfo.x = 0;
     windowInfo.y = 0;
     windowInfo.width = width;
     windowInfo.height = height;
     windowInfo.stretch = false;
-    windowInfo.clientID = 0;
+    windowInfo.zOrder = 0;
+    windowInfo.clientID = targetHandle;
     m_nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
 }
 
