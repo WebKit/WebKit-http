@@ -29,6 +29,7 @@
 
 #include <WPE/WPE.h>
 #include <memory>
+#include <utility>
 
 namespace WPE {
 
@@ -51,6 +52,7 @@ public:
     virtual ~ViewBackend();
 
     virtual void setClient(Client*);
+    virtual std::pair<const uint8_t*, size_t> authenticate() = 0;
     virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
     virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
     virtual void destroyBuffer(uint32_t) = 0;

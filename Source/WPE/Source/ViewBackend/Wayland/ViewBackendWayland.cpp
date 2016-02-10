@@ -224,6 +224,11 @@ void ViewBackendWayland::setClient(Client* client)
     m_nscData.client->setSize(m_nscData.width, m_nscData.height);
 }
 
+std::pair<const uint8_t*, size_t> ViewBackendWayland::authenticate()
+{
+    return m_bufferFactory->authenticate();
+}
+
 uint32_t ViewBackendWayland::constructRenderingTarget(uint32_t width, uint32_t height)
 {
     return m_bufferFactory->constructRenderingTarget(width, height);

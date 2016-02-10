@@ -59,6 +59,7 @@ public:
     virtual ~ViewBackendWayland();
 
     void setClient(Client* client) override;
+    std::pair<const uint8_t*, size_t> authenticate() override;
     uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
     void commitBuffer(int, const uint8_t* data, size_t size) override;
     void destroyBuffer(uint32_t handle) override;
