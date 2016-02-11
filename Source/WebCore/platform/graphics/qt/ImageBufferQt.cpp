@@ -125,9 +125,20 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavio
     return StillImage::createForRendering(&m_data.m_pixmap);
 }
 
+RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior scaleBehavior)
+{
+    // FIXME?
+    return imageBuffer->copyImage(DontCopyBackingStore, scaleBehavior);
+}
+
 BackingStoreCopy ImageBuffer::fastCopyImageMode()
 {
     return DontCopyBackingStore;
+}
+
+void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
+{
+    imageBuffer->draw(destContext, destRect, srcRect, op, blendMode, useLowQualityScale);
 }
 
 void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect,

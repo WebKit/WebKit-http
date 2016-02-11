@@ -324,6 +324,11 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
         imageObserver()->didDraw(this);
 }
 
+void BitmapImage::determineMinimumSubsamplingLevel() const
+{
+    m_minimumSubsamplingLevel = 0;
+}
+
 void BitmapImage::checkForSolidColor()
 {
     m_isSolidColor = false;
