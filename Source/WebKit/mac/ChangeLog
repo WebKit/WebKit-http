@@ -1,3 +1,96 @@
+2016-02-10  Mark Lam  <mark.lam@apple.com>
+
+        WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture: should assert that it is being called from the "main" thread.
+        https://bugs.webkit.org/show_bug.cgi?id=154059
+
+        Reviewed by Geoffrey Garen.
+
+        This makes it so that misbehaving clients which call it (indirectly) from another
+        thread (not the main thread) will fail faster.  Otherwise, we get potential
+        memory corruption that results in strange crashes elsewhere later.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture:]):
+
+2016-02-04  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Adopt NSURLSession properties in AVAssetResourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=153873
+
+        Reviewed by Eric Carlson.
+
+        Add a WebKit preference to control the WebCore isAVFoundationNSURLSessionEnabled()
+        setting.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setAVFoundationNSURLSessionEnabled:]):
+        (-[WebPreferences isAVFoundationNSURLSessionEnabled]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-02-09  Eric Carlson  <eric.carlson@apple.com>
+
+        checkValidity() sometimes asserts in WebUserMediaClient::pageDestroyed
+        https://bugs.webkit.org/show_bug.cgi?id=154029
+        <rdar://problem/24065022>
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (WebUserMediaClient::pageDestroyed): Copy map keys to a vector and clear the map before
+          enumerating the vector and canceling the requests. ASSERT that the map is not modified
+          during cleanup. Clean up the permission check map.
+        (WebUserMediaClient::requestUserMediaAccess): Add the request to the map before calling the
+          UI delegate in case it works synchronously (as it does in DRT).
+        (WebUserMediaClient::checkUserMediaPermission): Ditto.
+        (WebUserMediaClient::cancelUserMediaPermissionCheck): White-space cleanup.
+        (-[WebUserMediaPolicyListener allow]): Ditto.
+
+2016-02-08  Anders Carlsson  <andersca@apple.com>
+
+        Crash when trying to chain to the old -[NSView setNeedsDisplayInRect:]
+        https://bugs.webkit.org/show_bug.cgi?id=154001
+        rdar://problem/24519975
+
+        Reviewed by Dan Bernstein.
+
+        If our replaced -[NSView setNeedsDisplayInRect:] is called before the old IMP has been initialized,
+        we can end up trying to call a null pointer. 
+        
+        Fix this by using method_exchangeImplementations instead of method_setImplementation, since the former is done
+        atomically.
+
+        * WebView/WebHTMLView.mm:
+        (-[NSView _web_setNeedsDisplayInRect:]):
+        (+[WebHTMLViewPrivate initialize]):
+        (setNeedsDisplayInRect): Deleted.
+
+2016-02-07  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Replace __has_include guards around inclusion of Apple-internal-SDK headers with USE(APPLE_INTERNAL_SDK)
+        https://bugs.webkit.org/show_bug.cgi?id=153963
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPDFView.mm:
+
+2016-02-06  Darin Adler  <darin@apple.com>
+
+        Finish auditing call sites of upper() and lower(), eliminate many, and rename the functions
+        https://bugs.webkit.org/show_bug.cgi?id=153905
+
+        Reviewed by Sam Weinig.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]): Use modern for loops.
+        (-[WebBasePluginPackage supportsExtension:]): Use convertToASCIILowercase for extension assert.
+        Also use modern for loop.
+        (-[WebBasePluginPackage supportsMIMEType:]): Ditto.
+        (-[WebBasePluginPackage MIMETypeForExtension:]): Ditto.
+
 2016-02-03  Jessie Berlin  <jberlin@webkit.org>
 
         Build fix.

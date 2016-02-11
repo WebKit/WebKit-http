@@ -10,13 +10,20 @@ BouncingCssShape = Utilities.createSubclass(BouncingParticle,
         switch (stage.fill) {
         case "solid":
         default:
-            this.element.style.backgroundColor = stage.randomColor();
+            this.element.style.backgroundColor = Stage.randomColor();
             break;
 
         case "gradient":
-            this.element.style.background = "linear-gradient(" + stage.randomColor() + ", " + stage.randomColor() + ")";
+            this.element.style.background = "linear-gradient(" + Stage.randomColor() + ", " + Stage.randomColor() + ")";
             break;
         }
+
+        if (stage.blend)
+            this.element.style.mixBlendMode = Stage.randomStyleMixBlendMode();
+        
+        // Some browsers have not un-prefixed the css filter yet.
+        if (stage.filter)
+            Utilities.setElementPrefixedProperty(this.element, "filter", Stage.randomStyleFilter());
 
         this._move();
     }, {
@@ -50,10 +57,10 @@ BouncingCssShapesStage = Utilities.createSubclass(BouncingParticlesStage,
         BouncingParticlesStage.call(this);
     }, {
 
-    initialize: function(benchmark)
+    initialize: function(benchmark, options)
     {
-        BouncingParticlesStage.prototype.initialize.call(this, benchmark);
-        this.parseShapeParameters(benchmark.options);
+        BouncingParticlesStage.prototype.initialize.call(this, benchmark, options);
+        this.parseShapeParameters(options);
     },
 
     createParticle: function()

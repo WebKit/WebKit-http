@@ -481,8 +481,10 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-    if (m_sessionID.isEphemeral())
+    if (m_sessionID.isEphemeral()) {
         m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(m_sessionID));
+        m_process->processPool().sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession(m_sessionID));
+    }
 
 #if PLATFORM(COCOA)
     const CFIndex viewStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
@@ -1863,7 +1865,7 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 
     MESSAGE_CHECK_URL(urlString);
 
-    newMimeType = mimeType.lower();
+    newMimeType = mimeType.convertToASCIILowercase();
     pluginLoadPolicy = PluginModuleLoadNormally;
 
     PluginData::AllowedPluginTypes allowedPluginTypes = allowOnlyApplicationPlugins ? PluginData::OnlyApplicationPlugins : PluginData::AllPlugins;
@@ -4581,10 +4583,8 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         break;
     case WebEvent::MouseMove:
         m_processingMouseMoveEvent = false;
-        if (m_nextMouseMoveEvent) {
-            handleMouseEvent(*m_nextMouseMoveEvent);
-            m_nextMouseMoveEvent = nullptr;
-        }
+        if (m_nextMouseMoveEvent)
+            handleMouseEvent(*std::exchange(m_nextMouseMoveEvent, nullptr));
         break;
     case WebEvent::MouseDown:
         break;

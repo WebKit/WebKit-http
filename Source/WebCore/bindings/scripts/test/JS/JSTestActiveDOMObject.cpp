@@ -26,6 +26,7 @@
 #include "JSDOMConstructor.h"
 #include "JSNode.h"
 #include <runtime/Error.h>
+#include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -39,9 +40,9 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionPostMess
 
 // Attributes
 
-JSC::EncodedJSValue jsTestActiveDOMObjectExcitingAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-JSC::EncodedJSValue jsTestActiveDOMObjectConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestActiveDOMObjectConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestActiveDOMObjectExcitingAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestActiveDOMObjectConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestActiveDOMObjectConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestActiveDOMObjectPrototype : public JSC::JSNonFinalObject {
 public:
@@ -83,10 +84,16 @@ static const struct CompactHashIndex JSTestActiveDOMObjectTableIndex[4] = {
 static const HashTableValue JSTestActiveDOMObjectTableValues[] =
 {
     { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestActiveDOMObjectConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestActiveDOMObjectConstructor) } },
-    { "excitingAttr", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestActiveDOMObjectExcitingAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "excitingAttr", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestActiveDOMObjectExcitingAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
 static const HashTable JSTestActiveDOMObjectTable = { 2, 3, true, JSTestActiveDOMObjectTableValues, JSTestActiveDOMObjectTableIndex };
+template<> JSValue JSTestActiveDOMObjectConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
+{
+    UNUSED_PARAM(vm);
+    return globalObject.functionPrototype();
+}
+
 template<> void JSTestActiveDOMObjectConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
     putDirect(vm, vm.propertyNames->prototype, JSTestActiveDOMObject::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
@@ -94,7 +101,7 @@ template<> void JSTestActiveDOMObjectConstructor::initializeProperties(VM& vm, J
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestActiveDOMObjectConstructor::s_info = { "TestActiveDOMObjectConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestActiveDOMObjectConstructor) };
+template<> const ClassInfo JSTestActiveDOMObjectConstructor::s_info = { "TestActiveDOMObject", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestActiveDOMObjectConstructor) };
 
 /* Hash table for prototype */
 
@@ -144,12 +151,15 @@ bool JSTestActiveDOMObject::getOwnPropertySlot(JSObject* object, ExecState* stat
     return false;
 }
 
-EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
-    auto* castedThis = jsCast<JSTestActiveDOMObject*>(slotBase);
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestActiveDOMObject*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
+        return throwGetterTypeError(*state, "TestActiveDOMObject", "excitingAttr");
+    }
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, castedThis->wrapped()))
         return JSValue::encode(jsUndefined());
     auto& impl = castedThis->wrapped();
@@ -158,7 +168,7 @@ EncodedJSValue jsTestActiveDOMObjectExcitingAttr(ExecState* state, JSObject* slo
 }
 
 
-EncodedJSValue jsTestActiveDOMObjectConstructor(ExecState* state, JSObject*, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestActiveDOMObjectConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestActiveDOMObject* domObject = jsDynamicCast<JSTestActiveDOMObject*>(JSValue::decode(thisValue));
     if (!domObject)
@@ -168,10 +178,9 @@ EncodedJSValue jsTestActiveDOMObjectConstructor(ExecState* state, JSObject*, Enc
     return JSValue::encode(JSTestActiveDOMObject::getConstructor(state->vm(), domObject->globalObject()));
 }
 
-void setJSTestActiveDOMObjectConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestActiveDOMObjectConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(baseValue);
     JSTestActiveDOMObject* domObject = jsDynamicCast<JSTestActiveDOMObject*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state);
@@ -183,9 +192,9 @@ void setJSTestActiveDOMObjectConstructor(ExecState* state, JSObject* baseValue, 
     domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
-JSValue JSTestActiveDOMObject::getConstructor(VM& vm, JSGlobalObject* globalObject)
+JSValue JSTestActiveDOMObject::getConstructor(VM& vm, const JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSTestActiveDOMObjectConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSTestActiveDOMObjectConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionExcitingFunction(ExecState* state)

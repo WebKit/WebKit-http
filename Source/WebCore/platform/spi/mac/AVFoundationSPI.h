@@ -37,6 +37,8 @@
 
 #import <AVFoundation/AVPlayer.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @class AVOutputContext;
 @interface AVOutputContext : NSObject <NSSecureCoding>
 @property (nonatomic, readonly) NSString *deviceName;
@@ -46,6 +48,8 @@
 @interface AVPlayer (AVPlayerExternalPlaybackSupportPrivate)
 @property (nonatomic, retain) AVOutputContext *outputContext;
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif
 
@@ -74,3 +78,15 @@
 
 #endif // PLATFORM(IOS)
 
+// FIXME: Wrap in a #if USE(APPLE_INTERNAL_SDK) once this SPI lands
+#import <AVFoundation/AVAssetResourceLoader.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface AVAssetResourceLoader (AVAssetResourceLoaderPrivate)
+@property (nonatomic, readonly) id<NSURLSessionDataDelegate> URLSessionDataDelegate;
+@property (nonatomic, readonly) NSOperationQueue *URLSessionDataDelegateQueue;
+@property (nonatomic, nullable, retain) NSURLSession *URLSession;
+@end
+
+NS_ASSUME_NONNULL_END

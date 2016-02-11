@@ -57,12 +57,14 @@
 #import "QuartzCoreSPI.h"
 #import "SecurityOrigin.h"
 #import "SerializedPlatformRepresentationMac.h"
+#import "Settings.h"
 #import "TextEncoding.h"
 #import "TextTrackRepresentation.h"
 #import "UUID.h"
 #import "VideoTrackPrivateAVFObjC.h"
 #import "WebCoreAVFResourceLoader.h"
 #import "WebCoreCALayerExtras.h"
+#import "WebCoreNSURLSession.h"
 #import "WebCoreSystemInterface.h"
 #import <functional>
 #import <map>
@@ -912,7 +914,17 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
     m_avAsset = adoptNS([allocAVURLAssetInstance() initWithURL:cocoaURL options:options.get()]);
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
-    [[m_avAsset.get() resourceLoader] setDelegate:m_loaderDelegate.get() queue:globalLoaderDelegateQueue()];
+    AVAssetResourceLoader *resourceLoader = m_avAsset.get().resourceLoader;
+    [resourceLoader setDelegate:m_loaderDelegate.get() queue:globalLoaderDelegateQueue()];
+
+#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    if (Settings::isAVFoundationNSURLSessionEnabled()
+        && [resourceLoader respondsToSelector:@selector(setURLSession:)]
+        && [resourceLoader respondsToSelector:@selector(URLSessionDataDelegate)]
+        && [resourceLoader respondsToSelector:@selector(URLSessionDataDelegateQueue)])
+        resourceLoader.URLSession = (NSURLSession *)[[[WebCoreNSURLSession alloc] initWithResourceLoader:*player()->cachedResourceLoader() delegate:resourceLoader.URLSessionDataDelegate delegateQueue:resourceLoader.URLSessionDataDelegateQueue] autorelease];
+#endif
+
 #endif
 
     m_haveCheckedPlayability = false;
@@ -1153,6 +1165,7 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenMode(MediaPlayer::Vid
 #if PLATFORM(IOS)
     if (m_videoLayer && [m_videoLayer respondsToSelector:@selector(setPIPModeEnabled:)])
         [m_videoLayer setPIPModeEnabled:(mode & MediaPlayer::VideoFullscreenModePictureInPicture)];
+    updateDisableExternalPlayback();
 #else
     UNUSED_PARAM(mode);
 #endif
@@ -2861,6 +2874,8 @@ void MediaPlayerPrivateAVFoundationObjC::processMetadataTrack()
 
 void MediaPlayerPrivateAVFoundationObjC::processCue(NSArray *attributedStrings, NSArray *nativeSamples, const MediaTime& time)
 {
+    ASSERT(time >= MediaTime::zeroTime());
+
     if (!m_currentTextTrack)
         return;
 
@@ -3096,7 +3111,7 @@ void MediaPlayerPrivateAVFoundationObjC::updateDisableExternalPlayback()
         return;
 
 #if PLATFORM(IOS)
-    [m_avPlayer setUsesExternalPlaybackWhileExternalScreenIsActive:m_videoFullscreenLayerManager->videoFullscreenLayer() != nil];
+    [m_avPlayer setUsesExternalPlaybackWhileExternalScreenIsActive:player()->fullscreenMode() & MediaPlayer::VideoFullscreenModeStandard];
 #endif
 }
 #endif
@@ -3239,14 +3254,14 @@ void MediaPlayerPrivateAVFoundationObjC::metadataDidArrive(RetainPtr<NSArray> me
     // Set the duration of all incomplete cues before adding new ones.
     MediaTime earliestStartTime = MediaTime::positiveInfiniteTime();
     for (AVMetadataItemType *item in m_currentMetaData.get()) {
-        MediaTime start = toMediaTime(item.time);
+        MediaTime start = std::max(toMediaTime(item.time), MediaTime::zeroTime());
         if (start < earliestStartTime)
             earliestStartTime = start;
     }
     m_metadataTrack->updatePendingCueEndTimes(earliestStartTime);
 
     for (AVMetadataItemType *item in m_currentMetaData.get()) {
-        MediaTime start = toMediaTime(item.time);
+        MediaTime start = std::max(toMediaTime(item.time), MediaTime::zeroTime());
         MediaTime end = MediaTime::positiveInfiniteTime();
         if (CMTIME_IS_VALID(item.duration))
             end = start + toMediaTime(item.duration);
@@ -3560,7 +3575,8 @@ NSArray* playerKVOProperties()
         MediaPlayerPrivateAVFoundationObjC* callback = strongSelf->m_callback;
         if (!callback)
             return;
-        callback->processCue(strongStrings.get(), strongSamples.get(), toMediaTime(itemTime));
+        MediaTime time = std::max(toMediaTime(itemTime), MediaTime::zeroTime());
+        callback->processCue(strongStrings.get(), strongSamples.get(), time);
     });
 }
 

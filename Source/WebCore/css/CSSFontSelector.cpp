@@ -73,13 +73,13 @@ CSSFontSelector::CSSFontSelector(Document& document)
     // seem to be any such guarantee.
 
     ASSERT(m_document);
-    FontCache::singleton().addClient(this);
+    FontCache::singleton().addClient(*this);
 }
 
 CSSFontSelector::~CSSFontSelector()
 {
     clearDocument();
-    FontCache::singleton().removeClient(this);
+    FontCache::singleton().removeClient(*this);
 }
 
 bool CSSFontSelector::isEmpty() const
@@ -152,46 +152,33 @@ static Optional<FontTraitsMask> computeTraitsMask(const StyleProperties& style)
     return static_cast<FontTraitsMask>(traitsMask);
 }
 
-static Ref<CSSFontFace> createFontFace(CSSValueList& srcList, FontTraitsMask traitsMask, Document* document, const StyleRuleFontFace& fontFaceRule, bool isInitiatingElementInUserAgentShadowTree)
+static Ref<CSSFontFace> createFontFace(CSSValueList& srcList, FontTraitsMask traitsMask, Document* document, bool isInitiatingElementInUserAgentShadowTree)
 {
-    RefPtr<CSSFontFaceRule> rule;
-#if ENABLE(FONT_LOAD_EVENTS)
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=112116 - This CSSFontFaceRule has no parent.
-    if (RuntimeEnabledFeatures::sharedFeatures().fontLoadEventsEnabled())
-        rule = static_pointer_cast<CSSFontFaceRule>(fontFaceRule.createCSSOMWrapper());
-#else
-    UNUSED_PARAM(fontFaceRule);
-#endif
-    Ref<CSSFontFace> fontFace = CSSFontFace::create(traitsMask, WTFMove(rule));
+    Ref<CSSFontFace> fontFace = CSSFontFace::create(traitsMask);
 
-    int srcLength = srcList.length();
-
-    bool foundSVGFont = false;
-
-    for (int i = 0; i < srcLength; i++) {
+    for (auto& src : srcList) {
         // An item in the list either specifies a string (local font name) or a URL (remote font to download).
-        CSSFontFaceSrcValue& item = downcast<CSSFontFaceSrcValue>(*srcList.itemWithoutBoundsCheck(i));
+        CSSFontFaceSrcValue& item = downcast<CSSFontFaceSrcValue>(src.get());
         std::unique_ptr<CSSFontFaceSource> source;
+        SVGFontFaceElement* fontFaceElement = nullptr;
+        bool foundSVGFont = false;
 
 #if ENABLE(SVG_FONTS)
         foundSVGFont = item.isSVGFontFaceSrc() || item.svgFontFaceElement();
+        fontFaceElement = item.svgFontFaceElement();
 #endif
         if (!item.isLocal()) {
             Settings* settings = document ? document->settings() : nullptr;
             bool allowDownloading = foundSVGFont || (settings && settings->downloadableBinaryFontsEnabled());
             if (allowDownloading && item.isSupportedFormat() && document) {
                 if (CachedFont* cachedFont = item.cachedFont(document, foundSVGFont, isInitiatingElementInUserAgentShadowTree))
-                    source = std::make_unique<CSSFontFaceSource>(item.resource(), cachedFont);
+                    source = std::make_unique<CSSFontFaceSource>(fontFace.get(), item.resource(), cachedFont);
             }
         } else
-            source = std::make_unique<CSSFontFaceSource>(item.resource());
+            source = std::make_unique<CSSFontFaceSource>(fontFace.get(), item.resource(), nullptr, fontFaceElement);
 
-        if (source) {
-#if ENABLE(SVG_FONTS)
-            source->setSVGFontFaceElement(item.svgFontFaceElement());
-#endif
-            fontFace->addSource(WTFMove(source));
-        }
+        if (source)
+            fontFace->adoptSource(WTFMove(source));
     }
 
     return fontFace;
@@ -234,9 +221,9 @@ static void registerLocalFontFacesForFamily(const String& familyName, HashMap<St
 
     Vector<Ref<CSSFontFace>> faces = { };
     for (auto mask : traitsMasks) {
-        Ref<CSSFontFace> face = CSSFontFace::create(mask, nullptr, true);
-        face->addSource(std::make_unique<CSSFontFaceSource>(familyName));
-        ASSERT(face->isValid());
+        Ref<CSSFontFace> face = CSSFontFace::create(mask, true);
+        face->adoptSource(std::make_unique<CSSFontFaceSource>(face.get(), familyName));
+        ASSERT(!face->allSourcesFailed());
         faces.append(WTFMove(face));
     }
     locallyInstalledFontFaces.add(familyName, WTFMove(faces));
@@ -273,8 +260,8 @@ void CSSFontSelector::addFontFaceRule(const StyleRuleFontFace& fontFaceRule, boo
         return;
     auto traitsMask = computedTraitsMask.value();
 
-    Ref<CSSFontFace> fontFace = createFontFace(srcList, traitsMask, m_document, fontFaceRule, isInitiatingElementInUserAgentShadowTree);
-    if (!fontFace->isValid())
+    Ref<CSSFontFace> fontFace = createFontFace(srcList, traitsMask, m_document, isInitiatingElementInUserAgentShadowTree);
+    if (fontFace->allSourcesFailed())
         return;
 
     if (rangeList) {
@@ -478,15 +465,15 @@ CSSSegmentedFontFace* CSSFontSelector::getFontFace(const FontDescription& fontDe
         return nullptr;
     auto& familyFontFaces = iterator->value;
 
-    auto& segmentedFontFaceCache = m_fonts.add(family, HashMap<unsigned, RefPtr<CSSSegmentedFontFace>>()).iterator->value;
+    auto& segmentedFontFaceCache = m_fonts.add(family, HashMap<unsigned, std::unique_ptr<CSSSegmentedFontFace>>()).iterator->value;
 
     FontTraitsMask traitsMask = fontDescription.traitsMask();
 
-    RefPtr<CSSSegmentedFontFace>& face = segmentedFontFaceCache.add(traitsMask, nullptr).iterator->value;
+    std::unique_ptr<CSSSegmentedFontFace>& face = segmentedFontFaceCache.add(traitsMask, nullptr).iterator->value;
     if (face)
         return face.get();
 
-    face = CSSSegmentedFontFace::create(this);
+    face = std::make_unique<CSSSegmentedFontFace>(*this);
 
     Vector<std::reference_wrapper<CSSFontFace>, 32> candidateFontFaces;
     for (int i = familyFontFaces.size() - 1; i >= 0; --i) {

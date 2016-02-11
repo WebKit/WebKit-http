@@ -850,6 +850,15 @@ RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toString(BytecodeGenerator& ge
     return generator.moveToDestinationIfNeeded(dst, generator.emitToString(generator.tempDestination(dst), src.get()));
 }
 
+RegisterID* BytecodeIntrinsicNode::emit_intrinsic_isObject(BytecodeGenerator& generator, RegisterID* dst)
+{
+    ArgumentListNode* node = m_args->m_listNode;
+    RefPtr<RegisterID> src = generator.emitNode(node);
+    ASSERT(!node->m_next);
+
+    return generator.moveToDestinationIfNeeded(dst, generator.emitIsObject(generator.tempDestination(dst), src.get()));
+}
+
 
 #define JSC_DECLARE_BYTECODE_INTRINSIC_CONSTANT_GENERATORS(name) \
     RegisterID* BytecodeIntrinsicNode::emit_intrinsic_##name(BytecodeGenerator& generator, RegisterID* dst) \
@@ -909,9 +918,10 @@ RegisterID* FunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, Regi
     RefPtr<RegisterID> returnValue = generator.finalDestination(dst, function.get());
     CallArguments callArguments(generator, m_args);
     bool baseIsSuper = m_base->isSuperNode();
-    if (baseIsSuper)
+    if (baseIsSuper) {
+        generator.emitTDZCheck(generator.thisRegister());
         generator.emitMove(callArguments.thisRegister(), generator.thisRegister());
-    else
+    } else
         generator.emitNode(callArguments.thisRegister(), m_base);
     generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
     generator.emitGetById(function.get(), baseIsSuper ? emitSuperBaseForCallee(generator) : callArguments.thisRegister(), m_ident);
@@ -3422,17 +3432,22 @@ void ArrayPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) 
 RegisterID* ArrayPatternNode::emitDirectBinding(BytecodeGenerator& generator, RegisterID* dst, ExpressionNode* rhs)
 {
     if (!rhs->isSimpleArray())
-        return 0;
+        return nullptr;
+
+    ElementNode* elementNodes = static_cast<ArrayNode*>(rhs)->elements();
+    Vector<ExpressionNode*> elements;
+    for (; elementNodes; elementNodes = elementNodes->next()) {
+        ExpressionNode* value = elementNodes->value();
+        if (value->isSpreadExpression())
+            return nullptr;
+        elements.append(value);
+    }
 
     RefPtr<RegisterID> resultRegister;
     if (dst && dst != generator.ignoredResult())
         resultRegister = generator.emitNewArray(generator.newTemporary(), 0, 0);
-    ElementNode* elementNodes = static_cast<ArrayNode*>(rhs)->elements();
-    Vector<ExpressionNode*> elements;
-    for (; elementNodes; elementNodes = elementNodes->next())
-        elements.append(elementNodes->value());
     if (m_targetPatterns.size() != elements.size())
-        return 0;
+        return nullptr;
     Vector<RefPtr<RegisterID>> registers;
     registers.reserveCapacity(m_targetPatterns.size());
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {

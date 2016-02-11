@@ -1,3 +1,990 @@
+2016-02-10  Keith Miller  <keith_miller@apple.com>
+
+        Symbol.species accessors on builtin constructors should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=154097
+
+        Reviewed by Benjamin Poulain.
+
+        We did not have the Symbol.species accessors on our builtin constructors
+        marked as configurable. This does not accurately follow the ES6 spec as
+        the ES6 spec states that all default accessors on builtins should be
+        configurable. This means that we need an additional watchpoint on
+        ArrayConstructor to make sure that no users re-configures Symbol.species.
+
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::finishCreation):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::speciesConstructArray):
+        (JSC::ArrayPrototype::setConstructor):
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+        * runtime/ArrayPrototype.h:
+        (JSC::ArrayPrototype::didChangeConstructorOrSpeciesProperties):
+        (JSC::ArrayPrototype::didChangeConstructorProperty): Deleted.
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::JSArrayBufferConstructor::finishCreation):
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::JSPromiseConstructor::finishCreation):
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        (JSC::JSTypedArrayViewConstructor::finishCreation):
+        * runtime/MapConstructor.cpp:
+        (JSC::MapConstructor::finishCreation):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::finishCreation):
+        * runtime/SetConstructor.cpp:
+        (JSC::SetConstructor::finishCreation):
+        * tests/stress/array-species-config-array-constructor.js: Added.
+        (A):
+        * tests/stress/symbol-species.js:
+        (testSymbolSpeciesOnConstructor):
+
+2016-02-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] The destination of Sqrt should be Def, not UseDef
+        https://bugs.webkit.org/show_bug.cgi?id=154086
+
+        Reviewed by Geoffrey Garen.
+
+        An unfortunate copy-paste: the destination of SqrtDouble and SqrtFloat
+        was defined as UseDef. As a result, the argument would be interfering
+        with everything defined prior.
+
+        * b3/air/AirOpcode.opcodes:
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interface objects should be Function objects
+        https://bugs.webkit.org/show_bug.cgi?id=154038
+        <rdar://problem/24569358>
+
+        Reviewed by Geoffrey Garen.
+
+        Update functionProtoFuncToString() to handle JSObjects that
+        have the TypeOfShouldCallGetCallData flag and are callable,
+        as these behave like functions and use ClassInfo::className()
+        as function name in this case.
+
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        Attributes on the Window instance should be configurable unless [Unforgeable]
+        https://bugs.webkit.org/show_bug.cgi?id=153920
+        <rdar://problem/24563211>
+
+        Reviewed by Darin Adler.
+
+        Marking the Window instance attributes as configurable but cause
+        getOwnPropertyDescriptor() to report them as configurable, as
+        expected. However, trying to delete them would actually lead to
+        unexpected behavior because:
+        - We did not reify custom accessor properties (most of the Window
+          properties are custom accessors) upon deletion.
+        - For non-reified static properties marked as configurable,
+          JSObject::deleteProperty() would attempt to call the property
+          setter with undefined. As a result, calling delete window.name
+          would cause window.name to become the string "undefined" instead
+          of the undefined value.
+
+        * runtime/JSObject.cpp:
+        (JSC::getClassPropertyNames):
+        Now that we reify ALL properties, we only need to check the property table
+        if we have not reified. As a result, I dropped the 'didReify' parameter for
+        this function and instead only call this function if we have not yet reified.
+
+        (JSC::JSObject::putInlineSlow):
+        Only call putEntry() if we have not reified: Drop the
+        '|| !(entry->attributes() & BuiltinOrFunctionOrAccessor)'
+        check as such properties now get reified as well.
+
+        (JSC::JSObject::deleteProperty):
+        - Call reifyAllStaticProperties() instead of reifyStaticFunctionsForDelete()
+          so that we now reify all properties upon deletion, including the custom
+          accessors. reifyStaticFunctionsForDelete() is now removed and the same
+          reification function is now used by: deletion, getOwnPropertyDescriptor()
+          and eager reification of the prototype objects in the bindings.
+        - Drop code that falls back to calling the static property setter with
+          undefined if we cannot find the property in the property storage. As
+          we now reify ALL properties, the code removing the property from the
+          property storage should succeed, provided that the property actually
+          exists.
+
+        (JSC::JSObject::getOwnNonIndexPropertyNames):
+        Only call getClassPropertyNames() if we have not reified. We should no longer
+        check the static property table after reifying now that we reify all
+        properties.
+
+        (JSC::JSObject::reifyAllStaticProperties):
+        Merge with reifyStaticFunctionsForDelete(). The only behavior change is the
+        flattening to an uncacheable dictionary, like reifyStaticFunctionsForDelete()
+        used to do.
+
+        * runtime/JSObject.h:
+
+2016-02-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196251.
+        https://bugs.webkit.org/show_bug.cgi?id=154078
+
+        Large regression on Dromaeo needs explanation (Requested by
+        kling on #webkit).
+
+        Reverted changeset:
+
+        "Visiting a WeakBlock should report bytes visited, since we
+        reported them allocated."
+        https://bugs.webkit.org/show_bug.cgi?id=153978
+        http://trac.webkit.org/changeset/196251
+
+2016-02-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r196331): It made ~180 JSC tests crash on ARMv7 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=154064
+
+        Reviewed by Mark Lam.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate): Added EABI_32BIT_DUMMY_ARG where it is necessary.
+        * dfg/DFGSpeculativeJIT.h: Fixed the comment.
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState): Added.
+        * wasm/WASMFunctionCompiler.h: Fixed the comment.
+
+2016-02-09  Keith Miller  <keith_miller@apple.com>
+
+        calling methods off super in a class constructor should check for TDZ
+        https://bugs.webkit.org/show_bug.cgi?id=154060
+
+        Reviewed by Ryosuke Niwa.
+
+        In a class constructor we need to check for TDZ when calling a method
+        off the super class. This is because, for super method calls, we use
+        the derived class's newly constructed object as the super method's
+        this value.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionCallDotNode::emitBytecode):
+        * tests/stress/super-method-calls-check-tdz.js: Added.
+        (Base):
+        (Derived):
+        (test):
+
+2016-02-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't crash if we fail to parse a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=154047
+        rdar://problem/24300617
+
+        Reviewed by Mark Lam.
+
+        Crashing probably seemed like a good idea at the time, but we could get here in case of a
+        near stack overflow, so that the parser bails because of recursion.
+
+        * parser/Parser.h:
+        (JSC::parse):
+
+2016-02-07  Gavin Barraclough  <barraclough@apple.com>
+
+        GetValueFunc/PutValueFunc should not take both slotBase and thisValue
+        https://bugs.webkit.org/show_bug.cgi?id=154009
+
+        Reviewed by Geoff Garen.
+
+        In JavaScript there are two types of properties - regular value properties, and accessor properties.
+        One difference between these is how they are reflected by getOwnPropertyDescriptor, and another is
+        what object they operate on in the case of a prototype access. If you access a value property of a
+        prototype object it return a value pertinent to the prototype, but in the case of a prototype object
+        returning an accessor, then the accessor function is applied to the base object of the access.
+
+        JSC supports special 'custom' properties implemented as a c++ callback, and these custom properties
+        can be used to implement either value- or accessor-like behavior. getOwnPropertyDescriptor behavior
+        is selected via the CustomAccessor attribute. Value- or accessor-like object selection is current
+        supported by passing both the slotBase and the thisValue to the callback,and hoping it uses the
+        right one. This is probably inefficient, bug-prone, and leads to crazy like JSBoundSlotBaseFunction.
+
+        Instead, just pass one thisValue to the callback functions, consistent with CustomAccessor.
+
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::getStaticValue):
+        (JSC::JSCallbackObject<Parent>::staticFunctionGetter):
+        (JSC::JSCallbackObject<Parent>::callbackGetter):
+            - Merged slotBase & thisValue to custom property callbacks.
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate):
+            - Modified the call being JIT generated - GetValueFunc/PutValueFunc now only take 3,
+              rather than 4 arguments. Selects which one to keep/drop based on access type.
+        (WTF::printInternal):
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessCase::isGet):
+        (JSC::AccessCase::isPut):
+        (JSC::AccessCase::isIn):
+        (JSC::AccessCase::doesCalls):
+        (JSC::AccessCase::isGetter):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryCachePutByID):
+            - Split the CustomGetter/Setter access types into Value/Accessor variants.
+        * jsc.cpp:
+        (WTF::CustomGetter::getOwnPropertySlot):
+        (WTF::CustomGetter::customGetter):
+        (WTF::RuntimeArray::RuntimeArray):
+        (WTF::RuntimeArray::lengthGetter):
+            - Merged slotBase & thisValue to custom property callbacks.
+        * runtime/CustomGetterSetter.cpp:
+        (JSC::callCustomSetter):
+            - Pass 3 arguments when calling PutValueFunc.
+        * runtime/CustomGetterSetter.h:
+        * runtime/JSBoundSlotBaseFunction.cpp:
+        (JSC::boundSlotBaseFunctionCall):
+        (JSC::JSBoundSlotBaseFunction::JSBoundSlotBaseFunction):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+            - callCustomSetter currently takes a flag to distinguish value/accessor calls.
+        * runtime/JSFunction.cpp:
+        (JSC::retrieveArguments):
+        (JSC::JSFunction::argumentsGetter):
+        (JSC::retrieveCallerFunction):
+        (JSC::JSFunction::callerGetter):
+        (JSC::JSFunction::lengthGetter):
+        (JSC::JSFunction::nameGetter):
+        * runtime/JSFunction.h:
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::visitChildren):
+        (JSC::callbackGetter):
+            - Merged slotBase & thisValue to custom property callbacks.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+            - callCustomSetter currently takes a flag to distinguish value/accessor calls.
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+            - split PutPropertySlot setCustom into Value/Accessor variants.
+        * runtime/PropertySlot.cpp:
+        (JSC::PropertySlot::functionGetter):
+        (JSC::PropertySlot::customGetter):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::getValue):
+            - added customGetter helper to call GetValueFunc.
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::PutPropertySlot):
+        (JSC::PutPropertySlot::setNewProperty):
+        (JSC::PutPropertySlot::setCustomValue):
+        (JSC::PutPropertySlot::setCustomAccessor):
+        (JSC::PutPropertySlot::setThisValue):
+        (JSC::PutPropertySlot::customSetter):
+        (JSC::PutPropertySlot::context):
+        (JSC::PutPropertySlot::isStrictMode):
+        (JSC::PutPropertySlot::isCacheablePut):
+        (JSC::PutPropertySlot::isCacheableSetter):
+        (JSC::PutPropertySlot::isCacheableCustom):
+        (JSC::PutPropertySlot::isCustomAccessor):
+        (JSC::PutPropertySlot::isInitialization):
+        (JSC::PutPropertySlot::cachedOffset):
+        (JSC::PutPropertySlot::setCustomProperty): Deleted.
+            - split PutPropertySlot setCustom into Value/Accessor variants.
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::getOwnPropertySlot):
+        (JSC::regExpConstructorDollar1):
+        (JSC::regExpConstructorDollar2):
+        (JSC::regExpConstructorDollar3):
+        (JSC::regExpConstructorDollar4):
+        (JSC::regExpConstructorDollar5):
+        (JSC::regExpConstructorDollar6):
+        (JSC::regExpConstructorDollar7):
+        (JSC::regExpConstructorDollar8):
+        (JSC::regExpConstructorDollar9):
+        (JSC::regExpConstructorInput):
+        (JSC::regExpConstructorMultiline):
+        (JSC::regExpConstructorLastMatch):
+        (JSC::regExpConstructorLastParen):
+        (JSC::regExpConstructorLeftContext):
+        (JSC::regExpConstructorRightContext):
+        (JSC::setRegExpConstructorInput):
+        (JSC::setRegExpConstructorMultiline):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::defineOwnProperty):
+        (JSC::regExpObjectSetLastIndexStrict):
+        (JSC::regExpObjectSetLastIndexNonStrict):
+        (JSC::RegExpObject::put):
+            - Merged slotBase & thisValue to custom property callbacks.
+
+2016-02-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Spread expressions are not fair game for direct binding
+        https://bugs.webkit.org/show_bug.cgi?id=154042
+        rdar://problem/24291413
+
+        Reviewed by Saam Barati.
+
+        Prior to this change we crashed on this:
+
+            var [x] = [...y];
+
+        Because NodesCodegen thinks that this is a direct binding.  It's not, because we cannot
+        directly generate bytecode for "...y".  This is a unique property of spread expressions, so
+        its sufficient to just bail out of direct binding if we see a spread expression. That's what
+        this patch does.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayPatternNode::emitDirectBinding):
+        * tests/stress/spread-in-tail.js: Added.
+        (foo):
+        (catch):
+
+2016-02-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196286.
+        https://bugs.webkit.org/show_bug.cgi?id=154026
+
+        Looks like 5% iOS PLT regression (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Throw away some unlinked code when navigating to a new
+        page."
+        https://bugs.webkit.org/show_bug.cgi?id=154014
+        http://trac.webkit.org/changeset/196286
+
+2016-02-08  Keith Miller  <keith_miller@apple.com>
+
+        Error construction for inlined operations should not use the inliner's CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=154021
+
+        Reviewed by Mark Lam.
+
+        Previously, if one function, A, was inlined into another function, B, in the DFG/FTL
+        we would use B's DFG/FTL CodeBlock to construct source information about the Error.
+        We would correctly compute the bytecodeOffset in A for the an expression but we would
+        not use one of A's CodeBlocks when looking up source. This caused crashes during
+        operationIn as we expected to be able to find the text "in" in the source.
+
+        * runtime/ErrorInstance.cpp:
+        (JSC::appendSourceToError):
+        * tests/stress/inlined-error-gets-correct-codeblock-for-bytecodeoffset.js: Added.
+        (map):
+        (n):
+        (one):
+        (catch):
+
+2016-02-08  Saam Barati  <sbarati@apple.com>
+
+        runtimeTypeForValue should protect against seeing TDZ value
+        https://bugs.webkit.org/show_bug.cgi?id=154023
+        rdar://problem/24291413
+
+        Reviewed by Michael Saboff.
+
+        There are a few back traces I've seen from crashes that bottom out
+        inside runtimeTypeForValue. I haven't been able to reproduce
+        any such crash, but it's likely that we're encountering the
+        empty JSValue. It's better to just have this function protect
+        against seeing the empty value instead of dereferencing a null
+        pointer when it thinks the value is a cell.
+
+        * runtime/RuntimeType.cpp:
+        (JSC::runtimeTypeForValue):
+
+2016-02-08  Andreas Kling  <akling@apple.com>
+
+        [iOS] Throw away some unlinked code when navigating to a new page.
+        <https://webkit.org/b/154014>
+
+        Reviewed by Gavin Barraclough.
+
+        * runtime/VM.cpp:
+        (JSC::VM::deleteAllCodeExceptCaches):
+        (JSC::VM::deleteAllLinkedCode): Deleted.
+        * runtime/VM.h:
+
+2016-02-08  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::foldPathConstants() needs to execute its insertion set
+        https://bugs.webkit.org/show_bug.cgi?id=154020
+
+        Reviewed by Saam Barati.
+
+        * b3/B3FoldPathConstants.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testFoldPathEqual): Added this. It used to crash in validation.
+        (JSC::B3::run):
+
+2016-02-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Introduce @isObject bytecode intrinsic and use it instead of JS implemented one
+        https://bugs.webkit.org/show_bug.cgi?id=153976
+
+        Reviewed by Darin Adler.
+
+        Use bytecode op_is_object directly.
+
+        * builtins/GlobalObject.js:
+        (isObject): Deleted.
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_toString):
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_isObject):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): Deleted.
+
+2016-02-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        {Map,Set}.prototype.forEach should be visible as own properties
+        https://bugs.webkit.org/show_bug.cgi?id=153974
+
+        Reviewed by Darin Adler.
+
+        Now, Map and Set uses builtin tables. We should inlude it in class info.
+
+        * runtime/MapPrototype.cpp:
+        * runtime/SetPrototype.cpp:
+
+2016-02-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should not require its input to be constant-propagated
+        https://bugs.webkit.org/show_bug.cgi?id=154011
+        rdar://problem/24290933
+
+        Reviewed by Mark Lam.
+
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emitBitBinaryOpFastPath):
+        (JSC::JIT::emitRightShiftFastPath):
+        (JSC::JIT::emit_op_add):
+        (JSC::JIT::emit_op_div):
+        (JSC::JIT::emit_op_mul):
+
+2016-02-08  Filip Pizlo  <fpizlo@apple.com>
+
+        CodeCache should give up on evals if there are variables under TDZ
+        https://bugs.webkit.org/show_bug.cgi?id=154002
+        rdar://problem/24300998
+
+        Reviewed by Mark Lam.
+
+        Disable the code cache optimization because our approach to TDZ for scoped variables - using
+        a separate check_tdz opcode when logically it's the get_from_scope's job to do it - makes
+        caching code impossible if there are any variables in TDZ.
+
+        We should do the right thing in the future, and fold the TDZ check into the get_from_scope.
+        This is better not only because it will restore caching, but because our bytecode for heap
+        accesses is usually at the highest practically doable level of abstraction, so that ICs,
+        compilers and caches can see the intended meaning of the bytecode more easily.
+
+        This doesn't appear to slow anything down, but that's just because we don't have enough ES6
+        benchmarks. I've filed: https://bugs.webkit.org/show_bug.cgi?id=154010
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+
+2016-02-08  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Using 'super' in arrow function that declared out of the class should lead to Syntax error
+        https://bugs.webkit.org/show_bug.cgi?id=150893
+
+        Reviewed by Saam Barati.
+
+        'super' and 'super()' inside of the arrow function should lead to syntax error if they are used 
+        out of the class context or they wrapped by ordinary function. Now JSC returns ReferenceError but 
+        should return SyntaxError according to the following specs:
+        http://www.ecma-international.org/ecma-262/6.0/#sec-function-definitions-static-semantics-early-errors
+        and http://www.ecma-international.org/ecma-262/6.0/#sec-arrow-function-definitions-runtime-semantics-evaluation 
+        Curren patch implemented only one case when super/super() are used inside of the arrow function
+        Case when super/super() are used within the eval:
+           class A {} 
+           class B extends A { 
+               costructor() { eval("super()");} 
+           }
+        is not part of this patch and will be implemented in this issue https://bugs.webkit.org/show_bug.cgi?id=153864. 
+        The same for case when eval with super/super() is invoked in arrow function will be 
+        implemented in issue https://bugs.webkit.org/show_bug.cgi?id=153977. 
+ 
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+        (JSC::Scope::setExpectedSuperBinding):
+        (JSC::Scope::expectedSuperBinding):
+        (JSC::Scope::setConstructorKind):
+        (JSC::Scope::constructorKind):
+        (JSC::Parser::closestParentNonArrowFunctionNonLexicalScope):
+        * tests/stress/arrowfunction-lexical-bind-supercall-4.js:
+        * tests/stress/arrowfunction-lexical-bind-superproperty.js:
+
+2016-02-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Parser should detect error before calls to parseAssignmentExpression()
+        https://bugs.webkit.org/show_bug.cgi?id=153975
+        rdar://problem/24291231
+
+        Reviewed by Saam Barati.
+
+        Fixes a very hard-to-create situation that an internal test picked up.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVariableDeclarationList):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+
+2016-02-08  Andreas Kling  <akling@apple.com>
+
+        Visiting a WeakBlock should report bytes visited, since we reported them allocated.
+        <https://webkit.org/b/153978>
+
+        Reviewed by Darin Adler.
+
+        When creating a WeakBlock, we tell Heap that we've allocated 1 KB (WeakBlock::blockSize)
+        of memory. Consequently, when visiting a WeakBlock, we should also report 1 KB of memory
+        visited. Otherwise Heap will think that those 1 KB already went away.
+
+        This was causing us to underestimate heap size, which affects collection scheduling.
+
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::reportMemoryVisited):
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::visit):
+
+2016-02-07  Saam barati  <sbarati@apple.com>
+
+        Follow up patch to: [ES6] bound functions .name property should be "bound " + the target function's name 
+        https://bugs.webkit.org/show_bug.cgi?id=153796
+
+        Reviewed by Darin Adler.
+
+        This follow-up patch addresses some comments/suggestions by
+        Ryosuke, Darin, and Joe. It simplifies JSBoundFunction::toStringName
+        and adds some tests for bound names.
+
+        * runtime/JSBoundFunction.cpp:
+        (JSC::hasInstanceBoundFunction):
+        (JSC::JSBoundFunction::create):
+        (JSC::JSBoundFunction::toStringName):
+
+2016-02-07  Filip Pizlo  <fpizlo@apple.com>
+
+        String.match should defend against matches that would crash the VM
+        https://bugs.webkit.org/show_bug.cgi?id=153964
+        rdar://problem/24301119
+
+        Reviewed by Saam Barati.
+
+        This fixes a crash in an internal test case.
+
+        * runtime/ArgList.cpp:
+        (JSC::MarkedArgumentBuffer::slowAppend): Use best practices to ensure that the size we
+            compute makes sense. Crash if it stops making sense, since most users of this API assume
+            that they are creating something small enough to fit on the stack.
+        * runtime/ArgList.h:
+        (JSC::MarkedArgumentBuffer::~MarkedArgumentBuffer):
+        (JSC::MarkedArgumentBuffer::size):
+        (JSC::MarkedArgumentBuffer::operator new): Deleted. These were ineffective. According to the
+            debugger, we were still calling system malloc. So, I changed the code to use fastMalloc()
+            directly.
+        (JSC::MarkedArgumentBuffer::operator delete): Deleted.
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncMatch): Explicitly defend against absurd sizes. Of course, it's still
+            possible to crash the VM on OOME. That's sort of always been the philosophy of JSC - we
+            don't guarantee that you'll get a nice-looking error whenever you run out of memory,
+            since in a GC'd environment you can't really guarantee those things. But, if you have a
+            match that obvious won't fit in memory, then reporting an error is useful in case this is
+            a developer experimenting with a buggy regexp.
+
+2016-02-07  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Replace __has_include guards around inclusion of Apple-internal-SDK headers with USE(APPLE_INTERNAL_SDK)
+        https://bugs.webkit.org/show_bug.cgi?id=153963
+
+        Reviewed by Sam Weinig.
+
+        * inspector/remote/RemoteInspectorXPCConnection.mm:
+
+2016-02-06  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL must store the call site index before runtime calls, even if it's the tail call slow path
+        https://bugs.webkit.org/show_bug.cgi?id=153955
+        rdar://problem/24290970
+
+        Reviewed by Saam Barati.
+
+        This is necessary because you could throw an exception in a host call on the tail call's slow
+        path. That'll route us to lookupExceptionHandler(), which unwinds starting with the call site
+        index of our frame. Bad things happen if it's not set. Prior to this patch it was possible
+        for the call site index field to be uninitialized, which meant that the throwing machinery
+        was making a wild guess about where we are.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileTailCall):
+        * tests/stress/tail-call-host-call-throw.js: Added.
+
+2016-02-06  Darin Adler  <darin@apple.com>
+
+        Finish auditing call sites of upper() and lower(), eliminate many, and rename the functions
+        https://bugs.webkit.org/show_bug.cgi?id=153905
+
+        Reviewed by Sam Weinig.
+
+        * runtime/IntlObject.cpp:
+        (JSC::canonicalLangTag): Use converToASCIIUppercase on the language tag.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncToLowerCase): Tweak style and update for name change.
+        (JSC::stringProtoFuncToUpperCase): Ditto.
+
+2016-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Object.getOwnPropertyDescriptor() does not work on sub-frame's window
+        https://bugs.webkit.org/show_bug.cgi?id=153925
+
+        Reviewed by Darin Adler.
+
+        Calling Object.getOwnPropertyDescriptor() on a sub-frame's window was
+        returning undefined for that window's own properties. The reason was
+        that the check getOwnPropertySlot() is using to make sure the
+        PropertySlot is not for a property coming from the prototype was wrong.
+
+        The check was checking that 'this != slotBase' which works fine unless
+        this is a JSProxy (e.g. JSDOMWindowShell). To handle proxies, the code
+        was also checking that 'slotBase.toThis() != this', attempting to
+        get the slotBase/Window's proxy. However, due to the implementation of
+        toThis(), we were getting the lexical global object's proxy instead of
+        slotBase's proxy. To avoid this issue, the new code explicitly checks
+        if 'this' is a JSProxy and makes sure 'JSProxy::target() != slotBase',
+        instead of using toThis().
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor):
+
+2016-02-06  Andreas Kling  <akling@apple.com>
+
+        [iOS] Throw away linked code when navigating to a new page.
+        <https://webkit.org/b/153851>
+
+        Reviewed by Gavin Barraclough.
+
+        Add a VM API for throwing away linked code only.
+
+        * runtime/VM.cpp:
+        (JSC::VM::deleteAllLinkedCode):
+        * runtime/VM.h:
+
+2016-02-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196104.
+        https://bugs.webkit.org/show_bug.cgi?id=153940
+
+        Regressed Speedometer on iOS (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Throw away linked code when navigating to a new page."
+        https://bugs.webkit.org/show_bug.cgi?id=153851
+        http://trac.webkit.org/changeset/196104
+
+2016-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=153930
+        <rdar://problem/24534864>
+
+        Reviewed by Mark Lam.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj:
+        I made a typo in r196144.
+
+2016-02-05  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Include SamplingProfiler's expression-level data for stack frames in the protocol
+        https://bugs.webkit.org/show_bug.cgi?id=153455
+        <rdar://problem/24335884>
+
+        Reviewed by Joseph Pecoraro.
+
+        We now send the sampling profiler's expression-level
+        line/column info in the inspector protocol.
+
+        * inspector/agents/InspectorScriptProfilerAgent.cpp:
+        (Inspector::buildSamples):
+        * inspector/protocol/ScriptProfiler.json:
+        * runtime/SamplingProfiler.h:
+        (JSC::SamplingProfiler::StackFrame::hasExpressionInfo):
+
+2016-02-05  Saam barati  <sbarati@apple.com>
+
+        follow-up to: JSC Sampling Profiler: (host) is confusing in cases where I would expect to see JS name
+        https://bugs.webkit.org/show_bug.cgi?id=153663
+        <rdar://problem/24415092>
+
+        Rubber stamped by Joseph Pecoraro.
+
+        We were performing operations that required us to
+        hold the VM lock even when we might not have been holding it.
+        We now ensure we're holding it.
+
+        * inspector/agents/InspectorScriptProfilerAgent.cpp:
+        (Inspector::InspectorScriptProfilerAgent::trackingComplete):
+
+2016-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Arrayify for a typed array shouldn't create a monster
+        https://bugs.webkit.org/show_bug.cgi?id=153908
+        rdar://problem/24290639
+
+        Reviewed by Mark Lam.
+
+        Previously if you convinced the DFG to emit an Arrayify to ArrayStorage and then gave it a
+        typed array, you'd corrupt the object.
+
+        * runtime/JSArrayBufferView.cpp:
+        (WTF::printInternal):
+        * runtime/JSArrayBufferView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::visitChildren):
+        (JSC::JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::copyButterfly):
+        (JSC::JSObject::enterDictionaryIndexingMode):
+        (JSC::JSObject::ensureInt32Slow):
+        (JSC::JSObject::ensureDoubleSlow):
+        (JSC::JSObject::ensureContiguousSlow):
+        (JSC::JSObject::ensureArrayStorageSlow):
+        (JSC::JSObject::growOutOfLineStorage):
+        (JSC::getBoundSlotBaseFunctionForGetterSetter):
+        * runtime/Structure.h:
+        * tests/stress/arrayify-array-storage-typed-array.js: Added. This test failed.
+        * tests/stress/arrayify-int32-typed-array.js: Added. This test case already had other protections, but we beefed them up.
+
+2016-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: InspectorTimelineAgent doesn't need to recompile functions because it now uses the sampling profiler
+        https://bugs.webkit.org/show_bug.cgi?id=153500
+        <rdar://problem/24352458>
+
+        Reviewed by Timothy Hatcher.
+
+        Be more explicit about enabling legacy profiling.
+
+        * jsc.cpp:
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::hasLegacyProfiler):
+        (JSC::JSGlobalObject::createProgramCodeBlock):
+        (JSC::JSGlobalObject::createEvalCodeBlock):
+        (JSC::JSGlobalObject::createModuleProgramCodeBlock):
+        (JSC::JSGlobalObject::hasProfiler): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::supportsLegacyProfiling):
+        (JSC::JSGlobalObject::supportsProfiling): Deleted.
+
+2016-02-04  Keith Miller  <keith_miller@apple.com>
+
+        ArrayPrototype should have a destroy function
+        https://bugs.webkit.org/show_bug.cgi?id=153847
+
+        Reviewed by Filip Pizlo.
+
+        ArrayPrototype should have an destroy function as it now has a unique_ptr member that
+        needs to be freed at the end of the object's life cycle. Also, this patch adds an
+        option, gcAtEnd, that will cause jsc.cpp to do a garbage collection before exiting.
+
+        * jsc.cpp:
+        (runJSC):
+        (jscmain):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::create):
+        (JSC::ArrayPrototype::destroy):
+        * runtime/ArrayPrototype.h:
+        * runtime/Options.h:
+
+2016-02-04  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(192409): Cannot rely on add32() to zero-extend
+        https://bugs.webkit.org/show_bug.cgi?id=153897
+
+        Unreviewed rollout of r192409.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::add32):
+        (JSC::MacroAssemblerARM64::add64):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::add32):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::add32):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::add32):
+        (JSC::MacroAssemblerX86Common::add8):
+        (JSC::MacroAssemblerX86Common::branchAdd32):
+        (JSC::MacroAssemblerX86Common::generateTest32):
+        (JSC::MacroAssemblerX86Common::clz32AfterBsr):
+        (JSC::MacroAssemblerX86Common::add32AndSetFlags): Deleted.
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::add32):
+        (JSC::MacroAssemblerX86_64::add64):
+        (JSC::MacroAssemblerX86_64::branchAdd64):
+        (JSC::MacroAssemblerX86_64::repatchCall):
+        (JSC::MacroAssemblerX86_64::clz64AfterBsr):
+        (JSC::MacroAssemblerX86_64::add64AndSetFlags): Deleted.
+
+2016-02-04  Andreas Kling  <akling@apple.com>
+
+        Remove dead ENABLE(BYTECODE_COMMENTS) cruft.
+        <https://webkit.org/b/153888>
+
+        Reviewed by Antti Koivisto.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+
+2016-02-04  Saam barati  <sbarati@apple.com>
+
+        JSC Sampling Profiler: (host) is confusing in cases where I would expect to see JS name
+        https://bugs.webkit.org/show_bug.cgi?id=153663
+        <rdar://problem/24415092>
+
+        Reviewed by Geoffrey Garen.
+
+        We now collect the Callee in the processed StackFrame
+        when the Callee is a valid GC object. We later ask
+        the Callee for it's .displayName or .name property.
+        When we don't have a valid callee, we will still
+        use the Executable for this information.
+
+        This helps us come up with good names for frames where 
+        the Callee object is a bound function or an InternalFunction.
+
+        * inspector/agents/InspectorScriptProfilerAgent.cpp:
+        (Inspector::InspectorScriptProfilerAgent::addEvent):
+        (Inspector::buildSamples):
+        (Inspector::InspectorScriptProfilerAgent::trackingComplete):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::reportStats):
+        (JSC::FrameWalker::walk):
+        (JSC::SamplingProfiler::processUnverifiedStackTraces):
+        (JSC::SamplingProfiler::visit):
+        (JSC::SamplingProfiler::shutdown):
+        (JSC::SamplingProfiler::clearData):
+        (JSC::SamplingProfiler::StackFrame::nameFromCallee):
+        (JSC::SamplingProfiler::StackFrame::displayName):
+        (JSC::SamplingProfiler::StackFrame::displayNameForJSONTests):
+        (JSC::SamplingProfiler::stackTracesAsJSON):
+        * runtime/SamplingProfiler.h:
+        (JSC::SamplingProfiler::UnprocessedStackFrame::UnprocessedStackFrame):
+        (JSC::SamplingProfiler::StackFrame::StackFrame):
+        * tests/stress/sampling-profiler-basic.js:
+        (platformSupportsSamplingProfiler.nothing):
+        (platformSupportsSamplingProfiler.top):
+        * tests/stress/sampling-profiler-bound-function-name.js: Added.
+        (platformSupportsSamplingProfiler.foo):
+        (platformSupportsSamplingProfiler.bar):
+        (platformSupportsSamplingProfiler.let.baz):
+        (platformSupportsSamplingProfiler):
+        * tests/stress/sampling-profiler-display-name.js: Added.
+        (platformSupportsSamplingProfiler.foo):
+        (platformSupportsSamplingProfiler.baz):
+        (platformSupportsSamplingProfiler.):
+        (platformSupportsSamplingProfiler.bar):
+        (platformSupportsSamplingProfiler.jaz):
+        (platformSupportsSamplingProfiler.makeFunction.let.result):
+        (platformSupportsSamplingProfiler.makeFunction):
+        * tests/stress/sampling-profiler-internal-function-name.js: Added.
+        (platformSupportsSamplingProfiler.foo):
+        (platformSupportsSamplingProfiler.bar):
+        (platformSupportsSamplingProfiler):
+
+2016-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Object.getOwnPropertyDescriptor() returns incomplete descriptor for instance properties
+        https://bugs.webkit.org/show_bug.cgi?id=153817
+
+        Reviewed by Geoffrey Garen.
+
+        Extend support for Object.getOwnPropertyDescriptor() on native bindings
+        to instance properties (e.g. Unforgeable properties or Global object
+        properties) so that the returned descriptor has getter / setter
+        functions, as expected.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::reifyAllStaticProperties):
+        Add method that reifies all static properties, including the custom
+        accessors. This is similar to what is done eagerly on the prototype
+        objects in the bindings code.
+
+        (JSC::JSObject::getOwnPropertyDescriptor):
+        getOwnPropertyDescriptor() would previously fails for custom accessors
+        that are on the instance because getDirect() does not check the static
+        property table and those custom accessors were not reified (We only
+        reified all properties eagerly - including custom accessors - on
+        prototype objects. To address this issue, we now call
+        reifyAllStaticProperties() if the call to getDirect() fails and then
+        call getDirect() again. This fix is however insufficient for Window
+        properties because |this| is a JSDOMWindowShell / JSProxy in this case
+        and getDirect() / reifyAllStaticProperties() would fail as the proxy
+        does not actually have the properties. This issue was addressed by
+        checking if |this| is a JSProxy and then using JSProxy::target() instead
+        of |this| for the calls to getDirect() and for the reification.
+
+        * runtime/JSObject.h:
+        * runtime/Lookup.h:
+        (JSC::reifyStaticProperty):
+        (JSC::reifyStaticProperties):
+        Move most code in reifyStaticProperties() to a separate function so the
+        code can be shared with JSObject::reifyAllStaticProperties().
+        reifyStaticProperties() is currently called by the bindings on the
+        prototype objects.
+
+2016-02-04  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=153886
+        <rdar://problem/24499887>
+
+        Reviewed by Mark Lam.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj:
+        In r190253 I changed the directory of the headers from AppleInternal/include/JavaScriptCore 
+        to AppleInternal/include/private/JavaScriptCore.  This is ok for WebCore and WebKit, but not
+        other projects, such as CFNetwork, which expect the public API headers to be in the old location.
+        This used to be done by a combination of copy-files.cmd and the old JavaScriptCore.proj.
+        This change copies all the API headers, which copies everything in copy-files.cmd except APIShims.h
+        which does not exist any more.  It copies additional headers that were not copied before, but
+        I think this is beneficial so we do not forget to add new public headers to a list of public headers
+        to be copied in the internal build.  Having extra public headers in the internal Windows build is
+        not a problem because only internal clients use the internal Windows build.
+
+2016-02-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Make some classes non JSDestructibleObject
+        https://bugs.webkit.org/show_bug.cgi?id=153838
+
+        Reviewed by Geoffrey Garen.
+
+        SymbolPrototype, JSMapIterator and JSSetIterator are trivially destructible.
+        So there is no need to inherit JSDestructibleObject.
+
+        * runtime/JSMapIterator.cpp:
+        (JSC::JSMapIterator::destroy): Deleted.
+        * runtime/JSMapIterator.h:
+        * runtime/JSSetIterator.cpp:
+        (JSC::JSSetIterator::destroy): Deleted.
+        * runtime/JSSetIterator.h:
+        * runtime/MapData.h:
+        * runtime/SymbolPrototype.h:
+
+2016-02-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Symbol structure has unnecessary flags
+        https://bugs.webkit.org/show_bug.cgi?id=153840
+
+        Reviewed by Saam Barati.
+
+        * runtime/Symbol.h:
+        * tests/stress/symbol-get-own-property.js: Added.
+        (shouldBe):
+
 2016-02-03  Andreas Kling  <akling@apple.com>
 
         [iOS] Throw away linked code when navigating to a new page.

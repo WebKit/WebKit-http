@@ -1,3 +1,103 @@
+2016-02-10  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] interface objects should be Function objects
+        https://bugs.webkit.org/show_bug.cgi?id=154038
+        <rdar://problem/24569358>
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline W3C tests now that more checks are passing. Some checks still
+        fail because a lot of our interfaces should inherit EventTarget and
+        currently don't (they duplicate the EventTarget API instead).
+
+        Also, as per WebIDL, window.NodeFilter's proto should be ObjectPrototype
+        instead of FunctionPrototype but this is an exceptional case and our new
+        behavior is consistent with Firefox and Chrome.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        * web-platform-tests/dom/events/Event-constructors-expected.txt:
+        * web-platform-tests/dom/historical-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-idl-expected.txt:
+        * web-platform-tests/fetch/api/request/request-idl-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-audio-element/audio_constructor-expected.txt:
+
+2016-02-08  Chris Dumez  <cdumez@apple.com>
+
+        Attribute getters should not require an explicit 'this' value for Window properties
+        https://bugs.webkit.org/show_bug.cgi?id=153968
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Object.getOwnPropertyDescriptor() returns incomplete descriptor for instance properties
+        https://bugs.webkit.org/show_bug.cgi?id=153817
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline W3C HTML test now that more checks are passing. Some checks are still
+        failing because getter.call(undefined) / getter.call() currently throws an exception
+        for Window properties but shouldn't. Global object property getters should not require
+        an explicit |this|.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-02-04  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add support for iterating over Headers
+        https://bugs.webkit.org/show_bug.cgi?id=153787
+
+        Reviewed by Darin Adler.
+
+        Relanding.
+
+        * web-platform-tests/fetch/api/headers/headers-basic-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-basic.html:
+        * web-platform-tests/fetch/api/headers/headers-structure-expected.txt:
+        * web-platform-tests/fetch/api/request/request-clone.sub-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-003.sub-expected.txt:
+        * web-platform-tests/fetch/api/resources/utils.js:
+        (checkRequest):
+        (readTextStream):
+
+2016-02-04  Chris Dumez  <cdumez@apple.com>
+
+        Merge DOMTokenList and DOMSettableTokenList
+        https://bugs.webkit.org/show_bug.cgi?id=153677
+        <rdar://problem/24419675>
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Element-classlist-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+        * web-platform-tests/html/dom/interfaces.html:
+        Update HTMLAreaElement.relList to match the specification.
+
+2016-02-04  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add support for iterating over Headers
+        https://bugs.webkit.org/show_bug.cgi?id=153787
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/headers/headers-basic-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-basic.html:
+        * web-platform-tests/fetch/api/headers/headers-structure-expected.txt:
+        * web-platform-tests/fetch/api/request/request-clone.sub-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-003.sub-expected.txt:
+        * web-platform-tests/fetch/api/resources/utils.js: fixed typo in test.
+
 2016-02-03  Chris Dumez  <cdumez@apple.com>
 
         Re-sync W3C HTML web-platform-tests

@@ -155,6 +155,7 @@ static const double DefaultWatchdogTimerInterval = 1;
 @property (retain) WebAVMediaSelectionOption *currentLegibleMediaSelectionOption;
 
 @property (readonly, getter=isPlayingOnExternalScreen) BOOL playingOnExternalScreen;
+@property (readonly, getter=isPlayingOnSecondScreen) BOOL playingOnSecondScreen;
 @property (getter=isExternalPlaybackActive) BOOL externalPlaybackActive;
 @property AVPlayerControllerExternalPlaybackType externalPlaybackType;
 @property (retain) NSString *externalPlaybackAirPlayDeviceLocalizedName;
@@ -361,6 +362,21 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
     if (!self.delegate)
         return;
     self.delegate->fastSeek(time);
+}
+
+- (NSTimeInterval)currentTimeWithinEndTimes
+{
+    return self.timing.currentValue;
+}
+
+- (void)setCurrentTimeWithinEndTimes:(NSTimeInterval)currentTimeWithinEndTimes
+{
+    [self seekToTime:currentTimeWithinEndTimes];
+}
+
++ (NSSet *)keyPathsForValuesAffectingCurrentTimeWithinEndTimes
+{
+    return [NSSet setWithObject:@"timing"];
 }
 
 - (BOOL)hasLiveStreamingContent
@@ -588,12 +604,12 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
 
 - (BOOL)isPlayingOnExternalScreen
 {
-    return [self isExternalPlaybackActive];
+    return [self isExternalPlaybackActive] || [self isPlayingOnSecondScreen];
 }
 
 + (NSSet *)keyPathsForValuesAffectingPlayingOnExternalScreen
 {
-    return [NSSet setWithObjects:@"externalPlaybackActive", nil];
+    return [NSSet setWithObjects:@"externalPlaybackActive", @"playingOnSecondScreen", nil];
 }
 
 - (BOOL)isPictureInPicturePossible
@@ -687,6 +703,9 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
 
     [_videoSublayer setPosition:CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds))];
 
+    if (self.videoDimensions.height <= 0 || self.videoDimensions.width <= 0)
+        return;
+
     FloatRect sourceVideoFrame;
     FloatRect targetVideoFrame;
     float videoAspectRatio = self.videoDimensions.width / self.videoDimensions.height;
@@ -711,7 +730,7 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(resolveBounds) object:nil];
     
-    if (!CGAffineTransformEqualToTransform(CGAffineTransformIdentity, transform))
+    if (!CGAffineTransformIsIdentity(transform))
         [self performSelector:@selector(resolveBounds) withObject:nil afterDelay:[CATransaction animationDuration] + 0.1];
 }
 
@@ -762,8 +781,11 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
 
 - (CGRect)videoRect
 {
-    float videoAspectRatio = self.videoDimensions.width / self.videoDimensions.height;
+    if (self.videoDimensions.width <= 0 || self.videoDimensions.height <= 0)
+        return self.bounds;
     
+    float videoAspectRatio = self.videoDimensions.width / self.videoDimensions.height;
+
     if ([getAVLayerVideoGravityResizeAspect() isEqualToString:self.videoGravity])
         return largestRectWithAspectRatioInsideRect(videoAspectRatio, self.bounds);
     if ([getAVLayerVideoGravityResizeAspectFill() isEqualToString:self.videoGravity])
@@ -975,6 +997,7 @@ void WebVideoFullscreenInterfaceAVKit::setCurrentTime(double currentTime, double
     NSTimeInterval anchorTimeStamp = ![m_playerController rate] ? NAN : anchorTime;
     AVValueTiming *timing = [getAVValueTimingClass() valueTimingWithAnchorValue:currentTime
         anchorTimeStamp:anchorTimeStamp rate:0];
+    
     [m_playerController setTiming:timing];
 }
 
@@ -1002,6 +1025,12 @@ void WebVideoFullscreenInterfaceAVKit::setVideoDimensions(bool hasVideo, float w
     [playerLayer setVideoDimensions:CGSizeMake(width, height)];
     [m_playerController setHasEnabledVideo:hasVideo];
     [m_playerController setContentDimensions:CGSizeMake(width, height)];
+    [m_playerLayerView setNeedsLayout];
+
+    WebAVPictureInPicturePlayerLayerView *pipView = (WebAVPictureInPicturePlayerLayerView *)[m_playerLayerView pictureInPicturePlayerLayerView];
+    WebAVPlayerLayer *pipPlayerLayer = (WebAVPlayerLayer *)[pipView layer];
+    [pipPlayerLayer setVideoDimensions:playerLayer.videoDimensions];
+    [pipView setNeedsLayout];    
 }
 
 void WebVideoFullscreenInterfaceAVKit::setSeekableRanges(const TimeRanges& timeRanges)

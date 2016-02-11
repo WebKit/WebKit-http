@@ -637,12 +637,6 @@ webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirem
 # Content extensions are Mac-WK2-only for now
 http/tests/contentextensions [ Skip ]
 
-# These tests were flaky on Mac only but they became flaky on all ports after r181345
-webkit.org/b/114280 svg/animations/smil-leak-dynamically-added-element-instances.svg [ Pass Failure ]
-webkit.org/b/114280 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Pass Failure ]
-webkit.org/b/114280 svg/animations/smil-leak-element-instances.svg [ Pass Failure ]
-webkit.org/b/114280 svg/animations/smil-leak-elements.svg [ Pass Failure ]
-
 webkit.org/b/149072 svg/animations/svgboolean-animation-1.html [ Pass Failure ]
 
 webkit.org/b/143085 media/track/track-mode.html [ Pass Timeout ]
@@ -798,9 +792,6 @@ webkit.org/b/151949 streams/reference-implementation/pipe-to.html [ Failure ]
 webkit.org/b/52185 fast/css/vertical-align-baseline-rowspan-010.html [ ImageOnlyFailure ]
 
 # Content Security Policy failures
-webkit.org/b/69359 http/tests/security/contentSecurityPolicy/connect-src-eventsource-redirect-to-blocked.html [ Failure ]
-webkit.org/b/69359 http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-redirect-to-blocked.html [ Failure ]
-webkit.org/b/69359 http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp.html [ Failure ]
 webkit.org/b/111869 http/tests/security/contentSecurityPolicy/eval-blocked-and-sends-report.html
 webkit.org/b/115700 http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta.html [ Failure ]
 webkit.org/b/115702 http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies.html [ Failure ]
@@ -839,7 +830,6 @@ webkit.org/b/153166 webkit.org/b/153242 http/tests/security/contentSecurityPolic
 webkit.org/b/153167 http/tests/security/contentSecurityPolicy/sandbox-report-only.html [ Failure ]
 webkit.org/b/153168 http/tests/security/contentSecurityPolicy/source-list-parsing-07.html [ Failure ]
 webkit.org/b/153170 http/tests/security/contentSecurityPolicy/source-list-parsing-paths-03.html [ Failure ]
-webkit.org/b/153562 http/tests/security/contentSecurityPolicy/worker-importscripts-blocked.html [ Failure ]
 webkit.org/b/153562 http/tests/security/contentSecurityPolicy/worker-script-src.html [ Failure ]
 http/tests/security/contentSecurityPolicy/script-src-blocked-error-event.html [ Pass Failure ]
 http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-overrides-xfo.html # Needs expected file.
@@ -851,3 +841,7 @@ loader/stateobjects/pushstate-size-iframe.html [ Slow ]
 loader/stateobjects/pushstate-size.html [ Slow ]
 loader/stateobjects/replacestate-size-iframe.html [ Slow ]
 loader/stateobjects/replacestate-size.html [ Slow ]
+
+# outline: auto -focusring.
+imported/blink/fast/multicol/outlines-at-column-boundaries.html [ ImageOnlyFailure ]
+fast/multicol/multicol-with-child-renderLayer-for-input.html [ ImageOnlyFailure ]

@@ -80,13 +80,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/graphics/transforms"
-    "${WEBCORE_DIR}/platform/image-decoders"
-    "${WEBCORE_DIR}/platform/image-decoders/bmp"
-    "${WEBCORE_DIR}/platform/image-decoders/gif"
-    "${WEBCORE_DIR}/platform/image-decoders/ico"
-    "${WEBCORE_DIR}/platform/image-decoders/jpeg"
-    "${WEBCORE_DIR}/platform/image-decoders/png"
-    "${WEBCORE_DIR}/platform/image-decoders/webp"
     "${WEBCORE_DIR}/platform/mediastream"
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/platform/mock/mediasource"
@@ -437,7 +430,6 @@ set(WebCore_NON_SVG_IDL_FILES
     fileapi/FileReaderSync.idl
 
     html/DOMFormData.idl
-    html/DOMSettableTokenList.idl
     html/DOMTokenList.idl
     html/DOMURL.idl
     html/HTMLAllCollection.idl
@@ -848,6 +840,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBObjectStore.cpp
     Modules/indexeddb/IDBOpenDBRequest.cpp
     Modules/indexeddb/IDBRequest.cpp
+    Modules/indexeddb/IDBRequestCompletionEvent.cpp
     Modules/indexeddb/IDBTransaction.cpp
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
@@ -1165,6 +1158,7 @@ set(WebCore_SOURCES
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
     bindings/js/JSExceptionBase.cpp
+    bindings/js/JSFetchHeadersCustom.cpp
     bindings/js/JSFileReaderCustom.cpp
     bindings/js/JSGeolocationCustom.cpp
     bindings/js/JSHTMLAllCollectionCustom.cpp
@@ -1637,7 +1631,6 @@ set(WebCore_SOURCES
     html/CheckboxInputType.cpp
     html/ColorInputType.cpp
     html/DOMFormData.cpp
-    html/DOMSettableTokenList.cpp
     html/DOMTokenList.cpp
     html/DOMURL.cpp
     html/DateInputType.cpp
@@ -2074,7 +2067,12 @@ set(WebCore_SOURCES
     page/animation/KeyframeAnimation.cpp
 
     page/csp/ContentSecurityPolicy.cpp
+    page/csp/ContentSecurityPolicyDirectiveList.cpp
+    page/csp/ContentSecurityPolicyMediaListDirective.cpp
     page/csp/ContentSecurityPolicyResponseHeaders.cpp
+    page/csp/ContentSecurityPolicySource.cpp
+    page/csp/ContentSecurityPolicySourceList.cpp
+    page/csp/ContentSecurityPolicySourceListDirective.cpp
 
     page/scrolling/AxisScrollSnapOffsets.cpp
     page/scrolling/ScrollLatchingState.cpp

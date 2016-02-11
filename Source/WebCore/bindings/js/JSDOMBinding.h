@@ -100,7 +100,7 @@ WEBCORE_EXPORT JSC::EncodedJSValue throwThisTypeError(JSC::ExecState&, const cha
 class DOMConstructorObject : public JSDOMObject {
 public:
     typedef JSDOMObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance | JSC::ImplementsDefaultHasInstance;
+    static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance | JSC::ImplementsDefaultHasInstance | JSC::TypeOfShouldCallGetCallData;
 
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
     {
@@ -112,6 +112,9 @@ protected:
         : JSDOMObject(structure, globalObject)
     {
     }
+
+    static String className(const JSObject*) { return ASCIILiteral("Function"); }
+    static JSC::CallType getCallData(JSCell*, JSC::CallData&);
 };
 
 class DOMConstructorJSBuiltinObject : public DOMConstructorObject {
@@ -514,6 +517,14 @@ template<typename T, size_t inlineCapacity> inline JSC::JSValue jsArray(JSC::Exe
     return jsArray(exec, globalObject, *vector);
 }
 
+template<typename Value1, typename Value2> inline JSC::JSValue jsPair(JSC::ExecState& state, JSDOMGlobalObject* globalObject, const Value1& value1, const Value2& value2)
+{
+    JSC::MarkedArgumentBuffer args;
+    args.append(toJS(&state, globalObject, value1));
+    args.append(toJS(&state, globalObject, value2));
+    return constructArray(&state, 0, globalObject, args);
+}
+
 WEBCORE_EXPORT JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, PassRefPtr<DOMStringList>);
 
 inline PassRefPtr<JSC::ArrayBufferView> toArrayBufferView(JSC::JSValue value)
@@ -645,7 +656,7 @@ bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, String& message);
 bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, String& message);
 
 void printErrorMessageForFrame(Frame*, const String& message);
-JSC::EncodedJSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 
 inline String propertyNameToString(JSC::PropertyName propertyName)
 {
@@ -675,7 +686,7 @@ template<> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCachi
 }
 
 template<JSC::NativeFunction nativeFunction, int length>
-JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState* exec, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName propertyName)
+JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState* exec, JSC::EncodedJSValue, JSC::PropertyName propertyName)
 {
     return JSC::JSValue::encode(JSC::JSFunction::create(exec->vm(), exec->lexicalGlobalObject(), length, propertyName.publicName(), nativeFunction));
 }

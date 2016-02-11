@@ -4,10 +4,10 @@ function CanvasStar(stage)
 {
     this._context = stage.context;
 
-    this._size = stage.randomSquareSize(5, 20);
-    this._center = stage.randomPosition(stage.size.subtract(this._size)).add(this._size.center);
+    this._size = Stage.randomSquareSize(5, 20);
+    this._center = Stage.randomPosition(stage.size.subtract(this._size)).add(this._size.center);
     this._rotateX = 0;
-    this._rotateDeltaX = stage.random(0.3, 0.7);
+    this._rotateDeltaX = Stage.random(0.3, 0.7);
 }
 
 CanvasStar.prototype = {
@@ -58,27 +58,25 @@ CanvasStarsStage = Utilities.createSubclass(Stage,
         this._objects = [];
     }, {
 
-    initialize: function(benchmark)
+    initialize: function(benchmark, options)
     {
-        Stage.prototype.initialize.call(this, benchmark);
+        Stage.prototype.initialize.call(this, benchmark, options);
         this.context = this.element.getContext("2d");
     },
 
     tune: function(count)
     {
         if (count == 0)
-            return this._objects.length;
+            return;
 
         if (count > 0) {
             for (var i = 0; i < count; ++i)
                 this._objects.push(new CanvasStar(this));
-            return this._objects.length;
+            return;
         }
 
         count = Math.min(-count, this._objects.length);
         this._objects.splice(-count, count);
-
-        return this._objects.length;
     },
 
     animate: function(timeDelta)

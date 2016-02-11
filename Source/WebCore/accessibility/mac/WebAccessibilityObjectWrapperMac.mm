@@ -858,12 +858,17 @@ static id startOrEndTextmarkerForRange(AXObjectCache* cache, RefPtr<Range> range
     return textMarker;
 }
 
-- (id)textMarkerForNode:(Node&)node offset:(int)offset
+- (id)textMarkerForNode:(Node&)node offset:(int)offset ignoreStart:(BOOL)ignoreStart
 {
-    return textMarkerForCharacterOffset(m_object->axObjectCache(), node, offset);
+    return textMarkerForCharacterOffset(m_object->axObjectCache(), node, offset, false, ignoreStart);
 }
 
-static id textMarkerForCharacterOffset(AXObjectCache* cache, Node& node, int offset, bool toNodeEnd = false)
+- (id)textMarkerForNode:(Node&)node offset:(int)offset
+{
+    return [self textMarkerForNode:node offset:offset ignoreStart:YES];
+}
+
+static id textMarkerForCharacterOffset(AXObjectCache* cache, Node& node, int offset, bool toNodeEnd, bool ignoreStart)
 {
     if (!cache)
         return nil;
@@ -873,7 +878,7 @@ static id textMarkerForCharacterOffset(AXObjectCache* cache, Node& node, int off
         return nil;
     
     TextMarkerData textMarkerData;
-    cache->textMarkerDataForCharacterOffset(textMarkerData, node, offset, toNodeEnd);
+    cache->textMarkerDataForCharacterOffset(textMarkerData, node, offset, toNodeEnd, ignoreStart);
     if (!textMarkerData.axID && !textMarkerData.ignored)
         return nil;
     
@@ -900,16 +905,21 @@ static id textMarkerForCharacterOffset(AXObjectCache* cache, Node& node, int off
     return cache->rangeForUnorderedCharacterOffsets(startCharacterOffset, endCharacterOffset);
 }
 
-- (CharacterOffset)characterOffsetForTextMarker:(id)textMarker
+static CharacterOffset characterOffsetForTextMarker(AXObjectCache* cache, CFTypeRef textMarker)
 {
-    if (!textMarker || isTextMarkerIgnored(textMarker))
+    if (!cache || !textMarker)
         return CharacterOffset();
     
     TextMarkerData textMarkerData;
     if (!wkGetBytesFromAXTextMarker(textMarker, &textMarkerData, sizeof(textMarkerData)))
         return CharacterOffset();
     
-    return CharacterOffset(textMarkerData.node, textMarkerData.characterStartIndex, textMarkerData.characterOffset);
+    return cache->characterOffsetForTextMarkerData(textMarkerData);
+}
+
+- (CharacterOffset)characterOffsetForTextMarker:(id)textMarker
+{
+    return characterOffsetForTextMarker(m_object->axObjectCache(), textMarker);
 }
 
 static id textMarkerForVisiblePosition(AXObjectCache* cache, const VisiblePosition& visiblePos)
@@ -4065,15 +4075,21 @@ static void formatForDebugger(const VisiblePositionRange& range, char* buffer, u
     }
     
     if ([attribute isEqualToString:@"AXLeftWordTextMarkerRangeForTextMarker"]) {
-        VisiblePosition visiblePos = [self visiblePositionForTextMarker:(textMarker)];
-        VisiblePositionRange vpRange = m_object->positionOfLeftWord(visiblePos);
-        return [self textMarkerRangeFromVisiblePositions:vpRange.start endPosition:vpRange.end];
+        AXObjectCache* cache = m_object->axObjectCache();
+        if (!cache)
+            return nil;
+        CharacterOffset characterOffset = [self characterOffsetForTextMarker:textMarker];
+        RefPtr<Range> range = cache->leftWordRange(characterOffset);
+        return [self textMarkerRangeFromRange:range];
     }
     
     if ([attribute isEqualToString:@"AXRightWordTextMarkerRangeForTextMarker"]) {
-        VisiblePosition visiblePos = [self visiblePositionForTextMarker:(textMarker)];
-        VisiblePositionRange vpRange = m_object->positionOfRightWord(visiblePos);
-        return [self textMarkerRangeFromVisiblePositions:vpRange.start endPosition:vpRange.end];
+        AXObjectCache* cache = m_object->axObjectCache();
+        if (!cache)
+            return nil;
+        CharacterOffset characterOffset = [self characterOffsetForTextMarker:textMarker];
+        RefPtr<Range> range = cache->rightWordRange(characterOffset);
+        return [self textMarkerRangeFromRange:range];
     }
     
     if ([attribute isEqualToString:@"AXLeftLineTextMarkerRangeForTextMarker"]) {
@@ -4101,13 +4117,21 @@ static void formatForDebugger(const VisiblePositionRange& range, char* buffer, u
     }
     
     if ([attribute isEqualToString:@"AXNextWordEndTextMarkerForTextMarker"]) {
-        VisiblePosition visiblePos = [self visiblePositionForTextMarker:(textMarker)];
-        return [self textMarkerForVisiblePosition:m_object->nextWordEnd(visiblePos)];
+        AXObjectCache* cache = m_object->axObjectCache();
+        if (!cache)
+            return nil;
+        CharacterOffset characterOffset = [self characterOffsetForTextMarker:textMarker];
+        CharacterOffset nextEnd = cache->nextWordEndCharacterOffset(characterOffset);
+        return [self textMarkerForNode:*nextEnd.node offset:nextEnd.offset];
     }
     
     if ([attribute isEqualToString:@"AXPreviousWordStartTextMarkerForTextMarker"]) {
-        VisiblePosition visiblePos = [self visiblePositionForTextMarker:(textMarker)];
-        return [self textMarkerForVisiblePosition:m_object->previousWordStart(visiblePos)];
+        AXObjectCache* cache = m_object->axObjectCache();
+        if (!cache)
+            return nil;
+        CharacterOffset characterOffset = [self characterOffsetForTextMarker:textMarker];
+        CharacterOffset previousStart = cache->previousWordStartCharacterOffset(characterOffset);
+        return [self textMarkerForNode:*previousStart.node offset:previousStart.offset ignoreStart:NO];
     }
     
     if ([attribute isEqualToString:@"AXNextLineEndTextMarkerForTextMarker"]) {

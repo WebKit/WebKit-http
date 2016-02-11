@@ -498,8 +498,7 @@ void XMLHttpRequest::open(const String& method, const URL& url, bool async, Exce
     }
 
     // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is solved.
-    bool shouldBypassMainWorldContentSecurityPolicy = ContentSecurityPolicy::shouldBypassMainWorldContentSecurityPolicy(*scriptExecutionContext());
-    if (!scriptExecutionContext()->contentSecurityPolicy()->allowConnectToSource(url, shouldBypassMainWorldContentSecurityPolicy)) {
+    if (!scriptExecutionContext()->contentSecurityPolicy()->allowConnectToSource(url, scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy())) {
         // FIXME: Should this be throwing an exception?
         ec = SECURITY_ERR;
         return;
@@ -756,6 +755,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.setCredentialRequest(m_includeCredentials ? ClientRequestedCredentials : ClientDidNotRequestCredentials);
     options.crossOriginRequestPolicy = UseAccessControl;
     options.securityOrigin = securityOrigin();
+    options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
 
     if (m_timeoutMilliseconds) {
@@ -1030,9 +1030,7 @@ String XMLHttpRequest::responseMIMEType() const
 
 bool XMLHttpRequest::responseIsXML() const
 {
-    // FIXME: Remove the lower() call when DOMImplementation.isXMLMIMEType() is modified
-    //        to do case insensitive MIME type matching.
-    return DOMImplementation::isXMLMIMEType(responseMIMEType().lower());
+    return DOMImplementation::isXMLMIMEType(responseMIMEType());
 }
 
 int XMLHttpRequest::status() const
