@@ -980,6 +980,20 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
     p->setClipPath(platformPath, Qt::IntersectClip);
 }
 
+void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& destRect)
+{
+    if (paintingDisabled())
+        return;
+
+    RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
+    QPixmap* alphaMask = image->nativeImageForCurrentFrame();
+    if (!alphaMask)
+        return;
+
+    IntRect rect = enclosingIntRect(destRect);
+    pushTransparencyLayerInternal(rect, 1.0, *alphaMask);
+}
+
 void drawFocusRingForPath(QPainter* p, const QPainterPath& path, const Color& color, bool antiAliasing)
 {
     const bool antiAlias = p->testRenderHint(QPainter::Antialiasing);

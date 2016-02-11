@@ -163,21 +163,6 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& src
         m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
 }
 
-// Move ImageBuffer::clip() code into GraphicsContext
-#if 0
-void ImageBuffer::clip(GraphicsContext& context, const FloatRect& floatRect) const
-{
-    QPixmap* nativeImage = m_data.m_image->nativeImageForCurrentFrame();
-    if (!nativeImage)
-        return;
-
-    IntRect rect = enclosingIntRect(floatRect);
-    QPixmap alphaMask = *nativeImage;
-
-    context->pushTransparencyLayerInternal(rect, 1.0, alphaMask);
-}
-#endif
-
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 {
     bool isPainting = m_data.m_painter->isActive();
