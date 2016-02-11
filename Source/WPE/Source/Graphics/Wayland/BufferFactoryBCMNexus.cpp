@@ -39,7 +39,12 @@ static const struct wl_nsc_listener g_nscListener = {
         nscData.clientID = static_cast<uint32_t*>(clientIDArray->data)[0];
     },
     // display_geometry
-    [](void* data, struct wl_nsc*, uint32_t width, uint32_t height) { },
+    [](void* data, struct wl_nsc*, uint32_t width, uint32_t height)
+    {
+        auto& nscData = *static_cast<BufferFactoryBCMNexus::NSCData*>(data);
+        nscData.width = width;
+        nscData.height = height;
+    },
     // audiosettings
     [](void*, struct wl_nsc*, struct wl_array*) { },
     // displaystatus
@@ -54,9 +59,17 @@ BufferFactoryBCMNexus::BufferFactoryBCMNexus()
     : m_display(ViewBackend::WaylandDisplay::singleton())
 {
     wl_nsc_add_listener(m_display.interfaces().nsc, &g_nscListener, &m_nscData);
+
+    wl_nsc_get_display_geometry(m_display.interfaces().nsc);
+    wl_display_roundtrip(m_display.display());
 }
 
 BufferFactoryBCMNexus::~BufferFactoryBCMNexus() = default;
+
+std::pair<bool, std::pair<uint32_t, uint32_t>> BufferFactoryBCMNexus::preferredSize()
+{
+    return { true, { m_nscData.width, m_nscData.height } };
+}
 
 std::pair<const uint8_t*, size_t> BufferFactoryBCMNexus::authenticate()
 {
@@ -80,7 +93,7 @@ uint32_t BufferFactoryBCMNexus::constructRenderingTarget(uint32_t width, uint32_
 std::pair<bool, std::pair<uint32_t, struct wl_buffer*>> BufferFactoryBCMNexus::createBuffer(int, const uint8_t*, size_t)
 {
     if (!m_nscData.buffer) {
-        m_nscData.buffer = wl_nsc_create_buffer(m_display.interfaces().nsc, m_nscData.clientID, 800, 600);
+        m_nscData.buffer = wl_nsc_create_buffer(m_display.interfaces().nsc, m_nscData.clientID, m_nscData.width, m_nscData.height);
         wl_display_roundtrip(m_display.display());
 
         return { true, { 0, m_nscData.buffer } };

@@ -39,6 +39,7 @@ class BufferFactoryWLDRM : public BufferFactory {
 public:
     virtual ~BufferFactoryWLDRM();
 
+    std::pair<bool, std::pair<uint32_t, uint32_t>> preferredSize() override { return { false, { 0, 0 } }; };
     std::pair<const uint8_t*, size_t> authenticate() override { return { nullptr, 0 }; };
     uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
     std::pair<bool, std::pair<uint32_t, struct wl_buffer*>> createBuffer(int, const uint8_t*, size_t) override;

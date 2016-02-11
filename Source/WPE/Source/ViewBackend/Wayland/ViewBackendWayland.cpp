@@ -149,6 +149,12 @@ void ViewBackendWayland::setClient(Client* client)
     m_bufferData.client = client;
     m_callbackData.client = client;
     m_resizingData.client = client;
+
+    if (client != nullptr) {
+        std::pair<bool, std::pair<uint32_t, uint32_t>> size = m_bufferFactory->preferredSize();
+        if (size.first)
+            client->setSize(size.second.first, size.second.second);
+    }
 }
 
 std::pair<const uint8_t*, size_t> ViewBackendWayland::authenticate()

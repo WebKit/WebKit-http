@@ -21,6 +21,7 @@ public:
     BufferFactoryBCMNexus();
     virtual ~BufferFactoryBCMNexus();
 
+    std::pair<bool, std::pair<uint32_t, uint32_t>> preferredSize() override;
     std::pair<const uint8_t*, size_t> authenticate() override;
     uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
     std::pair<bool, std::pair<uint32_t, struct wl_buffer*>> createBuffer(int, const uint8_t*, size_t) override;
@@ -30,12 +31,14 @@ public:
         uint32_t clientID;
         struct wl_buffer* buffer;
         std::string authenticationData;
+        uint32_t width;
+        uint32_t height;
     };
 
 private:
     ViewBackend::WaylandDisplay& m_display;
 
-    NSCData m_nscData { 0, nullptr, std::string{ } };
+    NSCData m_nscData { 0, nullptr, std::string{ }, 0, 0 };
 };
 
 } // namespace Graphics
