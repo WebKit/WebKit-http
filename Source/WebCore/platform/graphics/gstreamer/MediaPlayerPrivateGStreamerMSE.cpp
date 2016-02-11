@@ -88,7 +88,7 @@ class AppendPipeline : public ThreadSafeRefCounted<AppendPipeline> {
 public:
     enum AppendStage { Invalid, NotStarted, Ongoing, KeyNegotiation, DataStarve, Sampling, LastSample, Aborting };
 
-    static const unsigned int s_dataStarvedTimeoutMsec = 2000;
+    static const unsigned int s_dataStarvedTimeoutMsec = 1000;
     static const unsigned int s_lastSampleTimeoutMsec = 250;
 
     AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient, PassRefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE* playerPrivate);
@@ -1229,7 +1229,7 @@ static GstFlowReturn appendPipelineAppSinkNewSample(GstElement*, AppendPipeline*
 static gboolean appendPipelineAppSinkNewSampleMainThread(NewSampleInfo*);
 static void appendPipelineAppSinkEOS(GstElement*, AppendPipeline*);
 static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap);
-static gboolean appendPipelineDataStarveTimeout(AppendPipeline*);
+static gboolean appendPipelineDataStarveTimeout(gpointer);
 static gboolean appendPipelineLastSampleTimeout(gpointer);
 
 static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
@@ -1522,7 +1522,7 @@ gint AppendPipeline::id()
 void AppendPipeline::scheduleDataStarveTimer()
 {
     LOG_MEDIA_MESSAGE("Scheduling data starve timer");
-    m_dataStarvedTimeoutTag = g_timeout_add(s_dataStarvedTimeoutMsec, GSourceFunc(appendPipelineDataStarveTimeout), this);
+    m_dataStarvedTimeoutTag = g_timeout_add(s_dataStarvedTimeoutMsec, appendPipelineDataStarveTimeout, this);
 }
 
 void AppendPipeline::cancelDataStarveTimer()
@@ -2445,14 +2445,10 @@ static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap)
     return G_SOURCE_REMOVE;
 }
 
-static gboolean appendPipelineDataStarveTimeout(AppendPipeline* appendPipeline)
+static gboolean appendPipelineDataStarveTimeout(gpointer)
 {
-    AppendPipeline::AppendStage appendStage = appendPipeline->appendStage();
-    INFO_MEDIA_MESSAGE("data starve timer fired, stage %s", dumpAppendStage(appendStage));
-    if (appendStage == AppendPipeline::AppendStage::Ongoing) {
-        WARN_MEDIA_MESSAGE("setting DataStarve because of timeout");
-        appendPipeline->setAppendStage(AppendPipeline::AppendStage::DataStarve);
-    }
+    ERROR_MEDIA_MESSAGE("data starve timer fired");
+    ASSERT_NOT_REACHED();
     return G_SOURCE_REMOVE;
 }
 
