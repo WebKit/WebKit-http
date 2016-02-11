@@ -1126,31 +1126,62 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, float width, f
 
 void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing, bool doubleLines)
 {
+    // FIXME: drawLinesForText produces incorreclty thick lines
+//    DashArray widths;
+//    widths.append(width);
+//    widths.append(0);
+//    drawLinesForText(origin, widths, printing, doubleLines);
+
     if (paintingDisabled())
         return;
 
     FloatPoint startPoint = origin;
     FloatPoint endPoint = origin + FloatSize(width, 0);
 
-    // If paintengine type is X11 to avoid artifacts
-    // like bug https://bugs.webkit.org/show_bug.cgi?id=42248
-#if defined(Q_WS_X11)
-    QPainter* p = m_data->p();
-    if (p->paintEngine()->type() == QPaintEngine::X11) {
-        // If stroke thickness is odd we need decrease Y coordinate by 1 pixel,
-        // because inside method adjustLineToPixelBoundaries(...), which
-        // called from drawLine(...), Y coordinate will be increased by 0.5f
-        // and then inside Qt painting engine will be rounded to next greater
-        // integer value.
-        float strokeWidth = strokeThickness();
-        if (static_cast<int>(strokeWidth) % 2) {
-            startPoint.setY(startPoint.y() - 1);
-            endPoint.setY(endPoint.y() - 1);
-        }
-    }
-#endif // defined(Q_WS_X11)
-
     drawLine(roundedIntPoint(startPoint), roundedIntPoint(endPoint));
+}
+
+// NOTE: this code is based on GraphicsContextCG implementation
+void GraphicsContext::drawLinesForText(const FloatPoint& origin, const DashArray& widths, bool printing, bool doubleLines)
+{
+    if (paintingDisabled())
+        return;
+
+    if (widths.size() <= 0)
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawLinesForText(origin, widths, printing, doubleLines, strokeThickness());
+        return;
+    }
+
+    Color localStrokeColor(strokeColor());
+
+    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(origin, widths.last(), printing, localStrokeColor);
+    bool fillColorIsNotEqualToStrokeColor = fillColor() != localStrokeColor;
+
+    Vector<QRectF, 4> dashBounds;
+    ASSERT(!(widths.size() % 2));
+    dashBounds.reserveInitialCapacity(dashBounds.size() / 2);
+    for (size_t i = 0; i < widths.size(); i += 2)
+        dashBounds.append(QRectF(bounds.x() + widths[i], bounds.y(), widths[i+1] - widths[i], bounds.height()));
+
+    if (doubleLines) {
+        // The space between double underlines is equal to the height of the underline
+        for (size_t i = 0; i < widths.size(); i += 2)
+            dashBounds.append(QRectF(bounds.x() + widths[i], bounds.y() + 2 * bounds.height(), widths[i+1] - widths[i], bounds.height()));
+    }
+
+    QPainter* p = m_data->p();
+
+    if (fillColorIsNotEqualToStrokeColor) {
+        const QBrush oldBrush = p->brush();
+        p->setBrush(QBrush(localStrokeColor));
+        p->drawRects(dashBounds.data(), dashBounds.size());
+        p->setBrush(oldBrush);
+    } else {
+        p->drawRects(dashBounds.data(), dashBounds.size());
+    }
 }
 
 
@@ -1231,6 +1262,10 @@ static void drawErrorUnderline(QPainter *painter, qreal x, qreal y, qreal width,
     painter->drawPath(path);
 }
 
+void GraphicsContext::updateDocumentMarkerResources()
+{
+    // Unnecessary, since our document markers don't use resources.
+}
 
 void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float width, DocumentMarkerLineStyle style)
 {
@@ -1456,7 +1491,7 @@ void GraphicsContext::setMiterLimit(float limit)
     p->setPen(nPen);
 }
 
-void GraphicsContext::setAlpha(float opacity)
+void GraphicsContext::setPlatformAlpha(float opacity)
 {
     if (paintingDisabled())
         return;
