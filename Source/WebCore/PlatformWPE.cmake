@@ -402,13 +402,6 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
         list(APPEND WebCore_LIBRARIES
             -lDxDrm
         )
-
-        if (ENABLE_PROVISIONING)
-            list(APPEND WebCore_LIBRARIES
-                -lprovisionproxy
-            )
-        endif ()
-
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/DiscretixSession.cpp
         )
@@ -427,6 +420,12 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
         endforeach()
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/PlayreadySession.cpp
+        )
+    endif ()
+
+    if (ENABLE_PROVISIONING)
+        list(APPEND WebCore_LIBRARIES
+            -lprovisionproxy
         )
     endif ()
 endif ()
