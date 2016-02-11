@@ -28,10 +28,11 @@
 
 #include "BlockExceptions.h"
 #include "ColorMac.h"
-#include "ImageBuffer.h"
 #include "GraphicsLayer.h"
+#include "ImageBuffer.h"
 #include "LocalCurrentGraphicsContext.h"
 #include "NSScrollerImpDetails.h"
+#include "NSScrollerImpSPI.h"
 #include "PlatformMouseEvent.h"
 #include "ScrollAnimatorMac.h"
 #include "ScrollView.h"
@@ -67,14 +68,14 @@ static ScrollbarPainterMap* scrollbarMap()
 }
 
 + (void)registerAsObserver;
-+ (void)appearancePrefsChanged:(NSNotification*)theNotification;
-+ (void)behaviorPrefsChanged:(NSNotification*)theNotification;
++ (void)appearancePrefsChanged:(NSNotification *)theNotification;
++ (void)behaviorPrefsChanged:(NSNotification *)theNotification;
 
 @end
 
 @implementation WebScrollbarPrefsObserver
 
-+ (void)appearancePrefsChanged:(NSNotification*)unusedNotification
++ (void)appearancePrefsChanged:(NSNotification *)unusedNotification
 {
     UNUSED_PARAM(unusedNotification);
 
@@ -92,7 +93,7 @@ static ScrollbarPainterMap* scrollbarMap()
     }
 }
 
-+ (void)behaviorPrefsChanged:(NSNotification*)unusedNotification
++ (void)behaviorPrefsChanged:(NSNotification *)unusedNotification
 {
     UNUSED_PARAM(unusedNotification);
 
@@ -135,13 +136,6 @@ static bool gUsesOverlayScrollbars = false;
 
 static ScrollbarButtonsPlacement gButtonPlacement = ScrollbarButtonsDoubleEnd;
 
-static bool supportsExpandedScrollbars()
-{
-    // FIXME: This is temporary until all platforms that support ScrollbarPainter support this part of the API.
-    static bool globalSupportsExpandedScrollbars = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(setExpanded:)];
-    return globalSupportsExpandedScrollbars;
-}
-
 static NSControlSize scrollbarControlSizeToNSControlSize(ScrollbarControlSize controlSize)
 {
     switch (controlSize) {
@@ -161,7 +155,7 @@ void ScrollbarThemeMac::registerScrollbar(Scrollbar& scrollbar)
         return;
 
     bool isHorizontal = scrollbar.orientation() == HorizontalScrollbar;
-    ScrollbarPainter scrollbarPainter = [NSClassFromString(@"NSScrollerImp") scrollerImpWithStyle:recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(scrollbar.controlSize()) horizontal:isHorizontal replacingScrollerImp:nil];
+    ScrollbarPainter scrollbarPainter = [NSScrollerImp scrollerImpWithStyle:recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(scrollbar.controlSize()) horizontal:isHorizontal replacingScrollerImp:nil];
     scrollbarMap()->add(&scrollbar, scrollbarPainter);
     updateEnabledState(scrollbar);
     updateScrollbarOverlayStyle(scrollbar);
@@ -224,9 +218,8 @@ void ScrollbarThemeMac::preferencesChanged()
 int ScrollbarThemeMac::scrollbarThickness(ScrollbarControlSize controlSize)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    ScrollbarPainter scrollbarPainter = [NSClassFromString(@"NSScrollerImp") scrollerImpWithStyle:recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(controlSize) horizontal:NO replacingScrollerImp:nil];
-    if (supportsExpandedScrollbars())
-        [scrollbarPainter setExpanded:YES];
+    ScrollbarPainter scrollbarPainter = [NSScrollerImp scrollerImpWithStyle:recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(controlSize) horizontal:NO replacingScrollerImp:nil];
+    [scrollbarPainter setExpanded:YES];
     return [scrollbarPainter trackBoxWidth];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
@@ -588,7 +581,6 @@ void ScrollbarThemeMac::setUpContentShadowLayer(GraphicsLayer* graphicsLayer)
     // of shadows, and we know that WebCore won't touch this layer.
     setUpOverhangAreaShadow(graphicsLayer->platformLayer());
 }
-
 #endif
 
 } // namespace WebCore

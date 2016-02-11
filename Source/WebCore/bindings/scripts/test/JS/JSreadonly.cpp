@@ -23,6 +23,7 @@
 
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -31,8 +32,8 @@ namespace WebCore {
 
 // Attributes
 
-JSC::EncodedJSValue jsreadonlyConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSreadonlyConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsreadonlyConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSreadonlyConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSreadonlyPrototype : public JSC::JSNonFinalObject {
 public:
@@ -61,6 +62,12 @@ private:
 
 typedef JSDOMConstructorNotConstructable<JSreadonly> JSreadonlyConstructor;
 
+template<> JSValue JSreadonlyConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
+{
+    UNUSED_PARAM(vm);
+    return globalObject.functionPrototype();
+}
+
 template<> void JSreadonlyConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
     putDirect(vm, vm.propertyNames->prototype, JSreadonly::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
@@ -68,7 +75,7 @@ template<> void JSreadonlyConstructor::initializeProperties(VM& vm, JSDOMGlobalO
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSreadonlyConstructor::s_info = { "readonlyConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSreadonlyConstructor) };
+template<> const ClassInfo JSreadonlyConstructor::s_info = { "readonly", &Base::s_info, 0, CREATE_METHOD_TABLE(JSreadonlyConstructor) };
 
 /* Hash table for prototype */
 
@@ -108,19 +115,18 @@ void JSreadonly::destroy(JSC::JSCell* cell)
     thisObject->JSreadonly::~JSreadonly();
 }
 
-EncodedJSValue jsreadonlyConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)
+EncodedJSValue jsreadonlyConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    JSreadonlyPrototype* domObject = jsDynamicCast<JSreadonlyPrototype*>(baseValue);
+    JSreadonlyPrototype* domObject = jsDynamicCast<JSreadonlyPrototype*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSreadonly::getConstructor(state->vm(), domObject->globalObject()));
 }
 
-void setJSreadonlyConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSreadonlyConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSreadonlyPrototype* domObject = jsDynamicCast<JSreadonlyPrototype*>(baseValue);
+    JSreadonlyPrototype* domObject = jsDynamicCast<JSreadonlyPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state);
         return;
@@ -129,9 +135,9 @@ void setJSreadonlyConstructor(ExecState* state, JSObject* baseValue, EncodedJSVa
     domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
-JSValue JSreadonly::getConstructor(VM& vm, JSGlobalObject* globalObject)
+JSValue JSreadonly::getConstructor(VM& vm, const JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSreadonlyConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSreadonlyConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
 bool JSreadonlyOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

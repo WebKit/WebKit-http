@@ -1,7 +1,7 @@
 function Particle(stage)
 {
     this.stage = stage;
-    this.rotater = this.stage.randomRotater();
+    this.rotater = Stage.randomRotater();
     this.reset();
     this.move();
 }
@@ -15,9 +15,9 @@ Particle.prototype =
         this.maxPosition = this.stage.size.subtract(this.size);
         this.position = new Point(this.stage.size.x / 2, this.stage.size.y / 4);
 
-        var angle = this.stage.randomInt(0, this.stage.emitSteps) / this.stage.emitSteps * Math.PI * 2 + Date.now()/1000*this.stage.emissionSpin;
+        var angle = Stage.randomInt(0, this.stage.emitSteps) / this.stage.emitSteps * Math.PI * 2 + Stage.dateCounterValue(1000) * this.stage.emissionSpin;
         this._velocity = new Point(Math.sin(angle), Math.cos(angle))
-            .multiply(this.stage.random(.8, 1.2));
+            .multiply(Stage.random(.8, 1.2));
     },
 
     animate: function(timeDelta)
@@ -78,16 +78,16 @@ ParticlesStage = Utilities.createSubclass(Stage,
         this.particles = [];
     }, {
 
-    initialize: function(benchmark)
+    initialize: function(benchmark, options)
     {
-        Stage.prototype.initialize.call(this, benchmark);
-        this.emissionSpin = this.random(0, 3);
-        this.emitSteps = this.randomInt(4, 6);
+        Stage.prototype.initialize.call(this, benchmark, options);
+        this.emissionSpin = Stage.random(0, 3);
+        this.emitSteps = Stage.randomInt(4, 6);
     },
 
     animate: function(timeDelta)
     {
-        var offset = (Date.now() / 2000) % 1;
+        var offset = Stage.dateFractionalValue();
         this.element.style.background = [
             "linear-gradient(",
             offset * 360,
@@ -107,12 +107,12 @@ ParticlesStage = Utilities.createSubclass(Stage,
     tune: function(count)
     {
         if (count == 0)
-            return this.particles.length;
+            return;
 
         if (count > 0) {
             for (var i = 0; i < count; ++i)
                 this.particles.push(this.createParticle());
-            return this.particles.length;
+            return;
         }
 
         count = Math.min(-count, this.particles.length);
@@ -123,7 +123,6 @@ ParticlesStage = Utilities.createSubclass(Stage,
         }
 
         this.particles.splice(0, count);
-        return this.particles.length;
     },
 
     complexity: function()

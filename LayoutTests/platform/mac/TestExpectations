@@ -906,7 +906,6 @@ webkit.org/b/122507 media/track/track-cue-rendering.html [ Pass Failure ]
 webkit.org/b/123010 media/W3C/audio/networkState/networkState_during_loadstart.html [ Pass Timeout ]
 webkit.org/b/123099 media/media-controller-time-clamp.html [ Pass Timeout ]
 webkit.org/b/123522 media/track/track-in-band-legacy-api.html [ Pass Failure Crash ]
-webkit.org/b/128312 media/video-load-preload-metadata.html [ Pass Failure ]
 webkit.org/b/130490 media/video-remote-control-playpause.html [ Pass Failure ]
 webkit.org/b/130971 media/track/track-remove-track.html [ Pass Crash Failure Timeout ]
 webkit.org/b/131855 media/event-attributes.html [ Pass Failure Timeout ]
@@ -1316,3 +1315,14 @@ webkit.org/b/153752 [ Yosemite ] http/tests/plugins/visible_plugins.html [ Skip 
 
 webkit.org/b/153809 transitions/clip-path-transitions.html [ Pass Failure ]
 webkit.org/b/153809 transitions/clip-path-path-transitions.html [ Pass Failure ]
+
+webkit.org/b/153883 webgl/1.0.3/conformance/extensions/oes-texture-half-float-linear.html [ Pass Failure ]
+
+webkit.org/b/153871 imported/w3c/web-platform-tests/html/semantics/document-metadata/styling/LinkStyle.html [ Pass Failure ]
+
+# This test is already run with run-jsc-stress-tests
+webkit.org/b/153879 js/basic-set.html [ Skip ]
+
+# outline: auto -focusring.
+accessibility/mac/selection-element-tabbing-to-link.html [ Pass Failure ]
+accessibility/mac/selection-notification-focus-change.html [ Pass Failure ]

@@ -31,6 +31,7 @@
 #include "Node.h"
 #include "wtf/text/AtomicString.h"
 #include <runtime/Error.h>
+#include <runtime/FunctionPrototype.h>
 #include <runtime/PropertyNameArray.h>
 #include <wtf/GetPtr.h>
 
@@ -47,8 +48,8 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionDispatchEven
 
 // Attributes
 
-JSC::EncodedJSValue jsTestEventTargetConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestEventTargetConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestEventTargetConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestEventTargetConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestEventTargetPrototype : public JSC::JSNonFinalObject {
 public:
@@ -77,6 +78,12 @@ private:
 
 typedef JSDOMConstructorNotConstructable<JSTestEventTarget> JSTestEventTargetConstructor;
 
+template<> JSValue JSTestEventTargetConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
+{
+    UNUSED_PARAM(vm);
+    return globalObject.functionPrototype();
+}
+
 template<> void JSTestEventTargetConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
     putDirect(vm, vm.propertyNames->prototype, JSTestEventTarget::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
@@ -84,7 +91,7 @@ template<> void JSTestEventTargetConstructor::initializeProperties(VM& vm, JSDOM
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTargetConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventTargetConstructor) };
+template<> const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTarget", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventTargetConstructor) };
 
 /* Hash table for prototype */
 
@@ -167,19 +174,18 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* s
     return Base::getOwnPropertySlotByIndex(thisObject, state, index, slot);
 }
 
-EncodedJSValue jsTestEventTargetConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)
+EncodedJSValue jsTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestEventTargetPrototype* domObject = jsDynamicCast<JSTestEventTargetPrototype*>(baseValue);
+    JSTestEventTargetPrototype* domObject = jsDynamicCast<JSTestEventTargetPrototype*>(JSValue::decode(thisValue));
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSTestEventTarget::getConstructor(state->vm(), domObject->globalObject()));
 }
 
-void setJSTestEventTargetConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+void setJSTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestEventTargetPrototype* domObject = jsDynamicCast<JSTestEventTargetPrototype*>(baseValue);
+    JSTestEventTargetPrototype* domObject = jsDynamicCast<JSTestEventTargetPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state);
         return;
@@ -201,9 +207,9 @@ void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* state, 
     Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);
 }
 
-JSValue JSTestEventTarget::getConstructor(VM& vm, JSGlobalObject* globalObject)
+JSValue JSTestEventTarget::getConstructor(VM& vm, const JSGlobalObject* globalObject)
 {
-    return getDOMConstructor<JSTestEventTargetConstructor>(vm, *jsCast<JSDOMGlobalObject*>(globalObject));
+    return getDOMConstructor<JSTestEventTargetConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(ExecState* state)

@@ -1,3 +1,219 @@
+2016-02-10  Jason Marcell  <jmarcell@apple.com>
+
+        Remove calls to parseInt in order to work with non-integer revisions
+        https://bugs.webkit.org/show_bug.cgi?id=153820
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype.sourceStampChanges): Remove calls to parseInt in order to work with non-integer
+        revisions.
+        (BuildbotIteration.prototype._parseData): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.update): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockBuildbotQueueView.js:
+        (MockBuildbotQueueView.prototype._latestProductiveIteration): Change integers to strings in test code.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js:
+        (MockTrac.prototype.get oldestRecordedRevisionNumber): Ditto.
+        (MockTrac.prototype.get latestRecordedRevisionNumber): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Ditto.
+
+2016-02-10  Jason Marcell  <jmarcell@apple.com>
+
+        Teach dashboard code to compare non-integer revisions
+        https://bugs.webkit.org/show_bug.cgi?id=152345
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueue.js:
+        (BuildbotQueue.prototype.compareIterationsByRevisions): Compare non-integer revisions.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._appendPendingRevisionCount): Use Trac.indexOfRevision in order to compare non-integer
+        revisions. Also uses new Trac.commitsOnBranchLaterThanRevision method.
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Ditto.
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Use Trac.indexOfRevision in order to compare non-integer
+        revisions. Also uses new Trac.nextRevision method to calculate a revision range.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype._commitsOnBranch): Renamed this to indicate that it should be a private method used by the latter two new
+        methods.
+        (Trac.prototype.commitsOnBranchLaterThanRevision): Finds revisions on a branch later than the specified revision.
+        (Trac.prototype.commitsOnBranchInRevisionRange): Finds revisions on a branch within a specified range.
+        (Trac.prototype.nextRevision): Finds the next revision after a given revision on a specific branch.
+        (Trac.prototype.indexOfRevision): Finds the index of a given revision within the recordedCommits array.
+        (Trac.prototype.commitsOnBranch): Deleted. Renamed to _commitsOnBranch.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added unit tests.
+
+2016-02-09  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement word related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=153939
+        <rdar://problem/24269605>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (endTextMarkerCallback):
+        (leftWordTextMarkerRangeForTextMarkerCallback):
+        (rightWordTextMarkerRangeForTextMarkerCallback):
+        (previousWordStartTextMarkerForTextMarkerCallback):
+        (nextWordEndTextMarkerForTextMarkerCallback):
+        (setSelectedVisibleTextRangeCallback):
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::supportedActions):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::setBoolAttributeValue):
+        (WTR::AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::endTextMarker):
+        (WTR::AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::endTextMarker):
+        (WTR::AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::_convertMathMultiscriptPairsToString):
+
+2016-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Remove eail related cruft after r195725
+        https://bugs.webkit.org/show_bug.cgi?id=154030
+
+        Reviewed by Alex Christensen.
+
+        * efl/jhbuildrc:
+
+2016-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Remove LLVM related cruft after r196077
+        https://bugs.webkit.org/show_bug.cgi?id=154031
+
+        Reviewed by Alex Christensen.
+
+        * efl/jhbuild.modules:
+        * efl/patches/llvm-elf-add-stackmaps-arm64.patch: Removed.
+        * efl/patches/llvm-elf-allow-fde-references-outside-the-2gb-range-arm64.patch: Removed.
+        * efl/patches/llvm-version-arm64.patch: Removed.
+
+2016-02-05  Aakash Jain  <aakash_jain@apple.com>
+
+        tests fail if display sleeps while run-webkit-tests is running
+        https://bugs.webkit.org/show_bug.cgi?id=153919
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (addDisplaySleepAssertion): Add the assertion so that the display doesn't turn off.
+        (releaseDisplaySleepAssertion): Release the DisplaySleep Assertion.
+        (simpleSignalHandler): Release the DisplaySleepAssertion in case of any iterrupt.
+
+2016-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS API tests after r196082
+        https://bugs.webkit.org/show_bug.cgi?id=153900
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+        (TestWebKitAPI::WebCoreNSURLSessionTest::SetUp):
+        [WebView initialize] doesn't call JSC::initializeThreading on iOS.
+
+2016-02-04  Jason Marcell  <jmarcell@apple.com>
+
+        The status message for passing combined builder queues should say "all builds succeeded" when expanded.
+        https://bugs.webkit.org/show_bug.cgi?id=153882
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Set status to "all builds succeeded" for combined builder queues
+        when expanded.
+
+2016-02-03  Filip Pizlo  <fpizlo@apple.com>
+
+        run-jsc-stress-tests should be better at telling you details about test failures
+        https://bugs.webkit.org/show_bug.cgi?id=153845
+
+        Reviewed by Geoffrey Garen.
+
+        Here's an example of the contents of results/resultsByFamily, one of the new files that this
+        generates, for some local testing I'm doing.  Notice how it groups families of tests together.
+
+        You won't see this unless you cat results/resultsByFamily.
+
+        regress.yaml/Regress/radar-24289839.js:
+            regress.yaml/Regress/radar-24289839.js.default: PASS
+            regress.yaml/Regress/radar-24289839.js.ftl: PASS
+            regress.yaml/Regress/radar-24289839.js.ftl-no-cjit: FAIL
+            regress.yaml/Regress/radar-24289839.js.ftl-eager-no-cjit: FAIL
+        
+        regress.yaml/Regress/radar-24290639.js:
+            regress.yaml/Regress/radar-24290639.js.default: PASS
+            regress.yaml/Regress/radar-24290639.js.ftl: PASS
+            regress.yaml/Regress/radar-24290639.js.ftl-no-cjit: PASS
+            regress.yaml/Regress/radar-24290639.js.ftl-eager-no-cjit: FAIL
+        
+        regress.yaml/Regress/radar-24290670.js: FAILED
+        
+        * Scripts/run-jsc-stress-tests:
+
+2016-02-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WTR] Crash in EventSendingController::contextClick() when context menu event is not handled
+        https://bugs.webkit.org/show_bug.cgi?id=153835
+
+        Reviewed by Martin Robinson.
+
+        WKBundlePageCopyContextMenuAtPointInWindow() returns nullptr when
+        the context menu event is not handled, but we are using the
+        returned value without null checking it.
+
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::contextClick):
+
+2016-02-03  Jason Marcell  <jmarcell@apple.com>
+
+        Format revisions for display according to repository type
+        https://bugs.webkit.org/show_bug.cgi?id=153818
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Use new _formatRevisionForDisplay to display revisions according
+        to repository type.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Ditto.
+        (BuildbotQueueView.prototype._formatRevisionForDisplay): Formats revisions for display according to repository type.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added unit tests to test new
+        _formatRevisionForDisplay function.
+
 2016-02-03  Aakash Jain  <aakash_jain@apple.com>
 
         Logs/CoreSimulator filling up OS disk on WebKit testers

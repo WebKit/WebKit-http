@@ -177,6 +177,13 @@ void IDBTransaction::abortDueToFailedRequest(DOMError& error)
     abort(ec);
 }
 
+void IDBTransaction::transitionedToFinishing(IndexedDB::TransactionState state)
+{
+    ASSERT(!isFinishedOrFinishing());
+    m_state = state;
+    m_referencedObjectStores.clear();
+}
+
 void IDBTransaction::abort(ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBTransaction::abort");
@@ -187,13 +194,14 @@ void IDBTransaction::abort(ExceptionCodeWithMessage& ec)
         return;
     }
 
-    m_state = IndexedDB::TransactionState::Aborting;
     m_database->willAbortTransaction(*this);
 
     if (isVersionChange()) {
         for (auto& objectStore : m_referencedObjectStores.values())
             objectStore->rollbackInfoForVersionChangeAbort();
     }
+
+    transitionedToFinishing(IndexedDB::TransactionState::Aborting);
     
     m_abortQueue.swap(m_transactionOperationQueue);
 
@@ -201,13 +209,16 @@ void IDBTransaction::abort(ExceptionCodeWithMessage& ec)
     scheduleOperation(WTFMove(operation));
 }
 
-void IDBTransaction::abortOnServerAndCancelRequests(TransactionOperation&)
+void IDBTransaction::abortOnServerAndCancelRequests(TransactionOperation& operation)
 {
     LOG(IndexedDB, "IDBTransaction::abortOnServerAndCancelRequests");
 
     ASSERT(m_transactionOperationQueue.isEmpty());
 
     serverConnection().abortTransaction(*this);
+
+    ASSERT(m_transactionOperationMap.contains(operation.identifier()));
+    m_transactionOperationMap.remove(operation.identifier());
 
     IDBError error(IDBDatabaseException::AbortError);
     for (auto& operation : m_abortQueue)
@@ -316,17 +327,20 @@ void IDBTransaction::commit()
 
     ASSERT(!isFinishedOrFinishing());
 
-    m_state = IndexedDB::TransactionState::Committing;
+    transitionedToFinishing(IndexedDB::TransactionState::Committing);
     m_database->willCommitTransaction(*this);
 
     auto operation = createTransactionOperation(*this, nullptr, &IDBTransaction::commitOnServer);
     scheduleOperation(WTFMove(operation));
 }
 
-void IDBTransaction::commitOnServer(TransactionOperation&)
+void IDBTransaction::commitOnServer(TransactionOperation& operation)
 {
     LOG(IndexedDB, "IDBTransaction::commitOnServer");
     serverConnection().commitTransaction(*this);
+
+    ASSERT(m_transactionOperationMap.contains(operation.identifier()));
+    m_transactionOperationMap.remove(operation.identifier());
 }
 
 void IDBTransaction::finishAbortOrCommit()
@@ -442,6 +456,8 @@ bool IDBTransaction::dispatchEvent(Event& event)
             else
                 m_openDBRequest->fireSuccessAfterVersionChangeCommit();
         }
+
+        m_openDBRequest = nullptr;
     }
 
     return result;

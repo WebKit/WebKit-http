@@ -1,3 +1,109 @@
+2016-02-09  Mark Lam  <mark.lam@apple.com>
+
+        Changed WTFCrash to not trash the crash site register state.
+        https://bugs.webkit.org/show_bug.cgi?id=153996
+
+        Reviewed by Geoffrey Garen.
+
+        When doing post-mortem crash site analysis using data from crash reports, it is
+        immensely valuable to be able to infer the crashing program's state from the
+        register values at crash time.  However, for RELEASE_ASSERT failures, we crash
+        using WTFCrash(), and WTFCrash() is currently implemented as a function call
+        that, in turn, calls a lot of other functions to do crash handling before
+        actually crashing.  As a result, the register values captured in the crash
+        reports are not likely to still contain the values used by the caller function
+        that failed the RELEASE_ASSERT.
+
+        This patch aims to remedy this issue for non-debug builds on OS(DARWIN) ports.
+        It does so by changing WTFCrash() into an inlined function that has an inlined
+        asm statement to issues the CPU specific breakpoint trap instruction.  As a
+        result, for non-debug OS(DARWIN) builds, crashes due to failed RELEASE_ASSERTs
+        will now show up in crash reports as crashing due to EXC_BREAKPOINT (SIGTRAP)
+        instead of a EXC_BAD_ACCESS (SIGSEGV) on address 0xbbadbeef.
+
+        For debug and non-DARWIN builds, WTFCrash() behavior currently remains unchanged.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2016-02-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK][EFL] Fix several build configuration related to SamplingProfiler after r196245
+        https://bugs.webkit.org/show_bug.cgi?id=154033
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h:
+
+2016-02-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Make sure that locking code that relies on module boundaries for compiler fences uses NEVER_INLINE
+        https://bugs.webkit.org/show_bug.cgi?id=153972
+
+        Reviewed by Andreas Kling.
+
+        When this code was written, we assumed that module boundaries were compiler fences. That might
+        not be the case if we ever do LTO.
+
+        * wtf/Lock.cpp:
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkAll):
+        (WTF::ParkingLot::forEach):
+        * wtf/WordLock.cpp:
+        (WTF::WordLock::lockSlow):
+        (WTF::WordLock::unlockSlow):
+
+2016-02-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][EFL] Enable SamplingProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=153638
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h:
+
+2016-02-07  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Replace __has_include guards around inclusion of Apple-internal-SDK headers with USE(APPLE_INTERNAL_SDK)
+        https://bugs.webkit.org/show_bug.cgi?id=153963
+
+        Reviewed by Sam Weinig.
+
+        * wtf/SystemTracing.h:
+        * wtf/WTFThreadData.h:
+        * wtf/spi/darwin/CommonCryptoSPI.h:
+
+2016-02-06  Darin Adler  <darin@apple.com>
+
+        Finish auditing call sites of upper() and lower(), eliminate many, and rename the functions
+        https://bugs.webkit.org/show_bug.cgi?id=153905
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::lower): Deleted.
+        * wtf/text/AtomicString.h: Deleted the lower function.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::convertToLowercaseWithoutLocale): Renamed from lower.
+        (WTF::StringImpl::convertToUppercaseWithoutLocale): Renamed from upper.
+        (WTF::StringImpl::convertToLowercaseWithLocale): Renamed from lower.
+        (WTF::StringImpl::convertToUppercaseWithLocale): Renamed from upper.
+        (WTF::StringImpl::foldCase): Added fast cases for ASCII since this is
+        now used in some more-performance-critical code.
+        * wtf/text/StringImpl.h: Renamed lower and upper.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::convertToLowercaseWithoutLocale): Renamed from lower.
+        (WTF::String::convertToUppercaseWithoutLocale): Renamed from upper.
+        (WTF::String::convertToLowercaseWithLocale): Renamed from lower.
+        (WTF::String::convertToUppercaseWithLocale): Renamed from upper.
+        * wtf/text/WTFString.h: Renamed lower and upper. Removed unneeded comment.
+
 2016-02-03  Darin Adler  <darin@apple.com>
 
         Convert another batch of String::lower callsites to something better, typically convertToASCIILowercase

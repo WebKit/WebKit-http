@@ -53,6 +53,9 @@
 
 #if USE(GSTREAMER)
 #include "MediaPlayerPrivateGStreamer.h"
+#if ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)
+#include "MediaPlayerPrivateGStreamerOwr.h"
+#endif
 #define PlatformMediaEngineClassName MediaPlayerPrivateGStreamer
 #if ENABLE(VIDEO) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
 #include "MediaPlayerPrivateGStreamerMSE.h"
@@ -217,6 +220,10 @@ static void buildMediaEnginesVector()
 
 #if USE(HOLE_PUNCH_EXTERNAL)
     MediaPlayerPrivateHolePunchDummy::registerMediaEngine(addMediaEngine);
+#endif
+
+#if ENABLE(MEDIA_STREAM) && USE(GSTREAMER) && USE(OPENWEBRTC)
+    MediaPlayerPrivateGStreamerOwr::registerMediaEngine(addMediaEngine);
 #endif
 
 #if defined(PlatformMediaEngineClassName)

@@ -133,6 +133,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+#include "DOMURL.h"
 #include "MediaStream.h"
 #include "MediaStreamRegistry.h"
 #endif
@@ -443,7 +444,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 
 #if ENABLE(VIDEO_TRACK)
     if (document.page())
-        m_captionDisplayMode = document.page()->group().captionPreferences()->captionDisplayMode();
+        m_captionDisplayMode = document.page()->group().captionPreferences().captionDisplayMode();
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -908,6 +909,7 @@ void HTMLMediaElement::setSrcObject(MediaStream* mediaStream)
     // https://bugs.webkit.org/show_bug.cgi?id=124896
 
     m_mediaStreamSrcObject = mediaStream;
+    setSrc(DOMURL::createPublicURL(ActiveDOMObject::scriptExecutionContext(), mediaStream));
 }
 #endif
 
@@ -2229,15 +2231,9 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
 #if ENABLE(ENCRYPTED_MEDIA)
 void HTMLMediaElement::mediaPlayerKeyAdded(MediaPlayer*, const String& keySystem, const String& sessionId)
 {
-    MediaKeyEventInit initializer;
-    initializer.keySystem = keySystem;
-    initializer.sessionId = sessionId;
-    initializer.bubbles = false;
-    initializer.cancelable = false;
-
-    RefPtr<Event> event = MediaKeyEvent::create(eventNames().webkitkeyaddedEvent, initializer);
+    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitkeyaddedEvent, keySystem, sessionId, nullptr, nullptr, emptyString(), nullptr, 0);
     event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(event.release());
+    m_asyncEventQueue.enqueueEvent(WTFMove(event));
 }
 
 void HTMLMediaElement::mediaPlayerKeyError(MediaPlayer*, const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode errorCode, unsigned short systemCode)
@@ -2264,32 +2260,16 @@ void HTMLMediaElement::mediaPlayerKeyError(MediaPlayer*, const String& keySystem
         break;
     }
 
-    MediaKeyEventInit initializer;
-    initializer.keySystem = keySystem;
-    initializer.sessionId = sessionId;
-    initializer.errorCode = MediaKeyError::create(mediaKeyErrorCode);
-    initializer.systemCode = systemCode;
-    initializer.bubbles = false;
-    initializer.cancelable = false;
-
-    RefPtr<Event> event = MediaKeyEvent::create(eventNames().webkitkeyerrorEvent, initializer);
+    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitkeyerrorEvent, keySystem, sessionId, nullptr, nullptr, emptyString(), MediaKeyError::create(mediaKeyErrorCode), systemCode);
     event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(event.release());
+    m_asyncEventQueue.enqueueEvent(WTFMove(event));
 }
 
 void HTMLMediaElement::mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const URL& defaultURL)
 {
-    MediaKeyEventInit initializer;
-    initializer.keySystem = keySystem;
-    initializer.sessionId = sessionId;
-    initializer.message = Uint8Array::create(message, messageLength);
-    initializer.defaultURL = defaultURL; 
-    initializer.bubbles = false;
-    initializer.cancelable = false;
-
-    RefPtr<Event> event = MediaKeyEvent::create(eventNames().webkitkeymessageEvent, initializer);
+    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitkeymessageEvent, keySystem, sessionId, nullptr, Uint8Array::create(message, messageLength), defaultURL, nullptr, 0);
     event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(event.release());
+    m_asyncEventQueue.enqueueEvent(WTFMove(event));
 }
 
 bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
@@ -2300,16 +2280,9 @@ bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, const String& keySyste
         return false;
     }
 
-    MediaKeyEventInit initializer;
-    initializer.keySystem = keySystem;
-    initializer.sessionId = sessionId;
-    initializer.initData = Uint8Array::create(initData, initDataLength);
-    initializer.bubbles = false;
-    initializer.cancelable = false;
-
-    RefPtr<Event> event = MediaKeyEvent::create(eventNames().webkitneedkeyEvent, initializer);
+    Ref<Event> event = MediaKeyEvent::create(eventNames().webkitneedkeyEvent, keySystem, sessionId, Uint8Array::create(initData, initDataLength), nullptr, emptyString(), nullptr, 0);
     event->setTarget(this);
-    m_asyncEventQueue.enqueueEvent(event.release());
+    m_asyncEventQueue.enqueueEvent(WTFMove(event));
     return true;
 }
 #endif
@@ -2328,12 +2301,7 @@ bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
         return false;
     }
 
-    MediaKeyNeededEventInit initializer;
-    initializer.initData = initData;
-    initializer.bubbles = false;
-    initializer.cancelable = false;
-
-    RefPtr<Event> event = MediaKeyNeededEvent::create(eventNames().webkitneedkeyEvent, initializer);
+    RefPtr<Event> event = MediaKeyNeededEvent::create(eventNames().webkitneedkeyEvent, initData);
     event->setTarget(this);
     m_asyncEventQueue.enqueueEvent(event.release());
 
@@ -3579,10 +3547,9 @@ void HTMLMediaElement::addTextTrack(PassRefPtr<TextTrack> track)
         Document& document = this->document();
         document.registerForCaptionPreferencesChangedCallbacks(this);
         if (Page* page = document.page())
-            m_captionDisplayMode = page->group().captionPreferences()->captionDisplayMode();
+            m_captionDisplayMode = page->group().captionPreferences().captionDisplayMode();
     }
 
-    track->setManualSelectionMode(m_captionDisplayMode == CaptionUserPreferences::Manual);
     textTracks()->append(track);
 
     closeCaptionTracksChanged();
@@ -3783,7 +3750,7 @@ void HTMLMediaElement::configureTextTrackGroup(const TrackGroup& group)
     LOG(Media, "HTMLMediaElement::configureTextTrackGroup(%p)", this);
 
     Page* page = document().page();
-    CaptionUserPreferences* captionPreferences = page ? page->group().captionPreferences() : 0;
+    CaptionUserPreferences* captionPreferences = page ? &page->group().captionPreferences() : 0;
     CaptionUserPreferences::CaptionDisplayMode displayMode = captionPreferences ? captionPreferences->captionDisplayMode() : CaptionUserPreferences::Automatic;
 
     // First, find the track in the group that should be enabled (if any).
@@ -3845,30 +3812,32 @@ void HTMLMediaElement::configureTextTrackGroup(const TrackGroup& group)
         }
     }
 
-    if (!trackToEnable && defaultTrack)
-        trackToEnable = defaultTrack;
-    
-    // If no track matches the user's preferred language, none was marked as 'default', and there is a forced subtitle track
-    // in the same language as the language of the primary audio track, enable it.
-    if (!trackToEnable && forcedSubitleTrack)
-        trackToEnable = forcedSubitleTrack;
+    if (displayMode != CaptionUserPreferences::Manual) {
+        if (!trackToEnable && defaultTrack)
+            trackToEnable = defaultTrack;
 
-    // If no track matches, don't disable an already visible track unless preferences say they all should be off.
-    if (group.kind != TrackGroup::CaptionsAndSubtitles || displayMode != CaptionUserPreferences::ForcedOnly) {
-        if (!trackToEnable && !defaultTrack && group.visibleTrack)
-            trackToEnable = group.visibleTrack;
+        // If no track matches the user's preferred language, none was marked as 'default', and there is a forced subtitle track
+        // in the same language as the language of the primary audio track, enable it.
+        if (!trackToEnable && forcedSubitleTrack)
+            trackToEnable = forcedSubitleTrack;
+
+        // If no track matches, don't disable an already visible track unless preferences say they all should be off.
+        if (group.kind != TrackGroup::CaptionsAndSubtitles || displayMode != CaptionUserPreferences::ForcedOnly) {
+            if (!trackToEnable && !defaultTrack && group.visibleTrack)
+                trackToEnable = group.visibleTrack;
+        }
+
+        // If no track matches the user's preferred language and non was marked 'default', enable the first track
+        // because the user has explicitly stated a preference for this kind of track.
+        if (!trackToEnable && fallbackTrack)
+            trackToEnable = fallbackTrack;
+
+        if (trackToEnable)
+            m_subtitleTrackLanguage = trackToEnable->language();
+        else
+            m_subtitleTrackLanguage = emptyString();
     }
-    
-    // If no track matches the user's preferred language and non was marked 'default', enable the first track
-    // because the user has explicitly stated a preference for this kind of track.
-    if (!trackToEnable && fallbackTrack)
-        trackToEnable = fallbackTrack;
 
-    if (trackToEnable)
-        m_subtitleTrackLanguage = trackToEnable->language();
-    else
-        m_subtitleTrackLanguage = emptyString();
-    
     if (currentlyEnabledTracks.size()) {
         for (size_t i = 0; i < currentlyEnabledTracks.size(); ++i) {
             RefPtr<TextTrack> textTrack = currentlyEnabledTracks[i];
@@ -4006,10 +3975,10 @@ void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
             trackList->item(i)->setMode(TextTrack::disabledKeyword());
     }
 
-    CaptionUserPreferences* captionPreferences = document().page() ? document().page()->group().captionPreferences() : 0;
-    if (!captionPreferences)
+    if (!document().page())
         return;
 
+    auto& captionPreferences = document().page()->group().captionPreferences();
     CaptionUserPreferences::CaptionDisplayMode displayMode;
     if (trackToSelect == TextTrack::captionMenuOffItem())
         displayMode = CaptionUserPreferences::ForcedOnly;
@@ -4018,10 +3987,10 @@ void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
     else {
         displayMode = CaptionUserPreferences::AlwaysOn;
         if (trackToSelect->language().length())
-            captionPreferences->setPreferredLanguage(trackToSelect->language());
+            captionPreferences.setPreferredLanguage(trackToSelect->language());
     }
 
-    captionPreferences->setCaptionDisplayMode(displayMode);
+    captionPreferences.setCaptionDisplayMode(displayMode);
 }
 
 void HTMLMediaElement::configureTextTracks()
@@ -5723,14 +5692,9 @@ void HTMLMediaElement::captionPreferencesChanged()
     if (!document().page())
         return;
 
-    CaptionUserPreferences::CaptionDisplayMode displayMode = document().page()->group().captionPreferences()->captionDisplayMode();
+    CaptionUserPreferences::CaptionDisplayMode displayMode = document().page()->group().captionPreferences().captionDisplayMode();
     if (m_captionDisplayMode == displayMode)
         return;
-
-    if (m_captionDisplayMode == CaptionUserPreferences::Manual || displayMode == CaptionUserPreferences::Manual) {
-        for (unsigned i = 0; i < m_textTracks->length(); ++i)
-            m_textTracks->item(i)->setManualSelectionMode(displayMode == CaptionUserPreferences::Manual);
-    }
 
     m_captionDisplayMode = displayMode;
     setWebkitClosedCaptionsVisible(m_captionDisplayMode == CaptionUserPreferences::AlwaysOn);
@@ -6165,9 +6129,8 @@ String HTMLMediaElement::mediaPlayerSourceApplicationIdentifier() const
 
 Vector<String> HTMLMediaElement::mediaPlayerPreferredAudioCharacteristics() const
 {
-    Page* page = document().page();
-    if (CaptionUserPreferences* captionPreferences = page ? page->group().captionPreferences() : nullptr)
-        return captionPreferences->preferredAudioCharacteristics();
+    if (Page* page = document().page())
+        return page->group().captionPreferences().preferredAudioCharacteristics();
     return Vector<String>();
 }
 

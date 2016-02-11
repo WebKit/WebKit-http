@@ -350,9 +350,9 @@ public:
     Element* getElementByAccessKey(const String& key);
     void invalidateAccessKeyMap();
 
-    void addImageElementByLowercasedUsemap(const AtomicStringImpl&, HTMLImageElement&);
-    void removeImageElementByLowercasedUsemap(const AtomicStringImpl&, HTMLImageElement&);
-    HTMLImageElement* imageElementByLowercasedUsemap(const AtomicStringImpl&) const;
+    void addImageElementByCaseFoldedUsemap(const AtomicStringImpl&, HTMLImageElement&);
+    void removeImageElementByCaseFoldedUsemap(const AtomicStringImpl&, HTMLImageElement&);
+    HTMLImageElement* imageElementByCaseFoldedUsemap(const AtomicStringImpl&) const;
 
     SelectorQuery* selectorQueryForString(const String&, ExceptionCode&);
     void clearSelectorQueryCache();
@@ -603,6 +603,7 @@ public:
     void prepareForDestruction();
 
     // Override ScriptExecutionContext methods to do additional work
+    bool shouldBypassMainWorldContentSecurityPolicy() const override final;
     virtual void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) override final;
     virtual void resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) override final;
     virtual void stopActiveDOMObjects() override final;

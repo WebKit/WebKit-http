@@ -5,8 +5,8 @@ BouncingCanvasShape = Utilities.createSubclass(BouncingCanvasParticle,
     {
         BouncingCanvasParticle.call(this, stage, stage.shape);
         this._fill = stage.fill;
-        this._color0 = stage.randomColor();
-        this._color1 = stage.randomColor();
+        this._color0 = Stage.randomColor();
+        this._color1 = Stage.randomColor();
     }, {
 
     _applyFill: function()
@@ -63,10 +63,10 @@ BouncingCanvasShapesStage = Utilities.createSubclass(BouncingCanvasParticlesStag
         BouncingCanvasParticlesStage.call(this);
     }, {
 
-    initialize: function(benchmark)
+    initialize: function(benchmark, options)
     {
-        BouncingCanvasParticlesStage.prototype.initialize.call(this, benchmark);
-        this.parseShapeParameters(benchmark.options);
+        BouncingCanvasParticlesStage.prototype.initialize.call(this, benchmark, options);
+        this.parseShapeParameters(options);
     },
 
     createParticle: function()

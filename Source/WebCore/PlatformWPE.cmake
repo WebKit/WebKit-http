@@ -1,3 +1,5 @@
+include(platform/ImageDecoders.cmake)
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"

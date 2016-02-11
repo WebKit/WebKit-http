@@ -4,34 +4,38 @@ var Strings = {
         score: "Score",
         samples: "Samples",
 
-        experiments: {
-            complexity: "Complexity",
-            frameRate: "FPS"
-        },
-
-        measurements: {
-            average: "Avg.",
-            concern: "W.5%",
-            stdev: "Std.",
-            percent:  "%"
-        },
-
-        results: {
-            results: "Results",
-            graph: "Graph",
-            json: "JSON"
-        }
+        complexity: "Complexity",
+        frameRate: "FPS",
+        mergedRawComplexity: "Merged raw",
+        mergedAverageComplexity: "Merged average",
+        graph: "Graph"
     },
     json: {
         score: "score",
         samples: "samples",
+        complexityAverageSamples: "complexityAverageSamples",
+        marks: "marks",
 
-        targetFPS: "targetFPS",
-        samplingTimeOffset: "samplingTimeOffset",
+        targetFrameLength: "targetFrameLength",
+        samplingStartTimeOffset: "Start sampling",
+        samplingEndTimeOffset: "End sampling",
 
         experiments: {
             complexity: "complexity",
             frameRate: "frameRate"
+        },
+
+        regressions: {
+            timeRegressions: "timeRegressions",
+            complexity: "complexity",
+            maxComplexity: "maxComplexity",
+            startIndex: "startIndex",
+            endIndex: "endIndex",
+
+            complexityRegression: "complexityRegression",
+            complexityAverageRegression: "complexityAverageRegression",
+            segment1: "segment1",
+            segment2: "segment2"
         },
 
         measurements: {

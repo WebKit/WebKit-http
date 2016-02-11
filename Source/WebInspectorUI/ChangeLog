@@ -1,3 +1,577 @@
+2016-02-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add new icon for the Timeline Recording navigation bar item
+        https://bugs.webkit.org/show_bug.cgi?id=154089
+        rdar://problem/24595652
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/Stopwatch.png: Removed.
+        * UserInterface/Images/Stopwatch@2x.png: Removed.
+        * UserInterface/Images/Stopwatch.svg: Added.
+        * UserInterface/Views/TimelineIcons.css:
+        (.stopwatch-icon .icon): Use Stopwatch.svg.
+        (body:not(.mac-platform, .windows-platform) .stopwatch-icon .icon): Added for GTK+.
+
+2016-02-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Switching actions in Edit Breakpoint popover causes a jerk
+        https://bugs.webkit.org/show_bug.cgi?id=154093
+        <rdar://problem/24597869>
+
+        Reviewed by Timothy Hatcher.
+
+        Adjusted CodeMirror eval editor styles to match vanilla input field.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        (.breakpoint-action-eval-editor):
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Regression: Web Inspector: Sometimes in Elements panel two elements showed as selected at the same time
+        https://bugs.webkit.org/show_bug.cgi?id=149742
+        <rdar://problem/24492481>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.moveChild):
+        Since removing and re-adding this tree element may forgot its
+        entire child tree, re-select the selected child that may have
+        just been lost in the shuffle.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline.prototype._forgetTreeElement):
+        When forgetting the selected tree element, also deselect the
+        forgotten tree element so it clears its selected state.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Allow copying all headers in the request/response header tables
+        https://bugs.webkit.org/show_bug.cgi?id=154048
+        <rdar://problem/24576302>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Copy Table" string.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype._contextMenuInHeader):
+        Add context menu support for table header cells, and give them a
+        "Copy Table" context menu if there is copyable data.
+
+        (WebInspector.DataGrid.prototype._contextMenuInDataTable):
+        Add "Copy Table" context menu for copyable rows.
+
+        (WebInspector.DataGrid.prototype._copyTextForDataGridNode):
+        (WebInspector.DataGrid.prototype._copyTextForDataGridHeaders):
+        (WebInspector.DataGrid.prototype._copyTable):
+        (WebInspector.DataGrid.prototype._hasCopyableData):
+        Helpers for determining copyability and copying tab separated data.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: localStorage inspector very slow on big values
+        https://bugs.webkit.org/show_bug.cgi?id=123750
+        <rdar://problem/15384930>
+
+        Reviewed by Timothy Hatcher.
+
+        It is not useful to show very large strings in the DOM Storage DataGrid.
+        This change truncates display strings to roughly 200 characters. If the
+        developer really wants the full value of the string they can just access
+        it through localStorage.
+
+        * UserInterface/Models/DOMStorageObject.js:
+        (WebInspector.DOMStorageObject.prototype.getEntries.innerCallback):
+        (WebInspector.DOMStorageObject.prototype.getEntries):
+        (WebInspector.DOMStorageObject.prototype.itemUpdated):
+        Modernize.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView):
+        (WebInspector.DOMStorageContentView.prototype.itemRemoved):
+        Modernize.
+
+        (WebInspector.DOMStorageContentView.prototype.itemAdded):
+        (WebInspector.DOMStorageContentView.prototype.itemUpdated):
+        (WebInspector.DOMStorageContentView.prototype._truncateValue):
+        (WebInspector.DOMStorageContentView.prototype._populate):
+        Whenever we get a value that we will display, truncate it to
+        just 200 characters.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Expiration column in Storage tab can't be sorted
+        https://bugs.webkit.org/show_bug.cgi?id=154043
+        <rdar://problem/24572272>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._sortDataGrid.expiresCompare):
+        Sort Session as the shortest time, not the longest time. Use the
+        cookie.expires date when sorting, not the locale string.
+
+2016-02-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Limit max and min zoom factor of Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=154041
+        <rdar://problem/24571326>
+
+        Reviewed by Brian Burg.
+
+        Chose reasonable zoom levels that looked good to my eye and
+        roughly matched Safari's page zoom levels.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Do not implicitly prevent default for zoom in/out keyboard shortcuts to
+        allow for a system beep if we do not do anything. 
+
+        (WebInspector._increaseZoom):
+        (WebInspector._decreaseZoom):
+        Do not go beyond a max or min zoom level. Prevent default in the case
+        where we actually zoom, but don't prevent default where we do not
+        actually zoom to cause a system beep. Allow for a slight drift of
+        the floating point value as it increases / decreases by 0.2 at the
+        different zoom factors.
+
+        (WebInspector._resetZoom):
+        (WebInspector._showTabAtIndex):
+        Remove redundant prevent default calls, since it would happen
+        implicitly for these keyboard shortcuts.
+
+2016-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception merging script profiler records
+        https://bugs.webkit.org/show_bug.cgi?id=154004
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._mergeScriptProfileRecords):
+        Stop if we've merged all script profiler records.
+
+2016-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Search doesn't seem to find text that is present in multiple places
+        https://bugs.webkit.org/show_bug.cgi?id=154016
+        <rdar://problem/23391307>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.get searchableScripts):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype.performSearch):
+        Only search scripts with a URL. Don't search the potentially
+        large number of anonymous scripts.
+
+2016-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Zooming in on the timeline graph does not increase its time resolution from minutes
+        https://bugs.webkit.org/show_bug.cgi?id=154013
+        <rdar://problem/23844527>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Utilities.js:
+        (Number.secondsToString):
+        Simplify logic and ensure that when under high resolution we
+        don't go above seconds for our units.
+
+        (Number.bytesToString):
+        Simplify logic.
+
+        * UserInterface/Views/LinearTimelineOverview.js:
+        (WebInspector.LinearTimelineOverview):
+        Reduce the rather large maximum seconds per pixel from 60 seconds
+        per pixel to 2 seconds per pixel. This means when the user zooms
+        out of a timeline they don't see such large time values.
+
+2016-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Extract a few common unicode characters into global variables
+        https://bugs.webkit.org/show_bug.cgi?id=154008
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        Create global variables for `emDash` and `ellipsis` to use all over the tools.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsTable): Deleted.
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView.prototype._updateDisplay):
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WebInspector.HierarchicalPathComponent.prototype._updateElementTitleAndText):
+        (WebInspector.HierarchicalPathComponent.prototype._updateSelectElement.createOption):
+        (WebInspector.HierarchicalPathComponent.prototype._updateSelectElement):
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WebInspector.HierarchicalPathNavigationItem.prototype.updateLayout):
+        * UserInterface/Views/LayerTreeDataGridNode.js:
+        (WebInspector.LayerTreeDataGridNode.prototype.set layer):
+        * UserInterface/Views/LayoutTimelineDataGridNode.js:
+        (WebInspector.LayoutTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.LayoutTimelineDataGridNode):
+        * UserInterface/Views/MemoryCategoryView.js:
+        (WebInspector.MemoryCategoryView.prototype._updateDetails): Deleted.
+        (WebInspector.MemoryCategoryView): Deleted.
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WebInspector.MemoryTimelineView.prototype._clearUsageLegend):
+        (WebInspector.MemoryTimelineView.prototype._updateUsageLegend):
+        (WebInspector.MemoryTimelineView.prototype._clearMaxComparisonLegend):
+        (WebInspector.MemoryTimelineView.prototype._updateMaxComparisonLegend):
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WebInspector.MultipleScopeBarItem.set scopeBarItems.createOption):
+        (WebInspector.MultipleScopeBarItem.prototype.set scopeBarItems):
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendEntryPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        * UserInterface/Views/ProfileNodeDataGridNode.js:
+        (WebInspector.ProfileNodeDataGridNode.prototype.createCellContent):
+        (WebInspector.ProfileNodeDataGridNode):
+        * UserInterface/Views/RenderingFrameTimelineDataGridNode.js:
+        (WebInspector.RenderingFrameTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.RenderingFrameTimelineDataGridNode):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRequestAndResponse): Deleted.
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._valueForSize): Deleted.
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.ScriptTimelineDataGridNode):
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.truncateAndHighlightTitle):
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/TypeTreeElement.js:
+        (WebInspector.TypeTreeElement.prototype.onpopulate):
+        * UserInterface/Views/TypeTreeView.js:
+        (WebInspector.TypeTreeView.prototype._populate):
+        (WebInspector.TypeTreeView):
+
+2016-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ⇧⌘→ when editing text in the Elements tree shouldn't switch inspector tab
+        https://bugs.webkit.org/show_bug.cgi?id=154006
+        <rdar://problem/22892489>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/EditingSupport.js:
+        (WebInspector.isEventTargetAnEditableField):
+        Check the WebInspector's custom __editing state.
+
+2016-02-08  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Long values for comma separated CSS properties overflow the Visual sidebar area
+        https://bugs.webkit.org/show_bug.cgi?id=153890
+        <rdar://problem/24510216>
+
+        Reviewed by Timothy Hatcher.
+
+        For especially long values in comma-separated CSS properties (such as
+        background-image), the text will not be clipped as expected due to the
+        way in which the width is calculated for the element (the value, inside
+        the title element, is the only child with a specified width other than
+        100%). This overflowing causes the width of the section containing that
+        property to expand, pushing content outside of the inspector window. To
+        remedy this, a specified width is set on the relevant properties based
+        on the width of the sidebar to ensure proper text clipping.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item.visual-style-font-family-list-item > .visual-style-comma-separated-keyword-item-editor):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles > .subtitle):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container): Deleted.
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list): Deleted.
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item): Deleted.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.set specifiedWidth):
+        Calculates the necessary subtractions from the given width value based on
+        the margins and size of sibling elements.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateProperties):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateFontSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBackgroundStyleSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection):
+        Added another list to each group which, if set, will pass the current
+        sidebar width to all contained property editors.
+
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor.prototype.update):
+        Somewhat unrelated (r196146), but added another check to ensure that the
+        CSS property exists before checking to see if it has an invalid value.
+
+2016-02-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: WebInspector.Setting should have a "reset" method
+        https://bugs.webkit.org/show_bug.cgi?id=153971
+        <rdar://problem/24544101>
+
+        Reviewed by Brian Burg.
+
+        Currently UI needing to restore a setting to its default must retain a copy
+        of the default value. This should be a basic operation of WebInspector.Setting.
+
+        * UserInterface/Base/Setting.js:
+        (WebInspector.Setting):
+        (WebInspector.Setting.prototype.reset):
+        Sets value to a copy of the default.
+
+2016-02-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r195432): Web Inspector: bottom right section of the styles sidebar is 1px taller than the console prompt
+        https://bugs.webkit.org/show_bug.cgi?id=153959
+        <rdar://problem/24541053>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ .options-container):
+        (.sidebar > .panel.details.css-style > .content ~ .class-list-container)::
+        Revert the height to what it used to be prior r195432.
+
+2016-02-05  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Visual Styles sidebar should be more forgiving to long labels
+        https://bugs.webkit.org/show_bug.cgi?id=153927
+        <rdar://problem/24343897>
+
+        Reviewed by Timothy Hatcher.
+
+        If a label is too long for it's container, it overflows and is visible
+        above the rest of the elements nearby.
+
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container > .visual-style-property-title):
+        Adds text overflow to properties that extend beyond the container's width.
+
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor):
+        Now also adds the label value as a title attribute to the element, just in
+        case the content overflows.
+
+2016-02-05  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Include SamplingProfiler's expression-level data for stack frames in the protocol
+        https://bugs.webkit.org/show_bug.cgi?id=153455
+        <rdar://problem/24335884>
+
+        Reviewed by Joseph Pecoraro.
+
+        JSC has been collecting expression-level data in the sampling
+        profiler, and with this patch, we now get that information
+        in the inspector. With this information, we probably have
+        all the data we need to make real heat maps.
+
+        * UserInterface/Models/CallingContextTree.js:
+        (WebInspector.CallingContextTree.prototype.updateTreeWithStackTrace):
+        (WebInspector.CCTNode):
+        (WebInspector.CCTNode.prototype.findOrMakeChild):
+        (WebInspector.CCTNode.prototype.addTimestampAndExpressionLocation):
+        (WebInspector.CCTNode.prototype.addTimestamp): Deleted.
+
+2016-02-05  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Navigation bar in sidebars should always fit on a single line
+        https://bugs.webkit.org/show_bug.cgi?id=153412
+        <rdar://problem/24318706>
+
+        Reviewed by Timothy Hatcher.
+
+        This happened because the allowed maximum width of the sidebar was greater
+        than the minimum width derived from the currently visible sidebar.
+
+        * UserInterface/Base/Utilities.js:
+        (Number.constrain):
+        Added logic to reverse the values of min and max if max is less than min.
+
+2016-02-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Don't wrap labels in Breakpoint Editor popover
+        https://bugs.webkit.org/show_bug.cgi?id=153926
+        rdar://problem/24149542
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/BreakpointPopoverController.css:
+        (.popover .edit-breakpoint-popover-content > table > tr > th): Added white-space: nowrap.
+
+2016-02-05  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Replace all instances of '%s' with “%s“
+        https://bugs.webkit.org/show_bug.cgi?id=153891
+        <rdar://problem/24510236>
+
+        Reviewed by Timothy Hatcher.
+
+        Switched all WebInspector.UIString() from using '' to ““.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleSelectorPaste):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded):
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor.prototype.update):
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._updateSelectorIcon):
+
+2016-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r193913): Web Inspector: Wrong z-index of inner sections
+        https://bugs.webkit.org/show_bug.cgi?id=153914
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section .details-section > .header):
+
+2016-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Decrease font-weight of inner sections
+        https://bugs.webkit.org/show_bug.cgi?id=153913
+        <rdar://problem/24520326>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section .details-section > .header):
+
+2016-02-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: console.table background stripes are misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=152954
+        <rdar://problem/24197735>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-item .data-grid table.data):
+        (.console-item .data-grid table.data tr:nth-child(even)):
+        Replace CSS gradient that produces fixed height stripes with
+        a rule that sets background only on even table rows.
+
+2016-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed, follow-up fix to r196151 that removes some more images.
+
+        * UserInterface/Images/Colors.png: Removed.
+        * UserInterface/Images/Colors@2x.png: Removed.
+        * UserInterface/Images/Network.png: Removed.
+        * UserInterface/Images/Network@2x.png: Removed.
+        * UserInterface/Images/Script.png: Removed.
+        * UserInterface/Images/Script@2x.png: Removed.
+        These images were supposed to also be removed.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        Also remove references to now removed images.
+
+2016-02-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: New timeline images for instruments
+        https://bugs.webkit.org/show_bug.cgi?id=153884
+        <rdar://problem/24509429>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.iconClassNameForTimeline):
+        Better names and give Memory timeline a name for an icon.
+
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline.large .item .icon):
+        Add more padding next to large icons.
+
+        * UserInterface/Images/ColorsLarge.png: Removed.
+        * UserInterface/Images/ColorsLarge@2x.png: Removed.
+        * UserInterface/Images/Frames.png: Removed.
+        * UserInterface/Images/Frames@2x.png: Removed.
+        * UserInterface/Images/LayoutInstrument.svg: Added.
+        * UserInterface/Images/MemoryInstrument.svg: Added.
+        * UserInterface/Images/NetworkInstrument.svg: Added.
+        * UserInterface/Images/NetworkLarge.png: Removed.
+        * UserInterface/Images/NetworkLarge@2x.png: Removed.
+        * UserInterface/Images/RenderingFramesInstrument.svg: Added.
+        * UserInterface/Images/ScriptLarge.png: Removed.
+        * UserInterface/Images/ScriptLarge@2x.png: Removed.
+        Remove old timeline pngs.
+
+        * UserInterface/Images/ScriptsInstrument.svg: Added.
+        * UserInterface/Views/TimelineIcons.css:
+        (.network-icon .icon):
+        (.script-icon .icon):
+        (.memory-icon .icon):
+        (.layout-icon .icon):
+        (.rendering-frame-icon .icon):
+        Use the new SVGs.
+
+        (body:not(.mac-platform, .windows-platform) .network-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .network-icon.large .icon):
+        (body:not(.mac-platform, .windows-platform) .layout-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .layout-icon.large .icon):
+        (body:not(.mac-platform, .windows-platform) .script-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .script-icon.large .icon):
+        (body:not(.mac-platform, .windows-platform) .rendering-frame-icon .icon):
+        Fallback to old icons for non-Mac/Windows ports using Images/gtk images.
+
+2016-02-04  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Show error icons if invalid values already exist for properties in the Visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=153702
+        <rdar://problem/24424025>
+
+        Reviewed by Timothy Hatcher.
+
+        When CSS properties have invalid values, instead of displaying the computed
+        value for that property in the Visual sidebar, show an error icon with the
+        the invalid value.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/VisualStyleNumberInputBox.css:
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container > .number-input-value):
+        (.visual-style-property-container > .visual-style-property-value-container > .visual-style-special-property-placeholder[hidden] ~ .number-input-container > .number-input-value):
+        By default, do not allow any pointer events to interact with the input element.
+        Instead, only allow interaction when the placeholder element is hidden to ensure
+        that the user cannot add a value when the computed value is displayed.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox.prototype.set specialPropertyPlaceholderElementText):
+        Reset the selected keyword to "Unchanged" since this is either a warning
+        message or the computed value.
+
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container > .visual-style-property-editor-warning.missing-dependency):
+        (.visual-style-property-container > .visual-style-property-editor-warning.invalid-value):
+        (.visual-style-property-container > .visual-style-property-editor-warning):
+
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor):
+        Replaced document.createElement with [element].createChild for simplicity.
+
+        (WebInspector.VisualStylePropertyEditor.prototype.update):
+        Before assigning the value of the property to the editor, check to see if
+        the property is valid. If not, display an Error icon and message stating
+        that the current value is invalid.
+
+        (WebInspector.VisualStylePropertyEditor.prototype.updateEditorValues):
+        (WebInspector.VisualStylePropertyEditor.prototype.set specialPropertyPlaceholderElementText):
+        Unhides the special placeholder element with the given text as its content.
+
+        (WebInspector.VisualStylePropertyEditor.prototype._valueDidChange):
+        (WebInspector.VisualStylePropertyEditor.prototype._checkDependencies):
+        (WebInspector.VisualStylePropertyEditor.prototype.addDependency):
+
 2016-02-03  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: JS PrettyPrinting unary - and + issues

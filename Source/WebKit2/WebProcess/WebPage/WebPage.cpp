@@ -2848,6 +2848,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if USE(AVFOUNDATION)
     settings.setAVFoundationEnabled(store.getBoolValueForKey(WebPreferencesKey::isAVFoundationEnabledKey()));
+    settings.setAVFoundationNSURLSessionEnabled(store.getBoolValueForKey(WebPreferencesKey::isAVFoundationNSURLSessionEnabledKey()));
 #endif
 
 #if PLATFORM(COCOA)

@@ -4,41 +4,45 @@ SimpleCanvasStage = Utilities.createSubclass(Stage,
         Stage.call(this);
         this._canvasObject = canvasObject;
         this.objects = [];
+        this.offsetIndex = 0;
     }, {
 
-    initialize: function(benchmark)
+    initialize: function(benchmark, options)
     {
-        Stage.prototype.initialize.call(this, benchmark);
+        Stage.prototype.initialize.call(this, benchmark, options);
         this.context = this.element.getContext("2d");
     },
 
     tune: function(count)
     {
         if (count == 0)
-            return this.objects.length;
+            return;
 
-        if (count > 0) {
-            for (var i = 0; i < count; ++i)
-                this.objects.push(new this._canvasObject(this));
-            return this.objects.length;
+        if (count < 0) {
+            this.offsetIndex = Math.min(this.offsetIndex - count, this.objects.length);
+            return;
         }
 
-        count = Math.min(-count, this.objects.length);
-        this.objects.splice(0, count);
-        return this.objects.length;
+        var newIndex = this.offsetIndex - count;
+        if (newIndex < 0) {
+            this.offsetIndex = 0;
+            newIndex = -newIndex;
+            for (var i = 0; i < newIndex; ++i)
+                this.objects.push(new this._canvasObject(this));
+        } else
+            this.offsetIndex = newIndex;
     },
 
     animate: function()
     {
         var context = this.context;
         context.clearRect(0, 0, this.size.x, this.size.y);
-        this.objects.forEach(function(object) {
-            object.draw(context);
-        });
+        for (var i = this.offsetIndex, length = this.objects.length; i < length; ++i)
+            this.objects[i].draw(context);
     },
 
     complexity: function()
     {
-        return this.objects.length;
+        return this.objects.length - this.offsetIndex;
     }
 });

@@ -1757,17 +1757,17 @@ void FrameLoader::commitProvisionalLoad()
 
     willTransitionToCommitted();
 
-    // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
-    // We are doing this here because we know for sure that a new page is about to be loaded.
-    if (!m_frame.tree().parent() && history().currentItem())
+    if (!m_frame.tree().parent() && history().currentItem()) {
+        // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
+        // We are doing this here because we know for sure that a new page is about to be loaded.
         PageCache::singleton().addIfCacheable(*history().currentItem(), m_frame.page());
 
 #if PLATFORM(IOS)
-    // For top-level navigations, have JSC throw away linked code. The immediate memory savings far
-    // outweigh the cost of recompiling in the case of a future backwards navigation.
-    if (!m_frame.tree().parent())
+        // For top-level navigations, have JSC throw away linked code. The immediate memory savings far
+        // outweigh the cost of recompiling in the case of a future backwards navigation.
         GCController::singleton().deleteAllLinkedCode();
 #endif
+    }
 
     if (m_loadType != FrameLoadType::Replace)
         closeOldDataSources();

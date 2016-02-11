@@ -332,11 +332,17 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     moveChild(child, targetIndex)
     {
-        var wasSelected = child.selected;
+        // No move needed if the child is already in the right place.
+        if (this.children[targetIndex] === child)
+            return;
+
+        var originalSelectedChild = this.treeOutline.selectedTreeElement;
+
         this.removeChild(child);
         this.insertChild(child, targetIndex);
-        if (wasSelected)
-            child.select();
+
+        if (originalSelectedChild !== this.treeOutline.selectedTreeElement)
+            originalSelectedChild.select();
     }
 
     _updateChildren(fullRefresh)
@@ -1233,7 +1239,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 if (!this.expanded && (!showInlineText && (this.treeOutline.isXMLMimeType || !WebInspector.DOMTreeElement.ForbiddenClosingTagElements[tagName]))) {
                     if (this.hasChildren) {
                         var textNodeElement = info.titleDOM.createChild("span", "html-text-node");
-                        textNodeElement.textContent = "\u2026";
+                        textNodeElement.textContent = ellipsis;
                         info.titleDOM.append("\u200B");
                     }
                     this._buildTagDOM(info.titleDOM, tagName, true, false);

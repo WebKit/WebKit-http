@@ -641,6 +641,11 @@ media/airplay-target-availability.html
 webkit.org/b/153540 fast/mediastream [ Skip ]
 webkit.org/b/153540 http/tests/media/media-stream [ Skip ]
 
+# Skip tests requiring UIScriptController
+webkit.org/b/153833 css3/touch-action/touch-action-manipulation-fast-clicks.html [ Skip ]
+webkit.org/b/153833 fast/events/can-click-element-on-page-with-active-pseudo-class-and-search-field.html [ Skip ]
+webkit.org/b/153833 fast/shadow-dom/touch-event-ios.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -735,10 +740,9 @@ webkit.org/b/153060 imported/blink/editing/selection/selectstart-event-crash.htm
 
 webkit.org/b/153692 imported/blink/fast/css/first-letter-float-block.html [ Crash Pass ]
 
-webkit.org/b/153695 fast/repaint/fixed-move-after-scroll.html [ Crash Pass ]
-webkit.org/b/153695 fast/scrolling/scroll-position-on-reload-rtl.html [ Crash Pass ]
-
 webkit.org/b/117756 media/track/media-element-enqueue-event-crash.html [ Timeout Pass Crash ]
+
+webkit.org/b/153937 http/tests/misc/detach-during-notifyDone.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -1225,6 +1229,16 @@ webkit.org/b/132126 media/video-poster-background.html [ ImageOnlyFailure ]
 
 webkit.org/b/153771 animations/resume-after-page-cache.html [ Timeout Pass ]
 
+webkit.org/b/153942 plugins/private-browsing-mode-2.html [ Failure Pass ]
+webkit.org/b/153942 plugins/private-browsing-mode.html [ Failure Pass ]
+
+webkit.org/b/153943 webaudio/convolution-mono-mono.html [ Failure Pass ]
+
+webkit.org/b/153947 imported/w3c/css/css-color-3/t424-hsl-parsing-f.xht [ ImageOnlyFailure Pass ]
+webkit.org/b/153947 imported/w3c/css/css-color-3/t425-hsla-parsing-f.xht [ ImageOnlyFailure Pass ]
+
+webkit.org/b/153948 imported/w3c/web-platform-tests/html/semantics/document-metadata/styling/LinkStyle.html [ Failure Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1451,8 +1465,11 @@ webkit.org/b/143875 media/track/track-css-matching.html [ Timeout Pass ]
 
 webkit.org/b/143986 fast/dom/Node/mutation-blur.html [ Timeout Pass ]
 webkit.org/b/143987 media/auto-play-in-sandbox-with-allow-scripts.html [ Timeout Pass ]
+
 webkit.org/b/143990 media/track/track-css-matching-timestamps.html [ Timeout Pass ]
-webkit.org/b/143992 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Timeout Pass ]
+webkit.org/b/143990 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Timeout Pass ]
+webkit.org/b/143990 media/track/track-disabled-addcue.html [ Timeout Pass ]
+webkit.org/b/143990 media/track/track-disabled.html [ Timeout Pass ]
 
 webkit.org/b/132055 media/track/track-datacue.html  [ Timeout ]
 
@@ -1497,6 +1514,12 @@ Bug(GTK) mathml/very-large-stretchy-operators.html [ Pass Timeout ]
 Bug(GTK) fast/history/go-back-to-iframe-with-plugin.html [ Timeout Pass ]
 
 webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]
+
+webkit.org/b/153944 plugins/get-url-notify-with-url-that-fails-to-load.html [ Timeout Pass ]
+
+webkit.org/b/153946 imported/w3c/web-platform-tests/dom/ranges/Range-mutations.html [ Timeout Pass ]
+
+webkit.org/b/153949 media/media-volume-slider-rendered-normal.html [ Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -1689,7 +1712,6 @@ Bug(GTK) fast/ruby/ruby-simple.html [ Failure ]
 Bug(GTK) fast/ruby/ruby-simple-rp.html [ Failure ]
 Bug(GTK) fast/ruby/ruby-trailing.html [ Failure ]
 Bug(GTK) fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure Timeout Pass ]
-Bug(GTK) http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-plugin.html [ Failure ]
@@ -1716,8 +1738,6 @@ Bug(GTK) http/tests/security/xssAuditor/xss-filter-bypass-sjis.html [ Failure ]
 Bug(GTK) http/tests/w3c/webperf/submission/Intel/resource-timing [ Skip ]
 
 Bug(GTK) fast/backgrounds/background-position-parsing.html [ Failure ]
-
-Bug(GTK) fast/css/image-rendering.html [ Failure ]
 
 Bug(GTK) fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
 
@@ -1981,8 +2001,6 @@ webkit.org/b/107118 fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
 
 webkit.org/b/108973 fast/css/negative-text-indent-in-inline-block.html [ ImageOnlyFailure ]
 
-webkit.org/b/109353 fast/flexbox/line-clamp-link-after-ellipsis.html [ Failure ]
-
 webkit.org/b/109469 fast/css/cursor-parsing-image-set.html [ Failure ]
 
 webkit.org/b/110090 fast/events/clientXY-in-zoom-and-scroll.html [ Failure ]
@@ -2208,7 +2226,6 @@ webkit.org/b/134979 media/track/track-cue-nothing-to-render.html [ Failure ]
 webkit.org/b/134979 media/track/track-cue-rendering-mode-changed.html [ Failure Timeout ]
 webkit.org/b/134979 media/track/track-cue-rendering-rtl.html [ Crash Failure Timeout ]
 webkit.org/b/134979 media/track/track-cue-rendering-snap-to-lines-not-set.html [ Failure Timeout ]
-webkit.org/b/134979 media/track/track-kind.html [ Failure ]
 
 webkit.org/b/134995 media/track/track-in-band-subtitles-too-large.html [ Failure ]
 webkit.org/b/134995 media/track/track-long-word-container-sizing.html [ Failure ]
@@ -2370,9 +2387,6 @@ webkit.org/b/148935 accessibility/scroll-to-make-visible-nested.html [ Failure ]
 webkit.org/b/148935 accessibility/scroll-to-make-visible-with-subfocus.html [ Failure ]
 
 webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/mime-types/canPlayType.html [ Failure ]
-webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/parse-a-srcset-attribute.html [ Failure ]
-webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/select-an-image-source.html [ Failure ]
-webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/update-the-source-set.html [ Failure ]
 webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setSelectionRange.html [ Failure ]
 webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/forms/the-form-element/form-autocomplete.html [ Failure ]
 webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/telephone.html [ Failure ]
@@ -2393,7 +2407,7 @@ imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm
 
 webkit.org/b/151267 imported/blink/compositing/draws-content/webgl-simple-background.html [ ImageOnlyFailure Pass ]
 webkit.org/b/151267 imported/blink/compositing/invisible-subtree-compositing-and-preserves-3d.html [ ImageOnlyFailure Pass ]
-webkit.org/b/151267 imported/blink/compositing/squashing/abspos-under-abspos-overflow-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/151267 imported/blink/compositing/squashing/abspos-under-abspos-overflow-scroll.html [ ImageOnlyFailure Pass ]
 webkit.org/b/151267 imported/blink/compositing/squashing/clip-to-squashed-layer-size.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/compositing/squashing/overflow-scroll-grandchildren.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/compositing/squashing/squashing-reflection-disallowed.html [ ImageOnlyFailure ]
@@ -2414,7 +2428,7 @@ webkit.org/b/151267 imported/blink/fast/css/fixed-overlaps-absolute-in-clip.html
 webkit.org/b/151267 imported/blink/fast/css/tab-size-complex-path.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/fast/css/text-overflow-ellipsis-button.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/fast/css/transformed-overflow-hidden-clips-fixed.html [ ImageOnlyFailure Pass ]
-webkit.org/b/151267 imported/blink/fast/events/click-focus-keydown-no-ring.html [ ImageOnlyFailure ]
+webkit.org/b/151267 imported/blink/fast/events/click-focus-keydown-no-ring.html [ ImageOnlyFailure Pass ]
 webkit.org/b/151267 imported/blink/fast/gradients/large-horizontal-gradient.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/fast/gradients/large-vertical-gradient.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/fast/multicol/composited-layer-single-fragment.html [ ImageOnlyFailure Pass ]
@@ -2439,7 +2453,7 @@ webkit.org/b/151267 imported/blink/svg/filters/feDropShadow-linearrgb-flood-colo
 webkit.org/b/151267 imported/blink/svg/filters/feOffset-nonuniform-scale.svg [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/svg/filters/filter-huge-clamping.svg [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/transforms/inline-transform-and-clipping-roots.html [ ImageOnlyFailure Pass ]
-webkit.org/b/151267 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirks-mode.html [ ImageOnlyFailure ]
+webkit.org/b/151267 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirks-mode.html [ ImageOnlyFailure Pass ]
 
 webkit.org/b/152057 accessibility/textarea-selected-text-range.html [ Failure Timeout ]
 
@@ -2548,6 +2562,8 @@ webkit.org/b/152643 storage/indexeddb/connection-leak.html [ Failure ]
 webkit.org/b/152643 storage/indexeddb/database-wrapper.html [ Failure ]
 webkit.org/b/152643 storage/indexeddb/keypath-basics.html [ Failure ]
 
+webkit.org/b/152643 storage/indexeddb/mozilla/cursor-update-updates-indexes.html [ Failure Pass ]
+
 webkit.org/b/152788 imported/mozilla/svg/filter-scaled-02.html [ ImageOnlyFailure ]
 webkit.org/b/152788 imported/mozilla/svg/image/image-filter-01.svg [ ImageOnlyFailure ]
 webkit.org/b/152788 svg/filters/color-space-conversion.svg [ ImageOnlyFailure ]
@@ -2565,9 +2581,6 @@ webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-rule-stacking-001.x
 webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-shorthand-001.xht [ ImageOnlyFailure ]
 webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-span-all-block-sibling-003.xht [ ImageOnlyFailure ]
 webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
-
-webkit.org/b/152823 imported/w3c/css/css-multicol-1/multicol-rule-inset-000.xht [ ImageOnlyFailure ]
-webkit.org/b/152823 imported/w3c/css/css-multicol-1/multicol-rule-outset-000.xht [ ImageOnlyFailure ]
 
 webkit.org/b/152908 pageoverlay/overlay-installation.html [ Failure ]
 webkit.org/b/152908 pageoverlay/overlay-large-document-scrolled.html [ Failure ]
@@ -2609,6 +2622,15 @@ webkit.org/b/153708 http/tests/cache/disk-cache/disk-cache-last-modified.html [ 
 
 webkit.org/b/153709 http/tests/cache/disk-cache/disk-cache-disable.html [ Failure ]
 
+# These are expected mismatches, so they should fail, and the bug is they sometimes pass.
+webkit.org/b/153941 fast/text/control-characters/visible-control-characters-1.html [ ImageOnlyFailure Pass ]
+webkit.org/b/153941 fast/text/control-characters/visible-control-characters-2.html [ ImageOnlyFailure Pass ]
+webkit.org/b/153941 fast/text/control-characters/visible-control-characters-2.xhtml [ ImageOnlyFailure Pass ]
+webkit.org/b/153941 fast/text/control-characters/visible-control-characters-3.html [ ImageOnlyFailure Pass ]
+webkit.org/b/153941 fast/text/control-characters/visible-control-characters-3.xhtml [ ImageOnlyFailure Pass ]
+
+webkit.org/b/153956 accessibility/gtk/caret-offsets.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2620,6 +2642,7 @@ webkit.org/b/153709 http/tests/cache/disk-cache/disk-cache-disable.html [ Failur
 # These tests are passing on GTK+ but they do not in the Apple ports
 
 css3/flexbox/multiline-reverse-wrap-baseline.html [ Pass ]
+ietestcenter/css3/flexbox/flexbox-layout-001.htm [ Pass ]
 
 imported/w3c/canvas/2d.line.cap.round.html [ Pass ]
 
@@ -2636,3 +2659,5 @@ imported/w3c/css/css-multicol-1/multicol-zero-height-001.xht [ Pass ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-represent-nothing-02.html [ Pass ]
 
 webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Pass ]
+
+fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]

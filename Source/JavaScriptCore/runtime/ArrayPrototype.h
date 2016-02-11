@@ -46,7 +46,11 @@ public:
 
     void setConstructor(VM&, JSObject* constructorProperty, unsigned attributes);
 
-    bool didChangeConstructorProperty() const { return m_didChangeConstructorProperty; }
+    bool didChangeConstructorOrSpeciesProperties() const { return m_didChangeConstructorOrSpeciesProperties; }
+
+    static const bool needsDestruction = false;
+    // We don't need destruction since we use a finalizer.
+    static void destroy(JSC::JSCell*);
 
 protected:
     void finishCreation(VM&, JSGlobalObject*);
@@ -55,7 +59,8 @@ private:
     // This bit is set if any user modifies the constructor property Array.prototype. This is used to optimize species creation for JSArrays.
     friend ArrayPrototypeAdaptiveInferredPropertyWatchpoint;
     std::unique_ptr<ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorWatchpoint;
-    bool m_didChangeConstructorProperty = false;
+    std::unique_ptr<ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorSpeciesWatchpoint;
+    bool m_didChangeConstructorOrSpeciesProperties = false;
 };
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState*);

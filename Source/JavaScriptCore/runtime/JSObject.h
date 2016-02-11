@@ -623,7 +623,7 @@ public:
     }
 
     bool staticFunctionsReified() { return structure()->staticFunctionsReified(); }
-    void reifyStaticFunctionsForDelete(ExecState* exec);
+    void reifyAllStaticProperties(ExecState*);
 
     JS_EXPORT_PRIVATE Butterfly* growOutOfLineStorage(VM&, size_t oldSize, size_t newSize);
     void setButterflyWithoutChangingStructure(VM&, Butterfly*);
