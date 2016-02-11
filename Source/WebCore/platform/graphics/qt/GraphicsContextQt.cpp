@@ -45,6 +45,7 @@
 
 #include "AffineTransform.h"
 #include "Color.h"
+#include "DisplayListRecorder.h"
 #include "FloatConversion.h"
 #include "Font.h"
 #include "ImageBuffer.h"
@@ -604,6 +605,77 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
         return;
 
     m_data->p()->drawEllipse(rect);
+}
+
+
+void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform,
+    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect &destRect, BlendMode blendMode)
+{
+    if (paintingDisabled() || !patternTransform.isInvertible())
+        return;
+
+    QPixmap* framePixmap = image.nativeImageForCurrentFrame();
+    if (!framePixmap) // If it's too early we won't have an image yet.
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawPattern(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        return;
+    }
+
+#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
+    FloatRect tileRectAdjusted = adjustSourceRectForDownSampling(tileRect, framePixmap->size());
+#else
+    FloatRect tileRectAdjusted = tileRect;
+#endif
+
+    // Qt interprets 0 width/height as full width/height so just short circuit.
+    QRectF dr = QRectF(destRect).normalized();
+    QRect tr = QRectF(tileRectAdjusted).toRect().normalized();
+    if (!dr.width() || !dr.height() || !tr.width() || !tr.height())
+        return;
+
+    QPixmap pixmap = *framePixmap;
+    if (tr.x() || tr.y() || tr.width() != pixmap.width() || tr.height() != pixmap.height())
+        pixmap = pixmap.copy(tr);
+
+    CompositeOperator previousOperator = compositeOperation();
+
+    setCompositeOperation(!pixmap.hasAlpha() && op == CompositeSourceOver ? CompositeCopy : op);
+
+    QPainter* p = platformContext();
+    QTransform transform(patternTransform);
+
+    // If this would draw more than one scaled tile, we scale the pixmap first and then use the result to draw.
+    if (transform.type() == QTransform::TxScale) {
+        QRectF tileRectInTargetCoords = (transform * QTransform().translate(phase.x(), phase.y())).mapRect(tr);
+
+        bool tileWillBePaintedOnlyOnce = tileRectInTargetCoords.contains(dr);
+        if (!tileWillBePaintedOnlyOnce) {
+            QSizeF scaledSize(float(pixmap.width()) * transform.m11(), float(pixmap.height()) * transform.m22());
+            QPixmap scaledPixmap(scaledSize.toSize());
+            if (pixmap.hasAlpha())
+                scaledPixmap.fill(Qt::transparent);
+            {
+                QPainter painter(&scaledPixmap);
+                painter.setCompositionMode(QPainter::CompositionMode_Source);
+                painter.setRenderHints(p->renderHints());
+                painter.drawPixmap(QRect(0, 0, scaledPixmap.width(), scaledPixmap.height()), pixmap);
+            }
+            pixmap = scaledPixmap;
+            transform = QTransform::fromTranslate(transform.dx(), transform.dy());
+        }
+    }
+
+    /* Translate the coordinates as phase is not in world matrix coordinate space but the tile rect origin is. */
+    transform *= QTransform().translate(phase.x(), phase.y());
+    transform.translate(tr.x(), tr.y());
+
+    QBrush b(pixmap);
+    b.setTransform(transform);
+    p->fillRect(dr, b);
+
+    setCompositeOperation(previousOperator);
 }
 
 /*
