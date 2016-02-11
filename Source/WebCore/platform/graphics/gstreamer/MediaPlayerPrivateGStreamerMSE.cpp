@@ -1477,7 +1477,7 @@ void AppendPipeline::handleEndOfAppendDataMarkReceived(const GstStructure* struc
     gst_structure_get(structure, "id", G_TYPE_UINT, &m_appendIdReceivedInSink, NULL);
     ASSERT(m_appendIdReceivedInSink);
 
-    TRACE_MEDIA_MESSAGE("received end of append id %d in the sink", m_appendIdReceivedInSink);
+    TRACE_MEDIA_MESSAGE("received end of append id %u in the sink", m_appendIdReceivedInSink);
     if (m_appendStage == Sampling || m_appendStage == Ongoing)
         checkEndOfAppendDataMarkReceived();
 }
@@ -2046,7 +2046,7 @@ void AppendPipeline::handleEndOfAppendDataMarkNeeded()
     m_appendIdMarkedInSrc = gst_event_get_seqnum(event);
     m_appendIdReceivedInSink = 0;
 
-    TRACE_MEDIA_MESSAGE("marking end of append with id %d", m_appendIdMarkedInSrc);
+    TRACE_MEDIA_MESSAGE("marking end of append with id %u", m_appendIdMarkedInSrc);
 
     gst_element_send_event(m_appsrc, event);
 
@@ -2060,7 +2060,7 @@ void AppendPipeline::reportEndOfAppendDataMarkReceived(guint id)
     GstStructure* structure = gst_structure_new("end-of-append-data-mark-received", "id", G_TYPE_UINT, id, NULL);
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsink), structure);
     gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("received message with id %d, re-posted to bus", id);
+    TRACE_MEDIA_MESSAGE("received message with id %u, re-posted to bus", id);
 }
 
 void AppendPipeline::reportEndOfAppendDataMarkNeeded()
@@ -2226,7 +2226,7 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
     }
 
     // The previous mark has probably been lost because appsink was disconnected. Mark again.
-    TRACE_MEDIA_MESSAGE("previous append end mark lost, reinsterting");
+    TRACE_MEDIA_MESSAGE("previous append end mark lost, reinjecting");
     handleEndOfAppendDataMarkNeeded();
 
     g_cond_signal(&m_padAddRemoveCondition);
@@ -2298,7 +2298,7 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
         GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
         gsize bufferSize = gst_buffer_get_size(buffer);
 
-        TRACE_MEDIA_MESSAGE("buffer of size %d going thru", bufferSize);
+        TRACE_MEDIA_MESSAGE("buffer of size %" G_GSIZE_FORMAT " going thru", bufferSize);
 
         if (bufferSize > 0)
             appendPipeline->reportEndOfAppendDataMarkNeeded();
@@ -2317,7 +2317,7 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
             return GST_PAD_PROBE_OK;
 
         guint id = gst_event_get_seqnum(event);
-        TRACE_MEDIA_MESSAGE("custom downstream event id=%d", id);
+        TRACE_MEDIA_MESSAGE("custom downstream event id=%u", id);
 
         return GST_PAD_PROBE_OK;
     }
@@ -2340,7 +2340,7 @@ static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeI
 
         guint id = gst_event_get_seqnum(event);
 
-        TRACE_MEDIA_MESSAGE("id=%d", id);
+        TRACE_MEDIA_MESSAGE("id=%u", id);
 
         appendPipeline->reportEndOfAppendDataMarkReceived(id);
 
@@ -2350,7 +2350,7 @@ static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeI
 #ifdef DEBUG_APPEND_PIPELINE_PADS
     if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
         GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-        TRACE_MEDIA_MESSAGE("buffer of size %d going thru", gst_buffer_get_size(buffer));
+        TRACE_MEDIA_MESSAGE("buffer of size %" G_GSIZE_FORMAT " going thru", gst_buffer_get_size(buffer));
         return GST_PAD_PROBE_OK;
     }
 #endif
@@ -2365,7 +2365,7 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
     ASSERT(GST_PAD_PROBE_INFO_TYPE(info) != static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM));
     if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
         GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-        TRACE_MEDIA_MESSAGE("%s: buffer of size %d going thru", padProbeInformation->m_description, gst_buffer_get_size(buffer));
+        TRACE_MEDIA_MESSAGE("%s: buffer of size %" G_GSIZE_FORMAT " going thru", padProbeInformation->m_description, gst_buffer_get_size(buffer));
         return GST_PAD_PROBE_OK;
     }
 
@@ -2379,7 +2379,7 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
             return GST_PAD_PROBE_OK;
 
         guint id = gst_event_get_seqnum(event);
-        TRACE_MEDIA_MESSAGE("%s: custom downstream event id=%d", padProbeInformation->m_description, id);
+        TRACE_MEDIA_MESSAGE("%s: custom downstream event id=%u", padProbeInformation->m_description, id);
 
         return GST_PAD_PROBE_OK;
     }
