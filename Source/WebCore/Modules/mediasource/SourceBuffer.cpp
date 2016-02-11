@@ -959,8 +959,8 @@ static void maximumBufferSizeDefaults(size_t& maxBufferSizeVideo, size_t& maxBuf
             entry.split(':', false, keyvalue);
             if (keyvalue.size() != 2)
                 continue;
-            String key = keyvalue[0].stripWhiteSpace().lower();
-            String value = keyvalue[1].stripWhiteSpace().lower();
+            String key = keyvalue[0].stripWhiteSpace().convertToLowercaseWithoutLocale();
+            String value = keyvalue[1].stripWhiteSpace().convertToLowercaseWithoutLocale();
             size_t units = 1;
             if (value.endsWith('k'))
                 units = 1024;
