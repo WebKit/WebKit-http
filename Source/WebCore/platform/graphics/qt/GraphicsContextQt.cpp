@@ -1101,7 +1101,7 @@ void GraphicsContext::drawFocusRing(const Path& path, float /* width */, float o
  * RenderTheme handles drawing focus on widgets which 
  * need it. It is still handled here for links.
  */
-void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, float width, float offset, const Color& color)
+void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width, float offset, const Color& color)
 {
     if (paintingDisabled() || !color.isValid())
         return;
@@ -1114,7 +1114,7 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, float width, f
     int radius = (width - 1) / 2;
     QPainterPath path;
     for (unsigned i = 0; i < rectCount; ++i) {
-        QRect rect = QRect((rects[i])).adjusted(-offset - radius, -offset - radius, offset + radius, offset + radius);
+        QRectF rect = QRectF(rects[i]).adjusted(-offset - radius, -offset - radius, offset + radius, offset + radius);
         // This is not the most efficient way to add a rect to a path, but if we don't create the tmpPath,
         // we will end up with ugly lines in between rows of text on anchors with multiple lines.
         QPainterPath tmpPath;
