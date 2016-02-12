@@ -49,16 +49,19 @@ namespace Graphics {
 
 std::unique_ptr<RenderingBackend> RenderingBackend::create(const uint8_t* data, size_t size)
 {
+#if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
+    return std::unique_ptr<RenderingBackendBCMNexusBM>(new RenderingBackendBCMNexusBM(data, size));
+#else
+    (void)data;
+    (void)size;
+#endif
+
 #if WPE_BUFFER_MANAGEMENT(GBM)
     return std::unique_ptr<RenderingBackendGBM>(new RenderingBackendGBM);
 #endif
 
 #if WPE_BUFFER_MANAGEMENT(BCM_RPI)
     return std::unique_ptr<RenderingBackendBCMRPiBM>(new RenderingBackendBCMRPiBM);
-#endif
-
-#if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
-    return std::unique_ptr<RenderingBackendBCMNexusBM>(new RenderingBackendBCMNexusBM(data, size));
 #endif
 
 #if WPE_BACKEND(BCM_NEXUS)
