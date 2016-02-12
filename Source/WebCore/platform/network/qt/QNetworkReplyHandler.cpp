@@ -570,7 +570,8 @@ void QNetworkReplyHandler::sendResponseIfNeeded()
     }
 
     URL url(m_replyWrapper->reply()->url());
-    ResourceResponse response(url, mimeType.lower(),
+    // FIXME: we might not need convertToASCIILowercase() because MIME types should always be matched case-insensitively
+    ResourceResponse response(url, mimeType.convertToASCIILowercase(),
                               m_replyWrapper->reply()->header(QNetworkRequest::ContentLengthHeader).toLongLong(),
                               m_replyWrapper->encoding());
 

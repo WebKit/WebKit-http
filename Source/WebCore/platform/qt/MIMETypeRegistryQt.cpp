@@ -57,21 +57,17 @@ static const ExtensionMap extensionMap[] = {
     { "xht", ".xht", "application/xhtml+xml" },
     { "xhtml", ".xhtml", "application/xhtml+xml" },
     { "xsl", ".xsl", "text/xsl" },
-    { 0, 0, 0 }
 };
 
 String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
 {
-    String suffix = ext.lower();
-    const ExtensionMap *e = extensionMap;
-    while (e->extension) {
-        if (suffix == e->extension)
-            return e->mimeType;
-        ++e;
+    for (auto& entry : extensionMap) {
+        if (equalIgnoringASCIICase(ext, entry.extension))
+            return entry.mimeType;
     }
 
     // QMimeDatabase lacks the ability to query by extension alone, so we create a fake filename to lookup.
-    const QString filename = QStringLiteral("filename.") + QString(suffix);
+    const QString filename = QStringLiteral("filename.") + QString(ext);
 
     // FIXME: We should get all the matched mimetypes with mimeTypesForFileName, and prefer one we support.
     // But initializeSupportedImageMIMETypes will first have to stop using getMIMETypeForExtension, or we
@@ -90,11 +86,9 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
 
 String MIMETypeRegistry::getMIMETypeForPath(const String& path)
 {
-    const ExtensionMap *e = extensionMap;
-    while (e->extension) {
-        if (path.endsWith(e->dotExtension, /* caseSensitive */ false))
-            return e->mimeType;
-        ++e;
+    for (auto& entry : extensionMap) {
+        if (path.endsWith(entry.dotExtension, /* caseSensitive */ false))
+            return entry.mimeType;
     }
 
     // FIXME: See comment in getMIMETypeForExtension.

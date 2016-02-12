@@ -635,7 +635,7 @@ bool FrameLoaderClientQt::canShowMIMETypeAsHTML(const String& MIMEType) const
 bool FrameLoaderClientQt::canShowMIMEType(const String& MIMEType) const
 {
     String type = MIMEType;
-    type.lower(); // FIXME: Use equalLettersIgnoringASCIICase
+    type.convertToASCIILowercase(); // FIXME: Do we really need it?
     if (MIMETypeRegistry::canShowMIMEType(type))
         return true;
 
