@@ -53,6 +53,12 @@ void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnect
     m_connection->open();
 }
 
+void CompositingManagerProxy::authenticate(IPC::DataReference& returnData)
+{
+    std::pair<const uint8_t*, size_t> data = m_view.viewBackend().authenticate();
+    returnData = { data.first, data.second };
+}
+
 void CompositingManagerProxy::constructRenderingTarget(uint32_t width, uint32_t height, uint32_t& handle)
 {
     handle = m_view.viewBackend().constructRenderingTarget(width, height);

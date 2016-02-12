@@ -35,13 +35,13 @@
 #include "WaylandDisplay.h"
 #include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
-#include "wayland-drm-client-protocol.h"
 #include <WPE/Pasteboard/Pasteboard.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <glib.h>
 #include <unistd.h>
+#include <string.h>
 
 namespace WPE {
 
@@ -149,11 +149,22 @@ void ViewBackendWayland::setClient(Client* client)
     m_bufferData.client = client;
     m_callbackData.client = client;
     m_resizingData.client = client;
+
+    if (client != nullptr) {
+        std::pair<bool, std::pair<uint32_t, uint32_t>> size = m_bufferFactory->preferredSize();
+        if (size.first)
+            client->setSize(size.second.first, size.second.second);
+    }
+}
+
+std::pair<const uint8_t*, size_t> ViewBackendWayland::authenticate()
+{
+    return m_bufferFactory->authenticate();
 }
 
 uint32_t ViewBackendWayland::constructRenderingTarget(uint32_t width, uint32_t height)
 {
-        return m_bufferFactory->constructRenderingTarget(width, height);
+    return m_bufferFactory->constructRenderingTarget(width, height);
 }
 
 void ViewBackendWayland::commitBuffer(int fd, const uint8_t* data, size_t size)

@@ -33,9 +33,25 @@
 
 namespace WebCore {
 
+static std::pair<const uint8_t*, size_t>* s_initializationData = nullptr;
+
+void PlatformDisplayWPE::initialize(std::pair<const uint8_t*, size_t> data)
+{
+    auto initializationData = std::make_unique<std::pair<const uint8_t*, size_t>>(data);
+    s_initializationData = initializationData.get();
+
+    // This will construct the PlatformDisplayWPE object using the initialization data.
+    PlatformDisplayWPE::sharedDisplay();
+
+    s_initializationData = nullptr;
+}
+
 PlatformDisplayWPE::PlatformDisplayWPE()
 {
-    m_backend = WPE::Graphics::RenderingBackend::create();
+    std::pair<const uint8_t*, size_t> initializationData = { nullptr, 0 };
+    if (s_initializationData)
+        initializationData = *s_initializationData;
+    m_backend = WPE::Graphics::RenderingBackend::create(initializationData.first, initializationData.second);
 
     m_eglDisplay = eglGetDisplay(m_backend->nativeDisplay());
     if (m_eglDisplay == EGL_NO_DISPLAY) {
