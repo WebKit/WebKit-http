@@ -2313,8 +2313,7 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
             return GST_PAD_PROBE_OK;
 
         const GstStructure* structure = gst_event_get_structure(event);
-        if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
-            return GST_PAD_PROBE_OK;
+        ASSERT(gst_structure_has_name(structure, "end-of-append-data-mark"));
 
         guint id = gst_event_get_seqnum(event);
         TRACE_MEDIA_MESSAGE("custom downstream event id=%u", id);
@@ -2335,8 +2334,7 @@ static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeI
             return GST_PAD_PROBE_OK;
 
         const GstStructure* structure = gst_event_get_structure(event);
-        if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
-            return GST_PAD_PROBE_OK;
+        ASSERT(gst_structure_has_name(structure, "end-of-append-data-mark"));
 
         guint id = gst_event_get_seqnum(event);
 
@@ -2362,7 +2360,6 @@ static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeI
 #ifdef DEBUG_APPEND_PIPELINE_PADS
 static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadProbeInfo* info, struct PadProbeInformation* padProbeInformation)
 {
-    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) != static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM));
     if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
         GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
         TRACE_MEDIA_MESSAGE("%s: buffer of size %" G_GSIZE_FORMAT " going thru", padProbeInformation->m_description, gst_buffer_get_size(buffer));
@@ -2375,8 +2372,7 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
             return GST_PAD_PROBE_OK;
 
         const GstStructure* structure = gst_event_get_structure(event);
-        if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
-            return GST_PAD_PROBE_OK;
+        ASSERT(gst_structure_has_name(structure, "end-of-append-data-mark"));
 
         guint id = gst_event_get_seqnum(event);
         TRACE_MEDIA_MESSAGE("%s: custom downstream event id=%u", padProbeInformation->m_description, id);
