@@ -39,6 +39,9 @@
 #include <wtf/RetainPtr.h>
 #include <CoreFoundation/CFRunLoop.h>
 typedef RetainPtr<CFRunLoopTimerRef> PlatformTimerRef;
+#elif PLATFORM(QT)
+#include <QTimer>
+typedef QTimer PlatformTimerRef;
 #elif PLATFORM(GTK)
 #include <wtf/RunLoop.h>
 namespace WTR {

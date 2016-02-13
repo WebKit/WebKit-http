@@ -648,6 +648,7 @@ void TestController::resetPreferencesToConsistentValues()
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
 
+#if !PLATFORM(QT)
     static WKStringRef standardFontFamily = WKStringCreateWithUTF8CString("Times");
     static WKStringRef cursiveFontFamily = WKStringCreateWithUTF8CString("Apple Chancery");
     static WKStringRef fantasyFontFamily = WKStringCreateWithUTF8CString("Papyrus");
@@ -663,6 +664,7 @@ void TestController::resetPreferencesToConsistentValues()
     WKPreferencesSetPictographFontFamily(preferences, pictographFontFamily);
     WKPreferencesSetSansSerifFontFamily(preferences, sansSerifFontFamily);
     WKPreferencesSetSerifFontFamily(preferences, serifFontFamily);
+#endif
     WKPreferencesSetAsynchronousSpellCheckingEnabled(preferences, false);
 #if ENABLE(WEB_AUDIO)
     WKPreferencesSetMediaSourceEnabled(preferences, true);

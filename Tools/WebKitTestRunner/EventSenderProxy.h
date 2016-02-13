@@ -38,6 +38,9 @@
 #include <wtf/HashSet.h>
 #elif PLATFORM(EFL)
 #include "EWebKit2.h"
+#elif PLATFORM(QT)
+#include <QEvent>
+#include <QTouchEvent>
 #endif
 
 #if PLATFORM(COCOA)
@@ -99,7 +102,7 @@ private:
     double currentEventTime() { return m_time; }
     void updateClickCountForButton(int button);
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     void replaySavedEvents();
 #endif
 
@@ -117,6 +120,11 @@ private:
     GdkEvent* createMouseButtonEvent(GdkEventType, unsigned button, WKEventModifiers);
     GUniquePtr<GdkEvent> createTouchEvent(GdkEventType, int id);
     void sendUpdatedTouchEvents();
+#elif PLATFORM(QT)
+#if ENABLE(TOUCH_EVENTS)
+    void sendTouchEvent(QEvent::Type);
+#endif
+    void sendOrQueueEvent(QEvent*);
 #elif PLATFORM(EFL)
     void sendOrQueueEvent(const WTREvent&);
     void dispatchEvent(const WTREvent&);
@@ -139,6 +147,15 @@ private:
     unsigned m_mouseButtonCurrentlyDown;
     Vector<GUniquePtr<GdkEvent>> m_touchEvents;
     HashSet<int> m_updatedTouchEvents;
+#elif PLATFORM(QT)
+    Qt::MouseButtons m_mouseButtons;
+
+#if ENABLE(TOUCH_EVENTS)
+    QList<QTouchEvent::TouchPoint> m_touchPoints;
+    Qt::KeyboardModifiers m_touchModifiers;
+    QPoint m_touchPointRadius;
+    bool m_touchActive;
+#endif
 #elif PLATFORM(EFL)
     Deque<WTREvent> m_eventQueue;
     WKEventMouseButton m_mouseButton;

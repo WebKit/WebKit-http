@@ -43,6 +43,14 @@ typedef TestRunnerWKWebView *PlatformWKView;
 typedef NSView *PlatformWKView;
 #endif
 typedef WebKitTestRunnerWindow *PlatformWindow;
+#elif defined(BUILDING_QT__)
+QT_BEGIN_NAMESPACE
+class QQuickView;
+class QEventLoop;
+QT_END_NAMESPACE
+class QQuickWebView;
+typedef QQuickWebView* PlatformWKView;
+typedef QQuickView* PlatformWindow;
 #elif defined(BUILDING_GTK__)
 typedef struct _GtkWidget GtkWidget;
 typedef WKViewRef PlatformWKView;
@@ -68,6 +76,14 @@ public:
     PlatformWindow platformWindow() { return m_window; }
     void resizeTo(unsigned width, unsigned height);
     void focus();
+
+#if PLATFORM(QT)
+    bool sendEvent(QEvent*);
+    void postEvent(QEvent*);
+    void setModalEventLoop(QEventLoop* eventLoop) { m_modalEventLoop = eventLoop; }
+    // Window snapshot can be disabled on Qt with QT_WEBKIT_DISABLE_UIPROCESS_DUMPPIXELS=1 environment variable (necessary for xvfb)
+    static bool windowSnapshotEnabled();
+#endif
 
     WKRect windowFrame();
     void setWindowFrame(WKRect);
@@ -100,8 +116,11 @@ private:
     bool m_windowIsKey;
     const TestOptions m_options;
 
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(QT)
     bool m_usingFixedLayout;
+#endif
+#if PLATFORM(QT)
+    QEventLoop* m_modalEventLoop;
 #endif
 };
 
