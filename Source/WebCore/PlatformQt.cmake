@@ -174,8 +174,6 @@ list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${SQLITE_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIRS}
 )
-# Build the include path with duplicates removed
-list(REMOVE_DUPLICATES WebCore_SYSTEM_INCLUDE_DIRECTORIES)
 
 list(APPEND WebCore_LIBRARIES
     ${LIBXML2_LIBRARIES}
@@ -195,6 +193,39 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/mobileThemeQt.css
     ${WEBCORE_DIR}/css/themeQtNoListboxes.css
 )
+
+if (USE_GLIB)
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+        ${GIO_UNIX_INCLUDE_DIRS}
+        ${GLIB_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${GLIB_GIO_LIBRARIES}
+        ${GLIB_GOBJECT_LIBRARIES}
+        ${GLIB_LIBRARIES}
+    )
+endif ()
+
+if (USE_GSTREAMER)
+    include(platform/GStreamer.cmake)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/gstreamer/ImageGStreamerQt.cpp
+    )
+endif ()
+
+if (ENABLE_VIDEO)
+    list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
+        ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.css
+    )
+    set(WebCore_USER_AGENT_SCRIPTS
+        ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
+        ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
+    )
+    set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/qt/RenderThemeQt.cpp)
+endif ()
+
+# Build the include path with duplicates removed
+list(REMOVE_DUPLICATES WebCore_SYSTEM_INCLUDE_DIRECTORIES)
 
 # From PlatformWin.cmake
 if (WIN32)

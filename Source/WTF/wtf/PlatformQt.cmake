@@ -15,6 +15,15 @@ list(APPEND WTF_LIBRARIES
     ${CMAKE_THREAD_LIBS_INIT}
 )
 
+if (USE_GLIB)
+    list(APPEND WTF_SOURCES
+        glib/GRefPtr.cpp
+    )
+    list(APPEND WTF_SYSTEM_INCLUDE_DIRECTORIES
+        ${GLIB_INCLUDE_DIRS}
+    )
+endif ()
+
 if (WIN32)
     list(APPEND WTF_LIBRARIES
         winmm
