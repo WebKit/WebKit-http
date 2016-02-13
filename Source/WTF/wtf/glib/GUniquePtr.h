@@ -23,6 +23,12 @@
 
 #if USE(GLIB)
 
+#if PLATFORM(QT)
+// Clear out offending Qt macro so the following header, gio.h, can be included.
+// https://bugs.webkit.org/show_bug.cgi?id=95081
+#undef signals
+#endif
+
 #include <gio/gio.h>
 #include <wtf/Noncopyable.h>
 

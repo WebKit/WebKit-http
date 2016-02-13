@@ -39,7 +39,7 @@
 
 #if PLATFORM(EFL)
 #include <wtf/MainThread.h>
-#elif USE(GLIB)
+#elif USE(GLIB) && !PLATFORM(QT)
 #include <glib.h>
 #endif
 

@@ -35,7 +35,7 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/Threading.h>
 
-#if USE(GLIB)
+#if USE(GLIB) && !PLATFORM(QT)
 #include <wtf/glib/GRefPtr.h>
 #endif
 
@@ -68,7 +68,7 @@ public:
     WTF_EXPORT_PRIVATE void runForDuration(double duration);
 #endif
 
-#if USE(GLIB) && !PLATFORM(EFL)
+#if USE(GLIB) && !PLATFORM(EFL) && !PLATFORM(QT)
     WTF_EXPORT_PRIVATE GMainContext* mainContext() const { return m_mainContext.get(); }
 #endif
 
@@ -87,7 +87,7 @@ public:
 
         virtual void fired() = 0;
 
-#if USE(GLIB) && !PLATFORM(EFL)
+#if USE(GLIB) && !PLATFORM(EFL) && !PLATFORM(QT)
         void setPriority(int);
 #endif
 

@@ -38,7 +38,7 @@
 #if PLATFORM(EFL)
 #include <Ecore.h>
 #include <wtf/CurrentTime.h>
-#elif USE(GLIB)
+#elif USE(GLIB) && !PLATFORM(QT)
 #include <glib.h>
 #endif
 
