@@ -79,6 +79,9 @@
 #include "Settings.h"
 #include "TextIterator.h"
 #include "ThirdPartyCookiesQt.h"
+#include "UserContentController.h"
+#include "UserContentTypes.h"
+#include "UserStyleSheet.h"
 #include "WebCoreTestSupport.h"
 #include "qt_runtime.h"
 #include "qwebelement.h"
@@ -627,17 +630,20 @@ void DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld(QWebFrameAdapter *ad
     WebCore::Frame* coreFrame = adapter->frame;
 
     ScriptController& proxy = coreFrame->script();
-    proxy.executeScriptInWorld(scriptWorld->world(), script, true);
+    proxy.executeScriptInWorld(*scriptWorld->world(), script, true);
 }
 
 void DumpRenderTreeSupportQt::addUserStyleSheet(QWebPageAdapter* adapter, const QString& sourceCode)
 {
-    adapter->page->group().addUserStyleSheetToWorld(mainThreadNormalWorld(), sourceCode, QUrl(), Vector<String>(), Vector<String>(), WebCore::InjectInAllFrames);
+    auto styleSheet = std::make_unique<UserStyleSheet>(sourceCode, URL(), Vector<String>(), Vector<String>(),
+        WebCore::InjectInAllFrames, UserStyleUserLevel);
+    adapter->page->userContentController()->addUserStyleSheet(mainThreadNormalWorld(), WTFMove(styleSheet),
+        InjectInExistingDocuments);
 }
 
 void DumpRenderTreeSupportQt::removeUserStyleSheets(QWebPageAdapter* adapter)
 {
-    adapter->page->group().removeUserStyleSheetsFromWorld(mainThreadNormalWorld());
+    adapter->page->userContentController()->removeUserStyleSheets(mainThreadNormalWorld());
 }
 
 void DumpRenderTreeSupportQt::simulateDesktopNotificationClick(const QString& title)
