@@ -1,3 +1,5 @@
+include(ECMGenerateHeaders)
+
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${DERIVED_SOURCES_DIR}"
@@ -239,3 +241,29 @@ list(APPEND WebKit_LIBRARIES
     ${Qt5Network_LIBRARIES}
 )
 
+ecm_generate_headers(
+    QtWebKitWidgets_FORWARDING_HEADERS
+    HEADER_NAMES
+        QWebElement
+        QWebSecurityOrigin
+        QWebSettings
+    COMMON_HEADER
+        QtWebKit
+    RELATIVE
+        qt/Api
+    OUTPUT_DIR
+        "${CMAKE_BINARY_DIR}/include/QtWebKit"
+)
+ecm_generate_headers(
+    QtWebKitWidgets_FORWARDING_HEADERS
+    HEADER_NAMES
+        QWebFrame,QWebHitTestResult
+        QWebPage
+        QWebView
+    COMMON_HEADER
+        QtWebKitWidgets
+    RELATIVE
+        qt/WidgetApi
+    OUTPUT_DIR
+        "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets"
+)
