@@ -875,7 +875,7 @@ void DumpRenderTreeSupportQt::setSeamlessIFramesEnabled(bool enabled)
 
 void DumpRenderTreeSupportQt::setShouldUseFontSmoothing(bool enabled)
 {
-    WebCore::Font::setShouldUseSmoothing(enabled);
+    WebCore::FontCascade::setShouldUseSmoothing(enabled);
 }
 
 QString DumpRenderTreeSupportQt::frameRenderTreeDump(QWebFrameAdapter* adapter)
@@ -891,11 +891,6 @@ void DumpRenderTreeSupportQt::clearNotificationPermissions()
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebCore::NotificationPresenterClientQt::notificationPresenter()->clearCachedPermissions();
 #endif
-}
-
-void DumpRenderTreeSupportQt::disableDefaultTypesettingFeatures()
-{
-    WebCore::Font::setDefaultTypesettingFeatures(0);
 }
 
 void DumpRenderTreeSupportQt::resetPageVisibility(QWebPageAdapter* adapter)
