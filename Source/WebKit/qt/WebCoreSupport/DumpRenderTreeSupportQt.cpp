@@ -838,8 +838,8 @@ QImage DumpRenderTreeSupportQt::paintPagesWithBoundaries(QWebFrameAdapter* adapt
         // if there is a next page, draw a blue line between these two
         if (i + 1 < printContext.pageCount()) {
             ctx.save();
-            ctx.setStrokeColor(Color(0, 0, 255), ColorSpaceDeviceRGB);
-            ctx.setFillColor(Color(0, 0, 255), ColorSpaceDeviceRGB);
+            ctx.setStrokeColor(Color(0, 0, 255));
+            ctx.setFillColor(Color(0, 0, 255));
             ctx.drawLine(IntPoint(0, -1), IntPoint(pageRect.width(), -1));
             ctx.restore();
         }
