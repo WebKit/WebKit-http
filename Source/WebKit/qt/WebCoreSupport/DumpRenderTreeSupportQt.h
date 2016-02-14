@@ -196,7 +196,7 @@ public:
 
     static void setTrackRepaintRects(QWebFrameAdapter*, bool enable);
     static bool trackRepaintRects(QWebFrameAdapter*);
-    static void getTrackedRepaintRects(QWebFrameAdapter*, QVector<QRect>& result);
+    static void getTrackedRepaintRects(QWebFrameAdapter*, QVector<QRectF>& result);
 
     static void setSeamlessIFramesEnabled(bool);
     static void setShouldUseFontSmoothing(bool);

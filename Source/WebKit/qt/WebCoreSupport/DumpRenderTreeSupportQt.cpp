@@ -855,10 +855,10 @@ bool DumpRenderTreeSupportQt::trackRepaintRects(QWebFrameAdapter* adapter)
     return adapter->frame->view()->isTrackingRepaints();
 }
 
-void DumpRenderTreeSupportQt::getTrackedRepaintRects(QWebFrameAdapter* adapter, QVector<QRect>& result)
+void DumpRenderTreeSupportQt::getTrackedRepaintRects(QWebFrameAdapter* adapter, QVector<QRectF>& result)
 {
     Frame* coreFrame = adapter->frame;
-    const Vector<IntRect>& rects = coreFrame->view()->trackedRepaintRects();
+    const Vector<FloatRect>& rects = coreFrame->view()->trackedRepaintRects();
     result.resize(rects.size());
     for (size_t i = 0; i < rects.size(); ++i)
         result.append(rects[i]);

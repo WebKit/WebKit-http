@@ -1012,7 +1012,7 @@ void DumpRenderTree::dump()
             image = DumpRenderTreeSupportQt::paintPagesWithBoundaries(mainFrame->handle());
 
         if (DumpRenderTreeSupportQt::trackRepaintRects(mainFrameAdapter())) {
-            QVector<QRect> repaintRects;
+            QVector<QRectF> repaintRects;
             DumpRenderTreeSupportQt::getTrackedRepaintRects(mainFrameAdapter(), repaintRects);
             QImage mask(image.size(), image.format());
             mask.fill(QColor(0, 0, 0, 0.66 * 255));
