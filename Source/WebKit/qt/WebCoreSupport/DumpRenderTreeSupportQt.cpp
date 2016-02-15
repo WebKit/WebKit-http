@@ -346,7 +346,7 @@ QVariantList DumpRenderTreeSupportQt::selectedRange(QWebPageAdapter *adapter)
     QVariantList selectedRange;
     RefPtr<Range> range = frame.selection().toNormalizedRange().get();
 
-    Element* selectionRoot = frame.selection().rootEditableElement();
+    Element* selectionRoot = frame.selection().selection().rootEditableElement();
     Element* scope = selectionRoot ? selectionRoot : frame.document()->documentElement();
 
     RefPtr<Range> testRange = Range::create(scope->document(), scope, 0, &range->startContainer(), range->startOffset());
