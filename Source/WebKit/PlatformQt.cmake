@@ -114,6 +114,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/svg/graphics"
     "${WEBCORE_DIR}/svg/graphics/filters"
     "${WEBCORE_DIR}/svg/properties"
+    "${WEBCORE_DIR}/testing/js"
     "${WEBCORE_DIR}/websockets"
     "${WEBCORE_DIR}/workers"
     "${WEBCORE_DIR}/xml"
@@ -168,7 +169,7 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/ChromeClientQt.cpp
     qt/WebCoreSupport/ContextMenuClientQt.cpp
     qt/WebCoreSupport/DragClientQt.cpp
-#    qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp
+    qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp
     qt/WebCoreSupport/EditorClientQt.cpp
     qt/WebCoreSupport/FrameLoaderClientQt.cpp
     qt/WebCoreSupport/FrameNetworkingContextQt.cpp
@@ -239,6 +240,7 @@ list(APPEND WebKit_LIBRARIES
     ${Qt5Gui_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
     ${Qt5Network_LIBRARIES}
+    WebCoreTestSupport
 )
 
 ecm_generate_headers(
