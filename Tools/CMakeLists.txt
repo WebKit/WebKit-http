@@ -1,3 +1,5 @@
+WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
+
 if ("${PORT}" STREQUAL "Efl")
     if (DEVELOPER_MODE)
       add_subdirectory(WebKitTestRunner)

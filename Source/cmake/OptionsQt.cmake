@@ -72,6 +72,7 @@ find_package(Qt5Core 5.2 REQUIRED)
 find_package(Qt5Gui 5.2 REQUIRED)
 find_package(Qt5Network 5.2 REQUIRED)
 find_package(Qt5Sql 5.2 REQUIRED)
+find_package(Qt5OpenGL 5.2) # FIXME
 find_package(Qt5Widgets 5.2 REQUIRED) # FIXME: Split out libQt5WebKitWidgets
 
 # Find includes in corresponding build directories
