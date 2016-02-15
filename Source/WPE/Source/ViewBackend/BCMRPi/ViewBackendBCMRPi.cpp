@@ -229,6 +229,9 @@ void ViewBackendBCMRPi::handleUpdate()
         m_client->frameComplete();
 }
 
+const uint32_t ViewBackendBCMRPi::Cursor::cursorWidth;
+const uint32_t ViewBackendBCMRPi::Cursor::cursorHeight;
+
 ViewBackendBCMRPi::Cursor::Cursor(Input::Client* targetClient, DISPMANX_DISPLAY_HANDLE_T displayHandle, uint32_t displayWidth, uint32_t displayHeight)
     : m_targetClient(targetClient)
     , m_position(0, 0)
