@@ -203,6 +203,7 @@ static gboolean webKitMediaPlayReadyDecryptorDecrypt(WebKitMediaCommonEncryption
         if ((errorCode = priv->sessionMetaData->processPayload(static_cast<const void*>(ivMap.data), static_cast<uint32_t>(ivMap.size), static_cast<void*>(fEncryptedData), static_cast<uint32_t>(totalEncrypted)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             g_free(fEncryptedData);
+            gst_byte_reader_free(reader);
             gst_buffer_unmap(buffer, &map);
             gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
             gst_buffer_unmap(ivBuffer, &ivMap);
@@ -228,12 +229,14 @@ static gboolean webKitMediaPlayReadyDecryptorDecrypt(WebKitMediaCommonEncryption
         if ((errorCode = priv->sessionMetaData->processPayload(static_cast<const void*>(ivMap.data), static_cast<uint32_t>(ivMap.size), static_cast<void*>(map.data), static_cast<uint32_t>(map.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             g_free(fEncryptedData);
+            gst_byte_reader_free(reader);
             gst_buffer_unmap(buffer, &map);
             gst_buffer_unmap(ivBuffer, &ivMap);
             return false;
         }
     }
 
+    gst_byte_reader_free(reader);
     gst_buffer_unmap(buffer, &map);
     gst_buffer_unmap(ivBuffer, &ivMap);
     return true;

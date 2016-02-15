@@ -230,6 +230,7 @@ static gboolean webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionD
             if (!gst_byte_reader_get_uint16_be(reader, &nBytesClear)
                 || !gst_byte_reader_get_uint32_be(reader, &nBytesEncrypted)) {
                 GST_DEBUG_OBJECT(self, "unsupported");
+                gst_byte_reader_free(reader);
                 gst_buffer_unmap(buffer, &map);
                 gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
                 return false;
@@ -248,6 +249,7 @@ static gboolean webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionD
             error = gcry_cipher_decrypt(priv->handle, map.data + position, nBytesEncrypted, 0, 0);
             if (error) {
                 GST_ERROR_OBJECT(self, "decryption failed: %s", gpg_strerror(error));
+                gst_byte_reader_free(reader);
                 gst_buffer_unmap(buffer, &map);
                 gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
                 return false;
@@ -256,6 +258,7 @@ static gboolean webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionD
         }
     }
 
+    gst_byte_reader_free(reader);
     gst_buffer_unmap(buffer, &map);
     gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     return true;
