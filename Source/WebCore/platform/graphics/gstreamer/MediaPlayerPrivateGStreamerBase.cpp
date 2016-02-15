@@ -100,7 +100,7 @@
 #include <EGL/egl.h>
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#include "WebKitCommonEncryptionDecryptorGStreamer.h"
+#include "WebKitClearKeyDecryptorGStreamer.h"
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
@@ -144,9 +144,9 @@ namespace WebCore {
 void registerWebKitGStreamerElements()
 {
 #if ENABLE(ENCRYPTED_MEDIA)
-    GRefPtr<GstElementFactory> cencDecryptorFactory = gst_element_factory_find("webkitcencdec");
-    if (!cencDecryptorFactory)
-        gst_element_register(0, "webkitcencdec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CENC_DECRYPT);
+    GRefPtr<GstElementFactory> clearKeyDecryptorFactory = gst_element_factory_find("webkitclearkey");
+    if (!clearKeyDecryptorFactory)
+        gst_element_register(0, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
 #endif
 
 #if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && (USE(DXDRM) || USE(PLAYREADY))

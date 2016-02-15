@@ -376,12 +376,12 @@ if (ENABLE_ENCRYPTED_MEDIA)
         ${LIBGCRYPT_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
-        ${LIBGCRYPT_LIBRARIES}
+        ${LIBGCRYPT_LIBRARIES} -lgpg-error
     )
 
     list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/WebKitCommonEncryptionDecryptorGStreamer.cpp
-        platform/graphics/gstreamer/WebKitMediaAesCtr.c
+        platform/graphics/gstreamer/WebKitClearKeyDecryptorGStreamer.cpp
     )
 
 endif ()

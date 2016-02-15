@@ -1,7 +1,7 @@
 /* GStreamer ClearKey common encryption decryptor
  *
- * Copyright (C) 2015 Igalia S.L
- * Copyright (C) 2015 Metrological
+ * Copyright (C) 2015, 2016 Igalia S.L
+ * Copyright (C) 2015, 2016 Metrological
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -24,11 +24,9 @@
 
 #if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && (USE(DXDRM) || USE(PLAYREADY))
 
-#include <gst/gst.h>
+#include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
 G_BEGIN_DECLS
-
-#define PLAYREADY_PROTECTION_SYSTEM_ID "9a04f079-9840-4286-ab92-e65be0885f95"
 
 #define WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT          (webkit_media_playready_decrypt_get_type())
 #define WEBKIT_MEDIA_PLAYREADY_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT, WebKitMediaPlayReadyDecrypt))
@@ -36,10 +34,21 @@ G_BEGIN_DECLS
 #define WEBKIT_IS_MEDIA_PLAYREADY_DECRYPT(obj)       (G_TYPE_CHECK_INSTANCE_TYPE((obj), WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT))
 #define WEBKIT_IS_MEDIA_PLAYREADY_DECRYPT_CLASS(obj) (G_TYPE_CHECK_CLASS_TYPE((klass), WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT))
 
-typedef struct _WebKitMediaPlayReadyDecrypt      WebKitMediaPlayReadyDecrypt;
-typedef struct _WebKitMediaPlayReadyDecryptClass WebKitMediaPlayReadyDecryptClass;
+typedef struct _WebKitMediaPlayReadyDecrypt        WebKitMediaPlayReadyDecrypt;
+typedef struct _WebKitMediaPlayReadyDecryptClass   WebKitMediaPlayReadyDecryptClass;
+typedef struct _WebKitMediaPlayReadyDecryptPrivate WebKitMediaPlayReadyDecryptPrivate;
 
 GType webkit_media_playready_decrypt_get_type(void);
+
+struct _WebKitMediaPlayReadyDecrypt {
+    WebKitMediaCommonEncryptionDecrypt parent;
+
+    WebKitMediaPlayReadyDecryptPrivate* priv;
+};
+
+struct _WebKitMediaPlayReadyDecryptClass {
+    WebKitMediaCommonEncryptionDecryptClass parentClass;
+};
 
 G_END_DECLS
 

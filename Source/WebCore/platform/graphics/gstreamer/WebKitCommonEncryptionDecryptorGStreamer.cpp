@@ -1,7 +1,7 @@
 /* GStreamer ClearKey common encryption decryptor
  *
- * Copyright (C) 2015 Igalia S.L
- * Copyright (C) 2015 Metrological
+ * Copyright (C) 2016 Igalia S.L
+ * Copyright (C) 2016 Metrological
  * Copyright (C) 2013 YouView TV Ltd. <alex.ashley@youview.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -22,112 +22,93 @@
 
 #include "config.h"
 
-#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
-#include <gst/base/gstbasetransform.h>
-#include <gst/base/gstbytereader.h>
-#include "WebKitMediaAesCtr.h"
+#include "GRefPtrGStreamer.h"
+#include <wtf/Condition.h>
+#include <wtf/RunLoop.h>
 
-struct _WebKitMediaCommonEncryptionDecrypt {
-    GstBaseTransform parent;
-    GBytes* key;
-    GstBuffer* initDataBuffer;
+#define WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptPrivate))
+struct _WebKitMediaCommonEncryptionDecryptPrivate {
+    GstEvent* protectionEvent;
 
-    gboolean keyReceived;
-    GMutex mutex;
-    GCond condition;
+    bool keyReceived;
+    Lock mutex;
+    Condition condition;
 };
 
-struct _WebKitMediaCommonEncryptionDecryptClass {
-    GstBaseTransformClass parentClass;
-};
-
-static void webkit_media_common_encryption_decrypt_dispose(GObject* object);
-static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps* filter);
+static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstElement*, GstStateChange transition);
+static void webKitMediaCommonEncryptionDecryptorFinalize(GObject*);
+static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps*);
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
+
+static gboolean webKitMediaCommonEncryptionDecryptDefaultSetupCipher(WebKitMediaCommonEncryptionDecrypt*);
+static void webKitMediaCommonEncryptionDecryptDefaultReleaseCipher(WebKitMediaCommonEncryptionDecrypt*);
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_common_encryption_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_common_encryption_decrypt_debug_category
 
-#define CLEAR_KEY_PROTECTION_SYSTEM_ID "58147ec8-0423-4659-92e6-f52c5ce8c3cc"
-
-static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
-    GST_PAD_SINK,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" CLEAR_KEY_PROTECTION_SYSTEM_ID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" CLEAR_KEY_PROTECTION_SYSTEM_ID));
-
-static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS("video/x-h264; audio/mpeg"));
-
 #define webkit_media_common_encryption_decrypt_parent_class parent_class
 G_DEFINE_TYPE(WebKitMediaCommonEncryptionDecrypt, webkit_media_common_encryption_decrypt, GST_TYPE_BASE_TRANSFORM);
 
-static void webkit_media_common_encryption_decrypt_class_init(WebKitMediaCommonEncryptionDecryptClass* klass) {
+static void webkit_media_common_encryption_decrypt_class_init(WebKitMediaCommonEncryptionDecryptClass* klass)
+{
     GstBaseTransformClass* baseTransformClass = GST_BASE_TRANSFORM_CLASS(klass);
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
     GObjectClass* gobjectClass = G_OBJECT_CLASS(klass);
 
-    gobjectClass->dispose = webkit_media_common_encryption_decrypt_dispose;
-
-    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&sinkTemplate));
-    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&srcTemplate));
-
-    gst_element_class_set_static_metadata(elementClass,
-        "Decrypt content encrypted using ISOBMFF ClearKey Common Encryption",
-        GST_ELEMENT_FACTORY_KLASS_DECRYPTOR,
-        "Decrypts media that has been encrypted using ISOBMFF ClearKey Common Encryption.",
-        "Alex Ashley <alex.ashley@youview.com>"
-        "and Philippe Normand <philn@igalia.com>");
+    gobjectClass->finalize = webKitMediaCommonEncryptionDecryptorFinalize;
 
     GST_DEBUG_CATEGORY_INIT(webkit_media_common_encryption_decrypt_debug_category,
-        "webkitcenc", 0, "ClearKey CENC decryptor");
+        "webkitcenc", 0, "Common Encryption base class");
+
+    elementClass->change_state = GST_DEBUG_FUNCPTR(webKitMediaCommonEncryptionDecryptorChangeState);
 
     baseTransformClass->transform_ip = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptTransformInPlace);
     baseTransformClass->transform_caps = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptTransformCaps);
-    baseTransformClass->sink_event = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptSinkEventHandler);
     baseTransformClass->transform_ip_on_passthrough = FALSE;
+    baseTransformClass->sink_event = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptSinkEventHandler);
+
+    klass->setupCipher = GST_DEBUG_FUNCPTR(webKitMediaCommonEncryptionDecryptDefaultSetupCipher);
+    klass->releaseCipher = GST_DEBUG_FUNCPTR(webKitMediaCommonEncryptionDecryptDefaultReleaseCipher);
+
+    g_type_class_add_private(klass, sizeof(WebKitMediaCommonEncryptionDecryptPrivate));
 }
 
 static void webkit_media_common_encryption_decrypt_init(WebKitMediaCommonEncryptionDecrypt* self)
 {
-    GstBaseTransform* base = GST_BASE_TRANSFORM(self);
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
 
+    self->priv = priv;
+    new (priv) WebKitMediaCommonEncryptionDecryptPrivate();
+
+    GstBaseTransform* base = GST_BASE_TRANSFORM(self);
     gst_base_transform_set_in_place(base, TRUE);
     gst_base_transform_set_passthrough(base, FALSE);
     gst_base_transform_set_gap_aware(base, FALSE);
-
-    g_mutex_init(&self->mutex);
-    g_cond_init(&self->condition);
-
-    if (!webkit_media_aes_ctr_decrypt_initialize())
-        GST_ERROR_OBJECT(self, "Libgcrypt failed to initialize");
 }
 
-static void webkit_media_common_encryption_decrypt_dispose(GObject* object)
+static void webKitMediaCommonEncryptionDecryptorFinalize(GObject* object)
 {
     WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(object);
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = self->priv;
 
-    g_mutex_clear(&self->mutex);
-    g_cond_clear(&self->condition);
-
-    G_OBJECT_CLASS(parent_class)->dispose(object);
+    priv->~WebKitMediaCommonEncryptionDecryptPrivate();
+    GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
-/*
-  Given the pad in this direction and the given caps, what caps are allowed on
-  the other pad in this element ?
-*/
+
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform* base, GstPadDirection direction, GstCaps* caps, GstCaps* filter)
 {
-    g_return_val_if_fail(direction != GST_PAD_UNKNOWN, nullptr);
-    GstCaps* transformedCaps = gst_caps_new_empty();
+    if (direction == GST_PAD_UNKNOWN)
+        return nullptr;
 
-    GST_DEBUG_OBJECT(base, "direction: %s, caps: %" GST_PTR_FORMAT " filter:"
-        " %" GST_PTR_FORMAT, (direction == GST_PAD_SRC) ? "src" : "sink", caps, filter);
+    GstCaps* transformedCaps = gst_caps_new_empty();
+    WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(base);
+    WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
+
+    GST_DEBUG_OBJECT(base, "direction: %s, caps: %" GST_PTR_FORMAT " filter: %" GST_PTR_FORMAT, (direction == GST_PAD_SRC) ? "src" : "sink", caps, filter);
 
     unsigned size = gst_caps_get_size(caps);
     for (unsigned i = 0; i < size; ++i) {
@@ -141,7 +122,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
             out = gst_structure_copy(in);
             gst_structure_set_name(out, gst_structure_get_string(out, "original-media-type"));
 
-            /* filter out the DRM related fields from the down-stream caps */
+            // Filter out the DRM related fields from the down-stream caps.
             for (int j = 0; j < gst_structure_n_fields(in); ++j) {
                 const gchar* fieldName = gst_structure_nth_field_name(in, j);
 
@@ -151,9 +132,9 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
             }
         } else {
             GstStructure* tmp = gst_structure_copy(in);
-            /* filter out the video related fields from the up-stream caps,
-               because they are not relevant to the input caps of this element and
-               can cause caps negotiation failures with adaptive bitrate streams */
+            // Filter out the video related fields from the up-stream caps,
+            // because they are not relevant to the input caps of this element and
+            // can cause caps negotiation failures with adaptive bitrate streams.
             for (int index = gst_structure_n_fields(tmp) - 1; index >= 0; --index) {
                 const gchar* fieldName = gst_structure_nth_field_name(tmp, index);
                 GST_TRACE("Check field \"%s\" for removal", fieldName);
@@ -173,7 +154,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
             }
 
             out = gst_structure_copy(tmp);
-            gst_structure_set(out, "protection-system", G_TYPE_STRING, CLEAR_KEY_PROTECTION_SYSTEM_ID,
+            gst_structure_set(out, "protection-system", G_TYPE_STRING, klass->protectionSystemId,
                 "original-media-type", G_TYPE_STRING, gst_structure_get_name(in), nullptr);
 
             gst_structure_set_name(out, "application/x-cenc");
@@ -211,227 +192,132 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform* base, GstBuffer* buffer)
 {
     WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(base);
-    GstFlowReturn result = GST_FLOW_OK;
-    GstMapInfo map, ivMap;
-    unsigned position = 0;
-    unsigned sampleIndex = 0;
-    guint subSampleCount;
-    AesCtrState* state = nullptr;
-    guint ivSize;
+    WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
+    guint subSampleCount, ivSize;
     gboolean encrypted;
     const GValue* value;
     GstBuffer* ivBuffer = nullptr;
-    GBytes* ivBytes = nullptr;
-    GstBuffer* subsamplesBuffer = nullptr;
-    GstMapInfo subSamplesMap;
-    GstByteReader* reader = nullptr;
+    GstBuffer* subSamplesBuffer = nullptr;
     GstProtectionMeta* protectionMeta;
-    gboolean bufferMapped = FALSE;
-    gboolean subsamplesBufferMapped = FALSE;
 
-    g_mutex_lock(&self->mutex);
+    LockHolder locker(priv->mutex);
 
     // The key might not have been received yet. Wait for it.
-    if (!self->keyReceived)
-        g_cond_wait(&self->condition, &self->mutex);
-
-    ASSERT(self->key);
-    if (!self->key) {
-        GST_ERROR_OBJECT(self, "Decryption key not provided");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
-    }
+    if (!priv->keyReceived)
+        priv->condition.wait(priv->mutex);
 
     protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
-    if (!protectionMeta || !buffer) {
-        if (!protectionMeta)
-            GST_ERROR_OBJECT(self, "Failed to get GstProtection metadata from buffer %p", buffer);
-
-        if (!buffer)
-            GST_ERROR_OBJECT(self, "Failed to get writable buffer");
-
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
+    if (!protectionMeta) {
+        GST_ERROR_OBJECT(self, "Failed to get GstProtection metadata from buffer %p", buffer);
+        return GST_FLOW_NOT_SUPPORTED;
     }
 
-    bufferMapped = gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE));
-    if (!bufferMapped) {
-        GST_ERROR_OBJECT(self, "Failed to map buffer");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
-    }
-
-    GST_TRACE_OBJECT(self, "decrypt sample %d", map.size);
     if (!gst_structure_get_uint(protectionMeta->info, "iv_size", &ivSize)) {
-        GST_ERROR_OBJECT(self, "failed to get iv_size");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
+        GST_ERROR_OBJECT(self, "Failed to get iv_size");
+        gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+        return GST_FLOW_NOT_SUPPORTED;
     }
 
     if (!gst_structure_get_boolean(protectionMeta->info, "encrypted", &encrypted)) {
-        GST_ERROR_OBJECT(self, "failed to get encrypted flag");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
+        GST_ERROR_OBJECT(self, "Failed to get encrypted flag");
+        gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+        return GST_FLOW_NOT_SUPPORTED;
     }
 
-    // Unencrypted sample.
-    if (!ivSize || !encrypted)
-        goto release;
+    if (!ivSize || !encrypted) {
+        gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+        return GST_FLOW_OK;
+    }
 
     GST_DEBUG_OBJECT(base, "protection meta: %" GST_PTR_FORMAT, protectionMeta->info);
     if (!gst_structure_get_uint(protectionMeta->info, "subsample_count", &subSampleCount)) {
-        GST_ERROR_OBJECT(self, "failed to get subsample_count");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
+        GST_ERROR_OBJECT(self, "Failed to get subsample_count");
+        gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+        return GST_FLOW_NOT_SUPPORTED;
+    }
+
+    if (subSampleCount) {
+        value = gst_structure_get_value(protectionMeta->info, "subsamples");
+        if (!value) {
+            GST_ERROR_OBJECT(self, "Failed to get subsamples");
+            gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+            return GST_FLOW_NOT_SUPPORTED;
+        }
+        subSamplesBuffer = gst_value_get_buffer(value);
+    }
+
+    if (!klass->setupCipher(self)) {
+        GST_ERROR_OBJECT(self, "Failed to configure cipher");
+        gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+        return GST_FLOW_NOT_SUPPORTED;
     }
 
     value = gst_structure_get_value(protectionMeta->info, "iv");
     if (!value) {
         GST_ERROR_OBJECT(self, "Failed to get IV for sample");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
+        klass->releaseCipher(self);
+        gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+        return GST_FLOW_NOT_SUPPORTED;
     }
 
     ivBuffer = gst_value_get_buffer(value);
-    if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
-        GST_ERROR_OBJECT(self, "Failed to map IV");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
-    }
-
-    ivBytes = g_bytes_new(ivMap.data, ivMap.size);
-    gst_buffer_unmap(ivBuffer, &ivMap);
-    if (subSampleCount) {
-        value = gst_structure_get_value(protectionMeta->info, "subsamples");
-        if (!value) {
-            GST_ERROR_OBJECT(self, "Failed to get subsamples");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto release;
-        }
-        subsamplesBuffer = gst_value_get_buffer(value);
-        subsamplesBufferMapped = gst_buffer_map(subsamplesBuffer, &subSamplesMap, GST_MAP_READ);
-        if (!subsamplesBufferMapped) {
-            GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
-            result = GST_FLOW_NOT_SUPPORTED;
-            goto release;
-        }
-        reader = gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size);
-    }
-
-    state = webkit_media_aes_ctr_decrypt_new(self->key, ivBytes);
-    if (!state) {
-        GST_ERROR_OBJECT(self, "Failed to init AES cipher");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
-    }
-
-    GST_DEBUG_OBJECT(self, "position: %d, size: %d", position, map.size);
-    while (position < map.size) {
-        guint16 nBytesClear = 0;
-        guint32 nBytesEncrypted = 0;
-
-        if (sampleIndex < subSampleCount) {
-            if (!gst_byte_reader_get_uint16_be(reader, &nBytesClear)
-                || !gst_byte_reader_get_uint32_be(reader, &nBytesEncrypted)) {
-                result = GST_FLOW_NOT_SUPPORTED;
-                GST_DEBUG_OBJECT(self, "unsupported");
-                goto release;
-            }
-
-            sampleIndex++;
-        } else {
-            nBytesClear = 0;
-            nBytesEncrypted = map.size - position;
-        }
-
-        GST_TRACE_OBJECT(self, "%d bytes clear (todo=%d)", nBytesClear, map.size - position);
-        position += nBytesClear;
-        if (nBytesEncrypted) {
-            GST_TRACE_OBJECT(self, "%d bytes encrypted (todo=%d)", nBytesEncrypted, map.size - position);
-            if (!webkit_media_aes_ctr_decrypt_ip(state, map.data + position, nBytesEncrypted)) {
-                result = GST_FLOW_NOT_SUPPORTED;
-                GST_ERROR_OBJECT(self, "decryption failed");
-                goto release;
-            }
-            position += nBytesEncrypted;
-        }
-    }
-
-release:
-    if (bufferMapped)
-        gst_buffer_unmap(buffer, &map);
-
-    if (state)
-        webkit_media_aes_ctr_decrypt_unref(state);
-
-    if (reader)
-        gst_byte_reader_free(reader);
-
-    if (subsamplesBufferMapped)
-        gst_buffer_unmap(subsamplesBuffer, &subSamplesMap);
-
-    if (protectionMeta)
+    if (!klass->decrypt(self, ivBuffer, buffer, subSampleCount, subSamplesBuffer)) {
+        GST_ERROR_OBJECT(self, "Decryption failed");
+        klass->releaseCipher(self);
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+        return GST_FLOW_NOT_SUPPORTED;
+    }
 
-    if (ivBytes)
-        g_bytes_unref(ivBytes);
-
-    g_mutex_unlock(&self->mutex);
-    return result;
+    klass->releaseCipher(self);
+    gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
+    return GST_FLOW_OK;
 }
 
-static gboolean requestKeyFromMainThread(gpointer userData)
-{
-    WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(userData);
-
-    gst_element_post_message(GST_ELEMENT(self),
-        gst_message_new_element(GST_OBJECT(self),
-            gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, self->initDataBuffer,
-                "key-system-id", G_TYPE_STRING, "org.w3.clearkey", nullptr)));
-    return G_SOURCE_REMOVE;
-}
 
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform* trans, GstEvent* event)
 {
-    gboolean result = FALSE;
     WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(trans);
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
+    WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
+    gboolean result = FALSE;
 
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_PROTECTION: {
-        const gchar* systemId;
-        const gchar* origin;
+        const char* systemId;
+        const char* origin;
+        GstBuffer* initDataBuffer;
 
         GST_DEBUG_OBJECT(self, "received protection event");
-        gst_event_parse_protection(event, &systemId, &self->initDataBuffer, &origin);
+        gst_event_parse_protection(event, &systemId, &initDataBuffer, &origin);
         GST_DEBUG_OBJECT(self, "systemId: %s", systemId);
-        if (!g_str_equal(systemId, CLEAR_KEY_PROTECTION_SYSTEM_ID)) {
+
+        if (!g_str_equal(systemId, klass->protectionSystemId)) {
             gst_event_unref(event);
             result = TRUE;
             break;
         }
 
-        if (g_str_has_prefix(origin, "isobmff/"))
-            g_timeout_add(0, requestKeyFromMainThread, self);
+        // Keep the event ref around so that the parsed event data
+        // remains valid until the drm-key-need message has been sent.
+        priv->protectionEvent = event;
+        RunLoop::main().dispatch([self, initDataBuffer] {
+            if (self) {
+                WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
+                klass->requestDecryptionKey(self, initDataBuffer);
+                if (self->priv->protectionEvent) {
+                    gst_event_unref(self->priv->protectionEvent);
+                    self->priv->protectionEvent = nullptr;
+                }
+            }});
 
-        gst_event_unref(event);
         result = TRUE;
         break;
     }
     case GST_EVENT_CUSTOM_DOWNSTREAM_OOB: {
-        const GstStructure* structure = gst_event_get_structure(event);
-        if (gst_structure_has_name(structure, "drm-cipher")) {
-            GstBuffer* buffer;
-            GstMapInfo info;
-            const GValue* value = gst_structure_get_value(structure, "key");
-            buffer = gst_value_get_buffer(value);
-            if (self->key)
-                g_bytes_unref(self->key);
-            gst_buffer_map(buffer, &info, GST_MAP_READ);
-            self->key = g_bytes_new(info.data, info.size);
-            gst_buffer_unmap(buffer, &info);
-
-            self->keyReceived = TRUE;
-            g_cond_signal(&self->condition);
+        if (klass->handleKeyResponse(self, event)) {
+            priv->keyReceived = true;
+            priv->condition.notifyOne();
         }
 
         gst_event_unref(event);
@@ -445,5 +331,39 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
 
     return result;
 }
+
+static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstElement* element, GstStateChange transition)
+{
+    WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(element);
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
+    GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
+
+    switch (transition) {
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+        GST_DEBUG_OBJECT(self, "PAUSED->READY");
+        priv->condition.notifyOne();
+        break;
+    default:
+        break;
+    }
+
+    ret = GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
+
+    // Add post-transition code here.
+
+    return ret;
+}
+
+
+static gboolean webKitMediaCommonEncryptionDecryptDefaultSetupCipher(WebKitMediaCommonEncryptionDecrypt*)
+{
+    return true;
+}
+
+
+static void webKitMediaCommonEncryptionDecryptDefaultReleaseCipher(WebKitMediaCommonEncryptionDecrypt*)
+{
+}
+
 
 #endif

@@ -1,7 +1,7 @@
 /* GStreamer ClearKey common encryption decryptor
  *
- * Copyright (C) 2015 Igalia S.L
- * Copyright (C) 2015 Metrological
+ * Copyright (C) 2016 Igalia S.L
+ * Copyright (C) 2016 Metrological
  * Copyright (C) 2013 YouView TV Ltd. <alex.ashley@youview.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -23,22 +23,43 @@
 #ifndef WebKitCommonEncryptionDecryptorGStreamer_h
 #define WebKitCommonEncryptionDecryptorGStreamer_h
 
-#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include <gst/gst.h>
+#include <gst/base/gstbasetransform.h>
 
 G_BEGIN_DECLS
 
 #define WEBKIT_TYPE_MEDIA_CENC_DECRYPT          (webkit_media_common_encryption_decrypt_get_type())
 #define WEBKIT_MEDIA_CENC_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecrypt))
 #define WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptClass))
+#define WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptClass))
+
 #define WEBKIT_IS_MEDIA_CENC_DECRYPT(obj)       (G_TYPE_CHECK_INSTANCE_TYPE((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT))
 #define WEBKIT_IS_MEDIA_CENC_DECRYPT_CLASS(obj) (G_TYPE_CHECK_CLASS_TYPE((klass), WEBKIT_TYPE_MEDIA_CENC_DECRYPT))
 
-typedef struct _WebKitMediaCommonEncryptionDecrypt      WebKitMediaCommonEncryptionDecrypt;
-typedef struct _WebKitMediaCommonEncryptionDecryptClass WebKitMediaCommonEncryptionDecryptClass;
+typedef struct _WebKitMediaCommonEncryptionDecrypt        WebKitMediaCommonEncryptionDecrypt;
+typedef struct _WebKitMediaCommonEncryptionDecryptClass   WebKitMediaCommonEncryptionDecryptClass;
+typedef struct _WebKitMediaCommonEncryptionDecryptPrivate WebKitMediaCommonEncryptionDecryptPrivate;
 
 GType webkit_media_common_encryption_decrypt_get_type(void);
+
+struct _WebKitMediaCommonEncryptionDecrypt {
+    GstBaseTransform parent;
+
+    WebKitMediaCommonEncryptionDecryptPrivate* priv;
+};
+
+struct _WebKitMediaCommonEncryptionDecryptClass {
+    GstBaseTransformClass parentClass;
+
+    const char* protectionSystemId;
+    void (*requestDecryptionKey) (WebKitMediaCommonEncryptionDecrypt*, GstBuffer* initData);
+    gboolean (*handleKeyResponse) (WebKitMediaCommonEncryptionDecrypt*, GstEvent* event);
+    gboolean (*setupCipher) (WebKitMediaCommonEncryptionDecrypt*);
+    gboolean (*decrypt) (WebKitMediaCommonEncryptionDecrypt*, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSamplesCount, GstBuffer* subSamplesBuffer);
+    void (*releaseCipher) (WebKitMediaCommonEncryptionDecrypt*);
+};
 
 G_END_DECLS
 
