@@ -143,6 +143,9 @@ namespace WebCore {
 
 void registerWebKitGStreamerElements()
 {
+    if (!webkitGstCheckVersion(1, 6, 1))
+        return;
+
 #if ENABLE(ENCRYPTED_MEDIA)
     GRefPtr<GstElementFactory> clearKeyDecryptorFactory = gst_element_factory_find("webkitclearkey");
     if (!clearKeyDecryptorFactory)
