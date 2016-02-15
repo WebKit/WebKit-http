@@ -415,9 +415,9 @@ void TestRunnerQt::showWebInspector()
     DumpRenderTreeSupportQt::webInspectorShow(m_drt->pageAdapter());
 }
 
-void TestRunnerQt::evaluateInWebInspector(long callId, const QString& script)
+void TestRunnerQt::evaluateInWebInspector(const QString& script)
 {
-    DumpRenderTreeSupportQt::webInspectorExecuteScript(m_drt->pageAdapter(), callId, script);
+    DumpRenderTreeSupportQt::webInspectorExecuteScript(m_drt->pageAdapter(), script);
 }
 
 void TestRunnerQt::setAllowUniversalAccessFromFileURLs(bool enabled)

@@ -240,10 +240,10 @@ QString DumpRenderTreeSupportQt::webPageGroupName(QWebPageAdapter* adapter)
     return adapter->page->groupName();
 }
 
-void DumpRenderTreeSupportQt::webInspectorExecuteScript(QWebPageAdapter* adapter, long callId, const QString& script)
+void DumpRenderTreeSupportQt::webInspectorExecuteScript(QWebPageAdapter* adapter, const QString& script)
 {
 #if ENABLE(INSPECTOR)
-    adapter->page->inspectorController().evaluateForTestInFrontend(callId, script);
+    adapter->page->inspectorController().evaluateForTestInFrontend(script);
 #endif
 }
 

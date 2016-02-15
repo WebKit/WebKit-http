@@ -110,7 +110,7 @@ public:
     static void clearScriptWorlds();
     static void evaluateScriptInIsolatedWorld(QWebFrameAdapter*, int worldID, const QString& script);
 
-    static void webInspectorExecuteScript(QWebPageAdapter*, long callId, const QString& script);
+    static void webInspectorExecuteScript(QWebPageAdapter*, const QString& script);
     static void webInspectorShow(QWebPageAdapter*);
     static void webInspectorClose(QWebPageAdapter*);
 

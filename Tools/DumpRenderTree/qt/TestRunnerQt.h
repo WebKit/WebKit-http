@@ -125,7 +125,7 @@ public Q_SLOTS:
     void setDeveloperExtrasEnabled(bool);
     void showWebInspector();
     void closeWebInspector();
-    void evaluateInWebInspector(long callId, const QString& script);
+    void evaluateInWebInspector(const QString& script);
     void removeAllVisitedLinks();
     void setAllowUniversalAccessFromFileURLs(bool enable);
     void setAllowFileAccessFromFileURLs(bool enable);
