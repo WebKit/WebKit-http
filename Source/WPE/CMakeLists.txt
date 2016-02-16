@@ -1,4 +1,4 @@
-find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
+find_package(GLIB 2.38.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
 find_package(Libinput REQUIRED)
 find_package(Libudev REQUIRED)
 
