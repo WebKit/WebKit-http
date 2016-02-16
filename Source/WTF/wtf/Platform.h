@@ -487,13 +487,21 @@
 #define USE_CA 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
+#if PLATFORM(GTK) || PLATFORM(EFL)
 #define USE_CAIRO 1
 #define USE_GLIB 1
 #define USE_FREETYPE 1
 #define USE_HARFBUZZ 1
 #define USE_SOUP 1
 #define USE_WEBP 1
+#endif
+
+#if PLATFORM(WPE)
+#define USE_CAIRO 1
+#define USE_GLIB 1
+#define USE_FREETYPE 1
+#define USE_HARFBUZZ 1
+#define USE_SOUP 1
 #endif
 
 #if PLATFORM(EFL)

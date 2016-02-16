@@ -78,7 +78,11 @@ find_package(LibXml2 2.8.0 REQUIRED)
 find_package(LibXslt 1.1.7 REQUIRED)
 find_package(PNG REQUIRED)
 find_package(Sqlite REQUIRED)
-find_package(WebP REQUIRED)
+
+find_package(WebP)
+if (WEBP_FOUND)
+    SET_AND_EXPOSE_TO_BUILD(USE_WEBP TRUE)
+endif ()
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
