@@ -38,7 +38,7 @@ const unsigned EnabledInputChannels = 2;
 
 namespace WebCore {
     
-DefaultAudioDestinationNode::DefaultAudioDestinationNode(AudioContext* context)
+DefaultAudioDestinationNode::DefaultAudioDestinationNode(AudioContext& context)
     : AudioDestinationNode(context, AudioDestination::hardwareSampleRate())
     , m_numberOfInputChannels(0)
 {
@@ -111,7 +111,8 @@ void DefaultAudioDestinationNode::resume(std::function<void()> function)
     ASSERT(isInitialized());
     if (isInitialized())
         m_destination->start();
-    context()->scriptExecutionContext()->postTask(function);
+    if (auto scriptExecutionContext = context().scriptExecutionContext())
+        scriptExecutionContext->postTask(function);
 }
 
 void DefaultAudioDestinationNode::suspend(std::function<void()> function)
@@ -119,14 +120,16 @@ void DefaultAudioDestinationNode::suspend(std::function<void()> function)
     ASSERT(isInitialized());
     if (isInitialized())
         m_destination->stop();
-    context()->scriptExecutionContext()->postTask(function);
+    if (auto scriptExecutionContext = context().scriptExecutionContext())
+        scriptExecutionContext->postTask(function);
 }
 
 void DefaultAudioDestinationNode::close(std::function<void()> function)
 {
     ASSERT(isInitialized());
     uninitialize();
-    context()->scriptExecutionContext()->postTask(function);
+    if (auto scriptExecutionContext = context().scriptExecutionContext())
+        scriptExecutionContext->postTask(function);
 }
 
 unsigned long DefaultAudioDestinationNode::maxChannelCount() const

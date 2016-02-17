@@ -48,7 +48,8 @@
 #define WIRHostApplicationIdentifierKey         @"WIRHostApplicationIdentifierKey"
 #define WIRHostApplicationNameKey               @"WIRHostApplicationNameKey"
 #define WIRConnectionIdentifierKey              @"WIRConnectionIdentifierKey"
-#define WIRPageIdentifierKey                    @"WIRPageIdentifierKey"
+// COMPATABILITY(iOS 9): The key string is intentionally mismatched to support old relays.
+#define WIRTargetIdentifierKey                  @"WIRPageIdentifierKey"
 #define WIRHasLocalDebuggerKey                  @"WIRHasLocalDebuggerKey"
 #define WIRTitleKey                             @"WIRTitleKey"
 #define WIRURLKey                               @"WIRURLKey"
@@ -81,6 +82,10 @@
 #define WIRAutomaticInspectionConfigurationMessage @"WIRAutomaticInspectionConfigurationMessage"
 #define WIRAutomaticInspectionRejectMessage        @"WIRAutomaticInspectionRejectMessage"
 #define WIRAutomaticInspectionCandidateMessage     @"WIRAutomaticInspectionCandidateMessage"
+
+#define WIRAutomationTargetIsPairedKey             @"WIRAutomationTargetIsPairedKey"
+#define WIRSessionIdentifierKey                    @"WIRSessionIdentifierKey"
+#define WIRAutomationSessionRequestMessage         @"WIRAutomationSessionRequestMessage"
 
 // These definitions are shared with a Simulator webinspectord and
 // OS X process communicating with it.

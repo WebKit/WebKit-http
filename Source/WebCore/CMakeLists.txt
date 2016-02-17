@@ -74,11 +74,9 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cpu/arm/filters"
     "${WEBCORE_DIR}/platform/graphics/displaylists"
     "${WEBCORE_DIR}/platform/graphics/filters"
-    "${WEBCORE_DIR}/platform/graphics/filters/texmap"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/graphics/transforms"
     "${WEBCORE_DIR}/platform/mediastream"
     "${WEBCORE_DIR}/platform/mock"
@@ -332,6 +330,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSValueList.idl
     css/Counter.idl
     css/DOMWindowCSS.idl
+    css/FontFace.idl
     css/FontLoader.idl
     css/MediaList.idl
     css/MediaQueryList.idl
@@ -635,6 +634,7 @@ set(WebCore_NON_SVG_IDL_FILES
 
     xml/DOMParser.idl
     xml/XMLHttpRequest.idl
+    xml/XMLHttpRequestEventTarget.idl
     xml/XMLHttpRequestProgressEvent.idl
     xml/XMLHttpRequestUpload.idl
     xml/XMLSerializer.idl
@@ -1110,6 +1110,7 @@ set(WebCore_SOURCES
     bindings/js/JSCSSRuleCustom.cpp
     bindings/js/JSCSSRuleListCustom.cpp
     bindings/js/JSCSSStyleDeclarationCustom.cpp
+    bindings/js/JSFontFaceCustom.cpp
     bindings/js/JSCSSValueCustom.cpp
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
@@ -1183,6 +1184,7 @@ set(WebCore_SOURCES
     bindings/js/JSIDBCursorCustom.cpp
     bindings/js/JSIDBCursorWithValueCustom.cpp
     bindings/js/JSIDBDatabaseCustom.cpp
+    bindings/js/JSIDBIndexCustom.cpp
     bindings/js/JSIDBObjectStoreCustom.cpp
     bindings/js/JSImageConstructor.cpp
     bindings/js/JSImageDataCustom.cpp
@@ -1301,6 +1303,7 @@ set(WebCore_SOURCES
     css/CSSCursorImageValue.cpp
     css/CSSDefaultStyleSheets.cpp
     css/CSSFilterImageValue.cpp
+    css/FontFace.cpp
     css/CSSFontFace.cpp
     css/CSSFontFaceLoadEvent.cpp
     css/CSSFontFaceRule.cpp
@@ -1357,6 +1360,7 @@ set(WebCore_SOURCES
     css/DocumentRuleSets.cpp
     css/ElementRuleCollector.cpp
     css/FontLoader.cpp
+    css/FontVariantBuilder.cpp
     css/InspectorCSSOMWrappers.cpp
     css/LengthFunctions.cpp
     css/MediaFeatureNames.cpp
@@ -1510,6 +1514,7 @@ set(WebCore_SOURCES
     dom/SecurityOriginPolicy.cpp
     dom/SelectorQuery.cpp
     dom/ShadowRoot.cpp
+    dom/SimulatedClick.cpp
     dom/SlotAssignment.cpp
     dom/SpaceSplitString.cpp
     dom/StaticNodeList.cpp
@@ -1932,6 +1937,8 @@ set(WebCore_SOURCES
     loader/PolicyChecker.cpp
     loader/ProgressTracker.cpp
     loader/ResourceLoadNotifier.cpp
+    loader/ResourceLoadObserver.cpp
+    loader/ResourceLoadStatistics.cpp
     loader/ResourceLoader.cpp
     loader/SinkDocument.cpp
     loader/SubframeLoader.cpp
@@ -2277,15 +2284,6 @@ set(WebCore_SOURCES
 
     platform/graphics/opentype/OpenTypeMathData.cpp
 
-    platform/graphics/texmap/TextureMapper.cpp
-    platform/graphics/texmap/TextureMapperAnimation.cpp
-    platform/graphics/texmap/TextureMapperBackingStore.cpp
-    platform/graphics/texmap/TextureMapperFPSCounter.cpp
-    platform/graphics/texmap/TextureMapperLayer.cpp
-    platform/graphics/texmap/TextureMapperSurfaceBackingStore.cpp
-    platform/graphics/texmap/TextureMapperTile.cpp
-    platform/graphics/texmap/TextureMapperTiledBackingStore.cpp
-
     platform/graphics/transforms/AffineTransform.cpp
     platform/graphics/transforms/Matrix3DTransformOperation.cpp
     platform/graphics/transforms/MatrixTransformOperation.cpp
@@ -2319,6 +2317,7 @@ set(WebCore_SOURCES
     platform/mock/RTCDataChannelHandlerMock.cpp
     platform/mock/RTCNotifiersMock.cpp
     platform/mock/RTCPeerConnectionHandlerMock.cpp
+    platform/mock/ScrollAnimatorMock.cpp
     platform/mock/ScrollbarThemeMock.cpp
 
     platform/network/AuthenticationChallengeBase.cpp
@@ -2635,6 +2634,9 @@ set(WebCore_SOURCES
     storage/StorageMap.cpp
     storage/StorageNamespaceProvider.cpp
 
+    style/AttributeChangeInvalidation.cpp
+    style/ClassChangeInvalidation.cpp
+    style/IdChangeInvalidation.cpp
     style/InlineTextBoxStyle.cpp
     style/RenderTreePosition.cpp
     style/StyleChange.cpp
@@ -2783,6 +2785,7 @@ set(WebCore_SOURCES
     svg/SVGTextPathElement.cpp
     svg/SVGTextPositioningElement.cpp
     svg/SVGTitleElement.cpp
+    svg/SVGToOTFFontConversion.cpp
     svg/SVGTransform.cpp
     svg/SVGTransformDistance.cpp
     svg/SVGTransformList.cpp
@@ -2816,6 +2819,7 @@ set(WebCore_SOURCES
     workers/DedicatedWorkerGlobalScope.cpp
     workers/DedicatedWorkerThread.cpp
     workers/Worker.cpp
+    workers/WorkerConsoleClient.cpp
     workers/WorkerEventQueue.cpp
     workers/WorkerGlobalScope.cpp
     workers/WorkerLocation.cpp

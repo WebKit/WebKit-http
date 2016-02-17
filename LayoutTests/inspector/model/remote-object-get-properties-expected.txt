@@ -37,9 +37,11 @@ type: object
 description: Event
 
 OWN PROPERTIES:
+    isTrusted
     __proto__
 
 DISPLAYABLE PROPERTIES:
+    isTrusted
     type
     target
     currentTarget
@@ -55,6 +57,7 @@ DISPLAYABLE PROPERTIES:
     __proto__
 
 ALL PROPERTIES:
+    isTrusted
     constructor
     type
     target
@@ -68,6 +71,10 @@ ALL PROPERTIES:
     returnValue
     cancelBubble
     clipboardData
+    stopPropagation
+    preventDefault
+    initEvent
+    stopImmediatePropagation
     NONE
     CAPTURING_PHASE
     AT_TARGET
@@ -88,10 +95,6 @@ ALL PROPERTIES:
     BLUR
     SELECT
     CHANGE
-    stopPropagation
-    preventDefault
-    initEvent
-    stopImmediatePropagation
     toString
     toLocaleString
     valueOf

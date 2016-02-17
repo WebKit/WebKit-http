@@ -416,7 +416,7 @@ void JSObject::putInlineSlow(ExecState* exec, PropertyName propertyName, JSValue
         if (!obj->staticFunctionsReified()) {
             if (obj->classInfo()->hasStaticSetterOrReadonlyProperties()) {
                 if (auto* entry = obj->findPropertyHashEntry(propertyName)) {
-                    putEntry(exec, entry, obj, propertyName, value, slot);
+                    putEntry(exec, entry, obj, this, propertyName, value, slot);
                     return;
                 }
             }
@@ -1763,13 +1763,13 @@ void JSObject::putIndexedDescriptor(ExecState* exec, SparseArrayEntry* entryInMa
 bool JSObject::defineOwnIndexedProperty(ExecState* exec, unsigned index, const PropertyDescriptor& descriptor, bool throwException)
 {
     ASSERT(index <= MAX_ARRAY_INDEX);
-    
+
     if (!inSparseIndexingMode()) {
         // Fast case: we're putting a regular property to a regular array
         // FIXME: this will pessimistically assume that if attributes are missing then they'll default to false
         // however if the property currently exists missing attributes will override from their current 'true'
         // state (i.e. defineOwnProperty could be used to set a value without needing to entering 'SparseMode').
-        if (!descriptor.attributes()) {
+        if (!descriptor.attributes() && descriptor.value()) {
             ASSERT(!descriptor.isAccessorDescriptor());
             return putDirectIndex(exec, index, descriptor.value(), 0, throwException ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
         }
@@ -1943,7 +1943,7 @@ void JSObject::putByIndexBeyondVectorLengthWithoutAttributes(ExecState* exec, un
     
     VM& vm = exec->vm();
     
-    if (i >= MAX_ARRAY_INDEX - 1
+    if (i > MAX_STORAGE_VECTOR_INDEX
         || (i >= MIN_SPARSE_ARRAY_INDEX
             && !isDenseEnoughForVector(i, countElements<indexingShape>(butterfly)))
         || indexIsSufficientlyBeyondLengthForSparseMap(i, butterfly->vectorLength())) {
@@ -2551,15 +2551,6 @@ bool JSObject::getOwnPropertyDescriptor(ExecState* exec, PropertyName propertyNa
     JSC::PropertySlot slot(this);
     if (!methodTable(exec->vm())->getOwnPropertySlot(this, exec, propertyName, slot))
         return false;
-
-    // JSDOMWindow::getOwnPropertySlot() may return attributes from the prototype chain but getOwnPropertyDescriptor()
-    // should only work for 'own' properties so we exit early if we detect that the property is not an own property.
-    if (slot.slotBase() != this && slot.slotBase()) {
-        auto* proxy = jsDynamicCast<JSProxy*>(this);
-        // In the case of DOMWindow, |this| may be a JSDOMWindowShell so we also need to check the shell's target Window.
-        if (!proxy || proxy->target() != slot.slotBase())
-            return false;
-    }
 
     if (slot.isAccessor())
         descriptor.setAccessorDescriptor(slot.getterSetter(), slot.attributes());

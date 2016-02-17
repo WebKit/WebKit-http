@@ -134,6 +134,7 @@
 #include "RenderLayerCompositor.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
+#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
@@ -4598,6 +4599,9 @@ void Document::setInPageCache(bool flag)
                 v->resetScrollbars();
         }
         m_styleRecalcTimer.stop();
+
+        clearStyleResolver();
+        clearSelectorQueryCache();
     } else {
         if (childNeedsStyleRecalc())
             scheduleStyleRecalc();
@@ -6396,6 +6400,9 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
 
 void Document::updateLastHandledUserGestureTimestamp()
 {
+    if (!m_lastHandledUserGestureTimestamp)
+        ResourceLoadObserver::sharedObserver().logUserInteraction(*this);
+
     m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
 }
 

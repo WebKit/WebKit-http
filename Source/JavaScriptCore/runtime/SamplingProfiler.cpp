@@ -82,6 +82,7 @@ public:
     {
     }
 
+    SUPPRESS_ASAN
     size_t walk(Vector<UnprocessedStackFrame>& stackTrace, bool& didRunOutOfSpace)
     {
         if (sReportStats)
@@ -91,10 +92,10 @@ public:
         while (!isAtTop() && !m_bailingOut && m_depth < maxStackTraceSize) {
             CallSiteIndex callSiteIndex;
             JSValue unsafeCallee = m_callFrame->unsafeCallee();
-            CodeBlock* codeBlock = m_callFrame->codeBlock();
+            CodeBlock* codeBlock = m_callFrame->unsafeCodeBlock();
             if (codeBlock) {
                 ASSERT(isValidCodeBlock(codeBlock));
-                callSiteIndex = m_callFrame->callSiteIndex();
+                callSiteIndex = m_callFrame->unsafeCallSiteIndex();
             }
             stackTrace[m_depth] = UnprocessedStackFrame(codeBlock, JSValue::encode(unsafeCallee), callSiteIndex);
             m_depth++;
@@ -113,9 +114,10 @@ public:
 
 private:
 
+    SUPPRESS_ASAN
     void advanceToParentFrame()
     {
-        m_callFrame = m_callFrame->callerFrame(m_vmEntryFrame);
+        m_callFrame = m_callFrame->unsafeCallerFrame(m_vmEntryFrame);
     }
 
     bool isAtTop() const
@@ -123,6 +125,7 @@ private:
         return !m_callFrame;
     }
 
+    SUPPRESS_ASAN
     void resetAtMachineFrame()
     {
         if (isAtTop())
@@ -136,7 +139,7 @@ private:
             return;
         }
 
-        CodeBlock* codeBlock = m_callFrame->codeBlock();
+        CodeBlock* codeBlock = m_callFrame->unsafeCodeBlock();
         if (!codeBlock)
             return;
 

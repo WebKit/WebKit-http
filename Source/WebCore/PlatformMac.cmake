@@ -525,6 +525,7 @@ list(APPEND WebCore_SOURCES
     platform/network/cocoa/ProtectionSpaceCocoa.mm
     platform/network/cocoa/ResourceRequestCocoa.mm
     platform/network/cocoa/ResourceResponseCocoa.mm
+    platform/network/cocoa/WebCoreNSURLSession.mm
 
     platform/network/mac/AuthenticationMac.mm
     platform/network/mac/BlobDataFileReferenceMac.mm
@@ -586,6 +587,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     Modules/webdatabase
 
     Modules/indexeddb/legacy
+    Modules/indexeddb/shared
 
     bindings/generic
     bindings/js
@@ -791,7 +793,6 @@ set(ObjC_Bindings_IDL_FILES
     fileapi/File.idl
     fileapi/FileList.idl
 
-    html/DOMSettableTokenList.idl
     html/DOMTokenList.idl
     html/HTMLAnchorElement.idl
     html/HTMLAppletElement.idl

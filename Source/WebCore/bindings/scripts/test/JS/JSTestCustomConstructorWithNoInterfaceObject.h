@@ -37,6 +37,8 @@ public:
         return ptr;
     }
 
+    static const bool hasStaticPropertyTable = false;
+
     static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static TestCustomConstructorWithNoInterfaceObject* toWrapped(JSC::JSValue);
@@ -70,6 +72,11 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld&, TestCustomConstructo
 {
     static NeverDestroyed<JSTestCustomConstructorWithNoInterfaceObjectOwner> owner;
     return &owner.get();
+}
+
+inline void* wrapperKey(TestCustomConstructorWithNoInterfaceObject* wrappableObject)
+{
+    return wrappableObject;
 }
 
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestCustomConstructorWithNoInterfaceObject*);

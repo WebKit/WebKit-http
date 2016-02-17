@@ -151,50 +151,40 @@ WTF_EXPORT_PRIVATE void WTFInstallReportBacktraceOnCrashHook();
 
 WTF_EXPORT_PRIVATE bool WTFIsDebuggerAttached();
 
-#ifdef __cplusplus
-}
-#endif
-
 #ifndef CRASH
-#define CRASH() WTFCrash()
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 #if defined(NDEBUG) && OS(DARWIN)
-ALWAYS_INLINE NO_RETURN_DUE_TO_CRASH void WTFCrash()
-{
-    // Crash with a SIGTRAP i.e EXC_BREAKPOINT.
-    // We are not using __builtin_trap because it is only guaranteed to abort, but not necessarily
-    // trigger a SIGTRAP. Instead, we use inline asm to ensure that we trigger the SIGTRAP.
 #if CPU(X86_64) || CPU(X86)
-    asm volatile ("int3");
+#define WTFBreakpointTrap()  asm volatile ("int3")
 #elif CPU(ARM_THUMB2)
-    asm volatile ("bkpt #0");
+#define WTFBreakpointTrap()  asm volatile ("bkpt #0")
 #elif CPU(ARM64)
-    asm volatile ("brk #0");
+#define WTFBreakpointTrap()  asm volatile ("brk #0")
 #else
 #error "Unsupported CPU".
 #endif
-    __builtin_unreachable();
-}
+
+// Crash with a SIGTRAP i.e EXC_BREAKPOINT.
+// We are not using __builtin_trap because it is only guaranteed to abort, but not necessarily
+// trigger a SIGTRAP. Instead, we use inline asm to ensure that we trigger the SIGTRAP.
+#define CRASH() do { \
+    WTFBreakpointTrap(); \
+    __builtin_unreachable(); \
+} while (0)
 #else
-WTF_EXPORT_PRIVATE NO_RETURN_DUE_TO_CRASH void WTFCrash();
+#define CRASH() WTFCrash()
 #endif
 
-#ifdef __cplusplus
-}
-#endif
+#endif // CRASH
+
+WTF_EXPORT_PRIVATE NO_RETURN_DUE_TO_CRASH void WTFCrash();
 
 #ifndef CRASH_WITH_SECURITY_IMPLICATION
 #define CRASH_WITH_SECURITY_IMPLICATION() WTFCrashWithSecurityImplication()
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-    WTF_EXPORT_PRIVATE NO_RETURN_DUE_TO_CRASH void WTFCrashWithSecurityImplication();
+WTF_EXPORT_PRIVATE NO_RETURN_DUE_TO_CRASH void WTFCrashWithSecurityImplication();
+
 #ifdef __cplusplus
 }
 #endif
@@ -251,17 +241,19 @@ extern "C" {
 
 #else
 
-#define ASSERT(assertion) \
-    (!(assertion) ? \
-        (WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion), \
-         CRASH()) : \
-        (void)0)
+#define ASSERT(assertion) do { \
+    if (!(assertion)) { \
+        WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
+        CRASH(); \
+    } \
+} while (0)
 
-#define ASSERT_AT(assertion, file, line, function) \
-    (!(assertion) ? \
-        (WTFReportAssertionFailure(file, line, function, #assertion), \
-         CRASH()) :                                                   \
-        (void)0)
+#define ASSERT_AT(assertion, file, line, function) do { \
+    if (!(assertion)) { \
+        WTFReportAssertionFailure(file, line, function, #assertion); \
+        CRASH(); \
+    } \
+} while (0)
 
 #define ASSERT_NOT_REACHED() do { \
     WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, 0); \
@@ -293,12 +285,12 @@ extern "C" {
 #if ASSERT_MSG_DISABLED
 #define ASSERT_WITH_MESSAGE(assertion, ...) ((void)0)
 #else
-#define ASSERT_WITH_MESSAGE(assertion, ...) do \
+#define ASSERT_WITH_MESSAGE(assertion, ...) do { \
     if (!(assertion)) { \
         WTFReportAssertionFailureWithMessage(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion, __VA_ARGS__); \
         CRASH(); \
     } \
-while (0)
+} while (0)
 #endif
 
 /* ASSERT_WITH_MESSAGE_UNUSED */
@@ -306,12 +298,12 @@ while (0)
 #if ASSERT_MSG_DISABLED
 #define ASSERT_WITH_MESSAGE_UNUSED(variable, assertion, ...) ((void)variable)
 #else
-#define ASSERT_WITH_MESSAGE_UNUSED(variable, assertion, ...) do \
+#define ASSERT_WITH_MESSAGE_UNUSED(variable, assertion, ...) do { \
     if (!(assertion)) { \
         WTFReportAssertionFailureWithMessage(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion, __VA_ARGS__); \
         CRASH(); \
     } \
-while (0)
+} while (0)
 #endif
                         
                         
@@ -323,12 +315,12 @@ while (0)
 
 #else
 
-#define ASSERT_ARG(argName, assertion) do \
+#define ASSERT_ARG(argName, assertion) do { \
     if (!(assertion)) { \
         WTFReportArgumentAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #argName, #assertion); \
         CRASH(); \
     } \
-while (0)
+} while (0)
 
 #endif
 
@@ -382,7 +374,10 @@ while (0)
 /* RELEASE_ASSERT */
 
 #if ASSERT_DISABLED
-#define RELEASE_ASSERT(assertion) (UNLIKELY(!(assertion)) ? (CRASH()) : (void)0)
+#define RELEASE_ASSERT(assertion) do { \
+    if (UNLIKELY(!(assertion))) \
+        CRASH(); \
+} while (0)
 #define RELEASE_ASSERT_WITH_MESSAGE(assertion, ...) RELEASE_ASSERT(assertion)
 #define RELEASE_ASSERT_NOT_REACHED() CRASH()
 #else

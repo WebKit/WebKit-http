@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "ActiveDOMObject.h"
 #include "IDBIndexImpl.h"
 #include "IDBObjectStore.h"
 #include "IDBObjectStoreInfo.h"
@@ -44,9 +45,9 @@ namespace IDBClient {
 class IDBRequest;
 class IDBTransaction;
 
-class IDBObjectStore : public WebCore::IDBObjectStore {
+class IDBObjectStore : public WebCore::IDBObjectStore, public ActiveDOMObject {
 public:
-    static Ref<IDBObjectStore> create(const IDBObjectStoreInfo&, IDBTransaction&);
+    static Ref<IDBObjectStore> create(ScriptExecutionContext*, const IDBObjectStoreInfo&, IDBTransaction&);
 
     virtual ~IDBObjectStore() override final;
 
@@ -93,8 +94,12 @@ public:
 
     void rollbackInfoForVersionChangeAbort();
 
+    virtual bool isModern() const override { return true; }
+
+    void visitReferencedIndexes(JSC::SlotVisitor&) const;
+
 private:
-    IDBObjectStore(const IDBObjectStoreInfo&, IDBTransaction&);
+    IDBObjectStore(ScriptExecutionContext*, const IDBObjectStoreInfo&, IDBTransaction&);
 
     enum class InlineKeyCheck {
         Perform,
@@ -105,13 +110,20 @@ private:
     RefPtr<WebCore::IDBRequest> doCount(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
     RefPtr<IDBRequest> doDelete(ScriptExecutionContext* context, IDBKeyRange* keyRange, ExceptionCodeWithMessage& ec);
 
+    // ActiveDOMObject
+    virtual const char* activeDOMObjectName() const override final;
+    virtual bool canSuspendForDocumentSuspension() const override final;
+    virtual bool hasPendingActivity() const override final;
+
     IDBObjectStoreInfo m_info;
     IDBObjectStoreInfo m_originalInfo;
     Ref<IDBTransaction> m_transaction;
 
     bool m_deleted { false };
 
-    HashMap<String, RefPtr<IDBIndex>> m_referencedIndexes;
+    mutable Lock m_referencedIndexLock;
+    HashMap<String, std::unique_ptr<IDBIndex>> m_referencedIndexes;
+    HashSet<std::unique_ptr<IDBIndex>> m_deletedIndexes;
 };
 
 } // namespace IDBClient

@@ -1,3 +1,188 @@
+2016-02-17  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement sentence related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=154312
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (nextParagraphEndTextMarkerForTextMarkerCallback):
+        (sentenceTextMarkerRangeForTextMarkerCallback):
+        (previousSentenceStartTextMarkerForTextMarkerCallback):
+        (nextSentenceEndTextMarkerForTextMarkerCallback):
+        (setSelectedVisibleTextRangeCallback):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::supportedActions):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker):
+        (WTR::_convertMathMultiscriptPairsToString):
+
+2016-02-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Gather some rudimentary statistics during resource load 
+        https://bugs.webkit.org/show_bug.cgi?id=153575
+        <rdar://problem/24075254>
+
+        Reviewed by Brady Eidson.
+
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]): Add menu item for new debug flag.
+        (-[SettingsController toggleResourceLoadStatisticsEnabled:]): Added.
+        (-[SettingsController resourceLoadStatisticsEnabled]): Added.
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController didChangeSettings]): React to changes in
+        users's desire to track resource load statistics.
+
+2016-02-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Update Tools/efl/install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=154239
+
+        Reviewed by Michael Catanzaro.
+
+        * efl/install-dependencies:
+
+2016-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal Windows build of projects built after WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=154249
+        rdar://problem/24644805
+
+        Reviewed by Chris Dumez.
+
+        * DumpRenderTree/PlatformWin.cmake:
+        * MiniBrowser/win/CMakeLists.txt:
+        Don't include DerivedSources/WebKit/Interfaces to make MiniBrowser and DumpRenderTree
+        more like projects built internally after WebKit.  They should only need to use what
+        is in ForwardingHeaders/WebKit.
+
+2016-02-12  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement paragraph related text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=154098
+        <rdar://problem/24269675>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (nextWordEndTextMarkerForTextMarkerCallback):
+        (paragraphTextMarkerRangeForTextMarkerCallback):
+        (previousParagraphStartTextMarkerForTextMarkerCallback):
+        (nextParagraphEndTextMarkerForTextMarkerCallback):
+        (setSelectedVisibleTextRangeCallback):
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (AccessibilityUIElement::supportedActions):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker):
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker):
+        (WTR::_convertMathMultiscriptPairsToString):
+
+2016-02-12  Jason Marcell  <jmarcell@apple.com>
+
+        Open source bot watcher's dashboard fails assertion in BuildbotQueue.prototype.compareIterationsByRevisions
+        https://bugs.webkit.org/show_bug.cgi?id=154180
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js: Remove reference to Internal
+        repository.
+
+2016-02-12  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Adopt MediaResourceLoader (instead of CachedResourceLoader) in WebCoreNSURLSession.
+        https://bugs.webkit.org/show_bug.cgi?id=154136
+
+        Reviewed by Alex Christensen.
+
+        Use a MediaResourceLoader instead of a CachedResourceLoader for WebCoreNSURLSession.
+
+        Drive-by fix: generate USE and ENABLE macros for TestWebKitAPI by adding FEATURE_DEFINES
+        to GCC_PREPROCESSOR_DEFINES.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+        (TestWebKitAPI::WebCoreNSURLSessionTest::SetUp):
+        (TestWebKitAPI::WebCoreNSURLSessionTest::TearDown):
+        (TestWebKitAPI::TEST_F):
+
+2016-02-11  Dana Burkart  <dburkart@apple.com>
+
+        Large logs can bring down the webkit master
+        https://bugs.webkit.org/show_bug.cgi?id=122112
+
+        Reviewed by Lucas Forschler.
+
+        Implement the suggested fix of throwing away stdout / stderr.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunWebKit1LeakTests):
+
 2016-02-10  Jason Marcell  <jmarcell@apple.com>
 
         Remove calls to parseInt in order to work with non-integer revisions

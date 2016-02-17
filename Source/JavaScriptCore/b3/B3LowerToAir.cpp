@@ -2120,6 +2120,7 @@ private:
             switch (m_value->opcode()) {
             case CheckAdd:
                 opcode = opcodeForType(BranchAdd32, BranchAdd64, m_value->type());
+                stackmapRole = StackmapSpecial::ForceLateUseUnlessRecoverable;
                 commutativity = Commutative;
                 break;
             case CheckSub:
@@ -2146,7 +2147,10 @@ private:
             } else if (imm(right) && isValidForm(opcode, Arg::ResCond, Arg::Imm, Arg::Tmp)) {
                 sources.append(imm(right));
                 append(Move, tmp(left), result);
-            } else if (isValidForm(opcode, Arg::ResCond, Arg::Tmp, Arg::Tmp)) {
+            } else if (isValidForm(opcode, Arg::ResCond, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
+                sources.append(tmp(left));
+                sources.append(tmp(right));
+            }  else if (isValidForm(opcode, Arg::ResCond, Arg::Tmp, Arg::Tmp)) {
                 if (commutativity == Commutative && preferRightForResult(left, right)) {
                     sources.append(tmp(left));
                     append(Move, tmp(right), result);

@@ -76,8 +76,14 @@ CSSFontFaceSource::CSSFontFaceSource(CSSFontFace& owner, const String& familyNam
     : m_familyNameOrURI(familyNameOrURI)
     , m_font(font)
     , m_face(owner)
+#if ENABLE(SVG_FONTS) || ENABLE(SVG_OTF_CONVERTER)
     , m_svgFontFaceElement(fontFace)
+#endif
 {
+#if !(ENABLE(SVG_FONTS) || ENABLE(SVG_OTF_CONVERTER))
+    UNUSED_PARAM(fontFace);
+#endif
+
     // This may synchronously call fontLoaded().
     if (m_font)
         m_font->addClient(this);
@@ -159,7 +165,11 @@ RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, boo
     m_inDocumentCustomPlatformData = createFontCustomPlatformData(*m_generatedOTFBuffer);
     if (!m_inDocumentCustomPlatformData)
         return nullptr;
+#if PLATFORM(COCOA)
     return Font::create(m_inDocumentCustomPlatformData->fontPlatformData(fontDescription, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings), true, false);
+#else
+    return Font::create(m_inDocumentCustomPlatformData->fontPlatformData(fontDescription, syntheticBold, syntheticItalic), true, false);
+#endif
 #else
     return Font::create(std::make_unique<SVGFontData>(m_svgFontFaceElement.get()), fontDescription.computedPixelSize(), syntheticBold, syntheticItalic);
 #endif

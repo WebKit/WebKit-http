@@ -26,6 +26,8 @@
 #include "config.h"
 #include "SVGToOTFFontConversion.h"
 
+#if ENABLE(SVG_OTF_CONVERTER)
+
 #include "CSSStyleDeclaration.h"
 #include "ElementChildIterator.h"
 #include "SVGFontElement.h"
@@ -192,7 +194,7 @@ private:
 
     uint32_t calculateChecksum(size_t startingOffset, size_t endingOffset) const;
 
-    void processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement*, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, Optional<FloatRect> boundingBox);
+    void processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement*, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, Optional<FloatRect>& boundingBox);
 
     typedef void (SVGToOTFFontConverter::*FontAppendingFunction)();
     void appendTable(const char identifier[4], FontAppendingFunction);
@@ -429,7 +431,7 @@ void SVGToOTFFontConverter::appendHHEATable()
 {
     append32(0x00010000); // Version
     append16(clampTo<int16_t>(m_ascent));
-    append16(clampTo<int16_t>(m_descent));
+    append16(clampTo<int16_t>(-m_descent));
     // WebKit SVG font rendering has hard coded the line gap to be 1/10th of the font size since 2008 (see r29719).
     append16(clampTo<int16_t>(m_lineGap));
     append16(clampTo<uint16_t>(m_advanceWidthMax));
@@ -545,7 +547,7 @@ void SVGToOTFFontConverter::appendOS2Table()
     append16(0); // First unicode index
     append16(0xFFFF); // Last unicode index
     append16(clampTo<int16_t>(m_ascent)); // Typographical ascender
-    append16(clampTo<int16_t>(m_descent)); // Typographical descender
+    append16(clampTo<int16_t>(-m_descent)); // Typographical descender
     append16(clampTo<int16_t>(m_lineGap)); // Typographical line gap
     append16(clampTo<uint16_t>(m_ascent)); // Windows-specific ascent
     append16(clampTo<uint16_t>(m_descent)); // Windows-specific descent
@@ -1097,10 +1099,10 @@ size_t SVGToOTFFontConverter::finishAppendingKERNSubtable(Vector<KerningData> ke
     append16((kerningData.size() - roundedNumKerningPairs) * 6); // rangeShift: "The value of nPairs minus the largest power of two less than or equal to nPairs,
                                                                         // and then multiplied by the size in bytes of an entry in the table."
 
-    for (auto& kerningData : kerningData) {
-        append16(kerningData.glyph1);
-        append16(kerningData.glyph2);
-        append16(kerningData.adjustment);
+    for (auto& kerningDataElement : kerningData) {
+        append16(kerningDataElement.glyph1);
+        append16(kerningDataElement.glyph2);
+        append16(kerningDataElement.adjustment);
     }
 
     return sizeOfKerningDataTable;
@@ -1283,7 +1285,7 @@ Vector<char> SVGToOTFFontConverter::transcodeGlyphPaths(float width, const SVGEl
     return result;
 }
 
-void SVGToOTFFontConverter::processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement* glyphElement, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, Optional<FloatRect> boundingBox)
+void SVGToOTFFontConverter::processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement* glyphElement, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, Optional<FloatRect>& boundingBox)
 {
     bool ok;
     float horizontalAdvance = scaleUnitsPerEm(glyphOrMissingGlyphElement.fastGetAttribute(SVGNames::horiz_adv_xAttr).toFloat(&ok));
@@ -1421,8 +1423,10 @@ SVGToOTFFontConverter::SVGToOTFFontConverter(const SVGFontElement& fontElement)
     Optional<FloatRect> boundingBox;
     if (m_missingGlyphElement)
         processGlyphElement(*m_missingGlyphElement, nullptr, defaultHorizontalAdvance, defaultVerticalAdvance, String(), boundingBox);
-    else
+    else {
         m_glyphs.append(GlyphData(Vector<char>(m_emptyGlyphCharString), nullptr, s_outputUnitsPerEm, s_outputUnitsPerEm, FloatRect(), String()));
+        boundingBox = FloatRect(0, 0, s_outputUnitsPerEm, s_outputUnitsPerEm);
+    }
 
     for (auto& glyphElement : childrenOfType<SVGGlyphElement>(m_fontElement)) {
         auto& unicodeAttribute = glyphElement.fastGetAttribute(SVGNames::unicodeAttr);
@@ -1590,3 +1594,5 @@ Optional<Vector<char>> convertSVGToOTFFont(const SVGFontElement& element)
 }
 
 }
+
+#endif // ENABLE(SVG_OTF_CONVERTER)

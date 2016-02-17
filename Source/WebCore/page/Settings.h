@@ -216,6 +216,9 @@ public:
     WEBCORE_EXPORT static void setUsesOverlayScrollbars(bool flag);
     static bool usesOverlayScrollbars();
 
+    WEBCORE_EXPORT static void setUsesMockScrollAnimator(bool);
+    static bool usesMockScrollAnimator();
+
 #if ENABLE(TOUCH_EVENTS)
     void setTouchEventEmulationEnabled(bool enabled) { m_touchEventEmulationEnabled = enabled; }
     bool isTouchEventEmulationEnabled() const { return m_touchEventEmulationEnabled; }
@@ -241,6 +244,9 @@ public:
 
     static bool lowPowerVideoAudioBufferSizeEnabled() { return gLowPowerVideoAudioBufferSizeEnabled; }
     WEBCORE_EXPORT static void setLowPowerVideoAudioBufferSizeEnabled(bool);
+
+    static bool resourceLoadStatisticsEnabled() { return gResourceLoadStatisticsEnabledEnabled; }
+    WEBCORE_EXPORT static void setResourceLoadStatisticsEnabled(bool);
 
 #if PLATFORM(IOS)
     WEBCORE_EXPORT static void setAudioSessionCategoryOverride(unsigned);
@@ -354,6 +360,7 @@ private:
 
     static bool gMockScrollbarsEnabled;
     static bool gUsesOverlayScrollbars;
+    static bool gMockScrollAnimatorEnabled;
 
 #if PLATFORM(WIN)
     static bool gShouldUseHighResolutionTimers;
@@ -377,6 +384,7 @@ private:
 #endif
 
     static bool gLowPowerVideoAudioBufferSizeEnabled;
+    static bool gResourceLoadStatisticsEnabledEnabled;
 };
 
 } // namespace WebCore

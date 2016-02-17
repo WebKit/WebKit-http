@@ -28,6 +28,8 @@
 
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/ResourceHandleTypes.h>
+#include <WebCore/ResourceLoaderOptions.h>
+#include <WebCore/ResourceRequest.h>
 #include <WebCore/Timer.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
@@ -65,7 +67,7 @@ class NetworkDataTaskClient {
 public:
     virtual void willPerformHTTPRedirection(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, RedirectCompletionHandler) = 0;
     virtual void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler) = 0;
-    virtual void didReceiveResponse(const WebCore::ResourceResponse&, ResponseCompletionHandler) = 0;
+    virtual void didReceiveResponseNetworkSession(const WebCore::ResourceResponse&, ResponseCompletionHandler) = 0;
     virtual void didReceiveData(RefPtr<WebCore::SharedBuffer>&&) = 0;
     virtual void didCompleteWithError(const WebCore::ResourceError&) = 0;
     virtual void didBecomeDownload() = 0;
@@ -79,9 +81,9 @@ public:
 class NetworkDataTask : public RefCounted<NetworkDataTask> {
     friend class NetworkSession;
 public:
-    static Ref<NetworkDataTask> create(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& request, WebCore::StoredCredentials storedCredentials)
+    static Ref<NetworkDataTask> create(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& request, WebCore::StoredCredentials storedCredentials, WebCore::ContentSniffingPolicy shouldContentSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
     {
-        return adoptRef(*new NetworkDataTask(session, client, request, storedCredentials));
+        return adoptRef(*new NetworkDataTask(session, client, request, storedCredentials, shouldContentSniff, shouldClearReferrerOnHTTPSToHTTPRedirect));
     }
     
     void suspend();
@@ -109,9 +111,10 @@ public:
         m_pendingDownload = &pendingDownload;
     }
     bool tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler);
+    void willPerformHTTPRedirection(const WebCore::ResourceResponse&, WebCore::ResourceRequest&&, RedirectCompletionHandler);
     
 private:
-    NetworkDataTask(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials);
+    NetworkDataTask(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials, WebCore::ContentSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
     
     enum FailureType {
         NoFailure,
@@ -129,11 +132,18 @@ private:
     DownloadID m_pendingDownloadID;
     String m_user;
     String m_password;
+    String m_lastHTTPMethod;
+    WebCore::ResourceRequest m_firstRequest;
+    bool m_shouldClearReferrerOnHTTPSToHTTPRedirect;
 #if PLATFORM(COCOA)
     RetainPtr<NSURLSessionDataTask> m_task;
 #endif
 };
 
+#if PLATFORM(COCOA)
+WebCore::Credential serverTrustCredential(const WebCore::AuthenticationChallenge&);
+#endif
+    
 }
 
 #endif

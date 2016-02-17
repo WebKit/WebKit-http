@@ -64,6 +64,8 @@ webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeou
 
 webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 
+webkit.org/b/154297 [ Debug ] fast/events/keydown-1.html [ Pass Failure ]
+
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -191,6 +193,9 @@ scrollbars/scrolling-by-page-on-keyboard-spacebar.html
 # This test times out.
 webkit.org/b/147683 fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html [ Skip ]
 
+fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
+fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
+
 compositing/rtl/rtl-fixed-overflow-scrolled.html [ Failure ]
 
 compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
@@ -247,6 +252,9 @@ webgl/1.0.3/151055_asan.html [ Failure ]
 
 # Lacking WK1 TestRunner API that evaluates JavaScript through JSC APIs and not WebCore APIs
 inspector/script-profiler/event-type-API.html
+
+# This test checks ScrollAnimator events only for main frame scrollbars that use native widgets in WK1.
+fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 
 ########################################
 ### START OF (3) IndexedDB failures with SQLite

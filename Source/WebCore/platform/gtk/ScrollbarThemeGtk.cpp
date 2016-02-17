@@ -241,9 +241,7 @@ ScrollbarThemeGtk::ScrollbarThemeGtk()
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_usesOverlayScrollbars = true;
 #else
-    // FIXME: Disable overlay scrollbars by default for now due to bug #153404.
-    // Invert the logic here once bug #153404 is fixed.
-    m_usesOverlayScrollbars = !g_strcmp0(g_getenv("GTK_OVERLAY_SCROLLING"), "1");
+    m_usesOverlayScrollbars = g_strcmp0(g_getenv("GTK_OVERLAY_SCROLLING"), "0");
 #endif
 #endif
     static bool themeMonitorInitialized = false;
@@ -493,9 +491,25 @@ bool ScrollbarThemeGtk::paint(Scrollbar& scrollbar, GraphicsContext& graphicsCon
     return true;
 }
 
-bool ScrollbarThemeGtk::shouldCenterOnThumb(Scrollbar&, const PlatformMouseEvent& event)
+ScrollbarButtonPressAction ScrollbarThemeGtk::handleMousePressEvent(Scrollbar&, const PlatformMouseEvent& event, ScrollbarPart pressedPart)
 {
-    return (event.shiftKey() && event.button() == LeftButton) || (event.button() == MiddleButton);
+    switch (pressedPart) {
+    case BackTrackPart:
+    case ForwardTrackPart:
+        if (event.button() == LeftButton)
+            return ScrollbarButtonPressAction::CenterOnThumb;
+        if (event.button() == RightButton)
+            return ScrollbarButtonPressAction::Scroll;
+        break;
+    case ThumbPart:
+        if (event.button() != RightButton)
+            return ScrollbarButtonPressAction::StartDrag;
+        break;
+    default:
+        break;
+    }
+
+    return ScrollbarButtonPressAction::None;
 }
 
 int ScrollbarThemeGtk::scrollbarThickness(ScrollbarControlSize)

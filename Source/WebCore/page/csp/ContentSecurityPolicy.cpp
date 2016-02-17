@@ -147,10 +147,8 @@ bool ContentSecurityPolicy::urlMatchesSelf(const URL& url) const
 
 bool ContentSecurityPolicy::protocolMatchesSelf(const URL& url) const
 {
-#if ENABLE(CSP_NEXT)
     if (equalLettersIgnoringASCIICase(m_selfSourceProtocol, "http"))
         return url.protocolIsInHTTPFamily();
-#endif
     return equalIgnoringASCIICase(url.protocol(), m_selfSourceProtocol);
 }
 
@@ -255,6 +253,11 @@ bool ContentSecurityPolicy::allowObjectFromSource(const URL& url, bool overrideC
 bool ContentSecurityPolicy::allowChildFrameFromSource(const URL& url, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
 {
     return overrideContentSecurityPolicy || isAllowedByAllWithURL<&ContentSecurityPolicyDirectiveList::allowChildFrameFromSource>(m_policies, url, reportingStatus);
+}
+
+bool ContentSecurityPolicy::allowChildContextFromSource(const URL& url, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
+{
+    return overrideContentSecurityPolicy || isAllowedByAllWithURL<&ContentSecurityPolicyDirectiveList::allowChildContextFromSource>(m_policies, url, reportingStatus);
 }
 
 bool ContentSecurityPolicy::allowImageFromSource(const URL& url, bool overrideContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus reportingStatus) const
@@ -401,7 +404,7 @@ void ContentSecurityPolicy::reportViolation(const String& directiveText, const S
     RefPtr<FormData> report = FormData::create(reportObject->toJSONString().utf8());
 
     for (const auto& url : reportURIs)
-        PingLoader::sendViolationReport(*frame, document.completeURL(url), report.copyRef());
+        PingLoader::sendViolationReport(*frame, document.completeURL(url), report.copyRef(), ViolationReportType::ContentSecurityPolicy);
 }
 
 void ContentSecurityPolicy::reportUnsupportedDirective(const String& name) const
@@ -447,6 +450,11 @@ void ContentSecurityPolicy::reportInvalidSandboxFlags(const String& invalidFlags
 void ContentSecurityPolicy::reportInvalidReflectedXSS(const String& invalidValue) const
 {
     logToConsole("The 'reflected-xss' Content Security Policy directive has the invalid value \"" + invalidValue + "\". Value values are \"allow\", \"filter\", and \"block\".");
+}
+
+void ContentSecurityPolicy::reportInvalidDirectiveInReportOnlyMode(const String& directiveName) const
+{
+    logToConsole("The Content Security Policy directive '" + directiveName + "' is ignored when delivered in a report-only policy.");
 }
 
 void ContentSecurityPolicy::reportInvalidDirectiveValueCharacter(const String& directiveName, const String& value) const

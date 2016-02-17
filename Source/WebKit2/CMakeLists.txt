@@ -70,7 +70,10 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/indexeddb"
+    "${WEBCORE_DIR}/Modules/indexeddb/client"
     "${WEBCORE_DIR}/Modules/indexeddb/legacy"
+    "${WEBCORE_DIR}/Modules/indexeddb/server"
+    "${WEBCORE_DIR}/Modules/indexeddb/shared"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/networkinfo"
     "${WEBCORE_DIR}/Modules/notifications"
@@ -169,6 +172,7 @@ set(WebKit2_SOURCES
     DatabaseProcess/IndexedDB/IDBSerialization.cpp
     DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp
     DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp
+    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
     DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
     DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
@@ -374,7 +378,6 @@ set(WebKit2_SOURCES
     UIProcess/WebIconDatabase.cpp
     UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
-    UIProcess/WebMediaCacheManagerProxy.cpp
     UIProcess/WebNavigationState.cpp
     UIProcess/WebOpenPanelResultListenerProxy.cpp
     UIProcess/WebPageDiagnosticLoggingClient.cpp
@@ -430,7 +433,6 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKIconDatabase.cpp
     UIProcess/API/C/WKInspector.cpp
     UIProcess/API/C/WKKeyValueStorageManager.cpp
-    UIProcess/API/C/WKMediaCacheManager.cpp
     UIProcess/API/C/WKMediaSessionMetadata.cpp
     UIProcess/API/C/WKNavigationActionRef.cpp
     UIProcess/API/C/WKNavigationDataRef.cpp
@@ -506,6 +508,7 @@ set(WebKit2_SOURCES
     WebProcess/Databases/WebDatabaseProvider.cpp
     WebProcess/Databases/WebToDatabaseProcessConnection.cpp
 
+    WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp
     WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.cpp
     WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp
 
@@ -555,8 +558,6 @@ set(WebKit2_SOURCES
     WebProcess/InjectedBundle/DOM/InjectedBundleFileHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp
     WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp
-
-    WebProcess/MediaCache/WebMediaCacheManager.cpp
 
     WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp
 
@@ -636,6 +637,7 @@ set(WebKit2_MESSAGES_IN_FILES
     DatabaseProcess/DatabaseToWebProcessConnection.messages.in
 
     DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.messages.in
+    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.messages.in
 
     NetworkProcess/CustomProtocols/CustomProtocolManager.messages.in
 
@@ -662,7 +664,6 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/WebGeolocationManagerProxy.messages.in
     UIProcess/WebIconDatabase.messages.in
     UIProcess/WebInspectorProxy.messages.in
-    UIProcess/WebMediaCacheManagerProxy.messages.in
     UIProcess/WebPageProxy.messages.in
     UIProcess/WebPasteboardProxy.messages.in
     UIProcess/WebProcessPool.messages.in
@@ -689,6 +690,7 @@ set(WebKit2_MESSAGES_IN_FILES
 
     WebProcess/Cookies/WebCookieManager.messages.in
 
+    WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.messages.in
     WebProcess/Databases/IndexedDB/WebIDBServerConnection.messages.in
 
     WebProcess/FullScreen/WebFullScreenManager.messages.in
@@ -696,8 +698,6 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Geolocation/WebGeolocationManager.messages.in
 
     WebProcess/IconDatabase/WebIconDatabaseProxy.messages.in
-
-    WebProcess/MediaCache/WebMediaCacheManager.messages.in
 
     WebProcess/Network/NetworkProcessConnection.messages.in
     WebProcess/Network/WebResourceLoader.messages.in

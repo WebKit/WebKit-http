@@ -27,6 +27,7 @@
 #include "MemoryPressureHandler.h"
 
 #include "CSSValuePool.h"
+#include "DOMWindow.h"
 #include "Document.h"
 #include "FontCache.h"
 #include "FontCascade.h"
@@ -119,7 +120,7 @@ void MemoryPressureHandler::releaseCriticalMemory(Synchronous synchronous)
 
     {
         ReliefLogger log("Prune MemoryCache live resources");
-        MemoryCache::singleton().pruneLiveResourcesToSize(0);
+        MemoryCache::singleton().pruneLiveResourcesToSize(0, /*shouldDestroyDecodedDataForAllLiveResources*/ true);
     }
 
     {
@@ -138,11 +139,6 @@ void MemoryPressureHandler::releaseCriticalMemory(Synchronous synchronous)
     {
         ReliefLogger log("Discard all JIT-compiled code");
         GCController::singleton().deleteAllCode();
-    }
-
-    {
-        ReliefLogger log("Invalidate font cache");
-        FontCache::singleton().invalidate();
     }
 
 #if ENABLE(VIDEO)

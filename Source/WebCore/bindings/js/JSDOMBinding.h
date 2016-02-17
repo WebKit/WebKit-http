@@ -177,6 +177,11 @@ inline JSC::WeakHandleOwner* wrapperOwner(DOMWrapperWorld& world, JSC::ArrayBuff
     return static_cast<WebCoreTypedArrayController*>(world.vm().m_typedArrayController.get())->wrapperOwner();
 }
 
+inline void* wrapperKey(JSC::ArrayBuffer* domObject)
+{
+    return domObject;
+}
+
 inline JSDOMObject* getInlineCachedWrapper(DOMWrapperWorld&, void*) { return nullptr; }
 inline bool setInlineCachedWrapper(DOMWrapperWorld&, void*, JSDOMObject*, JSC::WeakHandleOwner*) { return false; }
 inline bool clearInlineCachedWrapper(DOMWrapperWorld&, void*, JSDOMObject*) { return false; }
@@ -231,7 +236,7 @@ template<typename DOMClass> inline JSC::JSObject* getCachedWrapper(DOMWrapperWor
 {
     if (JSC::JSObject* wrapper = getInlineCachedWrapper(world, domObject))
         return wrapper;
-    return world.m_wrappers.get(domObject);
+    return world.m_wrappers.get(wrapperKey(domObject));
 }
 
 template<typename DOMClass, typename WrapperClass> inline void cacheWrapper(DOMWrapperWorld& world, DOMClass* domObject, WrapperClass* wrapper)
@@ -239,14 +244,14 @@ template<typename DOMClass, typename WrapperClass> inline void cacheWrapper(DOMW
     JSC::WeakHandleOwner* owner = wrapperOwner(world, domObject);
     if (setInlineCachedWrapper(world, domObject, wrapper, owner))
         return;
-    weakAdd(world.m_wrappers, (void*)domObject, JSC::Weak<JSC::JSObject>(wrapper, owner, &world));
+    weakAdd(world.m_wrappers, wrapperKey(domObject), JSC::Weak<JSC::JSObject>(wrapper, owner, &world));
 }
 
 template<typename DOMClass, typename WrapperClass> inline void uncacheWrapper(DOMWrapperWorld& world, DOMClass* domObject, WrapperClass* wrapper)
 {
     if (clearInlineCachedWrapper(world, domObject, wrapper))
         return;
-    weakRemove(world.m_wrappers, (void*)domObject, wrapper);
+    weakRemove(world.m_wrappers, wrapperKey(domObject), wrapper);
 }
 
 #define CREATE_DOM_WRAPPER(globalObject, className, object) createWrapper<JS##className>(globalObject, static_cast<className*>(object))
@@ -656,7 +661,6 @@ bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, String& message);
 bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, String& message);
 
 void printErrorMessageForFrame(Frame*, const String& message);
-JSC::EncodedJSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 
 inline String propertyNameToString(JSC::PropertyName propertyName)
 {
@@ -671,13 +675,11 @@ inline AtomicString propertyNameToAtomicString(JSC::PropertyName propertyName)
 
 template<typename DOMClass> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
 {
-    const JSC::HashTable* table = DOMClass::info()->staticPropHashTable;
-    if (!table)
-        return getStaticValueSlotEntryWithoutCaching<typename DOMClass::Base>(exec, propertyName);
-    const JSC::HashTableValue* entry = table->entry(propertyName);
-    if (!entry) // not found, forward to parent
-        return getStaticValueSlotEntryWithoutCaching<typename DOMClass::Base>(exec, propertyName);
-    return entry;
+    if (DOMClass::hasStaticPropertyTable) {
+        if (auto* entry = DOMClass::info()->staticPropHashTable->entry(propertyName))
+            return entry;
+    }
+    return getStaticValueSlotEntryWithoutCaching<typename DOMClass::Base>(exec, propertyName);
 }
 
 template<> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching<JSDOMObject>(JSC::ExecState*, JSC::PropertyName)

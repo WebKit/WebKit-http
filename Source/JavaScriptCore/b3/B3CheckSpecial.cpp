@@ -113,7 +113,11 @@ void CheckSpecial::forEachArg(Inst& inst, const ScopedLambda<Inst::EachArgCallba
             unsigned index = &arg - &hidden.args[0];
             callback(inst.args[1 + index], role, type, width);
         });
-    forEachArgImpl(numB3Args(inst), m_numCheckArgs + 1, inst, m_stackmapRole, callback);
+
+    Optional<unsigned> firstRecoverableIndex;
+    if (m_checkOpcode == BranchAdd32 || m_checkOpcode == BranchAdd64)
+        firstRecoverableIndex = 1;
+    forEachArgImpl(numB3Args(inst), m_numCheckArgs + 1, inst, m_stackmapRole, firstRecoverableIndex, callback);
 }
 
 bool CheckSpecial::isValid(Inst& inst)
@@ -128,6 +132,13 @@ bool CheckSpecial::admitsStack(Inst& inst, unsigned argIndex)
     if (argIndex >= 1 && argIndex < 1 + m_numCheckArgs)
         return hiddenBranch(inst).admitsStack(argIndex - 1);
     return admitsStackImpl(numB3Args(inst), m_numCheckArgs + 1, inst, argIndex);
+}
+
+Optional<unsigned> CheckSpecial::shouldTryAliasingDef(Inst& inst)
+{
+    if (Optional<unsigned> branchDef = hiddenBranch(inst).shouldTryAliasingDef())
+        return *branchDef + 1;
+    return Nullopt;
 }
 
 CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, GenerationContext& context)
@@ -154,7 +165,8 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
                 // If necessary, undo the operation.
                 switch (m_checkOpcode) {
                 case BranchAdd32:
-                    if (args[1] == args[2]) {
+                    if ((m_numCheckArgs == 4 && args[1] == args[2] && args[2] == args[3])
+                        || (m_numCheckArgs == 3 && args[1] == args[2])) {
                         // This is ugly, but that's fine - we won't have to do this very often.
                         ASSERT(args[1].isGPR());
                         GPRReg valueGPR = args[1].gpr();
@@ -167,10 +179,17 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
                         jit.popToRestore(scratchGPR);
                         break;
                     }
-                    Inst(Sub32, nullptr, args[1], args[2]).generate(jit, context);
+                    if (m_numCheckArgs == 4) {
+                        if (args[1] == args[3])
+                            Inst(Sub32, nullptr, args[2], args[3]).generate(jit, context);
+                        else if (args[2] == args[3])
+                            Inst(Sub32, nullptr, args[1], args[3]).generate(jit, context);
+                    } else if (m_numCheckArgs == 3)
+                        Inst(Sub32, nullptr, args[1], args[2]).generate(jit, context);
                     break;
                 case BranchAdd64:
-                    if (args[1] == args[2]) {
+                    if ((m_numCheckArgs == 4 && args[1] == args[2] && args[2] == args[3])
+                        || (m_numCheckArgs == 3 && args[1] == args[2])) {
                         // This is ugly, but that's fine - we won't have to do this very often.
                         ASSERT(args[1].isGPR());
                         GPRReg valueGPR = args[1].gpr();
@@ -183,7 +202,13 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
                         jit.popToRestore(scratchGPR);
                         break;
                     }
-                    Inst(Sub64, nullptr, args[1], args[2]).generate(jit, context);
+                    if (m_numCheckArgs == 4) {
+                        if (args[1] == args[3])
+                            Inst(Sub64, nullptr, args[2], args[3]).generate(jit, context);
+                        else if (args[2] == args[3])
+                            Inst(Sub64, nullptr, args[1], args[3]).generate(jit, context);
+                    } else if (m_numCheckArgs == 3)
+                        Inst(Sub64, nullptr, args[1], args[2]).generate(jit, context);
                     break;
                 case BranchSub32:
                     Inst(Add32, nullptr, args[1], args[2]).generate(jit, context);

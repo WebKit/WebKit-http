@@ -112,10 +112,16 @@ WEBCORE_EXPORT PassRefPtr<Range> rangeExpandedAroundPositionByCharacters(const V
 // helper function
 enum BoundarySearchContextAvailability { DontHaveMoreContext, MayHaveMoreContext };
 typedef unsigned (*BoundarySearchFunction)(StringView, unsigned offset, BoundarySearchContextAvailability, bool& needMoreContext);
+unsigned startWordBoundary(StringView, unsigned, BoundarySearchContextAvailability, bool&);
+unsigned endWordBoundary(StringView, unsigned, BoundarySearchContextAvailability, bool&);
+unsigned startSentenceBoundary(StringView, unsigned, BoundarySearchContextAvailability, bool&);
+unsigned endSentenceBoundary(StringView, unsigned, BoundarySearchContextAvailability, bool&);
 unsigned suffixLengthForRange(RefPtr<Range>, Vector<UChar, 1024>&);
 unsigned prefixLengthForRange(RefPtr<Range>, Vector<UChar, 1024>&);
 unsigned backwardSearchForBoundaryWithTextIterator(SimplifiedBackwardsTextIterator&, Vector<UChar, 1024>&, unsigned, BoundarySearchFunction);
 unsigned forwardSearchForBoundaryWithTextIterator(TextIterator&, Vector<UChar, 1024>&, unsigned, BoundarySearchFunction);
+Node* findStartOfParagraph(Node*, Node*, Node*, int&, Position::AnchorType&, EditingBoundaryCrossingRule);
+Node* findEndOfParagraph(Node*, Node*, Node*, int&, Position::AnchorType&, EditingBoundaryCrossingRule);
 
 } // namespace WebCore
 

@@ -3,7 +3,6 @@ class AnalysisResultsViewer extends ResultsTable {
     constructor()
     {
         super('analysis-results-viewer');
-        this._smallerIsBetter = false;
         this._startPoint = null;
         this._endPoint = null;
         this._testGroups = null;
@@ -15,12 +14,6 @@ class AnalysisResultsViewer extends ResultsTable {
     }
 
     setTestGroupCallback(callback) { this._testGroupCallback = callback; }
-
-    setSmallerIsBetter(smallerIsBetter)
-    {
-        this._smallerIsBetter = smallerIsBetter;
-        this._shouldRenderTable = true;
-    }
 
     setCurrentTestGroup(testGroup)
     {
@@ -104,7 +97,7 @@ class AnalysisResultsViewer extends ResultsTable {
                 var block = testGroupLayoutMap.get(testGroup);
                 if (!block) {
                     block = new AnalysisResultsViewer.TestGroupStackingBlock(
-                        testGroup, self._smallerIsBetter, self._classForTestGroup(testGroup), self._openStackingBlock.bind(self, testGroup));
+                        testGroup, self._classForTestGroup(testGroup), self._openStackingBlock.bind(self, testGroup));
                     testGroupLayoutMap.set(testGroup, block);
                 }
                 block.addRowIndex(entry, rowIndex);
@@ -279,7 +272,10 @@ class AnalysisResultsViewer extends ResultsTable {
             .analysis-view .stacking-block.unchanged {
                 background: rgba(128, 128, 128, 0.5);
             }
-            .analysis-view .stacking-block.incomplete {
+            .analysis-view .stacking-block.pending {
+                background: rgba(204, 204, 51, 0.2);
+            }
+            .analysis-view .stacking-block.running {
                 background: rgba(204, 204, 51, 0.5);
             }
             .analysis-view .stacking-block.worse {
@@ -308,10 +304,9 @@ AnalysisResultsViewer.RootSetInTestGroup = class {
 }
 
 AnalysisResultsViewer.TestGroupStackingBlock = class {
-    constructor(testGroup, smallerIsBetter, className, callback)
+    constructor(testGroup, className, callback)
     {
         this._testGroup = testGroup;
-        this._smallerIsBetter = smallerIsBetter;
         this._rootSetIndexRowIndexMap = [];
         this._className = className;
         this._label = null;
