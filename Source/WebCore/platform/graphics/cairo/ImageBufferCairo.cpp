@@ -130,6 +130,7 @@ void ImageBufferData::swapBuffersIfNeeded()
     cairo_set_source_surface(m_compositorCr.get(), m_surface.get(), 0, 0);
     cairo_set_operator(m_compositorCr.get(), CAIRO_OPERATOR_SOURCE);
     cairo_paint(m_compositorCr.get());
+    cairo_surface_flush(m_compositorSurface.get());
 
     m_bufferChanged = false;
     if (previousActiveContext)
