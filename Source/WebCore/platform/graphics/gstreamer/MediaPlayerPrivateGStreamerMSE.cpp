@@ -1987,6 +1987,9 @@ void AppendPipeline::resetPipeline()
 {
     ASSERT(WTF::isMainThread());
     LOG_MEDIA_MESSAGE("resetting pipeline");
+    m_atLeastABufferLeftAppsrcMutex.lock();
+    m_atLeastABufferLeftAppsrc = false;
+    m_atLeastABufferLeftAppsrcMutex.unlock();
     g_mutex_lock(&m_newSampleMutex);
     g_cond_signal(&m_newSampleCondition);
     gst_element_set_state(m_pipeline, GST_STATE_READY);
