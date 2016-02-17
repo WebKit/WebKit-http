@@ -133,14 +133,13 @@ public:
     void scheduleLastSampleTimer();
     void cancelLastSampleTimer();
 
-    void reportEndOfAppendDataMarkNeeded();
-    void reportEndOfAppendDataMarkReceived(guint id);
+    void reportAppsrcNeedDataReceived();
+    void markAtLeastABufferLeftAppsrc() { m_atLeastABufferLeftAppsrc = true; }
 
 private:
     void resetPipeline();
-    void checkEndOfAppendDataMarkReceived();
-    void handleEndOfAppendDataMarkNeeded();
-    void handleEndOfAppendDataMarkReceived(const GstStructure*);
+    void checkEndOfAppend();
+    void handleAppsrcNeedDataReceived();
 
 // TODO: Hide everything and use getters/setters.
 private:
@@ -174,15 +173,8 @@ private:
     GstCaps* m_demuxerSrcPadCaps;
     FloatSize m_presentationSize;
 
-    // Unique id of the current append operation. Used to mark
-    // custom events, detect them in the sink and trigger lastSampleTimeout
-    // ahead of time.
-
-    // This is the last id marked right after appending to appsrc
-    guint m_appendIdMarkedInSrc;
-
-    // This is the last id received by the probe in the appsink sink pad
-    guint m_appendIdReceivedInSink;
+    bool m_appsrcNeedDataReceived;
+    bool m_atLeastABufferLeftAppsrc;
 
     gulong m_appsinkDataEnteringProbeId;
     gulong m_appsrcDataLeavingProbeId;
@@ -1215,6 +1207,7 @@ static const char* dumpAppendStage(AppendPipeline::AppendStage appendStage)
     }
 }
 
+static void appendPipelineAppsrcNeedData(GstAppSrc*, guint, AppendPipeline*);
 static void appendPipelineDemuxerPadAdded(GstElement*, GstPad*, AppendPipeline*);
 static void appendPipelineDemuxerPadRemoved(GstElement*, GstPad*, AppendPipeline*);
 static gboolean appendPipelineDemuxerConnectToAppSinkMainThread(PadInfo*);
@@ -1249,8 +1242,8 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     , m_id(0)
     , m_appSinkCaps(NULL)
     , m_demuxerSrcPadCaps(NULL)
-    , m_appendIdMarkedInSrc(0)
-    , m_appendIdReceivedInSink(0)
+    , m_appsrcNeedDataReceived(false)
+    , m_atLeastABufferLeftAppsrc(false)
     , m_dataStarvedTimeoutTag(0)
     , m_lastSampleTimeoutTag(0)
     , m_appendStage(NotStarted)
@@ -1316,6 +1309,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
 #endif
 
     // These signals won't be connected outside of the lifetime of "this".
+    g_signal_connect(m_appsrc, "need-data", G_CALLBACK(appendPipelineAppsrcNeedData), this);
     g_signal_connect(m_qtdemux, "pad-added", G_CALLBACK(appendPipelineDemuxerPadAdded), this);
     g_signal_connect(m_qtdemux, "pad-removed", G_CALLBACK(appendPipelineDemuxerPadRemoved), this);
     g_signal_connect(m_appsink, "new-sample", G_CALLBACK(appendPipelineAppSinkNewSample), this);
@@ -1365,6 +1359,9 @@ AppendPipeline::~AppendPipeline()
     if (m_appsrc) {
         GRefPtr<GstPad> appsrcPad = adoptGRef(gst_element_get_static_pad(m_appsrc, "src"));
         gst_pad_remove_probe(appsrcPad.get(), m_appsrcDataLeavingProbeId);
+
+        g_signal_handlers_disconnect_by_func(m_appsrc, (gpointer) appendPipelineAppsrcNeedData, this);
+
         gst_object_unref(m_appsrc);
         m_appsrc = NULL;
     }
@@ -1459,27 +1456,23 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
 
     const GstStructure* structure = gst_message_get_structure(message);
 
-    if (gst_structure_has_name(structure, "end-of-append-data-mark-received")) {
-        handleEndOfAppendDataMarkReceived(structure);
-        return;
-    }
-
-    if (gst_structure_has_name(structure, "end-of-append-data-mark-needed")) {
-        handleEndOfAppendDataMarkNeeded();
+    if (gst_structure_has_name(structure, "appsrc-need-data")) {
+        handleAppsrcNeedDataReceived();
         return;
     }
 
     ASSERT_NOT_REACHED();
 }
 
-void AppendPipeline::handleEndOfAppendDataMarkReceived(const GstStructure* structure)
+void AppendPipeline::handleAppsrcNeedDataReceived()
 {
-    gst_structure_get(structure, "id", G_TYPE_UINT, &m_appendIdReceivedInSink, NULL);
-    ASSERT(m_appendIdReceivedInSink);
+    ASSERT(m_appendStage == Ongoing || m_appendStage == Sampling);
+    ASSERT(!m_appsrcNeedDataReceived);
 
-    TRACE_MEDIA_MESSAGE("received end of append id %u in the sink", m_appendIdReceivedInSink);
-    if (m_appendStage == Sampling || m_appendStage == Ongoing)
-        checkEndOfAppendDataMarkReceived();
+    TRACE_MEDIA_MESSAGE("received need-data from appsrc");
+
+    m_appsrcNeedDataReceived = true;
+    checkEndOfAppend();
 }
 
 gint AppendPipeline::id()
@@ -1847,11 +1840,11 @@ void AppendPipeline::appSinkCapsChanged()
     gst_caps_unref(caps);
 }
 
-void AppendPipeline::checkEndOfAppendDataMarkReceived()
+void AppendPipeline::checkEndOfAppend()
 {
     ASSERT(WTF::isMainThread());
 
-    if (!m_appendIdReceivedInSink || m_appendIdMarkedInSrc != m_appendIdReceivedInSink)
+    if (!m_appsrcNeedDataReceived || (m_appendStage != Ongoing && m_appendStage != Sampling))
         return;
 
     TRACE_MEDIA_MESSAGE("end of append data mark was received");
@@ -1859,16 +1852,16 @@ void AppendPipeline::checkEndOfAppendDataMarkReceived()
     switch (m_appendStage) {
     case Ongoing:
         TRACE_MEDIA_MESSAGE("DataStarve");
-        m_appendIdReceivedInSink = 0;
+        m_appsrcNeedDataReceived = false;
         setAppendStage(DataStarve);
         break;
     case Sampling:
         TRACE_MEDIA_MESSAGE("LastSample");
-        m_appendIdReceivedInSink = 0;
+        m_appsrcNeedDataReceived = false;
         setAppendStage(LastSample);
         break;
     default:
-        ERROR_MEDIA_MESSAGE("Unexpected");
+        ASSERT_NOT_REACHED();
         break;
     }
 }
@@ -1920,7 +1913,7 @@ void AppendPipeline::appSinkNewSample(GstSample* sample)
     g_cond_signal(&m_newSampleCondition);
     g_mutex_unlock(&m_newSampleMutex);
 
-    checkEndOfAppendDataMarkReceived();
+    checkEndOfAppend();
 }
 
 void AppendPipeline::appSinkEOS()
@@ -2040,35 +2033,17 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
     return result;
 }
 
-void AppendPipeline::handleEndOfAppendDataMarkNeeded()
+void AppendPipeline::reportAppsrcNeedDataReceived()
 {
-    GstEvent* event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, gst_structure_new_empty("end-of-append-data-mark"));
-    m_appendIdMarkedInSrc = gst_event_get_seqnum(event);
-    m_appendIdReceivedInSink = 0;
+    if (!m_atLeastABufferLeftAppsrc) {
+        TRACE_MEDIA_MESSAGE("discarding signal until at least a buffer leaves appsrc");
+        return;
+    }
 
-    TRACE_MEDIA_MESSAGE("marking end of append with id %u", m_appendIdMarkedInSrc);
-
-    gst_element_send_event(m_appsrc, event);
-
-    GstBuffer* emptyBuffer = gst_buffer_new_and_alloc(0);
-    gst_buffer_fill(emptyBuffer, 0, nullptr, 0);
-    gst_app_src_push_buffer(GST_APP_SRC(appsrc()), emptyBuffer);
-}
-
-void AppendPipeline::reportEndOfAppendDataMarkReceived(guint id)
-{
-    GstStructure* structure = gst_structure_new("end-of-append-data-mark-received", "id", G_TYPE_UINT, id, NULL);
-    GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsink), structure);
-    gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("received message with id %u, re-posted to bus", id);
-}
-
-void AppendPipeline::reportEndOfAppendDataMarkNeeded()
-{
-    GstStructure* structure = gst_structure_new_empty("end-of-append-data-mark-needed");
+    GstStructure* structure = gst_structure_new_empty("appsrc-need-data");
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc), structure);
     gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("received buffer going thru, re-posted to bus");
+    TRACE_MEDIA_MESSAGE("received need-data signal at appsrc, reposting to bus");
 }
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
@@ -2225,10 +2200,6 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
         break;
     }
 
-    // The previous mark has probably been lost because appsink was disconnected. Mark again.
-    TRACE_MEDIA_MESSAGE("previous append end mark lost, reinjecting");
-    handleEndOfAppendDataMarkNeeded();
-
     g_cond_signal(&m_padAddRemoveCondition);
 }
 
@@ -2300,8 +2271,7 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
 
         TRACE_MEDIA_MESSAGE("buffer of size %" G_GSIZE_FORMAT " going thru", bufferSize);
 
-        if (bufferSize > 0)
-            appendPipeline->reportEndOfAppendDataMarkNeeded();
+        appendPipeline->markAtLeastABufferLeftAppsrc();
 
         return GST_PAD_PROBE_OK;
     }
@@ -2326,7 +2296,7 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
     return GST_PAD_PROBE_OK;
 }
 
-static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeInfo* info, AppendPipeline* appendPipeline)
+static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeInfo* info, AppendPipeline*)
 {
     if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
         GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
@@ -2339,8 +2309,6 @@ static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeI
         guint id = gst_event_get_seqnum(event);
 
         TRACE_MEDIA_MESSAGE("id=%u", id);
-
-        appendPipeline->reportEndOfAppendDataMarkReceived(id);
 
         return GST_PAD_PROBE_OK;
     }
@@ -2384,6 +2352,11 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
     return GST_PAD_PROBE_OK;
 }
 #endif
+
+static void appendPipelineAppsrcNeedData(GstAppSrc*, guint, AppendPipeline* appendPipeline)
+{
+    appendPipeline->reportAppsrcNeedDataReceived();
+}
 
 static void appendPipelineDemuxerPadAdded(GstElement*, GstPad* demuxerSrcPad, AppendPipeline* ap)
 {
