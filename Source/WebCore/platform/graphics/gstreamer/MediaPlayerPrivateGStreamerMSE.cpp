@@ -134,7 +134,7 @@ public:
     void cancelLastSampleTimer();
 
     void reportAppsrcNeedDataReceived();
-    void markAtLeastABufferLeftAppsrc() { m_atLeastABufferLeftAppsrc = true; }
+    void markAtLeastABufferLeftAppsrc();
 
 private:
     void resetPipeline();
@@ -175,6 +175,7 @@ private:
 
     bool m_appsrcNeedDataReceived;
     bool m_atLeastABufferLeftAppsrc;
+    Mutex m_atLeastABufferLeftAppsrcMutex;
 
     gulong m_appsinkDataEnteringProbeId;
     gulong m_appsrcDataLeavingProbeId;
@@ -2033,8 +2034,16 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
     return result;
 }
 
+void AppendPipeline::markAtLeastABufferLeftAppsrc()
+{
+    MutexLocker locker(m_atLeastABufferLeftAppsrcMutex);
+    m_atLeastABufferLeftAppsrc = true;
+}
+
 void AppendPipeline::reportAppsrcNeedDataReceived()
 {
+    MutexLocker locker(m_atLeastABufferLeftAppsrcMutex);
+
     if (!m_atLeastABufferLeftAppsrc) {
         TRACE_MEDIA_MESSAGE("discarding signal until at least a buffer leaves appsrc");
         return;
