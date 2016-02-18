@@ -140,6 +140,8 @@ private:
     void resetPipeline();
     void checkEndOfAppend();
     void handleAppsrcNeedDataReceived();
+    void removeAppsrcDataLeavingProbe();
+    void setAppsrcDataLeavingProbe();
 
 // TODO: Hide everything and use getters/setters.
 private:
@@ -1244,6 +1246,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     , m_demuxerSrcPadCaps(NULL)
     , m_appsrcNeedDataReceived(false)
     , m_atLeastABufferLeftAppsrc(false)
+    , m_appsrcDataLeavingProbeId(0)
     , m_dataStarvedTimeoutTag(0)
     , m_lastSampleTimeoutTag(0)
     , m_appendStage(NotStarted)
@@ -1288,8 +1291,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     GRefPtr<GstPad> appSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
     g_signal_connect(appSinkPad.get(), "notify::caps", G_CALLBACK(appendPipelineAppSinkCapsChanged), this);
 
-    GRefPtr<GstPad> appsrcPad = adoptGRef(gst_element_get_static_pad(m_appsrc, "src"));
-    m_appsrcDataLeavingProbeId = gst_pad_add_probe(appsrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsrcDataLeaving), this, nullptr);
+    setAppsrcDataLeavingProbe();
 
 #ifdef DEBUG_APPEND_PIPELINE_PADS
     GRefPtr<GstPad> demuxerPad = adoptGRef(gst_element_get_static_pad(m_qtdemux, "sink"));
@@ -1350,8 +1352,7 @@ AppendPipeline::~AppendPipeline()
     }
 
     if (m_appsrc) {
-        GRefPtr<GstPad> appsrcPad = adoptGRef(gst_element_get_static_pad(m_appsrc, "src"));
-        gst_pad_remove_probe(appsrcPad.get(), m_appsrcDataLeavingProbeId);
+        removeAppsrcDataLeavingProbe();
 
         g_signal_handlers_disconnect_by_func(m_appsrc, (gpointer) appendPipelineAppsrcNeedData, this);
 
@@ -1983,6 +1984,7 @@ void AppendPipeline::resetPipeline()
     LOG_MEDIA_MESSAGE("resetting pipeline");
     m_atLeastABufferLeftAppsrcMutex.lock();
     m_atLeastABufferLeftAppsrc = false;
+    setAppsrcDataLeavingProbe();
     m_atLeastABufferLeftAppsrcMutex.unlock();
     g_mutex_lock(&m_newSampleMutex);
     g_cond_signal(&m_newSampleCondition);
@@ -1996,6 +1998,29 @@ void AppendPipeline::resetPipeline()
         gst_debug_bin_to_dot_file(GST_BIN(m_pipeline), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.utf8().data());
     }
 
+}
+
+void AppendPipeline::setAppsrcDataLeavingProbe()
+{
+    if (m_appsrcDataLeavingProbeId)
+        return;
+
+    TRACE_MEDIA_MESSAGE("setting appsrc data leaving probe");
+
+    GRefPtr<GstPad> appsrcPad = adoptGRef(gst_element_get_static_pad(m_appsrc, "src"));
+    m_appsrcDataLeavingProbeId = gst_pad_add_probe(appsrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsrcDataLeaving), this, nullptr);
+}
+
+void AppendPipeline::removeAppsrcDataLeavingProbe()
+{
+    if (!m_appsrcDataLeavingProbeId)
+        return;
+
+    TRACE_MEDIA_MESSAGE("removing appsrc data leaving probe");
+
+    GRefPtr<GstPad> appsrcPad = adoptGRef(gst_element_get_static_pad(m_appsrc, "src"));
+    gst_pad_remove_probe(appsrcPad.get(), m_appsrcDataLeavingProbeId);
+    m_appsrcDataLeavingProbeId = 0;
 }
 
 void AppendPipeline::abort()
@@ -2035,6 +2060,9 @@ void AppendPipeline::markAtLeastABufferLeftAppsrc()
 {
     MutexLocker locker(m_atLeastABufferLeftAppsrcMutex);
     m_atLeastABufferLeftAppsrc = true;
+#ifndef DEBUG_APPEND_PIPELINE_PADS
+    removeAppsrcDataLeavingProbe();
+#endif
 }
 
 void AppendPipeline::reportAppsrcNeedDataReceived()
