@@ -37,11 +37,11 @@
 #include <libxml/uri.h>
 #include <libxslt/xsltutils.h>
 
-#if OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK)
+#if OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK) && !PLATFORM(QT)
 #include "SoftLinking.h"
 #endif
 
-#if OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK)
+#if OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK) && !PLATFORM(QT)
 SOFT_LINK_LIBRARY(libxslt)
 SOFT_LINK(libxslt, xsltIsBlank, int, (xmlChar *str), (str))
 SOFT_LINK(libxslt, xsltGetNsProp, xmlChar *, (xmlNodePtr node, const xmlChar *name, const xmlChar *nameSpace), (node, name, nameSpace))
