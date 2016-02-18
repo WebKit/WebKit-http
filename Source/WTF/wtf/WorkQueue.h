@@ -44,7 +44,7 @@
 #include <wtf/glib/GRefPtr.h>
 #elif PLATFORM(EFL)
 #include <DispatchQueueEfl.h>
-#elif PLATFORM(QT) && !OS(DARWIN)
+#elif PLATFORM(QT)
 #include <QSocketNotifier>
 #elif OS(WINDOWS)
 #include <wtf/HashMap.h>

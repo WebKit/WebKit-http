@@ -41,7 +41,7 @@
 namespace WTF {
 
 static bool callbacksPaused; // This global variable is only accessed from main thread.
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK)
+#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
 static ThreadIdentifier mainThreadIdentifier;
 #endif
 
@@ -53,7 +53,7 @@ static Deque<std::function<void ()>>& functionQueue()
     return functionQueue;
 }
 
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK)
+#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
 
 void initializeMainThread()
 {
@@ -173,7 +173,7 @@ void setMainThreadCallbacksPaused(bool paused)
         scheduleDispatchFunctionsOnMainThread();
 }
 
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK)
+#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
 bool isMainThread()
 {
     return currentThread() == mainThreadIdentifier;

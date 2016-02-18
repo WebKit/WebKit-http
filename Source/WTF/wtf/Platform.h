@@ -583,10 +583,6 @@
 
 #endif /* PLATFORM(IOS) */
 
-#if PLATFORM(QT) && OS(DARWIN)
-#define USE_CF 1
-#endif
-
 #if PLATFORM(WIN) && !USE(WINGDI)
 #define USE_CF 1
 #endif
@@ -653,7 +649,7 @@
 #define HAVE_READLINE 1
 #define HAVE_SYS_TIMEB_H 1
 
-#if !PLATFORM(GTK)
+#if !PLATFORM(GTK) && !PLATFORM(QT)
 #define USE_ACCELERATE 1
 #endif
 #if !PLATFORM(IOS)
