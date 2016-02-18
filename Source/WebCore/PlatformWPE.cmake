@@ -1,4 +1,7 @@
+include(platform/GStreamer.cmake)
 include(platform/ImageDecoders.cmake)
+include(platform/Linux.cmake)
+include(platform/TextureMapper.cmake)
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
@@ -22,7 +25,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/yarr"
     "${THIRDPARTY_DIR}/ANGLE/"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-    "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
     "${WEBCORE_DIR}/platform/cairo"
     "${WEBCORE_DIR}/platform/geoclue"
     "${WEBCORE_DIR}/platform/graphics/cairo"
@@ -34,13 +36,8 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/texmap"
-    "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
-    "${WEBCORE_DIR}/platform/graphics/texmap/threadedcompositor"
     "${WEBCORE_DIR}/platform/graphics/wpe"
     "${WEBCORE_DIR}/platform/graphics/wayland"
-    "${WEBCORE_DIR}/platform/linux"
-    "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/icu"
@@ -66,12 +63,6 @@ list(APPEND WebCore_SOURCES
     platform/Theme.cpp
 
     platform/audio/glib/AudioBusGLib.cpp
-
-    platform/audio/gstreamer/AudioDestinationGStreamer.cpp
-    platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
-    platform/audio/gstreamer/AudioSourceProviderGStreamer.cpp
-    platform/audio/gstreamer/FFTFrameGStreamer.cpp
-    platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
@@ -107,22 +98,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
-    platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
-    platform/graphics/gstreamer/GRefPtrGStreamer.cpp
-    platform/graphics/gstreamer/GStreamerUtilities.cpp
     platform/graphics/gstreamer/ImageGStreamerCairo.cpp
-    platform/graphics/gstreamer/InbandTextTrackPrivateGStreamer.cpp
-    platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp
-    platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp
-    platform/graphics/gstreamer/MediaSourceGStreamer.cpp
-    platform/graphics/gstreamer/SourceBufferPrivateGStreamer.cpp
-    platform/graphics/gstreamer/TextCombinerGStreamer.cpp
-    platform/graphics/gstreamer/TextSinkGStreamer.cpp
-    platform/graphics/gstreamer/TrackPrivateBaseGStreamer.cpp
-    platform/graphics/gstreamer/VideoSinkGStreamer.cpp
-    platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
-    platform/graphics/gstreamer/WebKitMediaSourceGStreamer.cpp
-    platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
     platform/graphics/harfbuzz/HarfBuzzFace.cpp
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
@@ -136,47 +112,9 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/opentype/OpenTypeVerticalData.cpp
 
-    platform/graphics/texmap/BitmapTexture.cpp
-    platform/graphics/texmap/BitmapTextureGL.cpp
-    platform/graphics/texmap/BitmapTexturePool.cpp
-    platform/graphics/texmap/ClipStack.cpp
-    platform/graphics/texmap/TextureMapperGL.cpp
-    platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
-    platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
-    platform/graphics/texmap/TextureMapperShaderProgram.cpp
-    platform/graphics/texmap/coordinated/AreaAllocator.cpp
-    platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
-    platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
-    platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
-    platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
-    platform/graphics/texmap/coordinated/Tile.cpp
-    platform/graphics/texmap/coordinated/TiledBackingStore.cpp
-    platform/graphics/texmap/coordinated/UpdateAtlas.cpp
-
     platform/graphics/wpe/PlatformDisplayWPE.cpp
 
-    platform/image-decoders/ImageDecoder.cpp
-
-    platform/image-decoders/bmp/BMPImageDecoder.cpp
-    platform/image-decoders/bmp/BMPImageReader.cpp
-
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
-
-    platform/image-decoders/gif/GIFImageDecoder.cpp
-    platform/image-decoders/gif/GIFImageReader.cpp
-
-    platform/image-decoders/ico/ICOImageDecoder.cpp
-
-    platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-
-    platform/image-decoders/png/PNGImageDecoder.cpp
-
-    platform/image-decoders/webp/WEBPImageDecoder.cpp
-
-    platform/linux/MemoryPressureHandlerLinux.cpp
-
-    platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
-    platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp
@@ -213,6 +151,8 @@ list(APPEND WebCore_SOURCES
 
     page/wpe/EventHandlerWPE.cpp
 
+    platform/glib/KeyedDecoderGlib.cpp
+    platform/glib/KeyedEncoderGlib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
 
     platform/graphics/cairo/GraphicsContextCairo.cpp
@@ -265,22 +205,12 @@ list(APPEND WebCore_LIBRARIES
     ${GLIB_GMODULE_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
-    ${GSTREAMER_LIBRARIES}
-    ${GSTREAMER_BASE_LIBRARIES}
-    ${GSTREAMER_AUDIO_LIBRARIES}
-    ${GSTREAMER_APP_LIBRARIES}
-    ${GSTREAMER_PBUTILS_LIBRARIES}
-    ${GSTREAMER_TAG_LIBRARIES}
-    ${GSTREAMER_VIDEO_LIBRARIES}
     ${HARFBUZZ_LIBRARIES}
     ${ICU_LIBRARIES}
-    ${JPEG_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
-    ${PNG_LIBRARIES}
     ${SQLITE_LIBRARIES}
-    ${WEBP_LIBRARIES}
     WPE
 )
 
@@ -290,34 +220,14 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${FONTCONFIG_INCLUDE_DIRS}
     ${FREETYPE2_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
-    ${GSTREAMER_INCLUDE_DIRS}
-    ${GSTREAMER_BASE_INCLUDE_DIRS}
-    ${GSTREAMER_AUDIO_INCLUDE_DIRS}
-    ${GSTREAMER_APP_INCLUDE_DIRS}
-    ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
-    ${GSTREAMER_TAG_INCLUDE_DIRS}
-    ${GSTREAMER_VIDEO_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${ICU_INCLUDE_DIRS}
-    ${JPEG_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
-    ${PNG_INCLUDE_DIRS}
     ${SQLITE_INCLUDE_DIR}
-    ${WEBP_INCLUDE_DIRS}
     ${WPE_DIR}
 )
-
-if (ENABLE_WEB_AUDIO)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${WEBCORE_DIR}/platform/audio/gstreamer
-        ${GSTREAMER_FFT_INCLUDE_DIRS}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${GSTREAMER_FFT_LIBRARIES}
-    )
-endif ()
 
 if (ENABLE_SUBTLE_CRYPTO)
     list(APPEND WebCore_SOURCES
