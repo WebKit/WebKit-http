@@ -133,12 +133,13 @@ public:
     void scheduleLastSampleTimer();
     void cancelLastSampleTimer();
 
+    void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
-    void markAtLeastABufferLeftAppsrc();
 
 private:
     void resetPipeline();
     void checkEndOfAppend();
+    void handleAppsrcAtLeastABufferLeft();
     void handleAppsrcNeedDataReceived();
     void removeAppsrcDataLeavingProbe();
     void setAppsrcDataLeavingProbe();
@@ -175,9 +176,8 @@ private:
     GstCaps* m_demuxerSrcPadCaps;
     FloatSize m_presentationSize;
 
+    bool m_appsrcAtLeastABufferLeft;
     bool m_appsrcNeedDataReceived;
-    bool m_atLeastABufferLeftAppsrc;
-    Mutex m_atLeastABufferLeftAppsrcMutex;
 
     gulong m_appsrcDataLeavingProbeId;
 #ifdef DEBUG_APPEND_PIPELINE_PADS
@@ -1244,8 +1244,8 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     , m_id(0)
     , m_appSinkCaps(NULL)
     , m_demuxerSrcPadCaps(NULL)
+    , m_appsrcAtLeastABufferLeft(false)
     , m_appsrcNeedDataReceived(false)
-    , m_atLeastABufferLeftAppsrc(false)
     , m_appsrcDataLeavingProbeId(0)
     , m_dataStarvedTimeoutTag(0)
     , m_lastSampleTimeoutTag(0)
@@ -1457,11 +1457,21 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         return;
     }
 
+    if (gst_structure_has_name(structure, "appsrc-buffer-left")) {
+        handleAppsrcAtLeastABufferLeft();
+        return;
+    }
+
     ASSERT_NOT_REACHED();
 }
 
 void AppendPipeline::handleAppsrcNeedDataReceived()
 {
+    if (!m_appsrcAtLeastABufferLeft) {
+        TRACE_MEDIA_MESSAGE("discarding until at least a buffer leaves appsrc");
+        return;
+    }
+
     ASSERT(m_appendStage == Ongoing || m_appendStage == Sampling);
     ASSERT(!m_appsrcNeedDataReceived);
 
@@ -1469,6 +1479,14 @@ void AppendPipeline::handleAppsrcNeedDataReceived()
 
     m_appsrcNeedDataReceived = true;
     checkEndOfAppend();
+}
+
+void AppendPipeline::handleAppsrcAtLeastABufferLeft()
+{
+    m_appsrcAtLeastABufferLeft = true;
+#ifndef DEBUG_APPEND_PIPELINE_PADS
+    removeAppsrcDataLeavingProbe();
+#endif
 }
 
 gint AppendPipeline::id()
@@ -1982,10 +2000,8 @@ void AppendPipeline::resetPipeline()
 {
     ASSERT(WTF::isMainThread());
     LOG_MEDIA_MESSAGE("resetting pipeline");
-    m_atLeastABufferLeftAppsrcMutex.lock();
-    m_atLeastABufferLeftAppsrc = false;
+    m_appsrcAtLeastABufferLeft = false;
     setAppsrcDataLeavingProbe();
-    m_atLeastABufferLeftAppsrcMutex.unlock();
     g_mutex_lock(&m_newSampleMutex);
     g_cond_signal(&m_newSampleCondition);
     gst_element_set_state(m_pipeline, GST_STATE_READY);
@@ -2056,24 +2072,16 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
     return result;
 }
 
-void AppendPipeline::markAtLeastABufferLeftAppsrc()
+void AppendPipeline::reportAppsrcAtLeastABufferLeft()
 {
-    MutexLocker locker(m_atLeastABufferLeftAppsrcMutex);
-    m_atLeastABufferLeftAppsrc = true;
-#ifndef DEBUG_APPEND_PIPELINE_PADS
-    removeAppsrcDataLeavingProbe();
-#endif
+    GstStructure* structure = gst_structure_new_empty("appsrc-buffer-left");
+    GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc), structure);
+    gst_bus_post(m_bus.get(), message);
+    TRACE_MEDIA_MESSAGE("buffer left appsrc, reposting to bus");
 }
 
 void AppendPipeline::reportAppsrcNeedDataReceived()
 {
-    MutexLocker locker(m_atLeastABufferLeftAppsrcMutex);
-
-    if (!m_atLeastABufferLeftAppsrc) {
-        TRACE_MEDIA_MESSAGE("discarding signal until at least a buffer leaves appsrc");
-        return;
-    }
-
     GstStructure* structure = gst_structure_new_empty("appsrc-need-data");
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc), structure);
     gst_bus_post(m_bus.get(), message);
@@ -2306,7 +2314,7 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
 
     TRACE_MEDIA_MESSAGE("buffer of size %" G_GSIZE_FORMAT " going thru", bufferSize);
 
-    appendPipeline->markAtLeastABufferLeftAppsrc();
+    appendPipeline->reportAppsrcAtLeastABufferLeft();
 
     return GST_PAD_PROBE_OK;
 }
