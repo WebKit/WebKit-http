@@ -139,8 +139,10 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::Input::AxisEvent&& event
         ASSERT_NOT_REACHED();
     };
 
+    wheelTicks.scale(event.value / std::abs(event.value));
+
     WebCore::FloatSize delta = wheelTicks;
-    delta.scale(event.value / std::abs(event.value) * WebCore::Scrollbar::pixelsPerLineStep());
+    delta.scale(WebCore::Scrollbar::pixelsPerLineStep());
 
     WebCore::IntPoint position(event.x, event.y);
     return WebWheelEvent(WebEvent::Wheel, position, position,
