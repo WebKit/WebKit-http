@@ -174,6 +174,11 @@ EGLNativeWindowType RenderingBackendWesteros::Surface::nativeWindow()
 
 void RenderingBackendWesteros::Surface::resize(uint32_t width, uint32_t height)
 {
+    if(m_window) {
+        wl_egl_window_resize(m_window, width, height, 0, 0);
+        if(g_WlDisplay)
+            wl_display_flush(g_WlDisplay);
+    }
 }
 
 RenderingBackend::BufferExport RenderingBackendWesteros::Surface::lockFrontBuffer()
