@@ -432,6 +432,10 @@ bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
 {
     LockHolder locker(mutex());
     setIsScheduled(true);
+
+    if (isPreviousFrameDone() && m_compositor && !m_compositor->m_clientRendersNextFrame.load())
+        dispatchDisplayRefreshCallback();
+
     return true;
 }
 
