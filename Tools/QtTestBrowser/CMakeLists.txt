@@ -37,7 +37,8 @@ set(QtTestBrowser_LIBRARIES
     ${Qt5Network_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
     WebCore # FIXME: Fix cmake to add WebKit's dependencies automatically
-    WebKit
+    WebCoreTestSupport
+    WebKitWidgets
 )
 
 qt_wrap_cpp(WebKit QtTestBrowser_SOURCES

@@ -140,8 +140,6 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Storage"
     "${WEBKIT_DIR}/qt/Api"
     "${WEBKIT_DIR}/qt/WebCoreSupport"
-    "${WEBKIT_DIR}/qt/WidgetApi"
-    "${WEBKIT_DIR}/qt/WidgetSupport"
 
     "${WTF_DIR}"
 )
@@ -166,6 +164,7 @@ list(APPEND WebKit_SOURCES
     qt/Api/qwebscriptworld.cpp
     qt/Api/qwebsecurityorigin.cpp
     qt/Api/qwebsettings.cpp
+
     qt/WebCoreSupport/ChromeClientQt.cpp
     qt/WebCoreSupport/ContextMenuClientQt.cpp
     qt/WebCoreSupport/DragClientQt.cpp
@@ -193,11 +192,56 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/TextureMapperLayerClientQt.cpp
     qt/WebCoreSupport/UndoStepQt.cpp
     qt/WebCoreSupport/WebEventConversion.cpp
+)
+
+# Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
+list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
+    ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Network_INCLUDE_DIRS}
+)
+# Build the include path with duplicates removed
+list(REMOVE_DUPLICATES WebKit_SYSTEM_INCLUDE_DIRECTORIES)
+
+list(APPEND WebKit_LIBRARIES
+    ${Qt5Core_LIBRARIES}
+    ${Qt5Gui_LIBRARIES}
+    ${Qt5Network_LIBRARIES}
+    WebCoreTestSupport
+)
+
+ecm_generate_headers(
+    QtWebKit_FORWARDING_HEADERS
+    HEADER_NAMES
+        QWebElement
+        QWebSecurityOrigin
+        QWebSettings
+    COMMON_HEADER
+        QtWebKit
+    RELATIVE
+        qt/Api
+    OUTPUT_DIR
+        "${CMAKE_BINARY_DIR}/include/QtWebKit"
+)
+
+set(WebKit_LIBRARY_TYPE SHARED)
+set(WebKit_OUTPUT_NAME Qt5WebKit)
+
+
+############     WebKitWidgets     ############
+
+set(WebKitWidgets_INCLUDE_DIRECTORIES
+    ${WebKit_INCLUDE_DIRECTORIES}
+    "${WEBKIT_DIR}/qt/WidgetApi"
+    "${WEBKIT_DIR}/qt/WidgetSupport"
+)
+
+set(WebKitWidgets_SOURCES
     qt/WidgetApi/qgraphicswebview.cpp
     qt/WidgetApi/qwebframe.cpp
     qt/WidgetApi/qwebinspector.cpp
     qt/WidgetApi/qwebpage.cpp
     qt/WidgetApi/qwebview.cpp
+
 #    qt/WidgetSupport/DefaultFullScreenVideoHandler.cpp
 #    qt/WidgetSupport/FullScreenVideoWidget.cpp
     qt/WidgetSupport/InitWebKitQt.cpp
@@ -211,10 +255,9 @@ list(APPEND WebKit_SOURCES
     qt/WidgetSupport/QtWebComboBox.cpp
 )
 
-qt_wrap_cpp(WebKit WebKit_SOURCES
+qt_wrap_cpp(WebKit WebKitWidgets_SOURCES
     qt/Api/qwebkitplatformplugin.h
 )
-
 
 if (ENABLE_ACCESSIBILITY)
     list(APPEND WebKit_SOURCES
@@ -222,40 +265,17 @@ if (ENABLE_ACCESSIBILITY)
     )
 endif ()
 
-set(WebKit_OUTPUT_NAME Qt5WebKit)
-
-# FIXME: Split out libQt5WebKitWidgets
-
-# Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
-list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
-    ${Qt5Gui_INCLUDE_DIRS}
+set(WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
+    ${WebKit_SYSTEM_INCLUDE_DIRECTORIES}
     ${Qt5Widgets_INCLUDE_DIRS}
-    ${Qt5Network_INCLUDE_DIRS}
 )
-# Build the include path with duplicates removed
-list(REMOVE_DUPLICATES WebKit_SYSTEM_INCLUDE_DIRECTORIES)
 
-list(APPEND WebKit_LIBRARIES
-    ${Qt5Core_LIBRARIES}
-    ${Qt5Gui_LIBRARIES}
+set(WebKitWidgets_LIBRARIES
+    ${WebKit_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
-    ${Qt5Network_LIBRARIES}
-    WebCoreTestSupport
+    PUBLIC WebKit
 )
 
-ecm_generate_headers(
-    QtWebKitWidgets_FORWARDING_HEADERS
-    HEADER_NAMES
-        QWebElement
-        QWebSecurityOrigin
-        QWebSettings
-    COMMON_HEADER
-        QtWebKit
-    RELATIVE
-        qt/Api
-    OUTPUT_DIR
-        "${CMAKE_BINARY_DIR}/include/QtWebKit"
-)
 ecm_generate_headers(
     QtWebKitWidgets_FORWARDING_HEADERS
     HEADER_NAMES
@@ -269,3 +289,9 @@ ecm_generate_headers(
     OUTPUT_DIR
         "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets"
 )
+
+set(WebKitWidgets_LIBRARY_TYPE SHARED)
+set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
+
+WEBKIT_FRAMEWORK(WebKitWidgets)
+add_dependencies(WebKitWidgets WebKit)
