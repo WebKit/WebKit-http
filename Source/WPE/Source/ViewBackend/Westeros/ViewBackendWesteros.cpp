@@ -21,12 +21,11 @@ ViewBackendWesteros::ViewBackendWesteros()
 
     m_input_handler = new WesterosViewbackendInput();
     const char* nestedTargetDisplay = std::getenv("WAYLAND_DISPLAY");
-    const char* rendererModule = std::getenv("WPE_WESTEROS_RENDERER_MODULE");
     if (nestedTargetDisplay) {
         fprintf(stderr, "ViewBackendWesteros: running as the nested compositor\n");
         WstCompositorSetIsNested(m_compositor, true);
+        WstCompositorSetIsRepeater( m_compositor, true);
         WstCompositorSetNestedDisplayName( m_compositor, nestedTargetDisplay);
-        WstCompositorSetRendererModule(m_compositor, rendererModule);
         //Register for all the necessary callback before starting the compositor
         m_input_handler->initializeNestedInputHandler(m_compositor, this);
         const char * nestedDisplayName = WstCompositorGetDisplayName(m_compositor);
