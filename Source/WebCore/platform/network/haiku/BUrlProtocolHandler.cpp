@@ -80,8 +80,27 @@ ssize_t BFormDataIO::Size()
                 break;
             }
             case FormDataElement::Type::EncodedBlob:
-                size += element.m_fileLength;
+            {
+                RefPtr<BlobData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(URL(ParsedURLString, element.m_url));
+                if (!blobData)
+                    break;
+
+                for (size_t j = 0; j < blobData->items().size(); ++j)
+                {
+                    const BlobDataItem& blobItem = blobData->items()[i];
+                    if (blobItem.type == BlobDataItem::File
+                        && blobItem.length() == BlobDataItem::toEndOfFile)
+                    {
+                        BNode node(BString(blobItem.file->path()));
+                        off_t filesize = 0;
+                        node.GetSize(&filesize);
+                        size += filesize;
+                    } else {
+                        size += blobItem.length();
+                    }
+                }
                 break;
+            }
         }
     }
 
