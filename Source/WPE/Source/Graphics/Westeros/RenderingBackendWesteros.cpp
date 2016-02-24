@@ -2,13 +2,13 @@
 
 #if WPE_BACKEND(WESTEROS)
 
+#include "RenderingBackendWesteros.h"
 #include <EGL/egl.h>
 #include <cstring>
 #include <array>
 #include <unordered_map>
 #include <utility>
 #include <glib.h>
-#include "RenderingBackendWesteros.h"
 
 namespace WPE {
 

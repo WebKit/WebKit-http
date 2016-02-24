@@ -1,10 +1,9 @@
 #ifndef WPE_Graphics_RenderingBackendWesteros_h
 #define WPE_Graphics_RenderingBackendWesteros_h
 
-#include <WPE/Graphics/RenderingBackend.h>
-
 #include <wayland-client.h>
 #include <wayland-egl.h>
+#include <WPE/Graphics/RenderingBackend.h>
 
 typedef struct _GSource GSource;
 
