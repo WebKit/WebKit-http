@@ -992,7 +992,7 @@ void StreamingClient::handleDataReceived(const char* data, int length)
     locker.unlock();
 
     GstFlowReturn ret = gst_app_src_push_buffer(priv->appsrc, priv->buffer.leakRef());
-    if (ret != GST_FLOW_OK && ret != GST_FLOW_EOS)
+    if (ret != GST_FLOW_OK && ret != GST_FLOW_EOS && ret != GST_FLOW_FLUSHING)
         GST_ELEMENT_ERROR(src, CORE, FAILED, (0), (0));
 }
 
