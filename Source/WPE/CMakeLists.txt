@@ -40,7 +40,7 @@ if (USE_WPE_BACKEND_INTEL_CE)
 endif ()
 
 if (USE_WPE_BACKEND_WESTEROS)
-    find_package(WESTEROS REQUIRED)
+    find_package(westeros REQUIRED)
     add_definitions(-DWPE_BACKEND_WESTEROS=1)
 endif ()
 

@@ -29,7 +29,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(WESTEROS westeros)
+pkg_check_modules(WESTEROS westeros-compositor)
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(WESTEROS DEFAULT_MSG WESTEROS_FOUND)
