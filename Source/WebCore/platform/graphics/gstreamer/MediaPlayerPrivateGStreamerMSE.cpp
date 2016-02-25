@@ -1345,6 +1345,7 @@ AppendPipeline::~AppendPipeline()
         ASSERT(m_bus);
         g_signal_handlers_disconnect_by_func(m_bus.get(), reinterpret_cast<gpointer>(appendPipelineElementMessageCallback), this);
         gst_bus_disable_sync_message_emission(m_bus.get());
+        gst_bus_remove_signal_watch(m_bus.get());
 
         gst_element_set_state (m_pipeline, GST_STATE_NULL);
         gst_object_unref(m_pipeline);
