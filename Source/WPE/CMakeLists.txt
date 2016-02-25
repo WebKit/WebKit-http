@@ -39,6 +39,11 @@ if (USE_WPE_BACKEND_INTEL_CE)
     add_definitions(-DWPE_BACKEND_INTEL_CE=1)
 endif ()
 
+if (USE_WPE_BACKEND_WESTEROS)
+    find_package(westeros REQUIRED)
+    add_definitions(-DWPE_BACKEND_WESTEROS=1)
+endif ()
+
 if (USE_WPE_BUFFER_MANAGEMENT_GBM)
     find_package(LibGBM REQUIRED)
     add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
@@ -60,6 +65,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/IntelCE"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/Westeros"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
@@ -72,6 +78,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/IntelCE"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland/Protocols"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Westeros"
     ${BCM_HOST_INCLUDE_DIRS}
     ${GDL_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
@@ -79,6 +86,7 @@ set(WPE_INCLUDE_DIRECTORIES
     ${LIBUDEV_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
+    ${WESTEROS_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
@@ -135,6 +143,23 @@ if (USE_WPE_BACKEND_INTEL_CE)
         Source/Graphics/IntelCE/RenderingBackendIntelCE.cpp
 
         Source/ViewBackend/IntelCE/ViewBackendIntelCE.cpp
+    )
+endif ()
+
+if (USE_WPE_BACKEND_WESTEROS)
+    list(APPEND WPE_INCLUDE_DIRECTORIES
+        ${WESTEROS_INCLUDE_DIRS}
+        ${WESTEROSEGL_INCLUDE_DIRS}
+    )
+    list(APPEND WPE_LIBRARIES
+        ${WESTEROS_LIBRARIES}
+        ${WESTEROSEGL_LIBRARIES}
+    )
+    list(APPEND WPE_SOURCES
+        Source/Graphics/Westeros/RenderingBackendWesteros.cpp
+
+        Source/ViewBackend/Westeros/ViewBackendWesteros.cpp
+        Source/ViewBackend/Westeros/WesterosViewbackendInput.cpp
     )
 endif ()
 
