@@ -1946,6 +1946,13 @@ sub canUseEclipseNinjaGenerator(@)
     return commandExists("eclipse") && exitStatus(system("cmake -N -G 'Eclipse CDT4 - Ninja' >$devnull 2>&1")) == 0;
 }
 
+sub canUseCodeBlocksNinjaGenerator
+{
+    # Check that CodeBlocks Ninja generator is installed
+    my $devnull = File::Spec->devnull();
+    return exitStatus(system("cmake -N -G 'CodeBlocks - Ninja' >$devnull 2>&1")) == 0;
+}
+
 sub cmakeGeneratedBuildfile(@)
 {
     my ($willUseNinja) = @_;
@@ -1988,6 +1995,8 @@ sub generateBuildSystemFromCMakeProject
         push @args, "-G";
         if (canUseEclipseNinjaGenerator()) {
             push @args, "'Eclipse CDT4 - Ninja'";
+        } elsif (isQt() && canUseCodeBlocksNinjaGenerator()) {
+            push @args, "'CodeBlocks - Ninja'";
         } else {
             push @args, "Ninja";
         }
