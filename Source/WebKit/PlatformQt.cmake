@@ -169,8 +169,8 @@ list(APPEND WebKit_SOURCES
     qt/Api/qwebhistory.cpp
     qt/Api/qwebhistoryinterface.cpp
     qt/Api/qwebkitglobal.cpp
-#    qt/Api/qwebplugindatabase.cpp
-#    qt/Api/qwebpluginfactory.cpp
+    qt/Api/qwebplugindatabase.cpp
+    qt/Api/qwebpluginfactory.cpp
     qt/Api/qwebscriptworld.cpp
     qt/Api/qwebsecurityorigin.cpp
     qt/Api/qwebsettings.cpp
@@ -182,9 +182,6 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/EditorClientQt.cpp
     qt/WebCoreSupport/FrameLoaderClientQt.cpp
     qt/WebCoreSupport/FrameNetworkingContextQt.cpp
-#    qt/WebCoreSupport/FullScreenVideoQt.cpp
-#    qt/WebCoreSupport/GeolocationClientQt.cpp
-#    qt/WebCoreSupport/GeolocationPermissionClientQt.cpp
     qt/WebCoreSupport/IconDatabaseClientQt.cpp
     qt/WebCoreSupport/InitWebCoreQt.cpp
     qt/WebCoreSupport/InspectorClientQt.cpp
@@ -220,6 +217,19 @@ list(APPEND WebKit_LIBRARIES
     WebCoreTestSupport
 )
 
+if (ENABLE_GEOLOCATION)
+    list(APPEND WebKit_SOURCES
+        qt/WebCoreSupport/GeolocationClientQt.cpp
+        qt/WebCoreSupport/GeolocationPermissionClientQt.cpp
+    )
+endif ()
+
+if (ENABLE_VIDEO)
+    list(APPEND WebKit_SOURCES
+        qt/WebCoreSupport/FullScreenVideoQt.cpp
+    )
+endif ()
+
 ecm_generate_headers(
     QtWebKit_FORWARDING_HEADERS
     HEADER_NAMES
@@ -252,16 +262,15 @@ set(WebKitWidgets_SOURCES
     qt/WidgetApi/qwebinspector.cpp
     qt/WidgetApi/qwebpage.cpp
     qt/WidgetApi/qwebview.cpp
+    qt/WidgetApi/qwebviewaccessible.cpp
 
-#    qt/WidgetSupport/DefaultFullScreenVideoHandler.cpp
-#    qt/WidgetSupport/FullScreenVideoWidget.cpp
     qt/WidgetSupport/InitWebKitQt.cpp
     qt/WidgetSupport/InspectorClientWebPage.cpp
     qt/WidgetSupport/PageClientQt.cpp
     qt/WidgetSupport/QGraphicsWidgetPluginImpl.cpp
     qt/WidgetSupport/QStyleFacadeImp.cpp
     qt/WidgetSupport/QWebUndoCommand.cpp
-#    qt/WidgetSupport/QWidgetPluginImpl.cpp
+    qt/WidgetSupport/QWidgetPluginImpl.cpp
     qt/WidgetSupport/QtFallbackWebPopup.cpp
     qt/WidgetSupport/QtWebComboBox.cpp
 )
@@ -269,12 +278,6 @@ set(WebKitWidgets_SOURCES
 qt_wrap_cpp(WebKit WebKitWidgets_SOURCES
     qt/Api/qwebkitplatformplugin.h
 )
-
-if (ENABLE_ACCESSIBILITY)
-    list(APPEND WebKit_SOURCES
-        qt/WidgetApi/qwebviewaccessible.cpp
-    )
-endif ()
 
 set(WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
     ${WebKit_SYSTEM_INCLUDE_DIRECTORIES}
@@ -286,6 +289,17 @@ set(WebKitWidgets_LIBRARIES
     ${Qt5Widgets_LIBRARIES}
     PUBLIC WebKit
 )
+
+if (USE_QT_MULTIMEDIA)
+    list(APPEND WebKitWidgets_SOURCES
+        qt/WidgetSupport/DefaultFullScreenVideoHandler.cpp
+    )
+    if (NOT USE_GSTREAMER)
+        list(APPEND WebKitWidgets_SOURCES
+            qt/WidgetSupport/DefaultFullScreenVideoHandler.cpp
+        )
+    endif ()
+endif ()
 
 ecm_generate_headers(
     QtWebKitWidgets_FORWARDING_HEADERS
