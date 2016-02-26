@@ -1,5 +1,6 @@
 #ifndef WPE_Graphics_RenderingBackendWesteros_h
 #define WPE_Graphics_RenderingBackendWesteros_h
+#if WPE_BACKEND(WESTEROS)
 
 #include <wayland-client.h>
 #include <wayland-egl.h>
@@ -57,4 +58,5 @@ private:
 
 } // namespace WPE
 
+#endif // WPE_BACKEND(WESTEROS)
 #endif // WPE_Graphics_RenderingBackendWesteros_h

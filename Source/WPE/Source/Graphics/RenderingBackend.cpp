@@ -29,7 +29,6 @@
 #include "RenderingBackendBCMNexus.h"
 #include "RenderingBackendBCMRPi.h"
 #include "RenderingBackendIntelCE.h"
-#include "RenderingBackendWesteros.h"
 #include <cstdio>
 
 #if WPE_BUFFER_MANAGEMENT(GBM)
@@ -42,6 +41,10 @@
 
 #if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
 #include "RenderingBackendBCMNexusBM.h"
+#endif
+
+#if WPE_BACKEND(WESTEROS)
+#include "RenderingBackendWesteros.h"
 #endif
 
 namespace WPE {
