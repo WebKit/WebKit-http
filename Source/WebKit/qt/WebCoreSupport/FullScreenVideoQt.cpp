@@ -29,7 +29,7 @@
 #include "HTMLVideoElement.h"
 #include "Node.h"
 
-#if USE(GSTREAMER)
+#if USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)
 #include "GStreamerGWorld.h"
 #include "PlatformVideoWindowPrivate.h"
 #endif
