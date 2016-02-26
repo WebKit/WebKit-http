@@ -77,8 +77,10 @@
 #include "TextIterator.h"
 #include "UndoStepQt.h"
 #include "UserAgentQt.h"
+#include "WebDatabaseProvider.h"
 #include "WebEventConversion.h"
 #include "WebKitVersion.h"
+#include "WebStorageNamespaceProvider.h"
 #include "WindowFeatures.h"
 #include "qwebhistory_p.h"
 #if !PLUGIN_VIEW_IS_BROKEN
@@ -245,7 +247,12 @@ void QWebPageAdapter::initializeWebCorePage()
     pageConfiguration.editorClient = new EditorClientQt(this);
     pageConfiguration.dragClient = new DragClientQt(pageConfiguration.chromeClient);
     pageConfiguration.inspectorClient = new InspectorClientQt(this);
-    pageConfiguration.loaderClientForMainFrame = new FrameLoaderClientQt();
+    auto frameLoaderClient = new FrameLoaderClientQt();
+    pageConfiguration.loaderClientForMainFrame = frameLoaderClient;
+    pageConfiguration.progressTrackerClient = frameLoaderClient;
+    pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
+    pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::create(
+        QWebSettings::globalSettings()->localStoragePath());
     page = new Page(pageConfiguration);
 
 #if ENABLE(GEOLOCATION)

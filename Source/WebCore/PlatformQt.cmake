@@ -229,6 +229,21 @@ endif ()
 # Build the include path with duplicates removed
 list(REMOVE_DUPLICATES WebCore_SYSTEM_INCLUDE_DIRECTORIES)
 
+# TODO: Think how to unify fwd headers handling throughout WebKit
+set(WebCore_FORWARDING_HEADERS_DIRECTORIES
+    page
+    platform
+    storage
+
+    platform/sql
+    platform/text
+
+    Modules/indexeddb/legacy
+    Modules/indexeddb/shared
+)
+
+WEBKIT_CREATE_FORWARDING_HEADERS(WebCore DIRECTORIES ${WebCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebCore_FORWARDING_HEADERS_FILES})
+
 # From PlatformWin.cmake
 if (WIN32)
     list(APPEND WebCore_INCLUDE_DIRECTORIES

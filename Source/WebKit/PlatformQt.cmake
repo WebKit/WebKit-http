@@ -1,5 +1,7 @@
 include(ECMGenerateHeaders)
 
+add_definitions("-include WebKitPrefix.h")
+
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${DERIVED_SOURCES_DIR}"
@@ -138,6 +140,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 
     "${WEBKIT_DIR}/.."
     "${WEBKIT_DIR}/Storage"
+    "${WEBKIT_DIR}/qt"
     "${WEBKIT_DIR}/qt/Api"
     "${WEBKIT_DIR}/qt/WebCoreSupport"
 
@@ -151,7 +154,14 @@ list(REMOVE_ITEM WebKit_SOURCES
 )
 
 list(APPEND WebKit_SOURCES
+    Storage/StorageAreaImpl.cpp
+    Storage/StorageAreaSync.cpp
+    Storage/StorageNamespaceImpl.cpp
+    Storage/StorageSyncManager.cpp
     Storage/StorageThread.cpp
+    Storage/StorageTracker.cpp
+    Storage/WebDatabaseProvider.cpp
+    Storage/WebStorageNamespaceProvider.cpp
 
     qt/Api/qhttpheader.cpp
     qt/Api/qwebdatabase.cpp
@@ -191,6 +201,7 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/TextCheckerClientQt.cpp
     qt/WebCoreSupport/TextureMapperLayerClientQt.cpp
     qt/WebCoreSupport/UndoStepQt.cpp
+    qt/WebCoreSupport/VisitedLinkStoreQt.cpp
     qt/WebCoreSupport/WebEventConversion.cpp
 )
 
