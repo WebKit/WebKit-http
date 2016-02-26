@@ -95,12 +95,6 @@ LauncherWindow::LauncherWindow(WindowOptions* data, QGraphicsScene* sharedScene)
     , m_inspector(0)
     , m_formatMenuAction(0)
     , m_zoomAnimation(0)
-#if !defined(QT_NO_FILEDIALOG) && !defined(QT_NO_MESSAGEBOX)
-    , m_reply(0)
-#endif
-#ifndef QT_NO_LINEEDIT
-    , m_findFlag(0)
-#endif
 {
     if (data)
         m_windowOptions = *data;
