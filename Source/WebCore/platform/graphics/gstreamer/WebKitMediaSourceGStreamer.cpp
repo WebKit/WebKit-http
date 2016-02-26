@@ -740,6 +740,8 @@ static gboolean seekNeedsDataMainThread (gpointer user_data)
     WebCore::MediaPlayerPrivateGStreamerMSE* mediaPlayerPrivate = webKitMediaSrc->priv->mediaPlayerPrivate;
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
+    if (mediaPlayerPrivate==nullptr)
+        return G_SOURCE_REMOVE;
 
     for (GList* streams = webKitMediaSrc->priv->streams; streams; streams = streams->next) {
         Stream* stream = static_cast<Stream*>(streams->data);
