@@ -40,6 +40,7 @@
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "LocalizedStrings.h"
 #include "RenderTextControlMultiLine.h"
 #include "ShadowRoot.h"
@@ -169,18 +170,14 @@ void HTMLTextAreaElement::collectStyleForPresentationAttribute(const QualifiedNa
 void HTMLTextAreaElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == rowsAttr) {
-        int rows = value.toInt();
-        if (rows <= 0)
-            rows = defaultRows;
+        unsigned rows = limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(value, defaultRows);
         if (m_rows != rows) {
             m_rows = rows;
             if (renderer())
                 renderer()->setNeedsLayoutAndPrefWidthsRecalc();
         }
     } else if (name == colsAttr) {
-        int cols = value.toInt();
-        if (cols <= 0)
-            cols = defaultCols;
+        unsigned cols = limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(value, defaultCols);
         if (m_cols != cols) {
             m_cols = cols;
             if (renderer())
@@ -492,14 +489,14 @@ void HTMLTextAreaElement::accessKeyAction(bool)
     focus();
 }
 
-void HTMLTextAreaElement::setCols(int cols)
+void HTMLTextAreaElement::setCols(unsigned cols)
 {
-    setIntegralAttribute(colsAttr, cols);
+    setUnsignedIntegralAttribute(colsAttr, limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(cols, defaultCols));
 }
 
-void HTMLTextAreaElement::setRows(int rows)
+void HTMLTextAreaElement::setRows(unsigned rows)
 {
-    setIntegralAttribute(rowsAttr, rows);
+    setUnsignedIntegralAttribute(rowsAttr, limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(rows, defaultRows));
 }
 
 bool HTMLTextAreaElement::shouldUseInputMethod()

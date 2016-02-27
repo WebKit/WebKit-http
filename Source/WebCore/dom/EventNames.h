@@ -142,6 +142,7 @@ namespace WebCore {
     macro(loadend) \
     macro(loading) \
     macro(loadingdone) \
+    macro(loadingerror) \
     macro(loadstart) \
     macro(mark) \
     macro(message) \

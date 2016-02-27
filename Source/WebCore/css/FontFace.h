@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #include "JSDOMPromise.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace Deprecated {
@@ -45,9 +46,10 @@ class CSSFontFace;
 class CSSValue;
 class Dictionary;
 
-class FontFace : public RefCounted<FontFace>, public CSSFontFaceClient {
+class FontFace final : public RefCounted<FontFace>, public CSSFontFace::Client {
 public:
     static RefPtr<FontFace> create(JSC::ExecState&, ScriptExecutionContext&, const String& family, const Deprecated::ScriptValue& source, const Dictionary& descriptors, ExceptionCode&);
+    static Ref<FontFace> create(JSC::ExecState&, CSSFontFace&);
     virtual ~FontFace();
 
     void setFamily(const String&, ExceptionCode&);
@@ -76,14 +78,18 @@ public:
 
     static RefPtr<CSSValue> parseString(const String&, CSSPropertyID);
 
+    virtual void fontStateChanged(CSSFontFace&, CSSFontFace::Status oldState, CSSFontFace::Status newState) override;
+
+    WeakPtr<FontFace> createWeakPtr() const;
+
 private:
     FontFace(JSC::ExecState&, CSSFontSelector&);
-
-    void kick(CSSFontFace&) override;
+    FontFace(JSC::ExecState&, CSSFontFace&);
 
     void fulfillPromise();
     void rejectPromise(ExceptionCode);
 
+    WeakPtrFactory<FontFace> m_weakPtrFactory;
     Ref<CSSFontFace> m_backing;
     Promise m_promise;
 };

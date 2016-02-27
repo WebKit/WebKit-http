@@ -35,8 +35,6 @@ namespace bmalloc {
 
 class LargeObject {
 public:
-    static Range init(LargeChunk*);
-
     LargeObject();
     LargeObject(void*);
 
@@ -57,13 +55,13 @@ public:
     bool prevCanMerge() const;
     bool nextCanMerge() const;
 
-    Owner owner() const;
-    void setOwner(Owner) const;
-    
+    VMState vmState() const;
+    void setVMState(VMState) const;
+
     bool isMarked() const;
     void setMarked(bool) const;
-    
-    bool isValidAndFree(Owner, size_t) const;
+
+    bool isValidAndFree(VMState::HasPhysical, size_t) const;
 
     LargeObject merge() const;
     std::pair<LargeObject, LargeObject> split(size_t) const;
@@ -123,29 +121,25 @@ inline bool LargeObject::isFree() const
 
 inline bool LargeObject::prevCanMerge() const
 {
-    EndTag* prev = m_beginTag->prev();
-
-    return prev->isFree() && prev->owner() == this->owner();
+    return m_beginTag->prev()->isFree();
 }
 
 inline bool LargeObject::nextCanMerge() const
 {
-    BeginTag* next = m_endTag->next();
-
-    return next->isFree() && next->owner() == this->owner();
+    return m_endTag->next()->isFree();
 }
 
-inline Owner LargeObject::owner() const
+inline VMState LargeObject::vmState() const
 {
     validate();
-    return m_beginTag->owner();
+    return m_beginTag->vmState();
 }
 
-inline void LargeObject::setOwner(Owner owner) const
+inline void LargeObject::setVMState(VMState vmState) const
 {
     validate();
-    m_beginTag->setOwner(owner);
-    m_endTag->setOwner(owner);
+    m_beginTag->setVMState(vmState);
+    m_endTag->setVMState(vmState);
 }
 
 inline bool LargeObject::isMarked() const
@@ -161,7 +155,7 @@ inline void LargeObject::setMarked(bool isMarked) const
     m_endTag->setMarked(isMarked);
 }
 
-inline bool LargeObject::isValidAndFree(Owner expectedOwner, size_t expectedSize) const
+inline bool LargeObject::isValidAndFree(VMState::HasPhysical hasPhysical, size_t expectedSize) const
 {
     if (!m_beginTag->isFree())
         return false;
@@ -175,9 +169,9 @@ inline bool LargeObject::isValidAndFree(Owner expectedOwner, size_t expectedSize
     if (m_beginTag->compactBegin() != BoundaryTag::compactBegin(m_object))
         return false;
 
-    if (m_beginTag->owner() != expectedOwner)
+    if (m_beginTag->vmState().hasPhysical() != static_cast<bool>(hasPhysical))
         return false;
-    
+
     return true;
 }
 
@@ -189,10 +183,11 @@ inline LargeObject LargeObject::merge() const
     BeginTag* beginTag = m_beginTag;
     EndTag* endTag = m_endTag;
     Range range = this->range();
-    Owner owner = this->owner();
-    
+    VMState vmState = this->vmState();
+
     EndTag* prev = beginTag->prev();
-    if (prev->isFree() && prev->owner() == owner) {
+    if (prev->isFree()) {
+        vmState.merge(prev->vmState());
         Range left(range.begin() - prev->size(), prev->size());
         range = Range(left.begin(), left.size() + range.size());
 
@@ -203,7 +198,8 @@ inline LargeObject LargeObject::merge() const
     }
 
     BeginTag* next = endTag->next();
-    if (next->isFree() && next->owner() == owner) {
+    if (next->isFree()) {
+        vmState.merge(next->vmState());
         Range right(range.end(), next->size());
         range = Range(range.begin(), range.size() + right.size());
 
@@ -215,7 +211,7 @@ inline LargeObject LargeObject::merge() const
 
     beginTag->setRange(range);
     beginTag->setFree(true);
-    beginTag->setOwner(owner);
+    beginTag->setVMState(vmState);
     endTag->init(beginTag);
 
     return LargeObject(beginTag, endTag, range.begin());
@@ -254,7 +250,7 @@ inline void LargeObject::validateSelf() const
 
     BASSERT(m_beginTag->size() == m_endTag->size());
     BASSERT(m_beginTag->isFree() == m_endTag->isFree());
-    BASSERT(m_beginTag->owner() == m_endTag->owner());
+    BASSERT(m_beginTag->vmState() == m_endTag->vmState());
     BASSERT(m_beginTag->isMarked() == m_endTag->isMarked());
 }
 
@@ -271,33 +267,6 @@ inline void LargeObject::validate() const
         LargeObject next(DoNotValidate, begin() + size());
         next.validateSelf();
     }
-}
-
-inline Range LargeObject::init(LargeChunk* chunk)
-{
-    Range range(chunk->begin(), chunk->end() - chunk->begin());
-
-    BeginTag* beginTag = LargeChunk::beginTag(range.begin());
-    beginTag->setRange(range);
-    beginTag->setFree(true);
-    beginTag->setOwner(Owner::VMHeap);
-
-    EndTag* endTag = LargeChunk::endTag(range.begin(), range.size());
-    endTag->init(beginTag);
-
-    // Mark the left and right edges of our chunk as allocated. This naturally
-    // prevents merging logic from overflowing beyond our chunk, without requiring
-    // special-case checks.
-    
-    EndTag* leftSentinel = beginTag->prev();
-    BASSERT(leftSentinel >= static_cast<void*>(chunk));
-    leftSentinel->initSentinel();
-
-    BeginTag* rightSentinel = endTag->next();
-    BASSERT(rightSentinel < static_cast<void*>(range.begin()));
-    rightSentinel->initSentinel();
-    
-    return range;
 }
 
 } // namespace bmalloc

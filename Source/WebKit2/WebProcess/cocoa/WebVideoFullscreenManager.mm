@@ -217,12 +217,14 @@ WebVideoFullscreenInterfaceContext& WebVideoFullscreenManager::ensureInterface(u
 
 #pragma mark Interface to ChromeClient:
 
-bool WebVideoFullscreenManager::supportsVideoFullscreen() const
+bool WebVideoFullscreenManager::supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode) const
 {
 #if PLATFORM(IOS)
+    UNUSED_PARAM(mode);
     return Settings::avKitEnabled();
+#elif USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebVideoFullscreenManagerSupportsVideoFullscreenMac.mm>
 #else
-    // FIXME 153241: Return false until more of WebVideoFullscreenInterfaceMac has been implemented.
     return false;
 #endif
 }
@@ -275,6 +277,19 @@ void WebVideoFullscreenManager::exitVideoFullscreenForVideoElement(WebCore::HTML
 
     interface.setIsAnimating(true);
     m_page->send(Messages::WebVideoFullscreenManagerProxy::ExitFullscreen(contextId, clientRectForElement(&videoElement)), m_page->pageID());
+}
+
+void WebVideoFullscreenManager::setUpVideoControlsManager(WebCore::HTMLVideoElement& videoElement)
+{
+    auto addResult = m_videoElements.ensure(&videoElement, [&] { return nextContextId(); });
+    auto contextId = addResult.iterator->value;
+
+    RefPtr<WebVideoFullscreenModelVideoElement> model;
+    RefPtr<WebVideoFullscreenInterfaceContext> interface;
+    std::tie(model, interface) = ensureModelAndInterface(contextId);
+    model->setVideoElement(&videoElement);
+    
+    m_page->send(Messages::WebVideoFullscreenManagerProxy::SetUpVideoControlsManagerWithID(contextId), m_page->pageID());
 }
 
 #pragma mark Interface to WebVideoFullscreenInterfaceContext:

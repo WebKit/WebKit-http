@@ -33,6 +33,7 @@
 #include "ContentSecurityPolicySourceList.h"
 #include "DOMStringList.h"
 #include "Document.h"
+#include "DocumentLoader.h"
 #include "FormData.h"
 #include "FormDataList.h"
 #include "Frame.h"
@@ -78,7 +79,7 @@ void ContentSecurityPolicy::copyStateFrom(const ContentSecurityPolicy* other)
 {
     ASSERT(m_policies.isEmpty());
     for (auto& policy : other->m_policies)
-        didReceiveHeader(policy->header(), policy->headerType());
+        didReceiveHeader(policy->header(), policy->headerType(), ContentSecurityPolicy::PolicyFrom::Inherited);
 }
 
 ContentSecurityPolicyResponseHeaders ContentSecurityPolicy::responseHeaders() const
@@ -93,10 +94,10 @@ ContentSecurityPolicyResponseHeaders ContentSecurityPolicy::responseHeaders() co
 void ContentSecurityPolicy::didReceiveHeaders(const ContentSecurityPolicyResponseHeaders& headers)
 {
     for (auto& header : headers.m_headers)
-        didReceiveHeader(header.first, header.second);
+        didReceiveHeader(header.first, header.second, ContentSecurityPolicy::PolicyFrom::HTTPHeader);
 }
 
-void ContentSecurityPolicy::didReceiveHeader(const String& header, ContentSecurityPolicyHeaderType type)
+void ContentSecurityPolicy::didReceiveHeader(const String& header, ContentSecurityPolicyHeaderType type, ContentSecurityPolicy::PolicyFrom policyFrom)
 {
     // RFC2616, section 4.2 specifies that headers appearing multiple times can
     // be combined with a comma. Walk the header string, and parse each comma
@@ -110,7 +111,7 @@ void ContentSecurityPolicy::didReceiveHeader(const String& header, ContentSecuri
 
         // header1,header2 OR header1
         //        ^                  ^
-        std::unique_ptr<ContentSecurityPolicyDirectiveList> policy = ContentSecurityPolicyDirectiveList::create(*this, String(begin, position - begin), type);
+        std::unique_ptr<ContentSecurityPolicyDirectiveList> policy = ContentSecurityPolicyDirectiveList::create(*this, String(begin, position - begin), type, policyFrom);
         if (!policy->allowEval(0, ContentSecurityPolicy::ReportingStatus::SuppressReport))
             m_lastPolicyEvalDisabledErrorMessage = policy->evalDisabledErrorMessage();
 
@@ -341,29 +342,31 @@ void ContentSecurityPolicy::reportViolation(const String& directiveText, const S
     if (!frame)
         return;
 
-#if ENABLE(CSP_NEXT)
-    if (experimentalFeaturesEnabled()) {
-        // FIXME: This code means that we're gathering information like line numbers twice. Once we can bring this out from behind the flag, we should reuse the data gathered here when generating the JSON report below.
-        String documentURI = document.url().string();
-        String referrer = document.referrer();
-        String blockedURI = stripURLForUseInReport(document, blockedURL);
-        String violatedDirective = directiveText;
-        String originalPolicy = header;
-        String sourceFile = String();
-        int lineNumber = 0;
-        
-        Ref<ScriptCallStack> stack = createScriptCallStack(JSMainThreadExecState::currentState(), 2);
-        const ScriptCallFrame* callFrame = stack->firstNonNativeCallFrame();
-        if (callFrame && callFrame->lineNumber()) {
-            URL source = URL(URL(), callFrame->sourceURL());
-            sourceFile = stripURLForUseInReport(document, source);
-            lineNumber = callFrame->lineNumber();
-        }
+    String documentURI = document.url().strippedForUseAsReferrer();
+    String referrer = document.referrer();
+    String blockedURI = stripURLForUseInReport(document, blockedURL);
+    String violatedDirective = directiveText;
+    String originalPolicy = header;
+    ASSERT(document.loader());
+    unsigned short statusCode = document.url().protocolIs("http") && document.loader() ? document.loader()->response().httpStatusCode() : 0;
 
-        document.enqueueDocumentEvent(SecurityPolicyViolationEvent::create(eventNames().securitypolicyviolationEvent, false, false, documentURI, referrer, blockedURI, violatedDirective, effectiveDirective, originalPolicy, sourceFile, lineNumber));
+    String sourceFile;
+    int lineNumber = 0;
+    int columnNumber = 0;
+    RefPtr<ScriptCallStack> stack = createScriptCallStack(JSMainThreadExecState::currentState(), 2);
+    const ScriptCallFrame* callFrame = stack->firstNonNativeCallFrame();
+    if (callFrame && callFrame->lineNumber()) {
+        sourceFile = stripURLForUseInReport(document, URL(URL(), callFrame->sourceURL()));
+        lineNumber = callFrame->lineNumber();
+        columnNumber = callFrame->columnNumber();
     }
-#endif
 
+    // 1. Dispatch violation event.
+    bool canBubble = false;
+    bool cancelable = false;
+    document.enqueueDocumentEvent(SecurityPolicyViolationEvent::create(eventNames().securitypolicyviolationEvent, canBubble, cancelable, documentURI, referrer, blockedURI, violatedDirective, effectiveDirective, originalPolicy, sourceFile, statusCode, lineNumber, columnNumber));
+
+    // 2. Send violation report (if applicable).
     if (reportURIs.isEmpty())
         return;
 
@@ -378,31 +381,23 @@ void ContentSecurityPolicy::reportViolation(const String& directiveText, const S
     // harmless information.
 
     RefPtr<InspectorObject> cspReport = InspectorObject::create();
-    cspReport->setString(ASCIILiteral("document-uri"), document.url().strippedForUseAsReferrer());
-    cspReport->setString(ASCIILiteral("referrer"), document.referrer());
+    cspReport->setString(ASCIILiteral("document-uri"), documentURI);
+    cspReport->setString(ASCIILiteral("referrer"), referrer);
     cspReport->setString(ASCIILiteral("violated-directive"), directiveText);
-#if ENABLE(CSP_NEXT)
-    if (experimentalFeaturesEnabled())
-        cspReport->setString(ASCIILiteral("effective-directive"), effectiveDirective);
-#else
-    UNUSED_PARAM(effectiveDirective);
-#endif
-    cspReport->setString(ASCIILiteral("original-policy"), header);
-    cspReport->setString(ASCIILiteral("blocked-uri"), stripURLForUseInReport(document, blockedURL));
-
-    RefPtr<ScriptCallStack> stack = createScriptCallStack(JSMainThreadExecState::currentState(), 2);
-    const ScriptCallFrame* callFrame = stack->firstNonNativeCallFrame();
-    if (callFrame && callFrame->lineNumber()) {
-        URL source = URL(URL(), callFrame->sourceURL());
-        cspReport->setString(ASCIILiteral("source-file"), stripURLForUseInReport(document, source));
-        cspReport->setInteger(ASCIILiteral("line-number"), callFrame->lineNumber());
+    cspReport->setString(ASCIILiteral("effective-directive"), effectiveDirective);
+    cspReport->setString(ASCIILiteral("original-policy"), originalPolicy);
+    cspReport->setString(ASCIILiteral("blocked-uri"), blockedURI);
+    cspReport->setInteger(ASCIILiteral("status-code"), statusCode);
+    if (!sourceFile.isNull()) {
+        cspReport->setString(ASCIILiteral("source-file"), sourceFile);
+        cspReport->setInteger(ASCIILiteral("line-number"), lineNumber);
+        cspReport->setInteger(ASCIILiteral("column-number"), columnNumber);
     }
 
     RefPtr<InspectorObject> reportObject = InspectorObject::create();
     reportObject->setObject(ASCIILiteral("csp-report"), cspReport.release());
 
     RefPtr<FormData> report = FormData::create(reportObject->toJSONString().utf8());
-
     for (const auto& url : reportURIs)
         PingLoader::sendViolationReport(*frame, document.completeURL(url), report.copyRef(), ViolationReportType::ContentSecurityPolicy);
 }
@@ -455,6 +450,11 @@ void ContentSecurityPolicy::reportInvalidReflectedXSS(const String& invalidValue
 void ContentSecurityPolicy::reportInvalidDirectiveInReportOnlyMode(const String& directiveName) const
 {
     logToConsole("The Content Security Policy directive '" + directiveName + "' is ignored when delivered in a report-only policy.");
+}
+
+void ContentSecurityPolicy::reportInvalidDirectiveInHTTPEquivMeta(const String& directiveName) const
+{
+    logToConsole("The Content Security Policy directive '" + directiveName + "' is ignored when delivered via an HTML meta element.");
 }
 
 void ContentSecurityPolicy::reportInvalidDirectiveValueCharacter(const String& directiveName, const String& value) const

@@ -30,6 +30,7 @@
 
 #import "WKNSArray.h"
 #import "WKWebsiteDataRecordInternal.h"
+#import "WebsiteDataFetchOption.h"
 #import <wtf/BlockPtr.h>
 
 @implementation WKWebsiteDataStore
@@ -49,6 +50,32 @@
     _websiteDataStore->API::WebsiteDataStore::~WebsiteDataStore();
 
     [super dealloc];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if (!(self = [super init]))
+        return nil;
+
+    RetainPtr<WKWebsiteDataStore> dataStore;
+    if ([coder decodeBoolForKey:@"isDefaultDataStore"])
+        dataStore = [WKWebsiteDataStore defaultDataStore];
+    else
+        dataStore = [WKWebsiteDataStore nonPersistentDataStore];
+
+    [self release];
+
+    return dataStore.leakRef();
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    if (self == [WKWebsiteDataStore defaultDataStore]) {
+        [coder encodeBool:YES forKey:@"isDefaultDataStore"];
+        return;
+    }
+
+    ASSERT(!self.persistent);
 }
 
 - (BOOL)isPersistent
@@ -77,17 +104,7 @@ static std::chrono::system_clock::time_point toSystemClockTime(NSDate *date)
 
 - (void)fetchDataRecordsOfTypes:(NSSet *)dataTypes completionHandler:(void (^)(WK_ARRAY(WKWebsiteDataRecord *) *))completionHandler
 {
-    auto completionHandlerCopy = makeBlockPtr(completionHandler);
-
-    _websiteDataStore->websiteDataStore().fetchData(WebKit::toWebsiteDataTypes(dataTypes), [completionHandlerCopy](Vector<WebKit::WebsiteDataRecord> websiteDataRecords) {
-        Vector<RefPtr<API::Object>> elements;
-        elements.reserveInitialCapacity(websiteDataRecords.size());
-
-        for (auto& websiteDataRecord : websiteDataRecords)
-            elements.uncheckedAppend(API::WebsiteDataRecord::create(WTFMove(websiteDataRecord)));
-
-        completionHandlerCopy(wrapper(API::Array::create(WTFMove(elements))));
-    });
+    [self _fetchDataRecordsOfTypes:dataTypes withOptions:0 completionHandler:completionHandler];
 }
 
 - (void)removeDataOfTypes:(NSSet *)dataTypes modifiedSince:(NSDate *)date completionHandler:(void (^)(void))completionHandler
@@ -122,6 +139,29 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 - (API::Object&)_apiObject
 {
     return *_websiteDataStore;
+}
+
+@end
+
+@implementation WKWebsiteDataStore (WKPrivate)
+
+- (void)_fetchDataRecordsOfTypes:(WK_SET(NSString *) *)dataTypes withOptions:(_WKWebsiteDataStoreFetchOptions)options completionHandler:(void (^)(WK_ARRAY(WKWebsiteDataRecord *) *))completionHandler
+{
+    auto completionHandlerCopy = makeBlockPtr(completionHandler);
+
+    OptionSet<WebKit::WebsiteDataFetchOption> fetchOptions;
+    if (options & _WKWebsiteDataStoreFetchOptionComputeSizes)
+        fetchOptions |= WebKit::WebsiteDataFetchOption::ComputeSizes;
+
+    _websiteDataStore->websiteDataStore().fetchData(WebKit::toWebsiteDataTypes(dataTypes), fetchOptions, [completionHandlerCopy](Vector<WebKit::WebsiteDataRecord> websiteDataRecords) {
+        Vector<RefPtr<API::Object>> elements;
+        elements.reserveInitialCapacity(websiteDataRecords.size());
+
+        for (auto& websiteDataRecord : websiteDataRecords)
+            elements.uncheckedAppend(API::WebsiteDataRecord::create(WTFMove(websiteDataRecord)));
+
+        completionHandlerCopy(wrapper(API::Array::create(WTFMove(elements))));
+    });
 }
 
 @end

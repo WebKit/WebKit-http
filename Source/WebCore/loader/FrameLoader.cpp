@@ -3248,6 +3248,8 @@ void FrameLoader::loadSameDocumentItem(HistoryItem& item)
 {
     ASSERT(item.documentSequenceNumber() == history().currentItem()->documentSequenceNumber());
 
+    Ref<Frame> protect(m_frame);
+
     // Save user view state to the current history item here since we don't do a normal load.
     // FIXME: Does form state need to be saved here too?
     history().saveScrollPositionAndViewStateToItem(history().currentItem());
@@ -3334,9 +3336,17 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, FrameLoadType loa
             break;
         case FrameLoadType::Back:
         case FrameLoadType::Forward:
-        case FrameLoadType::IndexedBackForward:
-            request.setCachePolicy(ReturnCacheDataElseLoad);
+        case FrameLoadType::IndexedBackForward: {
+#if PLATFORM(IOS)
+            bool allowStaleData = true;
+#else
+            bool allowStaleData = !item.wasRestoredFromSession();
+#endif
+            if (allowStaleData)
+                request.setCachePolicy(ReturnCacheDataElseLoad);
+            item.setWasRestoredFromSession(false);
             break;
+        }
         case FrameLoadType::Standard:
         case FrameLoadType::RedirectWithLockedBackForwardList:
             break;

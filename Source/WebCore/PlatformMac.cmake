@@ -588,6 +588,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     Modules/indexeddb/legacy
     Modules/indexeddb/shared
+    Modules/indexeddb/server
 
     bindings/generic
     bindings/js
@@ -855,7 +856,6 @@ set(ObjC_Bindings_IDL_FILES
     html/ValidityState.idl
 
     page/AbstractView.idl
-    page/DOMSecurityPolicy.idl
 
     xml/XPathExpression.idl
     xml/XPathNSResolver.idl

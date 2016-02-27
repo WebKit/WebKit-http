@@ -107,7 +107,7 @@ template<> struct ClientTraits<WKPagePolicyClientBase> {
 };
 
 template<> struct ClientTraits<WKPageUIClientBase> {
-    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6> Versions;
+    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7> Versions;
 };
 
 #if ENABLE(CONTEXT_MENUS)
@@ -1410,7 +1410,7 @@ static void fixUpBotchedPageUIClient(WKPageRef pageRef, const WKPageUIClientBase
         WKPageSetIsResizableCallback                                        setIsResizable;
         WKPageGetWindowFrameCallback                                        getWindowFrame;
         WKPageSetWindowFrameCallback                                        setWindowFrame;
-        WKPageRunBeforeUnloadConfirmPanelCallback                           runBeforeUnloadConfirmPanel;
+        WKPageRunBeforeUnloadConfirmPanelCallback_deprecatedForUseWithV6    runBeforeUnloadConfirmPanel;
         WKPageUIClientCallback                                              didDraw;
         WKPageUIClientCallback                                              pageDidScroll;
         WKPageExceededDatabaseQuotaCallback                                 exceededDatabaseQuota;
@@ -1515,6 +1515,31 @@ static void fixUpBotchedPageUIClient(WKPageRef pageRef, const WKPageUIClientBase
 
 namespace WebKit {
 
+class RunBeforeUnloadConfirmPanelResultListener : public API::ObjectImpl<API::Object::Type::RunBeforeUnloadConfirmPanelResultListener> {
+public:
+    static PassRefPtr<RunBeforeUnloadConfirmPanelResultListener> create(std::function<void (bool)>&& completionHandler)
+    {
+        return adoptRef(new RunBeforeUnloadConfirmPanelResultListener(WTFMove(completionHandler)));
+    }
+
+    virtual ~RunBeforeUnloadConfirmPanelResultListener()
+    {
+    }
+
+    void call(bool result)
+    {
+        m_completionHandler(result);
+    }
+
+private:
+    explicit RunBeforeUnloadConfirmPanelResultListener(std::function<void (bool)>&& completionHandler)
+        : m_completionHandler(WTFMove(completionHandler))
+    {
+    }
+
+    std::function<void (bool)> m_completionHandler;
+};
+
 class RunJavaScriptAlertResultListener : public API::ObjectImpl<API::Object::Type::RunJavaScriptAlertResultListener> {
 public:
     static PassRefPtr<RunJavaScriptAlertResultListener> create(std::function<void ()>&& completionHandler)
@@ -1590,10 +1615,21 @@ private:
     std::function<void (const String&)> m_completionHandler;
 };
 
+WK_ADD_API_MAPPING(WKPageRunBeforeUnloadConfirmPanelResultListenerRef, RunBeforeUnloadConfirmPanelResultListener)
 WK_ADD_API_MAPPING(WKPageRunJavaScriptAlertResultListenerRef, RunJavaScriptAlertResultListener)
 WK_ADD_API_MAPPING(WKPageRunJavaScriptConfirmResultListenerRef, RunJavaScriptConfirmResultListener)
 WK_ADD_API_MAPPING(WKPageRunJavaScriptPromptResultListenerRef, RunJavaScriptPromptResultListener)
 
+}
+
+WKTypeID WKPageRunBeforeUnloadConfirmPanelResultListenerGetTypeID()
+{
+    return toAPI(RunBeforeUnloadConfirmPanelResultListener::APIType);
+}
+
+void WKPageRunBeforeUnloadConfirmPanelResultListenerCall(WKPageRunBeforeUnloadConfirmPanelResultListenerRef listener, bool result)
+{
+    toImpl(listener)->call(result);
 }
 
 WKTypeID WKPageRunJavaScriptAlertResultListenerGetTypeID()
@@ -1697,6 +1733,14 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
                 return;
 
             m_client.showPage(toAPI(page), m_client.base.clientInfo);
+        }
+
+        virtual void fullscreenMayReturnToInline(WebPageProxy* page) override
+        {
+            if (!m_client.fullscreenMayReturnToInline)
+                return;
+
+            m_client.fullscreenMayReturnToInline(toAPI(page), m_client.base.clientInfo);
         }
 
         virtual void close(WebPageProxy* page) override
@@ -1971,15 +2015,24 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
         virtual bool canRunBeforeUnloadConfirmPanel() const override
         {
-            return m_client.runBeforeUnloadConfirmPanel;
+            return m_client.runBeforeUnloadConfirmPanel_deprecatedForUseWithV6 || m_client.runBeforeUnloadConfirmPanel;
         }
 
-        virtual bool runBeforeUnloadConfirmPanel(WebPageProxy* page, const String& message, WebFrameProxy* frame) override
+        virtual void runBeforeUnloadConfirmPanel(WebKit::WebPageProxy* page, const WTF::String& message, WebKit::WebFrameProxy* frame, std::function<void (bool)> completionHandler) override
         {
-            if (!m_client.runBeforeUnloadConfirmPanel)
-                return true;
+            if (m_client.runBeforeUnloadConfirmPanel) {
+                RefPtr<RunBeforeUnloadConfirmPanelResultListener> listener = RunBeforeUnloadConfirmPanelResultListener::create(WTFMove(completionHandler));
+                m_client.runBeforeUnloadConfirmPanel(toAPI(page), toAPI(message.impl()), toAPI(frame), toAPI(listener.get()), m_client.base.clientInfo);
+                return;
+            }
 
-            return m_client.runBeforeUnloadConfirmPanel(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
+            if (m_client.runBeforeUnloadConfirmPanel_deprecatedForUseWithV6) {
+                bool result = m_client.runBeforeUnloadConfirmPanel_deprecatedForUseWithV6(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
+                completionHandler(result);
+                return;
+            }
+
+            completionHandler(true);
         }
 
         virtual void pageDidScroll(WebPageProxy* page) override
@@ -2018,21 +2071,21 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             return true;
         }
 
-        virtual bool decidePolicyForUserMediaPermissionRequest(WebPageProxy& page, WebFrameProxy& frame, API::SecurityOrigin& origin, UserMediaPermissionRequestProxy& permissionRequest) override
+        virtual bool decidePolicyForUserMediaPermissionRequest(WebPageProxy& page, WebFrameProxy& frame, API::SecurityOrigin& userMediaDocumentOrigin, API::SecurityOrigin& topLevelDocumentOrigin, UserMediaPermissionRequestProxy& permissionRequest) override
         {
             if (!m_client.decidePolicyForUserMediaPermissionRequest)
                 return false;
 
-            m_client.decidePolicyForUserMediaPermissionRequest(toAPI(&page), toAPI(&frame), toAPI(&origin), toAPI(&permissionRequest), m_client.base.clientInfo);
+            m_client.decidePolicyForUserMediaPermissionRequest(toAPI(&page), toAPI(&frame), toAPI(&userMediaDocumentOrigin), toAPI(&topLevelDocumentOrigin), toAPI(&permissionRequest), m_client.base.clientInfo);
             return true;
         }
 
-        virtual bool checkUserMediaPermissionForOrigin(WebPageProxy& page, WebFrameProxy& frame, API::SecurityOrigin& origin, UserMediaPermissionCheckProxy& request) override
+        virtual bool checkUserMediaPermissionForOrigin(WebPageProxy& page, WebFrameProxy& frame, API::SecurityOrigin& userMediaDocumentOrigin, API::SecurityOrigin& topLevelDocumentOrigin, UserMediaPermissionCheckProxy& request) override
         {
             if (!m_client.checkUserMediaPermissionForOrigin)
                 return false;
 
-            m_client.checkUserMediaPermissionForOrigin(toAPI(&page), toAPI(&frame), toAPI(&origin), toAPI(&request), m_client.base.clientInfo);
+            m_client.checkUserMediaPermissionForOrigin(toAPI(&page), toAPI(&frame), toAPI(&userMediaDocumentOrigin), toAPI(&topLevelDocumentOrigin), toAPI(&request), m_client.base.clientInfo);
             return true;
         }
         

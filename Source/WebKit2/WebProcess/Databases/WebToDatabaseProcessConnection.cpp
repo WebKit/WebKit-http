@@ -28,8 +28,7 @@
 #include "WebToDatabaseProcessConnection.h"
 
 #include "DatabaseToWebProcessConnectionMessages.h"
-#include "WebIDBServerConnection.h"
-#include "WebIDBServerConnectionMessages.h"
+#include "WebIDBConnectionToServerMessages.h"
 #include "WebProcess.h"
 #include <wtf/RunLoop.h>
 
@@ -52,10 +51,10 @@ WebToDatabaseProcessConnection::~WebToDatabaseProcessConnection()
 void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
 #if ENABLE(INDEXED_DATABASE)
-    if (decoder.messageReceiverName() == Messages::WebIDBServerConnection::messageReceiverName()) {
-        HashMap<uint64_t, WebIDBServerConnection*>::iterator connectionIterator = m_webIDBServerConnections.find(decoder.destinationID());
-        if (connectionIterator != m_webIDBServerConnections.end())
-            connectionIterator->value->didReceiveWebIDBServerConnectionMessage(connection, decoder);
+    if (decoder.messageReceiverName() == Messages::WebIDBConnectionToServer::messageReceiverName()) {
+        auto iterator = m_webIDBConnections.find(decoder.destinationID());
+        if (iterator != m_webIDBConnections.end())
+            iterator->value->didReceiveMessage(connection, decoder);
         return;
     }
 #endif
@@ -73,22 +72,6 @@ void WebToDatabaseProcessConnection::didReceiveInvalidMessage(IPC::Connection&, 
 }
 
 #if ENABLE(INDEXED_DATABASE)
-void WebToDatabaseProcessConnection::registerWebIDBServerConnection(WebIDBServerConnection& connection)
-{
-    ASSERT(!m_webIDBServerConnections.contains(connection.messageSenderDestinationID()));
-    m_webIDBServerConnections.set(connection.messageSenderDestinationID(), &connection);
-
-}
-
-void WebToDatabaseProcessConnection::removeWebIDBServerConnection(WebIDBServerConnection& connection)
-{
-    ASSERT(m_webIDBServerConnections.contains(connection.messageSenderDestinationID()));
-
-    send(Messages::DatabaseToWebProcessConnection::RemoveDatabaseProcessIDBConnection(connection.messageSenderDestinationID()));
-
-    m_webIDBServerConnections.remove(connection.messageSenderDestinationID());
-}
-
 WebIDBConnectionToServer& WebToDatabaseProcessConnection::idbConnectionToServerForSession(const SessionID& sessionID)
 {
     auto result = m_webIDBConnections.add(sessionID.sessionID(), nullptr);

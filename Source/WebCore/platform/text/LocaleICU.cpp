@@ -50,28 +50,22 @@ std::unique_ptr<Locale> Locale::create(const AtomicString& locale)
 
 LocaleICU::LocaleICU(const char* locale)
     : m_locale(locale)
-    , m_numberFormat(0)
-    , m_shortDateFormat(0)
-    , m_didCreateDecimalFormat(false)
-    , m_didCreateShortDateFormat(false)
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
-    , m_mediumTimeFormat(0)
-    , m_shortTimeFormat(0)
-    , m_didCreateTimeFormat(false)
-#endif
 {
 }
 
 LocaleICU::~LocaleICU()
 {
+#if !UCONFIG_NO_FORMATTING
     unum_close(m_numberFormat);
-    udat_close(m_shortDateFormat);
+#endif
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
+    udat_close(m_shortDateFormat);
     udat_close(m_mediumTimeFormat);
     udat_close(m_shortTimeFormat);
 #endif
 }
 
+#if !UCONFIG_NO_FORMATTING
 String LocaleICU::decimalSymbol(UNumberFormatSymbol symbol)
 {
     UErrorCode status = U_ZERO_ERROR;
@@ -102,9 +96,11 @@ String LocaleICU::decimalTextAttribute(UNumberFormatTextAttribute tag)
         return String();
     return String::adopt(buffer);
 }
+#endif
 
 void LocaleICU::initializeLocaleData()
 {
+#if !UCONFIG_NO_FORMATTING
     if (m_didCreateDecimalFormat)
         return;
     m_didCreateDecimalFormat = true;
@@ -128,8 +124,10 @@ void LocaleICU::initializeLocaleData()
     symbols.append(decimalSymbol(UNUM_GROUPING_SEPARATOR_SYMBOL));
     ASSERT(symbols.size() == DecimalSymbolsSize);
     setLocaleData(symbols, decimalTextAttribute(UNUM_POSITIVE_PREFIX), decimalTextAttribute(UNUM_POSITIVE_SUFFIX), decimalTextAttribute(UNUM_NEGATIVE_PREFIX), decimalTextAttribute(UNUM_NEGATIVE_SUFFIX));
+#endif
 }
 
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 bool LocaleICU::initializeShortDateFormat()
 {
     if (m_didCreateShortDateFormat)
@@ -146,7 +144,6 @@ UDateFormat* LocaleICU::openDateFormat(UDateFormatStyle timeStyle, UDateFormatSt
     return udat_open(timeStyle, dateStyle, m_locale.data(), gmtTimezone, WTF_ARRAY_LENGTH(gmtTimezone), 0, -1, &status);
 }
 
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 static String getDateFormatPattern(const UDateFormat* dateFormat)
 {
     if (!dateFormat)
@@ -187,9 +184,7 @@ std::unique_ptr<Vector<String>> LocaleICU::createLabelVector(const UDateFormat* 
     }
     return WTFMove(labels);
 }
-#endif
 
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 static std::unique_ptr<Vector<String>> createFallbackMonthLabels()
 {
     auto labels = std::make_unique<Vector<String>>();
@@ -211,9 +206,7 @@ const Vector<String>& LocaleICU::monthLabels()
     m_monthLabels = createFallbackMonthLabels();
     return *m_monthLabels;
 }
-#endif
 
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 static std::unique_ptr<Vector<String>> createFallbackAMPMLabels()
 {
     auto labels = std::make_unique<Vector<String>>();

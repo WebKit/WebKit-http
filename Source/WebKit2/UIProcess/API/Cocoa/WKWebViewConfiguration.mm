@@ -112,6 +112,10 @@ private:
     BOOL _serviceControlsEnabled;
     BOOL _imageControlsEnabled;
 #endif
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKWebViewConfigurationIvars.mm>
+#endif
 }
 
 - (instancetype)init
@@ -154,6 +158,53 @@ private:
 - (NSString *)description
 {
     return [NSString stringWithFormat:@"<%@: %p; processPool = %@; preferences = %@>", NSStringFromClass(self.class), self, self.processPool, self.preferences];
+}
+
+// FIXME: Encode the process pool, user content controller and website data store.
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeObject:self.processPool forKey:@"processPool"];
+    [coder encodeObject:self.preferences forKey:@"preferences"];
+    [coder encodeObject:self.userContentController forKey:@"userContentController"];
+    [coder encodeObject:self.websiteDataStore forKey:@"websiteDataStore"];
+
+    [coder encodeBool:self.suppressesIncrementalRendering forKey:@"suppressesIncrementalRendering"];
+    [coder encodeObject:self.applicationNameForUserAgent forKey:@"applicationNameForUserAgent"];
+    [coder encodeBool:self.allowsAirPlayForMediaPlayback forKey:@"allowsAirPlayForMediaPlayback"];
+    [coder encodeInteger:self.dataDetectorTypes forKey:@"dataDetectorTypes"];
+
+#if PLATFORM(IOS)
+    [coder encodeBool:self.allowsInlineMediaPlayback forKey:@"allowsInlineMediaPlayback"];
+    [coder encodeBool:self.requiresUserActionForMediaPlayback forKey:@"requiresUserActionForMediaPlayback"];
+    [coder encodeInteger:self.selectionGranularity forKey:@"selectionGranularity"];
+    [coder encodeBool:self.allowsPictureInPictureMediaPlayback forKey:@"allowsPictureInPictureMediaPlayback"];
+#endif
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if (!(self = [self init]))
+        return nil;
+
+    self.processPool = [coder decodeObjectForKey:@"processPool"];
+    self.preferences = [coder decodeObjectForKey:@"preferences"];
+    self.userContentController = [coder decodeObjectForKey:@"userContentController"];
+    self.websiteDataStore = [coder decodeObjectForKey:@"websiteDataStore"];
+
+    self.suppressesIncrementalRendering = [coder decodeBoolForKey:@"suppressesIncrementalRendering"];
+    self.applicationNameForUserAgent = [coder decodeObjectForKey:@"applicationNameForUserAgent"];
+    self.allowsAirPlayForMediaPlayback = [coder decodeBoolForKey:@"allowsAirPlayForMediaPlayback"];
+    self.dataDetectorTypes = [coder decodeIntegerForKey:@"dataDetectorTypes"];
+
+#if PLATFORM(IOS)
+    self.allowsInlineMediaPlayback = [coder decodeBoolForKey:@"allowsInlineMediaPlayback"];
+    self.requiresUserActionForMediaPlayback = [coder decodeBoolForKey:@"requiresUserActionForMediaPlayback"];
+    self.selectionGranularity = static_cast<WKSelectionGranularity>([coder decodeIntegerForKey:@"selectionGranularity"]);
+    self.allowsPictureInPictureMediaPlayback = [coder decodeBoolForKey:@"allowsPictureInPictureMediaPlayback"];
+#endif
+
+    return self;
 }
 
 - (id)copyWithZone:(NSZone *)zone
@@ -203,6 +254,10 @@ private:
 #endif
 #if ENABLE(WIRELESS_TARGET_PLAYBACK)
     configuration->_allowsAirPlayForMediaPlayback = self->_allowsAirPlayForMediaPlayback;
+#endif
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKWebViewConfigurationCopy.mm>
 #endif
 
     return configuration;
@@ -525,6 +580,10 @@ static NSString *defaultApplicationNameForUserAgent()
     _imageControlsEnabled = imageControlsEnabled;
 }
 #endif // PLATFORM(MAC)
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKWebViewConfigurationPrivateMethods.mm>
+#endif
 
 @end
 

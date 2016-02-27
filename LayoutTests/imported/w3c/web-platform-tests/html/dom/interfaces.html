@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset=utf-8>
-<!-- WARNING: These tests are preliminary and probably partly incorrect.  -->
+<!--  WARNING: These tests are preliminary and probably partly incorrect.   -->
 <title>HTML IDL tests</title>
 <meta name=timeout content=long>
 <script src=/resources/testharness.js></script>
@@ -468,7 +468,7 @@ interface DOMTokenList {
   stringifier;
 //  iterable<DOMString>;
 };</script>
-<!-- UI Events IDLs -->
+<!--  UI Events IDLs  -->
 <script type=text/plain class=untested>
 [Constructor(DOMString type, optional UIEventInit eventInitDict)]
 interface UIEvent : Event {
@@ -531,7 +531,7 @@ partial interface MouseEvent {
     void initMouseEvent (DOMString typeArg, boolean bubblesArg, boolean cancelableArg, Window? viewArg, long detailArg, long screenXArg, long screenYArg, long clientXArg, long clientYArg, boolean ctrlKeyArg, boolean altKeyArg, boolean shiftKeyArg, boolean metaKeyArg, short buttonArg, EventTarget? relatedTargetArg);
 };
 </script>
-<!-- Touch Events IDLs -->
+<!--  Touch Events IDLs  -->
 <script type=text/plain class=untested>
 interface Touch {
     readonly    attribute long        identifier;
@@ -544,7 +544,7 @@ interface Touch {
     readonly    attribute long        pageY;
 };
 </script>
-<!-- CSSOM IDLs -->
+<!--  CSSOM IDLs  -->
 <script type=text/plain class=untested>
 interface MediaList {
   stringifier attribute DOMString mediaText;
@@ -848,7 +848,7 @@ interface CSSPropertyValue {
 //};
 </script>
 
-<!-- HTML IDLs -->
+<!--  HTML IDLs  -->
 <script type=text/plain>
 typedef (Int8Array or Uint8Array or Uint8ClampedArray or
          Int16Array or Uint16Array or
@@ -859,7 +859,7 @@ typedef (Int8Array or Uint8Array or Uint8ClampedArray or
 [NoInterfaceObject, Exposed=Window]
 interface HTMLHyperlinkElementUtils {
   stringifier attribute USVString href;
-           attribute USVString origin;
+  readonly attribute USVString origin;
            attribute USVString protocol;
            attribute USVString username;
            attribute USVString password;
@@ -871,11 +871,11 @@ interface HTMLHyperlinkElementUtils {
            attribute USVString hash;
 };
 
-interface HTMLAllCollection : HTMLCollection {
-  // inherits length and 'getter'
-  Element? item(unsigned long index);
+interface HTMLAllCollection {
+  readonly attribute unsigned long length;
+  getter Element? item(unsigned long index);
   (HTMLCollection or Element)? item(DOMString name);
-  legacycaller getter (HTMLCollection or Element)? namedItem(DOMString name); // shadows inherited namedItem()
+  legacycaller getter (HTMLCollection or Element)? namedItem(DOMString name);
 };
 
 interface HTMLFormControlsCollection : HTMLCollection {
@@ -1048,7 +1048,7 @@ interface HTMLBaseElement : HTMLElement {
 
 interface HTMLLinkElement : HTMLElement {
            attribute DOMString href;
-           attribute DOMString crossOrigin;
+           attribute DOMString? crossOrigin;
            attribute DOMString rel;
   [PutForwards=value] readonly attribute DOMTokenList relList;
            attribute DOMString media;
@@ -1173,7 +1173,7 @@ interface HTMLImageElement : HTMLElement {
            attribute DOMString src;
            attribute DOMString srcset;
            attribute DOMString sizes;
-           attribute DOMString crossOrigin;
+           attribute DOMString? crossOrigin;
            attribute DOMString useMap;
            attribute boolean isMap;
            attribute unsigned long width;
@@ -1286,7 +1286,7 @@ interface HTMLMediaElement : HTMLElement {
   // network state
            attribute DOMString src;
   readonly attribute DOMString currentSrc;
-           attribute DOMString crossOrigin;
+           attribute DOMString? crossOrigin;
   const unsigned short NETWORK_EMPTY = 0;
   const unsigned short NETWORK_IDLE = 1;
   const unsigned short NETWORK_LOADING = 2;
@@ -1949,7 +1949,7 @@ interface HTMLScriptElement : HTMLElement {
            attribute DOMString charset;
            attribute boolean async;
            attribute boolean defer;
-           attribute DOMString crossOrigin;
+           attribute DOMString? crossOrigin;
            attribute DOMString text;
 
   // also has obsolete members
@@ -2322,7 +2322,7 @@ interface History {
 
 [Unforgeable] interface Location {
   stringifier attribute USVString href;
-           attribute USVString origin;
+  readonly attribute USVString origin;
            attribute USVString protocol;
            attribute USVString host;
            attribute USVString hostname;

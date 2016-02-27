@@ -32,17 +32,21 @@
 #import "JSDOMWindowBase.h"
 #import "LayerPool.h"
 #import "Logging.h"
+#import "ResourceUsageThread.h"
 #import "WebCoreSystemInterface.h"
 #import <mach/mach.h>
 #import <mach/task_info.h>
 #import <malloc/malloc.h>
 #import <notify.h>
 #import <wtf/CurrentTime.h>
+#import <sys/sysctl.h>
 
 #if PLATFORM(IOS)
 #import "SystemMemory.h"
 #import "WebCoreThread.h"
 #endif
+
+#define ENABLE_FMW_FOOTPRINT_COMPARISON 0
 
 extern "C" void cache_simulate_memory_warning_event(uint64_t);
 extern "C" void _sqlite3_purgeEligiblePagerCacheMemory(void);
@@ -128,11 +132,28 @@ void MemoryPressureHandler::install()
 
     // Allow simulation of memory pressure with "notifyutil -p org.WebKit.lowMemory"
     notify_register_dispatch("org.WebKit.lowMemory", &_notifyToken, dispatch_get_main_queue(), ^(int) {
+#if ENABLE(FMW_FOOTPRINT_COMPARISON)
+        auto footprintBefore = pagesPerVMTag();
+#endif
+
+        bool wasUnderMemoryPressure = m_underMemoryPressure;
+        m_underMemoryPressure = true;
+
         MemoryPressureHandler::singleton().respondToMemoryPressure(Critical::Yes, Synchronous::Yes);
 
         WTF::releaseFastMallocFreeMemory();
 
         malloc_zone_pressure_relief(nullptr, 0);
+
+#if ENABLE(FMW_FOOTPRINT_COMPARISON)
+        auto footprintAfter = pagesPerVMTag();
+        logFootprintComparison(footprintBefore, footprintAfter);
+#endif
+
+        // Since this is a simulation, unset the "under memory pressure" flag on next runloop.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            MemoryPressureHandler::singleton().setUnderMemoryPressure(wasUnderMemoryPressure);
+        });
     });
 
     m_installed = true;

@@ -48,13 +48,15 @@ void WeakSetConstructor::finishCreation(VM& vm, WeakSetPrototype* prototype)
 
 static EncodedJSValue JSC_HOST_CALL callWeakSet(ExecState* exec)
 {
-    return JSValue::encode(throwTypeError(exec, ASCIILiteral("WeakSet cannot be called as a function")));
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "WeakSet"));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructWeakSet(ExecState* exec)
 {
     JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
     Structure* weakSetStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->weakSetStructure());
+    if (exec->hadException())
+        return JSValue::encode(JSValue());
     JSWeakSet* weakSet = JSWeakSet::create(exec, weakSetStructure);
     JSValue iterable = exec->argument(0);
     if (iterable.isUndefinedOrNull())

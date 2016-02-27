@@ -35,7 +35,7 @@
  its web view configuration.
  */
 WK_CLASS_AVAILABLE(10_10, 8_0)
-@interface WKPreferences : NSObject
+@interface WKPreferences : NSObject <NSCoding>
 
 /*! @abstract The minimum font size in points.
  @discussion The default value is 0.

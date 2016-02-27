@@ -47,7 +47,7 @@ my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" 
                     "Event" => 1, "CSSRule" => 1, "CSSValue" => 1, "StyleSheet" => 1, "MediaList" => 1,
                     "Counter" => 1, "Rect" => 1, "RGBColor" => 1, "XPathExpression" => 1, "XPathResult" => 1,
                     "NodeIterator" => 1, "TreeWalker" => 1, "AbstractView" => 1, "Blob" => 1, "DOMTokenList" => 1,
-                    "HTMLCollection" => 1, "TextTrackCue" => 1);
+                    "HTMLCollection" => 1, "TextTrackCue" => 1, "AnimationTimeline" => 1);
 
 # Only objects derived from Node are released by the DOM object cache and can be
 # transfer none. Ideally we could use GetBaseClass with the parent type to check
@@ -56,9 +56,9 @@ my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" 
 # API that are not derived from Node, we will list them here to decide the
 # transfer type.
 my %transferFullTypeHash = ("AudioTrack" => 1, "AudioTrackList" => 1, "BarProp" => 1, "BatteryManager" => 1,
-    "CSSRuleList" => 1, "CSSStyleDeclaration" => 1, "CSSStyleSheet" => 1,
+    "CSSRuleList" => 1, "CSSStyleDeclaration" => 1, "CSSStyleSheet" => 1, "DocumentTimeline" => 1,
     "DOMApplicationCache" => 1, "DOMMimeType" => 1, "DOMMimeTypeArray" => 1, "DOMNamedFlowCollection" => 1,
-    "DOMPlugin" => 1, "DOMPluginArray" => 1, "DOMSecurityPolicy" => 1,
+    "DOMPlugin" => 1, "DOMPluginArray" => 1,
     "DOMSelection" => 1, "DOMSettableTokenList" => 1, "DOMStringList" => 1,
     "DOMWindow" => 1, "DOMWindowCSS" => 1, "EventTarget" => 1,
     "File" => 1, "FileList" => 1, "Gamepad" => 1, "GamepadList" => 1,
@@ -1046,6 +1046,12 @@ sub FunctionUsedToRaiseException {
         || $functionName eq "webkit_dom_range_to_string";
 }
 
+sub FunctionUsedToNotRaiseException {
+    my $functionName = shift;
+
+    return $functionName eq "webkit_dom_node_clone_node";
+}
+
 sub GenerateFunction {
     my ($object, $interfaceName, $function, $prefix, $parentNode) = @_;
 
@@ -1067,6 +1073,13 @@ sub GenerateFunction {
     # In this case, it's better to keep the GError parameter even if it's unused to keep
     # the API compatibility.
     my $usedToRaiseException = FunctionUsedToRaiseException($functionName);
+
+    # If a method didn't raise an exception but was changed to raise exceptions, the API
+    # changes because we use a explicit GError parameter to handle the exceptions.
+    # In this case, we add _with_error suffix and the previous version simply ignores the error.
+    if (FunctionUsedToNotRaiseException($functionName)) {
+        $functionName = $functionName . "_with_error";
+    }
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
     my $parentConditionalString = $codeGenerator->GenerateConditionalString($parentNode);

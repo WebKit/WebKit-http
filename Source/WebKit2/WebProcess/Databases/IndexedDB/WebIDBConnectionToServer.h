@@ -84,12 +84,16 @@ public:
     void didDeleteRecord(const WebCore::IDBResultData&);
     void didOpenCursor(const WebCore::IDBResultData&);
     void didIterateCursor(const WebCore::IDBResultData&);
+    void fireVersionChangeEvent(uint64_t uniqueDatabaseConnectionIdentifier, const WebCore::IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion);
+    void didStartTransaction(const WebCore::IDBResourceIdentifier& transactionIdentifier, const WebCore::IDBError&);
+    void notifyOpenDBRequestBlocked(const WebCore::IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion);
+
+    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
 
 private:
     WebIDBConnectionToServer();
 
     virtual IPC::Connection* messageSenderConnection() override final;
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
 
     uint64_t m_identifier;
     bool m_isOpenInServer { false };

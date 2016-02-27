@@ -1,3 +1,267 @@
+2016-02-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the support for universal slave password
+        https://bugs.webkit.org/show_bug.cgi?id=154476
+
+        Reviewed by David Kilzer.
+
+        Added the support for universalSlavePassword.
+
+        * config.json:
+        * public/include/report-processor.php:
+        (ReportProcessor::process):
+        (ReportProcessor::authenticate_and_construct_build_data): Extracted from process().
+
+2016-02-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Analysis tasks page complains about missing repository but with a wrong name
+        https://bugs.webkit.org/show_bug.cgi?id=154468
+
+        Reviewed by Chris Dumez.
+
+        Fixed the bug by using the right variable in the template literal.
+
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm.prototype._computeRootSetMap): Use querySelector here since Chrome doesn't have
+        getElementsByClassName on ShadowRoot.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype._createTestGroupAfterVerifyingRootSetList): Use name which is the name of
+        repository here.
+
+2016-02-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Revert an unintended change made in the previous commit.
+
+        * init-database.sql:
+
+2016-02-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should let user cancel pending A/B testing and hide failed ones
+        https://bugs.webkit.org/show_bug.cgi?id=154433
+
+        Reviewed by Chris Dumez.
+
+        Added a button to hide a test group in the details view (the bottom table) in the analysis task page, and
+        "Show hidden tests" link to show the hidden test groups on demand. When a test group is hidden, all pending
+        requests in the group will also be canceled since a common scenario of using this feature is that the user
+        had triggered an useless A/B testing; e.g. all builds will fail, wrong, etc... We can revisit and add the
+        capability to just cancel the pending requests and leaving the group visible later if necessary.
+
+        Run `ALTER TYPE build_request_status_type ADD VALUE 'canceled';` to add the new type.
+
+        * init-database.sql: Added testgroup_hidden column to analysis_test_groups table and added 'canceled'
+        as a value to build_request_status_type table.
+        * public/api/test-groups.php:
+        (format_test_group): Added 'hidden' field in the JSON result.
+        * public/privileged-api/update-test-group.php:
+        (main): Added the support for updating testgroup_hidden column. When this column is set to true, also
+        cancel all pending build requests (by setting its request_status to 'canceled' which will be ignore by
+        the syncing script).
+        * public/v3/components/test-group-results-table.js:
+        (TestGroupResultsTable.prototype.setTestGroup): Reset _renderedTestGroup here so that the next call to
+        render() will update the table; e.g. when build requests' status change from 'Pending' to 'Canceled'.
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.hasCompleted): A build request is considered complete/finished if it's canceled.
+        (BuildRequest.prototype.hasPending): Added.
+        (BuildRequest.prototype.statusLabel): Handle 'canceled' status.
+        * public/v3/models/test-group.js:
+        (TestGroup):
+        (TestGroup.prototype.updateSingleton): Added to update 'hidden' field.
+        (TestGroup.prototype.isHidden): Added.
+        (TestGroup.prototype.hasPending): Added.
+        (TestGroup.prototype.hasPending): Added.
+        (TestGroup.prototype.updateHiddenFlag): Added. Uses the privileged API to update testgroup_hidden column.
+        The JSON API also updates the status of the 'pending' build requests in the group to 'canceled'.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage): Added _showHiddenTestGroups and _filteredTestGroups as instance variables.
+        (AnalysisTaskPage.prototype._didFetchTestGroups):
+        (AnalysisTaskPage.prototype._showAllTestGroups): Added.
+        (AnalysisTaskPage.prototype._didUpdateTestGroupHiddenState): Extracted from _didFetchTestGroups.
+        (AnalysisTaskPage.prototype._renderTestGroupList): Use the filtered list of test groups to show the list
+        of test groups. When all test groups are shown, we would first show the hidden ones after the regular ones.
+        (AnalysisTaskPage.prototype._createTestGroupListItem): Extracted from _renderTestGroupList.
+        (AnalysisTaskPage.prototype._renderTestGroupDetails): Update the text inside the button to hide the test
+        group. Also show a warning text that the pending requests will be canceled if there are any.
+        (AnalysisTaskPage.prototype._hideCurrentTestGroup): Added.
+        (AnalysisTaskPage.cssTemplate): Updated the style.
+
+2016-02-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The rows in the analysis results table should be expandable
+        https://bugs.webkit.org/show_bug.cgi?id=154427
+
+        Reviewed by Chris Dumez.
+
+        Added "(Expand)" link between rows that have hidden points. Upon click it inserts the hidden rows.
+
+        We insert around five rows at a time when there are hundreds of hidden points but we also avoid leaving
+        behind expandable rows of less than two rows.
+
+        Also fixed a bug in CustomizableTestGroupForm that getElementsById would throw in the shipping Safari
+        because getElementsById doesn't exist on Element.prototype by using class name instead.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer):
+        (AnalysisResultsViewer.prototype.setCurrentTestGroup): Removed superfluous call to render().
+        (AnalysisResultsViewer.prototype.setPoints): Always show the start and the end points.
+        (AnalysisResultsViewer.prototype.buildRowGroups):
+        (AnalysisResultsViewer.prototype._buildRowsForPointsAndTestGroups): Add an instance of ExpandableRow which
+        shows a "(Expand)" link to show hidden rows here.
+        (AnalysisResultsViewer.prototype._expandBetween): Added. Expands rows between two points.
+        (AnalysisResultsViewer.cssTemplate): Added rules for "(Expand)" links.
+        (AnalysisResultsViewer.ExpandableRow): Added.
+        (AnalysisResultsViewer.ExpandableRow.prototype.resultContent): Added. Overrides what's in the results column.
+        (AnalysisResultsViewer.ExpandableRow.prototype.heading): Added. Generates "(Expand)" link.
+
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm.prototype._computeRootSetMap): Use getElementsByClassName instead of
+        getElementById.
+        (CustomizableTestGroupForm.prototype._classForLabelAndRepository): Renamed from _idForLabelAndRepository.
+        (CustomizableTestGroupForm._constructRevisionRadioButtons): Set class name instead of id.
+
+        * public/v3/components/results-table.js:
+        (ResultsTable.prototype.render): Don't generate radio buttons to select a row when root set is missing;
+        e.g. for rows that show "(Expand)" links.
+
+2016-02-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Statistically significant A/B testing results should be color coded in details view
+        https://bugs.webkit.org/show_bug.cgi?id=154414
+
+        Reviewed by Chris Dumez.
+
+        Color code the statistically significant comparisions in TestGroupResultsTable as done in the analysis
+        results viewer.
+
+        * public/v3/components/customizable-test-group-form.js:
+        (CustomizableTestGroupForm.cssTemplate): Build fix after r196768.
+        * public/v3/components/test-group-results-table.js:
+        (TestGroupResultsTable.prototype.buildRowGroups): Add the status as a class name.
+        (TestGroupResultsTable.cssTemplate): Added styles to color-code statistically significant results.
+
+2016-02-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI should allow custom revisions for A/B testing
+        https://bugs.webkit.org/show_bug.cgi?id=154379
+
+        Reviewed by Chris Dumez.
+
+        Added the capability to customize revisions selected in the overview chart and the results viewer.
+
+        Newly added CustomizableTestGroupForm is responsible for allowing users to modify the set of revisions in
+        a new A/B testing group. Unlike TestGroupForm which doesn't know anything about which revisions are selected
+        for each project/repository, CustomizableTestGroupForm is aware of the list of revisions used in each set.
+
+        The list of revisions used in each set is represented by RootSet if users had not customized them, and
+        CustomRootSet otherwise; the latter was added since regular RootSet object requires CommitLog and other
+        DataModelObjects which are hard to create without corresponding database entries.
+
+        * public/v3/components/customizable-test-group-form.js: Added.
+        (CustomizableTestGroupForm): Added.
+        (CustomizableTestGroupForm.prototype.setRootSetMap): Added.
+        (CustomizableTestGroupForm.prototype._submitted): Overrides the superclass' method.
+        (CustomizableTestGroupForm.prototype._customize): Ditto. Unlike TestGroupForm's callback, this class'
+        callback passes in a root set map as the third argument.
+        (CustomizableTestGroupForm.prototype._computeRootSetMap): Added. Returns this._rootSetMap, which is set by
+        AnalysisTaskPage if user had not customized the root sets. Otherwise return a new map with CustomRootSet's.
+        (CustomizableTestGroupForm.prototype.render): Added. Creates a table to allow customization of root sets.
+        (CustomizableTestGroupForm._constructRevisionRadioButtons): Added.
+        (CustomizableTestGroupForm._createRadioButton): Added.
+        (CustomizableTestGroupForm.cssTemplate): Added.
+        (CustomizableTestGroupForm.formContent): Added. This method is called by TestGroupForm.htmlTemplate.
+        * public/v3/components/test-group-form.js:
+        (TestGroupForm): Updated the various methods to not directly mutate DOM. Store the state in instance
+        variables and update DOM in render() as done elsewhere.
+        (TestGroupForm.prototype.setNeedsName): Deleted. We no longer need this flag since TestGroupForm which is
+        used for retries never needs a name and CustomizableTestGroupForm which is used to create a new test group
+        always requires a name.
+        (TestGroupForm.prototype.setDisabled):
+        (TestGroupForm.prototype.setLabel):
+        (TestGroupForm.prototype.setRepetitionCount):
+        (TestGroupForm.prototype.render): Added.
+        (TestGroupForm.prototype._submitted): Moved the code to prevent the default action has been moved to the
+        constructor since this method is overridden by CustomizableTestGroupForm.
+        (TestGroupForm.cssTemplate): Added.
+        (TestGroupForm.htmlTemplate):
+        (TestGroupForm.formContent): Extracted from htmlTemplate.
+        * public/v3/index.html:
+        * public/v3/models/repository.js:
+        (Repository.sortByNamePreferringOnesWithURL): Added.
+        * public/v3/models/root-set.js:
+        (RootSet.prototype.revisionForRepository): Added so that _createTestGroupAfterVerifyingRootSetList can retrieve
+        the revision information from CustomRootSet without going through CommitLog objects since CustomRootSet doesn't
+        have associated CommitLog objects.
+        (CustomRootSet): Added. Used by CustomizableTestGroupForm to create a custom root map since regular RootSet
+        requires CommitLog and other related objects which are hard to create without database entries.
+        (CustomRootSet.prototype.setRevisionForRepository): Added.
+        (CustomRootSet.prototype.repositories): Added.
+        (CustomRootSet.prototype.revisionForRepository): Added.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage):
+        (AnalysisTaskPage.prototype.render): Removed the reference to v2 UI since v3 UI is now strictly more powerful
+        than v2 UI. Also update the root set maps in each form here.
+        (AnalysisTaskPage.prototype._retryCurrentTestGroup): No longer takes unused name argument as it got removed
+        from TestGroupForm.
+        (AnalysisTaskPage.prototype._chartSelectionDidChange): No longer updates the disabled-ness here since it's now
+        done in render() via setRootSetMap().
+        (AnalysisTaskPage.prototype._createNewTestGroupFromChart): Now takes rootSetMap as an argument.
+        (AnalysisTaskPage.prototype._selectedRowInAnalysisResultsViewer): No longer updates the disabled-ness here
+        since it's now done in render() via setRootSetMap().
+        (AnalysisTaskPage.prototype._createNewTestGroupFromViewer): Now takes rootSetMap as an argument.
+        (AnalysisTaskPage.prototype._createTestGroupAfterVerifyingRootSetList): Take a dictionary of root set labels
+        such as A and B, which maps to a RootSet or a newly-added CustomRootSet.
+        (AnalysisTaskPage.htmlTemplate): Use customizable-test-group-form for creating a new A/B testing group. Retry
+        form will continue to use TestGroupForm since customizing revisions is non-sensical in retries.
+        (AnalysisTaskPage.cssTemplate): Updated the style.
+
+2016-02-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI has the capability to schedule an A/B testing in a specific range
+        https://bugs.webkit.org/show_bug.cgi?id=154329
+
+        Reviewed by Chris Dumez.
+
+        Extended AnalysisTaskChartPane and ResultsTable so that users can select a range of points in either
+        the overview chart pane and the results viewer table. Extracted TestGroupForm out of the analysis task
+        page and used right below those two components in the analysis task page.
+
+        * public/v3/components/results-table.js:
+        (ResultsTable):
+        (ResultsTable.prototype.setRangeSelectorLabels): Added.
+        (ResultsTable.prototype.setRangeSelectorCallback): Added.
+        (ResultsTable.prototype.selectedRange): Added.
+        (ResultsTable.prototype._rangeSelectorClicked): Added.
+        (ResultsTable.prototype.render): Generate radio boxes to select a range.
+
+        * public/v3/components/test-group-form.js:
+        (TestGroupForm):
+        (TestGroupForm.prototype.setStartCallback): Added.
+        (TestGroupForm.prototype.setNeedsName): Added.
+        (TestGroupForm.prototype.setDisabled): Added.
+        (TestGroupForm.prototype.setLabel): Added.
+        (TestGroupForm.prototype.setRepetitionCount): Added.
+        (TestGroupForm.prototype._submitted): Added.
+        (TestGroupForm.htmlTemplate): Extracted from AnalysisTaskPage.htmlTemplate.
+
+        * public/v3/index.html:
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane.prototype._mainSelectionDidChange): Added. Delegates the work to AnalysisTaskPage.
+        (AnalysisTaskChartPane.prototype.selectedPoints): Added.
+        (AnalysisTaskPage):
+        (AnalysisTaskPage.prototype.title):
+        (AnalysisTaskPage.prototype.render):
+        (AnalysisTaskPage.prototype._renderTestGroupDetails): Use TestGroupForm's methods instead of mutating DOM. 
+        (AnalysisTaskPage.prototype._retryCurrentTestGroup):
+        (AnalysisTaskPage.prototype._chartSelectionDidChange): Added.
+        (AnalysisTaskPage.prototype._createNewTestGroupFromChart): Added.
+        (AnalysisTaskPage.prototype._selectedRowInAnalysisResultsViewer): Added.
+        (AnalysisTaskPage.prototype._createNewTestGroupFromViewer): Added.
+        (AnalysisTaskPage.prototype._createRetryNameForTestGroup):
+        (AnalysisTaskPage.prototype._createTestGroupAfterVerifyingRootSetList): Extracted from _retryCurrentTestGroup
+        so that we can call it in _createNewTestGroupFromChart and _createNewTestGroupFromViewer.
+        (AnalysisTaskPage.htmlTemplate):
+
 2016-02-15  Ryosuke Niwa  <rniwa@webkit.org>
 
         Extract the code specific to v2 UI out of shared statistics.js

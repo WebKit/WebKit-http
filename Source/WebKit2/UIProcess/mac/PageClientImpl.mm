@@ -421,6 +421,15 @@ IntRect PageClientImpl::rootViewToScreen(const IntRect& rect)
     return enclosingIntRect(tempRect);
 }
 
+#if PLATFORM(MAC)
+IntRect PageClientImpl::rootViewToWindow(const WebCore::IntRect& rect)
+{
+    NSRect tempRect = rect;
+    tempRect = [m_view convertRect:tempRect toView:nil];
+    return enclosingIntRect(tempRect);
+}
+#endif
+
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool eventWasHandled)
 {
     m_impl->doneWithKeyEvent(event.nativeEvent(), eventWasHandled);
@@ -783,6 +792,11 @@ void* PageClientImpl::immediateActionAnimationControllerForHitTestResult(RefPtr<
 void PageClientImpl::didHandleAcceptedCandidate()
 {
     m_impl->didHandleAcceptedCandidate();
+}
+
+void PageClientImpl::isPlayingMediaDidChange()
+{
+    m_impl->isPlayingMediaDidChange();
 }
 
 void PageClientImpl::showPlatformContextMenu(NSMenu *menu, IntPoint location)

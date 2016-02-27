@@ -77,6 +77,16 @@ compositing/plugins
 http/tests/plugins
 fast/frames/sandboxed-iframe-plugins.html
 fast/loader/reload-zero-byte-plugin.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-mismatched-data.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-mismatched-url.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-data.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-url.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-allowed.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01.html
+http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-02.html
 
 # Pointer-lock not supported on iOS
 pointer-lock
@@ -2468,7 +2478,6 @@ editing/style/style-text-node-without-editable-parent.html
 editing/selection/minimal-user-select-crash.html
 
 # Editing tests that fail:
-editing/deleting/delete-emoji.html [ Failure ]
 editing/inserting/typing-at-end-of-line.html [ Failure ]
 editing/undo/undo-combined-delete-boundary.html [ Failure ]
 editing/undo/undo-combined-delete.html [ Failure ]
@@ -2839,6 +2848,10 @@ webkit.org/b/152134 fast/events/ios/single-tap-generates-click.html [ Pass Timeo
 webkit.org/b/152134 fast/events/ios/unscalable-viewport-clicks-on-doubletap.html [ Pass Timeout ]
 webkit.org/b/152134 fast/events/ios/viewport-device-width-at-initial-scale-fast-clicks.html  [ Pass Timeout ]
 webkit.org/b/152134 fast/events/ios/viewport-no-width-value-allows-double-tap.html  [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/fast-click-double-tap-sends-click.html  [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/fast-click-double-tap-zooms-on-text.html  [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/fast-click-double-tap-zooms-on-image.html  [ Pass Timeout ]
+webkit.org/b/152134 fast/events/ios/no-fast-click-double-tap-causes-zoom.html  [ Pass Timeout ]
 
 # Failing tests related to picture element
 webkit.org/b/152141 fast/picture/image-picture-1x.html [ Skip ]

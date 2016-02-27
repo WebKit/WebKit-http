@@ -26,8 +26,8 @@
 #ifndef WebsiteData_h
 #define WebsiteData_h
 
-#include "WebsiteDataTypes.h"
 #include <WebCore/SecurityOrigin.h>
+#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
@@ -38,10 +38,13 @@ class ArgumentEncoder;
 
 namespace WebKit {
 
+enum class WebsiteDataType;
+
 struct WebsiteData {
     struct Entry {
         RefPtr<WebCore::SecurityOrigin> origin;
-        WebsiteDataTypes type;
+        WebsiteDataType type;
+        uint64_t size;
 
         void encode(IPC::ArgumentEncoder&) const;
         static bool decode(IPC::ArgumentDecoder&, WebsiteData::Entry&);

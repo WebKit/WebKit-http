@@ -43,10 +43,8 @@
 #include "WKGeometry.h"
 #include "WKNumber.h"
 #include "WKPageGroup.h"
-#include "WKPopupItem.h"
 #include "WKString.h"
 #include "WKView.h"
-#include "WKViewEfl.h"
 #include "WebImage.h"
 #include "WebPageGroup.h"
 #include "WebPageProxy.h"
@@ -310,8 +308,7 @@ EwkView::EwkView(WebView* view, Evas_Object* evasObject)
     ASSERT(m_evasObject);
     ASSERT(m_context);
 
-    // FIXME: Remove when possible.
-    static_cast<WebViewEfl*>(m_webView.get())->setEwkView(this);
+    m_webView->setEwkView(this);
 
     // FIXME: Consider it to move into EvasGLContext.
     m_evasGL = evas_gl_new(evas_object_evas_get(m_evasObject));
@@ -574,7 +571,7 @@ void EwkView::displayTimerFired()
         if (!surface)
             return;
 
-        static_cast<WebViewEfl*>(m_webView.get())->paintToCairoSurface(surface.get());
+        m_webView->paintToCairoSurface(surface.get());
 
         evas_object_image_data_update_add(sd->image, 0, 0, sd->view.w, sd->view.h);
         return;
@@ -692,7 +689,7 @@ const char* EwkView::themePath() const
 void EwkView::setThemePath(const char* theme)
 {
     m_theme = theme;
-    static_cast<WebViewEfl*>(m_webView.get())->setThemePath(String::fromUTF8(m_theme, m_theme.length()));
+    m_webView->setThemePath(String::fromUTF8(m_theme, m_theme.length()));
 }
 
 void EwkView::setCustomTextEncodingName(const char* customEncoding)
@@ -794,7 +791,7 @@ void EwkView::feedTouchEvent(Ewk_Touch_Event_Type type, const Eina_List* points,
     }
     WKRetainPtr<WKArrayRef> wkTouchPoints(AdoptWK, WKArrayCreateAdoptingValues(touchPoints.get(), length));
 
-    static_cast<WebViewEfl*>(m_webView.get())->sendTouchEvent(EwkTouchEvent::create(static_cast<WKEventType>(type), wkTouchPoints.get(), toWKEventModifiers(modifiers), ecore_time_get()).get());
+    m_webView->sendTouchEvent(EwkTouchEvent::create(static_cast<WKEventType>(type), wkTouchPoints.get(), toWKEventModifiers(modifiers), ecore_time_get()).get());
 }
 
 void EwkView::setTouchEventsEnabled(bool enabled)
@@ -969,12 +966,12 @@ void EwkView::hideContextMenu()
     m_contextMenu = nullptr;
 }
 
-void EwkView::requestPopupMenu(WKPopupMenuListenerRef popupMenuListener, const WKRect& rect, WKPopupItemTextDirection textDirection, double pageScaleFactor, WKArrayRef items, int32_t selectedIndex)
+void EwkView::requestPopupMenu(WebPopupMenuProxyEfl* popupMenuProxy, const WebCore::IntRect& rect, WebCore::TextDirection textDirection, double pageScaleFactor, const Vector<WebPopupItem>& items, int32_t selectedIndex)
 {
     Ewk_View_Smart_Data* sd = smartData();
     ASSERT(sd->api);
 
-    ASSERT(popupMenuListener);
+    ASSERT(popupMenuProxy);
 
     if (!sd->api->popup_menu_show)
         return;
@@ -982,18 +979,18 @@ void EwkView::requestPopupMenu(WKPopupMenuListenerRef popupMenuListener, const W
     if (m_popupMenu)
         closePopupMenu();
 
-    m_popupMenu = std::make_unique<EwkPopupMenu>(this, popupMenuListener, items, selectedIndex);
+    m_popupMenu = std::make_unique<EwkPopupMenu>(popupMenuProxy, items, selectedIndex);
 
-    IntPoint popupMenuPosition = m_webView->contentsToUserViewport(toIntPoint(rect.origin));
+    IntPoint popupMenuPosition = m_webView->contentsToUserViewport(rect.location());
 
     Eina_Rectangle einaRect;
-    EINA_RECTANGLE_SET(&einaRect, popupMenuPosition.x(), popupMenuPosition.y(), rect.size.width, rect.size.height);
+    EINA_RECTANGLE_SET(&einaRect, popupMenuPosition.x(), popupMenuPosition.y(), rect.width(), rect.height());
 
     switch (textDirection) {
-    case kWKPopupItemTextDirectionRTL:
+    case WebCore::TextDirection::RTL:
         sd->api->popup_menu_show(sd, einaRect, EWK_TEXT_DIRECTION_RIGHT_TO_LEFT, pageScaleFactor, m_popupMenu.get());
         break;
-    case kWKPopupItemTextDirectionLTR:
+    case WebCore::TextDirection::LTR:
         sd->api->popup_menu_show(sd, einaRect, EWK_TEXT_DIRECTION_LEFT_TO_RIGHT, pageScaleFactor, m_popupMenu.get());
         break;
     }
@@ -1299,7 +1296,7 @@ void EwkView::handleEvasObjectColorSet(Evas_Object* evasObject, int red, int gre
     Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
     ASSERT(smartData);
 
-    Color backgroundColor = static_cast<WebViewEfl*>(toEwkView(smartData)->webView())->viewBackgroundColor();
+    Color backgroundColor = toEwkView(smartData)->webView()->viewBackgroundColor();
 
     evas_object_image_alpha_set(smartData->image, alpha < 255 || backgroundColor.alpha() < 255);
     parentSmartClass.color_set(evasObject, red, green, blue, alpha);
@@ -1386,7 +1383,7 @@ void EwkView::feedTouchEvents(Ewk_Touch_Event_Type type, double timestamp)
     }
     WKRetainPtr<WKArrayRef> wkTouchPoints(AdoptWK, WKArrayCreateAdoptingValues(touchPoints.get(), length));
 
-    static_cast<WebViewEfl*>(m_webView.get())->sendTouchEvent(EwkTouchEvent::create(static_cast<WKEventType>(type), wkTouchPoints.get(), toWKEventModifiers(evas_key_modifier_get(sd->base.evas)), timestamp).get());
+    m_webView->sendTouchEvent(EwkTouchEvent::create(static_cast<WKEventType>(type), wkTouchPoints.get(), toWKEventModifiers(evas_key_modifier_get(sd->base.evas)), timestamp).get());
 }
 
 void EwkView::handleMouseDownForTouch(void*, Evas*, Evas_Object* ewkView, void* eventInfo)
@@ -1494,12 +1491,12 @@ void EwkView::setBackgroundColor(int red, int green, int blue, int alpha)
     evas_object_color_get(image, nullptr, nullptr, nullptr, &objectAlpha);
     evas_object_image_alpha_set(image, alpha < 255 || objectAlpha < 255);
 
-    static_cast<WebViewEfl*>(m_webView.get())->setViewBackgroundColor(WebCore::Color(red, green, blue, alpha));
+    m_webView->setViewBackgroundColor(WebCore::Color(red, green, blue, alpha));
 }
 
 Color EwkView::backgroundColor()
 {
-    return static_cast<WebViewEfl*>(m_webView.get())->viewBackgroundColor();
+    return m_webView->viewBackgroundColor();
 }
 
 Evas_Smart_Class EwkView::parentSmartClass = EVAS_SMART_CLASS_INIT_NULL;

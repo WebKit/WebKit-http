@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,37 +24,46 @@
  */
 
 #include "config.h"
-
-#include "DFGCommon.h"
-#include "FTLB3Output.h"
 #include "FTLOutput.h"
 
 #if ENABLE(FTL_JIT)
 
+#include "B3MathExtras.h"
+#include "B3StackmapGenerationParams.h"
+
 namespace JSC { namespace FTL {
 
-#if !FTL_USES_B3
+using namespace B3;
 
 Output::Output(State& state)
-    : IntrinsicRepository(state.context)
-    , m_function(0)
-    , m_heaps(0)
-    , m_builder(llvm->CreateBuilderInContext(m_context))
-    , m_block(0)
-    , m_nextBlock(0)
+    : m_proc(*state.proc)
 {
 }
 
 Output::~Output()
 {
-    llvm->DisposeBuilder(m_builder);
 }
 
-void Output::initialize(LModule module, LValue function, AbstractHeapRepository& heaps)
+void Output::initialize(AbstractHeapRepository& heaps)
 {
-    IntrinsicRepository::initialize(module);
-    m_function = function;
     m_heaps = &heaps;
+}
+
+LBasicBlock Output::newBlock(const char*)
+{
+    LBasicBlock result = m_proc.addBlock(m_frequency);
+
+    if (!m_nextBlock)
+        m_blockOrder.append(result);
+    else
+        m_blockOrder.insertBefore(m_nextBlock, result);
+
+    return result;
+}
+
+void Output::applyBlockOrder()
+{
+    m_proc.setBlockOrder(m_blockOrder);
 }
 
 LBasicBlock Output::appendTo(LBasicBlock block, LBasicBlock nextBlock)
@@ -66,121 +75,125 @@ LBasicBlock Output::appendTo(LBasicBlock block, LBasicBlock nextBlock)
 void Output::appendTo(LBasicBlock block)
 {
     m_block = block;
-    
-    llvm->PositionBuilderAtEnd(m_builder, block);
 }
 
-LBasicBlock Output::newBlock(const char* name)
+SlotBaseValue* Output::lockedStackSlot(size_t bytes)
 {
-    if (!m_nextBlock)
-        return appendBasicBlock(m_context, m_function, name);
-    return insertBasicBlock(m_context, m_nextBlock, name);
+    return m_block->appendNew<SlotBaseValue>(m_proc, origin(), m_proc.addStackSlot(bytes));
 }
 
-LValue Output::chillDiv(LValue numerator, LValue denominator)
+LValue Output::neg(LValue value)
 {
-    LBasicBlock unsafeDenominator = FTL_NEW_BLOCK(*this, ("ChillDiv unsafe denominator"));
-    LBasicBlock continuation = FTL_NEW_BLOCK(*this, ("ChillDiv continuation"));
-    LBasicBlock done = FTL_NEW_BLOCK(*this, ("ChillDiv done"));
-    LBasicBlock divByZero = FTL_NEW_BLOCK(*this, ("ChillDiv divide by zero"));
-    LBasicBlock notDivByZero = FTL_NEW_BLOCK(*this, ("ChillDiv not divide by zero"));
-    LBasicBlock neg2ToThe31ByNeg1 = FTL_NEW_BLOCK(*this, ("ArithDiv -2^31/-1"));
-
-    LValue adjustedDenominator = add(denominator, int32One);
-    branch(
-        above(adjustedDenominator, int32One),
-        usually(continuation), rarely(unsafeDenominator));
-
-    Vector<ValueFromBlock, 3> results;
-    LBasicBlock lastNext = appendTo(unsafeDenominator, continuation);
-
-    LValue neg2ToThe31 = constInt32(-2147483647-1);
-    branch(isZero32(denominator), rarely(divByZero), usually(notDivByZero));
-
-    appendTo(divByZero, notDivByZero);
-    results.append(anchor(int32Zero));
-    jump(done);
-
-    appendTo(notDivByZero, neg2ToThe31ByNeg1);
-    branch(equal(numerator, neg2ToThe31),
-        rarely(neg2ToThe31ByNeg1), usually(continuation));
-
-    appendTo(neg2ToThe31ByNeg1, continuation);
-    results.append(anchor(neg2ToThe31));
-    jump(done);
-
-    appendTo(continuation, done);
-    LValue result = div(numerator, denominator);
-    results.append(anchor(result));
-    jump(done);
-
-    appendTo(done, lastNext);
-    return phi(int32, results);
+    return m_block->appendNew<Value>(m_proc, B3::Neg, origin(), value);
 }
 
-LValue Output::chillMod(LValue numerator, LValue denominator)
+LValue Output::bitNot(LValue value)
 {
-    LBasicBlock unsafeDenominator = FTL_NEW_BLOCK(*this, ("ChillMod unsafe denominator"));
-    LBasicBlock continuation = FTL_NEW_BLOCK(*this, ("ChillMod continuation"));
-    LBasicBlock done = FTL_NEW_BLOCK(*this, ("ChillMod done"));
-    LBasicBlock divByZero = FTL_NEW_BLOCK(*this, ("ChillMod divide by zero"));
-    LBasicBlock notDivByZero = FTL_NEW_BLOCK(*this, ("ChillMod not divide by zero"));
-    LBasicBlock neg2ToThe31ByNeg1 = FTL_NEW_BLOCK(*this, ("ChillMod -2^31/-1"));
-
-    LValue adjustedDenominator = add(denominator, int32One);
-    branch(
-        above(adjustedDenominator, int32One),
-        usually(continuation), rarely(unsafeDenominator));
-
-    Vector<ValueFromBlock, 3> results;
-    LBasicBlock lastNext = appendTo(unsafeDenominator, continuation);
-
-    LValue neg2ToThe31 = constInt32(-2147483647-1);
-    branch(isZero32(denominator), rarely(divByZero), usually(notDivByZero));
-
-    appendTo(divByZero, notDivByZero);
-    results.append(anchor(int32Zero));
-    jump(done);
-
-    appendTo(notDivByZero, neg2ToThe31ByNeg1);
-    branch(equal(numerator, neg2ToThe31),
-        rarely(neg2ToThe31ByNeg1), usually(continuation));
-
-    appendTo(neg2ToThe31ByNeg1, continuation);
-    results.append(anchor(int32Zero));
-    jump(done);
-
-    appendTo(continuation, done);
-    LValue result = mod(numerator, denominator);
-    results.append(anchor(result));
-    jump(done);
-
-    appendTo(done, lastNext);
-    return phi(int32, results);
+    return m_block->appendNew<B3::Value>(m_proc, B3::BitXor, origin(),
+        value,
+        m_block->appendIntConstant(m_proc, origin(), value->type(), -1));
 }
 
-LValue Output::sensibleDoubleToInt(LValue value)
+LValue Output::logicalNot(LValue value)
 {
-    RELEASE_ASSERT(isX86());
-    return call(
-        int32,
-        x86SSE2CvtTSD2SIIntrinsic(),
-        insertElement(
-            insertElement(getUndef(vectorType(doubleType, 2)), value, int32Zero),
-            doubleZero, int32One));
+    return m_block->appendNew<B3::Value>(m_proc, B3::Equal, origin(), value, int32Zero);
 }
 
-LValue Output::load(TypedPointer pointer, LType refType)
+LValue Output::load(TypedPointer pointer, LType type)
 {
-    LValue result = get(intToPtr(pointer.value(), refType));
-    pointer.heap().decorateInstruction(result, *m_heaps);
+    LValue load = m_block->appendNew<MemoryValue>(m_proc, Load, type, origin(), pointer.value());
+    pointer.heap().decorateInstruction(load, *m_heaps);
+    return load;
+}
+
+LValue Output::doublePowi(LValue x, LValue y)
+{
+    // FIXME: powDoubleInt32() should be inlined here since Output knows about block layout and
+    // should be involved in any operation that creates blocks.
+    // https://bugs.webkit.org/show_bug.cgi?id=152223
+    auto result = powDoubleInt32(m_proc, m_block, origin(), x, y);
+    m_block = result.first;
+    return result.second;
+}
+
+bool Output::hasSensibleDoubleToInt()
+{
+    return optimizeForX86();
+}
+
+LValue Output::doubleToInt(LValue value)
+{
+    PatchpointValue* result = patchpoint(Int32);
+    result->append(value, ValueRep::SomeRegister);
+    result->setGenerator(
+        [] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.truncateDoubleToInt32(params[1].fpr(), params[0].gpr());
+        });
+    result->effects = Effects::none();
     return result;
 }
 
-void Output::store(LValue value, TypedPointer pointer, LType refType)
+LValue Output::doubleToUInt(LValue value)
 {
-    LValue result = set(value, intToPtr(pointer.value(), refType));
-    pointer.heap().decorateInstruction(result, *m_heaps);
+    PatchpointValue* result = patchpoint(Int32);
+    result->append(value, ValueRep::SomeRegister);
+    result->setGenerator(
+        [] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.truncateDoubleToUint32(params[1].fpr(), params[0].gpr());
+        });
+    result->effects = Effects::none();
+    return result;
+}
+
+LValue Output::unsignedToDouble(LValue value)
+{
+    return intToDouble(zeroExt(value, Int64));
+}
+
+LValue Output::load8SignExt32(TypedPointer pointer)
+{
+    LValue load = m_block->appendNew<MemoryValue>(m_proc, Load8S, Int32, origin(), pointer.value());
+    pointer.heap().decorateInstruction(load, *m_heaps);
+    return load;
+}
+
+LValue Output::load8ZeroExt32(TypedPointer pointer)
+{
+    LValue load = m_block->appendNew<MemoryValue>(m_proc, Load8Z, Int32, origin(), pointer.value());
+    pointer.heap().decorateInstruction(load, *m_heaps);
+    return load;
+}
+
+LValue Output::load16SignExt32(TypedPointer pointer)
+{
+    LValue load = m_block->appendNew<MemoryValue>(m_proc, Load16S, Int32, origin(), pointer.value());
+    pointer.heap().decorateInstruction(load, *m_heaps);
+    return load;
+}
+
+LValue Output::load16ZeroExt32(TypedPointer pointer)
+{
+    LValue load = m_block->appendNew<MemoryValue>(m_proc, Load16Z, Int32, origin(), pointer.value());
+    pointer.heap().decorateInstruction(load, *m_heaps);
+    return load;
+}
+
+void Output::store(LValue value, TypedPointer pointer)
+{
+    LValue store = m_block->appendNew<MemoryValue>(m_proc, Store, origin(), value, pointer.value());
+    pointer.heap().decorateInstruction(store, *m_heaps);
+}
+
+void Output::store32As8(LValue value, TypedPointer pointer)
+{
+    LValue store = m_block->appendNew<MemoryValue>(m_proc, Store8, origin(), value, pointer.value());
+    pointer.heap().decorateInstruction(store, *m_heaps);
+}
+
+void Output::store32As16(LValue value, TypedPointer pointer)
+{
+    LValue store = m_block->appendNew<MemoryValue>(m_proc, Store16, origin(), value, pointer.value());
+    pointer.heap().decorateInstruction(store, *m_heaps);
 }
 
 LValue Output::baseIndex(LValue base, LValue index, Scale scale, ptrdiff_t offset)
@@ -211,19 +224,10 @@ LValue Output::baseIndex(LValue base, LValue index, Scale scale, ptrdiff_t offse
 
 void Output::branch(LValue condition, LBasicBlock taken, Weight takenWeight, LBasicBlock notTaken, Weight notTakenWeight)
 {
-    LValue branch = buildCondBr(m_builder, condition, taken, notTaken);
-    
-    if (!takenWeight || !notTakenWeight)
-        return;
-    
-    double total = takenWeight.value() + notTakenWeight.value();
-    
-    setMetadata(
-        branch, profKind,
-        mdNode(
-            m_context, branchWeights,
-            constInt32(takenWeight.scaleToTotal(total)),
-            constInt32(notTakenWeight.scaleToTotal(total))));
+    m_block->appendNew<ControlValue>(
+        m_proc, B3::Branch, origin(), condition,
+        FrequentedBlock(taken, takenWeight.frequencyClass()),
+        FrequentedBlock(notTaken, notTakenWeight.frequencyClass()));
 }
 
 void Output::check(LValue condition, WeightedTarget taken, Weight notTakenWeight)
@@ -237,8 +241,6 @@ void Output::check(LValue condition, WeightedTarget taken)
 {
     check(condition, taken, taken.weight().inverse());
 }
-
-#endif // !FTL_USES_B3
 
 LValue Output::load(TypedPointer pointer, LoadType type)
 {

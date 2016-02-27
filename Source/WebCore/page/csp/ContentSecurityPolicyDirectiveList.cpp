@@ -59,10 +59,7 @@ static const char reflectedXSS[] = "reflected-xss";
 
 static inline bool isExperimentalDirectiveName(const String& name)
 {
-    return equalLettersIgnoringASCIICase(name, baseURI)
-        || equalLettersIgnoringASCIICase(name, formAction)
-        || equalLettersIgnoringASCIICase(name, pluginTypes)
-        || equalLettersIgnoringASCIICase(name, reflectedXSS);
+    return equalLettersIgnoringASCIICase(name, reflectedXSS);
 }
 
 #else
@@ -76,13 +73,16 @@ static inline bool isExperimentalDirectiveName(const String&)
 
 bool isCSPDirectiveName(const String& name)
 {
-    return equalLettersIgnoringASCIICase(name, connectSrc)
+    return equalLettersIgnoringASCIICase(name, baseURI)
+        || equalLettersIgnoringASCIICase(name, connectSrc)
         || equalLettersIgnoringASCIICase(name, defaultSrc)
         || equalLettersIgnoringASCIICase(name, fontSrc)
+        || equalLettersIgnoringASCIICase(name, formAction)
         || equalLettersIgnoringASCIICase(name, frameSrc)
         || equalLettersIgnoringASCIICase(name, imgSrc)
         || equalLettersIgnoringASCIICase(name, mediaSrc)
         || equalLettersIgnoringASCIICase(name, objectSrc)
+        || equalLettersIgnoringASCIICase(name, pluginTypes)
         || equalLettersIgnoringASCIICase(name, reportURI)
         || equalLettersIgnoringASCIICase(name, sandbox)
         || equalLettersIgnoringASCIICase(name, scriptSrc)
@@ -115,10 +115,10 @@ ContentSecurityPolicyDirectiveList::ContentSecurityPolicyDirectiveList(ContentSe
     m_reportOnly = (type == ContentSecurityPolicyHeaderType::Report || type == ContentSecurityPolicyHeaderType::PrefixedReport);
 }
 
-std::unique_ptr<ContentSecurityPolicyDirectiveList> ContentSecurityPolicyDirectiveList::create(ContentSecurityPolicy& policy, const String& header, ContentSecurityPolicyHeaderType type)
+std::unique_ptr<ContentSecurityPolicyDirectiveList> ContentSecurityPolicyDirectiveList::create(ContentSecurityPolicy& policy, const String& header, ContentSecurityPolicyHeaderType type, ContentSecurityPolicy::PolicyFrom from)
 {
     auto directives = std::make_unique<ContentSecurityPolicyDirectiveList>(policy, type);
-    directives->parse(header);
+    directives->parse(header, from);
 
     if (!directives->checkEval(directives->operativeDirective(directives->m_scriptSrc.get()))) {
         String message = makeString("Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: \"", directives->operativeDirective(directives->m_scriptSrc.get())->text(), "\".\n");
@@ -389,7 +389,7 @@ bool ContentSecurityPolicyDirectiveList::allowBaseURI(const URL& url, ContentSec
 // policy            = directive-list
 // directive-list    = [ directive *( ";" [ directive ] ) ]
 //
-void ContentSecurityPolicyDirectiveList::parse(const String& policy)
+void ContentSecurityPolicyDirectiveList::parse(const String& policy, ContentSecurityPolicy::PolicyFrom policyFrom)
 {
     m_header = policy;
     if (policy.isEmpty())
@@ -406,7 +406,17 @@ void ContentSecurityPolicyDirectiveList::parse(const String& policy)
         String name, value;
         if (parseDirective(directiveBegin, position, name, value)) {
             ASSERT(!name.isEmpty());
-            addDirective(name, value);
+            switch (policyFrom) {
+            case ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta:
+                if (equalLettersIgnoringASCIICase(name, sandbox) || equalLettersIgnoringASCIICase(name, reportURI)) {
+                    m_policy.reportInvalidDirectiveInHTTPEquivMeta(name);
+                    break;
+                }
+                FALLTHROUGH;
+            default:
+                addDirective(name, value);
+                break;
+            }
         }
 
         ASSERT(position == end || *position == ';');
@@ -589,19 +599,19 @@ void ContentSecurityPolicyDirectiveList::addDirective(const String& name, const 
         setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_connectSrc);
     else if (equalLettersIgnoringASCIICase(name, childSrc))
         setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_childSrc);
+    else if (equalLettersIgnoringASCIICase(name, formAction))
+        setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_formAction);
+    else if (equalLettersIgnoringASCIICase(name, baseURI))
+        setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_baseURI);
+    else if (equalLettersIgnoringASCIICase(name, pluginTypes))
+        setCSPDirective<ContentSecurityPolicyMediaListDirective>(name, value, m_pluginTypes);
     else if (equalLettersIgnoringASCIICase(name, sandbox))
         applySandboxPolicy(name, value);
     else if (equalLettersIgnoringASCIICase(name, reportURI))
         parseReportURI(name, value);
 #if ENABLE(CSP_NEXT)
     else if (m_policy.experimentalFeaturesEnabled()) {
-        if (equalLettersIgnoringASCIICase(name, baseURI))
-            setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_baseURI);
-        else if (equalLettersIgnoringASCIICase(name, formAction))
-            setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_formAction);
-        else if (equalLettersIgnoringASCIICase(name, pluginTypes))
-            setCSPDirective<ContentSecurityPolicyMediaListDirective>(name, value, m_pluginTypes);
-        else if (equalLettersIgnoringASCIICase(name, reflectedXSS))
+        if (equalLettersIgnoringASCIICase(name, reflectedXSS))
             parseReflectedXSS(name, value);
         else
             m_policy.reportUnsupportedDirective(name);

@@ -412,6 +412,25 @@ void testAddImmMem32(int32_t a, int32_t b)
     CHECK(inputOutput == a + b);
 }
 
+void testAddArgZeroImmZDef()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* arg = root->appendNew<Value>(
+        proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* constZero = root->appendNew<Const32Value>(proc, Origin(), 0);
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, Add, Origin(),
+            arg,
+            constZero));
+
+    auto code = compile(proc, 0);
+    CHECK(invoke<int64_t>(*code, 0x0123456789abcdef) == 0x89abcdef);
+}
+
 void testAddLoadTwice()
 {
     auto test = [&] (unsigned optLevel) {
@@ -10426,6 +10445,30 @@ void testURShiftSelf64()
     check(64);
 }
 
+void testPatchpointDoubleRegs()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    Value* arg = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+    
+    PatchpointValue* patchpoint = root->appendNew<PatchpointValue>(proc, Double, Origin());
+    patchpoint->append(arg, ValueRep(FPRInfo::fpRegT0));
+    patchpoint->resultConstraint = ValueRep(FPRInfo::fpRegT0);
+
+    unsigned numCalls = 0;
+    patchpoint->setGenerator(
+        [&] (CCallHelpers&, const StackmapGenerationParams&) {
+            numCalls++;
+        });
+
+    root->appendNew<ControlValue>(proc, Return, Origin(), patchpoint);
+
+    auto code = compile(proc);
+    CHECK(numCalls == 1);
+    CHECK(invoke<double>(*code, 42.5) == 42.5);
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -10591,6 +10634,7 @@ void run(const char* filter)
     RUN_BINARY(testAddArgMem32, int32Operands(), int32Operands());
     RUN_BINARY(testAddMemArg32, int32Operands(), int32Operands());
     RUN_BINARY(testAddImmMem32, int32Operands(), int32Operands());
+    RUN(testAddArgZeroImmZDef());
     RUN(testAddLoadTwice());
 
     RUN(testAddArgDouble(M_PI));
@@ -11841,6 +11885,8 @@ void run(const char* filter)
     RUN(testRShiftSelf64());
     RUN(testURShiftSelf64());
     RUN(testLShiftSelf64());
+
+    RUN(testPatchpointDoubleRegs());
 
     if (tasks.isEmpty())
         usage();

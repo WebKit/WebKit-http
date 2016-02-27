@@ -2,12 +2,23 @@ cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
 
 set(WebKit_SOURCES
+    Storage/StorageAreaImpl.cpp
+    Storage/StorageAreaSync.cpp
+    Storage/StorageNamespaceImpl.cpp
+    Storage/StorageSyncManager.cpp
+    Storage/StorageThread.cpp
+    Storage/StorageTracker.cpp
+    Storage/WebDatabaseProvider.cpp
+    Storage/WebStorageNamespaceProvider.cpp
+
     WebCoreSupport/WebResourceLoadScheduler.cpp
     WebCoreSupport/WebViewGroup.cpp
 )
 
 set(WebKit_INCLUDE_DIRECTORIES
+    Storage
     WebCoreSupport
+
     "${CMAKE_BINARY_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
     "${DERIVED_SOURCES_DIR}"
@@ -27,25 +38,15 @@ set(WebKit_LIBRARIES
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
-include_directories(${WebKit_INCLUDE_DIRECTORIES})
-include_directories(SYSTEM ${WebKit_SYSTEM_INCLUDE_DIRECTORIES})
-
 if (MSVC)
     ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "win/WebKitPrefix.cpp" WebKit_SOURCES)
     list(APPEND WebKit_SOURCES win/WebKit.resources/WebKit.rc)
     add_definitions(/DWEBKIT_EXPORTS /DFRAMEWORK_NAME=WebKit)
 endif ()
 
-add_library(WebKit ${WebKit_LIBRARY_TYPE} ${WebKit_SOURCES})
+WEBKIT_FRAMEWORK(WebKit)
+
 add_dependencies(WebKit WebCore)
 if (WIN32)
     add_dependencies(WebKit WebKitGUID)
 endif ()
-target_link_libraries(WebKit ${WebKit_LIBRARIES})
-set_target_properties(WebKit PROPERTIES FOLDER "WebKit")
-
-if (WebKit_OUTPUT_NAME)
-    set_target_properties(WebKit PROPERTIES OUTPUT_NAME ${WebKit_OUTPUT_NAME})
-endif ()
-
-WEBKIT_FRAMEWORK(WebKit)

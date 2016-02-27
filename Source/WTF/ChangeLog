@@ -1,3 +1,388 @@
+2016-02-26  Oliver Hunt  <oliver@apple.com>
+
+        Remove the on demand executable allocator
+        https://bugs.webkit.org/show_bug.cgi?id=154749
+
+        Reviewed by Geoffrey Garen.
+
+        Remove the DeamndExecutableAllocator compile flags.
+
+        * wtf/Platform.h:
+
+2016-02-26  Keith Rollin  <krollin@apple.com>
+
+        Enhance logging: Add "always on" macros
+        https://bugs.webkit.org/show_bug.cgi?id=154498
+        <rdar://problem/24757759>
+
+        Reviewed by Chris Dumez.
+
+        Add support for efficient always-on logging (logging that is available
+        in both debug and release builds). This is implemented in the form of
+        some new macros:
+
+        - LOG_ALWAYS: Always log information-level statements.
+        - LOG_ALWAYS_ERROR: Always log error-level statements. These can be
+          filtered out of the normal logging so that they can be found more
+          easily.
+
+        In cases where there is no efficient underlying facility for it to
+        utilize, LOG_ALWAYS_ERROR is redirected to WTFReportError as a backup
+        mechanism. LOG_ALWAYS is not given a similar treatment so that we
+        don't overwhelm other logging systems that aren't prepared for "always
+        on" logging.
+
+        * wtf/Assertions.h:
+        * wtf/Platform.h:
+
+2016-02-26  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF::OptionSet and use it for the website data types enum
+        https://bugs.webkit.org/show_bug.cgi?id=154733
+
+        Reviewed by Geoffrey Garen.
+
+        Add WTF::OptionSet which makes it easier to use strong enums as flags.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Forward.h:
+        * wtf/OptionSet.h: Copied from Source/WebKit2/Shared/WebsiteData/WebsiteData.h.
+        (WTF::OptionSet::fromRaw):
+        (WTF::OptionSet::OptionSet):
+        (WTF::OptionSet::toRaw):
+        (WTF::OptionSet::contains):
+        (WTF::OptionSet::operator|=):
+
+2016-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197168.
+        https://bugs.webkit.org/show_bug.cgi?id=154728
+
+        crashing on some devices (Requested by kling on #webkit).
+
+        Reverted changeset:
+
+        "[Darwin] Use vm_kernel_page_size for WTF::pageSize()."
+        https://bugs.webkit.org/show_bug.cgi?id=154726
+        http://trac.webkit.org/changeset/197168
+
+2016-02-26  Andreas Kling  <akling@apple.com>
+
+        [Darwin] Use vm_kernel_page_size for WTF::pageSize().
+        <https://webkit.org/b/154726>
+
+        Reviewed by Antti Koivisto.
+
+        Make sure we use the right VM page size on Darwin systems.
+        On devices where the native page size is 4 KB, it's both
+        possible and profitable to madvise in smaller chunks.
+
+        * wtf/PageBlock.cpp:
+        (WTF::systemPageSize):
+
+2016-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        RefCounter value changed callback should be called on all changes (not just zero edge).
+        https://bugs.webkit.org/show_bug.cgi?id=154699
+
+        Reviewed by Anders Carlsson.
+
+        RefCounter currently only triggers a callback when the count goes from zero
+        to non-zero and vice-versa. Change that, to be useful to more clients.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::Count::Count):
+        (WTF::RefCounter::RefCounter):
+            - Removed superfluous WTF_EXPORT_PRIVATE.
+        (WTF::RefCounter::value):
+            - Changed value() to a size_t.
+        (WTF::RefCounter<T>::Count::ref):
+        (WTF::RefCounter<T>::Count::deref):
+            - Trigger the callback on all increments/decrements.
+        (WTF::RefCounter<T>::RefCounter):
+            - Changed siganture of callback.
+
+2016-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        Replace RefCounter::Token implementation with RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=154698
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::RefCounter):
+        (WTF::RefCounter::count):
+        (WTF::RefCounter::value):
+        (WTF::RefCounter<T>::~RefCounter):
+        (WTF::RefCounter::Token::Token): Deleted.
+        (WTF::RefCounter::Token::operator bool): Deleted.
+        (WTF::RefCounter<T>::Token::Token): Deleted.
+        (WTF::=): Deleted.
+            - Delete.
+
+2016-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        Should template RefCounter instead of RefCounter::Token
+        https://bugs.webkit.org/show_bug.cgi?id=154691
+
+        Speculative windows build fix.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::RefCounter):
+        (WTF::RefCounter::count):
+
+2016-02-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197137.
+        https://bugs.webkit.org/show_bug.cgi?id=154700
+
+        broke windows build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Replace RefCounter::Token implementation with RefPtr"
+        https://bugs.webkit.org/show_bug.cgi?id=154698
+        http://trac.webkit.org/changeset/197137
+
+2016-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        Replace RefCounter::Token implementation with RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=154698
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::RefCounter):
+        (WTF::RefCounter::count):
+        (WTF::RefCounter::value):
+        (WTF::RefCounter<T>::~RefCounter):
+        (WTF::RefCounter::Token::Token): Deleted.
+        (WTF::RefCounter::Token::operator bool): Deleted.
+        (WTF::RefCounter<T>::Token::Token): Deleted.
+        (WTF::=): Deleted.
+            - Delete.
+
+2016-02-25  Gavin Barraclough  <barraclough@apple.com>
+
+        Should template RefCounter instead of RefCounter::Token
+        https://bugs.webkit.org/show_bug.cgi?id=154691
+
+        Reviewed by Anders Carlsson.
+
+        My real goal here is to make the counter accurate. Currently returning a Token from token<>()
+        results in ref-count churn. Fixing this either means changing the return value, or improving
+        Token (which will probably mean replacing it with RefPtr). Either way would break the current
+        type checking. Move type tag to RefCount so this can still be enforced.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/RefCounter.cpp: Removed.
+            - Removed RefCounter.cpp.
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::Token::Token):
+        (WTF::RefCounter::Token::operator bool):
+        (WTF::RefCounter::RefCounter):
+        (WTF::RefCounter::count):
+        (WTF::RefCounter::value):
+        (WTF::RefCounter<T>::Count::ref):
+        (WTF::RefCounter<T>::Count::deref):
+        (WTF::RefCounter<T>::RefCounter):
+        (WTF::RefCounter<T>::~RefCounter):
+        (WTF::RefCounter<T>::Token::Token):
+        (WTF::=):
+        (WTF::RefCounter::token): Deleted.
+        (WTF::RefCounter::Token<T>::Token): Deleted.
+            - RefCounter -> RefCounter<T>,
+            - Token<T> -> Token,
+            - renamed token<>() -> count().
+
+2016-02-25  Sam Weinig  <sam@webkit.org>
+
+        HashMap::ensure() should return an AddResult like all the other add-like functions.
+        https://bugs.webkit.org/show_bug.cgi?id=154680
+
+        Reviewed by Anders Carlsson.
+
+        While adopting HashMap::ensure(), I found it was useful in some circumstances to know
+        if the value was added or not. While I could discern this information by setting a bool
+        in the passed in lambda, it seemed clearer and more idiomatic to just have ensure return
+        an AddResult like all the other add-like functions do.
+
+        * wtf/HashMap.h:
+        Change return type of HashMap::ensure() to be an AddResult.
+
+2016-02-24  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [web-animations] Add AnimationTimeline, DocumentTimeline and add extensions to Document interface
+        https://bugs.webkit.org/show_bug.cgi?id=151688
+
+        Reviewed by Dean Jackson.
+
+        Enables the WEB_ANIMATIONS compiler switch.
+
+        * wtf/FeatureDefines.h:
+
+2016-02-24  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved PRE/POST_BUILD_COMMAND to WEBKIT_FRAMEWORK.
+        https://bugs.webkit.org/show_bug.cgi?id=154651
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Moved shared code to WEBKIT_FRAMEWORK macro.
+
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
+2016-02-23  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove HIDDEN_PAGE_DOM_TIMER_THROTTLING feature define
+        https://bugs.webkit.org/show_bug.cgi?id=112323
+
+        Reviewed by Chris Dumez.
+
+        This feature is controlled by a runtime switch, and defaults off.
+
+        * wtf/FeatureDefines.h:
+
+2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved library setup code to WEBKIT_FRAMEWORK macro.
+        https://bugs.webkit.org/show_bug.cgi?id=154450
+
+        Reviewed by Alex Christensen.
+
+        * wtf/CMakeLists.txt:
+
+2016-02-20  Mark Lam  <mark.lam@apple.com>
+
+        Use of inlined asm statements causes problems for -std=c99 builds.
+        https://bugs.webkit.org/show_bug.cgi?id=154507
+
+        Reviewed by Dan Bernstein.
+
+        WTF's Assertions.h may inadvertantly get included by other projects that are built
+        with -std=c99.  The use of the inlined asm statements with the keyword "asm" is
+        not recognized when the -std compiler flag is used.
+
+        https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html says "When writing code that
+        can be compiled with -ansi and the various -std options, use __asm__ instead of
+        asm (see Alternate Keywords)."
+
+        So, to be a good citizen, we can change the use of "asm" in CRASH() to "__asm__"
+        so that we don't break the build of such other projects.
+
+        * wtf/Assertions.h:
+
+2016-02-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Extend HashCountedSet with a method to efficiently set the count of an entry
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+
+        Reviewed by Geoffrey Garen.
+
+        Tested by new TestWebKitAPI tests.
+
+        Update the HashCountedSet class with a new 'add' method to support efficient initialization of
+        the count of a given key. Also provide move and pointer template specializations to expand the
+        types of data that can be used as 'keys' in the HashCountedSet to match the underlying HashMap
+        implementation.
+
+        * wtf/HashCountedSet.h:
+        (WTF::Traits>::add): Added new overload supporting a supplied count.
+
+2016-02-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196791.
+        https://bugs.webkit.org/show_bug.cgi?id=154438
+
+        broke windows build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Extend HashCountedSet with a method to efficiently set the
+        count of an entry"
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+        http://trac.webkit.org/changeset/196791
+
+2016-02-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Extend HashCountedSet with a method to efficiently set the count of an entry
+        https://bugs.webkit.org/show_bug.cgi?id=154352
+
+        Reviewed by Geoffrey Garen.
+
+        Tested by new TestWebKitAPI tests.
+
+        Update the HashCountedSet class with a new 'add' method to support efficient initialization of
+        the count of a given key. Also provide move and pointer template specializations to expand the
+        types of data that can be used as 'keys' in the HashCountedSet to match the underlying HashMap
+        implementation.
+
+        * wtf/HashCountedSet.h:
+        (WTF::Traits>::add): Added new overload supporting a supplied count.
+
+2016-02-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove LLVM dependencies from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=154323
+
+        Reviewed by Antti Koivisto and Benjamin Poulain.
+
+        * wtf/Platform.h:
+
+2016-02-16  Sam Weinig  <sam@webkit.org>
+
+        Add an ensure function on HashMap that takes a key and a function to make the lazy value initialization idiom easier
+        https://bugs.webkit.org/show_bug.cgi?id=134857
+
+        Reviewed by Geoffrey Garen.
+
+        The current idiom for adding a value to a HashMap if the key is not already present, to allow for not
+        unnecessarily constructing the new value if it won't be used, is:
+        
+        {
+            auto result = map.add(key, Value());
+            if (!result.isNewEntry)
+                return result.iterator->value;
+
+            result.iterator->value = createNewValue();
+            return result.iterator->value;
+        }
+
+        or sometimes
+
+        {
+            auto& value = map.add(key, Value()).iterator->value;
+            if (!value)
+                value = createNewValue();
+            return value;
+        }
+
+        With this patch, you can now use the new function HashMap::ensure(key, functor). This will allow us to 
+        change to using the following idiom:
+
+        {
+            return map.ensure(key, [] { return createNewValue(); });
+        }
+
+        The passed in functor will only be called if the key is not already present in the HashMap.
+
+        * wtf/HashMap.h:
+        (WTF::HashMapTranslator::translate):
+        (WTF::HashMapEnsureTranslator::hash):
+        (WTF::HashMapEnsureTranslator::equal):
+        (WTF::HashMapEnsureTranslator::translate):
+        (WTF::HashMapTranslatorAdapter::hash):
+
 2016-02-16  Filip Pizlo  <fpizlo@apple.com>
 
         FTL_USES_B3 should be unconditionally true

@@ -128,6 +128,8 @@
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
 #include "ParserError.h"
+#include "ProxyConstructor.h"
+#include "ProxyObject.h"
 #include "ReflectObject.h"
 #include "RegExpConstructor.h"
 #include "RegExpMatchesArray.h"
@@ -366,6 +368,7 @@ void JSGlobalObject::init(VM& vm)
 
     m_moduleRecordStructure.set(vm, this, JSModuleRecord::createStructure(vm, this, m_objectPrototype.get()));
     m_moduleNamespaceObjectStructure.set(vm, this, JSModuleNamespaceObject::createStructure(vm, this, jsNull()));
+    m_proxyObjectStructure.set(vm, this, ProxyObject::createStructure(vm, this, m_objectPrototype.get()));
     
 #if ENABLE(WEBASSEMBLY)
     m_wasmModuleStructure.set(vm, this, JSWASMModule::createStructure(vm, this));
@@ -454,6 +457,8 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     putDirectWithoutTransition(vm, vm.propertyNames->SyntaxError, m_syntaxErrorConstructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->TypeError, m_typeErrorConstructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->URIError, m_URIErrorConstructor.get(), DontEnum);
+
+    putDirectWithoutTransition(vm, vm.propertyNames->Proxy, ProxyConstructor::create(vm, ProxyConstructor::createStructure(vm, this, m_functionPrototype.get())), DontEnum);
     
     
 #define PUT_CONSTRUCTOR_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
@@ -478,32 +483,31 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSTypedArrayViewConstructor* typedArraySuperConstructor = JSTypedArrayViewConstructor::create(vm, this, JSTypedArrayViewConstructor::createStructure(vm, this, m_functionPrototype.get()), typedArrayProto, speciesGetterSetter);
     typedArrayProto->putDirectWithoutTransition(vm, vm.propertyNames->constructor, typedArraySuperConstructor, DontEnum);
 
-    std::array<InternalFunction*, NUMBER_OF_TYPED_ARRAY_TYPES> typedArrayConstructors;
-    typedArrayConstructors[toIndex(TypeInt8)] = JSInt8ArrayConstructor::create(vm, this, JSInt8ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeInt8)].prototype.get(), ASCIILiteral("Int8Array"), typedArrayConstructorAllocateInt8ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeInt16)] = JSInt16ArrayConstructor::create(vm, this, JSInt16ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeInt16)].prototype.get(), ASCIILiteral("Int16Array"), typedArrayConstructorAllocateInt16ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeInt32)] = JSInt32ArrayConstructor::create(vm, this, JSInt32ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeInt32)].prototype.get(), ASCIILiteral("Int32Array"), typedArrayConstructorAllocateInt32ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeUint8)] = JSUint8ArrayConstructor::create(vm, this, JSUint8ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint8)].prototype.get(), ASCIILiteral("Uint8Array"), typedArrayConstructorAllocateUint8ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeUint8Clamped)] = JSUint8ClampedArrayConstructor::create(vm, this, JSUint8ClampedArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint8Clamped)].prototype.get(), ASCIILiteral("Uint8ClampedArray"), typedArrayConstructorAllocateUint8ClampedArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeUint16)] = JSUint16ArrayConstructor::create(vm, this, JSUint16ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint16)].prototype.get(), ASCIILiteral("Uint16Array"), typedArrayConstructorAllocateUint16ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeUint32)] = JSUint32ArrayConstructor::create(vm, this, JSUint32ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint32)].prototype.get(), ASCIILiteral("Uint32Array"), typedArrayConstructorAllocateUint32ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeFloat32)] = JSFloat32ArrayConstructor::create(vm, this, JSFloat32ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeFloat32)].prototype.get(), ASCIILiteral("Float32Array"), typedArrayConstructorAllocateFloat32ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeFloat64)] = JSFloat64ArrayConstructor::create(vm, this, JSFloat64ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeFloat64)].prototype.get(), ASCIILiteral("Float64Array"), typedArrayConstructorAllocateFloat64ArrayCodeGenerator(vm));
-    typedArrayConstructors[toIndex(TypeDataView)] = JSDataViewConstructor::create(vm, this, JSDataViewConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeDataView)].prototype.get(), ASCIILiteral("DataView"), nullptr);
+    m_typedArrays[toIndex(TypeInt8)].constructor.set(vm , this, JSInt8ArrayConstructor::create(vm, this, JSInt8ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeInt8)].prototype.get(), ASCIILiteral("Int8Array"), typedArrayConstructorAllocateInt8ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeInt16)].constructor.set(vm, this, JSInt16ArrayConstructor::create(vm, this, JSInt16ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeInt16)].prototype.get(), ASCIILiteral("Int16Array"), typedArrayConstructorAllocateInt16ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeInt32)].constructor.set(vm, this, JSInt32ArrayConstructor::create(vm, this, JSInt32ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeInt32)].prototype.get(), ASCIILiteral("Int32Array"), typedArrayConstructorAllocateInt32ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeUint8)].constructor.set(vm, this, JSUint8ArrayConstructor::create(vm, this, JSUint8ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint8)].prototype.get(), ASCIILiteral("Uint8Array"), typedArrayConstructorAllocateUint8ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeUint8Clamped)].constructor.set(vm, this, JSUint8ClampedArrayConstructor::create(vm, this, JSUint8ClampedArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint8Clamped)].prototype.get(), ASCIILiteral("Uint8ClampedArray"), typedArrayConstructorAllocateUint8ClampedArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeUint16)].constructor.set(vm, this, JSUint16ArrayConstructor::create(vm, this, JSUint16ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint16)].prototype.get(), ASCIILiteral("Uint16Array"), typedArrayConstructorAllocateUint16ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeUint32)].constructor.set(vm, this, JSUint32ArrayConstructor::create(vm, this, JSUint32ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeUint32)].prototype.get(), ASCIILiteral("Uint32Array"), typedArrayConstructorAllocateUint32ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeFloat32)].constructor.set(vm, this, JSFloat32ArrayConstructor::create(vm, this, JSFloat32ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeFloat32)].prototype.get(), ASCIILiteral("Float32Array"), typedArrayConstructorAllocateFloat32ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeFloat64)].constructor.set(vm, this, JSFloat64ArrayConstructor::create(vm, this, JSFloat64ArrayConstructor::createStructure(vm, this, typedArraySuperConstructor), m_typedArrays[toIndex(TypeFloat64)].prototype.get(), ASCIILiteral("Float64Array"), typedArrayConstructorAllocateFloat64ArrayCodeGenerator(vm)));
+    m_typedArrays[toIndex(TypeDataView)].constructor.set(vm, this, JSDataViewConstructor::create(vm, this, JSDataViewConstructor::createStructure(vm, this, m_functionPrototype.get()), m_typedArrays[toIndex(TypeDataView)].prototype.get(), ASCIILiteral("DataView"), nullptr));
     
     for (unsigned typedArrayIndex = NUMBER_OF_TYPED_ARRAY_TYPES; typedArrayIndex--;) {
-        m_typedArrays[typedArrayIndex].prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, typedArrayConstructors[typedArrayIndex], DontEnum);
-        putDirectWithoutTransition(vm, Identifier::fromString(exec, typedArrayConstructors[typedArrayIndex]->name(exec)), typedArrayConstructors[typedArrayIndex], DontEnum);
+        m_typedArrays[typedArrayIndex].prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_typedArrays[typedArrayIndex].constructor.get(), DontEnum);
+        putDirectWithoutTransition(vm, Identifier::fromString(exec, m_typedArrays[typedArrayIndex].constructor.get()->name(exec)), m_typedArrays[typedArrayIndex].constructor.get(), DontEnum);
     }
 
-    putDirectWithoutTransition(vm, vm.propertyNames->Int8ArrayPrivateName, typedArrayConstructors[toIndex(TypeInt8)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Int16ArrayPrivateName, typedArrayConstructors[toIndex(TypeInt16)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Int32ArrayPrivateName, typedArrayConstructors[toIndex(TypeInt32)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Uint8ArrayPrivateName, typedArrayConstructors[toIndex(TypeUint8)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Uint8ClampedArrayPrivateName, typedArrayConstructors[toIndex(TypeUint8Clamped)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Uint16ArrayPrivateName, typedArrayConstructors[toIndex(TypeUint16)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Uint32ArrayPrivateName, typedArrayConstructors[toIndex(TypeUint32)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Float32ArrayPrivateName, typedArrayConstructors[toIndex(TypeFloat32)], DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Float64ArrayPrivateName, typedArrayConstructors[toIndex(TypeFloat64)], DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Int8ArrayPrivateName, m_typedArrays[toIndex(TypeInt8)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Int16ArrayPrivateName, m_typedArrays[toIndex(TypeInt16)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Int32ArrayPrivateName, m_typedArrays[toIndex(TypeInt32)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Uint8ArrayPrivateName, m_typedArrays[toIndex(TypeUint8)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Uint8ClampedArrayPrivateName, m_typedArrays[toIndex(TypeUint8Clamped)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Uint16ArrayPrivateName, m_typedArrays[toIndex(TypeUint16)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Uint32ArrayPrivateName, m_typedArrays[toIndex(TypeUint32)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Float32ArrayPrivateName, m_typedArrays[toIndex(TypeFloat32)].constructor.get(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->Float64ArrayPrivateName, m_typedArrays[toIndex(TypeFloat64)].constructor.get(), DontEnum);
 
     m_moduleLoader.set(vm, this, ModuleLoaderObject::create(vm, this, ModuleLoaderObject::createStructure(vm, this, m_objectPrototype.get())));
     if (Options::exposeInternalModuleLoader())
@@ -520,6 +524,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSFunction* privateFuncToLength = JSFunction::createBuiltinFunction(vm, globalObjectToLengthCodeGenerator(vm), this);
     JSFunction* privateFuncToInteger = JSFunction::createBuiltinFunction(vm, globalObjectToIntegerCodeGenerator(vm), this);
     JSFunction* privateFuncTypedArrayLength = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncLength);
+    JSFunction* privateFuncTypedArrayGetOriginalConstructor = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncGetOriginalConstructor);
     JSFunction* privateFuncTypedArraySort = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncSort);
     JSFunction* privateFuncIsBoundFunction = JSFunction::create(vm, this, 0, String(), isBoundFunction);
     JSFunction* privateFuncHasInstanceBoundFunction = JSFunction::create(vm, this, 0, String(), hasInstanceBoundFunction);
@@ -537,6 +542,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->RangeErrorPrivateName, m_rangeErrorConstructor.get(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->TypeErrorPrivateName, m_typeErrorConstructor.get(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->typedArrayLengthPrivateName, privateFuncTypedArrayLength, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->typedArrayGetOriginalConstructorPrivateName, privateFuncTypedArrayGetOriginalConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->typedArraySortPrivateName, privateFuncTypedArraySort, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isBoundFunctionPrivateName, privateFuncIsBoundFunction, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->hasInstanceBoundFunctionPrivateName, privateFuncHasInstanceBoundFunction, DontEnum | DontDelete | ReadOnly),
@@ -626,7 +632,7 @@ void JSGlobalObject::put(JSCell* cell, ExecState* exec, PropertyName propertyNam
 bool JSGlobalObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
-    PropertySlot slot(thisObject);
+    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
     // silently ignore attempts to add accessors aliasing vars.
     if (descriptor.isAccessorDescriptor() && symbolTableGet(thisObject, propertyName, slot))
         return false;
@@ -896,6 +902,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_consoleStructure);
     visitor.append(&thisObject->m_dollarVMStructure);
     visitor.append(&thisObject->m_internalFunctionStructure);
+    visitor.append(&thisObject->m_proxyObjectStructure);
 #if ENABLE(WEBASSEMBLY)
     visitor.append(&thisObject->m_wasmModuleStructure);
 #endif
@@ -911,6 +918,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     for (unsigned i = NUMBER_OF_TYPED_ARRAY_TYPES; i--;) {
         visitor.append(&thisObject->m_typedArrays[i].prototype);
+        visitor.append(&thisObject->m_typedArrays[i].constructor);
         visitor.append(&thisObject->m_typedArrays[i].structure);
     }
 }

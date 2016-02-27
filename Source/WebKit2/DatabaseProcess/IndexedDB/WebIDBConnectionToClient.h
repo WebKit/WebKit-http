@@ -35,10 +35,12 @@
 namespace WebCore {
 class IDBCursorInfo;
 class IDBIndexInfo;
+class IDBKeyData;
 class IDBObjectStoreInfo;
 class IDBRequestData;
 class IDBTransactionInfo;
 class SerializedScriptValue;
+struct IDBKeyRangeData;
 }
 
 namespace WebKit {
@@ -88,7 +90,7 @@ public:
     void clearObjectStore(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier);
     void createIndex(const WebCore::IDBRequestData&, const WebCore::IDBIndexInfo&);
     void deleteIndex(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName);
-    void putOrAdd(const WebCore::IDBRequestData&, const WebCore::IDBKeyData&, const IPC::DataReference& value, bool overwriteEnabled);
+    void putOrAdd(const WebCore::IDBRequestData&, const WebCore::IDBKeyData&, const IPC::DataReference& value, unsigned overwriteMode);
     void getRecord(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&);
     void getCount(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&);
     void deleteRecord(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&);
@@ -102,11 +104,12 @@ public:
 
     void disconnectedFromWebProcess();
 
+    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
+
 private:
     WebIDBConnectionToClient(DatabaseToWebProcessConnection&, uint64_t serverConnectionIdentifier);
 
     virtual IPC::Connection* messageSenderConnection() override final;
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
 
     Ref<DatabaseToWebProcessConnection> m_connection;
 

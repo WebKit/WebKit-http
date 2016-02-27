@@ -843,6 +843,14 @@ Object.defineProperty(String.prototype, "levenshteinDistance",
     }
 });
 
+Object.defineProperty(String.prototype, "toCamelCase",
+{
+    value: function()
+    {
+        return this.toLowerCase().replace(/[^\w]+(\w)/g, (match, group) => group.toUpperCase());
+    }
+});
+
 Object.defineProperty(Math, "roundTo",
 {
     value: function(num, step)
@@ -855,11 +863,9 @@ Object.defineProperty(Number, "constrain",
 {
     value: function(num, min, max)
     {
-        if (max < min) {
-            let temp = max;
-            max = min;
-            min = temp;
-        }
+        if (max < min)
+            return min;
+
         if (num < min)
             num = min;
         else if (num > max)

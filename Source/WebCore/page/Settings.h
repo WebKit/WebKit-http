@@ -158,16 +158,13 @@ public:
     WEBCORE_EXPORT void setMinimumDOMTimerInterval(double); // Initialized to DOMTimer::defaultMinimumInterval().
     double minimumDOMTimerInterval() const { return m_minimumDOMTimerInterval; }
 
-    void setDOMTimerAlignmentInterval(double);
-    double domTimerAlignmentInterval() const { return m_domTimerAlignmentInterval; }
-
     WEBCORE_EXPORT void setLayoutInterval(std::chrono::milliseconds);
     std::chrono::milliseconds layoutInterval() const { return m_layoutInterval; }
 
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     bool hiddenPageDOMTimerThrottlingEnabled() const { return m_hiddenPageDOMTimerThrottlingEnabled; }
     WEBCORE_EXPORT void setHiddenPageDOMTimerThrottlingEnabled(bool);
-#endif
+    bool hiddenPageDOMTimerThrottlingAutoIncreases() const { return m_hiddenPageDOMTimerThrottlingAutoIncreases; }
+    WEBCORE_EXPORT void setHiddenPageDOMTimerThrottlingAutoIncreases(bool);
 
     WEBCORE_EXPORT void setUsesPageCache(bool);
     bool usesPageCache() const { return m_usesPageCache; }
@@ -290,6 +287,10 @@ public:
     WEBCORE_EXPORT static float defaultMinimumZoomFontSize();
 #endif
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/SettingsGettersAndSetters.h>
+#endif
+
 private:
     explicit Settings(Page*);
 
@@ -303,7 +304,6 @@ private:
     SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
     std::chrono::milliseconds m_layoutInterval;
     double m_minimumDOMTimerInterval;
-    double m_domTimerAlignmentInterval;
 
 #if ENABLE(TEXT_AUTOSIZING)
     float m_textAutosizingFontScaleFactor;
@@ -337,9 +337,7 @@ private:
     Timer m_setImageLoadingSettingsTimer;
     void imageLoadingSettingsTimerFired();
 
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     bool m_hiddenPageDOMTimerThrottlingEnabled : 1;
-#endif
     bool m_hiddenPageCSSAnimationSuspensionEnabled : 1;
     bool m_fontFallbackPrefersPictographs : 1;
 
@@ -348,6 +346,8 @@ private:
 #if ENABLE(RESOURCE_USAGE)
     bool m_resourceUsageOverlayVisible { false };
 #endif
+
+    bool m_hiddenPageDOMTimerThrottlingAutoIncreases { false };
 
 #if USE(AVFOUNDATION)
     WEBCORE_EXPORT static bool gAVFoundationEnabled;
@@ -385,6 +385,10 @@ private:
 
     static bool gLowPowerVideoAudioBufferSizeEnabled;
     static bool gResourceLoadStatisticsEnabledEnabled;
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/SettingsMembers.h>
+#endif
 };
 
 } // namespace WebCore

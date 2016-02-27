@@ -29,7 +29,8 @@
 #if ENABLE(DATABASE_PROCESS)
 
 #include "ChildProcess.h"
-#include "UniqueIDBDatabaseIdentifier.h"
+#include <WebCore/IDBServer.h>
+#include <WebCore/UniqueIDBDatabase.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -41,8 +42,7 @@ struct SecurityOriginData;
 namespace WebKit {
 
 class DatabaseToWebProcessConnection;
-class UniqueIDBDatabase;
-
+enum class WebsiteDataType;
 struct DatabaseProcessCreationParameters;
 
 class DatabaseProcess : public ChildProcess {
@@ -55,11 +55,10 @@ public:
 #if ENABLE(INDEXED_DATABASE)
     const String& indexedDatabaseDirectory() const { return m_indexedDatabaseDirectory; }
 
-    RefPtr<UniqueIDBDatabase> getOrCreateUniqueIDBDatabase(const UniqueIDBDatabaseIdentifier&);
-    void removeUniqueIDBDatabase(const UniqueIDBDatabase&);
-
     void ensureIndexedDatabaseRelativePathExists(const String&);
     String absoluteIndexedDatabasePathFromDatabaseRelativePath(const String&);
+
+    WebCore::IDBServer::IDBServer& idbServer();
 #endif
 
     WorkQueue& queue() { return m_queue.get(); }
@@ -88,9 +87,9 @@ private:
     void initializeDatabaseProcess(const DatabaseProcessCreationParameters&);
     void createDatabaseToWebProcessConnection();
 
-    void fetchWebsiteData(WebCore::SessionID, uint64_t websiteDataTypes, uint64_t callbackID);
-    void deleteWebsiteData(WebCore::SessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
-    void deleteWebsiteDataForOrigins(WebCore::SessionID, uint64_t websiteDataTypes, const Vector<WebCore::SecurityOriginData>& origins, uint64_t callbackID);
+    void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, uint64_t callbackID);
+    void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
+    void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<WebCore::SecurityOriginData>& origins, uint64_t callbackID);
 
 #if ENABLE(INDEXED_DATABASE)
     Vector<RefPtr<WebCore::SecurityOrigin>> indexedDatabaseOrigins();
@@ -109,7 +108,7 @@ private:
 #if ENABLE(INDEXED_DATABASE)
     String m_indexedDatabaseDirectory;
 
-    HashMap<UniqueIDBDatabaseIdentifier, RefPtr<UniqueIDBDatabase>> m_idbDatabases;
+    RefPtr<WebCore::IDBServer::IDBServer> m_idbServer;
 #endif
 
     Deque<std::unique_ptr<WebCore::CrossThreadTask>> m_databaseTasks;

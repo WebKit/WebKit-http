@@ -372,12 +372,6 @@ std::unique_ptr<IDBDatabaseInfo> SQLiteIDBBackingStore::createAndPopulateInitial
         return nullptr;
     }
 
-    if (!ensureValidIndexRecordsTable()) {
-        LOG_ERROR("Could not create IndexRecords table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
-        m_sqliteDB = nullptr;
-        return nullptr;
-    }
-
     if (!m_sqliteDB->executeCommand("CREATE TABLE KeyGenerators (objectStoreID INTEGER NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT REPLACE, currentKey INTEGER NOT NULL ON CONFLICT FAIL);")) {
         LOG_ERROR("Could not create KeyGenerators table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
         m_sqliteDB = nullptr;
@@ -594,6 +588,12 @@ const IDBDatabaseInfo& SQLiteIDBBackingStore::getOrEstablishDatabaseInfo()
         return *m_databaseInfo;
     }
 
+    if (!ensureValidIndexRecordsTable()) {
+        LOG_ERROR("Error creating or migrating Index Records table in database");
+        m_sqliteDB = nullptr;
+        return *m_databaseInfo;
+    }
+
     auto databaseInfo = extractExistingDatabaseInfo();
     if (!databaseInfo)
         databaseInfo = createAndPopulateInitialDatabaseInfo();
@@ -623,8 +623,15 @@ IDBError SQLiteIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
     addResult.iterator->value = std::make_unique<SQLiteIDBTransaction>(*this, info);
 
     auto error = addResult.iterator->value->begin(*m_sqliteDB);
-    if (error.isNull() && info.mode() == IndexedDB::TransactionMode::VersionChange)
+    if (error.isNull() && info.mode() == IndexedDB::TransactionMode::VersionChange) {
         m_originalDatabaseInfoBeforeVersionChange = std::make_unique<IDBDatabaseInfo>(*m_databaseInfo);
+
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("UPDATE IDBDatabaseInfo SET value = ? where key = 'DatabaseVersion';"));
+        if (sql.prepare() != SQLITE_OK
+            || sql.bindText(1, String::number(info.newVersion())) != SQLITE_OK
+            || sql.step() != SQLITE_DONE)
+            error = { IDBDatabaseException::UnknownError, ASCIILiteral("Failed to store new database version in database") };
+    }
 
     return error;
 }

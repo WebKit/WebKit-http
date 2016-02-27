@@ -52,6 +52,7 @@
     macro(NumberFormat) \
     macro(Object) \
     macro(Promise) \
+    macro(Proxy) \
     macro(RangeError) \
     macro(ReferenceError) \
     macro(Reflect) \
@@ -319,6 +320,7 @@
     macro(TypeError) \
     macro(typedArrayLength) \
     macro(typedArraySort) \
+    macro(typedArrayGetOriginalConstructor) \
     macro(BuiltinLog) \
     macro(homeObject) \
     macro(getTemplateObject) \

@@ -296,7 +296,9 @@ SamplingProfiler::~SamplingProfiler()
 
 static ALWAYS_INLINE unsigned tryGetBytecodeIndex(unsigned llintPC, CodeBlock* codeBlock, bool& isValid)
 {
+#if ENABLE(DFG_JIT)
     RELEASE_ASSERT(!codeBlock->hasCodeOrigins());
+#endif
 
 #if USE(JSVALUE64)
     unsigned bytecodeIndex = llintPC;
@@ -581,7 +583,7 @@ String SamplingProfiler::StackFrame::nameFromCallee(VM& vm)
 
     ExecState* exec = callee->globalObject()->globalExec();
     auto getPropertyIfPureOperation = [&] (const Identifier& ident) -> String {
-        PropertySlot slot(callee);
+        PropertySlot slot(callee, PropertySlot::InternalMethodType::VMInquiry);
         PropertyName propertyName(ident);
         if (callee->getPropertySlot(exec, propertyName, slot)) {
             if (slot.isValue()) {
