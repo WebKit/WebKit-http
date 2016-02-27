@@ -95,7 +95,7 @@ Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString&)
     return result;
 }
 
-std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName)
+std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName, const FontFeatureSettings*, const FontVariantSettings*)
 {
     QFontDatabase db;
     if (!db.hasFamily(familyName))
