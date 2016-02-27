@@ -76,8 +76,10 @@ class CppProtocolTypesImplementationGenerator(Generator):
         lines.extend(['    "%s",' % enum_value for enum_value in self.assigned_enum_values()])
         lines.append('};')
         lines.append('')
+        lines.append('namespace %sImpl {' % self.model().framework.name)
         lines.append('String getEnumConstantValue(int code) {')
         lines.append('    return enum_constant_values[code];')
+        lines.append('}')
         lines.append('}')
         return '\n'.join(lines)
 
