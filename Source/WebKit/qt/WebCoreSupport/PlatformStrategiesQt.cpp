@@ -67,11 +67,6 @@ CookiesStrategy* PlatformStrategiesQt::createCookiesStrategy()
     return this;
 }
 
-DatabaseStrategy* PlatformStrategiesQt::createDatabaseStrategy()
-{
-    return this;
-}
-
 LoaderStrategy* PlatformStrategiesQt::createLoaderStrategy()
 {
     return this;
@@ -83,21 +78,6 @@ PasteboardStrategy* PlatformStrategiesQt::createPasteboardStrategy()
 }
 
 PluginStrategy* PlatformStrategiesQt::createPluginStrategy()
-{
-    return this;
-}
-
-SharedWorkerStrategy* PlatformStrategiesQt::createSharedWorkerStrategy()
-{
-    return this;
-}
-
-StorageStrategy* PlatformStrategiesQt::createStorageStrategy()
-{
-    return this;
-}
-
-VisitedLinkStrategy* PlatformStrategiesQt::createVisitedLinkStrategy()
 {
     return this;
 }
@@ -199,25 +179,6 @@ void PlatformStrategiesQt::getPluginInfo(const WebCore::Page* page, Vector<WebCo
 #endif
 }
 
-// VisitedLinkStrategy
-
-bool PlatformStrategiesQt::isLinkVisited(Page* page, LinkHash hash, const URL& baseURL, const AtomicString& attributeURL)
+void PlatformStrategiesQt::getWebVisiblePluginInfo(const Page*, Vector<PluginInfo>&)
 {
-    ASSERT(hash);
-
-    Vector<UChar, 512> url;
-    visitedURL(baseURL, attributeURL, url);
-
-    // If the Qt4.4 interface for the history is used, we will have to fallback
-    // to the old global history.
-    QWebHistoryInterface* iface = QWebHistoryInterface::defaultInterface();
-    if (iface)
-        return iface->historyContains(QString(reinterpret_cast<QChar*>(url.data()), url.size()));
-
-    return page->group().isLinkVisited(hash);
-}
-
-void PlatformStrategiesQt::addVisitedLink(Page* page, LinkHash hash)
-{
-    page->group().addVisitedLinkHash(hash);
 }
