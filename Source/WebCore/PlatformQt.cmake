@@ -20,6 +20,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/yarr"
     "${THIRDPARTY_DIR}/ANGLE/"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+    "${WEBCORE_DIR}/bridge/qt"
     "${WEBCORE_DIR}/history/qt"
     "${WEBCORE_DIR}/platform/qt"
     "${WEBCORE_DIR}/platform/audio/qt"

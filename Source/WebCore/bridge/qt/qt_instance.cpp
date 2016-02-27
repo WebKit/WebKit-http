@@ -65,13 +65,14 @@ public:
     }
 
 protected:
-    static const unsigned StructureFlags = RuntimeObject::StructureFlags | OverridesVisitChildren;
+    // FIXME
+    // static const unsigned StructureFlags = RuntimeObject::StructureFlags | OverridesVisitChildren;
 
 private:
     QtRuntimeObject(VM&, Structure*, PassRefPtr<Instance>);
 };
 
-const ClassInfo QtRuntimeObject::s_info = { "QtRuntimeObject", &RuntimeObject::s_info, 0, 0, CREATE_METHOD_TABLE(QtRuntimeObject) };
+const ClassInfo QtRuntimeObject::s_info = { "QtRuntimeObject", &RuntimeObject::s_info, 0, CREATE_METHOD_TABLE(QtRuntimeObject) };
 
 QtRuntimeObject::QtRuntimeObject(VM& vm, Structure* structure, PassRefPtr<Instance> instance)
     : RuntimeObject(vm, structure, instance)
@@ -200,13 +201,13 @@ void QtInstance::getPropertyNames(ExecState* exec, PropertyNameArray& array)
         for (i = 0; i < meta->propertyCount(); i++) {
             QMetaProperty prop = meta->property(i);
             if (prop.isScriptable())
-                array.add(Identifier(exec, prop.name()));
+                array.add(Identifier::fromString(exec, prop.name()));
         }
 
 #ifndef QT_NO_PROPERTIES
         QList<QByteArray> dynProps = obj->dynamicPropertyNames();
         foreach (const QByteArray& ba, dynProps)
-            array.add(Identifier(exec, ba.constData()));
+            array.add(Identifier::fromString(exec, ba.constData()));
 #endif
 
         const int methodCount = meta->methodCount();
@@ -214,7 +215,7 @@ void QtInstance::getPropertyNames(ExecState* exec, PropertyNameArray& array)
             QMetaMethod method = meta->method(i);
             if (method.access() != QMetaMethod::Private) {
                 QByteArray sig = method.methodSignature();
-                array.add(Identifier(exec, String(sig.constData(), sig.length())));
+                array.add(Identifier::fromString(exec, String(sig.constData(), sig.length())));
             }
         }
     }

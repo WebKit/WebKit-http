@@ -73,8 +73,8 @@ JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, PropertyName id
     JSContextRef context = toRef(exec);
     JSValueRef exception = 0;
 
-    String ustring(identifier.publicName());
-    const QByteArray name = QString(reinterpret_cast<const QChar*>(ustring.characters()), ustring.length()).toLatin1();
+    String str(identifier.publicName());
+    const QByteArray name(str.ascii().data());
 
     // First see if we have a cache hit
     if (QtRuntimeMethod* method = qtinst->m_methods.value(name)) {
@@ -136,9 +136,9 @@ Field* QtClass::fieldNamed(PropertyName identifier, Instance* instance) const
     QtInstance* qtinst = static_cast<QtInstance*>(instance);
 
     QObject* obj = qtinst->getObject();
-    String ustring(identifier.publicName());
-    const QString name(reinterpret_cast<const QChar*>(ustring.characters()), ustring.length());
-    const QByteArray ascii = name.toLatin1();
+    String str(identifier.publicName());
+    const QByteArray ascii(str.ascii().data());
+    const QString name(str);
 
     // First check for a cached field
     QtField* f = qtinst->m_fields.value(name);
