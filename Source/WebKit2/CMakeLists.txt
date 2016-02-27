@@ -171,15 +171,7 @@ set(WebKit2_SOURCES
     DatabaseProcess/DatabaseProcess.cpp
     DatabaseProcess/DatabaseToWebProcessConnection.cpp
 
-    DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp
-    DatabaseProcess/IndexedDB/IDBSerialization.cpp
-    DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp
-    DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp
     DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
-
-    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
-    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
-    DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
 
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkLoad.cpp
