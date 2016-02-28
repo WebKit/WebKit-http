@@ -232,4 +232,7 @@ if (MSVC)
             string(REGEX REPLACE "/D_DEBUG" "" ${flag_var} "${${flag_var}}")
         endif ()
     endforeach ()
+
+    set(JavaScriptCore_LIBRARY_TYPE SHARED)
+    set(WTF_LIBRARY_TYPE SHARED)
 endif ()
