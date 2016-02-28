@@ -281,6 +281,10 @@ if (WIN32)
         "${WEBCORE_DIR}/platform/win"
     )
 
+    list(APPEND WebCore_SOURCES
+        platform/win/SystemInfo.cpp
+    )
+
     file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore)
 
     set(WebCore_PRE_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/WebCore/preBuild.cmd")
