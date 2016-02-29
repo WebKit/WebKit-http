@@ -165,6 +165,8 @@ if (USE_QT_MULTIMEDIA)
     )
 endif ()
 
+qt5_add_resources(WebCore_SOURCES WebCore.qrc)
+
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${LIBXML2_INCLUDE_DIR}
