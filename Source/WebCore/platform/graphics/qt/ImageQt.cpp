@@ -84,10 +84,6 @@ static WebGraphicHash* graphics()
         hash->insert("urlIcon", QPixmap(QLatin1String(":webkit/resources/urlIcon.png")));
         // QWebSettings::TextAreaSizeGripCornerGraphic
         hash->insert("textAreaResizeCorner", QPixmap(QLatin1String(":webkit/resources/textAreaResizeCorner.png")));
-        // QWebSettings::DeleteButtonGraphic
-        hash->insert("deleteButton", QPixmap(QLatin1String(":webkit/resources/deleteButton.png")));
-        // QWebSettings::InputSpeechButtonGraphic
-        hash->insert("inputSpeech", QPixmap(QLatin1String(":webkit/resources/inputSpeech.png")));
     }
 
     return hash;
