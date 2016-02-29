@@ -411,7 +411,6 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     else {
         // Unknown authentication type, ignore (various websites are intercepting the auth and
         // handling it by themselves)
-        client->didFinishLoading(m_resourceHandle, 0);
         return;
     }
 
