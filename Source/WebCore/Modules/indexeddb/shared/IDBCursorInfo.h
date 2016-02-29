@@ -69,6 +69,10 @@ public:
 
     IDBCursorInfo isolatedCopy() const;
 
+    WEBCORE_EXPORT IDBCursorInfo();
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static bool decode(Decoder&, IDBCursorInfo&);
+
 private:
     IDBCursorInfo(IDBClient::IDBTransaction&, uint64_t objectStoreIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
     IDBCursorInfo(IDBClient::IDBTransaction&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
@@ -77,8 +81,8 @@ private:
 
     IDBResourceIdentifier m_cursorIdentifier;
     IDBResourceIdentifier m_transactionIdentifier;
-    uint64_t m_objectStoreIdentifier;
-    uint64_t m_sourceIdentifier;
+    uint64_t m_objectStoreIdentifier { 0 };
+    uint64_t m_sourceIdentifier { 0 };
 
     IDBKeyRangeData m_range;
 
@@ -86,6 +90,46 @@ private:
     IndexedDB::CursorDirection m_direction;
     IndexedDB::CursorType m_type;
 };
+
+template<class Encoder>
+void IDBCursorInfo::encode(Encoder& encoder) const
+{
+    encoder << m_cursorIdentifier << m_transactionIdentifier << m_objectStoreIdentifier << m_sourceIdentifier << m_range;
+
+    encoder.encodeEnum(m_source);
+    encoder.encodeEnum(m_direction);
+    encoder.encodeEnum(m_type);
+}
+
+template<class Decoder>
+bool IDBCursorInfo::decode(Decoder& decoder, IDBCursorInfo& info)
+{
+    if (!decoder.decode(info.m_cursorIdentifier))
+        return false;
+
+    if (!decoder.decode(info.m_transactionIdentifier))
+        return false;
+
+    if (!decoder.decode(info.m_objectStoreIdentifier))
+        return false;
+
+    if (!decoder.decode(info.m_sourceIdentifier))
+        return false;
+
+    if (!decoder.decode(info.m_range))
+        return false;
+
+    if (!decoder.decodeEnum(info.m_source))
+        return false;
+
+    if (!decoder.decodeEnum(info.m_direction))
+        return false;
+
+    if (!decoder.decodeEnum(info.m_type))
+        return false;
+
+    return true;
+}
 
 } // namespace WebCore
 

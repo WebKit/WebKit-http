@@ -2344,25 +2344,6 @@ void HTMLMediaElement::keyAdded()
 }
 #endif
 
-#if ENABLE(MEDIA_STREAM)
-String HTMLMediaElement::mediaPlayerMediaDeviceIdentifierStorageDirectory() const
-{
-    Settings* settings = document().settings();
-    if (!settings)
-        return emptyString();
-
-    String storageDirectory = settings->mediaDeviceIdentifierStorageDirectory();
-    if (storageDirectory.isEmpty())
-        return emptyString();
-
-    SecurityOrigin* origin = document().securityOrigin();
-    if (!origin)
-        return emptyString();
-
-    return pathByAppendingComponent(storageDirectory, origin->databaseIdentifier());
-}
-#endif
-
 void HTMLMediaElement::progressEventTimerFired()
 {
     ASSERT(m_player);
@@ -2972,6 +2953,14 @@ void HTMLMediaElement::playInternal()
     if (!m_mediaSession->clientWillBeginPlayback()) {
         LOG(Media, "  returning because of interruption");
         return;
+    }
+
+    // FIXME: rdar://problem/23833752 We need to be more strategic about when we set up the video controls manager.
+    // It's really something that should be handled by the PlatformMediaSessionManager since we only want a controls
+    // manager for the currentSession.
+    if (document().page() && is<HTMLVideoElement>(*this)) {
+        HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
+        document().page()->chrome().client().setUpVideoControlsManager(asVideo);
     }
 
     // 4.8.10.9. Playing the media resource
@@ -6092,9 +6081,9 @@ CachedResourceLoader* HTMLMediaElement::mediaPlayerCachedResourceLoader()
     return &document().cachedResourceLoader();
 }
 
-RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient> client)
+RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceLoader()
 {
-    return adoptRef(*new MediaResourceLoader(document(), fastGetAttribute(HTMLNames::crossoriginAttr), WTFMove(client)));
+    return adoptRef(*new MediaResourceLoader(document(), fastGetAttribute(HTMLNames::crossoriginAttr)));
 }
 
 bool HTMLMediaElement::mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge& challenge)

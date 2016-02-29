@@ -323,6 +323,8 @@ public:
     void cancelImmediateActionAnimation();
     void completeImmediateActionAnimation();
     void didChangeContentSize(CGSize);
+    void didHandleAcceptedCandidate();
+    void isPlayingMediaDidChange();
 
     void setIgnoresNonWheelEvents(bool);
     bool ignoresNonWheelEvents() const { return m_ignoresNonWheelEvents; }
@@ -638,6 +640,7 @@ private:
     String m_lastStringForCandidateRequest;
 #endif
     NSRange m_softSpaceRange { NSNotFound, 0 };
+    bool m_isHandlingAcceptedCandidate { false };
 };
     
 } // namespace WebKit

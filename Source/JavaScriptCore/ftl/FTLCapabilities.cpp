@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,6 +72,7 @@ inline CapabilityLevel canCompile(Node* node)
     case NewObject:
     case NewArray:
     case NewArrayBuffer:
+    case NewTypedArray:
     case GetByOffset:
     case GetGetterSetterByOffset:
     case GetGetter:
@@ -127,6 +128,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckIdent:
     case CheckWatchdogTimer:
     case StringCharCodeAt:
+    case StringFromCharCode:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
     case GetTypedArrayByteOffset:
@@ -335,6 +337,8 @@ inline CapabilityLevel canCompile(Node* node)
             break;
         if (node->isBinaryUseKind(StringIdentUse))
             break;
+        if (node->isBinaryUseKind(StringUse))
+            break;
         if (node->isBinaryUseKind(SymbolUse))
             break;
         if (node->isBinaryUseKind(ObjectUse))
@@ -358,6 +362,8 @@ inline CapabilityLevel canCompile(Node* node)
         if (node->isBinaryUseKind(DoubleRepUse))
             break;
         if (node->isBinaryUseKind(StringIdentUse))
+            break;
+        if (node->isBinaryUseKind(StringUse))
             break;
         if (node->isBinaryUseKind(ObjectUse, UntypedUse))
             break;

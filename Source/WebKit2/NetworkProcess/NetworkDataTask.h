@@ -26,8 +26,11 @@
 #ifndef NetworkDataTask_h
 #define NetworkDataTask_h
 
+#include "SandboxExtension.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/ResourceHandleTypes.h>
+#include <WebCore/ResourceLoaderOptions.h>
+#include <WebCore/ResourceRequest.h>
 #include <WebCore/Timer.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
@@ -47,6 +50,7 @@ class SharedBuffer;
 
 namespace WebKit {
 
+class Download;
 class NetworkSession;
 class PendingDownload;
 
@@ -65,7 +69,7 @@ class NetworkDataTaskClient {
 public:
     virtual void willPerformHTTPRedirection(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, RedirectCompletionHandler) = 0;
     virtual void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler) = 0;
-    virtual void didReceiveResponse(const WebCore::ResourceResponse&, ResponseCompletionHandler) = 0;
+    virtual void didReceiveResponseNetworkSession(const WebCore::ResourceResponse&, ResponseCompletionHandler) = 0;
     virtual void didReceiveData(RefPtr<WebCore::SharedBuffer>&&) = 0;
     virtual void didCompleteWithError(const WebCore::ResourceError&) = 0;
     virtual void didBecomeDownload() = 0;
@@ -79,9 +83,9 @@ public:
 class NetworkDataTask : public RefCounted<NetworkDataTask> {
     friend class NetworkSession;
 public:
-    static Ref<NetworkDataTask> create(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& request, WebCore::StoredCredentials storedCredentials)
+    static Ref<NetworkDataTask> create(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& request, WebCore::StoredCredentials storedCredentials, WebCore::ContentSniffingPolicy shouldContentSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
     {
-        return adoptRef(*new NetworkDataTask(session, client, request, storedCredentials));
+        return adoptRef(*new NetworkDataTask(session, client, request, storedCredentials, shouldContentSniff, shouldClearReferrerOnHTTPSToHTTPRedirect));
     }
     
     void suspend();
@@ -93,7 +97,14 @@ public:
     
     ~NetworkDataTask();
     
-    NetworkDataTaskClient& client() { return m_client; }
+    void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend);
+    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler);
+    void didCompleteWithError(const WebCore::ResourceError&);
+    void didReceiveResponse(const WebCore::ResourceResponse&, ResponseCompletionHandler);
+    void didReceiveData(RefPtr<WebCore::SharedBuffer>&&);
+    void didBecomeDownload();
+    
+    void clearClient() { m_client = nullptr; }
     
     DownloadID pendingDownloadID() { return m_pendingDownloadID; }
     PendingDownload* pendingDownload() { return m_pendingDownload; }
@@ -108,10 +119,16 @@ public:
         ASSERT(!m_pendingDownload);
         m_pendingDownload = &pendingDownload;
     }
+    void setPendingDownloadLocation(const String& filename, const SandboxExtension::Handle&);
+    const String& pendingDownloadLocation() { return m_pendingDownloadLocation; }
+    WebCore::ResourceRequest currentRequest();
+    String suggestedFilename();
     bool tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler);
+    void willPerformHTTPRedirection(const WebCore::ResourceResponse&, WebCore::ResourceRequest&&, RedirectCompletionHandler);
+    void transferSandboxExtensionToDownload(Download&);
     
 private:
-    NetworkDataTask(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials);
+    NetworkDataTask(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials, WebCore::ContentSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
     
     enum FailureType {
         NoFailure,
@@ -124,16 +141,26 @@ private:
     void scheduleFailure(FailureType);
     
     NetworkSession& m_session;
-    NetworkDataTaskClient& m_client;
+    NetworkDataTaskClient* m_client;
     PendingDownload* m_pendingDownload { nullptr };
     DownloadID m_pendingDownloadID;
     String m_user;
     String m_password;
+    WebCore::StoredCredentials m_storedCredentials;
+    String m_lastHTTPMethod;
+    String m_pendingDownloadLocation;
+    WebCore::ResourceRequest m_firstRequest;
+    bool m_shouldClearReferrerOnHTTPSToHTTPRedirect;
+    RefPtr<SandboxExtension> m_sandboxExtension;
 #if PLATFORM(COCOA)
     RetainPtr<NSURLSessionDataTask> m_task;
 #endif
 };
 
+#if PLATFORM(COCOA)
+WebCore::Credential serverTrustCredential(const WebCore::AuthenticationChallenge&);
+#endif
+    
 }
 
 #endif

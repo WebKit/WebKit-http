@@ -107,7 +107,7 @@ bool initializeGStreamerAndRegisterWebKitElements()
 
     registerWebKitGStreamerElements();
 
-    GRefPtr<GstElementFactory> srcFactory = gst_element_factory_find("webkitwebsrc");
+    GRefPtr<GstElementFactory> srcFactory = adoptGRef(gst_element_factory_find("webkitwebsrc"));
     if (!srcFactory) {
         GST_DEBUG_CATEGORY_INIT(webkit_media_player_debug, "webkitmediaplayer", 0, "WebKit media player");
         gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
@@ -121,7 +121,7 @@ bool MediaPlayerPrivateGStreamer::isAvailable()
     if (!initializeGStreamerAndRegisterWebKitElements())
         return false;
 
-    GRefPtr<GstElementFactory> factory = gst_element_factory_find("playbin");
+    GRefPtr<GstElementFactory> factory = adoptGRef(gst_element_factory_find("playbin"));
     return factory;
 }
 

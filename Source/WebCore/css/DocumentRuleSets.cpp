@@ -29,7 +29,6 @@
 #include "config.h"
 #include "DocumentRuleSets.h"
 
-#include "CSSDefaultStyleSheets.h"
 #include "CSSStyleSheet.h"
 #include "ExtensionStyleSheets.h"
 #include "MediaQueryEvaluator.h"
@@ -98,7 +97,7 @@ void DocumentRuleSets::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet
     collectFeatures();
 }
 
-void DocumentRuleSets::collectFeatures()
+void DocumentRuleSets::collectFeatures() const
 {
     m_features.clear();
     // Collect all ids and rules using sibling selectors (:first-child and similar)
@@ -106,6 +105,8 @@ void DocumentRuleSets::collectFeatures()
     // sharing candidates.
     if (CSSDefaultStyleSheets::defaultStyle)
         m_features.add(CSSDefaultStyleSheets::defaultStyle->features());
+    m_defaultStyleVersionOnFeatureCollection = CSSDefaultStyleSheets::defaultStyleVersion;
+
     if (m_authorStyle)
         m_features.add(m_authorStyle->features());
     if (m_userStyle)
@@ -117,12 +118,28 @@ void DocumentRuleSets::collectFeatures()
 
 RuleSet* DocumentRuleSets::ancestorClassRules(AtomicStringImpl* className) const
 {
-    auto addResult = m_ancestorClassRuleSet.add(className, nullptr);
+    auto addResult = m_ancestorClassRuleSets.add(className, nullptr);
     if (addResult.isNewEntry) {
         if (auto* rules = m_features.ancestorClassRules.get(className))
             addResult.iterator->value = makeRuleSet(*rules);
     }
     return addResult.iterator->value.get();
+}
+
+const DocumentRuleSets::AttributeRules* DocumentRuleSets::ancestorAttributeRulesForHTML(AtomicStringImpl* attributeName) const
+{
+    auto addResult = m_ancestorAttributeRuleSetsForHTML.add(attributeName, nullptr);
+    auto& value = addResult.iterator->value;
+    if (addResult.isNewEntry) {
+        if (auto* rules = m_features.ancestorAttributeRulesForHTML.get(attributeName)) {
+            value = std::make_unique<AttributeRules>();
+            value->attributeSelectors.reserveCapacity(rules->selectors.size());
+            for (auto* selector : rules->selectors.values())
+                value->attributeSelectors.uncheckedAppend(selector);
+            value->ruleSet = makeRuleSet(rules->features);
+        }
+    }
+    return value.get();
 }
 
 } // namespace WebCore

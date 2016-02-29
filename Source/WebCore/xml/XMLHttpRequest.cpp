@@ -976,7 +976,7 @@ void XMLHttpRequest::setRequestHeader(const String& name, const String& value, E
 String XMLHttpRequest::getAllResponseHeaders() const
 {
     if (m_state < HEADERS_RECEIVED || m_error)
-        return "";
+        return emptyString();
 
     StringBuilder stringBuilder;
 

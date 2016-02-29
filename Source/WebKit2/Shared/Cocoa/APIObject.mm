@@ -61,12 +61,14 @@
 #import "WKWebsiteDataRecordInternal.h"
 #import "WKWebsiteDataStoreInternal.h"
 #import "WKWindowFeaturesInternal.h"
+#import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadInternal.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import "_WKUserContentExtensionStoreInternal.h"
 #import "_WKUserContentFilterInternal.h"
+#import "_WKUserContentWorldInternal.h"
 #import "_WKUserStyleSheetInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
 
@@ -97,6 +99,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::AuthenticationChallenge:
         wrapper = NSAllocateObject([WKNSURLAuthenticationChallenge self], size, nullptr);
+        break;
+
+    case Type::AutomationSession:
+        wrapper = [_WKAutomationSession alloc];
         break;
 
     case Type::BackForwardList:
@@ -205,6 +211,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::UserContentExtensionStore:
         wrapper = [_WKUserContentExtensionStore alloc];
+        break;
+
+    case Type::UserContentWorld:
+        wrapper = [_WKUserContentWorld alloc];
         break;
 
     case Type::UserScript:

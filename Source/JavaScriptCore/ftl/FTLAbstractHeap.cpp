@@ -30,9 +30,7 @@
 
 #include "DFGCommon.h"
 #include "FTLAbbreviatedTypes.h"
-#include "FTLAbbreviations.h"
 #include "FTLAbstractHeapRepository.h"
-#include "FTLB3Output.h"
 #include "FTLOutput.h"
 #include "FTLTypedPointer.h"
 #include "JSCInlines.h"
@@ -40,27 +38,10 @@
 
 namespace JSC { namespace FTL {
 
-#if !FTL_USES_B3
-LValue AbstractHeap::tbaaMetadataSlow(const AbstractHeapRepository& repository) const
-{
-    m_tbaaMetadata = mdNode(
-        repository.m_context,
-        mdString(repository.m_context, m_heapName),
-        m_parent->tbaaMetadata(repository));
-    return m_tbaaMetadata;
-}
-#endif
-
 void AbstractHeap::decorateInstruction(LValue instruction, const AbstractHeapRepository& repository) const
 {
-#if !FTL_USES_B3
-    if (!Options::useFTLTBAA())
-        return;
-    setMetadata(instruction, repository.m_tbaaKind, tbaaMetadata(repository));
-#else
     UNUSED_PARAM(instruction);
     UNUSED_PARAM(repository);
-#endif
 }
 
 void AbstractHeap::dump(PrintStream& out) const
@@ -77,33 +58,12 @@ void AbstractField::dump(PrintStream& out) const
         out.print("->", *parent());
 }
 
-IndexedAbstractHeap::IndexedAbstractHeap(LContext context, AbstractHeap* parent, const char* heapName, ptrdiff_t offset, size_t elementSize)
+IndexedAbstractHeap::IndexedAbstractHeap(AbstractHeap* parent, const char* heapName, ptrdiff_t offset, size_t elementSize)
     : m_heapForAnyIndex(parent, heapName)
     , m_heapNameLength(strlen(heapName))
     , m_offset(offset)
     , m_elementSize(elementSize)
-#if !FTL_USES_B3
-    , m_scaleTerm(0)
-    , m_canShift(false)
-#endif
 {
-#if FTL_USES_B3
-    UNUSED_PARAM(context);
-#else
-    // See if there is a common shift amount we could use instead of multiplying. Don't
-    // try too hard. This is just a speculative optimization to reduce load on LLVM.
-    for (unsigned i = 0; i < 4; ++i) {
-        if (1U << i == m_elementSize) {
-            if (i)
-                m_scaleTerm = constInt(intPtrType(context), i, ZeroExtend);
-            m_canShift = true;
-            break;
-        }
-    }
-    
-    if (!m_canShift)
-        m_scaleTerm = constInt(intPtrType(context), m_elementSize, ZeroExtend);
-#endif
 }
 
 IndexedAbstractHeap::~IndexedAbstractHeap()
@@ -115,18 +75,7 @@ TypedPointer IndexedAbstractHeap::baseIndex(Output& out, LValue base, LValue ind
     if (indexAsConstant.isInt32())
         return out.address(base, at(indexAsConstant.asInt32()), offset);
 
-#if FTL_USES_B3
     LValue result = out.add(base, out.mul(index, out.constIntPtr(m_elementSize)));
-#else
-    LValue result;
-    if (m_canShift) {
-        if (!m_scaleTerm)
-            result = out.add(base, index);
-        else
-            result = out.add(base, out.shl(index, m_scaleTerm));
-    } else
-        result = out.add(base, out.mul(index, m_scaleTerm));
-#endif
     
     return TypedPointer(atAnyIndex(), out.addPtr(result, m_offset + offset));
 }
@@ -166,7 +115,9 @@ void IndexedAbstractHeap::initialize(AbstractField& field, ptrdiff_t signedIndex
     //
     //    Blah_neg_A
     //
-    // This is important because LLVM uses the string to distinguish the types.
+    // This used to be important because we used to use the string to distinguish the types. This is
+    // not relevant anymore, and this code will be removed eventually.
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=154319
     
     static const char* negSplit = "_neg_";
     static const char* posSplit = "_";
@@ -215,8 +166,8 @@ void IndexedAbstractHeap::dump(PrintStream& out) const
     out.print("Indexed:", atAnyIndex());
 }
 
-NumberedAbstractHeap::NumberedAbstractHeap(LContext context, AbstractHeap* heap, const char* heapName)
-    : m_indexedHeap(context, heap, heapName, 0, 1)
+NumberedAbstractHeap::NumberedAbstractHeap(AbstractHeap* heap, const char* heapName)
+    : m_indexedHeap(heap, heapName, 0, 1)
 {
 }
 
@@ -229,8 +180,8 @@ void NumberedAbstractHeap::dump(PrintStream& out) const
     out.print("Numbered: ", atAnyNumber());
 }
 
-AbsoluteAbstractHeap::AbsoluteAbstractHeap(LContext context, AbstractHeap* heap, const char* heapName)
-    : m_indexedHeap(context, heap, heapName, 0, 1)
+AbsoluteAbstractHeap::AbsoluteAbstractHeap(AbstractHeap* heap, const char* heapName)
+    : m_indexedHeap(heap, heapName, 0, 1)
 {
 }
 

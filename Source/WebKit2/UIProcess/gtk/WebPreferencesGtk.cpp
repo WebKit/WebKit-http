@@ -41,11 +41,16 @@ void WebPreferences::platformInitializeStore()
         setAcceleratedCompositingEnabled(false);
     }
 #endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    setForceCompositingMode(true);
+#endif
 #if !ENABLE(OPENGL)
     setAcceleratedCompositingEnabled(false);
 #else
     if (getenv("WEBKIT_FORCE_COMPOSITING_MODE"))
         setForceCompositingMode(true);
+    if (getenv("WEBKIT_DISABLE_COMPOSITING_MODE"))
+        setAcceleratedCompositingEnabled(false);
 #endif
 }
 

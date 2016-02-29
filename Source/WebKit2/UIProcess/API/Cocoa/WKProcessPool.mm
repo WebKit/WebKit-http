@@ -39,6 +39,7 @@
 #import "WebProcessMessages.h"
 #import "WebProcessPool.h"
 #import "_WKAutomationDelegate.h"
+#import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadDelegate.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import <WebCore/CFNetworkSPI.h>
@@ -50,10 +51,13 @@
 #import "WKGeolocationProviderIOS.h"
 #endif
 
+static WKProcessPool *sharedProcessPool;
+
 @implementation WKProcessPool {
     WebKit::WeakObjCPtr<id <_WKAutomationDelegate>> _automationDelegate;
     WebKit::WeakObjCPtr<id <_WKDownloadDelegate>> _downloadDelegate;
 
+    RetainPtr<_WKAutomationSession> _automationSession;
 #if PLATFORM(IOS)
     RetainPtr<WKGeolocationProviderIOS> _geolocationProvider;
 #endif // PLATFORM(IOS)
@@ -86,6 +90,28 @@
     [super dealloc];
 }
 
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    if (self == sharedProcessPool) {
+        [coder encodeBool:YES forKey:@"isSharedProcessPool"];
+        return;
+    }
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if (!(self = [self init]))
+        return nil;
+
+    if ([coder decodeBoolForKey:@"isSharedProcessPool"]) {
+        [self release];
+
+        return [[WKProcessPool _sharedProcessPool] retain];
+    }
+
+    return self;
+}
+
 - (NSString *)description
 {
     return [NSString stringWithFormat:@"<%@: %p; configuration = %@>", NSStringFromClass(self.class), self, wrapper(_processPool->configuration())];
@@ -113,6 +139,16 @@
 @end
 
 @implementation WKProcessPool (WKPrivate)
+
++ (WKProcessPool *)_sharedProcessPool
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedProcessPool = [[WKProcessPool alloc] init];
+    });
+
+    return sharedProcessPool;
+}
 
 + (NSURL *)_websiteDataURLForContainerWithURL:(NSURL *)containerURL
 {
@@ -241,6 +277,17 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 - (void)_automationCapabilitiesDidChange
 {
     _processPool->updateAutomationCapabilities();
+}
+
+- (void)_setAutomationSession:(_WKAutomationSession *)automationSession
+{
+    _automationSession = automationSession;
+    _processPool->setAutomationSession(automationSession ? automationSession->_session.get() : nullptr);
+}
+
+- (void)_terminateDatabaseProcess
+{
+    _processPool->terminateDatabaseProcess();
 }
 
 @end

@@ -40,7 +40,7 @@
 
 .sidebar > .panel.details.css-style > .content > .pseudo-classes {
     padding: 6px 10px;
-    border-bottom: 1px solid hsl(0, 0%, 70%);
+    border-bottom: 1px solid var(--border-color);
 
     display: flex;
     flex-flow: row wrap;
@@ -71,12 +71,12 @@
     position: absolute;
     width: 100%;
     background-color: white;
-    border-top: 1px solid hsl(0, 0%, 70%);
+    border-top: 1px solid var(--border-color);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container {
     bottom: 0;
-    height: 29px;
+    height: var(--console-prompt-min-height);
 }
 
 .sidebar > .panel.details.css-style > .content:not(.supports-new-rule, .has-filter-bar) ~ :matches(.options-container, .class-list-container) {
@@ -107,13 +107,13 @@
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle.selected {
-    color: white;
-    background-color: hsl(212, 92%, 54%);
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:not(.selected):hover {
-    color: white;
-    background-color: hsla(212, 92%, 54%, 0.5);
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color-hover);
 }
 
 .sidebar > .panel.details.css-style > .content:not(.supports-new-rule) ~ .options-container > .new-rule,
@@ -123,7 +123,7 @@
 
 .sidebar > .panel.details.css-style > .content ~ .class-list-container {
     flex-wrap: wrap;
-    bottom: 29px;
+    bottom: var(--console-prompt-min-height);
     max-height: 65px;
     padding: 3px 2px;
     overflow-y: scroll;
@@ -182,7 +182,7 @@
 .sidebar > .panel.details.css-style > .content.filter-in-progress .style-declaration-section:not(.filter-section-has-label) {
     margin-top: 0;
     border-top: none;
-    border-bottom: 1px solid hsl(0, 0%, 70%);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar > .panel.details.css-style > .content.filter-in-progress .style-declaration-section > .header > .selector > .filter-matching {

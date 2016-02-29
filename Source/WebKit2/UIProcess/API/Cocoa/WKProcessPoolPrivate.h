@@ -27,6 +27,7 @@
 
 #if WK_API_ENABLED
 
+@class _WKAutomationSession;
 @class _WKProcessPoolConfiguration;
 @protocol _WKAutomationDelegate;
 @protocol _WKDownloadDelegate;
@@ -36,6 +37,8 @@
 @end
 
 @interface WKProcessPool (WKPrivate)
+
++ (WKProcessPool *)_sharedProcessPool;
 
 @property (nonatomic, readonly) _WKProcessPoolConfiguration *_configuration;
 
@@ -56,6 +59,10 @@
 
 - (void)_warmInitialProcess WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 - (void)_automationCapabilitiesDidChange WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+- (void)_setAutomationSession:(_WKAutomationSession *)automationSession WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+
+// Test only. Should be called only while no web content processes are running.
+- (void)_terminateDatabaseProcess;
 
 @end
 

@@ -73,11 +73,14 @@ class CppProtocolTypesHeaderGenerator(Generator):
         sections.append('namespace Protocol {')
         sections.append(self._generate_forward_declarations(domains))
         sections.append(self._generate_typedefs(domains))
-        sections.append('%s getEnumConstantValue(int code);' % ' '.join(return_type_with_export_macro))
+        sections.append('\n'.join([
+            'namespace %sImpl {' % self.model().framework.name,
+            '%s getEnumConstantValue(int code);' % ' '.join(return_type_with_export_macro),
+            '}']))
         sections.append('\n'.join([
             'template<typename T> %s getEnumConstantValue(T enumValue)' % return_type,
             '{',
-            '    return getEnumConstantValue(static_cast<int>(enumValue));',
+            '    return %sImpl::getEnumConstantValue(static_cast<int>(enumValue));' % self.model().framework.name,
             '}']))
 
         builder_sections = map(self._generate_builders_for_domain, domains)

@@ -40,15 +40,13 @@ namespace WebCore {
 class DOMError;
 class IDBCursor;
 class IDBDatabase;
-class IDBDatabaseBackend;
 class IDBDatabaseError;
 class IDBObjectStore;
 class IDBOpenDBRequest;
 
 struct ExceptionCodeWithMessage;
-struct IDBObjectStoreMetadata;
 
-class IDBTransaction : public ScriptWrappable, public RefCounted<IDBTransaction>, public EventTargetWithInlineData, public ActiveDOMObject {
+class IDBTransaction : public RefCounted<IDBTransaction>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     virtual ~IDBTransaction() { }
 

@@ -32,9 +32,6 @@
     Conditional=MEDIA_SOURCE,
     NoInterfaceObject,
     ActiveDOMObject,
-    EventTarget,
-    JSGenerateToJSObject,
-    JSGenerateToNativeObject,
 ] interface SourceBuffer : EventTarget {
 
     readonly attribute boolean updating;

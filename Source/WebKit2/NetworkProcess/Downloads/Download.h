@@ -82,9 +82,7 @@ public:
 #endif
     ~Download();
 
-#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
-    void dataTaskDidBecomeDownloadTask(const NetworkSession&, RetainPtr<NSURLSessionDownloadTask>&&);
-#else
+#if !USE(NETWORK_SESSION)
     void start();
     void startWithHandle(WebCore::ResourceHandle*, const WebCore::ResourceResponse&);
 #endif
@@ -94,7 +92,7 @@ public:
     DownloadID downloadID() const { return m_downloadID; }
 
 #if USE(NETWORK_SESSION)
-    void didStart(const WebCore::ResourceRequest&);
+    void setSandboxExtension(RefPtr<SandboxExtension>&& sandboxExtension) { m_sandboxExtension = WTFMove(sandboxExtension); }
 #else
     void didStart();
     void didReceiveAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
@@ -102,7 +100,9 @@ public:
     void didReceiveResponse(const WebCore::ResourceResponse&);
     void didReceiveData(uint64_t length);
     bool shouldDecodeSourceDataOfMIMEType(const String& mimeType);
+#if !USE(NETWORK_SESSION)
     String decideDestinationWithSuggestedFilename(const String& filename, bool& allowOverwrite);
+#endif
     void didCreateDestination(const String& path);
     void didFinish();
     void platformDidFinish();
@@ -111,19 +111,6 @@ public:
 
 #if USE(CFNETWORK)
     DownloadAuthenticationClient* authenticationClient();
-#endif
-
-#if !USE(NETWORK_SESSION)
-    // Authentication
-    static void receivedCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
-    static void receivedRequestToContinueWithoutCredential(const WebCore::AuthenticationChallenge&);
-    static void receivedCancellation(const WebCore::AuthenticationChallenge&);
-    static void receivedRequestToPerformDefaultHandling(const WebCore::AuthenticationChallenge&);
-    static void receivedChallengeRejection(const WebCore::AuthenticationChallenge&);
-
-    void useCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
-    void continueWithoutCredential(const WebCore::AuthenticationChallenge&);
-    void cancelAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
 #endif
 
 private:

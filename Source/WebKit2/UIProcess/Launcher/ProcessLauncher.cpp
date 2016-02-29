@@ -51,7 +51,7 @@ ProcessLauncher::ProcessLauncher(Client* client, const LaunchOptions& launchOpti
     });
 }
 
-void ProcessLauncher::didFinishLaunchingProcess(PlatformProcessIdentifier processIdentifier, IPC::Connection::Identifier identifier)
+void ProcessLauncher::didFinishLaunchingProcess(pid_t processIdentifier, IPC::Connection::Identifier identifier)
 {
     m_processIdentifier = processIdentifier;
     m_isLaunching = false;
@@ -73,55 +73,6 @@ void ProcessLauncher::invalidate()
 {
     m_client = 0;
     platformInvalidate();
-}
-
-const char* ProcessLauncher::processTypeAsString(ProcessType processType)
-{
-    switch (processType) {
-    case WebProcess:
-        return "webprocess";
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    case PluginProcess:
-        return "pluginprocess";
-#endif
-    case NetworkProcess:
-        return "networkprocess";
-#if ENABLE(DATABASE_PROCESS)
-    case DatabaseProcess:
-        return "databaseprocess";
-#endif
-    }
-
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
-bool ProcessLauncher::getProcessTypeFromString(const char* string, ProcessType& processType)
-{
-    if (!strcmp(string, "webprocess")) {
-        processType = WebProcess;
-        return true;
-    }
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    if (!strcmp(string, "pluginprocess")) {
-        processType = PluginProcess;
-        return true;
-    }
-#endif
-
-    if (!strcmp(string, "networkprocess")) {
-        processType = NetworkProcess;
-        return true;
-    }
-
-#if ENABLE(DATABASE_PROCESS)
-    if (!strcmp(string, "databaseprocess")) {
-        processType = DatabaseProcess;
-        return true;
-    }
-#endif
-    return false;
 }
 
 } // namespace WebKit

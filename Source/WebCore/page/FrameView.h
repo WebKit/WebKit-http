@@ -456,7 +456,6 @@ public:
     WEBCORE_EXPORT bool removeScrollableArea(ScrollableArea*);
     bool containsScrollableArea(ScrollableArea*) const;
     const ScrollableAreaSet* scrollableAreas() const { return m_scrollableAreas.get(); }
-    void clearScrollableAreas();
 
     virtual void removeChild(Widget&) override;
 
@@ -637,6 +636,8 @@ private:
 
     virtual bool usesCompositedScrolling() const override;
     virtual bool usesAsyncScrolling() const override;
+    bool usesMockScrollAnimator() const override;
+    void logMockScrollAnimatorMessage(const String&) const override;
 
     // Override scrollbar notifications to update the AXObject cache.
     virtual void didAddScrollbar(Scrollbar*, ScrollbarOrientation) override;

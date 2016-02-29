@@ -184,7 +184,6 @@ set(WTF_SOURCES
     RAMSize.cpp
     RandomNumber.cpp
     RefCountedLeakCounter.cpp
-    RefCounter.cpp
     RunLoop.cpp
     SHA1.cpp
     SixCharacterHash.cpp
@@ -284,24 +283,9 @@ endif ()
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})
-include_directories(${WTF_INCLUDE_DIRECTORIES})
-include_directories(SYSTEM ${WTF_SYSTEM_INCLUDE_DIRECTORIES})
-add_library(WTF ${WTF_LIBRARY_TYPE} ${WTF_HEADERS} ${WTF_SOURCES})
-target_link_libraries(WTF ${WTF_LIBRARIES})
-set_target_properties(WTF PROPERTIES COMPILE_DEFINITIONS "BUILDING_WTF")
-set_target_properties(WTF PROPERTIES FOLDER "JavaScriptCore")
+WEBKIT_FRAMEWORK(WTF)
 
 if (MSVC)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
 endif ()
-
-if (WTF_PRE_BUILD_COMMAND)
-    add_custom_command(TARGET WTF PRE_BUILD COMMAND ${WTF_PRE_BUILD_COMMAND} VERBATIM)
-endif ()
-
-if (WTF_OUTPUT_NAME)
-    set_target_properties(WTF PROPERTIES OUTPUT_NAME ${WTF_OUTPUT_NAME})
-endif ()
-
-WEBKIT_FRAMEWORK(WTF)

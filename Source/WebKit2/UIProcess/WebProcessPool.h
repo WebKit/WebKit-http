@@ -79,6 +79,7 @@ class PageConfiguration;
 namespace WebKit {
 
 class DownloadProxy;
+class WebAutomationSession;
 class WebContextSupplement;
 class WebIconDatabase;
 class WebPageGroup;
@@ -185,7 +186,8 @@ public:
     void clearPluginClientPolicies();
 #endif
 
-    PlatformProcessIdentifier networkProcessIdentifier();
+    pid_t networkProcessIdentifier();
+    pid_t databaseProcessIdentifier();
 
     void setAlwaysUsesComplexTextCodePath(bool);
     void setShouldUseFontSmoothing(bool);
@@ -242,6 +244,7 @@ public:
     bool isUsingTestingNetworkSession() const { return m_shouldUseTestingNetworkSession; }
 
     void clearCachedCredentials();
+    void terminateDatabaseProcess();
 
     void allowSpecificHTTPSCertificateForHost(const WebCertificateInfo*, const String& host);
 
@@ -254,6 +257,7 @@ public:
     void enableProcessTermination();
 
     void updateAutomationCapabilities() const;
+    void setAutomationSession(RefPtr<WebAutomationSession>&&);
 
     // Defaults to false.
     void setHTTPPipeliningEnabled(bool);
@@ -330,17 +334,24 @@ public:
     void updateProcessSuppressionState() const { }
 #endif
 
+    void updateHiddenPageThrottlingAutoIncreaseLimit();
+
     void setMemoryCacheDisabled(bool);
     void setFontWhitelist(API::Array*);
 
     UserObservablePageToken userObservablePageCount()
     {
-        return m_userObservablePageCounter.token<UserObservablePageTokenType>();
+        return m_userObservablePageCounter.count();
     }
 
     ProcessSuppressionDisabledToken processSuppressionDisabledForPageCount()
     {
-        return m_processSuppressionDisabledForPageCounter.token<ProcessSuppressionDisabledTokenType>();
+        return m_processSuppressionDisabledForPageCounter.count();
+    }
+
+    HiddenPageThrottlingAutoIncreasesCounter::Token hiddenPageThrottlingAutoIncreasesCount()
+    {
+        return m_hiddenPageThrottlingAutoIncreasesCounter.count();
     }
 
     // FIXME: Move these to API::WebsiteDataStore.
@@ -426,6 +437,8 @@ private:
     std::unique_ptr<API::DownloadClient> m_downloadClient;
     std::unique_ptr<API::LegacyContextHistoryClient> m_historyClient;
 
+    RefPtr<WebAutomationSession> m_automationSession;
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PluginInfoStore m_pluginInfoStore;
 #endif
@@ -502,8 +515,9 @@ private:
 
     bool m_memoryCacheDisabled;
 
-    RefCounter m_userObservablePageCounter;
-    RefCounter m_processSuppressionDisabledForPageCounter;
+    UserObservablePageCounter m_userObservablePageCounter;
+    ProcessSuppressionDisabledCounter m_processSuppressionDisabledForPageCounter;
+    HiddenPageThrottlingAutoIncreasesCounter m_hiddenPageThrottlingAutoIncreasesCounter;
 
 #if PLATFORM(COCOA)
     RetainPtr<NSMutableDictionary> m_bundleParameters;

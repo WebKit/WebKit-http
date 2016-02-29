@@ -89,6 +89,7 @@ public:
 
     String address(Node*);
     bool nodeNeedsStyleRecalc(Node*, ExceptionCode&);
+    String styleChangeType(Node*, ExceptionCode&);
     String description(Deprecated::ScriptValue);
 
     bool isPreloaded(const String& url);
@@ -97,6 +98,7 @@ public:
     bool isSharingStyleSheetContents(Element* linkA, Element* linkB);
     bool isStyleSheetLoadingSubresources(Element* link);
     void setOverrideCachePolicy(const String&);
+    void setCanShowModalDialogOverride(bool allow, ExceptionCode&);
     void setOverrideResourceLoadPriority(const String&);
     void setStrictRawResourceValidationPolicyDisabled(bool);
 
@@ -345,6 +347,7 @@ public:
     bool isFromCurrentWorld(Deprecated::ScriptValue) const;
 
     void setUsesOverlayScrollbars(bool enabled);
+    void setUsesMockScrollAnimator(bool enabled);
 
     String getCurrentCursorInfo(ExceptionCode&);
 
@@ -461,9 +464,14 @@ public:
     String userVisibleString(const DOMURL*);
     void setShowAllPlugins(bool);
 
+    String resourceLoadStatisticsForOrigin(String origin);
+    void setResourceLoadStatisticsEnabled(bool);
+
 #if ENABLE(STREAMS_API)
     bool isReadableStreamDisturbed(ScriptState&, JSC::JSValue);
 #endif
+
+    String composedTreeAsText(Node*);
 
 private:
     explicit Internals(Document*);

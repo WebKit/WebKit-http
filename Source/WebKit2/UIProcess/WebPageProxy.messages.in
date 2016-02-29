@@ -69,7 +69,7 @@ messages -> WebPageProxy {
     RootViewToAccessibilityScreen(WebCore::IntRect rect) -> (WebCore::IntRect screenFrame)
 #endif
 
-    RunBeforeUnloadConfirmPanel(String message, uint64_t frameID) -> (bool shouldClose)
+    RunBeforeUnloadConfirmPanel(String message, uint64_t frameID) -> (bool shouldClose) Delayed
     PageDidScroll()
     RunOpenPanel(uint64_t frameID, struct WebCore::FileChooserSettings parameters)
     PrintFrame(uint64_t frameID) -> ()
@@ -264,8 +264,8 @@ messages -> WebPageProxy {
     
 #if ENABLE(MEDIA_STREAM)
     # MediaSteam messages
-    RequestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, Vector<String> audioDeviceUIDs, Vector<String> videoDeviceUIDs)
-    CheckUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier)
+    RequestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier, Vector<String> audioDeviceUIDs, Vector<String> videoDeviceUIDs)
+    CheckUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier)
 #endif
 
     # Notification messages
@@ -451,4 +451,8 @@ messages -> WebPageProxy {
 #endif
 
     DidRestoreScrollPosition()
+
+#if PLATFORM(MAC)
+    DidHandleAcceptedCandidate()
+#endif
 }

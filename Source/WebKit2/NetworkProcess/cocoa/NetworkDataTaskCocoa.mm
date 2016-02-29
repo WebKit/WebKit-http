@@ -28,16 +28,29 @@
 
 #if USE(NETWORK_SESSION)
 
+#import "Download.h"
+#import "DownloadProxyMessages.h"
+#import "NetworkProcess.h"
+#import "WebCoreArgumentCoders.h"
 #import <WebCore/AuthenticationChallenge.h>
+#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/ResourceRequest.h>
 #import <wtf/MainThread.h>
 
+@interface NSURLSessionTask ()
+@property (readwrite, copy) NSString *_pathToDownloadTaskFile;
+@end
+
 namespace WebKit {
 
-NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& requestWithCredentials, WebCore::StoredCredentials storedCredentials)
+NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& requestWithCredentials, WebCore::StoredCredentials storedCredentials, WebCore::ContentSniffingPolicy shouldContentSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
     : m_failureTimer(*this, &NetworkDataTask::failureTimerFired)
     , m_session(session)
-    , m_client(client)
+    , m_client(&client)
+    , m_storedCredentials(storedCredentials)
+    , m_lastHTTPMethod(requestWithCredentials.httpMethod())
+    , m_firstRequest(requestWithCredentials)
+    , m_shouldClearReferrerOnHTTPSToHTTPRedirect(shouldClearReferrerOnHTTPSToHTTPRedirect)
 {
     ASSERT(isMainThread());
     
@@ -56,10 +69,17 @@ NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient&
     m_password = request.url().pass();
     request.removeCredentials();
     
+    NSURLRequest *nsRequest = request.nsURLRequest(WebCore::UpdateHTTPBody);
+    if (shouldContentSniff == WebCore::DoNotSniffContent) {
+        NSMutableURLRequest *mutableRequest = [[nsRequest mutableCopy] autorelease];
+        [mutableRequest _setProperty:@(NO) forKey:(NSString *)_kCFURLConnectionPropertyShouldSniff];
+        nsRequest = mutableRequest;
+    }
+
     if (storedCredentials == WebCore::AllowStoredCredentials)
-        m_task = [m_session.m_sessionWithCredentialStorage dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)];
+        m_task = [m_session.m_sessionWithCredentialStorage dataTaskWithRequest:nsRequest];
     else
-        m_task = [m_session.m_sessionWithoutCredentialStorage dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)];
+        m_task = [m_session.m_sessionWithoutCredentialStorage dataTaskWithRequest:nsRequest];
     
     ASSERT(!m_session.m_dataTaskMap.contains(taskIdentifier()));
     m_session.m_dataTaskMap.add(taskIdentifier(), this);
@@ -75,6 +95,76 @@ NetworkDataTask::~NetworkDataTask()
     }
 }
 
+void NetworkDataTask::didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend)
+{
+    if (m_client)
+        m_client->didSendData(totalBytesSent, totalBytesExpectedToSend);
+}
+
+void NetworkDataTask::didReceiveChallenge(const WebCore::AuthenticationChallenge& challenge, ChallengeCompletionHandler completionHandler)
+{
+    if (m_client)
+        m_client->didReceiveChallenge(challenge, completionHandler);
+}
+
+void NetworkDataTask::didCompleteWithError(const WebCore::ResourceError& error)
+{
+    if (m_client)
+        m_client->didCompleteWithError(error);
+}
+
+void NetworkDataTask::didReceiveResponse(const WebCore::ResourceResponse& response, ResponseCompletionHandler completionHandler)
+{
+    if (m_client)
+        m_client->didReceiveResponseNetworkSession(response, completionHandler);
+}
+
+void NetworkDataTask::didReceiveData(RefPtr<WebCore::SharedBuffer>&& data)
+{
+    if (m_client)
+        m_client->didReceiveData(WTFMove(data));
+}
+
+void NetworkDataTask::didBecomeDownload()
+{
+    if (m_client)
+        m_client->didBecomeDownload();
+}
+
+void NetworkDataTask::willPerformHTTPRedirection(const WebCore::ResourceResponse& redirectResponse, WebCore::ResourceRequest&& request, RedirectCompletionHandler completionHandler)
+{
+    if (redirectResponse.httpStatusCode() == 307 || redirectResponse.httpStatusCode() == 308) {
+        ASSERT(m_lastHTTPMethod == request.httpMethod());
+        WebCore::FormData* body = m_firstRequest.httpBody();
+        if (body && !body->isEmpty() && !equalLettersIgnoringASCIICase(m_lastHTTPMethod, "get"))
+            request.setHTTPBody(body);
+        
+        String originalContentType = m_firstRequest.httpContentType();
+        if (!originalContentType.isEmpty())
+            request.setHTTPHeaderField(WebCore::HTTPHeaderName::ContentType, originalContentType);
+    }
+    
+    // Should not set Referer after a redirect from a secure resource to non-secure one.
+    if (m_shouldClearReferrerOnHTTPSToHTTPRedirect && !request.url().protocolIs("https") && WebCore::protocolIs(request.httpReferrer(), "https"))
+        request.clearHTTPReferrer();
+    
+    const auto& url = request.url();
+    m_user = url.user();
+    m_password = url.pass();
+    m_lastHTTPMethod = request.httpMethod();
+    request.removeCredentials();
+    
+    if (!protocolHostAndPortAreEqual(request.url(), redirectResponse.url())) {
+        // The network layer might carry over some headers from the original request that
+        // we want to strip here because the redirect is cross-origin.
+        request.clearHTTPAuthorization();
+        request.clearHTTPOrigin();
+    }
+    
+    if (m_client)
+        m_client->willPerformHTTPRedirection(redirectResponse, request, completionHandler);
+}
+    
 void NetworkDataTask::scheduleFailure(FailureType type)
 {
     ASSERT(type != NoFailure);
@@ -89,11 +179,13 @@ void NetworkDataTask::failureTimerFired()
     switch (m_scheduledFailureType) {
     case BlockedFailure:
         m_scheduledFailureType = NoFailure;
-        client().wasBlocked();
+        if (m_client)
+            m_client->wasBlocked();
         return;
     case InvalidURLFailure:
         m_scheduledFailureType = NoFailure;
-        client().cannotShowURL();
+        if (m_client)
+            m_client->cannotShowURL();
         return;
     case NoFailure:
         ASSERT_NOT_REACHED();
@@ -102,13 +194,25 @@ void NetworkDataTask::failureTimerFired()
     ASSERT_NOT_REACHED();
 }
 
+void NetworkDataTask::setPendingDownloadLocation(const WTF::String& filename, const SandboxExtension::Handle& sandboxExtensionHandle)
+{
+    ASSERT(!m_sandboxExtension);
+    m_sandboxExtension = SandboxExtension::create(sandboxExtensionHandle);
+    if (m_sandboxExtension)
+        m_sandboxExtension->consume();
+
+    m_pendingDownloadLocation = filename;
+    m_task.get()._pathToDownloadTaskFile = filename;
+}
+
 bool NetworkDataTask::tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge& challenge, ChallengeCompletionHandler completionHandler)
 {
     if (!challenge.protectionSpace().isPasswordBased())
         return false;
     
     if (!m_user.isNull() && !m_password.isNull()) {
-        completionHandler(AuthenticationChallengeDisposition::UseCredential, WebCore::Credential(m_user, m_password, WebCore::CredentialPersistenceForSession));
+        auto persistence = m_storedCredentials == WebCore::StoredCredentials::AllowStoredCredentials ? WebCore::CredentialPersistenceForSession : WebCore::CredentialPersistenceNone;
+        completionHandler(AuthenticationChallengeDisposition::UseCredential, WebCore::Credential(m_user, m_password, persistence));
         m_user = String();
         m_password = String();
         return true;
@@ -120,6 +224,21 @@ bool NetworkDataTask::tryPasswordBasedAuthentication(const WebCore::Authenticati
     }
     
     return false;
+}
+
+void NetworkDataTask::transferSandboxExtensionToDownload(Download& download)
+{
+    download.setSandboxExtension(WTFMove(m_sandboxExtension));
+}
+
+String NetworkDataTask::suggestedFilename()
+{
+    return m_task.get().response.suggestedFilename;
+}
+
+WebCore::ResourceRequest NetworkDataTask::currentRequest()
+{
+    return [m_task currentRequest];
 }
 
 void NetworkDataTask::cancel()
@@ -145,6 +264,12 @@ auto NetworkDataTask::taskIdentifier() -> TaskIdentifier
 {
     return [m_task taskIdentifier];
 }
+
+WebCore::Credential serverTrustCredential(const WebCore::AuthenticationChallenge& challenge)
+{
+    return WebCore::Credential([NSURLCredential credentialForTrust:challenge.nsURLAuthenticationChallenge().protectionSpace.serverTrust]);
+}
+
 }
 
 #endif

@@ -28,8 +28,13 @@
 
 #include "GraphicsContext3D.h"
 #include "GraphicsContext3DPrivate.h"
-#include <ANGLE/ShaderLang.h>
 #include <WebCore/PlatformCALayerWin.h>
+
+#if PLATFORM(WIN)
+#include <GLSLANG/ShaderLang.h>
+#else
+#include <ANGLE/ShaderLang.h>
+#endif
 
 #if USE(OPENGL_ES_2)
 #include "Extensions3DOpenGLES.h"

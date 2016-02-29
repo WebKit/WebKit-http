@@ -1005,6 +1005,14 @@ bool PluginView::shouldNotAddLayer() const
     return m_pluginElement->displayState() < HTMLPlugInElement::Restarting && !m_plugin->supportsSnapshotting();
 }
 
+void PluginView::willDetatchRenderer()
+{
+    if (!m_isInitialized || !m_plugin)
+        return;
+
+    m_plugin->willDetatchRenderer();
+}
+
 PassRefPtr<SharedBuffer> PluginView::liveResourceData() const
 {
     if (!m_isInitialized || !m_plugin)
@@ -1573,11 +1581,6 @@ void PluginView::setComplexTextInputState(PluginComplexTextInputState pluginComp
 const MachSendRight& PluginView::compositingRenderServerPort()
 {
     return WebProcess::singleton().compositingRenderServerPort();
-}
-
-void PluginView::openPluginPreferencePane()
-{
-    ASSERT_NOT_REACHED();
 }
 
 #endif

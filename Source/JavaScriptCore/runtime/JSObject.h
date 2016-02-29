@@ -113,7 +113,6 @@ public:
     JSValue get(ExecState*, PropertyName) const;
     JSValue get(ExecState*, unsigned propertyName) const;
 
-    bool fastGetOwnPropertySlot(ExecState*, VM&, Structure&, PropertyName, PropertySlot&);
     bool getPropertySlot(ExecState*, PropertyName, PropertySlot&);
     bool getPropertySlot(ExecState*, unsigned propertyName, PropertySlot&);
 
@@ -266,7 +265,7 @@ public:
     {
         if (JSValue result = tryGetIndexQuickly(i))
             return result;
-        PropertySlot slot(this);
+        PropertySlot slot(this, PropertySlot::InternalMethodType::Get);
         if (methodTable(exec->vm())->getOwnPropertySlotByIndex(this, exec, i, slot))
             return slot.getValue(exec, i);
         return JSValue();
@@ -479,6 +478,8 @@ public:
 
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, unsigned propertyName) const;
+    bool hasPropertyGeneric(ExecState*, PropertyName, PropertySlot::InternalMethodType) const;
+    bool hasPropertyGeneric(ExecState*, unsigned propertyName, PropertySlot::InternalMethodType) const;
     bool hasOwnProperty(ExecState*, PropertyName) const;
     bool hasOwnProperty(ExecState*, unsigned) const;
 
@@ -717,6 +718,8 @@ public:
         return &m_butterfly;
     }
 
+    JSValue getMethod(ExecState* exec, CallData& callData, CallType& callType, const Identifier& ident, const String& errorMessage);
+
     DECLARE_EXPORT_INFO;
 
 protected:
@@ -854,10 +857,12 @@ private:
         
     template<PutMode>
     bool putDirectInternal(VM&, PropertyName, JSValue, unsigned attr, PutPropertySlot&);
+    bool canPerformFastPutInline(ExecState* exec, VM&, PropertyName);
 
     JS_EXPORT_PRIVATE NEVER_INLINE void putInlineSlow(ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
-    bool inlineGetOwnPropertySlot(VM&, Structure&, PropertyName, PropertySlot&);
+    bool getNonIndexPropertySlot(ExecState*, PropertyName, PropertySlot&);
+    bool getOwnNonIndexPropertySlot(VM&, Structure&, PropertyName, PropertySlot&);
     JS_EXPORT_PRIVATE void fillGetterPropertySlot(PropertySlot&, JSValue, unsigned, PropertyOffset);
     void fillCustomGetterPropertySlot(PropertySlot&, JSValue, unsigned, Structure&);
 
@@ -1092,12 +1097,17 @@ inline JSValue JSObject::prototype() const
     return structure()->storedPrototype();
 }
 
-ALWAYS_INLINE bool JSObject::inlineGetOwnPropertySlot(VM& vm, Structure& structure, PropertyName propertyName, PropertySlot& slot)
+// It is safe to call this method with a PropertyName that is actually an index,
+// but if so will always return false (doesn't search index storage).
+ALWAYS_INLINE bool JSObject::getOwnNonIndexPropertySlot(VM& vm, Structure& structure, PropertyName propertyName, PropertySlot& slot)
 {
     unsigned attributes;
     PropertyOffset offset = structure.get(vm, propertyName, attributes);
     if (!isValidOffset(offset))
         return false;
+
+    // getPropertySlot relies on this method never returning index properties!
+    ASSERT(!parseIndex(propertyName));
 
     JSValue value = getDirect(offset);
     if (value.isCell()) {
@@ -1136,18 +1146,11 @@ ALWAYS_INLINE bool JSObject::getOwnPropertySlot(JSObject* object, ExecState* exe
 {
     VM& vm = exec->vm();
     Structure& structure = *object->structure(vm);
-    if (object->inlineGetOwnPropertySlot(vm, structure, propertyName, slot))
+    if (object->getOwnNonIndexPropertySlot(vm, structure, propertyName, slot))
         return true;
     if (Optional<uint32_t> index = parseIndex(propertyName))
         return getOwnPropertySlotByIndex(object, exec, index.value(), slot);
     return false;
-}
-
-ALWAYS_INLINE bool JSObject::fastGetOwnPropertySlot(ExecState* exec, VM& vm, Structure& structure, PropertyName propertyName, PropertySlot& slot)
-{
-    if (LIKELY(!TypeInfo::overridesGetOwnPropertySlot(inlineTypeFlags())))
-        return inlineGetOwnPropertySlot(vm, structure, propertyName, slot);
-    return structure.classInfo()->methodTable.getOwnPropertySlot(this, exec, propertyName, slot);
 }
 
 // It may seem crazy to inline a function this large but it makes a big difference
@@ -1158,8 +1161,19 @@ ALWAYS_INLINE bool JSObject::getPropertySlot(ExecState* exec, PropertyName prope
     auto& structureIDTable = vm.heap.structureIDTable();
     JSObject* object = this;
     while (true) {
+        if (UNLIKELY(TypeInfo::overridesGetOwnPropertySlot(object->inlineTypeFlags()))) {
+            // If propertyName is an index then we may have missed it (as this loop is using
+            // getOwnNonIndexPropertySlot), so we cannot safely call the overridden getOwnPropertySlot
+            // (lest we return a property from a prototype that is shadowed). Check now for an index,
+            // if so we need to start afresh from this object.
+            if (Optional<uint32_t> index = parseIndex(propertyName))
+                return getPropertySlot(exec, index.value(), slot);
+            // Safe to continue searching from current position; call getNonIndexPropertySlot to avoid
+            // parsing the int again.
+            return object->getNonIndexPropertySlot(exec, propertyName, slot);
+        }
         Structure& structure = *structureIDTable.get(object->structureID());
-        if (object->fastGetOwnPropertySlot(exec, vm, structure, propertyName, slot))
+        if (object->getOwnNonIndexPropertySlot(vm, structure, propertyName, slot))
             return true;
         JSValue prototype = structure.storedPrototype();
         if (!prototype.isObject())
@@ -1188,9 +1202,31 @@ ALWAYS_INLINE bool JSObject::getPropertySlot(ExecState* exec, unsigned propertyN
     }
 }
 
+ALWAYS_INLINE bool JSObject::getNonIndexPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+{
+    // This method only supports non-index PropertyNames.
+    ASSERT(!parseIndex(propertyName));
+
+    VM& vm = exec->vm();
+    auto& structureIDTable = vm.heap.structureIDTable();
+    JSObject* object = this;
+    while (true) {
+        Structure& structure = *structureIDTable.get(object->structureID());
+        if (LIKELY(!TypeInfo::overridesGetOwnPropertySlot(object->inlineTypeFlags()))) {
+            if (object->getOwnNonIndexPropertySlot(vm, structure, propertyName, slot))
+                return true;
+        } else if (structure.classInfo()->methodTable.getOwnPropertySlot(object, exec, propertyName, slot))
+            return true;
+        JSValue prototype = structure.storedPrototype();
+        if (!prototype.isObject())
+            return false;
+        object = asObject(prototype);
+    }
+}
+
 inline JSValue JSObject::get(ExecState* exec, PropertyName propertyName) const
 {
-    PropertySlot slot(this);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::Get);
     if (const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot))
         return slot.getValue(exec, propertyName);
     
@@ -1199,7 +1235,7 @@ inline JSValue JSObject::get(ExecState* exec, PropertyName propertyName) const
 
 inline JSValue JSObject::get(ExecState* exec, unsigned propertyName) const
 {
-    PropertySlot slot(this);
+    PropertySlot slot(this, PropertySlot::InternalMethodType::Get);
     if (const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot))
         return slot.getValue(exec, propertyName);
 
@@ -1228,7 +1264,7 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
             structure->didReplaceProperty(offset);
             slot.setExistingProperty(this, offset);
 
-            if ((attributes & Accessor) != (currentAttributes & Accessor)) {
+            if ((attributes & Accessor) != (currentAttributes & Accessor) || (attributes & CustomAccessor) != (currentAttributes & CustomAccessor)) {
                 ASSERT(!(attributes & ReadOnly));
                 setStructure(vm, Structure::attributeChangeTransition(vm, structure, propertyName, attributes));
             }
@@ -1470,6 +1506,9 @@ ALWAYS_INLINE Identifier makeIdentifier(VM&, const Identifier& name)
 {
     return name;
 }
+
+bool validateAndApplyPropertyDescriptor(ExecState*, JSObject*, PropertyName, bool isExtensible,
+    const PropertyDescriptor& descriptor, bool isCurrentDefined, const PropertyDescriptor& current, bool throwException);
 
 // Helper for defining native functions, if you're not using a static hash table.
 // Use this macro from within finishCreation() methods in prototypes. This assumes

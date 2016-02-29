@@ -43,6 +43,7 @@
 #include "StatisticsData.h"
 #include "TextChecker.h"
 #include "WKContextPrivate.h"
+#include "WebAutomationSession.h"
 #include "WebCertificateInfo.h"
 #include "WebContextSupplement.h"
 #include "WebCookieManagerProxy.h"
@@ -50,7 +51,6 @@
 #include "WebGeolocationManagerProxy.h"
 #include "WebIconDatabase.h"
 #include "WebKit2Initialize.h"
-#include "WebMediaCacheManagerProxy.h"
 #include "WebMemorySampler.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPageGroup.h"
@@ -158,8 +158,9 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_canHandleHTTPSServerTrustEvaluation(true)
     , m_didNetworkProcessCrash(false)
     , m_memoryCacheDisabled(false)
-    , m_userObservablePageCounter([this](bool) { updateProcessSuppressionState(); })
-    , m_processSuppressionDisabledForPageCounter([this](bool) { updateProcessSuppressionState(); })
+    , m_userObservablePageCounter([this](UserObservablePageCounter::Event) { updateProcessSuppressionState(); })
+    , m_processSuppressionDisabledForPageCounter([this](ProcessSuppressionDisabledCounter::Event) { updateProcessSuppressionState(); })
+    , m_hiddenPageThrottlingAutoIncreasesCounter([this](HiddenPageThrottlingAutoIncreasesCounter::Event) { updateHiddenPageThrottlingAutoIncreaseLimit(); })
 {
     for (auto& scheme : m_configuration->alwaysRevalidatedURLSchemes())
         m_schemesToRegisterAsAlwaysRevalidated.add(scheme);
@@ -178,7 +179,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 
     addSupplement<WebCookieManagerProxy>();
     addSupplement<WebGeolocationManagerProxy>();
-    addSupplement<WebMediaCacheManagerProxy>();
     addSupplement<WebNotificationManagerProxy>();
 #if USE(SOUP)
     addSupplement<WebSoupCustomProtocolRequestManager>();
@@ -452,6 +452,7 @@ void WebProcessPool::databaseProcessCrashed(DatabaseProcessProxy* databaseProces
     for (auto& supplement : m_supplements)
         supplement.value->processDidClose(databaseProcessProxy);
 
+    m_client.databaseProcessDidCrash(this);
     m_databaseProcess = nullptr;
 }
 #endif
@@ -683,11 +684,6 @@ bool WebProcessPool::shouldTerminate(WebProcessProxy* process)
     if (!m_processTerminationEnabled)
         return false;
 
-    for (const auto& supplement : m_supplements.values()) {
-        if (!supplement->shouldTerminate(process))
-            return false;
-    }
-
     return true;
 }
 
@@ -836,12 +832,24 @@ void WebProcessPool::setAdditionalPluginsDirectory(const String& directory)
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-PlatformProcessIdentifier WebProcessPool::networkProcessIdentifier()
+pid_t WebProcessPool::networkProcessIdentifier()
 {
     if (!m_networkProcess)
         return 0;
 
     return m_networkProcess->processIdentifier();
+}
+
+pid_t WebProcessPool::databaseProcessIdentifier()
+{
+#if ENABLE(DATABASE_PROCESS)
+    if (!m_databaseProcess)
+        return 0;
+
+    return m_databaseProcess->processIdentifier();
+#else
+    return 0;
+#endif
 }
 
 void WebProcessPool::setAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)
@@ -1078,6 +1086,18 @@ void WebProcessPool::clearCachedCredentials()
         m_networkProcess->send(Messages::NetworkProcess::ClearCachedCredentials(), 0);
 }
 
+void WebProcessPool::terminateDatabaseProcess()
+{
+#if ENABLE(DATABASE_PROCESS)
+    ASSERT(m_processes.isEmpty());
+    if (!m_databaseProcess)
+        return;
+
+    m_databaseProcess->terminate();
+    m_databaseProcess = nullptr;
+#endif
+}
+
 void WebProcessPool::allowSpecificHTTPSCertificateForHost(const WebCertificateInfo* certificate, const String& host)
 {
     if (m_networkProcess)
@@ -1088,6 +1108,16 @@ void WebProcessPool::updateAutomationCapabilities() const
 {
 #if ENABLE(REMOTE_INSPECTOR)
     Inspector::RemoteInspector::singleton().clientCapabilitiesDidChange();
+#endif
+}
+
+void WebProcessPool::setAutomationSession(RefPtr<WebAutomationSession>&& automationSession)
+{
+    m_automationSession = WTFMove(automationSession);
+
+#if ENABLE(REMOTE_INSPECTOR)
+    if (m_automationSession)
+        m_automationSession->init();
 #endif
 }
 
@@ -1302,6 +1332,17 @@ void WebProcessPool::setFontWhitelist(API::Array* array)
                 m_fontWhitelist.append(font->string());
         }
     }
+}
+
+void WebProcessPool::updateHiddenPageThrottlingAutoIncreaseLimit()
+{
+    // We're estimating an upper bound for a set of background timer fires for a page to be 200ms
+    // (including all timer fires, all paging-in, and any resulting GC). To ensure this does not
+    // result in more than 1% CPU load allow for one timer fire per 100x this duration.
+    static int maximumTimerThrottlePerPageInMS = 200 * 100;
+
+    int limitInMilliseconds = maximumTimerThrottlePerPageInMS * m_hiddenPageThrottlingAutoIncreasesCounter.value();
+    sendToAllProcesses(Messages::WebProcess::SetHiddenPageTimerThrottlingIncreaseLimit(limitInMilliseconds));
 }
 
 } // namespace WebKit

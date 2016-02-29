@@ -86,9 +86,9 @@ private:
 
     virtual bool canRunBeforeUnloadConfirmPanel() const override { return true; }
 
-    virtual bool runBeforeUnloadConfirmPanel(WebPageProxy*, const String& message, WebFrameProxy*) override
+    virtual void runBeforeUnloadConfirmPanel(WebPageProxy*, const String& message, WebFrameProxy*, std::function<void (bool)> completionHandler) override
     {
-        return webkitWebViewRunJavaScriptBeforeUnloadConfirm(m_webView, message.utf8());
+        completionHandler(webkitWebViewRunJavaScriptBeforeUnloadConfirm(m_webView, message.utf8()));
     }
 
     virtual void mouseDidMoveOverElement(WebPageProxy*, const WebHitTestResultData& data, WebEvent::Modifiers modifiers, API::Object*) override
@@ -174,9 +174,9 @@ private:
         return true;
     }
 
-    virtual bool decidePolicyForUserMediaPermissionRequest(WebPageProxy&, WebFrameProxy&, API::SecurityOrigin& securityOrigin, UserMediaPermissionRequestProxy& permissionRequest) override
+    virtual bool decidePolicyForUserMediaPermissionRequest(WebPageProxy&, WebFrameProxy&, API::SecurityOrigin& userMediaDocumentOrigin, API::SecurityOrigin& topLevelDocumentOrigin, UserMediaPermissionRequestProxy& permissionRequest) override
     {
-        GRefPtr<WebKitUserMediaPermissionRequest> userMediaPermissionRequest = adoptGRef(webkitUserMediaPermissionRequestCreate(permissionRequest, securityOrigin));
+        GRefPtr<WebKitUserMediaPermissionRequest> userMediaPermissionRequest = adoptGRef(webkitUserMediaPermissionRequestCreate(permissionRequest, userMediaDocumentOrigin, topLevelDocumentOrigin));
         webkitWebViewMakePermissionRequest(m_webView, WEBKIT_PERMISSION_REQUEST(userMediaPermissionRequest.get()));
         return true;
     }

@@ -94,13 +94,14 @@ BenchmarkRunner = Utilities.createClass(
         Utilities.extendObject(options, contentWindow.Utilities.parseParameters());
 
         var benchmark = new contentWindow.benchmarkClass(options);
-        benchmark.run().then(function(results) {
+        document.body.style.backgroundColor = benchmark.backgroundColor();
+        benchmark.run().then(function(testData) {
             var suiteResults = self._suitesResults[suite.name] || {};
-            suiteResults[test.name] = results;
+            suiteResults[test.name] = testData;
             self._suitesResults[suite.name] = suiteResults;
 
             if (self._client && self._client.didRunTest)
-                self._client.didRunTest(suite, test);
+                self._client.didRunTest(testData);
 
             state.next();
             if (state.currentSuite() != suite)
@@ -153,8 +154,10 @@ BenchmarkRunner = Utilities.createClass(
             currentIteration++;
             if (currentIteration < self._client.iterationCount)
                 self.runAllSteps();
-            else if (this._client && this._client.didFinishLastIteration)
+            else if (this._client && this._client.didFinishLastIteration) {
+                document.body.style.backgroundColor = "";
                 self._client.didFinishLastIteration();
+            }
         }
 
         if (this._client && this._client.willStartFirstIteration)

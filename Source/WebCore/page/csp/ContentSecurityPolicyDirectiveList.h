@@ -41,7 +41,7 @@ class ContentSecurityPolicyDirectiveList {
     WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(ContentSecurityPolicyDirectiveList)
 public:
-    static std::unique_ptr<ContentSecurityPolicyDirectiveList> create(ContentSecurityPolicy&, const String&, ContentSecurityPolicyHeaderType);
+    static std::unique_ptr<ContentSecurityPolicyDirectiveList> create(ContentSecurityPolicy&, const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicy::PolicyFrom);
     ContentSecurityPolicyDirectiveList(ContentSecurityPolicy&, ContentSecurityPolicyHeaderType);
 
     const String& header() const { return m_header; }
@@ -57,6 +57,7 @@ public:
     bool allowScriptFromSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
     bool allowObjectFromSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
     bool allowChildFrameFromSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
+    bool allowChildContextFromSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
     bool allowImageFromSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
     bool allowStyleFromSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
     bool allowFontFromSource(const URL&, ContentSecurityPolicy::ReportingStatus) const;
@@ -71,7 +72,7 @@ public:
     const Vector<String>& reportURIs() const { return m_reportURIs; }
 
 private:
-    void parse(const String&);
+    void parse(const String&, ContentSecurityPolicy::PolicyFrom);
 
     bool parseDirective(const UChar* begin, const UChar* end, String& name, String& value);
     void parseReportURI(const String& name, const String& value);
@@ -114,6 +115,7 @@ private:
     std::unique_ptr<ContentSecurityPolicyMediaListDirective> m_pluginTypes;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_baseURI;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_connectSrc;
+    std::unique_ptr<ContentSecurityPolicySourceListDirective> m_childSrc;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_defaultSrc;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_fontSrc;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_formAction;

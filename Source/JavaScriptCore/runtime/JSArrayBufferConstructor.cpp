@@ -97,9 +97,16 @@ static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState* exec)
         return throwVMError(exec, createOutOfMemoryError(exec));
 
     Structure* arrayBufferStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), constructor->globalObject()->arrayBufferStructure());
+    if (exec->hadException())
+        return JSValue::encode(JSValue());
     JSArrayBuffer* result = JSArrayBuffer::create(exec->vm(), arrayBufferStructure, buffer.release());
     
     return JSValue::encode(result);
+}
+
+static EncodedJSValue JSC_HOST_CALL callArrayBuffer(ExecState* exec)
+{
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "ArrayBuffer"));
 }
 
 ConstructType JSArrayBufferConstructor::getConstructData(
@@ -111,7 +118,7 @@ ConstructType JSArrayBufferConstructor::getConstructData(
 
 CallType JSArrayBufferConstructor::getCallData(JSCell*, CallData& callData)
 {
-    callData.native.function = constructArrayBuffer;
+    callData.native.function = callArrayBuffer;
     return CallTypeHost;
 }
 

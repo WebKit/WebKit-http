@@ -198,7 +198,7 @@ public:
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
         if (!imm.m_value) {
-            move(src, dest);
+            zeroExtend32ToPtr(src, dest);
             return;
         }
 
@@ -267,6 +267,18 @@ public:
         }
     }
 
+    void and32(Address op1, RegisterID op2, RegisterID dest)
+    {
+        move(op2, dest);
+        and32(op1, dest);
+    }
+
+    void and32(RegisterID op1, Address op2, RegisterID dest)
+    {
+        move(op1, dest);
+        and32(op2, dest);
+    }
+
     void and32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
         move(src, dest);
@@ -295,11 +307,10 @@ public:
 
     void lshift32(RegisterID shift_amount, RegisterID dest)
     {
-        ASSERT(shift_amount != dest);
-
         if (shift_amount == X86Registers::ecx)
             m_assembler.shll_CLr(dest);
         else {
+            ASSERT(shift_amount != dest);
             // On x86 we can only shift by ecx; if asked to shift by another register we'll
             // need rejig the shift amount into ecx first, and restore the registers afterwards.
             // If we dest is ecx, then shift the swapped register!
@@ -335,9 +346,31 @@ public:
         m_assembler.imull_rr(src, dest);
     }
 
+    void mul32(RegisterID src1, RegisterID src2, RegisterID dest)
+    {
+        if (src2 == dest) {
+            m_assembler.imull_rr(src1, dest);
+            return;
+        }
+        move(src1, dest);
+        m_assembler.imull_rr(src2, dest);
+    }
+
     void mul32(Address src, RegisterID dest)
     {
         m_assembler.imull_mr(src.offset, src.base, dest);
+    }
+
+    void mul32(Address src1, RegisterID src2, RegisterID dest)
+    {
+        move(src2, dest);
+        mul32(src1, dest);
+    }
+
+    void mul32(RegisterID src1, Address src2, RegisterID dest)
+    {
+        move(src1, dest);
+        mul32(src2, dest);
     }
     
     void mul32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -416,6 +449,18 @@ public:
         }
     }
 
+    void or32(Address op1, RegisterID op2, RegisterID dest)
+    {
+        move(op2, dest);
+        or32(op1, dest);
+    }
+
+    void or32(RegisterID op1, Address op2, RegisterID dest)
+    {
+        move(op1, dest);
+        or32(op2, dest);
+    }
+
     void or32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
         move(src, dest);
@@ -424,11 +469,11 @@ public:
 
     void rshift32(RegisterID shift_amount, RegisterID dest)
     {
-        ASSERT(shift_amount != dest);
-
         if (shift_amount == X86Registers::ecx)
             m_assembler.sarl_CLr(dest);
         else {
+            ASSERT(shift_amount != dest);
+            
             // On x86 we can only shift by ecx; if asked to shift by another register we'll
             // need rejig the shift amount into ecx first, and restore the registers afterwards.
             // If we dest is ecx, then shift the swapped register!
@@ -461,11 +506,11 @@ public:
     
     void urshift32(RegisterID shift_amount, RegisterID dest)
     {
-        ASSERT(shift_amount != dest);
-
         if (shift_amount == X86Registers::ecx)
             m_assembler.shrl_CLr(dest);
         else {
+            ASSERT(shift_amount != dest);
+        
             // On x86 we can only shift by ecx; if asked to shift by another register we'll
             // need rejig the shift amount into ecx first, and restore the registers afterwards.
             // If we dest is ecx, then shift the swapped register!
@@ -565,6 +610,18 @@ public:
             move(op2, dest);
             xor32(op1, dest);
         }
+    }
+
+    void xor32(Address op1, RegisterID op2, RegisterID dest)
+    {
+        move(op2, dest);
+        xor32(op1, dest);
+    }
+
+    void xor32(RegisterID op1, Address op2, RegisterID dest)
+    {
+        move(op1, dest);
+        xor32(op2, dest);
     }
 
     void xor32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -906,7 +963,7 @@ public:
     {
         ASSERT(isSSE2Present());
         if (src != dest)
-            m_assembler.movsd_rr(src, dest);
+            m_assembler.movaps_rr(src, dest);
     }
 
     void loadDouble(TrustedImmPtr address, FPRegisterID dest)
@@ -1015,6 +1072,30 @@ public:
         m_assembler.addsd_mr(src.offset, src.base, dest);
     }
 
+    void addDouble(Address op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op2 == dest) {
+            addDouble(op1, dest);
+            return;
+        }
+
+        loadDouble(op1, dest);
+        addDouble(op2, dest);
+    }
+
+    void addDouble(FPRegisterID op1, Address op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op1 == dest) {
+            addDouble(op2, dest);
+            return;
+        }
+
+        loadDouble(op2, dest);
+        addDouble(op1, dest);
+    }
+
     void addFloat(FPRegisterID src, FPRegisterID dest)
     {
         ASSERT(isSSE2Present());
@@ -1025,6 +1106,41 @@ public:
     {
         ASSERT(isSSE2Present());
         m_assembler.addss_mr(src.offset, src.base, dest);
+    }
+
+    void addFloat(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op1 == dest)
+            addFloat(op2, dest);
+        else {
+            moveDouble(op2, dest);
+            addFloat(op1, dest);
+        }
+    }
+
+    void addFloat(Address op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op2 == dest) {
+            addFloat(op1, dest);
+            return;
+        }
+
+        loadFloat(op1, dest);
+        addFloat(op2, dest);
+    }
+
+    void addFloat(FPRegisterID op1, Address op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op1 == dest) {
+            addFloat(op2, dest);
+            return;
+        }
+
+        loadFloat(op2, dest);
+        addFloat(op1, dest);
     }
 
     void divDouble(FPRegisterID src, FPRegisterID dest)
@@ -1116,6 +1232,28 @@ public:
         m_assembler.mulsd_mr(src.offset, src.base, dest);
     }
 
+    void mulDouble(Address op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op2 == dest) {
+            mulDouble(op1, dest);
+            return;
+        }
+        loadDouble(op1, dest);
+        mulDouble(op2, dest);
+    }
+
+    void mulDouble(FPRegisterID op1, Address op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op1 == dest) {
+            mulDouble(op2, dest);
+            return;
+        }
+        loadDouble(op2, dest);
+        mulDouble(op1, dest);
+    }
+
     void mulFloat(FPRegisterID src, FPRegisterID dest)
     {
         ASSERT(isSSE2Present());
@@ -1128,10 +1266,53 @@ public:
         m_assembler.mulss_mr(src.offset, src.base, dest);
     }
 
+    void mulFloat(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op1 == dest)
+            mulFloat(op2, dest);
+        else {
+            moveDouble(op2, dest);
+            mulFloat(op1, dest);
+        }
+    }
+
+    void mulFloat(Address op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op2 == dest) {
+            mulFloat(op1, dest);
+            return;
+        }
+        loadFloat(op1, dest);
+        mulFloat(op2, dest);
+    }
+
+    void mulFloat(FPRegisterID op1, Address op2, FPRegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+        if (op1 == dest) {
+            mulFloat(op2, dest);
+            return;
+        }
+        loadFloat(op2, dest);
+        mulFloat(op1, dest);
+    }
+
     void andDouble(FPRegisterID src, FPRegisterID dst)
     {
         // ANDPS is defined on 128bits and is shorter than ANDPD.
         m_assembler.andps_rr(src, dst);
+    }
+
+    void andDouble(FPRegisterID src1, FPRegisterID src2, FPRegisterID dst)
+    {
+        if (src1 == dst)
+            andDouble(src2, dst);
+        else {
+            moveDouble(src2, dst);
+            andDouble(src1, dst);
+        }
     }
 
     void andFloat(FPRegisterID src, FPRegisterID dst)
@@ -1139,14 +1320,44 @@ public:
         m_assembler.andps_rr(src, dst);
     }
 
+    void andFloat(FPRegisterID src1, FPRegisterID src2, FPRegisterID dst)
+    {
+        if (src1 == dst)
+            andFloat(src2, dst);
+        else {
+            moveDouble(src2, dst);
+            andFloat(src1, dst);
+        }
+    }
+
     void xorDouble(FPRegisterID src, FPRegisterID dst)
     {
         m_assembler.xorps_rr(src, dst);
     }
 
+    void xorDouble(FPRegisterID src1, FPRegisterID src2, FPRegisterID dst)
+    {
+        if (src1 == dst)
+            xorDouble(src2, dst);
+        else {
+            moveDouble(src2, dst);
+            xorDouble(src1, dst);
+        }
+    }
+
     void xorFloat(FPRegisterID src, FPRegisterID dst)
     {
         m_assembler.xorps_rr(src, dst);
+    }
+
+    void xorFloat(FPRegisterID src1, FPRegisterID src2, FPRegisterID dst)
+    {
+        if (src1 == dst)
+            xorFloat(src2, dst);
+        else {
+            moveDouble(src2, dst);
+            xorFloat(src1, dst);
+        }
     }
 
     void convertInt32ToDouble(RegisterID src, FPRegisterID dest)
@@ -1366,9 +1577,57 @@ public:
         moveConditionallyAfterFloatingPointCompare(cond, left, right, src, dest);
     }
 
+    void moveConditionallyDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+
+        if (thenCase != dest && elseCase != dest) {
+            move(elseCase, dest);
+            elseCase = dest;
+        }
+
+        RegisterID src;
+        if (elseCase == dest)
+            src = thenCase;
+        else {
+            cond = invert(cond);
+            src = elseCase;
+        }
+
+        if (cond & DoubleConditionBitInvert)
+            m_assembler.ucomisd_rr(left, right);
+        else
+            m_assembler.ucomisd_rr(right, left);
+        moveConditionallyAfterFloatingPointCompare(cond, left, right, src, dest);
+    }
+
     void moveConditionallyFloat(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID src, RegisterID dest)
     {
         ASSERT(isSSE2Present());
+
+        if (cond & DoubleConditionBitInvert)
+            m_assembler.ucomiss_rr(left, right);
+        else
+            m_assembler.ucomiss_rr(right, left);
+        moveConditionallyAfterFloatingPointCompare(cond, left, right, src, dest);
+    }
+
+    void moveConditionallyFloat(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        ASSERT(isSSE2Present());
+
+        if (thenCase != dest && elseCase != dest) {
+            move(elseCase, dest);
+            elseCase = dest;
+        }
+
+        RegisterID src;
+        if (elseCase == dest)
+            src = thenCase;
+        else {
+            cond = invert(cond);
+            src = elseCase;
+        }
 
         if (cond & DoubleConditionBitInvert)
             m_assembler.ucomiss_rr(left, right);
@@ -1489,18 +1748,68 @@ public:
         cmov(x86Condition(cond), src, dest);
     }
 
+    void moveConditionally32(RelationalCondition cond, RegisterID left, RegisterID right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        m_assembler.cmpl_rr(right, left);
+
+        if (thenCase != dest && elseCase != dest) {
+            move(elseCase, dest);
+            elseCase = dest;
+        }
+
+        if (elseCase == dest)
+            cmov(x86Condition(cond), thenCase, dest);
+        else
+            cmov(x86Condition(invert(cond)), elseCase, dest);
+    }
+
     void moveConditionallyTest32(ResultCondition cond, RegisterID testReg, RegisterID mask, RegisterID src, RegisterID dest)
     {
         m_assembler.testl_rr(testReg, mask);
         cmov(x86Condition(cond), src, dest);
     }
-    
+
+    void moveConditionallyTest32(ResultCondition cond, RegisterID left, RegisterID right, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        ASSERT(isInvertible(cond));
+        ASSERT_WITH_MESSAGE(cond != Overflow, "TEST does not set the Overflow Flag.");
+
+        m_assembler.testl_rr(right, left);
+
+        if (thenCase != dest && elseCase != dest) {
+            move(elseCase, dest);
+            elseCase = dest;
+        }
+
+        if (elseCase == dest)
+            cmov(x86Condition(cond), thenCase, dest);
+        else
+            cmov(x86Condition(invert(cond)), elseCase, dest);
+    }
+
     void moveConditionallyTest32(ResultCondition cond, RegisterID testReg, TrustedImm32 mask, RegisterID src, RegisterID dest)
     {
         test32(cond, testReg, mask);
         cmov(x86Condition(cond), src, dest);
     }
-    
+
+    void moveConditionallyTest32(ResultCondition cond, RegisterID testReg, TrustedImm32 mask, RegisterID thenCase, RegisterID elseCase, RegisterID dest)
+    {
+        ASSERT(isInvertible(cond));
+        ASSERT_WITH_MESSAGE(cond != Overflow, "TEST does not set the Overflow Flag.");
+
+        test32(cond, testReg, mask);
+
+        if (thenCase != dest && elseCase != dest) {
+            move(elseCase, dest);
+            elseCase = dest;
+        }
+
+        if (elseCase == dest)
+            cmov(x86Condition(cond), thenCase, dest);
+        else
+            cmov(x86Condition(invert(cond)), elseCase, dest);
+    }
 
     // Forwards / external control flow operations:
     //
@@ -1711,6 +2020,18 @@ public:
         return branchAdd32(cond, src1, dest);
     }
 
+    Jump branchAdd32(ResultCondition cond, Address src1, RegisterID src2, RegisterID dest)
+    {
+        move(src2, dest);
+        return branchAdd32(cond, src1, dest);
+    }
+
+    Jump branchAdd32(ResultCondition cond, RegisterID src1, Address src2, RegisterID dest)
+    {
+        move(src1, dest);
+        return branchAdd32(cond, src2, dest);
+    }
+
     Jump branchAdd32(ResultCondition cond, RegisterID src, TrustedImm32 imm, RegisterID dest)
     {
         move(src, dest);
@@ -1895,6 +2216,68 @@ public:
     static RelationalCondition invert(RelationalCondition cond)
     {
         return static_cast<RelationalCondition>(cond ^ 1);
+    }
+
+    static DoubleCondition invert(DoubleCondition cond)
+    {
+        switch (cond) {
+        case DoubleEqual:
+            return DoubleNotEqualOrUnordered;
+        case DoubleNotEqual:
+            return DoubleEqualOrUnordered;
+        case DoubleGreaterThan:
+            return DoubleLessThanOrEqualOrUnordered;
+        case DoubleGreaterThanOrEqual:
+            return DoubleLessThanOrUnordered;
+        case DoubleLessThan:
+            return DoubleGreaterThanOrEqualOrUnordered;
+        case DoubleLessThanOrEqual:
+            return DoubleGreaterThanOrUnordered;
+        case DoubleEqualOrUnordered:
+            return DoubleNotEqual;
+        case DoubleNotEqualOrUnordered:
+            return DoubleEqual;
+        case DoubleGreaterThanOrUnordered:
+            return DoubleLessThanOrEqual;
+        case DoubleGreaterThanOrEqualOrUnordered:
+            return DoubleLessThan;
+        case DoubleLessThanOrUnordered:
+            return DoubleGreaterThanOrEqual;
+        case DoubleLessThanOrEqualOrUnordered:
+            return DoubleGreaterThan;
+        }
+        RELEASE_ASSERT_NOT_REACHED();
+        return DoubleEqual; // make compiler happy
+    }
+
+    static bool isInvertible(ResultCondition cond)
+    {
+        switch (cond) {
+        case Zero:
+        case NonZero:
+        case Signed:
+        case PositiveOrZero:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    static ResultCondition invert(ResultCondition cond)
+    {
+        switch (cond) {
+        case Zero:
+            return NonZero;
+        case NonZero:
+            return Zero;
+        case Signed:
+            return PositiveOrZero;
+        case PositiveOrZero:
+            return Signed;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return Zero; // Make compiler happy for release builds.
+        }
     }
 
     void nop()

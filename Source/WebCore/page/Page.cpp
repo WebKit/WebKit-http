@@ -126,6 +126,14 @@ static HashSet<Page*>* allPages;
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, pageCounter, ("Page"));
 
+void Page::forEachPage(std::function<void(Page&)> function)
+{
+    if (!allPages)
+        return;
+    for (Page* page : *allPages)
+        function(*page);
+}
+
 static void networkStateChanged(bool isOnLine)
 {
     Vector<Ref<Frame>> frames;
@@ -143,7 +151,6 @@ static void networkStateChanged(bool isOnLine)
 }
 
 static const ViewState::Flags PageInitialViewState = ViewState::IsVisible | ViewState::IsInWindow;
-bool Page::s_tabSuspensionIsEnabled = false;
 
 Page::Page(PageConfiguration& pageConfiguration)
     : m_chrome(std::make_unique<Chrome>(*this, *pageConfiguration.chromeClient))
@@ -197,7 +204,8 @@ Page::Page(PageConfiguration& pageConfiguration)
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     , m_viewMode(ViewModeWindowed)
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
-    , m_timerThrottlingEnabled(false)
+    , m_timerAlignmentInterval(DOMTimer::defaultAlignmentInterval())
+    , m_timerAlignmentIntervalIncreaseTimer(*this, &Page::timerAlignmentIntervalIncreaseTimerFired)
     , m_isEditable(false)
     , m_isPrerender(false)
     , m_viewState(PageInitialViewState)
@@ -224,7 +232,6 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
-    , m_tabSuspensionTimer(*this, &Page::tabSuspensionTimerFired)
 {
     setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
 
@@ -845,7 +852,6 @@ void Page::setViewScaleFactor(float scale)
 
     m_viewScaleFactor = scale;
     PageCache::singleton().markPagesForDeviceOrPageScaleChanged(*this);
-    PageCache::singleton().markPagesForFullStyleRecalc(*this);
 }
 
 void Page::setDeviceScaleFactor(float scaleFactor)
@@ -863,7 +869,6 @@ void Page::setDeviceScaleFactor(float scaleFactor)
     mainFrame().deviceOrPageScaleFactorChanged();
     PageCache::singleton().markPagesForDeviceOrPageScaleChanged(*this);
 
-    PageCache::singleton().markPagesForFullStyleRecalc(*this);
     GraphicsContext::updateDocumentMarkerResources();
 
     mainFrame().pageOverlayController().didChangeDeviceScaleFactor();
@@ -941,7 +946,6 @@ void Page::setPagination(const Pagination& pagination)
     m_pagination = pagination;
 
     setNeedsRecalcStyleInAllFrames();
-    PageCache::singleton().markPagesForFullStyleRecalc(*this);
 }
 
 void Page::setPaginationLineGridEnabled(bool enabled)
@@ -952,7 +956,6 @@ void Page::setPaginationLineGridEnabled(bool enabled)
     m_paginationLineGridEnabled = enabled;
     
     setNeedsRecalcStyleInAllFrames();
-    PageCache::singleton().markPagesForFullStyleRecalc(*this);
 }
 
 unsigned Page::pageCount() const
@@ -1154,26 +1157,69 @@ void Page::setMemoryCacheClientCallsEnabled(bool enabled)
 
 void Page::hiddenPageDOMTimerThrottlingStateChanged()
 {
+    // Disable & reengage to ensure state is updated.
+    setTimerThrottlingEnabled(false);
     setTimerThrottlingEnabled(m_viewState & ViewState::IsVisuallyIdle);
 }
 
 void Page::setTimerThrottlingEnabled(bool enabled)
 {
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     if (!m_settings->hiddenPageDOMTimerThrottlingEnabled())
         enabled = false;
-#endif
 
-    if (enabled == m_timerThrottlingEnabled)
+    if (enabled == timerThrottlingEnabled())
         return;
 
-    m_timerThrottlingEnabled = enabled;
-    m_settings->setDOMTimerAlignmentInterval(enabled ? DOMTimer::hiddenPageAlignmentInterval() : DOMTimer::defaultAlignmentInterval());
-    
+    m_timerThrottlingEnabledTime = enabled ? monotonicallyIncreasingTime() : Optional<double>();
+    setDOMTimerAlignmentInterval(enabled ? DOMTimer::hiddenPageAlignmentInterval() : DOMTimer::defaultAlignmentInterval());
+
+    if (enabled)
+        return;
+
+    // If throttling was disabled, release all throttled timers.
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (frame->document())
-            frame->document()->didChangeTimerAlignmentInterval();
+        if (auto* document = frame->document())
+            document->didChangeTimerAlignmentInterval();
     }
+}
+
+void Page::setTimerAlignmentIntervalIncreaseLimit(std::chrono::milliseconds limit)
+{
+    // FIXME: std::chrono-ify all timer allignment related code.
+    m_timerAlignmentIntervalIncreaseLimit = limit.count() * 0.001;
+
+    if (!timerThrottlingEnabled())
+        return;
+
+    // If (m_timerAlignmentIntervalIncreaseLimit < m_timerAlignmentInterval) then we need
+    // to update m_timerAlignmentInterval, if greater then need to restart the increase timer.
+    setDOMTimerAlignmentInterval(std::min(m_timerAlignmentIntervalIncreaseLimit, m_timerAlignmentInterval));
+}
+
+void Page::setDOMTimerAlignmentInterval(double alignmentInterval)
+{
+    m_timerAlignmentInterval = alignmentInterval;
+
+    // If throttling is enabled, auto-increasing of throttling is enabled, and the auto-increase
+    // limit has not yet been reached, and then arm the timer to consider an increase. Time to wait
+    // between increases is equal to the current throttle time. Since alinment interval increases
+    // exponentially, time between steps is exponential too.
+    if (!timerThrottlingEnabled() || !m_settings->hiddenPageDOMTimerThrottlingAutoIncreases()
+        || m_timerAlignmentInterval >= m_timerAlignmentIntervalIncreaseLimit)
+        m_timerAlignmentIntervalIncreaseTimer.stop();
+    else if (!m_timerAlignmentIntervalIncreaseTimer.isActive())
+        m_timerAlignmentIntervalIncreaseTimer.startOneShot(m_timerAlignmentInterval);
+}
+
+void Page::timerAlignmentIntervalIncreaseTimerFired()
+{
+    ASSERT(timerThrottlingEnabled() && m_settings->hiddenPageDOMTimerThrottlingAutoIncreases());
+    ASSERT(m_timerAlignmentInterval < m_timerAlignmentIntervalIncreaseLimit);
+        
+    // Alignment interval is increased to equal the time the page has been throttled, to a limit.
+    double throttledDuration = monotonicallyIncreasingTime() - m_timerThrottlingEnabledTime.value();
+    double alignmentInterval = std::max(m_timerAlignmentInterval, throttledDuration);
+    setDOMTimerAlignmentInterval(std::min(alignmentInterval, m_timerAlignmentIntervalIncreaseLimit));
 }
 
 void Page::dnsPrefetchingStateChanged()
@@ -1315,8 +1361,6 @@ void Page::setViewState(ViewState::Flags viewState)
 void Page::setPageActivityState(PageActivityState::Flags activityState)
 {
     chrome().client().setPageActivityState(activityState);
-    
-    updateTabSuspensionState();
 }
 
 void Page::setIsVisible(bool isVisible)
@@ -1368,8 +1412,6 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (FrameView* view = mainFrame().view())
             view->hide();
     }
-
-    updateTabSuspensionState();
 }
 
 void Page::setIsPrerender()
@@ -1731,7 +1773,6 @@ void Page::setVisitedLinkStore(Ref<VisitedLinkStore>&& visitedLinkStore)
     m_visitedLinkStore->addPage(*this);
 
     invalidateStylesForAllLinks();
-    PageCache::singleton().markPagesForFullStyleRecalc(*this);
 }
 
 SessionID Page::sessionID() const
@@ -1868,65 +1909,5 @@ void Page::setResourceUsageOverlayVisible(bool visible)
         m_resourceUsageOverlay = std::make_unique<ResourceUsageOverlay>(*this);
 }
 #endif
-
-bool Page::canTabSuspend()
-{
-    if (!s_tabSuspensionIsEnabled)
-        return false;
-    if (m_isPrerender)
-        return false;
-    if (isVisible())
-        return false;
-    if (m_pageThrottler.activityState() != PageActivityState::NoFlags)
-        return false;
-
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (frame->loader().state() != FrameStateComplete)
-            return false;
-        if (frame->loader().isLoading())
-            return false;
-        if (!frame->document() || !frame->document()->canSuspendActiveDOMObjectsForDocumentSuspension(nullptr))
-            return false;
-    }
-
-    return true;
-}
-
-void Page::setIsTabSuspended(bool shouldSuspend)
-{
-    if (m_isTabSuspended == shouldSuspend)
-        return;
-    m_isTabSuspended = shouldSuspend;
-
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (auto* document = frame->document()) {
-            if (shouldSuspend)
-                document->suspend(ActiveDOMObject::PageWillBeSuspended);
-            else
-                document->resume(ActiveDOMObject::PageWillBeSuspended);
-        }
-    }
-}
-
-void Page::setTabSuspensionEnabled(bool enable)
-{
-    s_tabSuspensionIsEnabled = enable;
-}
-
-void Page::updateTabSuspensionState()
-{
-    if (canTabSuspend()) {
-        const auto tabSuspensionDelay = std::chrono::minutes(1);
-        m_tabSuspensionTimer.startOneShot(tabSuspensionDelay);
-        return;
-    }
-    m_tabSuspensionTimer.stop();
-    setIsTabSuspended(false);
-}
-
-void Page::tabSuspensionTimerFired()
-{
-    setIsTabSuspended(canTabSuspend());
-}
 
 } // namespace WebCore

@@ -66,18 +66,8 @@ public:
 
     void setDefersLoading(bool);
 
-#if PLATFORM(COCOA)
-    static size_t fileBackedResourceMinimumSize();
-    virtual void willCacheResponseAsync(CFCachedURLResponseRef) override;
-#endif
-
     // Message handlers.
     void didReceiveNetworkResourceLoaderMessage(IPC::Connection&, IPC::MessageDecoder&);
-
-#if PLATFORM(COCOA)
-    static void tryGetShareableHandleFromCFURLCachedResponse(ShareableResource::Handle&, CFCachedURLResponseRef);
-    static void tryGetShareableHandleFromSharedBuffer(ShareableResource::Handle&, WebCore::SharedBuffer&);
-#endif
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(bool);
@@ -102,7 +92,11 @@ public:
     virtual void didReceiveBuffer(RefPtr<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
     virtual void didFinishLoading(double finishTime) override;
     virtual void didFailLoading(const WebCore::ResourceError&) override;
-    virtual void didConvertToDownload() override;
+#if USE(NETWORK_SESSION)
+    virtual void didBecomeDownload() override;
+#endif
+    
+    void didConvertToDownload();
 
 private:
     NetworkResourceLoader(const NetworkResourceLoadParameters&, NetworkConnectionToWebProcess&, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&&);

@@ -57,20 +57,13 @@ void ProcessLauncher::launchProcess()
 
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection(IPC::Connection::ConnectionOptions::SetCloexecOnServer);
 
-    String executablePath, pluginPath;
-    CString realExecutablePath, realPluginPath;
+    String executablePath;
+    CString realExecutablePath;
     switch (m_launchOptions.processType) {
-    case WebProcess:
+    case ProcessLauncher::ProcessType::Web:
         executablePath = executablePathOfWebProcess();
         break;
-#if ENABLE(PLUGIN_PROCESS)
-    case PluginProcess:
-        executablePath = executablePathOfPluginProcess();
-        pluginPath = m_launchOptions.extraInitializationData.get("plugin-path");
-        realPluginPath = fileSystemRepresentation(pluginPath);
-        break;
-#endif
-    case NetworkProcess:
+    case ProcessLauncher::ProcessType::Network:
         executablePath = executablePathOfNetworkProcess();
         break;
     default:
@@ -103,7 +96,6 @@ void ProcessLauncher::launchProcess()
 #endif
     argv[i++] = const_cast<char*>(realExecutablePath.data());
     argv[i++] = socket.get();
-    argv[i++] = const_cast<char*>(realPluginPath.data());
     argv[i++] = 0;
 
     GUniqueOutPtr<GError> error;

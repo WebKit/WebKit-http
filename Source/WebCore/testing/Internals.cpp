@@ -39,6 +39,7 @@
 #include "ChromeClient.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
+#include "ComposedTreeIterator.h"
 #include "Cursor.h"
 #include "DOMPath.h"
 #include "DOMStringList.h"
@@ -102,6 +103,7 @@
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
+#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "ScriptedAnimationController.h"
@@ -373,6 +375,7 @@ void Internals::resetToConsistentState(Page* page)
 
     WebCore::overrideUserPreferredLanguages(Vector<String>());
     WebCore::Settings::setUsesOverlayScrollbars(false);
+    WebCore::Settings::setUsesMockScrollAnimator(false);
     page->inspectorController().setLegacyProfilerEnabled(false);
 #if ENABLE(VIDEO_TRACK)
     page->group().captionPreferences().setCaptionsStyleSheetOverride(emptyString());
@@ -464,6 +467,34 @@ bool Internals::nodeNeedsStyleRecalc(Node* node, ExceptionCode& exception)
     return node->needsStyleRecalc();
 }
 
+static String styleChangeTypeToString(StyleChangeType type)
+{
+    switch (type) {
+    case NoStyleChange:
+        return "NoStyleChange";
+    case InlineStyleChange:
+        return "InlineStyleChange";
+    case FullStyleChange:
+        return "FullStyleChange";
+    case SyntheticStyleChange:
+        return "SyntheticStyleChange";
+    case ReconstructRenderTree:
+        return "ReconstructRenderTree";
+    }
+    ASSERT_NOT_REACHED();
+    return "";
+}
+
+String Internals::styleChangeType(Node* node, ExceptionCode& exception)
+{
+    if (!node) {
+        exception = INVALID_ACCESS_ERR;
+        return { };
+    }
+
+    return styleChangeTypeToString(node->styleChangeType());
+}
+
 String Internals::description(Deprecated::ScriptValue value)
 {
     return toString(value.jsValue());
@@ -548,6 +579,16 @@ static ResourceRequestCachePolicy stringToResourceRequestCachePolicy(const Strin
 void Internals::setOverrideCachePolicy(const String& policy)
 {
     frame()->loader().setOverrideCachePolicyForTesting(stringToResourceRequestCachePolicy(policy));
+}
+
+void Internals::setCanShowModalDialogOverride(bool allow, ExceptionCode& ec)
+{
+    if (!contextDocument() || !contextDocument()->domWindow()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    contextDocument()->domWindow()->setCanShowModalDialogOverride(allow);
 }
 
 static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
@@ -2646,6 +2687,11 @@ void Internals::setUsesOverlayScrollbars(bool enabled)
     WebCore::Settings::setUsesOverlayScrollbars(enabled);
 }
 
+void Internals::setUsesMockScrollAnimator(bool enabled)
+{
+    WebCore::Settings::setUsesMockScrollAnimator(enabled);
+}
+
 void Internals::forceReload(bool endToEnd)
 {
     frame()->loader().reload(endToEnd);
@@ -3414,8 +3460,8 @@ bool Internals::isReadableStreamDisturbed(ScriptState& state, JSValue stream)
     JSVMClientData* clientData = static_cast<JSVMClientData*>(state.vm().clientData);
     const Identifier& privateName = clientData->builtinFunctions().readableStreamInternalsBuiltins().isReadableStreamDisturbedPrivateName();
     JSValue value;
-    PropertySlot propertySlot(value);
-    globalObject->fastGetOwnPropertySlot(&state, state.vm(), *globalObject->structure(), privateName, propertySlot);
+    PropertySlot propertySlot(value, PropertySlot::InternalMethodType::Get);
+    globalObject->methodTable()->getOwnPropertySlot(globalObject, &state, privateName, propertySlot);
     value = propertySlot.getValue(&state, privateName);
     ASSERT(value.isFunction());
 
@@ -3431,5 +3477,22 @@ bool Internals::isReadableStreamDisturbed(ScriptState& state, JSValue stream)
     return returnedValue.asBoolean();
 }
 #endif
+
+String Internals::resourceLoadStatisticsForOrigin(String origin)
+{
+    return ResourceLoadObserver::sharedObserver().statisticsForOrigin(origin);
+}
+
+void Internals::setResourceLoadStatisticsEnabled(bool enable)
+{
+    Settings::setResourceLoadStatisticsEnabled(enable);
+}
+
+String Internals::composedTreeAsText(Node* node)
+{
+    if (!is<ContainerNode>(node))
+        return "";
+    return WebCore::composedTreeAsText(downcast<ContainerNode>(*node));
+}
 
 }

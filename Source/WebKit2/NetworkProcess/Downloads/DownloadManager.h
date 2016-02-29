@@ -27,6 +27,7 @@
 #define DownloadManager_h
 
 #include "DownloadID.h"
+#include "NetworkDataTask.h"
 #include "PendingDownload.h"
 #include "SandboxExtension.h"
 #include <WebCore/NotImplemented.h>
@@ -66,15 +67,20 @@ public:
         virtual void didDestroyDownload() = 0;
         virtual IPC::Connection* downloadProxyConnection() = 0;
         virtual AuthenticationManager& downloadsAuthenticationManager() = 0;
+#if USE(NETWORK_SESSION)
+        virtual void pendingDownloadCanceled(DownloadID) = 0;
+#endif
     };
 
     explicit DownloadManager(Client&);
 
     void startDownload(WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&);
 #if USE(NETWORK_SESSION)
-    std::unique_ptr<PendingDownload> dataTaskBecameDownloadTask(DownloadID, std::unique_ptr<Download>&&);
+    std::pair<RefPtr<NetworkDataTask>, std::unique_ptr<PendingDownload>> dataTaskBecameDownloadTask(DownloadID, std::unique_ptr<Download>&&);
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
     void continueWillSendRequest(DownloadID, const WebCore::ResourceRequest&);
+    void willDecidePendingDownloadDestination(NetworkDataTask&, ResponseCompletionHandler);
+    void continueDecidePendingDownloadDestination(DownloadID, String destination, const SandboxExtension::Handle&, bool allowOverwrite);
 #else
     void convertHandleToDownload(DownloadID, WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 #endif
@@ -99,6 +105,8 @@ private:
     Client& m_client;
 #if USE(NETWORK_SESSION)
     HashMap<DownloadID, std::unique_ptr<PendingDownload>> m_pendingDownloads;
+    HashMap<DownloadID, std::pair<RefPtr<NetworkDataTask>, ResponseCompletionHandler>> m_downloadsWaitingForDestination;
+    HashMap<DownloadID, RefPtr<NetworkDataTask>> m_downloadsAfterDestinationDecided;
 #endif
     HashMap<DownloadID, std::unique_ptr<Download>> m_downloads;
 };

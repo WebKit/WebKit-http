@@ -158,7 +158,7 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
 
     // prepare temporaryData if necessary
     if ((m_format == GraphicsContext3D::RGBA && updateContentsFlag == UpdateCannotModifyOriginalImageData) || requireSubImageBuffer) {
-        temporaryData.reserveCapacity(targetRect.width() * targetRect.height() * bytesPerPixel);
+        temporaryData.resize(targetRect.width() * targetRect.height() * bytesPerPixel);
         data = temporaryData.data();
         const char* bits = static_cast<const char*>(srcData);
         const char* src = bits + sourceOffset.y() * bytesPerLine + sourceOffset.x() * bytesPerPixel;

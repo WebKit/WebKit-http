@@ -28,9 +28,8 @@
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
 
-#import "CachedRawResource.h"
-#import "CachedResourceLoader.h"
 #import "CachedResourceRequest.h"
+#import "PlatformMediaResourceLoader.h"
 #import "SubresourceLoader.h"
 
 using namespace WebCore;
@@ -40,10 +39,11 @@ using namespace WebCore;
 NS_ASSUME_NONNULL_BEGIN
 
 @interface WebCoreNSURLSession ()
-@property (readonly) CachedResourceLoader& loader;
+@property (readonly) PlatformMediaResourceLoader& loader;
 @property (readwrite, retain) id<NSURLSessionTaskDelegate> delegate;
 - (void)taskCompleted:(WebCoreNSURLSessionDataTask *)task;
 - (void)addDelegateOperation:(void (^)(void))operation;
+- (void)task:(WebCoreNSURLSessionDataTask *)task didReceiveCORSAccessCheckResult:(BOOL)result;
 @end
 
 @interface WebCoreNSURLSessionDataTask ()
@@ -55,11 +55,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)_setDefersLoading:(BOOL)defers;
 @property (assign) WebCoreNSURLSession * _Nullable session;
 
-- (void)resource:(CachedResource*)resource sentBytes:(unsigned long long)bytesSent totalBytesToBeSent:(unsigned long long)totalBytesToBeSent;
-- (void)resource:(CachedResource*)resource receivedResponse:(const ResourceResponse&)response;
-- (void)resource:(CachedResource*)resource receivedData:(const char*)data length:(int)length;
-- (void)resource:(CachedResource*)resource receivedRedirect:(const ResourceResponse&)response request:(ResourceRequest&)request;
-- (void)resourceFinished:(CachedResource*)resource;
+- (void)resource:(PlatformMediaResource&)resource sentBytes:(unsigned long long)bytesSent totalBytesToBeSent:(unsigned long long)totalBytesToBeSent;
+- (void)resource:(PlatformMediaResource&)resource receivedResponse:(const ResourceResponse&)response;
+- (BOOL)resource:(PlatformMediaResource&)resource shouldCacheResponse:(const ResourceResponse&)response;
+- (void)resource:(PlatformMediaResource&)resource receivedData:(const char*)data length:(int)length;
+- (void)resource:(PlatformMediaResource&)resource receivedRedirect:(const ResourceResponse&)response request:(ResourceRequest&)request;
+- (void)resource:(PlatformMediaResource&)resource accessControlCheckFailedWithError:(const ResourceError&)error;
+- (void)resource:(PlatformMediaResource&)resource loadFailedWithError:(const ResourceError&)error;
+- (void)resourceFinished:(PlatformMediaResource&)resource;
 @end
 
 NS_ASSUME_NONNULL_END
@@ -67,16 +70,18 @@ NS_ASSUME_NONNULL_END
 #pragma mark - WebCoreNSURLSession
 
 @implementation WebCoreNSURLSession
-- (id)initWithResourceLoader:(CachedResourceLoader&)loader delegate:(id<NSURLSessionTaskDelegate>)inDelegate delegateQueue:(NSOperationQueue*)inQueue
+- (id)initWithResourceLoader:(PlatformMediaResourceLoader&)loader delegate:(id<NSURLSessionTaskDelegate>)inDelegate delegateQueue:(NSOperationQueue*)inQueue
 {
     self = [super init];
     if (!self)
         return nil;
 
+    ASSERT(_corsResults == WebCoreNSURLSessionCORSAccessCheckResults::Unknown);
+    ASSERT(!_invalidated);
+
     _loader = &loader;
     self.delegate = inDelegate;
     _queue = inQueue ? inQueue : [NSOperationQueue mainQueue];
-    _invalidated = NO;
     _internalQueue = adoptOSObject(dispatch_queue_create("WebCoreNSURLSession _internalQueue", DISPATCH_QUEUE_SERIAL));
 
     return self;
@@ -121,6 +126,15 @@ NS_ASSUME_NONNULL_END
     });
 }
 
+- (void)task:(WebCoreNSURLSessionDataTask *)task didReceiveCORSAccessCheckResult:(BOOL)result
+{
+    UNUSED_PARAM(task);
+    if (!result)
+        _corsResults = WebCoreNSURLSessionCORSAccessCheckResults::Fail;
+    else if (_corsResults != WebCoreNSURLSessionCORSAccessCheckResults::Fail)
+        _corsResults = WebCoreNSURLSessionCORSAccessCheckResults::Pass;
+}
+
 #pragma mark - NSURLSession API
 @synthesize sessionDescription=_sessionDescription;
 @dynamic delegate;
@@ -147,9 +161,15 @@ NS_ASSUME_NONNULL_END
 }
 
 @dynamic loader;
-- (CachedResourceLoader&)loader
+- (PlatformMediaResourceLoader&)loader
 {
     return *_loader;
+}
+
+@dynamic didPassCORSAccessChecks;
+- (BOOL)didPassCORSAccessChecks
+{
+    return _corsResults == WebCoreNSURLSessionCORSAccessCheckResults::Pass;
 }
 
 - (void)finishTasksAndInvalidate
@@ -288,44 +308,62 @@ NS_ASSUME_NONNULL_END
 
 namespace WebCore {
 
-class WebCoreNSURLSessionDataTaskClient : public CachedRawResourceClient {
+class WebCoreNSURLSessionDataTaskClient : public PlatformMediaResourceClient {
 public:
     WebCoreNSURLSessionDataTaskClient(WebCoreNSURLSessionDataTask *task)
         : m_task(task)
     {
     }
 
-    void dataSent(CachedResource*, unsigned long long, unsigned long long) override;
-    void responseReceived(CachedResource*, const ResourceResponse&) override;
-    void dataReceived(CachedResource*, const char* /* data */, int /* length */) override;
-    void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
-    void notifyFinished(CachedResource*) override;
+    void responseReceived(PlatformMediaResource&, const ResourceResponse&) override;
+    void redirectReceived(PlatformMediaResource&, ResourceRequest&, const ResourceResponse&) override;
+    bool shouldCacheResponse(PlatformMediaResource&, const ResourceResponse&) override;
+    void dataSent(PlatformMediaResource&, unsigned long long, unsigned long long) override;
+    void dataReceived(PlatformMediaResource&, const char* /* data */, int /* length */) override;
+    void accessControlCheckFailed(PlatformMediaResource&, const ResourceError&) override;
+    void loadFailed(PlatformMediaResource&, const ResourceError&) override;
+    void loadFinished(PlatformMediaResource&) override;
 
 private:
     WebCoreNSURLSessionDataTask *m_task;
 };
 
-void WebCoreNSURLSessionDataTaskClient::dataSent(CachedResource* resource, unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
+void WebCoreNSURLSessionDataTaskClient::dataSent(PlatformMediaResource& resource, unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
 {
     [m_task resource:resource sentBytes:bytesSent totalBytesToBeSent:totalBytesToBeSent];
 }
 
-void WebCoreNSURLSessionDataTaskClient::responseReceived(CachedResource* resource, const ResourceResponse& response)
+void WebCoreNSURLSessionDataTaskClient::responseReceived(PlatformMediaResource& resource, const ResourceResponse& response)
 {
     [m_task resource:resource receivedResponse:response];
 }
 
-void WebCoreNSURLSessionDataTaskClient::dataReceived(CachedResource* resource, const char* data, int length)
+bool WebCoreNSURLSessionDataTaskClient::shouldCacheResponse(PlatformMediaResource& resource, const ResourceResponse& response)
+{
+    return [m_task resource:resource shouldCacheResponse:response];
+}
+
+void WebCoreNSURLSessionDataTaskClient::dataReceived(PlatformMediaResource& resource, const char* data, int length)
 {
     [m_task resource:resource receivedData:data length:length];
 }
 
-void WebCoreNSURLSessionDataTaskClient::redirectReceived(CachedResource* resource, ResourceRequest& request, const ResourceResponse& response)
+void WebCoreNSURLSessionDataTaskClient::redirectReceived(PlatformMediaResource& resource, ResourceRequest& request, const ResourceResponse& response)
 {
     [m_task resource:resource receivedRedirect:response request:request];
 }
 
-void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
+void WebCoreNSURLSessionDataTaskClient::accessControlCheckFailed(PlatformMediaResource& resource, const ResourceError& error)
+{
+    [m_task resource:resource accessControlCheckFailedWithError:error];
+}
+
+void WebCoreNSURLSessionDataTaskClient::loadFailed(PlatformMediaResource& resource, const ResourceError& error)
+{
+    [m_task resource:resource loadFailedWithError:error];
+}
+
+void WebCoreNSURLSessionDataTaskClient::loadFinished(PlatformMediaResource& resource)
 {
     [m_task resourceFinished:resource];
 }
@@ -342,7 +380,6 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
     self.state = NSURLSessionTaskStateSuspended;
     self.priority = NSURLSessionTaskPriorityDefault;
     self.originalRequest = self.currentRequest = [NSURLRequest requestWithURL:url];
-    _client = std::make_unique<WebCoreNSURLSessionDataTaskClient>(self);
 
     return self;
 }
@@ -354,7 +391,6 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
     self.state = NSURLSessionTaskStateSuspended;
     self.priority = NSURLSessionTaskPriorityDefault;
     self.originalRequest = self.currentRequest = request;
-    _client = std::make_unique<WebCoreNSURLSessionDataTaskClient>(self);
 
     return self;
 }
@@ -372,19 +408,17 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
     ASSERT(isMainThread());
     [self _cancel];
 
-    _request = std::make_unique<CachedResourceRequest>(self.originalRequest, ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, DoNotBufferData, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, ClientDidNotRequestCredentials, DoSecurityCheck, UseDefaultOriginRestrictionsForType, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
-    _resource = self.session.loader.requestRawResource(*_request);
+    _resource = self.session.loader.requestResource(self.originalRequest, 0);
     if (_resource)
-        _resource->addClient(_client.get());
+        _resource->setClient(std::make_unique<WebCoreNSURLSessionDataTaskClient>(self));
 }
 
 - (void)_cancel
 {
     ASSERT(isMainThread());
     if (_resource) {
-        if (SubresourceLoader* loader = _resource->loader())
-            loader->cancel(ResourceError());
-        _resource->removeClient(_client.get());
+        _resource->stop();
+        _resource->setClient(nullptr);
         _resource = nil;
     }
 }
@@ -393,14 +427,14 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
 {
     ASSERT(isMainThread());
     if (_resource)
-        [self resourceFinished:_resource.get()];
+        [self resourceFinished:*_resource];
 }
 
 - (void)_setDefersLoading:(BOOL)defers
 {
     ASSERT(isMainThread());
-    if (_resource && _resource->loader())
-        _resource->loader()->setDefersLoading(defers);
+    if (_resource)
+        _resource->setDefersLoading(defers);
 }
 
 #pragma mark - NSURLSession API
@@ -464,25 +498,28 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
     return @{ };
 }
 
-#pragma mark - CachedRawResourceClient callbacks
+#pragma mark - PlatformMediaResourceClient callbacks
 
-- (void)resource:(CachedResource*)resource sentBytes:(unsigned long long)bytesSent totalBytesToBeSent:(unsigned long long)totalBytesToBeSent
+- (void)resource:(PlatformMediaResource&)resource sentBytes:(unsigned long long)bytesSent totalBytesToBeSent:(unsigned long long)totalBytesToBeSent
 {
-    ASSERT_UNUSED(resource, resource == _resource);
+    ASSERT_UNUSED(resource, &resource == _resource);
     UNUSED_PARAM(bytesSent);
     UNUSED_PARAM(totalBytesToBeSent);
     // No-op.
 }
 
-- (void)resource:(CachedResource*)resource receivedResponse:(const ResourceResponse&)response
+- (void)resource:(PlatformMediaResource&)resource receivedResponse:(const ResourceResponse&)response
 {
-    ASSERT_UNUSED(resource, resource == _resource);
+    ASSERT_UNUSED(resource, &resource == _resource);
     ASSERT(isMainThread());
-    _response = response.nsURLResponse();
+    [self.session task:self didReceiveCORSAccessCheckResult:resource.didPassAccessControlCheck()];
     self.countOfBytesExpectedToReceive = response.expectedContentLength();
     [self _setDefersLoading:YES];
+    RetainPtr<NSURLResponse> strongResponse { response.nsURLResponse() };
     RetainPtr<WebCoreNSURLSessionDataTask> strongSelf { self };
-    [self.session addDelegateOperation:[strongSelf] {
+    [self.session addDelegateOperation:[strongSelf, strongResponse] {
+        strongSelf->_response = strongResponse.get();
+
         id<NSURLSessionDataDelegate> dataDelegate = (id<NSURLSessionDataDelegate>)strongSelf.get().session.delegate;
         if (![dataDelegate respondsToSelector:@selector(URLSession:dataTask:didReceiveResponse:completionHandler:)]) {
             callOnMainThread([strongSelf] {
@@ -491,7 +528,7 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
             return;
         }
 
-        [dataDelegate URLSession:(NSURLSession *)strongSelf.get().session dataTask:(NSURLSessionDataTask *)strongSelf.get() didReceiveResponse:strongSelf.get().response completionHandler:[strongSelf] (NSURLSessionResponseDisposition disposition) {
+        [dataDelegate URLSession:(NSURLSession *)strongSelf.get().session dataTask:(NSURLSessionDataTask *)strongSelf.get() didReceiveResponse:strongResponse.get() completionHandler:[strongSelf] (NSURLSessionResponseDisposition disposition) {
             if (disposition == NSURLSessionResponseCancel)
                 [strongSelf cancel];
             else if (disposition == NSURLSessionResponseAllow)
@@ -505,9 +542,20 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
     }];
 }
 
-- (void)resource:(CachedResource*)resource receivedData:(const char*)data length:(int)length
+- (BOOL)resource:(PlatformMediaResource&)resource shouldCacheResponse:(const ResourceResponse&)response
 {
-    ASSERT_UNUSED(resource, resource == _resource);
+    ASSERT_UNUSED(resource, &resource == _resource);
+    UNUSED_PARAM(response);
+
+    ASSERT(isMainThread());
+
+    // FIXME: remove if <rdar://problem/20001985> is ever resolved.
+    return response.httpHeaderField(HTTPHeaderName::ContentRange).isEmpty();
+}
+
+- (void)resource:(PlatformMediaResource&)resource receivedData:(const char*)data length:(int)length
+{
+    ASSERT_UNUSED(resource, &resource == _resource);
     UNUSED_PARAM(data);
     UNUSED_PARAM(length);
     // FIXME: try to avoid a copy, if possible.
@@ -523,9 +571,9 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
     }];
 }
 
-- (void)resource:(CachedResource*)resource receivedRedirect:(const ResourceResponse&)response request:(ResourceRequest&)request
+- (void)resource:(PlatformMediaResource&)resource receivedRedirect:(const ResourceResponse&)response request:(ResourceRequest&)request
 {
-    ASSERT_UNUSED(resource, resource == _resource);
+    ASSERT_UNUSED(resource, &resource == _resource);
     UNUSED_PARAM(response);
     UNUSED_PARAM(request);
     // FIXME: This cannot currently be implemented, as the callback is synchronous
@@ -536,21 +584,35 @@ void WebCoreNSURLSessionDataTaskClient::notifyFinished(CachedResource* resource)
     // API, this can be implemented.
 }
 
-- (void)resourceFinished:(CachedResource*)resource
+- (void)_resource:(PlatformMediaResource&)resource loadFinishedWithError:(NSError *)error
 {
-    ASSERT_UNUSED(resource, resource == _resource);
-    self.state = NSURLSessionTaskStateCompleted;
-
+    ASSERT_UNUSED(resource, &resource == _resource);
     RetainPtr<WebCoreNSURLSessionDataTask> strongSelf { self };
-    [self.session addDelegateOperation:[strongSelf] {
+    RetainPtr<NSError> strongError { error };
+    [self.session addDelegateOperation:[strongSelf, strongError] {
         id<NSURLSessionTaskDelegate> delegate = (id<NSURLSessionTaskDelegate>)strongSelf.get().session.delegate;
         if ([delegate respondsToSelector:@selector(URLSession:task:didCompleteWithError:)])
-            [delegate URLSession:(NSURLSession *)strongSelf.get().session task:(NSURLSessionDataTask *)strongSelf.get() didCompleteWithError:nil];
+            [delegate URLSession:(NSURLSession *)strongSelf.get().session task:(NSURLSessionDataTask *)strongSelf.get() didCompleteWithError:strongError.get()];
 
         callOnMainThread([strongSelf] {
             [strongSelf.get().session taskCompleted:strongSelf.get()];
         });
     }];
+}
+
+- (void)resource:(PlatformMediaResource&)resource accessControlCheckFailedWithError:(const ResourceError&)error
+{
+    [self _resource:resource loadFinishedWithError:error.nsError()];
+}
+
+- (void)resource:(PlatformMediaResource&)resource loadFailedWithError:(const ResourceError&)error
+{
+    [self _resource:resource loadFinishedWithError:error.nsError()];
+}
+
+- (void)resourceFinished:(PlatformMediaResource&)resource
+{
+    [self _resource:resource loadFinishedWithError:nil];
 }
 @end
 

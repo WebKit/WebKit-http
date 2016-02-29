@@ -52,6 +52,7 @@
     macro(NumberFormat) \
     macro(Object) \
     macro(Promise) \
+    macro(Proxy) \
     macro(RangeError) \
     macro(ReferenceError) \
     macro(Reflect) \
@@ -121,6 +122,7 @@
     macro(forEach) \
     macro(formatMatcher) \
     macro(forward) \
+    macro(frames) \
     macro(from) \
     macro(fromCharCode) \
     macro(get) \
@@ -154,6 +156,7 @@
     macro(line) \
     macro(locale) \
     macro(localeMatcher) \
+    macro(location) \
     macro(message) \
     macro(minute) \
     macro(month) \
@@ -161,16 +164,18 @@
     macro(name) \
     macro(next) \
     macro(now) \
-    macro(numberingSystem) \
     macro(numInlinedCalls) \
     macro(numInlinedGetByIds) \
     macro(numInlinedPutByIds) \
+    macro(numberingSystem) \
     macro(numeric) \
     macro(of) \
     macro(opcode) \
+    macro(opener) \
     macro(origin) \
     macro(osrExitSites) \
     macro(osrExits) \
+    macro(parent) \
     macro(parse) \
     macro(parseInt) \
     macro(postMessage) \
@@ -182,14 +187,15 @@
     macro(replace) \
     macro(resolve) \
     macro(second) \
+    macro(self) \
     macro(sensitivity) \
     macro(set) \
     macro(showModalDialog) \
     macro(size) \
     macro(slice) \
     macro(source) \
-    macro(sourceURL) \
     macro(sourceCode) \
+    macro(sourceURL) \
     macro(stack) \
     macro(subarray) \
     macro(target) \
@@ -204,6 +210,7 @@
     macro(toLocaleString) \
     macro(toPrecision) \
     macro(toString) \
+    macro(top) \
     macro(usage) \
     macro(value) \
     macro(valueOf) \
@@ -267,13 +274,13 @@
     macro(isConcatSpreadable) \
     macro(match) \
     macro(replace) \
-    macro(search) \
     macro(split) \
     macro(toPrimitive)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(hasInstance) \
     macro(iterator) \
+    macro(search) \
     macro(species) \
     macro(toStringTag) \
     macro(unscopables)
@@ -299,6 +306,7 @@
     macro(Number) \
     macro(Array) \
     macro(String) \
+    macro(RegExp) \
     macro(Map) \
     macro(Promise) \
     macro(InternalPromise) \
@@ -312,6 +320,7 @@
     macro(TypeError) \
     macro(typedArrayLength) \
     macro(typedArraySort) \
+    macro(typedArrayGetOriginalConstructor) \
     macro(BuiltinLog) \
     macro(homeObject) \
     macro(getTemplateObject) \

@@ -7,6 +7,18 @@ class DataModelObject {
     }
     id() { return this._id; }
 
+    static ensureSingleton(id, object)
+    {
+        var singleton = this.findById(id);
+        if (singleton) {
+            singleton.updateSingleton(object)
+            return singleton;
+        }
+        return new (this)(id, object);
+    }
+
+    updateSingleton(object) { }
+
     static namedStaticMap(name)
     {
         var staticMap = this[DataModelObject.StaticMapSymbol];
@@ -43,7 +55,7 @@ class DataModelObject {
         return list;
     }
 
-    static cachedFetch(path, params)
+    static cachedFetch(path, params, noCache)
     {
         var query = [];
         if (params) {
@@ -52,6 +64,9 @@ class DataModelObject {
         }
         if (query.length)
             path += '?' + query.join('&');
+
+        if (noCache)
+            return getJSONWithStatus(path);
 
         var cacheMap = this.ensureNamedStaticMap(DataModelObject.CacheMapSymbol);
         if (!cacheMap[path])
@@ -69,14 +84,9 @@ class LabeledObject extends DataModelObject {
     {
         super(id);
         this._name = object.name;
-        this.ensureNamedStaticMap('name')[this._name] = this;
     }
 
-    static findByName(name)
-    {
-        var nameMap = this.namedStaticMap('id');
-        return nameMap ? nameMap[name] : null;
-    }
+    updateSingleton(object) { this._name = object.name; }
 
     static sortByName(list)
     {

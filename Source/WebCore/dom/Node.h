@@ -30,7 +30,6 @@
 #include "LayoutRect.h"
 #include "MutationObserver.h"
 #include "RenderStyleConstants.h"
-#include "ScriptWrappable.h"
 #include "TreeScope.h"
 #include <wtf/Forward.h>
 #include <wtf/ListHashSet.h>
@@ -42,49 +41,27 @@
 
 namespace WebCore {
 
-class Attribute;
-class ClassCollection;
 class ContainerNode;
-class DOMTokenList;
 class Document;
 class Element;
-class Event;
-class EventListener;
 class FloatPoint;
-class Frame;
-class HTMLInputElement;
 class HTMLQualifiedName;
 class HTMLSlotElement;
-class IntRect;
-class KeyboardEvent;
 class MathMLQualifiedName;
-class NSResolver;
-class NameNodeList;
 class NamedNodeMap;
 class NodeList;
 class NodeListsNodeData;
 class NodeOrString;
 class NodeRareData;
 class QualifiedName;
-class RadioNodeList;
-class RegisteredEventListener;
 class RenderBox;
 class RenderBoxModelObject;
 class RenderObject;
 class RenderStyle;
 class SVGQualifiedName;
 class ShadowRoot;
-class TagCollection;
-
-#if ENABLE(INDIE_UI)
-class UIRequestEvent;
-#endif
-    
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
 class TouchEvent;
-#endif
-
-typedef int ExceptionCode;
+class UIRequestEvent;
 
 const int nodeStyleChangeShift = 14;
 
@@ -113,7 +90,7 @@ private:
     RenderObject* m_renderer;
 };
 
-class Node : public EventTarget, public ScriptWrappable {
+class Node : public EventTarget {
     WTF_MAKE_FAST_ALLOCATED;
 
     friend class Document;
@@ -204,6 +181,7 @@ public:
     };
     virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
     Ref<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
+    RefPtr<Node> cloneNodeForBindings(bool deep, ExceptionCode&);
 
     virtual const AtomicString& localName() const;
     virtual const AtomicString& namespaceURI() const;

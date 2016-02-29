@@ -62,7 +62,7 @@ class TextTrackList;
 class VideoTrackList;
 #endif
 
-class SourceBuffer : public RefCounted<SourceBuffer>, public ActiveDOMObject, public EventTargetWithInlineData, public ScriptWrappable, public SourceBufferPrivateClient
+class SourceBuffer final : public RefCounted<SourceBuffer>, public ActiveDOMObject, public EventTargetWithInlineData, public SourceBufferPrivateClient
 #if ENABLE(VIDEO_TRACK)
 , public AudioTrackClient, public VideoTrackClient, public TextTrackClient
 #endif

@@ -51,6 +51,7 @@
 #include <WebCore/Settings.h>
 
 namespace API {
+class FrameHandle;
 class FrameInfo;
 class HitTestResult;
 class Navigation;
@@ -91,7 +92,6 @@ class WebGeolocationPosition;
 class WebGrammarDetail;
 class WebIconDatabase;
 class WebInspectorProxy;
-class WebMediaCacheManagerProxy;
 class WebMediaSessionFocusManager;
 class WebMediaSessionMetadata;
 class WebNotification;
@@ -126,6 +126,7 @@ WK_ADD_API_MAPPING(WKCredentialRef, WebCredential)
 WK_ADD_API_MAPPING(WKDownloadRef, DownloadProxy)
 WK_ADD_API_MAPPING(WKFormSubmissionListenerRef, WebFormSubmissionListenerProxy)
 WK_ADD_API_MAPPING(WKFramePolicyListenerRef, WebFramePolicyListenerProxy)
+WK_ADD_API_MAPPING(WKFrameHandleRef, API::FrameHandle)
 WK_ADD_API_MAPPING(WKFrameInfoRef, API::FrameInfo)
 WK_ADD_API_MAPPING(WKFrameRef, WebFrameProxy)
 WK_ADD_API_MAPPING(WKGeolocationManagerRef, WebGeolocationManagerProxy)
@@ -135,7 +136,6 @@ WK_ADD_API_MAPPING(WKGrammarDetailRef, WebGrammarDetail)
 WK_ADD_API_MAPPING(WKHitTestResultRef, API::HitTestResult)
 WK_ADD_API_MAPPING(WKIconDatabaseRef, WebIconDatabase)
 WK_ADD_API_MAPPING(WKInspectorRef, WebInspectorProxy)
-WK_ADD_API_MAPPING(WKMediaCacheManagerRef, WebMediaCacheManagerProxy)
 WK_ADD_API_MAPPING(WKMediaSessionFocusManagerRef, WebMediaSessionFocusManager)
 WK_ADD_API_MAPPING(WKMediaSessionMetadataRef, WebMediaSessionMetadata)
 WK_ADD_API_MAPPING(WKNavigationActionRef, API::NavigationAction)

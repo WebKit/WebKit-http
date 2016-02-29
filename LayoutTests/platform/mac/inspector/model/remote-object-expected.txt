@@ -1596,6 +1596,12 @@ EXPRESSION: window.loadEvent
     "_properties": [
       {
         "_listeners": null,
+        "_name": "isTrusted",
+        "_type": "boolean",
+        "_value": "true"
+      },
+      {
+        "_listeners": null,
         "_name": "type",
         "_type": "string",
         "_value": "load"
@@ -1618,12 +1624,6 @@ EXPRESSION: window.loadEvent
         "_name": "eventPhase",
         "_type": "number",
         "_value": "2"
-      },
-      {
-        "_listeners": null,
-        "_name": "bubbles",
-        "_type": "boolean",
-        "_value": "false"
       }
     ],
     "_entries": null
@@ -1919,7 +1919,7 @@ EXPRESSION: input = document.createElement('input'); input.type = 'password'; in
         "_listeners": null,
         "_name": "autocomplete",
         "_type": "string",
-        "_value": ""
+        "_value": "on"
       },
       {
         "_listeners": null,
@@ -4645,6 +4645,74 @@ EXPRESSION: Promise.resolve({result:1})
               "_name": "result",
               "_type": "number",
               "_value": "1"
+            }
+          ],
+          "_entries": null
+        },
+        "_internal": true
+      }
+    ],
+    "_entries": null
+  }
+}
+
+-----------------------------------------------------
+EXPRESSION: new Proxy({x:1, y:1}, {handler: true})
+{
+  "_type": "object",
+  "_objectId": "<filtered>",
+  "_description": "ProxyObject",
+  "_preview": {
+    "_listeners": null,
+    "_type": "object",
+    "_description": "ProxyObject",
+    "_lossless": true,
+    "_overflow": false,
+    "_properties": [
+      {
+        "_listeners": null,
+        "_name": "target",
+        "_type": "object",
+        "_valuePreview": {
+          "_listeners": null,
+          "_type": "object",
+          "_description": "Object",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": [
+            {
+              "_listeners": null,
+              "_name": "x",
+              "_type": "number",
+              "_value": "1"
+            },
+            {
+              "_listeners": null,
+              "_name": "y",
+              "_type": "number",
+              "_value": "1"
+            }
+          ],
+          "_entries": null
+        },
+        "_internal": true
+      },
+      {
+        "_listeners": null,
+        "_name": "handler",
+        "_type": "object",
+        "_valuePreview": {
+          "_listeners": null,
+          "_type": "object",
+          "_description": "Object",
+          "_lossless": true,
+          "_overflow": false,
+          "_properties": [
+            {
+              "_listeners": null,
+              "_name": "handler",
+              "_type": "boolean",
+              "_value": "true"
             }
           ],
           "_entries": null

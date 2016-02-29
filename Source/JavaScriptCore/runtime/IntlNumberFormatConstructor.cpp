@@ -23,7 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include "config.h"
 #include "IntlNumberFormatConstructor.h"
 
@@ -104,8 +103,9 @@ static EncodedJSValue JSC_HOST_CALL constructIntlNumberFormat(ExecState* state)
     ASSERT(numberFormat);
 
     // 4. Return InitializeNumberFormat(numberFormat, locales, options).
-    // FIXME: return JSValue::encode(InitializeNumberFormat(numberFormat, locales, options));
-
+    JSValue locales = state->argument(0);
+    JSValue options = state->argument(1);
+    numberFormat->initializeNumberFormat(*state, locales, options);
     return JSValue::encode(numberFormat);
 }
 
@@ -123,8 +123,9 @@ static EncodedJSValue JSC_HOST_CALL callIntlNumberFormat(ExecState* state)
     ASSERT(numberFormat);
 
     // 4. Return InitializeNumberFormat(numberFormat, locales, options).
-    // FIXME: return JSValue::encode(InitializeNumberFormat(numberFormat, locales, options));
-
+    JSValue locales = state->argument(0);
+    JSValue options = state->argument(1);
+    numberFormat->initializeNumberFormat(*state, locales, options);
     return JSValue::encode(numberFormat);
 }
 

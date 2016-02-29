@@ -44,6 +44,7 @@ class DOMTokenList;
 class ElementRareData;
 class HTMLDocument;
 class IntSize;
+class KeyboardEvent;
 class Locale;
 class PlatformKeyboardEvent;
 class PlatformMouseEvent;
@@ -51,7 +52,6 @@ class PlatformWheelEvent;
 class PseudoElement;
 class RenderNamedFlowFragment;
 class RenderTreePosition;
-class ShadowRoot;
 
 enum SpellcheckAttributeState {
     SpellcheckAttributeTrue,
@@ -179,7 +179,7 @@ public:
 
     const Vector<RefPtr<Attr>>& attrNodeList();
 
-    virtual CSSStyleDeclaration* style();
+    virtual CSSStyleDeclaration* cssomStyle();
 
     const QualifiedName& tagQName() const { return m_tagName; }
 #if ENABLE(CSS_SELECTOR_JIT)
@@ -278,6 +278,8 @@ public:
     virtual Element* focusDelegate();
 
     virtual RenderStyle* computedStyle(PseudoId = NOPSEUDO) override;
+
+    bool needsStyleInvalidation() const;
 
     // Methods for indicating the style is affected by dynamic updates (e.g., children changing, our position changing in our sibling list, etc.)
     bool styleAffectedByEmpty() const { return hasRareData() && rareDataStyleAffectedByEmpty(); }
@@ -459,6 +461,7 @@ public:
     bool dispatchWheelEvent(const PlatformWheelEvent&);
     bool dispatchKeyEvent(const PlatformKeyboardEvent&);
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
+    void dispatchSimulatedClickForBindings(Event* underlyingEvent);
     void dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement);
     void dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement);
     virtual void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection);
@@ -495,6 +498,9 @@ public:
     Ref<RenderStyle> resolveStyle(RenderStyle* parentStyle);
 
     virtual void isVisibleInViewportChanged() { }
+
+    using ContainerNode::setAttributeEventListener;
+    void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);

@@ -237,8 +237,12 @@ static void webkitWebViewBaseScheduleUpdateViewState(WebKitWebViewBase* webViewB
     priv->updateViewStateTimer.startOneShot(0);
 }
 
-static gboolean toplevelWindowFocusInEvent(GtkWidget*, GdkEventFocus*, WebKitWebViewBase* webViewBase)
+static gboolean toplevelWindowFocusInEvent(GtkWidget* widget, GdkEventFocus*, WebKitWebViewBase* webViewBase)
 {
+    // Spurious focus in events can occur when the window is hidden.
+    if (!gtk_widget_get_visible(widget))
+        return FALSE;
+
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     if (priv->viewState & ViewState::WindowIsActive)
         return FALSE;
@@ -300,12 +304,22 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
     }
 
     priv->toplevelOnScreenWindow = window;
-    if (!(priv->viewState & ViewState::IsInWindow)) {
-        priv->viewState |= ViewState::IsInWindow;
-        webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::IsInWindow);
-    }
-    if (!priv->toplevelOnScreenWindow)
+
+    if (!priv->toplevelOnScreenWindow) {
+        ViewState::Flags flagsToUpdate = 0;
+        if (priv->viewState & ViewState::IsInWindow) {
+            priv->viewState &= ~ViewState::IsInWindow;
+            flagsToUpdate |= ViewState::IsInWindow;
+        }
+        if (priv->viewState & ViewState::WindowIsActive) {
+            priv->viewState &= ~ViewState::WindowIsActive;
+            flagsToUpdate |= ViewState::IsInWindow;
+        }
+        if (flagsToUpdate)
+            webkitWebViewBaseScheduleUpdateViewState(webViewBase, flagsToUpdate);
+
         return;
+    }
 
     priv->toplevelFocusInEventID =
         g_signal_connect(priv->toplevelOnScreenWindow, "focus-in-event",
@@ -315,6 +329,7 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
                          G_CALLBACK(toplevelWindowFocusOutEvent), webViewBase);
     priv->toplevelWindowStateEventID =
         g_signal_connect(priv->toplevelOnScreenWindow, "window-state-event", G_CALLBACK(toplevelWindowStateEvent), webViewBase);
+    gtk_widget_realize(GTK_WIDGET(webViewBase));
 }
 
 static void webkitWebViewBaseRealize(GtkWidget* widget)
@@ -383,10 +398,6 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
     gtk_style_context_set_background(gtk_widget_get_style_context(widget), window);
 
     gtk_im_context_set_client_window(priv->inputMethodFilter.context(), window);
-
-    GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
-    if (widgetIsOnscreenToplevelWindow(toplevel))
-        webkitWebViewBaseSetToplevelOnScreenWindow(webView, GTK_WINDOW(toplevel));
 }
 
 static void webkitWebViewBaseUnrealize(GtkWidget* widget)
@@ -528,15 +539,14 @@ static void webkitWebViewBaseConstructed(GObject* object)
     priv->authenticationDialog = 0;
 }
 
-#if USE(TEXTURE_MAPPER)
 static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* webViewBase, DrawingAreaProxyImpl* drawingArea, cairo_t* cr, GdkRectangle* clipRect)
 {
+#if USE(TEXTURE_MAPPER) && USE(REDIRECTED_XCOMPOSITE_WINDOW)
     ASSERT(drawingArea);
 
     if (!drawingArea->isInAcceleratedCompositingMode())
         return false;
 
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
     // To avoid flashes when initializing accelerated compositing for the first
     // time, we wait until we know there's a frame ready before rendering.
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
@@ -547,10 +557,12 @@ static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* 
     priv->redirectedWindow->resize(drawingArea->size());
 
     if (cairo_surface_t* surface = priv->redirectedWindow->surface()) {
+        cairo_save(cr);
         cairo_rectangle(cr, clipRect->x, clipRect->y, clipRect->width, clipRect->height);
         cairo_set_source_surface(cr, surface, 0, 0);
         cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
         cairo_fill(cr);
+        cairo_restore(cr);
     }
 
     return true;
@@ -561,7 +573,6 @@ static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* 
     return false;
 #endif
 }
-#endif
 
 static gboolean webkitWebViewBaseDraw(GtkWidget* widget, cairo_t* cr)
 {
@@ -574,13 +585,10 @@ static gboolean webkitWebViewBaseDraw(GtkWidget* widget, cairo_t* cr)
     if (!gdk_cairo_get_clip_rectangle(cr, &clipRect))
         return FALSE;
 
-#if USE(TEXTURE_MAPPER)
-    if (webkitWebViewRenderAcceleratedCompositingResults(webViewBase, drawingArea, cr, &clipRect))
-        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->draw(widget, cr);
-#endif
-
-    WebCore::Region unpaintedRegion; // This is simply unused.
-    drawingArea->paint(cr, clipRect, unpaintedRegion);
+    if (!webkitWebViewRenderAcceleratedCompositingResults(webViewBase, drawingArea, cr, &clipRect)) {
+        WebCore::Region unpaintedRegion; // This is simply unused.
+        drawingArea->paint(cr, clipRect, unpaintedRegion);
+    }
 
     if (webViewBase->priv->authenticationDialog) {
         cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
@@ -673,11 +681,20 @@ static void webkitWebViewBaseMap(GtkWidget* widget)
 
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    if (priv->viewState & ViewState::IsVisible)
+    ViewState::Flags flagsToUpdate = 0;
+    if (!(priv->viewState & ViewState::IsVisible))
+        flagsToUpdate |= ViewState::IsVisible;
+    if (priv->toplevelOnScreenWindow) {
+        if (!(priv->viewState & ViewState::IsInWindow))
+            flagsToUpdate |= ViewState::IsInWindow;
+        if (gtk_window_is_active(GTK_WINDOW(priv->toplevelOnScreenWindow)) && !(priv->viewState & ViewState::WindowIsActive))
+            flagsToUpdate |= ViewState::WindowIsActive;
+    }
+    if (!flagsToUpdate)
         return;
 
-    priv->viewState |= ViewState::IsVisible;
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::IsVisible);
+    priv->viewState |= flagsToUpdate;
+    webkitWebViewBaseScheduleUpdateViewState(webViewBase, flagsToUpdate);
 }
 
 static void webkitWebViewBaseUnmap(GtkWidget* widget)
@@ -1075,10 +1092,19 @@ static gboolean webkitWebViewBaseDragDrop(GtkWidget* widget, GdkDragContext* con
 }
 #endif // ENABLE(DRAG_SUPPORT)
 
-static void webkitWebViewBaseParentSet(GtkWidget* widget, GtkWidget* /* oldParent */)
+static void webkitWebViewBaseHierarchyChanged(GtkWidget* widget, GtkWidget* oldToplevel)
 {
-    if (!gtk_widget_get_parent(widget))
-        webkitWebViewBaseSetToplevelOnScreenWindow(WEBKIT_WEB_VIEW_BASE(widget), 0);
+    WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
+    if (widgetIsOnscreenToplevelWindow(oldToplevel) && GTK_WINDOW(oldToplevel) == priv->toplevelOnScreenWindow) {
+        webkitWebViewBaseSetToplevelOnScreenWindow(WEBKIT_WEB_VIEW_BASE(widget), nullptr);
+        return;
+    }
+
+    if (!oldToplevel) {
+        GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
+        if (widgetIsOnscreenToplevelWindow(toplevel))
+            webkitWebViewBaseSetToplevelOnScreenWindow(WEBKIT_WEB_VIEW_BASE(widget), GTK_WINDOW(toplevel));
+    }
 }
 
 static gboolean webkitWebViewBaseFocus(GtkWidget* widget, GtkDirectionType direction)
@@ -1137,7 +1163,7 @@ static void webkit_web_view_base_class_init(WebKitWebViewBaseClass* webkitWebVie
     widgetClass->drag_data_received = webkitWebViewBaseDragDataReceived;
 #endif // ENABLE(DRAG_SUPPORT)
     widgetClass->get_accessible = webkitWebViewBaseGetAccessible;
-    widgetClass->parent_set = webkitWebViewBaseParentSet;
+    widgetClass->hierarchy_changed = webkitWebViewBaseHierarchyChanged;
     widgetClass->destroy = webkitWebViewBaseDestroy;
 
     GObjectClass* gobjectClass = G_OBJECT_CLASS(webkitWebViewBaseClass);

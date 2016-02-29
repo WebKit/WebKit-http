@@ -44,6 +44,9 @@ public:
         return adoptRef(*new HTMLTableHeaderCellElement(tagName, document));
     }
 
+    const AtomicString& scope() const;
+    void setScope(const AtomicString&);
+
 private:
     using HTMLTableCellElement::HTMLTableCellElement;
 };

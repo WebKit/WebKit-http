@@ -41,17 +41,9 @@ enum XMLHttpRequestResponseType {
     Constructor,
     ConstructorCallWith=ScriptExecutionContext,
     JSCustomMarkFunction,
-    EventTarget,
-] interface XMLHttpRequest {
-    // From XMLHttpRequestEventTarget
-    attribute EventHandler onabort;
-    attribute EventHandler onerror;
-    attribute EventHandler onload;
-    attribute EventHandler onloadend;
-    attribute EventHandler onloadstart;
-    attribute EventHandler onprogress;
-    attribute EventHandler ontimeout;
-
+    JSGenerateToNativeObject,
+    JSGenerateToJSObject,
+] interface XMLHttpRequest : XMLHttpRequestEventTarget {
     attribute EventHandler onreadystatechange;
 
     // state
@@ -77,9 +69,9 @@ enum XMLHttpRequestResponseType {
     readonly attribute XMLHttpRequestUpload upload;
 
     // response
-    [TreatReturnedNullStringAs=Undefined] DOMString getAllResponseHeaders();
-    [TreatReturnedNullStringAs=Null] DOMString getResponseHeader(DOMString header);
-    [GetterRaisesException, CustomGetter] readonly attribute DOMString responseText; // The custom getter implements TreatReturnedNullStringAs=Null
+    DOMString getAllResponseHeaders();
+    DOMString? getResponseHeader(DOMString header);
+    [GetterRaisesException, CustomGetter] readonly attribute DOMString? responseText;
     [GetterRaisesException] readonly attribute Document responseXML;
 
     [SetterRaisesException] attribute XMLHttpRequestResponseType responseType;
@@ -91,9 +83,4 @@ enum XMLHttpRequestResponseType {
 
     // Extension
     [RaisesException] void overrideMimeType(DOMString override);
-
-    // EventTarget interface
-    void addEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    void removeEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    [RaisesException] boolean dispatchEvent(Event event);
 };

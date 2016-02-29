@@ -113,9 +113,10 @@ public:
     void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
     // Interface to ChromeClient
-    bool supportsVideoFullscreen() const;
+    bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) const;
     void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
     void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&);
+    void setUpVideoControlsManager(WebCore::HTMLVideoElement&);
     
 protected:
     friend class WebVideoFullscreenInterfaceContext;

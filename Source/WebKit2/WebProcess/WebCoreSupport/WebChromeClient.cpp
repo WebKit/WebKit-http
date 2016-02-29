@@ -850,9 +850,14 @@ PassRefPtr<ScrollingCoordinator> WebChromeClient::createScrollingCoordinator(Pag
 #endif
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-bool WebChromeClient::supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)
+bool WebChromeClient::supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
-    return m_page->videoFullscreenManager()->supportsVideoFullscreen();
+    return m_page->videoFullscreenManager()->supportsVideoFullscreen(mode);
+}
+
+void WebChromeClient::setUpVideoControlsManager(WebCore::HTMLVideoElement& videoElement)
+{
+    m_page->videoFullscreenManager()->setUpVideoControlsManager(videoElement);
 }
 
 void WebChromeClient::enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement& videoElement, WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)

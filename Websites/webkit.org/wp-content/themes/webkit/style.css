@@ -985,7 +985,7 @@ article .byline {
     float: left;
     width: 191px;
     text-align: right;
-    padding-right: 3rem;
+    padding-right: 4rem;
     box-sizing: border-box;
 }
 
@@ -1072,6 +1072,17 @@ article .mattewhite {
     border-bottom: 1px solid #e7e7e7;
     padding-top: 3rem;
     padding-bottom: 3rem;
+}
+
+article .mattewhite:not(.widescreen) {
+    border: 1px solid #e7e7e7;
+    padding: 3rem;
+    margin-left: -3rem;
+    margin-right: -3rem;
+}
+
+article .mattewhite.tightwad {
+    padding: 0;
 }
 
 /** Article Figures **/
@@ -1693,6 +1704,7 @@ header .menu-item { /* add bottom dimension to main menu items */
         float: none;
         text-align: center;
         margin-bottom: 3rem;
+        padding-right: 0;
     }
 
     article .byline p {
@@ -1714,6 +1726,7 @@ header .menu-item { /* add bottom dimension to main menu items */
         float: none;
         text-align: center;
         margin-bottom: 3rem;
+        padding-right: 0;
     }
 
     article .byline p {

@@ -1,3 +1,5 @@
+//@ noNoLLIntRunLayoutTest if $architecture == "arm" and $hostOS == "darwin"
+
 description(
 "This tests that float64 arrays work in the DFG."
 );

@@ -88,7 +88,7 @@ public:
             JSKeyValueIteratorPrototype<JSWrapper>::createStructure(vm, globalObject, globalObject->objectPrototype()));
     }
 
-    bool next(JSC::ExecState&, JSC::JSValue&);
+    JSC::JSValue next(JSC::ExecState&);
 
 private:
     JSKeyValueIterator(JSC::Structure* structure, JSWrapper& iteratedObject, IterationKind kind)
@@ -105,9 +105,38 @@ private:
 };
 
 template<typename JSWrapper>
-JSKeyValueIterator<JSWrapper>* createIterator(JSDOMGlobalObject& globalObject, JSWrapper& wrapper, IterationKind kind)
+JSC::EncodedJSValue createKeyValueIterator(JSC::ExecState& state, IterationKind kind, const char* propertyName)
 {
-    return JSKeyValueIterator<JSWrapper>::create(globalObject.vm(), getDOMStructure<JSKeyValueIterator<JSWrapper>>(globalObject.vm(), globalObject), wrapper, kind);
+    auto wrapper = JSC::jsDynamicCast<JSWrapper*>(state.thisValue());
+    if (UNLIKELY(!wrapper))
+        return throwThisTypeError(state, JSWrapper::info()->className, propertyName);
+    JSDOMGlobalObject& globalObject = *wrapper->globalObject();
+    return JSC::JSValue::encode(JSKeyValueIterator<JSWrapper>::create(globalObject.vm(), getDOMStructure<JSKeyValueIterator<JSWrapper>>(globalObject.vm(), globalObject), *wrapper, kind));
+}
+
+template<typename JSWrapper>
+JSC::EncodedJSValue keyValueIteratorForEach(JSC::ExecState& state, const char* propertyName)
+{
+    auto wrapper = JSC::jsDynamicCast<JSWrapper*>(state.thisValue());
+    if (UNLIKELY(!wrapper))
+        return throwThisTypeError(state, JSWrapper::info()->className, propertyName);
+
+    JSC::CallData callData;
+    JSC::CallType callType = JSC::getCallData(state.argument(0), callData);
+    if (callType == JSC::CallTypeNone)
+        return throwVMTypeError(&state);
+
+    auto iterator = wrapper->wrapped().createIterator();
+    while (auto value = iterator.next(state)) {
+        JSC::MarkedArgumentBuffer arguments;
+        arguments.append(toJS(&state, wrapper->globalObject(), value.value().value));
+        arguments.append(toJS(&state, wrapper->globalObject(), value.value().key));
+        arguments.append(wrapper);
+        JSC::call(&state, state.argument(0), callType, callData, wrapper, arguments);
+        if (state.hadException())
+            break;
+    } 
+    return JSC::JSValue::encode(JSC::jsUndefined());
 }
 
 template<typename JSWrapper>
@@ -118,33 +147,31 @@ void JSKeyValueIterator<JSWrapper>::destroy(JSCell* cell)
 }
 
 template<typename JSWrapper>
-bool JSKeyValueIterator<JSWrapper>::next(JSC::ExecState& state, JSC::JSValue& value)
+JSC::JSValue JSKeyValueIterator<JSWrapper>::next(JSC::ExecState& state)
 {
-    typename DOMWrapped::Iterator::Key nextKey;
-    typename DOMWrapped::Iterator::Value nextValue;
-    if (m_iterator.next(nextKey, nextValue)) {
-        value = JSC::jsUndefined();
-        return true;
-    }
+    auto iteratorValue = m_iterator.next(state);
+    if (!iteratorValue)
+        return createIteratorResultObject(&state, JSC::jsUndefined(), true);
+
+    JSC::JSValue value;
     if (m_kind == IterationKind::Value)
-        value = toJS(&state, globalObject(), nextValue);
+        value = toJS(&state, globalObject(), iteratorValue.value().value);
     else if (m_kind == IterationKind::Key)
-        value = toJS(&state, globalObject(), nextKey);
+        value = toJS(&state, globalObject(), iteratorValue.value().key);
     else
-        value = jsPair(state, globalObject(), nextKey, nextValue);
-    return false;
+        value = jsPair(state, globalObject(), iteratorValue.value().key, iteratorValue.value().value);
+
+    return createIteratorResultObject(&state, value, false);
 }
 
 template<typename JSWrapper>
 JSC::EncodedJSValue JSC_HOST_CALL JSKeyValueIteratorPrototype<JSWrapper>::next(JSC::ExecState* state)
 {
-    JSKeyValueIterator<JSWrapper>* iterator = JSC::jsDynamicCast<JSKeyValueIterator<JSWrapper>*>(state->thisValue());
+    auto iterator = JSC::jsDynamicCast<JSKeyValueIterator<JSWrapper>*>(state->thisValue());
     if (!iterator)
         return JSC::JSValue::encode(throwTypeError(state, ASCIILiteral("Cannot call next() on a non-Iterator object")));
 
-    JSC::JSValue result;
-    bool isDone = iterator->next(*state, result);
-    return JSC::JSValue::encode(createIteratorResultObject(state, result, isDone));
+    return JSC::JSValue::encode(iterator->next(*state));
 }
 
 template<typename JSWrapper>

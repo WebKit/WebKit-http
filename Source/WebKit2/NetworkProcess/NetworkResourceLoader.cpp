@@ -237,12 +237,19 @@ void NetworkResourceLoader::cleanup()
 
 void NetworkResourceLoader::didConvertToDownload()
 {
+    ASSERT(!m_didConvertToDownload);
     ASSERT(m_networkLoad);
     m_didConvertToDownload = true;
-#if USE(NETWORK_SESSION)
-    m_networkLoad = nullptr;
-#endif
 }
+    
+#if USE(NETWORK_SESSION)
+void NetworkResourceLoader::didBecomeDownload()
+{
+    ASSERT(m_didConvertToDownload);
+    ASSERT(m_networkLoad);
+    m_networkLoad = nullptr;
+}
+#endif
 
 void NetworkResourceLoader::abort()
 {
@@ -471,16 +478,6 @@ void NetworkResourceLoader::bufferingTimerFired()
 bool NetworkResourceLoader::sendBufferMaybeAborting(SharedBuffer& buffer, size_t encodedDataLength)
 {
     ASSERT(!isSynchronous());
-
-#if PLATFORM(COCOA)
-    ShareableResource::Handle shareableResourceHandle;
-    NetworkResourceLoader::tryGetShareableHandleFromSharedBuffer(shareableResourceHandle, buffer);
-    if (!shareableResourceHandle.isNull()) {
-        send(Messages::WebResourceLoader::DidReceiveResource(shareableResourceHandle, currentTime()));
-        abort();
-        return false;
-    }
-#endif
 
     IPC::SharedBufferDataReference dataReference(&buffer);
     return sendAbortingOnFailure(Messages::WebResourceLoader::DidReceiveData(dataReference, encodedDataLength));

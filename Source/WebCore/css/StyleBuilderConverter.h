@@ -567,7 +567,7 @@ inline PassRefPtr<StyleReflection> StyleBuilderConverter::convertReflection(Styl
         return nullptr;
     }
 
-    CSSReflectValue& reflectValue = downcast<CSSReflectValue>(value);
+    auto& reflectValue = downcast<CSSReflectValue>(value);
 
     RefPtr<StyleReflection> reflection = StyleReflection::create();
     reflection->setDirection(*reflectValue.direction());
@@ -886,12 +886,12 @@ inline void StyleBuilderConverter::createImplicitNamedGridLinesFromGridArea(cons
         GridSpan areaSpan = direction == ForRows ? area.value.rows : area.value.columns;
         {
             auto& startVector = namedGridLines.add(area.key + "-start", Vector<unsigned>()).iterator->value;
-            startVector.append(areaSpan.resolvedInitialPosition.toInt());
+            startVector.append(areaSpan.resolvedInitialPosition().toInt());
             std::sort(startVector.begin(), startVector.end());
         }
         {
             auto& endVector = namedGridLines.add(area.key + "-end", Vector<unsigned>()).iterator->value;
-            endVector.append(areaSpan.resolvedFinalPosition.toInt());
+            endVector.append(areaSpan.resolvedFinalPosition().toInt());
             std::sort(endVector.begin(), endVector.end());
         }
     }
@@ -916,8 +916,8 @@ inline GridAutoFlow StyleBuilderConverter::convertGridAutoFlow(StyleResolver&, C
     if (!list.length())
         return RenderStyle::initialGridAutoFlow();
 
-    CSSPrimitiveValue& first = downcast<CSSPrimitiveValue>(*list.item(0));
-    CSSPrimitiveValue* second = downcast<CSSPrimitiveValue>(list.item(1));
+    auto& first = downcast<CSSPrimitiveValue>(*list.item(0));
+    auto* second = downcast<CSSPrimitiveValue>(list.item(1));
 
     GridAutoFlow autoFlow = RenderStyle::initialGridAutoFlow();
     switch (first.getValueID()) {

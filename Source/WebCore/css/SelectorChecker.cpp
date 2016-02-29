@@ -44,6 +44,7 @@
 #include "HTMLOptionElement.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLProgressElement.h"
+#include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
 #include "InspectorInstrumentation.h"
 #include "Page.h"
@@ -516,6 +517,21 @@ static bool anyAttributeMatches(const Element& element, const CSSSelector& selec
     }
 
     return false;
+}
+
+bool SelectorChecker::attributeSelectorMatches(const Element& element, const QualifiedName& attributeName, const AtomicString& attributeValue, const CSSSelector& selector)
+{
+    ASSERT(selector.isAttributeSelector());
+    auto& selectorAttribute = selector.attribute();
+    auto& selectorName = element.isHTMLElement() ? selector.attributeCanonicalLocalName() : selectorAttribute.localName();
+    if (!Attribute::nameMatchesFilter(attributeName, selectorAttribute.prefix(), selectorName, selectorAttribute.namespaceURI()))
+        return false;
+    bool caseSensitive = true;
+    if (selector.attributeValueMatchingIsCaseInsensitive())
+        caseSensitive = false;
+    else if (element.document().isHTMLDocument() && element.isHTMLElement() && !HTMLDocument::isCaseSensitiveAttribute(selector.attribute()))
+        caseSensitive = false;
+    return attributeValueMatches(Attribute(attributeName, attributeValue), selector.match(), selector.value(), caseSensitive);
 }
 
 static bool canMatchHoverOrActiveInQuirksMode(const SelectorChecker::LocalContext& context)
@@ -1023,7 +1039,13 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
         return false;
     }
 #endif
-    // ### add the rest of the checks...
+#if ENABLE(SHADOW_DOM)
+    if (selector.match() == CSSSelector::PseudoElement && selector.pseudoElementType() == CSSSelector::PseudoElementSlotted) {
+        // We see ::slotted() pseudo elements when collecting slotted rules from the slot shadow tree only.
+        ASSERT(checkingContext.resolvingMode == Mode::CollectingRules);
+        return is<HTMLSlotElement>(element);
+    }
+#endif
     return true;
 }
 

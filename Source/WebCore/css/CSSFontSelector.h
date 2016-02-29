@@ -26,6 +26,8 @@
 #ifndef CSSFontSelector_h
 #define CSSFontSelector_h
 
+#include "CSSFontFace.h"
+#include "CSSFontFaceSet.h"
 #include "CachedResourceHandle.h"
 #include "Font.h"
 #include "FontSelector.h"
@@ -39,14 +41,15 @@
 
 namespace WebCore {
 
-class CSSFontFace;
 class CSSFontFaceRule;
+class CSSPrimitiveValue;
 class CSSSegmentedFontFace;
+class CSSValueList;
 class CachedFont;
 class Document;
 class StyleRuleFontFace;
 
-class CSSFontSelector final : public FontSelector {
+class CSSFontSelector final : public FontSelector, public CSSFontFaceSetClient {
 public:
     static Ref<CSSFontSelector> create(Document& document)
     {
@@ -60,11 +63,10 @@ public:
     virtual FontRanges fontRangesForFamily(const FontDescription&, const AtomicString&) override;
     virtual size_t fallbackFontCount() override;
     virtual RefPtr<Font> fallbackFontAt(const FontDescription&, size_t) override;
-    CSSSegmentedFontFace* getFontFace(const FontDescription&, const AtomicString& family);
 
     void clearDocument();
 
-    void addFontFaceRule(const StyleRuleFontFace&, bool isInitiatingElementInUserAgentShadowTree);
+    void addFontFaceRule(StyleRuleFontFace&, bool isInitiatingElementInUserAgentShadowTree);
 
     void fontLoaded();
     virtual void fontCacheInvalidated() override;
@@ -78,17 +80,20 @@ public:
 
     void beginLoadingFontSoon(CachedFont*);
 
+    FontFaceSet& fontFaceSet();
+
 private:
     explicit CSSFontSelector(Document&);
 
     void dispatchInvalidationCallbacks();
 
+    virtual void fontModified() override;
+
     void beginLoadTimerFired();
 
     Document* m_document;
-    HashMap<String, Vector<Ref<CSSFontFace>>, ASCIICaseInsensitiveHash> m_fontFaces;
-    HashMap<String, Vector<Ref<CSSFontFace>>, ASCIICaseInsensitiveHash> m_locallyInstalledFontFaces;
-    HashMap<String, HashMap<unsigned, std::unique_ptr<CSSSegmentedFontFace>>, ASCIICaseInsensitiveHash> m_fonts;
+    RefPtr<FontFaceSet> m_fontFaceSet;
+    Ref<CSSFontFaceSet> m_cssFontFaceSet;
     HashSet<FontSelectorClient*> m_clients;
 
     Vector<CachedResourceHandle<CachedFont>> m_fontsToBeginLoading;
@@ -96,6 +101,7 @@ private:
 
     unsigned m_uniqueId;
     unsigned m_version;
+    bool m_creatingFont { false };
 };
 
 } // namespace WebCore

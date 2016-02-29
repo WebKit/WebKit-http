@@ -30,6 +30,7 @@
 #include "URL.h"
 #include <limits>
 #include <wtf/MathExtras.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -155,7 +156,7 @@ template <typename CharacterType>
 static bool parseHTMLIntegerInternal(const CharacterType* position, const CharacterType* end, int& value)
 {
     // Step 3
-    int sign = 1;
+    bool isPositive = true;
 
     // Step 4
     while (position < end) {
@@ -171,7 +172,7 @@ static bool parseHTMLIntegerInternal(const CharacterType* position, const Charac
 
     // Step 6
     if (*position == '-') {
-        sign = -1;
+        isPositive = false;
         ++position;
     } else if (*position == '+')
         ++position;
@@ -184,23 +185,25 @@ static bool parseHTMLIntegerInternal(const CharacterType* position, const Charac
         return false;
 
     // Step 8
-    StringBuilder digits;
+    StringBuilder cleanCharacters;
+    if (!isPositive)
+        cleanCharacters.append('-');
     while (position < end) {
         if (!isASCIIDigit(*position))
             break;
-        digits.append(*position++);
+        cleanCharacters.append(*position++);
     }
 
     // Step 9
     bool ok;
-    if (digits.is8Bit())
-        value = sign * charactersToIntStrict(digits.characters8(), digits.length(), &ok);
+    if (cleanCharacters.is8Bit())
+        value = charactersToIntStrict(cleanCharacters.characters8(), cleanCharacters.length(), &ok);
     else
-        value = sign * charactersToIntStrict(digits.characters16(), digits.length(), &ok);
+        value = charactersToIntStrict(cleanCharacters.characters16(), cleanCharacters.length(), &ok);
     return ok;
 }
 
-// http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-integers
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-integers
 bool parseHTMLInteger(const String& input, int& value)
 {
     // Step 1
@@ -215,65 +218,15 @@ bool parseHTMLInteger(const String& input, int& value)
     return parseHTMLIntegerInternal(start, start + length, value);
 }
 
-template <typename CharacterType>
-static bool parseHTMLNonNegativeIntegerInternal(const CharacterType* position, const CharacterType* end, unsigned& value)
-{
-    // Step 3
-    while (position < end) {
-        if (!isHTMLSpace(*position))
-            break;
-        ++position;
-    }
-
-    // Step 4
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
-
-    // Step 5
-    if (*position == '+')
-        ++position;
-
-    // Step 6
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
-
-    // Step 7
-    if (!isASCIIDigit(*position))
-        return false;
-
-    // Step 8
-    StringBuilder digits;
-    while (position < end) {
-        if (!isASCIIDigit(*position))
-            break;
-        digits.append(*position++);
-    }
-
-    // Step 9
-    bool ok;
-    if (digits.is8Bit())
-        value = charactersToUIntStrict(digits.characters8(), digits.length(), &ok);
-    else
-        value = charactersToUIntStrict(digits.characters16(), digits.length(), &ok);
-    return ok;
-}
-
-
-// http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-non-negative-integers
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-non-negative-integers
 bool parseHTMLNonNegativeInteger(const String& input, unsigned& value)
 {
-    // Step 1
-    // Step 2
-    unsigned length = input.length();
-    if (!length || input.is8Bit()) {
-        const LChar* start = input.characters8();
-        return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
-    }
-    
-    const UChar* start = input.characters16();
-    return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
+    int signedValue;
+    if (!parseHTMLInteger(input, signedValue) || signedValue < 0)
+        return false;
+
+    value = signedValue;
+    return true;
 }
 
 static bool threadSafeEqual(const StringImpl& a, const StringImpl& b)
@@ -288,6 +241,15 @@ static bool threadSafeEqual(const StringImpl& a, const StringImpl& b)
 bool threadSafeMatch(const QualifiedName& a, const QualifiedName& b)
 {
     return threadSafeEqual(*a.localName().impl(), *b.localName().impl());
+}
+
+String parseCORSSettingsAttribute(const AtomicString& value)
+{
+    if (value.isNull())
+        return String();
+    if (equalIgnoringASCIICase(value, "use-credentials"))
+        return ASCIILiteral("use-credentials");
+    return ASCIILiteral("anonymous");
 }
 
 }

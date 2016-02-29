@@ -97,16 +97,17 @@ void ContentSecurityPolicySourceList::parse(const String& value)
 
 bool ContentSecurityPolicySourceList::matches(const URL& url)
 {
-    if (m_allowStar)
+    if (m_allowStar) {
+        // FIXME: Should only match for URLs whose scheme is not blob, data or filesystem.
+        // See <https://bugs.webkit.org/show_bug.cgi?id=154122> for more details.
         return true;
+    }
 
-    URL effectiveURL = SecurityOrigin::shouldUseInnerURL(url) ? SecurityOrigin::extractInnerURL(url) : url;
-
-    if (m_allowSelf && m_policy.urlMatchesSelf(effectiveURL))
+    if (m_allowSelf && m_policy.urlMatchesSelf(url))
         return true;
 
     for (auto& entry : m_list) {
-        if (entry.matches(effectiveURL))
+        if (entry.matches(url))
             return true;
     }
 
@@ -197,11 +198,7 @@ bool ContentSecurityPolicySourceList::parseSource(const UChar* begin, const UCha
     if (position < end && *position == '/') {
         // host/path || host/ || /
         //     ^            ^    ^
-        if (!parseHost(beginHost, position, host, hostHasWildcard)
-            || !parsePath(position, end, path)
-            || position != end)
-            return false;
-        return true;
+        return parseHost(beginHost, position, host, hostHasWildcard) && parsePath(position, end, path);
     }
 
     if (position < end && *position == ':') {
@@ -220,7 +217,7 @@ bool ContentSecurityPolicySourceList::parseSource(const UChar* begin, const UCha
                 || !skipExactly<UChar>(position, end, '/'))
                 return false;
             if (position == end)
-                return true;
+                return false;
             beginHost = position;
             skipWhile<UChar, isNotColonOrSlash>(position, end);
         }

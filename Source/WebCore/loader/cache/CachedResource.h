@@ -147,8 +147,6 @@ public:
     unsigned encodedSize() const { return m_encodedSize; }
     unsigned decodedSize() const { return m_decodedSize; }
     unsigned overheadSize() const;
-
-    virtual bool decodedDataIsPurgeable() const { return false; }
     
     bool isLoaded() const { return !m_loading; } // FIXME. Method name is inaccurate. Loading might not have started yet.
 
@@ -196,6 +194,7 @@ public:
 
     virtual void redirectReceived(ResourceRequest&, const ResourceResponse&);
     virtual void responseReceived(const ResourceResponse&);
+    virtual bool shouldCacheResponse(const ResourceResponse&) { return true; }
     void setResponse(const ResourceResponse& response) { m_response = response; }
     const ResourceResponse& response() const { return m_response; }
     // This is the same as response() except after HTTP redirect to data: URL.

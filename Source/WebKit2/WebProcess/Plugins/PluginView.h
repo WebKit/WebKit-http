@@ -167,6 +167,7 @@ private:
     virtual void beginSnapshottingRunningPlugin() override;
     virtual bool shouldAllowNavigationFromDrags() const override;
     virtual bool shouldNotAddLayer() const override;
+    virtual void willDetatchRenderer() override;
 
     // WebCore::Widget
     virtual void setFrameRect(const WebCore::IntRect&) override;
@@ -211,7 +212,6 @@ private:
     virtual void pluginFocusOrWindowFocusChanged(bool pluginHasFocusAndWindowHasFocus) override;
     virtual void setComplexTextInputState(PluginComplexTextInputState) override;
     virtual const WebCore::MachSendRight& compositingRenderServerPort() override;
-    virtual void openPluginPreferencePane() override;
 #endif
     virtual float contentsScaleFactor() override;
     virtual String proxiesForURL(const String&) override;

@@ -38,8 +38,7 @@
     Constructor(DOMString url, DOMString protocol),
     ConstructorRaisesException,
     ConstructorCallWith=ScriptExecutionContext,
-    EventTarget,
-] interface WebSocket {
+] interface WebSocket : EventTarget {
     readonly attribute DOMString URL; // Lowercased .url is the one in the spec, but leaving .URL for compatibility reasons.
     readonly attribute DOMString url;
 
@@ -58,8 +57,8 @@
     attribute EventHandler onerror;
     attribute EventHandler onclose;
 
-    [TreatReturnedNullStringAs=Undefined] readonly attribute DOMString protocol;
-    [TreatReturnedNullStringAs=Undefined] readonly attribute DOMString extensions;
+    readonly attribute DOMString? protocol;
+    readonly attribute DOMString? extensions;
 
     attribute DOMString binaryType;
 
@@ -69,9 +68,4 @@
     [RaisesException] void send(DOMString data);
 
     [RaisesException] void close([Clamp] optional unsigned short code, optional DOMString reason);
-
-    // EventTarget interface
-    void addEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    void removeEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    [RaisesException] boolean dispatchEvent(Event event);
 };

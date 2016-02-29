@@ -50,6 +50,38 @@
     [super dealloc];
 }
 
+// FIXME: We currently only encode/decode API preferences. We should consider whether we should
+// encode/decode SPI preferences as well.
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    [coder encodeDouble:self.minimumFontSize forKey:@"minimumFontSize"];
+    [coder encodeBool:self.javaScriptEnabled forKey:@"javaScriptEnabled"];
+    [coder encodeBool:self.javaScriptCanOpenWindowsAutomatically forKey:@"javaScriptCanOpenWindowsAutomatically"];
+
+#if PLATFORM(MAC)
+    [coder encodeBool:self.javaEnabled forKey:@"javaEnabled"];
+    [coder encodeBool:self.plugInsEnabled forKey:@"plugInsEnabled"];
+#endif
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if (!(self = [self init]))
+        return nil;
+
+    self.minimumFontSize = [coder decodeDoubleForKey:@"minimumFontSize"];
+    self.javaScriptEnabled = [coder decodeBoolForKey:@"javaScriptEnabled"];
+    self.javaScriptCanOpenWindowsAutomatically = [coder decodeBoolForKey:@"javaScriptCanOpenWindowsAutomatically"];
+
+#if PLATFORM(MAC)
+    self.javaEnabled = [coder decodeBoolForKey:@"javaEnabled"];
+    self.plugInsEnabled = [coder decodeBoolForKey:@"plugInsEnabled"];
+#endif
+
+    return self;
+}
+
 - (CGFloat)minimumFontSize
 {
     return _preferences->minimumFontSize();
@@ -297,6 +329,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setHiddenPageDOMTimerThrottlingEnabled(hiddenPageDOMTimerThrottlingEnabled);
 }
 
+- (BOOL)_hiddenPageDOMTimerThrottlingAutoIncreases
+{
+    return _preferences->hiddenPageDOMTimerThrottlingAutoIncreases();
+}
+
+- (void)_setHiddenPageDOMTimerThrottlingAutoIncreases:(BOOL)hiddenPageDOMTimerThrottlingAutoIncreases
+{
+    _preferences->setHiddenPageDOMTimerThrottlingAutoIncreases(hiddenPageDOMTimerThrottlingAutoIncreases);
+}
+
 - (BOOL)_pageVisibilityBasedProcessSuppressionEnabled
 {
     return _preferences->pageVisibilityBasedProcessSuppressionEnabled();
@@ -385,16 +427,6 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setFixedPitchFontFamily:(NSString *)fixedPitchFontFamily
 {
     _preferences->setFixedFontFamily(fixedPitchFontFamily);
-}
-
-- (BOOL)_mockCaptureDevicesEnabled
-{
-    return _preferences->mockCaptureDevicesEnabled();
-}
-
-- (void)_setMockCaptureDevicesEnabled:(BOOL)mockCaptureDevicesEnabled
-{
-    _preferences->setMockCaptureDevicesEnabled(mockCaptureDevicesEnabled);
 }
 
 @end

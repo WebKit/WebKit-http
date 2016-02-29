@@ -84,6 +84,7 @@ bool Settings::gQTKitEnabled = false;
 
 bool Settings::gMockScrollbarsEnabled = false;
 bool Settings::gUsesOverlayScrollbars = false;
+bool Settings::gMockScrollAnimatorEnabled = false;
 
 #if ENABLE(MEDIA_STREAM)
 bool Settings::gMockCaptureDevicesEnabled = false;
@@ -96,6 +97,7 @@ bool Settings::gShouldUseHighResolutionTimers = true;
 bool Settings::gShouldRewriteConstAsVar = false;
 bool Settings::gShouldRespectPriorityInCSSAttributeSetters = false;
 bool Settings::gLowPowerVideoAudioBufferSizeEnabled = false;
+bool Settings::gResourceLoadStatisticsEnabledEnabled = false;
 
 #if PLATFORM(IOS)
 bool Settings::gNetworkDataUsageTrackingEnabled = false;
@@ -178,7 +180,6 @@ Settings::Settings(Page* page)
     , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)
     , m_layoutInterval(layoutScheduleThreshold)
     , m_minimumDOMTimerInterval(DOMTimer::defaultMinimumInterval())
-    , m_domTimerAlignmentInterval(DOMTimer::defaultAlignmentInterval())
 #if ENABLE(TEXT_AUTOSIZING)
     , m_textAutosizingFontScaleFactor(1)
 #if HACK_FORCE_TEXT_AUTOSIZING_ON_DESKTOP
@@ -208,9 +209,7 @@ Settings::Settings(Page* page)
     , m_scrollingPerformanceLoggingEnabled(false)
     , m_timeWithoutMouseMovementBeforeHidingControls(3)
     , m_setImageLoadingSettingsTimer(*this, &Settings::imageLoadingSettingsTimerFired)
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
     , m_hiddenPageDOMTimerThrottlingEnabled(false)
-#endif
     , m_hiddenPageCSSAnimationSuspensionEnabled(false)
     , m_fontFallbackPrefersPictographs(false)
     , m_forcePendingWebGLPolicy(false)
@@ -483,11 +482,6 @@ void Settings::setMinimumDOMTimerInterval(double interval)
     }
 }
 
-void Settings::setDOMTimerAlignmentInterval(double alignmentInterval)
-{
-    m_domTimerAlignmentInterval = alignmentInterval;
-}
-
 void Settings::setLayoutInterval(std::chrono::milliseconds layoutInterval)
 {
     // FIXME: It seems weird that this function may disregard the specified layout interval.
@@ -654,6 +648,16 @@ bool Settings::usesOverlayScrollbars()
     return gUsesOverlayScrollbars;
 }
 
+void Settings::setUsesMockScrollAnimator(bool flag)
+{
+    gMockScrollAnimatorEnabled = flag;
+}
+
+bool Settings::usesMockScrollAnimator()
+{
+    return gMockScrollAnimatorEnabled;
+}
+
 void Settings::setShouldRespectPriorityInCSSAttributeSetters(bool flag)
 {
     gShouldRespectPriorityInCSSAttributeSetters = flag;
@@ -664,7 +668,6 @@ bool Settings::shouldRespectPriorityInCSSAttributeSetters()
     return gShouldRespectPriorityInCSSAttributeSetters;
 }
 
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
 void Settings::setHiddenPageDOMTimerThrottlingEnabled(bool flag)
 {
     if (m_hiddenPageDOMTimerThrottlingEnabled == flag)
@@ -673,7 +676,15 @@ void Settings::setHiddenPageDOMTimerThrottlingEnabled(bool flag)
     if (m_page)
         m_page->hiddenPageDOMTimerThrottlingStateChanged();
 }
-#endif
+
+void Settings::setHiddenPageDOMTimerThrottlingAutoIncreases(bool flag)
+{
+    if (m_hiddenPageDOMTimerThrottlingAutoIncreases == flag)
+        return;
+    m_hiddenPageDOMTimerThrottlingAutoIncreases = flag;
+    if (m_page)
+        m_page->hiddenPageDOMTimerThrottlingStateChanged();
+}
 
 void Settings::setHiddenPageCSSAnimationSuspensionEnabled(bool flag)
 {
@@ -697,6 +708,11 @@ void Settings::setFontFallbackPrefersPictographs(bool preferPictographs)
 void Settings::setLowPowerVideoAudioBufferSizeEnabled(bool flag)
 {
     gLowPowerVideoAudioBufferSizeEnabled = flag;
+}
+
+void Settings::setResourceLoadStatisticsEnabled(bool flag)
+{
+    gResourceLoadStatisticsEnabledEnabled = flag;
 }
 
 #if PLATFORM(IOS)

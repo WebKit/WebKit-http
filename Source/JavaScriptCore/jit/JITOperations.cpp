@@ -158,7 +158,7 @@ EncodedJSValue JIT_OPERATION operationGetById(ExecState* exec, StructureStubInfo
     stubInfo->tookSlowPath = true;
     
     JSValue baseValue = JSValue::decode(base);
-    PropertySlot slot(baseValue);
+    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::Get);
     Identifier ident = Identifier::fromUid(vm, uid);
     return JSValue::encode(baseValue.get(exec, ident, slot));
 }
@@ -169,7 +169,7 @@ EncodedJSValue JIT_OPERATION operationGetByIdGeneric(ExecState* exec, EncodedJSV
     NativeCallFrameTracer tracer(vm, exec);
     
     JSValue baseValue = JSValue::decode(base);
-    PropertySlot slot(baseValue);
+    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::Get);
     Identifier ident = Identifier::fromUid(vm, uid);
     return JSValue::encode(baseValue.get(exec, ident, slot));
 }
@@ -181,7 +181,7 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, Structure
     Identifier ident = Identifier::fromUid(vm, uid);
 
     JSValue baseValue = JSValue::decode(base);
-    PropertySlot slot(baseValue);
+    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::Get);
     
     bool hasResult = baseValue.getPropertySlot(exec, ident, slot);
     if (stubInfo->considerCaching())
@@ -203,7 +203,7 @@ EncodedJSValue JIT_OPERATION operationInOptimize(ExecState* exec, StructureStubI
     AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
 
     Identifier ident = Identifier::fromUid(vm, key);
-    PropertySlot slot(base);
+    PropertySlot slot(base, PropertySlot::InternalMethodType::HasProperty);
     bool result = asObject(base)->getPropertySlot(exec, ident, slot);
     
     RELEASE_ASSERT(accessType == stubInfo->accessType);
@@ -958,13 +958,6 @@ size_t JIT_OPERATION operationCompareStringEq(ExecState* exec, JSCell* left, JSC
 #endif
 }
 
-size_t JIT_OPERATION operationHasProperty(ExecState* exec, JSObject* base, JSString* property)
-{
-    int result = base->hasProperty(exec, property->toIdentifier(exec));
-    return result;
-}
-    
-
 EncodedJSValue JIT_OPERATION operationNewArrayWithProfile(ExecState* exec, ArrayAllocationProfile* profile, const JSValue* values, int size)
 {
     VM* vm = &exec->vm();
@@ -1705,7 +1698,7 @@ EncodedJSValue JIT_OPERATION operationHasIndexedPropertyDefault(ExecState* exec,
         // https://bugs.webkit.org/show_bug.cgi?id=149886
         byValInfo->arrayProfile->setOutOfBounds();
     }
-    return JSValue::encode(jsBoolean(object->hasProperty(exec, index)));
+    return JSValue::encode(jsBoolean(object->hasPropertyGeneric(exec, index, PropertySlot::InternalMethodType::GetOwnProperty)));
 }
     
 EncodedJSValue JIT_OPERATION operationHasIndexedPropertyGeneric(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript, ByValInfo* byValInfo)
@@ -1729,7 +1722,7 @@ EncodedJSValue JIT_OPERATION operationHasIndexedPropertyGeneric(ExecState* exec,
         // https://bugs.webkit.org/show_bug.cgi?id=149886
         byValInfo->arrayProfile->setOutOfBounds();
     }
-    return JSValue::encode(jsBoolean(object->hasProperty(exec, subscript.asUInt32())));
+    return JSValue::encode(jsBoolean(object->hasPropertyGeneric(exec, subscript.asUInt32(), PropertySlot::InternalMethodType::GetOwnProperty)));
 }
     
 EncodedJSValue JIT_OPERATION operationGetByValString(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript, ByValInfo* byValInfo)
@@ -1885,7 +1878,7 @@ EncodedJSValue JIT_OPERATION operationGetFromScope(ExecState* exec, Instruction*
     // ModuleVar is always converted to ClosureVar for get_from_scope.
     ASSERT(getPutInfo.resolveType() != ModuleVar);
 
-    PropertySlot slot(scope);
+    PropertySlot slot(scope, PropertySlot::InternalMethodType::Get);
     if (!scope->getPropertySlot(exec, ident, slot)) {
         if (getPutInfo.resolveMode() == ThrowIfNotFound)
             vm.throwException(exec, createUndefinedVariableError(exec, ident));
@@ -1937,7 +1930,7 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
         && jsDynamicCast<JSGlobalLexicalEnvironment*>(scope)
         && getPutInfo.initializationMode() != Initialization) {
         // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
-        PropertySlot slot(scope);
+        PropertySlot slot(scope, PropertySlot::InternalMethodType::Get);
         JSGlobalLexicalEnvironment::getOwnPropertySlot(scope, exec, ident, slot);
         if (slot.getValue(exec, ident) == jsTDZValue()) {
             exec->vm().throwException(exec, createTDZError(exec));
@@ -2049,7 +2042,7 @@ EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState* exec, Encode
         return JSValue::encode(jsBoolean(false));
 
     JSObject* base = baseValue.toObject(exec);
-    return JSValue::encode(jsBoolean(base->hasProperty(exec, asString(propertyName)->toIdentifier(exec))));
+    return JSValue::encode(jsBoolean(base->hasPropertyGeneric(exec, asString(propertyName)->toIdentifier(exec), PropertySlot::InternalMethodType::GetOwnProperty)));
 }
 
 EncodedJSValue JIT_OPERATION operationHasIndexedProperty(ExecState* exec, JSCell* baseCell, int32_t subscript)
@@ -2057,7 +2050,7 @@ EncodedJSValue JIT_OPERATION operationHasIndexedProperty(ExecState* exec, JSCell
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
     JSObject* object = baseCell->toObject(exec, exec->lexicalGlobalObject());
-    return JSValue::encode(jsBoolean(object->hasProperty(exec, subscript)));
+    return JSValue::encode(jsBoolean(object->hasPropertyGeneric(exec, subscript, PropertySlot::InternalMethodType::GetOwnProperty)));
 }
     
 JSCell* JIT_OPERATION operationGetPropertyEnumerator(ExecState* exec, JSCell* cell)

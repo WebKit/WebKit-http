@@ -52,7 +52,9 @@ class Identifier;
     macro(promiseStatePending) \
     macro(promiseStateFulfilled) \
     macro(promiseStateRejected) \
-    macro(symbolIterator)
+    macro(symbolIterator) \
+    macro(symbolSearch) \
+    macro(symbolSpecies)
 
 class BytecodeIntrinsicRegistry {
     WTF_MAKE_NONCOPYABLE(BytecodeIntrinsicRegistry);

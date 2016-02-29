@@ -63,10 +63,7 @@ class ChartPane extends ChartPaneBase {
         this._chartsPage.setMainDomainFromZoom(selection, this);
     }
 
-    _openAnalysisTask(annotation)
-    {
-        window.open(this._chartsPage.router().url(`analysis/task/${annotation.task.id()}`), '_blank');
-    }
+    router() { return this._chartsPage.router(); }
 
     _indicatorDidChange(indicatorID, isLocked)
     {
@@ -242,6 +239,8 @@ class ChartPane extends ChartPaneBase {
             .chart-pane {
                 border: solid 1px #ccc;
                 border-radius: 0.5rem;
+                margin: 1rem;
+                margin-bottom: 2rem;
             }
 
             .chart-pane-body {

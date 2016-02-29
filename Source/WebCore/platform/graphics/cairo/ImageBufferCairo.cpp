@@ -55,7 +55,6 @@
 
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
 #else
 #include "OpenGLShims.h"
 #endif

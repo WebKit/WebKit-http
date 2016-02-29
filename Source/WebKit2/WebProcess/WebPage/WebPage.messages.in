@@ -284,7 +284,7 @@ messages -> WebPage LegacyReceiver {
 #if ENABLE(MEDIA_STREAM)
     # MediaSteam
     DidReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, String audioDeviceUID, String videoDeviceUID)
-    DidCompleteUserMediaPermissionCheck(uint64_t userMediaID, bool allowed)
+    DidCompleteUserMediaPermissionCheck(uint64_t userMediaID, String mediaDeviceIdentifierHashSalt, bool allowed)
 #endif
 
     # Notification
@@ -358,7 +358,7 @@ messages -> WebPage LegacyReceiver {
     ShouldDelayWindowOrderingEvent(WebKit::WebMouseEvent event) -> (bool result)
     AcceptsFirstMouse(int eventNumber, WebKit::WebMouseEvent event) -> (bool result)
 
-    InsertTextAsync(String text, struct WebKit::EditingRange replacementRange, bool registerUndoGroup)
+    InsertTextAsync(String text, struct WebKit::EditingRange replacementRange, bool registerUndoGroup, uint32_t editingRangeIsRelativeTo)
     GetMarkedRangeAsync(uint64_t callbackID)
     GetSelectedRangeAsync(uint64_t callbackID)
     CharacterIndexForPointAsync(WebCore::IntPoint point, uint64_t callbackID);

@@ -1,3 +1,361 @@
+2016-02-26  Dan Bernstein  <mitz@apple.com>
+
+        Build fix for when WK_OVERRIDE_FRAMEWORKS_DIR contains spaces.
+
+        * Configurations/WebKitLegacy.xcconfig: Added quotes.
+
+2016-02-25  Ada Chan  <adachan@apple.com>
+
+        Update the definition of ENABLE_VIDEO_PRESENTATION_MODE for Mac platform
+        https://bugs.webkit.org/show_bug.cgi?id=154702
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-02-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Restrict information passed with navigation action which is triggered by untrusted event
+        https://bugs.webkit.org/show_bug.cgi?id=154571
+        <rdar://problem/15967937>
+
+        Reviewed by Andy Estes.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+
+2016-02-25  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] MediaDeviceInfo deviceId and groupId must be unique to the page's origin
+        https://bugs.webkit.org/show_bug.cgi?id=153163
+        <rdar://problem/24334526>
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (WebUserMediaClient::requestUserMediaAccess):
+        (WebUserMediaClient::checkUserMediaPermission):
+        (-[WebUserMediaPolicyCheckerListener allow]):
+        (-[WebUserMediaPolicyCheckerListener deny]):
+
+2016-02-24  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [web-animations] Add AnimationTimeline, DocumentTimeline and add extensions to Document interface
+        https://bugs.webkit.org/show_bug.cgi?id=151688
+
+        Reviewed by Dean Jackson.
+
+        Enables the WEB_ANIMATIONS compiler switch.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
+2016-02-23  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove HIDDEN_PAGE_DOM_TIMER_THROTTLING feature define
+        https://bugs.webkit.org/show_bug.cgi?id=112323
+
+        Reviewed by Chris Dumez.
+
+        This feature is controlled by a runtime switch, and defaults off.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-02-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196935.
+        https://bugs.webkit.org/show_bug.cgi?id=154557
+
+        This change causes timeouts and crashes in LayoutTests
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Enable AVFoundationNSURLSessionEnabled by default"
+        https://bugs.webkit.org/show_bug.cgi?id=154469
+        http://trac.webkit.org/changeset/196935
+
+2016-02-22  Keith Rollin  <krollin@apple.com>
+
+        Add mechanism to disable memory pressure handling
+        https://bugs.webkit.org/show_bug.cgi?id=154254
+        <rdar://problem/24662616>
+
+        Reviewed by Chris Dumez.
+
+        Add a mechanism to disable WebKit's response to memory pressure
+        triggers. This was asked for by another group for testing purposes.
+
+        In order to disable WebKit's memory pressure handling, execute the
+        following from the command line:
+
+            defaults write com.apple.Safari WebKitSuppressMemoryPressureHandler -bool true
+
+        To revert to standard behavior, delete the key or set it to False.
+
+        This flag is used when a new sub-process is being spawned. The value
+        is read and stored in an initialization parameter block, which is then
+        sent to the new sub-process.
+
+        In actuality, only the UI, WebContent, and Network processes heed the
+        flag. The Plugin process isn't instrumented to heed this flag for
+        three reasons. First, the Plugin process installs its memory pressure
+        handler in initializeProcess, not initializePluginProcess. This is
+        contrary to when the other processes install their handlers, which is
+        in initialize<PluginType>Process, not initializeProcess. So in order
+        to accomodate the Plugin process, we'd need to modify
+        ChildProcessInitializationParameters. Doing this is awkward at best,
+        but also seems to be opposed to what's supposed to be done in
+        initializeProcess and conveyed in
+        ChildProcessInitializationParameters. And even if we did add a boolean
+        to this structure and added support for conveying it through the XPC
+        port, it would end up being a Plugin process-only boolean in a general
+        parameter block, which seems asymmetric with the other processes.
+        Second, there's no convenient Cocoa function called in the flow that
+        spawns the Plugin process, meaning that there's no convenient place to
+        call NSUserDefaults to get the flag's value. And third, the Plugin
+        process doesn't elegantly respond to the memory pressure trigger
+        anyway. It might terminate itself, but that's it. As for the Database
+        process, it doesn't seem to support responding to memory pressure at
+        all, so we don't send it a flag telling it to ignore it.
+
+        Internally, the memory pressure handler is suppressed by not calling
+        MemoryPressureHandler::install() if the flag is set. In the case of
+        the Network process, the flag is saved so that it can be checked later
+        in other places that manually kick off the memory pressure handling
+        procedure.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (WebInstallMemoryPressureHandler):
+
+2016-02-22  Jer Noble  <jer.noble@apple.com>
+
+        Enable AVFoundationNSURLSessionEnabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=154469
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2016-02-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Gather some rudimentary statistics during resource load 
+        https://bugs.webkit.org/show_bug.cgi?id=153575
+        <rdar://problem/24075254>
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebKitNSStringExtras.h:
+        * Misc/WebKitNSStringExtras.mm:
+        (+[NSString _webkit_localStorageDirectoryWithBundleIdentifier:]): Added.
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences resourceLoadStatisticsEnabled]): Added.
+        (-[WebPreferences setResourceLoadStatisticsEnabled:]): Added.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (WebKitInitializeApplicationCachePathIfNecessary):
+        (WebKitInitializeApplicationStatisticsStoragePathIfNecessary): Added.
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Add call to new
+        initialization method.
+        (-[WebView _preferencesChanged:]): Track changes in the user's desire to
+        monitor resource load statistics.
+        (+[WebView _applicationWillTerminate]): Write statistics to disk (if preferences
+        say to do so.)
+
+2016-02-13  Mark Lam  <mark.lam@apple.com>
+
+        Add thread violation checks to WebView public APIs.
+        https://bugs.webkit.org/show_bug.cgi?id=154183
+
+        Reviewed by Timothy Hatcher.
+
+        Re-landing r196527 with a newly added WebCoreThreadViolationCheckRoundThree().
+        Previously was using WebCoreThreadViolationCheckRoundTwo().
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView initWithFrame:]):
+        * WebView/WebView.mm:
+        (-[WebView setCustomTextEncodingName:]):
+        (-[WebView stringByEvaluatingJavaScriptFromString:]):
+        (-[WebView windowScriptObject]):
+        (-[WebView setGroupName:]):
+        (-[WebView setMainFrameURL:]):
+        (-[WebView mainFrameTitle]):
+        (-[WebView mainFrameIcon]):
+        (-[WebView setDrawsBackground:]):
+        (-[WebView setShouldUpdateWhileOffscreen:]):
+
+2016-02-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r196527.
+        https://bugs.webkit.org/show_bug.cgi?id=154204
+
+        "Need to redo as WebCoreThreadViolationCheckRoundThree"
+        (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "Add thread violation checks to WebView public APIs."
+        https://bugs.webkit.org/show_bug.cgi?id=154183
+        http://trac.webkit.org/changeset/196527
+
+2016-02-12  Mark Lam  <mark.lam@apple.com>
+
+        Add thread violation checks to WebView public APIs.
+        https://bugs.webkit.org/show_bug.cgi?id=154183
+
+        Reviewed by Geoffrey Garen.
+
+        This will help clients of the API detect the violations sooner rather than
+        having to debug mysterious crashes / failures later.
+
+        To that end, I've added thread violation checks to the following functions
+        because ...
+
+        * WebView/WebView.mm:
+        (-[WebView setCustomTextEncodingName:]):
+        - Uses the FrameLoader (which is for the main thread only).
+
+        (-[WebView stringByEvaluatingJavaScriptFromString:]):
+        - Invokes JavaScript (which is for the main thread only).
+
+        (-[WebView windowScriptObject]):
+        - Invokes ScriptController::windowScriptObject() which requires the JSLock.
+
+        (-[WebView setGroupName:]):
+        - Manipulates the PageGroup and Page (which is for the main thread only).
+
+        (-[WebView setMainFrameURL:]):
+        - Uses the FrameLoader (which is for the main thread only).
+
+        (-[WebView mainFrameTitle]):
+        - Uses the FrameLoader::documentLoader() (via [WebFrame _dataSource]) which
+          is RefPtr, and therefore not safe for other threads to access.
+
+        (-[WebView mainFrameIcon]):
+        - Uses the FrameLoader::documentLoader() (via [WebFrame _dataSource]) which
+          is RefPtr, and therefore not safe for other threads to access.
+        - Uses [WebIconDatabase sharedIconDatabase] which does a singleton
+          instantiation but is not protected by a lock.
+
+        (-[WebView setDrawsBackground:]):
+        - Potentially manipulates a RenderView (via FrameView::setBaseBackgroundColor,
+          via [WebFrame _updateBackgroundAndUpdatesWhileOffscreen]), and RenderView
+          is for main thread only use.
+
+        (-[WebView setShouldUpdateWhileOffscreen:]):
+        - Uses [WebFrame _updateBackgroundAndUpdatesWhileOffscreen].  Hence, for the
+          main thread only.
+
+2016-02-12  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Update ICU header files to version 52
+        https://bugs.webkit.org/show_bug.cgi?id=154160
+
+        Reviewed by Alex Christensen.
+
+        Update ICU header files to version 52 to allow the use of newer APIs.
+
+        * icu/unicode/localpointer.h:
+        * icu/unicode/platform.h:
+        * icu/unicode/ptypes.h:
+        * icu/unicode/putil.h:
+        * icu/unicode/uchar.h:
+        * icu/unicode/uconfig.h:
+        * icu/unicode/uidna.h:
+        * icu/unicode/uiter.h:
+        * icu/unicode/umachine.h:
+        * icu/unicode/unorm2.h:
+        * icu/unicode/urename.h:
+        * icu/unicode/uscript.h:
+        * icu/unicode/ustring.h:
+        * icu/unicode/utf.h:
+        * icu/unicode/utf16.h:
+        * icu/unicode/utf8.h:
+        * icu/unicode/utf_old.h:
+        * icu/unicode/utypes.h:
+        * icu/unicode/uvernum.h:
+        * icu/unicode/uversion.h:
+
+2016-02-12  Beth Dakin  <bdakin@apple.com>
+
+        NSRangeIsRelativeTo should not have NS prefix
+        https://bugs.webkit.org/show_bug.cgi?id=154174
+
+        Reviewed by Tim Horton.
+
+        NSRangeIsRelativeTo -> WebRangeIsRelativeTo
+        * WebView/WebFrame.mm:
+        (-[WebFrame _convertToDOMRange:]):
+        (-[WebFrame _convertToDOMRange:rangeIsRelativeTo:]):
+        * WebView/WebFrameInternal.h:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView insertText:]):
+
+2016-02-11  Beth Dakin  <bdakin@apple.com>
+
+        EditingRangeIsRelativeTo::Document and NSRangeIsRelativeTo::Document should 
+        be called EditableRoot instead
+        https://bugs.webkit.org/show_bug.cgi?id=154138
+
+        Reviewed by Alexey Proskuryakov.
+
+        EditableRoot is much more accurate than Document.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _convertToDOMRange:]):
+        (-[WebFrame _convertToDOMRange:rangeIsRelativeTo:]):
+        * WebView/WebFrameInternal.h:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView insertText:]):
+
+2016-02-11  Beth Dakin  <bdakin@apple.com>
+
+        Soft spaces are often tracked in the wrong spot
+        https://bugs.webkit.org/show_bug.cgi?id=154127
+        -and corresponding-
+        rdar://problem/24493140
+
+        Reviewed by Sam Weinig.
+
+        Soft spaces are in the wrong space now for two reasons. First of all, the 
+        NSRange we get from the accepted candidate is relative to the paragraph 
+        start, so without this patch, soft spaces are only ever right for the first 
+        paragraph. Secondly, if focus changes for any reason other than text 
+        insertion, soft spaces are also wrong because they need to be re-set.
+
+        New version of _convertToDOMRange takes a NSRangeIsRelativeTo so that it can 
+        handle ranges relative to both the document and the paragraph. 
+        * WebView/WebFrame.mm:
+        (-[WebFrame _convertToDOMRange:rangeIsRelativeTo:]):
+        (-[WebFrame _convertNSRangeToDOMRange:]):
+
+        New enum NSRangeIsRelativeTo.
+        * WebView/WebFrameInternal.h:
+
+        Re-set the softSpaceRange on selection changes so long as the WebCore::Editor 
+        is not currently handling an accepted candidate.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _selectionChanged]):
+
+        If needToRemoveSoftSpace is true, then the replacementRange is 
+        relative to the paragraph.
+        (-[WebHTMLView insertText:]):
+
 2016-02-10  Mark Lam  <mark.lam@apple.com>
 
         WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture: should assert that it is being called from the "main" thread.

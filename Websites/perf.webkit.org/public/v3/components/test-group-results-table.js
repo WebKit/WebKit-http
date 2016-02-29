@@ -8,7 +8,11 @@ class TestGroupResultsTable extends ResultsTable {
     }
 
     didUpdateResults() { this._renderedTestGroup = null; }
-    setTestGroup(testGroup) { this._testGroup = testGroup; }
+    setTestGroup(testGroup)
+    {
+        this._testGroup = testGroup;
+        this._renderedTestGroup = null;
+    }
 
     heading()
     {
@@ -30,7 +34,7 @@ class TestGroupResultsTable extends ResultsTable {
             return [];
 
         var rootSets = this._testGroup.requestedRootSets();
-        var groups = rootSets.map(function (rootSet, setIndex) {
+        var groups = rootSets.map(function (rootSet) {
             var rows = [new ResultsTableRow('Mean', rootSet)];
             var results = [];
 
@@ -51,28 +55,55 @@ class TestGroupResultsTable extends ResultsTable {
             if (!isNaN(aggregatedResult.value))
                 rows[0].setResult(aggregatedResult);
 
-            return {heading: String.fromCharCode('A'.charCodeAt(0) + setIndex), rows:rows};
+            return {heading: testGroup.labelForRootSet(rootSet), rows:rows};
         });
 
         var comparisonRows = [];
         for (var i = 0; i < rootSets.length; i++) {
             for (var j = i + 1; j < rootSets.length; j++) {
-                var startConfig = String.fromCharCode('A'.charCodeAt(0) + i);
-                var endConfig = String.fromCharCode('A'.charCodeAt(0) + j);
+                var startConfig = testGroup.labelForRootSet(rootSets[i]);
+                var endConfig = testGroup.labelForRootSet(rootSets[j]);
 
                 var result = this._testGroup.compareTestResults(rootSets[i], rootSets[j]);
-                if (result.status == 'incomplete' || result.status == 'failed')
+                if (result.changeType == null)
                     continue;
 
                 var row = new ResultsTableRow(`${startConfig} to ${endConfig}`, null);
-                row.setLabelForWholeRow(result.fullLabel);
+                var element = ComponentBase.createElement;
+                row.setLabelForWholeRow(element('span', {class: 'results-label ' + result.status}, result.fullLabel));
                 comparisonRows.push(row);
             }
         }
 
-        groups.push({heading: '', rows: comparisonRows});
+        groups.unshift({heading: '', rows: comparisonRows});
 
         return groups;
+    }
+
+    static cssTemplate()
+    {
+        return super.cssTemplate() + `
+            .results-label {
+                padding: 0.1rem;
+                width: 100%;
+                height: 100%;
+            }
+
+            .results-label .failed {
+                color: rgb(128, 51, 128);
+            }
+            .results-label .unchanged {
+                color: rgb(128, 128, 128);
+            }
+            .results-label.worse {
+                color: rgb(255, 102, 102);
+                font-weight: bold;
+            }
+            .results-label.better {
+                color: rgb(102, 102, 255);
+                font-weight: bold;
+            }
+        `;
     }
 }
 

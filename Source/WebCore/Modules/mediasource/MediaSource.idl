@@ -36,10 +36,7 @@ enum EndOfStreamError {
 [
     Conditional=MEDIA_SOURCE,
     ActiveDOMObject,
-    EventTarget,
     EnabledBySetting=MediaSource,
-    JSGenerateToJSObject,
-    JSGenerateToNativeObject,
     Constructor,
     ConstructorCallWith=ScriptExecutionContext,
 ] interface MediaSource : EventTarget {

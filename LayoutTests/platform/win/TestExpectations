@@ -374,9 +374,6 @@ webkit.org/b/42435 http/tests/misc/webtiming-ssl.php [ Skip ]
 webkit.org/b/42435 http/tests/misc/webtiming-two-redirects.php [ Skip ]
 webkit.org/b/42435 http/tests/w3c/webperf [ Skip ]
 
-# Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
-webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1 [ Skip ]
-
 # TODO Application Cache Quotas
 webkit.org/b/43458 http/tests/appcache/origin-quota.html [ Skip ]
 webkit.org/b/43458 http/tests/appcache/origin-quota-continued-download.html [ Skip ]
@@ -3337,3 +3334,26 @@ webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-heade
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Failure ]
 
 webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]
+
+# The SVG -> OTF Font converter outputs 'kern' tables instead of 'GPOS' tables.
+webkit.org/b/137204 fast/text/svg-font-face-with-kerning.html [ Failure ]
+webkit.org/b/137204 svg/W3C-SVG-1.1/fonts-kern-01-t.svg [ Failure ]
+webkit.org/b/137204 svg/W3C-SVG-1.1/fonts-kern-01-t.svg [ Failure ]
+webkit.org/b/137204 svg/text/kerning.svg [ Failure ]
+webkit.org/b/137204 svg/text/text-hkern.svg [ Failure ]
+webkit.org/b/137204 svg/text/text-vkern.svg [ Failure ]
+
+# SVG Fonts don't draw multibyte characters.
+webkit.org/b/154690 svg/W3C-SVG-1.1/text-align-08-b.svg [ Failure ]
+webkit.org/b/154690 svg/W3C-SVG-1.1/text-intro-01-t.svg [ Failure ]
+webkit.org/b/154690 svg/W3C-SVG-1.1/text-intro-04-t.svg [ Failure ]
+webkit.org/b/154690 svg/text/multichar-glyph.svg [ Failure ]
+webkit.org/b/154690 svg/W3C-SVG-1.1/text-align-08-b.svg [ Failure ]
+
+# The SVG -> OTF Font Converter does not work with SVG's "altglyph" facility.
+webkit.org/b/137096 svg/W3C-SVG-1.1/text-altglyph-01-b.svg [ Failure ]
+webkit.org/b/137096 svg/custom/altglyph.svg [ Failure ]
+webkit.org/b/137096 svg/text/text-altglyph-01-b.svg [ Failure ]
+
+# Same thing with the "lang" attribute.
+webkit.org/b/137093 svg/custom/glyph-selection-lang-attribute.svg [ Failure ]

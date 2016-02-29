@@ -98,6 +98,7 @@ public:
         
         // UIProcess types
         ApplicationCacheManager,
+        AutomationSession,
         BackForwardList,
         BackForwardListItem,
         BatteryManager,
@@ -137,6 +138,7 @@ public:
         ProcessPoolConfiguration,
         PluginSiteDataManager,
         Preferences,
+        RunBeforeUnloadConfirmPanelResultListener,
         RunJavaScriptAlertResultListener,
         RunJavaScriptConfirmResultListener,
         RunJavaScriptPromptResultListener,
@@ -145,6 +147,7 @@ public:
         UserContentController,
         UserContentExtension,
         UserContentExtensionStore,
+        UserContentWorld,
         UserMediaPermissionCheck,
         UserMediaPermissionRequest,
         Vibration,

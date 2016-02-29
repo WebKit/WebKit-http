@@ -221,17 +221,22 @@ SLOW_PATH_DECL(slow_path_create_out_of_band_arguments)
 SLOW_PATH_DECL(slow_path_create_this)
 {
     BEGIN();
-    JSFunction* constructor = jsCast<JSFunction*>(OP(2).jsValue().asCell());
+    JSObject* result;
+    JSCell* constructorAsCell = OP(2).jsValue().asCell();
+    if (constructorAsCell->type() == JSFunctionType) {
+        JSFunction* constructor = jsCast<JSFunction*>(constructorAsCell);
+        auto& cacheWriteBarrier = pc[4].u.jsCell;
+        if (!cacheWriteBarrier)
+            cacheWriteBarrier.set(exec->vm(), exec->codeBlock(), constructor);
+        else if (cacheWriteBarrier.unvalidatedGet() != JSCell::seenMultipleCalleeObjects() && cacheWriteBarrier.get() != constructor)
+            cacheWriteBarrier.setWithoutWriteBarrier(JSCell::seenMultipleCalleeObjects());
 
-    auto& cacheWriteBarrier = pc[4].u.jsCell;
-    if (!cacheWriteBarrier)
-        cacheWriteBarrier.set(exec->vm(), exec->codeBlock(), constructor);
-    else if (cacheWriteBarrier.unvalidatedGet() != JSCell::seenMultipleCalleeObjects() && cacheWriteBarrier.get() != constructor)
-        cacheWriteBarrier.setWithoutWriteBarrier(JSCell::seenMultipleCalleeObjects());
-
-    size_t inlineCapacity = pc[3].u.operand;
-    Structure* structure = constructor->rareData(exec, inlineCapacity)->objectAllocationProfile()->structure();
-    RETURN(constructEmptyObject(exec, structure));
+        size_t inlineCapacity = pc[3].u.operand;
+        Structure* structure = constructor->rareData(exec, inlineCapacity)->objectAllocationProfile()->structure();
+        result = constructEmptyObject(exec, structure);
+    } else
+        result = constructEmptyObject(exec);
+    RETURN(result);
 }
 
 SLOW_PATH_DECL(slow_path_to_this)
@@ -611,7 +616,7 @@ SLOW_PATH_DECL(slow_path_has_indexed_property)
     JSValue property = OP(3).jsValue();
     pc[4].u.arrayProfile->observeStructure(base->structure(vm));
     ASSERT(property.isUInt32());
-    RETURN(jsBoolean(base->hasProperty(exec, property.asUInt32())));
+    RETURN(jsBoolean(base->hasPropertyGeneric(exec, property.asUInt32(), PropertySlot::InternalMethodType::GetOwnProperty)));
 }
 
 SLOW_PATH_DECL(slow_path_has_structure_property)
@@ -623,7 +628,7 @@ SLOW_PATH_DECL(slow_path_has_structure_property)
     JSPropertyNameEnumerator* enumerator = jsCast<JSPropertyNameEnumerator*>(OP(4).jsValue().asCell());
     if (base->structure(vm)->id() == enumerator->cachedStructureID())
         RETURN(jsBoolean(true));
-    RETURN(jsBoolean(base->hasProperty(exec, asString(property.asCell())->toIdentifier(exec))));
+    RETURN(jsBoolean(base->hasPropertyGeneric(exec, asString(property.asCell())->toIdentifier(exec), PropertySlot::InternalMethodType::GetOwnProperty)));
 }
 
 SLOW_PATH_DECL(slow_path_has_generic_property)
@@ -633,10 +638,10 @@ SLOW_PATH_DECL(slow_path_has_generic_property)
     JSValue property = OP(3).jsValue();
     bool result;
     if (property.isString())
-        result = base->hasProperty(exec, asString(property.asCell())->toIdentifier(exec));
+        result = base->hasPropertyGeneric(exec, asString(property.asCell())->toIdentifier(exec), PropertySlot::InternalMethodType::GetOwnProperty);
     else {
         ASSERT(property.isUInt32());
-        result = base->hasProperty(exec, property.asUInt32());
+        result = base->hasPropertyGeneric(exec, property.asUInt32(), PropertySlot::InternalMethodType::GetOwnProperty);
     }
     RETURN(jsBoolean(result));
 }
