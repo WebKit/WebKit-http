@@ -1549,8 +1549,6 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
     case KeyNegotiation:
         switch (newAppendStage) {
         case Ongoing:
-            ok = true;
-            break;
         case Invalid:
             ok = true;
             break;
@@ -1561,6 +1559,8 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
     case Ongoing:
         switch (newAppendStage) {
         case KeyNegotiation:
+        case Sampling:
+        case Invalid:
             ok = true;
             break;
         case DataStarve:
@@ -1571,12 +1571,6 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             else
                 nextAppendStage = NotStarted;
             break;
-        case Sampling:
-            ok = true;
-            break;
-        case Invalid:
-            ok = true;
-            break;
         default:
             break;
         }
@@ -1584,14 +1578,12 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
     case DataStarve:
         switch (newAppendStage) {
         case NotStarted:
+        case Invalid:
             ok = true;
             break;
         case Aborting:
             ok = true;
             nextAppendStage = NotStarted;
-            break;
-        case Invalid:
-            ok = true;
             break;
         default:
             break;
@@ -1600,6 +1592,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
     case Sampling:
         switch (newAppendStage) {
         case Sampling:
+        case Invalid:
             ok = true;
             break;
         case LastSample:
@@ -1610,9 +1603,6 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             else
                 nextAppendStage = NotStarted;
             break;
-        case Invalid:
-            ok = true;
-            break;
         default:
             break;
         }
@@ -1620,14 +1610,12 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
     case LastSample:
         switch (newAppendStage) {
         case NotStarted:
+        case Invalid:
             ok = true;
             break;
         case Aborting:
             ok = true;
             nextAppendStage = NotStarted;
-            break;
-        case Invalid:
-            ok = true;
             break;
         default:
             break;
