@@ -359,8 +359,10 @@ void GraphicsContext::platformInit(PlatformGraphicsContext* painter)
 
 void GraphicsContext::platformDestroy()
 {
-    while (!m_data->layers.isEmpty())
-        endTransparencyLayer();
+    if (m_data) {
+        while (!m_data->layers.isEmpty())
+            endTransparencyLayer();
+    }
 
     delete m_data;
 }
