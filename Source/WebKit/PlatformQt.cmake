@@ -149,7 +149,6 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 
 # This files are not really port-independent
 list(REMOVE_ITEM WebKit_SOURCES
-    WebCoreSupport/WebResourceLoadScheduler.cpp
     WebCoreSupport/WebViewGroup.cpp
 )
 

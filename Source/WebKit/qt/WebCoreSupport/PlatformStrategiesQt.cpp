@@ -35,6 +35,7 @@
 #include "QWebPageAdapter.h"
 #include "qwebhistoryinterface.h"
 #include "qwebpluginfactory.h"
+#include "WebResourceLoadScheduler.h"
 
 #include <IntSize.h>
 #include <NotImplemented.h>
@@ -69,7 +70,7 @@ CookiesStrategy* PlatformStrategiesQt::createCookiesStrategy()
 
 LoaderStrategy* PlatformStrategiesQt::createLoaderStrategy()
 {
-    return this;
+    return new WebResourceLoadScheduler;
 }
 
 PasteboardStrategy* PlatformStrategiesQt::createPasteboardStrategy()
