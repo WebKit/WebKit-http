@@ -31,8 +31,8 @@
 
 #include "ChromeClient.h"
 #include "FloatRect.h"
-#include "URL.h"
 #include "QtPlatformPlugin.h"
+#include "URL.h"
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
