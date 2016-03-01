@@ -173,8 +173,6 @@ public:
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
     virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*);
 
-    virtual void formStateDidChange(const Node*) { }
-
     virtual void setCursor(const Cursor&);
     virtual void setCursorHiddenUntilMouseMoves(bool) { }
 
@@ -190,14 +188,12 @@ public:
     virtual bool hasOpenedPopup() const;
     virtual RefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const;
     virtual RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const;
-    virtual void populateVisitedLinks();
 
     std::unique_ptr<QWebSelectMethod> createSelectPopup() const;
 
     virtual void dispatchViewportPropertiesDidChange(const ViewportArguments&) const;
 
-    virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
-    virtual void numWheelEventHandlersChanged(unsigned) { }
+    virtual void wheelEventHandlersChanged(bool) override { }
 
     void exceededDatabaseQuota(Frame *, const WTF::String &databaseName, DatabaseDetails) override;
     void attachRootGraphicsLayer(Frame *, GraphicsLayer *) override;

@@ -382,43 +382,6 @@ KeyboardUIMode ChromeClientQt::keyboardUIMode()
         ? KeyboardAccessTabsToLinks : KeyboardAccessDefault;
 }
 
-IntRect ChromeClientQt::windowResizerRect() const
-{
-#if defined(Q_WS_MAC)
-    if (!m_webPage)
-        return IntRect();
-
-    QWebPageClient* pageClient = platformPageClient();
-    if (!pageClient)
-        return IntRect();
-
-    QWindow* topLevelWidget = pageClient->ownerWindow();
-    if (!topLevelWidget)
-        return IntRect();
-
-    QRect topLevelGeometry(topLevelWidget->geometry());
-
-    // There's no API in Qt to query for the size of the resizer, so we assume
-    // it has the same width and height as the scrollbar thickness.
-    int scollbarThickness = ScrollbarTheme::theme()->scrollbarThickness();
-
-    // There's no API in Qt to query for the position of the resizer. Sometimes
-    // it's drawn by the system, and sometimes it's a QSizeGrip. For RTL locales
-    // it might even be on the lower left side of the window, but in WebKit we
-    // always draw scrollbars on the right hand side, so we assume this to be the
-    // location when computing the resize rect to reserve for WebKit.
-    QPoint resizeCornerTopLeft = QPoint(topLevelGeometry.width(), topLevelGeometry.height())
-        - QPoint(scollbarThickness, scollbarThickness))
-        - m_webPage->viewRectRelativeToWindow().topLeft();
-
-    QRect resizeCornerRect = QRect(resizeCornerTopLeft, QSize(scollbarThickness, scollbarThickness));
-    return resizeCornerRect.intersected(pageClient->geometryRelativeToOwnerWidget());
-
-#else
-    return IntRect();
-#endif
-}
-
 void ChromeClientQt::invalidateRootView(const IntRect& windowRect)
 {
 #if USE(TILED_BACKING_STORE)
@@ -767,16 +730,6 @@ RefPtr<PopupMenu> ChromeClientQt::createPopupMenu(PopupMenuClient* client) const
 RefPtr<SearchPopupMenu> ChromeClientQt::createSearchPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new SearchPopupMenuQt(createPopupMenu(client)));
-}
-
-void ChromeClientQt::populateVisitedLinks()
-{
-    // We don't need to do anything here because history is tied to QWebPage rather than stored
-    // in a separate database
-    if (dumpVisitedLinksCallbacks) {
-        printf("Asked to populate visited links for WebView \"%s\"\n",
-            qPrintable(QUrl(m_webPage->mainFrameAdapter()->url).toString()));
-    }
 }
 
 void ChromeClientQt::exceededDatabaseQuota(WebCore::Frame*, const WTF::String& databaseName, WebCore::DatabaseDetails)
