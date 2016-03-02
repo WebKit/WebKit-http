@@ -247,7 +247,7 @@ PassRefPtr<BitmapTexture> BitmapTextureGL::applyFilters(TextureMapper& textureMa
             bool last = (i == filters.size() - 1) && (j == numPasses - 1);
             if (!last) {
                 if (!intermediateSurface)
-                    intermediateSurface = texmapGL.acquireTextureFromPool(contentSize());
+                    intermediateSurface = texmapGL.acquireTextureFromPool(contentSize(), BitmapTexture::SupportsAlpha | BitmapTexture::FBOAttachment);
                 texmapGL.bindSurface(intermediateSurface.get());
             }
 
