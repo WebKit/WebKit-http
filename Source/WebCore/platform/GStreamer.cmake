@@ -114,7 +114,7 @@ if (ENABLE_WEB_AUDIO)
     )
 endif ()
 
-if (ENABLE_ENCRYPTED_MEDIA)
+if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         ${LIBGCRYPT_INCLUDE_DIRS}
     )
@@ -125,13 +125,6 @@ if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/WebKitCommonEncryptionDecryptorGStreamer.cpp
         platform/graphics/gstreamer/WebKitClearKeyDecryptorGStreamer.cpp
-    )
-
-endif ()
-
-if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
-
-    list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/WebKitPlayReadyDecryptorGStreamer.cpp
     )
 

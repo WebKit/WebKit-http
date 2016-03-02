@@ -22,7 +22,7 @@
 
 #include "config.h"
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
 #include "GRefPtrGStreamer.h"
