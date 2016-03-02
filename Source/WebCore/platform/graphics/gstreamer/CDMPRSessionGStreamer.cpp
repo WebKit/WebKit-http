@@ -38,13 +38,13 @@
 
 namespace WebCore {
 
-CDMPRSessionGStreamer::CDMPRSessionGStreamer()
+CDMPRSessionGStreamer::CDMPRSessionGStreamer(CDMSessionClient* client)
 #if USE(DXDRM)
   : DiscretixSession()
 #elif USE(PLAYREADY)
   : PlayreadySession()
 #endif
-    , m_client(nullptr)
+    , m_client(client)
     , m_sessionId(createCanonicalUUIDString())
 {
 }
