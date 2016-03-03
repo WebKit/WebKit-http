@@ -54,7 +54,7 @@ class QWEBKITWIDGETS_EXPORT QWebView : public QWidget {
     Q_PROPERTY(QPainter::RenderHints renderHints READ renderHints WRITE setRenderHints)
     Q_FLAGS(QPainter::RenderHints)
 public:
-    explicit QWebView(QWidget* parent = 0);
+    explicit QWebView(QWidget* parent = Q_NULLPTR);
     virtual ~QWebView();
 
     QWebPage* page() const;
@@ -104,7 +104,7 @@ public:
     void setRenderHints(QPainter::RenderHints hints);
     void setRenderHint(QPainter::RenderHint hint, bool enabled = true);
 
-    bool findText(const QString& subString, QWebPage::FindFlags options = 0);
+    bool findText(const QString& subString, QWebPage::FindFlags options = QWebPage::FindFlags());
 
     virtual bool event(QEvent*);
 

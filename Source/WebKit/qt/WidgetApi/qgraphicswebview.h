@@ -54,7 +54,7 @@ class QWEBKITWIDGETS_EXPORT QGraphicsWebView : public QGraphicsWidget {
     Q_FLAGS(QPainter::RenderHints)
 
 public:
-    explicit QGraphicsWebView(QGraphicsItem* parent = 0);
+    explicit QGraphicsWebView(QGraphicsItem* parent = Q_NULLPTR);
     ~QGraphicsWebView();
 
     QWebPage* page() const;
@@ -84,7 +84,7 @@ public:
     QAction* pageAction(QWebPage::WebAction action) const;
     void triggerPageAction(QWebPage::WebAction action, bool checked = false);
 
-    bool findText(const QString& subString, QWebPage::FindFlags options = 0);
+    bool findText(const QString& subString, QWebPage::FindFlags options = QWebPage::FindFlags());
 
     bool resizesToContents() const;
     void setResizesToContents(bool enabled);
@@ -94,7 +94,7 @@ public:
 
     virtual void setGeometry(const QRectF& rect);
     virtual void updateGeometry();
-    virtual void paint(QPainter*, const QStyleOptionGraphicsItem* options, QWidget* widget = 0);
+    virtual void paint(QPainter*, const QStyleOptionGraphicsItem* options, QWidget* widget = Q_NULLPTR);
     virtual QVariant itemChange(GraphicsItemChange change, const QVariant& value);
     virtual bool event(QEvent*);
 
