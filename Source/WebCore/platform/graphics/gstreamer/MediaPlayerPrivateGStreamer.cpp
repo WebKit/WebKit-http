@@ -1100,6 +1100,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         break;
     }
     case GST_MESSAGE_BUFFERING:
+        LOG_MEDIA_MESSAGE("Message %s received from element %s", GST_MESSAGE_TYPE_NAME(message), GST_MESSAGE_SRC_NAME(message));
         processBufferingStats(message);
         break;
     case GST_MESSAGE_DURATION_CHANGED:
@@ -1167,6 +1168,10 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 GstClockTime time;
                 gst_structure_get(structure, "uri", G_TYPE_STRING, &uri.outPtr(), "fragment-download-time", GST_TYPE_CLOCK_TIME, &time, nullptr);
                 INFO_MEDIA_MESSAGE("Fragment %s download time %" GST_TIME_FORMAT, uri.get(), GST_TIME_ARGS(time));
+            } else if (gst_structure_has_name(structure, "GstCacheDownloadComplete")) {
+                m_downloadFinished = true;
+                m_buffering = false;
+                updateStates();
             }
         }
         break;
@@ -1537,6 +1542,7 @@ void MediaPlayerPrivateGStreamer::updateStates()
                     m_readyState = MediaPlayer::HaveEnoughData;
                     m_networkState = m_downloadFinished ? MediaPlayer::Idle : MediaPlayer::Loading;
                 } else {
+                    LOG_MEDIA_MESSAGE("[Buffering] Stream still downloading.");
                     m_readyState = MediaPlayer::HaveCurrentData;
                     m_networkState = MediaPlayer::Loading;
                 }
