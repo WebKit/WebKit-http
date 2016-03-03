@@ -455,7 +455,7 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
             gst_app_src_set_size(priv->appsrc, -1);
     }
 
-    GST_DEBUG_OBJECT(src, "Stopped request");
+    GST_DEBUG_OBJECT(src, "Stopped request. Was seeking: %s", wasSeeking ? "yes":"no");
 }
 
 static bool webKitWebSrcSetExtraHeader(GQuark fieldId, const GValue* value, gpointer userData)
@@ -562,6 +562,7 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
         || !g_ascii_strcasecmp("trailers.apple.com", url.host().utf8().data()))
         request.setHTTPUserAgent("Quicktime/7.6.6");
 
+    GST_DEBUG_OBJECT(src, "Requested offset: %" G_GUINT64_FORMAT, priv->requestedOffset);
     if (priv->requestedOffset) {
         GUniquePtr<gchar> val(g_strdup_printf("bytes=%" G_GUINT64_FORMAT "-", priv->requestedOffset));
         request.setHTTPHeaderField(HTTPHeaderName::Range, val.get());
@@ -837,7 +838,7 @@ static void webKitWebSrcSeek(WebKitWebSrc* src)
 {
     ASSERT(isMainThread());
 
-    GST_DEBUG_OBJECT(src, "Seeking to offset: %" G_GUINT64_FORMAT, src->priv->requestedOffset);
+    GST_DEBUG_OBJECT(src, "Seeking to offset: %" G_GUINT64_FORMAT " size: %" G_GUINT64_FORMAT, src->priv->requestedOffset, src->priv->size);
 
     webKitWebSrcStop(src);
     webKitWebSrcStart(src);
@@ -921,6 +922,7 @@ void StreamingClient::handleResponseReceived(const ResourceResponse& response)
     }
 
     long long length = response.expectedContentLength();
+    GST_DEBUG_OBJECT(src, "response: %d, content length: %lld, requested offset: %" G_GUINT64_FORMAT, response.httpStatusCode(), length, priv->requestedOffset);
     if (length > 0 && priv->requestedOffset && response.httpStatusCode() == 206)
         length += priv->requestedOffset;
 
