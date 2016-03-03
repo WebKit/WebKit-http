@@ -30,7 +30,7 @@ class QWebInspectorPrivate;
 class QWEBKITWIDGETS_EXPORT QWebInspector : public QWidget {
     Q_OBJECT
 public:
-    QWebInspector(QWidget* parent = Q_NULLPTR);
+    explicit QWebInspector(QWidget* parent = Q_NULLPTR);
     ~QWebInspector();
 
     void setPage(QWebPage* page);

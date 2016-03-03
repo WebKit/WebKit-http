@@ -29,7 +29,7 @@
 class QWEBKIT_EXPORT QWebHistoryInterface : public QObject {
     Q_OBJECT
 public:
-    QWebHistoryInterface(QObject *parent = Q_NULLPTR);
+    explicit QWebHistoryInterface(QObject *parent = Q_NULLPTR);
     ~QWebHistoryInterface();
 
     static void setDefaultInterface(QWebHistoryInterface *defaultInterface);
