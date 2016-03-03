@@ -1282,7 +1282,7 @@ void MediaPlayerPrivateGStreamerBase::needKey(RefPtr<Uint8Array> initData)
         GST_DEBUG("no event handler for key needed");
 }
 
-std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const String& keySystem)
+std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const String& keySystem, CDMSessionClient* client)
 {
     if (!supportsKeySystem(keySystem, emptyString()))
         return nullptr;
@@ -1291,7 +1291,7 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
 #if USE(DXDRM) || USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
-        return std::make_unique<CDMPRSessionGStreamer>();
+        return std::make_unique<CDMPRSessionGStreamer>(client);
 #endif
 
     return nullptr;
@@ -1299,7 +1299,7 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
 
 void MediaPlayerPrivateGStreamerBase::setCDMSession(CDMSession* session)
 {
-    LOG_MEDIA_MESSAGE("setting CDM session");
+    LOG_MEDIA_MESSAGE("setting CDM session to %p", session);
     m_cdmSession = session;
 }
 

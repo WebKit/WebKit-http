@@ -88,9 +88,6 @@ class AppendPipeline : public ThreadSafeRefCounted<AppendPipeline> {
 public:
     enum AppendStage { Invalid, NotStarted, Ongoing, KeyNegotiation, DataStarve, Sampling, LastSample, Aborting };
 
-    static const unsigned int s_dataStarvedTimeoutMsec = 1000;
-    static const unsigned int s_lastSampleTimeoutMsec = 250;
-
     AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient, PassRefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE* playerPrivate);
     virtual ~AppendPipeline();
 
@@ -127,11 +124,6 @@ public:
     void disconnectFromAppSink();
     void connectToAppSinkFromAnyThread(GstPad* demuxersrcpad);
     void connectToAppSink(GstPad* demuxersrcpad);
-
-    void scheduleDataStarveTimer();
-    void cancelDataStarveTimer();
-    void scheduleLastSampleTimer();
-    void cancelLastSampleTimer();
 
     void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
@@ -185,21 +177,10 @@ private:
     struct PadProbeInformation m_appsinkDataEnteringPadProbeInformation;
 #endif
 
-    // Some appended data are only headers and don't generate any
-    // useful stream data for decoding. This is detected with a
-    // timeout and reported to the upper layers, so update/updateend
-    // can be generated and the append operation doesn't block.
-    guint m_dataStarvedTimeoutTag;
-
-    // Used to detect the last sample. Rescheduled each time a new
-    // sample arrives.
-    guint m_lastSampleTimeoutTag;
-
     // Keeps track of the stages of append processing, to avoid
     // performing actions inappropriate for the current stage (eg:
-    // processing more samples when the last one has been detected
-    // or the dataStarvedTimeout has been triggered).
-    // See setAppendStage() for valid transitions.
+    // processing more samples when the last one has been detected,
+    // etc.).  See setAppendStage() for valid transitions.
     AppendStage m_appendStage;
 
     // Aborts can only be completed when the normal sample detection
@@ -1224,8 +1205,6 @@ static GstFlowReturn appendPipelineAppSinkNewSample(GstElement*, AppendPipeline*
 static gboolean appendPipelineAppSinkNewSampleMainThread(NewSampleInfo*);
 static void appendPipelineAppSinkEOS(GstElement*, AppendPipeline*);
 static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap);
-static gboolean appendPipelineDataStarveTimeout(gpointer);
-static gboolean appendPipelineLastSampleTimeout(gpointer);
 
 static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
 {
@@ -1247,8 +1226,6 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     , m_appsrcAtLeastABufferLeft(false)
     , m_appsrcNeedDataReceived(false)
     , m_appsrcDataLeavingProbeId(0)
-    , m_dataStarvedTimeoutTag(0)
-    , m_lastSampleTimeoutTag(0)
     , m_appendStage(NotStarted)
     , m_abortPending(false)
     , m_streamType(Unknown)
@@ -1337,9 +1314,7 @@ AppendPipeline::~AppendPipeline()
 
     LOG_MEDIA_MESSAGE("%p", this);
 
-    cancelDataStarveTimer();
     // TODO: Maybe notify appendComplete here?
-    cancelLastSampleTimer();
 
     if (m_pipeline) {
         ASSERT(m_bus);
@@ -1527,38 +1502,6 @@ gint AppendPipeline::id()
     return m_id;
 }
 
-void AppendPipeline::scheduleDataStarveTimer()
-{
-    LOG_MEDIA_MESSAGE("Scheduling data starve timer");
-    m_dataStarvedTimeoutTag = g_timeout_add(s_dataStarvedTimeoutMsec, appendPipelineDataStarveTimeout, this);
-}
-
-void AppendPipeline::cancelDataStarveTimer()
-{
-    if (!m_dataStarvedTimeoutTag)
-        return;
-
-    LOG_MEDIA_MESSAGE("Canceling data starve timer");
-    g_source_remove(m_dataStarvedTimeoutTag);
-    m_dataStarvedTimeoutTag = 0;
-}
-
-void AppendPipeline::scheduleLastSampleTimer()
-{
-    if (m_lastSampleTimeoutTag)
-        cancelLastSampleTimer();
-    m_lastSampleTimeoutTag = g_timeout_add(s_lastSampleTimeoutMsec, appendPipelineLastSampleTimeout, this);
-}
-
-void AppendPipeline::cancelLastSampleTimer()
-{
-    if (!m_lastSampleTimeoutTag)
-        return;
-
-    g_source_remove(m_lastSampleTimeoutTag);
-    m_lastSampleTimeoutTag = 0;
-}
-
 void AppendPipeline::setAppendStage(AppendStage newAppendStage)
 {
     ASSERT(WTF::isMainThread());
@@ -1579,13 +1522,10 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
 
     switch (oldAppendStage) {
     case NotStarted:
-        ASSERT(m_dataStarvedTimeoutTag == 0);
-        ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case Ongoing:
             ok = true;
             gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
-            scheduleDataStarveTimer();
             break;
         case NotStarted:
             ok = true;
@@ -1607,119 +1547,81 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case KeyNegotiation:
-        ASSERT(m_dataStarvedTimeoutTag == 0);
-        ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case Ongoing:
-            ok = true;
-            scheduleDataStarveTimer();
-            break;
         case Invalid:
             ok = true;
-            cancelDataStarveTimer();
-            cancelLastSampleTimer();
             break;
         default:
             break;
         }
         break;
     case Ongoing:
-        ASSERT(m_dataStarvedTimeoutTag != 0);
-        ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case KeyNegotiation:
+        case Sampling:
+        case Invalid:
             ok = true;
-            cancelDataStarveTimer();
             break;
         case DataStarve:
             ok = true;
-            cancelDataStarveTimer();
             m_mediaSourceClient->didReceiveAllPendingSamples(m_sourceBufferPrivate.get());
             if (m_abortPending)
                 nextAppendStage = Aborting;
             else
                 nextAppendStage = NotStarted;
-            break;
-        case Sampling:
-            ok = true;
-            cancelDataStarveTimer();
-            if (m_lastSampleTimeoutTag)
-                TRACE_MEDIA_MESSAGE("lastSampleTimeoutTag already exists while transitioning Ongoing-->Sampling");
-            scheduleLastSampleTimer();
-            break;
-        case Invalid:
-            ok = true;
-            cancelDataStarveTimer();
-            cancelLastSampleTimer();
             break;
         default:
             break;
         }
         break;
     case DataStarve:
-        ASSERT(m_dataStarvedTimeoutTag == 0);
-        ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case NotStarted:
+        case Invalid:
             ok = true;
             break;
         case Aborting:
             ok = true;
             nextAppendStage = NotStarted;
-            break;
-        case Invalid:
-            ok = true;
             break;
         default:
             break;
         }
         break;
     case Sampling:
-        ASSERT(m_dataStarvedTimeoutTag == 0);
-        ASSERT(m_lastSampleTimeoutTag != 0);
         switch (newAppendStage) {
         case Sampling:
+        case Invalid:
             ok = true;
-            scheduleLastSampleTimer();
             break;
         case LastSample:
             ok = true;
-            cancelLastSampleTimer();
             m_mediaSourceClient->didReceiveAllPendingSamples(m_sourceBufferPrivate.get());
             if (m_abortPending)
                 nextAppendStage = Aborting;
             else
                 nextAppendStage = NotStarted;
             break;
-        case Invalid:
-            ok = true;
-            cancelLastSampleTimer();
-            break;
         default:
             break;
         }
         break;
     case LastSample:
-        ASSERT(m_dataStarvedTimeoutTag == 0);
-        ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case NotStarted:
+        case Invalid:
             ok = true;
             break;
         case Aborting:
             ok = true;
             nextAppendStage = NotStarted;
             break;
-        case Invalid:
-            ok = true;
-            break;
         default:
             break;
         }
         break;
     case Aborting:
-        ASSERT(m_dataStarvedTimeoutTag == 0);
-        ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case NotStarted:
             ok = true;
@@ -1735,8 +1637,6 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case Invalid:
-        ASSERT(m_dataStarvedTimeoutTag == 0);
-        ASSERT(m_lastSampleTimeoutTag == 0);
         ok = true;
         break;
     }
@@ -2237,7 +2137,7 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
         m_track = WebCore::InbandTextTrackPrivateGStreamer::create(id(), sinkSinkPad.get());
         break;
     default:
-        // No useful data, but notify anyway to complete the append operation (webKitMediaSrcLastSampleTimeout is cancelled and won't notify in this case)
+        // No useful data, but notify anyway to complete the append operation
         LOG_MEDIA_MESSAGE("(no data)");
         m_mediaSourceClient->didReceiveAllPendingSamples(m_sourceBufferPrivate.get());
         break;
@@ -2391,20 +2291,6 @@ static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap)
     return G_SOURCE_REMOVE;
 }
 
-static gboolean appendPipelineDataStarveTimeout(gpointer)
-{
-    ERROR_MEDIA_MESSAGE("data starve timer fired");
-    ASSERT_NOT_REACHED();
-    return G_SOURCE_REMOVE;
-}
-
-static gboolean appendPipelineLastSampleTimeout(gpointer)
-{
-    ERROR_MEDIA_MESSAGE("last sample timer fired");
-    ASSERT_NOT_REACHED();
-    return G_SOURCE_REMOVE;
-}
-
 PassRefPtr<MediaSourceClientGStreamerMSE> MediaSourceClientGStreamerMSE::create(MediaPlayerPrivateGStreamerMSE* playerPrivate)
 {
     ASSERT(WTF::isMainThread());
@@ -2427,8 +2313,6 @@ MediaSourceClientGStreamerMSE::MediaSourceClientGStreamerMSE(MediaPlayerPrivateG
 MediaSourceClientGStreamerMSE::~MediaSourceClientGStreamerMSE()
 {
     ASSERT(WTF::isMainThread());
-
-    // TODO: cancel m_dataStarvedTimeoutTag if active and perform appendComplete()
 }
 
 MediaSourcePrivate::AddStatus MediaSourceClientGStreamerMSE::addSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, const ContentType&)

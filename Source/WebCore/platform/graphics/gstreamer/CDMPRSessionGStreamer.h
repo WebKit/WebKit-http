@@ -52,7 +52,7 @@ private:
     CDMPRSessionGStreamer(const CDMPRSessionGStreamer&);
 
 public:
-    CDMPRSessionGStreamer();
+    CDMPRSessionGStreamer(CDMSessionClient*);
     ~CDMPRSessionGStreamer() override;
 
     // CDMSession interface.

@@ -23,7 +23,7 @@
 #ifndef WebKitCommonEncryptionDecryptorGStreamer_h
 #define WebKitCommonEncryptionDecryptorGStreamer_h
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
 
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
