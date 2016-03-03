@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -833,10 +833,20 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case ArithRound: {
+    case ArithRound:
+    case ArithFloor:
+    case ArithCeil: {
         JSValue operand = forNode(node->child1()).value();
         if (operand && operand.isNumber()) {
-            double roundedValue = jsRound(operand.asNumber());
+            double roundedValue = 0;
+            if (node->op() == ArithRound)
+                roundedValue = jsRound(operand.asNumber());
+            else if (node->op() == ArithFloor)
+                roundedValue = floor(operand.asNumber());
+            else {
+                ASSERT(node->op() == ArithCeil);
+                roundedValue = ceil(operand.asNumber());
+            }
 
             if (producesInteger(node->arithRoundingMode())) {
                 int32_t roundedValueAsInt32 = static_cast<int32_t>(roundedValue);
@@ -1551,6 +1561,16 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(SpecBoolean);
         break;
             
+    case StringReplace:
+        if (node->child1().useKind() == StringUse
+            && node->child2().useKind() == RegExpObjectUse
+            && node->child3().useKind() == StringUse) {
+            // This doesn't clobber the world. It just reads and writes regexp state.
+        } else
+            clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).set(m_graph, m_graph.m_vm.stringStructure.get());
+        break;
+
     case Jump:
         break;
             
@@ -1683,7 +1703,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             m_graph.globalObjectFor(node->origin.semantic)->typedArrayStructure(
                 node->typedArrayType()));
         break;
-            
+        
     case NewRegexp:
         forNode(node).set(m_graph, m_graph.globalObjectFor(node->origin.semantic)->regExpStructure());
         break;

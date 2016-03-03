@@ -1,3 +1,103 @@
+2016-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HTML parser instantiates a custom element inside a template element with a wrong owner document
+        https://bugs.webkit.org/show_bug.cgi?id=154936
+
+        Reviewed by Chris Dumez.
+
+        Updated the expected results for newly passing test cases.
+
+        One test case in additions-to-parsing-xhtml-documents/node-document.html starts failing due to a bug in the test.
+        The bug in the test will be fixed in https://github.com/w3c/web-platform-tests/pull/2651
+
+        Finally, remove duplicated HTML template element tests in html-templates since there is a new copy under
+        web-platform-tests/html/semantics/scripting-1/the-template-element/. Unfortunately, we can't remove
+        html-templates/parsing-html-templates/ because we haven't imported web-platform-tests/html/syntax yet.
+
+        * html-templates/additions-to-parsing-xhtml-documents: Removed.
+        * html-templates/additions-to-serializing-xhtml-documents: Removed.
+        * html-templates/additions-to-the-css-user-agent-style-sheet: Removed.
+        * html-templates/additions-to-the-steps-to-clone-a-node: Removed.
+        * html-templates/definitions: Removed.
+        * html-templates/innerhtml-on-templates: Removed.
+        * html-templates/serializing-html-templates: Removed.
+        * html-templates/template-element: Removed.
+        * web-platform-tests/html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/node-document.html:
+        * web-platform-tests/html/semantics/scripting-1/the-template-element/definitions/template-contents-owner-test-001-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-template-element/template-element/node-document-changes-expected.txt:
+
+2016-03-02  Chris Dumez  <cdumez@apple.com>
+
+        Align HTMLInputElement.maxLength with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154906
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/maxlength-expected.txt:
+
+2016-03-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Support Request and Response blob() when body data is a blob
+        https://bugs.webkit.org/show_bug.cgi?id=154820
+
+        Reviewed by Darin Adler.
+
+        Adding blob specific tests. New tests are not covered yet as they require converting data from a blob into another form (JSON, text...).
+        Rebasing expectations with test that is now passing and new failing tests.
+        Fixing typos in test (Json -> JSON and removing TextDecoder use).
+
+        * web-platform-tests/fetch/api/request/request-consume-expected.txt:
+        * web-platform-tests/fetch/api/request/request-consume.html:
+        * web-platform-tests/fetch/api/response/response-consume-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume.html:
+
+2016-02-29  Chris Dumez  <cdumez@apple.com>
+
+        Use HTML parsing rules for textarea.maxLength
+        https://bugs.webkit.org/show_bug.cgi?id=154805
+
+        Reviewed by Andreas Kling.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-02-29  Chris Dumez  <cdumez@apple.com>
+
+        Align td.rowSpan / td.colSpan with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154803
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+
+2016-02-28  Chris Dumez  <cdumez@apple.com>
+
+        Parse HTMLOLElement.start as per the HTML spec
+        https://bugs.webkit.org/show_bug.cgi?id=154802
+
+        Reviewed by Andreas Kling.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-grouping-expected.txt:
+
+2016-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Align HTMLMarqueeElement.scrollAmount / scrollDelay with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=154781
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-obsolete-expected.txt:
+
 2016-02-26  Chris Dumez  <cdumez@apple.com>
 
         Fix the behavior of reflecting IDL attributes of type unsigned long

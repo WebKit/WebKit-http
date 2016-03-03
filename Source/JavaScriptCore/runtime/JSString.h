@@ -181,6 +181,7 @@ public:
     DECLARE_EXPORT_INFO;
 
     static void dumpToStream(const JSCell*, PrintStream&);
+    static size_t estimatedSize(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
     enum {
@@ -732,7 +733,16 @@ inline JSString* JSValue::toString(ExecState* exec) const
 {
     if (isString())
         return jsCast<JSString*>(asCell());
-    return toStringSlowCase(exec);
+    bool returnEmptyStringOnError = true;
+    return toStringSlowCase(exec, returnEmptyStringOnError);
+}
+
+inline JSString* JSValue::toStringOrNull(ExecState* exec) const
+{
+    if (isString())
+        return jsCast<JSString*>(asCell());
+    bool returnEmptyStringOnError = false;
+    return toStringSlowCase(exec, returnEmptyStringOnError);
 }
 
 inline String JSValue::toWTFString(ExecState* exec) const

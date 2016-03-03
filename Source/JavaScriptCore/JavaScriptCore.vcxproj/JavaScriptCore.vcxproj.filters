@@ -294,6 +294,15 @@
     <ClCompile Include="..\heap\HeapHelperPool.cpp">
       <Filter>heap</Filter>
     </ClCompile>
+    <ClCompile Include="..\heap\HeapProfiler.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\heap\HeapSnapshot.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\heap\HeapSnapshotBuilder.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
     <ClCompile Include="..\heap\HeapStatistics.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -389,6 +398,9 @@
     </ClCompile>
     <ClCompile Include="..\interpreter\StackVisitor.cpp">
       <Filter>interpreter</Filter>
+    </ClCompile>
+    <ClCompile Include="..\jit\ExecutableAllocator.cpp">
+      <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\jit\GCAwareJITStubRoutine.cpp">
       <Filter>jit</Filter>
@@ -1059,7 +1071,7 @@
     <ClCompile Include="..\yarr\RegularExpression.cpp">
       <Filter>yarr</Filter>
     </ClCompile>
-    <ClCompile Include="..\yarr\YarrCanonicalizeUCS2.cpp">
+    <ClCompile Include="..\yarr\YarrCanonicalizeUnicode.cpp">
       <Filter>yarr</Filter>
     </ClCompile>
     <ClCompile Include="..\yarr\YarrInterpreter.cpp">
@@ -2365,6 +2377,15 @@
     <ClInclude Include="..\heap\HeapRootVisitor.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\HeapProfiler.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\HeapSnapshot.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\HeapSnapshotBuilder.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\HeapStatistics.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -3199,6 +3220,9 @@
     <ClInclude Include="..\runtime\SmallStrings.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\SlowPathReturnType.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\SparseArrayValueMap.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3313,7 +3337,7 @@
     <ClInclude Include="..\yarr\RegularExpression.h">
       <Filter>yarr</Filter>
     </ClInclude>
-    <ClInclude Include="..\yarr\YarrCanonicalizeUCS2.h">
+    <ClInclude Include="..\yarr\YarrCanonicalizeUnicode.h">
       <Filter>yarr</Filter>
     </ClInclude>
     <ClInclude Include="..\yarr\YarrInterpreter.h">

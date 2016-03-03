@@ -80,6 +80,11 @@ void ProxyObject::finishCreation(VM& vm, ExecState* exec, JSValue target, JSValu
 static EncodedJSValue performProxyGet(ExecState* exec, EncodedJSValue thisValue, PropertyName propertyName)
 {
     VM& vm = exec->vm();
+    if (!vm.isSafeToRecurse()) {
+        throwStackOverflowError(exec);
+        return JSValue::encode(JSValue());
+    }
+
     JSObject* thisObject = jsCast<JSObject*>(JSValue::decode(thisValue)); // This might be a value where somewhere in __proto__ chain lives a ProxyObject.
     JSObject* proxyObjectAsObject = thisObject;
     // FIXME: make it so that custom getters take both the |this| value and the slotBase (property holder).
@@ -95,6 +100,15 @@ static EncodedJSValue performProxyGet(ExecState* exec, EncodedJSValue thisValue,
     }
 
     ProxyObject* proxyObject = jsCast<ProxyObject*>(proxyObjectAsObject);
+    JSObject* target = proxyObject->target();
+
+    auto performDefaultGet = [&] {
+        return JSValue::encode(target->get(exec, propertyName));
+    };
+
+    if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid())))
+        return performDefaultGet();
+
     JSValue handlerValue = proxyObject->handler();
     if (handlerValue.isNull())
         return throwVMTypeError(exec, ASCIILiteral("Proxy 'handler' is null. It should be an Object."));
@@ -106,9 +120,8 @@ static EncodedJSValue performProxyGet(ExecState* exec, EncodedJSValue thisValue,
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
-    JSObject* target = proxyObject->target();
     if (getHandler.isUndefined())
-        return JSValue::encode(target->get(exec, propertyName));
+        return performDefaultGet();
 
     MarkedArgumentBuffer arguments;
     arguments.append(target);
@@ -138,7 +151,15 @@ static EncodedJSValue performProxyGet(ExecState* exec, EncodedJSValue thisValue,
 bool ProxyObject::performInternalMethodGetOwnProperty(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     VM& vm = exec->vm();
-    slot.setValue(this, None, jsUndefined()); // We do this to protect against any bad actors. Nobody should depend on this value.
+    JSObject* target = this->target();
+
+    auto performDefaultGetOwnProperty = [&] {
+        return target->methodTable(vm)->getOwnPropertySlot(target, exec, propertyName, slot);
+    };
+
+    if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid())))
+        return performDefaultGetOwnProperty();
+
     JSValue handlerValue = this->handler();
     if (handlerValue.isNull()) {
         throwVMTypeError(exec, ASCIILiteral("Proxy 'handler' is null. It should be an Object."));
@@ -151,9 +172,8 @@ bool ProxyObject::performInternalMethodGetOwnProperty(ExecState* exec, PropertyN
     JSValue getOwnPropertyDescriptorMethod = handler->getMethod(exec, callData, callType, makeIdentifier(vm, "getOwnPropertyDescriptor"), ASCIILiteral("'getOwnPropertyDescriptor' property of a Proxy's handler should be callable."));
     if (exec->hadException())
         return false;
-    JSObject* target = this->target();
     if (getOwnPropertyDescriptorMethod.isUndefined())
-        return target->methodTable(vm)->getOwnPropertySlot(target, exec, propertyName, slot);
+        return performDefaultGetOwnProperty();
 
     MarkedArgumentBuffer arguments;
     arguments.append(target);
@@ -181,7 +201,10 @@ bool ProxyObject::performInternalMethodGetOwnProperty(ExecState* exec, PropertyN
         }
         // FIXME: this doesn't work if 'target' is another Proxy. We don't have isExtensible implemented in a way that fits w/ Proxys.
         // https://bugs.webkit.org/show_bug.cgi?id=154375
-        if (!target->isExtensible()) {
+        bool isExtensible = target->isExtensible(exec);
+        if (exec->hadException())
+            return false;
+        if (!isExtensible) {
             // FIXME: Come up with a test for this error. I'm not sure how to because
             // Object.seal(o) will make all fields [[Configurable]] false.
             // https://bugs.webkit.org/show_bug.cgi?id=154376
@@ -192,12 +215,15 @@ bool ProxyObject::performInternalMethodGetOwnProperty(ExecState* exec, PropertyN
         return false;
     }
 
+    bool isExtensible = target->isExtensible(exec);
+    if (exec->hadException())
+        return false;
     PropertyDescriptor trapResultAsDescriptor;
     toPropertyDescriptor(exec, trapResult, trapResultAsDescriptor);
     if (exec->hadException())
         return false;
     bool throwException = false;
-    bool valid = validateAndApplyPropertyDescriptor(exec, nullptr, propertyName, target->isExtensible(),
+    bool valid = validateAndApplyPropertyDescriptor(exec, nullptr, propertyName, isExtensible,
         trapResultAsDescriptor, isTargetPropertyDescriptorDefined, targetPropertyDescriptor, throwException);
     if (!valid) {
         throwVMTypeError(exec, ASCIILiteral("Result from 'getOwnPropertyDescriptor' fails the IsCompatiblePropertyDescriptor test."));
@@ -211,14 +237,32 @@ bool ProxyObject::performInternalMethodGetOwnProperty(ExecState* exec, PropertyN
         }
     }
 
+    if (trapResultAsDescriptor.isAccessorDescriptor()) {
+        GetterSetter* getterSetter = trapResultAsDescriptor.slowGetterSetter(exec);
+        if (exec->hadException())
+            return false;
+        slot.setGetterSlot(this, trapResultAsDescriptor.attributes(), getterSetter);
+    } else if (trapResultAsDescriptor.isDataDescriptor())
+        slot.setValue(this, trapResultAsDescriptor.attributes(), trapResultAsDescriptor.value());
+    else
+        slot.setValue(this, trapResultAsDescriptor.attributes(), jsUndefined()); // We use undefined because it's the default value in object properties.
+
     return true;
 }
 
 bool ProxyObject::performHasProperty(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     VM& vm = exec->vm();
+    JSObject* target = this->target();
     slot.setValue(this, None, jsUndefined()); // Nobody should rely on our value, but be safe and protect against any bad actors reading our value.
-    
+
+    auto performDefaultHasProperty = [&] {
+        return target->methodTable(vm)->getOwnPropertySlot(target, exec, propertyName, slot);
+    };
+
+    if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid())))
+        return performDefaultHasProperty();
+
     JSValue handlerValue = this->handler();
     if (handlerValue.isNull()) {
         throwVMTypeError(exec, ASCIILiteral("Proxy 'handler' is null. It should be an Object."));
@@ -231,9 +275,8 @@ bool ProxyObject::performHasProperty(ExecState* exec, PropertyName propertyName,
     JSValue hasMethod = handler->getMethod(exec, callData, callType, vm.propertyNames->has, ASCIILiteral("'has' property of a Proxy's handler should be callable."));
     if (exec->hadException())
         return false;
-    JSObject* target = this->target();
     if (hasMethod.isUndefined())
-        return target->methodTable(vm)->getOwnPropertySlot(target, exec, propertyName, slot);
+        return performDefaultHasProperty();
 
     MarkedArgumentBuffer arguments;
     arguments.append(target);
@@ -256,7 +299,10 @@ bool ProxyObject::performHasProperty(ExecState* exec, PropertyName propertyName,
                 throwVMTypeError(exec, ASCIILiteral("Proxy 'has' must return 'true' for non-configurable properties."));
                 return false;
             }
-            if (!target->isExtensible()) {
+            bool isExtensible = target->isExtensible(exec);
+            if (exec->hadException())
+                return false;
+            if (!isExtensible) {
                 throwVMTypeError(exec, ASCIILiteral("Proxy 'has' must return 'true' for a non-extensible 'target' object with a configurable property."));
                 return false;
             }
@@ -301,9 +347,17 @@ bool ProxyObject::getOwnPropertySlotByIndex(JSObject* object, ExecState* exec, u
 }
 
 template <typename PerformDefaultPutFunction>
-void ProxyObject::performPut(ExecState* exec, JSValue putValue, JSValue thisValue, PropertyName propertyName, PerformDefaultPutFunction performDefaultPutFunction)
+void ProxyObject::performPut(ExecState* exec, JSValue putValue, JSValue thisValue, PropertyName propertyName, PerformDefaultPutFunction performDefaultPut)
 {
     VM& vm = exec->vm();
+    if (!vm.isSafeToRecurse()) {
+        throwStackOverflowError(exec);
+        return;
+    }
+
+    if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid())))
+        return performDefaultPut();
+
     JSValue handlerValue = this->handler();
     if (handlerValue.isNull()) {
         throwVMTypeError(exec, ASCIILiteral("Proxy 'handler' is null. It should be an Object."));
@@ -318,7 +372,7 @@ void ProxyObject::performPut(ExecState* exec, JSValue putValue, JSValue thisValu
         return;
     JSObject* target = this->target();
     if (setMethod.isUndefined()) {
-        performDefaultPutFunction();
+        performDefaultPut();
         return;
     }
 
@@ -478,9 +532,13 @@ ConstructType ProxyObject::getConstructData(JSCell* cell, ConstructData& constru
 }
 
 template <typename DefaultDeleteFunction>
-bool ProxyObject::performDelete(ExecState* exec, PropertyName propertyName, DefaultDeleteFunction defaultDeleteFunction)
+bool ProxyObject::performDelete(ExecState* exec, PropertyName propertyName, DefaultDeleteFunction performDefaultDelete)
 {
     VM& vm = exec->vm();
+
+    if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid())))
+        return performDefaultDelete();
+
     JSValue handlerValue = this->handler();
     if (handlerValue.isNull()) {
         throwVMTypeError(exec, ASCIILiteral("Proxy 'handler' is null. It should be an Object."));
@@ -495,7 +553,7 @@ bool ProxyObject::performDelete(ExecState* exec, PropertyName propertyName, Defa
         return false;
     JSObject* target = this->target();
     if (deletePropertyMethod.isUndefined())
-        return defaultDeleteFunction();
+        return performDefaultDelete();
 
     MarkedArgumentBuffer arguments;
     arguments.append(target);
@@ -528,11 +586,11 @@ bool ProxyObject::performDelete(ExecState* exec, PropertyName propertyName, Defa
 bool ProxyObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
     ProxyObject* thisObject = jsCast<ProxyObject*>(cell);
-    auto defaultDelete = [&] () -> bool {
+    auto performDefaultDelete = [&] () -> bool {
         JSObject* target = jsCast<JSObject*>(thisObject->target());
         return target->methodTable(exec->vm())->deleteProperty(target, exec, propertyName);
     };
-    return thisObject->performDelete(exec, propertyName, defaultDelete);
+    return thisObject->performDelete(exec, propertyName, performDefaultDelete);
 }
 
 bool ProxyObject::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned propertyName)
@@ -541,11 +599,113 @@ bool ProxyObject::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned 
     Identifier ident = Identifier::from(exec, propertyName); 
     if (exec->hadException())
         return false;
-    auto defaultDelete = [&] () -> bool {
+    auto performDefaultDelete = [&] () -> bool {
         JSObject* target = jsCast<JSObject*>(thisObject->target());
         return target->methodTable(exec->vm())->deletePropertyByIndex(target, exec, propertyName);
     };
-    return thisObject->performDelete(exec, ident.impl(), defaultDelete);
+    return thisObject->performDelete(exec, ident.impl(), performDefaultDelete);
+}
+
+bool ProxyObject::performPreventExtensions(ExecState* exec)
+{
+    VM& vm = exec->vm();
+
+    JSValue handlerValue = this->handler();
+    if (handlerValue.isNull()) {
+        throwVMTypeError(exec, ASCIILiteral("Proxy 'handler' is null. It should be an Object."));
+        return false;
+    }
+
+    JSObject* handler = jsCast<JSObject*>(handlerValue);
+    CallData callData;
+    CallType callType;
+    JSValue preventExtensionsMethod = handler->getMethod(exec, callData, callType, makeIdentifier(vm, "preventExtensions"), ASCIILiteral("'preventExtensions' property of a Proxy's handler should be callable."));
+    if (exec->hadException())
+        return false;
+    JSObject* target = this->target();
+    if (preventExtensionsMethod.isUndefined())
+        return target->methodTable(vm)->preventExtensions(target, exec);
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(target);
+    JSValue trapResult = call(exec, preventExtensionsMethod, callType, callData, handler, arguments);
+    if (exec->hadException())
+        return false;
+
+    bool trapResultAsBool = trapResult.toBoolean(exec);
+    if (exec->hadException())
+        return false;
+
+    if (trapResultAsBool) {
+        bool targetIsExtensible = target->isExtensible(exec);
+        if (exec->hadException())
+            return false;
+        if (targetIsExtensible) {
+            throwVMTypeError(exec, ASCIILiteral("Proxy's 'preventExtensions' trap returned true even though its target is extensible. It should have returned false."));
+            return false;
+        }
+    }
+
+    return trapResultAsBool;
+}
+
+bool ProxyObject::preventExtensions(JSObject* object, ExecState* exec)
+{
+    return jsCast<ProxyObject*>(object)->performPreventExtensions(exec);
+}
+
+bool ProxyObject::performIsExtensible(ExecState* exec)
+{
+    VM& vm = exec->vm();
+
+    JSValue handlerValue = this->handler();
+    if (handlerValue.isNull()) {
+        throwVMTypeError(exec, ASCIILiteral("Proxy 'handler' is null. It should be an Object."));
+        return false;
+    }
+
+    JSObject* handler = jsCast<JSObject*>(handlerValue);
+    CallData callData;
+    CallType callType;
+    JSValue isExtensibleMethod = handler->getMethod(exec, callData, callType, makeIdentifier(vm, "isExtensible"), ASCIILiteral("'isExtensible' property of a Proxy's handler should be callable."));
+    if (exec->hadException())
+        return false;
+
+    JSObject* target = this->target();
+    if (isExtensibleMethod.isUndefined())
+        return target->isExtensible(exec);
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(target);
+    JSValue trapResult = call(exec, isExtensibleMethod, callType, callData, handler, arguments);
+    if (exec->hadException())
+        return false;
+
+    bool trapResultAsBool = trapResult.toBoolean(exec);
+    if (exec->hadException())
+        return false;
+
+    bool isTargetExtensible = target->isExtensible(exec);
+    if (exec->hadException())
+        return false;
+
+    if (trapResultAsBool != isTargetExtensible) {
+        if (isTargetExtensible) {
+            ASSERT(!trapResultAsBool);
+            throwVMTypeError(exec, ASCIILiteral("Proxy object's 'isExtensible' trap returned false when the target is extensible. It should have returned true."));
+        } else {
+            ASSERT(!isTargetExtensible);
+            ASSERT(trapResultAsBool);
+            throwVMTypeError(exec, ASCIILiteral("Proxy object's 'isExtensible' trap returned true when the target is non-extensible. It should have returned false."));
+        }
+    }
+    
+    return trapResultAsBool;
+}
+
+bool ProxyObject::isExtensible(JSObject* object, ExecState* exec)
+{
+    return jsCast<ProxyObject*>(object)->performIsExtensible(exec);
 }
 
 void ProxyObject::visitChildren(JSCell* cell, SlotVisitor& visitor)

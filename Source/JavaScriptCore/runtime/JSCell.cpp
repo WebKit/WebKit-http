@@ -51,6 +51,16 @@ void JSCell::dumpToStream(const JSCell* cell, PrintStream& out)
     out.printf("<%p, %s>", cell, cell->className());
 }
 
+size_t JSCell::estimatedSizeInBytes() const
+{
+    return methodTable()->estimatedSize(const_cast<JSCell*>(this));
+}
+
+size_t JSCell::estimatedSize(JSCell* cell)
+{
+    return MarkedBlock::blockFor(cell)->cellSize();
+}
+
 void JSCell::copyBackingStore(JSCell*, CopyVisitor&, CopyToken)
 {
 }
@@ -256,6 +266,21 @@ void JSCell::getStructurePropertyNames(JSObject*, ExecState*, PropertyNameArray&
 }
 
 void JSCell::getGenericPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode)
+{
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool JSCell::preventExtensions(JSObject*, ExecState*)
+{
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool JSCell::isExtensible(JSObject*, ExecState*)
+{
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool JSCell::setPrototype(JSObject*, ExecState*, JSValue)
 {
     RELEASE_ASSERT_NOT_REACHED();
 }

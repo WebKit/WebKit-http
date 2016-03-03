@@ -26,6 +26,7 @@
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "RenderListItem.h"
 
 namespace WebCore {
@@ -34,9 +35,7 @@ using namespace HTMLNames;
 
 HTMLOListElement::HTMLOListElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
-    , m_start(0xBADBEEF)
     , m_itemCount(0)
-    , m_hasExplicitStart(false)
     , m_isReversed(false)
     , m_shouldRecalculateItemCount(false)
 {
@@ -81,10 +80,7 @@ void HTMLOListElement::parseAttribute(const QualifiedName& name, const AtomicStr
 {
     if (name == startAttr) {
         int oldStart = start();
-        bool canParse;
-        int parsedStart = value.toInt(&canParse);
-        m_hasExplicitStart = canParse;
-        m_start = canParse ? parsedStart : 0xBADBEEF;
+        m_start = parseHTMLInteger(value);
         if (oldStart == start())
             return;
         updateItemValues();

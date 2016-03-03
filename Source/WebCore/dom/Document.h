@@ -1288,12 +1288,15 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(MediaPlaybackTargetClient&);
     void removePlaybackTargetPickerClient(MediaPlaybackTargetClient&);
-    void showPlaybackTargetPicker(MediaPlaybackTargetClient&, bool);
+
+    void showPlaybackTargetPicker(MediaPlaybackTargetClient&, bool, const String&);
+
     void playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient&, MediaProducer::MediaStateFlags);
 
     void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
     void playbackTargetAvailabilityDidChange(uint64_t, bool);
     void setShouldPlayToPlaybackTarget(uint64_t, bool);
+    void customPlaybackActionSelected(uint64_t);
 #endif
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToPropagate() const;
@@ -1795,11 +1798,7 @@ inline TextEncoding Document::textEncoding() const
 #if ENABLE(TEMPLATE_ELEMENT)
 inline const Document* Document::templateDocument() const
 {
-    // If DOCUMENT does not have a browsing context, Let TEMPLATE CONTENTS OWNER be DOCUMENT and abort these steps.
-    if (!m_frame)
-        return this;
-
-    return m_templateDocument.get();
+    return m_templateDocumentHost ? this : m_templateDocument.get();
 }
 #endif
 

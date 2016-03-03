@@ -111,7 +111,8 @@ enum AvoidanceReason_ : uint64_t {
     FlowHasNoParent                       = 1LLU  << 46,
     FlowHasNoChild                        = 1LLU  << 47,
     FlowChildIsSelected                   = 1LLU  << 48,
-    EndOfReasons                          = 1LLU  << 49
+    FlowHasHangingPunctuation             = 1LLU  << 49,
+    EndOfReasons                          = 1LLU  << 50
 };
 const unsigned NoReason = 0;
 
@@ -283,6 +284,9 @@ static AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, Inc
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasOutline, reasons, includeReasons);
     if (flow.isRubyText() || flow.isRubyBase())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsRuby, reasons, includeReasons);
+    if (flow.style().hangingPunctuation() != NoHangingPunctuation)
+        SET_REASON_AND_RETURN_IF_NEEDED(FlowHasHangingPunctuation, reasons, includeReasons);
+    
     // Printing does pagination without a flow thread.
     if (flow.document().paginated())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsPaginated, reasons, includeReasons);
@@ -331,7 +335,7 @@ static AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, Inc
                 if (floatingObject->renderer().shapeOutsideInfo())
                     SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedFloat, reasons, includeReasons);
 #endif
-                float availableWidth = flow.availableLogicalWidthForLine(floatingObject->y(), false);
+                float availableWidth = flow.availableLogicalWidthForLine(floatingObject->y(), DoNotIndentText);
                 if (availableWidth < minimumWidthNeeded)
                     SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedFloat, reasons, includeReasons);
             }
@@ -568,8 +572,9 @@ static void updateLineConstrains(const RenderBlockFlow& flow, LineState& line, b
     bool shouldApplyTextIndent = !flow.isAnonymous() || flow.parent()->firstChild() == &flow;
     LayoutUnit height = flow.logicalHeight();
     LayoutUnit logicalHeight = flow.minLineHeightForReplacedRenderer(false, 0);
-    float logicalRightOffset = flow.logicalRightOffsetForLine(height, false, logicalHeight);
-    line.setLogicalLeftOffset(flow.logicalLeftOffsetForLine(height, false, logicalHeight) + (shouldApplyTextIndent && isFirstLine ? flow.textIndentOffset() : LayoutUnit(0)));
+    float logicalRightOffset = flow.logicalRightOffsetForLine(height, DoNotIndentText, logicalHeight);
+    line.setLogicalLeftOffset(flow.logicalLeftOffsetForLine(height, DoNotIndentText, logicalHeight) +
+        (shouldApplyTextIndent && isFirstLine ? flow.textIndentOffset() : LayoutUnit(0)));
     line.setAvailableWidth(std::max<float>(0, logicalRightOffset - line.logicalLeftOffset()));
 }
 
@@ -796,6 +801,9 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
         break;
     case FlowIsRuby:
         stream << "ruby";
+        break;
+    case FlowHasHangingPunctuation:
+        stream << "hanging punctuation";
         break;
     case FlowIsPaginated:
         stream << "paginated";

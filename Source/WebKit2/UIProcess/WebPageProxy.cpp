@@ -319,7 +319,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_process(process)
     , m_pageGroup(*m_configuration->pageGroup())
     , m_preferences(*m_configuration->preferences())
-    , m_userContentController(m_configuration->userContentController())
+    , m_userContentController(*m_configuration->userContentController())
     , m_visitedLinkStore(*m_configuration->visitedLinkStore())
     , m_websiteDataStore(m_configuration->websiteDataStore()->websiteDataStore())
     , m_mainFrame(nullptr)
@@ -819,8 +819,7 @@ void WebPageProxy::finishInitializingWebPageAfterProcessLaunch()
 
     m_needsToFinishInitializingWebPageAfterProcessLaunch = false;
 
-    if (m_userContentController)
-        m_process->addWebUserContentControllerProxy(*m_userContentController);
+    m_process->addWebUserContentControllerProxy(m_userContentController);
     m_process->addVisitedLinkStore(m_visitedLinkStore);
 }
 
@@ -5159,7 +5158,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.itemStates = m_backForwardList->itemStates();
     parameters.sessionID = m_sessionID;
     parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highedUsedItemID();
-    parameters.userContentControllerID = m_userContentController ? m_userContentController->identifier() : 0;
+    parameters.userContentControllerID = m_userContentController->identifier();
     parameters.visitedLinkTableID = m_visitedLinkStore->identifier();
     parameters.websiteDataStoreID = m_websiteDataStore->identifier();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
@@ -6120,9 +6119,9 @@ void WebPageProxy::removePlaybackTargetPickerClient(uint64_t contextId)
     m_pageClient.mediaSessionManager().removePlaybackTargetPickerClient(*this, contextId);
 }
 
-void WebPageProxy::showPlaybackTargetPicker(uint64_t contextId, const WebCore::FloatRect& rect, bool hasVideo)
+void WebPageProxy::showPlaybackTargetPicker(uint64_t contextId, const WebCore::FloatRect& rect, bool hasVideo, const String& customMenuItemTitle)
 {
-    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo);
+    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo, customMenuItemTitle);
 }
 
 void WebPageProxy::playbackTargetPickerClientStateDidChange(uint64_t contextId, WebCore::MediaProducer::MediaStateFlags state)
@@ -6162,6 +6161,14 @@ void WebPageProxy::setShouldPlayToPlaybackTarget(uint64_t contextId, bool should
         return;
 
     m_process->send(Messages::WebPage::SetShouldPlayToPlaybackTarget(contextId, shouldPlay), m_pageID);
+}
+
+void WebPageProxy::customPlaybackActionSelected(uint64_t contextId)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::CustomPlaybackActionSelected(contextId), m_pageID);
 }
 #endif
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -363,7 +363,9 @@ private:
             break;
         }
 
-        case ArithRound: {
+        case ArithRound:
+        case ArithFloor:
+        case ArithCeil: {
             if (m_graph.unaryArithShouldSpeculateInt32(node, FixupPass)) {
                 fixIntOrBooleanEdge(node->child1());
                 insertCheck<Int32Use>(m_indexInBlock, node->child1().node());
@@ -877,8 +879,26 @@ private:
             
         case RegExpExec:
         case RegExpTest: {
-            fixEdge<CellUse>(node->child1());
-            fixEdge<CellUse>(node->child2());
+            // FIXME: These should probably speculate something stronger than cell.
+            // https://bugs.webkit.org/show_bug.cgi?id=154900
+            if (node->child1()->shouldSpeculateCell()
+                && node->child2()->shouldSpeculateCell()) {
+                fixEdge<CellUse>(node->child1());
+                fixEdge<CellUse>(node->child2());
+                break;
+            }
+            break;
+        }
+
+        case StringReplace: {
+            if (node->child1()->shouldSpeculateString()
+                && node->child2()->shouldSpeculateRegExpObject()
+                && node->child3()->shouldSpeculateString()) {
+                fixEdge<StringUse>(node->child1());
+                fixEdge<RegExpObjectUse>(node->child2());
+                fixEdge<StringUse>(node->child3());
+                break;
+            }
             break;
         }
             

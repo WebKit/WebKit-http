@@ -380,10 +380,13 @@ void ThreadedCompositor::runCompositingThread()
 
     {
         LockHolder locker(m_terminateRunLoopConditionLock);
-        m_compositingRunLoop = nullptr;
         m_context = nullptr;
+#if PLATFORM(WPE)
         m_surface = nullptr;
+#endif
         m_scene = nullptr;
+        m_viewportController = nullptr;
+        m_compositingRunLoop = nullptr;
         m_terminateRunLoopCondition.notifyOne();
     }
 

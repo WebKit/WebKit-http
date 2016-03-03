@@ -2188,7 +2188,26 @@ bool ByteCodeParser::handleIntrinsicCall(int resultOperand, Intrinsic intrinsic,
         
         return true;
     }
-    case RoundIntrinsic: {
+
+    case StringPrototypeReplaceIntrinsic: {
+        if (!isFTL(m_graph.m_plan.mode)) {
+            // This is a marginally profitable intrinsic. We've only the work to make it an
+            // intrinsic on the fourth tier.
+            return false;
+        }
+
+        if (argumentCountIncludingThis != 3)
+            return false;
+
+        insertChecks();
+        Node* result = addToGraph(StringReplace, OpInfo(0), OpInfo(prediction), get(virtualRegisterForArgument(0, registerOffset)), get(virtualRegisterForArgument(1, registerOffset)), get(virtualRegisterForArgument(2, registerOffset)));
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+        
+    case RoundIntrinsic:
+    case FloorIntrinsic:
+    case CeilIntrinsic: {
         if (argumentCountIncludingThis == 1) {
             insertChecks();
             set(VirtualRegister(resultOperand), addToGraph(JSConstant, OpInfo(m_constantNaN)));
@@ -2197,7 +2216,16 @@ bool ByteCodeParser::handleIntrinsicCall(int resultOperand, Intrinsic intrinsic,
         if (argumentCountIncludingThis == 2) {
             insertChecks();
             Node* operand = get(virtualRegisterForArgument(1, registerOffset));
-            Node* roundNode = addToGraph(ArithRound, OpInfo(0), OpInfo(prediction), operand);
+            NodeType op;
+            if (intrinsic == RoundIntrinsic)
+                op = ArithRound;
+            else if (intrinsic == FloorIntrinsic)
+                op = ArithFloor;
+            else {
+                ASSERT(intrinsic == CeilIntrinsic);
+                op = ArithCeil;
+            }
+            Node* roundNode = addToGraph(op, OpInfo(0), OpInfo(prediction), operand);
             set(VirtualRegister(resultOperand), roundNode);
             return true;
         }
@@ -3340,6 +3368,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_new_regexp: {
+            // FIXME: We really should be able to inline code that uses NewRegexp. That means
+            // using something other than the index into the CodeBlock here.
+            // https://bugs.webkit.org/show_bug.cgi?id=154808
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewRegexp, OpInfo(currentInstruction[2].u.operand)));
             NEXT_OPCODE(op_new_regexp);
         }

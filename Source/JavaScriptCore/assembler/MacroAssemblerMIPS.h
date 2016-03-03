@@ -649,7 +649,13 @@ public:
 
     NO_RETURN_DUE_TO_CRASH void ceilDouble(FPRegisterID, FPRegisterID)
     {
-        ASSERT(!supportsFloatingPointCeil());
+        ASSERT(!supportsFloatingPointRounding());
+        CRASH();
+    }
+
+    NO_RETURN_DUE_TO_CRASH void floorDouble(FPRegisterID, FPRegisterID)
+    {
+        ASSERT(!supportsFloatingPointRounding());
         CRASH();
     }
 
@@ -1263,7 +1269,7 @@ public:
 #endif
     }
     static bool supportsFloatingPointAbs() { return false; }
-    static bool supportsFloatingPointCeil() { return false; }
+    static bool supportsFloatingPointRounding() { return false; }
 
     // Stack manipulation operations:
     //

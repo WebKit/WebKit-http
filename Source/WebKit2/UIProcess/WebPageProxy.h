@@ -1065,7 +1065,7 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     void addPlaybackTargetPickerClient(uint64_t);
     void removePlaybackTargetPickerClient(uint64_t);
-    void showPlaybackTargetPicker(uint64_t, const WebCore::FloatRect&, bool hasVideo);
+    void showPlaybackTargetPicker(uint64_t, const WebCore::FloatRect&, bool hasVideo, const String&);
     void playbackTargetPickerClientStateDidChange(uint64_t, WebCore::MediaProducer::MediaStateFlags);
     void setMockMediaPlaybackTargetPickerEnabled(bool);
     void setMockMediaPlaybackTargetPickerState(const String&, WebCore::MediaPlaybackTargetContext::State);
@@ -1074,6 +1074,7 @@ public:
     virtual void setPlaybackTarget(uint64_t, Ref<WebCore::MediaPlaybackTarget>&&) override;
     virtual void externalOutputDeviceAvailableDidChange(uint64_t, bool) override;
     virtual void setShouldPlayToPlaybackTarget(uint64_t, bool) override;
+    virtual void customPlaybackActionSelected(uint64_t) override;
 #endif
 
     void didChangeBackgroundColor();
@@ -1514,7 +1515,7 @@ private:
 
     WebProcessLifetimeTracker m_webProcessLifetimeTracker { *this };
 
-    const RefPtr<WebUserContentControllerProxy> m_userContentController;
+    Ref<WebUserContentControllerProxy> m_userContentController;
     Ref<VisitedLinkStore> m_visitedLinkStore;
     Ref<WebsiteDataStore> m_websiteDataStore;
 
@@ -1767,7 +1768,7 @@ private:
     std::unique_ptr<RemoteLayerTreeScrollingPerformanceData> m_scrollingPerformanceData;
     bool m_scrollPerformanceDataCollectionEnabled;
 #endif
-    UserObservablePageToken m_pageIsUserObservableCount;
+    UserObservablePageCounter::Token m_pageIsUserObservableCount;
     ProcessSuppressionDisabledToken m_preventProcessSuppressionCount;
     HiddenPageThrottlingAutoIncreasesCounter::Token m_hiddenPageDOMTimerThrottlingAutoIncreasesCount;
         

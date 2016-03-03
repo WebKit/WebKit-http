@@ -66,6 +66,12 @@ RegExpFlags regExpFlags(const String& string)
             flags = static_cast<RegExpFlags>(flags | FlagMultiline);
             break;
 
+        case 'u':
+            if (flags & FlagUnicode)
+                return InvalidFlags;
+            flags = static_cast<RegExpFlags>(flags | FlagUnicode);
+            break;
+                
         default:
             return InvalidFlags;
         }
@@ -126,6 +132,8 @@ void RegExpFunctionalTestCollector::outputOneTest(RegExp* regExp, const String& 
             fputc('i', m_file);
         if (regExp->multiline())
             fputc('m', m_file);
+        if (regExp->unicode())
+            fputc('u', m_file);
         fprintf(m_file, "\n");
     }
 
@@ -240,7 +248,7 @@ RegExp::RegExp(VM& vm, const String& patternString, RegExpFlags flags)
 void RegExp::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), &m_constructionError);
+    Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), unicode(), &m_constructionError);
     if (m_constructionError)
         m_state = ParseError;
     else
@@ -254,6 +262,16 @@ void RegExp::destroy(JSCell* cell)
     RegExpFunctionalTestCollector::get()->clearRegExp(this);
 #endif
     thisObject->RegExp::~RegExp();
+}
+
+size_t RegExp::estimatedSize(JSCell* cell)
+{
+    RegExp* thisObject = static_cast<RegExp*>(cell);
+    size_t regexDataSize = thisObject->m_regExpBytecode ? thisObject->m_regExpBytecode->estimatedSizeInBytes() : 0;
+#if ENABLE(YARR_JIT)
+    regexDataSize += thisObject->m_regExpJITCode.size();
+#endif
+    return Base::estimatedSize(cell) + regexDataSize;
 }
 
 RegExp* RegExp::createWithoutCaching(VM& vm, const String& patternString, RegExpFlags flags)
@@ -270,7 +288,7 @@ RegExp* RegExp::create(VM& vm, const String& patternString, RegExpFlags flags)
 
 void RegExp::compile(VM* vm, Yarr::YarrCharSize charSize)
 {
-    Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), &m_constructionError);
+    Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), unicode(), &m_constructionError);
     if (m_constructionError) {
         RELEASE_ASSERT_NOT_REACHED();
 #if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
@@ -287,7 +305,7 @@ void RegExp::compile(VM* vm, Yarr::YarrCharSize charSize)
     }
 
 #if ENABLE(YARR_JIT)
-    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && vm->canUseRegExpJIT()) {
+    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && !unicode() && vm->canUseRegExpJIT()) {
         Yarr::jitCompile(pattern, charSize, vm, m_regExpJITCode);
         if (!m_regExpJITCode.isFallBack()) {
             m_state = JITCode;
@@ -389,7 +407,7 @@ int RegExp::match(VM& vm, const String& s, unsigned startOffset, Vector<int, 32>
 
 void RegExp::compileMatchOnly(VM* vm, Yarr::YarrCharSize charSize)
 {
-    Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), &m_constructionError);
+    Yarr::YarrPattern pattern(m_patternString, ignoreCase(), multiline(), unicode(), &m_constructionError);
     if (m_constructionError) {
         RELEASE_ASSERT_NOT_REACHED();
 #if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
@@ -406,7 +424,7 @@ void RegExp::compileMatchOnly(VM* vm, Yarr::YarrCharSize charSize)
     }
 
 #if ENABLE(YARR_JIT)
-    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && vm->canUseRegExpJIT()) {
+    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && !unicode() && vm->canUseRegExpJIT()) {
         Yarr::jitCompile(pattern, charSize, vm, m_regExpJITCode, Yarr::MatchOnly);
         if (!m_regExpJITCode.isFallBack()) {
             m_state = JITCode;

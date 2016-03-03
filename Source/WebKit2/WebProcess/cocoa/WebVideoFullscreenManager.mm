@@ -281,8 +281,23 @@ void WebVideoFullscreenManager::exitVideoFullscreenForVideoElement(WebCore::HTML
 
 void WebVideoFullscreenManager::setUpVideoControlsManager(WebCore::HTMLVideoElement& videoElement)
 {
+    // If there is an existing controls manager, clean it up.
+    if (m_controlsManagerContextId) {
+        RefPtr<WebVideoFullscreenModelVideoElement> model;
+        RefPtr<WebVideoFullscreenInterfaceContext> interface;
+        std::tie(model, interface) = ensureModelAndInterface(m_controlsManagerContextId);
+
+        RefPtr<HTMLVideoElement> videoElement = model->videoElement();
+        model->setVideoElement(nullptr);
+        model->setWebVideoFullscreenInterface(nullptr);
+        interface->invalidate();
+        m_videoElements.remove(videoElement.get());
+        m_contextMap.remove(m_controlsManagerContextId);
+    }
+
     auto addResult = m_videoElements.ensure(&videoElement, [&] { return nextContextId(); });
     auto contextId = addResult.iterator->value;
+    m_controlsManagerContextId = contextId;
 
     RefPtr<WebVideoFullscreenModelVideoElement> model;
     RefPtr<WebVideoFullscreenInterfaceContext> interface;
@@ -290,6 +305,23 @@ void WebVideoFullscreenManager::setUpVideoControlsManager(WebCore::HTMLVideoElem
     model->setVideoElement(&videoElement);
     
     m_page->send(Messages::WebVideoFullscreenManagerProxy::SetUpVideoControlsManagerWithID(contextId), m_page->pageID());
+}
+
+void WebVideoFullscreenManager::exitVideoFullscreenToModeWithoutAnimation(WebCore::HTMLVideoElement& videoElement, WebCore::HTMLMediaElementEnums::VideoFullscreenMode targetMode)
+{
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    ASSERT(m_videoElements.contains(&videoElement));
+
+    uint64_t contextId = m_videoElements.get(&videoElement);
+    auto& interface = ensureInterface(contextId);
+
+    interface.setTargetIsFullscreen(false);
+
+    m_page->send(Messages::WebVideoFullscreenManagerProxy::ExitFullscreenWithoutAnimationToMode(contextId, targetMode), m_page->pageID());
+#else
+    UNUSED_PARAM(videoElement);
+    UNUSED_PARAM(targetMode);
+#endif
 }
 
 #pragma mark Interface to WebVideoFullscreenInterfaceContext:

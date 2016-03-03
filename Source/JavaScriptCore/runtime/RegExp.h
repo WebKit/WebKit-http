@@ -50,10 +50,12 @@ public:
     JS_EXPORT_PRIVATE static RegExp* create(VM&, const String& pattern, RegExpFlags);
     static const bool needsDestruction = true;
     static void destroy(JSCell*);
+    static size_t estimatedSize(JSCell*);
 
     bool global() const { return m_flags & FlagGlobal; }
     bool ignoreCase() const { return m_flags & FlagIgnoreCase; }
     bool multiline() const { return m_flags & FlagMultiline; }
+    bool unicode() const { return m_flags & FlagUnicode; }
 
     const String& pattern() const { return m_patternString; }
 

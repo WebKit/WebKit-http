@@ -879,35 +879,35 @@ void Document::childrenChanged(const ChildChange& change)
     clearStyleResolver();
 }
 
-static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, const QualifiedName qualifiedName, ExceptionCode& ec)
+static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, const AtomicString& localName, ExceptionCode& ec)
 {
-    RefPtr<HTMLElement> element = HTMLElementFactory::createKnownElement(qualifiedName, document);
+    RefPtr<HTMLElement> element = HTMLElementFactory::createKnownElement(localName, document);
     if (LIKELY(element))
         return element;
 
 #if ENABLE(CUSTOM_ELEMENTS)
     auto* definitions = document.customElementDefinitions();
     if (UNLIKELY(definitions)) {
-        if (auto* interface = definitions->findInterface(qualifiedName))
-            return interface->constructElement(qualifiedName.localName());
+        if (auto* interface = definitions->findInterface(localName))
+            return interface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
     }
 #endif
 
-    if (UNLIKELY(!Document::isValidName(qualifiedName.localName()))) {
+    if (UNLIKELY(!Document::isValidName(localName))) {
         ec = INVALID_CHARACTER_ERR;
         return nullptr;
     }
 
-    return HTMLUnknownElement::create(qualifiedName, document);
+    return HTMLUnknownElement::create(QualifiedName(nullAtom, localName, xhtmlNamespaceURI), document);
 }
 
 RefPtr<Element> Document::createElementForBindings(const AtomicString& name, ExceptionCode& ec)
 {
     if (isHTMLDocument())
-        return createHTMLElementWithNameValidation(*this, QualifiedName(nullAtom, name.convertToASCIILowercase(), xhtmlNamespaceURI), ec);
+        return createHTMLElementWithNameValidation(*this, name.convertToASCIILowercase(), ec);
 
     if (isXHTMLDocument())
-        return createHTMLElementWithNameValidation(*this, QualifiedName(nullAtom, name, xhtmlNamespaceURI), ec);
+        return createHTMLElementWithNameValidation(*this, name, ec);
 
     if (!isValidName(name)) {
         ec = INVALID_CHARACTER_ERR;
@@ -5802,6 +5802,9 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
 
     unwrapFullScreenRenderer(m_fullScreenRenderer, m_fullScreenElement.get());
 
+    if (element)
+        element->willBecomeFullscreenElement();
+    
     m_fullScreenElement = element;
 
 #if USE(NATIVE_FULLSCREEN_VIDEO)
@@ -6828,7 +6831,7 @@ void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetClient& clien
     page->removePlaybackTargetPickerClient(clientId);
 }
 
-void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo)
+void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo, const String& customMenuItemTitle)
 {
     Page* page = this->page();
     if (!page)
@@ -6838,7 +6841,7 @@ void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool 
     if (it == m_clientToIDMap.end())
         return;
 
-    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo);
+    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo, customMenuItemTitle);
 }
 
 void Document::playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient& client, MediaProducer::MediaStateFlags state)
@@ -6879,6 +6882,12 @@ void Document::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
         return;
 
     it->value->setShouldPlayToPlaybackTarget(shouldPlay);
+}
+
+void Document::customPlaybackActionSelected(uint64_t clientId)
+{
+    if (auto* client = m_idToClientMap.get(clientId))
+        client->customPlaybackActionSelected();
 }
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
 
