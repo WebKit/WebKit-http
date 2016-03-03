@@ -176,7 +176,7 @@ namespace JSC {
 
 const ClassInfo JSGlobalObject::s_info = { "GlobalObject", &Base::s_info, &globalObjectTable, CREATE_METHOD_TABLE(JSGlobalObject) };
 
-const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsLegacyProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, nullptr, &shouldInterruptScriptBeforeTimeout, nullptr, nullptr, nullptr, nullptr, nullptr };
+const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsLegacyProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, nullptr, &shouldInterruptScriptBeforeTimeout, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
 /* Source for JSGlobalObject.lut.h
 @begin globalObjectTable
@@ -807,12 +807,12 @@ void JSGlobalObject::createThrowTypeError(VM& vm)
 // Set prototype, and also insert the object prototype at the end of the chain.
 void JSGlobalObject::resetPrototype(VM& vm, JSValue prototype)
 {
-    setPrototype(vm, prototype);
+    setPrototypeDirect(vm, prototype);
 
     JSObject* oldLastInPrototypeChain = lastInPrototypeChain(this);
     JSObject* objectPrototype = m_objectPrototype.get();
     if (oldLastInPrototypeChain != objectPrototype)
-        oldLastInPrototypeChain->setPrototype(vm, objectPrototype);
+        oldLastInPrototypeChain->setPrototypeDirect(vm, objectPrototype);
 
     // Whenever we change the prototype of the global object, we need to create a new JSProxy with the correct prototype.
     setGlobalThis(vm, JSProxy::create(vm, JSProxy::createStructure(vm, this, prototype, PureForwardingProxyType), this));

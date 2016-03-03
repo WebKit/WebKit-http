@@ -80,13 +80,13 @@ using namespace WebCore;
 
 @implementation WebPlaybackControlsManager
 
-@synthesize contentDuration = _contentDuration;
-@synthesize timing = _timing;
-@synthesize seekToTime = _seekToTime;
-@synthesize seekableTimeRanges = _seekableTimeRanges;
-@synthesize hasEnabledAudio = _hasEnabledAudio;
-@synthesize hasEnabledVideo = _hasEnabledVideo;
-@synthesize rate = _rate;
+@synthesize contentDuration=_contentDuration;
+@synthesize timing=_timing;
+@synthesize seekToTime=_seekToTime;
+@synthesize seekableTimeRanges=_seekableTimeRanges;
+@synthesize hasEnabledAudio=_hasEnabledAudio;
+@synthesize hasEnabledVideo=_hasEnabledVideo;
+@synthesize rate=_rate;
 
 - (instancetype)initWithWebVideoFullscreenInterfaceMac:(WebCore::WebVideoFullscreenInterfaceMac*)webVideoFullscreenInterfaceMac
 {
@@ -261,6 +261,10 @@ void WebVideoFullscreenInterfaceMac::exitFullscreen(const IntRect&, NSWindow *)
 {
 }
 
+void WebVideoFullscreenInterfaceMac::exitFullscreenWithoutAnimationToMode(HTMLMediaElementEnums::VideoFullscreenMode)
+{
+}
+
 void WebVideoFullscreenInterfaceMac::cleanupFullscreen()
 {
 }
@@ -270,6 +274,10 @@ void WebVideoFullscreenInterfaceMac::invalidate()
 }
 
 void WebVideoFullscreenInterfaceMac::preparedToReturnToInline(bool, const IntRect&, NSWindow *)
+{
+}
+
+void WebVideoFullscreenInterfaceMac::setExternalPlayback(bool, ExternalPlaybackTargetType, WTF::String)
 {
 }
 

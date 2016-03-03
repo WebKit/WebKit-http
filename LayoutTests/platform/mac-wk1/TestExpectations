@@ -56,8 +56,6 @@ webkit.org/b/152485 webaudio/audiocontext-state-interrupted.html [ Pass Crash ]
 
 webkit.org/b/152487 inspector/debugger/command-line-api-exception-nested-catch.html [ Pass Timeout ]
 
-webkit.org/b/152506 webgl/1.0.2/conformance/extensions/get-extension.html [ Pass Timeout ]
-
 webkit.org/b/152789 webarchive/adopt-attribute-styled-body-webarchive.html [ Pass Crash ]
 
 webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
@@ -65,6 +63,8 @@ webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeou
 webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 
 webkit.org/b/154297 [ Debug ] fast/events/keydown-1.html [ Pass Failure ]
+
+webkit.org/b/154619 storage/indexeddb/odd-strings.html [ Pass Failure ]
 
 ### END OF (1) Failures with bug reports
 ########################################
@@ -147,6 +147,10 @@ webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/oes-texture-half-float.html 
 
 # This test gives a different output on ElCapitan-wk1 only.
 webkit.org/b/152178 [ Yosemite+ ] fast/replaced/replaced-breaking.html [ Failure ]
+
+# DRT can open way more files than the DatabaseProcess with WebKitTestRunner, and the number is reasonable.
+# So we shouldn't bother with this test in WebKit1.
+storage/indexeddb/modern/exceed-open-file-limit.html
 
 ### END OF (2) Failures without bug reports
 ########################################

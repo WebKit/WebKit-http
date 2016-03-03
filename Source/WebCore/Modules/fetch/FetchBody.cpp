@@ -33,6 +33,7 @@
 
 #include "Dictionary.h"
 #include "ExceptionCode.h"
+#include "HTTPParsers.h"
 #include "JSBlob.h"
 #include "JSDOMFormData.h"
 #include <runtime/JSONObject.h>
@@ -61,7 +62,7 @@ FetchBody::FetchBody(String&& text)
 {
 }
 
-FetchBody FetchBody::fromJSValue(JSC::ExecState& state, JSC::JSValue value)
+FetchBody FetchBody::extract(JSC::ExecState& state, JSC::JSValue value)
 {
     if (value.inherits(JSBlob::info()))
         return FetchBody(*JSBlob::toWrapped(value));
@@ -69,27 +70,16 @@ FetchBody FetchBody::fromJSValue(JSC::ExecState& state, JSC::JSValue value)
         return FetchBody(*JSDOMFormData::toWrapped(value));
     if (value.isString())
         return FetchBody(value.toWTFString(&state));
-    return FetchBody();
+    return { };
 }
 
-// FIXME: Once FetchResponse is added, check whether using a move constructor instead.
-// Ensure whether resetting m_mimeType to the empty string be not observable.
-FetchBody FetchBody::fromRequestBody(FetchBody* body)
+FetchBody FetchBody::extractFromBody(FetchBody* body)
 {
     if (!body)
-        return FetchBody();
-
-    FetchBody result;
-    result.m_type = body->m_type;
-    result.m_mimeType = body->m_mimeType;
-
-    result.m_blob = WTFMove(body->m_blob);
-    result.m_formData = WTFMove(body->m_formData);
-    result.m_text = WTFMove(body->m_text);
+        return { };
 
     body->m_isDisturbed = true;
-
-    return result;
+    return FetchBody(WTFMove(*body));
 }
 
 template<typename T> inline bool FetchBody::processIfEmptyOrDisturbed(DOMPromise<T, ExceptionCode>& promise)
@@ -113,12 +103,10 @@ void FetchBody::arrayBuffer(ArrayBufferPromise&& promise)
         return;
 
     if (m_type == Type::Text) {
-        // FIXME: promise expects a Vector<unsigned char> that will be converted to an ArrayBuffer.
-        // We should try to create a Vector<unsigned char> or an ArrayBuffer directly from m_text.
-        CString data = m_text.utf8();
-        Vector<unsigned char> value(data.length());
-        memcpy(value.data(), data.data(), data.length());
-        promise.resolve(WTFMove(value));
+        // FIXME: Ideally we would like to have an ArrayBuffer directly from m_text.
+        Vector<char> data = extractFromText();
+        RefPtr<ArrayBuffer> buffer = ArrayBuffer::create(data.data(), data.size());
+        promise.resolve(buffer);
         return;
     }
     // FIXME: Support other types.
@@ -141,6 +129,16 @@ void FetchBody::blob(BlobPromise&& promise)
 {
     if (processIfEmptyOrDisturbed(promise))
         return;
+
+    if (m_type == Type::Blob) {
+        promise.resolve(m_blob);
+        return;
+    }
+    if (m_type == Type::Text) {
+        String contentType = Blob::normalizedContentType(extractMIMETypeFromMediaType(m_mimeType));
+        promise.resolve(Blob::create(extractFromText(), contentType));
+        return;
+    }
 
     // FIXME: Support other types.
     promise.reject(0);
@@ -174,6 +172,16 @@ void FetchBody::json(JSC::ExecState& state, JSONPromise&& promise)
     }
     // FIXME: Support other types.
     promise.reject(0);
+}
+
+Vector<char> FetchBody::extractFromText() const
+{
+    ASSERT(m_type == Type::Text);
+    // FIXME: This double allocation is not efficient. Might want to fix that at WTFString level.
+    CString data = m_text.utf8();
+    Vector<char> value(data.length());
+    memcpy(value.data(), data.data(), data.length());
+    return value;
 }
 
 }

@@ -45,8 +45,8 @@ public:
     String defaultValue() const;
     void setDefaultValue(const String&);
     int textLength() const { return value().length(); }
-    virtual int maxLength() const override;
-    void setMaxLength(int, ExceptionCode&);
+    int maxLengthForBindings() const { return m_maxLength; }
+    int effectiveMaxLength() const { return m_maxLength; }
     // For ValidityState
     virtual String validationMessage() const override;
     virtual bool valueMissing() const override;
@@ -54,6 +54,7 @@ public:
     bool isValidValue(const String&) const;
     
     virtual TextControlInnerTextElement* innerTextElement() const override;
+    virtual Ref<RenderStyle> createInnerTextStyle(const RenderStyle&) const override;
 
     void rendererWillBeDestroyed();
 
@@ -69,6 +70,8 @@ private:
 
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) override;
     virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
+
+    void maxLengthAttributeChanged(const AtomicString& newValue);
 
     void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*) const;
     static String sanitizeUserInputValue(const String&, unsigned maxLength);
@@ -120,6 +123,7 @@ private:
 
     unsigned m_rows;
     unsigned m_cols;
+    int m_maxLength { -1 };
     WrapMethod m_wrap;
     HTMLElement* m_placeholder;
     mutable String m_value;

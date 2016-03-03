@@ -575,6 +575,9 @@
     <ClCompile Include="..\heap\HandleStack.cpp" />
     <ClCompile Include="..\heap\Heap.cpp" />
     <ClCompile Include="..\heap\HeapHelperPool.cpp" />
+    <ClCompile Include="..\heap\HeapProfiler.cpp" />
+    <ClCompile Include="..\heap\HeapSnapshot.cpp" />
+    <ClCompile Include="..\heap\HeapSnapshotBuilder.cpp" />
     <ClCompile Include="..\heap\HeapStatistics.cpp" />
     <ClCompile Include="..\heap\HeapTimer.cpp" />
     <ClCompile Include="..\heap\HeapVerifier.cpp" />
@@ -635,6 +638,7 @@
     <ClCompile Include="..\jit\CallFrameShuffler32_64.cpp" />
     <ClCompile Include="..\jit\CallFrameShuffler64.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocationFuzz.cpp" />
+    <ClCompile Include="..\jit\ExecutableAllocator.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocatorFixedVMPool.cpp" />
     <ClCompile Include="..\jit\GCAwareJITStubRoutine.cpp" />
     <ClCompile Include="..\jit\HostCallReturnValue.cpp" />
@@ -937,7 +941,7 @@
     <ClCompile Include="..\wasm\WASMModuleParser.cpp" />
     <ClCompile Include="..\wasm\WASMReader.cpp" />
     <ClCompile Include="..\yarr\RegularExpression.cpp" />
-    <ClCompile Include="..\yarr\YarrCanonicalizeUCS2.cpp" />
+    <ClCompile Include="..\yarr\YarrCanonicalizeUnicode.cpp" />
     <ClCompile Include="..\yarr\YarrInterpreter.cpp" />
     <ClCompile Include="..\yarr\YarrJIT.cpp" />
     <ClCompile Include="..\yarr\YarrPattern.cpp" />
@@ -1385,6 +1389,9 @@
     <ClInclude Include="..\heap\HeapInlines.h" />
     <ClInclude Include="..\heap\HeapOperation.h" />
     <ClInclude Include="..\heap\HeapRootVisitor.h" />
+    <ClInclude Include="..\heap\HeapProfiler.h" />
+    <ClInclude Include="..\heap\HeapSnapshot.h" />
+    <ClInclude Include="..\heap\HeapSnapshotBuilder.h" />
     <ClInclude Include="..\heap\HeapStatistics.h" />
     <ClInclude Include="..\heap\HeapTimer.h" />
     <ClInclude Include="..\heap\HeapVerifier.h" />
@@ -1806,6 +1813,7 @@
     <ClInclude Include="..\runtime\SetIteratorPrototype.h" />
     <ClInclude Include="..\runtime\SetPrototype.h" />
     <ClInclude Include="..\runtime\SimpleTypedArrayController.h" />
+    <ClInclude Include="..\runtime\SlowPathReturnType.h" />
     <ClInclude Include="..\runtime\SmallStrings.h" />
     <ClInclude Include="..\runtime\SparseArrayValueMap.h" />
     <ClInclude Include="..\runtime\StackAlignment.h" />
@@ -1877,7 +1885,7 @@
     <ClInclude Include="..\wasm\WASMReader.h" />
     <ClInclude Include="..\yarr\RegularExpression.h" />
     <ClInclude Include="..\yarr\Yarr.h" />
-    <ClInclude Include="..\yarr\YarrCanonicalizeUCS2.h" />
+    <ClInclude Include="..\yarr\YarrCanonicalizeUnicode.h" />
     <ClInclude Include="..\yarr\YarrInterpreter.h" />
     <ClInclude Include="..\yarr\YarrJIT.h" />
     <ClInclude Include="..\yarr\YarrParser.h" />

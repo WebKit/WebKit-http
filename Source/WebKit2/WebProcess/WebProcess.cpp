@@ -53,7 +53,6 @@
 #include "WebMemorySampler.h"
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
-#include "WebPageGroupProxyMessages.h"
 #include "WebPlatformStrategies.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
@@ -501,6 +500,9 @@ void WebProcess::setCacheModel(uint32_t cm)
 void WebProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
+#if USE(NETWORK_SESSION)
+    NetworkSession::defaultSession().clearCredentials();
+#endif
 }
 
 WebPage* WebProcess::focusedWebPage() const
@@ -588,19 +590,6 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDeco
 
     if (decoder.messageReceiverName() == Messages::WebProcess::messageReceiverName()) {
         didReceiveWebProcessMessage(connection, decoder);
-        return;
-    }
-
-    if (decoder.messageReceiverName() == Messages::WebPageGroupProxy::messageReceiverName()) {
-        uint64_t pageGroupID = decoder.destinationID();
-        if (!pageGroupID)
-            return;
-        
-        WebPageGroupProxy* pageGroupProxy = webPageGroup(pageGroupID);
-        if (!pageGroupProxy)
-            return;
-        
-        pageGroupProxy->didReceiveMessage(connection, decoder);
         return;
     }
 

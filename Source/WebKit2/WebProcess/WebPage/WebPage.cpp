@@ -158,6 +158,8 @@
 #include <WebCore/SubstituteData.h>
 #include <WebCore/TextIterator.h>
 #include <WebCore/UserInputBridge.h>
+#include <WebCore/UserScript.h>
+#include <WebCore/UserStyleSheet.h>
 #include <WebCore/VisiblePosition.h>
 #include <WebCore/VisibleUnits.h>
 #include <WebCore/markup.h>
@@ -307,7 +309,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(INPUT_TYPE_COLOR)
     , m_activeColorChooser(0)
 #endif
-    , m_userContentController(parameters.userContentControllerID ? WebUserContentController::getOrCreate(parameters.userContentControllerID) : nullptr)
+    , m_userContentController(WebUserContentController::getOrCreate(parameters.userContentControllerID))
 #if ENABLE(GEOLOCATION)
     , m_geolocationPermissionRequestManager(this)
 #endif
@@ -394,7 +396,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     pageConfiguration.databaseProvider = WebDatabaseProvider::getOrCreate(m_pageGroup->pageGroupID());
     pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::getOrCreate(m_pageGroup->pageGroupID());
-    pageConfiguration.userContentController = m_userContentController ? &m_userContentController->userContentController() : &m_pageGroup->userContentController();
+    pageConfiguration.userContentController = &m_userContentController->userContentController();
     pageConfiguration.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
 
 #if USE(APPLE_INTERNAL_SDK)
@@ -402,6 +404,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 
     m_page = std::make_unique<Page>(pageConfiguration);
+    updatePreferences(parameters.store);
 
     m_drawingArea = DrawingArea::create(*this, parameters);
     m_drawingArea->setPaintingEnabled(false);
@@ -415,6 +418,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 
     m_mainFrame = WebFrame::createWithCoreMainFrame(this, &m_page->mainFrame());
+    m_drawingArea->updatePreferences(parameters.store);
 
 #if ENABLE(BATTERY_STATUS)
     WebCore::provideBatteryTo(m_page.get(), new WebBatteryClient(this));
@@ -449,7 +453,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     m_page->setTextAutosizingWidth(parameters.textAutosizingWidth);
 #endif
 
-    updatePreferences(parameters.store);
     platformInitialize();
 
     setUseFixedLayout(parameters.useFixedLayout);
@@ -2995,7 +2998,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
     
     settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
-    settings.setAntialiasedFontDilationEnabled(store.getBoolValueForKey(WebPreferencesKey::antialiasedFontDilationEnabledKey()));
     
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 
@@ -5192,8 +5194,6 @@ void WebPage::imageOrMediaDocumentSizeChanged(const IntSize& newSize)
 
 void WebPage::addUserScript(const String& source, WebCore::UserContentInjectedFrames injectedFrames, WebCore::UserScriptInjectionTime injectionTime)
 {
-    ASSERT(m_userContentController);
-
     WebCore::UserScript userScript(source, WebCore::blankURL(), Vector<String>(), Vector<String>(), injectionTime, injectedFrames);
 
     m_userContentController->userContentController().addUserScript(mainThreadNormalWorld(), std::make_unique<WebCore::UserScript>(userScript));
@@ -5201,8 +5201,6 @@ void WebPage::addUserScript(const String& source, WebCore::UserContentInjectedFr
 
 void WebPage::addUserStyleSheet(const String& source, WebCore::UserContentInjectedFrames injectedFrames)
 {
-    ASSERT(m_userContentController);
-
     WebCore::UserStyleSheet userStyleSheet(source, WebCore::blankURL(), Vector<String>(), Vector<String>(), injectedFrames, UserStyleUserLevel);
 
     m_userContentController->userContentController().addUserStyleSheet(mainThreadNormalWorld(), std::make_unique<WebCore::UserStyleSheet>(userStyleSheet), InjectInExistingDocuments);
@@ -5210,9 +5208,6 @@ void WebPage::addUserStyleSheet(const String& source, WebCore::UserContentInject
 
 void WebPage::removeAllUserContent()
 {
-    if (!m_userContentController)
-        return;
-
     m_userContentController->userContentController().removeAllUserContent();
 }
 

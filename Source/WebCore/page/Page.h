@@ -472,7 +472,9 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(uint64_t);
     void removePlaybackTargetPickerClient(uint64_t);
-    void showPlaybackTargetPicker(uint64_t, const IntPoint&, bool);
+
+    void showPlaybackTargetPicker(uint64_t, const IntPoint&, bool, const String&);
+
     void playbackTargetPickerClientStateDidChange(uint64_t, MediaProducer::MediaStateFlags);
     WEBCORE_EXPORT void setMockMediaPlaybackTargetPickerEnabled(bool);
     WEBCORE_EXPORT void setMockMediaPlaybackTargetPickerState(const String&, MediaPlaybackTargetContext::State);
@@ -480,6 +482,7 @@ public:
     WEBCORE_EXPORT void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
     WEBCORE_EXPORT void playbackTargetAvailabilityDidChange(uint64_t, bool);
     WEBCORE_EXPORT void setShouldPlayToPlaybackTarget(uint64_t, bool);
+    WEBCORE_EXPORT void customPlaybackActionSelected(uint64_t);
 #endif
 
     RefPtr<WheelEventTestTrigger> testTrigger() const { return m_testTrigger; }
@@ -523,11 +526,12 @@ private:
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
+    enum class TimerThrottlingState { Disabled, Enabled, EnabledIncreasing };
     void hiddenPageDOMTimerThrottlingStateChanged();
-    void setTimerThrottlingEnabled(bool);
+    void setTimerThrottlingState(TimerThrottlingState);
+    void updateTimerThrottlingState();
     void setDOMTimerAlignmentInterval(double);
     void timerAlignmentIntervalIncreaseTimerFired();
-    bool timerThrottlingEnabled() const { return !!m_timerThrottlingEnabledTime; }
 
     const std::unique_ptr<Chrome> m_chrome;
     const std::unique_ptr<DragCaretController> m_dragCaretController;
@@ -613,7 +617,8 @@ private:
     ViewMode m_viewMode;
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
-    Optional<double> m_timerThrottlingEnabledTime;
+    TimerThrottlingState m_timerThrottlingState { TimerThrottlingState::Disabled };
+    double m_timerThrottlingEnabledTime { 0 };
     double m_timerAlignmentInterval;
     Timer m_timerAlignmentIntervalIncreaseTimer;
     double m_timerAlignmentIntervalIncreaseLimit { 0 };

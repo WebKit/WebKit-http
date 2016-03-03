@@ -36,6 +36,7 @@
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGVariableAccessDataDump.h"
 #include "JSCInlines.h"
+#include <cstdlib>
 
 namespace JSC { namespace DFG {
 
@@ -172,6 +173,21 @@ private:
             }
             break;
 
+        case ArithMod:
+            // On Integers
+            // In: ArithMod(ArithMod(x, const1), const2)
+            // Out: Identity(ArithMod(x, const1))
+            //     if const1 <= const2.
+            if (m_node->binaryUseKind() == Int32Use
+                && m_node->child2()->isInt32Constant()
+                && m_node->child1()->op() == ArithMod
+                && m_node->child1()->binaryUseKind() == Int32Use
+                && m_node->child1()->child2()->isInt32Constant()
+                && std::abs(m_node->child1()->child2()->asInt32()) <= std::abs(m_node->child2()->asInt32())) {
+                    convertToIdentityOverChild1();
+            }
+            break;
+
         case ValueRep:
         case Int52Rep:
         case DoubleRep: {
@@ -253,6 +269,26 @@ private:
             m_node->convertFlushToPhantomLocal();
             m_graph.dethread();
             m_changed = true;
+            break;
+        }
+
+        // FIXME: we should probably do this in constant folding but this currently relies on an OSR exit rule.
+        // https://bugs.webkit.org/show_bug.cgi?id=154832
+        case OverridesHasInstance: {
+            if (!m_node->child2().node()->isCellConstant())
+                break;
+
+            if (m_node->child2().node()->asCell() != m_graph.globalObjectFor(m_node->origin.semantic)->functionProtoHasInstanceSymbolFunction()) {
+                m_graph.convertToConstant(m_node, jsBoolean(true));
+                m_changed = true;
+
+            } else if (!m_graph.hasExitSite(m_node->origin.semantic, BadTypeInfoFlags)) {
+                // We optimistically assume that we will not see a function that has a custom instanceof operation as they should be rare.
+                m_insertionSet.insertNode(m_nodeIndex, SpecNone, CheckTypeInfoFlags, m_node->origin, OpInfo(ImplementsDefaultHasInstance), Edge(m_node->child1().node(), CellUse));
+                m_graph.convertToConstant(m_node, jsBoolean(false));
+                m_changed = true;
+            }
+
             break;
         }
             

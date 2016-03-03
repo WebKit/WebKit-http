@@ -71,12 +71,13 @@ public:
     WEBCORE_EXPORT void setCanPlayFastReverse(bool) override { }
     WEBCORE_EXPORT void setAudioMediaSelectionOptions(const Vector<WTF::String>& /*options*/, uint64_t /*selectedIndex*/) override { }
     WEBCORE_EXPORT void setLegibleMediaSelectionOptions(const Vector<WTF::String>& /*options*/, uint64_t /*selectedIndex*/) override { }
-    WEBCORE_EXPORT void setExternalPlayback(bool /*enabled*/, ExternalPlaybackTargetType, WTF::String /*localizedDeviceName*/) override { }
+    WEBCORE_EXPORT void setExternalPlayback(bool enabled, ExternalPlaybackTargetType, WTF::String localizedDeviceName) override;
     WEBCORE_EXPORT void setWirelessVideoPlaybackDisabled(bool) override { }
 
     WEBCORE_EXPORT void setupFullscreen(NSView& layerHostedView, const IntRect& initialRect, NSWindow *parentWindow, HTMLMediaElementEnums::VideoFullscreenMode, bool allowsPictureInPicturePlayback);
     WEBCORE_EXPORT void enterFullscreen();
     WEBCORE_EXPORT void exitFullscreen(const IntRect& finalRect, NSWindow *parentWindow);
+    WEBCORE_EXPORT void exitFullscreenWithoutAnimationToMode(HTMLMediaElementEnums::VideoFullscreenMode);
     WEBCORE_EXPORT void cleanupFullscreen();
     WEBCORE_EXPORT void invalidate();
     WEBCORE_EXPORT void requestHideAndExitFullscreen() { }

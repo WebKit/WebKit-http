@@ -2292,7 +2292,9 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case ArithRound:
-        compileArithRound(node);
+    case ArithFloor:
+    case ArithCeil:
+        compileArithRounding(node);
         break;
 
     case ArithSin: {
@@ -2834,35 +2836,34 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case RegExpExec: {
-        if (compileRegExpExec(node))
-            return;
-
-        if (!node->adjustedRefCount()) {
+        if (node->child1().useKind() == CellUse
+            && node->child2().useKind() == CellUse) {
             SpeculateCellOperand base(this, node->child1());
             SpeculateCellOperand argument(this, node->child2());
             GPRReg baseGPR = base.gpr();
             GPRReg argumentGPR = argument.gpr();
-            
+        
             flushRegisters();
-            GPRFlushedCallResult result(this);
-            callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
+            GPRFlushedCallResult2 resultTag(this);
+            GPRFlushedCallResult resultPayload(this);
+            callOperation(operationRegExpExec, resultTag.gpr(), resultPayload.gpr(), baseGPR, argumentGPR);
             m_jit.exceptionCheck();
-            
-            // Must use jsValueResult because otherwise we screw up register
-            // allocation, which thinks that this node has a result.
-            booleanResult(result.gpr(), node);
+        
+            jsValueResult(resultTag.gpr(), resultPayload.gpr(), node);
             break;
         }
-
-        SpeculateCellOperand base(this, node->child1());
-        SpeculateCellOperand argument(this, node->child2());
-        GPRReg baseGPR = base.gpr();
-        GPRReg argumentGPR = argument.gpr();
+        
+        JSValueOperand base(this, node->child1());
+        JSValueOperand argument(this, node->child2());
+        GPRReg baseTagGPR = base.tagGPR();
+        GPRReg basePayloadGPR = base.payloadGPR();
+        GPRReg argumentTagGPR = argument.tagGPR();
+        GPRReg argumentPayloadGPR = argument.payloadGPR();
         
         flushRegisters();
         GPRFlushedCallResult2 resultTag(this);
         GPRFlushedCallResult resultPayload(this);
-        callOperation(operationRegExpExec, resultTag.gpr(), resultPayload.gpr(), baseGPR, argumentGPR);
+        callOperation(operationRegExpExecGeneric, resultTag.gpr(), resultPayload.gpr(), baseTagGPR, basePayloadGPR, argumentTagGPR, argumentPayloadGPR);
         m_jit.exceptionCheck();
         
         jsValueResult(resultTag.gpr(), resultPayload.gpr(), node);
@@ -2870,17 +2871,34 @@ void SpeculativeJIT::compile(Node* node)
     }
         
     case RegExpTest: {
-        SpeculateCellOperand base(this, node->child1());
-        SpeculateCellOperand argument(this, node->child2());
-        GPRReg baseGPR = base.gpr();
-        GPRReg argumentGPR = argument.gpr();
+        if (node->child1().useKind() == CellUse
+            && node->child2().useKind() == CellUse) {
+            SpeculateCellOperand base(this, node->child1());
+            SpeculateCellOperand argument(this, node->child2());
+            GPRReg baseGPR = base.gpr();
+            GPRReg argumentGPR = argument.gpr();
+        
+            flushRegisters();
+            GPRFlushedCallResult result(this);
+            callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
+            m_jit.exceptionCheck();
+        
+            booleanResult(result.gpr(), node);
+            break;
+        }
+        
+        JSValueOperand base(this, node->child1());
+        JSValueOperand argument(this, node->child2());
+        GPRReg baseTagGPR = base.tagGPR();
+        GPRReg basePayloadGPR = base.payloadGPR();
+        GPRReg argumentTagGPR = argument.tagGPR();
+        GPRReg argumentPayloadGPR = argument.payloadGPR();
         
         flushRegisters();
         GPRFlushedCallResult result(this);
-        callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
+        callOperation(operationRegExpTestGeneric, result.gpr(), baseTagGPR, basePayloadGPR, argumentTagGPR, argumentPayloadGPR);
         m_jit.exceptionCheck();
         
-        // If we add a DataFormatBool, we should use it here.
         booleanResult(result.gpr(), node);
         break;
     }
@@ -4846,6 +4864,7 @@ void SpeculativeJIT::compile(Node* node)
     case KillStack:
     case GetStack:
     case GetMyArgumentByVal:
+    case StringReplace:
         DFG_CRASH(m_jit.graph(), node, "unexpected node in DFG backend");
         break;
     }

@@ -277,6 +277,24 @@ void MemoryCache::pruneLiveResources(bool shouldDestroyDecodedDataForAllLiveReso
     pruneLiveResourcesToSize(targetSize, shouldDestroyDecodedDataForAllLiveResources);
 }
 
+void MemoryCache::forEachResource(const std::function<void(CachedResource&)>& function)
+{
+    for (auto& unprotectedLRUList : m_allResources) {
+        Vector<CachedResourceHandle<CachedResource>> lruList;
+        copyToVector(*unprotectedLRUList, lruList);
+        for (auto& resource : lruList)
+            function(*resource);
+    }
+}
+
+void MemoryCache::destroyDecodedDataForAllImages()
+{
+    MemoryCache::singleton().forEachResource([](CachedResource& resource) {
+        if (resource.isImage())
+            resource.destroyDecodedData();
+    });
+}
+
 void MemoryCache::pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestroyDecodedDataForAllLiveResources)
 {
     if (m_inPruneResources)

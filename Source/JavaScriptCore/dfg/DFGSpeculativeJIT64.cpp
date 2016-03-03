@@ -2415,7 +2415,9 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case ArithRound:
-        compileArithRound(node);
+    case ArithFloor:
+    case ArithCeil:
+        compileArithRounding(node);
         break;
 
     case ArithSin: {
@@ -2959,33 +2961,30 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case RegExpExec: {
-        if (compileRegExpExec(node))
-            return;
-        if (!node->adjustedRefCount()) {
+        if (node->child1().useKind() == CellUse
+            && node->child2().useKind() == CellUse) {
             SpeculateCellOperand base(this, node->child1());
             SpeculateCellOperand argument(this, node->child2());
             GPRReg baseGPR = base.gpr();
             GPRReg argumentGPR = argument.gpr();
-            
+        
             flushRegisters();
             GPRFlushedCallResult result(this);
-            callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
+            callOperation(operationRegExpExec, result.gpr(), baseGPR, argumentGPR);
             m_jit.exceptionCheck();
-            
-            // Must use jsValueResult because otherwise we screw up register
-            // allocation, which thinks that this node has a result.
+        
             jsValueResult(result.gpr(), node);
             break;
         }
-
-        SpeculateCellOperand base(this, node->child1());
-        SpeculateCellOperand argument(this, node->child2());
+        
+        JSValueOperand base(this, node->child1());
+        JSValueOperand argument(this, node->child2());
         GPRReg baseGPR = base.gpr();
         GPRReg argumentGPR = argument.gpr();
         
         flushRegisters();
         GPRFlushedCallResult result(this);
-        callOperation(operationRegExpExec, result.gpr(), baseGPR, argumentGPR);
+        callOperation(operationRegExpExecGeneric, result.gpr(), baseGPR, argumentGPR);
         m_jit.exceptionCheck();
         
         jsValueResult(result.gpr(), node);
@@ -2993,14 +2992,32 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case RegExpTest: {
-        SpeculateCellOperand base(this, node->child1());
-        SpeculateCellOperand argument(this, node->child2());
+        if (node->child1().useKind() == CellUse
+            && node->child2().useKind() == CellUse) {
+            SpeculateCellOperand base(this, node->child1());
+            SpeculateCellOperand argument(this, node->child2());
+            GPRReg baseGPR = base.gpr();
+            GPRReg argumentGPR = argument.gpr();
+        
+            flushRegisters();
+            GPRFlushedCallResult result(this);
+            callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
+            m_jit.exceptionCheck();
+        
+            // If we add a DataFormatBool, we should use it here.
+            m_jit.or32(TrustedImm32(ValueFalse), result.gpr());
+            jsValueResult(result.gpr(), node, DataFormatJSBoolean);
+            break;
+        }
+        
+        JSValueOperand base(this, node->child1());
+        JSValueOperand argument(this, node->child2());
         GPRReg baseGPR = base.gpr();
         GPRReg argumentGPR = argument.gpr();
         
         flushRegisters();
         GPRFlushedCallResult result(this);
-        callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
+        callOperation(operationRegExpTestGeneric, result.gpr(), baseGPR, argumentGPR);
         m_jit.exceptionCheck();
         
         // If we add a DataFormatBool, we should use it here.
@@ -3683,6 +3700,9 @@ void SpeculativeJIT::compile(Node* node)
         flushRegisters();
         GPRFlushedCallResult result(this);
         
+        // FIXME: We really should be able to inline code that uses NewRegexp. That means not
+        // reaching into the CodeBlock here.
+        // https://bugs.webkit.org/show_bug.cgi?id=154808
         callOperation(operationNewRegexp, result.gpr(), m_jit.codeBlock()->regexp(node->regexpIndex()));
         m_jit.exceptionCheck();
         
@@ -4896,6 +4916,7 @@ void SpeculativeJIT::compile(Node* node)
     case PutStack:
     case KillStack:
     case GetStack:
+    case StringReplace:
         DFG_CRASH(m_jit.graph(), node, "Unexpected node");
         break;
     }

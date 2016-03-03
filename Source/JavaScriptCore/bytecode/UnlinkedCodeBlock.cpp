@@ -56,7 +56,6 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_numVars(0)
     , m_numCalleeLocals(0)
     , m_numParameters(0)
-    , m_vm(vm)
     , m_globalObjectRegister(VirtualRegister())
     , m_usesEval(info.usesEval())
     , m_isStrictMode(info.isStrictMode())
@@ -85,6 +84,11 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     ASSERT(m_constructorKind == static_cast<unsigned>(info.constructorKind()));
 }
 
+VM* UnlinkedCodeBlock::vm() const
+{
+    return MarkedBlock::blockFor(this)->vm();
+}
+
 void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
@@ -95,10 +99,19 @@ void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionExprs.begin(), end = thisObject->m_functionExprs.end(); ptr != end; ++ptr)
         visitor.append(ptr);
     visitor.appendValues(thisObject->m_constantRegisters.data(), thisObject->m_constantRegisters.size());
+    if (thisObject->m_unlinkedInstructions)
+        visitor.reportExtraMemoryVisited(thisObject->m_unlinkedInstructions->sizeInBytes());
     if (thisObject->m_rareData) {
         for (size_t i = 0, end = thisObject->m_rareData->m_regexps.size(); i != end; i++)
             visitor.append(&thisObject->m_rareData->m_regexps[i]);
     }
+}
+
+size_t UnlinkedCodeBlock::estimatedSize(JSCell* cell)
+{
+    UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
+    size_t extraSize = thisObject->m_unlinkedInstructions ? thisObject->m_unlinkedInstructions->sizeInBytes() : 0;
+    return Base::estimatedSize(cell) + extraSize;
 }
 
 int UnlinkedCodeBlock::lineNumberForBytecodeOffset(unsigned bytecodeOffset)
@@ -262,8 +275,16 @@ void UnlinkedCodeBlock::addExpressionInfo(unsigned instructionOffset,
 bool UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset(unsigned bytecodeOffset, unsigned& startDivot, unsigned& endDivot)
 {
     static const bool verbose = false;
-    auto iter = m_typeProfilerInfoMap.find(bytecodeOffset);
-    if (iter == m_typeProfilerInfoMap.end()) {
+    if (!m_rareData) {
+        if (verbose)
+            dataLogF("Don't have assignment info for offset:%u\n", bytecodeOffset);
+        startDivot = UINT_MAX;
+        endDivot = UINT_MAX;
+        return false;
+    }
+
+    auto iter = m_rareData->m_typeProfilerInfoMap.find(bytecodeOffset);
+    if (iter == m_rareData->m_typeProfilerInfoMap.end()) {
         if (verbose)
             dataLogF("Don't have assignment info for offset:%u\n", bytecodeOffset);
         startDivot = UINT_MAX;
@@ -271,7 +292,7 @@ bool UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset(unsigned byt
         return false;
     }
     
-    TypeProfilerExpressionRange& range = iter->value;
+    RareData::TypeProfilerExpressionRange& range = iter->value;
     startDivot = range.m_startDivot;
     endDivot = range.m_endDivot;
     return true;
@@ -279,10 +300,11 @@ bool UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset(unsigned byt
 
 void UnlinkedCodeBlock::addTypeProfilerExpressionInfo(unsigned instructionOffset, unsigned startDivot, unsigned endDivot)
 {
-    TypeProfilerExpressionRange range;
+    createRareDataIfNecessary();
+    RareData::TypeProfilerExpressionRange range;
     range.m_startDivot = startDivot;
     range.m_endDivot = endDivot;
-    m_typeProfilerInfoMap.set(instructionOffset, range);  
+    m_rareData->m_typeProfilerInfoMap.set(instructionOffset, range);
 }
 
 void UnlinkedProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -330,7 +352,9 @@ void UnlinkedFunctionExecutable::destroy(JSCell* cell)
 
 void UnlinkedCodeBlock::setInstructions(std::unique_ptr<UnlinkedInstructionStream> instructions)
 {
+    ASSERT(instructions);
     m_unlinkedInstructions = WTFMove(instructions);
+    Heap::heap(this)->reportExtraMemoryAllocated(m_unlinkedInstructions->sizeInBytes());
 }
 
 const UnlinkedInstructionStream& UnlinkedCodeBlock::instructions() const

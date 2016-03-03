@@ -443,6 +443,9 @@ set(JavaScriptCore_SOURCES
     heap/HandleStack.cpp
     heap/Heap.cpp
     heap/HeapHelperPool.cpp
+    heap/HeapProfiler.cpp
+    heap/HeapSnapshot.cpp
+    heap/HeapSnapshotBuilder.cpp
     heap/HeapStatistics.cpp
     heap/HeapTimer.cpp
     heap/HeapVerifier.cpp
@@ -515,6 +518,7 @@ set(JavaScriptCore_SOURCES
     jit/CallFrameShuffler32_64.cpp
     jit/CallFrameShuffler64.cpp
     jit/ExecutableAllocationFuzz.cpp
+    jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
     jit/GCAwareJITStubRoutine.cpp
     jit/GPRInfo.cpp
@@ -826,7 +830,7 @@ set(JavaScriptCore_SOURCES
     wasm/WASMReader.cpp
 
     yarr/RegularExpression.cpp
-    yarr/YarrCanonicalizeUCS2.cpp
+    yarr/YarrCanonicalizeUnicode.cpp
     yarr/YarrInterpreter.cpp
     yarr/YarrJIT.cpp
     yarr/YarrPattern.cpp

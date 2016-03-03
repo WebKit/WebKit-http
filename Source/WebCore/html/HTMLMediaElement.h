@@ -344,6 +344,8 @@ public:
     virtual bool isPlayingToWirelessPlaybackTarget() const override;
     virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
     virtual void setShouldPlayToPlaybackTarget(bool) override;
+    virtual void customPlaybackActionSelected() override;
+    String playbackTargetPickerCustomActionName() const;
 #endif
     bool webkitCurrentPlaybackTargetIsWireless() const;
 
@@ -503,6 +505,7 @@ private:
     virtual void removedFrom(ContainerNode&) override;
     virtual void didRecalcStyle(Style::Change) override;
 
+    virtual void willBecomeFullscreenElement() override;
     virtual void didBecomeFullscreenElement() override;
     virtual void willStopBeingFullscreenElement() override;
 

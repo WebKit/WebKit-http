@@ -94,7 +94,8 @@ class JSObject : public JSCell {
 
 public:
     typedef JSCell Base;
-        
+
+    JS_EXPORT_PRIVATE static size_t estimatedSize(JSCell*);
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
     JS_EXPORT_PRIVATE static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 
@@ -102,8 +103,24 @@ public:
     JS_EXPORT_PRIVATE static String calculatedClassName(JSObject*);
 
     JSValue prototype() const;
-    JS_EXPORT_PRIVATE void setPrototype(VM&, JSValue prototype);
-    JS_EXPORT_PRIVATE bool setPrototypeWithCycleCheck(ExecState*, JSValue prototype);
+    // This sets the prototype without checking for cycles and without
+    // doing dynamic dispatch on [[SetPrototypeOf]] operation in the specification.
+    // It is not valid to use this when performing a [[SetPrototypeOf]] operation in
+    // the specification. It is valid to use though when you know that you want to directly
+    // set it without consulting the method table and when you definitely won't
+    // introduce a cycle in the prototype chain. This is akin to setting the
+    // [[Prototype]] internal field directly as described in the specification.
+    JS_EXPORT_PRIVATE void setPrototypeDirect(VM&, JSValue prototype);
+private:
+    // This is OrdinarySetPrototypeOf in the specification. Section 9.1.2.1
+    // https://tc39.github.io/ecma262/#sec-ordinarysetprototypeof
+    JS_EXPORT_PRIVATE bool setPrototypeWithCycleCheck(VM&, ExecState*, JSValue prototype);
+public:
+    // This is the fully virtual [[SetPrototypeOf]] internal function defined
+    // in the ECMAScript 6 specification. Use this when doing a [[SetPrototypeOf]] 
+    // operation as dictated in the specification.
+    bool setPrototype(VM&, ExecState*, JSValue prototype);
+    JS_EXPORT_PRIVATE static bool setPrototype(JSObject*, ExecState*, JSValue prototype);
         
     bool mayInterceptIndexedAccesses()
     {
@@ -613,13 +630,26 @@ public:
 
     JS_EXPORT_PRIVATE void seal(VM&);
     JS_EXPORT_PRIVATE void freeze(VM&);
-    JS_EXPORT_PRIVATE void preventExtensions(VM&);
+    JS_EXPORT_PRIVATE static bool preventExtensions(JSObject*, ExecState*);
+    JS_EXPORT_PRIVATE static bool isExtensible(JSObject*, ExecState*);
     bool isSealed(VM& vm) { return structure(vm)->isSealed(vm); }
     bool isFrozen(VM& vm) { return structure(vm)->isFrozen(vm); }
-    bool isExtensible() { return structure()->isExtensible(); }
+private:
+    ALWAYS_INLINE bool isExtensibleImpl() { return isStructureExtensible(); }
+public:
+    // You should only call isStructureExtensible() when:
+    // - Performing this check in a way that isn't described in the specification 
+    //   as calling the virtual [[IsExtensible]] trap.
+    // - When you're guaranteed that object->methodTable()->isExtensible isn't
+    //   overridden.
+    ALWAYS_INLINE bool isStructureExtensible() { return structure()->isStructureExtensible(); }
+    // You should call this when performing [[IsExtensible]] trap in a place
+    // that is described in the specification. This performs the fully virtual
+    // [[IsExtensible]] trap.
+    bool isExtensible(ExecState*);
     bool indexingShouldBeSparse()
     {
-        return !isExtensible()
+        return !isStructureExtensible()
             || structure()->typeInfo().interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero();
     }
 
@@ -1271,7 +1301,7 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
             return true;
         }
 
-        if ((mode == PutModePut) && !isExtensible())
+        if ((mode == PutModePut) && !isStructureExtensible())
             return false;
 
         DeferGC deferGC(vm.heap);
@@ -1336,7 +1366,7 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
         return true;
     }
 
-    if ((mode == PutModePut) && !isExtensible())
+    if ((mode == PutModePut) && !isStructureExtensible())
         return false;
 
     // We want the structure transition watchpoint to fire after this object has switched
