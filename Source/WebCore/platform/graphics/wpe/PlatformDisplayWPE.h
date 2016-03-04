@@ -28,8 +28,10 @@
 
 #if PLATFORM(WPE)
 
-#include <WPE/Graphics/RenderingBackend.h>
 #include "PlatformDisplay.h"
+
+struct wpe_renderer_backend_egl;
+struct wpe_renderer_backend_egl_target;
 
 namespace WebCore {
 
@@ -42,32 +44,37 @@ public:
     PlatformDisplayWPE();
     virtual ~PlatformDisplayWPE();
 
-    using BufferExport = WPE::Graphics::RenderingBackend::BufferExport;
-
     class Surface {
     public:
-        using Client = WPE::Graphics::RenderingBackend::Surface::Client;
+        class Client {
+        public:
+            virtual void frameComplete() = 0;
+        };
 
-        Surface(const PlatformDisplayWPE&, const IntSize&, uint32_t, Client&);
+        Surface(const PlatformDisplayWPE&, Client&, int);
+        ~Surface();
 
-        void resize(const IntSize&);
+        void initialize(const IntSize&);
         std::unique_ptr<GLContextEGL> createGLContext() const;
 
-        BufferExport lockFrontBuffer();
-        void releaseBuffer(uint32_t);
+        void resize(const IntSize&);
+
+        void frameRendered();
 
     private:
-        std::unique_ptr<WPE::Graphics::RenderingBackend::Surface> m_backend;
+        const PlatformDisplayWPE& m_display;
+        Client& m_client;
+        struct wpe_renderer_backend_egl_target* m_backend;
     };
 
-    std::unique_ptr<Surface> createSurface(const IntSize&, uint32_t, Surface::Client&);
+    std::unique_ptr<Surface> createSurface(Surface::Client&, int);
 
     std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 
 private:
     Type type() const override { return PlatformDisplay::Type::WPE; }
 
-    std::unique_ptr<WPE::Graphics::RenderingBackend> m_backend;
+    struct wpe_renderer_backend_egl* m_backend;
 };
 
 } // namespace WebCore
