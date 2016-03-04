@@ -41,12 +41,14 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland/Protocols"
     ${GLIB_INCLUDE_DIRS}
+    ${GIO_UNIX_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
     ${GLIB_LIBRARIES}
+    ${GIO_UNIX_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WAYLAND_LIBRARIES}
 )
@@ -78,6 +80,7 @@ if (USE_WPE_BUFFER_MANAGEMENT_GBM)
         ${LIBGBM_LIBRARIES}
     )
     list(APPEND WPE_SOURCES
+        Source/wpe/renderer-gbm.cpp
     )
 endif ()
 
@@ -90,6 +93,7 @@ if (USE_WPE_BACKEND_DRM)
         ${LIBDRM_LIBRARIES}
     )
     list(APPEND WPE_SOURCES
+        Source/wpe/view-backend-drm.cpp
     )
 endif ()
 
