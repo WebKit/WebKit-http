@@ -122,7 +122,6 @@ static WKViewRef createView(WKPageConfigurationRef pageConfiguration)
 {
     auto view = WKViewCreate(pageConfiguration);
     auto page = WKViewGetPage(view);
-    WKViewResize(view, WKSizeMake(800, 600));
 
     auto pageUIClient = createPageUIClient();
     WKPageSetPageUIClient(page, &pageUIClient.base);
