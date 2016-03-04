@@ -164,8 +164,6 @@ list(APPEND WebKit2_SOURCES
 
 list(APPEND WebKit2_MESSAGES_IN_FILES
     UIProcess/API/wpe/CompositingManagerProxy.messages.in
-
-    WebProcess/WebPage/wpe/CompositingManager.messages.in
 )
 
 list(APPEND WebKit2_DERIVED_SOURCES
