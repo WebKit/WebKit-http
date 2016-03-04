@@ -27,6 +27,7 @@
 #define CompositingManagerProxy_h
 
 #include "MessageReceiver.h"
+#include <wtf/Noncopyable.h>
 
 namespace IPC {
 class Attachment;
@@ -39,15 +40,12 @@ class View;
 namespace WebKit {
 
 class CompositingManagerProxy final : public IPC::MessageReceiver {
-    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(CompositingManagerProxy);
 public:
     CompositingManagerProxy(WKWPE::View&);
-    ~CompositingManagerProxy();
+    virtual ~CompositingManagerProxy();
 
-    CompositingManagerProxy(const CompositingManagerProxy&) = delete;
-    CompositingManagerProxy& operator=(const CompositingManagerProxy&) = delete;
-    CompositingManagerProxy(CompositingManagerProxy&&) = delete;
-    CompositingManagerProxy& operator=(CompositingManagerProxy&&) = delete;
+    void initialize();
 
 private:
     // IPC::MessageReceiver

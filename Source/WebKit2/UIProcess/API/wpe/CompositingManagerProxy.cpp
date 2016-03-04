@@ -37,10 +37,14 @@ namespace WebKit {
 CompositingManagerProxy::CompositingManagerProxy(WKWPE::View& view)
     : m_view(view)
 {
-    m_view.page().process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_view.page().pageID(), *this);
 }
 
 CompositingManagerProxy::~CompositingManagerProxy() = default;
+
+void CompositingManagerProxy::initialize()
+{
+    m_view.page().process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_view.page().pageID(), *this);
+}
 
 void CompositingManagerProxy::establishConnection(IPC::Attachment& connectionHandle)
 {
