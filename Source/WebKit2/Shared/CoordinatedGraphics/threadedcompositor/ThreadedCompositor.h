@@ -28,7 +28,6 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
-#include "CompositingManager.h"
 #include "CoordinatedGraphicsScene.h"
 #include "SimpleViewportController.h"
 #include <WebCore/GLContext.h>
@@ -45,6 +44,11 @@
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
 
+#if PLATFORM(WPE)
+#include "CompositingManager.h"
+#include <WebCore/PlatformDisplayWPE.h>
+#endif
+
 namespace WebCore {
 struct CoordinatedGraphicsState;
 }
@@ -56,7 +60,7 @@ class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 class WebPage;
 
-class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public CompositingManager::Client {
+class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public WebCore::PlatformDisplayWPE::Surface::Client {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -95,8 +99,7 @@ private:
     virtual void updateViewport() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
-    // CompositingManager::Client
-    virtual void releaseBuffer(uint32_t) override;
+    // WebCore::PlatformDisplayWPE::Surface::Client
     virtual void frameComplete() override;
 
     void renderLayerTree();
@@ -118,6 +121,7 @@ private:
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
 #if PLATFORM(WPE)
+    CompositingManager m_compositingManager;
     std::unique_ptr<WebCore::PlatformDisplayWPE::Surface> m_surface;
 #endif
     std::unique_ptr<WebCore::GLContext> m_context;
@@ -133,8 +137,6 @@ private:
     Lock m_initializeRunLoopConditionLock;
     Condition m_terminateRunLoopCondition;
     Lock m_terminateRunLoopConditionLock;
-
-    std::unique_ptr<CompositingManager> m_compositingManager;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {
