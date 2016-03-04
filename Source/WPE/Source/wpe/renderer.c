@@ -1,0 +1,128 @@
+#include <wpe/renderer.h>
+
+#include "renderer-private.h"
+#include <stdlib.h>
+
+// FIXME: Don't hard-code it.
+#include "renderer-gbm.h"
+
+struct wpe_renderer_backend_egl*
+wpe_renderer_backend_egl_create()
+{
+    struct wpe_renderer_backend_egl* backend = malloc(sizeof(struct wpe_renderer_backend_egl));
+    if (!backend)
+        return 0;
+
+    // FIXME: Don't hard-code it.
+    backend->interface = &gbm_renderer_backend_egl_interface;
+    backend->interface_data = backend->interface->create();
+
+    return backend;
+}
+
+void
+wpe_renderer_backend_egl_destroy(struct wpe_renderer_backend_egl* backend)
+{
+    backend->interface->destroy(backend->interface_data);
+    backend->interface_data = 0;
+
+    free(backend);
+}
+
+EGLNativeDisplayType
+wpe_renderer_backend_egl_get_native_display(struct wpe_renderer_backend_egl* backend)
+{
+    return backend->interface->get_native_display(backend->interface_data);
+}
+
+struct wpe_renderer_backend_egl_target*
+wpe_renderer_backend_egl_target_create(int host_fd)
+{
+    struct wpe_renderer_backend_egl_target* target = malloc(sizeof(struct wpe_renderer_backend_egl_target));
+    if (!target)
+        return 0;
+
+    // FIXME: Don't hard-code it.
+    target->interface = &gbm_renderer_backend_egl_target_interface;
+    target->interface_data = target->interface->create(target, host_fd);
+
+    return target;
+}
+
+void
+wpe_renderer_backend_egl_target_destroy(struct wpe_renderer_backend_egl_target* target)
+{
+    target->interface->destroy(target->interface_data);
+    target->interface_data = 0;
+
+    target->client = 0;
+    target->client_data = 0;
+
+    free(target);
+}
+
+void
+wpe_renderer_backend_egl_target_set_client(struct wpe_renderer_backend_egl_target* target, struct wpe_renderer_backend_egl_target_client* client, void* client_data)
+{
+    target->client = client;
+    target->client_data = client_data;
+}
+
+void
+wpe_renderer_backend_egl_target_initialize(struct wpe_renderer_backend_egl_target* target, struct wpe_renderer_backend_egl* backend, uint32_t width, uint32_t height)
+{
+    target->interface->initialize(target->interface_data, backend->interface_data, width, height);
+}
+
+EGLNativeWindowType
+wpe_renderer_backend_egl_target_get_native_window(struct wpe_renderer_backend_egl_target* target)
+{
+    return target->interface->get_native_window(target->interface_data);
+}
+
+void
+wpe_renderer_backend_egl_target_resize(struct wpe_renderer_backend_egl_target* target, uint32_t width, uint32_t height)
+{
+    target->interface->resize(target->interface_data, width, height);
+}
+
+void
+wpe_renderer_backend_egl_target_frame_rendered(struct wpe_renderer_backend_egl_target* target)
+{
+    target->interface->frame_rendered(target->interface_data);
+}
+
+struct wpe_renderer_backend_egl_offscreen_target*
+wpe_renderer_backend_egl_offscreen_target_create()
+{
+    struct wpe_renderer_backend_egl_offscreen_target* target = malloc(sizeof(struct wpe_renderer_backend_egl_offscreen_target));
+    if (!target)
+        return 0;
+
+    // FIXME: Don't hard-code it.
+    target->interface = &gbm_renderer_backend_egl_offscreen_target_interface;
+    target->interface_data = target->interface->create();
+
+    return target;
+}
+
+void
+wpe_renderer_backend_egl_offscreen_target_destroy(struct wpe_renderer_backend_egl_offscreen_target* target)
+{
+    target->interface->destroy(target->interface_data);
+    target->interface_data = 0;
+
+    free(target);
+}
+
+void
+wpe_renderer_backend_egl_offscreen_target_initialize(struct wpe_renderer_backend_egl_offscreen_target* target, struct wpe_renderer_backend_egl* backend)
+{
+    target->interface->initialize(target->interface_data, backend->interface_data);
+}
+
+EGLNativeWindowType
+wpe_renderer_backend_egl_offscreen_target_get_native_window(struct wpe_renderer_backend_egl_offscreen_target* target)
+{
+    return target->interface->get_native_window(target->interface_data);
+}

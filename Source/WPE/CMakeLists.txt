@@ -64,6 +64,9 @@ set(WPE_SOURCES
     Source/Pasteboard/Pasteboard.cpp
 
     Source/Pasteboard/Generic/PasteboardGeneric.cpp
+
+    Source/wpe/renderer.c
+    Source/wpe/view-backend.c
 )
 
 if (USE_WPE_BUFFER_MANAGEMENT_GBM)
