@@ -21,9 +21,5 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> CompositingManagerProxy {
-    EstablishConnection(IPC::Attachment encodedConnectionIdentifier) -> ()
-
-    ConstructRenderingTarget(uint32_t width, uint32_t height) -> (uint32_t handle)
-    CommitBuffer(IPC::Attachment fd, IPC::DataReference bufferParameters)
-    DestroyBuffer(uint32_t handle)
+    EstablishConnection() -> (IPC::Attachment connectionHandle)
 }

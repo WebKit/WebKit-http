@@ -26,9 +26,7 @@
 #ifndef CompositingManagerProxy_h
 #define CompositingManagerProxy_h
 
-#include "Connection.h"
 #include "MessageReceiver.h"
-#include <WPE/ViewBackend/ViewBackend.h>
 
 namespace IPC {
 class Attachment;
@@ -40,9 +38,7 @@ class View;
 
 namespace WebKit {
 
-class WebPageProxy;
-
-class CompositingManagerProxy final : public IPC::Connection::Client, public WPE::ViewBackend::Client {
+class CompositingManagerProxy final : public IPC::MessageReceiver {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     CompositingManagerProxy(WKWPE::View&);
@@ -55,29 +51,12 @@ public:
 
 private:
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override { }
     virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>& replyEncoder) override;
 
-    // IPC::Connection::Client
-    void didClose(IPC::Connection&) override { }
-    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { }
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::UI; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Web; }
-
-    void establishConnection(IPC::Attachment);
-
-    void constructRenderingTarget(uint32_t, uint32_t, uint32_t& handle);
-    void commitBuffer(const IPC::Attachment&, const IPC::DataReference&);
-    void destroyBuffer(uint32_t);
-
-    // WPE::ViewBackend::Client
-    void releaseBuffer(uint32_t) override;
-    void frameComplete() override;
-    void setSize(uint32_t, uint32_t) override;
+    void establishConnection(IPC::Attachment&);
 
     WKWPE::View& m_view;
-
-    RefPtr<IPC::Connection> m_connection;
 };
 
 } // namespace WebKit

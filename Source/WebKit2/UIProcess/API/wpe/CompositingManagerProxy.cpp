@@ -27,11 +27,10 @@
 #include "CompositingManagerProxy.h"
 
 #include "Attachment.h"
-#include "CompositingManagerMessages.h"
 #include "CompositingManagerProxyMessages.h"
-#include "DrawingAreaMessages.h"
 #include "WPEView.h"
 #include "WebProcessProxy.h"
+#include <wpe/view-backend.h>
 
 namespace WebKit {
 
@@ -41,46 +40,11 @@ CompositingManagerProxy::CompositingManagerProxy(WKWPE::View& view)
     m_view.page().process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_view.page().pageID(), *this);
 }
 
-CompositingManagerProxy::~CompositingManagerProxy()
-{
-    m_connection->invalidate();
-}
+CompositingManagerProxy::~CompositingManagerProxy() = default;
 
-void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnectionIdentifier)
+void CompositingManagerProxy::establishConnection(IPC::Attachment& connectionHandle)
 {
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.releaseFileDescriptor());
-    m_connection = IPC::Connection::createClientConnection(connectionIdentifier, *this, RunLoop::main());
-    m_connection->open();
-}
-
-void CompositingManagerProxy::constructRenderingTarget(uint32_t width, uint32_t height, uint32_t& handle)
-{
-    handle = m_view.viewBackend().constructRenderingTarget(width, height);
-}
-
-void CompositingManagerProxy::commitBuffer(const IPC::Attachment& fd, const IPC::DataReference& bufferData)
-{
-    m_view.viewBackend().commitBuffer(fd.fileDescriptor(), bufferData.data(), bufferData.size());
-}
-
-void CompositingManagerProxy::destroyBuffer(uint32_t handle)
-{
-    m_view.viewBackend().destroyBuffer(handle);
-}
-
-void CompositingManagerProxy::releaseBuffer(uint32_t handle)
-{
-    m_connection->send(Messages::CompositingManager::ReleaseBuffer(handle), 0);
-}
-
-void CompositingManagerProxy::frameComplete()
-{
-    m_connection->send(Messages::CompositingManager::FrameComplete(), 0);
-}
-
-void CompositingManagerProxy::setSize(uint32_t width, uint32_t height)
-{
-    m_view.setSize(WebCore::IntSize(width, height));
+    connectionHandle = IPC::Attachment(wpe_view_backend_get_renderer_host_fd(m_view.backend()));
 }
 
 } // namespace WebKit
