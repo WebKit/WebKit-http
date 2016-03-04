@@ -26,55 +26,23 @@
 #ifndef CompositingManager_h
 #define CompositingManager_h
 
-#include "Connection.h"
-#include "MessageReceiver.h"
-#include <WebCore/PlatformDisplayWPE.h>
+#include <wtf/Noncopyable.h>
 
 namespace WebKit {
 
 class WebPage;
 
-class CompositingManager final : public IPC::Connection::Client, public WebCore::PlatformDisplayWPE::Surface::Client {
-    WTF_MAKE_FAST_ALLOCATED;
+class CompositingManager final {
+    WTF_MAKE_NONCOPYABLE(CompositingManager);
 public:
-    class Client {
-    public:
-        virtual void releaseBuffer(uint32_t) = 0;
-        virtual void frameComplete() = 0;
-    };
+    CompositingManager() = default;
+    ~CompositingManager();
 
-    CompositingManager(Client&);
-    virtual ~CompositingManager();
-
-    void establishConnection(WebPage&, WTF::RunLoop&);
-
-    uint32_t constructRenderingTarget(uint32_t, uint32_t);
-    void commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport&);
-
-    CompositingManager(const CompositingManager&) = delete;
-    CompositingManager& operator=(const CompositingManager&) = delete;
-    CompositingManager(CompositingManager&&) = delete;
-    CompositingManager& operator=(CompositingManager&&) = delete;
+    void establishConnection(WebPage&);
+    int releaseConnectionFd() { return std::exchange(m_connectionFd, -1); };
 
 private:
-    // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-
-    // IPC::Connection::Client
-    void didClose(IPC::Connection&) override { }
-    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { }
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
-
-    // PlatformDisplayWPE::Surface::Client
-    void destroyBuffer(uint32_t) override;
-
-    void releaseBuffer(uint32_t);
-    void frameComplete();
-
-    Client& m_client;
-
-    RefPtr<IPC::Connection> m_connection;
+    int m_connectionFd { -1 };
 };
 
 } // namespace WebKit

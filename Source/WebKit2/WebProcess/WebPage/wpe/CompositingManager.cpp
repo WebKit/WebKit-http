@@ -26,61 +26,23 @@
 #include "config.h"
 #include "CompositingManager.h"
 
-#include "CompositingManagerMessages.h"
 #include "CompositingManagerProxyMessages.h"
-#include "DataReference.h"
 #include "WebPage.h"
-#include "WebProcess.h"
 
 namespace WebKit {
 
-CompositingManager::CompositingManager(Client& client)
-    : m_client(client)
+CompositingManager::~CompositingManager()
 {
+    ASSERT(m_connectionFd == -1);
 }
 
-CompositingManager::~CompositingManager() = default;
-
-void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& runLoop)
+void CompositingManager::establishConnection(WebPage& webPage)
 {
-    IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
-    IPC::Connection::Identifier connectionIdentifier(socketPair.server);
-    IPC::Attachment connectionClientPort(socketPair.client);
+    IPC::Attachment connectionHandle;
+    webPage.sendSync(Messages::CompositingManagerProxy::EstablishConnection(),
+        Messages::CompositingManagerProxy::EstablishConnection::Reply(connectionHandle), webPage.pageID());
 
-    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, runLoop);
-    m_connection->open();
-    webPage.sendSync(Messages::CompositingManagerProxy::EstablishConnection(connectionClientPort),
-        Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
-}
-
-uint32_t CompositingManager::constructRenderingTarget(uint32_t width, uint32_t height)
-{
-    uint32_t handle = 0;
-    m_connection->sendSync(Messages::CompositingManagerProxy::ConstructRenderingTarget(width, height),
-        Messages::CompositingManagerProxy::ConstructRenderingTarget::Reply(handle), 0);
-    return handle;
-}
-
-void CompositingManager::commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport& bufferExport)
-{
-    m_connection->send(Messages::CompositingManagerProxy::CommitBuffer(
-        IPC::Attachment(std::get<0>(bufferExport)),
-        IPC::DataReference(std::get<1>(bufferExport), std::get<2>(bufferExport))), 0);
-}
-
-void CompositingManager::destroyBuffer(uint32_t handle)
-{
-    m_connection->send(Messages::CompositingManagerProxy::DestroyBuffer(handle), 0);
-}
-
-void CompositingManager::releaseBuffer(uint32_t handle)
-{
-    m_client.releaseBuffer(handle);
-}
-
-void CompositingManager::frameComplete()
-{
-    m_client.frameComplete();
+    m_connectionFd = connectionHandle.releaseFileDescriptor();
 }
 
 } // namespace WebKit
