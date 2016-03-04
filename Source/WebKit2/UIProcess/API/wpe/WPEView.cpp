@@ -27,13 +27,13 @@
 #include "WPEView.h"
 
 #include "APIPageConfiguration.h"
-#include "CompositingManagerProxy.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebTouchEvent.h"
 #include "NativeWebWheelEvent.h"
 #include "WebPageGroup.h"
 #include "WebProcessPool.h"
+#include <wpe/view-backend.h>
 
 using namespace WebKit;
 
@@ -41,8 +41,8 @@ namespace WKWPE {
 
 View::View(const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
-    , m_viewBackend(WPE::ViewBackend::ViewBackend::create())
     , m_size{ 800, 600 }
+    , m_compositingManagerProxy(*this)
 {
     auto configuration = baseConfiguration.copy();
     auto* preferences = configuration->preferences();
@@ -62,18 +62,33 @@ View::View(const API::PageConfiguration& baseConfiguration)
     auto* pool = configuration->processPool();
     m_pageProxy = pool->createWebPage(*m_pageClient, WTFMove(configuration));
 
-    // Construct the CompositingManagerProxy before initializing the WebPageProxy.
-    m_compositingManagerProxy = std::make_unique<CompositingManagerProxy>(*this);
-    m_viewBackend->setClient(m_compositingManagerProxy.get());
-    m_viewBackend->setInputClient(this);
+    m_backend = wpe_view_backend_create();
+    m_compositingManagerProxy.initialize();
+
+    static struct wpe_view_backend_client s_backendClient = {
+        // set_size
+        [](void* data, uint32_t width, uint32_t height)
+        {
+            auto& view = *reinterpret_cast<View*>(data);
+            view.setSize(WebCore::IntSize(width, height));
+        },
+    };
+    wpe_view_backend_set_backend_client(m_backend, &s_backendClient, this);
+
+    static struct wpe_view_backend_input_client s_inputClient = {
+        // dummy
+        [] { },
+    };
+    wpe_view_backend_set_input_client(m_backend, &s_inputClient, this);
+
+    wpe_view_backend_initialize(m_backend);
 
     m_pageProxy->initializeWebPage();
 }
 
 View::~View()
 {
-    m_viewBackend->setClient(nullptr);
-    m_viewBackend->setInputClient(nullptr);
+    wpe_view_backend_destroy(m_backend);
 }
 
 void View::setSize(const WebCore::IntSize& size)

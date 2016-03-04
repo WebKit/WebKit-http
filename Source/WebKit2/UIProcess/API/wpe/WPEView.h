@@ -27,15 +27,16 @@
 #define WPEView_h
 
 #include "APIObject.h"
+#include "CompositingManagerProxy.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
 #include <WPE/Input/Handling.h>
-#include <WPE/ViewBackend/ViewBackend.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
+struct wpe_view_backend;
+
 namespace WebKit {
-class CompositingManagerProxy;
 class WebPageGroup;
 class WebProcessPool;
 }
@@ -51,7 +52,7 @@ public:
 
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
-    WPE::ViewBackend::ViewBackend& viewBackend() { return *m_viewBackend; }
+    struct wpe_view_backend* backend() { return m_backend; }
 
     const WebCore::IntSize& size() const { return m_size; }
     void setSize(const WebCore::IntSize& size);
@@ -68,9 +69,10 @@ private:
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
-    std::unique_ptr<WPE::ViewBackend::ViewBackend> m_viewBackend;
-    std::unique_ptr<WebKit::CompositingManagerProxy> m_compositingManagerProxy;
     WebCore::IntSize m_size;
+
+    WebKit::CompositingManagerProxy m_compositingManagerProxy;
+    struct wpe_view_backend* m_backend;
 };
 
 } // namespace WKWPE
