@@ -52,8 +52,6 @@ set(WPE_LIBRARIES
 )
 
 set(WPE_SOURCES
-    Source/Graphics/RenderingBackend.cpp
-
     Source/Input/Handling.cpp
     Source/Input/KeyboardEventRepeating.cpp
 
@@ -66,8 +64,6 @@ set(WPE_SOURCES
     Source/Pasteboard/Pasteboard.cpp
 
     Source/Pasteboard/Generic/PasteboardGeneric.cpp
-
-    Source/ViewBackend/ViewBackend.cpp
 )
 
 if (USE_WPE_BUFFER_MANAGEMENT_GBM)
@@ -79,8 +75,6 @@ if (USE_WPE_BUFFER_MANAGEMENT_GBM)
         ${LIBGBM_LIBRARIES}
     )
     list(APPEND WPE_SOURCES
-        Source/Graphics/GBM/BufferDataGBM.cpp
-        Source/Graphics/GBM/RenderingBackendGBM.cpp
     )
 endif ()
 
@@ -93,7 +87,6 @@ if (USE_WPE_BACKEND_DRM)
         ${LIBDRM_LIBRARIES}
     )
     list(APPEND WPE_SOURCES
-        Source/ViewBackend/DRM/ViewBackendDRM.cpp
     )
 endif ()
 
@@ -101,7 +94,6 @@ if (USE_WPE_BACKEND_WAYLAND)
     list(APPEND WPE_SOURCES
         Source/Pasteboard/Wayland/PasteboardWayland.cpp
 
-        Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
 
         Source/ViewBackend/Wayland/Protocols/ivi-application-protocol.c
