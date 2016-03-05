@@ -2991,6 +2991,12 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return zoomAdjustedPixelValueForLength(style->minWidth(), *style);
         case CSSPropertyObjectFit:
             return cssValuePool.createValue(style->objectFit());
+        case CSSPropertyObjectPosition: {
+            RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+            list->append(zoomAdjustedPixelValueForLength(style->objectPosition().x(), *style));
+            list->append(zoomAdjustedPixelValueForLength(style->objectPosition().y(), *style));
+            return list;
+        }
         case CSSPropertyOpacity:
             return cssValuePool.createValue(style->opacity(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyOrphans:
