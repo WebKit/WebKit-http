@@ -738,9 +738,9 @@ bool FrameLoaderClientQt::canHandleRequest(const WebCore::ResourceRequest&) cons
     return true;
 }
 
-void FrameLoaderClientQt::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)
+void FrameLoaderClientQt::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld &world)
 {
-    if (world != mainThreadNormalWorld())
+    if (&world != &mainThreadNormalWorld())
         return;
 
     if (m_webFrame)
@@ -986,14 +986,12 @@ bool FrameLoaderClientQt::shouldFallBack(const WebCore::ResourceError& error)
     return true;
 }
 
-WTF::PassRefPtr<WebCore::DocumentLoader> FrameLoaderClientQt::createDocumentLoader(const WebCore::ResourceRequest& request, const SubstituteData& substituteData)
+Ref<WebCore::DocumentLoader> FrameLoaderClientQt::createDocumentLoader(const WebCore::ResourceRequest& request, const SubstituteData& substituteData)
 {
-    RefPtr<DocumentLoader> loader = DocumentLoader::create(request, substituteData);
+    Ref<DocumentLoader> loader = DocumentLoader::create(request, substituteData);
     if (!deferMainResourceDataLoad || substituteData.isValid())
         loader->setDeferMainResourceDataLoad(false);
-    else
-        m_frame->page()->setCustomHTMLTokenizerTimeDelay(-1);
-    return loader.release();
+    return loader;
 }
 
 void FrameLoaderClientQt::convertMainResourceLoadToDownload(WebCore::DocumentLoader* documentLoader, const WebCore::ResourceRequest& request, const WebCore::ResourceResponse&)
@@ -1314,7 +1312,7 @@ void FrameLoaderClientQt::startDownload(const WebCore::ResourceRequest& request,
     m_webFrame->pageAdapter->emitDownloadRequested(request.toNetworkRequest(m_frame->loader().networkingContext()));
 }
 
-PassRefPtr<Frame> FrameLoaderClientQt::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement* ownerElement, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
+RefPtr<Frame> FrameLoaderClientQt::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement* ownerElement, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
 {
     if (!m_webFrame)
         return 0;
@@ -1478,7 +1476,7 @@ private:
 };
 
 
-PassRefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTMLPlugInElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)
+RefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTMLPlugInElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)
 {
 #if PLUGIN_VIEW_IS_BROKEN
     return nullptr;

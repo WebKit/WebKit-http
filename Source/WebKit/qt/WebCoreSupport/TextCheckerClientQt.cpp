@@ -76,21 +76,23 @@ String TextCheckerClientQt::getAutoCorrectSuggestionForMisspelledWord(const Stri
     return m_spellChecker->autoCorrectSuggestionForMisspelledWord(misspelledWord);
 }
 
-void TextCheckerClientQt::checkSpellingOfString(const UChar* buffer, int length, int* misspellingLocation, int* misspellingLength)
+void TextCheckerClientQt::checkSpellingOfString(StringView view, int* misspellingLocation, int* misspellingLength)
 {
     if (!loadSpellChecker())
         return;
 
-    const QString text = QString::fromRawData(reinterpret_cast<const QChar*>(buffer), length);
+    // FIXME: Check if we can pass StringView or QStringRef further
+    const QString text = view.toStringWithoutCopying();
     m_spellChecker->checkSpellingOfString(text, misspellingLocation, misspellingLength);
 }
 
-void TextCheckerClientQt::checkGrammarOfString(const UChar* buffer, int length, Vector<GrammarDetail>& details, int* badGrammarLocation, int* badGrammarLength)
+void TextCheckerClientQt::checkGrammarOfString(StringView view, Vector<GrammarDetail>& details, int* badGrammarLocation, int* badGrammarLength)
 {
     if (!loadSpellChecker())
         return;
 
-    const QString text = QString::fromRawData(reinterpret_cast<const QChar*>(buffer), length);
+    // FIXME: Check if we can pass StringView or QStringRef further
+    const QString text = view.toStringWithoutCopying();
 
     // Do Grammer check.
     QList<QWebSpellChecker::GrammarDetail> qGrammarDetails;

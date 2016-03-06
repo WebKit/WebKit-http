@@ -27,7 +27,7 @@
 #include "DragClientQt.h"
 
 #include "ChromeClient.h"
-#include "Clipboard.h"
+#include "DataTransfer.h"
 #include "DragController.h"
 #include "EventHandler.h"
 #include "Frame.h"
@@ -67,12 +67,12 @@ static inline DragOperation dropActionToDragOperation(Qt::DropActions action)
     return result;
 }
 
-DragDestinationAction DragClientQt::actionMaskForDrag(DragData*)
+DragDestinationAction DragClientQt::actionMaskForDrag(DragData&)
 {
     return DragDestinationActionAny;
 }
 
-void DragClientQt::willPerformDragDestinationAction(DragDestinationAction, DragData*)
+void DragClientQt::willPerformDragDestinationAction(DragDestinationAction, DragData&)
 {
 }
 
@@ -86,11 +86,11 @@ DragSourceAction DragClientQt::dragSourceActionMaskForPoint(const IntPoint&)
     return DragSourceActionAny;
 }
 
-void DragClientQt::willPerformDragSourceAction(DragSourceAction, const IntPoint&, Clipboard*)
+void DragClientQt::willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&)
 {
 }
 
-void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, Clipboard* clipboard, Frame* frame, bool)
+void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, DataTransfer& clipboard, Frame& frame, bool)
 {
 #ifndef QT_NO_DRAGANDDROP
     QMimeData* clipboardData = clipboard->pasteboard().clipboardData();

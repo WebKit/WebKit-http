@@ -759,12 +759,12 @@ bool ChromeClientQt::hasOpenedPopup() const
     return false;
 }
 
-PassRefPtr<PopupMenu> ChromeClientQt::createPopupMenu(PopupMenuClient* client) const
+RefPtr<PopupMenu> ChromeClientQt::createPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new PopupMenuQt(client, this));
 }
 
-PassRefPtr<SearchPopupMenu> ChromeClientQt::createSearchPopupMenu(PopupMenuClient* client) const
+RefPtr<SearchPopupMenu> ChromeClientQt::createSearchPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new SearchPopupMenuQt(createPopupMenu(client)));
 }

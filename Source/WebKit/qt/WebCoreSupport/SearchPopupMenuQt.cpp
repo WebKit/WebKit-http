@@ -19,11 +19,12 @@
  */
 
 #include "config.h"
+#include "PopupMenu.h"
 #include "SearchPopupMenuQt.h"
 
 namespace WebCore {
 
-SearchPopupMenuQt::SearchPopupMenuQt(PassRefPtr<PopupMenu> popup)
+SearchPopupMenuQt::SearchPopupMenuQt(RefPtr<PopupMenu>&& popup)
     : m_popup(popup)
 {
 }
@@ -33,11 +34,11 @@ PopupMenu* SearchPopupMenuQt::popupMenu()
     return m_popup.get();
 }
 
-void SearchPopupMenuQt::saveRecentSearches(const AtomicString&, const Vector<String>&)
+void SearchPopupMenuQt::saveRecentSearches(const WTF::AtomicString& name, const Vector<RecentSearch>&)
 {
 }
 
-void SearchPopupMenuQt::loadRecentSearches(const AtomicString&, Vector<String>&)
+void SearchPopupMenuQt::loadRecentSearches(const WTF::AtomicString& name, Vector<RecentSearch>&)
 {
 }
 

@@ -194,7 +194,7 @@ public:
     virtual void didFinishLoad();
     virtual void prepareForDataSourceReplacement();
 
-    virtual WTF::PassRefPtr<WebCore::DocumentLoader> createDocumentLoader(const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
+    virtual Ref<WebCore::DocumentLoader> createDocumentLoader(const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
     virtual void setTitle(const StringWithDirection&, const URL&);
 
     virtual String userAgent(const WebCore::URL&);
@@ -211,8 +211,8 @@ public:
     virtual bool canCachePage() const;
     virtual void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 
-    virtual PassRefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement*, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight);
-    virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool);
+    virtual RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement*, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight);
+    virtual RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool);
     virtual void recreatePlugin(Widget*) { }
     virtual void redirectDataToPlugin(Widget* pluginWidget);
 
@@ -221,7 +221,7 @@ public:
     virtual ObjectContentType objectContentType(const URL&, const String& mimeTypeIn, bool shouldPreferPlugInsForImages);
     virtual String overrideMediaType() const;
 
-    virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld*);
+    void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) override;
     virtual void documentElementAvailable();
     virtual void didPerformFirstNavigation() const;
 
