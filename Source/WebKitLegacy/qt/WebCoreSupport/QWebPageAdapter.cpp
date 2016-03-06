@@ -810,10 +810,10 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
             if (frame->document() && frame->document()->focusedElement()) {
                 if (is<HTMLInputElement>(frame->document()->focusedElement())) {
                     HTMLInputElement* inputElement = downcast<HTMLInputElement>(frame->document()->focusedElement());
-                    return QVariant(inputElement->maxLength());
+                    return QVariant(inputElement->effectiveMaxLength());
                 }
             }
-            return QVariant(HTMLInputElement::maximumLength);
+            return QVariant(HTMLInputElement::maxEffectiveLength);
         }
         return QVariant(0);
     }
