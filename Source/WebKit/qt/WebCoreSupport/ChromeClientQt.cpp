@@ -779,4 +779,24 @@ void ChromeClientQt::populateVisitedLinks()
     }
 }
 
+void ChromeClientQt::exceededDatabaseQuota(WebCore::Frame*, const WTF::String& databaseName, WebCore::DatabaseDetails)
+{
+}
+
+void ChromeClientQt::attachRootGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*)
+{
+}
+
+void ChromeClientQt::attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*)
+{
+}
+
+void ChromeClientQt::setNeedsOneShotDrawingSynchronization()
+{
+}
+
+void ChromeClientQt::scheduleCompositingLayerFlush()
+{
+}
+
 } // namespace WebCore

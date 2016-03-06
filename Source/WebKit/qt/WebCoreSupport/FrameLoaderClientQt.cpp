@@ -1635,6 +1635,32 @@ void FrameLoaderClientQt::emitLoadFinished(bool ok)
     m_webFrame->emitLoadFinished(wasOriginatingLoad, ok);
 }
 
+void FrameLoaderClientQt::willReplaceMultipartContent()
+{
+    notImplemented();
+}
+
+void FrameLoaderClientQt::didReplaceMultipartContent()
+{
+    notImplemented();
+}
+
+WebCore::ResourceError FrameLoaderClientQt::blockedByContentBlockerError(const WebCore::ResourceRequest &)
+{
+    notImplemented();
+    return WebCore::ResourceError();
+}
+
+void FrameLoaderClientQt::updateCachedDocumentLoader(WebCore::DocumentLoader &)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientQt::prefetchDNS(const WTF::String &)
+{
+    notImplemented();
+}
+
 }
 
 #include "moc_FrameLoaderClientQt.cpp"

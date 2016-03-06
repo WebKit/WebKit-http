@@ -199,6 +199,12 @@ public:
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
 
+    void exceededDatabaseQuota(Frame *, const WTF::String &databaseName, DatabaseDetails) override;
+    void attachRootGraphicsLayer(Frame *, GraphicsLayer *) override;
+    void attachViewOverlayGraphicsLayer(Frame *, GraphicsLayer *) override;
+    void setNeedsOneShotDrawingSynchronization() override;
+    void scheduleCompositingLayerFlush() override;
+
     QWebFullScreenVideoHandler* createFullScreenVideoHandler();
 
     QWebPageAdapter* m_webPage;

@@ -107,6 +107,11 @@ public:
 
     bool supportsGlobalSelection() override;
 
+    void didApplyStyle() override;
+    void didChangeSelectionAndUpdateLayout() override;
+    void discardedComposition(Frame *) override;
+    void overflowScrollPositionChanged() override;
+
     bool isEditing() const;
 
     static bool dumpEditingCallbacks;

@@ -645,6 +645,23 @@ bool EditorClientQt::supportsGlobalSelection()
 #endif
 }
 
+
+void EditorClientQt::didApplyStyle()
+{
+}
+
+void EditorClientQt::didChangeSelectionAndUpdateLayout()
+{
+}
+
+void EditorClientQt::discardedComposition(Frame *)
+{
+}
+
+void EditorClientQt::overflowScrollPositionChanged()
+{
+}
+
 }
 
 // vim: ts=4 sw=4 et
