@@ -58,6 +58,9 @@
 #include "ScrollbarTheme.h"
 #include "StyleResolver.h"
 #include "TimeRanges.h"
+#if ENABLE(VIDEO)
+#include "UserAgentScripts.h"
+#endif
 #include "UserAgentStyleSheets.h"
 #include <wtf/text/StringBuilder.h>
 
@@ -540,6 +543,21 @@ bool RenderThemeQt::supportsFocus(ControlPart appearance) const
 }
 
 #if ENABLE(VIDEO)
+String RenderThemeQt::mediaControlsStyleSheet()
+{
+    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
+}
+
+String RenderThemeQt::mediaControlsScript()
+{
+    StringBuilder scriptBuilder;
+    scriptBuilder.append(mediaControlsLocalizedStringsJavaScript, sizeof(mediaControlsLocalizedStringsJavaScript));
+    scriptBuilder.append(mediaControlsBaseJavaScript, sizeof(mediaControlsBaseJavaScript));
+    return scriptBuilder.toString();
+}
+#endif
+
+#if 0 // ENABLE(VIDEO)
 
 String RenderThemeQt::extraMediaControlsStyleSheet()
 {

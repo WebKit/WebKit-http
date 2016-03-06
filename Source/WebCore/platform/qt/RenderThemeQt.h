@@ -91,8 +91,12 @@ public:
 
     bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color&) const override;
 
-#if ENABLE(VIDEO)
+#if 0 //ENABLE(VIDEO)
     virtual String extraMediaControlsStyleSheet();
+#endif
+#if ENABLE(VIDEO)
+    String mediaControlsStyleSheet() override;
+    String mediaControlsScript() override;
 #endif
 
 protected:
@@ -141,7 +145,7 @@ protected:
     void adjustInnerSpinButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 #endif
 
-#if ENABLE(VIDEO)
+#if 0 //ENABLE(VIDEO)
     virtual bool paintMediaFullscreenButton(const RenderObject&, const PaintInfo&, const IntRect&);
     virtual bool paintMediaPlayButton(const RenderObject&, const PaintInfo&, const IntRect&);
     virtual bool paintMediaMuteButton(const RenderObject&, const PaintInfo&, const IntRect&);

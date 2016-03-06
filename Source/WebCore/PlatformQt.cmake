@@ -187,9 +187,9 @@ list(APPEND WebCore_LIBRARIES
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
-    ${WEBCORE_DIR}/css/mediaControlsGtk.css
-    ${WEBCORE_DIR}/css/mediaControlsQt.css
-    ${WEBCORE_DIR}/css/mediaControlsQtFullscreen.css
+#    ${WEBCORE_DIR}/css/mediaControlsGtk.css
+#    ${WEBCORE_DIR}/css/mediaControlsQt.css
+#    ${WEBCORE_DIR}/css/mediaControlsQtFullscreen.css
     ${WEBCORE_DIR}/css/mobileThemeQt.css
     ${WEBCORE_DIR}/css/themeQtNoListboxes.css
 )
