@@ -37,6 +37,7 @@
 #include "qwebpluginfactory.h"
 #include "WebResourceLoadScheduler.h"
 
+#include <BlobRegistryImpl.h>
 #include <IntSize.h>
 #include <NotImplemented.h>
 #include <Page.h>
@@ -182,4 +183,9 @@ void PlatformStrategiesQt::getPluginInfo(const WebCore::Page* page, Vector<WebCo
 
 void PlatformStrategiesQt::getWebVisiblePluginInfo(const Page*, Vector<PluginInfo>&)
 {
+}
+
+BlobRegistry* PlatformStrategiesQt::createBlobRegistry()
+{
+    return new BlobRegistryImpl;
 }

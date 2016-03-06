@@ -62,6 +62,9 @@ private:
     virtual void refreshPlugins();
     virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&);
     void getWebVisiblePluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
+
+    // PlatformStrategies interface
+    WebCore::BlobRegistry* createBlobRegistry() override;
 };
 
 #endif // PlatformStrategiesQt_h
