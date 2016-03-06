@@ -137,13 +137,15 @@ _PATH_RULES_SPECIFIER = [
     ([# TestNetscapePlugIn has no config.h and uses funny names like
       # NPP_SetWindow.
       os.path.join('Tools', 'DumpRenderTree', 'TestNetscapePlugIn'),
-      # The API test harnesses have no config.h and use funny macros like
-      # TEST_CLASS_NAME.
-      os.path.join('Tools', 'WebKitAPITest'),
-      os.path.join('Tools', 'TestWebKitAPI'),
-      os.path.join('Source', 'WebKit', 'qt', 'tests', 'qdeclarativewebview')],
+      # Qt tests and examples follow Qt coding style
+      os.path.join('Source', 'WebKit', 'qt', 'docs'),
+      os.path.join('Source', 'WebKit', 'qt', 'examples'),
+      os.path.join('Source', 'WebKit', 'qt', 'tests')],
      ["-build/include",
-      "-readability/naming"]),
+      "-readability/naming",
+      "-readability/parameter_name",
+      "-whitespace/braces",
+      "-whitespace/comments"]),
     ([# There is no clean way to avoid "yy_*" names used by flex.
       os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp'),
       # TestWebKitAPI uses funny macros like EXPECT_WK_STREQ.
@@ -157,21 +159,21 @@ _PATH_RULES_SPECIFIER = [
      ["-readability/naming"]),
 
     ([# The Qt APIs use Qt declaration style, it puts the * to
-      # the variable name, not to the class.
+      # the variable name, not to the class, and variables should
+      # always be named in headers.
+      # Also header guards are named differently
       "Source/WebKit/qt/Api/",
-      "Source/WebKit/qt/WidgetApi/"],
-     ["-readability/naming",
+      "Source/WebKit/qt/WidgetApi/",
+      "Source/WebKit2/UIProcess/API/qt"],
+     ["-build/header_guard",
+      "-readability/naming",
+      "-readability/parameter_name",
       "-whitespace/declaration"]),
 
      ([# Qt's MiniBrowser has no config.h
        "Tools/MiniBrowser/qt",
        "Tools/MiniBrowser/qt/raw"],
       ["-build/include"]),
-
-    ([# The Qt APIs use Qt/QML naming style, which includes
-      # naming parameters in h files.
-      "Source/WebKit2/UIProcess/API/qt"],
-     ["-readability/parameter_name"]),
 
     ([# The GTK+ APIs use GTK+ naming style, which includes
       # lower-cased, underscore-separated values, whitespace before

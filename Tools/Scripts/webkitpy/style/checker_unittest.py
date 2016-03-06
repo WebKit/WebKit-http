@@ -239,10 +239,15 @@ class GlobalVariablesTest(unittest.TestCase):
                       "readability/naming")
         assertNoCheck("Source/WebKit/qt/tests/qwebelement/tst_qwebelement.cpp",
                       "readability/naming")
+        assertNoCheck("Source/WebKit/qt/tests/qwebelement/tst_qwebelement.cpp",
+                      "whitespace/braces")
         assertNoCheck("Source/WebKit/qt/declarative/platformplugin/WebPlugin.cpp",
                       "readability/naming")
         assertNoCheck("Source/WebKit/qt/examples/platformplugin/WebPlugin.cpp",
                       "readability/naming")
+
+        assertNoCheck(os.path.join('Source', 'WebKit', 'qt', 'WidgetApi', 'qwebpage.h'),
+                      "readability/parameter_name")
 
         assertNoCheck("Tools/MiniBrowser/qt/UrlLoader.cpp",
                     "build/include")
