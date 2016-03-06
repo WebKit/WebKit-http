@@ -514,8 +514,13 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
         }
 
-        if (statusCode == 401)
+        if (statusCode == 401) {
             AuthenticationNeeded(httpRequest, response);
+            // AuthenticationNeeded may have aborted the request
+            // so we need to make sure we can continue.
+            if (!m_resourceHandle)
+                return;
+        }
     }
 
     ResourceHandleClient* client = m_resourceHandle->client();
