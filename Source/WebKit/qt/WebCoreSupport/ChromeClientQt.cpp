@@ -419,7 +419,7 @@ IntRect ChromeClientQt::windowResizerRect() const
 #endif
 }
 
-void ChromeClientQt::invalidateRootView(const IntRect& windowRect, bool)
+void ChromeClientQt::invalidateRootView(const IntRect& windowRect)
 {
 #if USE(TILED_BACKING_STORE)
     if (platformPageClient()) {
@@ -433,7 +433,7 @@ void ChromeClientQt::invalidateRootView(const IntRect& windowRect, bool)
 #endif
 }
 
-void ChromeClientQt::invalidateContentsAndRootView(const IntRect& windowRect, bool)
+void ChromeClientQt::invalidateContentsAndRootView(const IntRect& windowRect)
 {
     // No double buffer, so only update the QWidget if content changed.
     if (platformPageClient()) {
@@ -448,9 +448,9 @@ void ChromeClientQt::invalidateContentsAndRootView(const IntRect& windowRect, bo
     // is set.
 }
 
-void ChromeClientQt::invalidateContentsForSlowScroll(const IntRect& windowRect, bool immediate)
+void ChromeClientQt::invalidateContentsForSlowScroll(const IntRect& windowRect)
 {
-    invalidateContentsAndRootView(windowRect, immediate);
+    invalidateContentsAndRootView(windowRect);
 }
 
 void ChromeClientQt::scroll(const IntSize& delta, const IntRect& scrollViewRect, const IntRect&)

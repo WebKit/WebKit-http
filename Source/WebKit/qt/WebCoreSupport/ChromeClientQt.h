@@ -116,9 +116,9 @@ public:
     virtual KeyboardUIMode keyboardUIMode();
     virtual IntRect windowResizerRect() const;
 
-    virtual void invalidateRootView(const IntRect&, bool);
-    virtual void invalidateContentsAndRootView(const IntRect&, bool);
-    virtual void invalidateContentsForSlowScroll(const IntRect&, bool);
+    void invalidateRootView(const IntRect&) override;
+    void invalidateContentsAndRootView(const IntRect&) override;
+    void invalidateContentsForSlowScroll(const IntRect&) override;
     virtual void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
 #if USE(TILED_BACKING_STORE)
     virtual void delegatedScrollRequested(const IntPoint& scrollPoint);
