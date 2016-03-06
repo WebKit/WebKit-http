@@ -38,9 +38,10 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLFormElement.h"
-#include "URL.h"
+#include "ProgressTrackerClient.h"
 #include "ResourceError.h"
 #include "ResourceResponse.h"
+#include "URL.h"
 #include <QUrl>
 #include <qobject.h>
 #include <wtf/Forward.h>
@@ -69,7 +70,7 @@ class ResourceLoader;
 
 struct LoadErrorResetToken;
 
-class FrameLoaderClientQt : public QObject, public FrameLoaderClient {
+class FrameLoaderClientQt : public QObject, public FrameLoaderClient, public ProgressTrackerClient {
     Q_OBJECT
 
     friend class ::QWebFrameAdapter;
@@ -148,9 +149,9 @@ public:
     virtual void revertToProvisionalState(DocumentLoader*) { }
     virtual void setMainDocumentError(DocumentLoader*, const ResourceError&);
 
-    virtual void postProgressStartedNotification();
-    virtual void postProgressEstimateChangedNotification();
-    virtual void postProgressFinishedNotification();
+    void progressStarted(Frame& originatingProgressFrame) override;
+    void progressEstimateChanged(Frame& originatingProgressFrame) override;
+    void progressFinished(Frame& originatingProgressFrame) override;
 
     virtual void setMainFrameDocumentReady(bool);
 

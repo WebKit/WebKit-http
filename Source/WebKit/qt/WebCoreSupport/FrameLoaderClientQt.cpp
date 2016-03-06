@@ -450,7 +450,7 @@ void FrameLoaderClientQt::dispatchDidStartProvisionalLoad()
     if (!m_webFrame)
         return;
     emitLoadStarted();
-    postProgressEstimateChangedNotification();
+    progressEstimateChanged(*m_frame);
     m_webFrame->didStartProvisionalLoad();
 }
 
@@ -563,8 +563,8 @@ void FrameLoaderClientQt::dispatchWillSubmitForm(FramePolicyFunction function, P
     callPolicyFunction(function, PolicyUse);
 }
 
-
-void FrameLoaderClientQt::postProgressStartedNotification()
+// FIXME: should we use Frame& originatingProgressFrame parameter?
+void FrameLoaderClientQt::progressStarted(Frame&)
 {
     if (m_webFrame && m_frame->page())
         m_isOriginatingLoad = true;
@@ -573,13 +573,13 @@ void FrameLoaderClientQt::postProgressStartedNotification()
     m_webFrame->pageAdapter->updateNavigationActions();
 }
 
-void FrameLoaderClientQt::postProgressEstimateChangedNotification()
+void FrameLoaderClientQt::progressEstimateChanged(Frame&)
 {
     if (m_webFrame && m_frame->page())
         emit loadProgress(qRound(m_frame->page()->progress().estimatedProgress() * 100));
 }
 
-void FrameLoaderClientQt::postProgressFinishedNotification()
+void FrameLoaderClientQt::progressFinished(Frame&)
 {
     if (dumpProgressFinishedCallback)
         printf("postProgressFinishedNotification\n");
