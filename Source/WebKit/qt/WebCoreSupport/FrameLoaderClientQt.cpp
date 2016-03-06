@@ -343,7 +343,7 @@ void FrameLoaderClientQt::detachedFromParent3()
 {
 }
 
-void FrameLoaderClientQt::dispatchDidHandleOnloadEvents()
+void FrameLoaderClientQt::dispatchDidDispatchOnloadEvents()
 {
     // Don't need this one.
     if (dumpFrameLoaderCallbacks)
@@ -556,7 +556,7 @@ void FrameLoaderClientQt::cancelPolicyCheck()
 }
 
 
-void FrameLoaderClientQt::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState>)
+void FrameLoaderClientQt::dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction function)
 {
     notImplemented();
     // FIXME: This is surely too simple.
@@ -995,7 +995,7 @@ Ref<WebCore::DocumentLoader> FrameLoaderClientQt::createDocumentLoader(const Web
     return loader;
 }
 
-void FrameLoaderClientQt::convertMainResourceLoadToDownload(WebCore::DocumentLoader* documentLoader, const WebCore::ResourceRequest& request, const WebCore::ResourceResponse&)
+void FrameLoaderClientQt::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, SessionID, const ResourceRequest& request, const ResourceResponse&)
 {
     if (!m_webFrame)
         return;
@@ -1216,7 +1216,7 @@ WebCore::Frame* FrameLoaderClientQt::dispatchCreatePage(const WebCore::Navigatio
     return newPage->mainFrameAdapter()->frame;
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForResponse(FramePolicyFunction function, const WebCore::ResourceResponse& response, const WebCore::ResourceRequest&)
+void FrameLoaderClientQt::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest&, FramePolicyFunction function)
 {
     // We need to call directly here.
     switch (response.httpStatusCode()) {
@@ -1236,7 +1236,7 @@ void FrameLoaderClientQt::dispatchDecidePolicyForResponse(FramePolicyFunction fu
         callPolicyFunction(function, PolicyDownload);
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function, const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<WebCore::FormState>, const WTF::String&)
+void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<WebCore::FormState>, const WTF::String&, FramePolicyFunction function)
 {
     Q_ASSERT(m_webFrame);
     QNetworkRequest r(request.toNetworkRequest(m_frame->loader().networkingContext()));
@@ -1256,7 +1256,7 @@ void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(FramePolicyFunc
     callPolicyFunction(function, PolicyUse);
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function, const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<WebCore::FormState>)
+void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<WebCore::FormState>, FramePolicyFunction function)
 {
     Q_ASSERT(m_webFrame);
     QNetworkRequest r(request.toNetworkRequest(m_frame->loader().networkingContext()));
@@ -1353,7 +1353,7 @@ RefPtr<Frame> FrameLoaderClientQt::createFrame(const URL& url, const String& nam
     return frameData.frame;
 }
 
-ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const String& mimeTypeIn, bool shouldPreferPlugInsForImages)
+ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const String& mimeTypeIn)
 {
     // qDebug()<<" ++++++++++++++++ url is "<<url.string()<<", mime = "<<mimeTypeIn;
     QFileInfo fi(url.path());
