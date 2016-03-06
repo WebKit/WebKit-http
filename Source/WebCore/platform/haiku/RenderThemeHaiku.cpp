@@ -33,6 +33,7 @@
 #include "InputTypeNames.h"
 #include "NotImplemented.h"
 #include "PaintInfo.h"
+#include "RenderElement.h"
 #include "UserAgentScripts.h"
 #include "UserAgentStyleSheets.h"
 #include <ControlLook.h>
