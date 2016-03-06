@@ -77,6 +77,7 @@
 #include "TextIterator.h"
 #include "UndoStepQt.h"
 #include "UserAgentQt.h"
+#include "VisitedLinkStoreQt.h"
 #include "WebDatabaseProvider.h"
 #include "WebEventConversion.h"
 #include "WebKitVersion.h"
@@ -253,6 +254,7 @@ void QWebPageAdapter::initializeWebCorePage()
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::create(
         QWebSettings::globalSettings()->localStoragePath());
+    pageConfiguration.visitedLinkStore = &VisitedLinkStoreQt::singleton();
     page = new Page(pageConfiguration);
 
 #if ENABLE(GEOLOCATION)
@@ -300,9 +302,6 @@ void QWebPageAdapter::initializeWebCorePage()
 #endif
 
     history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardList*>(page->backForward().client()));
-
-    // FIXME: Visited link tracking was removed in r176670
-    //PageGroup::setShouldTrackVisitedLinks(true);
 }
 
 QWebPageAdapter::~QWebPageAdapter()

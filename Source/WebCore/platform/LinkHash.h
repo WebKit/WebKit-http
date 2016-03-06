@@ -63,6 +63,13 @@ WEBCORE_EXPORT LinkHash visitedLinkHash(const UChar* url, unsigned length);
 // look like a relative URL.
 LinkHash visitedLinkHash(const URL& base, const AtomicString& attributeURL);
 
+#if PLATFORM(QT)
+// Resolves the potentially relative URL "attributeURL" relative to the given
+// base URL, and returns the hash of the string that will be used for visited.
+// It will return an empty Vector in case of errors.
+void visitedURL(const URL& base, const AtomicString& attributeURL, Vector<UChar, 512>&);
+#endif
+
 }  // namespace WebCore
 
 #endif  // LinkHash_h

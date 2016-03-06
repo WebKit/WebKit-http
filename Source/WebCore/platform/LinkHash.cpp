@@ -283,6 +283,15 @@ static ALWAYS_INLINE void visitedURLInline(const URL& base, const CharacterType*
     return;
 }
 
+#if PLATFORM(QT)
+void visitedURL(const URL& base, const AtomicString& attributeURL, Vector<UChar, 512>& buffer)
+{
+    auto upconvertedCharacters = StringView(attributeURL.string()).upconvertedCharacters();
+    const UChar* characters = upconvertedCharacters;
+    visitedURLInline(base, characters, attributeURL.length(), buffer);
+}
+#endif
+
 LinkHash visitedLinkHash(const URL& base, const AtomicString& attributeURL)
 {
     if (attributeURL.isEmpty())
