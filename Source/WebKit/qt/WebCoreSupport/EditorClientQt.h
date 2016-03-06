@@ -105,7 +105,7 @@ public:
     virtual void setInputMethodState(bool enabled);
     virtual TextCheckerClient* textChecker() { return &m_textCheckerClient; }
 
-    virtual bool supportsGlobalSelection() OVERRIDE;
+    bool supportsGlobalSelection() override;
 
     bool isEditing() const;
 

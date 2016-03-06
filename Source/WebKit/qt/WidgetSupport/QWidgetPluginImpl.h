@@ -31,12 +31,12 @@ class QWidgetPluginImpl : public QtPluginWidgetAdapter {
 public:
     QWidgetPluginImpl(QWidget *w) : m_widget(w) { }
     virtual ~QWidgetPluginImpl();
-    virtual void update(const QRect &) OVERRIDE;
-    virtual void setGeometryAndClip(const QRect&, const QRect&, bool isVisible) OVERRIDE;
-    virtual void setVisible(bool) OVERRIDE;
-    virtual void setStyleSheet(const QString&) OVERRIDE;
-    virtual void setWidgetParent(QObject *) OVERRIDE;
-    virtual QObject* handle() const OVERRIDE;
+    void update(const QRect &) override;
+    void setGeometryAndClip(const QRect&, const QRect&, bool isVisible) override;
+    void setVisible(bool) override;
+    void setStyleSheet(const QString&) override;
+    void setWidgetParent(QObject *) override;
+    QObject* handle() const override;
 private:
     QWidget *m_widget;
 };

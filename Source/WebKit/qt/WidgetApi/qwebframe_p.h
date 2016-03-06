@@ -49,19 +49,19 @@ public:
     static QWebFrame* kit(const QWebFrameAdapter*);
 
     // Adapter implementation
-    virtual QWebFrame* apiHandle() OVERRIDE;
-    virtual QObject* handle() OVERRIDE;
-    virtual void contentsSizeDidChange(const QSize &) OVERRIDE;
-    virtual int scrollBarPolicy(Qt::Orientation) const OVERRIDE;
-    virtual void emitUrlChanged() OVERRIDE;
-    virtual void didStartProvisionalLoad() OVERRIDE;
-    virtual void didClearWindowObject() OVERRIDE;
-    virtual bool handleProgressFinished(QPoint*) OVERRIDE;
-    virtual void emitInitialLayoutCompleted() OVERRIDE;
-    virtual void emitIconChanged() OVERRIDE;
-    virtual void emitLoadStarted(bool originatingLoad) OVERRIDE;
-    virtual void emitLoadFinished(bool originatingLoad, bool ok) OVERRIDE;
-    virtual QWebFrameAdapter* createChildFrame(QWebFrameData*) OVERRIDE;
+    QWebFrame* apiHandle() override;
+    QObject* handle() override;
+    void contentsSizeDidChange(const QSize &) override;
+    int scrollBarPolicy(Qt::Orientation) const override;
+    void emitUrlChanged() override;
+    void didStartProvisionalLoad() override;
+    void didClearWindowObject() override;
+    bool handleProgressFinished(QPoint*) override;
+    void emitInitialLayoutCompleted() override;
+    void emitIconChanged() override;
+    void emitLoadStarted(bool originatingLoad) override;
+    void emitLoadFinished(bool originatingLoad, bool ok) override;
+    QWebFrameAdapter* createChildFrame(QWebFrameData*) override;
 
     QWebFrame *q;
     QWebPage *page;

@@ -110,7 +110,7 @@ public:
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad();
     virtual void dispatchDidCancelClientRedirect();
     virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate);
-    virtual void dispatchDidNavigateWithinPage() OVERRIDE;
+    void dispatchDidNavigateWithinPage() override;
     virtual void dispatchDidChangeLocationWithinPage();
     virtual void dispatchDidPushStateWithinPage();
     virtual void dispatchDidReplaceStateWithinPage();
