@@ -69,7 +69,7 @@ public:
         delete this;
     }
 
-    virtual void timerEvent(QTimerEvent*)
+    void timerEvent(QTimerEvent*) override
     {
         executeAndDelete();
     }

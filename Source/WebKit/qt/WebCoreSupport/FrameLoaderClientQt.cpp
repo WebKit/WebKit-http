@@ -1433,12 +1433,12 @@ public:
         return m_adapter;
     }
 
-    virtual void invalidateRect(const IntRect& r)
+    void invalidateRect(const IntRect& r) override
     { 
         if (platformWidget())
             widgetAdapter()->update(r);
     }
-    virtual void frameRectsChanged()
+    void frameRectsChanged() override
     {
         QtPluginWidgetAdapter* widget = widgetAdapter();
         if (!widget)
@@ -1455,12 +1455,12 @@ public:
         widget->setGeometryAndClip(windowRect, clipRect, isVisible());
     }
 
-    virtual void show()
+    void show() override
     {
         Widget::show();
         handleVisibility();
     }
-    virtual void hide()
+    void hide() override
     {
         Widget::hide();
         if (platformWidget())

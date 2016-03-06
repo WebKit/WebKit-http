@@ -59,7 +59,7 @@ namespace {
 class InspectorFrontendSettingsQt : public InspectorFrontendClientLocal::Settings {
 public:
     virtual ~InspectorFrontendSettingsQt() { }
-    virtual String getProperty(const String& name)
+    String getProperty(const String& name) override
     {
 #ifdef QT_NO_SETTINGS
         Q_UNUSED(name)
@@ -83,7 +83,7 @@ public:
 #endif // QT_NO_SETTINGS
     }
 
-    virtual void setProperty(const String& name, const String& value)
+    void setProperty(const String& name, const String& value) override
     {
 #ifdef QT_NO_SETTINGS
         Q_UNUSED(name)

@@ -35,17 +35,17 @@ class SelectData : public QWebSelectData {
 public:
     SelectData(WebCore::PopupMenuClient*& data) : d(data) { }
 
-    virtual ItemType itemType(int) const;
-    virtual QString itemText(int idx) const { return QString(d ? d->itemText(idx) : ""); }
-    virtual QString itemToolTip(int idx) const { return QString(d ? d->itemToolTip(idx) : ""); }
-    virtual bool itemIsEnabled(int idx) const { return d ? d->itemIsEnabled(idx) : false; }
-    virtual int itemCount() const { return d ? d->listSize() : 0; }
-    virtual bool itemIsSelected(int idx) const { return d ? d->itemIsSelected(idx) : false; }
-    virtual bool multiple() const;
-    virtual QColor backgroundColor() const { return d ? QColor(d->menuStyle().backgroundColor()) : QColor(); }
-    virtual QColor foregroundColor() const { return d ? QColor(d->menuStyle().foregroundColor()) : QColor(); }
-    virtual QColor itemBackgroundColor(int idx) const { return d ? QColor(d->itemStyle(idx).backgroundColor()) : QColor(); }
-    virtual QColor itemForegroundColor(int idx) const { return d ? QColor(d->itemStyle(idx).foregroundColor()) : QColor(); }
+    ItemType itemType(int) const override;
+    QString itemText(int idx) const override { return QString(d ? d->itemText(idx) : ""); }
+    QString itemToolTip(int idx) const override { return QString(d ? d->itemToolTip(idx) : ""); }
+    bool itemIsEnabled(int idx) const override { return d ? d->itemIsEnabled(idx) : false; }
+    int itemCount() const override { return d ? d->listSize() : 0; }
+    bool itemIsSelected(int idx) const override { return d ? d->itemIsSelected(idx) : false; }
+    bool multiple() const override;
+    QColor backgroundColor() const override { return d ? QColor(d->menuStyle().backgroundColor()) : QColor(); }
+    QColor foregroundColor() const override { return d ? QColor(d->menuStyle().foregroundColor()) : QColor(); }
+    QColor itemBackgroundColor(int idx) const override { return d ? QColor(d->itemStyle(idx).backgroundColor()) : QColor(); }
+    QColor itemForegroundColor(int idx) const override { return d ? QColor(d->itemStyle(idx).foregroundColor()) : QColor(); }
 
 private:
     WebCore::PopupMenuClient*& d;

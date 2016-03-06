@@ -44,7 +44,7 @@ class MainThreadInvoker : public QObject {
     Q_OBJECT
 public:
     MainThreadInvoker();
-    virtual bool event(QEvent*);
+    bool event(QEvent*) override;
 };
 
 MainThreadInvoker::MainThreadInvoker()

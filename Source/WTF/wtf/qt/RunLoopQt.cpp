@@ -50,7 +50,7 @@ public:
     inline void wakeUp() { m_method.invoke(this, Qt::QueuedConnection); }
 
 protected:
-    virtual void timerEvent(QTimerEvent* event)
+    void timerEvent(QTimerEvent* event) override
     {
         RunLoop::TimerBase::timerFired(m_runLoop, event->timerId());
     }

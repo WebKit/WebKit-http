@@ -57,11 +57,11 @@ public:
         , m_data(data)
     {}
 
-    virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&);
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) { m_response = response; }
-    virtual void didReceiveData(ResourceHandle*, const char* data, unsigned length, int) { m_data.append(data, length); }
-    virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/) {}
-    virtual void didFail(ResourceHandle*, const ResourceError& error) { m_error = error; }
+    void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&) override;
+    void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) override { m_response = response; }
+    void didReceiveData(ResourceHandle*, const char* data, unsigned length, int) override { m_data.append(data, length); }
+    void didFinishLoading(ResourceHandle*, double /*finishTime*/) override {}
+    void didFail(ResourceHandle*, const ResourceError& error) override { m_error = error; }
 private:
     ResourceError& m_error;
     ResourceResponse& m_response;
