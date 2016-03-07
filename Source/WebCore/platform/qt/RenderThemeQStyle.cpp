@@ -395,13 +395,13 @@ void RenderThemeQStyle::adjustMenuListButtonStyle(StyleResolver& styleResolver, 
     RenderThemeQt::adjustMenuListButtonStyle(styleResolver, style, e);
 }
 
-bool RenderThemeQStyle::paintMenuListButton(const RenderObject& o, const PaintInfo& i, const IntRect& r)
+bool RenderThemeQStyle::paintMenuListButtonDecorations(const RenderBox& o, const PaintInfo& i, const FloatRect& r)
 {
     StylePainterQStyle p(this, i, o);
     if (!p.isValid())
         return true;
 
-    p.styleOption.rect = r;
+    p.styleOption.rect = IntRect(r);
     p.paintComboBoxArrow();
     return false;
 }

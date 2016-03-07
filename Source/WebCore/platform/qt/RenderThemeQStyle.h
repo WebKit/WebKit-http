@@ -63,7 +63,7 @@ protected:
 
     virtual bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    virtual bool paintMenuListButton(const RenderObject&, const PaintInfo&, const IntRect&);
+    bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
     virtual void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
 #if ENABLE(PROGRESS_ELEMENT)
