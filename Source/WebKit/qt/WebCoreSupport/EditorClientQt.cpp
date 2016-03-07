@@ -323,6 +323,7 @@ bool EditorClientQt::smartInsertDeleteEnabled()
     return page->settings().smartInsertDeleteEnabled();
 }
 
+#if USE(AUTOMATIC_TEXT_REPLACEMENT)
 void EditorClientQt::toggleSmartInsertDelete()
 {
     Page* page = m_page->page;
@@ -331,6 +332,7 @@ void EditorClientQt::toggleSmartInsertDelete()
         page->settings().setSelectTrailingWhitespaceEnabled(!page->settings().selectTrailingWhitespaceEnabled());
     }
 }
+#endif
 
 bool EditorClientQt::isSelectTrailingWhitespaceEnabled()
 {

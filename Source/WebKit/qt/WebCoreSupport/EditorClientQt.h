@@ -48,7 +48,9 @@ public:
     
     bool shouldDeleteRange(Range*) override;
     bool smartInsertDeleteEnabled() override;
+#if USE(AUTOMATIC_TEXT_REPLACEMENT)
     void toggleSmartInsertDelete() override;
+#endif
     bool isSelectTrailingWhitespaceEnabled() override;
     bool isContinuousSpellCheckingEnabled() override;
     void toggleContinuousSpellChecking() override;
