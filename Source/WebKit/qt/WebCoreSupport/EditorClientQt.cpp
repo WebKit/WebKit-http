@@ -228,12 +228,6 @@ void EditorClientQt::getClientPasteboardDataForRange(Range*, Vector<String>&, Ve
 {
 }
 
-bool EditorClientQt::selectWordBeforeMenuEvent()
-{
-    notImplemented();
-    return false;
-}
-
 void EditorClientQt::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
 {
 #ifndef QT_NO_UNDOSTACK

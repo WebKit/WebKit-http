@@ -206,14 +206,6 @@ Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::Inspec
     return frontendChannel;
 }
 
-void InspectorClientQt::closeInspectorFrontend()
-{
-#if ENABLE(INSPECTOR)
-    if (m_frontendClient)
-        m_frontendClient->inspectorClientDestroyed();
-#endif
-}
-
 void InspectorClientQt::bringFrontendToFront()
 {
 #if ENABLE(INSPECTOR)

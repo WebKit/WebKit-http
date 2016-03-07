@@ -92,7 +92,6 @@ public:
     virtual bool hasWebView() const; // mainly for assertions
 
     virtual void makeRepresentation(DocumentLoader*) { }
-    virtual void forceLayout();
     virtual void forceLayoutForNonHTML();
 
     virtual void setCopiesOnScroll();
@@ -166,7 +165,6 @@ public:
     virtual void updateGlobalHistory();
     virtual void updateGlobalHistoryRedirectLinks();
     virtual bool shouldGoToHistoryItem(HistoryItem*) const;
-    virtual bool shouldStopLoadingForHistoryItem(HistoryItem*) const;
     virtual void didDisplayInsecureContent();
     virtual void didRunInsecureContent(SecurityOrigin*, const URL&);
     virtual void didDetectXSS(const URL&, bool didBlockEntirePage);
@@ -223,8 +221,6 @@ public:
     virtual String overrideMediaType() const;
 
     void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) override;
-    virtual void documentElementAvailable();
-    virtual void didPerformFirstNavigation() const;
 
     virtual void registerForIconNotification(bool);
 

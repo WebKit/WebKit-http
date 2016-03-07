@@ -314,15 +314,6 @@ void FrameLoaderClientQt::dispatchDidBecomeFrameset(bool)
 {
 }
 
-
-void FrameLoaderClientQt::forceLayout()
-{
-    FrameView* view = m_frame->view();
-    if (view)
-        view->layout(true);
-}
-
-
 void FrameLoaderClientQt::forceLayoutForNonHTML()
 {
 }
@@ -748,18 +739,6 @@ void FrameLoaderClientQt::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld &w
         m_webFrame->didClearWindowObject();
 }
 
-void FrameLoaderClientQt::documentElementAvailable()
-{
-    return;
-}
-
-void FrameLoaderClientQt::didPerformFirstNavigation() const
-{
-    if (m_frame->tree().parent() || !m_webFrame)
-        return;
-    m_webFrame->pageAdapter->updateNavigationActions();
-}
-
 void FrameLoaderClientQt::registerForIconNotification(bool shouldRegister)
 {
 #if ENABLE(ICONDATABASE)
@@ -827,11 +806,6 @@ void FrameLoaderClientQt::updateGlobalHistoryRedirectLinks()
 }
 
 bool FrameLoaderClientQt::shouldGoToHistoryItem(WebCore::HistoryItem*) const
-{
-    return true;
-}
-
-bool FrameLoaderClientQt::shouldStopLoadingForHistoryItem(WebCore::HistoryItem*) const
 {
     return true;
 }
