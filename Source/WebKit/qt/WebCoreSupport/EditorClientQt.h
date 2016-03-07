@@ -44,65 +44,65 @@ class EditorClientQt : public EditorClient {
 public:
     EditorClientQt(QWebPageAdapter*);
     
-    virtual void pageDestroyed();
+    void pageDestroyed() override;
     
-    virtual bool shouldDeleteRange(Range*);
-    virtual bool smartInsertDeleteEnabled(); 
-    virtual void toggleSmartInsertDelete();
-    virtual bool isSelectTrailingWhitespaceEnabled(); 
-    virtual bool isContinuousSpellCheckingEnabled();
-    virtual void toggleContinuousSpellChecking();
-    virtual bool isGrammarCheckingEnabled();
-    virtual void toggleGrammarChecking();
-    virtual int spellCheckerDocumentTag();
+    bool shouldDeleteRange(Range*) override;
+    bool smartInsertDeleteEnabled() override;
+    void toggleSmartInsertDelete() override;
+    bool isSelectTrailingWhitespaceEnabled() override;
+    bool isContinuousSpellCheckingEnabled() override;
+    void toggleContinuousSpellChecking() override;
+    bool isGrammarCheckingEnabled() override;
+    void toggleGrammarChecking() override;
+    int spellCheckerDocumentTag() override;
 
-    virtual bool shouldBeginEditing(Range*);
-    virtual bool shouldEndEditing(Range*);
-    virtual bool shouldInsertNode(Node*, Range*, EditorInsertAction);
-    virtual bool shouldInsertText(const String&, Range*, EditorInsertAction);
-    virtual bool shouldChangeSelectedRange(Range* fromRange, Range* toRange, EAffinity, bool stillSelecting);
+    bool shouldBeginEditing(Range*) override;
+    bool shouldEndEditing(Range*) override;
+    bool shouldInsertNode(Node*, Range*, EditorInsertAction) override;
+    bool shouldInsertText(const String&, Range*, EditorInsertAction) override;
+    bool shouldChangeSelectedRange(Range* fromRange, Range* toRange, EAffinity, bool stillSelecting) override;
 
-    virtual bool shouldApplyStyle(StyleProperties*, Range*);
+    bool shouldApplyStyle(StyleProperties*, Range*) override;
 
-    virtual bool shouldMoveRangeAfterDelete(Range*, Range*);
+    bool shouldMoveRangeAfterDelete(Range*, Range*) override;
 
-    virtual void didBeginEditing();
-    virtual void respondToChangedContents();
-    virtual void respondToChangedSelection(Frame*);
-    virtual void didEndEditing();
-    virtual void willWriteSelectionToPasteboard(Range*);
-    virtual void didWriteSelectionToPasteboard();
-    virtual void getClientPasteboardDataForRange(Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData);
+    void didBeginEditing() override;
+    void respondToChangedContents() override;
+    void respondToChangedSelection(Frame*) override;
+    void didEndEditing() override;
+    void willWriteSelectionToPasteboard(Range*) override;
+    void didWriteSelectionToPasteboard() override;
+    void getClientPasteboardDataForRange(Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData) override;
     
-    virtual void registerUndoStep(PassRefPtr<UndoStep>);
-    virtual void registerRedoStep(PassRefPtr<UndoStep>);
-    virtual void clearUndoRedoOperations();
+    void registerUndoStep(PassRefPtr<UndoStep>) override;
+    void registerRedoStep(PassRefPtr<UndoStep>) override;
+    void clearUndoRedoOperations() override;
 
-    virtual bool canCopyCut(Frame*, bool defaultValue) const;
-    virtual bool canPaste(Frame*, bool defaultValue) const;
-    virtual bool canUndo() const;
-    virtual bool canRedo() const;
+    bool canCopyCut(Frame*, bool defaultValue) const override;
+    bool canPaste(Frame*, bool defaultValue) const override;
+    bool canUndo() const override;
+    bool canRedo() const override;
     
-    virtual void undo();
-    virtual void redo();
+    void undo() override;
+    void redo() override;
 
-    virtual void handleKeyboardEvent(KeyboardEvent*);
-    virtual void handleInputMethodKeydown(KeyboardEvent*);
+    void handleKeyboardEvent(KeyboardEvent*) override;
+    void handleInputMethodKeydown(KeyboardEvent*) override;
 
-    virtual void textFieldDidBeginEditing(Element*);
-    virtual void textFieldDidEndEditing(Element*);
-    virtual void textDidChangeInTextField(Element*);
-    virtual bool doTextFieldCommandFromEvent(Element*, KeyboardEvent*);
-    virtual void textWillBeDeletedInTextField(Element*);
-    virtual void textDidChangeInTextArea(Element*);
+    void textFieldDidBeginEditing(Element*) override;
+    void textFieldDidEndEditing(Element*) override;
+    void textDidChangeInTextField(Element*) override;
+    bool doTextFieldCommandFromEvent(Element*, KeyboardEvent*) override;
+    void textWillBeDeletedInTextField(Element*) override;
+    void textDidChangeInTextArea(Element*) override;
 
-    virtual void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&);
-    virtual void updateSpellingUIWithMisspelledWord(const String&);
-    virtual void showSpellingUI(bool show);
-    virtual bool spellingUIIsShowing();
-    virtual void willSetInputMethodState();
-    virtual void setInputMethodState(bool enabled);
-    virtual TextCheckerClient* textChecker() { return &m_textCheckerClient; }
+    void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&) override;
+    void updateSpellingUIWithMisspelledWord(const String&) override;
+    void showSpellingUI(bool show) override;
+    bool spellingUIIsShowing() override;
+    void willSetInputMethodState() override;
+    void setInputMethodState(bool enabled) override;
+    TextCheckerClient* textChecker() override { return &m_textCheckerClient; }
 
     bool supportsGlobalSelection() override;
 

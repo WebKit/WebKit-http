@@ -45,22 +45,22 @@ private:
     PlatformStrategiesQt();
 
     // WebCore::PlatformStrategies
-    virtual WebCore::CookiesStrategy* createCookiesStrategy();
-    virtual WebCore::LoaderStrategy* createLoaderStrategy();
-    virtual WebCore::PasteboardStrategy* createPasteboardStrategy();
-    virtual WebCore::PluginStrategy* createPluginStrategy();
+    WebCore::CookiesStrategy* createCookiesStrategy() override;
+    WebCore::LoaderStrategy* createLoaderStrategy() override;
+    WebCore::PasteboardStrategy* createPasteboardStrategy() override;
+    WebCore::PluginStrategy* createPluginStrategy() override;
     
     // WebCore::CookiesStrategy
-    virtual String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&);
-    virtual void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, const String&);
-    virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&);
-    virtual String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&);
-    virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&);
-    virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&);
+    String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
+    void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, const String&) override;
+    bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
+    String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
+    bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&) override;
+    void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
 
     // WebCore::PluginStrategy
-    virtual void refreshPlugins();
-    virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&);
+    void refreshPlugins() override;
+    void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
     void getWebVisiblePluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
 
     // PlatformStrategies interface

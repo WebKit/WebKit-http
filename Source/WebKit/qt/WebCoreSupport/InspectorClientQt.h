@@ -54,13 +54,13 @@ public:
     void inspectedPageDestroyed() override;
 
     Inspector::FrontendChannel* openLocalFrontend(InspectorController*) override;
-    virtual void bringFrontendToFront();
+    void bringFrontendToFront() override;
 
-    virtual void highlight();
-    virtual void hideHighlight();
+    void highlight() override;
+    void hideHighlight() override;
 
     ConnectionType connectionType() const override;
-    virtual bool sendMessageToFrontend(const String&);
+    bool sendMessageToFrontend(const String&) override;
 
     void releaseFrontendPage();
 
@@ -80,22 +80,22 @@ private:
 class InspectorFrontendClientQt : public InspectorFrontendClientLocal {
 public:
     InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt*);
-    virtual ~InspectorFrontendClientQt();
+    ~InspectorFrontendClientQt() override;
 
-    virtual void frontendLoaded();
+    void frontendLoaded() override;
 
-    virtual String localizedStringsURL();
+    String localizedStringsURL() override;
 
-    virtual void bringToFront();
-    virtual void closeWindow();
+    void bringToFront() override;
+    void closeWindow() override;
 
-    virtual void attachWindow(DockSide);
-    virtual void detachWindow();
+    void attachWindow(DockSide) override;
+    void detachWindow() override;
 
-    virtual void setAttachedWindowHeight(unsigned);
-    virtual void setAttachedWindowWidth(unsigned);
+    void setAttachedWindowHeight(unsigned) override;
+    void setAttachedWindowWidth(unsigned) override;
 
-    virtual void inspectedURLChanged(const String& newURL);
+    void inspectedURLChanged(const String& newURL) override;
 
     void inspectorClientDestroyed();
 
