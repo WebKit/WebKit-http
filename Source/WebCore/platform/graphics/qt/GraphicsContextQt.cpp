@@ -1057,12 +1057,14 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
         return;
 
     RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
-    QPixmap* alphaMask = image->nativeImageForCurrentFrame();
-    if (!alphaMask)
+    QPixmap* nativeImage = image->nativeImageForCurrentFrame();
+    if (!nativeImage)
         return;
 
     IntRect rect = enclosingIntRect(destRect);
-    pushTransparencyLayerInternal(rect, 1.0, *alphaMask);
+    QPixmap alphaMask = *nativeImage;
+
+    pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
 
 void drawFocusRingForPath(QPainter* p, const QPainterPath& path, const Color& color, bool antiAliasing)
