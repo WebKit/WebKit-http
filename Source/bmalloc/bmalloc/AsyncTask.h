@@ -80,19 +80,7 @@ AsyncTask<Object, Function>::AsyncTask(Object& object, const Function& function)
 template<typename Object, typename Function>
 AsyncTask<Object, Function>::~AsyncTask()
 {
-    // Prevent our thread from entering the running or sleeping state.
-    State oldState = m_state.exchange(ExitRequested);
-
-    // Wake our thread if it was already in the sleeping state.
-    if (oldState == Sleeping) {
-        std::lock_guard<Mutex> lock(m_conditionMutex);
-        m_condition.notify_all();
-    }
-
-    // Wait for our thread to exit because it uses our data members (and it may
-    // use m_object's data members).
-    if (m_thread.joinable())
-        m_thread.join();
+    stop();
 }
 
 template<typename Object, typename Function>
@@ -106,7 +94,18 @@ inline void AsyncTask<Object, Function>::run()
 template<typename Object, typename Function>
 inline void AsyncTask<Object, Function>::stop()
 {
-    if (m_state != Exited && m_thread.joinable())
+    // Prevent our thread from entering the running or sleeping state.
+    State oldState = m_state.exchange(ExitRequested);
+
+    // Wake our thread if it was already in the sleeping state.
+    if (oldState == Sleeping) {
+        std::lock_guard<Mutex> lock(m_conditionMutex);
+        m_condition.notify_all();
+    }
+
+    // Wait for our thread to exit because it uses our data members (and it may
+    // use m_object's data members).
+    if (m_thread.joinable())
         m_thread.join();
 }
 
