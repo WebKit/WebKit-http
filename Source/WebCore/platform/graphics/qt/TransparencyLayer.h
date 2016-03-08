@@ -39,10 +39,13 @@
 #include <QPaintEngine>
 #include <QPainter>
 #include <QPixmap>
+#include <wtf/FastMalloc.h>
+#include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
 struct TransparencyLayer {
+    WTF_MAKE_NONCOPYABLE(TransparencyLayer);
     WTF_MAKE_FAST_ALLOCATED;
 public:
     TransparencyLayer(const QPainter* p, const QRect &rect, qreal opacity, QPixmap& alphaMask)
@@ -76,9 +79,6 @@ public:
     // saveCounter is only used in combination with alphaMask
     // otherwise, its value is unspecified
     int saveCounter;
-private:
-    TransparencyLayer(const TransparencyLayer &) {}
-    TransparencyLayer & operator=(const TransparencyLayer &) { return *this; }
 };
 
 } // namespace WebCore
