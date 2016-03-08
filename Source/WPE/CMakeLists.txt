@@ -107,13 +107,13 @@ if (USE_WPE_BACKEND_WAYLAND)
         Source/wpe/wayland/display.cpp
         Source/wpe/wayland/view-backend-wayland.cpp
 
+        Source/wpe/wayland/protocols/ivi-application-protocol.c
+        Source/wpe/wayland/protocols/wayland-drm-protocol.c
+        Source/wpe/wayland/protocols/xdg-shell-protocol.c
+
         Source/Pasteboard/Wayland/PasteboardWayland.cpp
 
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
-
-        Source/ViewBackend/Wayland/Protocols/ivi-application-protocol.c
-        Source/ViewBackend/Wayland/Protocols/wayland-drm-protocol.c
-        Source/ViewBackend/Wayland/Protocols/xdg-shell-protocol.c
     )
 endif ()
 
