@@ -29,6 +29,7 @@ if (USE_WPE_BUFFER_MANAGEMENT_GBM)
 endif ()
 
 set(WPE_INCLUDE_DIRECTORIES
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
@@ -73,27 +74,27 @@ set(WPE_SOURCES
 
 if (USE_WPE_BUFFER_MANAGEMENT_GBM)
     list(APPEND WPE_INCLUDE_DIRECTORIES
-        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/gbm"
         ${LIBGBM_INCLUDE_DIRS}
     )
     list(APPEND WPE_LIBRARIES
         ${LIBGBM_LIBRARIES}
     )
     list(APPEND WPE_SOURCES
-        Source/wpe/renderer-gbm.cpp
+        Source/wpe/gbm/renderer-gbm.cpp
     )
 endif ()
 
 if (USE_WPE_BACKEND_DRM)
     list(APPEND WPE_INCLUDE_DIRECTORIES
-        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/drm"
         ${LIBDRM_INCLUDE_DIRS}
     )
     list(APPEND WPE_LIBRARIES
         ${LIBDRM_LIBRARIES}
     )
     list(APPEND WPE_SOURCES
-        Source/wpe/view-backend-drm.cpp
+        Source/wpe/drm/view-backend-drm.cpp
     )
 endif ()
 
