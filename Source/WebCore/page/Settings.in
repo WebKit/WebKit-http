@@ -23,7 +23,7 @@ validationMessageTimerMagnification type=int, initial=50
 # widely used for stylized fonts. Anti-aliasing text in hardware at that
 # scale is generally slower. So below a certain size it is better to
 # draw canvas in software.
-minimumAccelerated2dCanvasSize type=int, initial=257*256
+minimumAccelerated2dCanvasSize type=int, initial=275*256
 
 layoutFallbackWidth type=int, initial=980
 deviceWidth type=int, initial=0
