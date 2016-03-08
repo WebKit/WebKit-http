@@ -90,23 +90,16 @@ void UpdateAtlas::didSwapBuffers()
 bool UpdateAtlas::paintOnAvailableBuffer(const IntSize& size, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client* client)
 {
     m_inactivityInSeconds = 0;
-    buildLayoutIfNeeded();
-    IntRect rect = m_areaAllocator->allocate(size);
-
-    // No available buffer was found.
-    if (rect.isEmpty())
-        return false;
 
     if (!m_surface)
         return false;
 
     atlasID = m_ID;
 
-    // FIXME: Use tri-state buffers, to allow faster updates.
-    offset = rect.location();
+    offset = IntPoint(0, 0);
 
     UpdateAtlasSurfaceClient surfaceClient(client, size, supportsAlpha());
-    m_surface->paintToSurface(rect, &surfaceClient);
+    m_surface->paintToSurface(IntRect(offset, size), &surfaceClient);
 
     return true;
 }
