@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-    class StillImage : public Image {
+    class StillImage final : public Image {
     public:
         static PassRefPtr<StillImage> create(const QPixmap& pixmap)
         {
@@ -44,21 +44,20 @@ namespace WebCore {
             return adoptRef(new StillImage(pixmap));
         }
 
-        virtual bool currentFrameKnownToBeOpaque();
+        bool currentFrameKnownToBeOpaque() override;
 
         // FIXME: StillImages are underreporting decoded sizes and will be unable
         // to prune because these functions are not implemented yet.
-        virtual void destroyDecodedData(bool destroyAll = true) { Q_UNUSED(destroyAll); }
-        virtual unsigned decodedSize() const { return 0; }
+        void destroyDecodedData(bool destroyAll = true) override { Q_UNUSED(destroyAll); }
 
-        virtual FloatSize size() const;
-        virtual PassNativeImagePtr nativeImageForCurrentFrame();
-        virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription);
+        FloatSize size() const override;
+        PassNativeImagePtr nativeImageForCurrentFrame() override;
+        void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
 
     private:
         StillImage(const QPixmap&);
         StillImage(const QPixmap*);
-        virtual ~StillImage();
+        ~StillImage() override;
         
         const QPixmap* m_pixmap;
         bool m_ownsPixmap;
