@@ -99,7 +99,14 @@ if (USE_WPE_BACKEND_DRM)
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
+    list(APPEND WPE_INCLUDE_DIRECTORIES
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/wayland"
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/wayland/protocols"
+    )
     list(APPEND WPE_SOURCES
+        Source/wpe/wayland/display.cpp
+        Source/wpe/wayland/view-backend-wayland.cpp
+
         Source/Pasteboard/Wayland/PasteboardWayland.cpp
 
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
