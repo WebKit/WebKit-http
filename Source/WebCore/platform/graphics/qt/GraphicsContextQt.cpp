@@ -338,15 +338,12 @@ GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
     delete device;
 }
 
-void GraphicsContext::platformInit(PlatformGraphicsContext* painter)
+void GraphicsContext::platformInit(QPainter* painter)
 {
-    m_data = new GraphicsContextPlatformPrivate(painter, fillColor());
-
-    // FIXME: Check paintingDisabled() instead
-    //setPaintingDisabled(!painter);
-
     if (!painter)
         return;
+
+    m_data = new GraphicsContextPlatformPrivate(painter, fillColor());
 
     // solidColor is initialized with the fillColor().
     painter->setBrush(m_data->solidColor);
