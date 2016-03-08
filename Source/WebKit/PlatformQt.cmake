@@ -319,3 +319,5 @@ set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
 
 WEBKIT_FRAMEWORK(WebKitWidgets)
 add_dependencies(WebKitWidgets WebKit)
+
+add_subdirectory(qt/tests)
