@@ -87,7 +87,6 @@ struct EGLTarget {
                 switch (messageCode) {
                 case 23:
                 {
-                    fprintf(stderr, "renderer-gbm: frame complete\n");
                     if (target->target->client)
                         target->target->client->frame_complete(target->target->client_data);
                     break;
@@ -95,7 +94,6 @@ struct EGLTarget {
                 case 16:
                 {
                     auto* rbMessage = reinterpret_cast<struct release_buffer*>(std::addressof(message->data));
-                    fprintf(stderr, "renderer-gbm: release buffer %u\n", rbMessage->handle);
                     target->releaseBuffer(rbMessage->handle);
                     break;
                 }
@@ -216,8 +214,6 @@ const struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_
     // resize
     [](void* data, uint32_t width, uint32_t height)
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_target_interface::resize() (%u,%u)\n", width, height);
-
         auto* target = static_cast<GBM::EGLTarget*>(data);
         target->width = width;
         target->height = height;
@@ -225,8 +221,6 @@ const struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_
     // frame_rendered
     [](void* data)
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_target_interface::frame_rendered()\n");
-
         auto* target = static_cast<GBM::EGLTarget*>(data);
 
         struct gbm_bo* bo = gbm_surface_lock_front_buffer(target->surface);
