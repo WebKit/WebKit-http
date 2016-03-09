@@ -1,58 +1,19 @@
-find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
-
-set(USE_KEY_INPUT_HANDLING_LINUX_INPUT OFF CACHE BOOL "Whether to use <linux/input.h> event codes for keyboard event handling")
-
-if (USE_KEY_INPUT_HANDLING_LINUX_INPUT)
-    add_definitions(-DKEY_INPUT_HANDLING_LINUX_INPUT=1)
-else ()
-    find_package(Libxkbcommon 0.4.0 REQUIRED)
-    add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
-endif ()
-
-if (USE_WPE_BACKEND_DRM)
-    find_package(LibDRM REQUIRED)
-    add_definitions(-DWPE_BACKEND_DRM=1)
-
-    if (USE_WPE_BACKEND_DRM_TEGRA)
-        add_definitions(-DWPE_BACKEND_DRM_TEGRA=1)
-    endif ()
-endif ()
-
-if (USE_WPE_BACKEND_WAYLAND)
-    find_package(Wayland 1.6.0 REQUIRED)
-    add_definitions(-DWPE_BACKEND_WAYLAND=1)
-endif ()
-
-if (USE_WPE_BUFFER_MANAGEMENT_GBM)
-    find_package(LibGBM REQUIRED)
-    add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
-endif ()
+find_package(Libxkbcommon 0.4.0 REQUIRED)
 
 set(WPE_INCLUDE_DIRECTORIES
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/external"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Generic"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Wayland"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland/Protocols"
-    ${GLIB_INCLUDE_DIRS}
-    ${GIO_UNIX_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
-    ${WAYLAND_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
-    ${GLIB_LIBRARIES}
-    ${GIO_UNIX_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
-    ${WAYLAND_LIBRARIES}
 )
 
 set(WPE_SOURCES
@@ -66,13 +27,21 @@ set(WPE_SOURCES
 )
 
 if (USE_WPE_BUFFER_MANAGEMENT_GBM)
+    find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
+    find_package(LibGBM REQUIRED)
+    add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
+
     list(APPEND WPE_INCLUDE_DIRECTORIES
         "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/gbm"
+        ${GIO_UNIX_INCLUDE_DIRS}
         ${LIBGBM_INCLUDE_DIRS}
     )
+
     list(APPEND WPE_LIBRARIES
+        ${GIO_UNIX_LIBRARIES}
         ${LIBGBM_LIBRARIES}
     )
+
     list(APPEND WPE_SOURCES
         Source/wpe/gbm/renderer-gbm.cpp
         Source/wpe/gbm/gbm-connection.cpp
@@ -80,23 +49,47 @@ if (USE_WPE_BUFFER_MANAGEMENT_GBM)
 endif ()
 
 if (USE_WPE_BACKEND_DRM)
+    find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
+    find_package(LibDRM REQUIRED)
+    add_definitions(-DWPE_BACKEND_DRM=1)
+
+    if (USE_WPE_BACKEND_DRM_TEGRA)
+        add_definitions(-DWPE_BACKEND_DRM_TEGRA=1)
+    endif ()
+
     list(APPEND WPE_INCLUDE_DIRECTORIES
         "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/drm"
+        ${GLIB_INCLUDE_DIRS}
         ${LIBDRM_INCLUDE_DIRS}
     )
+
     list(APPEND WPE_LIBRARIES
+        ${GLIB_LIBRARIES}
         ${LIBDRM_LIBRARIES}
     )
+
     list(APPEND WPE_SOURCES
         Source/wpe/drm/view-backend-drm.cpp
     )
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
+    find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
+    find_package(Wayland 1.6.0 REQUIRED)
+    add_definitions(-DWPE_BACKEND_WAYLAND=1)
+
     list(APPEND WPE_INCLUDE_DIRECTORIES
         "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/wayland"
         "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/wayland/protocols"
+        ${GLIB_INCLUDE_DIRS}
+        ${WAYLAND_INCLUDE_DIRS}
     )
+
+    list(APPEND WPE_LIBRARIES
+        ${GLIB_LIBRARIES}
+        ${WAYLAND_LIBRARIES}
+    )
+
     list(APPEND WPE_SOURCES
         Source/wpe/wayland/display.cpp
         Source/wpe/wayland/view-backend-wayland.cpp
