@@ -188,9 +188,10 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
     }
 
     Vector<WebKit::WebPlatformTouchPoint> touchPoints;
-    touchPoints.reserveCapacity(sizeof(event->touchpoints) / sizeof(struct wpe_input_touch_event_raw));
+    touchPoints.reserveCapacity(event->touchpoints_length);
 
-    for (auto& point : event->touchpoints) {
+    for (unsigned i = 0; i < event->touchpoints_length; ++i) {
+        auto& point = event->touchpoints[i];
         if (point.type == WPE::Input::TouchEvent::Null)
             continue;
 
