@@ -120,20 +120,4 @@ void View::setSize(const WebCore::IntSize& size)
         m_pageProxy->drawingArea()->setSize(size, WebCore::IntSize(), WebCore::IntSize());
 }
 
-void View::handleKeyboardEvent(WPE::Input::KeyboardEvent&& event)
-{
-}
-
-void View::handlePointerEvent(WPE::Input::PointerEvent&& event)
-{
-}
-
-void View::handleAxisEvent(WPE::Input::AxisEvent&& event)
-{
-}
-
-void View::handleTouchEvent(WPE::Input::TouchEvent&& event)
-{
-}
-
 } // namespace WKWPE
