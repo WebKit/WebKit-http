@@ -28,7 +28,7 @@
 
 #if WPE_BACKEND(WAYLAND)
 
-#include "WaylandDisplay.h"
+#include "display.h"
 #include <algorithm>
 #include <glib.h>
 #include <cassert>
@@ -79,7 +79,7 @@ const struct wl_data_device_listener g_dataDeviceListener = {
 
 PasteboardWayland::PasteboardWayland()
 {
-    ViewBackend::WaylandDisplay& display = ViewBackend::WaylandDisplay::singleton();
+    Wayland::Display& display = Wayland::Display::singleton();
 
     if (!display.interfaces().data_device_manager)
         return;
@@ -118,7 +118,7 @@ std::string PasteboardWayland::getString(const std::string pasteboardType)
     wl_data_offer_receive(m_dataDeviceData.data_offer, pasteboardType.c_str(), pipefd[1]);
     close(pipefd[1]);
 
-    wl_display_roundtrip(ViewBackend::WaylandDisplay::singleton().display());
+    wl_display_roundtrip(Wayland::Display::singleton().display());
 
     char buf[1024];
     std::string readString;
@@ -153,7 +153,7 @@ const struct wl_data_source_listener g_dataSourceListener = {
                 length -= written;
             }
             close(fd);
-            wl_display_roundtrip(ViewBackend::WaylandDisplay::singleton().display());
+            wl_display_roundtrip(Wayland::Display::singleton().display());
         } else
             return; // Eventually assert if we don't have a handler for a mimetype we are offering.
     },
@@ -175,7 +175,7 @@ void PasteboardWayland::write(std::map<std::string, std::string>&& dataMap)
 
     m_dataSourceData.dataMap = dataMap;
 
-    ViewBackend::WaylandDisplay& display = ViewBackend::WaylandDisplay::singleton();
+    Wayland::Display& display = Wayland::Display::singleton();
     m_dataSourceData.data_source = wl_data_device_manager_create_data_source(display.interfaces().data_device_manager);
 
     for (auto dataPair : m_dataSourceData.dataMap)
