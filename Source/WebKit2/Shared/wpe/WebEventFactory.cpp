@@ -100,9 +100,9 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_even
 
     WebMouseEvent::Button button = WebMouseEvent::NoButton;
     switch (event->type) {
-    case WPE::Input::PointerEvent::Motion:
+    case wpe_input_pointer_event_type_motion:
         break;
-    case WPE::Input::PointerEvent::Button:
+    case wpe_input_pointer_event_type_button:
         if (event->button == 1)
             button = WebMouseEvent::LeftButton;
         else if (event->button == 2)
@@ -110,7 +110,7 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_even
         else if (event->button == 3)
             button = WebMouseEvent::MiddleButton;
         break;
-    case WPE::Input::PointerEvent::Null:
+    case wpe_input_pointer_event_type_null:
         ASSERT_NOT_REACHED();
     }
 
@@ -156,13 +156,13 @@ static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchPoint(int mai
         return WebKit::WebPlatformTouchPoint::TouchStationary;
 
     switch (point->type) {
-    case WPE::Input::TouchEvent::Down:
+    case wpe_input_touch_event_type_down:
         return WebKit::WebPlatformTouchPoint::TouchPressed;
-    case WPE::Input::TouchEvent::Motion:
+    case wpe_input_touch_event_type_motion:
         return WebKit::WebPlatformTouchPoint::TouchMoved;
-    case WPE::Input::TouchEvent::Up:
+    case wpe_input_touch_event_type_up:
         return WebKit::WebPlatformTouchPoint::TouchReleased;
-    case WPE::Input::TouchEvent::Null:
+    case wpe_input_touch_event_type_null:
         ASSERT_NOT_REACHED();
         break;
     };
@@ -174,16 +174,16 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
 {
     WebEvent::Type type = WebEvent::NoType;
     switch (event->type) {
-    case WPE::Input::TouchEvent::Down:
+    case wpe_input_touch_event_type_down:
         type = WebEvent::TouchStart;
         break;
-    case WPE::Input::TouchEvent::Motion:
+    case wpe_input_touch_event_type_motion:
         type = WebEvent::TouchMove;
         break;
-    case WPE::Input::TouchEvent::Up:
+    case wpe_input_touch_event_type_up:
         type = WebEvent::TouchEnd;
         break;
-    case WPE::Input::TouchEvent::Null:
+    case wpe_input_touch_event_type_null:
         ASSERT_NOT_REACHED();
     }
 
@@ -192,7 +192,7 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(struct wpe_input_touch_event*
 
     for (unsigned i = 0; i < event->touchpoints_length; ++i) {
         auto& point = event->touchpoints[i];
-        if (point.type == WPE::Input::TouchEvent::Null)
+        if (point.type == wpe_input_touch_event_type_null)
             continue;
 
         touchPoints.uncheckedAppend(WebKit::WebPlatformTouchPoint(point.id, stateForTouchPoint(event->id, &point),

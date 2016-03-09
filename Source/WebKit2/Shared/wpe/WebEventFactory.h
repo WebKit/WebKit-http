@@ -27,7 +27,6 @@
 #define WebEventFactory_h
 
 #include "WebEvent.h"
-#include <WPE/Input/Events.h>
 
 struct wpe_input_axis_event;
 struct wpe_input_keyboard_event;
