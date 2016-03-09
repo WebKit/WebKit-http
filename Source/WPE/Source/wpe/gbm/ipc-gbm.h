@@ -6,6 +6,8 @@
 #define DATA_OFFSET sizeof(uint64_t)
 #define DATA_SIZE 24
 
+#include <stdint.h>
+
 struct ipc_gbm_message {
     uint64_t message_code;
     char data[DATA_SIZE];
