@@ -1,6 +1,8 @@
 #ifndef wpe_view_backend_private_h
 #define wpe_view_backend_private_h
 
+#include <wpe/view-backend.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
