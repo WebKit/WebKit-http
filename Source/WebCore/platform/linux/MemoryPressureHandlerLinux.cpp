@@ -51,10 +51,15 @@ namespace WebCore {
 // low memory events, greatly reducing CPU usage.
 static const unsigned s_minimumHoldOffTime = 5;
 static const unsigned s_holdOffMultiplier = 20;
+static const unsigned s_pollTimeSec = 1;
+static const size_t s_memCriticalLimit = 100 * KB * KB; // 100 MB
+static const size_t s_memNonCriticalLimit = 300 * KB * KB; // 300 MB
 
 static const char* s_cgroupMemoryPressureLevel = "/sys/fs/cgroup/memory/memory.pressure_level";
 static const char* s_cgroupEventControl = "/sys/fs/cgroup/memory/cgroup.event_control";
 static const char* s_processStatus = "/proc/self/status";
+static const char* s_memInfo = "/proc/meminfo";
+
 
 static inline String nextToken(FILE* file)
 {
@@ -105,6 +110,45 @@ void MemoryPressureHandler::waitForMemoryPressureEvent(void*)
     });
 }
 
+void MemoryPressureHandler::pollMemoryPressure(void*)
+{
+    ASSERT(!isMainThread());
+
+    do {
+        size_t memFree = static_cast<size_t>(-1); // bytes
+
+        FILE* file = fopen(s_memInfo, "r");
+        if (!file)
+            return;
+
+        String token = nextToken(file);
+        while (!token.isEmpty()) {
+            if (token == "MemFree:") {
+                memFree = nextToken(file).toUInt64() * KB;
+                break;
+            }
+            token = nextToken(file);
+        }
+        fclose(file);
+
+        if (memFree < s_memNonCriticalLimit) {
+            bool critical = memFree < s_memCriticalLimit;
+
+            if (ReliefLogger::loggingEnabled())
+                LOG(MemoryPressure, "Polled memory pressure (%s)", critical ? "critical" : "non-critical");
+
+            MemoryPressureHandler::singleton().setUnderMemoryPressure(critical);
+            callOnMainThread([critical] {
+                MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
+            });
+
+            return;
+        }
+
+        sleep(s_pollTimeSec);
+    } while (true);
+}
+
 inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
 {
     if (log)
@@ -125,38 +169,64 @@ void MemoryPressureHandler::install()
     if (m_installed)
         return;
 
-    m_eventFD = eventfd(0, EFD_CLOEXEC);
-    if (m_eventFD == -1) {
-        LOG(MemoryPressure, "eventfd() failed: %m");
-        return;
-    }
+    bool cgroupsPressureHandlerOk = false;
 
-    m_pressureLevelFD = open(s_cgroupMemoryPressureLevel, O_CLOEXEC | O_RDONLY);
-    if (m_pressureLevelFD == -1) {
-        logErrorAndCloseFDs("Failed to open memory.pressure_level");
-        return;
-    }
+    do {
+        m_eventFD = eventfd(0, EFD_CLOEXEC);
+        if (m_eventFD == -1) {
+            LOG(MemoryPressure, "eventfd() failed: %m");
+            break;
+        }
 
-    int fd = open(s_cgroupEventControl, O_CLOEXEC | O_WRONLY);
-    if (fd == -1) {
-        logErrorAndCloseFDs("Failed to open cgroup.event_control");
-        return;
-    }
+        m_pressureLevelFD = open(s_cgroupMemoryPressureLevel, O_CLOEXEC | O_RDONLY);
+        if (m_pressureLevelFD == -1) {
+            logErrorAndCloseFDs("Failed to open memory.pressure_level");
+            break;
+        }
 
-    char line[128] = {0, };
-    if (snprintf(line, sizeof(line), "%d %d low", m_eventFD, m_pressureLevelFD) < 0
-        || write(fd, line, strlen(line) + 1) < 0) {
-        logErrorAndCloseFDs("Failed to write cgroup.event_control");
+        int fd = open(s_cgroupEventControl, O_CLOEXEC | O_WRONLY);
+        if (fd == -1) {
+            logErrorAndCloseFDs("Failed to open cgroup.event_control");
+            break;
+        }
+
+        char line[128] = {0, };
+        if (snprintf(line, sizeof(line), "%d %d low", m_eventFD, m_pressureLevelFD) < 0
+            || write(fd, line, strlen(line) + 1) < 0) {
+            logErrorAndCloseFDs("Failed to write cgroup.event_control");
+            close(fd);
+            break;
+        }
         close(fd);
-        return;
-    }
-    close(fd);
 
-    m_threadID = createThread(waitForMemoryPressureEvent, this, "WebCore: MemoryPressureHandler");
-    if (!m_threadID) {
-        logErrorAndCloseFDs("Failed to create a thread for MemoryPressureHandler");
-        return;
+        m_threadID = createThread(waitForMemoryPressureEvent, this, "WebCore: MemoryPressureHandler");
+        if (!m_threadID) {
+            logErrorAndCloseFDs("Failed to create a thread for MemoryPressureHandler");
+            break;
+        }
+
+        LOG(MemoryPressure, "Cgroups memory pressure handler installed.");
+        cgroupsPressureHandlerOk = true;
+    } while (false);
+
+    bool vmstatPressureHandlerOk = false;
+
+    // If cgroups isn't available, try to use a simpler poll method based on meminfo.
+    if (!cgroupsPressureHandlerOk) {
+        do {
+            m_threadID = createThread(pollMemoryPressure, this, "WebCore: MemoryPressureHandler");
+            if (!m_threadID) {
+                logErrorAndCloseFDs("Failed to create a thread for MemoryPressureHandler");
+                break;
+            }
+
+            LOG(MemoryPressure, "Vmstat memory pressure handler installed.");
+            vmstatPressureHandlerOk = true;
+        } while (false);
     }
+
+    if (!cgroupsPressureHandlerOk && !vmstatPressureHandlerOk)
+        return;
 
     if (ReliefLogger::loggingEnabled() && isUnderMemoryPressure())
         LOG(MemoryPressure, "System is no longer under memory pressure.");
