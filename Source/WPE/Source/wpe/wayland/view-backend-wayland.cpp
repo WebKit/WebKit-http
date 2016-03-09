@@ -1,6 +1,7 @@
 #include "view-backend-wayland.h"
 
 #include "display.h"
+#include "gbm-connection.h"
 #include "view-backend-private.h"
 
 #include "ivi-application-client-protocol.h"
@@ -15,25 +16,31 @@
 
 namespace Wayland {
 
-class ViewBackend {
+class ViewBackend : public GBM::Host::Client {
 public:
     ViewBackend(struct wpe_view_backend*);
-    ~ViewBackend();
+    virtual ~ViewBackend();
+
+    void initialize();
+
+    void importBufferFd(int) override;
+    void commitBuffer(struct buffer_commit*) override;
 
     struct wpe_view_backend* backend() { return m_backend; }
+    GBM::Host& gbmHost() { return m_renderer.gbmHost; }
 
     struct BufferListenerData {
-        void* client;
+        GBM::Host* gbmHost;
         std::unordered_map<uint32_t, struct wl_buffer*> map;
     };
 
     struct CallbackListenerData {
-        void* client;
+        GBM::Host* gbmHost;
         struct wl_callback* frameCallback;
     };
 
     struct ResizingData {
-        void* client;
+        struct wpe_view_backend* backend;
         uint32_t width;
         uint32_t height;
     };
@@ -49,6 +56,11 @@ private:
     BufferListenerData m_bufferData { nullptr, decltype(m_bufferData.map){ } };
     CallbackListenerData m_callbackData { nullptr, nullptr };
     ResizingData m_resizingData { nullptr, 0, 0 };
+
+    struct {
+        GBM::Host gbmHost;
+        int pendingBufferFd { -1 };
+    } m_renderer;
 };
 
 static const struct xdg_surface_listener g_xdgSurfaceListener = {
@@ -65,10 +77,9 @@ static const struct ivi_surface_listener g_iviSurfaceListener = {
     // configure
     [](void* data, struct ivi_surface*, int32_t width, int32_t height)
     {
-        // FIXME:
-        // auto& resizingData = *static_cast<ViewBackend::ResizingData*>(data);
-        // if (resizingData.client)
-        //     resizingData.client->setSize(std::max(0, width), std::max(0, height));
+        struct wpe_view_backend* backend = static_cast<ViewBackend::ResizingData*>(data)->backend;
+        if (backend && backend->backend_client)
+            backend->backend_client->set_size(backend->backend_client_data, std::max(0, width), std::max(0, height));
     },
 };
 
@@ -85,9 +96,8 @@ const struct wl_buffer_listener g_bufferListener = {
         if (it == bufferMap.end())
             return;
 
-        // FIXME:
-        // if (bufferData.client)
-        //     bufferData.client->releaseBuffer(it->first);
+        if (bufferData.gbmHost)
+            bufferData.gbmHost->releaseBuffer(it->first);
     },
 };
 
@@ -96,9 +106,8 @@ const struct wl_callback_listener g_callbackListener = {
     [](void* data, struct wl_callback* callback, uint32_t)
     {
         auto& callbackData = *static_cast<ViewBackend::CallbackListenerData*>(data);
-        // FIXME:
-        // if (callbackData.client)
-        //     callbackData.client->frameComplete();
+        if (callbackData.gbmHost)
+            callbackData.gbmHost->frameComplete();
         callbackData.frameCallback = nullptr;
         wl_callback_destroy(callback);
     },
@@ -108,6 +117,8 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     : m_display(Display::singleton())
     , m_backend(backend)
 {
+    m_renderer.gbmHost.initialize(*this);
+
     m_surface = wl_compositor_create_surface(m_display.interfaces().compositor);
 
     if (m_display.interfaces().xdg) {
@@ -126,10 +137,18 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     // Ensure the Pasteboard singleton is constructed early.
     // FIXME:
     // Pasteboard::Pasteboard::singleton();
+
+    m_bufferData.gbmHost = &m_renderer.gbmHost;
+    m_callbackData.gbmHost = &m_renderer.gbmHost;
+    m_resizingData.backend = m_backend;
 }
 
 ViewBackend::~ViewBackend()
 {
+    m_backend = nullptr;
+
+    m_renderer.gbmHost.deinitialize();
+
     m_display.unregisterInputClient(m_surface);
 
     m_bufferData = { nullptr, decltype(m_bufferData.map){ } };
@@ -151,6 +170,56 @@ ViewBackend::~ViewBackend()
     m_surface = nullptr;
 }
 
+void ViewBackend::initialize()
+{
+    if (m_backend->input_client)
+        m_display.registerInputClient(m_surface, m_backend);
+}
+
+void ViewBackend::importBufferFd(int fd)
+{
+    if (m_renderer.pendingBufferFd != -1)
+        close(m_renderer.pendingBufferFd);
+    m_renderer.pendingBufferFd = fd;
+}
+
+void ViewBackend::commitBuffer(struct buffer_commit* commit)
+{
+    struct wl_buffer* buffer = nullptr;
+    auto& bufferMap = m_bufferData.map;
+    auto it = bufferMap.find(commit->handle);
+
+    if (m_renderer.pendingBufferFd >= 0) {
+        int fd = m_renderer.pendingBufferFd;
+        m_renderer.pendingBufferFd = -1;
+
+        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, commit->width, commit->height, WL_DRM_FORMAT_ARGB8888, 0, commit->stride, 0, 0, 0, 0);
+        wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
+
+        if (it != bufferMap.end()) {
+            wl_buffer_destroy(it->second);
+            it->second = buffer;
+        } else
+            bufferMap.insert({ commit->handle, buffer });
+    } else {
+        assert(it != bufferMap.end());
+        buffer = it->second;
+    }
+
+    if (!buffer) {
+        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", commit->handle);
+        return;
+    }
+
+    m_callbackData.frameCallback = wl_surface_frame(m_surface);
+    wl_callback_add_listener(m_callbackData.frameCallback, &g_callbackListener, &m_callbackData);
+
+    wl_surface_attach(m_surface, buffer, 0, 0);
+    wl_surface_damage(m_surface, 0, 0, INT32_MAX, INT32_MAX);
+    wl_surface_commit(m_surface);
+    wl_display_flush(m_display.display());
+}
+
 } // namespace Wayland
 
 extern "C" {
@@ -169,14 +238,14 @@ const struct wpe_view_backend_interface wayland_view_backend_interface = {
     },
     // initialize
     [](void* data) {
-        auto* backend = static_cast<Wayland::ViewBackend*>(data)->backend();
-        if (backend->backend_client)
-            backend->backend_client->set_size(backend->backend_client_data, 800, 600);
+        auto* backend = static_cast<Wayland::ViewBackend*>(data);
+        backend->initialize();
     },
     // get_renderer_host_fd
-    [](void*) -> int
+    [](void* data) -> int
     {
-        return -1;
+        auto* backend = static_cast<Wayland::ViewBackend*>(data);
+        return backend->gbmHost().releaseClientFD();
     },
 };
 
