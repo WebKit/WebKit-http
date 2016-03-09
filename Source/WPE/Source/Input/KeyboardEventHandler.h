@@ -27,7 +27,7 @@
 #ifndef KeyboardEventHandler_h
 #define KeyboardEventHandler_h
 
-#include <WPE/Input/Events.h>
+#include "Events.h"
 #include <memory>
 #include <tuple>
 

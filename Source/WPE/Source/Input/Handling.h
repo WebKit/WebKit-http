@@ -28,7 +28,8 @@
 #define WPE_Input_Handling_h
 
 #include <WPE/WPE.h>
-#include <WPE/Input/Events.h>
+
+#include "Events.h"
 #include <array>
 #include <memory>
 

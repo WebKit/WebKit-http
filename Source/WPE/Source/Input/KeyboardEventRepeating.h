@@ -28,7 +28,7 @@
 #ifndef WPE_Input_KeyboardEventRepeating_h
 #define WPE_Input_KeyboardEventRepeating_h
 
-#include <WPE/Input/Events.h>
+#include "Events.h"
 #include <glib.h>
 
 namespace WPE {

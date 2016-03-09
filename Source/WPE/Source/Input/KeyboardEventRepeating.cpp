@@ -27,7 +27,7 @@
 
 #include "KeyboardEventRepeating.h"
 
-#include <WPE/Input/Handling.h>
+#include "Handling.h"
 
 namespace WPE {
 

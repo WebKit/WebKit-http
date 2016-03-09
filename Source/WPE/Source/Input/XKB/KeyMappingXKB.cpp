@@ -26,10 +26,10 @@
 
 #if defined(KEY_INPUT_HANDLING_XKB) && KEY_INPUT_HANDLING_XKB
 
-#include <WPE/Input/KeyMapping.h>
+#include "KeyMapping.h"
 
 #include "WindowsKeyboardCodes.h"
-#include <WPE/Input/Events.h>
+#include "Events.h"
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 namespace WPE {

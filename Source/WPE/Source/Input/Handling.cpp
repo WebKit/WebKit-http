@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <WPE/Input/Handling.h>
+#include "Handling.h"
 
 #include "KeyboardEventHandler.h"
 #include "KeyboardEventRepeating.h"

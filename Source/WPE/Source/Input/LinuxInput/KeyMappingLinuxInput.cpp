@@ -30,7 +30,7 @@
 #include <WPE/Input/KeyMapping.h>
 
 #include "WindowsKeyboardCodes.h"
-#include <WPE/Input/Events.h>
+#include "Events.h"
 #include <linux/input.h>
 
 namespace WPE {
