@@ -76,8 +76,30 @@ View::View(const API::PageConfiguration& baseConfiguration)
     wpe_view_backend_set_backend_client(m_backend, &s_backendClient, this);
 
     static struct wpe_view_backend_input_client s_inputClient = {
-        // dummy
-        [] { },
+        // handle_keyboard_event
+        [](void* data, struct wpe_input_keyboard_event* event)
+        {
+            auto& view = *reinterpret_cast<View*>(data);
+            view.page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(event));
+        },
+        // handle_pointer_event
+        [](void* data, struct wpe_input_pointer_event* event)
+        {
+            auto& view = *reinterpret_cast<View*>(data);
+            view.page().handleMouseEvent(WebKit::NativeWebMouseEvent(event));
+        },
+        // handle_axis_event
+        [](void* data, struct wpe_input_axis_event* event)
+        {
+            auto& view = *reinterpret_cast<View*>(data);
+            view.page().handleWheelEvent(WebKit::NativeWebWheelEvent(event));
+        },
+        // handle_touch_event
+        [](void* data, struct wpe_input_touch_event* event)
+        {
+            auto& view = *reinterpret_cast<View*>(data);
+            view.page().handleTouchEvent(WebKit::NativeWebTouchEvent(event));
+        },
     };
     wpe_view_backend_set_input_client(m_backend, &s_inputClient, this);
 
@@ -100,22 +122,18 @@ void View::setSize(const WebCore::IntSize& size)
 
 void View::handleKeyboardEvent(WPE::Input::KeyboardEvent&& event)
 {
-    page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(WTFMove(event)));
 }
 
 void View::handlePointerEvent(WPE::Input::PointerEvent&& event)
 {
-    page().handleMouseEvent(WebKit::NativeWebMouseEvent(WTFMove(event)));
 }
 
 void View::handleAxisEvent(WPE::Input::AxisEvent&& event)
 {
-    page().handleWheelEvent(WebKit::NativeWebWheelEvent(WTFMove(event)));
 }
 
 void View::handleTouchEvent(WPE::Input::TouchEvent&& event)
 {
-    page().handleTouchEvent(WebKit::NativeWebTouchEvent(WTFMove(event)));
 }
 
 } // namespace WKWPE
