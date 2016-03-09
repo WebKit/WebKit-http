@@ -1,22 +1,16 @@
 #include "view-backend-drm.h"
 
+#include "gbm-connection.h"
 #include "view-backend-private.h"
 #include <cstdio>
 #include <errno.h>
 #include <fcntl.h>
 #include <gbm.h>
-#include <memory>
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <gio/gio.h>
 #include <unordered_map>
 #include <utility>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
-
-#include <gio/gio.h>
-#include <gio/gunixfdmessage.h>
-
-#include "ipc-gbm.h"
 
 namespace DRM {
 
@@ -76,7 +70,7 @@ GSourceFuncs EventSource::sourceFuncs = {
     nullptr, // closure_marshall
 };
 
-struct ViewBackend;
+class ViewBackend;
 
 struct PageFlipHandlerData {
     ViewBackend* backend;
@@ -84,17 +78,13 @@ struct PageFlipHandlerData {
     std::pair<bool, uint32_t> lockedFB;
 };
 
-struct ViewBackend {
+class ViewBackend : public GBM::Host::Client {
+public:
     ViewBackend(struct wpe_view_backend*);
-    ~ViewBackend();
+    virtual ~ViewBackend();
 
-    static gboolean socketCallback(GSocket*, GIOCondition, gpointer);
-
-    void importBufferFd(int);
-    void commitBuffer(struct buffer_commit*);
-
-    void frameComplete();
-    void releaseBuffer(uint32_t);
+    void importBufferFd(int) override;
+    void commitBuffer(struct buffer_commit*) override;
 
     struct wpe_view_backend* backend;
 
@@ -118,10 +108,7 @@ struct ViewBackend {
     } m_display;
 
     struct {
-        GSocket* socket;
-        GSource* source;
-        int clientFd { -1 };
-
+        GBM::Host gbmHost;
         int pendingBufferFd { -1 };
     } m_renderer;
 };
@@ -132,14 +119,14 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     if (!handlerData.backend)
         return;
 
-    handlerData.backend->frameComplete();
+    handlerData.backend->m_renderer.gbmHost.frameComplete();
 
     auto bufferToRelease = handlerData.lockedFB;
     handlerData.lockedFB = handlerData.nextFB;
     handlerData.nextFB = { false, 0 };
 
     if (bufferToRelease.first)
-        handlerData.backend->releaseBuffer(bufferToRelease.second);
+        handlerData.backend->m_renderer.gbmHost.releaseBuffer(bufferToRelease.second);
 }
 
 ViewBackend::ViewBackend(struct wpe_view_backend* backend)
@@ -253,34 +240,12 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
 
     m_display.pageFlipData.backend = this;
 
-    int sockets[2];
-    int ret = socketpair(AF_UNIX, SOCK_STREAM, 0, sockets);
-    if (ret == -1)
-        return;
-
-    m_renderer.socket = g_socket_new_from_fd(sockets[0], 0);
-    if (!m_renderer.socket) {
-        close(sockets[0]);
-        close(sockets[1]);
-        return;
-    }
-
-    m_renderer.source = g_socket_create_source(m_renderer.socket, G_IO_IN, 0);
-    g_source_set_callback(m_renderer.source, reinterpret_cast<GSourceFunc>(socketCallback), this, 0);
-    g_source_attach(m_renderer.source, g_main_context_get_thread_default());
-
-    m_renderer.clientFd = sockets[1];
+    m_renderer.gbmHost.initialize(*this);
 }
 
 ViewBackend::~ViewBackend()
 {
-    if (m_renderer.clientFd)
-        close(m_renderer.clientFd);
-
-    if (m_renderer.source)
-        g_source_destroy(m_renderer.source);
-    if (m_renderer.socket)
-        g_object_unref(m_renderer.socket);
+    m_renderer.gbmHost.deinitialize();
 
     m_display.fbMap = { };
     if (m_display.source)
@@ -299,66 +264,9 @@ ViewBackend::~ViewBackend()
     m_drm = { };
 }
 
-gboolean ViewBackend::socketCallback(GSocket* socket, GIOCondition condition, gpointer data)
-{
-    auto* backend = static_cast<ViewBackend*>(data);
-
-    if (condition & G_IO_IN) {
-        GSocketControlMessage** messages;
-        int nMessages;
-
-        char* buff[MESSAGE_SIZE];
-        GInputVector vector = { buff, sizeof(buff) };
-
-        gssize len = g_socket_receive_message(socket, 0, &vector, 1, &messages, &nMessages, 0, 0, 0);
-        if (len == -1)
-            return FALSE;
-
-        if (nMessages == 1 && G_IS_UNIX_FD_MESSAGE(messages[0])) {
-            GUnixFDMessage* fdMessage = G_UNIX_FD_MESSAGE(messages[0]);
-
-            int* fds;
-            int nFds;
-            fds = g_unix_fd_message_steal_fds(fdMessage, &nFds);
-
-            int fd = fds[0];
-            backend->importBufferFd(fd);
-
-            g_free(fds);
-        }
-
-        if (nMessages > 0) {
-            for (int i = 0; i < nMessages; ++i)
-                g_object_unref(messages[i]);
-            g_free(messages);
-
-            return TRUE;
-        }
-
-        if (len == MESSAGE_SIZE) {
-            auto* message = reinterpret_cast<struct ipc_gbm_message*>(&buff);
-            uint64_t messageCode = message->message_code;
-
-            switch (messageCode) {
-            case 42:
-            {
-                auto* commit = reinterpret_cast<struct buffer_commit*>(std::addressof(message->data));
-                backend->commitBuffer(commit);
-                break;
-            }
-            default:
-                fprintf(stderr, "ViewBackend: read invalid message\n");
-                return FALSE;
-            }
-        }
-    }
-
-    return TRUE;
-}
-
 void ViewBackend::importBufferFd(int fd)
 {
-    if (m_renderer.pendingBufferFd >= 0)
+    if (m_renderer.pendingBufferFd != -1)
         close(m_renderer.pendingBufferFd);
     m_renderer.pendingBufferFd = fd;
 }
@@ -399,25 +307,6 @@ void ViewBackend::commitBuffer(struct buffer_commit* commit)
         fprintf(stderr, "ViewBackend: failed to queue page flip\n");
 }
 
-void ViewBackend::frameComplete()
-{
-    struct ipc_gbm_message messageData = { };
-    messageData.message_code = 23;
-
-    g_socket_send(m_renderer.socket, reinterpret_cast<char*>(&messageData), sizeof(messageData), 0, 0);
-}
-
-void ViewBackend::releaseBuffer(uint32_t handle)
-{
-    struct ipc_gbm_message messageData = { };
-    messageData.message_code = 16;
-
-    auto* releaseBuffer = reinterpret_cast<struct release_buffer*>(std::addressof(messageData.data));
-    releaseBuffer->handle = handle;
-
-    g_socket_send(m_renderer.socket, reinterpret_cast<char*>(&messageData), sizeof(messageData), 0, 0);
-}
-
 } // namespace DRM
 
 extern "C" {
@@ -454,9 +343,7 @@ const struct wpe_view_backend_interface drm_view_backend_interface = {
         fprintf(stderr, "drm_view_backend_interface::get_renderer_host_fd()\n");
 
         auto* backend = static_cast<DRM::ViewBackend*>(data);
-        int fd = backend->m_renderer.clientFd;
-        backend->m_renderer.clientFd = -1;
-        return fd;
+        return backend->m_renderer.gbmHost.releaseClientFD();
     },
 };
 
