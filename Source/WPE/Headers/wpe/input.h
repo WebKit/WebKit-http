@@ -8,6 +8,13 @@
 extern "C" {
 #endif
 
+enum wpe_input_keyboard_modifier {
+    wpe_input_keyboard_modifier_control = 1 << 0,
+    wpe_input_keyboard_modifier_shift   = 1 << 1,
+    wpe_input_keyboard_modifier_alt     = 1 << 2,
+    wpe_input_keyboard_modifier_meta    = 1 << 3,
+};
+
 struct wpe_input_keyboard_event {
     uint32_t time;
     uint32_t keyCode;

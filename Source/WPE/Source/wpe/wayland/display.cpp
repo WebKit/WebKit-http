@@ -303,11 +303,11 @@ static const struct wl_keyboard_listener g_keyboardListener = {
         modifiers = 0;
         auto component = static_cast<xkb_state_component>(XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED);
         if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.control, component))
-            modifiers |= WPE::Input::KeyboardEvent::Control;
+            modifiers |= wpe_input_keyboard_modifier_control;
         if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.alt, component))
-            modifiers |= WPE::Input::KeyboardEvent::Alt;
+            modifiers |= wpe_input_keyboard_modifier_alt;
         if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.shift, component))
-            modifiers |= WPE::Input::KeyboardEvent::Shift;
+            modifiers |= wpe_input_keyboard_modifier_shift;
     },
     // repeat_info
     [](void* data, struct wl_keyboard*, int32_t rate, int32_t delay)

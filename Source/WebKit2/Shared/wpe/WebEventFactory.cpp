@@ -38,13 +38,13 @@ static WebEvent::Modifiers modifiersForEvent(struct wpe_input_keyboard_event* ev
     unsigned modifiers = 0;
     unsigned eventModifiers = event->modifiers;
 
-    if (eventModifiers & WPE::Input::KeyboardEvent::Control)
+    if (eventModifiers & wpe_input_keyboard_modifier_control)
         modifiers |= WebEvent::ControlKey;
-    if (eventModifiers & WPE::Input::KeyboardEvent::Shift)
+    if (eventModifiers & wpe_input_keyboard_modifier_shift)
         modifiers |= WebEvent::ShiftKey;
-    if (eventModifiers & WPE::Input::KeyboardEvent::Alt)
+    if (eventModifiers & wpe_input_keyboard_modifier_alt)
         modifiers |= WebEvent::AltKey;
-    if (eventModifiers & WPE::Input::KeyboardEvent::Meta)
+    if (eventModifiers & wpe_input_keyboard_modifier_meta)
         modifiers |= WebEvent::MetaKey;
 
     return static_cast<WebEvent::Modifiers>(modifiers);
