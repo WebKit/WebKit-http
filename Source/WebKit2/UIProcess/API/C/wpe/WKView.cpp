@@ -42,8 +42,3 @@ WKPageRef WKViewGetPage(WKViewRef view)
 {
     return toAPI(&toImpl(view)->page());
 }
-
-void WKViewResize(WKViewRef view, WKSize size)
-{
-    toImpl(view)->setSize(toIntSize(size));
-}
