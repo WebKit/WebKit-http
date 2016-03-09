@@ -68,6 +68,7 @@ set(WPE_SOURCES
 
     Source/Pasteboard/Generic/PasteboardGeneric.cpp
 
+    Source/wpe/input.c
     Source/wpe/renderer.c
     Source/wpe/view-backend.c
 )
