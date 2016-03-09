@@ -114,8 +114,6 @@ if (USE_WPE_BACKEND_WAYLAND)
         Source/wpe/wayland/protocols/xdg-shell-protocol.c
 
         Source/Pasteboard/Wayland/PasteboardWayland.cpp
-
-        Source/ViewBackend/Wayland/WaylandDisplay.cpp
     )
 endif ()
 
