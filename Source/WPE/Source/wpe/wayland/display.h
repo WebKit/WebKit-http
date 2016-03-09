@@ -1,7 +1,6 @@
 #ifndef wpe_view_backend_wayland_display_h
 #define wpe_view_backend_wayland_display_h
 
-#include <WPE/Input/Events.h>
 #include <array>
 #include <unordered_map>
 #include <utility>
@@ -25,12 +24,6 @@ struct wl_touch;
 struct xdg_shell;
 
 typedef struct _GSource GSource;
-
-namespace WPE {
-namespace Input {
-class Client;
-}
-}
 
 namespace Wayland {
 
