@@ -54,11 +54,12 @@ public:
     struct wpe_view_backend* backend() { return m_backend; }
 
     const WebCore::IntSize& size() const { return m_size; }
-    void setSize(const WebCore::IntSize& size);
 
 private:
     View(const API::PageConfiguration&);
     virtual ~View();
+
+    void setSize(const WebCore::IntSize& size);
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
