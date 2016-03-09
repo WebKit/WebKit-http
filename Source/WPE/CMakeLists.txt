@@ -30,6 +30,7 @@ endif ()
 
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/wpe/external"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
