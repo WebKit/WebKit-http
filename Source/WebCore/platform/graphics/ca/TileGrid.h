@@ -77,6 +77,8 @@ public:
 
     IntRect tileCoverageRect() const;
     IntRect extent() const;
+    
+    IntSize tileSize() const { return m_tileSize; }
 
     double retainedTileBackingStoreMemory() const;
     unsigned blankPixelCount() const;
@@ -89,6 +91,7 @@ public:
 #endif
 
     typedef IntPoint TileIndex;
+
     typedef unsigned TileCohort;
     static const TileCohort VisibleTileCohort = UINT_MAX;
 
@@ -123,6 +126,7 @@ private:
         double timeUntilExpiration();
     };
 
+    void removeAllTiles();
     void removeAllSecondaryTiles();
     void removeTilesInCohort(TileCohort);
 
@@ -136,14 +140,14 @@ private:
     void removeTiles(Vector<TileGrid::TileIndex>& toRemove);
 
     // PlatformCALayerClient
-    virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect&) override;
-    virtual bool platformCALayerShowDebugBorders() const override;
-    virtual bool platformCALayerShowRepaintCounter(PlatformCALayer*) const override;
-    virtual int platformCALayerIncrementRepaintCount(PlatformCALayer*) override;
-    virtual bool platformCALayerContentsOpaque() const override;
-    virtual bool platformCALayerDrawsContent() const override { return true; }
-    virtual float platformCALayerDeviceScaleFactor() const override;
-    virtual bool isUsingDisplayListDrawing(PlatformCALayer*) const override;
+    void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect&) override;
+    bool platformCALayerShowDebugBorders() const override;
+    bool platformCALayerShowRepaintCounter(PlatformCALayer*) const override;
+    int platformCALayerIncrementRepaintCount(PlatformCALayer*) override;
+    bool platformCALayerContentsOpaque() const override;
+    bool platformCALayerDrawsContent() const override { return true; }
+    float platformCALayerDeviceScaleFactor() const override;
+    bool isUsingDisplayListDrawing(PlatformCALayer*) const override;
 
     TileController& m_controller;
     Ref<PlatformCALayer> m_containerLayer;
@@ -154,8 +158,6 @@ private:
     IntRect m_primaryTileCoverageRect;
     Vector<FloatRect> m_secondaryTileCoverageRects;
 
-    float m_scale;
-
     typedef Deque<TileCohortInfo> TileCohortList;
     TileCohortList m_cohortList;
 
@@ -163,6 +165,10 @@ private:
 
     typedef HashMap<PlatformCALayer*, int> RepaintCountMap;
     RepaintCountMap m_tileRepaintCounts;
+    
+    IntSize m_tileSize;
+
+    float m_scale { 1 };
 };
 
 }

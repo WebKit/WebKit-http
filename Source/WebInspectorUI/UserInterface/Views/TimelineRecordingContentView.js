@@ -162,8 +162,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     get currentTimelineView()
     {
-        let contentView = this._timelineContentBrowser.currentContentView;
-        return (contentView instanceof WebInspector.TimelineView) ? contentView : null;
+        return this._timelineContentBrowser.currentContentView;
     }
 
     get timelineOverviewHeight()
@@ -602,7 +601,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         let timeline = this._recording.timelineForInstrument(instrument);
         console.assert(!this._timelineViewMap.has(timeline), timeline);
 
-        this._timelineViewMap.set(timeline, WebInspector.ContentView.createFromRepresentedObject(timeline, {timelineSidebarPanel: this._timelineSidebarPanel}));
+        this._timelineViewMap.set(timeline, WebInspector.ContentView.createFromRepresentedObject(timeline, {timelineSidebarPanel: this._timelineSidebarPanel, recording: this._recording}));
         if (timeline.type === WebInspector.TimelineRecord.Type.RenderingFrame)
             this._renderingFrameTimeline = timeline;
 
@@ -693,8 +692,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             selectedPathComponent = this._entireRecordingPathComponent;
         else {
             let timelineRange = this._timelineSelectionPathComponent.representedObject;
-            timelineRange.startValue = this.currentTimelineView.startTime;
-            timelineRange.endValue = this.currentTimelineView.endTime;
+            timelineRange.startValue = this.currentTimelineView.startTime - this.currentTimelineView.zeroTime;
+            timelineRange.endValue = this.currentTimelineView.endTime - this.currentTimelineView.zeroTime;
 
             this._updateTimeRangePathComponents();
             selectedPathComponent = this._timelineSelectionPathComponent;

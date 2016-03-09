@@ -54,12 +54,12 @@ protected:
     RegionOverlay(MainFrame&, Color);
 
 private:
-    virtual void pageOverlayDestroyed(PageOverlay&) final;
-    virtual void willMoveToPage(PageOverlay&, Page*) final;
-    virtual void didMoveToPage(PageOverlay&, Page*) final;
-    virtual void drawRect(PageOverlay&, GraphicsContext&, const IntRect& dirtyRect) final;
-    virtual bool mouseEvent(PageOverlay&, const PlatformMouseEvent&) final;
-    virtual void didScrollFrame(PageOverlay&, Frame&) final;
+    void pageOverlayDestroyed(PageOverlay&) final;
+    void willMoveToPage(PageOverlay&, Page*) final;
+    void didMoveToPage(PageOverlay&, Page*) final;
+    void drawRect(PageOverlay&, GraphicsContext&, const IntRect& dirtyRect) final;
+    bool mouseEvent(PageOverlay&, const PlatformMouseEvent&) final;
+    void didScrollFrame(PageOverlay&, Frame&) final;
 
 protected:
     // Returns true if the region changed.
@@ -85,7 +85,7 @@ private:
     {
     }
 
-    virtual bool updateRegion() override;
+    bool updateRegion() override;
 };
 
 bool MouseWheelRegionOverlay::updateRegion()
@@ -124,7 +124,7 @@ private:
     {
     }
 
-    virtual bool updateRegion() override;
+    bool updateRegion() override;
 };
 
 bool NonFastScrollableRegionOverlay::updateRegion()

@@ -76,6 +76,11 @@ template <class T> class WriteBarrierBase;
 enum PreferredPrimitiveType { NoPreference, PreferNumber, PreferString };
 enum ECMAMode { StrictMode, NotStrictMode };
 
+enum class CallType : unsigned;
+struct CallData;
+enum class ConstructType : unsigned;
+struct ConstructData;
+
 typedef int64_t EncodedJSValue;
     
 union EncodedValueDescriptor {
@@ -219,7 +224,9 @@ public:
     // Querying the type.
     bool isEmpty() const;
     bool isFunction() const;
+    bool isFunction(CallType&, CallData&) const;
     bool isConstructor() const;
+    bool isConstructor(ConstructType&, ConstructData&) const;
     bool isUndefined() const;
     bool isNull() const;
     bool isUndefinedOrNull() const;
@@ -275,6 +282,7 @@ public:
     JSValue get(ExecState*, PropertyName, PropertySlot&) const;
     JSValue get(ExecState*, unsigned propertyName) const;
     JSValue get(ExecState*, unsigned propertyName, PropertySlot&) const;
+    JSValue get(ExecState*, uint64_t propertyName) const;
 
     bool getPropertySlot(ExecState*, PropertyName, PropertySlot&) const;
 

@@ -212,7 +212,7 @@ Stringifier::Stringifier(ExecState* exec, const Local<Unknown>& replacer, const 
     , m_replacer(replacer)
     , m_usingArrayReplacer(false)
     , m_arrayReplacerPropertyNames(exec, PropertyNameMode::Strings)
-    , m_replacerCallType(CallTypeNone)
+    , m_replacerCallType(CallType::None)
     , m_gap(gap(exec, space.get()))
 {
     if (!m_replacer.isObject())
@@ -279,7 +279,7 @@ JSValue Stringifier::toJSONImpl(JSValue value, const PropertyNameForFunctionCall
     JSObject* object = asObject(toJSONFunction);
     CallData callData;
     CallType callType = object->methodTable()->getCallData(object, callData);
-    if (callType == CallTypeNone)
+    if (callType == CallType::None)
         return value;
 
     MarkedArgumentBuffer args;
@@ -295,7 +295,7 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
         return StringifyFailed;
 
     // Call the replacer function.
-    if (m_replacerCallType != CallTypeNone) {
+    if (m_replacerCallType != CallType::None) {
         MarkedArgumentBuffer args;
         args.append(propertyName.value(m_exec));
         args.append(value);
@@ -349,7 +349,7 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
     JSObject* object = asObject(value);
 
     CallData callData;
-    if (object->methodTable()->getCallData(object, callData) != CallTypeNone) {
+    if (object->methodTable()->getCallData(object, callData) != CallType::None) {
         if (holder->inherits(JSArray::info())) {
             builder.appendLiteral("null");
             return StringifySucceeded;
@@ -439,6 +439,8 @@ bool Stringifier::Holder::appendNextProperty(Stringifier& stringifier, StringBui
             else {
                 PropertyNameArray objectPropertyNames(exec, PropertyNameMode::Strings);
                 m_object->methodTable()->getOwnPropertyNames(m_object.get(), exec, objectPropertyNames, EnumerationMode());
+                if (UNLIKELY(exec->hadException()))
+                    return false;
                 m_propertyNames = objectPropertyNames.releaseData();
             }
             m_size = m_propertyNames->propertyNameVector().size();
@@ -656,6 +658,8 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                 indexStack.append(0);
                 propertyStack.append(PropertyNameArray(m_exec, PropertyNameMode::Strings));
                 object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), EnumerationMode());
+                if (UNLIKELY(m_exec->hadException()))
+                    return jsNull();
             }
             objectStartVisitMember:
             FALLTHROUGH;
@@ -753,7 +757,7 @@ EncodedJSValue JSC_HOST_CALL JSONProtoFuncParse(ExecState* exec)
     JSValue function = exec->uncheckedArgument(1);
     CallData callData;
     CallType callType = getCallData(function, callData);
-    if (callType == CallTypeNone)
+    if (callType == CallType::None)
         return JSValue::encode(unfiltered);
     return JSValue::encode(Walker(exec, Local<JSObject>(exec->vm(), asObject(function)), callType, callData).walk(unfiltered));
 }

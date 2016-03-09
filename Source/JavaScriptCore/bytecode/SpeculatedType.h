@@ -104,6 +104,11 @@ inline bool isCellSpeculation(SpeculatedType value)
     return !!(value & SpecCell) && !(value & ~SpecCell);
 }
 
+inline bool isCellOrOtherSpeculation(SpeculatedType value)
+{
+    return !!value && !(value & ~(SpecCell | SpecOther));
+}
+
 inline bool isNotCellSpeculation(SpeculatedType value)
 {
     return !(value & SpecCell) && value;
@@ -142,6 +147,11 @@ inline bool isNotStringVarSpeculation(SpeculatedType value)
 inline bool isStringSpeculation(SpeculatedType value)
 {
     return !!value && (value & SpecString) == value;
+}
+
+inline bool isStringOrOtherSpeculation(SpeculatedType value)
+{
+    return !!value && (value & (SpecString | SpecOther)) == value;
 }
 
 inline bool isSymbolSpeculation(SpeculatedType value)

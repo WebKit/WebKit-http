@@ -210,7 +210,7 @@ inline bool Structure::isValid(JSGlobalObject* globalObject, StructureChain* cac
         if (asObject(prototype)->structure() != cachedStructure->get())
             return false;
         ++cachedStructure;
-        prototype = asObject(prototype)->prototype();
+        prototype = asObject(prototype)->getPrototypeDirect();
     }
     return prototype.isNull() && !*cachedStructure;
 }
@@ -242,7 +242,7 @@ inline bool Structure::putWillGrowOutOfLineStorage()
 
 ALWAYS_INLINE WriteBarrier<PropertyTable>& Structure::propertyTable()
 {
-    ASSERT(!globalObject() || !globalObject()->vm().heap.isCollecting());
+    ASSERT(!globalObject() || (!globalObject()->vm().heap.isCollecting() || globalObject()->vm().heap.isHeapSnapshotting()));
     return m_propertyTableUnsafe;
 }
 

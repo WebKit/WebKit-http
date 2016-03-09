@@ -28,7 +28,7 @@
 #include "YarrPattern.h"
 
 #include "Yarr.h"
-#include "YarrCanonicalizeUnicode.h"
+#include "YarrCanonicalize.h"
 #include "YarrParser.h"
 #include <wtf/Vector.h>
 
@@ -68,9 +68,14 @@ public:
 
     void putChar(UChar32 ch)
     {
-        // Handle ascii cases.
-        if (ch <= 0x7f) {
-            if (m_isCaseInsensitive && isASCIIAlpha(ch)) {
+        if (!m_isCaseInsensitive) {
+            addSorted(ch);
+            return;
+        }
+
+        if (m_canonicalMode == CanonicalMode::UCS2 && isASCII(ch)) {
+            // Handle ASCII cases.
+            if (isASCIIAlpha(ch)) {
                 addSorted(m_matches, toASCIIUpper(ch));
                 addSorted(m_matches, toASCIILower(ch));
             } else
@@ -78,16 +83,10 @@ public:
             return;
         }
 
-        // Simple case, not a case-insensitive match.
-        if (!m_isCaseInsensitive) {
-            addSorted(m_matchesUnicode, ch);
-            return;
-        }
-
         // Add multiple matches, if necessary.
         const CanonicalizationRange* info = canonicalRangeInfoFor(ch, m_canonicalMode);
         if (info->type == CanonicalizeUnique)
-            addSorted(m_matchesUnicode, ch);
+            addSorted(ch);
         else
             putUnicodeIgnoreCase(ch, info);
     }
@@ -108,7 +107,7 @@ public:
 
     void putRange(UChar32 lo, UChar32 hi)
     {
-        if (lo <= 0x7f) {
+        if (isASCII(lo)) {
             char asciiLo = lo;
             char asciiHi = std::min(hi, (UChar32)0x7f);
             addSortedRange(m_ranges, lo, asciiHi);
@@ -120,7 +119,7 @@ public:
                     addSortedRange(m_ranges, std::max(asciiLo, 'a')+('A'-'a'), std::min(asciiHi, 'z')+('A'-'a'));
             }
         }
-        if (hi <= 0x7f)
+        if (isASCII(hi))
             return;
 
         lo = std::max(lo, (UChar32)0x80);
@@ -190,7 +189,7 @@ public:
 private:
     void addSorted(UChar32 ch)
     {
-        addSorted(ch <= 0x7f ? m_matches : m_matchesUnicode, ch);
+        addSorted(isASCII(ch) ? m_matches : m_matchesUnicode, ch);
     }
 
     void addSorted(Vector<UChar32>& matches, UChar32 ch)
@@ -603,7 +602,7 @@ public:
                     currentCallFrameSize += YarrStackSpaceForBackTrackInfoPatternCharacter;
                     alternative->m_hasFixedSize = false;
                 } else if (m_pattern.m_unicode) {
-                    currentInputPosition += (!U_IS_BMP(term.patternCharacter) ? 2 : 1) * term.quantityCount;
+                    currentInputPosition += U16_LENGTH(term.patternCharacter) * term.quantityCount;
                 } else
                     currentInputPosition += term.quantityCount;
                 break;

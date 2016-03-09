@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,9 @@
 #include "config.h"
 #include "InspectorHeapAgent.h"
 
+#include "HeapProfiler.h"
 #include "InspectorEnvironment.h"
+#include "JSCInlines.h"
 #include "VM.h"
 #include <wtf/RunLoop.h>
 #include <wtf/Stopwatch.h>
@@ -54,6 +56,7 @@ void InspectorHeapAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDis
 void InspectorHeapAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
     ErrorString ignored;
+    stopTracking(ignored);
     disable(ignored);
 }
 
@@ -75,6 +78,8 @@ void InspectorHeapAgent::disable(ErrorString&)
     m_enabled = false;
 
     m_environment.vm().heap.removeObserver(this);
+
+    clearHeapSnapshots();
 }
 
 void InspectorHeapAgent::gc(ErrorString&)
@@ -83,6 +88,54 @@ void InspectorHeapAgent::gc(ErrorString&)
     JSLockHolder lock(vm);
     sanitizeStackForVM(&vm);
     vm.heap.collectAllGarbage();
+}
+
+void InspectorHeapAgent::snapshot(ErrorString&, double* timestamp, String* snapshotData)
+{
+    VM& vm = m_environment.vm();
+    JSLockHolder lock(vm);
+
+    HeapSnapshotBuilder snapshotBuilder(vm.ensureHeapProfiler());
+    snapshotBuilder.buildSnapshot();
+
+    *timestamp = m_environment.executionStopwatch()->elapsedTime();
+    *snapshotData = snapshotBuilder.json([&] (const HeapSnapshotNode& node) {
+        if (Structure* structure = node.cell->structure(vm)) {
+            if (JSGlobalObject* globalObject = structure->globalObject()) {
+                if (!m_environment.canAccessInspectedScriptState(globalObject->globalExec()))
+                    return false;
+            }
+        }
+        return true;
+    });
+}
+
+void InspectorHeapAgent::startTracking(ErrorString& errorString)
+{
+    if (m_tracking)
+        return;
+
+    m_tracking = true;
+
+    double timestamp;
+    String snapshotData;
+    snapshot(errorString, &timestamp, &snapshotData);
+
+    m_frontendDispatcher->trackingStart(timestamp, snapshotData);
+}
+
+void InspectorHeapAgent::stopTracking(ErrorString& errorString)
+{
+    if (!m_tracking)
+        return;
+
+    m_tracking = false;
+
+    double timestamp;
+    String snapshotData;
+    snapshot(errorString, &timestamp, &snapshotData);
+
+    m_frontendDispatcher->trackingComplete(timestamp, snapshotData);
 }
 
 static Inspector::Protocol::Heap::GarbageCollection::Type protocolTypeForHeapOperation(HeapOperation operation)
@@ -134,6 +187,12 @@ void InspectorHeapAgent::didGarbageCollect(HeapOperation operation)
     });
 
     m_gcStartTime = NAN;
+}
+
+void InspectorHeapAgent::clearHeapSnapshots()
+{
+    if (HeapProfiler* heapProfiler = m_environment.vm().heapProfiler())
+        heapProfiler->clearSnapshots();
 }
 
 } // namespace Inspector

@@ -37,21 +37,21 @@ class File;
 class HTMLAttachmentElement final : public HTMLElement {
 public:
     static Ref<HTMLAttachmentElement> create(const QualifiedName&, Document&);
-    File* file() const;
+    WEBCORE_EXPORT File* file() const;
     void setFile(File*);
 
-    String attachmentTitle() const;
+    WEBCORE_EXPORT String attachmentTitle() const;
     String attachmentType() const;
 
 private:
     HTMLAttachmentElement(const QualifiedName&, Document&);
     virtual ~HTMLAttachmentElement();
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
 
-    virtual bool shouldSelectOnMouseDown() override { return true; }
-    virtual bool canContainRangeEndPoint() const override { return false; }
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    bool shouldSelectOnMouseDown() override { return true; }
+    bool canContainRangeEndPoint() const override { return false; }
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
     
     RefPtr<File> m_file;
 };

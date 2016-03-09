@@ -27,19 +27,22 @@
 #include "ResourceLoadObserver.h"
 
 #include "Document.h"
-#include "KeyedCoding.h"
+#include "Frame.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "NetworkStorageSession.h"
+#include "Page.h"
 #include "PlatformStrategies.h"
 #include "ResourceLoadStatistics.h"
+#include "ResourceLoadStatisticsStore.h"
+#include "ResourceRequest.h"
+#include "ResourceResponse.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "SharedBuffer.h"
 #include "URL.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
-
-#define LOG_STATISTICS_TO_FILE 0
 
 namespace WebCore {
 
@@ -48,12 +51,34 @@ ResourceLoadObserver& ResourceLoadObserver::sharedObserver()
     static NeverDestroyed<ResourceLoadObserver> resourceLoadObserver;
     return resourceLoadObserver;
 }
-    
-void ResourceLoadObserver::logFrameNavigation(bool isRedirect, const URL& sourceURL, const URL& targetURL, bool isMainFrame, const URL& mainFrameURL)
+
+void ResourceLoadObserver::setStatisticsStore(Ref<ResourceLoadStatisticsStore>&& store)
+{
+    m_store = WTFMove(store);
+}
+
+void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& topFrame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
 {
     if (!Settings::resourceLoadStatisticsEnabled())
         return;
 
+    if (!m_store)
+        return;
+
+    ASSERT(frame.document());
+    ASSERT(topFrame.document());
+    ASSERT(topFrame.page());
+
+    bool needPrivacy = topFrame.page() ? topFrame.page()->usesEphemeralSession() : false;
+    if (needPrivacy)
+        return;
+
+    bool isRedirect = !redirectResponse.isNull();
+    bool isMainFrame = frame.isMainFrame();
+    const URL& sourceURL = frame.document()->url();
+    const URL& targetURL = newRequest.url();
+    const URL& mainFrameURL = topFrame.document()->url();
+    
     if (!targetURL.isValid() || !mainFrameURL.isValid())
         return;
 
@@ -71,7 +96,7 @@ void ResourceLoadObserver::logFrameNavigation(bool isRedirect, const URL& source
         return;
     
     auto targetOrigin = SecurityOrigin::create(targetURL);
-    auto& targetStatistics = resourceStatisticsForPrimaryDomain(targetPrimaryDomain);
+    auto& targetStatistics = m_store->resourceStatisticsForPrimaryDomain(targetPrimaryDomain);
     
     if (isMainFrame)
         targetStatistics.topFrameHasBeenNavigatedToBefore = true;
@@ -83,9 +108,9 @@ void ResourceLoadObserver::logFrameNavigation(bool isRedirect, const URL& source
     }
     
     if (isRedirect) {
-        auto& redirectingOriginResourceStatistics = resourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
+        auto& redirectingOriginResourceStatistics = m_store->resourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
         
-        if (isPrevalentResource(targetPrimaryDomain))
+        if (m_store->isPrevalentResource(targetPrimaryDomain))
             redirectingOriginResourceStatistics.redirectedToOtherPrevalentResourceOrigins.add(targetPrimaryDomain);
         
         if (isMainFrame) {
@@ -105,7 +130,7 @@ void ResourceLoadObserver::logFrameNavigation(bool isRedirect, const URL& source
             else
                 ++targetStatistics.subframeSubResourceCount;
         } else {
-            auto& sourceOriginResourceStatistics = resourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
+            auto& sourceOriginResourceStatistics = m_store->resourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
 
             if (isMainFrame) {
                 ++sourceOriginResourceStatistics.topFrameHasBeenNavigatedFrom;
@@ -117,14 +142,27 @@ void ResourceLoadObserver::logFrameNavigation(bool isRedirect, const URL& source
         }
     }
 
-    targetStatistics.checkAndSetAsPrevalentResourceIfNecessary(m_resourceStatisticsMap.size());
+    targetStatistics.checkAndSetAsPrevalentResourceIfNecessary(m_store->size());
+    m_store->fireDataModificationHandler();
 }
     
-void ResourceLoadObserver::logSubresourceLoading(bool isRedirect, const URL& sourceURL, const URL& targetURL, const URL& mainFrameURL)
+void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
 {
     if (!Settings::resourceLoadStatisticsEnabled())
         return;
 
+    if (!m_store)
+        return;
+
+    bool needPrivacy = (frame && frame->page()) ? frame->page()->usesEphemeralSession() : false;
+    if (needPrivacy)
+        return;
+    
+    bool isRedirect = !redirectResponse.isNull();
+    const URL& sourceURL = redirectResponse.url();
+    const URL& targetURL = newRequest.url();
+    const URL& mainFrameURL = frame ? frame->mainFrame().document()->url() : URL();
+    
     auto targetHost = targetURL.host();
     auto mainFrameHost = mainFrameURL.host();
 
@@ -138,15 +176,15 @@ void ResourceLoadObserver::logSubresourceLoading(bool isRedirect, const URL& sou
     if (targetPrimaryDomain == mainFramePrimaryDomain || targetPrimaryDomain == sourcePrimaryDomain)
         return;
 
-    auto& targetStatistics = resourceStatisticsForPrimaryDomain(targetPrimaryDomain);
+    auto& targetStatistics = m_store->resourceStatisticsForPrimaryDomain(targetPrimaryDomain);
 
     auto mainFrameOrigin = SecurityOrigin::create(mainFrameURL);
     targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain);
 
     if (isRedirect) {
-        auto& redirectingOriginStatistics = resourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
+        auto& redirectingOriginStatistics = m_store->resourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
         
-        if (isPrevalentResource(targetPrimaryDomain))
+        if (m_store->isPrevalentResource(targetPrimaryDomain))
             redirectingOriginStatistics.redirectedToOtherPrevalentResourceOrigins.add(targetPrimaryDomain);
         
         ++redirectingOriginStatistics.subresourceHasBeenRedirectedFrom;
@@ -167,7 +205,8 @@ void ResourceLoadObserver::logSubresourceLoading(bool isRedirect, const URL& sou
         targetStatistics.subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited = static_cast<double>(targetStatistics.subresourceHasBeenSubresourceCount) / totalVisited;
     }
     
-    targetStatistics.checkAndSetAsPrevalentResourceIfNecessary(m_resourceStatisticsMap.size());
+    targetStatistics.checkAndSetAsPrevalentResourceIfNecessary(m_store->size());
+    m_store->fireDataModificationHandler();
 }
     
 void ResourceLoadObserver::logUserInteraction(const Document& document)
@@ -175,27 +214,18 @@ void ResourceLoadObserver::logUserInteraction(const Document& document)
     if (!Settings::resourceLoadStatisticsEnabled())
         return;
 
-    auto& statistics = resourceStatisticsForPrimaryDomain(primaryDomain(document.url()));
+    if (!m_store)
+        return;
+
+    bool needPrivacy = document.page() ? document.page()->usesEphemeralSession() : false;
+    if (needPrivacy)
+        return;
+
+    auto& statistics = m_store->resourceStatisticsForPrimaryDomain(primaryDomain(document.url()));
     statistics.hadUserInteraction = true;
+    m_store->fireDataModificationHandler();
 }
     
-bool ResourceLoadObserver::isPrevalentResource(const String& primaryDomain) const
-{
-    auto mapEntry = m_resourceStatisticsMap.find(primaryDomain);
-    if (mapEntry == m_resourceStatisticsMap.end())
-        return false;
-
-    return mapEntry->value.isPrevalentResource;
-}
-    
-ResourceLoadStatistics& ResourceLoadObserver::resourceStatisticsForPrimaryDomain(const String& primaryDomain)
-{
-    if (!m_resourceStatisticsMap.contains(primaryDomain))
-        m_resourceStatisticsMap.set(primaryDomain, ResourceLoadStatistics());
-    
-    return m_resourceStatisticsMap.find(primaryDomain)->value;
-}
-
 String ResourceLoadObserver::primaryDomain(const URL& url)
 {
     String host = url.host();
@@ -238,136 +268,9 @@ String ResourceLoadObserver::primaryDomain(const URL& url)
     return primaryDomain;
 }
 
-typedef HashMap<String, ResourceLoadStatistics>::KeyValuePairType StatisticsValue;
-
-void ResourceLoadObserver::writeDataToDisk()
-{
-    if (!Settings::resourceLoadStatisticsEnabled())
-        return;
-    
-    auto encoder = KeyedEncoder::encoder();
-    encoder->encodeUInt32("originsVisited", m_resourceStatisticsMap.size());
-    
-    encoder->encodeObjects("browsingStatistics", m_resourceStatisticsMap.begin(), m_resourceStatisticsMap.end(), [this](KeyedEncoder& encoderInner, const StatisticsValue& origin) {
-        origin.value.encode(encoderInner, origin.key);
-    });
-    
-    writeEncoderToDisk(*encoder.get(), "full_browsing_session");
-}
-
-void ResourceLoadObserver::writeDataToDisk(const String& origin, const ResourceLoadStatistics& resourceStatistics) const
-{
-    if (!Settings::resourceLoadStatisticsEnabled())
-        return;
-
-    auto encoder = KeyedEncoder::encoder();
-    encoder->encodeUInt32("originsVisited", 1);
-    
-    encoder->encodeObject(origin, resourceStatistics, [this, &origin](KeyedEncoder& encoder, const ResourceLoadStatistics& resourceStatistics) {
-        resourceStatistics.encode(encoder, origin);
-    });
-    
-    String label = origin;
-    label.replace('/', '_');
-    label.replace(':', '+');
-    writeEncoderToDisk(*encoder.get(), label);
-}
-
-void ResourceLoadObserver::setStatisticsStorageDirectory(const String& path)
-{
-    m_storagePath = path;
-}
-
-String ResourceLoadObserver::persistentStoragePath(const String& label) const
-{
-    if (m_storagePath.isEmpty())
-        return emptyString();
-
-    // TODO Decide what to call this file
-    return pathByAppendingComponent(m_storagePath, label + "_resourceLog.plist");
-}
-
-void ResourceLoadObserver::readDataFromDiskIfNeeded()
-{
-    if (!Settings::resourceLoadStatisticsEnabled())
-        return;
-
-    if (m_resourceStatisticsMap.size())
-        return;
-
-    auto decoder = createDecoderFromDisk("full_browsing_session");
-    if (!decoder)
-        return;
-
-    unsigned visitedOrigins = 0;
-    decoder->decodeUInt32("originsVisited", visitedOrigins);
-        
-    Vector<String> loadedOrigins;
-    decoder->decodeObjects("browsingStatistics", loadedOrigins, [this](KeyedDecoder& decoderInner, String& origin) {
-        if (!decoderInner.decodeString("PrevalentResourceOrigin", origin))
-            return false;
-
-        ResourceLoadStatistics statistics;
-        if (!statistics.decode(decoderInner, origin))
-            return false;
-
-        m_resourceStatisticsMap.set(origin, statistics);
-            
-        return true;
-    });
-        
-    ASSERT(visitedOrigins == static_cast<size_t>(loadedOrigins.size()));
-}
-
-std::unique_ptr<KeyedDecoder> ResourceLoadObserver::createDecoderFromDisk(const String& label) const
-{
-    String resourceLog = persistentStoragePath(label);
-    if (resourceLog.isEmpty())
-        return nullptr;
-    
-    RefPtr<SharedBuffer> rawData = SharedBuffer::createWithContentsOfFile(resourceLog);
-    if (!rawData)
-        return nullptr;
-    
-    return KeyedDecoder::decoder(reinterpret_cast<const uint8_t*>(rawData->data()), rawData->size());
-}
-    
-void ResourceLoadObserver::writeEncoderToDisk(KeyedEncoder& encoder, const String& label) const
-{
-#if LOG_STATISTICS_TO_FILE
-    RefPtr<SharedBuffer> rawData = encoder.finishEncoding();
-    if (!rawData)
-        return;
-    
-    String resourceLog = persistentStoragePath(label);
-    if (resourceLog.isEmpty())
-        return;
-
-    if (!m_storagePath.isEmpty())
-        makeAllDirectories(m_storagePath);
-
-    auto handle = openFile(resourceLog, OpenForWrite);
-    if (!handle)
-        return;
-    
-    int64_t writtenBytes = writeToFile(handle, rawData->data(), rawData->size());
-    closeFile(handle);
-    
-    if (writtenBytes != static_cast<int64_t>(rawData->size()))
-        WTFLogAlways("ResourceLoadStatistics: We only wrote %lld out of %d bytes to disk", writtenBytes, rawData->size());
-#else
-    UNUSED_PARAM(encoder);
-    UNUSED_PARAM(label);
-#endif
-}
-
 String ResourceLoadObserver::statisticsForOrigin(const String& origin)
 {
-    if (!m_resourceStatisticsMap.contains(origin))
-        return emptyString();
-    
-    auto& statistics = m_resourceStatisticsMap.find(origin)->value;
-    return "Statistics for " + origin + ":\n" + statistics.toString();
+    return m_store ? m_store->statisticsForOrigin(origin) : emptyString();
 }
-    
+
 }

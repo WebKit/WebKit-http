@@ -37,6 +37,14 @@ IntSize::IntSize(const FloatSize& s)
 {
 }
 
+IntSize IntSize::constrainedBetween(const IntSize& min, const IntSize& max) const
+{
+    return {
+        std::max(min.width(), std::min(max.width(), m_width)),
+        std::max(min.height(), std::min(max.height(), m_height))
+    };
+}
+
 TextStream& operator<<(TextStream& ts, const IntSize& size)
 {
     return ts << "width=" << size.width() << " height=" << size.height();

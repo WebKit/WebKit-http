@@ -219,7 +219,7 @@ public:
     ProgressTracker& progress() const { return *m_progress; }
     BackForwardController& backForward() const { return *m_backForwardController; }
 
-    double domTimerAlignmentInterval() const { return m_timerAlignmentInterval; }
+    std::chrono::milliseconds domTimerAlignmentInterval() const { return m_timerAlignmentInterval; }
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     enum ViewMode {
@@ -356,6 +356,8 @@ public:
 
     WEBCORE_EXPORT void invalidateStylesForAllLinks();
     WEBCORE_EXPORT void invalidateStylesForLink(LinkHash);
+
+    void invalidateInjectedStyleSheetCacheInAllFrames();
 
     StorageNamespace* sessionStorage(bool optionalCreate = true);
     void setSessionStorage(RefPtr<StorageNamespace>&&);
@@ -504,6 +506,14 @@ public:
 
     WEBCORE_EXPORT void setTimerAlignmentIntervalIncreaseLimit(std::chrono::milliseconds);
 
+    bool isControlledByAutomation() const { return m_controlledByAutomation; }
+    void setControlledByAutomation(bool controlled) { m_controlledByAutomation = controlled; }
+
+    bool isAlwaysOnLoggingAllowed() const;
+
+    String captionUserPreferencesStyleSheet();
+    void setCaptionUserPreferencesStyleSheet(const String&);
+
 private:
     WEBCORE_EXPORT void initGroup();
 
@@ -530,7 +540,7 @@ private:
     void hiddenPageDOMTimerThrottlingStateChanged();
     void setTimerThrottlingState(TimerThrottlingState);
     void updateTimerThrottlingState();
-    void setDOMTimerAlignmentInterval(double);
+    void updateDOMTimerAlignmentInterval();
     void timerAlignmentIntervalIncreaseTimerFired();
 
     const std::unique_ptr<Chrome> m_chrome;
@@ -604,6 +614,8 @@ private:
     mutable bool m_didLoadUserStyleSheet;
     mutable time_t m_userStyleSheetModificationTime;
 
+    String m_captionUserPreferencesStyleSheet;
+
     std::unique_ptr<PageGroup> m_singlePageGroup;
     PageGroup* m_group;
 
@@ -618,10 +630,10 @@ private:
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
     TimerThrottlingState m_timerThrottlingState { TimerThrottlingState::Disabled };
-    double m_timerThrottlingEnabledTime { 0 };
-    double m_timerAlignmentInterval;
+    std::chrono::steady_clock::time_point m_timerThrottlingStateLastChangedTime { std::chrono::steady_clock::duration::zero() };
+    std::chrono::milliseconds m_timerAlignmentInterval;
     Timer m_timerAlignmentIntervalIncreaseTimer;
-    double m_timerAlignmentIntervalIncreaseLimit { 0 };
+    std::chrono::milliseconds m_timerAlignmentIntervalIncreaseLimit { 0 };
 
     bool m_isEditable;
     bool m_isPrerender;
@@ -682,6 +694,8 @@ private:
     
     bool m_allowsMediaDocumentInlinePlayback { false };
     bool m_showAllPlugins { false };
+
+    bool m_controlledByAutomation { false };
 };
 
 inline PageGroup& Page::group()

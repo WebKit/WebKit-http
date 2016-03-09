@@ -39,6 +39,8 @@
 #include "RenderTextControl.h"
 #include "RenderView.h"
 #include "ScriptController.h"
+#include "ShadowRoot.h"
+#include "StyleResolver.h"
 #include "TextEvent.h"
 #include "TextEventInputType.h"
 #include <wtf/Ref.h>
@@ -73,7 +75,7 @@ Ref<TextControlInnerElement> TextControlInnerElement::create(Document& document)
     return adoptRef(*new TextControlInnerElement(document));
 }
 
-RefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer(RenderStyle&, RenderStyle* shadowHostStyle)
+Optional<ElementStyle> TextControlInnerElement::resolveCustomStyle(RenderStyle&, RenderStyle* shadowHostStyle)
 {
     auto innerContainerStyle = RenderStyle::create();
     innerContainerStyle.get().inheritFrom(shadowHostStyle);
@@ -87,7 +89,7 @@ RefPtr<RenderStyle> TextControlInnerElement::customStyleForRenderer(RenderStyle&
     // We don't want the shadow dom to be editable, so we set this block to read-only in case the input itself is editable.
     innerContainerStyle.get().setUserModify(READ_ONLY);
 
-    return WTFMove(innerContainerStyle);
+    return ElementStyle(WTFMove(innerContainerStyle));
 }
 
 // ---------------------------
@@ -132,9 +134,32 @@ RenderTextControlInnerBlock* TextControlInnerTextElement::renderer() const
     return downcast<RenderTextControlInnerBlock>(HTMLDivElement::renderer());
 }
 
-RefPtr<RenderStyle> TextControlInnerTextElement::customStyleForRenderer(RenderStyle&, RenderStyle* shadowHostStyle)
+Optional<ElementStyle> TextControlInnerTextElement::resolveCustomStyle(RenderStyle&, RenderStyle* shadowHostStyle)
 {
-    return downcast<HTMLTextFormControlElement>(*shadowHost()).createInnerTextStyle(*shadowHostStyle);
+    return ElementStyle(downcast<HTMLTextFormControlElement>(*shadowHost()).createInnerTextStyle(*shadowHostStyle));
+}
+
+// ----------------------------
+
+TextControlPlaceholderElement::TextControlPlaceholderElement(Document& document)
+    : HTMLDivElement(divTag, document)
+{
+    setPseudo(AtomicString("-webkit-input-placeholder", AtomicString::ConstructFromLiteral));
+    setHasCustomStyleResolveCallbacks();
+}
+
+Optional<ElementStyle> TextControlPlaceholderElement::resolveCustomStyle(RenderStyle& parentStyle, RenderStyle* shadowHostStyle)
+{
+    auto style = resolveStyle(&parentStyle);
+
+    auto& controlElement = downcast<HTMLTextFormControlElement>(*containingShadowRoot()->host());
+    style.renderStyle->setDisplay(controlElement.isPlaceholderVisible() ? BLOCK : NONE);
+
+    if (is<HTMLInputElement>(controlElement)) {
+        auto& inputElement = downcast<HTMLInputElement>(controlElement);
+        style.renderStyle->setTextOverflow(inputElement.shouldTruncateText(*shadowHostStyle) ? TextOverflowEllipsis : TextOverflowClip);
+    }
+    return WTFMove(style);
 }
 
 // ----------------------------

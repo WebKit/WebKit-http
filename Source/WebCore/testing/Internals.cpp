@@ -31,6 +31,7 @@
 #include "ActiveDOMCallbackMicrotask.h"
 #include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
+#include "Autofill.h"
 #include "BackForwardController.h"
 #include "BitmapImage.h"
 #include "CachedImage.h"
@@ -175,6 +176,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+#include "MockMediaEndpoint.h"
 #include "MockRealtimeMediaSourceCenter.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionHandlerMock.h"
@@ -231,20 +233,20 @@ public:
     virtual ~InspectorStubFrontend();
 
     // InspectorFrontendClient API
-    virtual void attachWindow(DockSide) override { }
-    virtual void detachWindow() override { }
-    virtual void closeWindow() override;
-    virtual void bringToFront() override { }
-    virtual String localizedStringsURL() override { return String(); }
-    virtual void inspectedURLChanged(const String&) override { }
+    void attachWindow(DockSide) override { }
+    void detachWindow() override { }
+    void closeWindow() override;
+    void bringToFront() override { }
+    String localizedStringsURL() override { return String(); }
+    void inspectedURLChanged(const String&) override { }
 protected:
-    virtual void setAttachedWindowHeight(unsigned) override { }
-    virtual void setAttachedWindowWidth(unsigned) override { }
+    void setAttachedWindowHeight(unsigned) override { }
+    void setAttachedWindowWidth(unsigned) override { }
 
 public:
     // Inspector::FrontendChannel API
-    virtual bool sendMessageToFrontend(const String& message) override;
-    virtual ConnectionType connectionType() const override { return ConnectionType::Local; }
+    bool sendMessageToFrontend(const String& message) override;
+    ConnectionType connectionType() const override { return ConnectionType::Local; }
 
 private:
     Page* frontendPage() const
@@ -415,6 +417,7 @@ Internals::Internals(Document* document)
 
 #if ENABLE(MEDIA_STREAM)
     setMockMediaCaptureDevicesEnabled(true);
+    enableMockMediaEndpoint();
     enableMockRTCPeerConnectionHandler();
 #endif
 
@@ -1015,6 +1018,11 @@ void Internals::enableMockSpeechSynthesizer()
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+void Internals::enableMockMediaEndpoint()
+{
+    MediaEndpoint::create = MockMediaEndpoint::create;
+}
+
 void Internals::enableMockRTCPeerConnectionHandler()
 {
     RTCPeerConnectionHandler::create = RTCPeerConnectionHandlerMock::create;
@@ -1367,6 +1375,21 @@ void Internals::scrollElementToRect(Element* element, long x, long y, long w, lo
     }
     FrameView* frameView = element->document().view();
     frameView->scrollElementToRect(*element, IntRect(x, y, w, h));
+}
+
+String Internals::autofillFieldName(Element* element, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return { };
+    }
+
+    if (!is<HTMLFormControlElement>(*element)) {
+        ec = INVALID_NODE_TYPE_ERR;
+        return { };
+    }
+
+    return downcast<HTMLFormControlElement>(*element).autofillData().fieldName;
 }
 
 void Internals::paintControlTints(ExceptionCode& ec)
@@ -3468,7 +3491,7 @@ bool Internals::isReadableStreamDisturbed(ScriptState& state, JSValue stream)
     JSObject* function = value.getObject();
     CallData callData;
     CallType callType = JSC::getCallData(function, callData);
-    ASSERT(callType != JSC::CallTypeNone);
+    ASSERT(callType != JSC::CallType::None);
     MarkedArgumentBuffer arguments;
     arguments.append(stream);
     JSValue returnedValue = JSC::call(&state, function, callType, callData, JSC::jsUndefined(), arguments);

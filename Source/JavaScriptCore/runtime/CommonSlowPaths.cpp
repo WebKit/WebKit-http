@@ -222,9 +222,9 @@ SLOW_PATH_DECL(slow_path_create_this)
 {
     BEGIN();
     JSObject* result;
-    JSCell* constructorAsCell = OP(2).jsValue().asCell();
-    if (constructorAsCell->type() == JSFunctionType) {
-        JSFunction* constructor = jsCast<JSFunction*>(constructorAsCell);
+    JSObject* constructorAsObject = asObject(OP(2).jsValue());
+    if (constructorAsObject->type() == JSFunctionType) {
+        JSFunction* constructor = jsCast<JSFunction*>(constructorAsObject);
         auto& cacheWriteBarrier = pc[4].u.jsCell;
         if (!cacheWriteBarrier)
             cacheWriteBarrier.set(exec->vm(), exec->codeBlock(), constructor);
@@ -234,8 +234,15 @@ SLOW_PATH_DECL(slow_path_create_this)
         size_t inlineCapacity = pc[3].u.operand;
         Structure* structure = constructor->rareData(exec, inlineCapacity)->objectAllocationProfile()->structure();
         result = constructEmptyObject(exec, structure);
-    } else
-        result = constructEmptyObject(exec);
+    } else {
+        // http://ecma-international.org/ecma-262/6.0/#sec-ordinarycreatefromconstructor
+        JSValue proto = constructorAsObject->get(exec, exec->propertyNames().prototype);
+        CHECK_EXCEPTION();
+        if (proto.isObject())
+            result = constructEmptyObject(exec, asObject(proto));
+        else
+            result = constructEmptyObject(exec);
+    }
     RETURN(result);
 }
 
@@ -542,6 +549,7 @@ SLOW_PATH_DECL(slow_path_del_by_val)
     BEGIN();
     JSValue baseValue = OP_C(2).jsValue();
     JSObject* baseObject = baseValue.toObject(exec);
+    CHECK_EXCEPTION();
     
     JSValue subscript = OP_C(3).jsValue();
     
@@ -599,6 +607,7 @@ SLOW_PATH_DECL(slow_path_has_indexed_property)
 {
     BEGIN();
     JSObject* base = OP(2).jsValue().toObject(exec);
+    CHECK_EXCEPTION();
     JSValue property = OP(3).jsValue();
     pc[4].u.arrayProfile->observeStructure(base->structure(vm));
     ASSERT(property.isUInt32());
@@ -609,6 +618,7 @@ SLOW_PATH_DECL(slow_path_has_structure_property)
 {
     BEGIN();
     JSObject* base = OP(2).jsValue().toObject(exec);
+    CHECK_EXCEPTION();
     JSValue property = OP(3).jsValue();
     ASSERT(property.isString());
     JSPropertyNameEnumerator* enumerator = jsCast<JSPropertyNameEnumerator*>(OP(4).jsValue().asCell());
@@ -621,6 +631,7 @@ SLOW_PATH_DECL(slow_path_has_generic_property)
 {
     BEGIN();
     JSObject* base = OP(2).jsValue().toObject(exec);
+    CHECK_EXCEPTION();
     JSValue property = OP(3).jsValue();
     bool result;
     if (property.isString())
@@ -649,6 +660,7 @@ SLOW_PATH_DECL(slow_path_get_property_enumerator)
         RETURN(JSPropertyNameEnumerator::create(vm));
 
     JSObject* base = baseValue.toObject(exec);
+    CHECK_EXCEPTION();
 
     RETURN(propertyNameEnumerator(exec, base));
 }
