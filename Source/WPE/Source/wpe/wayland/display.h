@@ -5,8 +5,11 @@
 #include <array>
 #include <unordered_map>
 #include <utility>
+#include <wpe/input.h>
 #include <xkbcommon/xkbcommon-compose.h>
 #include <xkbcommon/xkbcommon.h>
+
+struct wpe_view_backend;
 
 struct ivi_application;
 struct wl_compositor;
@@ -50,21 +53,21 @@ public:
     const Interfaces& interfaces() const { return m_interfaces; }
 
     struct SeatData {
-        std::unordered_map<struct wl_surface*, WPE::Input::Client*> inputClients;
+        std::unordered_map<struct wl_surface*, struct wpe_view_backend*> inputClients;
 
         struct {
             struct wl_pointer* object;
-            std::pair<struct wl_surface*, WPE::Input::Client*> target;
+            std::pair<struct wl_surface*, struct wpe_view_backend*> target;
             std::pair<int, int> coords;
         } pointer { nullptr, { }, { 0, 0 } };
         struct {
             struct wl_keyboard* object;
-            std::pair<struct wl_surface*, WPE::Input::Client*> target;
+            std::pair<struct wl_surface*, struct wpe_view_backend*> target;
         } keyboard { nullptr, { } };
         struct {
             struct wl_touch* object;
-            std::array<std::pair<struct wl_surface*, WPE::Input::Client*>, 10> targets;
-            std::array<WPE::Input::TouchEvent::Raw, 10> touchPoints;
+            std::array<std::pair<struct wl_surface*, struct wpe_view_backend*>, 10> targets;
+            std::array<struct wpe_input_touch_event_raw, 10> touchPoints;
         } touch { nullptr, { }, { } };
 
         struct {
@@ -96,7 +99,7 @@ public:
         uint32_t serial;
     };
 
-    void registerInputClient(struct wl_surface*, WPE::Input::Client*);
+    void registerInputClient(struct wl_surface*, struct wpe_view_backend*);
     void unregisterInputClient(struct wl_surface*);
 
 private:

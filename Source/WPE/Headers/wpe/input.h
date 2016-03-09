@@ -64,7 +64,8 @@ struct wpe_input_touch_event_raw {
 };
 
 struct wpe_input_touch_event {
-    const struct wpe_input_touch_event_raw touchpoints[10];
+    const struct wpe_input_touch_event_raw* touchpoints;
+    uint64_t touchpoints_length;
     enum wpe_input_touch_event_type type;
     int32_t id;
     uint32_t time;

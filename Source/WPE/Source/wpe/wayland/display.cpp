@@ -9,9 +9,13 @@
 #include <glib.h>
 #include <linux/input.h>
 #include <locale.h>
+#include <memory>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <wayland-client.h>
+
+#include "view-backend-private.h"
+#include <wpe/input.h>
 
 namespace Wayland {
 
@@ -127,8 +131,13 @@ static const struct wl_pointer_listener g_pointerListener = {
 
         auto& pointer = static_cast<Display::SeatData*>(data)->pointer;
         pointer.coords = { x, y };
-        if (pointer.target.first)
-            pointer.target.second->handlePointerEvent({ WPE::Input::PointerEvent::Motion, time, x, y, 0, 0 });
+
+        if (pointer.target.first) {
+            struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_motion, time, x, y, 0, 0 };
+
+            struct wpe_view_backend* backend = pointer.target.second;
+            backend->input_client->handle_pointer_event(backend->input_client_data, &event);
+        }
     },
     // button
     [](void* data, struct wl_pointer*, uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
@@ -142,18 +151,26 @@ static const struct wl_pointer_listener g_pointerListener = {
 
         auto& pointer = static_cast<Display::SeatData*>(data)->pointer;
         auto& coords = pointer.coords;
-        if (pointer.target.first)
-            pointer.target.second->handlePointerEvent(
-                { WPE::Input::PointerEvent::Button, time, coords.first, coords.second, button, state });
+
+        if (pointer.target.first) {
+            struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_button, time, coords.first, coords.second, button, state };
+
+            struct wpe_view_backend* backend = pointer.target.second;
+            backend->input_client->handle_pointer_event(backend->input_client_data, &event);
+        }
     },
     // axis
     [](void* data, struct wl_pointer*, uint32_t time, uint32_t axis, wl_fixed_t value)
     {
         auto& pointer = static_cast<Display::SeatData*>(data)->pointer;
         auto& coords = pointer.coords;
-        if (pointer.target.first)
-            pointer.target.second->handleAxisEvent(
-                { WPE::Input::AxisEvent::Motion, time, coords.first, coords.second, axis, -wl_fixed_to_int(value) });
+
+        if (pointer.target.first) {
+            struct wpe_input_axis_event event = { wpe_input_axis_event_type_motion, time, coords.first, coords.second, axis, -wl_fixed_to_int(value) };
+
+            struct wpe_view_backend* backend = pointer.target.second;
+            backend->input_client->handle_axis_event(backend->input_client_data, &event);
+        }
     },
 };
 
@@ -173,8 +190,12 @@ handleKeyEvent(Display::SeatData& seatData, uint32_t key, uint32_t state, uint32
         unicode = xkb_keysym_to_utf32(keysym);
     }
 
-    if (seatData.keyboard.target.first)
-        seatData.keyboard.target.second->handleKeyboardEvent({ time, keysym, unicode, !!state, xkb.modifiers });
+    if (seatData.keyboard.target.first) {
+        struct wpe_input_keyboard_event event = { time, keysym, unicode, !!state, xkb.modifiers };
+
+        struct wpe_view_backend* backend = seatData.keyboard.target.second;
+        backend->input_client->handle_keyboard_event(backend->input_client_data, &event);
+    }
 }
 
 static gboolean
@@ -326,8 +347,12 @@ static const struct wl_touch_listener g_touchListener = {
         target = { surface, it->second };
 
         auto& touchPoints = seatData.touch.touchPoints;
-        touchPoints[id] = { WPE::Input::TouchEvent::Down, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
-        target.second->handleTouchEvent({ touchPoints, WPE::Input::TouchEvent::Down, id, time });
+        touchPoints[id] = { wpe_input_touch_event_type_down, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
+
+        struct wpe_input_touch_event event = { touchPoints.data(), touchPoints.size(), wpe_input_touch_event_type_down, id, time };
+
+        struct wpe_view_backend* backend = target.second;
+        backend->input_client->handle_touch_event(backend->input_client_data, &event);
     },
     // up
     [](void* data, struct wl_touch*, uint32_t serial, uint32_t time, int32_t id)
@@ -344,10 +369,14 @@ static const struct wl_touch_listener g_touchListener = {
 
         auto& touchPoints = seatData.touch.touchPoints;
         auto& point = touchPoints[id];
-        point = { WPE::Input::TouchEvent::Up, time, id, point.x, point.y };
-        target.second->handleTouchEvent({ touchPoints, WPE::Input::TouchEvent::Up, id, time });
+        point = { wpe_input_touch_event_type_up, time, id, point.x, point.y };
 
-        point = { WPE::Input::TouchEvent::Null, 0, 0, 0, 0 };
+        struct wpe_input_touch_event event = { touchPoints.data(), touchPoints.size(), wpe_input_touch_event_type_up, id, time };
+
+        struct wpe_view_backend* backend = target.second;
+        backend->input_client->handle_touch_event(backend->input_client_data, &event);
+
+        point = { wpe_input_touch_event_type_null, 0, 0, 0, 0 };
         target = { nullptr, nullptr };
     },
     // motion
@@ -363,8 +392,12 @@ static const struct wl_touch_listener g_touchListener = {
         assert(target.first && target.second);
 
         auto& touchPoints = seatData.touch.touchPoints;
-        touchPoints[id] = { WPE::Input::TouchEvent::Motion, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
-        target.second->handleTouchEvent({ touchPoints, WPE::Input::TouchEvent::Motion, id, time });
+        touchPoints[id] = { wpe_input_touch_event_type_motion, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
+
+        struct wpe_input_touch_event event = { touchPoints.data(), touchPoints.size(), wpe_input_touch_event_type_motion, id, time };
+
+        struct wpe_view_backend* backend = target.second;
+        backend->input_client->handle_touch_event(backend->input_client_data, &event);
     },
     // frame
     [](void*, struct wl_touch*)
@@ -509,7 +542,7 @@ Display::~Display()
     m_seatData = SeatData{ };
 }
 
-void Display::registerInputClient(struct wl_surface* surface, WPE::Input::Client* client)
+void Display::registerInputClient(struct wl_surface* surface, struct wpe_view_backend* client)
 {
 #ifndef NDEBUG
     auto result =
