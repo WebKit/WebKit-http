@@ -81,6 +81,7 @@ public:
     void respondToMemoryPressureIfNeeded();
 #elif OS(LINUX)
     static void waitForMemoryPressureEvent(void*);
+    static void pollMemoryPressure(void*);
 #endif
 
     class ReliefLogger {
