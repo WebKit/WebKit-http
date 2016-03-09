@@ -55,15 +55,6 @@ set(WPE_LIBRARIES
 )
 
 set(WPE_SOURCES
-    Source/Input/Handling.cpp
-    Source/Input/KeyboardEventRepeating.cpp
-
-    Source/Input/LinuxInput/KeyMappingLinuxInput.cpp
-    Source/Input/LinuxInput/KeyboardEventHandlerLinuxInput.cpp
-
-    Source/Input/XKB/KeyMappingXKB.cpp
-    Source/Input/XKB/KeyboardEventHandlerXKB.cpp
-
     Source/Pasteboard/Pasteboard.cpp
 
     Source/Pasteboard/Generic/PasteboardGeneric.cpp
