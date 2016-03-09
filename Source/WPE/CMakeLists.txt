@@ -82,6 +82,7 @@ if (USE_WPE_BUFFER_MANAGEMENT_GBM)
     )
     list(APPEND WPE_SOURCES
         Source/wpe/gbm/renderer-gbm.cpp
+        Source/wpe/gbm/gbm-connection.cpp
     )
 endif ()
 
