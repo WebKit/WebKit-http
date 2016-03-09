@@ -20,6 +20,8 @@ set(WPE_SOURCES
     Source/Pasteboard/Pasteboard.cpp
 
     Source/Pasteboard/Generic/PasteboardGeneric.cpp
+    Source/wpe/pasteboard.c
+    Source/wpe/pasteboard-generic.cpp
 
     Source/wpe/input.c
     Source/wpe/renderer.c
@@ -92,6 +94,7 @@ if (USE_WPE_BACKEND_WAYLAND)
 
     list(APPEND WPE_SOURCES
         Source/wpe/wayland/display.cpp
+        Source/wpe/wayland/pasteboard-wayland.cpp
         Source/wpe/wayland/view-backend-wayland.cpp
 
         Source/wpe/wayland/protocols/ivi-application-protocol.c
