@@ -169,6 +169,9 @@ endif ()
 
 set(WebKit2_SOURCES
     DatabaseProcess/DatabaseProcess.cpp
+    DatabaseProcess/DatabaseToWebProcessConnection.cpp
+
+    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkLoad.cpp
@@ -500,6 +503,8 @@ set(WebKit2_SOURCES
 
     WebProcess/Databases/WebDatabaseProvider.cpp
     WebProcess/Databases/WebToDatabaseProcessConnection.cpp
+
+    WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp
 
     WebProcess/FileAPI/BlobRegistryProxy.cpp
 

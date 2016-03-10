@@ -71,8 +71,7 @@ WebDatabaseProvider::~WebDatabaseProvider()
 
 WebCore::IDBClient::IDBConnectionToServer& WebDatabaseProvider::idbConnectionToServerForSession(const WebCore::SessionID& sessionID)
 {
-//	if (sessionID.isEphemeral())
-    {
+    if (sessionID.isEphemeral()) {
         auto result = m_idbEphemeralConnectionMap.add(sessionID.sessionID(), nullptr);
         if (result.isNewEntry)
             result.iterator->value = WebCore::InProcessIDBServer::create();
@@ -80,8 +79,8 @@ WebCore::IDBClient::IDBConnectionToServer& WebDatabaseProvider::idbConnectionToS
         return result.iterator->value->connectionToServer();
     }
 
-//  ASSERT(WebProcess::singleton().webToDatabaseProcessConnection());
-//  return WebProcess::singleton().webToDatabaseProcessConnection()->idbConnectionToServerForSession(sessionID).coreConnectionToServer();
+    ASSERT(WebProcess::singleton().webToDatabaseProcessConnection());
+    return WebProcess::singleton().webToDatabaseProcessConnection()->idbConnectionToServerForSession(sessionID).coreConnectionToServer();
 }
 
 #endif
