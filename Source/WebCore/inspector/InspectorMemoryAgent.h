@@ -29,6 +29,7 @@
 #if ENABLE(RESOURCE_USAGE)
 
 #include "InspectorWebAgentBase.h"
+#include "MemoryPressureHandler.h"
 #include "ResourceUsageData.h"
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
@@ -44,18 +45,24 @@ public:
     InspectorMemoryAgent(PageAgentContext&);
     virtual ~InspectorMemoryAgent() { }
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     // MemoryBackendDispatcherHandler
-    virtual void startTracking(ErrorString&) override;
-    virtual void stopTracking(ErrorString&) override;
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void startTracking(ErrorString&) override;
+    void stopTracking(ErrorString&) override;
+
+    // InspectorInstrumentation
+    void didHandleMemoryPressure(Critical);
 
 private:
     void collectSample(const ResourceUsageData&);
 
     std::unique_ptr<Inspector::MemoryFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::MemoryBackendDispatcher> m_backendDispatcher;
+    bool m_enabled { false };
     bool m_tracking { false };
 };
 

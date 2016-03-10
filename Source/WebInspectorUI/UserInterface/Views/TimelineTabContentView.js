@@ -33,6 +33,10 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
 
         super(identifier || "timeline", "timeline", tabBarItem, WebInspector.TimelineSidebarPanel, detailsSidebarPanels);
 
+        // FIXME: Remove these when the TimelineSidebarPanel is removed. https://bugs.webkit.org/show_bug.cgi?id=154973
+        this.contentBrowser.navigationBar.removeNavigationItem(this._showNavigationSidebarItem);
+        this.navigationSidebarPanel.hide();
+
         // Maintain an invisible tree outline containing tree elements for all recordings.
         // The visible recording's tree element is selected when the content view changes.
         this._recordingTreeElementMap = new Map;
@@ -446,7 +450,7 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
 
             // Show the timeline that was being shown to update the sidebar tree state.
             let currentTimelineView = this._displayedContentView.currentTimelineView;
-            let timelineType = currentTimelineView && currentTimelineView.representedObject instanceof WebInspector.Timeline ? currentTimelineView.type : null;
+            let timelineType = currentTimelineView && currentTimelineView.representedObject instanceof WebInspector.Timeline ? currentTimelineView.representedObject.type : null;
             this._showTimelineViewForType(timelineType);
 
             return;
@@ -502,14 +506,10 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
 
     _showTimelineViewForType(timelineType)
     {
-        if (timelineType) {
-            let timeline = this._displayedRecording.timelines.get(timelineType);
-            console.assert(timeline, "Cannot show timeline because it does not belong to the shown recording.", timelineType);
-            if (!timeline)
-                return;
-
+        let timeline = timelineType ? this._displayedRecording.timelines.get(timelineType) : null;
+        if (timeline)
             this._displayedContentView.showTimelineViewForTimeline(timeline);
-        } else
+        else
             this._displayedContentView.showOverviewTimelineView();
 
         if (this.contentBrowser.currentContentView !== this._displayedContentView)

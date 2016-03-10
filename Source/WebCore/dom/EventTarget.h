@@ -161,8 +161,8 @@ private:
 
 class EventTargetWithInlineData : public EventTarget {
 protected:
-    virtual EventTargetData* eventTargetData() override final { return &m_eventTargetData; }
-    virtual EventTargetData& ensureEventTargetData() override final { return m_eventTargetData; }
+    EventTargetData* eventTargetData() final { return &m_eventTargetData; }
+    EventTargetData& ensureEventTargetData() final { return m_eventTargetData; }
 private:
     EventTargetData m_eventTargetData;
 };

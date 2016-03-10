@@ -327,6 +327,7 @@ HTMLElement::EventHandlerNameMap HTMLElement::createEventHandlerNameMap()
         &ontimeupdateAttr,
         &ontouchcancelAttr,
         &ontouchendAttr,
+        &ontouchforcechangeAttr,
         &ontouchmoveAttr,
         &ontouchstartAttr,
         &ontransitionendAttr,
@@ -453,10 +454,8 @@ void HTMLElement::parseAttribute(const QualifiedName& name, const AtomicString& 
     if (name == tabindexAttr) {
         if (value.isEmpty())
             clearTabIndexExplicitlyIfNeeded();
-        else if (Optional<int> tabIndex = parseHTMLInteger(value)) {
-            // Clamp tab index to a 16-bit value to match Firefox's behavior.
-            setTabIndexExplicitly(std::max(-0x8000, std::min(tabIndex.value(), 0x7FFF)));
-        }
+        else if (Optional<int> tabIndex = parseHTMLInteger(value))
+            setTabIndexExplicitly(tabIndex.value());
         return;
     }
 
@@ -821,7 +820,7 @@ String HTMLElement::title() const
     return fastGetAttribute(titleAttr);
 }
 
-short HTMLElement::tabIndex() const
+int HTMLElement::tabIndex() const
 {
     if (supportsFocus())
         return Element::tabIndex();

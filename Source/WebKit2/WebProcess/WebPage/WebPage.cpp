@@ -439,6 +439,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     WebCore::provideUserMediaTo(m_page.get(), new WebUserMediaClient(*this));
 #endif
 
+    m_page->setControlledByAutomation(parameters.controlledByAutomation);
+
 #if ENABLE(REMOTE_INSPECTOR)
     m_page->setRemoteInspectionAllowed(parameters.allowsRemoteInspection);
     m_page->setRemoteInspectionNameOverride(parameters.remoteInspectionNameOverride);
@@ -2345,6 +2347,24 @@ void WebPage::centerSelectionInVisibleArea()
     m_findController.showFindIndicatorInSelection();
 }
 
+bool WebPage::isControlledByAutomation() const
+{
+    return m_page->isControlledByAutomation();
+}
+
+void WebPage::setControlledByAutomation(bool controlled)
+{
+    m_page->setControlledByAutomation(controlled);
+}
+
+void WebPage::insertNewlineInQuotedContent()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (frame.selection().isNone())
+        return;
+    frame.editor().insertParagraphSeparatorInQuotedContent();
+}
+
 #if ENABLE(REMOTE_INSPECTOR)
 void WebPage::setAllowsRemoteInspection(bool allow)
 {
@@ -4225,7 +4245,7 @@ bool WebPage::canHandleRequest(const WebCore::ResourceRequest& request)
     if (SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(request.url().protocol()))
         return true;
 
-    if (request.url().protocolIs("blob"))
+    if (request.url().protocolIsBlob())
         return true;
 
     return platformCanHandleRequest(request);

@@ -69,6 +69,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/audio"
+    "${WEBCORE_DIR}/platform/crypto"
     "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform/graphics/cpu/arm"
     "${WEBCORE_DIR}/platform/graphics/cpu/arm/filters"
@@ -164,10 +165,12 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/battery/BatteryManager.idl
     Modules/battery/NavigatorBattery.idl
 
+    Modules/fetch/DOMWindowFetch.idl
     Modules/fetch/FetchBody.idl
     Modules/fetch/FetchHeaders.idl
     Modules/fetch/FetchRequest.idl
     Modules/fetch/FetchResponse.idl
+    Modules/fetch/WorkerGlobalScopeFetch.idl
 
     Modules/geolocation/Coordinates.idl
     Modules/geolocation/Geolocation.idl
@@ -813,10 +816,12 @@ set(WebCore_SOURCES
     Modules/battery/BatteryStatus.cpp
     Modules/battery/NavigatorBattery.cpp
 
+    Modules/fetch/DOMWindowFetch.cpp
     Modules/fetch/FetchBody.cpp
     Modules/fetch/FetchHeaders.cpp
     Modules/fetch/FetchRequest.cpp
     Modules/fetch/FetchResponse.cpp
+    Modules/fetch/WorkerGlobalScopeFetch.cpp
 
     Modules/geolocation/Coordinates.cpp
     Modules/geolocation/GeoNotifier.cpp
@@ -941,6 +946,7 @@ set(WebCore_SOURCES
     Modules/mediastream/RTCStatsReport.cpp
     Modules/mediastream/RTCStatsResponse.cpp
     Modules/mediastream/RTCTrackEvent.cpp
+    Modules/mediastream/SDPProcessor.cpp
     Modules/mediastream/SourceInfo.cpp
     Modules/mediastream/UserMediaController.cpp
     Modules/mediastream/UserMediaPermissionCheck.cpp
@@ -1061,6 +1067,7 @@ set(WebCore_SOURCES
     accessibility/AccessibilityObject.cpp
     accessibility/AccessibilityProgressIndicator.cpp
     accessibility/AccessibilityRenderObject.cpp
+    accessibility/AccessibilitySVGElement.cpp
     accessibility/AccessibilitySVGRoot.cpp
     accessibility/AccessibilityScrollView.cpp
     accessibility/AccessibilityScrollbar.cpp
@@ -1454,6 +1461,7 @@ set(WebCore_SOURCES
     dom/IdTargetObserverRegistry.cpp
     dom/InlineStyleSheetOwner.cpp
     dom/KeyboardEvent.cpp
+    dom/LifecycleCallbackQueue.cpp
     dom/LiveNodeList.cpp
     dom/MessageChannel.cpp
     dom/MessageEvent.cpp
@@ -1611,6 +1619,7 @@ set(WebCore_SOURCES
     history/PageCache.cpp
 
     html/AttributeDOMTokenList.cpp
+    html/Autofill.cpp
     html/BaseButtonInputType.cpp
     html/BaseCheckableInputType.cpp
     html/BaseChooserOnlyDateAndTimeInputType.cpp
@@ -1925,6 +1934,7 @@ set(WebCore_SOURCES
     loader/ResourceLoadNotifier.cpp
     loader/ResourceLoadObserver.cpp
     loader/ResourceLoadStatistics.cpp
+    loader/ResourceLoadStatisticsStore.cpp
     loader/ResourceLoader.cpp
     loader/SinkDocument.cpp
     loader/SubframeLoader.cpp
@@ -2104,6 +2114,7 @@ set(WebCore_SOURCES
     platform/FileSystem.cpp
     platform/Language.cpp
     platform/Length.cpp
+    platform/LengthPoint.cpp
     platform/LengthSize.cpp
     platform/LinkHash.cpp
     platform/Logging.cpp
@@ -2117,7 +2128,6 @@ set(WebCore_SOURCES
     platform/PlatformSpeechSynthesizer.cpp
     platform/PlatformStrategies.cpp
     platform/RemoteCommandListener.cpp
-    platform/RuntimeApplicationChecks.cpp
     platform/SchemeRegistry.cpp
     platform/ScrollAnimator.cpp
     platform/ScrollView.cpp
@@ -2297,6 +2307,7 @@ set(WebCore_SOURCES
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
     platform/mock/MediaConstraintsMock.cpp
+    platform/mock/MockMediaEndpoint.cpp
     platform/mock/MockRealtimeAudioSource.cpp
     platform/mock/MockRealtimeMediaSource.cpp
     platform/mock/MockRealtimeMediaSourceCenter.cpp
@@ -2629,6 +2640,7 @@ set(WebCore_SOURCES
     style/RenderTreePosition.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
+    style/StyleRelations.cpp
     style/StyleResolveForDocument.cpp
     style/StyleSharingResolver.cpp
     style/StyleTreeResolver.cpp
@@ -3581,6 +3593,22 @@ if (WebCore_USER_AGENT_SCRIPTS)
         VERBATIM)
     list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp)
     ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES} UserAgentScriptsData.cpp UserAgentScripts.h)
+endif ()
+
+if (WebCore_SDP_PROCESSOR_SCRIPTS)
+    # Necessary variables:
+    # WebCore_SDP_PROCESSOR_SCRIPTS containing the JavaScript sources list
+    # WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES containing the source file that will load the scripts to add the proper
+    #   dependency and having them built at the right moment
+
+    add_custom_command(
+        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScripts.h
+        MAIN_DEPENDENCY ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py
+        DEPENDS ${WebCore_SDP_PROCESSOR_SCRIPTS}
+        COMMAND "PYTHONPATH=${JavaScriptCore_SCRIPTS_DIR}" ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp ${WebCore_SDP_PROCESSOR_SCRIPTS}
+        VERBATIM)
+    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp)
+    ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES} SDPProcessorScriptsData.cpp SDPProcessorScripts.h)
 endif ()
 
 # Generate plug-in resources

@@ -284,7 +284,6 @@ public:
     Strong<Structure> structureRareDataStructure;
     Strong<Structure> terminatedExecutionErrorStructure;
     Strong<Structure> stringStructure;
-    Strong<Structure> notAnObjectStructure;
     Strong<Structure> propertyNameIteratorStructure;
     Strong<Structure> propertyNameEnumeratorStructure;
     Strong<Structure> getterSetterStructure;
@@ -579,6 +578,7 @@ public:
 
     JS_EXPORT_PRIVATE void deleteAllCode();
     JS_EXPORT_PRIVATE void deleteAllLinkedCode();
+    JS_EXPORT_PRIVATE void deleteAllRegExpCode();
 
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
     

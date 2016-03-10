@@ -39,6 +39,10 @@ OBJC_CLASS WKNetworkSessionDelegate;
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
+namespace WebCore {
+class NetworkStorageSession;
+}
+
 namespace WebKit {
 
 class CustomProtocolManager;
@@ -50,12 +54,15 @@ public:
         Normal,
         Ephemeral
     };
-    NetworkSession(Type, WebCore::SessionID, CustomProtocolManager*);
+    NetworkSession(Type, WebCore::SessionID, CustomProtocolManager*, WebCore::NetworkStorageSession*);
     ~NetworkSession();
 
+    WebCore::SessionID sessionID() { return m_sessionID; }
     static void setCustomProtocolManager(CustomProtocolManager*);
     static NetworkSession& defaultSession();
+#if !USE(CREDENTIAL_STORAGE_WITH_NETWORK_SESSION)
     void clearCredentials();
+#endif
 
     NetworkDataTask* dataTaskForIdentifier(NetworkDataTask::TaskIdentifier, WebCore::StoredCredentials);
 
@@ -64,6 +71,7 @@ public:
     DownloadID takeDownloadID(NetworkDataTask::TaskIdentifier);
     
 private:
+    WebCore::SessionID m_sessionID;
     HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMapWithCredentials;
     HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMapWithoutCredentials;
     HashMap<NetworkDataTask::TaskIdentifier, DownloadID> m_downloadMap;

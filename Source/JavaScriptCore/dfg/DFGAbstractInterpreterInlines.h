@@ -141,6 +141,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         setBuiltInConstant(node, *node->constant());
         break;
     }
+
+    case LazyJSConstant: {
+        LazyJSValue value = node->lazyJSValue();
+        switch (value.kind()) {
+        case LazyJSValue::KnownValue:
+            setConstant(node, value.value()->value());
+            break;
+        case LazyJSValue::SingleCharacterString:
+        case LazyJSValue::KnownStringImpl:
+        case LazyJSValue::NewStringImpl:
+            forNode(node).setType(m_graph, SpecString);
+            break;
+        }
+        break;
+    }
         
     case Identity: {
         forNode(node) = forNode(node->child1());
@@ -1554,10 +1569,32 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
             
     case RegExpExec:
-        forNode(node).makeHeapTop();
+        if (node->child2().useKind() == RegExpObjectUse
+            && node->child3().useKind() == StringUse) {
+            // This doesn't clobber the world since there are no conversions to perform.
+        } else
+            clobberWorld(node->origin.semantic, clobberLimit);
+        if (JSValue globalObjectValue = forNode(node->child1()).m_value) {
+            if (JSGlobalObject* globalObject = jsDynamicCast<JSGlobalObject*>(globalObjectValue)) {
+                if (!globalObject->isHavingABadTime()) {
+                    m_graph.watchpoints().addLazily(globalObject->havingABadTimeWatchpoint());
+                    Structure* structure = globalObject->regExpMatchesArrayStructure();
+                    m_graph.registerStructure(structure);
+                    forNode(node).set(m_graph, structure);
+                    forNode(node).merge(SpecOther);
+                    break;
+                }
+            }
+        }
+        forNode(node).setType(m_graph, SpecOther | SpecArray);
         break;
 
     case RegExpTest:
+        if (node->child2().useKind() == RegExpObjectUse
+            && node->child3().useKind() == StringUse) {
+            // This doesn't clobber the world since there are no conversions to perform.
+        } else
+            clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).setType(SpecBoolean);
         break;
             
@@ -1872,6 +1909,33 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case GetGlobalObject: {
+        JSValue child = forNode(node->child1()).value();
+        if (child) {
+            setConstant(node, *m_graph.freeze(JSValue(asObject(child)->globalObject())));
+            break;
+        }
+
+        if (forNode(node->child1()).m_structure.isFinite()) {
+            JSGlobalObject* globalObject = nullptr;
+            bool ok = true;
+            forNode(node->child1()).m_structure.forEach(
+                [&] (Structure* structure) {
+                    if (!globalObject)
+                        globalObject = structure->globalObject();
+                    else if (globalObject != structure->globalObject())
+                        ok = false;
+                });
+            if (globalObject && ok) {
+                setConstant(node, *m_graph.freeze(JSValue(globalObject)));
+                break;
+            }
+        }
+
+        forNode(node).setType(m_graph, SpecObjectOther);
+        break;
+    }
+
     case GetClosureVar:
         if (JSValue value = m_graph.tryGetConstantClosureVar(forNode(node->child1()), node->scopeOffset())) {
             setConstant(node, *m_graph.freeze(value));
@@ -1881,6 +1945,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
             
     case PutClosureVar:
+        break;
+
+    case GetRegExpObjectLastIndex:
+        forNode(node).makeHeapTop();
+        break;
+
+    case SetRegExpObjectLastIndex:
         break;
         
     case GetFromArguments:
@@ -2589,7 +2660,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
 
     case CheckTierUpAndOSREnter:
-    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case ZombieHint:
     case ExitOK:

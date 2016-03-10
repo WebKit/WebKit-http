@@ -49,14 +49,14 @@ namespace WebCore {
             return adoptRef(*new ClipboardEvent(type, initializer));
         }
 
-        virtual DataTransfer* internalDataTransfer() const override { return m_dataTransfer.get(); }
+        DataTransfer* internalDataTransfer() const override { return m_dataTransfer.get(); }
 
     private:
         ClipboardEvent(const AtomicString& type, bool canBubbleArg, bool cancelableArg, DataTransfer*);
         ClipboardEvent(const AtomicString& type, ClipboardEventInit&);
 
-        virtual EventInterface eventInterface() const override;
-        virtual bool isClipboardEvent() const override;
+        EventInterface eventInterface() const override;
+        bool isClipboardEvent() const override;
 
         RefPtr<DataTransfer> m_dataTransfer;
     };

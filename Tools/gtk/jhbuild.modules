@@ -326,7 +326,6 @@
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="orc"/>
@@ -342,7 +341,6 @@
              autogenargs="--disable-examples --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="gstreamer"/>
@@ -356,7 +354,6 @@
   <autotools id="gst-plugins-good" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error  OBJCFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="gst-plugins-base"/>
@@ -371,7 +368,6 @@
   <autotools id="gst-plugins-bad" autogenargs="--disable-examples --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error CXXFLAGS+=-Wno-error OBJCFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="gst-plugins-base"/>
@@ -383,9 +379,6 @@
   </autotools>
 
   <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
-    <if condition-set="macos">
-      <makeargs value="CFLAGS+=-Wno-error"/>
-    </if>
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
@@ -434,9 +427,6 @@
    </autotools>
 
    <autotools id="gst-plugins-openwebrtc" supports-parallel-builds="no" supports-non-srcdir-builds="no" autogen-sh="./autogen.sh; ./configure">
-     <if condition-set="macos">
-       <makeargs value="CFLAGS+=-Wno-error"/>
-     </if>
      <dependencies>
        <dep package="gst-plugins-base"/>
        <dep package="libusrsctp"/>
@@ -448,18 +438,15 @@
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch repo="freedesktop-git" module="libnice/libnice.git" tag="0.1.10" checkoutdir="libnice"/>
+    <branch repo="freedesktop-git" module="libnice/libnice.git" tag="0.1.13" checkoutdir="libnice"/>
   </autotools>
 
   <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes">
-     <if condition-set="macos">
-       <makeargs value="CFLAGS+=-Wno-error"/>
-     </if>
     <dependencies>
       <dep package="gst-plugins-openwebrtc"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="13516c7f79a0c48bb411464f7613d4b426c70f5b"/>
+    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="f511ea1fa79a33fa3d52bfd1c0969c28084aeb35"/>
   </autotools>
 
   <autotools id="gsettings-desktop-schemas" autogen-sh="configure">

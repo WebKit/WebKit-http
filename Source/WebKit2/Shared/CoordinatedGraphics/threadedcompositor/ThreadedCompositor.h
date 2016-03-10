@@ -90,10 +90,10 @@ private:
     ThreadedCompositor(Client*, WebPage&);
 
     // CoordinatedGraphicsSceneClient
-    virtual void purgeBackingStores() override;
-    virtual void renderNextFrame() override;
-    virtual void updateViewport() override;
-    virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
+    void purgeBackingStores() override;
+    void renderNextFrame() override;
+    void updateViewport() override;
+    void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
     // CompositingManager::Client
     virtual void releaseBuffer(uint32_t) override;
@@ -101,7 +101,7 @@ private:
 
     void renderLayerTree();
     void scheduleDisplayImmediately();
-    virtual void didChangeVisibleRect() override;
+    void didChangeVisibleRect() override;
 
     bool ensureGLContext();
     WebCore::GLContext* glContext();

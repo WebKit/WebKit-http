@@ -44,7 +44,7 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info()); 
     }
 
-    void finishCreation(VM&, const char* name);
+    void finishCreation(VM&, const char* name, JSGlobalObject*);
 
 private:
     ProxyConstructor(VM&, Structure*);

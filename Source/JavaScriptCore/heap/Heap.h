@@ -60,6 +60,7 @@ class FullGCActivityCallback;
 class GCActivityCallback;
 class GCAwareJITStubRoutine;
 class Heap;
+class HeapProfiler;
 class HeapRootVisitor;
 class HeapVerifier;
 class IncrementalSweeper;
@@ -287,7 +288,7 @@ private:
     static const size_t minExtraMemory = 256;
     
     class FinalizerOwner : public WeakHandleOwner {
-        virtual void finalize(Handle<Unknown>, void* context) override;
+        void finalize(Handle<Unknown>, void* context) override;
     };
 
     JS_EXPORT_PRIVATE bool isValidAllocation(size_t);
@@ -329,7 +330,6 @@ private:
     void sweepArrayBuffers();
     void snapshotMarkedSpace();
     void deleteSourceProviderCaches();
-    void removeDeadHeapSnapshotNodes();
     void notifyIncrementalSweeper();
     void writeBarrierCurrentlyExecutingCodeBlocks();
     void resetAllocators();
@@ -344,6 +344,8 @@ private:
     void resumeCompilerThreads();
     void zombifyDeadObjects();
     void markDeadObjects();
+    void gatherExtraHeapSnapshotData(HeapProfiler&);
+    void removeDeadHeapSnapshotNodes(HeapProfiler&);
 
     void sweepAllLogicallyEmptyWeakBlocks();
     bool sweepNextLogicallyEmptyWeakBlock();

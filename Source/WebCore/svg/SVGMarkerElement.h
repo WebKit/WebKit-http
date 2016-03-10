@@ -43,6 +43,7 @@ enum SVGMarkerOrientType {
     SVGMarkerOrientUnknown = 0,
     SVGMarkerOrientAuto,
     SVGMarkerOrientAngle,
+    SVGMarkerOrientAutoStartReverse,
 
     // Add new elements before here.
     SVGMarkerOrientMax
@@ -78,8 +79,11 @@ struct SVGPropertyTraits<SVGMarkerUnitsType> {
 };
 
 template<>
+inline unsigned SVGIDLEnumLimits<SVGMarkerOrientType>::highestExposedEnumValue() { return SVGMarkerOrientAngle; }
+
+template<>
 struct SVGPropertyTraits<SVGMarkerOrientType> {
-    static unsigned highestEnumValue() { return SVGMarkerOrientAngle; }
+    static unsigned highestEnumValue() { return SVGMarkerOrientAutoStartReverse; }
 
     // toString is not needed, synchronizeOrientType() handles this on its own.
 
@@ -87,6 +91,8 @@ struct SVGPropertyTraits<SVGMarkerOrientType> {
     {
         if (value == "auto")
             return SVGMarkerOrientAuto;
+        if (value == "auto-start-reverse")
+            return SVGMarkerOrientAutoStartReverse;
 
         ExceptionCode ec = 0;
         angle.setValueAsString(value, ec);
@@ -110,7 +116,8 @@ public:
     enum {
         SVG_MARKER_ORIENT_UNKNOWN = SVGMarkerOrientUnknown,
         SVG_MARKER_ORIENT_AUTO = SVGMarkerOrientAuto,
-        SVG_MARKER_ORIENT_ANGLE = SVGMarkerOrientAngle
+        SVG_MARKER_ORIENT_ANGLE = SVGMarkerOrientAngle,
+        SVG_MARKER_ORIENT_AUTOSTARTREVERSE = SVGMarkerOrientAutoStartReverse
     };
 
     static Ref<SVGMarkerElement> create(const QualifiedName&, Document&);
@@ -125,17 +132,19 @@ public:
 private:
     SVGMarkerElement(const QualifiedName&, Document&);
 
-    virtual bool needsPendingResourceHandling() const override { return false; }
+    bool needsPendingResourceHandling() const override { return false; }
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    void childrenChanged(const ChildChange&) override;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return true; }
+    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    bool rendererIsNeeded(const RenderStyle&) override { return true; }
 
-    virtual bool selfHasRelativeLengths() const override;
+    bool selfHasRelativeLengths() const override;
+
+    void setOrient(SVGMarkerOrientType, const SVGAngle&);
 
     void synchronizeOrientType();
 

@@ -310,6 +310,9 @@ public:
 
     WebInspectorProxy* inspector();
 
+    bool isControlledByAutomation() const { return m_controlledByAutomation; }
+    void setControlledByAutomation(bool);
+
 #if ENABLE(REMOTE_INSPECTOR)
     bool allowsRemoteInspection() const { return m_allowsRemoteInspection; }
     void setAllowsRemoteInspection(bool);
@@ -359,6 +362,8 @@ public:
     void close();
     bool tryClose();
     bool isClosed() const { return m_isClosed; }
+
+    void closePage(bool stopResponsivenessTimer);
 
     RefPtr<API::Navigation> loadRequest(const WebCore::ResourceRequest&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
@@ -514,6 +519,7 @@ public:
     void didFinishDrawingPagesToPDF(const IPC::DataReference&);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getLookupContextAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
+    void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
 #endif
 #if ENABLE(DATA_DETECTION)
     void setDataDetectionResult(const DataDetectionResult&);
@@ -934,7 +940,7 @@ public:
 #endif
 
     // WebPopupMenuProxy::Client
-    virtual NativeWebMouseEvent* currentlyProcessedMouseDownEvent() override;
+    NativeWebMouseEvent* currentlyProcessedMouseDownEvent() override;
 
     void setSuppressVisibilityUpdates(bool flag);
     bool suppressVisibilityUpdates() { return m_suppressVisibilityUpdates; }
@@ -1071,10 +1077,10 @@ public:
     void setMockMediaPlaybackTargetPickerState(const String&, WebCore::MediaPlaybackTargetContext::State);
 
     // WebMediaSessionManagerClient
-    virtual void setPlaybackTarget(uint64_t, Ref<WebCore::MediaPlaybackTarget>&&) override;
-    virtual void externalOutputDeviceAvailableDidChange(uint64_t, bool) override;
-    virtual void setShouldPlayToPlaybackTarget(uint64_t, bool) override;
-    virtual void customPlaybackActionSelected(uint64_t) override;
+    void setPlaybackTarget(uint64_t, Ref<WebCore::MediaPlaybackTarget>&&) override;
+    void externalOutputDeviceAvailableDidChange(uint64_t, bool) override;
+    void setShouldPlayToPlaybackTarget(uint64_t, bool) override;
+    void customPlaybackActionSelected(uint64_t) override;
 #endif
 
     void didChangeBackgroundColor();
@@ -1087,6 +1093,8 @@ public:
     void didLayout(uint32_t layoutMilestones);
 
     void didRestoreScrollPosition();
+
+    void setFocus(bool focused);
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1108,19 +1116,19 @@ private:
 
     // IPC::MessageReceiver
     // Implemented in generated WebPageProxyMessageReceiver.cpp
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
 
     // IPC::MessageSender
-    virtual bool sendMessage(std::unique_ptr<IPC::MessageEncoder>, unsigned messageSendFlags) override;
-    virtual IPC::Connection* messageSenderConnection() override;
-    virtual uint64_t messageSenderDestinationID() override;
+    bool sendMessage(std::unique_ptr<IPC::MessageEncoder>, unsigned messageSendFlags) override;
+    IPC::Connection* messageSenderConnection() override;
+    uint64_t messageSenderDestinationID() override;
 
     // WebPopupMenuProxy::Client
-    virtual void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex) override;
-    virtual void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
+    void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex) override;
+    void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
 #if PLATFORM(GTK)
-    virtual void failedToShowPopupMenu() override;
+    void failedToShowPopupMenu() override;
 #endif
 
     void didCreateMainFrame(uint64_t frameID);
@@ -1166,7 +1174,6 @@ private:
     // UI client
     void createNewPage(uint64_t frameID, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const NavigationActionData&, uint64_t& newPageID, WebPageCreationParameters&);
     void showPage();
-    void closePage(bool stopResponsivenessTimer);
     void runJavaScriptAlert(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>);
     void runJavaScriptConfirm(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>);
     void runJavaScriptPrompt(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply>);
@@ -1241,8 +1248,8 @@ private:
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void showColorPicker(const WebCore::Color& initialColor, const WebCore::IntRect&);
-    virtual void didChooseColor(const WebCore::Color&) override;
-    virtual void didEndColorPicker() override;
+    void didChooseColor(const WebCore::Color&) override;
+    void didEndColorPicker() override;
 #endif
 
     void editorStateChanged(const EditorState&);
@@ -1324,7 +1331,6 @@ private:
     void ignoreWord(const String& word);
     void requestCheckingOfString(uint64_t requestID, const WebCore::TextCheckingRequestData&);
 
-    void setFocus(bool focused);
     void takeFocus(uint32_t direction);
     void setToolTip(const String&);
     void setCursor(const WebCore::Cursor&);
@@ -1679,6 +1685,8 @@ private:
 
     bool m_isPageSuspended;
     bool m_addsVisitedLinks;
+
+    bool m_controlledByAutomation { false };
 
 #if ENABLE(REMOTE_INSPECTOR)
     bool m_allowsRemoteInspection;

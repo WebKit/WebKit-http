@@ -1,3 +1,503 @@
+2016-03-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix iOS Simulator EWS.
+
+        Unreviewed build fix.
+
+        * Scripts/webkitpy/common/config/ports.py:
+
+2016-03-08  Aakash Jain  <aakash_jain@apple.com>
+
+        Booting multiple iOS simulator parallely fails sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=155208
+        <rdar://problem/25019651>
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_test_run): Increase the time delay between subsequent
+        simulator boot.
+
+2016-03-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Add iOS debug testers to flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=155206
+
+        Reviewed by Darin Adler.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+
+2016-03-08  Oliver Hunt  <oliver@apple.com>
+
+        Start moving to separated writable and executable mappings in the JIT
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+
+        Reviewed by Fil Pizlo.
+
+        Making run-jsc-benchmarks slightly happier on my machine.
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Use NSUInteger instead of NSWindowStyleMask.
+
+        * MiniBrowser/mac/MiniBrowser_Prefix.pch:
+
+2016-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        We intentionally don't use AppKitCompatibilityDeclarations.h here, since we want
+        MiniBrowser to build without WTF.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate _updateNewWindowKeyEquivalents]):
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController windowDidLoad]):
+        * MiniBrowser/mac/MiniBrowser_Prefix.pch:
+
+2016-03-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Add iOS simulator EWS that runs tests
+        https://bugs.webkit.org/show_bug.cgi?id=155175
+
+        Reviewed by Lucas Forschler.
+
+        * QueueStatusServer/config/queues.py:
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/common/config/ports.py:
+
+2016-03-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197793 and r197799.
+        https://bugs.webkit.org/show_bug.cgi?id=155195
+
+        something weird happened while landing this and everything
+        broke (Requested by olliej on #webkit).
+
+        Reverted changesets:
+
+        "Start moving to separated writable and executable mappings in
+        the JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+        http://trac.webkit.org/changeset/197793
+
+        "arm64 build fix after r197793."
+        http://trac.webkit.org/changeset/197799
+
+2016-03-08  Oliver Hunt  <oliver@apple.com>
+
+        Start moving to separated writable and executable mappings in the JIT
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+
+        Reviewed by Filip Pizlo.
+
+        Making run-jsc-benchmarks slightly happier on my machine.
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-03-08  Daniel Bates  <dabates@apple.com>
+
+        Support iterating over an OptionSet and checking if it is empty
+        https://bugs.webkit.org/show_bug.cgi?id=154941
+        <rdar://problem/24964187>
+
+        Reviewed by Darin Adler.
+
+        Add tests to ensure that we do not regression both iteration of an OptionSet and
+        determining whether an OptionSet is empty.
+
+        * TestWebKitAPI/Test.h:
+        (TestWebKitAPI::Util::assertStrongEnum): Helper function to assert two strong enum type for equality.
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-03-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Add debug iOS Simulator bots to the dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=155157
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+
+2016-03-08  Alejandro G. Castro  <alex@igalia.com>
+
+        Unreviewed EFL build fix after r197752.
+
+        * Scripts/webkitperl/FeatureList.pm: Avoid MEDIA_STREAM
+        compilation by default until EFL bumps gstreamer to 1.6.
+
+2016-03-08  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK] [EFL] Avoid running mediastream tests by default until we compile by default
+        https://bugs.webkit.org/show_bug.cgi?id=153540
+
+        Reviewed by Philippe Normand.
+
+        After bumping gstreamer to 1.6.3 in r196804 we can enable again
+        compilation of mediastream and running the tests.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Enable again the UserMedia API test.
+        * Scripts/webkitperl/FeatureList.pm: Enable the compilation of the
+        mediastream by default.
+        * gtk/jhbuild-webrtc.modules: Removed the specific jhbuild modules
+        file.
+        * gtk/jhbuild.modules: Bumped the openwebrtc version to the one we
+        are currently using.
+
+2016-03-07  Jon Lee  <jonlee@apple.com>
+
+        Update perf bot configuration for Animometer
+        https://bugs.webkit.org/show_bug.cgi?id=155134
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/Animometer.patch: Refactor the patch
+        to work with the latest version of the harness.
+        * Scripts/webkitpy/benchmark_runner/data/plans/animometer.plan: Bump up the timeout,
+        and use the latest version of the harness.
+
+2016-03-07  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK][jhbuild] OpenWebRTC build fails with GCC 6.0
+        https://bugs.webkit.org/show_bug.cgi?id=154839
+
+        Reviewed by Michael Catanzaro.
+
+        Add '-Wno-error' to jhbuildrc; remove it from the module sets for macos.
+
+        * gtk/jhbuild-webrtc.modules:
+        * gtk/jhbuild.modules:
+        * gtk/jhbuildrc:
+
+2016-03-07  Aakash Jain  <aakash_jain@apple.com>
+
+        webkitpy should verify timestamp from CrashLogs while collecting all crash logs
+        https://bugs.webkit.org/show_bug.cgi?id=155000
+        <rdar://problem/24860219>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs._find_all_logs_darwin): Make sure that crash log timestamp is within expected 
+        time range, because file modification time is not always accurate.
+        (CrashLogs.get_timestamp_from_logs): Parse the timestamp from logs.
+        * Scripts/webkitpy/common/system/crashlogs_unittest.py:
+        (CrashLogsTest.test_get_timestamp_from_logs_darwin): Testcase for above function.
+
+2016-03-06  Alexey Proskuryakov  <ap@apple.com>
+
+        build-webkit prints an error on iOS simulator bots
+        https://bugs.webkit.org/show_bug.cgi?id=155078
+
+        Reviewed by Dan Bernstein.
+
+        This happens when build-layouttestrelay sets $xcodeSDK to undefined, to use host SDK.
+
+        * Scripts/webkitdirs.pm: (buildXCodeProject): There is no need to pass -sdk, because
+        XcodeOptions() already passes SDKROOT as appropriate.
+
+        * Scripts/build-layouttestrelay: Added a FIXME. Resetting $xcodeSDK doesn't reset
+        any other configuration variables that were derived from its initial value, like $portName.
+
+2016-03-05  Tim Horton  <timothy_horton@apple.com>
+
+        Create a DOMHTMLVideoElement when wrapping <video> elements
+        https://bugs.webkit.org/show_bug.cgi?id=155084
+        <rdar://problem/24997193>
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/DOMHTMLVideoElementWrapper.mm: Added.
+        (-[VideoWrapperFrameLoadDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+        Add an API test for this behavior.
+
+2016-03-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Fix logging details after r197505 (Run the run-benchmark script on the performance bot.)
+        https://bugs.webkit.org/show_bug.cgi?id=154595
+
+        Unreviewed.
+
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        (start): Use logging.exception when a test fails in order to get the details about the error.
+
+2016-03-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Add iOS simulator debug bots
+        https://bugs.webkit.org/show_bug.cgi?id=155053
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2016-03-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Gather resource load statistics
+        https://bugs.webkit.org/show_bug.cgi?id=154278
+        <rdar://problem/24702892>
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (defaultConfiguration): Retrieve state of the ResourceLoadStatisticsEnabled setting.
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]): Move setting from WK1-only to be
+        universally applicable.
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController didChangeSettings]): Recognize when the
+        Resource Load Statistics flag has changed.
+
+2016-03-04  Alex Christensen  <achristensen@webkit.org>
+
+        Remove vcxproj build system
+        https://bugs.webkit.org/show_bug.cgi?id=154388
+
+        Rubber-stamped by Brent Fulgham.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree.sln: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTree.vcxproj: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTree.vcxproj.filters: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeApple.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeCommon.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeDebug.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeDebugWinCairo.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncher.vcxproj: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncherCommon.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncherDebug.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncherProduction.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncherRelease.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreePostBuild.cmd: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreePreBuild.cmd: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeProduction.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeRelease.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeReleaseWinCairo.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiff.vcxproj: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffCommon.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffCommonWinCairo.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffDebug.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffDebugWinCairo.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncher.vcxproj: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncherCommon.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncherDebug.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncherProduction.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncherRelease.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffPostBuild.cmd: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffPreBuild.cmd: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffProduction.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffRelease.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffReleaseWinCairo.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj.filters: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginCommon.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginDebug.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginPostBuild.cmd: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginPreBuild.cmd: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginProduction.props: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePluginRelease.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.vcxproj: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.vcxproj.filters: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserCF.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserCFLite.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserCommon.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserDebug.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.vcxproj: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.vcxproj.filters: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibCommon.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibDebug.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibPostBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibPreBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibProduction.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibRelease.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserPostBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserPreBuild.cmd: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserProduction.props: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserRelease.props: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.sln: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPICommon.props: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPICommonWinCairo.props: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIDebug.props: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIDebugWinCairo.props: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIPostBuild.cmd: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIPreBuild.cmd: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIProduction.props: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIRelease.props: Removed.
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPIReleaseWinCairo.props: Removed.
+        * win/AssembleBuildLogs: Removed.
+        * win/AssembleBuildLogs/AssembleBuildLogs.vcxproj: Removed.
+        * win/AssembleBuildLogs/AssembleBuildLogs.vcxproj.filters: Removed.
+        * win/AssembleBuildLogs/AssembleLogs.cmd: Removed.
+        * win/AssembleBuildLogs/README: Removed.
+
+2016-03-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Whitespace causes font-variant: all-small-caps to synthesize
+        https://bugs.webkit.org/show_bug.cgi?id=155004
+        <rdar://problem/24630796>
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet):
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::allowedFontFamilySet):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet):
+
+2016-03-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Crash during font loading when injected bundle cancels load
+        https://bugs.webkit.org/show_bug.cgi?id=155001
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/Ahem.ttf: Added.
+        * TestWebKitAPI/Tests/WebKit2/webfont.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/CancelFontSubresource.mm: Added.
+        (-[Myles webView:didFinishNavigation:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/CancelFontSubresourcePlugIn.mm: Added.
+        (-[CancelFontSubresourcePlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[CancelFontSubresourcePlugIn webProcessPlugInBrowserContextController:frame:willSendRequestForResource:request:redirectResponse:]):
+
+2016-03-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [check-webkit-style] Added checks for redundant virtual specifiers.
+        https://bugs.webkit.org/show_bug.cgi?id=155017
+
+        Reviewed by Darin Adler.
+
+        Added 3 new checks related to virtual, override, and final specifiers:
+
+        1. When "override" is present, "virtual" is redundant.
+        2. When "final" is present, "virtual" is redundant.
+        3. When "final" is present, "override" is redundant.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (_FunctionState.begin):
+        (_FunctionState.is_virtual):
+        (_check_parameter_name_against_text):
+        (_error_redundant_specifier):
+        (check_function_definition):
+        (CppChecker):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (FunctionDetectionTest.perform_function_detection):
+        (FunctionDetectionTest.test_basic_function_detection):
+        (FunctionDetectionTest.test_function_declaration_detection):
+        (FunctionDetectionTest.test_pure_function_detection):
+        (FunctionDetectionTest.test_override_and_final_function_detection):
+        (FunctionDetectionTest.test_non_functions):
+        (FunctionDetectionTest.test_parameter_list):
+
+2016-03-03  Darin Adler  <darin@apple.com>
+
+        Followup to:
+        Remove "virtual" from all lines that have both "virtual" and "override".
+        https://bugs.webkit.org/show_bug.cgi?id=155005
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/do-webcore-rename: Added more regular expressions to make sure we always
+        use either override or final, not both, and to remove virtual from all lines that
+        have both virtual and final.
+
+2016-03-03  Darin Adler  <darin@apple.com>
+
+        Remove "virtual" from all lines that have both "virtual" and "override".
+        https://bugs.webkit.org/show_bug.cgi?id=155005
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/do-webcore-rename: Added a regular expression to this script to do the job.
+
+2016-03-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed fix after r197505 (Run the run-benchmark script on the performance bot.)
+        https://bugs.webkit.org/show_bug.cgi?id=154595
+
+        Unreviewed fix after r197505.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunBenchmarkTests.start):
+
+2016-03-03  Daniel Bates  <dabates@apple.com>
+
+        Add unit tests for WTF::OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=154925
+        <rdar://problem/24964211>
+
+        Reviewed by Darin Adler.
+
+        Add tests to ensure that we do not regress the behavior of WTF::OptionSet.
+
+        * TestWebKitAPI/CMakeLists.txt: Add file TestWebKitAPI/Tests/WTF/OptionSet.cpp.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Ditto.
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2016-03-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197442.
+        https://bugs.webkit.org/show_bug.cgi?id=154967
+
+        Broke tests, and also uses a wrong approach (Requested by ap
+        on #webkit).
+
+        Reverted changeset:
+
+        "Disable FTL JIT testing on 32-bit JSC tester bots"
+        https://bugs.webkit.org/show_bug.cgi?id=154858
+        http://trac.webkit.org/changeset/197442
+
+2016-03-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Run the run-benchmark script on the performance bot.
+        https://bugs.webkit.org/show_bug.cgi?id=154595
+
+        Reviewed by Carlos Garcia Campos.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg: Add new RunBenchmarkTests step on the perf bots (only for the GTK+ port at this moment).
+        (RunBenchmarkTests):
+        (RunBenchmarkTests.start):
+        (RunBenchmarkTests.getText):
+        (RunBenchmarkTests.getText2):
+        (BuildAndPerfTestFactory.__init__):
+        (DownloadAndPerfTestFactory.__init__):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Add new test for RunBenchmarkTests and update expected steps of GTK+ perf bot.
+        (RunBenchmarkTest):
+        (RunBenchmarkTest.assertResults):
+        (RunBenchmarkTest.test_success):
+        (RunBenchmarkTest.test_tests_failed):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py: Log both the current iteration as also the total iterations for the current benchmark/plan.
+        (BenchmarkRunner._run_benchmark):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/gtk_minibrowser_driver.py: Use python logging also for errors.
+        (GTKMiniBrowserDriver.close_browsers):
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py: Implement support for running all available benchmark plans.
+        (parse_args):
+        (start):
+        (main):
+
+2016-03-03  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Remove u-szeged.hu SVN mirror in EFL perf bot
+        https://bugs.webkit.org/show_bug.cgi?id=154960
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Remove szeged univ's svn mirror.
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+
 2016-03-03  Frederic Wang  <fwang@igalia.com>
 
         [jhbuild] Remove LLVM dependency.

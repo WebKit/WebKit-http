@@ -60,14 +60,14 @@ public:
 
     // For HTMLTreeBuilder.
     HTMLTokenizer& tokenizer();
-    virtual TextPosition textPosition() const override final;
+    TextPosition textPosition() const final;
 
 protected:
     explicit HTMLDocumentParser(HTMLDocument&);
 
-    virtual void insert(const SegmentedString&) override final;
-    virtual void append(RefPtr<StringImpl>&&) override;
-    virtual void finish() override;
+    void insert(const SegmentedString&) final;
+    void append(RefPtr<StringImpl>&&) override;
+    void finish() override;
 
     HTMLTreeBuilder& treeBuilder();
 
@@ -76,28 +76,28 @@ private:
     static Ref<HTMLDocumentParser> create(DocumentFragment&, Element& contextElement, ParserContentPolicy);
 
     // DocumentParser
-    virtual void detach() override final;
-    virtual bool hasInsertionPoint() override final;
-    virtual bool processingData() const override final;
-    virtual void prepareToStopParsing() override final;
-    virtual void stopParsing() override final;
-    virtual bool isWaitingForScripts() const override;
-    virtual bool isExecutingScript() const override final;
-    virtual void executeScriptsWaitingForStylesheets() override final;
-    virtual void suspendScheduledTasks() override final;
-    virtual void resumeScheduledTasks() override final;
+    void detach() final;
+    bool hasInsertionPoint() final;
+    bool processingData() const final;
+    void prepareToStopParsing() final;
+    void stopParsing() final;
+    bool isWaitingForScripts() const override;
+    bool isExecutingScript() const final;
+    void executeScriptsWaitingForStylesheets() final;
+    void suspendScheduledTasks() final;
+    void resumeScheduledTasks() final;
 
-    virtual bool shouldAssociateConsoleMessagesWithTextPosition() const override final;
+    bool shouldAssociateConsoleMessagesWithTextPosition() const final;
 
     // HTMLScriptRunnerHost
-    virtual void watchForLoad(CachedResource*) override final;
-    virtual void stopWatchingForLoad(CachedResource*) override final;
-    virtual HTMLInputStream& inputStream() override final;
-    virtual bool hasPreloadScanner() const override final;
-    virtual void appendCurrentInputStreamToPreloadScannerAndScan() override final;
+    void watchForLoad(CachedResource*) final;
+    void stopWatchingForLoad(CachedResource*) final;
+    HTMLInputStream& inputStream() final;
+    bool hasPreloadScanner() const final;
+    void appendCurrentInputStreamToPreloadScannerAndScan() final;
 
     // CachedResourceClient
-    virtual void notifyFinished(CachedResource*) override final;
+    void notifyFinished(CachedResource*) final;
 
     Document* contextForParsingSession();
 
