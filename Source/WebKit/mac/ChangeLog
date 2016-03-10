@@ -1,3 +1,199 @@
+2016-03-08  Oliver Hunt  <oliver@apple.com>
+
+        Start moving to separated writable and executable mappings in the JIT
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+
+        Reviewed by Fil Pizlo.
+
+        Update feature defines.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197793 and r197799.
+        https://bugs.webkit.org/show_bug.cgi?id=155195
+
+        something weird happened while landing this and everything
+        broke (Requested by olliej on #webkit).
+
+        Reverted changesets:
+
+        "Start moving to separated writable and executable mappings in
+        the JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+        http://trac.webkit.org/changeset/197793
+
+        "arm64 build fix after r197793."
+        http://trac.webkit.org/changeset/197799
+
+2016-03-08  Oliver Hunt  <oliver@apple.com>
+
+        Start moving to separated writable and executable mappings in the JIT
+        https://bugs.webkit.org/show_bug.cgi?id=155178
+
+        Reviewed by Filip Pizlo.
+
+        Update feature defines.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Ignore deprecation warnings.
+
+        * Misc/WebNSEventExtras.m:
+        (-[NSEvent _web_isKeyEvent:]):
+        (-[NSEvent _web_isOptionTabKeyEvent]):
+        * Misc/WebNSViewExtras.m:
+        (-[NSView _web_dragShouldBeginFromMouseDown:withExpiration:xHysteresis:yHysteresis:]):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::beginModal):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::syntheticKeyDownWithCommandModifier):
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView drawRect:]):
+        * Plugins/WebNetscapePluginEventHandlerCocoa.mm:
+        (WebNetscapePluginEventHandlerCocoa::syntheticKeyDownWithCommandModifier):
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+        (PopupMenuMac::show):
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::showContextMenu):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::canAttach):
+        (-[WebInspectorWindowController window]):
+        * WebInspector/WebNodeHighlight.mm:
+        (-[WebNodeHighlight initWithTargetView:inspectorController:]):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView keyDown:keyDown:]):
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController init]):
+        (createBackgroundFullscreenWindow):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _postFakeMouseMovedEventForFlagsChangedEvent:]):
+        (-[WebHTMLView _setMouseDownEvent:_setMouseDownEvent:]):
+        (isQuickLookEvent):
+        (-[WebHTMLView hitTest:]):
+        (-[WebHTMLView _sendToolTipMouseExited]):
+        (-[WebHTMLView _sendToolTipMouseEntered]):
+        (mouseEventIsPartOfClickOrDrag):
+        (-[WebHTMLView _updateMouseoverWithEvent:]):
+        (-[WebHTMLView acceptsFirstResponder]):
+        (-[WebHTMLView viewDidMoveToWindow]):
+        (currentKeyboardEvent):
+        (-[WebHTMLView _handleStyleKeyEquivalent:]):
+        (-[WebHTMLView _interpretKeyEvent:savingCommands:]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView hitTest:]):
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+        (-[WebPDFView _fakeKeyEventWithFunctionKey:]):
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController _buildUI]):
+        (-[WebTextCompletionController _placePopupWindow:]):
+        * WebView/WebView.mm:
+        (-[WebView applicationFlags:]):
+
+2016-03-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Reduce startup and shutdown cost of resource load statistics
+        https://bugs.webkit.org/show_bug.cgi?id=155120
+        <rdar://problem/25010167>
+
+        Reviewed by Andy Estes.
+
+        Remove the Resource Load Statistics stuff from WK1, now that it is up and
+        running in WK2.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Remove call to read resource load
+        statistics from disk.
+        (+[WebView _applicationWillTerminate]): Remove call to write resource load
+        statistics to disk.
+
+2016-03-06  Andreas Kling  <akling@apple.com>
+
+        Reduce page cache capacity from 3 to 2.
+        <https://webkit.org/b/155087>
+
+        Reviewed by Antti Koivisto.
+
+        Trim WebKit1 page cache capacities consistently with WebKit2.
+
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+
+2016-03-05  Chris Dumez  <cdumez@apple.com>
+
+        Consolidate RuntimeApplicationChecks and RuntimeApplicationChecksIOS
+        https://bugs.webkit.org/show_bug.cgi?id=155035
+
+        Reviewed by Darin Adler.
+
+        Update runtime application checks.
+
+        * Plugins/WebPluginController.mm:
+        (initializeAudioSession):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebView/WebFrame.mm:
+        (needsMicrosoftMessengerDOMDocumentWorkaround):
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _updateImmediateActionItem]):
+        * WebView/WebView.mm:
+        (WebKitInitializeApplicationCachePathIfNecessary):
+        (shouldEnableLoadDeferring):
+        (shouldRestrictWindowFocus):
+        (needsOutlookQuirksScript):
+        (shouldTransformsAffectOverflow):
+        (shouldDispatchJavaScriptWindowOnErrorEvents):
+        (shouldUseLegacyBackgroundSizeShorthandBehavior):
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (+[WebView enableWebThread]):
+        (+[WebView registerForMemoryNotifications]):
+        (-[WebView _needsKeyboardEventDisambiguationQuirks]):
+        (needsSelfRetainWhileLoadingQuirk):
+        (-[WebView _needsPreHTML5ParserQuirks]):
+
+2016-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Support Reflect.construct
+        https://bugs.webkit.org/show_bug.cgi?id=147330
+
+        Reviewed by Saam Barati.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::invoke):
+        (WebKit::NetscapePluginInstanceProxy::invokeDefault):
+        (WebKit::NetscapePluginInstanceProxy::construct):
+
+2016-03-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix for null global WebResourceLoadStatisticsStore.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        (+[WebView _applicationWillTerminate]):
+
+2016-03-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Gather resource load statistics
+        https://bugs.webkit.org/show_bug.cgi?id=154278
+        <rdar://problem/24702892>
+
+        Reviewed by Andy Estes.
+
+        Switch to maintaining a global WebCore::ResourceLoadStatisticsStore in the WebKit process,
+        and hand it off to the WebCore layer to use during data gathering. The ResourceLoadStatisticsStore
+        is now responsible for reading/writing to disk, and tracking the collection of load data.
+
+        * WebView/WebView.mm:
+        (WebKitInitializeApplicationStatisticsStoragePathIfNecessary): Initialize singleton
+        ResourceLoadStatisticsStore object for tracking state.
+        (-[WebView _preferencesChanged:]): Revise for new singleton.
+        (+[WebView _applicationWillTerminate]): Ditto.
+
 2016-02-29  Ada Chan  <adachan@apple.com>
 
         Adopt the new version of AVOutputDeviceMenuController's showMenuForRect method.

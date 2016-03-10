@@ -203,7 +203,7 @@ JSValue JSInjectedScriptHost::functionDetails(ExecState* exec)
     JSObject* result = constructEmptyObject(exec);
     result->putDirect(exec->vm(), Identifier::fromString(exec, "location"), location);
 
-    String name = function->name(exec);
+    String name = function->name();
     if (!name.isEmpty())
         result->putDirect(exec->vm(), Identifier::fromString(exec, "name"), jsString(exec, name));
 
@@ -448,9 +448,11 @@ JSValue JSInjectedScriptHost::iteratorEntries(ExecState* exec)
         iterator = setIterator->clone(exec);
     else if (JSStringIterator* stringIterator = jsDynamicCast<JSStringIterator*>(value))
         iterator = stringIterator->clone(exec);
-    else if (JSPropertyNameIterator* propertyNameIterator = jsDynamicCast<JSPropertyNameIterator*>(value))
+    else if (JSPropertyNameIterator* propertyNameIterator = jsDynamicCast<JSPropertyNameIterator*>(value)) {
         iterator = propertyNameIterator->clone(exec);
-    else
+        if (UNLIKELY(exec->hadException()))
+            return JSValue();
+    } else
         return jsUndefined();
 
     unsigned numberToFetch = 5;

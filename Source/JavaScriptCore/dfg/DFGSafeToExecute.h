@@ -61,6 +61,7 @@ public:
         case ObjectOrOtherUse:
         case StringIdentUse:
         case StringUse:
+        case StringOrOtherUse:
         case SymbolUse:
         case StringObjectUse:
         case StringOrStringObjectUse:
@@ -136,6 +137,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case JSConstant:
     case DoubleConstant:
     case Int52Constant:
+    case LazyJSConstant:
     case Identity:
     case ToThis:
     case CreateThis:
@@ -207,6 +209,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArrayifyToStructure:
     case GetScope:
     case SkipScope:
+    case GetGlobalObject:
     case GetClosureVar:
     case PutClosureVar:
     case GetGlobalVar:
@@ -293,7 +296,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
-    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case StoreBarrier:
     case InvalidationPoint:
@@ -332,6 +334,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ForwardVarargs:
     case CopyRest:
     case StringReplace:
+    case GetRegExpObjectLastIndex:
+    case SetRegExpObjectLastIndex:
         return true;
 
     case BottomValue:

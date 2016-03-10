@@ -28,7 +28,7 @@
 #include "YarrInterpreter.h"
 
 #include "Yarr.h"
-#include "YarrCanonicalizeUnicode.h"
+#include "YarrCanonicalize.h"
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/DataLog.h>
 #include <wtf/text/CString.h>
@@ -208,8 +208,7 @@ public:
             unsigned p = pos - negativePositionOffest;
             ASSERT(p < length);
             int result = input[p];
-            if (U16_IS_LEAD(result) && decodeSurrogatePairs && p + 1 < length
-                && U16_IS_TRAIL(input[p + 1])) {
+            if (U16_IS_LEAD(result) && decodeSurrogatePairs && p + 1 < length && U16_IS_TRAIL(input[p + 1])) {
                 if (atEnd())
                     return -1;
                 
@@ -219,17 +218,18 @@ public:
             return result;
         }
         
-        int readSurrogatePairChecked(unsigned negativePositionOffest)
+        int readSurrogatePairChecked(unsigned negativePositionOffset)
         {
-            RELEASE_ASSERT(pos >= negativePositionOffest);
-            unsigned p = pos - negativePositionOffest;
+            RELEASE_ASSERT(pos >= negativePositionOffset);
+            unsigned p = pos - negativePositionOffset;
             ASSERT(p < length);
             if (p + 1 >= length)
                 return -1;
 
             int first = input[p];
-            if (U16_IS_LEAD(first) && U16_IS_TRAIL(input[p + 1]))
-                return U16_GET_SUPPLEMENTARY(first, input[p + 1]);
+            int second = input[p + 1];
+            if (U16_IS_LEAD(first) && U16_IS_TRAIL(second))
+                return U16_GET_SUPPLEMENTARY(first, second);
 
             return -1;
         }
@@ -238,11 +238,8 @@ public:
         {
             ASSERT(from < length);
             int result = input[from];
-            if (U16_IS_LEAD(result) && decodeSurrogatePairs && from + 1 < length
-                && U16_IS_TRAIL(input[from + 1])) {
-                
+            if (U16_IS_LEAD(result) && decodeSurrogatePairs && from + 1 < length && U16_IS_TRAIL(input[from + 1]))
                 result = U16_GET_SUPPLEMENTARY(result, input[from + 1]);
-            }
             return result;
         }
 
@@ -294,9 +291,9 @@ public:
             pos -= count;
         }
 
-        bool atStart(unsigned negativePositionOffest)
+        bool atStart(unsigned negativePositionOffset)
         {
-            return pos == negativePositionOffest;
+            return pos == negativePositionOffset;
         }
 
         bool atEnd(unsigned negativePositionOffest)
@@ -319,7 +316,7 @@ public:
 
     bool testCharacterClass(CharacterClass* characterClass, int ch)
     {
-        if (ch & 0x1FFF80) {
+        if (!isASCII(ch)) {
             for (unsigned i = 0; i < characterClass->m_matchesUnicode.size(); ++i)
                 if (ch == characterClass->m_matchesUnicode[i])
                     return true;
@@ -380,9 +377,10 @@ public:
                 continue;
 
             if (pattern->m_ignoreCase) {
-                // The definition for canonicalize (see ES 6.0, 15.10.2.8) means that
-                // unicode values are never allowed to match against ascii ones.
-                if (isASCII(oldCh) || isASCII(ch)) {
+                // See ES 6.0, 21.2.2.8.2 for the definition of Canonicalize(). For non-Unicode
+                // patterns, Unicode values are never allowed to match against ASCII ones.
+                // For Unicode, we need to check all canonical equivalents of a character.
+                if (!unicode && (isASCII(oldCh) || isASCII(ch))) {
                     if (toASCIIUpper(oldCh) == toASCIIUpper(ch))
                         continue;
                 } else if (areCanonicallyEquivalent(oldCh, ch, unicode ? CanonicalMode::Unicode : CanonicalMode::UCS2))
@@ -433,10 +431,7 @@ public:
         case QuantifierGreedy:
             if (backTrack->matchAmount) {
                 --backTrack->matchAmount;
-                if (unicode && !U_IS_BMP(term.atom.patternCharacter))
-                    input.uncheckInput(2);
-                else
-                    input.uncheckInput(1);
+                input.uncheckInput(U16_LENGTH(term.atom.patternCharacter));
                 return true;
             }
             break;
@@ -1267,7 +1262,7 @@ public:
         case ByteTerm::TypePatternCasedCharacterOnce:
         case ByteTerm::TypePatternCasedCharacterFixed: {
             if (unicode) {
-                // Case insensitive matching of unicode charaters are handled as TypeCharacterClass
+                // Case insensitive matching of unicode characters is handled as TypeCharacterClass.
                 ASSERT(U_IS_BMP(currentTerm().atom.patternCharacter));
 
                 unsigned position = input.getPos(); // May need to back out reading a surrogate pair.
@@ -1290,7 +1285,7 @@ public:
         case ByteTerm::TypePatternCasedCharacterGreedy: {
             BackTrackInfoPatternCharacter* backTrack = reinterpret_cast<BackTrackInfoPatternCharacter*>(context->frame + currentTerm().frameLocation);
 
-            // Case insensitive matching of unicode charaters are handled as TypeCharacterClass
+            // Case insensitive matching of unicode characters is handled as TypeCharacterClass.
             ASSERT(!unicode || U_IS_BMP(currentTerm().atom.patternCharacter));
 
             unsigned matchAmount = 0;
@@ -1308,7 +1303,7 @@ public:
         case ByteTerm::TypePatternCasedCharacterNonGreedy: {
             BackTrackInfoPatternCharacter* backTrack = reinterpret_cast<BackTrackInfoPatternCharacter*>(context->frame + currentTerm().frameLocation);
 
-            // Case insensitive matching of unicode charaters are handled as TypeCharacterClass
+            // Case insensitive matching of unicode characters is handled as TypeCharacterClass.
             ASSERT(!unicode || U_IS_BMP(currentTerm().atom.patternCharacter));
             
             backTrack->matchAmount = 0;
@@ -1618,9 +1613,6 @@ public:
     void atomPatternCharacter(UChar32 ch, unsigned inputPosition, unsigned frameLocation, Checked<unsigned> quantityCount, QuantifierType quantityType)
     {
         if (m_pattern.m_ignoreCase) {
-            ASSERT(u_tolower(ch) <= UCHAR_MAX_VALUE);
-            ASSERT(u_toupper(ch) <= UCHAR_MAX_VALUE);
-
             UChar32 lo = u_tolower(ch);
             UChar32 hi = u_toupper(ch);
 

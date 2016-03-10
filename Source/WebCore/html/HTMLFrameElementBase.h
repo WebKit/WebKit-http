@@ -35,7 +35,7 @@ public:
     URL location() const;
     void setLocation(const String&);
 
-    virtual ScrollbarMode scrollingMode() const override final { return m_scrolling; }
+    ScrollbarMode scrollingMode() const final { return m_scrolling; }
     
     int marginWidth() const { return m_marginWidth; }
     int marginHeight() const { return m_marginHeight; }
@@ -43,26 +43,26 @@ public:
     int width();
     int height();
 
-    virtual bool canContainRangeEndPoint() const override final { return false; }
+    bool canContainRangeEndPoint() const final { return false; }
 
 protected:
     HTMLFrameElementBase(const QualifiedName&, Document&);
 
     bool isURLAllowed() const;
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override final;
-    virtual void finishedInsertingSubtree() override final;
-    virtual void didAttachRenderers() override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void finishedInsertingSubtree() final;
+    void didAttachRenderers() override;
 
 private:
-    virtual bool supportsFocus() const override final;
-    virtual void setFocus(bool) override final;
+    bool supportsFocus() const final;
+    void setFocus(bool) final;
     
-    virtual bool isURLAttribute(const Attribute&) const override final;
-    virtual bool isHTMLContentAttribute(const Attribute&) const override final;
+    bool isURLAttribute(const Attribute&) const final;
+    bool isHTMLContentAttribute(const Attribute&) const final;
 
-    virtual bool isFrameElementBase() const override final { return true; }
+    bool isFrameElementBase() const final { return true; }
 
     void setNameAndOpenURL();
     void openURL(LockHistory = LockHistory::Yes, LockBackForwardList = LockBackForwardList::Yes);

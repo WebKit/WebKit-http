@@ -51,7 +51,7 @@ public:
     // in the row, but their col/row spans overlap into it
     void appendChild(AccessibilityObject*);
     
-    virtual void addChildren() override;
+    void addChildren() override;
     
     int ariaColumnIndex() const;
     int ariaRowIndex() const;
@@ -59,12 +59,12 @@ public:
 protected:
     explicit AccessibilityTableRow(RenderObject*);
 
-    virtual AccessibilityRole determineAccessibilityRole() override final;
+    AccessibilityRole determineAccessibilityRole() final;
 
 private:
-    virtual bool isTableRow() const override final;
-    virtual AccessibilityObject* observableObject() const override final;
-    virtual bool computeAccessibilityIsIgnored() const override final;
+    bool isTableRow() const final;
+    AccessibilityObject* observableObject() const final;
+    bool computeAccessibilityIsIgnored() const final;
 
     int m_rowIndex;
 };

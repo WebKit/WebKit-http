@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008, 2012 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2003, 2007, 2008, 2012, 2016 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -32,6 +32,7 @@
 #include "JSCInlines.h"
 #include "RegExpConstructor.h"
 #include "RegExpMatchesArray.h"
+#include "RegExpObjectInlines.h"
 #include "RegExpPrototype.h"
 #include <wtf/text/StringBuilder.h>
 
@@ -127,10 +128,10 @@ bool RegExpObject::defineOwnProperty(JSObject* object, ExecState* exec, Property
                 return reject(exec, shouldThrow, "Attempting to change value of a readonly property.");
             return true;
         }
-        if (descriptor.writablePresent() && !descriptor.writable())
-            regExp->m_lastIndexIsWritable = false;
         if (descriptor.value())
             regExp->setLastIndex(exec, descriptor.value(), false);
+        if (descriptor.writablePresent() && !descriptor.writable())
+            regExp->m_lastIndexIsWritable = false;
         return true;
     }
 
@@ -159,43 +160,15 @@ void RegExpObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName,
     Base::put(cell, exec, propertyName, value, slot);
 }
 
-JSValue RegExpObject::exec(ExecState* exec, JSString* string)
+JSValue RegExpObject::exec(ExecState* exec, JSGlobalObject* globalObject, JSString* string)
 {
-    if (MatchResult result = match(exec, string))
-        return createRegExpMatchesArray(exec, string, regExp(), result);
-    return jsNull();
+    return execInline(exec, globalObject, string);
 }
 
 // Shared implementation used by test and exec.
-MatchResult RegExpObject::match(ExecState* exec, JSString* string)
+MatchResult RegExpObject::match(ExecState* exec, JSGlobalObject* globalObject, JSString* string)
 {
-    RegExp* regExp = this->regExp();
-    RegExpConstructor* regExpConstructor = exec->lexicalGlobalObject()->regExpConstructor();
-    String input = string->value(exec);
-    VM& vm = exec->vm();
-    if (!regExp->global())
-        return regExpConstructor->performMatch(vm, regExp, string, input, 0);
-
-    JSValue jsLastIndex = getLastIndex();
-    unsigned lastIndex;
-    if (LIKELY(jsLastIndex.isUInt32())) {
-        lastIndex = jsLastIndex.asUInt32();
-        if (lastIndex > input.length()) {
-            setLastIndex(exec, 0);
-            return MatchResult::failed();
-        }
-    } else {
-        double doubleLastIndex = jsLastIndex.toInteger(exec);
-        if (doubleLastIndex < 0 || doubleLastIndex > input.length()) {
-            setLastIndex(exec, 0);
-            return MatchResult::failed();
-        }
-        lastIndex = static_cast<unsigned>(doubleLastIndex);
-    }
-
-    MatchResult result = regExpConstructor->performMatch(vm, regExp, string, input, lastIndex);
-    setLastIndex(exec, result.end);
-    return result;
+    return matchInline(exec, globalObject, string);
 }
 
 } // namespace JSC

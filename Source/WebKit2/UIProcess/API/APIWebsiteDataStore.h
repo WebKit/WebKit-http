@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,6 +42,9 @@ public:
 
     bool isPersistent();
 
+    bool resourceLoadStatisticsEnabled() const;
+    void setResourceLoadStatisticsEnabled(bool);
+
     WebKit::WebsiteDataStore& websiteDataStore() { return *m_websiteDataStore; }
 
     static String defaultApplicationCacheDirectory();
@@ -51,6 +54,7 @@ public:
     static String defaultLocalStorageDirectory();
     static String defaultMediaKeysStorageDirectory();
     static String defaultWebSQLDatabaseDirectory();
+    static String defaultResourceLoadStatisticsDirectory();
 
 private:
     WebsiteDataStore(WebKit::WebsiteDataStore::Configuration);

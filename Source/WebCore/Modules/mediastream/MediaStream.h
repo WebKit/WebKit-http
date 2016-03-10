@@ -75,14 +75,14 @@ public:
     MediaStreamPrivate* privateStream() const { return m_private.get(); }
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const final { return MediaStreamEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
+    EventTargetInterface eventTargetInterface() const final { return MediaStreamEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
     using RefCounted<MediaStream>::ref;
     using RefCounted<MediaStream>::deref;
 
     // URLRegistrable
-    virtual URLRegistry& registry() const override;
+    URLRegistry& registry() const override;
 
     void addObserver(Observer*);
     void removeObserver(Observer*);
@@ -92,22 +92,22 @@ protected:
     MediaStream(ScriptExecutionContext&, RefPtr<MediaStreamPrivate>&&);
 
     // ContextDestructionObserver
-    virtual void contextDestroyed() override final;
+    void contextDestroyed() final;
 
 private:
     enum class StreamModifier { DomAPI, Platform };
 
     // EventTarget
-    virtual void refEventTarget() override final { ref(); }
-    virtual void derefEventTarget() override final { deref(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
     // MediaStreamTrack::Observer
-    virtual void trackDidEnd() override final;
+    void trackDidEnd() final;
 
     // MediaStreamPrivate::Observer
-    virtual void activeStatusChanged() override final;
-    virtual void didAddTrack(MediaStreamTrackPrivate&) override final;
-    virtual void didRemoveTrack(MediaStreamTrackPrivate&) override final;
+    void activeStatusChanged() final;
+    void didAddTrack(MediaStreamTrackPrivate&) final;
+    void didRemoveTrack(MediaStreamTrackPrivate&) final;
 
     bool internalAddTrack(RefPtr<MediaStreamTrack>&&, StreamModifier);
     bool internalRemoveTrack(RefPtr<MediaStreamTrack>&&, StreamModifier);

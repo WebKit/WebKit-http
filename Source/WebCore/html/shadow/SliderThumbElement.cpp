@@ -44,6 +44,7 @@
 #include "RenderSlider.h"
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
+#include "StyleResolver.h"
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 #include "Document.h"
@@ -117,10 +118,10 @@ public:
     }
 
 public:
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
 
 private:
-    virtual void layout() override;
+    void layout() override;
     bool isFlexibleBoxImpl() const override { return true; }
 };
 
@@ -573,43 +574,35 @@ HTMLInputElement* SliderThumbElement::hostInput() const
     return downcast<HTMLInputElement>(shadowHost());
 }
 
-static const AtomicString& sliderThumbShadowPseudoId()
+Optional<ElementStyle> SliderThumbElement::resolveCustomStyle(RenderStyle&, RenderStyle* hostStyle)
 {
-    static NeverDestroyed<const AtomicString> sliderThumb("-webkit-slider-thumb", AtomicString::ConstructFromLiteral);
-    return sliderThumb;
-}
+    // This doesn't actually compute style. This is just a hack to pick shadow pseudo id when host style is known.
 
-static const AtomicString& mediaSliderThumbShadowPseudoId()
-{
-    static NeverDestroyed<const AtomicString> mediaSliderThumb("-webkit-media-slider-thumb", AtomicString::ConstructFromLiteral);
-    return mediaSliderThumb;
-}
+    static NeverDestroyed<const AtomicString> sliderThumbShadowPseudoId("-webkit-slider-thumb", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> mediaSliderThumbShadowPseudoId("-webkit-media-slider-thumb", AtomicString::ConstructFromLiteral);
 
-const AtomicString& SliderThumbElement::shadowPseudoId() const
-{
-    // FIXME: this code needs to go away, it is very very wrong.
-    // The value of shadowPseudoId() is needed to resolve the style of the shadow tree. In this case,
-    // that value depends on the style, which means the style needs to be computed twice to get
-    // a correct value: once to get the Input's appearance, then a second time to style the shadow tree correctly.
+    if (!hostStyle)
+        return Nullopt;
 
-    HTMLInputElement* input = hostInput();
-    if (!input)
-        return sliderThumbShadowPseudoId();
-    if (!input->renderer())
-        return emptyAtom;
-
-    const RenderStyle& sliderStyle = input->renderer()->style();
-    switch (sliderStyle.appearance()) {
+    switch (hostStyle->appearance()) {
     case MediaSliderPart:
     case MediaSliderThumbPart:
     case MediaVolumeSliderPart:
     case MediaVolumeSliderThumbPart:
     case MediaFullScreenVolumeSliderPart:
     case MediaFullScreenVolumeSliderThumbPart:
-        return mediaSliderThumbShadowPseudoId();
+        m_shadowPseudoId = mediaSliderThumbShadowPseudoId;
+        break;
     default:
-        return sliderThumbShadowPseudoId();
+        m_shadowPseudoId = sliderThumbShadowPseudoId;
     }
+
+    return Nullopt;
+}
+
+const AtomicString& SliderThumbElement::shadowPseudoId() const
+{
+    return m_shadowPseudoId;
 }
 
 Ref<Element> SliderThumbElement::cloneElementWithoutAttributesAndChildren(Document& targetDocument)
@@ -622,6 +615,7 @@ Ref<Element> SliderThumbElement::cloneElementWithoutAttributesAndChildren(Docume
 inline SliderContainerElement::SliderContainerElement(Document& document)
     : HTMLDivElement(HTMLNames::divTag, document)
 {
+    setHasCustomStyleResolveCallbacks();
 }
 
 Ref<SliderContainerElement> SliderContainerElement::create(Document& document)
@@ -634,35 +628,35 @@ RenderPtr<RenderElement> SliderContainerElement::createElementRenderer(Ref<Rende
     return createRenderer<RenderSliderContainer>(*this, WTFMove(style));
 }
 
-const AtomicString& SliderContainerElement::shadowPseudoId() const
+Optional<ElementStyle> SliderContainerElement::resolveCustomStyle(RenderStyle&, RenderStyle* hostStyle)
 {
-    // FIXME: this code needs to go away, it is very very wrong.
-    // The value of shadowPseudoId() is needed to resolve the style of the shadow tree. In this case,
-    // that value depends on the style, which means the style needs to be computed twice to get
-    // a correct value: once to get the Input's appearance, then a second time to style the shadow tree correctly.
+    // This doesn't actually compute style. This is just a hack to pick shadow pseudo id when host style is known.
 
     static NeverDestroyed<const AtomicString> mediaSliderContainer("-webkit-media-slider-container", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<const AtomicString> sliderContainer("-webkit-slider-container", AtomicString::ConstructFromLiteral);
 
-    if (!is<HTMLInputElement>(*shadowHost()))
-        return sliderContainer;
+    if (!hostStyle)
+        return Nullopt;
 
-    auto& input = downcast<HTMLInputElement>(*shadowHost());
-    if (!input.renderer())
-        return emptyAtom;
-
-    const RenderStyle& sliderStyle = input.renderer()->style();
-    switch (sliderStyle.appearance()) {
+    switch (hostStyle->appearance()) {
     case MediaSliderPart:
     case MediaSliderThumbPart:
     case MediaVolumeSliderPart:
     case MediaVolumeSliderThumbPart:
     case MediaFullScreenVolumeSliderPart:
     case MediaFullScreenVolumeSliderThumbPart:
-        return mediaSliderContainer;
+        m_shadowPseudoId = mediaSliderContainer;
+        break;
     default:
-        return sliderContainer;
+        m_shadowPseudoId = sliderContainer;
     }
+
+    return Nullopt;
+}
+
+const AtomicString& SliderContainerElement::shadowPseudoId() const
+{
+    return m_shadowPseudoId;
 }
 
 }

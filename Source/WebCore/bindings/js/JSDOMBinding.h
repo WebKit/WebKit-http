@@ -84,6 +84,8 @@ DOMWindow& firstDOMWindow(JSC::ExecState*);
 WEBCORE_EXPORT JSC::EncodedJSValue reportDeprecatedGetterError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
 WEBCORE_EXPORT void reportDeprecatedSetterError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
 
+void throwNotSupportedError(JSC::ExecState&, const char* message);
+void throwInvalidStateError(JSC::ExecState&, const char* message);
 void throwArrayElementTypeError(JSC::ExecState&);
 void throwAttributeTypeError(JSC::ExecState&, const char* interfaceName, const char* attributeName, const char* expectedType);
 WEBCORE_EXPORT void throwSequenceTypeError(JSC::ExecState&);
@@ -409,9 +411,9 @@ inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, 
         return JSC::jsNull();
     if (JSC::JSValue result = getExistingWrapper<JSC::JSArrayBuffer>(globalObject, buffer))
         return result;
-    buffer->ref();
+
+    // The JSArrayBuffer::create function will register the wrapper in finishCreation.
     JSC::JSArrayBuffer* wrapper = JSC::JSArrayBuffer::create(exec->vm(), globalObject->arrayBufferStructure(), buffer);
-    cacheWrapper(globalObject->world(), buffer, wrapper);
     return wrapper;
 }
 

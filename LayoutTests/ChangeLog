@@ -1,3 +1,1521 @@
+2016-03-09  Mark Lam  <mark.lam@apple.com>
+
+        FunctionExecutable::ecmaName() should not be based on inferredName().
+        https://bugs.webkit.org/show_bug.cgi?id=155203
+
+        Reviewed by Michael Saboff.
+
+        * js/script-tests/function-toString-vs-name.js:
+        - Fixed up object property test section and added new test cases.
+        * platform/mac/http/tests/media/media-source/mediasource-sourcebuffer-mode-expected.txt:
+
+2016-03-09  Chris Dumez  <cdumez@apple.com>
+
+        Align HTMLKeygenElement.keytype with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=155214
+
+        Reviewed by Darin Adler.
+
+        Add test coverage for HTMLKeygenElement.keytype.
+
+        * fast/dom/HTMLKeygenElement/keygen-keytype-expected.txt: Added.
+        * fast/dom/HTMLKeygenElement/keygen-keytype.html: Added.
+
+2016-03-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Cleaning up TestExpectations files to remove deleted tests and duplicate entries for ios-simulator.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping fast/events/max-tabindex-focus.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=155233
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-08  Brent Fulgham  <bfulgham@apple.com>
+
+        Local HTML should be blocked from localStorage access unless "Disable Local File Restrictions" is checked..
+        https://bugs.webkit.org/show_bug.cgi?id=155185
+        <rdar://problem/11101440>
+
+        Reviewed by Zalan Bujtas.
+
+        * storage/domstorage/localstorage/blocked-file-access-expected.txt: Added.
+        * storage/domstorage/localstorage/blocked-file-access.html: Added.
+        * storage/domstorage/localstorage/resources/blocked-example.html: Added.
+
+2016-03-09  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Allow to place positioned grid items on the padding
+        https://bugs.webkit.org/show_bug.cgi?id=155199
+
+        Reviewed by Sergio Villar Senin.
+
+        Add new tests and updated results in a current one.
+
+        * fast/css-grid-layout/grid-positioned-items-implicit-grid.html:
+        * fast/css-grid-layout/grid-positioned-items-padding-expected.txt: Added.
+        * fast/css-grid-layout/grid-positioned-items-padding.html: Added.
+        * fast/css-grid-layout/grid-positioned-items-within-grid-implicit-track-expected.txt: Added.
+        * fast/css-grid-layout/grid-positioned-items-within-grid-implicit-track.html: Added.
+
+2016-03-09  Andreas Kling  <akling@apple.com>
+
+        ImageDocuments leak their world.
+        <https://webkit.org/b/155167>
+        <rdar://problem/24987363>
+
+        Reviewed by Antti Koivisto.
+
+        Made a little test that loads an image into an <iframe> 10 times and then
+        triggers a garbage collection and checks that all the documents got destroyed.
+
+        Prior to this change, all 10 ImageDocuments would remain alive at the end.
+
+        This got rolled out the first time because it failed on bots. It failed due
+        to expecting a specific number of documents to be live at the start of the
+        test, which was not reliable on bots since we appear to have more leaks(!)
+
+        Tweaked the test to check the delta in live document count instead.
+
+        * fast/dom/ImageDocument-world-leak-expected.txt: Added.
+        * fast/dom/ImageDocument-world-leak.html: Added.
+
+2016-03-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Fix auto-track sizing with min-size:auto and specific sizes
+        https://bugs.webkit.org/show_bug.cgi?id=155165
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-columns-expected.txt:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-columns.html:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-rows-expected.txt:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-rows.html:
+
+2016-03-09  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Initial support for implicit grid before explicit grid
+        https://bugs.webkit.org/show_bug.cgi?id=155014
+
+        Reviewed by Darin Adler.
+
+        Updated results in current tests and added specific test for this.
+
+        * fast/css-grid-layout/grid-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-item-negative-position-resolution.html:
+        * fast/css-grid-layout/grid-item-spanning-resolution.html:
+        * fast/css-grid-layout/implicit-tracks-before-explicit-expected.txt: Added.
+        * fast/css-grid-layout/implicit-tracks-before-explicit.html: Added.
+
+2016-03-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Arabic text on Wikipedia is shown as boxes
+        https://bugs.webkit.org/show_bug.cgi?id=155129
+        <rdar://problem/24919902>
+
+        Reviewed by Darin Adler.
+
+        This test is iOS-specific.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * fast/text/arabic-blacklisted-expected.html: Added.
+        * fast/text/arabic-blacklisted.html: Added.
+
+2016-03-08  Chris Dumez  <cdumez@apple.com>
+
+        Element with maximum tabIndex cannot be returned by nextElementWithGreaterTabIndex()
+        https://bugs.webkit.org/show_bug.cgi?id=155215
+
+        Reviewed by Ryosuke Niwa.
+
+        Add test to make sure that an Element with a tabIndex equal to
+        2147483647 (maximum tabIndex) can be focused.
+
+        * fast/events/max-tabindex-focus-expected.txt: Added.
+        * fast/events/max-tabindex-focus.html: Added.
+
+2016-03-08  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to constant-fold strings
+        https://bugs.webkit.org/show_bug.cgi?id=155200
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/script-tests/strcat-const.js: Added.
+        (foo):
+        (bar):
+        * js/regress/script-tests/strcat-length-const.js: Added.
+        (foo):
+        (bar):
+        * js/regress/strcat-const-expected.txt: Added.
+        * js/regress/strcat-const.html: Added.
+        * js/regress/strcat-length-const-expected.txt: Added.
+        * js/regress/strcat-length-const.html: Added.
+
+2016-03-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Heap domain start/stop tracking commands
+        https://bugs.webkit.org/show_bug.cgi?id=155190
+
+        Reviewed by Brian Burg.
+
+        * inspector/heap/tracking-expected.txt: Added.
+        * inspector/heap/tracking.html: Added.
+
+2016-03-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add a way to create a Heap Snapshot
+        https://bugs.webkit.org/show_bug.cgi?id=155188
+
+        Reviewed by Brian Burg.
+
+        * inspector/heap/snapshot-expected.txt: Added.
+        * inspector/heap/snapshot.html: Added.
+
+2016-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Move two indexeddb test skips out of wk2/TestExpectations and in to TestExpectations.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2016-03-08  Mark Lam  <mark.lam@apple.com>
+
+        Implement Function.name support for getters/setters and inferring name of function properties.
+        https://bugs.webkit.org/show_bug.cgi?id=154865
+
+        Reviewed by Geoffrey Garen.
+
+        * js/function-toString-vs-name-expected.txt: Added.
+        * js/function-toString-vs-name.html: Added.
+        * js/script-tests/function-toString-vs-name.js: Added.
+
+2016-03-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font size computed style is innaccurate
+        https://bugs.webkit.org/show_bug.cgi?id=154705
+        <rdar://problem/23474068>
+
+        Reviewed by Timothy Hatcher.
+
+        Update expected results.
+
+        * css3/calc/font-size-fractional-expected.txt:
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size.html:
+        * css3/viewport-percentage-lengths/viewport-percentage-lengths-relative-font-size-expected.txt:
+        * editing/mac/attributed-string/font-size-expected.txt:
+        * editing/mac/attributed-string/vertical-align-expected.txt:
+        * platform/mac-mavericks/editing/mac/attributed-string/font-size-expected.txt:
+        * platform/mac-mavericks/editing/mac/attributed-string/vertical-align-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/font-size-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/vertical-align-expected.txt:
+
+2016-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/domstorage/events/basic-body-attribute.html as flaky on ios-simulator-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=155201
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-03-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Crash when a single load request causes multiple fonts to fail loading
+        https://bugs.webkit.org/show_bug.cgi?id=155009
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-face-set-document-multiple-failure-expected.txt: Added.
+        * fast/text/font-face-set-document-multiple-failure.html: Added.
+
+2016-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip fast/events/prevent-default-prevents-interaction-with-scrollbars.html on ios-simulator
+
+        Unreviewed test gardening.
+
+        The test relies on mouse events, which are unsupported on ios-simulator.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip css3/filters tests that seem to cause a crash on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=153933
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197766.
+        https://bugs.webkit.org/show_bug.cgi?id=155183
+
+        Has platform-specific code in non-platform files (Requested by
+        smfr on #webkit).
+
+        Reverted changeset:
+
+        "AX: Force allow user zoom"
+        https://bugs.webkit.org/show_bug.cgi?id=155056
+        http://trac.webkit.org/changeset/197766
+
+2016-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip svg/animations/animate-marker-orient-from-angle-to-autostartreverse.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=155174
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-08  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Scrolling does not work when the mouse down is handled by a node
+        https://bugs.webkit.org/show_bug.cgi?id=19033
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/prevent-default-prevents-interaction-with-scrollbars-expected.txt: Added.
+        * fast/events/prevent-default-prevents-interaction-with-scrollbars.html: Added.
+
+2016-03-08  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Regular Expression canonicalization tables for Unicode need to be updated to use Unicode CaseFolding.txt
+        https://bugs.webkit.org/show_bug.cgi?id=155114
+
+        Reviewed by Darin Adler.
+
+        Updated test cases.
+
+        * js/regexp-unicode-expected.txt:
+        * js/script-tests/regexp-unicode.js:
+
+2016-03-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197765.
+        https://bugs.webkit.org/show_bug.cgi?id=155172
+
+        The test added with this change is failing on all platforms.
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "ImageDocuments leak their world."
+        https://bugs.webkit.org/show_bug.cgi?id=155167
+        http://trac.webkit.org/changeset/197765
+
+2016-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline WPT reflection tests for ios-simulator after r197726
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-03-08  Nan Wang  <n_wang@apple.com>
+
+        AX: Force allow user zoom
+        https://bugs.webkit.org/show_bug.cgi?id=155056
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/force-user-scalable-expected.txt: Added.
+        * accessibility/ios-simulator/force-user-scalable.html: Added.
+
+2016-03-08  Andreas Kling  <akling@apple.com>
+
+        ImageDocuments leak their world.
+        <https://webkit.org/b/155167>
+        <rdar://problem/24987363>
+
+        Reviewed by Antti Koivisto.
+
+        Made a little test that loads an image into an <iframe> 10 times and then
+        triggers a garbage collection and checks that all the documents got destroyed.
+
+        Prior to this change, all 10 ImageDocuments would remain alive at the end.
+
+        * fast/dom/ImageDocument-world-leak-expected.txt: Added.
+        * fast/dom/ImageDocument-world-leak.html: Added.
+
+2016-03-08  Alejandro G. Castro  <alex@igalia.com>
+
+        Unreviewed EFL build fix after r197752.
+
+        * platform/efl/TestExpectations: Avoid running the mediastream
+        tests until the support is implemented and compiled by default.
+
+2016-03-08  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK] [EFL] Avoid running mediastream tests by default until we compile by default
+        https://bugs.webkit.org/show_bug.cgi?id=153540
+
+        Reviewed by Philippe Normand.
+
+        After bumping gstreamer to 1.6.3 in r196804 we can enable again
+        compilation of mediastream and running the tests. We have updated
+        the expectations accordingly.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2016-03-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Implement fetch skeleton
+        https://bugs.webkit.org/show_bug.cgi?id=155111
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: Marking some tests as flaky.
+
+2016-03-08  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [SVG2] Implement marker orient='auto-start-reverse'
+        https://bugs.webkit.org/show_bug.cgi?id=138456
+
+        Reviewed by Darin Adler.
+
+        * svg/animations/animate-marker-orient-from-angle-to-autostartreverse-expected.txt: Added.
+        * svg/animations/animate-marker-orient-from-angle-to-autostartreverse.html: Added.
+        * svg/animations/animate-marker-orienttype-4-expected.html: Added.
+        * svg/animations/animate-marker-orienttype-4.html: Added.
+          Verify output after animation has run - ensure animation reflected in visual result.
+        * svg/animations/script-tests/animate-marker-orient-from-angle-to-autostartreverse.js: Added.
+          Test DOM values at various snap-shot times throughout the animation.
+        (sample1):
+        (sample2):
+        (sample3):
+        (executeTest):
+        * svg/custom/marker-auto-start-reverse-expected.html: Added.
+        * svg/custom/marker-auto-start-reverse.html: Added.
+          Verify static result - start marker is oriented at 180 degrees to direction of path.
+        * svg/dom/SVGAnimatedEnumeration-SVGMarkerElement-expected.txt:
+        * svg/dom/script-tests/SVGAnimatedEnumeration-SVGMarkerElement.js:
+          Check attributes are treated as case sensitive.
+          Check UNKNOWN is returned for enum value when auto-start-reverse set.
+
+2016-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Stop clamping HTMLElement.tabIndex to the range of a short
+        https://bugs.webkit.org/show_bug.cgi?id=155159
+
+        Reviewed by Ryosuke Niwa.
+
+        Drop outdated test.
+
+        * fast/dom/tabindex-clamp-expected.txt: Removed.
+        * fast/dom/tabindex-clamp.html: Removed.
+
+2016-03-07  Daniel Bates  <dabates@apple.com>
+
+        CSP: Source '*' should not match URLs with schemes blob, data, or filesystem
+        https://bugs.webkit.org/show_bug.cgi?id=154122
+        <rdar://problem/24613336>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests to ensure that we do not regress our interpretation of * with respect to directives
+        img-src, media-src, style-src, and default-src.
+
+        When running in WebKitTestRunner, skip the tests fast/dom/HTMLImageElement/image-with-blob-url-blocked-by-csp-img-src-star.html
+        and media/video-with-blob-url-allowed-by-csp-media-src-star.html as they make use of eventSender.beginDragWithFiles(),
+        which is not implement. We will need to fix <https://bugs.webkit.org/show_bug.cgi?id=64285>
+        before we can run these tests in WebKitTestRunner.
+
+        * TestExpectations:
+        * fast/dom/HTMLImageElement/image-with-blob-url-blocked-by-csp-img-src-star-expected.html: Added.
+        * fast/dom/HTMLImageElement/image-with-blob-url-blocked-by-csp-img-src-star.html: Added.
+        * fast/dom/HTMLImageElement/image-with-data-url-allowed-by-csp-img-src-star-expected.html: Added.
+        * fast/dom/HTMLImageElement/image-with-data-url-allowed-by-csp-img-src-star.html: Added.
+        * fast/dom/HTMLImageElement/image-with-file-url-blocked-by-csp-img-src-star-expected.html: Added.
+        * fast/dom/HTMLImageElement/image-with-file-url-blocked-by-csp-img-src-star.html: Added.
+        * fast/dom/HTMLImageElement/resources/green.png: Added.
+        * fast/dom/HTMLLinkElement/link-with-blob-url-blocked-by-csp-style-src-star-expected.html: Added.
+        * fast/dom/HTMLLinkElement/link-with-blob-url-blocked-by-csp-style-src-star.html: Added.
+        * fast/dom/HTMLLinkElement/link-with-data-url-blocked-by-csp-style-src-star-expected.html: Added.
+        * fast/dom/HTMLLinkElement/link-with-data-url-blocked-by-csp-style-src-star.html: Added.
+        * fast/dom/HTMLLinkElement/link-with-file-url-blocked-by-csp-style-src-star-expected.html: Added.
+        * fast/dom/HTMLLinkElement/link-with-file-url-blocked-by-csp-style-src-star.html: Added.
+        * fast/dom/HTMLLinkElement/resources/red-background-color.css: Added.
+        (#test):
+        * http/tests/security/contentSecurityPolicy/image-with-http-url-allowed-by-csp-img-src-star-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/image-with-http-url-allowed-by-csp-img-src-star.html: Added.
+        * http/tests/security/contentSecurityPolicy/image-with-https-url-allowed-by-csp-img-src-star-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/image-with-https-url-allowed-by-csp-img-src-star.html: Added.
+        * http/tests/security/contentSecurityPolicy/javascript-url-blocked-by-default-src-star-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/javascript-url-blocked-by-default-src-star.html: Added.
+        * http/tests/security/contentSecurityPolicy/link-with-http-url-allowed-by-csp-style-src-star-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/link-with-http-url-allowed-by-csp-style-src-star.html: Added.
+        * http/tests/security/contentSecurityPolicy/link-with-https-url-allowed-by-csp-style-src-star-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/link-with-https-url-allowed-by-csp-style-src-star.html: Added.
+        * http/tests/security/contentSecurityPolicy/video-with-http-url-allowed-by-csp-media-src-star-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/video-with-http-url-allowed-by-csp-media-src-star.html: Added.
+        * http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-media-src-star-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-media-src-star.html: Added.
+        * media/video-with-blob-url-allowed-by-csp-media-src-star-expected.html: Added.
+        * media/video-with-blob-url-allowed-by-csp-media-src-star.html: Added.
+        * media/video-with-data-url-allowed-by-csp-media-src-star-expected.html: Added.
+        * media/video-with-data-url-allowed-by-csp-media-src-star.html: Added.
+        * media/video-with-file-url-blocked-by-csp-media-src-star-expected.html: Added.
+        * media/video-with-file-url-blocked-by-csp-media-src-star.html: Added.
+        * platform/wk2/TestExpectations:
+
+2016-03-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix cookies with private browsing and NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=155147
+        rdar://problem/25018279
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/cookies/private-cookie-storage-expected.txt: Added.
+        * http/tests/cookies/private-cookie-storage.html: Added.
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/track/track-cues-pause-on-exit.html as flaky on ElCapitan Debug WK2
+        https://bugs.webkit.org/show_bug.cgi?id=155151
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/w3c/indexeddb/idbcursor-advance-continue-async.htm as flaky on Yosemite Release WK2
+        https://bugs.webkit.org/show_bug.cgi?id=154606
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/promises-tests/promises-tests-2-3-3.html as flaky on mac
+        https://bugs.webkit.org/show_bug.cgi?id=155140
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/console/addInspectedNode.html as flaky on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=155138
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping css3/filters/huge-region-composited.html on ios-simulator in an 
+        attempt to eliminate a flaky crash.
+        https://bugs.webkit.org/show_bug.cgi?id=153933
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip unsupported plugin tests from r197697 on ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip storage/indexeddb/intversion-open-in-upgradeneeded.html on mac-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=155050
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-03-07  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Implement MediaEndpointPeerConnection::createOffer()
+        https://bugs.webkit.org/show_bug.cgi?id=154867
+
+        Reviewed by Eric Carlson and Jer Noble.
+
+        The output SDP from createOffer() is processed by verifying all variable
+        identifiers, such as session and user id, and replacing them with
+        predefined values to make the SDP comparable with an expected result.
+
+        The test is currently skipped on the mac port until support to read the
+        SDPProcessor JavaScript resource is added.
+
+        * fast/mediastream/RTCPeerConnection-inspect-offer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-inspect-offer.html: Added.
+        * platform/mac/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip storage/indexeddb/modern/exceed-open-file-limit.html
+        https://bugs.webkit.org/show_bug.cgi?id=155091
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2016-03-07  Daniel Bates  <dabates@apple.com>
+
+        CSP: object-src directive should prohibit creation of nested browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=153153
+        <rdar://problem/24383209>
+
+        Reviewed by Brent Fulgham.
+
+        Add test to ensure that we enforce the Content Security Policy object-src directive
+        for HTML object and HTML embed elements that behave like an HTML iframe element.
+
+        * TestExpectations: Remove entries for tests that pass.
+        * http/tests/security/contentSecurityPolicy/embed-src-url-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/embed-src-url-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/embed-src-url-blocked2-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/embed-src-url-blocked2.html: Added.
+
+        * http/tests/security/contentSecurityPolicy/object-src-param-code-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-param-src-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html:
+        * http/tests/security/contentSecurityPolicy/object-src-param-src-blocked2-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-src-blocked2.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-url-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html:
+        Simplify the code used in the above tests and update incorrect expected results.
+
+        * http/tests/security/contentSecurityPolicy/object-src-url-blocked2-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-url-blocked2.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/object-src-param.js: Removed.
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/arraybuffer-wrappers.html as a flaky timeout on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=155092
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/model/remote-object.html for mac after r197626
+        https://bugs.webkit.org/show_bug.cgi?id=155115
+
+        Unreviewed test gardening.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-03-07  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS Simulator] Three object-position tests failing after r197618
+        https://bugs.webkit.org/show_bug.cgi?id=155116
+
+        Mark two tests as image failures, and add new results for a compositing test.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/compositing/video/video-object-position-expected.txt: Added.
+
+2016-03-07  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Add missing test for grid-template shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=155013
+
+        Reviewed by Sergio Villar Senin.
+
+        We support the following syntax in grid-template shorthand:
+            -webkit-grid-template: [foo1] 'a' 50px [foo2]
+                                   [bar1] 'b' 50px [bar2] / 100px;
+
+        But we don't have a test to check that grid-template-rows value
+        has the names of the same lines grouped. So it's:
+            [foo1] 50px [foo2 bar1] 50px [bar2];
+
+        This means that if we remove the third argument in
+        CSSParser::parseGridLineNames(), all the current tests are passing.
+
+        Without that argument, the value for grid-template-rows would be:
+            [foo1] 50px [foo2] [bar1] 50px [bar2];
+
+        Which is wrong.
+
+        This patch adds a specific test case for this which would fail
+        in that case.
+
+        * fast/css-grid-layout/grid-template-shorthand-get-set-expected.txt:
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html:
+
+2016-03-06  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Some more gardening after r197627.
+
+        Unreviewed.
+
+        * platform/ios-simulator/TestExpectations: skip a test.
+
+2016-03-06  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Gardening after r197627.
+
+        Unreviewed.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-06  Filip Pizlo  <fpizlo@apple.com>
+
+        RegExpMatchesArray doesn't know how to have a bad time
+        https://bugs.webkit.org/show_bug.cgi?id=155069
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/regress/regexp-exec-expected.txt: Added.
+        * js/regress/regexp-exec.html: Added.
+        * js/regress/script-tests/regexp-exec.js: Added.
+
+2016-03-06  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Gardening after r197627.
+
+        Unreviewed.
+
+        * platform/ios-simulator/css2.1/20110323/border-conflict-style-088-expected.txt:
+
+2016-03-05  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Gardening after r197627.
+
+        Unreviewed.
+
+        * platform/ios-simulator/css2.1/20110323/border-conflict-style-079-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-01-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-02-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-03-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-04-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-05-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-06-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-07-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-08-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-11-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-12-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-13-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-14-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-15-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-16-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-17-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-18-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-21-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-22-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-23-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-24-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-25-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-26-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-27-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-28-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-31-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-32-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-33-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-34-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-35-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-36-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-37-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-38-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-41-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-42-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-43-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-44-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-45-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-46-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-47-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-48-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-51-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-52-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-53-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-54-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-55-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-56-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-57-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-58-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-61-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-62-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-63-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-64-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-65-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-66-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-67-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-68-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-71-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-72-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-73-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-74-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-75-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-76-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-77-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-78-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-81-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-82-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-83-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-84-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-85-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-86-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-87-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-88-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-91-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-92-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-93-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-94-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-95-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-96-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-97-d-expected.txt:
+        * platform/ios-simulator/css2.1/t170602-bdr-conflct-w-98-d-expected.txt:
+        * platform/ios-simulator/fast/borders/border-antialiasing-expected.txt:
+        * platform/ios-simulator/fast/dynamic/create-renderer-for-whitespace-only-text-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/002-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/002-vertical-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/border-collapsing-head-foot-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/border-collapsing-head-foot-vertical-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/cached-69296-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/cached-change-row-border-width-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/cached-change-tbody-border-width-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/equal-precedence-resolution-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/rtl-border-collapsing-expected.txt:
+        * platform/ios-simulator/fast/table/border-collapsing/rtl-border-collapsing-vertical-expected.txt:
+        * platform/ios-simulator/fast/table/colgroup-spanning-groups-rules-expected.txt:
+        * platform/ios-simulator/fast/table/frame-and-rules-expected.txt:
+        * platform/ios-simulator/fast/table/overflowHidden-expected.txt:
+        * platform/ios-simulator/fast/table/rules-attr-dynchange1-expected.txt:
+        * platform/ios-simulator/fast/table/rules-attr-dynchange2-expected.txt:
+        * platform/ios-simulator/fast/text/international/bidi-override-expected.txt:
+        * platform/ios-simulator/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-009-expected.txt:
+        * platform/ios-simulator/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-012-expected.txt:
+        * platform/ios-simulator/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-013-expected.txt:
+        * platform/ios-simulator/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-014-expected.txt:
+        * platform/ios-simulator/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-015-expected.txt:
+        * platform/ios-simulator/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-016-expected.txt:
+        * platform/ios-simulator/tables/mozilla/bugs/bug24200-expected.txt:
+        * platform/ios-simulator/tables/mozilla/bugs/bug43854-2-expected.txt:
+        * platform/ios-simulator/tables/mozilla/bugs/bug9024-expected.txt: Added.
+        * platform/ios-simulator/tables/mozilla/collapsing_borders/bug41262-3-expected.txt:
+        * platform/ios-simulator/tables/mozilla/collapsing_borders/bug41262-4-expected.txt:
+        * platform/ios-simulator/tables/mozilla/core/table_rules-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_layers-opacity-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_position-table-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_simple-table-cell-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_simple-table-column-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_simple-table-column-group-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_simple-table-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_simple-table-row-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/backgr_simple-table-row-group-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/table_rules_all-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/table_rules_none-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/x_table_rules_groups-expected.txt:
+        * platform/ios-simulator/tables/mozilla/marvin/x_table_rules_none-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/bugs/bug1055-2-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/bugs/bug89315-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/collapsing_borders/bug41262-1-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_border-table-cell-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_border-table-column-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_border-table-column-group-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_border-table-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_border-table-quirks-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_border-table-row-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_border-table-row-group-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_layers-hide-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_layers-show-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_position-table-cell-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_position-table-column-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_position-table-column-group-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_position-table-row-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/backgr_position-table-row-group-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/table_rules_cols-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/table_rules_rows-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/x_table_rules_all-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/x_table_rules_cols-expected.txt:
+        * platform/ios-simulator/tables/mozilla_expected_failures/marvin/x_table_rules_rows-expected.txt:
+
+2016-03-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the support for upgrading custom elements in cloneNode
+        https://bugs.webkit.org/show_bug.cgi?id=155062
+
+        Reviewed by Antti Koivisto.
+
+        Added test cases for upgrading elements with Node.prototype.cloneNode.
+
+        * fast/custom-elements/lifecycle-callback-timing-expected.txt:
+        * fast/custom-elements/lifecycle-callback-timing.html:
+
+2016-03-05  Sam Weinig  <sam@webkit.org>
+
+        Update tests to match the latest version of the HTML5 spec.
+
+        * fast/forms/autocomplete-expected.txt:
+        * fast/forms/autocomplete.html:
+        Fields that don't have any value set for their autocomplete attribute should return the the empty string.
+
+2016-03-05  Zalan Bujtas  <zalan@apple.com>
+
+        Make table collapsed borders subpixel aware.
+        https://bugs.webkit.org/show_bug.cgi?id=150383
+
+        Reviewed by Simon Fraser.
+
+        This patch enables authors to 
+        - set subpixel width on collapsed borders
+        - and push those borders to subpixel positions.
+
+        * fast/table/collapsed-border-with-odd-pixel-width-expected.html: Added.
+        * fast/table/collapsed-border-with-odd-pixel-width.html: Added.
+        * fast/table/hidpi-collapsed-border-with-odd-pixel-width-expected.html:
+
+2016-03-05  Sam Weinig  <sam@webkit.org>
+
+        Add support for processing the autofill field name out of form control elements ultimately to aid input methods
+        <rdar://problem/23041180>
+        https://bugs.webkit.org/show_bug.cgi?id=155079
+
+        Reviewed by Enrica Casucci.
+
+        * fast/forms/autocomplete-tokens-expected.txt:
+        * fast/forms/autocomplete-tokens.html:
+        Update test to also test field names, as they are now exposed via internals.
+
+2016-03-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for the object-position CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=122811
+        rdar://problem/15836338
+
+        Reviewed by Sam Weinig.
+
+        Various object-position tests.
+
+        * compositing/video/video-object-position-expected.txt: Added.
+        * compositing/video/video-object-position.html: Added.
+        * fast/css/object-position/object-position-embed-expected.html: Added.
+        * fast/css/object-position/object-position-embed.html: Added.
+        * fast/css/object-position/object-position-img-expected.html: Added.
+        * fast/css/object-position/object-position-img-svg-expected.html: Added.
+        * fast/css/object-position/object-position-img-svg.html: Added.
+        * fast/css/object-position/object-position-img.html: Added.
+        * fast/css/object-position/object-position-input-image-expected.html: Added.
+        * fast/css/object-position/object-position-input-image.html: Added.
+        * fast/css/object-position/object-position-object-expected.html: Added.
+        * fast/css/object-position/object-position-object.html: Added.
+        * fast/css/object-position/object-position-video-poster-expected.html: Added.
+        * fast/css/object-position/object-position-video-poster.html: Added.
+        * fast/css/object-position/resources/expected.css: Added.
+        * fast/css/object-position/resources/test.css: Added.
+
+2016-03-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Add parsing support for object-position
+        https://bugs.webkit.org/show_bug.cgi?id=155065
+
+        Reviewed by Sam Weinig.
+        
+        object-position parsing test.
+
+        * fast/css/object-position/parsing-object-position-expected.txt: Added.
+        * fast/css/object-position/parsing-object-position.html: Added.
+
+2016-03-05  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement missing/different accessibility API mappings for SVG
+        https://bugs.webkit.org/show_bug.cgi?id=155034
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/svg-group-element-with-title.html: Modified to reflect correct ATK results.
+        * accessibility/svg-image.html: Modified to reflect correct ATK results.
+        * accessibility/svg-labelledby.html: Modified to reflect correct ATK results.
+        * accessibility/svg-remote-element.html: Modified to reflect correct ATK results.
+        * accessibility/w3c-svg-description-calculation.html: Added.
+        * accessibility/w3c-svg-elements-not-exposed.html: Added.
+        * accessibility/w3c-svg-name-calculation.html: Added.
+        * accessibility/w3c-svg-presentational-role.html: Added.
+        * accessibility/w3c-svg-roles.html: Added.
+        * platform/gtk/accessibility/svg-group-element-with-title-expected.txt: Added.
+        * platform/gtk/accessibility/svg-image-expected.txt: Added.
+        * platform/gtk/accessibility/svg-labelledby-expected.txt: Added.
+        * platform/gtk/accessibility/svg-remote-element-expected.txt: Added.
+        * platform/gtk/accessibility/w3c-svg-description-calculation-expected.txt: Added.
+        * platform/gtk/accessibility/w3c-svg-elements-not-exposed-expected.txt: Added.
+        * platform/gtk/accessibility/w3c-svg-name-calculation-expected.txt: Added.
+        * platform/gtk/accessibility/w3c-svg-presentational-role-expected.txt: Added.
+        * platform/gtk/accessibility/w3c-svg-roles-expected.txt: Added.
+        * platform/mac/accessibility/w3c-svg-description-calculation-expected.txt: Added.
+        * platform/mac/accessibility/w3c-svg-elements-not-exposed-expected.txt: Added.
+        * platform/mac/accessibility/w3c-svg-name-calculation-expected.txt: Added.
+        * platform/mac/accessibility/w3c-svg-presentational-role-expected.txt: Added.
+        * platform/mac/accessibility/w3c-svg-roles-expected.txt: Added.
+
+2016-03-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add basic support for attributeChanged lifecycle callback
+        https://bugs.webkit.org/show_bug.cgi?id=155011
+
+        Reviewed by Antti Koivisto.
+
+        Added a test for attributeChangedCallback and a test for the timing of lifecycle callbacks in general.
+
+        * fast/custom-elements/attribute-changed-callback-expected.txt: Added.
+        * fast/custom-elements/attribute-changed-callback.html: Added.
+        * fast/custom-elements/lifecycle-callback-timing-expected.txt: Added.
+        * fast/custom-elements/lifecycle-callback-timing.html: Added.
+
+2016-03-04  Tim Horton  <timothy_horton@apple.com>
+
+        Temporarily skip attachment tests on iOS
+
+        * platform/ios-simulator/TestExpectations:
+        There's no point in running these quite yet (I'm surprised they weren't already skipped).
+        We'll turn them back on soon.
+
+2016-03-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update defineCustomElement according to the spec rewrite
+        https://bugs.webkit.org/show_bug.cgi?id=155010
+        <rdar://problem/24970878>
+
+        Reviewed by Chris Dumez.
+
+        Update the tests for the rename and semantics change of defineCustomElement and HTMLElement constructor.
+
+        * fast/custom-elements/Document-createElement.html:
+        * fast/custom-elements/Document-defineCustomElement-expected.txt: Removed.
+        * fast/custom-elements/Document-defineCustomElement.html: Removed.
+        * fast/custom-elements/Document-defineElement-expected.txt: Renamed from LayoutTests/fast/custom-elements/Document-defineCustomElement-expected.txt.
+        * fast/custom-elements/Document-defineElement.html: Renamed from LayoutTests/fast/custom-elements/Document-defineCustomElement.html.
+        Also added a test case for defining multiple custom elements with a single class, which must throw.
+        * fast/custom-elements/HTMLElement-constructor-expected.txt:
+        * fast/custom-elements/HTMLElement-constructor.html:
+        Removed test cases for the tag name in the first argument as well as ones that associate a single class with multiple tag names.
+        * fast/custom-elements/parser/parser-constructs-custom-element-in-document-write.html:
+        * fast/custom-elements/parser/parser-constructs-custom-element-synchronously.html:
+        * fast/custom-elements/parser/parser-constructs-custom-elements.html:
+        * fast/custom-elements/parser/parser-fallsback-to-unknown-element.html:
+        * fast/custom-elements/parser/parser-sets-attributes-and-children.html:
+        * fast/custom-elements/parser/parser-uses-constructed-element.html:
+        * fast/custom-elements/parser/parser-uses-registry-of-owner-document.html:
+
+2016-03-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Use larger tiles when possible to reduce per-tile painting overhead
+        https://bugs.webkit.org/show_bug.cgi?id=154985
+
+        Reviewed by Zalan Bujtas.
+
+        * tiled-drawing/background-transparency-toggle-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-with-handler-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-background-no-image-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-body-layer-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-opacity-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-positioned-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-html-background-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-non-propagated-body-background-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt:
+        * tiled-drawing/tile-coverage-after-scroll-expected.txt:
+        * tiled-drawing/tile-coverage-after-scroll-speculative-expected.txt:
+        * tiled-drawing/tile-coverage-scroll-to-bottom-expected.txt:
+        * tiled-drawing/tile-coverage-slow-scrolling-expected.txt:
+        * tiled-drawing/tile-coverage-speculative-expected.txt:
+        * tiled-drawing/tile-size-unscrollable-expected.txt:
+        * tiled-drawing/tile-size-vertically-scrollable-expected.txt:
+        * tiled-drawing/visible-rect-content-inset-expected.txt:
+
+2016-03-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Temporarily skip fast/table/table-overflow.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=155036
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip fast/text/all-small-caps-whitespace.html on ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-03-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip storage/indexeddb/modern/256-open-databases.html on mac
+        https://bugs.webkit.org/show_bug.cgi?id=155028
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2016-03-04  Chris Dumez  <cdumez@apple.com>
+
+        Location.reload should not be writable
+        https://bugs.webkit.org/show_bug.cgi?id=154989
+
+        Reviewed by Gavin Barraclough.
+
+        Add a layout test to verify that operations marked as [Unforgeable] in
+        IDL are indeed not writable.
+
+        * fast/html/unforgeable-operations-readonly-expected.txt: Added.
+        * fast/html/unforgeable-operations-readonly.html: Added.
+
+2016-03-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/model/remote-object.html for mac after r197539
+
+        Unreviewed test gardening.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-03-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Whitespace causes font-variant: all-small-caps to synthesize
+        https://bugs.webkit.org/show_bug.cgi?id=155004
+        <rdar://problem/24630796>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/all-small-caps-whitespace-expected.html: Added.
+        * fast/text/all-small-caps-whitespace.html: Added.
+        * platform/mac/TestExpectations: Skip on platforms which don't support proper coverage
+        queries.
+
+2016-03-04  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r197541): many tiled drawing tests failing after new "large tile size" logic was added
+        https://bugs.webkit.org/show_bug.cgi?id=155020
+        
+        Rebaseline these tests.
+
+        * platform/mac-wk2/TestExpectations:
+        * tiled-drawing/background-transparency-toggle-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-with-handler-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-background-no-image-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-body-layer-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-opacity-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-positioned-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-html-background-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-non-propagated-body-background-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow-expected.txt:
+        * tiled-drawing/tile-coverage-after-scroll-expected.txt:
+        * tiled-drawing/tile-coverage-after-scroll-speculative-expected.txt:
+        * tiled-drawing/tile-coverage-scroll-to-bottom-expected.txt:
+        * tiled-drawing/tile-coverage-slow-scrolling-expected.txt:
+        * tiled-drawing/tile-coverage-speculative-expected.txt:
+        * tiled-drawing/tile-size-unscrollable-expected.txt:
+        * tiled-drawing/tile-size-vertically-scrollable-expected.txt:
+        * tiled-drawing/visible-rect-content-inset-expected.txt:
+
+2016-03-04  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r197541): many tiled drawing tests failing after new "large tile size" logic was added
+        https://bugs.webkit.org/show_bug.cgi?id=155020
+
+        * platform/mac-wk2/TestExpectations: Added failure expectations for tiled drawing tests.
+        * platform/wk2/TestExpectations: Moved some expectations to a more appropriate section in the file.
+
+2016-03-04  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Lexical bind "super" inside of the arrow function in generator.
+        https://bugs.webkit.org/show_bug.cgi?id=152575
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/arrowfunction-superproperty-expected.txt:
+        * js/arrowfunction-syntax-errors-expected.txt:
+        * js/script-tests/arrowfunction-superproperty.js:
+        * js/script-tests/arrowfunction-syntax-errors.js:
+
+2016-03-03  Antti Koivisto  <antti@apple.com>
+
+        ComposedTreeIterator may traverse slotted nodes multiple times
+        https://bugs.webkit.org/show_bug.cgi?id=154983
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/composed-tree-slots-expected.txt: Added.
+        * fast/shadow-dom/composed-tree-slots.html: Added.
+
+2016-03-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG/FTL should inline accesses to RegExpObject::m_lastIndex
+        https://bugs.webkit.org/show_bug.cgi?id=155003
+
+        Reviewed by Benjamin Poulain.
+
+        * js/regress/regexp-last-index-expected.txt: Added.
+        * js/regress/regexp-last-index.html: Added.
+        * js/regress/regexp-set-last-index-expected.txt: Added.
+        * js/regress/regexp-set-last-index.html: Added.
+        * js/regress/script-tests/regexp-last-index.js: Added.
+        * js/regress/script-tests/regexp-set-last-index.js: Added.
+
+2016-03-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, remove test with flaky timeout that doesn't test anything anymore. This test
+        was relevant back when arguments got torn off; something that we don't do anymore. It
+        uses a loop that waits for the top-tier compiler to compile it. We don't write tests
+        like that anymore.
+
+        * js/dfg-osr-exit-between-create-and-tearoff-arguments-expected.txt: Removed.
+        * js/dfg-osr-exit-between-create-and-tearoff-arguments.html: Removed.
+        * js/script-tests/dfg-osr-exit-between-create-and-tearoff-arguments.js: Removed.
+
+2016-03-03  Keith Miller  <keith_miller@apple.com>
+
+        JSArrayBuffers should be collected less aggressively
+        https://bugs.webkit.org/show_bug.cgi?id=154982
+
+        Reviewed by Geoffrey Garen.
+
+        * js/arraybuffer-wrappers-expected.txt: Added.
+        * js/arraybuffer-wrappers.html: Added.
+        * js/script-tests/arraybuffer-wrappers.js: Added.
+        (prototype.types.forEach):
+
+2016-03-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Use larger tiles when possible to reduce per-tile painting overhead
+        https://bugs.webkit.org/show_bug.cgi?id=154985
+        rdar://problem/23635219
+
+        Reviewed by Tim Horton.
+        
+        Rebaseline tests with new tile sizes. Add new tests that explicitly test tile size on
+        pages with different scrollability.
+
+        * tiled-drawing/background-transparency-toggle-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-with-handler-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-background-no-image-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-body-layer-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-opacity-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-positioned-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-html-background-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-non-propagated-body-background-expected.txt:
+        * tiled-drawing/tile-coverage-after-scroll-expected.txt:
+        * tiled-drawing/tile-coverage-after-scroll-speculative-expected.txt:
+        * tiled-drawing/tile-coverage-scroll-to-bottom-expected.txt:
+        * tiled-drawing/tile-coverage-slow-scrolling-expected.txt:
+        * tiled-drawing/tile-coverage-speculative-expected.txt:
+        * tiled-drawing/tile-size-both-scrollable-expected.txt: Copied from LayoutTests/tiled-drawing/scrolling/fixed-background/fixed-background-no-image-expected.txt.
+        * tiled-drawing/tile-size-both-scrollable.html: Added.
+        * tiled-drawing/tile-size-horizontally-scrollable-expected.txt: Copied from LayoutTests/tiled-drawing/scrolling/fixed-background/fixed-background-no-image-expected.txt.
+        * tiled-drawing/tile-size-horizontally-scrollable.html: Added.
+        * tiled-drawing/tile-size-unscrollable-expected.txt: Added.
+        * tiled-drawing/tile-size-unscrollable.html: Added.
+        * tiled-drawing/tile-size-vertically-scrollable-expected.txt: Copied from LayoutTests/tiled-drawing/scrolling/fixed-background/fixed-background-no-image-expected.txt.
+        * tiled-drawing/tile-size-vertically-scrollable.html: Added.
+        * tiled-drawing/visible-rect-content-inset-expected.txt:
+
+2016-03-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix an image resource URL in tiled scrolling tests
+        https://bugs.webkit.org/show_bug.cgi?id=154981
+
+        Reviewed by Tim Horton.
+        
+        These tests had an incorrect url to compositing/resources/simple_image.png.
+
+        * tiled-drawing/scrolling/fixed-background/fixed-background-composited-expected.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-background-composited.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-background-negative-z-index-fixed-expected.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-background-negative-z-index-fixed.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-body-layer.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-opacity.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-positioned.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-transformed.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-zoomed.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-html-background.html:
+        * tiled-drawing/scrolling/fixed-background/fixed-non-propagated-body-background.html:
+
+2016-03-03  Keith Miller  <keith_miller@apple.com>
+
+        Array prototype JS builtins should support Symbol.species
+        https://bugs.webkit.org/show_bug.cgi?id=154710
+
+        Reviewed by Geoffrey Garen.
+
+        Add test that checks the Array object created by a species
+        constructor in Array.prototype functions cannot come from a
+        different global object without subclassing.
+
+        * js/array-species-different-globalobjects-expected.txt: Added.
+        * js/array-species-different-globalobjects.html: Added.
+
+2016-03-03  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Make Unicode RegExp pattern parsing conform to the spec
+        https://bugs.webkit.org/show_bug.cgi?id=154988
+
+        Reviewed by Benjamin Poulain.
+
+        Added tests cases.
+
+        * js/regexp-unicode-expected.txt:
+        * js/script-tests/regexp-unicode.js:
+        (shouldThrowInvalidEscape):
+
+
+        [ES6] Add support for Symbol.toPrimitive
+        https://bugs.webkit.org/show_bug.cgi?id=154877
+
+        Reviewed by Saam Barati.
+
+        Update test for Symbol.toPrimitive.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2016-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disallow custom elements inside template elements and share the registry for windowless documents
+        https://bugs.webkit.org/show_bug.cgi?id=154944
+        <rdar://problem/24944875>
+
+        Reviewed by Antti Koivisto.
+
+        Added various tests to ensure the custom elements registry is not shared between documents with
+        distinct browsing context (e.g. iframes) but shared among the ones that share a single browsing context
+        (e.g. documents created by DOMImplementation).
+
+        Also added a test case for defineCustomElement to ensure it throws NotSupportedError when it's called on
+        a template element's inert owner document as well as a basic test case for document.write.
+
+        * fast/custom-elements/Document-defineCustomElement-expected.txt:
+        * fast/custom-elements/Document-defineCustomElement.html: Added a new test case.
+        * fast/custom-elements/parser/parser-constructs-custom-element-in-document-write-expected.txt: Added.
+        * fast/custom-elements/parser/parser-constructs-custom-element-in-document-write.html: Added.
+        * fast/custom-elements/parser/parser-uses-registry-of-owner-document-expected.txt: Added.
+        * fast/custom-elements/parser/parser-uses-registry-of-owner-document.html: Added.
+
+2016-03-03  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Make collapsed borders painting subpixel aware.
+        https://bugs.webkit.org/show_bug.cgi?id=154980
+
+        Reviewed by David Hyatt.
+
+        This patch enables collapsed borders with odd pixel width paint on subpixel position.
+        Currently borders with odd pixels are split at integral position so that border-width: 3px;
+        paints 1px on the left(top) and 2px on the right(bottom) side. With this patch
+        we paint 1.5px on both sides(on 2x display).
+
+        * fast/table/hidpi-collapsed-border-with-odd-pixel-width-expected.html: Added.
+        * fast/table/hidpi-collapsed-border-with-odd-pixel-width.html: Added.
+
+2016-03-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to compile StringReplace
+        https://bugs.webkit.org/show_bug.cgi?id=154979
+
+        Reviewed by Benjamin Poulain.
+
+        Add a microbenchmark for a case of StringReplace that we hadn't covered with a microbenchmark
+        yet: using something absurd for the replace value. This is interesting for implementing the
+        32_64 version of StringReplace, which gets really weird in the absurd case because of how it
+        consumes the entire register file while making the call on x86-32.
+
+        * js/regress/script-tests/string-replace-generic.js: Added.
+        * js/regress/string-replace-generic-expected.txt: Added.
+        * js/regress/string-replace-generic.html: Added.
+
+2016-03-03  Dave Hyatt  <hyatt@apple.com>
+
+        Add support for the "last" value of hanging-punctuation
+        https://bugs.webkit.org/show_bug.cgi?id=154977
+
+        Reviewed by Darin Adler and Simon Fraser.
+
+        * fast/text/hanging-punctuation-first-and-last-together-expected.html: Added.
+        * fast/text/hanging-punctuation-first-and-last-together.html: Added.
+        * fast/text/hanging-punctuation-first-ws-expected.html: Added.
+        * fast/text/hanging-punctuation-first-ws.html: Added.
+        * fast/text/hanging-punctuation-last-expected.html: Added.
+        * fast/text/hanging-punctuation-last-rtl-expected.html: Added.
+        * fast/text/hanging-punctuation-last-rtl.html: Added.
+        * fast/text/hanging-punctuation-last-ws-expected.html: Added.
+        * fast/text/hanging-punctuation-last-ws.html: Added.
+        * fast/text/hanging-punctuation-last.html: Added.
+
+2016-03-03  Brady Eidson  <beidson@apple.com>
+
+        storage/indexeddb/delete-in-upgradeneeded-close-in-open-success.html flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=154747
+
+        Reviewed by Alex Christensen.
+        
+        This callback coming out of order like this is okay, so the test should just allow it.
+
+        It makes sense that the flake is WK2-only, since WK1 has a much more well defined order 
+        with thread-hopping versus process-hopping.
+
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-open-success-expected.txt:
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-open-success-private-expected.txt:
+        * storage/indexeddb/resources/delete-in-upgradeneeded-close-in-open-success.js:
+
+2016-03-03  Brady Eidson  <beidson@apple.com>
+
+        storage/indexeddb/intversion-open-in-upgradeneeded.html is flaky on mac-wk2 debug.
+        https://bugs.webkit.org/show_bug.cgi?id=154706
+
+        Rubberstamped by Alex Christensen.
+
+        This test was fixed by http://trac.webkit.org/changeset/197474.
+        
+        Unskipping it now.
+        
+        * platform/mac-wk2/TestExpectations:
+
+2016-03-03  Chris Dumez  <cdumez@apple.com>
+
+        Drop [TreatNullAs=EmptyString] from URL interface attributes
+        https://bugs.webkit.org/show_bug.cgi?id=154951
+
+        Reviewed by Darin Adler.
+
+        Update existing tests now that URL interface attributes no longer treat
+        null as the empty string.
+
+        * fast/dom/DOMURL/set-href-attribute-hash-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-hash.html:
+        * fast/dom/DOMURL/set-href-attribute-host-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-host.html:
+        * fast/dom/DOMURL/set-href-attribute-hostname-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-hostname.html:
+        * fast/dom/DOMURL/set-href-attribute-pathname-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-pathname.html:
+        * fast/dom/DOMURL/set-href-attribute-protocol-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-protocol.html:
+        * fast/dom/DOMURL/set-href-attribute-search-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-search.html:
+
+2016-03-03  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Box Alignment] New CSS Value 'normal' for Content Alignment
+        https://bugs.webkit.org/show_bug.cgi?id=154282
+
+        The Box Alignment specification defines a new value 'normal' to be used
+        as default for the different layout models, which will define the
+        specific behavior for each case. This patch adds a new CSS value in the
+        parsing logic and adapts the Content Alignment properties to the new
+        value.
+
+        Since the 'normal' vlaue, initial/default for both justify-content
+        and align-content CSS properties, behaves now as 'stretch' instead
+        of o'start' we have to rebaseline those tests affected by the new
+        default value.
+
+        Reviewed by David Hyatt.
+
+        * css3/flexbox/css-properties-expected.txt:
+        * css3/flexbox/css-properties.html:
+        * css3/parse-align-content-expected.txt:
+        * css3/parse-align-content.html:
+        * css3/parse-justify-content-expected.txt:
+        * css3/parse-justify-content.html:
+        * css3/resources/alignment-parsing-utils.js:
+        (checkBadValues):
+        * fast/css-grid-layout/auto-content-resolution-columns.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-update.html:
+        * fast/css-grid-layout/grid-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-container-change-named-grid-lines-recompute-child.html:
+        * fast/css-grid-layout/grid-content-sized-columns-resolution.html:
+        * fast/css-grid-layout/grid-dynamic-updates-relayout.html:
+        * fast/css-grid-layout/grid-element-min-max-width.html:
+        * fast/css-grid-layout/grid-element-repeat-get-set.html:
+        * fast/css-grid-layout/grid-initialize-span-one-items.html:
+        * fast/css-grid-layout/grid-item-addition-auto-placement-update.html:
+        * fast/css-grid-layout/grid-item-addition-track-breadth-update.html:
+        * fast/css-grid-layout/grid-item-bad-named-area-auto-placement.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-horizontal-ltr.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-horizontal-rtl.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-vertical-ltr.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-vertical-rtl.html:
+        * fast/css-grid-layout/grid-item-multiple-minmax-content-resolution.html:
+        * fast/css-grid-layout/grid-item-named-grid-area-resolution.html:
+        * fast/css-grid-layout/grid-item-negative-indexes.html:
+        * fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution.html:
+        * fast/css-grid-layout/grid-item-removal-auto-placement-update.html:
+        * fast/css-grid-layout/grid-item-removal-track-breadth-update.html:
+        * fast/css-grid-layout/grid-update-sizes-after-distributing-all.html:
+        * fast/css-grid-layout/implicit-columns-auto-resolution.html:
+        * fast/css-grid-layout/implicit-position-dynamic-change.html:
+        * fast/css-grid-layout/mark-as-infinitely-growable.html:
+        * fast/css-grid-layout/maximize-tracks-definite-indefinite-width.html:
+        * fast/css-grid-layout/minmax-spanning-resolution-columns.html:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-computed-style-implicit-tracks.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-resolution.html:
+        * fast/css-grid-layout/percent-intrinsic-track-breadth.html:
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size.html:
+        * fast/css-grid-layout/resources/grid-definitions-parsing-utils.js:
+        (checkGridTemplatesSetJSValues):
+        * fast/css-grid-layout/resources/grid-template-shorthand-parsing-utils.js:
+        (checkGridDefinitionsSetJSValues):
+        (testGridDefinitionsSetBadJSValues):
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2016-03-02  Chris Dumez  <cdumez@apple.com>
+
+        HTMLFormElement's named property getter does not return a RadioNodelist
+        https://bugs.webkit.org/show_bug.cgi?id=154949
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test to confirm that HTMLFormElement's named property getter
+        does indeed return a RadioNodeList when there are several matches.
+
+        * fast/dom/HTMLFormElement/named-property-getter-radionodelist-expected.txt: Added.
+        * fast/dom/HTMLFormElement/named-property-getter-radionodelist.html: Added.
+
 2016-03-02  Chris Dumez  <cdumez@apple.com>
 
         Drop [TreatNullAs=LegacyNullString] from HTMLBaseElement.href

@@ -155,6 +155,11 @@ public:
         m_assembler.add(dest, dest, src);
     }
 
+    void add32(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        m_assembler.add(dest, left, right);
+    }
+
     void add32(TrustedImm32 imm, RegisterID dest)
     {
         add32(imm, dest, dest);
@@ -924,6 +929,12 @@ public:
             m_assembler.vmov(dest, src);
     }
 
+    void moveZeroToDouble(FPRegisterID reg)
+    {
+        static double zeroConstant = 0.;
+        loadDouble(TrustedImmPtr(&zeroConstant), reg);
+    }
+
     void loadDouble(TrustedImmPtr address, FPRegisterID dest)
     {
         move(address, addressTempRegister);
@@ -1343,7 +1354,7 @@ public:
 private:
 
     // Should we be using TEQ for equal/not-equal?
-    void compare32(RegisterID left, TrustedImm32 right)
+    void compare32AndSetFlags(RegisterID left, TrustedImm32 right)
     {
         int32_t imm = right.m_value;
         ARMThumbImmediate armImm = ARMThumbImmediate::makeEncodedImm(imm);
@@ -1357,7 +1368,8 @@ private:
         }
     }
 
-    void test32(RegisterID reg, TrustedImm32 mask)
+public:
+    void test32(RegisterID reg, TrustedImm32 mask = TrustedImm32(-1))
     {
         int32_t imm = mask.m_value;
 
@@ -1381,12 +1393,6 @@ private:
             }
         }
     }
-
-public:
-    void test32(ResultCondition, RegisterID reg, TrustedImm32 mask)
-    {
-        test32(reg, mask);
-    }
     
     Jump branch(ResultCondition cond)
     {
@@ -1401,7 +1407,7 @@ public:
 
     Jump branch32(RelationalCondition cond, RegisterID left, TrustedImm32 right)
     {
-        compare32(left, right);
+        compare32AndSetFlags(left, right);
         return Jump(makeBranch(cond));
     }
 
@@ -1459,7 +1465,7 @@ public:
 
     Jump branch8(RelationalCondition cond, RegisterID left, TrustedImm32 right)
     {
-        compare32(left, right);
+        compare32AndSetFlags(left, right);
         return Jump(makeBranch(cond));
     }
 
@@ -1765,7 +1771,7 @@ public:
 
     void compare32(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID dest)
     {
-        compare32(left, right);
+        compare32AndSetFlags(left, right);
         m_assembler.it(armV7Condition(cond), false);
         m_assembler.mov(dest, ARMThumbImmediate::makeUInt16(1));
         m_assembler.mov(dest, ARMThumbImmediate::makeUInt16(0));

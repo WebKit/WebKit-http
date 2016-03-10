@@ -75,13 +75,13 @@ public:
     void removeObserver(CanvasObserver&);
 
     // Attributes and functions exposed to script
-    int width() const { return size().width(); }
-    int height() const { return size().height(); }
+    unsigned width() const { return size().width(); }
+    unsigned height() const { return size().height(); }
 
     const IntSize& size() const { return m_size; }
 
-    void setWidth(int);
-    void setHeight(int);
+    void setWidth(unsigned);
+    void setHeight(unsigned);
 
     void setSize(const IntSize& newSize)
     { 
@@ -149,11 +149,11 @@ public:
 private:
     HTMLCanvasElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
 
-    virtual bool canContainRangeEndPoint() const override;
-    virtual bool canStartSelection() const override;
+    bool canContainRangeEndPoint() const override;
+    bool canStartSelection() const override;
 
     void reset();
 

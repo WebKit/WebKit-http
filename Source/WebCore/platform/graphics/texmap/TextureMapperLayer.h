@@ -169,9 +169,9 @@ private:
     void computePatternTransformIfNeeded();
 
     // TextureMapperAnimation::Client
-    virtual void setAnimatedTransform(const TransformationMatrix&) override;
-    virtual void setAnimatedOpacity(float) override;
-    virtual void setAnimatedFilters(const FilterOperations&) override;
+    void setAnimatedTransform(const TransformationMatrix&) override;
+    void setAnimatedOpacity(float) override;
+    void setAnimatedFilters(const FilterOperations&) override;
 
     bool isVisible() const;
     enum ContentsLayerCount {

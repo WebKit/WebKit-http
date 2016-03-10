@@ -30,6 +30,7 @@
 
 namespace JSC {
 
+class HeapSnapshotBuilder;
 class JSArrayBufferView;
 struct HashTable;
 
@@ -109,11 +110,17 @@ struct MethodTable {
     typedef bool (*IsExtensibleFunctionPtr)(JSObject*, ExecState*);
     IsExtensibleFunctionPtr isExtensible;
 
-    typedef bool (*SetPrototypeFunctionPtr)(JSObject*, ExecState*, JSValue);
+    typedef bool (*SetPrototypeFunctionPtr)(JSObject*, ExecState*, JSValue, bool shouldThrowIfCantSet);
     SetPrototypeFunctionPtr setPrototype;
+
+    typedef JSValue (*GetPrototypeFunctionPtr)(JSObject*, ExecState*);
+    GetPrototypeFunctionPtr getPrototype;
 
     typedef void (*DumpToStreamFunctionPtr)(const JSCell*, PrintStream&);
     DumpToStreamFunctionPtr dumpToStream;
+
+    typedef void (*HeapSnapshotFunctionPtr)(JSCell*, HeapSnapshotBuilder&);
+    HeapSnapshotFunctionPtr heapSnapshot;
 
     typedef size_t (*EstimatedSizeFunctionPtr)(JSCell*);
     EstimatedSizeFunctionPtr estimatedSize;
@@ -166,7 +173,9 @@ struct MethodTable {
         &ClassName::preventExtensions, \
         &ClassName::isExtensible, \
         &ClassName::setPrototype, \
+        &ClassName::getPrototype, \
         &ClassName::dumpToStream, \
+        &ClassName::heapSnapshot, \
         &ClassName::estimatedSize \
     }, \
     ClassName::TypedArrayStorageType

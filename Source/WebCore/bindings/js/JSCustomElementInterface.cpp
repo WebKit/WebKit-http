@@ -44,8 +44,9 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSCustomElementInterface::JSCustomElementInterface(JSObject* constructor, JSDOMGlobalObject* globalObject)
+JSCustomElementInterface::JSCustomElementInterface(const QualifiedName& name, JSObject* constructor, JSDOMGlobalObject* globalObject)
     : ActiveDOMCallback(globalObject->scriptExecutionContext())
+    , m_name(name)
     , m_constructor(constructor)
     , m_isolatedWorld(&globalObject->world())
 {
@@ -76,7 +77,7 @@ RefPtr<Element> JSCustomElementInterface::constructElement(const AtomicString& t
 
     ConstructData constructData;
     ConstructType constructType = m_constructor->methodTable()->getConstructData(m_constructor.get(), constructData);
-    if (constructType == ConstructTypeNone) {
+    if (constructType == ConstructType::None) {
         ASSERT_NOT_REACHED();
         return nullptr;
     }
@@ -99,6 +100,103 @@ RefPtr<Element> JSCustomElementInterface::constructElement(const AtomicString& t
         return nullptr;
     wrappedElement->setIsCustomElement();
     return wrappedElement;
+}
+
+void JSCustomElementInterface::upgradeElement(Element& element)
+{
+    ASSERT(element.isCustomElement());
+    if (!canInvokeCallback())
+        return;
+
+    Ref<JSCustomElementInterface> protect(*this);
+    JSLockHolder lock(m_isolatedWorld->vm());
+
+    if (!m_constructor)
+        return;
+
+    ScriptExecutionContext* context = scriptExecutionContext();
+    if (!context)
+        return;
+    ASSERT(context->isDocument());
+    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
+    ExecState* state = globalObject->globalExec();
+    if (state->hadException())
+        return;
+
+    ConstructData constructData;
+    ConstructType constructType = m_constructor->methodTable()->getConstructData(m_constructor.get(), constructData);
+    if (constructType == ConstructType::None) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    m_constructionStack.append(&element);
+
+    MarkedArgumentBuffer args;
+    InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionConstruct(context, constructType, constructData);
+    JSValue returnedElement = construct(state, m_constructor.get(), constructType, constructData, args);
+    InspectorInstrumentation::didCallFunction(cookie, context);
+
+    m_constructionStack.removeLast();
+
+    if (state->hadException())
+        return;
+
+    Element* wrappedElement = JSElement::toWrapped(returnedElement);
+    if (!wrappedElement || wrappedElement != &element) {
+        throwInvalidStateError(*state, "Custom element constructor failed to upgrade an element");
+        return;
+    }
+    ASSERT(wrappedElement->isCustomElement());
+}
+
+void JSCustomElementInterface::attributeChanged(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
+{
+    if (!canInvokeCallback())
+        return;
+
+    Ref<JSCustomElementInterface> protect(*this);
+
+    JSLockHolder lock(m_isolatedWorld->vm());
+
+    ScriptExecutionContext* context = scriptExecutionContext();
+    if (!context)
+        return;
+
+    ASSERT(context->isDocument());
+    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
+    ExecState* state = globalObject->globalExec();
+
+    JSObject* jsElement = asObject(toJS(state, globalObject, &element));
+
+    PropertyName attributeChanged(Identifier::fromString(state, "attributeChangedCallback"));
+    JSValue callback = jsElement->get(state, attributeChanged);
+    CallData callData;
+    CallType callType = getCallData(callback, callData);
+    if (callType == CallType::None)
+        return;
+
+    const AtomicString& namespaceURI = attributeName.namespaceURI();
+    MarkedArgumentBuffer args;
+    args.append(jsStringWithCache(state, attributeName.localName()));
+    args.append(oldValue == nullAtom ? jsNull() : jsStringWithCache(state, oldValue));
+    args.append(newValue == nullAtom ? jsNull() : jsStringWithCache(state, newValue));
+    args.append(namespaceURI == nullAtom ? jsNull() : jsStringWithCache(state, attributeName.namespaceURI()));
+
+    InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(context, callType, callData);
+
+    NakedPtr<Exception> exception;
+    JSMainThreadExecState::call(state, callback, callType, callData, jsElement, args, exception);
+
+    InspectorInstrumentation::didCallFunction(cookie, context);
+
+    if (exception)
+        reportException(state, exception);
+}
+    
+void JSCustomElementInterface::didUpgradeLastElementInConstructionStack()
+{
+    m_constructionStack.last() = nullptr;
 }
 
 } // namespace WebCore

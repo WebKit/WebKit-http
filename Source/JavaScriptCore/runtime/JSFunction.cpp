@@ -39,7 +39,6 @@
 #include "JSCInlines.h"
 #include "JSFunctionInlines.h"
 #include "JSGlobalObject.h"
-#include "JSNotAnObject.h"
 #include "Interpreter.h"
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
@@ -178,9 +177,13 @@ FunctionRareData* JSFunction::initializeRareData(ExecState* exec, size_t inlineC
     return m_rareData.get();
 }
 
-String JSFunction::name(ExecState* exec)
+String JSFunction::name()
 {
-    return get(exec, exec->vm().propertyNames->name).toWTFString(exec);
+    if (isHostFunction()) {
+        NativeExecutable* executable = jsCast<NativeExecutable*>(this->executable());
+        return executable->name();
+    }
+    return jsExecutable()->name().string();
 }
 
 String JSFunction::displayName(ExecState* exec)
@@ -200,7 +203,7 @@ const String JSFunction::calculatedDisplayName(ExecState* exec)
     if (!explicitName.isEmpty())
         return explicitName;
     
-    const String actualName = name(exec);
+    const String actualName = name();
     if (!actualName.isEmpty() || isHostOrBuiltinFunction())
         return actualName;
     
@@ -230,11 +233,11 @@ CallType JSFunction::getCallData(JSCell* cell, CallData& callData)
     JSFunction* thisObject = jsCast<JSFunction*>(cell);
     if (thisObject->isHostFunction()) {
         callData.native.function = thisObject->nativeFunction();
-        return CallTypeHost;
+        return CallType::Host;
     }
     callData.js.functionExecutable = thisObject->jsExecutable();
     callData.js.scope = thisObject->scope();
-    return CallTypeJS;
+    return CallType::JS;
 }
 
 class RetrieveArgumentsFunctor {
@@ -546,16 +549,16 @@ ConstructType JSFunction::getConstructData(JSCell* cell, ConstructData& construc
 
     if (thisObject->isHostFunction()) {
         constructData.native.function = thisObject->nativeConstructor();
-        return ConstructTypeHost;
+        return ConstructType::Host;
     }
 
     FunctionExecutable* functionExecutable = thisObject->jsExecutable();
     if (functionExecutable->constructAbility() == ConstructAbility::CannotConstruct)
-        return ConstructTypeNone;
+        return ConstructType::None;
 
     constructData.js.functionExecutable = functionExecutable;
     constructData.js.scope = thisObject->scope();
-    return ConstructTypeJS;
+    return ConstructType::JS;
 }
 
 String getCalculatedDisplayName(CallFrame* callFrame, JSObject* object)
@@ -590,9 +593,16 @@ void JSFunction::reifyName(ExecState* exec)
     ASSERT(!hasReifiedName());
     ASSERT(!isHostFunction());
     unsigned initialAttributes = DontEnum | ReadOnly;
-    const Identifier& identifier = exec->propertyNames().name;
-    putDirect(vm, identifier, jsString(exec, jsExecutable()->name().string()), initialAttributes);
+    const Identifier& propID = exec->propertyNames().name;
 
+    String name = jsExecutable()->ecmaName().string();
+
+    if (jsExecutable()->isGetter())
+        name = makeString("get ", name);
+    else if (jsExecutable()->isSetter())
+        name = makeString("set ", name);
+
+    putDirect(vm, propID, jsString(exec, name), initialAttributes);
     rareData->setHasReifiedName();
 }
 
