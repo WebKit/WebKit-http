@@ -64,6 +64,8 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/glib/AudioBusGLib.cpp
 
+    platform/crypto/gnutls/CryptoDigestGnuTLS.cpp
+
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
@@ -257,7 +259,6 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
-        crypto/gnutls/CryptoDigestGnuTLS.cpp
         crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
         crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp
 
