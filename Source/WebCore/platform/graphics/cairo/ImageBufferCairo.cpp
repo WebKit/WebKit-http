@@ -83,6 +83,22 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 {
 }
 
+ImageBufferData::~ImageBufferData()
+{
+#if ENABLE(ACCELERATED_2D_CANVAS)
+    if (!m_texture)
+        return;
+
+    GLContext::sharingContext()->makeContextCurrent();
+    glDeleteTextures(1, &m_texture);
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    if (m_compositorTexture)
+        glDeleteTextures(1, &m_compositorTexture);
+#endif
+#endif
+}
+
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void ImageBufferData::createCompositorBuffer()

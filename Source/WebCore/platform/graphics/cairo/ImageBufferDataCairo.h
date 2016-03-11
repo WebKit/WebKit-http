@@ -55,6 +55,7 @@ class ImageBufferData
 {
 public:
     ImageBufferData(const IntSize&);
+    ~ImageBufferData();
 
     RefPtr<cairo_surface_t> m_surface;
     PlatformContextCairo m_platformContext;
