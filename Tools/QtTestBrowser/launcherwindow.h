@@ -66,7 +66,7 @@ class WindowOptions {
 public:
     bool useGraphicsView { false };
     bool useDiskCache { false };
-    bool useCompositing { true };
+    bool useCompositing { false };
     bool useTiledBackingStore { false };
     bool useWebGL { false };
     bool useWebAudio { false };
