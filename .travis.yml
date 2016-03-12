@@ -1,0 +1,8 @@
+# We use Travis CI only to run check-webkit-style
+language: python
+python: "2.7"
+sudo: false
+git:
+  depth: 3
+script: Tools/Scripts/check-webkit-style -g qtwebkit-1..
+install: true
