@@ -101,6 +101,7 @@ use constant {
     Efl      => "Efl",
     iOS      => "iOS",
     Mac      => "Mac",
+    JSCOnly  => "JSCOnly",
     WinCairo => "WinCairo",
     WPE      => "WPE",
     Unknown  => "Unknown"
@@ -449,6 +450,7 @@ sub argumentsForConfiguration()
     push(@args, '--64-bit') if (isWin64());
     push(@args, '--gtk') if isGtk();
     push(@args, '--efl') if isEfl();
+    push(@args, '--jsc-only') if isJSCOnly();
     push(@args, '--wincairo') if isWinCairo();
     push(@args, '--inspector-frontend') if isInspectorFrontend();
     return @args;
@@ -645,7 +647,7 @@ sub executableProductDir
     my $productDirectory = productDir();
 
     my $binaryDirectory;
-    if (isEfl() || isGtk()) {
+    if (isEfl() || isGtk() || isJSCOnly()) {
         $binaryDirectory = "bin";
     } elsif (isAnyWindows()) {
         $binaryDirectory = isWin64() ? "bin64" : "bin32";
@@ -1049,6 +1051,7 @@ sub determinePortName()
     my %argToPortName = (
         efl => Efl,
         gtk => GTK,
+        'jsc-only' => JSCOnly,
         wincairo => WinCairo,
         wpe => WPE
     );
@@ -1081,6 +1084,7 @@ sub determinePortName()
                 --efl
                 --gtk
                 --wpe
+                --jsc-only
             );
             die "Please specify which WebKit port to build using one of the following options:"
                 . "\n\t$portsChoice\n";
@@ -1111,6 +1115,10 @@ sub isGtk()
 sub isWPE()
 {
     return portName() eq WPE;
+
+sub isJSCOnly()
+{
+    return portName() eq JSCOnly;
 }
 
 # Determine if this is debian, ubuntu, linspire, or something similar.
@@ -1844,7 +1852,7 @@ sub isCachedArgumentfileOutOfDate($@)
 
 sub wrapperPrefixIfNeeded()
 {
-    if (isAnyWindows()) {
+    if (isAnyWindows() || isJSCOnly()) {
         return ();
     }
     if (isAppleMacWebKit()) {
@@ -1999,8 +2007,8 @@ sub generateBuildSystemFromCMakeProject
         push @args, '-G "Visual Studio 14 2015 Win64"';
     }
 
-    # GTK+ has a production mode, but build-webkit should always use developer mode.
-    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isWPE();
+    # Some ports have production mode, but build-webkit should always use developer mode.
+    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isWPE() || isJSCOnly();
 
     # Don't warn variables which aren't used by cmake ports.
     push @args, "--no-warn-unused-cli";
@@ -2038,8 +2046,8 @@ sub buildCMakeGeneratedProject($)
     my @args = ("--build", $buildPath, "--config", $config);
     push @args, ("--", $makeArgs) if $makeArgs;
 
-    # GTK can use a build script to preserve colors and pretty-printing.
-    if (isGtk() && -e "$buildPath/build.sh") {
+    # GTK and JSCOnly can use a build script to preserve colors and pretty-printing.
+    if ((isGtk() || isJSCOnly()) && -e "$buildPath/build.sh") {
         chdir "$buildPath" or die;
         $command = "$buildPath/build.sh";
         @args = ($makeArgs);
