@@ -57,49 +57,49 @@ public:
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
     static bool isAvailable();
 
-    virtual void load(const String& url);
-    virtual void cancelLoad();
+    void load(const String& url) override;
+    void cancelLoad() override;
 
-    virtual void play();
-    virtual void pause();
+    void play() override;
+    void pause() override;
 
-    virtual bool supportsFullscreen() const;
+    bool supportsFullscreen() const override;
 
-    virtual FloatSize naturalSize() const;
+    FloatSize naturalSize() const override;
 
-    virtual bool hasVideo() const;
-    virtual bool hasAudio() const;
+    bool hasVideo() const override;
+    bool hasAudio() const override;
 
-    virtual void setVisible(bool);
+    void setVisible(bool) override;
 
-    virtual bool seeking() const;
-    virtual void seekDouble(double) override;
+    bool seeking() const override;
+    void seek(float) override;
 
-    virtual void setRateDouble(double) override;
+    void setRate(float) override;
 
-    virtual double durationDouble() const override;
+    float duration() const override;
 
-    virtual float currentTime() const override;
+    float currentTime() const override;
 
-    virtual bool paused() const;
+    bool paused() const override;
 
-    virtual void setVolume(float) override;
+    void setVolume(float) override;
 
-    virtual bool supportsMuting() const override;
-    virtual void setMuted(bool) override;
+    bool supportsMuting() const override;
+    void setMuted(bool) override;
 
-    virtual MediaPlayer::NetworkState networkState() const;
-    virtual MediaPlayer::ReadyState readyState() const;
+    MediaPlayer::NetworkState networkState() const override;
+    MediaPlayer::ReadyState readyState() const override;
 
-    virtual float maxTimeSeekable() const override;
+    float maxTimeSeekable() const override;
 
-    virtual std::unique_ptr<PlatformTimeRanges> buffered() const;
+    std::unique_ptr<PlatformTimeRanges> buffered() const override;
 
-    virtual bool didLoadingProgress() const;
+    bool didLoadingProgress() const override;
 
-    virtual void setSize(const IntSize&);
+    void setSize(const IntSize&) override;
 
-    virtual void paint(GraphicsContext&, const FloatRect&) override;
+    void paint(GraphicsContext&, const FloatRect&) override;
 
 private:
     MediaPlayer* m_player;
