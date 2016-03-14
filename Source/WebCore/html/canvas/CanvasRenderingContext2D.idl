@@ -189,6 +189,9 @@ interface CanvasRenderingContext2D : CanvasRenderingContext {
     void drawFocusIfNeeded(Element element);
     void drawFocusIfNeeded(DOMPath path, Element element);
 
+    void drawSystemFocusRing(Element element);
+    void drawSystemFocusRing(DOMPath path, Element element);
+
     readonly attribute float webkitBackingStorePixelRatio;
 
     attribute boolean imageSmoothingEnabled;
