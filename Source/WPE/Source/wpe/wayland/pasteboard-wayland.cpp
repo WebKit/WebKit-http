@@ -140,13 +140,11 @@ const struct wpe_pasteboard_interface wayland_pasteboard_interface = {
 
         out_vector->strings = static_cast<struct wpe_pasteboard_string*>(malloc(sizeof(struct wpe_pasteboard_string) * length));
         out_vector->length = length;
+        memset(out_vector->strings, 0, out_vector->length);
 
         uint64_t i = 0;
-        for (auto& entry : pasteboard.m_dataDeviceData.dataTypes) {
-            auto& string = out_vector->strings[i++];
-            string.data = entry.c_str();
-            string.length = entry.length();
-        }
+        for (auto& entry : pasteboard.m_dataDeviceData.dataTypes)
+            wpe_pasteboard_string_initialize(&out_vector->strings[i++], entry.data(), entry.length());
     },
     // get_string
     [](void* data, const char* type, struct wpe_pasteboard_string* out_string)
@@ -174,7 +172,7 @@ const struct wpe_pasteboard_interface wayland_pasteboard_interface = {
         } while (length > 0);
         close(pipefd[0]);
 
-        // FIXME: fill in out_string
+        wpe_pasteboard_string_initialize(out_string, readString.c_str(), readString.length());
     },
     // write
     [](void* data, struct wpe_pasteboard_string_map* map)

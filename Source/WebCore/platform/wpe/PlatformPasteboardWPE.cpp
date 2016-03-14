@@ -65,7 +65,11 @@ String PlatformPasteboard::readString(int, const String& type)
 {
     struct wpe_pasteboard_string string;
     wpe_pasteboard_get_string(m_pasteboard, type.utf8().data(), &string);
-    return String(string.data, string.length);
+
+    String returnValue(string.data, string.length);
+
+    wpe_pasteboard_string_free(&string);
+    return returnValue;
 }
 
 void PlatformPasteboard::write(const PasteboardWebContent& content)
@@ -77,22 +81,36 @@ void PlatformPasteboard::write(const PasteboardWebContent& content)
     CString markupString = content.markup.utf8();
 
     struct wpe_pasteboard_string_pair pairs[] = {
-        { { plainText, strlen(plainText) }, { textString.data(), textString.length() } },
-        { { htmlText, strlen(htmlText) }, { markupString.data(), markupString.length() } },
+        { { nullptr, 0 }, { nullptr, 0 } },
+        { { nullptr, 0 }, { nullptr, 0 } },
     };
+    wpe_pasteboard_string_initialize(&pairs[0].type, plainText, strlen(plainText));
+    wpe_pasteboard_string_initialize(&pairs[0].string, textString.data(), textString.length());
+    wpe_pasteboard_string_initialize(&pairs[1].type, htmlText, strlen(htmlText));
+    wpe_pasteboard_string_initialize(&pairs[1].string, markupString.data(), markupString.length());
     struct wpe_pasteboard_string_map map = { pairs, 2 };
 
     wpe_pasteboard_write(m_pasteboard, &map);
+
+    wpe_pasteboard_string_free(&pairs[0].type);
+    wpe_pasteboard_string_free(&pairs[0].string);
+    wpe_pasteboard_string_free(&pairs[1].type);
+    wpe_pasteboard_string_free(&pairs[1].string);
 }
 
 void PlatformPasteboard::write(const String& type, const String& string)
 {
     struct wpe_pasteboard_string_pair pairs[] = {
-        { { type.utf8().data(), type.utf8().length() }, { string.utf8().data(), string.utf8().length() } },
+        { { nullptr, 0 }, { nullptr, 0 } },
     };
+    wpe_pasteboard_string_initialize(&pairs[0].type, type.utf8().data(), type.utf8().length());
+    wpe_pasteboard_string_initialize(&pairs[0].string, string.utf8().data(), string.utf8().length());
     struct wpe_pasteboard_string_map map = { pairs, 1 };
 
     wpe_pasteboard_write(m_pasteboard, &map);
+
+    wpe_pasteboard_string_free(&pairs[0].type);
+    wpe_pasteboard_string_free(&pairs[0].string);
 }
 
 } // namespace WebCore

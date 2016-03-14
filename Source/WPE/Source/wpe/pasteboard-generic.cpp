@@ -26,13 +26,11 @@ const struct wpe_pasteboard_interface generic_pasteboard_interface = {
 
         out_vector->strings = static_cast<struct wpe_pasteboard_string*>(malloc(sizeof(struct wpe_pasteboard_string) * length));
         out_vector->length = length;
+        memset(out_vector->strings, 0, out_vector->length);
 
         uint64_t i = 0;
-        for (auto& entry : pasteboard) {
-            auto& string = out_vector->strings[i++];
-            string.data = entry.first.c_str();
-            string.length = entry.first.length();
-        }
+        for (auto& entry : pasteboard)
+            wpe_pasteboard_string_initialize(&out_vector->strings[i++], entry.first.c_str(), entry.first.length());
     },
     // get_string
     [](void* data, const char* type, struct wpe_pasteboard_string* out_string)
@@ -44,8 +42,7 @@ const struct wpe_pasteboard_interface generic_pasteboard_interface = {
         if (it == pasteboard.end())
             return;
 
-        out_string->data = it->second.data();
-        out_string->length = it->second.length();
+        wpe_pasteboard_string_initialize(out_string, it->second.c_str(), it->second.length());
     },
     // write
     [](void* data, struct wpe_pasteboard_string_map* map)

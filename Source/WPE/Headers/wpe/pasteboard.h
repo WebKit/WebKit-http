@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 struct wpe_pasteboard_string {
-    const char* data;
+    char* data;
     uint64_t length;
 };
 
@@ -26,6 +26,12 @@ struct wpe_pasteboard_string_map {
     struct wpe_pasteboard_string_pair* pairs;
     uint64_t length;
 };
+
+void
+wpe_pasteboard_string_initialize(struct wpe_pasteboard_string*, const char*, uint64_t);
+
+void
+wpe_pasteboard_string_free(struct wpe_pasteboard_string*);
 
 void
 wpe_pasteboard_string_vector_free(struct wpe_pasteboard_string_vector*);

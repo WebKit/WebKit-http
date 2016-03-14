@@ -1,12 +1,36 @@
 #include "pasteboard-private.h"
 
 #include <stdlib.h>
+#include <string.h>
+
+void
+wpe_pasteboard_string_initialize(struct wpe_pasteboard_string* string, const char* in_string, uint64_t in_length)
+{
+    if (string->data)
+        return;
+
+    string->data = malloc(sizeof(char*) * in_length);
+    string->length = in_length;
+    memcpy(string->data, in_string, in_length);
+}
+
+void
+wpe_pasteboard_string_free(struct wpe_pasteboard_string* string)
+{
+    if (string->data)
+        free((void*)string->data);
+    string->data = 0;
+    string->length = 0;
+}
 
 void
 wpe_pasteboard_string_vector_free(struct wpe_pasteboard_string_vector* vector)
 {
-    if (vector->strings)
+    if (vector->strings) {
+        for (uint64_t i = 0; i < vector->length; ++i)
+            wpe_pasteboard_string_free(&vector->strings[i]);
         free(vector->strings);
+    }
     vector->strings = 0;
     vector->length = 0;
 }
