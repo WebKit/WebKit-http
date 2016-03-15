@@ -122,3 +122,10 @@ wpe_renderer_backend_egl_offscreen_target_get_native_window(struct wpe_renderer_
 {
     return target->interface->get_native_window(target->interface_data);
 }
+
+void
+wpe_renderer_backend_egl_target_dispatch_frame_complete(struct wpe_renderer_backend_egl_target* target)
+{
+    if (target->client)
+        target->client->frame_complete(target->client_data);
+}

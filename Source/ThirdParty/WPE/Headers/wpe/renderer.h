@@ -15,6 +15,8 @@ struct wpe_renderer_backend_egl;
 struct wpe_renderer_backend_egl_target;
 struct wpe_renderer_backend_egl_offscreen_target;
 
+struct wpe_renderer_backend_egl_target_client;
+
 struct wpe_renderer_backend_egl_interface {
     void* (*create)();
     void (*destroy)(void*);
@@ -30,10 +32,6 @@ struct wpe_renderer_backend_egl_target_interface {
     EGLNativeWindowType (*get_native_window)(void*);
     void (*resize)(void*, uint32_t, uint32_t);
     void (*frame_rendered)(void*);
-};
-
-struct wpe_renderer_backend_egl_target_client {
-    void (*frame_complete)(void*);
 };
 
 struct wpe_renderer_backend_egl_offscreen_target_interface {
@@ -87,6 +85,15 @@ wpe_renderer_backend_egl_offscreen_target_initialize(struct wpe_renderer_backend
 
 EGLNativeWindowType
 wpe_renderer_backend_egl_offscreen_target_get_native_window(struct wpe_renderer_backend_egl_offscreen_target*);
+
+
+struct wpe_renderer_backend_egl_target_client {
+    void (*frame_complete)(void*);
+};
+
+void
+wpe_renderer_backend_egl_target_dispatch_frame_complete(struct wpe_renderer_backend_egl_target*);
+
 
 #ifdef __cplusplus
 }
