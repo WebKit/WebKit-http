@@ -153,23 +153,17 @@ struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface = {
     // create
     []() -> void*
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_interface::create()\n");
-
         return new GBM::Backend;
     },
     // destroy
     [](void* data)
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_interface::destroy()\n");
-
         auto* backend = static_cast<GBM::Backend*>(data);
         delete backend;
     },
     // get_native_display
     [](void* data) -> EGLNativeDisplayType
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_interface::get_native_display()\n");
-
         auto* backend = static_cast<GBM::Backend*>(data);
         return backend->device;
     },
@@ -179,23 +173,17 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
     // create
     [](struct wpe_renderer_backend_egl_target* target, int hostFd) -> void*
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_target_interface::create()\n");
-
         return new GBM::EGLTarget(target, hostFd);
     },
     // destroy
     [](void* data)
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_target_interface::destroy()\n");
-
         auto* target = static_cast<GBM::EGLTarget*>(data);
         delete target;
     },
     // initialize
     [](void* data, void* backend_data, uint32_t width, uint32_t height)
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_target_interface::initialize()\n");
-
         auto* target = static_cast<GBM::EGLTarget*>(data);
         auto* backend = static_cast<GBM::Backend*>(backend_data);
 
@@ -206,8 +194,6 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_target_interface::get_native_window()\n");
-
         auto* target = static_cast<GBM::EGLTarget*>(data);
         return target->surface;
     },
@@ -269,23 +255,17 @@ struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_
     // create
     []() -> void*
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_offscreen_target_interface::create()\n");
-
         return new GBM::EGLOffscreenTarget;
     },
     // destroy
     [](void* data)
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_offscreen_target_interface::destroy()\n");
-
         auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
         delete target;
     },
     // initialize
     [](void* data, void* backend_data)
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_offscreen_target_interface::initialize()\n");
-
         auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
         auto* backend = static_cast<GBM::Backend*>(backend_data);
 
@@ -294,8 +274,6 @@ struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        fprintf(stderr, "gbm_renderer_backend_egl_offscreen_target_interface::get_native_window()\n");
-
         auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
         return target->surface;
     },
