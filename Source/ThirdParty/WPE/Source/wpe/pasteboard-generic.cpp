@@ -10,7 +10,7 @@ using Pasteboard = std::map<std::string, std::string>;
 
 extern "C" {
 
-const struct wpe_pasteboard_interface generic_pasteboard_interface = {
+struct wpe_pasteboard_interface generic_pasteboard_interface = {
     // initialize
     [](struct wpe_pasteboard*) -> void*
     {

@@ -124,7 +124,7 @@ Pasteboard::~Pasteboard()
 
 extern "C" {
 
-const struct wpe_pasteboard_interface wayland_pasteboard_interface = {
+struct wpe_pasteboard_interface wayland_pasteboard_interface = {
     // initialize
     [](struct wpe_pasteboard*) -> void*
     {

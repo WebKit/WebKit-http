@@ -8,11 +8,11 @@ extern "C" {
 #include <wpe/pasteboard.h>
 
 struct wpe_pasteboard {
-    const struct wpe_pasteboard_interface* interface;
+    struct wpe_pasteboard_interface* interface;
     void* interface_data;
 };
 
-extern const struct wpe_pasteboard_interface generic_pasteboard_interface;
+extern struct wpe_pasteboard_interface generic_pasteboard_interface;
 
 #ifdef __cplusplus
 }
