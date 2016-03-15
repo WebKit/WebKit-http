@@ -1,4 +1,4 @@
-#include <wpe/pasteboard.h>
+#include "pasteboard-wayland.h"
 
 #include "display.h"
 #include <cstdlib>
