@@ -1,4 +1,6 @@
-add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
+if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
+    add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
+endif ()
 
 list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
     ${WTF_DIR}
@@ -29,6 +31,4 @@ if (WIN32)
     set(JavaScriptCore_POST_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/JavaScriptCore/postBuild.cmd")
     file(WRITE "${JavaScriptCore_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${DERIVED_SOURCES_DIR}/JavaScriptCore/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore\" >nul 2>nul\n")
     file(APPEND "${JavaScriptCore_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${DERIVED_SOURCES_DIR}/JavaScriptCore/inspector/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore\" >nul 2>nul\n")
-
-    set(JavaScriptCore_LIBRARY_TYPE STATIC)
 endif ()
