@@ -1,0 +1,57 @@
+set(WPE_MESA_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa")
+
+find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
+find_package(LibDRM REQUIRED)
+find_package(LibGBM REQUIRED)
+find_package(Wayland 1.6.0 REQUIRED)
+add_definitions(-DWPE_BACKEND_DRM=1)
+add_definitions(-DWPE_BACKEND_WAYLAND=1)
+add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
+
+if (USE_WPE_BACKEND_DRM_TEGRA)
+    add_definitions(-DWPE_BACKEND_DRM_TEGRA=1)
+endif ()
+
+set(WPE_PLATFORM_INCLUDE_DIRECTORIES
+    "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/Headers"
+    "${WPE_MESA_SOURCE_DIR}/Source/wpe"
+    "${WPE_MESA_SOURCE_DIR}/Source/wpe/drm"
+    "${WPE_MESA_SOURCE_DIR}/Source/wpe/gbm"
+    "${WPE_MESA_SOURCE_DIR}/Source/wpe/wayland"
+    "${WPE_MESA_SOURCE_DIR}/Source/wpe/wayland/protocols"
+    ${GIO_UNIX_INCLUDE_DIRS}
+    ${GLIB_INCLUDE_DIRS}
+    ${LIBDRM_INCLUDE_DIRS}
+    ${LIBGBM_INCLUDE_DIRS}
+    ${WAYLAND_INCLUDE_DIRS}
+)
+
+set(WPE_PLATFORM_LIBRARIES
+    ${GIO_UNIX_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${LIBDRM_LIBRARIES}
+    ${LIBGBM_LIBRARIES}
+    ${WAYLAND_LIBRARIES}
+)
+
+set(WPE_PLATFORM_SOURCES
+    Source/wpe/mesa.cpp
+
+    Source/wpe/drm/view-backend-drm.cpp
+
+    Source/wpe/gbm/renderer-gbm.cpp
+    Source/wpe/gbm/gbm-connection.cpp
+
+    Source/wpe/wayland/display.cpp
+    Source/wpe/wayland/pasteboard-wayland.cpp
+    Source/wpe/wayland/view-backend-wayland.cpp
+
+    Source/wpe/wayland/protocols/ivi-application-protocol.c
+    Source/wpe/wayland/protocols/wayland-drm-protocol.c
+    Source/wpe/wayland/protocols/xdg-shell-protocol.c
+)
+
+add_library(WPE-platform SHARED ${WPE_PLATFORM_SOURCES})
+target_include_directories(WPE-platform PRIVATE ${WPE_PLATFORM_INCLUDE_DIRECTORIES})
+target_link_libraries(WPE-platform ${WPE_PLATFORM_LIBRARIES})
+install(TARGETS WPE-platform DESTINATION "${LIB_INSTALL_DIR}")

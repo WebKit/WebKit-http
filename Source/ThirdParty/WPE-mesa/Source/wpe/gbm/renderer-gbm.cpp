@@ -1,6 +1,5 @@
 #include "renderer-gbm.h"
 
-#include "renderer-private.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -87,8 +86,7 @@ struct EGLTarget {
                 switch (messageCode) {
                 case 23:
                 {
-                    if (target->target->client)
-                        target->target->client->frame_complete(target->target->client_data);
+                    wpe_renderer_backend_egl_target_dispatch_frame_complete(target->target);
                     break;
                 }
                 case 16:

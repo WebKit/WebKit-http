@@ -1,8 +1,7 @@
-#include "view-backend-wayland.h"
+#include <wpe/view-backend.h>
 
 #include "display.h"
 #include "gbm-connection.h"
-#include "view-backend-private.h"
 
 #include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -78,8 +77,7 @@ static const struct ivi_surface_listener g_iviSurfaceListener = {
     [](void* data, struct ivi_surface*, int32_t width, int32_t height)
     {
         struct wpe_view_backend* backend = static_cast<ViewBackend::ResizingData*>(data)->backend;
-        if (backend && backend->backend_client)
-            backend->backend_client->set_size(backend->backend_client_data, std::max(0, width), std::max(0, height));
+        wpe_view_backend_dispatch_set_size(backend, std::max(0, width), std::max(0, height));
     },
 };
 
@@ -172,8 +170,7 @@ ViewBackend::~ViewBackend()
 
 void ViewBackend::initialize()
 {
-    if (m_backend->input_client)
-        m_display.registerInputClient(m_surface, m_backend);
+    m_display.registerInputClient(m_surface, m_backend);
 }
 
 void ViewBackend::importBufferFd(int fd)

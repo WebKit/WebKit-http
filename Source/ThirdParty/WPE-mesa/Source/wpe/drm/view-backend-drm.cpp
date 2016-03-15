@@ -1,7 +1,6 @@
 #include "view-backend-drm.h"
 
 #include "gbm-connection.h"
-#include "view-backend-private.h"
 #include <cstdio>
 #include <errno.h>
 #include <fcntl.h>
@@ -333,9 +332,8 @@ struct wpe_view_backend_interface drm_view_backend_interface = {
         fprintf(stderr, "drm_view_backend_interface::initialize()\n");
 
         auto* backend = static_cast<DRM::ViewBackend*>(data);
-        if (backend->backend->backend_client)
-            backend->backend->backend_client->set_size(backend->backend->backend_client_data,
-                backend->m_drm.size.first, backend->m_drm.size.second);
+        wpe_view_backend_dispatch_set_size(backend->backend,
+            backend->m_drm.size.first, backend->m_drm.size.second);
     },
     // get_renderer_host_fd
     [](void* data) -> int

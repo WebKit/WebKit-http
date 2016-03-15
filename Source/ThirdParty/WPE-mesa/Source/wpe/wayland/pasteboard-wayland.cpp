@@ -1,4 +1,4 @@
-#include "pasteboard-private.h"
+#include <wpe/pasteboard.h>
 
 #include "display.h"
 #include <cstdlib>
