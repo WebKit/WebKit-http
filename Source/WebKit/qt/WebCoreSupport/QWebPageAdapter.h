@@ -64,7 +64,7 @@ class QWebSettings;
 class QWebFullScreenVideoHandler;
 class UndoStepQt;
 
-class WEBCORE_EXPORT QWebPageAdapter {
+class QWEBKIT_EXPORT QWebPageAdapter {
 public:
 
 #define FOR_EACH_MAPPED_MENU_ACTION(F, SEPARATOR) \

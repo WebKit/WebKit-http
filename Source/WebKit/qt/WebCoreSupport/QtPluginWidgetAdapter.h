@@ -20,13 +20,14 @@
 #ifndef QtPluginWidgetAdapter_h
 #define QtPluginWidgetAdapter_h
 
+#include "WebKitPrefix.h"
 #include <PlatformExportMacros.h>
 #include <QObject>
 #include <QRect>
 #include <QString>
 #include <qwebkitglobal.h>
 
-class WEBCORE_EXPORT QtPluginWidgetAdapter : public QObject {
+class QWEBKIT_EXPORT QtPluginWidgetAdapter : public QObject {
     Q_OBJECT
 public:
     QtPluginWidgetAdapter();

@@ -26,7 +26,7 @@
 #include <qwebkitglobal.h>
 #include <wtf/RefPtr.h>
 
-class WEBCORE_EXPORT UndoStepQt  {
+class QWEBKIT_EXPORT UndoStepQt  {
     public:
         ~UndoStepQt();
 
