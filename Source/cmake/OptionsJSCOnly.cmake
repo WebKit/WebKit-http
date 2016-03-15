@@ -34,6 +34,7 @@ if (WTF_CPU_X86 OR WTF_CPU_X86_64)
 endif ()
 
 if (ENABLE_STATIC_JSC)
+    set(WTF_LIBRARY_TYPE STATIC)
     set(JavaScriptCore_LIBRARY_TYPE STATIC)
 endif ()
 
