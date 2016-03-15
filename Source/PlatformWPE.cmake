@@ -1,3 +1,3 @@
-# FIXME: This should be moved to Source/ThirdParty/. And finally into a standalone project.
-add_subdirectory(WPE)
-WEBKIT_SET_EXTRA_COMPILER_FLAGS(WPE ${ADDITIONAL_COMPILER_FLAGS})
+# FIXME: This should be moved into a standalone project.
+add_subdirectory(ThirdParty/WPE)
+add_subdirectory(ThirdParty/WPE-mesa)
