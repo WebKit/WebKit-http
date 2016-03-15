@@ -13,6 +13,7 @@ struct wpe_pasteboard {
 };
 
 extern struct wpe_pasteboard_interface generic_pasteboard_interface;
+extern struct wpe_pasteboard_interface noop_pasteboard_interface;
 
 #ifdef __cplusplus
 }

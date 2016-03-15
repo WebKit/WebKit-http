@@ -16,6 +16,7 @@ set(WPE_LIBRARIES
 set(WPE_SOURCES
     Source/wpe/pasteboard.c
     Source/wpe/pasteboard-generic.cpp
+    Source/wpe/pasteboard-noop.cpp
 
     Source/wpe/input.c
     Source/wpe/loader.c
