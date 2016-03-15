@@ -329,6 +329,8 @@ if (WIN32)
     file(WRITE "${WebKit_POST_BUILD_COMMAND}" "@xcopy /y /d /i /f \"${CMAKE_CURRENT_SOURCE_DIR}/qt/Api/*.h\" \"${DERIVED_SOURCES_WEBKIT_DIR}/QtWebkit\" >nul 2>nul\n")
     file(APPEND "${WebKit_POST_BUILD_COMMAND}" "@xcopy /y /d /i /f \"${CMAKE_CURRENT_SOURCE_DIR}/qt/WidgetApi/*.h\" \"${DERIVED_SOURCES_WEBKIT_DIR}/QtWebkitWidgets\" >nul 2>nul\n")
     add_custom_command(TARGET WebKit POST_BUILD COMMAND ${WebKit_POST_BUILD_COMMAND} VERBATIM)
+
+    ADD_PRECOMPILED_HEADER("WebKitWidgetsPrefix.h" "qt/WebKitWidgetsPrefix.cpp" WebKitWidgets_SOURCES)
 endif ()
 
 set(WebKitWidgets_LIBRARY_TYPE SHARED)
