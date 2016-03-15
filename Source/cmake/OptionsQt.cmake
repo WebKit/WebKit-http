@@ -208,6 +208,13 @@ if (MSVC)
         #add_compile_options(/Bv)
         #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /VERBOSE /VERBOSE:INCR /TIME")
         #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /VERBOSE /VERBOSE:INCR /TIME")
+
+        # enable fast link for >= MSVC2015
+        if ((MSVC_VERSION GREATER 1900) OR (MSVC_VERSION EQUAL 1900))
+            set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:FASTLINK")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG:FASTLINK")
+        endif ()
+
     elseif (${CMAKE_BUILD_TYPE} MATCHES "Release")
         add_compile_options(/Oy-)
     endif ()
