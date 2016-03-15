@@ -1,11 +1,9 @@
 #include <wpe/view-backend.h>
 
+#include "loader-private.h"
 #include "view-backend-private.h"
 #include <stdlib.h>
 
-// FIXME: Don't hard-code it.
-#include "view-backend-drm.h"
-#include "view-backend-wayland.h"
 
 struct wpe_view_backend*
 wpe_view_backend_create()
@@ -14,8 +12,7 @@ wpe_view_backend_create()
     if (!backend)
         return 0;
 
-    // FIXME: Don't hard-code it.
-    backend->interface = &wayland_view_backend_interface;
+    backend->interface = wpe_load_object("_wpe_view_backend_interface");
     backend->interface_data = backend->interface->create(backend);
 
     return backend;

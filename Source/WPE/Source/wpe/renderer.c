@@ -1,10 +1,9 @@
 #include <wpe/renderer.h>
 
+#include "loader-private.h"
 #include "renderer-private.h"
 #include <stdlib.h>
 
-// FIXME: Don't hard-code it.
-#include "renderer-gbm.h"
 
 struct wpe_renderer_backend_egl*
 wpe_renderer_backend_egl_create()
@@ -13,8 +12,7 @@ wpe_renderer_backend_egl_create()
     if (!backend)
         return 0;
 
-    // FIXME: Don't hard-code it.
-    backend->interface = &gbm_renderer_backend_egl_interface;
+    backend->interface = wpe_load_object("_wpe_renderer_backend_egl_interface");
     backend->interface_data = backend->interface->create();
 
     return backend;
@@ -42,8 +40,7 @@ wpe_renderer_backend_egl_target_create(int host_fd)
     if (!target)
         return 0;
 
-    // FIXME: Don't hard-code it.
-    target->interface = &gbm_renderer_backend_egl_target_interface;
+    target->interface = wpe_load_object("_wpe_renderer_backend_egl_target_interface");
     target->interface_data = target->interface->create(target, host_fd);
 
     return target;
@@ -99,8 +96,7 @@ wpe_renderer_backend_egl_offscreen_target_create()
     if (!target)
         return 0;
 
-    // FIXME: Don't hard-code it.
-    target->interface = &gbm_renderer_backend_egl_offscreen_target_interface;
+    target->interface = wpe_load_object("_wpe_renderer_backend_egl_offscreen_target_interface");
     target->interface_data = target->interface->create();
 
     return target;
