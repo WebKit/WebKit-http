@@ -14,7 +14,7 @@ load_impl_library()
 
     s_impl_library = dlopen(library_name, RTLD_NOW);
     if (!s_impl_library) {
-        fprintf(stderr, "wpe: could not load the impl library, aborting.\n");
+        fprintf(stderr, "wpe: could not load the impl library: %s\n", dlerror());
         abort();
     }
 
