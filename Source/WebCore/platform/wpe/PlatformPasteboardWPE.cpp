@@ -27,7 +27,6 @@
 
 #include "Pasteboard.h"
 #include "PlatformPasteboard.h"
-#include <WPE/Pasteboard/Pasteboard.h>
 #include <wpe/pasteboard.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Assertions.h>
