@@ -17,9 +17,6 @@ set(WPE_LIBRARIES
 )
 
 set(WPE_SOURCES
-    Source/Pasteboard/Pasteboard.cpp
-
-    Source/Pasteboard/Generic/PasteboardGeneric.cpp
     Source/wpe/pasteboard.c
     Source/wpe/pasteboard-generic.cpp
 
@@ -100,8 +97,6 @@ if (USE_WPE_BACKEND_WAYLAND)
         Source/wpe/wayland/protocols/ivi-application-protocol.c
         Source/wpe/wayland/protocols/wayland-drm-protocol.c
         Source/wpe/wayland/protocols/xdg-shell-protocol.c
-
-        Source/Pasteboard/Wayland/PasteboardWayland.cpp
     )
 endif ()
 
