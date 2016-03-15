@@ -149,7 +149,7 @@ static void destroyBOData(struct gbm_bo*, void* data)
 
 extern "C" {
 
-const struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface = {
+struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface = {
     // create
     []() -> void*
     {
@@ -175,7 +175,7 @@ const struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interfa
     },
 };
 
-const struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target_interface = {
+struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target_interface = {
     // create
     [](struct wpe_renderer_backend_egl_target* target, int hostFd) -> void*
     {
@@ -265,7 +265,7 @@ const struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_
     },
 };
 
-const struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_egl_offscreen_target_interface = {
+struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_egl_offscreen_target_interface = {
     // create
     []() -> void*
     {

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-extern const struct wpe_view_backend_interface wayland_view_backend_interface;
+extern struct wpe_view_backend_interface wayland_view_backend_interface;
 
 #ifdef __cplusplus
 }

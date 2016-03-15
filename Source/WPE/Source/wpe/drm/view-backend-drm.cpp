@@ -311,7 +311,7 @@ void ViewBackend::commitBuffer(struct buffer_commit* commit)
 
 extern "C" {
 
-const struct wpe_view_backend_interface drm_view_backend_interface = {
+struct wpe_view_backend_interface drm_view_backend_interface = {
     // create
     [](struct wpe_view_backend* backend) -> void*
     {

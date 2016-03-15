@@ -7,9 +7,9 @@
 extern "C" {
 #endif
 
-extern const struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface;
-extern const struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target_interface;
-extern const struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_egl_offscreen_target_interface;
+extern struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface;
+extern struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target_interface;
+extern struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_egl_offscreen_target_interface;
 
 #ifdef __cplusplus
 }
