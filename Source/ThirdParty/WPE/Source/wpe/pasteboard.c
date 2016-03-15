@@ -1,5 +1,6 @@
 #include "pasteboard-private.h"
 
+#include "loader-private.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,7 +42,9 @@ wpe_pasteboard_get_singleton()
     static struct wpe_pasteboard* s_pasteboard = 0;
     if (!s_pasteboard) {
         s_pasteboard = malloc(sizeof(struct wpe_pasteboard));
-        s_pasteboard->interface = &generic_pasteboard_interface;
+        s_pasteboard->interface = wpe_load_object("_wpe_pasteboard_interface");
+        if (!s_pasteboard->interface)
+            s_pasteboard->interface = &noop_pasteboard_interface;
         s_pasteboard->interface_data = s_pasteboard->interface->initialize(s_pasteboard);
     }
 
