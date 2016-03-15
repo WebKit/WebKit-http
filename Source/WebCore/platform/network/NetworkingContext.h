@@ -70,9 +70,7 @@ public:
 
     virtual String sourceApplicationIdentifier() const { return emptyString(); }
 
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP)
     virtual NetworkStorageSession& storageSession() const = 0;
-#endif
 
 #if PLATFORM(QT)
     // FIXME: Wrap QNetworkAccessManager into a NetworkStorageSession to make the code cross-platform.
