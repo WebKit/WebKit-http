@@ -46,6 +46,7 @@
 #endif
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
+#include "SharedBuffer.h"
 #include "StorageThread.h"
 #include "WorkerThread.h"
 #include <QDir>

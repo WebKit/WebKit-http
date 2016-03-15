@@ -1,6 +1,8 @@
 include(ECMGenerateHeaders)
 
-add_definitions("-include WebKitPrefix.h")
+if (NOT MSVC)
+    add_definitions("-include WebKitPrefix.h")
+endif ()
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
@@ -313,6 +315,21 @@ ecm_generate_headers(
     OUTPUT_DIR
         "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets"
 )
+
+if (WIN32)
+    set(WebKit_LIBRARY_TYPE SHARED)
+
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        ${DERIVED_SOURCES_WEBKIT_DIR}
+    )
+
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD")
+
+    set(WebKit_POST_BUILD_COMMAND "${DERIVED_SOURCES_WEBKIT_DIR}/postBuild.cmd")
+    file(WRITE "${WebKit_POST_BUILD_COMMAND}" "@xcopy /y /d /i /f \"${CMAKE_CURRENT_SOURCE_DIR}/qt/Api/*.h\" \"${DERIVED_SOURCES_WEBKIT_DIR}/QtWebkit\" >nul 2>nul\n")
+    file(APPEND "${WebKit_POST_BUILD_COMMAND}" "@xcopy /y /d /i /f \"${CMAKE_CURRENT_SOURCE_DIR}/qt/WidgetApi/*.h\" \"${DERIVED_SOURCES_WEBKIT_DIR}/QtWebkitWidgets\" >nul 2>nul\n")
+    add_custom_command(TARGET WebKit POST_BUILD COMMAND ${WebKit_POST_BUILD_COMMAND} VERBATIM)
+endif ()
 
 set(WebKitWidgets_LIBRARY_TYPE SHARED)
 set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
