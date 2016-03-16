@@ -487,6 +487,9 @@ String HTMLCanvasElement::toDataURL(const String& mimeType, const double* qualit
         return String();
     }
 
+    if (mimeType == "image/webp")
+        return ASCIILiteral("data:image/webp;base64,");
+
     if (m_size.isEmpty() || !buffer())
         return ASCIILiteral("data:,");
 
