@@ -382,8 +382,11 @@ bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
     LockHolder locker(mutex());
     setIsScheduled(true);
 
-    if (isPreviousFrameDone() && m_compositor && !m_compositor->m_clientRendersNextFrame.load())
-        dispatchDisplayRefreshCallback();
+    if (isPreviousFrameDone() && m_compositor) {
+        m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
+        if (!m_compositor->m_compositingRunLoop->isActive())
+            m_compositor->m_compositingRunLoop->scheduleUpdate();
+    }
 
     return true;
 }
@@ -424,6 +427,11 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
             m_compositor->m_scene->renderNextFrame();
         if (m_compositor->m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
             m_compositor->m_compositingRunLoop->updateCompleted();
+        if (isScheduled()) {
+            m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
+            if (!m_compositor->m_compositingRunLoop->isActive())
+                m_compositor->m_compositingRunLoop->scheduleUpdate();
+        }
     }
 }
 #endif
