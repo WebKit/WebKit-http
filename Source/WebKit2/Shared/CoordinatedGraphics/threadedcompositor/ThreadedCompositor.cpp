@@ -338,12 +338,6 @@ static void debugThreadedCompositorFPS()
     }
 }
 
-void ThreadedCompositor::releaseBuffer(uint32_t handle)
-{
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-    m_surface->releaseBuffer(handle);
-}
-
 void ThreadedCompositor::frameComplete()
 {
     ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
