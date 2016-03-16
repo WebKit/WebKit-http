@@ -48,81 +48,6 @@ using namespace WebCore;
 
 namespace WebKit {
 
-class CompositingRunLoop {
-    WTF_MAKE_NONCOPYABLE(CompositingRunLoop);
-    WTF_MAKE_FAST_ALLOCATED;
-public:
-    CompositingRunLoop(std::function<void()> updateFunction)
-        : m_runLoop(RunLoop::current())
-        , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
-        , m_updateFunction(WTFMove(updateFunction))
-    {
-        m_updateState.store(UpdateState::Completed);
-    }
-
-    void callOnCompositingRunLoop(std::function<void()> function)
-    {
-        if (&m_runLoop == &RunLoop::current()) {
-            function();
-            return;
-        }
-
-        m_runLoop.dispatch(WTFMove(function));
-    }
-
-    void scheduleUpdate()
-    {
-        if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
-            m_updateTimer.startOneShot(0);
-            return;
-        }
-
-        if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::PendingAfterCompletion))
-            return;
-    }
-
-    void stopUpdates()
-    {
-        m_updateTimer.stop();
-        m_updateState.store(UpdateState::Completed);
-    }
-
-    void updateCompleted()
-    {
-        if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
-            return;
-
-        if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::InProgress)) {
-            m_updateTimer.startOneShot(0);
-            return;
-        }
-
-        ASSERT_NOT_REACHED();
-    }
-
-    RunLoop& runLoop()
-    {
-        return m_runLoop;
-    }
-
-private:
-    enum class UpdateState {
-        Completed,
-        InProgress,
-        PendingAfterCompletion,
-    };
-
-    void updateTimerFired()
-    {
-        m_updateFunction();
-    }
-
-    RunLoop& m_runLoop;
-    RunLoop::Timer<CompositingRunLoop> m_updateTimer;
-    std::function<void()> m_updateFunction;
-    Atomic<UpdateState> m_updateState;
-};
-
 Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client, WebPage& webPage)
 {
     return adoptRef(*new ThreadedCompositor(client, webPage));
@@ -328,7 +253,7 @@ void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
     setNeedsDisplay();
 }
 
-void ThreadedCompositor::callOnCompositingThread(std::function<void()> function)
+void ThreadedCompositor::callOnCompositingThread(std::function<void()>&& function)
 {
     m_compositingRunLoop->callOnCompositingRunLoop(WTFMove(function));
 }
@@ -413,6 +338,29 @@ static void debugThreadedCompositorFPS()
     }
 }
 
+void ThreadedCompositor::releaseBuffer(uint32_t handle)
+{
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    m_surface->releaseBuffer(handle);
+}
+
+void ThreadedCompositor::frameComplete()
+{
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
+    if (reportFPS)
+        debugThreadedCompositorFPS();
+
+    bool shouldDispatchDisplayRefreshCallback = m_clientRendersNextFrame.load()
+        || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
+    bool shouldCoordinateUpdateCompletionWithClient = m_coordinateUpdateCompletionWithClient.load();
+
+    if (shouldDispatchDisplayRefreshCallback)
+        m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+    if (!shouldCoordinateUpdateCompletionWithClient)
+        m_compositingRunLoop->updateCompleted();
+}
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
 {
@@ -424,6 +372,7 @@ ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedComposi
     , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback)
     , m_compositor(&compositor)
 {
+    m_displayRefreshTimer.setPriority(G_PRIORITY_HIGH + 30);
 }
 
 bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
@@ -431,8 +380,11 @@ bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
     LockHolder locker(mutex());
     setIsScheduled(true);
 
-    if (isPreviousFrameDone() && m_compositor && !m_compositor->m_clientRendersNextFrame.load())
-        dispatchDisplayRefreshCallback();
+    if (isPreviousFrameDone() && m_compositor) {
+        m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
+        if (!m_compositor->m_compositingRunLoop->isActive())
+            m_compositor->m_compositingRunLoop->scheduleUpdate();
+    }
 
     return true;
 }
@@ -473,28 +425,72 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
             m_compositor->m_scene->renderNextFrame();
         if (m_compositor->m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
             m_compositor->m_compositingRunLoop->updateCompleted();
+        if (isScheduled()) {
+            m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
+            if (!m_compositor->m_compositingRunLoop->isActive())
+                m_compositor->m_compositingRunLoop->scheduleUpdate();
+        }
     }
 }
 #endif
 
-#if PLATFORM(WPE)
-void ThreadedCompositor::frameComplete()
+ThreadedCompositor::CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
+    : m_runLoop(RunLoop::current())
+    , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
+    , m_updateFunction(WTFMove(updateFunction))
 {
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-    static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
-    if (reportFPS)
-        debugThreadedCompositorFPS();
-
-    bool shouldDispatchDisplayRefreshCallback = m_clientRendersNextFrame.load()
-        || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
-    bool shouldCoordinateUpdateCompletionWithClient = m_coordinateUpdateCompletionWithClient.load();
-
-    if (shouldDispatchDisplayRefreshCallback)
-        m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
-    if (!shouldCoordinateUpdateCompletionWithClient)
-        m_compositingRunLoop->updateCompleted();
+    m_updateState.store(UpdateState::Completed);
 }
-#endif
+
+void ThreadedCompositor::CompositingRunLoop::callOnCompositingRunLoop(std::function<void ()>&& function)
+{
+    if (&m_runLoop == &RunLoop::current()) {
+        function();
+        return;
+    }
+
+    m_runLoop.dispatch(WTFMove(function));
+}
+
+bool ThreadedCompositor::CompositingRunLoop::isActive()
+{
+    return m_updateState.load() != UpdateState::Completed;
+}
+
+void ThreadedCompositor::CompositingRunLoop::scheduleUpdate()
+{
+    if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
+        m_updateTimer.startOneShot(0);
+        return;
+    }
+
+    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::PendingAfterCompletion))
+        return;
+}
+
+void ThreadedCompositor::CompositingRunLoop::stopUpdates()
+{
+    m_updateTimer.stop();
+    m_updateState.store(UpdateState::Completed);
+}
+
+void ThreadedCompositor::CompositingRunLoop::updateCompleted()
+{
+    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
+        return;
+
+    if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::InProgress)) {
+        m_updateTimer.startOneShot(0);
+        return;
+    }
+
+    ASSERT_NOT_REACHED();
+}
+
+void ThreadedCompositor::CompositingRunLoop::updateTimerFired()
+{
+    m_updateFunction();
+}
 
 }
 #endif // USE(COORDINATED_GRAPHICS_THREADED)
