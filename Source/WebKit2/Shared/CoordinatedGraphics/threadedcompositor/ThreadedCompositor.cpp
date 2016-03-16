@@ -338,7 +338,7 @@ void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
     setNeedsDisplay();
 }
 
-void ThreadedCompositor::callOnCompositingThread(std::function<void()> function)
+void ThreadedCompositor::callOnCompositingThread(std::function<void()>&& function)
 {
     m_compositingRunLoop->callOnCompositingRunLoop(WTFMove(function));
 }
