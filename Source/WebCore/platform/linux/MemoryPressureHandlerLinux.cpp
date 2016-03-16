@@ -32,6 +32,7 @@
 #include "Logging.h"
 
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <malloc.h>
 #include <sys/eventfd.h>
 #include <sys/stat.h>
@@ -54,11 +55,14 @@ static const unsigned s_holdOffMultiplier = 20;
 static const unsigned s_pollTimeSec = 1;
 static const size_t s_memCriticalLimit = 100 * KB * KB; // 100 MB
 static const size_t s_memNonCriticalLimit = 300 * KB * KB; // 300 MB
+static size_t s_pollMaximumProcessMemoryCriticalLimit = 0;
+static size_t s_pollMaximumProcessMemoryNonCriticalLimit = 0;
 
 static const char* s_cgroupMemoryPressureLevel = "/sys/fs/cgroup/memory/memory.pressure_level";
 static const char* s_cgroupEventControl = "/sys/fs/cgroup/memory/cgroup.event_control";
 static const char* s_processStatus = "/proc/self/status";
 static const char* s_memInfo = "/proc/meminfo";
+static const char* s_cmdline = "/proc/self/cmdline";
 
 
 static inline String nextToken(FILE* file)
@@ -110,43 +114,115 @@ void MemoryPressureHandler::waitForMemoryPressureEvent(void*)
     });
 }
 
+size_t readToken(const char* filename, const char* key, size_t fileUnits)
+{
+    size_t result = static_cast<size_t>(-1);
+    FILE* file = fopen(filename, "r");
+    if (!file)
+        return result;
+
+    String token = nextToken(file);
+    while (!token.isEmpty()) {
+        if (token == key) {
+            result = nextToken(file).toUInt64() * fileUnits;
+            break;
+        }
+        token = nextToken(file);
+    }
+    fclose(file);
+    return result;
+}
+
+static String getProcessName()
+{
+    FILE* file = fopen(s_cmdline, "r");
+    if (!file)
+        return String();
+
+    String result = nextToken(file);
+    fclose(file);
+
+    return result;
+}
+
+static bool defaultPollMaximumProcessMemory(size_t &criticalLimit, size_t &nonCriticalLimit)
+{
+    // Syntax: Case insensitive, process name, wildcard (*), unit multipliers (M=Mb, K=Kb, <empty>=bytes).
+    // Example: WPE_POLL_MAX_MEMORY='WPEWebProcess:500M,*Process:150M'
+
+    String processName(getProcessName().convertToLowercaseWithoutLocale());
+    String s(getenv("WPE_POLL_MAX_MEMORY"));
+    if (!s.isEmpty()) {
+        Vector<String> entries;
+        s.split(',', false, entries);
+        for (const String& entry : entries) {
+            Vector<String> keyvalue;
+            entry.split(':', false, keyvalue);
+            if (keyvalue.size() != 2)
+                continue;
+            String key = "*"+keyvalue[0].stripWhiteSpace().convertToLowercaseWithoutLocale();
+            String value = keyvalue[1].stripWhiteSpace().convertToLowercaseWithoutLocale();
+            size_t units = 1;
+            if (value.endsWith('k'))
+                units = 1024;
+            else if (value.endsWith('m'))
+                units = 1024 * 1024;
+            if (units != 1)
+                value = value.substring(0, value.length()-1);
+            bool ok = false;
+            size_t size = size_t(value.toUInt64(&ok));
+            if (!ok)
+                continue;
+
+            if (!fnmatch(key.utf8().data(), processName.utf8().data(), 0)) {
+                criticalLimit = size * units;
+                nonCriticalLimit = criticalLimit * 0.75;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void MemoryPressureHandler::pollMemoryPressure(void*)
 {
     ASSERT(!isMainThread());
 
+    bool critical;
+    String processName(getProcessName());
     do {
-        size_t memFree = static_cast<size_t>(-1); // bytes
+        if (s_pollMaximumProcessMemoryCriticalLimit) {
+            size_t vmRSS = readToken(s_processStatus, "VmRSS:", KB);
 
-        FILE* file = fopen(s_memInfo, "r");
-        if (!file)
-            return;
+            if (!vmRSS)
+                return;
 
-        String token = nextToken(file);
-        while (!token.isEmpty()) {
-            if (token == "MemFree:") {
-                memFree = nextToken(file).toUInt64() * KB;
+            if (vmRSS > s_pollMaximumProcessMemoryNonCriticalLimit) {
+                critical = vmRSS > s_pollMaximumProcessMemoryCriticalLimit;
                 break;
             }
-            token = nextToken(file);
+        } else {
+            size_t memFree = readToken(s_memInfo, "MemFree:", KB);
+
+            if (!memFree)
+                return;
+
+            if (memFree < s_memNonCriticalLimit) {
+                critical = memFree < s_memCriticalLimit;
+                break;
+            }
         }
-        fclose(file);
-
-        if (memFree < s_memNonCriticalLimit) {
-            bool critical = memFree < s_memCriticalLimit;
-
-            if (ReliefLogger::loggingEnabled())
-                LOG(MemoryPressure, "Polled memory pressure (%s)", critical ? "critical" : "non-critical");
-
-            MemoryPressureHandler::singleton().setUnderMemoryPressure(critical);
-            callOnMainThread([critical] {
-                MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
-            });
-
-            return;
-        }
-
         sleep(s_pollTimeSec);
     } while (true);
+
+    if (ReliefLogger::loggingEnabled())
+        LOG(MemoryPressure, "Polled memory pressure (%s)", critical ? "critical" : "non-critical");
+
+    MemoryPressureHandler::singleton().setUnderMemoryPressure(critical);
+    callOnMainThread([critical] {
+        MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
+    });
 }
 
 inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
@@ -213,6 +289,7 @@ void MemoryPressureHandler::install()
 
     // If cgroups isn't available, try to use a simpler poll method based on meminfo.
     if (!cgroupsPressureHandlerOk) {
+        defaultPollMaximumProcessMemory(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit);
         do {
             m_threadID = createThread(pollMemoryPressure, this, "WebCore: MemoryPressureHandler");
             if (!m_threadID) {
