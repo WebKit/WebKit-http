@@ -164,7 +164,7 @@ my @features = (
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => isGtk(), value => \$accelerated2DCanvasSupport },
 
     { option => "allinone-build", desc => "Toggle all-in-one build",
-      define => "ENABLE_ALLINONE_BUILD", default => isWindows(), value => \$allInOneBuild },
+      define => "ENABLE_ALLINONE_BUILD", default => isWindows() || isQt(), value => \$allInOneBuild },
 
     { option => "arrowfunction-syntax", desc => "Toggle ES6 arrow function syntax support",
       define => "ENABLE_ES6_ARROWFUNCTION_SYNTAX", default => 1, value => \$arrowfunctionSyntax },
