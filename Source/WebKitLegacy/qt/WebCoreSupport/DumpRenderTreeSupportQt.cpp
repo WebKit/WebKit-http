@@ -734,7 +734,7 @@ void DumpRenderTreeSupportQt::setAlternateHtml(QWebFrameAdapter* adapter, const 
     WTF::RefPtr<WebCore::SharedBuffer> data = WebCore::SharedBuffer::create(utf8.constData(), utf8.length());
     WebCore::ResourceResponse response(failingUrl, ASCIILiteral("text/html"), data->size(), ASCIILiteral("utf-8"));
     // FIXME: visibility?
-    WebCore::SubstituteData substituteData(data, failingUrl, response, SubstituteData::SessionHistoryVisibility::Hidden);
+    WebCore::SubstituteData substituteData(WTFMove(data), failingUrl, response, SubstituteData::SessionHistoryVisibility::Hidden);
     coreFrame->loader().load(WebCore::FrameLoadRequest(coreFrame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
 }
 
