@@ -429,6 +429,7 @@ ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedComposi
     , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback)
     , m_compositor(&compositor)
 {
+    m_displayRefreshTimer.setPriority(G_PRIORITY_HIGH + 30);
 }
 
 bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
