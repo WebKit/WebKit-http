@@ -51,7 +51,6 @@ struct CoordinatedGraphicsState;
 
 namespace WebKit {
 
-class CompositingRunLoop;
 class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 class WebPage;
@@ -126,8 +125,6 @@ private:
     float m_deviceScaleFactor;
     uint64_t m_nativeSurfaceHandle;
 
-    std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
-
     ThreadIdentifier m_threadIdentifier;
     Condition m_initializeRunLoopCondition;
     Lock m_initializeRunLoopConditionLock;
@@ -154,6 +151,38 @@ private:
     };
     RefPtr<DisplayRefreshMonitor> m_displayRefreshMonitor;
 #endif
+
+    class CompositingRunLoop {
+        WTF_MAKE_NONCOPYABLE(CompositingRunLoop);
+        WTF_MAKE_FAST_ALLOCATED;
+    public:
+        CompositingRunLoop(std::function<void ()>&&);
+
+        void callOnCompositingRunLoop(std::function<void ()>&&);
+
+        bool isActive();
+        void scheduleUpdate();
+        void stopUpdates();
+
+        void updateCompleted();
+
+        RunLoop& runLoop() { return m_runLoop; }
+
+    private:
+        enum class UpdateState {
+            Completed,
+            InProgress,
+            PendingAfterCompletion,
+        };
+
+        void updateTimerFired();
+
+        RunLoop& m_runLoop;
+        RunLoop::Timer<CompositingRunLoop> m_updateTimer;
+        std::function<void ()> m_updateFunction;
+        Atomic<UpdateState> m_updateState;
+    };
+    std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
     Atomic<bool> m_clientRendersNextFrame;
     Atomic<bool> m_coordinateUpdateCompletionWithClient;
