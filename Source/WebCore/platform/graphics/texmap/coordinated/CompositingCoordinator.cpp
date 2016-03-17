@@ -410,6 +410,8 @@ void CompositingCoordinator::releaseInactiveAtlasesTimerFired()
     if (!foundActiveAtlasForRootContentsLayer && atlasToKeepAnyway)
         m_updateAtlases.append(atlasToKeepAnyway.release());
 
+    m_updateAtlases.shrinkToFit();
+
     if (m_updateAtlases.size() <= 1)
         m_releaseInactiveAtlasesTimer.stop();
 }
