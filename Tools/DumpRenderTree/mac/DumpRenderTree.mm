@@ -939,12 +939,13 @@ static void resetWebPreferencesToConsistentValues()
         [preferences setUserStyleSheetEnabled:YES];
     } else
         [preferences setUserStyleSheetEnabled:NO];
-#if PLATFORM(IOS)
     [preferences setMediaPlaybackAllowsInline:YES];
-    [preferences setMediaPlaybackRequiresUserGesture:NO];
+    [preferences setVideoPlaybackRequiresUserGesture:NO];
+    [preferences setAudioPlaybackRequiresUserGesture:NO];
     [preferences setMediaDataLoadsAutomatically:YES];
     [preferences setInvisibleAutoplayNotPermitted:NO];
 
+#if PLATFORM(IOS)
     // Enable the tracker before creating the first WebView will
     // cause initialization to use the correct database paths.
     [preferences setStorageTrackerEnabled:YES];
@@ -963,7 +964,6 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setCanvasUsesAcceleratedDrawing:YES];
     [preferences setAcceleratedDrawingEnabled:useAcceleratedDrawing];
 #endif
-    [preferences setWebGLEnabled:NO];
     [preferences setCSSRegionsEnabled:YES];
     [preferences setUsePreHTML5ParserQuirks:NO];
     [preferences setAsynchronousSpellCheckingEnabled:NO];
@@ -983,6 +983,9 @@ static void resetWebPreferencesToConsistentValues()
 #if ENABLE(MEDIA_SOURCE)
     [preferences setMediaSourceEnabled:YES];
 #endif
+
+    [preferences setShadowDOMEnabled:YES];
+    [preferences setCustomElementsEnabled:YES];
 
     [preferences setHiddenPageDOMTimerThrottlingEnabled:NO];
     [preferences setHiddenPageCSSAnimationSuspensionEnabled:NO];

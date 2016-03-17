@@ -4582,11 +4582,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_create_scoped_arguments);
         }
 
-        case op_create_out_of_band_arguments: {
+        case op_create_cloned_arguments: {
             noticeArgumentsUse();
             Node* createArguments = addToGraph(CreateClonedArguments);
             set(VirtualRegister(currentInstruction[1].u.operand), createArguments);
-            NEXT_OPCODE(op_create_out_of_band_arguments);
+            NEXT_OPCODE(op_create_cloned_arguments);
         }
             
         case op_get_from_arguments: {
@@ -4634,6 +4634,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 // Curly braces are necessary
                 NEXT_OPCODE(op_new_arrow_func_exp);
             }
+        }
+
+        case op_set_function_name: {
+            Node* func = get(VirtualRegister(currentInstruction[1].u.operand));
+            Node* name = get(VirtualRegister(currentInstruction[2].u.operand));
+            addToGraph(SetFunctionName, func, name);
+            NEXT_OPCODE(op_set_function_name);
         }
 
         case op_typeof: {

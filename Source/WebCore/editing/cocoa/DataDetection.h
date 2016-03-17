@@ -46,8 +46,9 @@ enum DataDetectorTypes {
     DataDetectorTypeLink = 1 << 1,
     DataDetectorTypeAddress = 1 << 2,
     DataDetectorTypeCalendarEvent = 1 << 3,
-    DataDetectorTypeTrackingNumber = 1 << 4, // Not individually selectable with the API
-    DataDetectorTypeFlight = 1 << 5, // Not individually selectable with the API
+    DataDetectorTypeTrackingNumber = 1 << 4,
+    DataDetectorTypeFlightNumber = 1 << 5,
+    DataDetectorTypeSpotlightSuggestion = 1 << 6,
     DataDetectorTypeAll = ULONG_MAX
 };
 
@@ -60,6 +61,7 @@ public:
     WEBCORE_EXPORT static bool isDataDetectorLink(Element*);
     WEBCORE_EXPORT static String dataDetectorIdentifier(Element*);
     WEBCORE_EXPORT static bool shouldCancelDefaultAction(Element*);
+    WEBCORE_EXPORT static bool requiresExtendedContext(Element*);
 };
 
 } // namespace WebCore

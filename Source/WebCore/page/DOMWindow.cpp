@@ -761,15 +761,7 @@ bool DOMWindow::shouldHaveWebKitNamespaceForWorld(DOMWrapperWorld& world)
     if (!page)
         return false;
 
-    auto* userContentController = page->userContentController();
-    if (!userContentController)
-        return false;
-
-    auto* descriptorMap = userContentController->userMessageHandlerDescriptors();
-    if (!descriptorMap)
-        return false;
-
-    for (auto& descriptor : descriptorMap->values()) {
+    for (auto& descriptor : page->userContentProvider().userMessageHandlerDescriptors().values()) {
         if (&descriptor->world() == &world)
             return true;
     }
@@ -962,7 +954,12 @@ Element* DOMWindow::frameElement() const
     return m_frame->ownerElement();
 }
 
-void DOMWindow::focus(ScriptExecutionContext* context)
+void DOMWindow::focus(Document& document)
+{
+    focus(opener() && opener() != this && document.domWindow() == opener());
+}
+
+void DOMWindow::focus(bool allowFocus)
 {
     if (!m_frame)
         return;
@@ -971,13 +968,7 @@ void DOMWindow::focus(ScriptExecutionContext* context)
     if (!page)
         return;
 
-    bool allowFocus = WindowFocusAllowedIndicator::windowFocusAllowed() || !m_frame->settings().windowFocusRestricted();
-    if (context) {
-        ASSERT(isMainThread());
-        Document& activeDocument = downcast<Document>(*context);
-        if (opener() && opener() != this && activeDocument.domWindow() == opener())
-            allowFocus = true;
-    }
+    allowFocus = allowFocus || WindowFocusAllowedIndicator::windowFocusAllowed() || !m_frame->settings().windowFocusRestricted();
 
     // If we're a top level window, bring the window to the front.
     if (m_frame->isMainFrame() && allowFocus)
@@ -1012,7 +1003,14 @@ void DOMWindow::blur()
     page->chrome().unfocus();
 }
 
-void DOMWindow::close(ScriptExecutionContext* context)
+void DOMWindow::close(Document& document)
+{
+    if (!document.canNavigate(m_frame))
+        return;
+    close();
+}
+
+void DOMWindow::close()
 {
     if (!m_frame)
         return;
@@ -1023,12 +1021,6 @@ void DOMWindow::close(ScriptExecutionContext* context)
 
     if (!m_frame->isMainFrame())
         return;
-
-    if (context) {
-        ASSERT(isMainThread());
-        if (!downcast<Document>(*context).canNavigate(m_frame))
-            return;
-    }
 
     bool allowScriptsToCloseWindows = m_frame->settings().allowScriptsToCloseWindows();
 
@@ -2168,11 +2160,10 @@ PassRefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicStrin
 #if ENABLE(CONTENT_EXTENSIONS)
     if (firstFrame->document()
         && firstFrame->mainFrame().page()
-        && firstFrame->mainFrame().page()->userContentController()
         && firstFrame->mainFrame().document()
         && firstFrame->mainFrame().document()->loader()) {
-        ResourceLoadInfo resourceLoadInfo = {firstFrame->document()->completeURL(urlString), firstFrame->mainFrame().document()->url(), ResourceType::Popup};
-        Vector<ContentExtensions::Action> actions = firstFrame->mainFrame().page()->userContentController()->actionsForResourceLoad(resourceLoadInfo, *firstFrame->mainFrame().document()->loader());
+        ResourceLoadInfo resourceLoadInfo = { firstFrame->document()->completeURL(urlString), firstFrame->mainFrame().document()->url(), ResourceType::Popup };
+        Vector<ContentExtensions::Action> actions = firstFrame->mainFrame().page()->userContentProvider().actionsForResourceLoad(resourceLoadInfo, *firstFrame->mainFrame().document()->loader());
         for (const ContentExtensions::Action& action : actions) {
             if (action.type() == ContentExtensions::ActionType::BlockLoad)
                 return nullptr;

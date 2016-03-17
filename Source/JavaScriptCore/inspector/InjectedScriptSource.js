@@ -98,6 +98,36 @@ InjectedScript.prototype = {
         return InjectedScript.primitiveTypes[typeof object] && !this._isHTMLAllCollection(object);
     },
 
+    previewValue: function(value)
+    {
+        return InjectedScript.RemoteObject.createObjectPreviewForValue(value, true);
+    },
+
+    functionDetails: function(func, previewOnly)
+    {
+        var details = InjectedScriptHost.functionDetails(func);
+        if (!details)
+            return "Cannot resolve function details.";
+
+        // FIXME: provide function scope data in "scopesRaw" property when JSC supports it.
+        // <https://webkit.org/b/87192> [JSC] expose function (closure) inner context to debugger
+        if ("rawScopes" in details) {
+            if (previewOnly)
+                delete details.rawScopes;
+            else {
+                var objectGroupName = this._idToObjectGroupName[parsedFunctionId.id];
+                var rawScopes = details.rawScopes;
+                var scopes = [];
+                delete details.rawScopes;
+                for (var i = 0; i < rawScopes.length; i++)
+                    scopes.push(InjectedScript.CallFrameProxy._createScopeJson(rawScopes[i].type, rawScopes[i].object, objectGroupName));
+                details.scopeChain = scopes;
+            }
+        }
+
+        return details;
+    },
+
     wrapObject: function(object, groupName, canAccessInspectedGlobalObject, generatePreview)
     {
         if (canAccessInspectedGlobalObject)
@@ -332,19 +362,7 @@ InjectedScript.prototype = {
         var func = this._objectForId(parsedFunctionId);
         if (typeof func !== "function")
             return "Cannot resolve function by id.";
-        var details = InjectedScriptHost.functionDetails(func);
-        if (!details)
-            return "Cannot resolve function details.";
-        if ("rawScopes" in details) {
-            var objectGroupName = this._idToObjectGroupName[parsedFunctionId.id];
-            var rawScopes = details.rawScopes;
-            var scopes = [];
-            delete details.rawScopes;
-            for (var i = 0; i < rawScopes.length; i++)
-                scopes.push(InjectedScript.CallFrameProxy._createScopeJson(rawScopes[i].type, rawScopes[i].object, objectGroupName));
-            details.scopeChain = scopes;
-        }
-        return details;
+        return injectedScript.functionDetails(func);
     },
 
     releaseObject: function(objectId)
@@ -785,27 +803,6 @@ InjectedScript.prototype = {
         return null;
     },
 
-    _nodeDescription: function(node)
-    {
-        var isXMLDocument = node.ownerDocument && !!node.ownerDocument.xmlVersion;
-        var description = isXMLDocument ? node.nodeName : node.nodeName.toLowerCase();
-
-        switch (node.nodeType) {
-        case 1: // Node.ELEMENT_NODE
-            if (node.id)
-                description += "#" + node.id;
-            if (node.hasAttribute("class")) {
-                // Using .getAttribute() is a workaround for SVG*Element.className returning SVGAnimatedString,
-                // which doesn't have any useful String methods. See <https://webkit.org/b/145363/>.
-                description += "." + node.getAttribute("class").trim().replace(/\s+/g, ".");
-            }
-            return description;
-
-        default:
-            return description;
-        }
-    },
-
     _classPreview: function(classConstructorValue)
     {
         return "class " + classConstructorValue.name;
@@ -860,7 +857,7 @@ InjectedScript.prototype = {
             return toString(obj);
 
         if (subtype === "node")
-            return this._nodeDescription(obj);
+            return this._nodePreview(obj);
 
         var className = InjectedScriptHost.internalConstructorName(obj);
         if (subtype === "array")
@@ -1025,7 +1022,17 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
 
     if (generatePreview && this.type === "object")
         this.preview = this._generatePreview(object, undefined, columnNames);
-}
+};
+
+InjectedScript.RemoteObject.createObjectPreviewForValue = function(value, generatePreview)
+{
+    var remoteObject = new InjectedScript.RemoteObject(value, undefined, false, generatePreview, undefined);
+    if (remoteObject.objectId)
+        injectedScript.releaseObject(remoteObject.objectId);
+    if (remoteObject.classPrototype && remoteObject.classPrototype.objectId)
+        injectedScript.releaseObject(remoteObject.classPrototype.objectId);
+    return remoteObject.preview || remoteObject._emptyPreview();
+};
 
 InjectedScript.RemoteObject.prototype = {
     _initialPreview: function()
@@ -1063,17 +1070,6 @@ InjectedScript.RemoteObject.prototype = {
         }
 
         return preview;
-    },
-
-    _createObjectPreviewForValue: function(value, generatePreview)
-    {
-        var remoteObject = new InjectedScript.RemoteObject(value, undefined, false, generatePreview, undefined);
-        if (remoteObject.objectId)
-            injectedScript.releaseObject(remoteObject.objectId);
-        if (remoteObject.classPrototype && remoteObject.classPrototype.objectId)
-            injectedScript.releaseObject(remoteObject.classPrototype.objectId);
-
-        return remoteObject.preview || remoteObject._emptyPreview();
     },
 
     _generatePreview: function(object, firstLevelKeys, secondLevelKeys)
@@ -1202,7 +1198,7 @@ InjectedScript.RemoteObject.prototype = {
             // Second level.
             if ((secondLevelKeys === null || secondLevelKeys) || this._isPreviewableObject(value, object)) {
                 // FIXME: If we want secondLevelKeys filter to continue we would need some refactoring.
-                var subPreview = this._createObjectPreviewForValue(value, value !== object);
+                var subPreview = InjectedScript.RemoteObject.createObjectPreviewForValue(value, value !== object);
                 property.valuePreview = subPreview;
                 if (!subPreview.lossless)
                     preview.lossless = false;
@@ -1266,10 +1262,10 @@ InjectedScript.RemoteObject.prototype = {
         }
 
         preview.entries = entries.map(function(entry) {
-            entry.value = this._createObjectPreviewForValue(entry.value, entry.value !== object);
+            entry.value = InjectedScript.RemoteObject.createObjectPreviewForValue(entry.value, entry.value !== object);
             updateMainPreview(entry.value);
             if ("key" in entry) {
-                entry.key = this._createObjectPreviewForValue(entry.key, entry.key !== object);
+                entry.key = InjectedScript.RemoteObject.createObjectPreviewForValue(entry.key, entry.key !== object);
                 updateMainPreview(entry.key);
             }
             return entry;

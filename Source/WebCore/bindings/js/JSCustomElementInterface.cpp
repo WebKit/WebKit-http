@@ -98,13 +98,13 @@ RefPtr<Element> JSCustomElementInterface::constructElement(const AtomicString& t
     Element* wrappedElement = JSElement::toWrapped(newElement);
     if (!wrappedElement)
         return nullptr;
-    wrappedElement->setIsCustomElement();
+    wrappedElement->setCustomElementIsResolved();
     return wrappedElement;
 }
 
 void JSCustomElementInterface::upgradeElement(Element& element)
 {
-    ASSERT(element.isCustomElement());
+    ASSERT(element.isUnresolvedCustomElement());
     if (!canInvokeCallback())
         return;
 
@@ -147,6 +147,7 @@ void JSCustomElementInterface::upgradeElement(Element& element)
         throwInvalidStateError(*state, "Custom element constructor failed to upgrade an element");
         return;
     }
+    wrappedElement->setCustomElementIsResolved();
     ASSERT(wrappedElement->isCustomElement());
 }
 

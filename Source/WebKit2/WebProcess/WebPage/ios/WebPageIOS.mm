@@ -101,6 +101,16 @@
 #import <wtf/MathExtras.h>
 #import <wtf/TemporaryChange.h>
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+#if __has_include(<AccessibilitySupport.h>) 
+#include <AccessibilitySupport.h>
+#else
+extern "C" {
+Boolean _AXSForceAllowWebScaling();
+}
+#endif
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -585,10 +595,14 @@ void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTransaction
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(point, adjustedPoint);
     Frame* frameRespondingToClick = nodeRespondingToClick ? nodeRespondingToClick->document().frame() : nullptr;
+    IntPoint adjustedIntPoint = roundedIntPoint(adjustedPoint);
 
     if (!frameRespondingToClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToClick)->firstLayerTreeTransactionIDAfterDidCommitLoad())
-        send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(m_potentialTapLocation)));
-    else
+        send(Messages::WebPageProxy::DidNotHandleTapAsClick(adjustedIntPoint));
+    else if (is<Element>(*nodeRespondingToClick) && DataDetection::shouldCancelDefaultAction(&downcast<Element>(*nodeRespondingToClick))) {
+        requestPositionInformation(adjustedIntPoint);
+        send(Messages::WebPageProxy::DidNotHandleTapAsClick(adjustedIntPoint));
+    } else
         handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
 }
 
@@ -784,6 +798,15 @@ void WebPage::enableInspectorNodeSearch()
 void WebPage::disableInspectorNodeSearch()
 {
     send(Messages::WebPageProxy::DisableInspectorNodeSearch());
+}
+
+void WebPage::updateForceAlwaysUserScalable()
+{
+    bool forceAlwaysUserScalable = m_forceAlwaysUserScalable;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    forceAlwaysUserScalable |= _AXSForceAllowWebScaling();
+#endif
+    m_viewportConfiguration.setForceAlwaysUserScalable(forceAlwaysUserScalable);
 }
 
 static FloatQuad innerFrameQuad(const Frame& frame, const Node& assistedNode)
@@ -2200,8 +2223,15 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
 #if ENABLE(DATA_DETECTION)
                     info.isDataDetectorLink = DataDetection::isDataDetectorLink(element);
                     if (info.isDataDetectorLink) {
+                        const int dataDetectionExtendedContextLength = 350;
                         info.dataDetectorIdentifier = DataDetection::dataDetectorIdentifier(element);
                         info.dataDetectorResults = element->document().frame()->dataDetectionResults();
+                        if (DataDetection::requiresExtendedContext(element)) {
+                            RefPtr<Range> linkRange = Range::create(element->document());
+                            linkRange->selectNodeContents(element, ASSERT_NO_EXCEPTION);
+                            info.textBefore = plainTextReplacingNoBreakSpace(rangeExpandedByCharactersInDirectionAtWordBoundary(linkRange->startPosition(), dataDetectionExtendedContextLength, DirectionBackward).get(), TextIteratorDefaultBehavior, true);
+                            info.textAfter = plainTextReplacingNoBreakSpace(rangeExpandedByCharactersInDirectionAtWordBoundary(linkRange->endPosition(), dataDetectionExtendedContextLength, DirectionForward).get(), TextIteratorDefaultBehavior, true);
+                        }
                     }
 #endif
                 } else if (element->renderer() && element->renderer()->isRenderImage()) {

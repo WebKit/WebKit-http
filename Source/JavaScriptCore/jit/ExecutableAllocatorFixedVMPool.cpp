@@ -85,11 +85,11 @@ using namespace WTF;
 
 namespace JSC {
 
-JS_EXPORT_PRIVATE uintptr_t startOfFixedExecutableMemoryPool;
-JS_EXPORT_PRIVATE uintptr_t endOfFixedExecutableMemoryPool;
+JS_EXPORTDATA uintptr_t startOfFixedExecutableMemoryPool;
+JS_EXPORTDATA uintptr_t endOfFixedExecutableMemoryPool;
 
 #if ENABLE(SEPARATED_WX_HEAP)
-JS_EXPORT_PRIVATE uintptr_t jitWriteFunctionAddress;
+JS_EXPORTDATA uintptr_t jitWriteFunctionAddress;
 #endif
 
 class FixedVMPoolExecutableAllocator : public MetaAllocator {
@@ -181,7 +181,7 @@ private:
 
         bool remapSucceeded = (ret == KERN_SUCCESS);
         if (!remapSucceeded)
-            writableAddr = (mach_vm_address_t)jitBase;
+            return;
 
         // Assemble a thunk that will serve as the means for writing into the JIT region.
         MacroAssemblerCodeRef writeThunk = jitWriteThunkGenerator(writableAddr, stubBase, stubSize);

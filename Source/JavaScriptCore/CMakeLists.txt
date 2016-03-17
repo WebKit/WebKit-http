@@ -54,6 +54,7 @@ set(JavaScriptCore_SOURCES
     API/JSContextRef.cpp
     API/JSObjectRef.cpp
     API/JSProfilerPrivate.cpp
+    API/JSTypedArray.cpp
     API/JSScriptRef.cpp
     API/JSStringRef.cpp
     API/JSValueRef.cpp
@@ -268,7 +269,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGCompilationMode.cpp
     dfg/DFGConstantFoldingPhase.cpp
     dfg/DFGConstantHoistingPhase.cpp
-    dfg/DFGCopyBarrierOptimizationPhase.cpp
     dfg/DFGCriticalEdgeBreakingPhase.cpp
     dfg/DFGDCEPhase.cpp
     dfg/DFGDesiredIdentifiers.cpp

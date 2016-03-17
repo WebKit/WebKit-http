@@ -818,7 +818,9 @@ set(WebCore_SOURCES
 
     Modules/fetch/DOMWindowFetch.cpp
     Modules/fetch/FetchBody.cpp
+    Modules/fetch/FetchBodyOwner.cpp
     Modules/fetch/FetchHeaders.cpp
+    Modules/fetch/FetchLoader.cpp
     Modules/fetch/FetchRequest.cpp
     Modules/fetch/FetchResponse.cpp
     Modules/fetch/WorkerGlobalScopeFetch.cpp
@@ -1451,6 +1453,7 @@ set(WebCore_SOURCES
     dom/EventDispatcher.cpp
     dom/EventListenerMap.cpp
     dom/EventNames.cpp
+    dom/EventPath.cpp
     dom/EventTarget.cpp
     dom/ExceptionBase.cpp
     dom/ExceptionCodePlaceholder.cpp
@@ -2053,6 +2056,7 @@ set(WebCore_SOURCES
     page/SpatialNavigation.cpp
     page/SuspendableTimer.cpp
     page/TextIndicator.cpp
+    page/UserContentProvider.cpp
     page/UserContentController.cpp
     page/UserContentURLPattern.cpp
     page/VisitedLinkStore.cpp
@@ -2238,7 +2242,6 @@ set(WebCore_SOURCES
     platform/graphics/PlatformTimeRanges.cpp
     platform/graphics/Region.cpp
     platform/graphics/RoundedRect.cpp
-    platform/graphics/SVGGlyph.cpp
     platform/graphics/ShadowBlur.cpp
     platform/graphics/StringTruncator.cpp
     platform/graphics/SurrogatePairAwareTextIterator.cpp
@@ -2542,7 +2545,7 @@ set(WebCore_SOURCES
     rendering/style/ContentData.cpp
     rendering/style/CounterDirectives.cpp
     rendering/style/FillLayer.cpp
-    rendering/style/GridResolvedPosition.cpp
+    rendering/style/GridPositionsResolver.cpp
     rendering/style/KeyframeList.cpp
     rendering/style/NinePieceImage.cpp
     rendering/style/QuotesData.cpp
@@ -2623,7 +2626,6 @@ set(WebCore_SOURCES
     rendering/svg/SVGTextMetrics.cpp
     rendering/svg/SVGTextMetricsBuilder.cpp
     rendering/svg/SVGTextQuery.cpp
-    rendering/svg/SVGTextRunRenderingContext.cpp
 
     replay/UserInputBridge.cpp
 
@@ -2717,7 +2719,6 @@ set(WebCore_SOURCES
     svg/SVGFilterElement.cpp
     svg/SVGFilterPrimitiveStandardAttributes.cpp
     svg/SVGFitToViewBox.cpp
-    svg/SVGFontData.cpp
     svg/SVGFontElement.cpp
     svg/SVGFontFaceElement.cpp
     svg/SVGFontFaceFormatElement.cpp
@@ -3385,6 +3386,11 @@ if (ENABLE_USER_MESSAGE_HANDLERS)
         page/UserMessageHandlersNamespace.cpp
         page/WebKitNamespace.cpp
     )
+endif ()
+
+if (USE_WOFF2)
+  list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/woff2/src")
+  list(APPEND WebCore_LIBRARIES woff2)
 endif ()
 
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES

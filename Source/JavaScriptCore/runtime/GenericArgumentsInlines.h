@@ -97,7 +97,7 @@ void GenericArguments<Type>::getOwnPropertyNames(JSObject* object, ExecState* ex
 }
 
 template<typename Type>
-void GenericArguments<Type>::put(JSCell* cell, ExecState* exec, PropertyName ident, JSValue value, PutPropertySlot& slot)
+bool GenericArguments<Type>::put(JSCell* cell, ExecState* exec, PropertyName ident, JSValue value, PutPropertySlot& slot)
 {
     Type* thisObject = jsCast<Type*>(cell);
     VM& vm = exec->vm();
@@ -108,28 +108,32 @@ void GenericArguments<Type>::put(JSCell* cell, ExecState* exec, PropertyName ide
             || ident == vm.propertyNames->iteratorSymbol)) {
         thisObject->overrideThings(vm);
         PutPropertySlot dummy = slot; // This put is not cacheable, so we shadow the slot that was given to us.
-        Base::put(thisObject, exec, ident, value, dummy);
-        return;
+        return Base::put(thisObject, exec, ident, value, dummy);
     }
+
+    // https://tc39.github.io/ecma262/#sec-arguments-exotic-objects-set-p-v-receiver
+    // Fall back to the OrdinarySet when the receiver is altered from the thisObject.
+    if (UNLIKELY(isThisValueAltered(slot, thisObject)))
+        return ordinarySetSlow(exec, thisObject, ident, value, slot.thisValue(), slot.isStrictMode());
     
     Optional<uint32_t> index = parseIndex(ident);
     if (index && thisObject->canAccessIndexQuickly(index.value())) {
         thisObject->setIndexQuickly(vm, index.value(), value);
-        return;
+        return true;
     }
     
-    Base::put(thisObject, exec, ident, value, slot);
+    return Base::put(thisObject, exec, ident, value, slot);
 }
 
 template<typename Type>
-void GenericArguments<Type>::putByIndex(JSCell* cell, ExecState* exec, unsigned index, JSValue value, bool shouldThrow)
+bool GenericArguments<Type>::putByIndex(JSCell* cell, ExecState* exec, unsigned index, JSValue value, bool shouldThrow)
 {
     Type* thisObject = jsCast<Type*>(cell);
     VM& vm = exec->vm();
 
     if (thisObject->canAccessIndexQuickly(index)) {
         thisObject->setIndexQuickly(vm, index, value);
-        return;
+        return true;
     }
     
     return Base::putByIndex(cell, exec, index, value, shouldThrow);

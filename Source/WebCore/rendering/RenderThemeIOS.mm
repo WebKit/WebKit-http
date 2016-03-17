@@ -81,11 +81,8 @@ SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIApplication)
 SOFT_LINK_CLASS(UIKit, UIColor)
 SOFT_LINK_CLASS(UIKit, UIDocumentInteractionController)
-SOFT_LINK_CLASS(UIKit, UIFont)
 SOFT_LINK_CLASS(UIKit, UIImage)
 SOFT_LINK_CONSTANT(UIKit, UIContentSizeCategoryDidChangeNotification, CFStringRef)
-SOFT_LINK_CONSTANT(UIKit, UIFontTextStyleFootnote, NSString *)
-SOFT_LINK_CONSTANT(UIKit, UIFontTextStyleCaption1, NSString *)
 #define UIContentSizeCategoryDidChangeNotification getUIContentSizeCategoryDidChangeNotification()
 
 @interface WebCoreRenderThemeBundle : NSObject
@@ -568,20 +565,18 @@ static void adjustSelectListButtonStyle(RenderStyle& style, Element& element)
     
 class RenderThemeMeasureTextClient : public MeasureTextClient {
 public:
-    RenderThemeMeasureTextClient(const FontCascade& font, RenderObject& renderObject, const RenderStyle& style)
+    RenderThemeMeasureTextClient(const FontCascade& font, const RenderStyle& style)
         : m_font(font)
-        , m_renderObject(renderObject)
         , m_style(style)
     {
     }
     float measureText(const String& string) const override
     {
-        TextRun run = RenderBlock::constructTextRun(&m_renderObject, m_font, string, m_style, AllowTrailingExpansion | ForbidLeadingExpansion, DefaultTextRunFlags);
+        TextRun run = RenderBlock::constructTextRun(string, m_style, AllowTrailingExpansion | ForbidLeadingExpansion, DefaultTextRunFlags);
         return m_font.width(run);
     }
 private:
     const FontCascade& m_font;
-    RenderObject& m_renderObject;
     const RenderStyle& m_style;
 };
 
@@ -602,11 +597,7 @@ static void adjustInputElementButtonStyle(RenderStyle& style, HTMLInputElement& 
     // Enforce the width and set the box-sizing to content-box to not conflict with the padding.
     FontCascade font = style.fontCascade();
     
-    RenderObject* renderer = inputElement.renderer();
-    if (font.primaryFont().isSVGFont() && !renderer)
-        return;
-    
-    float maximumWidth = localizedDateCache().maximumWidthForDateType(dateType, font, RenderThemeMeasureTextClient(font, *renderer, style));
+    float maximumWidth = localizedDateCache().maximumWidthForDateType(dateType, font, RenderThemeMeasureTextClient(font, style));
 
     ASSERT(maximumWidth >= 0);
 
@@ -1346,6 +1337,9 @@ const CGSize attachmentSize = { 160, 119 };
 const CGFloat attachmentBorderRadius = 16;
 static Color attachmentBorderColor() { return Color(204, 204, 204); }
 
+static Color attachmentProgressColor() { return Color(222, 222, 222); }
+const CGFloat attachmentProgressBorderThickness = 3;
+
 const CGFloat attachmentProgressSize = 36;
 const CGFloat attachmentIconSize = 48;
 
@@ -1354,14 +1348,30 @@ const CGFloat attachmentItemMargin = 8;
 const CGFloat attachmentTitleMaximumWidth = 140;
 const CFIndex attachmentTitleMaximumLineCount = 2;
 
-// FIXME: Should be emphasized.
-static UIFont *attachmentActionFont() { return [getUIFontClass() preferredFontForTextStyle:getUIFontTextStyleFootnote()]; }
-static UIColor *attachmentActionColor() { return [getUIColorClass() systemBlueColor]; }
+static RetainPtr<CTFontRef> attachmentActionFont()
+{
+    RetainPtr<CTFontDescriptorRef> fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(kCTUIFontTextStyleShortFootnote, RenderThemeIOS::contentSizeCategory(), 0));
+    RetainPtr<CTFontDescriptorRef> emphasizedFontDescriptor = adoptCF(CTFontDescriptorCreateCopyWithAttributes(fontDescriptor.get(),
+        (CFDictionaryRef)@{
+            (id)kCTFontDescriptorTextStyleAttribute: (id)kCTFontDescriptorTextStyleEmphasized
+    }));
+    return adoptCF(CTFontCreateWithFontDescriptor(emphasizedFontDescriptor.get(), 0, nullptr));
+}
 
-static UIFont *attachmentTitleFont() { return [getUIFontClass() preferredFontForTextStyle:getUIFontTextStyleCaption1()]; }
+static UIColor *attachmentActionColor(const RenderAttachment& attachment)
+{
+    return [getUIColorClass() colorWithCGColor:cachedCGColor(attachment.style().visitedDependentColor(CSSPropertyColor))];
+}
+
+static RetainPtr<CTFontRef> attachmentTitleFont()
+{
+    RetainPtr<CTFontDescriptorRef> fontDescriptor = adoptCF(CTFontDescriptorCreateWithTextStyle(kCTUIFontTextStyleShortCaption1, RenderThemeIOS::contentSizeCategory(), 0));
+    return adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), 0, nullptr));
+}
+
 static UIColor *attachmentTitleColor() { return [getUIColorClass() systemGrayColor]; }
 
-static UIFont *attachmentSubtitleFont() { return [getUIFontClass() preferredFontForTextStyle:getUIFontTextStyleCaption1()]; }
+static RetainPtr<CTFontRef> attachmentSubtitleFont() { return attachmentTitleFont(); }
 static UIColor *attachmentSubtitleColor() { return [getUIColorClass() systemGrayColor]; }
 
 struct AttachmentInfo {
@@ -1388,7 +1398,7 @@ struct AttachmentInfo {
 
 private:
     void buildTitleLines(const RenderAttachment&);
-    void buildSingleLine(const String&, UIFont *, UIColor *);
+    void buildSingleLine(const String&, CTFontRef, UIColor *);
 
     void addLine(CTLineRef);
 };
@@ -1410,14 +1420,14 @@ void AttachmentInfo::addLine(CTLineRef line)
 
 void AttachmentInfo::buildTitleLines(const RenderAttachment& attachment)
 {
-    RetainPtr<UIFont> font = attachmentTitleFont();
+    RetainPtr<CTFontRef> font = attachmentTitleFont();
 
     String title = attachment.attachmentElement().attachmentTitle();
     if (title.isEmpty())
         return;
 
     NSDictionary *textAttributes = @{
-        (id)kCTFontAttributeName: font.get(),
+        (id)kCTFontAttributeName: (id)font.get(),
         (id)kCTForegroundColorAttributeName: attachmentTitleColor()
     };
     RetainPtr<NSAttributedString> attributedTitle = adoptNS([[NSAttributedString alloc] initWithString:title attributes:textAttributes]);
@@ -1461,13 +1471,13 @@ void AttachmentInfo::buildTitleLines(const RenderAttachment& attachment)
     addLine(truncatedLine.get());
 }
 
-void AttachmentInfo::buildSingleLine(const String& text, UIFont *font, UIColor *color)
+void AttachmentInfo::buildSingleLine(const String& text, CTFontRef font, UIColor *color)
 {
     if (text.isEmpty())
         return;
 
     NSDictionary *textAttributes = @{
-        (id)kCTFontAttributeName: font,
+        (id)kCTFontAttributeName: (id)font,
         (id)kCTForegroundColorAttributeName: color
     };
     RetainPtr<NSAttributedString> attributedText = adoptNS([[NSAttributedString alloc] initWithString:text attributes:textAttributes]);
@@ -1481,7 +1491,7 @@ static BOOL getAttachmentProgress(const RenderAttachment& attachment, float& pro
     if (progressString.isEmpty())
         return NO;
     bool validProgress;
-    progress = progressString.toFloat(&validProgress);
+    progress = std::max<float>(std::min<float>(progressString.toFloat(&validProgress), 1), 0);
     return validProgress;
 }
 
@@ -1554,10 +1564,10 @@ AttachmentInfo::AttachmentInfo(const RenderAttachment& attachment)
             yOffset += iconRect.height() + attachmentItemMargin;
         }
     } else
-        buildSingleLine(action, attachmentActionFont(), attachmentActionColor());
+        buildSingleLine(action, attachmentActionFont().get(), attachmentActionColor(attachment));
 
     buildTitleLines(attachment);
-    buildSingleLine(subtitle, attachmentSubtitleFont(), attachmentSubtitleColor());
+    buildSingleLine(subtitle, attachmentSubtitleFont().get(), attachmentSubtitleColor());
 
     if (!lines.isEmpty()) {
         for (auto& line : lines) {
@@ -1565,6 +1575,8 @@ AttachmentInfo::AttachmentInfo(const RenderAttachment& attachment)
             yOffset += line.rect.height() + attachmentItemMargin;
         }
     }
+
+    yOffset -= attachmentItemMargin;
 
     contentYOrigin = (attachmentRect.height() / 2) - (yOffset / 2);
 }
@@ -1592,7 +1604,6 @@ static void paintAttachmentIcon(GraphicsContext& context, AttachmentInfo& info)
     context.drawImage(*iconImage, info.iconRect);
 }
 
-
 static void paintAttachmentText(GraphicsContext& context, AttachmentInfo& info)
 {
     for (const auto& line : info.lines) {
@@ -1610,8 +1621,19 @@ static void paintAttachmentProgress(GraphicsContext& context, AttachmentInfo& in
 {
     GraphicsContextStateSaver saver(context);
 
-    // FIXME: Implement progress indicator.
-    context.fillRect(info.progressRect, Color(0, 255, 0));
+    context.setStrokeThickness(attachmentProgressBorderThickness);
+    context.setStrokeColor(attachmentProgressColor());
+    context.setFillColor(attachmentProgressColor());
+    context.strokeEllipse(info.progressRect);
+
+    FloatPoint center = info.progressRect.center();
+
+    Path progressPath;
+    progressPath.moveTo(center);
+    progressPath.addLineTo(FloatPoint(center.x(), info.progressRect.y()));
+    progressPath.addArc(center, info.progressRect.width() / 2, -M_PI_2, info.progress * 2 * M_PI - M_PI_2, 0);
+    progressPath.closeSubpath();
+    context.fillPath(progressPath);
 }
 
 static void paintAttachmentBorder(GraphicsContext& context, AttachmentInfo& info)

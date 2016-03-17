@@ -558,7 +558,7 @@ void Editor::replaceSelectionWithText(const String& text, bool selectReplacement
     replaceSelectionWithFragment(createFragmentFromText(*range, text), selectReplacement, smartReplace, true, editingAction);
 }
 
-PassRefPtr<Range> Editor::selectedRange()
+RefPtr<Range> Editor::selectedRange()
 {
     return m_frame.selection().toNormalizedRange();
 }
@@ -2128,7 +2128,7 @@ Vector<String> Editor::guessesForMisspelledWord(const String& word) const
 
     Vector<String> guesses;
     if (client())
-        textChecker()->getGuessesForWord(word, String(), guesses);
+        textChecker()->getGuessesForWord(word, String(), m_frame.selection().selection(), guesses);
     return guesses;
 }
 
@@ -2402,7 +2402,7 @@ void Editor::markAllMisspellingsAndBadGrammarInRanges(TextCheckingTypeMask textC
     }
 
     Vector<TextCheckingResult> results;
-    checkTextOfParagraph(*textChecker(), paragraphToCheck.text(), resolveTextCheckingTypeMask(textCheckingOptions), results);
+    checkTextOfParagraph(*textChecker(), paragraphToCheck.text(), resolveTextCheckingTypeMask(textCheckingOptions), results, m_frame.selection().selection());
     markAndReplaceFor(request.release(), results);
 }
 
@@ -2427,7 +2427,7 @@ static bool isAutomaticTextReplacementType(TextCheckingType type)
 
 static void correctSpellcheckingPreservingTextCheckingParagraph(TextCheckingParagraph& paragraph, PassRefPtr<Range> rangeToReplace, const String& replacement, int resultLocation, int resultLength)
 {
-    ContainerNode* scope = downcast<ContainerNode>(highestAncestor(&paragraph.paragraphRange()->startContainer()));
+    ContainerNode* scope = downcast<ContainerNode>(paragraph.paragraphRange()->startContainer().rootNode());
 
     size_t paragraphLocation;
     size_t paragraphLength;

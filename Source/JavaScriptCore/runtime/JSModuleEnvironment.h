@@ -55,7 +55,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject)
     {
-        return Structure::create(vm, globalObject, jsNull(), TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, jsNull(), TypeInfo(ModuleEnvironmentType, StructureFlags), info());
     }
 
     static size_t offsetOfModuleRecord(SymbolTable* symbolTable)
@@ -77,7 +77,7 @@ public:
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
 private:

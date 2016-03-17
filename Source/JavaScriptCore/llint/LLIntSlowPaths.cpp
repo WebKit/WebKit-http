@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1083,6 +1083,15 @@ LLINT_SLOW_PATH_DECL(slow_path_new_arrow_func_exp)
     LLINT_RETURN(JSFunction::create(vm, executable, scope));
 }
 
+LLINT_SLOW_PATH_DECL(slow_path_set_function_name)
+{
+    LLINT_BEGIN();
+    JSFunction* func = jsCast<JSFunction*>(LLINT_OP(1).Register::unboxedCell());
+    JSValue name = LLINT_OP_C(2).Register::jsValue();
+    func->setFunctionName(exec, name);
+    LLINT_END();
+}
+
 static SlowPathReturnType handleHostCall(ExecState* execCallee, Instruction* pc, JSValue callee, CodeSpecializationKind kind)
 {
     UNUSED_PARAM(pc);
@@ -1422,7 +1431,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_from_scope)
     }
 
     JSValue result = JSValue();
-    if (jsDynamicCast<JSGlobalLexicalEnvironment*>(scope)) {
+    if (scope->isGlobalLexicalEnvironment()) {
         // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
         result = slot.getValue(exec, ident);
         if (result == jsTDZValue())
@@ -1459,7 +1468,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
 
     bool hasProperty = scope->hasProperty(exec, ident);
     if (hasProperty
-        && jsDynamicCast<JSGlobalLexicalEnvironment*>(scope)
+        && scope->isGlobalLexicalEnvironment()
         && getPutInfo.initializationMode() != Initialization) {
         // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
         PropertySlot slot(scope, PropertySlot::InternalMethodType::Get);

@@ -69,7 +69,6 @@ inline CapabilityLevel canCompile(Node* node)
     case ArrayifyToStructure:
     case PutStructure:
     case GetButterfly:
-    case GetButterflyReadOnly:
     case NewObject:
     case NewArray:
     case NewArrayBuffer:
@@ -228,6 +227,7 @@ inline CapabilityLevel canCompile(Node* node)
     case StringReplace:
     case GetRegExpObjectLastIndex:
     case SetRegExpObjectLastIndex:
+    case SetFunctionName:
         // These are OK.
         break;
 

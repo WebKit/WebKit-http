@@ -26,19 +26,15 @@
 
 WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView extends WebInspector.ContentView
 {
-    constructor(recording, extraArguments)
+    constructor(recording)
     {
-        console.assert(extraArguments);
-        console.assert(extraArguments.timelineSidebarPanel instanceof WebInspector.TimelineSidebarPanel);
-
         super(recording);
 
         this._recording = recording;
-        this._timelineSidebarPanel = extraArguments.timelineSidebarPanel;
 
         this.element.classList.add("timeline-recording");
 
-        this._timelineOverview = new WebInspector.TimelineOverview(this._recording);
+        this._timelineOverview = new WebInspector.TimelineOverview(this._recording, this);
         this._timelineOverview.addEventListener(WebInspector.TimelineOverview.Event.TimeRangeSelectionChanged, this._timeRangeSelectionChanged, this);
         this._timelineOverview.addEventListener(WebInspector.TimelineOverview.Event.RecordSelected, this._recordSelected, this);
         this._timelineOverview.addEventListener(WebInspector.TimelineOverview.Event.TimelineSelected, this._timelineSelected, this);
@@ -61,7 +57,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         this._clearTimelineNavigationItem = new WebInspector.ButtonNavigationItem("clear-timeline", WebInspector.UIString("Clear Timeline"), "Images/NavigationItemTrash.svg", 15, 15);
         this._clearTimelineNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._clearTimeline, this);
 
-        this._overviewTimelineView = new WebInspector.OverviewTimelineView(recording, {timelineSidebarPanel: this._timelineSidebarPanel});
+        this._overviewTimelineView = new WebInspector.OverviewTimelineView(recording);
         this._overviewTimelineView.secondsPerPixel = this._timelineOverview.secondsPerPixel;
 
         this._timelineViewMap = new Map;
@@ -343,12 +339,31 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             iconClassName = WebInspector.TimelineTabContentView.iconClassNameForTimeline(representedObject);
             title = WebInspector.UIString("Details");
         } else {
-            iconClassName = "stopwatch-icon";
+            iconClassName = WebInspector.TimelineTabContentView.StopwatchIconStyleClass;
             title = WebInspector.UIString("Overview");
         }
 
         const hasChildren = false;
         return new WebInspector.GeneralTreeElement(iconClassName, title, representedObject, hasChildren);
+    }
+
+    // TimelineOverview delegate
+
+    timelineOverviewUserSelectedRecord(timelineOverview, timelineRecord)
+    {
+        let timelineViewForRecord = null;
+        for (let timelineView of this._timelineViewMap.values()) {
+            if (timelineView.representedObject.type === timelineRecord.type) {
+                timelineViewForRecord = timelineView;
+                break;
+            }
+        }
+
+        if (!timelineViewForRecord)
+            return;
+
+        this._timelineContentBrowser.showContentView(timelineViewForRecord);
+        timelineViewForRecord.userSelectedRecordFromOverview(timelineRecord);
     }
 
     // Private
@@ -363,11 +378,9 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             newViewMode = WebInspector.TimelineOverview.ViewMode.Timelines;
 
         this._timelineOverview.viewMode = newViewMode;
+        this._updateTimelineOverviewHeight();
 
         if (timelineView) {
-            this._timelineSidebarPanel.contentTreeOutline = timelineView.navigationSidebarTreeOutline;
-            this._timelineSidebarPanel.contentTreeOutlineLabel = timelineView.navigationSidebarTreeOutlineLabel;
-
             this._updateTimelineViewSelection(timelineView);
             timelineView.currentTime = this._currentTime;
 
@@ -384,7 +397,6 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     _pathComponentSelected(event)
     {
-        this._timelineSidebarPanel.showTimelineViewForTimeline(event.data.pathComponent.representedObject);
     }
 
     _timeRangePathComponentSelected(event)
@@ -479,7 +491,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         if (this._timelineOverview.timelineRuler.entireRangeSelected)
             this._updateTimelineViewSelection(this._overviewTimelineView);
 
-        this._timelineSidebarPanel.updateFilter();
+        // Filter records on new recording times.
+        // FIXME: <https://webkit.org/b/154924> Web Inspector: hook up grid row filtering in the new Timelines UI
 
         // Force a layout now since we are already in an animation frame and don't need to delay it until the next.
         this._timelineOverview.updateLayoutIfNeeded();
@@ -601,7 +614,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         let timeline = this._recording.timelineForInstrument(instrument);
         console.assert(!this._timelineViewMap.has(timeline), timeline);
 
-        this._timelineViewMap.set(timeline, WebInspector.ContentView.createFromRepresentedObject(timeline, {timelineSidebarPanel: this._timelineSidebarPanel, recording: this._recording}));
+        this._timelineViewMap.set(timeline, WebInspector.ContentView.createFromRepresentedObject(timeline, {recording: this._recording}));
         if (timeline.type === WebInspector.TimelineRecord.Type.RenderingFrame)
             this._renderingFrameTimeline = timeline;
 
@@ -709,7 +722,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             var selectedTreeElement = this.currentTimelineView && this.currentTimelineView.navigationSidebarTreeOutline ? this.currentTimelineView.navigationSidebarTreeOutline.selectedTreeElement : null;
             var selectionWasHidden = selectedTreeElement && selectedTreeElement.hidden;
 
-            this._timelineSidebarPanel.updateFilter();
+            // Filter records on new timeline selection.
+            // FIXME: <https://webkit.org/b/154924> Web Inspector: hook up grid row filtering in the new Timelines UI
 
             if (selectedTreeElement && selectedTreeElement.hidden !== selectionWasHidden)
                 this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);

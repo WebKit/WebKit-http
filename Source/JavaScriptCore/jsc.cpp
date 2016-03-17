@@ -416,7 +416,7 @@ public:
         return JSObject::getOwnPropertySlotByIndex(thisObject, exec, index, slot);
     }
 
-    static NO_RETURN_DUE_TO_CRASH void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&)
+    static NO_RETURN_DUE_TO_CRASH bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&)
     {
         RELEASE_ASSERT_NOT_REACHED();
     }
@@ -1229,7 +1229,7 @@ EncodedJSValue JSC_HOST_CALL functionCreateProxy(ExecState* exec)
     if (!target.isObject())
         return JSValue::encode(jsUndefined());
     JSObject* jsTarget = asObject(target.asCell());
-    Structure* structure = JSProxy::createStructure(exec->vm(), exec->lexicalGlobalObject(), jsTarget->getPrototypeDirect());
+    Structure* structure = JSProxy::createStructure(exec->vm(), exec->lexicalGlobalObject(), jsTarget->getPrototypeDirect(), ImpureProxyType);
     JSProxy* proxy = JSProxy::create(exec->vm(), structure, jsTarget);
     return JSValue::encode(proxy);
 }

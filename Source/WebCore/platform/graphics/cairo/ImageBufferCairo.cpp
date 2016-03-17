@@ -86,9 +86,8 @@ ImageBufferData::ImageBufferData(const IntSize& size, RenderingMode renderingMod
 
 ImageBufferData::~ImageBufferData()
 {
-    if (m_renderingMode != Accelerated) {
+    if (m_renderingMode != Accelerated)
         return;
-    }
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
     GLContext* previousActiveContext = GLContext::getCurrent();

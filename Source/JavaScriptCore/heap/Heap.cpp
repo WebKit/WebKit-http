@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2009, 2011, 2013-2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2009, 2011, 2013-2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *
  *  This library is free software; you can redistribute it and/or
@@ -1084,16 +1084,6 @@ void Heap::addToRememberedSet(const JSCell* cell)
     m_slotVisitor.appendToMarkStack(const_cast<JSCell*>(cell));
 }
 
-void* Heap::copyBarrier(const JSCell*, void*& pointer)
-{
-    // Do nothing for now, except making sure that the low bits are masked off. This helps to
-    // simulate enough of this barrier that at least we can test the low bits assumptions.
-    pointer = bitwise_cast<void*>(
-        bitwise_cast<uintptr_t>(pointer) & ~static_cast<uintptr_t>(CopyBarrierBase::spaceBits));
-    
-    return pointer;
-}
-
 void Heap::collectAndSweep(HeapOperation collectionType)
 {
     if (!m_isSafeToCollect)
@@ -1186,11 +1176,6 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
     removeDeadCompilerWorklistEntries();
     deleteUnmarkedCompiledCode();
     deleteSourceProviderCaches();
-
-    if (HeapProfiler* heapProfiler = m_vm->heapProfiler()) {
-        gatherExtraHeapSnapshotData(*heapProfiler);
-        removeDeadHeapSnapshotNodes(*heapProfiler);
-    }
 
     notifyIncrementalSweeper();
     writeBarrierCurrentlyExecutingCodeBlocks();
@@ -1472,6 +1457,11 @@ void Heap::didFinishCollection(double gcStartTime)
 
     if (Options::logGC() == GCLogging::Verbose)
         GCLogging::dumpObjectGraph(this);
+
+    if (HeapProfiler* heapProfiler = m_vm->heapProfiler()) {
+        gatherExtraHeapSnapshotData(*heapProfiler);
+        removeDeadHeapSnapshotNodes(*heapProfiler);
+    }
 
     RELEASE_ASSERT(m_operationInProgress == EdenCollection || m_operationInProgress == FullCollection);
     m_operationInProgress = NoOperation;

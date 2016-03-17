@@ -1692,7 +1692,7 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
 
 #if ENABLE(CSS_SHAPES)
     ShapeValue* shapeOutsideValue = style().shapeOutside();
-    if (!view().frameView().isInLayout() && isFloating() && shapeOutsideValue && shapeOutsideValue->image() && shapeOutsideValue->image()->data() == image) {
+    if (!view().frameView().isInRenderTreeLayout() && isFloating() && shapeOutsideValue && shapeOutsideValue->image() && shapeOutsideValue->image()->data() == image) {
         ShapeOutsideInfo::ensureInfo(*this).markShapeAsDirty();
         markShapeOutsideDependentsForLayout();
     }
@@ -1821,11 +1821,11 @@ LayoutRect RenderBox::overflowClipRect(const LayoutPoint& location, RenderRegion
     clipRect.setSize(clipRect.size() - LayoutSize(borderLeft() + borderRight(), borderTop() + borderBottom()));
 
     // Subtract out scrollbars if we have them.
-     if (layer()) {
-        if (style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+    if (layer()) {
+        if (style().shouldPlaceBlockDirectionScrollbarOnLeft())
             clipRect.move(layer()->verticalScrollbarWidth(relevancy), 0);
         clipRect.contract(layer()->verticalScrollbarWidth(relevancy), layer()->horizontalScrollbarHeight(relevancy));
-     }
+    }
 
     return clipRect;
 }
@@ -2572,7 +2572,7 @@ bool RenderBox::sizesLogicalWidthToFitContent(SizeType widthType) const
     // FIXME: Think about block-flow here.  Need to find out how marquee direction relates to
     // block-flow (as well as how marquee overflow should relate to block flow).
     // https://bugs.webkit.org/show_bug.cgi?id=46472
-    if (parent()->style().overflowX() == OMARQUEE) {
+    if (parent()->isHTMLMarquee()) {
         EMarqueeDirection dir = parent()->style().marqueeDirection();
         if (dir == MAUTO || dir == MFORWARD || dir == MBACKWARD || dir == MLEFT || dir == MRIGHT)
             return true;
@@ -4892,6 +4892,8 @@ LayoutRect RenderBox::flippedClientBoxRect() const
     flipForWritingMode(rect);
     // Subtract space occupied by scrollbars. They are at their physical edge in this coordinate
     // system, so order is important here: first flip, then subtract scrollbars.
+    if (style().shouldPlaceBlockDirectionScrollbarOnLeft() && style().isLeftToRightDirection())
+        rect.move(verticalScrollbarWidth(), 0);
     rect.contract(verticalScrollbarWidth(), horizontalScrollbarHeight());
     return rect;
 }

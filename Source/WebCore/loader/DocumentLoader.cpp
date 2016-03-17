@@ -36,6 +36,7 @@
 #include "CachedRawResource.h"
 #include "CachedResourceLoader.h"
 #include "ContentExtensionError.h"
+#include "ContentSecurityPolicy.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "DocumentParser.h"
@@ -172,7 +173,7 @@ DocumentLoader::~DocumentLoader()
     clearMainResource();
 }
 
-PassRefPtr<SharedBuffer> DocumentLoader::mainResourceData() const
+RefPtr<SharedBuffer> DocumentLoader::mainResourceData() const
 {
     if (m_substituteData.isValid())
         return m_substituteData.content()->copy();
@@ -615,6 +616,18 @@ void DocumentLoader::continueAfterNavigationPolicy(const ResourceRequest&, bool 
     }
 }
 
+void DocumentLoader::stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(unsigned long identifier, const ResourceResponse& response)
+{
+    InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_frame, *this, identifier, response);
+    m_frame->document()->enforceSandboxFlags(SandboxOrigin);
+    if (HTMLFrameOwnerElement* ownerElement = m_frame->ownerElement())
+        ownerElement->dispatchEvent(Event::create(eventNames().loadEvent, false, false));
+
+    // The load event might have detached this frame. In that case, the load will already have been cancelled during detach.
+    if (FrameLoader* frameLoader = this->frameLoader())
+        cancelMainResourceLoad(frameLoader->cancelledError(m_request));
+}
+
 void DocumentLoader::responseReceived(CachedResource* resource, const ResourceResponse& response)
 {
 #if ENABLE(CONTENT_FILTERING)
@@ -634,24 +647,25 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     if (willLoadFallback)
         return;
 
+    ASSERT(m_identifierForLoadWithoutResourceLoader || m_mainResource);
+    unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
+    ASSERT(identifier);
+
+    ContentSecurityPolicy contentSecurityPolicy(SecurityOrigin::create(response.url()), m_frame);
+    contentSecurityPolicy.didReceiveHeaders(ContentSecurityPolicyResponseHeaders(response));
+    if (!contentSecurityPolicy.allowFrameAncestors(*m_frame, response.url())) {
+        stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
+        return;
+    }
+
     const auto& commonHeaders = response.httpHeaderFields().commonHeaders();
     auto it = commonHeaders.find(HTTPHeaderName::XFrameOptions);
     if (it != commonHeaders.end()) {
         String content = it->value;
-        ASSERT(m_identifierForLoadWithoutResourceLoader || m_mainResource);
-        unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
-        ASSERT(identifier);
         if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, response.url(), identifier)) {
-            InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_frame, *this, identifier, response);
             String message = "Refused to display '" + response.url().stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
-            frame()->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
-            frame()->document()->enforceSandboxFlags(SandboxOrigin);
-            if (HTMLFrameOwnerElement* ownerElement = frame()->ownerElement())
-                ownerElement->dispatchEvent(Event::create(eventNames().loadEvent, false, false));
-
-            // The load event might have detached this frame. In that case, the load will already have been cancelled during detach.
-            if (frameLoader())
-                cancelMainResourceLoad(frameLoader()->cancelledError(m_request));
+            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
+            stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
             return;
         }
     }
@@ -1053,11 +1067,11 @@ bool DocumentLoader::maybeCreateArchive()
     
     addAllArchiveResources(m_archive.get());
     ArchiveResource* mainResource = m_archive->mainResource();
-    m_parsedArchiveData = mainResource->data();
+    m_parsedArchiveData = &mainResource->data();
     m_writer.setMIMEType(mainResource->mimeType());
     
     ASSERT(m_frame->document());
-    commitData(mainResource->data()->data(), mainResource->data()->size());
+    commitData(mainResource->data().data(), mainResource->data().size());
     return true;
 #endif // !ENABLE(WEB_ARCHIVE) && !ENABLE(MHTML)
 }
@@ -1084,16 +1098,12 @@ void DocumentLoader::addAllArchiveResources(Archive* archive)
 
 // FIXME: Adding a resource directly to a DocumentLoader/ArchiveResourceCollection seems like bad design, but is API some apps rely on.
 // Can we change the design in a manner that will let us deprecate that API without reducing functionality of those apps?
-void DocumentLoader::addArchiveResource(PassRefPtr<ArchiveResource> resource)
+void DocumentLoader::addArchiveResource(Ref<ArchiveResource>&& resource)
 {
     if (!m_archiveResourceCollection)
         m_archiveResourceCollection = std::make_unique<ArchiveResourceCollection>();
         
-    ASSERT(resource);
-    if (!resource)
-        return;
-        
-    m_archiveResourceCollection->addResource(resource);
+    m_archiveResourceCollection->addResource(WTFMove(resource));
 }
 
 PassRefPtr<Archive> DocumentLoader::popArchiveForSubframe(const String& frameName, const URL& url)
@@ -1124,14 +1134,14 @@ ArchiveResource* DocumentLoader::archiveResourceForURL(const URL& url) const
     return resource;
 }
 
-PassRefPtr<ArchiveResource> DocumentLoader::mainResource() const
+RefPtr<ArchiveResource> DocumentLoader::mainResource() const
 {
     RefPtr<SharedBuffer> data = mainResourceData();
     if (!data)
         data = SharedBuffer::create();
         
     auto& response = this->response();
-    return ArchiveResource::create(data, response.url(), response.mimeType(), response.textEncodingName(), frame()->tree().uniqueName());
+    return ArchiveResource::create(WTFMove(data), response.url(), response.mimeType(), response.textEncodingName(), frame()->tree().uniqueName());
 }
 
 PassRefPtr<ArchiveResource> DocumentLoader::subresource(const URL& url) const

@@ -344,7 +344,7 @@ sub determineArchitecture
             } elsif ($xcodeSDK =~ /^iphonesimulator/) {
                 $architecture = 'x86_64';
             } elsif ($xcodeSDK =~ /^iphoneos/) {
-                $architecture = 'armv7';
+                $architecture = 'arm64';
             }
         }
     } elsif (isCMakeBuild()) {
@@ -1083,8 +1083,8 @@ sub determinePortName()
             my $portsChoice = join "\n\t", qw(
                 --efl
                 --gtk
-                --wpe
                 --jsc-only
+                --wpe
             );
             die "Please specify which WebKit port to build using one of the following options:"
                 . "\n\t$portsChoice\n";
@@ -1110,6 +1110,11 @@ sub isEfl()
 sub isGtk()
 {
     return portName() eq GTK;
+}
+
+sub isJSCOnly()
+{
+    return portName() eq JSCOnly;
 }
 
 sub isWPE()
@@ -2008,7 +2013,7 @@ sub generateBuildSystemFromCMakeProject
     }
 
     # Some ports have production mode, but build-webkit should always use developer mode.
-    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isWPE() || isJSCOnly();
+    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isJSCOnly() || isWPE();
 
     # Don't warn variables which aren't used by cmake ports.
     push @args, "--no-warn-unused-cli";

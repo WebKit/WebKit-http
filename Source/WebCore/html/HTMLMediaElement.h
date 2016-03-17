@@ -96,6 +96,7 @@ typedef Vector<CueInterval> CueList;
 
 #if ENABLE(MEDIA_STREAM)
 class MediaStream;
+class ScriptExecutionContext;
 #endif
 
 class HTMLMediaElement
@@ -156,7 +157,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     MediaStream* srcObject() const { return m_mediaStreamSrcObject.get(); }
-    void setSrcObject(MediaStream*);
+    void setSrcObject(ScriptExecutionContext&, MediaStream*);
 #endif
 
 // network state
@@ -452,6 +453,7 @@ public:
     void visibilityDidChange();
 
     void allowsMediaDocumentInlinePlaybackChanged();
+    void updateShouldPlay();
 
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool);
@@ -595,6 +597,7 @@ private:
     bool mediaPlayerIsLooping() const override;
     CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
     RefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader() override;
+    bool mediaPlayerShouldUsePersistentCache() const override;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
@@ -687,6 +690,7 @@ private:
     bool stoppedDueToErrors() const;
     bool pausedForUserInteraction() const;
     bool couldPlayIfEnoughData() const;
+    bool canTransitionFromAutoplayToPlay() const;
 
     MediaTime minTimeSeekable() const;
     MediaTime maxTimeSeekable() const;

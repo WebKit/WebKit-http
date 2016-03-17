@@ -33,35 +33,25 @@
 
 #include "Blob.h"
 #include "DOMFormData.h"
+#include "FetchLoader.h"
 #include "JSDOMPromise.h"
 
 namespace JSC {
-class ArrayBuffer;
 class ExecState;
 class JSValue;
 };
 
 namespace WebCore {
 
-class Dictionary;
-typedef int ExceptionCode;
+class FetchBodyOwner;
 
 class FetchBody {
 public:
-    typedef DOMPromise<RefPtr<JSC::ArrayBuffer>, ExceptionCode> ArrayBufferPromise;
-    void arrayBuffer(ArrayBufferPromise&&);
-
-    typedef DOMPromise<RefPtr<DOMFormData>, ExceptionCode> FormDataPromise;
-    void formData(FormDataPromise&&);
-
-    typedef DOMPromise<RefPtr<Blob>, ExceptionCode> BlobPromise;
-    void blob(BlobPromise&&);
-
-    typedef DOMPromise<JSC::JSValue, ExceptionCode> JSONPromise;
-    void json(JSC::ExecState&, JSONPromise&&);
-
-    typedef DOMPromise<String, ExceptionCode> TextPromise;
-    void text(TextPromise&&);
+    void arrayBuffer(FetchBodyOwner&, DeferredWrapper&&);
+    void blob(FetchBodyOwner&, DeferredWrapper&&);
+    void json(FetchBodyOwner&, DeferredWrapper&&);
+    void text(FetchBodyOwner&, DeferredWrapper&&);
+    void formData(FetchBodyOwner&, DeferredWrapper&& promise) { promise.reject<ExceptionCode>(0); }
 
     bool isDisturbed() const { return m_isDisturbed; }
     bool isEmpty() const { return m_type == Type::None; }
@@ -73,16 +63,31 @@ public:
     static FetchBody extractFromBody(FetchBody*);
     FetchBody() = default;
 
-private:
-    template<typename T> bool processIfEmptyOrDisturbed(DOMPromise<T, ExceptionCode>&);
+    void loadingFailed();
+    void loadedAsArrayBuffer(RefPtr<ArrayBuffer>&&);
+    void loadedAsText(ScriptExecutionContext&, String&&);
 
+private:
     enum class Type { None, Text, Blob, FormData };
 
     FetchBody(Ref<Blob>&&);
     FetchBody(Ref<DOMFormData>&&);
     FetchBody(String&&);
 
+    struct Consumer {
+        enum class Type { Text, Blob, JSON, ArrayBuffer };
+
+        Type type;
+        DeferredWrapper promise;
+    };
+    void consume(FetchBodyOwner&, Consumer::Type, DeferredWrapper&&);
+
     Vector<char> extractFromText() const;
+    bool processIfEmptyOrDisturbed(Consumer::Type, DeferredWrapper&);
+    void consumeText(Consumer::Type, DeferredWrapper&&);
+    void consumeBlob(FetchBodyOwner&, Consumer::Type, DeferredWrapper&&);
+    void resolveAsJSON(ScriptExecutionContext&, const String&, DeferredWrapper&&);
+    static FetchLoader::Type loadingType(Consumer::Type);
 
     Type m_type = Type::None;
     String m_mimeType;
@@ -92,6 +97,8 @@ private:
     RefPtr<Blob> m_blob;
     RefPtr<DOMFormData> m_formData;
     String m_text;
+
+    Optional<Consumer> m_consumer;
 };
 
 } // namespace WebCore

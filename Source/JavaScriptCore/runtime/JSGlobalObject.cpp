@@ -341,7 +341,7 @@ void JSGlobalObject::init(VM& vm)
     m_callbackFunctionStructure.set(vm, this, JSCallbackFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_directArgumentsStructure.set(vm, this, DirectArguments::createStructure(vm, this, m_objectPrototype.get()));
     m_scopedArgumentsStructure.set(vm, this, ScopedArguments::createStructure(vm, this, m_objectPrototype.get()));
-    m_outOfBandArgumentsStructure.set(vm, this, ClonedArguments::createStructure(vm, this, m_objectPrototype.get()));
+    m_clonedArgumentsStructure.set(vm, this, ClonedArguments::createStructure(vm, this, m_objectPrototype.get()));
     m_callbackConstructorStructure.set(vm, this, JSCallbackConstructor::createStructure(vm, this, m_objectPrototype.get()));
     m_callbackObjectStructure.set(vm, this, JSCallbackObject<JSDestructibleObject>::createStructure(vm, this, m_objectPrototype.get()));
 
@@ -370,7 +370,12 @@ void JSGlobalObject::init(VM& vm)
 
     m_moduleRecordStructure.set(vm, this, JSModuleRecord::createStructure(vm, this, m_objectPrototype.get()));
     m_moduleNamespaceObjectStructure.set(vm, this, JSModuleNamespaceObject::createStructure(vm, this, jsNull()));
-    m_proxyObjectStructure.set(vm, this, ProxyObject::createStructure(vm, this, m_objectPrototype.get()));
+    {
+        bool isCallable = false;
+        m_proxyObjectStructure.set(vm, this, ProxyObject::createStructure(vm, this, m_objectPrototype.get(), isCallable));
+        isCallable = true;
+        m_callableProxyObjectStructure.set(vm, this, ProxyObject::createStructure(vm, this, m_objectPrototype.get(), isCallable));
+    }
     m_proxyRevokeStructure.set(vm, this, ProxyRevoke::createStructure(vm, this, m_functionPrototype.get()));
     
 #if ENABLE(WEBASSEMBLY)
@@ -481,7 +486,8 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
 #endif // ENABLE(INTL)
     putDirectWithoutTransition(vm, vm.propertyNames->JSON, JSONObject::create(vm, JSONObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->Math, MathObject::create(vm, this, MathObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Reflect, ReflectObject::create(vm, this, ReflectObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
+    ReflectObject* reflectObject = ReflectObject::create(vm, this, ReflectObject::createStructure(vm, this, m_objectPrototype.get()));
+    putDirectWithoutTransition(vm, vm.propertyNames->Reflect, reflectObject, DontEnum);
 
     JSTypedArrayViewConstructor* typedArraySuperConstructor = JSTypedArrayViewConstructor::create(vm, this, JSTypedArrayViewConstructor::createStructure(vm, this, m_functionPrototype.get()), typedArrayProto, speciesGetterSetter);
     typedArrayProto->putDirectWithoutTransition(vm, vm.propertyNames->constructor, typedArraySuperConstructor, DontEnum);
@@ -561,6 +567,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->isFinitePrivateName, privateFuncIsFinite, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isNaNPrivateName, privateFuncIsNaN, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->PromisePrivateName, promiseConstructor, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->ReflectPrivateName, reflectObject, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->InternalPromisePrivateName, internalPromiseConstructor, DontEnum | DontDelete | ReadOnly),
 
         GlobalPropertyInfo(vm.propertyNames->isSetPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncIsSet), DontEnum | DontDelete | ReadOnly),
@@ -623,16 +630,20 @@ bool JSGlobalObject::hasLegacyProfiler() const
     return globalObjectMethodTable()->supportsLegacyProfiling(this);
 }
 
-void JSGlobalObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool JSGlobalObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(cell);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
 
+    if (UNLIKELY(isThisValueAltered(slot, thisObject)))
+        return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
+
     bool shouldThrowReadOnlyError = slot.isStrictMode();
     bool ignoreReadOnlyErrors = false;
-    if (symbolTablePutTouchWatchpointSet(thisObject, exec, propertyName, value, shouldThrowReadOnlyError, ignoreReadOnlyErrors))
-        return;
-    Base::put(thisObject, exec, propertyName, value, slot);
+    bool putResult = false;
+    if (symbolTablePutTouchWatchpointSet(thisObject, exec, propertyName, value, shouldThrowReadOnlyError, ignoreReadOnlyErrors, putResult))
+        return putResult;
+    return Base::put(thisObject, exec, propertyName, value, slot);
 }
 
 bool JSGlobalObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
@@ -879,7 +890,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_moduleEnvironmentStructure);
     visitor.append(&thisObject->m_directArgumentsStructure);
     visitor.append(&thisObject->m_scopedArgumentsStructure);
-    visitor.append(&thisObject->m_outOfBandArgumentsStructure);
+    visitor.append(&thisObject->m_clonedArgumentsStructure);
     for (unsigned i = 0; i < NumberOfIndexingShapes; ++i)
         visitor.append(&thisObject->m_originalArrayStructureForIndexingShape[i]);
     for (unsigned i = 0; i < NumberOfIndexingShapes; ++i)
@@ -913,6 +924,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_dollarVMStructure);
     visitor.append(&thisObject->m_internalFunctionStructure);
     visitor.append(&thisObject->m_proxyObjectStructure);
+    visitor.append(&thisObject->m_callableProxyObjectStructure);
     visitor.append(&thisObject->m_proxyRevokeStructure);
 #if ENABLE(WEBASSEMBLY)
     visitor.append(&thisObject->m_wasmModuleStructure);

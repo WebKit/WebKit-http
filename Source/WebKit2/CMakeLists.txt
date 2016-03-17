@@ -276,6 +276,7 @@ set(WebKit2_SOURCES
     Shared/WebRenderLayer.cpp
     Shared/WebRenderObject.cpp
     Shared/WebTouchEvent.cpp
+    Shared/WebUserContentControllerDataTypes.cpp
     Shared/WebWheelEvent.cpp
 
     Shared/API/APIArray.cpp
@@ -402,6 +403,8 @@ set(WebKit2_SOURCES
     UIProcess/API/APIUserContentExtension.cpp
     UIProcess/API/APIUserContentExtensionStore.cpp
     UIProcess/API/APIUserContentWorld.cpp
+    UIProcess/API/APIUserScript.cpp
+    UIProcess/API/APIUserStyleSheet.cpp
     UIProcess/API/APIWebsiteDataStore.cpp
     UIProcess/API/APIWindowFeatures.cpp
 
@@ -847,7 +850,7 @@ endif ()
 POPULATE_LIBRARY_VERSION(WEBKIT2)
 set_target_properties(WebKit2 PROPERTIES VERSION ${WEBKIT2_VERSION} SOVERSION ${WEBKIT2_VERSION_MAJOR})
 
-if (NOT APPLE)
+if (NOT PORT STREQUAL "Mac")
     install(TARGETS WebKit2 WebProcess NetworkProcess
         LIBRARY DESTINATION "${LIB_INSTALL_DIR}"
         RUNTIME DESTINATION "${LIBEXEC_INSTALL_DIR}"

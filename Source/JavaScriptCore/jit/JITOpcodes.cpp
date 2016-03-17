@@ -296,6 +296,13 @@ void JIT::emit_op_to_primitive(Instruction* currentInstruction)
 
 }
 
+void JIT::emit_op_set_function_name(Instruction* currentInstruction)
+{
+    emitGetVirtualRegister(currentInstruction[1].u.operand, regT0);
+    emitGetVirtualRegister(currentInstruction[2].u.operand, regT1);
+    callOperation(operationSetFunctionName, regT0, regT1);
+}
+
 void JIT::emit_op_strcat(Instruction* currentInstruction)
 {
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_strcat);
@@ -1159,7 +1166,6 @@ void JIT::emitSlow_op_has_indexed_property(Instruction* currentInstruction, Vect
     
     linkSlowCaseIfNotJSCell(iter, base); // base cell check
     linkSlowCase(iter); // base array check
-    linkSlowCase(iter); // read barrier
     linkSlowCase(iter); // vector length check
     linkSlowCase(iter); // empty value
     
@@ -1203,7 +1209,6 @@ void JIT::emit_op_get_direct_pname(Instruction* currentInstruction)
     // Otherwise it's out of line
     outOfLineAccess.link(this);
     loadPtr(Address(regT0, JSObject::butterflyOffset()), regT0);
-    addSlowCase(branchIfNotToSpace(regT0));
     sub32(Address(regT2, JSPropertyNameEnumerator::cachedInlineCapacityOffset()), regT1);
     neg32(regT1);
     signExtend32ToPtr(regT1, regT1);
@@ -1219,7 +1224,6 @@ void JIT::emitSlow_op_get_direct_pname(Instruction* currentInstruction, Vector<S
 {
     int base = currentInstruction[2].u.operand;
     linkSlowCaseIfNotJSCell(iter, base);
-    linkSlowCase(iter);
     linkSlowCase(iter);
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_get_direct_pname);
@@ -1393,9 +1397,9 @@ void JIT::emit_op_create_scoped_arguments(Instruction* currentInstruction)
     slowPathCall.call();
 }
 
-void JIT::emit_op_create_out_of_band_arguments(Instruction* currentInstruction)
+void JIT::emit_op_create_cloned_arguments(Instruction* currentInstruction)
 {
-    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_create_out_of_band_arguments);
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_create_cloned_arguments);
     slowPathCall.call();
 }
 

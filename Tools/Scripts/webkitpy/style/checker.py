@@ -136,15 +136,13 @@ _PATH_RULES_SPECIFIER = [
 
     ([# TestNetscapePlugIn has no config.h and uses funny names like
       # NPP_SetWindow.
-      os.path.join('Tools', 'DumpRenderTree', 'TestNetscapePlugIn'),
-      # The API test harnesses have no config.h and use funny macros like
-      # TEST_CLASS_NAME.
-      os.path.join('Tools', 'WebKitAPITest'),
-      os.path.join('Tools', 'TestWebKitAPI')],
+      os.path.join('Tools', 'DumpRenderTree', 'TestNetscapePlugIn')],
      ["-build/include",
       "-readability/naming"]),
     ([# There is no clean way to avoid "yy_*" names used by flex.
-      os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp')],
+      os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp'),
+      # TestWebKitAPI uses funny macros like EXPECT_WK_STREQ.
+      os.path.join('Tools', 'TestWebKitAPI')],
      ["-readability/naming"]),
 
     ([# The GTK+ APIs use GTK+ naming style, which includes
@@ -240,13 +238,15 @@ _PATH_RULES_SPECIFIER = [
      ["-readability/naming",
       "-readability/enum_casing"]),
 
-    # For third-party Python code, keep only the following checks--
+    # For third-party code, keep only the following checks--
     #
     #   No tabs: to avoid having to set the SVN allow-tabs property.
     #   No trailing white space: since this is easy to correct.
     #   No carriage-return line endings: since this is easy to correct.
     #
-    ([os.path.join('webkitpy', 'thirdparty')],
+    ([os.path.join('webkitpy', 'thirdparty'),
+      os.path.join('Source', 'ThirdParty', 'brotli'),
+      os.path.join('Source', 'ThirdParty', 'woff2')],
      ["-",
       "+pep8/W191",  # Tabs
       "+pep8/W291",  # Trailing white space

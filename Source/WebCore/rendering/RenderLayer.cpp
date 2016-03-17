@@ -2349,7 +2349,7 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
         return;
 
     ScrollPosition newPosition = position;
-    if (box->style().overflowX() != OMARQUEE) {
+    if (!box->isHTMLMarquee()) {
         // Ensure that the dimensions will be computed if they need to be (for overflow:hidden blocks).
         if (m_scrollDimensionsDirty)
             computeScrollDimensions();
@@ -2387,8 +2387,7 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
 
     // Update the positions of our child layers (if needed as only fixed layers should be impacted by a scroll).
     // We don't update compositing layers, because we need to do a deep update from the compositing ancestor.
-    bool inLayout = view.frameView().isInLayout();
-    if (!inLayout) {
+    if (!view.frameView().isInRenderTreeLayout()) {
         // If we're in the middle of layout, we'll just update layers once layout has finished.
         updateLayerPositionsAfterOverflowScroll();
         // Update regions, scrolling may change the clip of a particular region.
@@ -2690,7 +2689,7 @@ void RenderLayer::resize(const PlatformMouseEvent& evt, const LayoutSize& oldOff
     element->setMinimumSizeForResizing(minimumSize);
     
     LayoutSize adjustedOldOffset = LayoutSize(oldOffset.width() / zoomFactor, oldOffset.height() / zoomFactor);
-    if (renderer->style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft()) {
+    if (renderer->style().shouldPlaceBlockDirectionScrollbarOnLeft()) {
         newOffset.setWidth(-newOffset.width());
         adjustedOldOffset.setWidth(-adjustedOldOffset.width());
     }
@@ -2794,7 +2793,7 @@ bool RenderLayer::isActive() const
 
 static int cornerStart(const RenderLayer* layer, int minX, int maxX, int thickness)
 {
-    if (layer->renderer().style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+    if (layer->renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
         return minX + layer->renderer().style().borderLeftWidth();
     return maxX - thickness - layer->renderer().style().borderRightWidth();
 }
@@ -2986,7 +2985,7 @@ IntRect RenderLayer::rectForVerticalScrollbar(const IntRect& borderBoxRect) cons
 LayoutUnit RenderLayer::verticalScrollbarStart(int minX, int maxX) const
 {
     const RenderBox* box = renderBox();
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
         return minX + box->borderLeft();
     return maxX - box->borderRight() - m_vBar->width();
 }
@@ -2995,7 +2994,7 @@ LayoutUnit RenderLayer::horizontalScrollbarStart(int minX) const
 {
     const RenderBox* box = renderBox();
     int x = minX + box->borderLeft();
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
         x += m_vBar ? m_vBar->width() : roundToInt(resizerCornerRect(this, box->borderBoxRect()).width());
     return x;
 }
@@ -3260,7 +3259,7 @@ IntSize RenderLayer::offsetFromResizeCorner(const IntPoint& absolutePoint) const
     // Currently the resize corner is either the bottom right corner or the bottom left corner.
     // FIXME: This assumes the location is 0, 0. Is this guaranteed to always be the case?
     IntSize elementSize = size();
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft())
+    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
         elementSize.setWidth(0);
     IntPoint resizerPoint = IntPoint(elementSize);
     IntPoint localPoint = roundedIntPoint(absoluteToContents(absolutePoint));
@@ -3366,6 +3365,8 @@ void RenderLayer::computeScrollDimensions()
     m_scrollSize.setHeight(overflowBottom() - overflowTop());
 
     int scrollableLeftOverflow = overflowLeft() - box->borderLeft();
+    if (box->style().isLeftToRightDirection() && box->style().shouldPlaceBlockDirectionScrollbarOnLeft() && m_vBar)
+        scrollableLeftOverflow -= m_vBar->width();
     int scrollableTopOverflow = overflowTop() - box->borderTop();
     setScrollOrigin(IntPoint(-scrollableLeftOverflow, -scrollableTopOverflow));
 }
@@ -3496,7 +3497,7 @@ void RenderLayer::updateScrollInfoAfterLayout()
     updateSnapOffsets();
 #endif
 
-    if (box->style().overflowX() != OMARQUEE && !isRubberBandInProgress()) {
+    if (!box->isHTMLMarquee() && !isRubberBandInProgress()) {
         // Layout may cause us to be at an invalid scroll position. In this case we need
         // to pull our scroll offsets back to the max (or push them up to the min).
         ScrollOffset clampedScrollOffset = clampScrollOffset(scrollOffset());
@@ -3658,7 +3659,7 @@ void RenderLayer::drawPlatformResizerImage(GraphicsContext& context, const Layou
         cornerResizerSize = resizeCornerImage->size();
     }
 
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLogicalLeft()) {
+    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft()) {
         context.save();
         context.translate(resizerCornerRect.x() + cornerResizerSize.width(), resizerCornerRect.y() + resizerCornerRect.height() - cornerResizerSize.height());
         context.scale(FloatSize(-1.0, 1.0));
@@ -6676,7 +6677,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
         dirtyStackingContainerZOrderLists();
     }
 
-    if (renderer().style().overflowX() == OMARQUEE && renderer().style().marqueeBehavior() != MNONE && renderer().isBox()) {
+    if (renderer().isHTMLMarquee() && renderer().style().marqueeBehavior() != MNONE && renderer().isBox()) {
         if (!m_marquee)
             m_marquee = std::make_unique<RenderMarquee>(this);
         m_marquee->updateMarqueeStyle();

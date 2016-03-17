@@ -47,7 +47,7 @@ public:
     }
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
     bool isEmpty() const { return !symbolTable()->size(); }
     
@@ -55,7 +55,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject)
     {
-        return Structure::create(vm, globalObject, jsNull(), TypeInfo(ClosureObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, jsNull(), TypeInfo(GlobalLexicalEnvironmentType, StructureFlags), info());
     }
 
 protected:
