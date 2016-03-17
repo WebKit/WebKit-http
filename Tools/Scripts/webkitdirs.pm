@@ -1112,11 +1112,6 @@ sub isGtk()
     return portName() eq GTK;
 }
 
-sub isJSCOnly()
-{
-    return portName() eq JSCOnly;
-}
-
 sub isWPE()
 {
     return portName() eq WPE;
