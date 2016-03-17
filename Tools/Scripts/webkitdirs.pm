@@ -1115,6 +1115,7 @@ sub isGtk()
 sub isWPE()
 {
     return portName() eq WPE;
+}
 
 sub isJSCOnly()
 {
