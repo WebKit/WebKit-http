@@ -1052,7 +1052,7 @@ sub determinePortName()
         efl => Efl,
         gtk => GTK,
         'jsc-only' => JSCOnly,
-        wincairo => WinCairo
+        wincairo => WinCairo,
         wpe => WPE
     );
 
