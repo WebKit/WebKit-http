@@ -59,7 +59,7 @@ public:
     }
     bool isInactive() const
     {
-        const double inactiveSecondsTolerance = 3;
+        const double inactiveSecondsTolerance = 0.95;
         return m_inactivityInSeconds > inactiveSecondsTolerance;
     }
     bool isInUse() const { return !!m_areaAllocator; }
