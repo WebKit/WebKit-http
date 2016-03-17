@@ -12,6 +12,7 @@ set(WPE_INSTALLED_JAVASCRIPTCORE_HEADERS
     API/JSContextRef.h
     API/JSObjectRef.h
     API/JSStringRef.h
+    API/JSTypedArray.h
     API/JSValueRef.h
     API/WebKitAvailability.h
 )
