@@ -48,6 +48,7 @@ static EncodedJSValue JSC_HOST_CALL regExpProtoFuncSearch(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterGlobal(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterIgnoreCase(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterMultiline(ExecState*);
+static EncodedJSValue JSC_HOST_CALL regExpProtoGetterSticky(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterUnicode(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterSource(ExecState*);
 static EncodedJSValue JSC_HOST_CALL regExpProtoGetterFlags(ExecState*);
@@ -69,6 +70,7 @@ const ClassInfo RegExpPrototype::s_info = { "RegExp", &RegExpObject::s_info, &re
   global        regExpProtoGetterGlobal     DontEnum|Accessor
   ignoreCase    regExpProtoGetterIgnoreCase DontEnum|Accessor
   multiline     regExpProtoGetterMultiline  DontEnum|Accessor
+  sticky        regExpProtoGetterSticky     DontEnum|Accessor
   unicode       regExpProtoGetterUnicode    DontEnum|Accessor
   source        regExpProtoGetterSource     DontEnum|Accessor
   flags         regExpProtoGetterFlags      DontEnum|Accessor
@@ -154,22 +156,29 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncCompile(ExecState* exec)
     return JSValue::encode(jsUndefined());
 }
 
-typedef std::array<char, 4 + 1> FlagsString; // 4 different flags and a null character terminator.
+typedef std::array<char, 5 + 1> FlagsString; // 5 different flags and a null character terminator.
 
 static inline FlagsString flagsString(ExecState* exec, JSObject* regexp)
 {
     FlagsString string;
 
+    VM& vm = exec->vm();
+
     JSValue globalValue = regexp->get(exec, exec->propertyNames().global);
-    if (exec->hadException())
+    if (vm.exception())
         return string;
     JSValue ignoreCaseValue = regexp->get(exec, exec->propertyNames().ignoreCase);
-    if (exec->hadException())
+    if (vm.exception())
         return string;
     JSValue multilineValue = regexp->get(exec, exec->propertyNames().multiline);
-    if (exec->hadException())
+    if (vm.exception())
         return string;
     JSValue unicodeValue = regexp->get(exec, exec->propertyNames().unicode);
+    if (vm.exception())
+        return string;
+    JSValue stickyValue = regexp->get(exec, exec->propertyNames().sticky);
+    if (vm.exception())
+        return string;
 
     unsigned index = 0;
     if (globalValue.toBoolean(exec))
@@ -180,6 +189,8 @@ static inline FlagsString flagsString(ExecState* exec, JSObject* regexp)
         string[index++] = 'm';
     if (unicodeValue.toBoolean(exec))
         string[index++] = 'u';
+    if (stickyValue.toBoolean(exec))
+        string[index++] = 'y';
     ASSERT(index < string.size());
     string[index] = 0;
     return string;
@@ -197,18 +208,22 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncToString(ExecState* exec)
     if (JSValue earlyReturnValue = checker.earlyReturnValue())
         return JSValue::encode(earlyReturnValue);
 
-    JSValue sourceValue = thisObject->get(exec, exec->propertyNames().source);
-    if (exec->hadException())
+    VM& vm = exec->vm();
+    JSValue sourceValue = thisObject->get(exec, vm.propertyNames->source);
+    if (vm.exception())
         return JSValue::encode(jsUndefined());
     String source = sourceValue.toString(exec)->value(exec);
-    if (exec->hadException())
+    if (vm.exception())
         return JSValue::encode(jsUndefined());
 
-    auto flags = flagsString(exec, thisObject);
-    if (exec->hadException())
+    JSValue flagsValue = thisObject->get(exec, vm.propertyNames->flags);
+    if (vm.exception())
+        return JSValue::encode(jsUndefined());
+    String flags = flagsValue.toString(exec)->value(exec);
+    if (vm.exception())
         return JSValue::encode(jsUndefined());
 
-    return JSValue::encode(jsMakeNontrivialString(exec, '/', source, '/', flags.data()));
+    return JSValue::encode(jsMakeNontrivialString(exec, '/', source, '/', flags));
 }
 
 EncodedJSValue JSC_HOST_CALL regExpProtoGetterGlobal(ExecState* exec)
@@ -236,6 +251,15 @@ EncodedJSValue JSC_HOST_CALL regExpProtoGetterMultiline(ExecState* exec)
         return throwVMTypeError(exec);
 
     return JSValue::encode(jsBoolean(asRegExpObject(thisValue)->regExp()->multiline()));
+}
+
+EncodedJSValue JSC_HOST_CALL regExpProtoGetterSticky(ExecState* exec)
+{
+    JSValue thisValue = exec->thisValue();
+    if (!thisValue.inherits(RegExpObject::info()))
+        return throwVMTypeError(exec);
+    
+    return JSValue::encode(jsBoolean(asRegExpObject(thisValue)->regExp()->sticky()));
 }
 
 EncodedJSValue JSC_HOST_CALL regExpProtoGetterUnicode(ExecState* exec)

@@ -4446,9 +4446,9 @@ int64_t WebPageProxy::spellDocumentTag()
 }
 
 #if USE(UNIFIED_TEXT_CHECKING)
-void WebPageProxy::checkTextOfParagraph(const String& text, uint64_t checkingTypes, Vector<TextCheckingResult>& results)
+void WebPageProxy::checkTextOfParagraph(const String& text, uint64_t checkingTypes, int32_t insertionPoint, Vector<TextCheckingResult>& results)
 {
-    results = TextChecker::checkTextOfParagraph(spellDocumentTag(), text, checkingTypes);
+    results = TextChecker::checkTextOfParagraph(spellDocumentTag(), text, insertionPoint, checkingTypes);
 }
 #endif
 
@@ -4477,9 +4477,9 @@ void WebPageProxy::updateSpellingUIWithGrammarString(const String& badGrammarPhr
     TextChecker::updateSpellingUIWithGrammarString(spellDocumentTag(), badGrammarPhrase, grammarDetail);
 }
 
-void WebPageProxy::getGuessesForWord(const String& word, const String& context, Vector<String>& guesses)
+void WebPageProxy::getGuessesForWord(const String& word, const String& context, int32_t insertionPoint, Vector<String>& guesses)
 {
-    TextChecker::getGuessesForWord(spellDocumentTag(), word, context, guesses);
+    TextChecker::getGuessesForWord(spellDocumentTag(), word, context, insertionPoint, guesses);
 }
 
 void WebPageProxy::learnWord(const String& word)
@@ -4498,9 +4498,9 @@ void WebPageProxy::ignoreWord(const String& word)
     TextChecker::ignoreWord(spellDocumentTag(), word);
 }
 
-void WebPageProxy::requestCheckingOfString(uint64_t requestID, const TextCheckingRequestData& request)
+void WebPageProxy::requestCheckingOfString(uint64_t requestID, const TextCheckingRequestData& request, int32_t insertionPoint)
 {
-    TextChecker::requestCheckingOfString(TextCheckerCompletion::create(requestID, request, this));
+    TextChecker::requestCheckingOfString(TextCheckerCompletion::create(requestID, request, this), insertionPoint);
 }
 
 void WebPageProxy::didFinishCheckingText(uint64_t requestID, const Vector<WebCore::TextCheckingResult>& result)
@@ -5172,6 +5172,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.userContentControllerID = m_userContentController->identifier();
     parameters.visitedLinkTableID = m_visitedLinkStore->identifier();
     parameters.websiteDataStoreID = m_websiteDataStore->identifier();
+    parameters.mediaShouldUsePersistentCache = m_websiteDataStore->isPersistent();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();
@@ -6005,16 +6006,18 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state,
     if (state == m_mediaState)
         return;
 
+    MediaProducer::MediaStateFlags playingMediaMask = MediaProducer::IsPlayingAudio | MediaProducer::IsPlayingVideo;
     MediaProducer::MediaStateFlags oldState = m_mediaState;
     m_mediaState = state;
 
-    if ((oldState & MediaProducer::IsPlayingAudio) == (m_mediaState & MediaProducer::IsPlayingAudio))
-        return;
-
 #if PLATFORM(MAC)
-    m_pageClient.isPlayingMediaDidChange();
+    if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
+        m_pageClient.isPlayingMediaDidChange();
 #endif
-    m_uiClient->isPlayingAudioDidChange(*this);
+
+    playingMediaMask |= MediaProducer::HasActiveMediaCaptureDevice;
+    if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
+        m_uiClient->isPlayingAudioDidChange(*this);
 }
 
 bool WebPageProxy::isPlayingVideoWithAudio() const

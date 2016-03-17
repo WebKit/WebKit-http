@@ -62,6 +62,8 @@ public:
 
     virtual ~ShadowRoot();
 
+    using TreeScope::rootNode;
+
     StyleResolver& styleResolver();
     AuthorStyleSheets& authorStyleSheets();
     
@@ -89,8 +91,11 @@ public:
     void addSlotElementByName(const AtomicString&, HTMLSlotElement&);
     void removeSlotElementByName(const AtomicString&, HTMLSlotElement&);
 
-    void invalidateSlotAssignments();
-    void invalidateDefaultSlotAssignments();
+    void didRemoveAllChildrenOfShadowHost();
+    void didChangeDefaultSlot();
+    void hostChildElementDidChange(const Element&);
+    void hostChildElementDidChangeSlotAttribute(const AtomicString& oldValue, const AtomicString& newValue);
+    void innerSlotDidChange(const AtomicString&);
 
     const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&);
 #endif

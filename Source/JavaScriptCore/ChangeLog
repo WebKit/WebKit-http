@@ -1,3 +1,2530 @@
+2016-03-15  Filip Pizlo  <fpizlo@apple.com>
+
+        ASSERTION FAILED: !edge->isPhantomAllocation() in regress/script-tests/sink-huge-activation.js.ftl-eager in debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=153805
+
+        Reviewed by Mark Lam.
+
+        The object allocation sinking phase uses InferredValue::isStillValid() in the opposite
+        way from most clients: it will do an *extra* optimization if it returns false. The
+        phase will first compute sink candidates and then it will compute materialization
+        points. If something is a sink candidate then it is not a materialization point. A
+        NewFunction node may appear as not being a sink candidate during the first pass, so it's
+        not added to the set of things that will turn into PhantomNewFunction. But on the second
+        pass where we add materializations, we check isStillValid() again. Now this may become
+        false, so that second pass thinks that NewFunction is a sink candidate (even though it's
+        not in the sink candidates set) and so is not a materialization point.
+
+        This manifests as the NewFunction referring to a PhantomCreateActivation or whatever.
+
+        The solution is to have the phase cache results of calls to isStillValid(). It's OK if
+        we just remember the result of the first call and assume that it's not a sink candidate.
+        That's the worst that can happen.
+
+        No new tests since this is a super hard race and sink-huge-activation seemed to already
+        be catching it.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2016-03-16  Saam Barati  <sbarati@apple.com>
+
+        [ES6] Make Array.prototype.reverse spec compatible.
+        https://bugs.webkit.org/show_bug.cgi?id=155528
+
+        Reviewed by Michael Saboff.
+
+        This patch make Array.prototype.reverse spec compatible.
+        Before, we weren't performing a HasProperty of each index
+        before performing a Get on that index.  We now do that on
+        the slow path.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncReverse):
+        * tests/stress/array-reverse-proxy.js: Added.
+        (assert):
+        (test):
+        (shallowCopy):
+        (shallowEqual):
+        (let.handler.get getSet):
+        (test.let.handler.get getSet):
+
+2016-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198235, r198240, r198241, and
+        r198252.
+
+        Causing crashes on ARM
+
+        Reverted changesets:
+
+        "Remove compile time define for SEPARATED_HEAP"
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+        http://trac.webkit.org/changeset/198235
+
+        "Gardening: build fix after r198235."
+        http://trac.webkit.org/changeset/198240
+
+        "Build fix."
+        http://trac.webkit.org/changeset/198241
+
+        "Rename performJITMemcpy to something more inline with our
+        normal webkit function names"
+        https://bugs.webkit.org/show_bug.cgi?id=155525
+        http://trac.webkit.org/changeset/198252
+
+2016-03-16  Brian Burg <bburg@apple.com>
+
+        Unreviewed, rolling out r198257.
+        https://bugs.webkit.org/show_bug.cgi?id=155553
+
+        This change is unnecessary, clients can instead compile the
+        file with ARC enabled (Requested by brrian on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r198077): generated Objective-C protocol object
+        getters leak their wrappers"
+        https://bugs.webkit.org/show_bug.cgi?id=155523
+        http://trac.webkit.org/changeset/198257
+
+2016-03-16  Mark Lam  <mark.lam@apple.com>
+
+        Add support for setting Function.name from computed properties.
+        https://bugs.webkit.org/show_bug.cgi?id=155437
+
+        Reviewed by Filip Pizlo.
+
+        In JS code, we can have initialization of computed properties with function and
+        class objects e.g.
+
+            var o = {
+                [x]: function() {},
+                [y]: class {}
+            }
+
+        The ES6 spec states that the function and class in the example above (being
+        anonymous) should take on the value of x and y respectively as their names:
+
+            o[x].name; // should be the "stringified" value of x.
+            o[y].name; // should be the "stringified" value of y.
+
+        To achieve this, we will now inject an op_set_function_name bytecode at property
+        initialization sites if:
+
+        1. the property assigned value is a function or class, and
+        2. the function and class is anonymous, and
+        3. if property assigned value is a class, it doesn't have a static method
+           that is statically named "name".
+
+        The op_set_function_name will result in JSFunction::setFunctionName() being
+        called on the target function / class before it is assigned to the property.
+        JSFunction::setFunctionName() will take care of:
+
+        1. computing the name to use from the value of the computed property name
+           e.g. x and y in the example above.
+
+           If the computed property name is not a symbol, then the function / class name
+           should be the toString() value of that computed property name.
+
+           If the computed property name is a symbol, then ...
+           a. if the Symbol has a defined description (e.g. Symbol("foo")), then the
+              function / class name should be "[<symbol description>]" e.g. "[foo]".
+           b. if the Symbol has an undefined description (e.g. Symbol()), then the
+              function / class name should be "".
+
+           Note: Symbol("") is not the same as Symbol().  The former has a defined
+           descriptor "", and hence, yields a function / class name of "[]".  The latter
+           yields a function / class name of "".
+
+        2. reifying the lazy name property with this function / class name.
+
+        op_set_function_name is named after the SetFunctionName internal function
+        in the ES6 spec that performs the above operation.
+
+        It is behaviorally correct to use op_set_function_name at every property
+        initialization site with computed property names.  However, we choose to not
+        emit the op_set_function_name bytecode when we already know that it will do
+        nothing i.e. when the target function / class is proven to already have a name or
+        name property.  This is done as an optimization to avoid unnecessary calls to
+        JSFunction::setFunctionName().
+
+        Note: we could further check if the class has a static method with a computed
+        name that is a constant string "name" and elide op_set_function_name there too.
+        However, we don't bother because this should be rare.  JSFunction::setFunctionName()
+        will still do the right thing.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewFunction):
+        (JSC::BytecodeGenerator::emitSetFunctionNameIfNeeded):
+        (JSC::BytecodeGenerator::emitCall):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        (JSC::PropertyListNode::emitPutConstantProperty):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewFunction):
+        (JSC::DFG::SpeculativeJIT::compileSetFunctionName):
+        (JSC::DFG::SpeculativeJIT::compileForwardVarargs):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewRegexp):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSetFunctionName):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringReplace):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_to_primitive):
+        (JSC::JIT::emit_op_set_function_name):
+        (JSC::JIT::emit_op_strcat):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emitSlow_op_to_primitive):
+        (JSC::JIT::emit_op_set_function_name):
+        (JSC::JIT::emit_op_strcat):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::handleHostCall):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * parser/Nodes.cpp:
+        (JSC::FunctionNode::finishParsing):
+        (JSC::PropertyListNode::hasStaticallyNamedProperty):
+        (JSC::VariableEnvironmentNode::VariableEnvironmentNode):
+        * parser/Nodes.h:
+        * runtime/JSFunction.cpp:
+        (JSC::getCalculatedDisplayName):
+        (JSC::JSFunction::setFunctionName):
+        (JSC::JSFunction::reifyLength):
+        (JSC::JSFunction::reifyName):
+        * runtime/JSFunction.h:
+        * tests/es6.yaml:
+        * tests/stress/computed-function-names.js: Added.
+        (toKeyString):
+        (toFuncName):
+        (shouldBe):
+        (return.propKey):
+
+2016-03-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Reflect.set with receiver
+        https://bugs.webkit.org/show_bug.cgi?id=155294
+
+        Reviewed by Saam Barati.
+
+        This patch introduces the receiver parameter support for Reflect.set.
+        Reflect.set can alter the receiver with arbitrary values.
+        Each property descriptor uses the receiver in [[Set]].
+
+        1) In the accessor descriptor case, the receiver is used as |this| value for setter calls.
+        2) In the data descriptor case, the actual property will be set onto the receiver objects.
+
+        The current put operation does not support the receiver that is different from the base object.
+        In particular, (2) case is not supported.
+        The naive implementation adds one more [[GetOwnProperty]] for the receiver per [[Set]] (9.1.9.1-4-c [1]), and it is unacceptable.
+        To keep the fast path efficiently, we fall back to the slow but generic implementation (ordinarySetSlow)
+        only when the receiver is altered.
+
+        We need not to change any JIT part, because the JS code cannot alter the receiver without Reflect.set.
+        The property accesses generated by the JIT code always have the receiver that is the same to the base object.
+        ProxyObject can alter the receiver, but this situation has no problem because ProxyObject disables Inline Caching.
+        NOTE: Generating Inline Caching for JSProxy (that is used for the Window proxy) is already disabled before this change.
+
+        [1]: https://tc39.github.io/ecma262/#sec-ordinaryset
+
+        * jsc.cpp:
+        (functionCreateProxy):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::put):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::put):
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::put):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::put):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::isThisValueAltered):
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::put):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::put):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::put):
+        * runtime/JSObject.cpp:
+        (JSC::ordinarySetSlow):
+        (JSC::JSObject::putInlineSlow):
+        * runtime/JSObject.h:
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putInline):
+        * runtime/JSProxy.h:
+        (JSC::JSProxy::createStructure):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/PropertySlot.h:
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::put):
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::PutPropertySlot):
+        (JSC::PutPropertySlot::isCacheablePut):
+        (JSC::PutPropertySlot::isCacheableSetter):
+        (JSC::PutPropertySlot::isCacheableCustom):
+        (JSC::PutPropertySlot::isCustomAccessor):
+        (JSC::PutPropertySlot::disableCaching):
+        (JSC::PutPropertySlot::isCacheable):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectSet):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::put):
+        (JSC::reject): Deleted.
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::put):
+        * tests/es6.yaml:
+        * tests/stress/ordinary-set-exceptions.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (shouldThrow.set get var):
+        * tests/stress/proxy-set.js:
+        * tests/stress/reflect-set-proxy-set.js: Copied from Source/JavaScriptCore/tests/stress/proxy-set.js.
+        (shouldBe):
+        (unreachable):
+        (assert):
+        (throw.new.Error.let.handler.set 45):
+        (throw.new.Error):
+        (let.target.set x):
+        (let.target.get x):
+        (set let):
+        * tests/stress/reflect-set-receiver-proxy-set.js: Added.
+        (shouldBe):
+        (unreachable):
+        (assert):
+        (let.handler.set 45):
+        (catch):
+        (let.target.set x):
+        (let.target.get x):
+        (set let):
+        * tests/stress/reflect-set-with-global-proxy.js: Added.
+        (shouldBe):
+        (unreachable):
+        (get shouldBe):
+        (set shouldBe):
+        (set test1):
+        (set test2):
+        (set test3):
+        * tests/stress/reflect-set.js:
+        (shouldThrow):
+        (unreachable):
+        (get shouldBe):
+        (set shouldBe):
+        (receiverTestIndexed):
+        (set get Uint8Array):
+        (receiverCase): Deleted.
+        (proxyCase): Deleted.
+        (stringObjectCase.set get shouldBe): Deleted.
+        (regExpLastIndex): Deleted.
+
+2016-03-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Remove hint from SlowCaseEntry
+        https://bugs.webkit.org/show_bug.cgi?id=155530
+
+        Reviewed by Alex Christensen.
+
+        * jit/JIT.h:
+        (JSC::SlowCaseEntry::SlowCaseEntry):
+
+2016-03-15  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r198077): generated Objective-C protocol object getters leak their wrappers
+        https://bugs.webkit.org/show_bug.cgi?id=155523
+        <rdar://problem/25181764>
+
+        Reviewed by Joseph Pecoraro.
+
+        Since the code may not be compiled with ARC, autorelease the returned wrapper.
+
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.protocol_to_objc_expression_for_member):
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2016-03-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Help clang generate better code on arrayProtoFuncToString()
+        https://bugs.webkit.org/show_bug.cgi?id=155512
+
+        Reviewed by Mark Lam.
+
+        3d-raytrace hits Array.toString() hard with small arrays.
+        Half of the time is going into overhead around the StringJoiner.
+        This patch makes the function shorter and the layout better.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncToString):
+        Add "UNLIKELY" on rare cases. Clang pushes that code to the tail.
+
+        Factor the code of jsMakeNontrivialString() so that the operation
+        is not duplicated in the function.
+
+        * runtime/JSStringBuilder.h:
+        (JSC::jsMakeNontrivialString):
+        jsNontrivialString() supports r-value reference.
+        Move the result string into jsNontrivialString(), this removes
+        the deref+destructor from the function.
+
+        * runtime/JSStringJoiner.cpp:
+        (JSC::JSStringJoiner::~JSStringJoiner):
+        The destructor is pretty large. No point in inlining it.
+
+        (JSC::joinStrings):
+        * runtime/JSStringJoiner.h:
+        (JSC::JSStringJoiner::JSStringJoiner):
+        (JSC::JSStringJoiner::append):
+        The calls were duplicated. That's unnecessary.
+
+        * runtime/NumericStrings.h:
+        (JSC::NumericStrings::add):
+        Return a reference in all cases.
+        This removes a deref+destructor.
+
+2016-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove stale ArrayPrototype declarations
+        https://bugs.webkit.org/show_bug.cgi?id=155520
+
+        Reviewed by Mark Lam.
+
+        * runtime/ArrayPrototype.cpp:
+        The implementations went away when the methods were moved to builtins
+        but the declarations were left behind.
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Rename performJITMemcpy to something more inline with our normal webkit function names
+        https://bugs.webkit.org/show_bug.cgi?id=155525
+
+        Reviewed by Saam Barati.
+
+        Simple bulk search/replace with a better name.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::fillNops):
+        (JSC::ARM64Assembler::replaceWithJump):
+        (JSC::ARM64Assembler::replaceWithLoad):
+        (JSC::ARM64Assembler::replaceWithAddressComputation):
+        (JSC::ARM64Assembler::setPointer):
+        (JSC::ARM64Assembler::repatchInt32):
+        (JSC::ARM64Assembler::repatchCompact):
+        (JSC::ARM64Assembler::linkJumpOrCall):
+        (JSC::ARM64Assembler::linkCompareAndBranch):
+        (JSC::ARM64Assembler::linkConditionalBranch):
+        (JSC::ARM64Assembler::linkTestAndBranch):
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+        * jit/ExecutableAllocator.h:
+        (JSC::writeToExecutableRegion):
+        (JSC::performJITMemcpy): Deleted.
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Build fix.
+
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+
+2016-03-15  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: build fix after r198235.
+
+        Not Reviewed.
+
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator):
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Remove compile time define for SEPARATED_HEAP
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+
+        Reviewed by Mark Lam.
+
+        This removes the compile time define for the SEPARATED_HEAP
+        feature, and moves to a default-off runtime preference.
+
+        This happily also removes the need for world rebuilds while
+        bringing it up on different platforms.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+        * jit/ExecutableAllocator.h:
+        (JSC::performJITMemcpy):
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator):
+        (JSC::FixedVMPoolExecutableAllocator::genericWriteToJITRegion):
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator): Deleted.
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2016-03-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198148.
+        https://bugs.webkit.org/show_bug.cgi?id=155518
+
+        "Lets do this patch at a later time" (Requested by saamyjoon
+        on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Disallow var assignments in for-in loops"
+        https://bugs.webkit.org/show_bug.cgi?id=155451
+        http://trac.webkit.org/changeset/198148
+
+2016-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: ASSERTION FAILED: !m_lastActiveBlock on js/function-apply.html
+        https://bugs.webkit.org/show_bug.cgi?id=155411
+        <rdar://problem/25134537>
+
+        Reviewed by Mark Lam.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::collectImpl):
+        (JSC::Heap::didFinishCollection):
+        During collection allocators are stop/reset. The HeapProfiler tasks
+        were using HeapIterationScope (to satisfy MarkedSpace forEachCell API
+        contracts) which was doing its own stop/resume of allocators. Doing a
+        stop/resume in between the normal stop/reset of collection is unexpected.
+
+        Move this to didFinishCollection, alongside other heap iterations
+        like zombies and immortal objects. Putting this after those tasks
+        also means the heap snapshots will respect the zombies/immortal options
+        when deciding if the cell is alive or not.
+
+2016-03-15  Saam Barati  <sbarati@apple.com>
+
+        We should have different JSTypes for JSGlobalLexicalEnvironment and JSLexicalEnvironment and JSModuleEnvironment
+        https://bugs.webkit.org/show_bug.cgi?id=152406
+
+        Reviewed by Mark Lam.
+
+        This makes testing for a JSGlobalLexicalEnvironment faster
+        because we can just check the Cell's type instead of using
+        jsDynamicCast. I also changed code that does jsDynamicCast<JSGlobalObject*>
+        instead of isGlobalObject().
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::tryCachePutToScopeGlobal):
+        (JSC::CommonSlowPaths::tryCacheGetFromScopeGlobal):
+        * runtime/JSGlobalLexicalEnvironment.h:
+        (JSC::JSGlobalLexicalEnvironment::createStructure):
+        * runtime/JSLexicalEnvironment.h:
+        (JSC::JSLexicalEnvironment::createStructure):
+        (JSC::JSLexicalEnvironment::JSLexicalEnvironment):
+        * runtime/JSModuleEnvironment.h:
+        (JSC::JSModuleEnvironment::createStructure):
+        (JSC::JSModuleEnvironment::offsetOfModuleRecord):
+        * runtime/JSObject.h:
+        (JSC::JSObject::isGlobalObject):
+        (JSC::JSObject::isJSLexicalEnvironment):
+        (JSC::JSObject::isGlobalLexicalEnvironment):
+        (JSC::JSObject::isErrorInstance):
+        * runtime/JSScope.cpp:
+        (JSC::abstractAccess):
+        (JSC::isUnscopable):
+        (JSC::JSScope::resolve):
+        (JSC::JSScope::collectVariablesUnderTDZ):
+        (JSC::JSScope::isVarScope):
+        (JSC::JSScope::isLexicalScope):
+        (JSC::JSScope::isModuleScope):
+        (JSC::JSScope::isCatchScope):
+        (JSC::JSScope::isFunctionNameScopeObject):
+        (JSC::JSScope::isNestedLexicalScope):
+        (JSC::JSScope::constantScopeForCodeBlock):
+        (JSC::isScopeType): Deleted.
+        (JSC::JSScope::isGlobalLexicalEnvironment): Deleted.
+        * runtime/JSScope.h:
+        * runtime/JSType.h:
+
+2016-03-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove the Baker barrier from JSC
+        https://bugs.webkit.org/show_bug.cgi?id=155479
+
+        Reviewed by Saam Barati.
+
+        It's been a while since I added a Baker barrier, but I never followed it up with an actual
+        concurrent GC. While thinking about the GC, I became convinced that the right path forward
+        is to do a non-copying concurrent GC. That is, remove the copied space and just use the
+        marked space. The downside of using marked space cannot be more than the overhead of the
+        Baker barrier, so concurrent non-copying GC is definitely better than copying
+        non-concurrent GC. I also suspect that just plain non-copying non-concurrent GC is going to
+        be fine also, so the path forward will probably be to first just remove CopiedSpace.
+
+        Anyway, for now this patch just removes the Baker barrier. It was a cute implementation but
+        it just cost performance and I don't think we'll ever use it.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGCopyBarrierOptimizationPhase.cpp: Removed.
+        * dfg/DFGCopyBarrierOptimizationPhase.h: Removed.
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetIndexedPropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileGetTypedArrayByteOffset):
+        (JSC::DFG::SpeculativeJIT::compileGetButterfly):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantStructureChecks):
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantArrayChecks):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetButterfly):
+        (JSC::FTL::DFG::LowerDFGToB3::compileConstantStoragePointer):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetIndexedPropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetTypedArrayByteOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMultiGetByOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMultiPutByOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetDirectPname):
+        (JSC::FTL::DFG::LowerDFGToB3::storageForTransition):
+        (JSC::FTL::DFG::LowerDFGToB3::getById):
+        (JSC::FTL::DFG::LowerDFGToB3::isFastTypedArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetButterflyReadOnly): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadButterflyWithBarrier): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadVectorWithBarrier): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::copyBarrier): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::isInToSpace): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadButterflyReadOnly): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::loadVectorReadOnly): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::removeSpaceBits): Deleted.
+        * heap/CopyBarrier.h:
+        (JSC::CopyBarrierBase::CopyBarrierBase):
+        (JSC::CopyBarrierBase::operator bool):
+        (JSC::CopyBarrierBase::get):
+        (JSC::CopyBarrierBase::clear):
+        (JSC::CopyBarrierBase::setWithoutBarrier):
+        (JSC::CopyBarrier::CopyBarrier):
+        (JSC::CopyBarrier::get):
+        (JSC::CopyBarrier::set):
+        (JSC::CopyBarrier::setWithoutBarrier):
+        (JSC::CopyBarrierBase::operator!): Deleted.
+        (JSC::CopyBarrierBase::getWithoutBarrier): Deleted.
+        (JSC::CopyBarrierBase::getPredicated): Deleted.
+        (JSC::CopyBarrierBase::copyState): Deleted.
+        (JSC::CopyBarrierBase::setCopyState): Deleted.
+        (JSC::CopyBarrierBase::weakCASWithoutBarrier): Deleted.
+        (JSC::CopyBarrier::getWithoutBarrier): Deleted.
+        (JSC::CopyBarrier::getPredicated): Deleted.
+        (JSC::CopyBarrier::weakCASWithoutBarrier): Deleted.
+        * heap/Heap.cpp:
+        (JSC::Heap::addToRememberedSet):
+        (JSC::Heap::collectAndSweep):
+        (JSC::Heap::copyBarrier): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::writeBarrierBuffer):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::branchIfNotFastTypedArray):
+        (JSC::AssemblyHelpers::purifyNaN):
+        (JSC::AssemblyHelpers::loadTypedArrayVector): Deleted.
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::branchStructure):
+        (JSC::AssemblyHelpers::addressForByteOffset):
+        (JSC::AssemblyHelpers::branchIfToSpace): Deleted.
+        (JSC::AssemblyHelpers::branchIfNotToSpace): Deleted.
+        (JSC::AssemblyHelpers::removeSpaceBits): Deleted.
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompile):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emitSlow_op_has_indexed_property):
+        (JSC::JIT::emit_op_get_direct_pname):
+        (JSC::JIT::emitSlow_op_get_direct_pname):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_get_direct_pname):
+        (JSC::JIT::emitSlow_op_get_direct_pname):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitDoubleLoad):
+        (JSC::JIT::emitContiguousLoad):
+        (JSC::JIT::emitArrayStorageLoad):
+        (JSC::JIT::emitSlow_op_get_by_val):
+        (JSC::JIT::emitGenericContiguousPutByVal):
+        (JSC::JIT::emitArrayStoragePutByVal):
+        (JSC::JIT::emitSlow_op_put_by_val):
+        (JSC::JIT::emit_op_get_from_scope):
+        (JSC::JIT::emitSlow_op_get_from_scope):
+        (JSC::JIT::emit_op_put_to_scope):
+        (JSC::JIT::emitSlow_op_put_to_scope):
+        (JSC::JIT::emitIntTypedArrayGetByVal):
+        (JSC::JIT::emitFloatTypedArrayGetByVal):
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+        (JSC::JIT::emitFloatTypedArrayPutByVal):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::visitChildren):
+        (JSC::DirectArguments::copyBackingStore):
+        (JSC::DirectArguments::overrideArgument):
+        (JSC::DirectArguments::copyToArguments):
+        * runtime/DirectArguments.h:
+        (JSC::DirectArguments::canAccessIndexQuickly):
+        (JSC::DirectArguments::canAccessArgumentIndexQuicklyInDFG):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLength):
+        (JSC::JSArray::pop):
+        (JSC::JSArray::push):
+        (JSC::JSArray::fastSlice):
+        (JSC::JSArray::fastConcatWith):
+        (JSC::JSArray::shiftCountWithArrayStorage):
+        (JSC::JSArray::shiftCountWithAnyIndexingType):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+        (JSC::JSArray::fillArgList):
+        (JSC::JSArray::copyToArguments):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::finalize):
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::isNeutered):
+        (JSC::JSArrayBufferView::vector):
+        (JSC::JSArrayBufferView::length):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::visitChildren):
+        (JSC::JSGenericTypedArrayView<Adaptor>::copyBackingStore):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitChildren):
+        (JSC::JSObject::copyBackingStore):
+        (JSC::JSObject::heapSnapshot):
+        (JSC::JSObject::getOwnPropertySlotByIndex):
+        (JSC::JSObject::putByIndex):
+        (JSC::JSObject::enterDictionaryIndexingMode):
+        (JSC::JSObject::createInitialIndexedStorage):
+        (JSC::JSObject::createArrayStorage):
+        (JSC::JSObject::convertUndecidedToInt32):
+        (JSC::JSObject::convertUndecidedToDouble):
+        (JSC::JSObject::convertUndecidedToContiguous):
+        (JSC::JSObject::constructConvertedArrayStorageWithoutCopyingElements):
+        (JSC::JSObject::convertUndecidedToArrayStorage):
+        (JSC::JSObject::convertInt32ToDouble):
+        (JSC::JSObject::convertInt32ToContiguous):
+        (JSC::JSObject::convertInt32ToArrayStorage):
+        (JSC::JSObject::convertDoubleToContiguous):
+        (JSC::JSObject::convertDoubleToArrayStorage):
+        (JSC::JSObject::convertContiguousToArrayStorage):
+        (JSC::JSObject::setIndexQuicklyToUndecided):
+        (JSC::JSObject::ensureArrayStorageExistsAndEnterDictionaryIndexingMode):
+        (JSC::JSObject::deletePropertyByIndex):
+        (JSC::JSObject::getOwnPropertyNames):
+        (JSC::JSObject::putIndexedDescriptor):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes):
+        (JSC::JSObject::putDirectIndexBeyondVectorLength):
+        (JSC::JSObject::getNewVectorLength):
+        (JSC::JSObject::ensureLengthSlow):
+        (JSC::JSObject::reallocateAndShrinkButterfly):
+        (JSC::JSObject::growOutOfLineStorage):
+        (JSC::getBoundSlotBaseFunctionForGetterSetter):
+        (JSC::JSObject::getEnumerableLength):
+        * runtime/JSObject.h:
+        (JSC::JSObject::getArrayLength):
+        (JSC::JSObject::getVectorLength):
+        (JSC::JSObject::canGetIndexQuickly):
+        (JSC::JSObject::getIndexQuickly):
+        (JSC::JSObject::tryGetIndexQuickly):
+        (JSC::JSObject::canSetIndexQuickly):
+        (JSC::JSObject::canSetIndexQuicklyForPutDirect):
+        (JSC::JSObject::setIndexQuickly):
+        (JSC::JSObject::initializeIndex):
+        (JSC::JSObject::hasSparseMap):
+        (JSC::JSObject::inSparseIndexingMode):
+        (JSC::JSObject::inlineStorage):
+        (JSC::JSObject::butterfly):
+        (JSC::JSObject::outOfLineStorage):
+        (JSC::JSObject::locationForOffset):
+        (JSC::JSObject::ensureInt32):
+        (JSC::JSObject::ensureDouble):
+        (JSC::JSObject::ensureContiguous):
+        (JSC::JSObject::ensureArrayStorage):
+        (JSC::JSObject::arrayStorage):
+        (JSC::JSObject::arrayStorageOrNull):
+        (JSC::JSObject::ensureLength):
+        (JSC::JSObject::putDirectWithoutTransition):
+        * runtime/MapData.h:
+        (JSC::JSIterator>::IteratorData::next):
+        (JSC::JSIterator>::IteratorData::refreshCursor):
+        * runtime/MapDataInlines.h:
+        (JSC::JSIterator>::find):
+        (JSC::JSIterator>::add):
+        (JSC::JSIterator>::remove):
+        (JSC::JSIterator>::replaceAndPackBackingStore):
+        (JSC::JSIterator>::replaceBackingStore):
+        (JSC::JSIterator>::ensureSpaceForAppend):
+        (JSC::JSIterator>::visitChildren):
+        (JSC::JSIterator>::copyBackingStore):
+        * runtime/Options.h:
+
+2016-03-15  Saam barati  <sbarati@apple.com>
+
+        Destructuring parameters are evaluated in the wrong scope
+        https://bugs.webkit.org/show_bug.cgi?id=155454
+
+        Reviewed by Geoffrey Garen.
+
+        This patch makes our engine compatible with how parameter
+        lists are evaluated in ES6. A parameter list that contains
+        a rest parameter, any destructuring patterns, or default parameter values, 
+        is classified as being non-simple. Non-simple parameter lists
+        must get their own scope to live in, and the variables in the
+        scope are under TDZ. This means that functions evaluated in the
+        parameter list don't have access to variables inside the function
+        body. Also, non-simple parameter lists get the strict-mode arguments object.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::~BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeStack):
+        (JSC::BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded):
+        * bytecompiler/BytecodeGenerator.h:
+        * parser/Nodes.h:
+        (JSC::FunctionParameters::size):
+        (JSC::FunctionParameters::at):
+        (JSC::FunctionParameters::append):
+        (JSC::FunctionParameters::hasDefaultParameterValues): Deleted.
+        * tests/es6.yaml:
+        * tests/stress/parameter-scoping.js: Added.
+        (assert):
+        (test):
+        (test.foo):
+        (test.):
+
+2016-03-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Don't reference the properties of @Reflect directly
+        https://bugs.webkit.org/show_bug.cgi?id=155436
+
+        Reviewed by Geoffrey Garen.
+
+        Reflect.ownKeys and Reflect.getOwnPropertyDescriptor can be altered with the user-crafted values.
+        Instead of referencing them directly, let's reference them through private names.
+
+        * builtins/ObjectConstructor.js:
+        (assign):
+        * runtime/CommonIdentifiers.h:
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation): Deleted.
+        * runtime/ReflectObject.cpp:
+        (JSC::ReflectObject::finishCreation):
+        * tests/stress/object-assign-correctness.js:
+        (runTests.):
+        (runTests.get let):
+        (Reflect.ownKeys):
+        (Reflect.getOwnPropertyDescriptor):
+        (test.let.handler.switch.case.string_appeared_here.return.get enumerable): Deleted.
+        (test.let.handler.getOwnPropertyDescriptor): Deleted.
+        (test.let.handler.ownKeys): Deleted.
+        (test.let.handler.get getProps): Deleted.
+        (test.let.handler): Deleted.
+        (test): Deleted.
+
+2016-03-14  Daniel Bates  <dabates@apple.com>
+
+        Web Inspector: Display Content Security Policy hash in details sidebar for script and style elements
+        https://bugs.webkit.org/show_bug.cgi?id=155466
+        <rdar://problem/25152480>
+
+        Reviewed by Joseph Pecoraro and Timothy Hatcher.
+
+        Add property contentSecurityPolicyHash to store the CSP hash for an HTML style element or an
+        applicable HTML script element.
+
+        * inspector/protocol/DOM.json:
+
+2016-03-14  Joonghun Park  <jh718.park@samsung.com>
+
+        Purge PassRefPtr from ArrayBuffer, ArchiveResource, Pasteboard, LegacyWebArchive and DataObjectGtk
+        https://bugs.webkit.org/show_bug.cgi?id=150497
+
+        Reviewed by Darin Adler.
+
+        * runtime/ArrayBuffer.h:
+        (JSC::ArrayBuffer::create):
+        (JSC::ArrayBuffer::createAdopted):
+        (JSC::ArrayBuffer::createFromBytes):
+        (JSC::ArrayBuffer::createUninitialized):
+        (JSC::ArrayBuffer::slice):
+        (JSC::ArrayBuffer::sliceImpl):
+
+2016-03-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        Andy VanWagoner no longer has time to own Intl
+
+        * features.json:
+        Andy is busy with other things.
+
+        Andy, thanks for your amazing work on Intl and your dedication
+        to making things right.
+
+2016-03-14  Julien Brianceau  <jbriance@cisco.com>
+
+        [mips] Fix unaligned access in LLINT.
+        https://bugs.webkit.org/show_bug.cgi?id=153228
+
+        Address loads used with btbxx opcodes were wrongly converted to lw
+        instruction instead of lbu, leading to unaligned access on mips
+        platforms. This is not a bug as it's silently fixed up by kernel,
+        but it's more efficient to avoid unaligned accesses for mips.
+
+        Reviewed by Geoffrey Garen.
+
+        * offlineasm/mips.rb:
+
+2016-03-14  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r194394): >2x slow-down on CDjs
+        https://bugs.webkit.org/show_bug.cgi?id=155471
+
+        Unreviewed (rollout).
+
+        This revision changes localeCompare() so that it's *much* slower than before. It's
+        understandable that sometimes things will get a tiny bit slower when implementing new
+        language features, but more than 2x regression on a major benchmark is not OK.
+
+        This rolls out that change. We can reland it once we think about how to do it in a
+        performant way.
+
+        * builtins/StringPrototype.js:
+        (search):
+        (localeCompare): Deleted.
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+
+2016-03-14  Mark Lam  <mark.lam@apple.com>
+
+        Need to distinguish between Symbol() and Symbol("").
+        https://bugs.webkit.org/show_bug.cgi?id=155438
+
+        Reviewed by Saam Barati.
+
+        * runtime/PrivateName.h:
+        (JSC::PrivateName::PrivateName):
+
+2016-03-14  Oliver Hunt  <oliver@apple.com>
+
+        Temporarily disable the separated heap.
+        https://bugs.webkit.org/show_bug.cgi?id=155472
+
+        Reviewed by Geoffrey Garen.
+
+        Temporarily disable this.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Reduce generated JSON HeapSnapshot size
+        https://bugs.webkit.org/show_bug.cgi?id=155460
+
+        Reviewed by Geoffrey Garen.
+
+        Adjust the HeapSnapshot JSON to better reduce its size.
+        Changes include:
+
+          - avoid inner array groups and instead just have a large array for
+            nodes/edges. This removes lots of small array allocations.
+          - eliminate duplicate edges
+          - avoid duplicating edge names by including them in their own table;
+          - now both the nodes and edges lists hold only integers
+
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::json):
+        Add some more documentation for the slightly modified format.
+        While generating, clear data structures as early as possible.
+
+        * heap/HeapSnapshotBuilder.h:
+        (JSC::HeapSnapshotEdge::HeapSnapshotEdge):
+        During JSON building, the edge's cell pointers are converted to the
+        identifier they point to. This avoids having to re-lookup the identifier.
+
+        * tests/heapProfiler/driver/driver.js:
+        (CheapHeapSnapshotEdge):
+        (CheapHeapSnapshot):
+        (CheapHeapSnapshot.prototype.edgeNameFromTableIndex):
+        (HeapSnapshot):
+        Update test driver for slightly different snapshot format.
+
+2016-03-14  Keith Miller  <keith_miller@apple.com>
+
+        We should be able to eliminate cloned arguments objects that use the length property
+        https://bugs.webkit.org/show_bug.cgi?id=155391
+
+        Reviewed by Geoffrey Garen.
+
+        Previously if a programmer tried to use arguments.length in a strict function we would not eliminate the
+        arguments object. We were unable to eliminate the arguments object because the user would get a cloned arguments
+        object, which does not special case the length property. Thus, in order to get arguments elimination for cloned
+        we need to add a special case. There are two things that need to happen for the elimination to succeed.
+
+        First, we need to eliminate the CheckStructure blocking the GetByOffset for the length property. In order to
+        eliminate the check structure we need to prove to the Abstract Interpreter that this structure check is
+        unnesssary. This didn't occur before for two reasons: 1) CreateClonedArguments did not set the structure it
+        produced. 2) Even if CreateClonedArguments provided the global object's cloned arguments structure we would
+        transition the new argements object when we added the length property during construction. To fix the second
+        problem we now pre-assign a slot on clonedArgumentsStructure for the length property. Additionally, in order to
+        prevent future transitions of the structure we need to choose an indexing type for the structure. Since, not
+        eliminating the arguments object is so expensive we choose to have all cloned arguments start with continuous
+        indexing type, this avoids transitioning when otherwise we would not have to. In the future we should be smarter
+        about choosing the indexing type but since its relatively rare to have a arguments object escape we don't worry
+        about this for now.
+
+        Additionally, this patch renames all former references of outOfBandArguments to clonedArguments and adds
+        extra instrumentation to DFGArgumentsEliminationPhase.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecode/ValueRecovery.h:
+        (JSC::ValueRecovery::clonedArgumentsThatWereNotCreated):
+        (JSC::ValueRecovery::outOfBandArgumentsThatWereNotCreated): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCreateClonedArguments):
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run):
+        * dfg/DFGVariableEventStream.cpp:
+        (JSC::DFG::VariableEventStream::tryToSetConstantRecovery):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreateClonedArguments):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_create_cloned_arguments):
+        (JSC::JIT::emit_op_create_out_of_band_arguments): Deleted.
+        * llint/LowLevelInterpreter.asm:
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::ClonedArguments):
+        (JSC::ClonedArguments::createEmpty):
+        (JSC::ClonedArguments::createWithInlineFrame):
+        (JSC::ClonedArguments::createByCopyingFrom):
+        (JSC::ClonedArguments::createStructure):
+        * runtime/ClonedArguments.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::clonedArgumentsStructure):
+        (JSC::JSGlobalObject::outOfBandArgumentsStructure): Deleted.
+
+2016-03-14  Saam barati  <sbarati@apple.com>
+
+        [ES6] Make JSON.stringify ES6 compatible
+        https://bugs.webkit.org/show_bug.cgi?id=155448
+
+        Reviewed by Sam Weinig and Mark Lam.
+
+        We weren't following the spec with respect to the "toJSON" property
+        of the thing being stringified. We were perform hasProperty(.)
+        on "toJSON" instead of get(.). This patch changes it our
+        implementation to perform get(value, "toJSON").
+
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::isFunction):
+        (JSC::JSValue::isCallable):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::toJSON):
+        (JSC::Stringifier::toJSONImpl):
+        (JSC::Stringifier::appendStringifiedValue):
+        * tests/es6.yaml:
+        * tests/stress/proxy-json.js:
+        (test):
+        (test.let.handler.get assert):
+        (test.let.handler):
+
+2016-03-14  Saam barati  <sbarati@apple.com>
+
+        [ES6] Disallow var assignments in for-in loops
+        https://bugs.webkit.org/show_bug.cgi?id=155451
+
+        Reviewed by Mark Lam.
+
+        We're doing this in its own patch instead of the patch for https://bugs.webkit.org/show_bug.cgi?id=155384
+        because last time we made this change it broke some websites. Lets try making
+        it again because it's what the ES6 mandates. If it still breaks things we will
+        roll it out.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseForStatement):
+
+2016-03-14  Saam barati  <sbarati@apple.com>
+
+        assignments in for-in/for-of header not allowed
+        https://bugs.webkit.org/show_bug.cgi?id=155384
+
+        Reviewed by Darin Adler.
+
+        This patch prevents assignments to the loop variable
+        in for in/of loops in all but one situation. The following
+        syntax is still allowed even though the spec prevents it:
+        ```
+        for (var i = X in blah) ;
+        ```
+        If the loop contains let/const, destructuring, or is a for-of
+        loop, we always throw a syntax error if there is an assignment.
+        We can do this with full backwards compatibility.
+        We only allow the above type of for-in loops because Oliver told
+        me that when he tried to make such programs illegal he ran
+        into real websites breaking.
+
+        This patch also removed the !::CreatesAST compile-time branch when checking
+        assignments to new.target. This was a dangerous thing for me
+        to introduce into our parser. There are times where ::CreatesAST
+        is true but we also want to check for syntax errors. For example,
+        when parsing the top-level AST of a program. Though this check
+        was technically correct, it's dangerous to have. It was correct
+        because we would always be reparsing the new.target assignment
+        because new.target is only allowed inside a function. That made it
+        so that (!::CreatesAST <=> we care about new.target assignment syntax errors).
+        But, (!::CreatesAST <=> we care about syntax error X) is not true in general.
+        I think it's safer to remove such code.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createNewTargetExpr):
+        (JSC::ASTBuilder::isNewTarget):
+        (JSC::ASTBuilder::createResolve):
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isBoolean):
+        (JSC::ExpressionNode::isSpreadExpression):
+        (JSC::ExpressionNode::isSuperNode):
+        (JSC::ExpressionNode::isNewTarget):
+        (JSC::ExpressionNode::isBytecodeIntrinsicNode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseUnaryExpression):
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parsePrimaryExpression): Deleted.
+        (JSC::Parser<LexerType>::parseMemberExpression): Deleted.
+
+2016-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added new port JSCOnly.
+        https://bugs.webkit.org/show_bug.cgi?id=154512
+
+        Reviewed by Michael Catanzaro.
+
+        This port allows to build JavaScriptCore engine with minimal
+        dependencies.
+
+        * PlatformJSCOnly.cmake: Added.
+
+2016-03-12  Mark Lam  <mark.lam@apple.com>
+
+        http://kangax.github.io/compat-table/esnext/ crashes reliably.
+        https://bugs.webkit.org/show_bug.cgi?id=155404
+
+        Reviewed by Yusuke Suzuki.
+
+        constructObjectFromPropertyDescriptor() was incorrectly assuming that either
+        both getter and setter will be set or unset.  It did not consider that only one
+        of the getter or setter may be set.  This patch fixes that.
+
+        * runtime/ObjectConstructor.h:
+        (JSC::constructObjectFromPropertyDescriptor):
+        * tests/stress/proxy-with-unbalanced-getter-setter.js: Added.
+        (assert):
+        (let.handler.defineProperty):
+        (i.):
+        (i.assert):
+        (i.get assert):
+        (set assert):
+
+2016-03-12  Brian Burg  <bburg@apple.com>
+
+        When generating Objective-C protocol types, getters for objects need to synthesize a new object instance
+        https://bugs.webkit.org/show_bug.cgi?id=155389
+        <rdar://problem/25125821>
+
+        Reviewed by Timothy Hatcher.
+
+        Currently, in object property getters for Objective-C protocol types, we use
+        a C-style cast of the member's RWIProtocolJSONObject * to the type of the property.
+        However, at runtime the class of `self` is going to be RWIProtocolJSONObject *,
+        not MemberType *, so any subsequent calls to MemberType properties on the return value
+        will fail as the selectors will not be recognized.
+
+        Instead of doing a C-style pointer cast, we need to create a new MemberType object
+        that's backed by the InspectorObject retrieved from the parent object by key.
+        This requires a new initWithJSONObject initializer for each object protocol type.
+
+        * inspector/scripts/codegen/generate_objc_header.py:
+        (ObjCHeaderGenerator._generate_type_interface): Add new declaration.
+
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator.generate_type_implementation):
+        (ObjCProtocolTypesImplementationGenerator._generate_init_method_for_json_object): Added.
+        Forward through to the super class initializer who assigns the underlying InspectorObject.
+
+        (ObjCProtocolTypesImplementationGenerator._generate_init_method_for_required_members):
+        Drive-by cleanup to use the more compact [super init] form.
+
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.protocol_to_objc_expression_for_member):
+        For property getters of objects, use initWithJSONObject: rather than a C-style cast.
+
+        Rebaseline relevant test results.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2016-03-12  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Removed variable names from default constructor declarations.
+        https://bugs.webkit.org/show_bug.cgi?id=155397
+
+        Reviewed by Mark Lam.
+
+        They carry no information and generate unused variable warning with GCC
+        4.8 in a lot of source files.
+
+        * parser/VariableEnvironment.h:
+
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete dead SVG Font code
+        https://bugs.webkit.org/show_bug.cgi?id=154718
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-11  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Remove a few jumps from DFG
+        https://bugs.webkit.org/show_bug.cgi?id=155347
+
+        Reviewed by Mark Lam.
+
+        Usually, setting ValueTrue or ValueFalse is set
+        by Compare+Or. There are 3 places in DFG with branches instead.
+
+        This patch changes them to the usual pattern.
+
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileObjectEquality):
+        (JSC::DFG::SpeculativeJIT::compileObjectToObjectOrOtherEquality):
+
+2016-03-11  Saam barati  <sbarati@apple.com>
+
+        [ES6] Make Object.assign spec compliant
+        https://bugs.webkit.org/show_bug.cgi?id=155375
+
+        Reviewed by Michael Saboff.
+
+        This is a straight forward implementation of Object.assign
+        in the spec.
+        https://tc39.github.io/ecma262/#sec-object.assign
+        Before, weren't performing all of the specified operations.
+        Now, we are.
+
+        * builtins/ObjectConstructor.js:
+        (assign):
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * tests/es6.yaml:
+
+2016-03-11  Mark Lam  <mark.lam@apple.com>
+
+        Implement Function.name and Function#toString for ES6 class.
+        https://bugs.webkit.org/show_bug.cgi?id=155336
+
+        Reviewed by Geoffrey Garen.
+
+        The only thing that the ES6 spec says about toString with regards to class
+        objects is:
+
+        "The string representation must have the syntax of a FunctionDeclaration,
+        FunctionExpression, GeneratorDeclaration, GeneratorExpression, ClassDeclaration,
+        ClassExpression, ArrowFunction, MethodDefinition, or GeneratorMethod depending
+        upon the actual characteristics of the object."
+
+        Previously, invoking toString() on a class object will return the function
+        source string of the class' constructor function.  This does not conform to the
+        spec in that the toString string for a class does not have the syntax of a
+        ClassDeclaration or ClassExpression.
+
+        This is now fixed by doing the following:
+
+        1. Added "m_classSource" to FunctionExecutable (and correspondingly to
+           UnlinkedFunctionExecutable, FunctionMetadataNode, and ClassExprNode).
+           m_classSource is the SourceCode for the code range "class ... { ... }".
+
+           Since the class constructor function is the in memory representation of the
+           class object, only class constructor functions will have its m_classSource
+           set.  m_classSource will be "null" (by default) for all other functions.
+           This is how we know if a FunctionExecutable is for a class.
+
+           Note: FunctionExecutable does not have its own m_classSource.  It always gets
+           it from its UnlinkedFunctionExecutable.  This is ok to do because our CodeCache
+           currently does not cache UnlinkedFunctionExecutables for class constructors.
+
+        2. The ClassExprNode now tracks the SourceCode range for the class expression.
+           This is used to set m_classSource in the UnlinkedFunctionExecutable at
+           bytecode generation time, and the FunctionExecutable later at bytecode
+           linking time.
+
+        3. Function.prototype.toString() now checks if the function is for a class.
+           If so, it returns the string for the class source instead of just the
+           function source for the class constructor.
+
+           Note: the class source is static from the time the class was parsed.  This
+           can introduces some weirdness at runtime.  Consider the following:
+
+               var v1 = class {}
+               v1.toString(); // yields "class {}".
+
+               class c2 extends v1 {}
+
+               c2.__proto__ === v1; // yields true i.e. c2 extends v1.
+               c2.toString(); // yields "class c2 extends v1 {}" which is fine.
+
+               v1 = {}; // point v1 to something else now.
+
+               c2.__proto__ === v1; // now yields false i.e. c2 no longer extends v1.
+                                    // c2 actually extends the class that v1 used to
+                                    // point to, but ...
+               c2.toString(); // still yields "class c2 extends v1 {}" which is no longer true.
+
+           It is unclear how we can best implement toString() to avoid this issue.
+           The above behavior is how Chrome (Version 51.0.2671.0 canary (64-bit))
+           currently implements toString() of a class, and we do the same in this patch.
+           In Firefox (45.0), toString() of a class will yield the function source of it
+           constructor function, which is not better.
+
+        In this patch, we also added ES6 compliance for Function.name on class objects:
+
+        4. The ClassExprNode now has a m_ecmaName string for tracking the inferred
+           name of a class according to the ES6 spec.  The ASTBuilder now mirrors its
+           handling of FuncExprNodes to ClassExprNodes in setting the nodes' m_ecmaName
+           where relevant.
+
+           The m_ecmaName is later used to set the m_ecmaName of the FunctionExecutable
+           of the class constructor, which in turn is used to populate the initial value
+           of the Function.name property.
+
+        5. Also renamed some variable names (/m_metadata/metadata/) to be consistent with
+           webkit naming convention.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewArrowFunctionExpression):
+        (JSC::BytecodeGenerator::emitNewDefaultConstructor):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createAssignResolve):
+        (JSC::ASTBuilder::createYield):
+        (JSC::ASTBuilder::createClassExpr):
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createProperty):
+        (JSC::ASTBuilder::makeAssignNode):
+        * parser/NodeConstructors.h:
+        (JSC::FunctionParameters::FunctionParameters):
+        (JSC::BaseFuncExprNode::BaseFuncExprNode):
+        (JSC::FuncExprNode::FuncExprNode):
+        (JSC::FuncDeclNode::FuncDeclNode):
+        (JSC::ArrowFuncExprNode::ArrowFuncExprNode):
+        (JSC::ClassDeclNode::ClassDeclNode):
+        (JSC::ClassExprNode::ClassExprNode):
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isDestructuringNode):
+        (JSC::ExpressionNode::isFuncExprNode):
+        (JSC::ExpressionNode::isArrowFuncExprNode):
+        (JSC::ExpressionNode::isClassExprNode):
+        (JSC::ExpressionNode::isCommaNode):
+        (JSC::ExpressionNode::isSimpleArray):
+        (JSC::ExpressionNode::isAdd):
+        * parser/Parser.cpp:
+        (JSC::stringForFunctionMode):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseClass):
+        * parser/ParserFunctionInfo.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createEmptyLetExpression):
+        (JSC::SyntaxChecker::createYield):
+        (JSC::SyntaxChecker::createClassExpr):
+        (JSC::SyntaxChecker::createFunctionExpr):
+        (JSC::SyntaxChecker::createFunctionMetadata):
+        (JSC::SyntaxChecker::createArrowFunctionExpr):
+        * runtime/Executable.cpp:
+        (JSC::FunctionExecutable::FunctionExecutable):
+        (JSC::FunctionExecutable::finishCreation):
+        * runtime/Executable.h:
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+        * tests/es6.yaml:
+
+2016-03-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197994.
+        https://bugs.webkit.org/show_bug.cgi?id=155368
+
+        Broke several ARM tests (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Add register reuse for ArithAdd of an Int32 and
+        constant in DFG"
+        https://bugs.webkit.org/show_bug.cgi?id=155164
+        http://trac.webkit.org/changeset/197994
+
+2016-03-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Reflect.set without receiver support
+        https://bugs.webkit.org/show_bug.cgi?id=155024
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements Reflect.set.
+        The challenge in this patch is Reflect.set requires boolean result of [[Set]],
+        this is not propagated in the previous JSC put implementation.
+
+        This patch changes the put and putByIndex signature from `void put(...)` and `void putByIndex(...)` to `bool put(...)` and `bool putByIndex(...)`,
+        more consistent style to the ECMA262 spec's [[Set]].
+
+        This patch modifies so many part of WebKit. But almost all the changes are mechanical ones.
+
+        Currently, this patch does not support receiver modification support.
+        This will be supported in the subsequent patch[1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=155294
+
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::put):
+        (JSC::JSCallbackObject<Parent>::putByIndex):
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::put):
+        * debugger/DebuggerScope.h:
+        * jsc.cpp:
+        (WTF::RuntimeArray::put):
+        * runtime/ClassInfo.h:
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::put):
+        * runtime/ClonedArguments.h:
+        * runtime/CustomGetterSetter.cpp:
+        (JSC::callCustomSetter):
+        * runtime/CustomGetterSetter.h:
+        * runtime/GenericArguments.h:
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::put):
+        (JSC::GenericArguments<Type>::putByIndex):
+        * runtime/GetterSetter.cpp:
+        (JSC::callSetter):
+        * runtime/GetterSetter.h:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::defineOwnProperty):
+        (JSC::JSArray::put):
+        (JSC::JSArray::push):
+        * runtime/JSArray.h:
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::put):
+        * runtime/JSArrayBuffer.h:
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::put):
+        * runtime/JSArrayBufferView.h:
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        (JSC::JSValue::putToPrimitiveByIndex):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::put):
+        (JSC::JSValue::putInline):
+        (JSC::JSValue::putByIndex):
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::put):
+        (JSC::JSCell::putByIndex):
+        * runtime/JSCell.h:
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::put):
+        * runtime/JSDataView.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSFunction.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::put):
+        (JSC::JSGenericTypedArrayView<Adaptor>::putByIndex):
+        * runtime/JSGlobalLexicalEnvironment.cpp:
+        (JSC::JSGlobalLexicalEnvironment::put):
+        * runtime/JSGlobalLexicalEnvironment.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::put):
+        * runtime/JSGlobalObject.h:
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::put):
+        * runtime/JSLexicalEnvironment.h:
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::put):
+        * runtime/JSModuleEnvironment.h:
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::put):
+        (JSC::JSModuleNamespaceObject::putByIndex):
+        * runtime/JSModuleNamespaceObject.h:
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::instantiateDeclarations):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::put):
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::putByIndex):
+        (JSC::JSObject::putGetter):
+        (JSC::JSObject::putSetter):
+        (JSC::JSObject::putDirectAccessor):
+        (JSC::JSObject::putDirectCustomAccessor):
+        (JSC::JSObject::putDirectNonIndexAccessor):
+        (JSC::JSObject::putIndexedDescriptor):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::attemptToInterceptPutByIndexOnHoleForPrototype):
+        (JSC::JSObject::attemptToInterceptPutByIndexOnHole):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::putByIndexBeyondVectorLength):
+        (JSC::JSObject::putDirectNativeIntrinsicGetter):
+        (JSC::JSObject::putDirectNativeFunction):
+        (JSC::JSObject::putDirectMayBeIndex):
+        (JSC::validateAndApplyPropertyDescriptor):
+        * runtime/JSObject.h:
+        (JSC::JSObject::putByIndexInline):
+        (JSC::JSObject::putDirect):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putInline):
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::put):
+        (JSC::JSProxy::putByIndex):
+        * runtime/JSProxy.h:
+        * runtime/JSSymbolTableObject.h:
+        (JSC::symbolTablePut):
+        (JSC::symbolTablePutTouchWatchpointSet):
+        (JSC::symbolTablePutInvalidateWatchpointSet):
+        (JSC::symbolTablePutWithAttributesTouchWatchpointSet):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        (JSC::lookupPut):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performPut):
+        (JSC::ProxyObject::put):
+        (JSC::ProxyObject::putByIndexCommon):
+        (JSC::ProxyObject::putByIndex):
+        * runtime/ProxyObject.h:
+        * runtime/PutPropertySlot.h:
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectSet):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::setRegExpConstructorInput):
+        (JSC::setRegExpConstructorMultiline):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::defineOwnProperty):
+        (JSC::regExpObjectSetLastIndexStrict):
+        (JSC::regExpObjectSetLastIndexNonStrict):
+        (JSC::RegExpObject::put):
+        * runtime/RegExpObject.h:
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putEntry):
+        (JSC::SparseArrayEntry::put):
+        * runtime/SparseArrayValueMap.h:
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::put):
+        (JSC::StringObject::putByIndex):
+        * runtime/StringObject.h:
+        * tests/es6.yaml:
+        * tests/modules/namespace.js:
+        * tests/stress/reflect-set.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (receiverCase.object2.set Cocoa):
+        (receiverCase):
+        (proxyCase):
+        (objectCase.set get shouldBe):
+        (objectCase.get shouldBe):
+        (arrayCase.set get shouldBe):
+        (arrayCase.get shouldBe):
+        (arrayBufferCase.set get shouldBe):
+        (arrayBufferCase.get shouldBe):
+        (set get shouldBe):
+        (get shouldBe):
+        (argumentCase.test1):
+        (argumentCase.test2):
+        (argumentCase.test3):
+        (argumentCase.test4.set get shouldBe):
+        (argumentCase.test5.get shouldBe):
+        (argumentStrictCase.test1):
+        (argumentStrictCase.test2):
+        (argumentStrictCase.test3):
+        (argumentStrictCase.test4.set get shouldBe):
+        (argumentStrictCase.test5.get shouldBe):
+        (stringObjectCase.set get shouldBe):
+        (stringObjectCase.get shouldBe):
+        (customSetter.test1):
+        (customSetter.test2):
+        (customSetter.test3):
+        (customSetter):
+        (regExpLastIndex):
+        (functionCase.func):
+
+2016-03-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: generated initWithPayload: protocol object initializers should recursively decode array and object members
+        https://bugs.webkit.org/show_bug.cgi?id=155337
+        <rdar://problem/25098357>
+
+        Reviewed by Timothy Hatcher.
+
+        In cases where an object member is itself an object or array, we were
+        not calling initWithPayload: on the object member itself. So, this caused
+        a runtime error when constructing the outer object because the generated
+        code casted the NSDictionary/NSArray into the member's protocol object type.
+
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.payload_to_objc_expression_for_member):
+        Do a straightforward call to initWithPayload: for objects. For arrays,
+        call a templated helper function which does the same thing. The helper
+        is used to make this array decoding fit into a single generated expression.
+
+        Rebaseline relevant test results.
+
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2016-03-10  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix Changelog. git merged poorly.
+
+2016-03-10  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix testapi.
+
+        * API/tests/TypedArrayCTest.cpp:
+        (testAccess):
+        (testConstructors):
+        (forEachTypedArrayType):
+        (testTypedArrayCAPI):
+
+2016-03-10  Saam barati  <sbarati@apple.com>
+
+        [ES6] Make RegExp.prototype.toString spec compliant
+        https://bugs.webkit.org/show_bug.cgi?id=155341
+
+        Reviewed by Filip Pizlo.
+
+        Before we were directly calling into the flagsString
+        function. Instead, we must get the "flags" property
+        of the thisObject. This will usually call into the flags
+        getter, but not always. Specifically, you can you a Proxy
+        to observe this behavior.
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncToString):
+        (JSC::regExpProtoGetterGlobal):
+        * tests/es6.yaml:
+        * tests/es6/Proxy_internal_get_calls_RegExp.prototype.toString.js: Added.
+        (test.get var):
+        (test.):
+        * tests/stress/regexp-prototype-tostring.js: Added.
+        (assert):
+        (test):
+        (test.get var):
+        (test.):
+        (let.handler.get switch):
+        (let.handler):
+        (get test):
+        (test.get RegExp):
+
+2016-03-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add register reuse for ArithAdd of an Int32 and constant in DFG
+        https://bugs.webkit.org/show_bug.cgi?id=155164
+
+        Reviewed by Geoffrey Garen.
+
+        Every "inc" in loop was looking like this:
+            move rX, rY
+            inc rY
+            jo 0x230f4a200580
+
+        This patch add register Reuse to that case to remove
+        the extra "move".
+
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::SpeculationRecovery::SpeculationRecovery):
+        (JSC::DFG::SpeculationRecovery::immediate):
+        * dfg/DFGOSRExitCompiler32_64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompiler64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithAdd):
+        * tests/stress/arith-add-with-constant-overflow.js: Added.
+        (opaqueAdd):
+
+2016-03-10  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, build fix for r197983, hopefully.
+
+        * API/WebKitAvailability.h:
+
+2016-03-10  Keith Miller  <keith_miller@apple.com>
+
+        Typed Arrays have no public facing API
+        https://bugs.webkit.org/show_bug.cgi?id=120112
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds a new C-API (an Obj-C API will follow in the future) for Typed Arrays. The API has two sets of
+        functions. One for Typed Arrays and another for Array Buffers. This API is intended to reflect the use of Typed
+        Array objects in JS code. There is a method for each of the core TypedArray and Array Buffer methods.
+        Originally, we were planning on using a separate non-JS object as the backing store instead of a JS Array Buffer
+        but we decide to defer that idea since there was no good CF/NS API that met all the constraints we needed
+        (Discussed further below). We also wanted to want until Shared Array Buffers had reached a more finished state
+        to see what impact they might have on an API.
+
+        The API has the following Typed Array construction methods:
+        1) Create with length (the backing buffer is zero initialized). -- JSObjectMakeTypedArray
+        2) Create with an existing pointer and a destructor. -- JSObjectMakeTypedArrayFromBytesNoCopy
+        3) Create with an Array Buffer object. -- JSObjectMakeTypedArrayFromArrayBuffer
+        4) Create with an Array Buffer object with a given offset and length. -- JSObjectMakeTypedArrayFromArrayBufferWithOffset
+
+        The API has the following functions on Typed Array JSObjectRefs:
+        5) Get access to a temporary void* of the backing store's data. -- JSObjectGetTypedArrayBytesPtr
+        6) Get the length of a Typed Array object (returns 0 if it is not a Typed Array object). -- JSObjectGetTypedArrayLength
+        7) Get the byte length of a Typed Array object (returns 0 if it is not a Typed Array object). -- JSObjectGetTypedArrayByteLength
+        8) Get the byte offset of a Typed Array object (returns 0 if it is not a Typed Array object). -- JSObjectGetTypedArrayByteOffset
+        9) Get a Typed Array object's Array Buffer  backing store. -- JSObjectGetTypedArrayBuffer
+
+        The API has the following Array Buffer construction method:
+        10) Create with an existing pointer and a destructor. -- JSObjectMakeArrayBufferWithBytesNoCopy
+
+        The API has the following functions on Array Buffer JSObjectRefs:
+        11) Get access to a temporary void* of the backing store's data. -- JSObjectGetArrayBufferBytesPtr
+        12) Get the byte length of an Array Buffer object (returns 0 if it is not an Array Buffer object). -- JSObjectGetArrayBufferByteLength
+
+        The API adds the following new typedefs and enumerations:
+        13) A typedef representing the function pointer type used to deallocate byte pointers provided to constructors. -- JSTypedArrayByesDeallocator
+        14) An enumeration indicating the Typed Array API type of a JSValueRef. -- JSTypedArrayType
+
+        Finally, The API has the following function to get Typed Array Types:
+        15)  Get the Typed Array type of a JS value. -- JSValueGetTypedArrayType
+
+        There are a couple of things to note about these functions. Calling JSObjectGetTypedArrayBytesPtr (5) or
+        JSObjectGetArrayBufferBytesPtr (12) will pin and lock the ArrayBuffer's data for the remaining lifetime of that
+        ArrayBuffer. This is because, currently, we do not have finalizers for our Array Buffers or Typed Arrays with a
+        backing ArrayBuffer and adding one would likely incur a non-trivial cost to GC. Also, we do not have a direct
+        way to make a Typed Array from a pointer with an offset as we do not expect using offsets to be a common use
+        case of the API.
+
+        While it would have been nice to integrate our backing store with CFData or one of its subclasses, it is not
+        possible to force a CFData/CFMutableData to be both writable and have a fixed size/backing store pointer.
+        NSData is not writable and CFMutableData can have a fixed pointer if it is allocated with a non-zero capacity
+        but there is no way for us to force an existing CFMutableData into this state.
+
+        * API/APIUtils.h: Copied from Source/JavaScriptCore/runtime/ArrayBuffer.cpp.
+        (handleExceptionIfNeeded):
+        (setException):
+        * API/JSBase.h:
+        * API/JSObjectRef.cpp:
+        (handleExceptionIfNeeded): Deleted.
+        * API/JSTypedArray.cpp: Added.
+        (toJSTypedArrayType):
+        (toTypedArrayType):
+        (createTypedArray):
+        (JSValueGetTypedArrayType):
+        (JSObjectMakeTypedArray):
+        (JSObjectMakeTypedArrayWithBytesNoCopy):
+        (JSObjectMakeTypedArrayWithArrayBuffer):
+        (JSObjectMakeTypedArrayWithArrayBufferAndOffset):
+        (JSObjectGetTypedArrayBytesPtr):
+        (JSObjectGetTypedArrayLength):
+        (JSObjectGetTypedArrayByteLength):
+        (JSObjectGetTypedArrayByteOffset):
+        (JSObjectGetTypedArrayBuffer):
+        (JSObjectMakeArrayBufferWithBytesNoCopy):
+        (JSObjectGetArrayBufferBytesPtr):
+        (JSObjectGetArrayBufferByteLength):
+        * API/JSTypedArray.h: Added.
+        * API/JSValueRef.cpp:
+        (handleExceptionIfNeeded): Deleted.
+        * API/JSValueRef.h:
+        * API/JavaScript.h:
+        * API/WebKitAvailability.h:
+        * API/tests/TypedArrayCTest.cpp: Added.
+        (id):
+        (freePtr):
+        (assertEqualsAsNumber):
+        (testAccess):
+        (testConstructors):
+        (forEachTypedArrayType):
+        (testTypedArrayCAPI):
+        * API/tests/TypedArrayCTest.h: Added.
+        * API/tests/testapi.c:
+        (main):
+        * CMakeLists.txt:
+        * ForwardingHeaders/JavaScriptCore/JSTypedArray.h: Added.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * runtime/ArrayBuffer.cpp:
+        (JSC::ArrayBuffer::transfer):
+        * runtime/ArrayBuffer.h:
+        (JSC::arrayBufferDestructorNull):
+        (JSC::arrayBufferDestructorDefault):
+        (JSC::ArrayBufferContents::ArrayBufferContents):
+        (JSC::ArrayBufferContents::transfer):
+        (JSC::ArrayBuffer::createAdopted):
+        (JSC::ArrayBuffer::createFromBytes):
+        (JSC::ArrayBuffer::ArrayBuffer):
+        (JSC::ArrayBuffer::pinAndLock):
+        (JSC::ArrayBufferContents::tryAllocate):
+        (JSC::ArrayBufferContents::~ArrayBufferContents):
+        * shell/PlatformWin.cmake:
+
+2016-03-10  Saam barati  <sbarati@apple.com>
+
+        [ES6] Instanceof isn't spec compliant when the RHS is a Proxy with a target that is a function
+        https://bugs.webkit.org/show_bug.cgi?id=155329
+
+        Reviewed by Mark Lam.
+
+        We use type info flags on the structure to dictate whether or not 
+        the RHS of an instanceof is a valid RHS (i.e, a function). The solution
+        to make Proxy a valid RHS when the Proxy's target is callable is to have
+        two different structures for ProxyObject: one for a non-callable target 
+        and one for a callable target.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::moduleRecordStructure):
+        (JSC::JSGlobalObject::moduleNamespaceObjectStructure):
+        (JSC::JSGlobalObject::proxyObjectStructure):
+        (JSC::JSGlobalObject::callableProxyObjectStructure):
+        (JSC::JSGlobalObject::proxyRevokeStructure):
+        (JSC::JSGlobalObject::wasmModuleStructure):
+        * runtime/ProxyConstructor.cpp:
+        (JSC::makeRevocableProxy):
+        (JSC::constructProxyObject):
+        (JSC::ProxyConstructor::getConstructData):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::ProxyObject):
+        (JSC::ProxyObject::structureForTarget):
+        (JSC::ProxyObject::finishCreation):
+        * runtime/ProxyObject.h:
+        (JSC::ProxyObject::create):
+        (JSC::ProxyObject::createStructure):
+        * tests/es6.yaml:
+        * tests/stress/proxy-instanceof.js: Added.
+        (assert):
+        (test):
+        (C):
+        (test.let.handler.get if):
+        (test.let.handler):
+
+2016-03-10  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] RegExp sticky flag should be ignored in String.match when global flag is given
+        https://bugs.webkit.org/show_bug.cgi?id=155332
+
+        Reviewed by Saam Barati.
+
+        Removed logic from stringProtoFuncMatch that handles the case where both global and sticky flags are set.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncMatch):
+
+2016-03-10  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Allow RegExp constructor to take pattern from an existing RegExp with new flags
+        https://bugs.webkit.org/show_bug.cgi?id=155315
+
+        Reviewed by Saam Barati.
+
+        Changed to comply with section 21.2.3.1, step 5.  Eliminated syntax error.
+
+        In the process, change to get the VM at the top of the function.
+
+        Updated tests accordingly.
+
+        * runtime/RegExpConstructor.cpp:
+        (JSC::constructRegExp):
+        * tests/es6.yaml: Changed miscellaneous_RegExp_constructor_can_alter_flags.js to normal.
+        * tests/mozilla/mozilla-tests.yaml: Disabled ecma_3/RegExp/15.10.4.1-5-n.js as it checks
+        for the old behavior of throwing a syntax error.
+
+2016-03-10  Saam barati  <sbarati@apple.com>
+
+        [ES6] Make ToPropertyDescriptor spec compliant
+        https://bugs.webkit.org/show_bug.cgi?id=155313
+
+        Reviewed by Mark Lam.
+
+        We were performing HasProperty(.) and Get(.) in the same operation.
+        This isn't valid according to the spec and it's user observable
+        behavior with Proxy. This patch fixes ToPropertyDescriptor to use
+        two distinct operations for HasProperty(.) and Get(.).
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ownEnumerablePropertyKeys):
+        (JSC::toPropertyDescriptor):
+        * tests/es6.yaml:
+        * tests/stress/to-property-key-correctness.js: Added.
+        (assert):
+        (test):
+        (test.let.handler.has):
+        (arrayEq):
+        (let.handler.has):
+        (let.target):
+        (set get let):
+
+2016-03-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: report the underlying parser error message when JSON parsing fails
+        https://bugs.webkit.org/show_bug.cgi?id=155303
+        <rdar://problem/25088939>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        (generate_from_specification.load_specification):
+        Stringize the underlying error so we can see what it says.
+
+2016-03-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JavaScript Heap Allocations Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=155287
+        <rdar://problem/25078088>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype._describe):
+        (InjectedScript.prototype._nodeDescription):
+        Provide the nicer node preview more often.
+
+2016-03-10  Saam barati  <sbarati@apple.com>
+
+        Assignment to new.target should be an early error
+        https://bugs.webkit.org/show_bug.cgi?id=151148
+
+        Reviewed by Mark Lam.
+
+        This patch makes it so that any form of assignment to new.target
+        is an early syntax error.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createNewTargetExpr):
+        (JSC::ASTBuilder::isNewTarget):
+        (JSC::ASTBuilder::createResolve):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseUnaryExpression):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createThisExpr):
+        (JSC::SyntaxChecker::createSuperExpr):
+        (JSC::SyntaxChecker::createNewTargetExpr):
+        (JSC::SyntaxChecker::isNewTarget):
+        (JSC::SyntaxChecker::createResolve):
+        (JSC::SyntaxChecker::createObjectLiteral):
+        * tests/es6.yaml:
+        * tests/stress/new-target-syntax-errors.js: Added.
+        (shouldBeSyntaxError):
+        (shouldNotBeSyntaxError):
+        * tests/stress/new-target.js:
+        (Constructor):
+        (doWeirdThings):
+        (noAssign): Deleted.
+        (catch): Deleted.
+
+2016-03-08  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        How we load new.target in arrow functions is broken
+        https://bugs.webkit.org/show_bug.cgi?id=155153
+
+        Reviewed by Saam Barati.
+
+        Fixed not correct approach of caching new.target. In current patch was added code feature
+        flag that shows that current function is using new.target, when generating byte code an arrow 
+        function we are loading new.target value to its register from arrow function lexical environment. 
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitLoadNewTargetFromArrowFunctionLexicalEnvironment):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::newTarget):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createNewTargetExpr):
+        (JSC::ASTBuilder::usesNewTarget):
+        * parser/Nodes.h:
+        (JSC::ScopeNode::usesNewTarget):
+        * parser/ParserModes.h:
+        * tests/stress/arrowfunction-lexical-bind-newtarget.js:
+
+2016-03-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Get a RemoteObject or ObjectPreview from HeapSnapshot Object Identifier
+        https://bugs.webkit.org/show_bug.cgi?id=155264
+        <rdar://problem/25070716>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::functionDetails):
+        (Inspector::InjectedScript::previewValue):
+        New InjectedScript methods for building Debugger.FunctionDetails
+        or Runtime.ObjectPreview protocol objects from a JSValue.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype.previewValue):
+        (InjectedScript.prototype.functionDetails):
+        (InjectedScript.prototype.getFunctionDetails):
+        (InjectedScript.RemoteObject.prototype._isPreviewableObjectInternal):
+        (InjectedScript.RemoteObject.prototype._createObjectPreviewForValue): Deleted.
+        (InjectedScript.RemoteObject.prototype._appendEntryPreviews): Deleted.
+        Share code around creating function details or object preview objects.
+
+        * inspector/agents/InspectorHeapAgent.cpp:
+        (Inspector::InspectorHeapAgent::InspectorHeapAgent):
+        (Inspector::InspectorHeapAgent::nodeForHeapObjectIdentifier):
+        (Inspector::InspectorHeapAgent::getPreview):
+        (Inspector::InspectorHeapAgent::getRemoteObject):
+        * inspector/agents/InspectorHeapAgent.h:
+        * inspector/protocol/Heap.json:
+        New protocol methods that go from heap object identifier to a
+        remote object or some kind of preview.
+
+        * inspector/scripts/codegen/generator.py:
+        Allow runtime casts for ObjectPreview.
+
+2016-03-09  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Intl Constructors not web compatible with Object.create usage
+        https://bugs.webkit.org/show_bug.cgi?id=153679
+
+        Reviewed by Darin Adler.
+
+        Add workaround for initializing NumberFormat and DateTimeFormat objects
+        using Object.create followed by constructor.call. This is necessary for
+        backwards compatibility with libraries relying on v1 behavior of Intl
+        constructors.
+
+        Collator does not get the workaround, since polyfills do not include it,
+        and there are not any known instances of v2 incompatible libraries.
+
+        The workaround involves checking for an object that inherits from the
+        *Format constructor, but was not actually initialized with that type. A
+        substitute instance is created and attached to the object using a private
+        name. The prototype functions then check for the private property to use
+        in place of the original object.
+
+        Since this behavior is not part of the v2 spec, it should be removed as
+        soon as the incompatible behavior is no longer in common use.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        (JSC::callIntlDateTimeFormat):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototypeGetterFormat):
+        (JSC::IntlDateTimeFormatPrototypeFuncResolvedOptions):
+        * runtime/IntlNumberFormatConstructor.cpp:
+        (JSC::callIntlNumberFormat):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototypeGetterFormat):
+        (JSC::IntlNumberFormatPrototypeFuncResolvedOptions):
+
+2016-03-09  Saam barati  <sbarati@apple.com>
+
+        Add proper JSON.stringify support for Proxy when the target is an array
+        https://bugs.webkit.org/show_bug.cgi?id=155180
+
+        Reviewed by Darin Adler.
+
+        This patch makes the following type of program true:
+        `JSON.stringify(new Proxy([25], {})) === "[25]"`
+
+        We need to change the JSON stringifier to use the IsArray test
+        in section 7.2.2 of ES6 spec instead of the JSC inherits(JSArray::info())
+        test.
+
+        This patch also adds tests for general JSON.stringify support
+        of Proxy.
+
+        * runtime/ArrayConstructor.cpp:
+        (JSC::arrayConstructorIsArray):
+        (JSC::arrayConstructorPrivateFuncIsArrayConstructor):
+        * runtime/ArrayConstructor.h:
+        (JSC::isArray):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::Holder::object):
+        (JSC::Stringifier::appendStringifiedValue):
+        (JSC::Stringifier::startNewLine):
+        (JSC::Stringifier::Holder::Holder):
+        * tests/es6.yaml:
+        * tests/stress/proxy-json.js: Added.
+        (assert):
+        (test):
+
+2016-03-09  Saam Barati  <sbarati@apple.com>
+
+        ES6: Implement lexical scoping for function definitions in strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=152844
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements block scoping for function definitions
+        in strict mode. The implementation works as follows:
+        
+        - If we're in sloppy mode, function declarations work exactly
+          as they did before this patch. I.e, function declarations are hoisted
+          and declared like "var" variables.
+        
+        - If you're in strict mode and at the top of a function scope or program
+          scope, function declarations still work like they used to. They are defined
+          like "var" variables. This is necessary for backwards compatibility
+          because ES5 strict mode allowed duplicate function declarations at the
+          top-most scope of a program/function.
+        
+        - If you're in strict mode and inside a block statement or a switch statement,
+          function declarations are now block scoped. All function declarations within
+          a block are hoisted to the beginning of the block. They are not hoisted out of the 
+          block like they are in sloppy mode. This allows for the following types of
+          programs:
+          ```
+          function foo() {
+              function bar() { return 20; }
+              {
+                  function bar() { return 30; }
+                  bar(); // 30
+              }
+              bar(); // 20
+          }
+          ```
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::instantiateLexicalVariables):
+        (JSC::BytecodeGenerator::emitPrefillStackTDZVariables):
+        (JSC::BytecodeGenerator::pushLexicalScope):
+        (JSC::BytecodeGenerator::pushLexicalScopeInternal):
+        (JSC::BytecodeGenerator::initializeBlockScopedFunctions):
+        (JSC::BytecodeGenerator::popLexicalScope):
+        (JSC::BytecodeGenerator::liftTDZCheckIfPossible):
+        (JSC::BytecodeGenerator::pushTDZVariables):
+        (JSC::BytecodeGenerator::getVariablesUnderTDZ):
+        (JSC::BytecodeGenerator::emitNewRegExp):
+        (JSC::BytecodeGenerator::emitNewFunctionExpressionCommon):
+        (JSC::BytecodeGenerator::emitNewFunctionExpression):
+        (JSC::BytecodeGenerator::emitNewArrowFunctionExpression):
+        * bytecompiler/BytecodeGenerator.h:
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createSourceElements):
+        (JSC::ASTBuilder::features):
+        (JSC::ASTBuilder::numConstants):
+        (JSC::ASTBuilder::createFuncDeclStatement):
+        (JSC::ASTBuilder::createClassDeclStatement):
+        (JSC::ASTBuilder::createBlockStatement):
+        (JSC::ASTBuilder::createTryStatement):
+        (JSC::ASTBuilder::createSwitchStatement):
+        (JSC::ASTBuilder::Scope::Scope):
+        (JSC::ASTBuilder::funcDeclarations): Deleted.
+        * parser/NodeConstructors.h:
+        (JSC::CaseBlockNode::CaseBlockNode):
+        (JSC::SwitchNode::SwitchNode):
+        (JSC::BlockNode::BlockNode):
+        * parser/Nodes.cpp:
+        (JSC::ScopeNode::ScopeNode):
+        (JSC::ScopeNode::singleStatement):
+        (JSC::ProgramNode::ProgramNode):
+        (JSC::ModuleProgramNode::ModuleProgramNode):
+        (JSC::EvalNode::EvalNode):
+        (JSC::FunctionNode::FunctionNode):
+        (JSC::VariableEnvironmentNode::VariableEnvironmentNode):
+        * parser/Nodes.h:
+        (JSC::VariableEnvironmentNode::VariableEnvironmentNode):
+        (JSC::VariableEnvironmentNode::lexicalVariables):
+        (JSC::VariableEnvironmentNode::functionStack):
+        (JSC::ScopeNode::captures):
+        (JSC::ScopeNode::varDeclarations):
+        (JSC::ScopeNode::neededConstants):
+        (JSC::ProgramNode::startColumn):
+        (JSC::ProgramNode::endColumn):
+        (JSC::EvalNode::startColumn):
+        (JSC::EvalNode::endColumn):
+        (JSC::ModuleProgramNode::startColumn):
+        (JSC::ModuleProgramNode::endColumn):
+        (JSC::ScopeNode::functionStack): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        (JSC::Parser<LexerType>::didFinishParsing):
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::parseSwitchStatement):
+        (JSC::Parser<LexerType>::parseBlockStatement):
+        (JSC::Parser<LexerType>::parseStatement):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::getMetadata):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        * parser/Parser.h:
+        (JSC::Scope::declareVariable):
+        (JSC::Scope::declareFunction):
+        (JSC::Scope::appendFunction):
+        (JSC::Scope::takeFunctionDeclarations):
+        (JSC::Scope::declareLexicalVariable):
+        (JSC::Parser::currentVariableScope):
+        (JSC::Parser::currentLexicalDeclarationScope):
+        (JSC::Parser::currentFunctionScope):
+        (JSC::Parser::pushScope):
+        (JSC::Parser::popScopeInternal):
+        (JSC::Parser::declareVariable):
+        (JSC::Parser::declareFunction):
+        (JSC::Parser::hasDeclaredVariable):
+        (JSC::Parser::isFunctionMetadataNode):
+        (JSC::Parser<LexerType>::parse):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createFuncDeclStatement):
+        (JSC::SyntaxChecker::createClassDeclStatement):
+        (JSC::SyntaxChecker::createBlockStatement):
+        (JSC::SyntaxChecker::createExprStatement):
+        (JSC::SyntaxChecker::createIfStatement):
+        (JSC::SyntaxChecker::createContinueStatement):
+        (JSC::SyntaxChecker::createTryStatement):
+        (JSC::SyntaxChecker::createSwitchStatement):
+        (JSC::SyntaxChecker::createWhileStatement):
+        (JSC::SyntaxChecker::createWithStatement):
+        (JSC::SyntaxChecker::createDoWhileStatement):
+        * parser/VariableEnvironment.h:
+        (JSC::VariableEnvironmentEntry::isExported):
+        (JSC::VariableEnvironmentEntry::isImported):
+        (JSC::VariableEnvironmentEntry::isImportedNamespace):
+        (JSC::VariableEnvironmentEntry::isFunction):
+        (JSC::VariableEnvironmentEntry::setIsCaptured):
+        (JSC::VariableEnvironmentEntry::setIsConst):
+        (JSC::VariableEnvironmentEntry::setIsExported):
+        (JSC::VariableEnvironmentEntry::setIsImported):
+        (JSC::VariableEnvironmentEntry::setIsImportedNamespace):
+        (JSC::VariableEnvironmentEntry::setIsFunction):
+        (JSC::VariableEnvironmentEntry::clearIsVar):
+        (JSC::VariableEnvironment::VariableEnvironment):
+        (JSC::VariableEnvironment::begin):
+        (JSC::VariableEnvironment::end):
+        * tests/es6.yaml:
+        * tests/stress/block-scoped-function-declarations.js: Added.
+        (assert):
+        (test):
+        (f.foo.bar):
+        (f.foo.):
+        (f.foo):
+        (f):
+        (assert.foo.):
+        (assert.foo):
+        (assert.foo.foo):
+        (assert.foo.bar):
+        (assert.foo.switch.case.1):
+        (assert.foo.switch.case.2):
+        (assert.foo.switch.foo):
+        (assert.foo.switch.bar):
+
+2016-03-09  Saam barati  <sbarati@apple.com>
+
+        Array.isArray support for Proxy
+        https://bugs.webkit.org/show_bug.cgi?id=155179
+
+        Reviewed by Mark Lam.
+
+        This patch implements Array.isArray to be compliant
+        with the ES6 spec. Specifically, it needs to interface
+        properly with Proxy arguments.
+        https://tc39.github.io/ecma262/#sec-isarray
+
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::getCallData):
+        (JSC::arrayConstructorIsArray):
+        (JSC::arrayConstructorPrivateFuncIsArrayConstructor):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::speciesConstructArray):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::revoke):
+        (JSC::ProxyObject::isRevoked):
+        (JSC::ProxyObject::visitChildren):
+        * runtime/ProxyObject.h:
+        (JSC::ProxyObject::target):
+        (JSC::ProxyObject::handler):
+        * tests/es6.yaml:
+        * tests/stress/proxy-is-array.js: Added.
+        (assert):
+        (test):
+
+2016-03-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Fix the ARM64 MacroAssembler after r197816
+        https://bugs.webkit.org/show_bug.cgi?id=155268
+
+        Reviewed by Mark Lam.
+
+        The patch tries to generate instructions that do not exist,
+        causing quite fun stuff at runtime.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::load8):
+        (JSC::MacroAssemblerARM64::store16):
+        (JSC::MacroAssemblerARM64::store8):
+
+2016-03-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197873.
+        https://bugs.webkit.org/show_bug.cgi?id=155262
+
+        "Crashes some JSC tests" (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "Add dumping of function expression names in CodeBlock
+        bytecode dump."
+        https://bugs.webkit.org/show_bug.cgi?id=155248
+        http://trac.webkit.org/changeset/197873
+
+2016-03-09  Oliver Hunt  <oliver@apple.com>
+
+        Fix old iOS
+
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+
+2016-03-09  Oliver Hunt  <oliver@apple.com>
+
+        Wincairo buildfix
+        https://bugs.webkit.org/show_bug.cgi?id=155245
+
+        Reviewed by Mark Lam.
+
+        Fix up exports for a few symbols
+
+        * jit/ExecutableAllocator.h:
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+
+2016-03-09  Mark Lam  <mark.lam@apple.com>
+
+        Add dumping of function expression names in CodeBlock bytecode dump.
+        https://bugs.webkit.org/show_bug.cgi?id=155248
+
+        Reviewed by Filip Pizlo.
+
+        Because ...
+        [  19] new_func_exp      loc5, loc3, f0:foo
+
+        ... is more informative than
+        [  19] new_func_exp      loc5, loc3, f0
+
+        Anonymous functions will be dumped as <anon>.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpFunctionExpr):
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecode/CodeBlock.h:
+
+2016-03-09  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Implement RegExp sticky flag and related functionality
+        https://bugs.webkit.org/show_bug.cgi?id=155177
+
+        Reviewed by Saam Barati.
+
+        Implemented the ES6 RegExp sticky functionality.
+
+        There are two main behavior changes when the sticky flag is specified.
+        1) Matching starts at lastIndex and lastIndex is updated after the match.
+        2) The regular expression is only matched from the start position in the string.
+        See ES6 section 21.2.5.2.2 for details.
+
+        Changed both the Yarr interpreter and jit to not loop to the next character for sticky RegExp's.
+        Updated RegExp exec and match, and stringProtoFuncMatch to handle lastIndex changes.
+
+        Restructured the way flags are passed to and through YarrPatterns to use RegExpFlags instead of
+        individual bools.
+
+        Updated tests for 'y' flag and new behavior.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::regexpToSourceString):
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::findMagicComment):
+        * runtime/CommonIdentifiers.h:
+        * runtime/RegExp.cpp:
+        (JSC::regExpFlags):
+        (JSC::RegExpFunctionalTestCollector::outputOneTest):
+        (JSC::RegExp::finishCreation):
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * runtime/RegExp.h:
+        * runtime/RegExpKey.h:
+        * runtime/RegExpObjectInlines.h:
+        (JSC::RegExpObject::execInline):
+        (JSC::RegExpObject::matchInline):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncCompile):
+        (JSC::flagsString):
+        (JSC::regExpProtoGetterMultiline):
+        (JSC::regExpProtoGetterSticky):
+        (JSC::regExpProtoGetterUnicode):
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncMatch):
+        * tests/es6.yaml:
+        * tests/stress/static-getter-in-names.js:
+        (shouldBe):
+        * yarr/RegularExpression.cpp:
+        (JSC::Yarr::RegularExpression::Private::compile):
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::tryConsumeBackReference):
+        (JSC::Yarr::Interpreter::matchAssertionBOL):
+        (JSC::Yarr::Interpreter::matchAssertionEOL):
+        (JSC::Yarr::Interpreter::matchAssertionWordBoundary):
+        (JSC::Yarr::Interpreter::matchDotStarEnclosure):
+        (JSC::Yarr::Interpreter::matchDisjunction):
+        (JSC::Yarr::Interpreter::Interpreter):
+        (JSC::Yarr::ByteCompiler::atomPatternCharacter):
+        * yarr/YarrInterpreter.h:
+        (JSC::Yarr::BytecodePattern::BytecodePattern):
+        (JSC::Yarr::BytecodePattern::estimatedSizeInBytes):
+        (JSC::Yarr::BytecodePattern::ignoreCase):
+        (JSC::Yarr::BytecodePattern::multiline):
+        (JSC::Yarr::BytecodePattern::sticky):
+        (JSC::Yarr::BytecodePattern::unicode):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::matchCharacterClass):
+        (JSC::Yarr::YarrGenerator::jumpIfCharNotEquals):
+        (JSC::Yarr::YarrGenerator::generateAssertionBOL):
+        (JSC::Yarr::YarrGenerator::generateAssertionEOL):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterOnce):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterFixed):
+        (JSC::Yarr::YarrGenerator::generateDotStarEnclosure):
+        (JSC::Yarr::YarrGenerator::backtrack):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::YarrPatternConstructor):
+        (JSC::Yarr::YarrPatternConstructor::atomPatternCharacter):
+        (JSC::Yarr::YarrPatternConstructor::setupAlternativeOffsets):
+        (JSC::Yarr::YarrPatternConstructor::optimizeBOL):
+        (JSC::Yarr::YarrPattern::compile):
+        (JSC::Yarr::YarrPattern::YarrPattern):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::YarrPattern::reset):
+        (JSC::Yarr::YarrPattern::nonwordcharCharacterClass):
+        (JSC::Yarr::YarrPattern::ignoreCase):
+        (JSC::Yarr::YarrPattern::multiline):
+        (JSC::Yarr::YarrPattern::sticky):
+        (JSC::Yarr::YarrPattern::unicode):
+
 2016-03-09  Mark Lam  <mark.lam@apple.com>
 
         FunctionExecutable::ecmaName() should not be based on inferredName().

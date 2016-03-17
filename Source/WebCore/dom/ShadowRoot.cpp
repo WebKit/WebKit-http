@@ -182,6 +182,7 @@ void ShadowRoot::removeAllEventListeners()
 
 HTMLSlotElement* ShadowRoot::findAssignedSlot(const Node& node)
 {
+    ASSERT(node.parentNode() == host());
     if (!m_slotAssignment)
         return nullptr;
     return m_slotAssignment->findAssignedSlot(node, *this);
@@ -198,18 +199,6 @@ void ShadowRoot::addSlotElementByName(const AtomicString& name, HTMLSlotElement&
 void ShadowRoot::removeSlotElementByName(const AtomicString& name, HTMLSlotElement& slot)
 {
     return m_slotAssignment->removeSlotElementByName(name, slot, *this);
-}
-
-void ShadowRoot::invalidateSlotAssignments()
-{
-    if (m_slotAssignment)
-        m_slotAssignment->invalidate(*this);
-}
-
-void ShadowRoot::invalidateDefaultSlotAssignments()
-{
-    if (m_slotAssignment)
-        m_slotAssignment->invalidateDefaultSlot(*this);
 }
 
 const Vector<Node*>* ShadowRoot::assignedNodesForSlot(const HTMLSlotElement& slot)

@@ -147,7 +147,7 @@ protected:
     JS_EXPORT_PRIVATE void finishCreation(VM&);
     
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
@@ -164,14 +164,7 @@ public:
     bool isNeutered() { return hasArrayBuffer() && !vector(); }
     void neuter();
     
-    void* vector()
-    {
-        return m_vector.getPredicated(
-            this,
-            [this] () -> bool {
-                return mode() == FastTypedArray;
-            });
-    }
+    void* vector() { return m_vector.get(); }
     
     unsigned byteOffset();
     unsigned length() const { return m_length; }

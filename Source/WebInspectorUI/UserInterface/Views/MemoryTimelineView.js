@@ -111,11 +111,6 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
 
     // Public
 
-    get navigationSidebarTreeOutlineLabel()
-    {
-        return WebInspector.UIString("Records");
-    }
-
     shown()
     {
         super.shown();
@@ -153,11 +148,6 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
     }
 
     // Protected
-
-    treeElementPathComponentSelected(event)
-    {
-        // Nothing. The sidebar will soon be removed.
-    }
 
     layout()
     {

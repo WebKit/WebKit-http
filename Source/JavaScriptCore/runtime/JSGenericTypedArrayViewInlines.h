@@ -303,18 +303,19 @@ bool JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot(
 }
 
 template<typename Adaptor>
-void JSGenericTypedArrayView<Adaptor>::put(
+bool JSGenericTypedArrayView<Adaptor>::put(
     JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value,
     PutPropertySlot& slot)
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
     
-    if (Optional<uint32_t> index = parseIndex(propertyName)) {
-        putByIndex(thisObject, exec, index.value(), value, slot.isStrictMode());
-        return;
-    }
+    // https://tc39.github.io/ecma262/#sec-integer-indexed-exotic-objects-set-p-v-receiver
+    // Ignore the receiver even if the receiver is altered to non base value.
+    // 9.4.5.5-2-b-i Return ? IntegerIndexedElementSet(O, numericIndex, V).
+    if (Optional<uint32_t> index = parseIndex(propertyName))
+        return putByIndex(thisObject, exec, index.value(), value, slot.isStrictMode());
     
-    Base::put(thisObject, exec, propertyName, value, slot);
+    return Base::put(thisObject, exec, propertyName, value, slot);
 }
 
 template<typename Adaptor>
@@ -364,19 +365,17 @@ bool JSGenericTypedArrayView<Adaptor>::getOwnPropertySlotByIndex(
 }
 
 template<typename Adaptor>
-void JSGenericTypedArrayView<Adaptor>::putByIndex(
+bool JSGenericTypedArrayView<Adaptor>::putByIndex(
     JSCell* cell, ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
     
     if (propertyName > MAX_ARRAY_INDEX) {
         PutPropertySlot slot(JSValue(thisObject), shouldThrow);
-        thisObject->methodTable()->put(
-            thisObject, exec, Identifier::from(exec, propertyName), value, slot);
-        return;
+        return thisObject->methodTable()->put(thisObject, exec, Identifier::from(exec, propertyName), value, slot);
     }
     
-    thisObject->setIndex(exec, propertyName, value);
+    return thisObject->setIndex(exec, propertyName, value);
 }
 
 template<typename Adaptor>
@@ -426,7 +425,7 @@ void JSGenericTypedArrayView<Adaptor>::visitChildren(JSCell* cell, SlotVisitor& 
     switch (thisObject->m_mode) {
     case FastTypedArray: {
         if (thisObject->m_vector)
-            visitor.copyLater(thisObject, TypedArrayVectorCopyToken, thisObject->m_vector.getWithoutBarrier(), thisObject->byteSize());
+            visitor.copyLater(thisObject, TypedArrayVectorCopyToken, thisObject->m_vector.get(), thisObject->byteSize());
         break;
     }
         
@@ -453,7 +452,7 @@ void JSGenericTypedArrayView<Adaptor>::copyBackingStore(
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
     
     if (token == TypedArrayVectorCopyToken
-        && visitor.checkIfShouldCopy(thisObject->m_vector.getWithoutBarrier())) {
+        && visitor.checkIfShouldCopy(thisObject->m_vector.get())) {
         ASSERT(thisObject->m_vector);
         void* oldVector = thisObject->vector();
         void* newVector = visitor.allocateNewSpace(thisObject->byteSize());

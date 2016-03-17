@@ -58,7 +58,7 @@ NetworkLoad::NetworkLoad(NetworkLoadClient& client, const NetworkLoadParameters&
         if (!parameters.defersLoading)
             m_task->resume();
     } else
-        ASSERT_NOT_REACHED();
+        WTFLogAlways("Attempted to create a NetworkLoad with a session (id=%" PRIu64 ") that does not exist.", parameters.sessionID.sessionID());
 #else
     m_handle = ResourceHandle::create(m_networkingContext.get(), parameters.request, this, parameters.defersLoading, parameters.contentSniffingPolicy == SniffContent);
 #endif
@@ -110,19 +110,26 @@ void NetworkLoad::continueWillSendRequest(const WebCore::ResourceRequest& newReq
     m_currentRequest.updateFromDelegatePreservingOldProperties(newRequest);
 #endif
 
+#if USE(NETWORK_SESSION)
+    auto redirectCompletionHandler = std::exchange(m_redirectCompletionHandler, nullptr);    
+    ASSERT(redirectCompletionHandler);
+#endif
+    
     if (m_currentRequest.isNull()) {
         if (m_handle)
             m_handle->cancel();
         didFail(m_handle.get(), cancelledError(m_currentRequest));
+#if USE(NETWORK_SESSION)
+        if (redirectCompletionHandler)
+            redirectCompletionHandler({ });
+#endif
+        return;
     } else if (m_handle)
         m_handle->continueWillSendRequest(m_currentRequest);
 
 #if USE(NETWORK_SESSION)
-    ASSERT(m_redirectCompletionHandler);
-    if (m_redirectCompletionHandler) {
-        m_redirectCompletionHandler(m_currentRequest);
-        m_redirectCompletionHandler = nullptr;
-    }
+    if (redirectCompletionHandler)
+        redirectCompletionHandler(m_currentRequest);
 #endif
 }
 

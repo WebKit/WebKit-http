@@ -520,6 +520,7 @@ public:
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getLookupContextAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
+    void updateForceAlwaysUserScalable();
 #endif
 #if ENABLE(DATA_DETECTION)
     void setDataDetectionResult(const DataDetectionResult&);
@@ -1020,6 +1021,7 @@ public:
 
     bool isPlayingAudio() const { return !!(m_mediaState & WebCore::MediaProducer::IsPlayingAudio); }
     void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t);
+    WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
 
     bool isPlayingVideoWithAudio() const;
 
@@ -1054,9 +1056,9 @@ public:
 #endif
 
 #if USE(UNIFIED_TEXT_CHECKING)
-    void checkTextOfParagraph(const String& text, uint64_t checkingTypes, Vector<WebCore::TextCheckingResult>& results);
+    void checkTextOfParagraph(const String& text, uint64_t checkingTypes, int32_t insertionPoint, Vector<WebCore::TextCheckingResult>& results);
 #endif
-    void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
+    void getGuessesForWord(const String& word, const String& context, int32_t insertionPoint, Vector<String>& guesses);
 
     void setShouldDispatchFakeMouseMoveEvents(bool);
 
@@ -1329,7 +1331,7 @@ private:
     void updateSpellingUIWithGrammarString(const String& badGrammarPhrase, const WebCore::GrammarDetail&);
     void learnWord(const String& word);
     void ignoreWord(const String& word);
-    void requestCheckingOfString(uint64_t requestID, const WebCore::TextCheckingRequestData&);
+    void requestCheckingOfString(uint64_t requestID, const WebCore::TextCheckingRequestData&, int32_t insertionPoint);
 
     void takeFocus(uint32_t direction);
     void setToolTip(const String&);

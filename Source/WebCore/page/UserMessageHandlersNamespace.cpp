@@ -53,26 +53,25 @@ UserMessageHandler* UserMessageHandlersNamespace::handler(const AtomicString& na
     if (!page)
         return nullptr;
     
-    const auto* userContentController = page->userContentController();
-    if (!userContentController)
+    auto& descriptors = page->userContentProvider().userMessageHandlerDescriptors();
+    
+    RefPtr<UserMessageHandlerDescriptor> descriptor = descriptors.get(std::make_pair(name, &world));
+    if (!descriptor)
         return nullptr;
-
-    const auto* userMessageHandlerDescriptors = userContentController->userMessageHandlerDescriptors();
-    if (!userMessageHandlerDescriptors)
-        return nullptr;
-
-    RefPtr<UserMessageHandlerDescriptor> descriptor = userMessageHandlerDescriptors->get(std::make_pair(name, &world));
-    if (!descriptor) {
-        m_messageHandlers.removeFirstMatching([&name, &world](Ref<UserMessageHandler>& handler) {
-            return handler->name() == name && &handler->world() == &world;
-        });
-        return nullptr;
-    }
 
     for (auto& handler : m_messageHandlers) {
-        if (handler->name() == name && &handler->world() == &world)
+        if (&handler->descriptor() == descriptor.get())
             return &handler.get();
     }
+
+    auto liveHandlers = descriptors.values();
+    m_messageHandlers.removeAllMatching([liveHandlers](const Ref<UserMessageHandler>& handler) {
+        for (const auto& liveHandler : liveHandlers) {
+            if (liveHandler.get() == &handler->descriptor())
+                return true;
+        }
+        return false;
+    });
 
     m_messageHandlers.append(UserMessageHandler::create(*frame(), *descriptor));
     return &m_messageHandlers.last().get();

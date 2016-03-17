@@ -29,6 +29,7 @@
 
 #include "ContentSecurityPolicyResponseHeaders.h"
 #include "ScriptState.h"
+#include <wtf/OptionSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/TextPosition.h>
 
@@ -43,7 +44,10 @@ class ContentSecurityPolicySource;
 class DOMStringList;
 class ScriptExecutionContext;
 class SecurityOrigin;
+class TextEncoding;
 class URL;
+
+enum class ContentSecurityPolicyHashAlgorithm;
 
 typedef Vector<std::unique_ptr<ContentSecurityPolicyDirectiveList>> CSPDirectiveListVector;
 typedef int SandboxFlags;
@@ -52,7 +56,7 @@ class ContentSecurityPolicy {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit ContentSecurityPolicy(ScriptExecutionContext&);
-    explicit ContentSecurityPolicy(const SecurityOrigin&);
+    explicit ContentSecurityPolicy(const SecurityOrigin&, const Frame* = nullptr);
     ~ContentSecurityPolicy();
 
     void copyStateFrom(const ContentSecurityPolicy*);
@@ -73,7 +77,8 @@ public:
         Inherited,
     };
     ContentSecurityPolicyResponseHeaders responseHeaders() const;
-    void didReceiveHeaders(const ContentSecurityPolicyResponseHeaders&);
+    enum ReportParsingErrors { No, Yes };
+    void didReceiveHeaders(const ContentSecurityPolicyResponseHeaders&, ReportParsingErrors = ReportParsingErrors::Yes);
     void processHTTPEquiv(const String& content, ContentSecurityPolicyHeaderType type) { didReceiveHeader(content, type, ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta); }
 
     enum class ReportingStatus {
@@ -82,8 +87,10 @@ public:
     };
     bool allowJavaScriptURLs(const String& contextURL, const WTF::OrdinalNumber& contextLine, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
     bool allowInlineEventHandlers(const String& contextURL, const WTF::OrdinalNumber& contextLine, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
-    bool allowInlineScript(const String& contextURL, const WTF::OrdinalNumber& contextLine, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
-    bool allowInlineStyle(const String& contextURL, const WTF::OrdinalNumber& contextLine, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
+    bool allowScriptWithNonce(const String& nonce, bool overrideContentSecurityPolicy = false) const;
+    bool allowInlineScript(const String& contextURL, const WTF::OrdinalNumber& contextLine, const String& scriptContent, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
+    bool allowStyleWithNonce(const String& nonce, bool overrideContentSecurityPolicy = false) const;
+    bool allowInlineStyle(const String& contextURL, const WTF::OrdinalNumber& contextLine, const String& styleContent, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
     bool allowEval(JSC::ExecState* = nullptr, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
     bool allowPluginType(const String& type, const String& typeAttribute, const URL&, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
     bool allowScriptFromSource(const URL&, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
@@ -97,6 +104,7 @@ public:
     bool allowConnectToSource(const URL&, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
     bool allowFormAction(const URL&, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
     bool allowBaseURI(const URL&, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
+    bool allowFrameAncestors(const Frame&, const URL&, bool overrideContentSecurityPolicy = false, ContentSecurityPolicy::ReportingStatus = ContentSecurityPolicy::ReportingStatus::SendReport) const;
 
     void setOverrideAllowInlineStyle(bool);
 
@@ -134,6 +142,14 @@ public:
     void reportViolation(const String& directiveText, const String& effectiveDirective, const String& consoleMessage, const URL& blockedURL, const Vector<String>& reportURIs, const String& header, const String& contextURL = String(), const WTF::OrdinalNumber& contextLine = WTF::OrdinalNumber::beforeFirst(), JSC::ExecState* = nullptr) const;
     void reportBlockedScriptExecutionToInspector(const String& directiveText) const;
     void enforceSandboxFlags(SandboxFlags sandboxFlags) { m_sandboxFlags |= sandboxFlags; }
+    void addHashAlgorithmsForInlineScripts(OptionSet<ContentSecurityPolicyHashAlgorithm> hashAlgorithmsForInlineScripts)
+    {
+        m_hashAlgorithmsForInlineScripts |= hashAlgorithmsForInlineScripts;
+    }
+    void addHashAlgorithmsForInlineStylesheets(OptionSet<ContentSecurityPolicyHashAlgorithm> hashAlgorithmsForInlineStylesheets)
+    {
+        m_hashAlgorithmsForInlineStylesheets |= hashAlgorithmsForInlineStylesheets;
+    }
 
     // Used by ContentSecurityPolicySource
     bool protocolMatchesSelf(const URL&) const;
@@ -144,13 +160,20 @@ private:
 
     void didReceiveHeader(const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicy::PolicyFrom);
 
+    const TextEncoding& documentEncoding() const;
+
+    // We can never have both a script execution context and a frame.
     ScriptExecutionContext* m_scriptExecutionContext { nullptr };
+    const Frame* m_frame { nullptr };
     std::unique_ptr<ContentSecurityPolicySource> m_selfSource;
     String m_selfSourceProtocol;
     CSPDirectiveListVector m_policies;
     String m_lastPolicyEvalDisabledErrorMessage;
     SandboxFlags m_sandboxFlags;
     bool m_overrideInlineStyleAllowed { false };
+    bool m_isReportingEnabled { true };
+    OptionSet<ContentSecurityPolicyHashAlgorithm> m_hashAlgorithmsForInlineScripts;
+    OptionSet<ContentSecurityPolicyHashAlgorithm> m_hashAlgorithmsForInlineStylesheets;
 };
 
 }

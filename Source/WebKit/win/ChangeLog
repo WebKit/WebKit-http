@@ -1,3 +1,97 @@
+2016-03-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r196951 and r197031.
+
+        Revert also WinCairo follow ups after r196803
+
+        Reverted changesets:
+
+        "[WinCairo] Compile fix."
+        https://bugs.webkit.org/show_bug.cgi?id=154545
+        http://trac.webkit.org/changeset/196951
+
+        "[WinCairo] Mark layer as non composited."
+        https://bugs.webkit.org/show_bug.cgi?id=154640
+        http://trac.webkit.org/changeset/197031
+
+2016-03-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r197693.
+
+        197031
+
+        Reverted changeset:
+
+        "[WinCairo][AcceleratedCompositing] Rendering issues on
+        www.bbc.com."
+        https://bugs.webkit.org/show_bug.cgi?id=154912
+        http://trac.webkit.org/changeset/197693
+
+2016-03-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Correct double-release of CFURLConnectionRef
+        https://bugs.webkit.org/show_bug.cgi?id=155515
+        <rdar://problem/25159143>
+
+        Reviewed by Tim Horton.
+
+        Tested by http/tests/download suite.
+
+        * WebDownloadCFNet.cpp: Remove extra CFRelease.
+
+2016-03-14  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Compile fix.
+        https://bugs.webkit.org/show_bug.cgi?id=155463
+
+        Reviewed by Alex Christensen.
+
+        Get the NetworkStorageSession object from the document in the same way as other platforms do.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::storageSession):
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        (WebFrameNetworkingContext::storageSession):
+
+2016-03-14  Joonghun Park  <jh718.park@samsung.com>
+
+        Purge PassRefPtr from ArrayBuffer, ArchiveResource, Pasteboard, LegacyWebArchive and DataObjectGtk
+        https://bugs.webkit.org/show_bug.cgi?id=150497
+
+        Reviewed by Darin Adler.
+
+        * WebArchive.cpp:
+        (WebArchive::initWithNode):
+
+2016-03-12  Sam Weinig  <sam@webkit.org>
+
+        WebKit can easily crash below NetworkSession::dataTaskForIdentifier() with NSURLSession enabled
+        <rdar://problem/25129946>
+        https://bugs.webkit.org/show_bug.cgi?id=155401
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        Pass a SessionID to NetworkStorageSession::createPrivateBrowsingSession().
+
+2016-03-10  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix after r197953; correct the settings added in r197953.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-03-10  Jer Noble  <jer.noble@apple.com>
+
+        Add separate WK and WK2 preferences for requiring user gestures for video media, distinct from user gestures for media generally
+        https://bugs.webkit.org/show_bug.cgi?id=155141
+
+        Reviewed by Beth Dakin.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
 2016-03-07  Per Arne Vollan  <peavo@outlook.com>
 
         [WinCairo][AcceleratedCompositing] Rendering issues on www.bbc.com.

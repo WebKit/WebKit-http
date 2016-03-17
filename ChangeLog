@@ -1,3 +1,84 @@
+2016-03-14  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Restored ENABLE_WEBCORE option and used it in JSCOnly port.
+        https://bugs.webkit.org/show_bug.cgi?id=155428
+
+        Reviewed by Michael Catanzaro.
+
+        This is a partial revert of r182624.
+
+        * CMakeLists.txt:
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/WebKitFS.cmake:
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2016-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added new port JSCOnly.
+        https://bugs.webkit.org/show_bug.cgi?id=154512
+
+        Reviewed by Michael Catanzaro.
+
+        This port allows to build JavaScriptCore engine with minimal
+        dependencies.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsJSCOnly.cmake: Added.
+
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete dead SVG Font code
+        https://bugs.webkit.org/show_bug.cgi?id=154718
+
+        Reviewed by Antti Koivisto.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2016-03-12  Jeremy Huddleston Sequoia  <jeremyhu@apple.com>
+
+        [GTK][Mac] Don't force ENABLE_INTROSPECTION=OFF on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=152650
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-03-10  Frederic Wang  <fwang@igalia.org>
+
+        [GTK] Add support for WOFF2
+        https://bugs.webkit.org/show_bug.cgi?id=152616
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/CMakeLists.txt: Build brotli and woff2 third-party libraries if WOFF2 is enabled.
+        * Source/cmake/OptionsGTK.cmake: Always enable WOFF2 on GTK.
+
+2016-03-09  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Fixed All-in-One build.
+        https://bugs.webkit.org/show_bug.cgi?id=155241
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/WebKitMacros.cmake: Last item of WebCore_SOURCES was
+        not removed in PROCESS_ALLINONE_FILE.
+
 2016-03-08  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [EFL] Enable the SVG -> OTF Font Converter

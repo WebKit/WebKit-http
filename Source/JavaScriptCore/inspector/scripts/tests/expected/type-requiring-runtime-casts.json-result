@@ -1061,6 +1061,7 @@ typedef NS_ENUM(NSInteger, TestProtocolTestCastedAnimals) {
 __attribute__((visibility ("default")))
 @interface TestProtocolTestTypeNeedingCast : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
+- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithString:(NSString *)string number:(int)number animals:(TestProtocolTestCastedAnimals)animals identifier:(int)identifier tree:(TestProtocolTestRecursiveObject1 *)tree;
 /* required */ @property (nonatomic, copy) NSString *string;
 /* required */ @property (nonatomic, assign) int number;
@@ -1072,12 +1073,14 @@ __attribute__((visibility ("default")))
 __attribute__((visibility ("default")))
 @interface TestProtocolTestRecursiveObject1 : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
+- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
 /* optional */ @property (nonatomic, retain) TestProtocolTestRecursiveObject2 *obj;
 @end
 
 __attribute__((visibility ("default")))
 @interface TestProtocolTestRecursiveObject2 : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
+- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
 /* optional */ @property (nonatomic, retain) TestProtocolTestRecursiveObject1 *obj;
 @end
 
@@ -1394,15 +1397,21 @@ using namespace Inspector;
     self.identifier = [payload[@"id"] integerValue];
 
     THROW_EXCEPTION_FOR_REQUIRED_PROPERTY(payload[@"tree"], @"tree");
-    self.tree = payload[@"tree"];
+    self.tree = [[TestProtocolTestRecursiveObject1 alloc] initWithPayload:payload[@"tree"]];
+
+    return self;
+}
+- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+{
+    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+        return nil;
 
     return self;
 }
 
 - (instancetype)initWithString:(NSString *)string number:(int)number animals:(TestProtocolTestCastedAnimals)animals identifier:(int)identifier tree:(TestProtocolTestRecursiveObject1 *)tree;
 {
-    self = [super init];
-    if (!self)
+    if (!(self = [super init]))
         return nil;
 
     THROW_EXCEPTION_FOR_REQUIRED_PROPERTY(string, @"string");
@@ -1464,7 +1473,7 @@ using namespace Inspector;
 
 - (TestProtocolTestRecursiveObject1 *)tree
 {
-    return (TestProtocolTestRecursiveObject1 *)[super objectForKey:@"tree"];
+    return [[TestProtocolTestRecursiveObject1 alloc] initWithInspectorObject:[[super objectForKey:@"tree"] toInspectorObject].get()];
 }
 
 @end
@@ -1476,7 +1485,14 @@ using namespace Inspector;
     if (!(self = [super init]))
         return nil;
 
-    self.obj = payload[@"obj"];
+    self.obj = [[TestProtocolTestRecursiveObject2 alloc] initWithPayload:payload[@"obj"]];
+
+    return self;
+}
+- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+{
+    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+        return nil;
 
     return self;
 }
@@ -1488,7 +1504,7 @@ using namespace Inspector;
 
 - (TestProtocolTestRecursiveObject2 *)obj
 {
-    return (TestProtocolTestRecursiveObject2 *)[super objectForKey:@"obj"];
+    return [[TestProtocolTestRecursiveObject2 alloc] initWithInspectorObject:[[super objectForKey:@"obj"] toInspectorObject].get()];
 }
 
 @end
@@ -1500,7 +1516,14 @@ using namespace Inspector;
     if (!(self = [super init]))
         return nil;
 
-    self.obj = payload[@"obj"];
+    self.obj = [[TestProtocolTestRecursiveObject1 alloc] initWithPayload:payload[@"obj"]];
+
+    return self;
+}
+- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+{
+    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+        return nil;
 
     return self;
 }
@@ -1512,7 +1535,7 @@ using namespace Inspector;
 
 - (TestProtocolTestRecursiveObject1 *)obj
 {
-    return (TestProtocolTestRecursiveObject1 *)[super objectForKey:@"obj"];
+    return [[TestProtocolTestRecursiveObject1 alloc] initWithInspectorObject:[[super objectForKey:@"obj"] toInspectorObject].get()];
 }
 
 @end

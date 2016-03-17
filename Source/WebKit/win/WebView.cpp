@@ -2939,7 +2939,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     configuration.databaseProvider = &WebDatabaseProvider::singleton();
     configuration.storageNamespaceProvider = &m_webViewGroup->storageNamespaceProvider();
     configuration.progressTrackerClient = static_cast<WebFrameLoaderClient*>(configuration.loaderClientForMainFrame);
-    configuration.userContentController = &m_webViewGroup->userContentController();
+    configuration.userContentProvider = &m_webViewGroup->userContentController();
     configuration.visitedLinkStore = &m_webViewGroup->visitedLinkStore();
 
     m_page = new Page(configuration);
@@ -3859,7 +3859,7 @@ HRESULT WebView::setGroupName(_In_ BSTR groupName)
     if (!m_page)
         return S_OK;
 
-    m_page->setUserContentController(&m_webViewGroup->userContentController());
+    m_page->setUserContentProvider(m_webViewGroup->userContentController());
     m_page->setVisitedLinkStore(m_webViewGroup->visitedLinkStore());
     m_page->setGroupName(toString(groupName));
     return S_OK;
@@ -5305,7 +5305,8 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = prefsPrivate->mediaPlaybackRequiresUserGesture(&enabled);
     if (FAILED(hr))
         return hr;
-    settings.setRequiresUserGestureForMediaPlayback(enabled);
+    settings.setVideoPlaybackRequiresUserGesture(enabled);
+    settings.setAudioPlaybackRequiresUserGesture(enabled);
 
     hr = prefsPrivate->mediaPlaybackAllowsInline(&enabled);
     if (FAILED(hr))

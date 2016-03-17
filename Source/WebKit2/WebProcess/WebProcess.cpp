@@ -344,7 +344,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
         setShouldUseFontSmoothing(true);
 
 #if PLATFORM(COCOA) || USE(CFNETWORK)
-    setApplicationBundleIdentifier(parameters.uiProcessBundleIdentifier);
     SessionTracker::setIdentifierBase(parameters.uiProcessBundleIdentifier);
 #endif
 

@@ -1151,8 +1151,7 @@ private:
         case CheckStructure:
         case CheckCell:
         case CreateThis:
-        case GetButterfly:
-        case GetButterflyReadOnly: {
+        case GetButterfly: {
             fixEdge<CellUse>(node->child1());
             break;
         }
@@ -1437,6 +1436,14 @@ private:
         case NewArrowFunction: {
             fixEdge<CellUse>(node->child1());
             fixEdge<CellUse>(node->child2());
+            break;
+        }
+
+        case SetFunctionName: {
+            // The first child is guaranteed to be a cell because op_set_function_name is only used
+            // on a newly instantiated function object (the first child).
+            fixEdge<KnownCellUse>(node->child1());
+            fixEdge<UntypedUse>(node->child2());
             break;
         }
 

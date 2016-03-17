@@ -1,3 +1,440 @@
+2016-03-16  Beth Dakin  <bdakin@apple.com>
+
+        Provide NSSpellChecker spellChecking methods with the current insertion point
+        https://bugs.webkit.org/show_bug.cgi?id=155532
+        -and corresponding-
+        rdar://problem/24066952
+
+        Reviewed by Simon Fraser.
+
+        Extract the insertion point from the VisibleSelection that WebCore has 
+        passed. 
+        * WebCoreSupport/WebEditorClient.h:
+        (WebEditorClient::getGuessesForWord):
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::checkTextOfParagraph):
+        (insertionPointFromCurrentSelection):
+        (WebEditorClient::getGuessesForWord):
+        (WebEditorClient::requestCheckingOfString):
+
+2016-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198235, r198240, r198241, and
+        r198252.
+
+        Causing crashes on ARM
+
+        Reverted changesets:
+
+        "Remove compile time define for SEPARATED_HEAP"
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+        http://trac.webkit.org/changeset/198235
+
+        "Gardening: build fix after r198235."
+        http://trac.webkit.org/changeset/198240
+
+        "Build fix."
+        http://trac.webkit.org/changeset/198241
+
+        "Rename performJITMemcpy to something more inline with our
+        normal webkit function names"
+        https://bugs.webkit.org/show_bug.cgi?id=155525
+        http://trac.webkit.org/changeset/198252
+
+2016-03-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URL Parsing should signal failure for illegal IDN
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        <rdar://problem/8014795>
+
+        Reviewed by Brent Fulgham.
+
+        In this patch, we add new SPIs _webkit_URLWithUserTypedString, _webkit_decodeHostName and
+        _webkit_encodeHostName which will return nil while dealing with illegal IDN.
+
+        Old SPIs _web_URLWithUserTypedString, _web_decodeHostName and _web_encodeHostName are marked
+        deprecated as they ignore URL parsing failure.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Misc/WebKitErrors.m:
+        (+[NSError _webKitErrorWithCode:failingURL:]):
+        * Misc/WebNSFileManagerExtras.mm:
+        (-[NSFileManager _webkit_setMetadataURL:referrer:atPath:]):
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_bestURL]):
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        (+[NSURL _web_URLWithUserTypedString:]):
+        (+[NSURL _webkit_URLWithUserTypedString:relativeToURL:]):
+        (+[NSURL _webkit_URLWithUserTypedString:]):
+        (-[NSString _web_decodeHostName]):
+        (-[NSString _web_encodeHostName]):
+        (-[NSString _webkit_decodeHostName]):
+        (-[NSString _webkit_encodeHostName]):
+        * Panels/WebAuthenticationPanel.m:
+        (-[WebAuthenticationPanel setUpForChallenge:]):
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::canonicalizeURLString):
+
+2016-03-15  Jer Noble  <jer.noble@apple.com>
+
+        [ios-sim debug] API test WebKit1.AudioSessionCategoryIOS timing out
+        https://bugs.webkit.org/show_bug.cgi?id=155275
+
+        Reviewed by Alexey Proskuryakov.
+
+        The videoPlaybackRequiresUserGesture and audioPlaybackRequiresUserGesture should both defalut to
+        NO, so that legacy clients of -[UIWebView setMediaPlaybackRequiresUserAction:] continue to work
+        as expected.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Remove compile time define for SEPARATED_HEAP
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+
+        Reviewed by Mark Lam.
+
+        Remove the feature define.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198203.
+
+        Favorites view is no longer loading on iOS
+
+        Reverted changeset:
+
+        "URL Parsing should signal failure for illegal IDN"
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        http://trac.webkit.org/changeset/198203
+
+2016-03-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URL Parsing should signal failure for illegal IDN
+        https://bugs.webkit.org/show_bug.cgi?id=154945
+        <rdar://problem/8014795>
+
+        Reviewed by Brent Fulgham.
+
+        In this patch, we add new SPIs _webkit_URLWithUserTypedString, _webkit_decodeHostName and
+        _webkit_encodeHostName which will return nil while dealing with illegal IDN.
+
+        Old SPIs _web_URLWithUserTypedString, _web_decodeHostName and _web_encodeHostName are marked
+        deprecated as they ignore URL parsing failure.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Misc/WebKitErrors.m:
+        (+[NSError _webKitErrorWithCode:failingURL:]):
+        * Misc/WebNSFileManagerExtras.mm:
+        (-[NSFileManager _webkit_setMetadataURL:referrer:atPath:]):
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_bestURL]):
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        (+[NSURL _web_URLWithUserTypedString:]):
+        (+[NSURL _webkit_URLWithUserTypedString:relativeToURL:]):
+        (+[NSURL _webkit_URLWithUserTypedString:]):
+        (-[NSString _web_decodeHostName]):
+        (-[NSString _web_encodeHostName]):
+        (-[NSString _webkit_decodeHostName]):
+        (-[NSString _webkit_encodeHostName]):
+        * Panels/WebAuthenticationPanel.m:
+        (-[WebAuthenticationPanel setUpForChallenge:]):
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::canonicalizeURLString):
+
+2016-03-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r197981.
+
+        Caused a massive PLT regression on Mac.
+
+        Reverted changeset:
+
+        "Font antialiasing (smoothing) changes when elements are
+        rendered into compositing layers"
+        https://bugs.webkit.org/show_bug.cgi?id=23364
+        http://trac.webkit.org/changeset/197981
+
+2016-03-14  Sam Weinig  <sam@webkit.org>
+
+        Add a baseURL parameter to _WKUserStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=155219
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView setGroupName:]):
+        Update to account for the name change from UserContentController -> UserContentProvider.
+
+2016-03-14  Joonghun Park  <jh718.park@samsung.com>
+
+        Purge PassRefPtr from ArrayBuffer, ArchiveResource, Pasteboard, LegacyWebArchive and DataObjectGtk
+        https://bugs.webkit.org/show_bug.cgi?id=150497
+
+        Reviewed by Darin Adler.
+
+        * DOM/WebDOMOperations.mm:
+        (-[DOMNode webArchive]):
+        (-[DOMNode webArchiveByFilteringSubframes:]):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::bufferForType):
+        (WebPlatformStrategies::readBufferFromPasteboard):
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithData:]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource webArchive]):
+        (-[WebDataSource addSubresource:]):
+        * WebView/WebResource.mm:
+        (-[WebResource encodeWithCoder:]):
+        (-[WebResource data]):
+        (-[WebResource _stringValue]):
+        (-[WebResource _initWithCoreResource:]): Deleted.
+
+2016-03-14  Oliver Hunt  <oliver@apple.com>
+
+        Temporarily disable the separated heap.
+        https://bugs.webkit.org/show_bug.cgi?id=155472
+
+        Reviewed by Geoffrey Garen.
+
+        Temporarily disable this.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-14  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        Ignore nullability warnings, create an empty PDF selection.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView centerSelectionInVisibleArea:]):
+        (-[WebPDFView searchFor:direction:caseSensitive:wrap:startInSelection:]):
+        (+[WebPDFView _PDFSelectionClass]):
+        (-[WebPDFView _nextMatchFor:direction:caseSensitive:wrap:fromSelection:startInSelection:]):
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-13  Dean Jackson  <dino@apple.com>
+
+        <attachment> should be a runtime-enabled feature
+        https://bugs.webkit.org/show_bug.cgi?id=155413
+        <rdar://problem/25120753>
+
+        Reviewed by Sam Weinig and Anders Carlsson.
+
+        Add an internal setting on WebPreferences
+        to enable the <attachment> element support.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences attachmentElementEnabled]):
+        (-[WebPreferences setAttachmentElementEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-03-12  Sam Weinig  <sam@webkit.org>
+
+        WebKit can easily crash below NetworkSession::dataTaskForIdentifier() with NSURLSession enabled
+        <rdar://problem/25129946>
+        https://bugs.webkit.org/show_bug.cgi?id=155401
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        Pass a SessionID to NetworkStorageSession::createPrivateBrowsingSession().
+
+2016-03-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete dead SVG Font code
+        https://bugs.webkit.org/show_bug.cgi?id=154718
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-03-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Reflect.set without receiver support
+        https://bugs.webkit.org/show_bug.cgi?id=155024
+
+        Reviewed by Geoffrey Garen.
+
+        As the same to NPJSObject, we just propagate the returned value of NetscapePluginInstanceProxy::setProperty.
+
+        * Plugins/Hosted/ProxyInstance.h:
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyField::setValueToInstance):
+        (WebKit::ProxyInstance::setFieldValue):
+
+2016-03-10  Jeremy Jones  <jeremyj@apple.com>
+
+        Set AVURLAssetUsesNoPersistentCacheKey on AVAsset to match caching policy.
+        https://bugs.webkit.org/show_bug.cgi?id=155117
+        rdar://problem/6802240
+
+        Reviewed by Simon Fraser.
+
+        Implement mediaShouldUsePersistentCache to disable media caching when NSURLCache is disabled.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::mediaShouldUsePersistentCache): Added.
+
+2016-03-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Font antialiasing (smoothing) changes when elements are rendered into compositing layers
+        https://bugs.webkit.org/show_bug.cgi?id=23364
+
+        Reviewed by Tim Horton.
+
+        Allow internal clients to turn off smoothed layer text, so that WebKitTestRunner
+        can disable it.
+
+        * WebView/WebView.mm:
+        (+[WebView _setSmoothedLayerTextEnabled:]):
+        (+[WebView _smoothedLayerTextEnabled]):
+        * WebView/WebViewPrivate.h:
+
+2016-03-10  Jer Noble  <jer.noble@apple.com>
+
+        Add WebCore, WebKit, & WebKit2 preference/setting to enable Main Content heuristic.
+        https://bugs.webkit.org/show_bug.cgi?id=155326
+        <rdar://problem/25095408>
+
+        Reviewed by Beth Dakin.
+
+        Add SPI to get and set the new preference.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences overrideUserGestureRequirementForMainContent]):
+        (-[WebPreferences setOverrideUserGestureRequirementForMainContent:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-03-07  Jer Noble  <jer.noble@apple.com>
+
+        Add separate WK and WK2 preferences for requiring user gestures for video media, distinct from user gestures for media generally
+        https://bugs.webkit.org/show_bug.cgi?id=155141
+
+        Reviewed by Beth Dakin.
+
+        Deprecate WebPreferences.mediaPlaybackRequiresUserGesture property in favor of .videoPlaybackRequiresUserGesture.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences mediaPlaybackRequiresUserGesture]):
+        (-[WebPreferences setMediaPlaybackRequiresUserGesture:]):
+        (-[WebPreferences videoPlaybackRequiresUserGesture]):
+        (-[WebPreferences setVideoPlaybackRequiresUserGesture:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-03-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix for deprecated constant names.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (-[CarbonWindowAdapter initWithCarbonWindowRef:takingOwnership:disableOrdering:carbon:]):
+        (-[CarbonWindowAdapter sendSuperEvent:]):
+
+2016-03-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r197943.
+        https://bugs.webkit.org/show_bug.cgi?id=155317
+
+        This change broke Windows, WinCairo, GTK and EFL builds
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Add a baseURL parameter to _WKUserStyleSheet"
+        https://bugs.webkit.org/show_bug.cgi?id=155219
+        http://trac.webkit.org/changeset/197943
+
+2016-03-08  Sam Weinig  <sam@webkit.org>
+
+        Add a baseURL parameter to _WKUserStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=155219
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView setGroupName:]):
+        Update to account for the name change from UserContentController -> UserContentProvider.
+
+2016-02-22  Jer Noble  <jer.noble@apple.com>
+
+        Enable AVFoundationNSURLSessionEnabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=154469
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2016-03-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add runtime flags for shadow DOM and custom elements
+        https://bugs.webkit.org/show_bug.cgi?id=155213
+
+        Reviewed by Dean Jackson.
+
+        Set the runtime flag based on preferences. Enable shadow DOM and disable custom elements by default.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences shadowDOMEnabled]):
+        (-[WebPreferences setShadowDOMEnabled:]):
+        (-[WebPreferences customElementsEnabled]):
+        (-[WebPreferences setCustomElementsEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-03-09  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r197149): Missing availability checks when soft-linking DataDetectors.framework
+        <http://webkit.org/b/155258>
+
+        Reviewed by Andy Estes.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _clearImmediateActionState]):
+        (-[WebImmediateActionController immediateActionRecognizerWillBeginAnimation:]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedLink]):
+        - Add check that returns early if DataDetectors.framework is not
+          available.
+
 2016-03-08  Oliver Hunt  <oliver@apple.com>
 
         Start moving to separated writable and executable mappings in the JIT
