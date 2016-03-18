@@ -1004,7 +1004,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
-    pageConfiguration.userContentController = &_private->group->userContentController();
+    pageConfiguration.userContentProvider = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
     _private->page = new Page(pageConfiguration);
 
@@ -1249,7 +1249,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
-    pageConfiguration.userContentController = &_private->group->userContentController();
+    pageConfiguration.userContentProvider = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
 
     _private->page = new Page(pageConfiguration);
@@ -2331,8 +2331,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setInteractiveFormValidationEnabled([self interactiveFormValidationEnabled]);
     settings.setValidationMessageTimerMagnification([self validationMessageTimerMagnification]);
 
-    settings.setRequiresUserGestureForMediaPlayback([preferences mediaPlaybackRequiresUserGesture]);
-    settings.setAudioPlaybackRequiresUserGesture([preferences audioPlaybackRequiresUserGesture]);
+    BOOL mediaPlaybackRequiresUserGesture = [preferences mediaPlaybackRequiresUserGesture];
+    settings.setVideoPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture || [preferences videoPlaybackRequiresUserGesture]);
+    settings.setAudioPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture || [preferences audioPlaybackRequiresUserGesture]);
+    settings.setMainContentUserGestureOverrideEnabled([preferences overrideUserGestureRequirementForMainContent]);
     settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute([preferences inlineMediaPlaybackRequiresPlaysInlineAttribute]);
     settings.setInvisibleAutoplayNotPermitted([preferences invisibleAutoplayNotPermitted]);
@@ -2481,6 +2483,14 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
 #endif
 
+#if ENABLE(SHADOW_DOM)
+    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled([preferences shadowDOMEnabled]);
+#endif
+#if ENABLE(CUSTOM_ELEMENTS)
+    RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
+#endif
+
+
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
         settings.setIncrementalRenderingSuppressionTimeoutInSeconds(timeout);
@@ -2504,6 +2514,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
     settings.setMediaDataLoadsAutomatically([preferences mediaDataLoadsAutomatically]);
+    settings.setAttachmentElementEnabled([preferences attachmentElementEnabled]);
 }
 
 static inline IMP getMethod(id o, SEL s)
@@ -6195,7 +6206,7 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
     if (!_private->page)
         return;
 
-    _private->page->setUserContentController(&_private->group->userContentController());
+    _private->page->setUserContentProvider(_private->group->userContentController());
     _private->page->setVisitedLinkStore(_private->group->visitedLinkStore());
     _private->page->setGroupName(groupName);
 }

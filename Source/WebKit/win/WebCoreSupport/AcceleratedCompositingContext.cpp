@@ -86,7 +86,6 @@ void AcceleratedCompositingContext::initialize()
 
     // The non-composited contents are a child of the root layer.
     m_nonCompositedContentLayer = GraphicsLayer::create(nullptr, *this);
-    downcast<GraphicsLayerTextureMapper>(*m_nonCompositedContentLayer).setAsNonCompositingLayer();
     m_nonCompositedContentLayer->setDrawsContent(true);
     m_nonCompositedContentLayer->setContentsOpaque(!m_webView.transparent());
     m_nonCompositedContentLayer->setSize(pageSize);
@@ -361,10 +360,7 @@ bool AcceleratedCompositingContext::flushPendingLayerChanges()
     if (!frameView->flushCompositingStateIncludingSubframes())
         return false;
 
-    // On WinCairo, we always have a scroll layer, and should not include the scroll position in the visible rectangle,
-    // since the scroll position is already reflected in the position of the scroll layer.
-    FloatRect visibleRect(FloatPoint(0, 0), getWebViewSize(m_webView));
-    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).updateBackingStoreIncludingSubLayers(visibleRect);
+    downcast<GraphicsLayerTextureMapper>(*m_rootLayer).updateBackingStoreIncludingSubLayers();
     return true;
 }
 

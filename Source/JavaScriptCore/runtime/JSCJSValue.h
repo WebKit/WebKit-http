@@ -225,6 +225,7 @@ public:
     bool isEmpty() const;
     bool isFunction() const;
     bool isFunction(CallType&, CallData&) const;
+    bool isCallable(CallType&, CallData&) const;
     bool isConstructor() const;
     bool isConstructor(ConstructType&, ConstructData&) const;
     bool isUndefined() const;
@@ -286,11 +287,11 @@ public:
 
     bool getPropertySlot(ExecState*, PropertyName, PropertySlot&) const;
 
-    void put(ExecState*, PropertyName, JSValue, PutPropertySlot&);
-    void putInline(ExecState*, PropertyName, JSValue, PutPropertySlot&);
-    JS_EXPORT_PRIVATE void putToPrimitive(ExecState*, PropertyName, JSValue, PutPropertySlot&);
-    JS_EXPORT_PRIVATE void putToPrimitiveByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
-    void putByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
+    bool put(ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    bool putInline(ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    JS_EXPORT_PRIVATE bool putToPrimitive(ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    JS_EXPORT_PRIVATE bool putToPrimitiveByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
+    bool putByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
 
     JSValue toThis(ExecState*, ECMAMode) const;
 
@@ -583,6 +584,9 @@ inline bool operator==(const JSCell* a, const JSValue b) { return JSValue(a) == 
 
 inline bool operator!=(const JSValue a, const JSCell* b) { return a != JSValue(b); }
 inline bool operator!=(const JSCell* a, const JSValue b) { return JSValue(a) != b; }
+
+
+bool isThisValueAltered(const PutPropertySlot&, JSObject* baseObject);
 
 } // namespace JSC
 

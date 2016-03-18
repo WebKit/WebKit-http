@@ -27,8 +27,11 @@
 #ifndef ContentSecurityPolicySourceList_h
 #define ContentSecurityPolicySourceList_h
 
+#include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicySource.h"
-#include <wtf/Vector.h>
+#include <wtf/HashSet.h>
+#include <wtf/OptionSet.h>
+#include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -41,8 +44,14 @@ public:
     ContentSecurityPolicySourceList(const ContentSecurityPolicy&, const String& directiveName);
 
     void parse(const String&);
+
     bool matches(const URL&);
-    bool allowInline() const { return m_allowInline; }
+    bool matches(const ContentSecurityPolicyHash&) const;
+    bool matches(const String& nonce) const;
+
+    OptionSet<ContentSecurityPolicyHashAlgorithm> hashAlgorithmsUsed() const { return m_hashAlgorithmsUsed; }
+
+    bool allowInline() const { return m_allowInline && m_hashes.isEmpty() && m_nonces.isEmpty(); }
     bool allowEval() const { return m_allowEval; }
     bool allowSelf() const { return m_allowSelf; }
 
@@ -55,10 +64,17 @@ private:
     bool parsePort(const UChar* begin, const UChar* end, int& port, bool& portHasWildcard);
     bool parsePath(const UChar* begin, const UChar* end, String& path);
 
+    bool parseNonceSource(const UChar* begin, const UChar* end);
+
     bool isProtocolAllowedByStar(const URL&) const;
+
+    bool parseHashSource(const UChar* begin, const UChar* end);
 
     const ContentSecurityPolicy& m_policy;
     Vector<ContentSecurityPolicySource> m_list;
+    HashSet<String> m_nonces;
+    HashSet<ContentSecurityPolicyHash> m_hashes;
+    OptionSet<ContentSecurityPolicyHashAlgorithm> m_hashAlgorithmsUsed;
     String m_directiveName;
     bool m_allowSelf { false };
     bool m_allowStar { false };

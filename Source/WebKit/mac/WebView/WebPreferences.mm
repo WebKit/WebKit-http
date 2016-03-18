@@ -45,6 +45,7 @@
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PlatformCookieJar.h>
 #import <WebCore/ResourceHandle.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TextEncodingRegistry.h>
 #import <runtime/InitializeThreading.h>
@@ -393,9 +394,11 @@ public:
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
+    bool attachmentElementEnabled = MacApplication::isAppleMail();
 #else
     bool allowsInlineMediaPlayback = WebCore::deviceClass() == MGDeviceClassiPad;
     bool requiresPlaysInlineAttribute = !allowsInlineMediaPlayback;
+    bool attachmentElementEnabled = IOSApplication::isMobileMail();
 #endif
     InitWebCoreSystemInterface();
 
@@ -517,11 +520,10 @@ public:
         [NSNumber numberWithBool:YES],  WebKitHyperlinkAuditingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsePreHTML5ParserQuirksKey,
         [NSNumber numberWithBool:YES],  WebKitAVFoundationEnabledKey,
-        [NSNumber numberWithBool:NO],   WebKitAVFoundationNSURLSessionEnabledKey,
+        [NSNumber numberWithBool:YES],  WebKitAVFoundationNSURLSessionEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitSuppressesIncrementalRenderingKey,
+        [NSNumber numberWithBool:attachmentElementEnabled], WebKitAttachmentElementEnabledPreferenceKey,
 #if !PLATFORM(IOS)
-        [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
-        [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForAudioPlaybackPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAllowsInlineMediaPlaybackPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey,
         [NSNumber numberWithBool:YES],  WebKitMediaControlsScaleWithPageZoomPreferenceKey,
@@ -534,8 +536,6 @@ public:
         [NSNumber numberWithBool:NO],   WebKitShouldRespectImageOrientationKey,
         [NSNumber numberWithBool:YES],  WebKitMediaDataLoadsAutomaticallyPreferenceKey,
 #else
-        [NSNumber numberWithBool:YES],  WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
-        [NSNumber numberWithBool:YES],  WebKitRequiresUserGestureForAudioPlaybackPreferenceKey,
         [NSNumber numberWithBool:allowsInlineMediaPlayback],   WebKitAllowsInlineMediaPlaybackPreferenceKey,
         [NSNumber numberWithBool:requiresPlaysInlineAttribute], WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey,
         [NSNumber numberWithBool:NO],   WebKitMediaControlsScaleWithPageZoomPreferenceKey,
@@ -544,6 +544,8 @@ public:
 #if HAVE(AVKIT)
         [NSNumber numberWithBool:YES],  WebKitAVKitEnabled,
 #endif
+        [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForVideoPlaybackPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForAudioPlaybackPreferenceKey,
         [NSNumber numberWithLongLong:WebCore::ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
 
         // Per-Origin Quota on iOS is 25MB. When the quota is reached for a particular origin
@@ -601,6 +603,12 @@ public:
 #endif
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
+#endif
+#if ENABLE(SHADOW_DOM)
+        [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
+#endif
+#if ENABLE(CUSTOM_ELEMENTS)
+        [NSNumber numberWithBool:NO], WebKitCustomElementsEnabledPreferenceKey,
 #endif
         nil];
 
@@ -2210,14 +2218,26 @@ static NSString *classIBCreatorID = nil;
 }
 #endif // PLATFORM(IOS)
 
+// Deprecated. Use -videoPlaybackRequiresUserGesture and -audioPlaybackRequiresUserGesture instead.
 - (BOOL)mediaPlaybackRequiresUserGesture
 {
     return [self _boolValueForKey:WebKitRequiresUserGestureForMediaPlaybackPreferenceKey];
 }
 
+// Deprecated. Use -setVideoPlaybackRequiresUserGesture and -setAudioPlaybackRequiresUserGesture instead.
 - (void)setMediaPlaybackRequiresUserGesture:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitRequiresUserGestureForMediaPlaybackPreferenceKey];
+}
+
+- (BOOL)videoPlaybackRequiresUserGesture
+{
+    return [self _boolValueForKey:WebKitRequiresUserGestureForVideoPlaybackPreferenceKey];
+}
+
+- (void)setVideoPlaybackRequiresUserGesture:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitRequiresUserGestureForVideoPlaybackPreferenceKey];
 }
 
 - (BOOL)audioPlaybackRequiresUserGesture
@@ -2228,6 +2248,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setAudioPlaybackRequiresUserGesture:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitRequiresUserGestureForAudioPlaybackPreferenceKey];
+}
+
+- (BOOL)overrideUserGestureRequirementForMainContent
+{
+    return [self _boolValueForKey:WebKitMainContentUserGestureOverrideEnabledPreferenceKey];
+}
+
+- (void)setOverrideUserGestureRequirementForMainContent:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMainContentUserGestureOverrideEnabledPreferenceKey];
 }
 
 - (BOOL)mediaPlaybackAllowsInline
@@ -2629,6 +2659,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitMediaDataLoadsAutomaticallyPreferenceKey];
 }
 
+- (BOOL)attachmentElementEnabled
+{
+    return [self _boolValueForKey:WebKitAttachmentElementEnabledPreferenceKey];
+}
+
+- (void)setAttachmentElementEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAttachmentElementEnabledPreferenceKey];
+}
+
 - (BOOL)mockCaptureDevicesEnabled
 {
     return [self _boolValueForKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
@@ -2637,6 +2677,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
+}
+
+- (BOOL)shadowDOMEnabled
+{
+    return [self _boolValueForKey:WebKitShadowDOMEnabledPreferenceKey];
+}
+
+- (void)setShadowDOMEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitShadowDOMEnabledPreferenceKey];
+}
+
+- (BOOL)customElementsEnabled
+{
+    return [self _boolValueForKey:WebKitCustomElementsEnabledPreferenceKey];
+}
+
+- (void)setCustomElementsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCustomElementsEnabledPreferenceKey];
 }
 
 @end

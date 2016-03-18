@@ -427,10 +427,10 @@ void EventHandler::clear()
     m_clickCount = 0;
     m_clickNode = nullptr;
 #if ENABLE(IOS_GESTURE_EVENTS)
+    m_gestureInitialDiameter = GestureUnknown;
     m_gestureInitialRotation = GestureUnknown;
 #endif
 #if ENABLE(IOS_GESTURE_EVENTS) || ENABLE(MAC_GESTURE_EVENTS)
-    m_gestureInitialDiameter = GestureUnknown;
     m_gestureLastDiameter = GestureUnknown;
     m_gestureLastRotation = GestureUnknown;
     m_gestureTargets.clear();
@@ -760,7 +760,12 @@ bool EventHandler::handleMousePressEvent(const MouseEventWithHitTestResults& eve
     
 #if ENABLE(DRAG_SUPPORT)
     // Careful that the drag starting logic stays in sync with eventMayStartDrag()
-    m_mouseDownMayStartDrag = singleClick;
+    // FIXME: eventMayStartDrag() does not check for shift key press, link or image event targets.
+    // Bug: https://bugs.webkit.org/show_bug.cgi?id=155390
+
+    // Single mouse down on links or images can always trigger drag-n-drop.
+    bool isMouseDownOnLinkOrImage = event.isOverLink() || event.hitTestResult().image();
+    m_mouseDownMayStartDrag = singleClick && (!event.event().shiftKey() || isMouseDownOnLinkOrImage);
 #endif
 
     m_mouseDownWasSingleClickInSelection = false;

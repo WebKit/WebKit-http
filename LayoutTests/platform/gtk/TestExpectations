@@ -83,10 +83,11 @@ Bug(GTK) fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html [ WontFi
 # Accessibility tests that should never be run for GTK due to be
 # written in a platform-specific way. They should either be moved to
 # the right platform or re-written in a more platform-agnostic way.
-webkit.org/b/98348 accessibility/internal-link-anchors2.html [ WontFix Missing ]
+webkit.org/b/98348 accessibility/internal-link-anchors2.html [ Skip ]
 # Things specific to AX API (at least at the moment)
 webkit.org/b/98348 accessibility/radio-button-group-members.html [ Skip ]
 webkit.org/b/141074 accessibility/auto-filled-value.html [ Skip ]
+webkit.org/b/133148 accessibility/content-editable-as-textarea.html [ Skip ]
 
 # Feature disabled, see: https://bugs.webkit.org/show_bug.cgi?id=85425
 webkit.org/b/98925 fast/viewport/viewport-legacy-handheldfriendly.html [ Skip ]
@@ -616,9 +617,6 @@ webkit.org/b/148967 accessibility/aria-table-attributes.html [ Skip ]
 # Text marker tests are not supported
 webkit.org/b/153292 accessibility/text-marker [ Skip ]
 
-# WebKitGTK+ needs WOFF2 support.
-webkit.org/b/152616 fast/text/woff2.html [ ImageOnlyFailure ]
-
 # WebKitGTK+ doesn't have killring support.
 webkit.org/b/152379 editing/pasteboard/emacs-killring-alternating-append-prepend.html [ Failure ]
 webkit.org/b/152379 editing/pasteboard/emacs-killring-backward-delete-prepend.html [ Failure ]
@@ -693,6 +691,8 @@ webkit.org/b/154390 http/tests/media/hls/hls-audio-tracks-has-audio.html [ Timeo
 webkit.org/b/154390 http/tests/media/hls/hls-accessiblity-describes-video.html [ Timeout Failure ]
 webkit.org/b/154390 http/tests/media/hls/video-cookie.html [ Failure ]
 
+webkit.org/b/155505 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Skip ]
+webkit.org/b/155505 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -1447,7 +1447,6 @@ webkit.org/b/132128 fast/text/international/embed-bidi-style-in-isolate-crash.ht
 
 webkit.org/b/132266 js/slow-stress/emscripten-memops.html [ Timeout Pass ]
 
-webkit.org/b/133148 accessibility/content-editable-as-textarea.html [ Crash Timeout ]
 webkit.org/b/133148 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Timeout ]
 
 webkit.org/b/133151 js/cached-window-properties.html [ Timeout Crash Pass ]
@@ -2706,3 +2705,12 @@ fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
 
 # This test relies on iOS-specific font fallback.
 fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
+
+# RTL Scrollbars are only implemented on OS X
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-contents.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-padding.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow.html [ ImageOnlyFailure ]

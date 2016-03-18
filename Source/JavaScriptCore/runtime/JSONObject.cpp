@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSONObject.h"
 
+#include "ArrayConstructor.h"
 #include "BooleanObject.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
@@ -92,7 +93,7 @@ public:
 private:
     class Holder {
     public:
-        Holder(VM&, JSObject*);
+        Holder(VM&, ExecState*, JSObject*);
 
         JSObject* object() const { return m_object.get(); }
 
@@ -110,7 +111,7 @@ private:
     friend class Holder;
 
     JSValue toJSON(JSValue, const PropertyNameForFunctionCall&);
-    JSValue toJSONImpl(JSValue, const PropertyNameForFunctionCall&);
+    JSValue toJSONImpl(JSValue value, JSValue toJSONFunction, const PropertyNameForFunctionCall&);
 
     enum StringifyResult { StringifyFailed, StringifySucceeded, StringifyFailedDueToUndefinedOrSymbolValue };
     StringifyResult appendStringifiedValue(StringBuilder&, JSValue, JSObject* holder, const PropertyNameForFunctionCall&);
@@ -262,36 +263,39 @@ Local<Unknown> Stringifier::stringify(Handle<Unknown> value)
 ALWAYS_INLINE JSValue Stringifier::toJSON(JSValue value, const PropertyNameForFunctionCall& propertyName)
 {
     ASSERT(!m_exec->hadException());
-    if (!value.isObject() || !asObject(value)->hasProperty(m_exec, m_exec->vm().propertyNames->toJSON))
+    if (!value.isObject())
         return value;
-    return toJSONImpl(value, propertyName);
+    
+    JSObject* object = asObject(value);
+    VM& vm = m_exec->vm();
+    PropertySlot slot(object, PropertySlot::InternalMethodType::Get);
+    if (!object->getPropertySlot(m_exec, vm.propertyNames->toJSON, slot))
+        return value;
+
+    JSValue toJSONFunction = slot.getValue(m_exec, vm.propertyNames->toJSON);
+    if (vm.exception())
+        return jsNull();
+    return toJSONImpl(value, toJSONFunction, propertyName);
 }
 
-JSValue Stringifier::toJSONImpl(JSValue value, const PropertyNameForFunctionCall& propertyName)
+JSValue Stringifier::toJSONImpl(JSValue value, JSValue toJSONFunction, const PropertyNameForFunctionCall& propertyName)
 {
-    JSValue toJSONFunction = asObject(value)->get(m_exec, m_exec->vm().propertyNames->toJSON);
-    if (m_exec->hadException())
-        return jsNull();
-
-    if (!toJSONFunction.isObject())
-        return value;
-
-    JSObject* object = asObject(toJSONFunction);
+    CallType callType;
     CallData callData;
-    CallType callType = object->methodTable()->getCallData(object, callData);
-    if (callType == CallType::None)
+    if (!toJSONFunction.isCallable(callType, callData))
         return value;
 
     MarkedArgumentBuffer args;
     args.append(propertyName.value(m_exec));
-    return call(m_exec, object, callType, callData, value, args);
+    return call(m_exec, asObject(toJSONFunction), callType, callData, value, args);
 }
 
 Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& builder, JSValue value, JSObject* holder, const PropertyNameForFunctionCall& propertyName)
 {
+    VM& vm = m_exec->vm();
     // Call the toJSON function.
     value = toJSON(value, propertyName);
-    if (m_exec->hadException())
+    if (vm.exception())
         return StringifyFailed;
 
     // Call the replacer function.
@@ -300,7 +304,7 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
         args.append(propertyName.value(m_exec));
         args.append(value);
         value = call(m_exec, m_replacer.get(), m_replacerCallType, m_replacerCallData, holder, args);
-        if (m_exec->hadException())
+        if (vm.exception())
             return StringifyFailed;
     }
 
@@ -314,7 +318,7 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
 
     value = unwrapBoxedPrimitive(m_exec, value);
 
-    if (m_exec->hadException())
+    if (vm.exception())
         return StringifyFailed;
 
     if (value.isBoolean()) {
@@ -364,14 +368,17 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
             return StringifyFailed;
         }
     }
+
     bool holderStackWasEmpty = m_holderStack.isEmpty();
-    m_holderStack.append(Holder(m_exec->vm(), object));
+    m_holderStack.append(Holder(vm, m_exec, object));
+    if (UNLIKELY(vm.exception()))
+        return StringifyFailed;
     if (!holderStackWasEmpty)
         return StringifySucceeded;
 
     do {
         while (m_holderStack.last().appendNextProperty(*this, builder)) {
-            if (m_exec->hadException())
+            if (vm.exception())
                 return StringifyFailed;
         }
         m_holderStack.removeLast();
@@ -408,9 +415,9 @@ inline void Stringifier::startNewLine(StringBuilder& builder) const
     builder.append(m_indent);
 }
 
-inline Stringifier::Holder::Holder(VM& vm, JSObject* object)
+inline Stringifier::Holder::Holder(VM& vm, ExecState* exec, JSObject* object)
     : m_object(vm, object)
-    , m_isArray(object->inherits(JSArray::info()))
+    , m_isArray(isArray(exec, object))
     , m_index(0)
 #ifndef NDEBUG
     , m_size(0)

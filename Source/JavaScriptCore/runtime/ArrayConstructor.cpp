@@ -33,6 +33,7 @@
 #include "JSArray.h"
 #include "JSFunction.h"
 #include "Lookup.h"
+#include "ProxyObject.h"
 #include "JSCInlines.h"
 
 namespace JSC {
@@ -125,9 +126,11 @@ CallType ArrayConstructor::getCallData(JSCell*, CallData& callData)
     return CallType::Host;
 }
 
+// ES6 7.2.2
+// https://tc39.github.io/ecma262/#sec-isarray
 EncodedJSValue JSC_HOST_CALL arrayConstructorIsArray(ExecState* exec)
 {
-    return JSValue::encode(jsBoolean(exec->argument(0).inherits(JSArray::info())));
+    return JSValue::encode(jsBoolean(isArray(exec, exec->argument(0))));
 }
 
 EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArrayConstructor(ExecState* exec)

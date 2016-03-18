@@ -643,7 +643,6 @@ webkit.org/b/153866 http/tests/media/video-referer.html [ Crash ]
 webkit.org/b/153866 http/tests/media/video-served-as-text.html [ Crash ]
 webkit.org/b/153866 http/tests/media/video-throttled-load-metadata.html [ Crash ]
 webkit.org/b/153866 http/tests/media/video-useragent.html [ Crash ]
-webkit.org/b/153866 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html [ Crash ]
 webkit.org/b/153866 http/tests/security/inactive-document-with-empty-security-origin.html [ Crash ]
 webkit.org/b/153866 http/tests/security/isolatedWorld/userGestureEvents.html [ Crash ]
 webkit.org/b/153866 http/tests/security/local-video-source-from-remote.html [ Crash ]
@@ -2957,3 +2956,15 @@ webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gest
 webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag.html [ Crash ]
 
 webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]
+
+# RTL Scrollbars are only implemented on OS X
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-contents.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-padding.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow.html [ ImageOnlyFailure ]
+
+webkit.org/b/155505 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Skip ]
+webkit.org/b/155505 webkit.org/b/153866 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html [ Skip ]

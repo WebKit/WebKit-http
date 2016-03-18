@@ -45,6 +45,10 @@
 #import "VisibleUnits.h"
 #import "htmlediting.h"
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/DataDetectorsAdditions.h>
+#endif
+
 const char *dataDetectorsURLScheme = "x-apple-data-detectors";
 const char *dataDetectorsAttributeTypeKey = "x-apple-data-detectors-type";
 const char *dataDetectorsAttributeResultKey = "x-apple-data-detectors-result";
@@ -53,7 +57,19 @@ namespace WebCore {
 
 bool DataDetection::isDataDetectorLink(Element* element)
 {
-    return element->getAttribute(dataDetectorsURLScheme) == "true";
+    // FIXME: We should be able to ask this from DataDetectorsCore when rdar://problem/25206062 is fixed.
+    if (!is<HTMLAnchorElement>(*element))
+        return false;
+
+    if (element->getAttribute(dataDetectorsURLScheme) == "true")
+        return true;
+    URL url = downcast<HTMLAnchorElement>(*element).href();
+    return url.protocolIs("mailto") || url.protocolIs("tel");
+}
+
+bool DataDetection::requiresExtendedContext(Element* element)
+{
+    return element->getAttribute(dataDetectorsAttributeTypeKey) == "calendar-event";
 }
 
 String DataDetection::dataDetectorIdentifier(Element* element)
@@ -67,7 +83,7 @@ bool DataDetection::shouldCancelDefaultAction(Element* element)
     UNUSED_PARAM(element);
     return false;
 #else
-    // FIXME: We should also compute the DDResultRef and check the result category.
+    // FIXME: We should be able to retrieve this information from DataDetectorsCore when rdar://problem/25169133 is fixed.
     if (!is<HTMLAnchorElement>(*element))
         return false;
     if (element->getAttribute(dataDetectorsURLScheme) != "true")
@@ -194,7 +210,10 @@ static NSString *constructURLStringForResult(DDResultRef currentResult, NSString
     
     if (((detectionTypes & DataDetectorTypeAddress) && (DDResultCategoryAddress == category))
         || ((detectionTypes & DataDetectorTypeTrackingNumber) && (CFStringCompare(get_DataDetectorsCore_DDBinderTrackingNumberKey(), type, 0) == kCFCompareEqualTo))
-        || ((detectionTypes & DataDetectorTypeFlight) && (CFStringCompare(get_DataDetectorsCore_DDBinderFlightInformationKey(), type, 0) == kCFCompareEqualTo))
+        || ((detectionTypes & DataDetectorTypeFlightNumber) && (CFStringCompare(get_DataDetectorsCore_DDBinderFlightInformationKey(), type, 0) == kCFCompareEqualTo))
+#if USE(APPLE_INTERNAL_SDK)
+        || ((detectionTypes & DataDetectorTypeSpotlightSuggestion) && (CFStringCompare(DDBinderSpotlightSourceKey, type, 0) == kCFCompareEqualTo))
+#endif
         || ((detectionTypes & DataDetectorTypePhoneNumber) && (DDResultCategoryPhoneNumber == category))
         || ((detectionTypes & DataDetectorTypeLink) && resultIsURL(currentResult))) {
         
@@ -421,6 +440,11 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
     RetainPtr<DDScannerRef> scanner = adoptCF(softLink_DataDetectorsCore_DDScannerCreate(DDScannerTypeStandard, 0, nullptr));
     RetainPtr<DDScanQueryRef> scanQuery = adoptCF(softLink_DataDetectorsCore_DDScanQueryCreate(NULL));
     buildQuery(scanQuery.get(), contextRange.get());
+    
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    if (types & DataDetectorTypeSpotlightSuggestion)
+        softLink_DataDetectorsCore_DDScannerEnableOptionalSource(scanner.get(), DDScannerSourceSpotlight, true);
+#endif
     
     // FIXME: we should add a timeout to this call to make sure it doesn't take too much time.
     if (!softLink_DataDetectorsCore_DDScannerScanQuery(scanner.get(), scanQuery.get()))

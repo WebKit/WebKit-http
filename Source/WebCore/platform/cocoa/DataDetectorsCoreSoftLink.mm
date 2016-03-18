@@ -58,4 +58,8 @@ SOFT_LINK_POINTER_FOR_SOURCE(WebCore, DataDetectorsCore, DDBinderSignatureBlockK
 SOFT_LINK_POINTER_FOR_SOURCE(WebCore, DataDetectorsCore, DDURLScheme, NSString *)
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, DataDetectorsCore, DDScannerCopyResultsOptionsForPassiveUse, DDScannerCopyResultsOptions)
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, DataDetectorsCore, DDScannerEnableOptionalSource, void, (DDScannerRef scanner, DDScannerSource source, Boolean enable), (scanner, source, enable))
 #endif
+
+#endif // PLATFORM(IOS)

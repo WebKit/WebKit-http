@@ -710,6 +710,11 @@ inline bool JSValue::isFunction() const
 
 inline bool JSValue::isFunction(CallType& callType, CallData& callData) const
 {
+    return isCallable(callType, callData);
+}
+
+inline bool JSValue::isCallable(CallType& callType, CallData& callData) const
+{
     if (!isCell())
         return false;
     JSCell* cell = asCell();
@@ -807,40 +812,36 @@ ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, uint64_t propertyName) const
     return get(exec, Identifier::from(exec, static_cast<double>(propertyName)));
 }
 
-inline void JSValue::put(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+inline bool JSValue::put(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    if (UNLIKELY(!isCell())) {
-        putToPrimitive(exec, propertyName, value, slot);
-        return;
-    }
-    asCell()->methodTable(exec->vm())->put(asCell(), exec, propertyName, value, slot);
+    if (UNLIKELY(!isCell()))
+        return putToPrimitive(exec, propertyName, value, slot);
+
+    return asCell()->methodTable(exec->vm())->put(asCell(), exec, propertyName, value, slot);
 }
 
-ALWAYS_INLINE void JSValue::putInline(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+ALWAYS_INLINE bool JSValue::putInline(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    if (UNLIKELY(!isCell())) {
-        putToPrimitive(exec, propertyName, value, slot);
-        return;
-    }
+    if (UNLIKELY(!isCell()))
+        return putToPrimitive(exec, propertyName, value, slot);
+
     JSCell* cell = asCell();
     auto putMethod = cell->methodTable(exec->vm())->put;
-    if (LIKELY(putMethod == JSObject::put)) {
-        JSObject::putInline(cell, exec, propertyName, value, slot);
-        return;
-    }
+    if (LIKELY(putMethod == JSObject::put))
+        return JSObject::putInline(cell, exec, propertyName, value, slot);
 
     PutPropertySlot otherSlot = slot;
-    putMethod(cell, exec, propertyName, value, otherSlot);
+    bool result = putMethod(cell, exec, propertyName, value, otherSlot);
     slot = otherSlot;
+    return result;
 }
 
-inline void JSValue::putByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
+inline bool JSValue::putByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
 {
-    if (UNLIKELY(!isCell())) {
-        putToPrimitiveByIndex(exec, propertyName, value, shouldThrow);
-        return;
-    }
-    asCell()->methodTable(exec->vm())->putByIndex(asCell(), exec, propertyName, value, shouldThrow);
+    if (UNLIKELY(!isCell()))
+        return putToPrimitiveByIndex(exec, propertyName, value, shouldThrow);
+
+    return asCell()->methodTable(exec->vm())->putByIndex(asCell(), exec, propertyName, value, shouldThrow);
 }
 
 inline JSValue JSValue::structureOrUndefined() const
@@ -1006,6 +1007,21 @@ ALWAYS_INLINE bool JSValue::requireObjectCoercible(ExecState* exec) const
         return true;
     exec->vm().throwException(exec, createNotAnObjectError(exec, *this));
     return false;
+}
+
+ALWAYS_INLINE bool isThisValueAltered(const PutPropertySlot& slot, JSObject* baseObject)
+{
+    JSValue thisValue = slot.thisValue();
+    if (LIKELY(thisValue == baseObject))
+        return false;
+
+    if (!thisValue.isObject())
+        return true;
+    JSObject* thisObject = asObject(thisValue);
+    // Only PureForwardingProxyType can be seen as the same to the original target object.
+    if (thisObject->type() == PureForwardingProxyType && jsCast<JSProxy*>(thisObject)->target() == baseObject)
+        return false;
+    return true;
 }
 
 } // namespace JSC

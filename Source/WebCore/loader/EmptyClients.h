@@ -36,7 +36,6 @@
 #include "DiagnosticLoggingClient.h"
 #include "DragClient.h"
 #include "EditorClient.h"
-#include "TextCheckerClient.h"
 #include "FloatRect.h"
 #include "FocusDirection.h"
 #include "FrameLoaderClient.h"
@@ -44,8 +43,17 @@
 #include "Page.h"
 #include "ProgressTrackerClient.h"
 #include "ResourceError.h"
+#include "TextCheckerClient.h"
 #include "VisitedLinkStore.h"
 #include <wtf/text/StringView.h>
+
+#if ENABLE(USER_MESSAGE_HANDLERS)
+#include "UserMessageHandlerDescriptor.h"
+#endif
+
+#if ENABLE(CONTENT_EXTENSIONS)
+#include "CompiledContentExtension.h"
+#endif
 
 /*
  This file holds empty Client stubs for use by WebCore.
@@ -417,11 +425,11 @@ public:
     void checkGrammarOfString(StringView, Vector<GrammarDetail>&, int*, int*) override { }
 
 #if USE(UNIFIED_TEXT_CHECKING)
-    Vector<TextCheckingResult> checkTextOfParagraph(StringView, TextCheckingTypeMask) override { return Vector<TextCheckingResult>(); }
+    Vector<TextCheckingResult> checkTextOfParagraph(StringView, TextCheckingTypeMask, const VisibleSelection&) override { return Vector<TextCheckingResult>(); }
 #endif
 
-    void getGuessesForWord(const String&, const String&, Vector<String>&) override { }
-    void requestCheckingOfString(PassRefPtr<TextCheckingRequest>) override;
+    void getGuessesForWord(const String&, const String&, const VisibleSelection&, Vector<String>&) override { }
+    void requestCheckingOfString(PassRefPtr<TextCheckingRequest>, const VisibleSelection&) override;
 };
 
 class EmptyEditorClient : public EditorClient {

@@ -50,6 +50,7 @@
 #include "WebKitWebViewPrivate.h"
 #include "WebKitWebsiteDataManagerPrivate.h"
 #include "WebNotificationManagerProxy.h"
+#include "WebsiteDataType.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/IconDatabase.h>
 #include <WebCore/Language.h>
@@ -550,8 +551,11 @@ void webkit_web_context_clear_cache(WebKitWebContext* context)
 {
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
 
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=146041
-    // context->priv->processPool->supplement<WebResourceCacheManagerProxy>()->clearCacheForAllOrigins(AllResourceCaches);
+    OptionSet<WebsiteDataType> websiteDataTypes;
+    websiteDataTypes |= WebsiteDataType::MemoryCache;
+    websiteDataTypes |= WebsiteDataType::DiskCache;
+    auto& websiteDataStore = webkitWebsiteDataManagerGetDataStore(context->priv->websiteDataManager.get()).websiteDataStore();
+    websiteDataStore.removeData(websiteDataTypes, std::chrono::system_clock::time_point::min(), [] { });
 }
 
 typedef HashMap<DownloadProxy*, GRefPtr<WebKitDownload> > DownloadsMap;

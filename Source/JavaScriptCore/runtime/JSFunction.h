@@ -150,6 +150,8 @@ public:
     JS_EXPORT_PRIVATE bool isHostFunctionNonInline() const;
     bool isClassConstructorFunction() const;
 
+    void setFunctionName(ExecState*, JSValue name);
+
 protected:
     JS_EXPORT_PRIVATE JSFunction(VM&, JSGlobalObject*, Structure*);
     JSFunction(VM&, FunctionExecutable*, JSScope*, Structure*);
@@ -169,7 +171,7 @@ protected:
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode = EnumerationMode());
     static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
@@ -191,6 +193,7 @@ private:
     bool hasReifiedName() const;
     void reifyLength(ExecState*);
     void reifyName(ExecState*);
+    void reifyName(ExecState*, String name);
     void reifyLazyPropertyIfNeeded(ExecState*, PropertyName propertyName);
 
     friend class LLIntOffsetsExtractor;

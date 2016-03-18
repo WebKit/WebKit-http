@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 
 #include "GCIncomingRefCounted.h"
 #include "Weak.h"
-#include <wtf/PassRefPtr.h>
+#include <functional>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -38,11 +38,16 @@ class ArrayBuffer;
 class ArrayBufferView;
 class JSArrayBuffer;
 
+typedef std::function<void(void*)> ArrayBufferDestructorFunction;
+static void arrayBufferDestructorNull(void*) { }
+static void arrayBufferDestructorDefault(void* p) { fastFree(p); }
+
 class ArrayBufferContents {
     WTF_MAKE_NONCOPYABLE(ArrayBufferContents);
 public:
     ArrayBufferContents() 
-        : m_data(0)
+        : m_destructor(arrayBufferDestructorNull)
+        , m_data(nullptr)
         , m_sizeInBytes(0)
     { }
 
@@ -52,10 +57,12 @@ public:
     unsigned sizeInBytes() { return m_sizeInBytes; }
 
 private:
-    ArrayBufferContents(void* data, unsigned sizeInBytes) 
+    ArrayBufferContents(void* data, unsigned sizeInBytes, ArrayBufferDestructorFunction&& destructor)
         : m_data(data)
         , m_sizeInBytes(sizeInBytes)
-    { }
+    {
+        m_destructor = WTFMove(destructor);
+    }
 
     friend class ArrayBuffer;
 
@@ -68,10 +75,9 @@ private:
     void transfer(ArrayBufferContents& other)
     {
         ASSERT(!other.m_data);
-        other.m_data = m_data;
-        other.m_sizeInBytes = m_sizeInBytes;
-        m_data = 0;
-        m_sizeInBytes = 0;
+        std::swap(m_data, other.m_data);
+        std::swap(m_sizeInBytes, other.m_sizeInBytes);
+        std::swap(m_destructor, other.m_destructor);
     }
 
     void copyTo(ArrayBufferContents& other)
@@ -84,20 +90,22 @@ private:
         other.m_sizeInBytes = m_sizeInBytes;
     }
 
+    ArrayBufferDestructorFunction m_destructor;
     void* m_data;
     unsigned m_sizeInBytes;
 };
 
 class ArrayBuffer : public GCIncomingRefCounted<ArrayBuffer> {
 public:
-    static inline PassRefPtr<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize);
-    static inline PassRefPtr<ArrayBuffer> create(ArrayBuffer*);
-    static inline PassRefPtr<ArrayBuffer> create(const void* source, unsigned byteLength);
-    static inline PassRefPtr<ArrayBuffer> create(ArrayBufferContents&);
-    static inline PassRefPtr<ArrayBuffer> createAdopted(const void* data, unsigned byteLength);
+    static inline RefPtr<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize);
+    static inline RefPtr<ArrayBuffer> create(ArrayBuffer*);
+    static inline RefPtr<ArrayBuffer> create(const void* source, unsigned byteLength);
+    static inline Ref<ArrayBuffer> create(ArrayBufferContents&);
+    static inline Ref<ArrayBuffer> createAdopted(const void* data, unsigned byteLength);
+    static inline Ref<ArrayBuffer> createFromBytes(const void* data, unsigned byteLength, ArrayBufferDestructorFunction&&);
 
     // Only for use by Uint8ClampedArray::createUninitialized and SharedBuffer::createArrayBuffer.
-    static inline PassRefPtr<ArrayBuffer> createUninitialized(unsigned numElements, unsigned elementByteSize);
+    static inline RefPtr<ArrayBuffer> createUninitialized(unsigned numElements, unsigned elementByteSize);
 
     inline void* data();
     inline const void* data() const;
@@ -105,11 +113,12 @@ public:
     
     inline size_t gcSizeEstimateInBytes() const;
 
-    inline PassRefPtr<ArrayBuffer> slice(int begin, int end) const;
-    inline PassRefPtr<ArrayBuffer> slice(int begin) const;
+    inline RefPtr<ArrayBuffer> slice(int begin, int end) const;
+    inline RefPtr<ArrayBuffer> slice(int begin) const;
     
     inline void pin();
     inline void unpin();
+    inline void pinAndLock();
 
     JS_EXPORT_PRIVATE bool transfer(ArrayBufferContents&);
     bool isNeutered() { return !m_contents.m_data; }
@@ -119,15 +128,16 @@ public:
     ~ArrayBuffer() { }
 
 private:
-    static inline PassRefPtr<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy);
+    static inline RefPtr<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy);
 
     inline ArrayBuffer(ArrayBufferContents&);
-    inline PassRefPtr<ArrayBuffer> sliceImpl(unsigned begin, unsigned end) const;
+    inline RefPtr<ArrayBuffer> sliceImpl(unsigned begin, unsigned end) const;
     inline unsigned clampIndex(int index) const;
     static inline int clampValue(int x, int left, int right);
 
-    unsigned m_pinCount;
     ArrayBufferContents m_contents;
+    unsigned m_pinCount : 31;
+    bool m_locked : 1; // m_locked == true means that some API user fetched m_contents directly from a TypedArray object.
 
 public:
     Weak<JSArrayBuffer> m_wrapper;
@@ -143,55 +153,61 @@ int ArrayBuffer::clampValue(int x, int left, int right)
     return x;
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(unsigned numElements, unsigned elementByteSize)
+RefPtr<ArrayBuffer> ArrayBuffer::create(unsigned numElements, unsigned elementByteSize)
 {
     return create(numElements, elementByteSize, ArrayBufferContents::ZeroInitialize);
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(ArrayBuffer* other)
+RefPtr<ArrayBuffer> ArrayBuffer::create(ArrayBuffer* other)
 {
     return ArrayBuffer::create(other->data(), other->byteLength());
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(const void* source, unsigned byteLength)
+RefPtr<ArrayBuffer> ArrayBuffer::create(const void* source, unsigned byteLength)
 {
     ArrayBufferContents contents;
     ArrayBufferContents::tryAllocate(byteLength, 1, ArrayBufferContents::ZeroInitialize, contents);
     if (!contents.m_data)
-        return 0;
-    RefPtr<ArrayBuffer> buffer = adoptRef(new ArrayBuffer(contents));
+        return nullptr;
+    auto buffer = adoptRef(*new ArrayBuffer(contents));
     ASSERT(!byteLength || source);
     memcpy(buffer->data(), source, byteLength);
-    return buffer.release();
+    return WTFMove(buffer);
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(ArrayBufferContents& contents)
+Ref<ArrayBuffer> ArrayBuffer::create(ArrayBufferContents& contents)
 {
-    return adoptRef(new ArrayBuffer(contents));
+    return adoptRef(*new ArrayBuffer(contents));
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::createAdopted(const void* data, unsigned byteLength)
+Ref<ArrayBuffer> ArrayBuffer::createAdopted(const void* data, unsigned byteLength)
 {
-    ArrayBufferContents contents(const_cast<void*>(data), byteLength);
+    return createFromBytes(data, byteLength, WTFMove(arrayBufferDestructorDefault));
+}
+
+Ref<ArrayBuffer> ArrayBuffer::createFromBytes(const void* data, unsigned byteLength, ArrayBufferDestructorFunction&& destructor)
+{
+    ArrayBufferContents contents(const_cast<void*>(data), byteLength, WTFMove(destructor));
     return create(contents);
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::createUninitialized(unsigned numElements, unsigned elementByteSize)
+RefPtr<ArrayBuffer> ArrayBuffer::createUninitialized(unsigned numElements, unsigned elementByteSize)
 {
     return create(numElements, elementByteSize, ArrayBufferContents::DontInitialize);
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy policy)
+RefPtr<ArrayBuffer> ArrayBuffer::create(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy policy)
 {
     ArrayBufferContents contents;
     ArrayBufferContents::tryAllocate(numElements, elementByteSize, policy, contents);
     if (!contents.m_data)
-        return 0;
-    return adoptRef(new ArrayBuffer(contents));
+        return nullptr;
+    return adoptRef(*new ArrayBuffer(contents));
 }
 
 ArrayBuffer::ArrayBuffer(ArrayBufferContents& contents)
     : m_pinCount(0)
+    , m_locked(false)
 {
     contents.transfer(m_contents);
 }
@@ -216,17 +232,17 @@ size_t ArrayBuffer::gcSizeEstimateInBytes() const
     return sizeof(ArrayBuffer) + static_cast<size_t>(byteLength());
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::slice(int begin, int end) const
+RefPtr<ArrayBuffer> ArrayBuffer::slice(int begin, int end) const
 {
     return sliceImpl(clampIndex(begin), clampIndex(end));
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::slice(int begin) const
+RefPtr<ArrayBuffer> ArrayBuffer::slice(int begin) const
 {
     return sliceImpl(clampIndex(begin), byteLength());
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::sliceImpl(unsigned begin, unsigned end) const
+RefPtr<ArrayBuffer> ArrayBuffer::sliceImpl(unsigned begin, unsigned end) const
 {
     unsigned size = begin <= end ? end - begin : 0;
     return ArrayBuffer::create(static_cast<const char*>(data()) + begin, size);
@@ -250,6 +266,11 @@ void ArrayBuffer::unpin()
     m_pinCount--;
 }
 
+void ArrayBuffer::pinAndLock()
+{
+    m_locked = true;
+}
+
 void ArrayBufferContents::tryAllocate(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy policy, ArrayBufferContents& result)
 {
     // Do not allow 31-bit overflow of the total size.
@@ -271,6 +292,7 @@ void ArrayBufferContents::tryAllocate(unsigned numElements, unsigned elementByte
 
     if (allocationSucceeded) {
         result.m_sizeInBytes = numElements * elementByteSize;
+        result.m_destructor = arrayBufferDestructorDefault;
         return;
     }
     result.m_data = 0;
@@ -278,7 +300,7 @@ void ArrayBufferContents::tryAllocate(unsigned numElements, unsigned elementByte
 
 ArrayBufferContents::~ArrayBufferContents()
 {
-    WTF::fastFree(m_data);
+    m_destructor(m_data);
 }
 
 } // namespace JSC

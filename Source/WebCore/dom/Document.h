@@ -340,6 +340,7 @@ public:
 
     using ContainerNode::ref;
     using ContainerNode::deref;
+    using TreeScope::rootNode;
 
     bool canContainRangeEndPoint() const final { return true; }
 
@@ -1087,6 +1088,7 @@ public:
     void enqueueWindowEvent(Ref<Event>&&);
     void enqueueDocumentEvent(Ref<Event>&&);
     void enqueueOverflowEvent(Ref<Event>&&);
+    void enqueueSlotchangeEvent(Ref<Event>&&);
     void enqueuePageshowEvent(PageshowEventPersistence);
     void enqueueHashchangeEvent(const String& oldURL, const String& newURL);
     void enqueuePopstateEvent(RefPtr<SerializedScriptValue>&& stateObject);

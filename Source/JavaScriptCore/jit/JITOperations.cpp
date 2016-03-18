@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1017,6 +1017,13 @@ EncodedJSValue JIT_OPERATION operationNewGeneratorFunctionWithInvalidatedRealloc
     return operationNewFunctionCommon<JSGeneratorFunction>(exec, scope, functionExecutable, true);
 }
 
+void JIT_OPERATION operationSetFunctionName(ExecState* exec, JSCell* funcCell, EncodedJSValue encodedName)
+{
+    JSFunction* func = jsCast<JSFunction*>(funcCell);
+    JSValue name = JSValue::decode(encodedName);
+    func->setFunctionName(exec, name);
+}
+
 JSCell* JIT_OPERATION operationNewObject(ExecState* exec, Structure* structure)
 {
     VM* vm = &exec->vm();
@@ -1891,7 +1898,7 @@ EncodedJSValue JIT_OPERATION operationGetFromScope(ExecState* exec, Instruction*
     }
 
     JSValue result = JSValue();
-    if (jsDynamicCast<JSGlobalLexicalEnvironment*>(scope)) {
+    if (scope->isGlobalLexicalEnvironment()) {
         // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
         result = slot.getValue(exec, ident);
         if (result == jsTDZValue()) {
@@ -1932,7 +1939,7 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
 
     bool hasProperty = scope->hasProperty(exec, ident);
     if (hasProperty
-        && jsDynamicCast<JSGlobalLexicalEnvironment*>(scope)
+        && scope->isGlobalLexicalEnvironment()
         && getPutInfo.initializationMode() != Initialization) {
         // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
         PropertySlot slot(scope, PropertySlot::InternalMethodType::Get);

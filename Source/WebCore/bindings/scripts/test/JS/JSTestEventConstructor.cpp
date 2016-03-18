@@ -38,8 +38,11 @@ namespace WebCore {
 
 JSC::EncodedJSValue jsTestEventConstructorAttr1(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestEventConstructorAttr2(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+#if ENABLE(SPECIAL_EVENT)
+JSC::EncodedJSValue jsTestEventConstructorAttr3(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+#endif
 JSC::EncodedJSValue jsTestEventConstructorConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestEventConstructorConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestEventConstructorConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestEventConstructorPrototype : public JSC::JSNonFinalObject {
 public:
@@ -106,6 +109,10 @@ bool fillTestEventConstructorInit(TestEventConstructorInit& eventInit, JSDiction
 {
     if (!dictionary.tryGetProperty("attr2", eventInit.attr2))
         return false;
+#if ENABLE(SPECIAL_EVENT)
+    if (!dictionary.tryGetProperty("attr3", eventInit.attr3))
+        return false;
+#endif
     return true;
 }
 
@@ -131,6 +138,11 @@ static const HashTableValue JSTestEventConstructorPrototypeTableValues[] =
     { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestEventConstructorConstructor) } },
     { "attr1", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "attr2", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+#if ENABLE(SPECIAL_EVENT)
+    { "attr3", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventConstructorAttr3), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
 };
 
 const ClassInfo JSTestEventConstructorPrototype::s_info = { "TestEventConstructorPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventConstructorPrototype) };
@@ -194,6 +206,23 @@ EncodedJSValue jsTestEventConstructorAttr2(ExecState* state, EncodedJSValue this
 }
 
 
+#if ENABLE(SPECIAL_EVENT)
+EncodedJSValue jsTestEventConstructorAttr3(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(thisValue);
+    JSValue decodedThisValue = JSValue::decode(thisValue);
+    auto* castedThis = jsDynamicCast<JSTestEventConstructor*>(decodedThisValue);
+    if (UNLIKELY(!castedThis)) {
+        return throwGetterTypeError(*state, "TestEventConstructor", "attr3");
+    }
+    auto& impl = castedThis->wrapped();
+    JSValue result = jsStringWithCache(state, impl.attr3());
+    return JSValue::encode(result);
+}
+
+#endif
+
 EncodedJSValue jsTestEventConstructorConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestEventConstructorPrototype* domObject = jsDynamicCast<JSTestEventConstructorPrototype*>(JSValue::decode(thisValue));
@@ -202,16 +231,16 @@ EncodedJSValue jsTestEventConstructorConstructor(ExecState* state, EncodedJSValu
     return JSValue::encode(JSTestEventConstructor::getConstructor(state->vm(), domObject->globalObject()));
 }
 
-void setJSTestEventConstructorConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+bool setJSTestEventConstructorConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
     JSTestEventConstructorPrototype* domObject = jsDynamicCast<JSTestEventConstructorPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state);
-        return;
+        return false;
     }
     // Shadowing a built-in constructor
-    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
+    return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
 JSValue JSTestEventConstructor::getConstructor(VM& vm, const JSGlobalObject* globalObject)

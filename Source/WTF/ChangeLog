@@ -1,3 +1,166 @@
+2016-03-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198235, r198240, r198241, and
+        r198252.
+
+        Causing crashes on ARM
+
+        Reverted changesets:
+
+        "Remove compile time define for SEPARATED_HEAP"
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+        http://trac.webkit.org/changeset/198235
+
+        "Gardening: build fix after r198235."
+        http://trac.webkit.org/changeset/198240
+
+        "Build fix."
+        http://trac.webkit.org/changeset/198241
+
+        "Rename performJITMemcpy to something more inline with our
+        normal webkit function names"
+        https://bugs.webkit.org/show_bug.cgi?id=155525
+        http://trac.webkit.org/changeset/198252
+
+2016-03-15  Oliver Hunt  <oliver@apple.com>
+
+        Remove compile time define for SEPARATED_HEAP
+        https://bugs.webkit.org/show_bug.cgi?id=155508
+
+        Reviewed by Mark Lam.
+
+        Remove the feature define.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2016-03-14  Mark Lam  <mark.lam@apple.com>
+
+        Need to distinguish between Symbol() and Symbol("").
+        https://bugs.webkit.org/show_bug.cgi?id=155438
+
+        Reviewed by Saam Barati.
+
+        While toString of both Symbol() and Symbol("") yields "Symbol()", Function.name
+        should yield "" and "[]" respectively.  Hence, we need to tell between the two.
+        This functionality will be needed later in https://bugs.webkit.org/show_bug.cgi?id=155437.
+
+        We achieve this by creating another singleton instance like the empty StringImpl
+        as the null StringImpl.  isNullSymbol() tests if the Stringimpl instance is a
+        symbol, and its substring is the null() singleton.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createSymbol):
+        (WTF::StringImpl::createNullSymbol):
+        (WTF::StringImpl::containsOnlyWhitespace):
+        (WTF::StringImpl::createSymbolEmpty): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::tryCreateUninitialized):
+        (WTF::StringImpl::stringKind):
+        (WTF::StringImpl::isSymbol):
+        (WTF::StringImpl::isAtomic):
+        (WTF::StringImpl::isNullSymbol):
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::null):
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/FeatureDefines.h:
+
+2016-03-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added new port JSCOnly.
+        https://bugs.webkit.org/show_bug.cgi?id=154512
+
+        Reviewed by Michael Catanzaro.
+
+        This port allows to build JavaScriptCore engine with minimal
+        dependencies.
+
+        * wtf/PlatformJSCOnly.cmake: Added.
+        * wtf/none/MainThreadNone.cpp: Added.
+        * wtf/none/RunLoopNone.cpp: Added.
+        * wtf/none/WorkQueueNone.cpp: Added.
+
+2016-03-13  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r198079): Windows build broke because of "%PRId64" format specifier
+
+        This fixes the following build failure in WebCore for Windows:
+            C:\Source\WebCore\page\DOMTimer.cpp(396): error C2146: syntax error: missing ')' before identifier 'PRId64' [C:\WebKitBuild\Debug\Source\WebCore\WebCore.vcxproj]
+            C:\Source\WebCore\page\DOMTimer.cpp(399): error C2146: syntax error: missing ')' before identifier 'PRId64' [C:\WebKitBuild\Debug\Source\WebCore\WebCore.vcxproj]
+
+        * wtf/StdLibExtras.h: Define "PRId64" for Windows here so it may
+        be shared.  This should fix DOMTimer.cpp after r198079 since it
+        already includes StdLibExtras.h.
+
+2016-03-11  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        WTF should have a similar function as equalLettersIgnoringASCIICase to match beginning of strings
+        https://bugs.webkit.org/show_bug.cgi?id=153419
+
+        Reviewed by Darin Adler.
+
+        Introducing startsWithLettersIgnoringASCIICase, to check the beginning of a string.
+        Moving some code from WTF::equalLettersIgnoringASCIICaseCommonWithoutLength in
+        WTF::hasPrefixWithLettersIgnoringASCIICaseCommon to enable reuse in
+        WTF::startsWithLettersIgnoringASCIICaseCommon.
+
+        * wtf/text/StringCommon.h:
+        (WTF::hasPrefixWithLettersIgnoringASCIICaseCommon):
+        (WTF::equalLettersIgnoringASCIICaseCommonWithoutLength):
+        (WTF::startsWithLettersIgnoringASCIICaseCommonWithoutLength):
+        (WTF::startsWithLettersIgnoringASCIICaseCommon):
+        * wtf/text/StringImpl.h:
+        (WTF::startsWithLettersIgnoringASCIICase):
+        * wtf/text/WTFString.h:
+        (WTF::startsWithLettersIgnoringASCIICase):
+
+2016-03-10  Frederic Wang  <fwang@igalia.com>
+
+        [GTK] Add support for WOFF2
+        https://bugs.webkit.org/show_bug.cgi?id=152616
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/FeatureDefines.h: Enable USE_WOFF2 flag on GTK.
+
+2016-03-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add runtime flags for shadow DOM and custom elements
+        https://bugs.webkit.org/show_bug.cgi?id=155213
+
+        Reviewed by Dean Jackson.
+
+        Removed the manual overrides of ENABLE_SHADOW_DOM and ENABLE_CUSTOM_ELEMENTS as they were
+        making --no-shadow-dom and --no-custom-elements flags on build-webkit useless.
+
+        * wtf/FeatureDefines.h:
+
+2016-03-09  Keith Rollin  <krollin@apple.com>
+
+        Add state dumping facility
+        https://bugs.webkit.org/show_bug.cgi?id=154930
+        <rdar://problem/24939135>
+
+        Reviewed by Anders Carlsson.
+
+        Add an OS_STATE flag to control the inclusion of process state dumping
+        functionality.
+
+        * wtf/Platform.h:
+
+2016-03-09  Oliver Hunt  <oliver@apple.com>
+
+        Fix old iOS
+
+        * wtf/Platform.h:
+
 2016-03-08  Filip Pizlo  <fpizlo@apple.com>
 
         Remove failing assertion. There are strings that claim to be atomic but that the

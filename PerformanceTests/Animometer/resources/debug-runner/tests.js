@@ -162,17 +162,13 @@ Suites.push(new Suite("HTML suite",
             name: "CSS bouncing SVG images"
         },
         {
-            url: "bouncing-particles/bouncing-css-images.html?particleWidth=80&particleHeight=80&imageSrc=../resources/yin-yang.png",
-            name: "CSS bouncing PNG images"
+            url: "bouncing-particles/bouncing-tagged-images.html?particleWidth=100&particleHeight=100",
+            name: "CSS bouncing tagged images"
         },
         {
-            url: "text/layering-text.html",
-            name: "CSS layering text"
-        },
-        {
-            url: "text/text-boxes.html?particleWidth=280&particleHeight=180",
-            name: "CSS text boxes"
-        },
+            url: "dom/leaves.html",
+            name: "Leaves 2.0"
+        }
     ]
 ));
 
