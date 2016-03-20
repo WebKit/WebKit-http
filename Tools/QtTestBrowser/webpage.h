@@ -54,6 +54,8 @@ public:
 
     virtual bool shouldInterruptJavaScript();
 
+    void javaScriptConsoleMessage(const QString &message, int lineNumber, const QString &sourceID) override;
+
 public Q_SLOTS:
     void openUrlInDefaultBrowser(const QUrl& url = QUrl());
     void setUserAgent(const QString& ua) { m_userAgent = ua; }
