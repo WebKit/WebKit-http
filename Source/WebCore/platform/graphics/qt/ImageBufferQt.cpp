@@ -35,6 +35,8 @@
 #include "MIMETypeRegistry.h"
 #include "StillImageQt.h"
 #include "TransparencyLayer.h"
+#include <runtime/JSCInlines.h>
+#include <runtime/TypedArrayInlines.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
