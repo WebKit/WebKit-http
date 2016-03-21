@@ -1181,6 +1181,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::ActivateObject(
 
     if (riid == IID_IMFVideoPresenter) {
         *ppv = static_cast<IMFVideoPresenter*>(this);
+        AddRef();
         return S_OK;
     }
     return E_FAIL;
