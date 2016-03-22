@@ -100,9 +100,7 @@ public:
     enum MenuAction {
         NoAction = - 1,
         FOR_EACH_MAPPED_MENU_ACTION(DEFINE_ACTION, COMMA_SEPARATOR)
-#if ENABLE(INSPECTOR)
         , InspectElement
-#endif
         , ActionCount
     };
 

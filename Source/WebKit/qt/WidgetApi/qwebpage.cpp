@@ -457,9 +457,7 @@ static QWebPage::WebAction webActionForAdapterMenuAction(QWebPageAdapter::MenuAc
 {
     switch (action) {
         FOR_EACH_MAPPED_MENU_ACTION(MAP_WEB_ACTION_FROM_ADAPTER_EQUIVALENT, SEMICOLON_SEPARATOR);
-#if ENABLE(INSPECTOR)
     case QWebPageAdapter::InspectElement: return QWebPage::InspectElement;
-#endif
     default:
         ASSERT_NOT_REACHED();
         break;
@@ -474,9 +472,7 @@ static QWebPageAdapter::MenuAction adapterMenuActionForWebAction(QWebPage::WebAc
 {
     switch (action) {
         FOR_EACH_MAPPED_MENU_ACTION(MAP_ADAPTER_ACTION_FROM_WEBACTION_EQUIVALENT, SEMICOLON_SEPARATOR);
-#if ENABLE(INSPECTOR)
     case QWebPage::InspectElement: return QWebPageAdapter::InspectElement;
-#endif
     default:
         ASSERT_NOT_REACHED();
         break;
@@ -1023,7 +1019,6 @@ void QWebPagePrivate::setInspector(QWebInspector* insp)
 */
 QWebInspector* QWebPagePrivate::getOrCreateInspector()
 {
-#if ENABLE(INSPECTOR)
     if (!inspector) {
         QWebInspector* insp = new QWebInspector;
         insp->setPage(q);
@@ -1031,7 +1026,6 @@ QWebInspector* QWebPagePrivate::getOrCreateInspector()
 
         Q_ASSERT(inspector); // Associated through QWebInspector::setPage(q)
     }
-#endif
     return inspector;
 }
 
@@ -1737,13 +1731,11 @@ void QWebPage::triggerAction(WebAction action, bool)
         break;
 #endif
     case InspectElement: {
-#if ENABLE(INSPECTOR)
         if (!d->hitTestResult.isNull()) {
             d->getOrCreateInspector(); // Make sure the inspector is created
             d->inspector->show(); // The inspector is expected to be shown on inspection
             mappedAction = QWebPageAdapter::InspectElement;
         }
-#endif
         break;
     }
     case StopScheduledPageRefresh: {
@@ -2209,9 +2201,7 @@ QAction *QWebPage::action(WebAction action) const
         mappedAction = adapterMenuActionForWebAction(action);
         break;
     case InspectElement:
-#if ENABLE(INSPECTOR)
         mappedAction = QWebPageAdapter::InspectElement;
-#endif
         break;
 
         // icon needed as well, map by hand.

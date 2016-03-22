@@ -242,24 +242,18 @@ QString DumpRenderTreeSupportQt::webPageGroupName(QWebPageAdapter* adapter)
 
 void DumpRenderTreeSupportQt::webInspectorExecuteScript(QWebPageAdapter* adapter, const QString& script)
 {
-#if ENABLE(INSPECTOR)
     adapter->page->inspectorController().evaluateForTestInFrontend(script);
-#endif
 }
 
 void DumpRenderTreeSupportQt::webInspectorShow(QWebPageAdapter* adapter)
 {
-#if ENABLE(INSPECTOR)
     adapter->page->inspectorController().show();
-#endif
 }
 
 void DumpRenderTreeSupportQt::webInspectorClose(QWebPageAdapter* adapter)
 {
-#if ENABLE(INSPECTOR)
     // FIXME: Call InspectorFrontendClientQt::closeWindow()
     // adapter->page->inspectorController().close();
-#endif
 }
 
 bool DumpRenderTreeSupportQt::hasDocumentElement(QWebFrameAdapter *adapter)

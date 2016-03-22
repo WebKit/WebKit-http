@@ -55,7 +55,6 @@ static const QLatin1String settingStorageTypeSuffix(".type");
 
 namespace {
 
-#if ENABLE(INSPECTOR)
 class InspectorFrontendSettingsQt : public InspectorFrontendClientLocal::Settings {
 public:
     virtual ~InspectorFrontendSettingsQt() { }
@@ -130,7 +129,6 @@ private:
         return retVal;
     }
 };
-#endif // ENABLE(INSPECTOR)
 
 }
 
@@ -147,8 +145,8 @@ InspectorClientQt::InspectorClientQt(QWebPageAdapter* page)
 
 void InspectorClientQt::inspectedPageDestroyed()
 {
+    notImplemented();
     // FIXME
-//#if ENABLE(INSPECTOR)
 //    closeInspectorFrontend();
 //
 //    InspectorServerQt* webInspectorServer = InspectorServerQt::server();
@@ -156,13 +154,11 @@ void InspectorClientQt::inspectedPageDestroyed()
 //        webInspectorServer->unregisterClient(this);
 //
 //    delete this;
-//#endif
 }
 
 Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::InspectorController* inspectorController)
 {
     Inspector::FrontendChannel* frontendChannel = 0;
-#if ENABLE(INSPECTOR)
     QObject* view = 0;
     QWebPageAdapter* inspectorPage = 0;
     m_inspectedWebPage->createWebInspector(&view, &inspectorPage);
@@ -202,15 +198,12 @@ Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::Inspec
     // Web Inspector should not belong to any other page groups since it is a specialized debugger window.
     m_frontendWebPage->page->setGroupName("__WebInspectorPageGroup__");
     frontendChannel = this;
-#endif
     return frontendChannel;
 }
 
 void InspectorClientQt::bringFrontendToFront()
 {
-#if ENABLE(INSPECTOR)
     m_frontendClient->bringToFront();
-#endif
 }
 
 void InspectorClientQt::releaseFrontendPage()
@@ -221,18 +214,14 @@ void InspectorClientQt::releaseFrontendPage()
 
 void InspectorClientQt::attachAndReplaceRemoteFrontend(InspectorServerRequestHandlerQt* channel)
 {
-#if ENABLE(INSPECTOR)
     m_remoteFrontEndChannel = channel;
     m_inspectedWebPage->page->inspectorController().connectFrontend(this);
-#endif
 }
 
 void InspectorClientQt::detachRemoteFrontend()
 {
-#if ENABLE(INSPECTOR)
     m_remoteFrontEndChannel = 0;
     m_inspectedWebPage->page->inspectorController().disconnectFrontend(this);
-#endif
 }
 
 void InspectorClientQt::highlight()
@@ -258,7 +247,6 @@ InspectorClientQt::ConnectionType InspectorClientQt::connectionType() const
 
 bool InspectorClientQt::sendMessageToFrontend(const String& message)
 {
-#if ENABLE(INSPECTOR)
     if (m_remoteFrontEndChannel) {
         WTF::CString msg = message.utf8();
         m_remoteFrontEndChannel->webSocketSend(msg.data(), msg.length());
@@ -269,12 +257,8 @@ bool InspectorClientQt::sendMessageToFrontend(const String& message)
 
     Page* frontendPage = m_frontendWebPage->page;
     return doDispatchMessageOnFrontendPage(frontendPage, message);
-#else
-    return false;
-#endif
 }
 
-#if ENABLE(INSPECTOR)
 InspectorFrontendClientQt::InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt* inspectorClient)
     : InspectorFrontendClientLocal(&inspectedWebPage->page->inspectorController(), inspectorPage, std::make_unique<InspectorFrontendSettingsQt>())
     , m_inspectedWebPage(inspectedWebPage)
@@ -357,10 +341,8 @@ void InspectorFrontendClientQt::destroyInspectorView(bool notifyInspectorControl
         m_inspectedWebPage->setInspectorFrontend(0);
     }
 
-#if ENABLE(INSPECTOR)
     if (notifyInspectorController)
         m_inspectedWebPage->page->inspectorController().disconnectFrontend(m_inspectorClient);
-#endif
     if (m_inspectorClient)
         m_inspectorClient->releaseFrontendPage();
 
@@ -375,6 +357,5 @@ void InspectorFrontendClientQt::inspectorClientDestroyed()
     m_inspectorClient = 0;
     m_inspectedWebPage = 0;
 }
-#endif
 }
 

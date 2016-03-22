@@ -861,13 +861,11 @@ void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyC
         }
 #endif
     } else if (event->propertyName() == "_q_webInspectorServerPort") {
-#if ENABLE(INSPECTOR)
         QVariant port = obj->property("_q_webInspectorServerPort");
         if (port.isValid()) {
             InspectorServerQt* inspectorServer = InspectorServerQt::server();
             inspectorServer->listen(port.toInt());
         }
-#endif
     } else if (event->propertyName() == "_q_deadDecodedDataDeletionInterval") {
         double interval = obj->property("_q_deadDecodedDataDeletionInterval").toDouble();
         MemoryCache::singleton().setDeadDecodedDataDeletionInterval(
@@ -884,10 +882,8 @@ static QWebPageAdapter::MenuAction adapterActionForContextMenuAction(WebCore::Co
 {
     switch (action) {
         FOR_EACH_MAPPED_MENU_ACTION(MAP_ACTION_FROM_VALUE, SEMICOLON_SEPARATOR);
-#if ENABLE(INSPECTOR)
     case WebCore::ContextMenuItemTagInspectElement:
         return QWebPageAdapter::InspectElement;
-#endif
     default:
         break;
     }
@@ -946,10 +942,8 @@ QWebHitTestResultPrivate* QWebPageAdapter::updatePositionDependentMenuActions(co
     HitTestResult result = focusedFrame.eventHandler().hitTestResultAtPoint(focusedFrame.view()->windowToContents(pos));
     page->contextMenuController().setHitTestResult(result);
 
-#if ENABLE(INSPECTOR)
     if (page->inspectorController().enabled())
         page->contextMenuController().addInspectElementItem();
-#endif
 
     WebCore::ContextMenu* webcoreMenu = page->contextMenuController().contextMenu();
     QList<MenuItem> itemDescriptions;
@@ -1034,17 +1028,13 @@ bool QWebPageAdapter::supportsContentType(const QString& mimeType) const
 
 void QWebPageAdapter::didShowInspector()
 {
-#if ENABLE(INSPECTOR)
     page->inspectorController().show();
-#endif
 }
 
 void QWebPageAdapter::didCloseInspector()
 {
-#if ENABLE(INSPECTOR)
     // FIXME: Call InspectorFrontendClientQt::closeWindow()
     // page->inspectorController().close();
-#endif
 }
 
 void QWebPageAdapter::updateActionInternal(QWebPageAdapter::MenuAction action, const char* commandName, bool* enabled, bool* checked)
@@ -1155,13 +1145,11 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
     case SetTextDirectionRightToLeft:
         editor.setBaseWritingDirection(RightToLeftWritingDirection);
         break;
-#if ENABLE(INSPECTOR)
     case InspectElement: {
         ASSERT(hitTestResult != &hitTest);
         page->inspectorController().inspect(hitTestResult->innerNonSharedNode);
         break;
     }
-#endif
     default:
         if (commandName)
             editor.command(commandName).execute();
@@ -1234,10 +1222,8 @@ QString QWebPageAdapter::contextMenuItemTagForAction(QWebPageAdapter::MenuAction
         *checkable = true;
         return contextMenuItemTagUnderline();
 
-#if ENABLE(INSPECTOR)
     case InspectElement:
         return contextMenuItemTagInspectElement();
-#endif
     default:
         ASSERT_NOT_REACHED();
         return QString();

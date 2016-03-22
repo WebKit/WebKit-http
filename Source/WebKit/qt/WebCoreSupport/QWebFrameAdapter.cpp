@@ -554,13 +554,12 @@ void QWebFrameAdapter::renderRelativeCoords(QPainter* painter, int layers, const
 #endif
     }
     renderFrameExtras(&context, layers, clip);
-#if ENABLE(INSPECTOR)
+
     if (frame->page()->inspectorController().highlightedNode()) {
         context.save();
         frame->page()->inspectorController().drawHighlight(context);
         context.restore();
     }
-#endif
 }
 
 void QWebFrameAdapter::renderFrameExtras(WebCore::GraphicsContext* context, int layers, const QRegion& clip)

@@ -352,13 +352,10 @@ void InspectorServerRequestHandlerQt::webSocketReadyRead()
         // Truncate data before delivering message in case of re-entrancy.
         m_data = m_data.mid(pos + payloadLen);
         
-#if ENABLE(INSPECTOR)
         if (m_inspectorClient) {
             InspectorController& inspectorController = m_inspectorClient->m_inspectedWebPage->page->inspectorController();
             inspectorController.dispatchMessageFromFrontend(QString::fromUtf8(payload));
         }
-#endif
-
     }
 }
 
