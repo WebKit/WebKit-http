@@ -236,12 +236,6 @@ if (MSVC)
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
         # Use the multithreaded static runtime library instead of the default DLL runtime.
         string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-
-        # No debug runtime, even in debug builds.
-        if (NOT DEBUG_SUFFIX)
-            string(REGEX REPLACE "/MTd" "/MT" ${flag_var} "${${flag_var}}")
-            string(REGEX REPLACE "/D_DEBUG" "" ${flag_var} "${${flag_var}}")
-        endif ()
     endforeach ()
 
     set(JavaScriptCore_LIBRARY_TYPE SHARED)
