@@ -1,8 +1,10 @@
+#if defined(HAVE_CONFIG_H) && HAVE_CONFIG_H && defined(BUILDING_WITH_CMAKE)
 #include "cmakeconfig.h"
-#include <wtf/Assertions.h>
-#include <WebCore/PlatformExportMacros.h>
+#endif
 
-// TODO: Define in static builds only?
+#include "config.h"
+
 #if OS(WINDOWS)
-#define WEBCORE_EXPORT
+#undef WEBCORE_EXPORT
+#define WEBCORE_EXPORT WTF_EXPORT_DECLARATION
 #endif

@@ -2,8 +2,9 @@
 #include "cmakeconfig.h"
 #endif
 
-#include <PlatformExportMacros.h>
-#include <wtf/Assertions.h>
+#include "config.h"
 
+#if OS(WINDOWS)
 #undef WEBCORE_EXPORT
-#define WEBCORE_EXPORT
+#define WEBCORE_EXPORT WTF_EXPORT_DECLARATION
+#endif
