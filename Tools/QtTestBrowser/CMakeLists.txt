@@ -2,6 +2,7 @@ set(QtTestBrowser_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${CMAKE_BINARY_DIR}/include/QtWebKit"
     "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets"
+    "${DERIVED_SOURCES_WEBKIT_DIR}"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/runtime"
     "${WEBCORE_DIR}"
@@ -36,7 +37,6 @@ set(QtTestBrowser_LIBRARIES
     ${Qt5Gui_LIBRARIES}
     ${Qt5Network_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
-    WebCore # FIXME: Fix cmake to add WebKit's dependencies automatically
     WebCoreTestSupport
     WebKitWidgets
 )

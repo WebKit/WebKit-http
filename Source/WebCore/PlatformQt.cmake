@@ -123,7 +123,6 @@ list(APPEND WebCore_SOURCES
     platform/qt/PasteboardQt.cpp
     platform/qt/PlatformKeyboardEventQt.cpp
     platform/qt/PlatformScreenQt.cpp
-    platform/qt/QtTestSupport.cpp
     platform/qt/RenderThemeQStyle.cpp
     platform/qt/RenderThemeQt.cpp
     platform/qt/RenderThemeQtMobile.cpp
@@ -250,6 +249,10 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 )
 
 WEBKIT_CREATE_FORWARDING_HEADERS(WebCore DIRECTORIES ${WebCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebCore_FORWARDING_HEADERS_FILES})
+
+list(APPEND WebCoreTestSupport_SOURCES
+    platform/qt/QtTestSupport.cpp
+)
 
 # From PlatformWin.cmake
 if (WIN32)

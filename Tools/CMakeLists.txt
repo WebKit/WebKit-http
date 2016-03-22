@@ -30,7 +30,7 @@ elseif ("${PORT}" STREQUAL "GTK")
 endif ()
 
 if (WIN32)
-    add_subdirectory(DumpRenderTree)
+    #add_subdirectory(DumpRenderTree)
     # TODO: Enable when Qt port ready
     if (NOT "${PORT}" STREQUAL "Qt")
         add_subdirectory(TestWebKitAPI)

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 
 include_directories(
+    "${DERIVED_SOURCES_WEBKIT_DIR}"
     "${WEBKIT_DIR}/qt/Api"
     "${WEBKIT_DIR}/qt/WidgetApi"
 )
@@ -19,7 +20,6 @@ target_link_libraries(tst_qwebframe
     ${Qt5Network_LIBRARIES}
     ${Qt5Test_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
-    WebCore # FIXME: Fix cmake to add WebKit's dependencies automatically
     WebCoreTestSupport
     WebKitWidgets
 )

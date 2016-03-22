@@ -31,7 +31,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "DumpRenderTreeSupportQt.h"
 #include "QtTestSupport.h"
 #include "launcherwindow.h"
 #include "urlloader.h"
@@ -48,7 +47,7 @@ int launcherMain(const QApplication& app)
 {
 #ifndef NDEBUG
     int retVal = app.exec();
-    DumpRenderTreeSupportQt::garbageCollectorCollect();
+    WebKit::QtTestSupport::garbageCollectorCollect();
     QWebSettings::clearMemoryCaches();
     return retVal;
 #else

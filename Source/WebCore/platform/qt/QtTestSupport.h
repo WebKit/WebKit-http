@@ -24,22 +24,13 @@
 
 #include <QtCore/qglobal.h>
 
-#if defined(BUILDING_WEBKIT)
-#define TESTSUPPORT_EXPORT Q_DECL_EXPORT
-#else
-#define TESTSUPPORT_EXPORT Q_DECL_IMPORT
-#endif
-
-// Helpers for test runners (DumpRenderTree and WebKitTestRunner).
-// This is living in WebCore for better code sharing, although
-// we expose it as (private) API, so it is part of the WebKit layer.
-
 namespace WebKit {
 
 namespace QtTestSupport {
 
-TESTSUPPORT_EXPORT void clearMemoryCaches();
-TESTSUPPORT_EXPORT void initializeTestFonts();
+void clearMemoryCaches();
+void initializeTestFonts();
+void garbageCollectorCollect();
 
 }
 

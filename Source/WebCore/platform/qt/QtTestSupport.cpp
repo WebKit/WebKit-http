@@ -29,6 +29,7 @@
 
 #include "CrossOriginPreflightResultCache.h"
 #include "FontCache.h"
+#include "GCController.h"
 #include "MemoryCache.h"
 #include "PageCache.h"
 #include <QFontDatabase>
@@ -99,6 +100,11 @@ void QtTestSupport::initializeTestFonts()
     WebCore::FontCache::singleton().invalidate();
     QFontDatabase::removeAllApplicationFonts();
 #endif
+}
+
+void QtTestSupport::garbageCollectorCollect()
+{
+    GCController::singleton().garbageCollectNow();
 }
 
 }
