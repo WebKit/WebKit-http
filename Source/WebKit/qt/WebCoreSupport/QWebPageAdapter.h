@@ -97,7 +97,8 @@ public:
     F(ToggleMediaControls, WebCore::ContextMenuItemTagToggleMediaControls) SEPARATOR \
     F(ToggleMediaLoop, WebCore::ContextMenuItemTagToggleMediaLoop) SEPARATOR \
     F(ToggleMediaPlayPause, WebCore::ContextMenuItemTagMediaPlayPause) SEPARATOR \
-    F(ToggleMediaMute, WebCore::ContextMenuItemTagMediaMute)
+    F(ToggleMediaMute, WebCore::ContextMenuItemTagMediaMute) SEPARATOR \
+    F(ToggleVideoFullscreen, WebCore::ContextMenuItemTagToggleVideoFullscreen)
 #define COMMA_SEPARATOR ,
 #define SEMICOLON_SEPARATOR ;
 #define DEFINE_ACTION(Name, Value) \

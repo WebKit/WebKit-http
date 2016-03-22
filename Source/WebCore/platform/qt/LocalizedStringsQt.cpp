@@ -188,9 +188,19 @@ String contextMenuItemTagToggleMediaLoop()
     return QCoreApplication::translate("QWebPage", "Looping", "Toggle Media Loop Playback");
 }
 
+String contextMenuItemTagToggleVideoFullscreen()
+{
+    return QCoreApplication::translate("QWebPage", "Toggle Fullscreen", "Toggle Fullscreen Mode of Video context menu item");
+}
+
 String contextMenuItemTagEnterVideoFullscreen()
 {
-    return QCoreApplication::translate("QWebPage", "Enter Fullscreen", "Switch Video to Fullscreen");
+    return QCoreApplication::translate("QWebPage", "Enter Fullscreen", "Switch Video to Fullscreen context menu item");
+}
+
+String contextMenuItemTagExitVideoFullscreen()
+{
+    return QCoreApplication::translate("QWebPage", "Exit Fullscreen", "Switch Video out of Fullscreen context menu item");
 }
 
 String contextMenuItemTagMediaPlay()

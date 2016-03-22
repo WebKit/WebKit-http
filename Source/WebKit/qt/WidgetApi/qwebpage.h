@@ -187,6 +187,7 @@ public:
         ToggleMediaLoop,
         ToggleMediaPlayPause,
         ToggleMediaMute,
+        ToggleVideoFullscreen,
 
         WebActionCount
     };

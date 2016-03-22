@@ -720,7 +720,7 @@ void ContextMenuController::createAndAppendTransformationsSubMenu(ContextMenuIte
 
 #endif
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(QT)
 #define SUPPORTS_TOGGLE_VIDEO_FULLSCREEN 1
 #else
 #define SUPPORTS_TOGGLE_VIDEO_FULLSCREEN 0

@@ -1185,6 +1185,7 @@ QWebInspector* QWebPagePrivate::getOrCreateInspector()
     \value ToggleMediaLoop Toggles whether the hovered audio or video should loop on completetion or not. (Added in Qt 5.2)
     \value ToggleMediaPlayPause Toggles the play/pause state of the hovered audio or video element. (Added in Qt 5.2)
     \value ToggleMediaMute Mutes or unmutes the hovered audio or video element. (Added in Qt 5.2)
+    \value ToggleVideoFullscreen Switches the hovered video element into or out of fullscreen mode. (Added in Qt 5.2)
 
     \omitvalue WebActionCount
 
@@ -1728,6 +1729,7 @@ void QWebPage::triggerAction(WebAction action, bool)
     case ToggleMediaLoop:
     case ToggleMediaPlayPause:
     case ToggleMediaMute:
+    case ToggleVideoFullscreen:
         mappedAction = adapterMenuActionForWebAction(action);
         break;
     case ReloadAndBypassCache: // Manual mapping
@@ -2218,6 +2220,7 @@ QAction *QWebPage::action(WebAction action) const
     case ToggleMediaLoop:
     case ToggleMediaPlayPause:
     case ToggleMediaMute:
+    case ToggleVideoFullscreen:
         mappedAction = adapterMenuActionForWebAction(action);
         break;
     case InspectElement:

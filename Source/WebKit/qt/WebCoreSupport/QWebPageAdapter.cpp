@@ -80,6 +80,7 @@
 #include "UndoStepQt.h"
 #include "UserAgentQt.h"
 #include "UserContentController.h"
+#include "UserGestureIndicator.h"
 #include "VisitedLinkStoreQt.h"
 #include "WebDatabaseProvider.h"
 #include "WebEventConversion.h"
@@ -1181,6 +1182,14 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         if (HTMLMediaElement* mediaElt = mediaElement(hitTestResult->innerNonSharedNode))
             mediaElt->setMuted(!mediaElt->muted());
         break;
+    case ToggleVideoFullscreen:
+        if (HTMLMediaElement* mediaElt = mediaElement(hitTestResult->innerNonSharedNode)) {
+            if (mediaElt->isVideo() && mediaElt->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
+                UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
+                mediaElt->toggleFullscreenState();
+            }
+        }
+        break;
 #endif
     case InspectElement: {
         ASSERT(hitTestResult != &hitTest);
@@ -1273,6 +1282,8 @@ QString QWebPageAdapter::contextMenuItemTagForAction(QWebPageAdapter::MenuAction
     case ToggleMediaMute:
         *checkable = true;
         return contextMenuItemTagMediaMute();
+    case ToggleVideoFullscreen:
+        return contextMenuItemTagToggleVideoFullscreen();
 
     case InspectElement:
         return contextMenuItemTagInspectElement();
