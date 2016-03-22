@@ -70,7 +70,7 @@ class ResourceLoader;
 
 struct LoadErrorResetToken;
 
-class FrameLoaderClientQt : public QObject, public FrameLoaderClient, public ProgressTrackerClient {
+class FrameLoaderClientQt : public QObject, public FrameLoaderClient {
     Q_OBJECT
 
     friend class ::QWebFrameAdapter;
@@ -78,7 +78,6 @@ class FrameLoaderClientQt : public QObject, public FrameLoaderClient, public Pro
     bool callErrorPageExtension(const ResourceError&);
 
 Q_SIGNALS:
-    void loadProgress(int d);
     void titleChanged(const QString& title);
     void unsupportedContent(QNetworkReply*);
 
@@ -147,10 +146,6 @@ public:
 
     void revertToProvisionalState(DocumentLoader*) override { }
     void setMainDocumentError(DocumentLoader*, const ResourceError&) override;
-
-    void progressStarted(Frame& originatingProgressFrame) override;
-    void progressEstimateChanged(Frame& originatingProgressFrame) override;
-    void progressFinished(Frame& originatingProgressFrame) override;
 
     void setMainFrameDocumentReady(bool) override;
 
@@ -238,8 +233,9 @@ public:
 
     QWebFrameAdapter* webFrame() const;
 
+    void originatingLoadStarted() { m_isOriginatingLoad = true; }
+
     static bool dumpFrameLoaderCallbacks;
-    static bool dumpProgressFinishedCallback;
     static bool dumpUserGestureInFrameLoaderCallbacks;
     static bool dumpResourceLoadCallbacks;
     static bool dumpResourceResponseMIMETypes;

@@ -61,7 +61,6 @@
 #include "PluginDatabase.h"
 #endif
 #include "PolicyChecker.h"
-#include "ProgressTracker.h"
 #include "QNetworkReplyHandler.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
@@ -77,7 +76,6 @@
 #include "SubframeLoader.h"
 #include "SubresourceLoader.h"
 #include "ViewportArguments.h"
-#include "WebEventConversion.h"
 #include "qwebhistory.h"
 #include "qwebhistory_p.h"
 #include "qwebhistoryinterface.h"
@@ -174,7 +172,6 @@ static QString drtDescriptionSuitableForTestResult(const RefPtr<WebCore::Node> n
 namespace WebCore {
 
 bool FrameLoaderClientQt::dumpFrameLoaderCallbacks = false;
-bool FrameLoaderClientQt::dumpProgressFinishedCallback = false;
 bool FrameLoaderClientQt::dumpUserGestureInFrameLoaderCallbacks = false;
 bool FrameLoaderClientQt::dumpWillCacheResponseCallbacks = false;
 bool FrameLoaderClientQt::dumpResourceLoadCallbacks = false;
@@ -235,9 +232,6 @@ void FrameLoaderClientQt::setFrame(QWebFrameAdapter* webFrame, Frame* frame)
         qWarning("FrameLoaderClientQt::setFrame frame without Page!");
         return;
     }
-
-    connect(this, SIGNAL(loadProgress(int)),
-        m_webFrame->pageAdapter->handle(), SIGNAL(loadProgress(int)));
 
     connect(this, SIGNAL(unsupportedContent(QNetworkReply*)),
         m_webFrame->pageAdapter->handle(), SIGNAL(unsupportedContent(QNetworkReply*)));
@@ -441,7 +435,7 @@ void FrameLoaderClientQt::dispatchDidStartProvisionalLoad()
     if (!m_webFrame)
         return;
     emitLoadStarted();
-    progressEstimateChanged(*m_frame);
+
     m_webFrame->didStartProvisionalLoad();
 }
 
@@ -552,39 +546,6 @@ void FrameLoaderClientQt::dispatchWillSubmitForm(PassRefPtr<FormState>, FramePol
     notImplemented();
     // FIXME: This is surely too simple.
     callPolicyFunction(function, PolicyUse);
-}
-
-// FIXME: should we use Frame& originatingProgressFrame parameter?
-void FrameLoaderClientQt::progressStarted(Frame&)
-{
-    if (m_webFrame && m_frame->page())
-        m_isOriginatingLoad = true;
-    if (m_frame->tree().parent() || !m_webFrame)
-        return;
-    m_webFrame->pageAdapter->updateNavigationActions();
-}
-
-void FrameLoaderClientQt::progressEstimateChanged(Frame&)
-{
-    if (m_webFrame && m_frame->page())
-        emit loadProgress(qRound(m_frame->page()->progress().estimatedProgress() * 100));
-}
-
-void FrameLoaderClientQt::progressFinished(Frame&)
-{
-    if (dumpProgressFinishedCallback)
-        printf("postProgressFinishedNotification\n");
-
-    // Send a mousemove event to:
-    // (1) update the cursor to change according to whatever is underneath the mouse cursor right now;
-    // (2) display the tool tip if the mouse hovers a node which has a tool tip.
-    if (m_frame && m_webFrame) {
-        QPoint localPos;
-        if (m_webFrame->handleProgressFinished(&localPos)) {
-            QMouseEvent event(QEvent::MouseMove, localPos, Qt::NoButton, Qt::NoButton, Qt::NoModifier);
-            m_frame->eventHandler().mouseMoved(convertMouseEvent(&event, 0));
-        }
-    }
 }
 
 void FrameLoaderClientQt::setMainFrameDocumentReady(bool)

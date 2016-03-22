@@ -65,6 +65,7 @@
 #endif
 #include "PositionError.h"
 #include "PrintContext.h"
+#include "ProgressTrackerClientQt.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
 #include "RenderListItem.h"
@@ -398,7 +399,7 @@ void DumpRenderTreeSupportQt::dumpFrameLoader(bool b)
 
 void DumpRenderTreeSupportQt::dumpProgressFinishedCallback(bool b)
 {
-    FrameLoaderClientQt::dumpProgressFinishedCallback = b;
+    ProgressTrackerClientQt::dumpProgressFinishedCallback = b;
 }
 
 void DumpRenderTreeSupportQt::dumpUserGestureInFrameLoader(bool b)

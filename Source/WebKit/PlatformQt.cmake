@@ -190,6 +190,7 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/NotificationPresenterClientQt.cpp
     qt/WebCoreSupport/PlatformStrategiesQt.cpp
     qt/WebCoreSupport/PopupMenuQt.cpp
+    qt/WebCoreSupport/ProgressTrackerClientQt.cpp
     qt/WebCoreSupport/QWebFrameAdapter.cpp
     qt/WebCoreSupport/QWebPageAdapter.cpp
     qt/WebCoreSupport/QtPlatformPlugin.cpp

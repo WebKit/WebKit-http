@@ -68,6 +68,7 @@
 #include "PluginPackage.h"
 #endif
 #include "ProgressTracker.h"
+#include "ProgressTrackerClientQt.h"
 #include "QWebFrameAdapter.h"
 #include "RenderTextControl.h"
 #include "SchemeRegistry.h"
@@ -252,9 +253,8 @@ void QWebPageAdapter::initializeWebCorePage()
     pageConfiguration.editorClient = new EditorClientQt(this);
     pageConfiguration.dragClient = new DragClientQt(pageConfiguration.chromeClient);
     pageConfiguration.inspectorClient = new InspectorClientQt(this);
-    auto frameLoaderClient = new FrameLoaderClientQt();
-    pageConfiguration.loaderClientForMainFrame = frameLoaderClient;
-    pageConfiguration.progressTrackerClient = frameLoaderClient;
+    pageConfiguration.loaderClientForMainFrame = new FrameLoaderClientQt();
+    pageConfiguration.progressTrackerClient = new ProgressTrackerClientQt(this);
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::create(
         QWebSettings::globalSettings()->localStoragePath());
