@@ -26,7 +26,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${THIRDPARTY_DIR}/ANGLE/"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     "${WEBCORE_DIR}/platform/cairo"
-    "${WEBCORE_DIR}/platform/geoclue"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/glx"
@@ -65,9 +64,6 @@ list(APPEND WebCore_SOURCES
     platform/audio/glib/AudioBusGLib.cpp
 
     platform/crypto/gnutls/CryptoDigestGnuTLS.cpp
-
-    platform/geoclue/GeolocationProviderGeoclue1.cpp
-    platform/geoclue/GeolocationProviderGeoclue2.cpp
 
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
