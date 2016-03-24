@@ -31,6 +31,7 @@
 #include "LineMetadata.h"
 #include "List.h"
 #include "Mutex.h"
+#include "Object.h"
 #include "SegregatedFreeList.h"
 #include "SmallChunk.h"
 #include "SmallLine.h"
@@ -54,7 +55,7 @@ public:
     Environment& environment() { return m_environment; }
 
     void allocateSmallBumpRanges(std::lock_guard<StaticMutex>&, size_t sizeClass, BumpAllocator&, BumpRangeCache&);
-    void derefSmallLine(std::lock_guard<StaticMutex>&, SmallLine*);
+    void derefSmallLine(std::lock_guard<StaticMutex>&, Object);
 
     void* allocateLarge(std::lock_guard<StaticMutex>&, size_t);
     void* allocateLarge(std::lock_guard<StaticMutex>&, size_t alignment, size_t, size_t unalignedSize);
@@ -77,7 +78,7 @@ private:
 
     SmallPage* allocateSmallPage(std::lock_guard<StaticMutex>&, size_t sizeClass);
 
-    void deallocateSmallLine(std::lock_guard<StaticMutex>&, SmallLine*);
+    void deallocateSmallLine(std::lock_guard<StaticMutex>&, Object);
     void deallocateLarge(std::lock_guard<StaticMutex>&, const LargeObject&);
 
     LargeObject& splitAndAllocate(LargeObject&, size_t);
@@ -93,9 +94,9 @@ private:
     void scavengeLargeObjects(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
     void scavengeXLargeObjects(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
 
-    std::array<std::array<LineMetadata, smallLineCount>, smallMax / alignment> m_smallLineMetadata;
+    std::array<std::array<LineMetadata, smallLineCount>, sizeClassCount> m_smallLineMetadata;
 
-    std::array<List<SmallPage>, smallMax / alignment> m_smallPagesWithFreeLines;
+    std::array<List<SmallPage>, sizeClassCount> m_smallPagesWithFreeLines;
 
     List<SmallPage> m_smallPages;
 
@@ -111,11 +112,11 @@ private:
     VMHeap m_vmHeap;
 };
 
-inline void Heap::derefSmallLine(std::lock_guard<StaticMutex>& lock, SmallLine* line)
+inline void Heap::derefSmallLine(std::lock_guard<StaticMutex>& lock, Object object)
 {
-    if (!line->deref(lock))
+    if (!object.line()->deref(lock))
         return;
-    deallocateSmallLine(lock, line);
+    deallocateSmallLine(lock, object);
 }
 
 } // namespace bmalloc

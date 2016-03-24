@@ -43,15 +43,7 @@ std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
     return std::make_unique<DrawingAreaProxyWPE>(m_view.page());
 }
 
-void PageClientImpl::setViewNeedsDisplay(const WebCore::IntRect&)
-{
-}
-
-void PageClientImpl::displayView()
-{
-}
-
-void PageClientImpl::scrollView(const WebCore::IntRect&, const WebCore::IntSize&)
+void PageClientImpl::setViewNeedsDisplay(const WebCore::Region&)
 {
 }
 

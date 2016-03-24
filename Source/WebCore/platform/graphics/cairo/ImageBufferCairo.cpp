@@ -217,12 +217,9 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
         if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
             m_data.m_renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
 #if USE(COORDINATED_GRAPHICS_THREADED)
-        else {
+        else
             m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend));
-            m_data.m_platformLayerProxy->requestUpdate();
-        }
 #endif
-
     }
     if (m_data.m_renderingMode == Unaccelerated)
 #else

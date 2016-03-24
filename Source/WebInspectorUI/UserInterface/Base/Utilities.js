@@ -1186,9 +1186,9 @@ function isWebInspectorInternalScript(url)
     return url === "__WebInspectorInternal__";
 }
 
-function isWebInspectorDebugScript(url)
+function isWebKitInternalScript(url)
 {
-    return url && url.startsWith("__WebInspector");
+    return url && url.startsWith("__Web") && url.endsWith("__");
 }
 
 function isFunctionStringNativeCode(str)
@@ -1198,7 +1198,7 @@ function isFunctionStringNativeCode(str)
 
 function doubleQuotedString(str)
 {
-    return "\"" + str.replace(/"/g, "\\\"") + "\"";
+    return "\"" + str.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\"";
 }
 
 function insertionIndexForObjectInListSortedByFunction(object, list, comparator, insertionIndexAfter)

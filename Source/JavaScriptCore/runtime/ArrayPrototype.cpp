@@ -149,9 +149,15 @@ static ALWAYS_INLINE JSValue getProperty(ExecState* exec, JSObject* object, unsi
 {
     if (JSValue result = object->tryGetIndexQuickly(index))
         return result;
-    PropertySlot slot(object, PropertySlot::InternalMethodType::Get);
+    // We want to perform get and has in the same operation.
+    // We can only do so when this behavior is not observable. The
+    // only time it is observable is when we encounter a ProxyObject
+    // somewhere in the prototype chain.
+    PropertySlot slot(object, PropertySlot::InternalMethodType::HasProperty);
     if (!object->getPropertySlot(exec, index, slot))
         return JSValue();
+    if (UNLIKELY(slot.isTaintedByProxy()))
+        return object->get(exec, index);
     return slot.getValue(exec, index);
 }
 
@@ -178,7 +184,7 @@ static ALWAYS_INLINE std::pair<SpeciesConstructResult, JSObject*> speciesConstru
 {
     // ECMA 9.4.2.3: https://tc39.github.io/ecma262/#sec-arrayspeciescreate
     JSValue constructor = jsUndefined();
-    if (LIKELY(isJSArray(thisObject))) {
+    if (LIKELY(isArray(exec, thisObject))) {
         // Fast path in the normal case where the user has not set an own constructor and the Array.prototype.constructor is normal.
         // We need prototype check for subclasses of Array, which are Array objects but have a different prototype by default.
         if (LIKELY(!thisObject->hasCustomProperties()
@@ -201,7 +207,9 @@ static ALWAYS_INLINE std::pair<SpeciesConstructResult, JSObject*> speciesConstru
             if (constructor.isNull())
                 return std::make_pair(SpeciesConstructResult::FastPath, nullptr);;
         }
-    }
+    } else if (exec->hadException())
+        return std::make_pair(SpeciesConstructResult::Exception, nullptr);
+
     if (constructor.isUndefined())
         return std::make_pair(SpeciesConstructResult::FastPath, nullptr);
 
@@ -487,9 +495,8 @@ static inline JSValue join(ExecState& state, JSObject* thisObject, StringView se
         bool holesKnownToBeOK = false;
         for (unsigned i = 0; i < length; ++i) {
             if (JSValue value = data[i].get()) {
-                joiner.append(state, value);
-                if (state.hadException())
-                    return jsUndefined();
+                if (!joiner.appendWithoutSideEffects(state, value))
+                    goto generalCase;
             } else {
                 if (!holesKnownToBeOK) {
                     if (holesMustForwardToPrototype(state, thisObject))
@@ -537,9 +544,8 @@ static inline JSValue join(ExecState& state, JSObject* thisObject, StringView se
         auto data = storage.vector().data();
         for (unsigned i = 0; i < length; ++i) {
             if (JSValue value = data[i].get()) {
-                joiner.append(state, value);
-                if (state.hadException())
-                    return jsUndefined();
+                if (!joiner.appendWithoutSideEffects(state, value))
+                    goto generalCase;
             } else
                 joiner.appendEmptyString();
         }

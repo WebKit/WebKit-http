@@ -47,8 +47,8 @@ void Heap::initializeLineMetadata()
 {
     // We assume that m_smallLineMetadata is zero-filled.
 
-    for (size_t size = alignment; size <= smallMax; size += alignment) {
-        size_t sizeClass = bmalloc::sizeClass(size);
+    for (size_t sizeClass = 0; sizeClass < sizeClassCount; ++sizeClass) {
+        size_t size = objectSize(sizeClass);
         auto& metadata = m_smallLineMetadata[sizeClass];
 
         size_t object = 0;
@@ -178,7 +178,7 @@ void Heap::allocateSmallBumpRanges(std::lock_guard<StaticMutex>& lock, size_t si
 SmallPage* Heap::allocateSmallPage(std::lock_guard<StaticMutex>& lock, size_t sizeClass)
 {
     if (!m_smallPagesWithFreeLines[sizeClass].isEmpty())
-        return m_smallPagesWithFreeLines[sizeClass].pop();
+        return m_smallPagesWithFreeLines[sizeClass].popFront();
 
     SmallPage* page = [this, &lock]() {
         if (!m_smallPages.isEmpty())
@@ -193,10 +193,10 @@ SmallPage* Heap::allocateSmallPage(std::lock_guard<StaticMutex>& lock, size_t si
     return page;
 }
 
-void Heap::deallocateSmallLine(std::lock_guard<StaticMutex>& lock, SmallLine* line)
+void Heap::deallocateSmallLine(std::lock_guard<StaticMutex>& lock, Object object)
 {
-    BASSERT(!line->refCount(lock));
-    SmallPage* page = SmallPage::get(line);
+    BASSERT(!object.line()->refCount(lock));
+    SmallPage* page = object.page();
     page->deref(lock);
 
     if (!page->hasFreeLines(lock)) {

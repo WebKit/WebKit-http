@@ -891,6 +891,7 @@ public:
 
     virtual String passwordFieldValue() const { return String(); }
     bool isValueAutofilled() const;
+    bool isValueAutofillAvailable() const;
     
     // Used by an ARIA tree to get all its rows.
     void ariaTreeRows(AccessibilityChildrenVector&);
@@ -1036,6 +1037,10 @@ public:
     bool caretBrowsingEnabled() const;
     void setCaretBrowsingEnabled(bool);
 #endif
+
+    AccessibilityObject* focusableAncestor();
+    AccessibilityObject* editableAncestor();
+    AccessibilityObject* highestEditableAncestor();
     
 protected:
     AXID m_id;

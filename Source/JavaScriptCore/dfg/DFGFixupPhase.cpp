@@ -1486,7 +1486,6 @@ private:
         case NewObject:
         case NewArrayBuffer:
         case NewRegexp:
-        case Breakpoint:
         case ProfileWillCall:
         case ProfileDidCall:
         case IsUndefined:
@@ -2446,7 +2445,6 @@ private:
     
 bool performFixup(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Fixup Phase");
     return runPhase<FixupPhase>(graph);
 }
 

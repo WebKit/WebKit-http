@@ -1,3 +1,4 @@
+'use strict';
 
 class RootSet extends DataModelObject {
 
@@ -12,12 +13,10 @@ class RootSet extends DataModelObject {
             return;
 
         for (var row of object.roots) {
-            var repositoryId = row.repository;
-            var repository = Repository.findById(repositoryId);
-
+            var repositoryId = row.repository.id();
             console.assert(!this._repositoryToCommitMap[repositoryId]);
-            this._repositoryToCommitMap[repositoryId] = CommitLog.ensureSingleton(repository, row);
-            this._repositories.push(repository);
+            this._repositoryToCommitMap[repositoryId] = CommitLog.ensureSingleton(row.id, row);
+            this._repositories.push(row.repository);
         }
     }
 
@@ -73,10 +72,16 @@ class MeasurementRootSet extends RootSet {
     {
         super(id, null);
         for (var values of revisionList) {
-            var repositoryId = values[0];
+            // [<commit-id>, <repository-id>, <revision>, <time>]
+            var commitId = values[0];
+            var repositoryId = values[1];
+            var revision = values[2];
+            var time = values[3];
             var repository = Repository.findById(repositoryId);
+            if (!repository)
+                continue;
 
-            this._repositoryToCommitMap[repositoryId] = CommitLog.ensureSingleton(repository, {revision: values[1], time: values[2]});
+            this._repositoryToCommitMap[repositoryId] = CommitLog.ensureSingleton(commitId, {repository: repository, revision: revision, time: time});
             this._repositories.push(repository);
         }
     }
@@ -106,3 +111,8 @@ class CustomRootSet {
 
 }
 
+if (typeof module != 'undefined') {
+    module.exports.RootSet = RootSet;
+    module.exports.MeasurementRootSet = MeasurementRootSet;
+    module.exports.CustomRootSet = CustomRootSet;
+}

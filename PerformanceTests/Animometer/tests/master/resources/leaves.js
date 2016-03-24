@@ -2,7 +2,7 @@ Leaf = Utilities.createSubclass(Particle,
     function(stage)
     {
         this.element = document.createElement("img");
-        this.element.setAttribute("src", stage.images[Stage.randomInt(0, stage.images.length - 1)].src);
+        this.element.setAttribute("src", Stage.randomElementInArray(stage.images).src);
         var sizeString = this.sizeMinimum + "px";
         this.element.style.width = sizeString;
         this.element.style.height = sizeString;
@@ -30,11 +30,11 @@ Leaf = Utilities.createSubclass(Particle,
         this._position.y += this._velocity.y;
 
         this._life--;
-        if (!this._life || this._position.y > this.stage.size.y)
+        if (!this._life || this._position.y > this.stage.size.height)
             this.reset();
 
-        if (this._position.x < -this.size.width || this._position.x > this.maxPosition.x)
-            this._position.x = (this._position.x + this.maxPosition.x) % this.maxPosition.x;
+        if (this._position.x < -this.size.width || this._position.x > this.stage.size.width)
+            this._position.x = this._position.x - Math.sign(this._position.x) * (this.size.width + this.stage.size.width);
         this.move();
     },
 

@@ -162,7 +162,7 @@ CachedResource* CachedResourceLoader::cachedResource(const URL& resourceURL) con
 
 Frame* CachedResourceLoader::frame() const
 {
-    return m_documentLoader ? m_documentLoader->frame() : 0;
+    return m_documentLoader ? m_documentLoader->frame() : nullptr;
 }
 
 SessionID CachedResourceLoader::sessionID() const
@@ -288,7 +288,11 @@ CachedResourceHandle<CachedRawResource> CachedResourceLoader::requestMainResourc
 static MixedContentChecker::ContentType contentTypeFromResourceType(CachedResource::Type type)
 {
     switch (type) {
+    // https://w3c.github.io/webappsec-mixed-content/#category-optionally-blockable
+    // Editor's Draft, 11 February 2016
+    // 3.1. Optionally-blockable Content
     case CachedResource::ImageResource:
+    case CachedResource::MediaResource:
             return MixedContentChecker::ContentType::ActiveCanWarn;
 
     case CachedResource::CSSStyleSheet:
@@ -301,7 +305,6 @@ static MixedContentChecker::ContentType contentTypeFromResourceType(CachedResour
         return MixedContentChecker::ContentType::Active;
 #endif
 
-    case CachedResource::MediaResource:
     case CachedResource::RawResource:
     case CachedResource::SVGDocumentResource:
         return MixedContentChecker::ContentType::Active;
@@ -752,7 +755,7 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
 
     // FIXME: We should use the same cache policy for all resource types. The raw resource policy is overly strict
     //        while the normal subresource policy is too loose.
-    if (existingResource->isMainOrMediaOrRawResource()) {
+    if (existingResource->isMainOrMediaOrRawResource() && frame()) {
         bool strictPolicyDisabled = frame()->loader().isStrictRawResourceValidationPolicyDisabledForTesting();
         bool canReuseRawResource = strictPolicyDisabled || downcast<CachedRawResource>(*existingResource).canReuse(request);
         if (!canReuseRawResource)
@@ -923,13 +926,19 @@ void CachedResourceLoader::reloadImagesIfNotDeferred()
 
 CachePolicy CachedResourceLoader::cachePolicy(CachedResource::Type type) const
 {
-    if (!frame())
+    Frame* frame = this->frame();
+    if (!frame)
         return CachePolicyVerify;
 
     if (type != CachedResource::MainResource)
-        return frame()->loader().subresourceCachePolicy();
-    
-    switch (frame()->loader().loadType()) {
+        return frame->loader().subresourceCachePolicy();
+
+    if (Page* page = frame->page()) {
+        if (page->isResourceCachingDisabled())
+            return CachePolicyReload;
+    }
+
+    switch (frame->loader().loadType()) {
     case FrameLoadType::ReloadFromOrigin:
     case FrameLoadType::Reload:
         return CachePolicyReload;

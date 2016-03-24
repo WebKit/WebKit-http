@@ -73,6 +73,8 @@ public:
 
     virtual void notifyPageThatContentAreaWillPaint() const;
 
+    IntPoint locationOfContents() const;
+
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
     virtual void scrollTo(const ScrollPosition&);
 
@@ -418,6 +420,10 @@ protected:
     virtual bool shouldDeferScrollUpdateAfterContentSizeChange() { return false; }
 
     virtual void scrollOffsetChangedViaPlatformWidgetImpl(const ScrollOffset&, const ScrollOffset&) { }
+
+#if PLATFORM(IOS)
+    virtual void unobscuredContentSizeChanged() { }
+#endif
 
 private:
     IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const override;
