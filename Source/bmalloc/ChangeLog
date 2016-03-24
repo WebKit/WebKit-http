@@ -1,3 +1,207 @@
+2016-03-23  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Added an Object helper class
+        https://bugs.webkit.org/show_bug.cgi?id=155818
+
+        Reviewed by Gavin Barraclough.
+
+        Object is an abstraction that breaks out a void* into its component
+        metadata pointers.
+
+        This is slightly faster than recomputing them, and it enables a future
+        patch in which Object will tell us whether it is small or large.
+
+        * bmalloc.xcodeproj/project.pbxproj: Added to the project.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocate): Use Object to compute size.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::processObjectLog):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::deallocateSmallLine):
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::derefSmallLine): Use Object to deallocate.
+
+        * bmalloc/Object.h: Added.
+        (bmalloc::Object::Object):
+        (bmalloc::Object::chunk):
+        (bmalloc::Object::line):
+        (bmalloc::Object::page): Helper class to break out a void* into its
+        component metadata pointers.
+
+        * bmalloc/SmallChunk.h:
+        (bmalloc::SmallChunk::SmallChunk): SmallPage::get doesn't exist anymore
+        so we use our new helper functions instead.
+
+        (bmalloc::SmallChunk::offset):
+        (bmalloc::SmallChunk::object):
+        (bmalloc::SmallChunk::page):
+        (bmalloc::SmallChunk::line):
+        (bmalloc::SmallLine::begin):
+        (bmalloc::SmallLine::end):
+        (bmalloc::SmallPage::begin): New helpers that operate on the data
+        stored in Object.
+
+        (bmalloc::SmallLine::get): Deleted.
+        (bmalloc::SmallPage::get): Deleted.
+
+        * bmalloc/SmallLine.h:
+        (bmalloc::SmallLine::refCount): Added a default ref value for convenience.
+
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::SmallPage):
+
+2016-03-23  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: process the object log before asking for new memory
+        https://bugs.webkit.org/show_bug.cgi?id=155801
+
+        Reviewed by Gavin Barraclough.
+
+        This is a step toward merging large and small objects: In future, if we
+        have large objects in the log, we need to process them right away to
+        avoid pushing up peak memory use.
+
+        But it also appears to be a speedup and memory use improvement now.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::allocate):
+        (bmalloc::Allocator::refillAllocatorSlowCase):
+        (bmalloc::Allocator::allocateLarge): Process the log before asking for
+        more memory.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::processObjectLog):
+        (bmalloc::Deallocator::deallocateSlowCase):
+        * bmalloc/Deallocator.h: Provide a public API for processing the object log.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateSmallPage): Pop fragmented pages from the front
+        instead of from the back. This resolves a regression on tree_churn
+        --parallel. Popping from the front gives us the oldest pages. The oldest
+        pages have had the most time to accumulate free lines. They are therefore
+        the least fragmented on average.
+
+        * bmalloc/List.h:
+        (bmalloc::List::popFront):
+        (bmalloc::List::insertAfter): New API to pop from front.
+
+2016-03-22  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: use a log scale for large-ish size classes
+        https://bugs.webkit.org/show_bug.cgi?id=155770
+
+        Reviewed by Michael Saboff.
+
+        At larger sizes, precise allocation sizes don't save much memory -- and
+        they can cost memory when objects of distinct size classes can't
+        allocate together.
+
+        This is a small savings up to our current allocation limits, and it may
+        enable changing those limits in the long term.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::log2): We use this to compute large-ish size classes.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::Allocator): Iterate by size class instead of by
+        object size so we can change object size limits without breaking stuff.
+
+        (bmalloc::Allocator::scavenge): Ditto.
+
+        (bmalloc::Allocator::allocateLogSizeClass): New helper function for
+        allocating based on log size classes.
+
+        (bmalloc::Allocator::allocateSlowCase): Account for extra size class
+        possibilities.
+
+        * bmalloc/Allocator.h:
+        (bmalloc::Allocator::allocateFastCase): We only handle up to 512b on
+        the fastest fast path now.
+
+        * bmalloc/BumpAllocator.h:
+        (bmalloc::BumpAllocator::validate): Deleted. I noticed that this function
+        had been refactored not to do anything anymore.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::initializeLineMetadata): Iterate by size class. (See
+        Allocator::Allocator.)
+
+        * bmalloc/Heap.h: Use the sizeClassCount constant instead of hard coding
+        things.
+
+        * bmalloc/Sizes.h:
+        (bmalloc::Sizes::maskSizeClass):
+        (bmalloc::Sizes::maskObjectSize):
+        (bmalloc::Sizes::logSizeClass):
+        (bmalloc::Sizes::logObjectSize):
+        (bmalloc::Sizes::sizeClass):
+        (bmalloc::Sizes::objectSize): Separate size class calculation between
+        simple size classes that can be computed with a mask and are 8-byte-precise
+        and complex size classes that require more math and are less precise.
+
+        * bmalloc/SmallLine.h:
+        (bmalloc::SmallLine::ref):
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::SmallPage):
+        (bmalloc::SmallPage::ref):
+        (bmalloc::SmallPage::deref): Cleaned up some ASSERTs that triggered
+        while working on this patch.
+
+        * bmalloc/Zone.cpp:
+        (bmalloc::statistics):
+        (bmalloc::zoneSize):
+        (bmalloc::Zone::Zone):
+        (bmalloc::size): Deleted. Renamed these symbols to work around an lldb
+        bug that makes it impossible to print out variables named 'size' -- which
+        can be a problem when working on malloc.
+
+2016-03-22  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: shrink largeMax
+        https://bugs.webkit.org/show_bug.cgi?id=155759
+
+        Reviewed by Michael Saboff.
+
+        If a largeChunk contains N bytes and we allocate objects of size
+        N / 2 + 8 bytes, then we waste 50% of physical memory at peak.
+
+        This patch sets largeMax to N / 2, reducing maximum waste to 25%.
+
+        * bmalloc/BoundaryTag.h:
+        * bmalloc/LargeChunk.h:
+        (bmalloc::LargeChunk::LargeChunk):
+        * bmalloc/SegregatedFreeList.cpp:
+        (bmalloc::SegregatedFreeList::SegregatedFreeList):
+        (bmalloc::SegregatedFreeList::insert): Honor largeMax vs largeObjectMax.
+
+        * bmalloc/Sizes.h: Distinguish between the largest thing we can store
+        in a free list (largeObjectMax) and the largest thing we're willing to
+        allocate (largeMax).
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR based on the last
+          component of MACOSX_DEPLOYMENT_TARGET.
+        * Configurations/DebugRelease.xcconfig: For engineering builds, preserve the behavior of
+          TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * Configurations/DebugRelease.xcconfig:
+
 2016-03-14  Geoffrey Garen  <ggaren@apple.com>
 
         Unreviewed, rolling out r197955.

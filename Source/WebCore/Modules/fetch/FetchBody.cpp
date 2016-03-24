@@ -38,7 +38,6 @@
 #include "HTTPParsers.h"
 #include "JSBlob.h"
 #include "JSDOMFormData.h"
-#include <runtime/JSONObject.h>
 
 namespace WebCore {
 
@@ -98,7 +97,7 @@ bool FetchBody::processIfEmptyOrDisturbed(Consumer::Type type, DeferredWrapper& 
             promise.reject<ExceptionCode>(SYNTAX_ERR);
             return true;
         case Consumer::Type::ArrayBuffer:
-            promise.resolve(ArrayBuffer::create(nullptr, 0));
+            promise.resolve(ArrayBuffer::tryCreate(nullptr, 0));
             return true;
         default:
             ASSERT_NOT_REACHED();
@@ -135,11 +134,8 @@ void FetchBody::json(FetchBodyOwner& owner, DeferredWrapper&& promise)
     if (processIfEmptyOrDisturbed(Consumer::Type::JSON, promise))
         return;
 
-    if (!owner.scriptExecutionContext())
-        return;
-
     if (m_type == Type::Text) {
-        resolveAsJSON(*owner.scriptExecutionContext(), m_text, WTFMove(promise));
+        fulfillPromiseWithJSON(promise, m_text);
         return;
     }
     consume(owner, Consumer::Type::JSON, WTFMove(promise));
@@ -178,7 +174,7 @@ void FetchBody::consumeText(Consumer::Type type, DeferredWrapper&& promise)
 
     if (type == Consumer::Type::ArrayBuffer) {
         Vector<char> data = extractFromText();
-        promise.resolve<RefPtr<ArrayBuffer>>(ArrayBuffer::create(data.data(), data.size()));
+        promise.resolve<RefPtr<ArrayBuffer>>(ArrayBuffer::tryCreate(data.data(), data.size()));
         return;
     }
     String contentType = Blob::normalizedContentType(extractMIMETypeFromMediaType(m_mimeType));
@@ -206,16 +202,6 @@ void FetchBody::consumeBlob(FetchBodyOwner& owner, Consumer::Type type, Deferred
 
     m_consumer = Consumer({type, WTFMove(promise)});
     owner.loadBlob(*m_blob, loadingType(type));
-}
-
-void FetchBody::resolveAsJSON(ScriptExecutionContext& context, const String& data, DeferredWrapper&& promise)
-{
-    DOMRequestState state(&context);
-    JSC::JSValue value = JSC::JSONParse(state.exec(), data);
-    if (!value)
-        promise.reject<ExceptionCode>(SYNTAX_ERR);
-    else
-        promise.resolve(value);
 }
 
 Vector<char> FetchBody::extractFromText() const
@@ -251,14 +237,14 @@ void FetchBody::loadedAsArrayBuffer(RefPtr<ArrayBuffer>&& buffer)
     m_consumer = Nullopt;
 }
 
-void FetchBody::loadedAsText(ScriptExecutionContext& context, String&& text)
+void FetchBody::loadedAsText(String&& text)
 {
     ASSERT(m_consumer);
     ASSERT(m_consumer->type == Consumer::Type::Text || m_consumer->type == Consumer::Type::JSON);
     if (m_consumer->type == Consumer::Type::Text)
         m_consumer->promise.resolve(text);
     else
-        resolveAsJSON(context, text, WTFMove(m_consumer->promise));
+        fulfillPromiseWithJSON(m_consumer->promise, text);
     m_consumer = Nullopt;
 }
 

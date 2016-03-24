@@ -19,22 +19,13 @@
 # TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 import time
 from mod_pywebsocket import stream
 from mod_pywebsocket.handshake.hybi import compute_accept
 
-
 def web_socket_do_extra_handshake(request):
-    # This simulates a broken server that sends a WebSocket frame before the
-    # handshake, and more frames afterwards.  It is important that if this
-    # happens the client does not buffer all the frames as the server continues
-    # to send more data - it should abort after reading a reasonable number of
-    # bytes (set arbitrarily to 1024).
-    frame = stream.create_text_frame('\0Frame-contains-thirty-two-bytes')
 
-    msg = frame
-    msg += 'HTTP/1.1 101 Switching Protocols\r\n'
+    msg = '\0HTTP/1.1 101 Switching Protocols\r\n'
     msg += 'Upgrade: websocket\r\n'
     msg += 'Connection: Upgrade\r\n'
     msg += 'Sec-WebSocket-Accept: %s\r\n' % compute_accept(request.headers_in['Sec-WebSocket-Key'])[0]
@@ -46,7 +37,6 @@ def web_socket_do_extra_handshake(request):
         numFrames = 1024 / len(frame) # write over 1024 bytes including the above handshake
         for i in range(0, numFrames):
             request.connection.write(frame)
-
 
 def web_socket_transfer_data(request):
     pass

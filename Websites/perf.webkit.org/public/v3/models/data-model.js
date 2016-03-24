@@ -1,3 +1,4 @@
+'use strict';
 
 class DataModelObject {
     constructor(id)
@@ -19,6 +20,8 @@ class DataModelObject {
 
     updateSingleton(object) { }
 
+    static clearStaticMap() { this[DataModelObject.StaticMapSymbol] = null; }
+
     static namedStaticMap(name)
     {
         var staticMap = this[DataModelObject.StaticMapSymbol];
@@ -31,7 +34,7 @@ class DataModelObject {
             this[DataModelObject.StaticMapSymbol] = {};
         var staticMap = this[DataModelObject.StaticMapSymbol];
         if (!staticMap[name])
-            staticMap[name] = [];
+            staticMap[name] = {};
         return staticMap[name];
     }
 
@@ -44,16 +47,18 @@ class DataModelObject {
         return idMap ? idMap[id] : null;
     }
 
-    static all()
+    static listForStaticMap(name)
     {
         var list = [];
-        var idMap = this.namedStaticMap('id');
+        var idMap = this.namedStaticMap(name);
         if (idMap) {
             for (var id in idMap)
                 list.push(idMap[id]);
         }
         return list;
     }
+
+    static all() { return this.listForStaticMap('id'); }
 
     static cachedFetch(path, params, noCache)
     {
@@ -66,11 +71,11 @@ class DataModelObject {
             path += '?' + query.join('&');
 
         if (noCache)
-            return getJSONWithStatus(path);
+            return RemoteAPI.getJSONWithStatus(path);
 
         var cacheMap = this.ensureNamedStaticMap(DataModelObject.CacheMapSymbol);
         if (!cacheMap[path])
-            cacheMap[path] = getJSONWithStatus(path);
+            cacheMap[path] = RemoteAPI.getJSONWithStatus(path);
 
         return cacheMap[path];
     }
@@ -102,4 +107,9 @@ class LabeledObject extends DataModelObject {
 
     name() { return this._name; }
     label() { return this.name(); }
+}
+
+if (typeof module != 'undefined') {
+    module.exports.DataModelObject = DataModelObject;
+    module.exports.LabeledObject = LabeledObject;
 }

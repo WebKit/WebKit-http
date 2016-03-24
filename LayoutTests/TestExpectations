@@ -324,9 +324,6 @@ imported/w3c/web-platform-tests/fetch/api/basic/scheme-blob-worker.html [ Failur
 # New W3C ref tests that are failing.
 webkit.org/b/148856 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ ImageOnlyFailure ]
 
-# Fetch API tests
-[ Debug ] imported/w3c/web-platform-tests/fetch/api/response/response-consume.html [ Pass Crash ]
-
 # @supports W3C Failures
 webkit.org/b/137566 css3/conditional/w3c/at-supports-010.html [ ImageOnlyFailure ]
 webkit.org/b/137568 css3/conditional/w3c/at-supports-014.html [ ImageOnlyFailure ]
@@ -808,6 +805,11 @@ webkit.org/b/154687 streams/pipe-to.html [ Slow ]
 
 webkit.org/b/52185 fast/css/vertical-align-baseline-rowspan-010.html [ ImageOnlyFailure ]
 
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-1.html [ Pass Failure ]
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-2.html [ Pass Failure ]
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-3.html [ Pass Failure ]
+webkit.org/b/155634 http/tests/security/shape-image-cors-redirect-error-message-logging-4.html [ Pass Failure ]
+
 # Content Security Policy failures
 webkit.org/b/85558 http/tests/security/contentSecurityPolicy/1.1
 http/tests/security/contentSecurityPolicy/1.1/child-src [ Pass ]
@@ -828,6 +830,7 @@ http/tests/security/contentSecurityPolicy/1.1/scripthash-basic-blocked.html [ Pa
 http/tests/security/contentSecurityPolicy/1.1/scripthash-default-src.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/scripthash-ignore-unsafeinline.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/scripthash-malformed.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/scripthash-multiple-policies.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/scripthash-tests.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/scripthash-unicode-normalization.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/scriptnonce-allowed.html [ Pass ]
@@ -845,6 +848,7 @@ http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-imag
 http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/stylehash-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/stylehash-basic-blocked.html [ Pass ]
+http/tests/security/contentSecurityPolicy/1.1/stylehash-multiple-policies.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/stylenonce-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/stylenonce-blocked.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child.html [ Pass ]
@@ -859,7 +863,6 @@ http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01.html [ Pass ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-02.html [ Pass ]
 webkit.org/b/154203 http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-overrides-xfo.html
 webkit.org/b/111869 http/tests/security/contentSecurityPolicy/eval-blocked-and-sends-report.html
-webkit.org/b/115700 http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta.html [ Failure ]
 webkit.org/b/153148 http/tests/security/contentSecurityPolicy/eval-allowed-in-report-only-mode-and-sends-report.html
 webkit.org/b/153150 http/tests/security/contentSecurityPolicy/frame-src-cross-origin-load.html
 webkit.org/b/153150 http/tests/security/contentSecurityPolicy/1.1/child-src/frame-fires-load-event-when-blocked.html
@@ -901,14 +904,14 @@ webkit.org/b/94458 http/tests/security/aboutBlank/security-context-write.html [ 
 ### START OF IndexedDB failures
 
 # Our IDL parser test harness is not what this test expects
-imported/w3c/indexeddb/interfaces.html [ Skip ]
+imported/w3c/web-platform-tests/IndexedDB/interfaces.html [ Skip ]
 
 # W3C IDB tests where the test is wrong (the spec, other browsers, and WebKit all agree)
 # Covered by https://github.com/w3c/web-platform-tests/issues/2456
-imported/w3c/indexeddb/idbindex_get7.htm [ Failure ]
-imported/w3c/indexeddb/idbindex_getKey7.htm [ Failure ]
-imported/w3c/indexeddb/idbindex_openCursor2.htm [ Failure ]
-imported/w3c/indexeddb/idbindex_openKeyCursor3.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_get7.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_getKey7.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_openCursor2.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex_openKeyCursor3.htm [ Failure ]
 
 # Times out for unexplored reasons                                                             
 storage/indexeddb/database-quota.html [ Skip ]
@@ -971,8 +974,8 @@ storage/indexeddb/deletedatabase-delayed-by-versionchange.html [ Skip ]
 storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
 
 # Completes with passing results, but too slowly for our test timeouts.
-imported/w3c/indexeddb/idbindex-multientry-big.htm [ Failure ]
-imported/w3c/indexeddb/idbcursor_iterating.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm [ Failure ]
+imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Failure ]
 
 # SQLite backend tests that timeout
 storage/indexeddb/modern/transaction-scheduler-1.html [ Skip ]
@@ -991,3 +994,23 @@ webkit.org/b/155028 storage/indexeddb/modern/256-open-databases.html [ Skip ]
 
 ### END OF IndexedDB failures
 ########################################
+
+# RTL Scrollbars are only implemented on certain versions of OS X
+fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-contents.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-dir-rtl.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-padding.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-simple.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-elementFromPoint.html [ Failure ]
+fast/scrolling/rtl-scrollbars-overflow-position-absolute.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-overflow-text-selection-scrolled.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-position-absolute.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-position-fixed.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-text-selection-scrolled.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-text-selection.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-iframe-offset.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-elementFromPoint-static.html [ Failure ]
+fast/scrolling/rtl-scrollbars-iframe-scrolled.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-positioning.html [ ImageOnlyFailure ]

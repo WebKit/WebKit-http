@@ -142,6 +142,14 @@ window.optionsManager =
         var formElement = document.forms["benchmark-options"].elements[name];
         if (formElement.type == "checkbox")
             return formElement.checked;
+        else if (formElement.constructor === HTMLCollection) {
+            for (var i = 0; i < formElement.length; ++i) {
+                var radio = formElement[i];
+                if (radio.checked)
+                    return formElement.value;
+            }
+            return null;
+        }
         return formElement.value;
     },
 
@@ -181,8 +189,19 @@ window.optionsManager =
                 options[name] = +formElement.value;
             else if (type == "checkbox")
                 options[name] = formElement.checked;
-            else if (type == "radio")
-                options[name] = formElements[name].value;
+            else if (type == "radio") {
+                var radios = formElements[name];
+                if (radios.constructor === HTMLCollection) {
+                    for (var j = 0; j < radios.length; ++j) {
+                        var radio = radios[j];
+                        if (radio.checked) {
+                            options[name] = radio.value;
+                            break;
+                        }
+                    }
+                } else
+                    options[name] = formElements[name].value;
+            }
 
             try {
                 localStorage.setItem(name, options[name]);
@@ -190,8 +209,13 @@ window.optionsManager =
         }
 
         return options;
+    },
+
+    updateDisplay: function()
+    {
+        document.body.className = "display-" + optionsManager.valueForOption("display");
     }
-}
+};
 
 window.suitesManager =
 {
@@ -237,22 +261,19 @@ window.suitesManager =
         suiteCheckbox.indeterminate = numberEnabledTests > 0 && numberEnabledTests < suiteCheckbox.testsElements.length;
     },
 
-    _updateStartButtonState: function()
+    isAtLeastOneTestSelected: function()
     {
         var suitesElements = this._suitesElements();
-        var startButton = document.querySelector("#intro button");
 
         for (var i = 0; i < suitesElements.length; ++i) {
             var suiteElement = suitesElements[i];
             var suiteCheckbox = this._checkboxElement(suiteElement);
 
-            if (suiteCheckbox.checked) {
-                startButton.disabled = false;
-                return;
-            }
+            if (suiteCheckbox.checked)
+                return true;
         }
 
-        startButton.disabled = true;
+        return false;
     },
 
     _onChangeSuiteCheckbox: function(event)
@@ -262,13 +283,13 @@ window.suitesManager =
             var testCheckbox = this._checkboxElement(testElement);
             testCheckbox.checked = selected;
         }, this);
-        this._updateStartButtonState();
+        benchmarkController.updateStartButtonState();
     },
 
     _onChangeTestCheckbox: function(suiteCheckbox)
     {
         this._updateSuiteCheckboxState(suiteCheckbox);
-        this._updateStartButtonState();
+        benchmarkController.updateStartButtonState();
     },
 
     _createSuiteElement: function(treeElement, suite, id)
@@ -299,7 +320,29 @@ window.suitesManager =
         testCheckbox.suiteCheckbox = suiteCheckbox;
 
         suiteCheckbox.testsElements.push(testElement);
-        span.appendChild(document.createTextNode(" " + test.name));
+        span.appendChild(document.createTextNode(" " + test.name + " "));
+
+        testElement.appendChild(document.createTextNode(" "));
+        var link = Utilities.createElement("span", {}, testElement);
+        link.classList.add("link");
+        link.textContent = "link";
+        link.suiteName = Utilities.stripNonASCIICharacters(suiteCheckbox.suite.name);
+        link.testName = test.name;
+        link.onclick = function(event) {
+            var element = event.target;
+            var title = "Link to run “" + element.testName + "” with current options:";
+            var url = location.href.split(/[?#]/)[0];
+            var options = optionsManager.updateLocalStorageFromUI();
+            Utilities.extendObject(options, {
+                "suite-name": element.suiteName,
+                "test-name": Utilities.stripNonASCIICharacters(element.testName)
+            });
+            var complexity = suitesManager._editElement(element.parentNode).value;
+            if (complexity)
+                options.complexity = complexity;
+            prompt(title, url + Utilities.convertObjectToQueryString(options));
+        };
+
         var complexity = Utilities.createElement("input", { type: "number" }, testElement);
         complexity.relatedCheckbox = testCheckbox;
         complexity.oninput = function(event) {
@@ -320,7 +363,7 @@ window.suitesManager =
             var suiteCheckbox = this._checkboxElement(suiteElement);
 
             suite.tests.forEach(function(test) {
-                var testElement = this._createTestElement(listElement, test, suiteCheckbox);
+                this._createTestElement(listElement, test, suiteCheckbox);
             }, this);
         }, this);
     },
@@ -337,11 +380,6 @@ window.suitesManager =
             else
                 editElement.classList.remove("selected");
         }
-    },
-
-    updateDisplay: function()
-    {
-        document.body.className = "display-" + optionsManager.valueForOption("display");
     },
 
     updateUIFromLocalStorage: function()
@@ -370,7 +408,7 @@ window.suitesManager =
             this._updateSuiteCheckboxState(suiteCheckbox);
         }
 
-        this._updateStartButtonState();
+        benchmarkController.updateStartButtonState();
     },
 
     updateLocalStorageFromUI: function()
@@ -407,6 +445,35 @@ window.suitesManager =
         return suites;
     },
 
+    suitesFromQueryString: function(suiteName, testName)
+    {
+        var suites = [];
+        var suiteRegExp = new RegExp(suiteName, "i");
+        var testRegExp = new RegExp(testName, "i");
+
+        for (var i = 0; i < Suites.length; ++i) {
+            var suite = Suites[i];
+            if (!Utilities.stripNonASCIICharacters(suite.name).match(suiteRegExp))
+                continue;
+
+            var test;
+            for (var j = 0; j < suite.tests.length; ++j) {
+                suiteTest = suite.tests[j];
+                if (Utilities.stripNonASCIICharacters(suiteTest.name).match(testRegExp)) {
+                    test = suiteTest;
+                    break;
+                }
+            }
+
+            if (!test)
+                continue;
+
+            suites.push(new Suite(suiteName, [test]));
+        };
+
+        return suites;
+    },
+
     updateLocalStorageFromJSON: function(results)
     {
         for (var suiteName in results[Strings.json.results.tests]) {
@@ -433,9 +500,14 @@ Utilities.extendObject(window.benchmarkController, {
         document.forms["time-graph-options"].addEventListener("change", benchmarkController.onTimeGraphOptionsChanged, true);
         document.forms["complexity-graph-options"].addEventListener("change", benchmarkController.onComplexityGraphOptionsChanged, true);
         optionsManager.updateUIFromLocalStorage();
+        optionsManager.updateDisplay();
+
+        if (benchmarkController.startBenchmarkImmediatelyIfEncoded())
+            return;
+
+        benchmarkController.addOrientationListenerIfNecessary();
         suitesManager.createElements();
         suitesManager.updateUIFromLocalStorage();
-        suitesManager.updateDisplay();
         suitesManager.updateEditsElementsState();
 
         var dropTarget = document.getElementById("drop-target");
@@ -466,7 +538,16 @@ Utilities.extendObject(window.benchmarkController, {
             reader.readAsText(file);
             document.title = "File: " + reader.filename;
         }, false);
+    },
 
+    updateStartButtonState: function()
+    {
+        var startButton = document.getElementById("run-benchmark");
+        if ("isInLandscapeOrientation" in this && !this.isInLandscapeOrientation) {
+            startButton.disabled = true;
+            return;
+        }
+        startButton.disabled = !suitesManager.isAtLeastOneTestSelected();
     },
 
     onBenchmarkOptionsChanged: function(event)
@@ -476,15 +557,36 @@ Utilities.extendObject(window.benchmarkController, {
             return;
         }
         if (event.target.name == "display") {
-            suitesManager.updateDisplay();
+            optionsManager.updateDisplay();
         }
     },
 
     startBenchmark: function()
     {
-        var options = optionsManager.updateLocalStorageFromUI();
-        var suites = suitesManager.updateLocalStorageFromUI();
-        this._startBenchmark(suites, options, "running-test");
+        benchmarkController.options = optionsManager.updateLocalStorageFromUI();
+        benchmarkController.suites = suitesManager.updateLocalStorageFromUI();
+        this._startBenchmark(benchmarkController.suites, benchmarkController.options, "running-test");
+    },
+
+    startBenchmarkImmediatelyIfEncoded: function()
+    {
+        benchmarkController.options = Utilities.convertQueryStringToObject(location.search);
+        if (!benchmarkController.options)
+            return false;
+
+        benchmarkController.suites = suitesManager.suitesFromQueryString(benchmarkController.options["suite-name"], benchmarkController.options["test-name"]);
+        if (!benchmarkController.suites.length)
+            return false;
+
+        setTimeout(function() {
+            this._startBenchmark(benchmarkController.suites, benchmarkController.options, "running-test");
+        }.bind(this), 0);
+        return true;
+    },
+
+    restartBenchmark: function()
+    {
+        this._startBenchmark(benchmarkController.suites, benchmarkController.options, "running-test");
     },
 
     showResults: function()
@@ -518,5 +620,3 @@ Utilities.extendObject(window.benchmarkController, {
         this.updateGraphData(testResult, testData, benchmarkRunnerClient.results.options);
     }
 });
-
-window.addEventListener("load", benchmarkController.initialize);

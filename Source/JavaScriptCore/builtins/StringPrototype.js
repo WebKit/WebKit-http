@@ -24,7 +24,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(INTL)
+function match(regexp)
+{
+    "use strict";
+
+    if (this == null) {
+        if (this === null)
+            throw new @TypeError("String.prototype.match requires that |this| not be null");
+        throw new @TypeError("String.prototype.match requires that |this| not be undefined");
+    }
+
+    if (regexp != null) {
+        var matcher = regexp[@symbolMatch];
+        if (matcher != @undefined)
+            return matcher.@call(regexp, this);
+    }
+
+    let thisString = @toString(this);
+    let createdRegExp = new @RegExp(regexp, @undefined);
+    return createdRegExp[@symbolMatch](thisString);
+}
 
 function search(regexp)
 {
@@ -38,7 +57,7 @@ function search(regexp)
 
     if (regexp != null) {
          var searcher = regexp[@symbolSearch];
-         if (searcher !== @undefined)
+         if (searcher != @undefined)
             return searcher.@call(regexp, this);
     }
 

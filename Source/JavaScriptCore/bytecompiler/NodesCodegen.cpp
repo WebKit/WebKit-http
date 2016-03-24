@@ -45,7 +45,6 @@
 #include "PropertyNameArray.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
-#include "SamplingTool.h"
 #include "StackAlignment.h"
 #include "TemplateRegistryKey.h"
 #include <wtf/Assertions.h>
@@ -3173,6 +3172,13 @@ RegisterID* FuncExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID*
 RegisterID* ArrowFuncExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     return generator.emitNewArrowFunctionExpression(generator.finalDestination(dst), this);
+}
+
+// ------------------------------ MethodDefinitionNode ---------------------------------
+
+RegisterID* MethodDefinitionNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    return generator.emitNewMethodDefinition(generator.finalDestination(dst), this);
 }
 
 // ------------------------------ YieldExprNode --------------------------------

@@ -1,3 +1,114 @@
+2016-03-23  Anders Carlsson  <andersca@apple.com>
+
+        Crash when using KVO from within -[WebView initWithCoder:]
+        https://bugs.webkit.org/show_bug.cgi?id=155816
+        rdar://problem/17073265
+
+        Reviewed by Dan Bernstein.
+
+        Get rid of the observationInfo getter and setter. It's not clear why they were added (in 2003),
+        and the methods on NSObject are good enough for us.
+
+        * WebView/WebView.mm:
+        (-[WebView setObservationInfo:]): Deleted.
+        (-[WebView observationInfo]): Deleted.
+        * WebView/WebViewData.h:
+
+2016-03-22  Beth Dakin  <bdakin@apple.com>
+
+        Advanced spell checking should be guarded behind 
+        HAVE(ADVANCED_SPELL_CHECKING)
+        https://bugs.webkit.org/show_bug.cgi?id=155738
+
+        Reviewed by Geoff Garen.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (insertionPointFromCurrentSelection):
+        (WebEditorClient::checkTextOfParagraph):
+        (WebEditorClient::getGuessesForWord):
+        (WebEditorClient::requestCandidatesForSelection):
+        (WebEditorClient::handleRequestedCandidates):
+        (WebEditorClient::requestCheckingOfString):
+        * WebKitPrefix.h:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView insertText:]):
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR based on the last
+          component of MACOSX_DEPLOYMENT_TARGET.
+        * Configurations/DebugRelease.xcconfig: For engineering builds, preserve the behavior of
+          TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+2016-03-20  Darin Adler  <darin@apple.com>
+
+        Disable Caches in Safari's Develop menu does not disable caches.
+        https://bugs.webkit.org/show_bug.cgi?id=64483
+
+        Reviewed by Antti Koivisto.
+
+        Removed unneeded WebPreferences property; we don't need this for Legacy WebKit.
+
+        * WebView/WebPreferenceKeysPrivate.h: Removed
+        WebKitResourceCachingDisabledPreferenceKey.
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences isResourceCachingDisabled]): Deleted.
+        (-[WebPreferences setResourceCachingDisabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h: Removed resourceCachingDisabled property.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Removed code to update resourceCachingDisabled.
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2016-03-18  Darin Adler  <darin@apple.com>
+
+        Disable Caches in Safari's Develop menu does not disable caches.
+        https://bugs.webkit.org/show_bug.cgi?id=64483
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebPreferenceKeysPrivate.h: Added ResourceCachingDisabled.
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences isResourceCachingDisabled]): Added.
+        (-[WebPreferences setResourceCachingDisabled:]): Added.
+        * WebView/WebPreferencesPrivate.h: Added resourceCachingDisabled.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Push resourceCachingDisabled into WebCore.
+
+2016-03-17  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake][Mac] Unreviewed speculative buildfix after r198088. Just for fun.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-03-17  Andy Estes  <aestes@apple.com>
+
+        [Mac] Enable Content-Disposition: attachment sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=155578
+        <rdar://problem/21886326>
+
+        Reviewed by Dan Bernstein.
+
+        Covered by the existing set of attachment sandbox tests, which have always been run on Mac.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
 2016-03-16  Beth Dakin  <bdakin@apple.com>
 
         Provide NSSpellChecker spellChecking methods with the current insertion point

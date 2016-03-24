@@ -2197,13 +2197,25 @@ Element* AccessibilityObject::element() const
     return nullptr;
 }
     
+bool AccessibilityObject::isValueAutofillAvailable() const
+{
+    if (!isNativeTextControl())
+        return false;
+    
+    Node* node = this->node();
+    if (!is<HTMLInputElement>(node))
+        return false;
+    
+    return downcast<HTMLInputElement>(*node).autoFillButtonType() != AutoFillButtonType::None;
+}
+    
 bool AccessibilityObject::isValueAutofilled() const
 {
     if (!isNativeTextControl())
         return false;
     
     Node* node = this->node();
-    if (!node || !is<HTMLInputElement>(*node))
+    if (!is<HTMLInputElement>(node))
         return false;
     
     return downcast<HTMLInputElement>(*node).isAutoFilled();
@@ -2951,6 +2963,48 @@ void AccessibilityObject::setPreventKeyboardDOMEventDispatch(bool on)
     frame->settings().setPreventKeyboardDOMEventDispatch(on);
 }
 #endif
+
+AccessibilityObject* AccessibilityObject::focusableAncestor()
+{
+    AccessibilityObject* potentialFocusableAncestor = this;
+    while (potentialFocusableAncestor) {
+        if (potentialFocusableAncestor->canSetFocusAttribute())
+            return potentialFocusableAncestor;
+        potentialFocusableAncestor = potentialFocusableAncestor->parentObject();
+    }
+
+    return nullptr;
+}
+
+AccessibilityObject* AccessibilityObject::editableAncestor()
+{
+    AccessibilityObject* potentialEditableAncestor = this;
+    while (potentialEditableAncestor) {
+        if (potentialEditableAncestor->isTextControl())
+            return potentialEditableAncestor;
+        potentialEditableAncestor = potentialEditableAncestor->parentObject();
+    }
+
+    return nullptr;
+}
+
+AccessibilityObject* AccessibilityObject::highestEditableAncestor()
+{
+    AccessibilityObject* editableAncestor = this->editableAncestor();
+    AccessibilityObject* previousEditableAncestor = nullptr;
+    while (editableAncestor) {
+        if (editableAncestor == previousEditableAncestor) {
+            if (AccessibilityObject* parent = editableAncestor->parentObject()) {
+                editableAncestor = parent->editableAncestor();
+                continue;
+            }
+            break;
+        }
+        previousEditableAncestor = editableAncestor;
+        editableAncestor = editableAncestor->editableAncestor();
+    }
+    return previousEditableAncestor;
+}
 
 bool AccessibilityObject::isStyleFormatGroup() const
 {

@@ -23,7 +23,7 @@ function shouldBe(actual, expected) {
         return eval('super');
     }
 
-    shouldThrow(() => test(), `SyntaxError: super is only valid inside functions.`);
+    shouldThrow(() => test(), "SyntaxError: 'super' is only valid inside a function or an 'eval' inside a function.");
 }());
 
 (function () {
@@ -40,9 +40,7 @@ function shouldBe(actual, expected) {
     }
 
     let a = new A();
-    shouldThrow(() => {
-        a.gen().next();
-    }, `SyntaxError: super is only valid inside functions.`);
+    shouldBe(a.gen().next().value, 42);
 }());
 
 (function () {

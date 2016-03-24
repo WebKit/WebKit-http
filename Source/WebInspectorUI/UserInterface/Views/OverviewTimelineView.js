@@ -115,6 +115,8 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
     {
         super.reset();
 
+        this._dataGrid.removeChildren();
+
         this._pendingRepresentedObjects = [];
     }
 
@@ -126,33 +128,6 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
         console.assert(dataGridNode.dataGrid === this._dataGrid);
 
         dataGridNode.revealAndSelect();
-    }
-
-    canShowContentViewForTreeElement(treeElement)
-    {
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement)
-            return true;
-        return super.canShowContentViewForTreeElement(treeElement);
-    }
-
-    showContentViewForTreeElement(treeElement)
-    {
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
-            WebInspector.showSourceCode(treeElement.representedObject);
-            return;
-        }
-
-        if (!(treeElement instanceof WebInspector.SourceCodeTimelineTreeElement)) {
-            console.error("Unknown tree element selected.");
-            return;
-        }
-
-        if (!treeElement.sourceCodeTimeline.sourceCodeLocation) {
-            this.timelineSidebarPanel.showTimelineOverview();
-            return;
-        }
-
-        WebInspector.showOriginalOrFormattedSourceCodeLocation(treeElement.sourceCodeTimeline.sourceCodeLocation);
     }
 
     layout()
