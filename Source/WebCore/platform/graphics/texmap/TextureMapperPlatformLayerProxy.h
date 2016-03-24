@@ -68,7 +68,6 @@ public:
     Lock& lock() { return m_lock; }
     std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
     void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
-    void requestUpdate();
     bool isActive();
 
     void activateOnCompositingThread(Compositor*, TextureMapperLayer*);

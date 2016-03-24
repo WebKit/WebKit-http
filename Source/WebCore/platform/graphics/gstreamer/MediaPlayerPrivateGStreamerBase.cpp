@@ -493,7 +493,6 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(frameHolder->textureID(), frameHolder->size(), frameHolder->flags());
     layerBuffer->setUnmanagedBufferDataHolder(WTFMove(frameHolder));
     m_platformLayerProxy->pushNextBuffer(WTFMove(layerBuffer));
-    m_platformLayerProxy->requestUpdate();
 #else
     GstVideoInfo videoInfo;
     if (UNLIKELY(!getSampleVideoInfo(m_sample.get(), videoInfo)))
@@ -512,7 +511,6 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     }
     updateTexture(buffer->textureGL(), videoInfo);
     m_platformLayerProxy->pushNextBuffer(WTFMove(buffer));
-    m_platformLayerProxy->requestUpdate();
 #endif
 }
 #endif

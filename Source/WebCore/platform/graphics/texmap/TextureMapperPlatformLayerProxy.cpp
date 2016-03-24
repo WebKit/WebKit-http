@@ -87,11 +87,7 @@ void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapp
 {
     ASSERT(m_lock.isHeld());
     m_pendingBuffer = WTFMove(newBuffer);
-}
 
-void TextureMapperPlatformLayerProxy::requestUpdate()
-{
-    ASSERT(m_lock.isHeld());
     if (m_compositor)
         m_compositor->onNewBufferAvailable();
 }

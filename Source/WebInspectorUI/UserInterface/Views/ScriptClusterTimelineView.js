@@ -187,6 +187,9 @@ WebInspector.ScriptClusterTimelineView = class ScriptClusterTimelineView extends
     _scriptClusterViewCurrentContentViewDidChange(event)
     {
         let currentContentView = this._contentViewContainer.currentContentView;
+        if (!currentContentView)
+            return;
+
         let previousContentView = currentContentView === this._eventsContentView ? this._profileContentView : this._eventsContentView;
 
         currentContentView.zeroTime = previousContentView.zeroTime;
@@ -194,7 +197,7 @@ WebInspector.ScriptClusterTimelineView = class ScriptClusterTimelineView extends
         currentContentView.endTime = previousContentView.endTime;
         currentContentView.currentTime = previousContentView.currentTime;
 
-        currentContentView.timelineSidebarPanel.updateFilter();
+        // FIXME: <https://webkit.org/b/154924> Web Inspector: hook up grid row filtering in the new Timelines UI
     }
 };
 

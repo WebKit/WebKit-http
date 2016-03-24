@@ -31,7 +31,7 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
         let tabBarItem = new WebInspector.TabBarItem(image, title);
         let detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel];
 
-        super(identifier || "timeline", "timeline", tabBarItem, WebInspector.TimelineSidebarPanel, detailsSidebarPanels);
+        super(identifier || "timeline", "timeline", tabBarItem, null, detailsSidebarPanels);
 
         // Maintain an invisible tree outline containing tree elements for all recordings.
         // The visible recording's tree element is selected when the content view changes.
@@ -105,9 +105,9 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
         return !!window.TimelineAgent || !!window.ScriptProfilerAgent;
     }
 
-    static displayNameForTimeline(timeline)
+    static displayNameForTimelineType(timelineType)
     {
-        switch (timeline.type) {
+        switch (timelineType) {
         case WebInspector.TimelineRecord.Type.Network:
             return WebInspector.UIString("Network Requests");
         case WebInspector.TimelineRecord.Type.Layout:
@@ -121,15 +121,15 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
         case WebInspector.TimelineRecord.Type.HeapAllocations:
             return WebInspector.UIString("JavaScript Allocations");
         default:
-            console.error("Unknown Timeline type:", timeline.type);
+            console.error("Unknown Timeline type:", timelineType);
         }
 
         return null;
     }
 
-    static iconClassNameForTimeline(timeline)
+    static iconClassNameForTimelineType(timelineType)
     {
-        switch (timeline.type) {
+        switch (timelineType) {
         case WebInspector.TimelineRecord.Type.Network:
             return "network-icon";
         case WebInspector.TimelineRecord.Type.Layout:
@@ -137,22 +137,21 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
         case WebInspector.TimelineRecord.Type.Memory:
             return "memory-icon";
         case WebInspector.TimelineRecord.Type.HeapAllocations:
-            // FIXME: HeapAllocation Timeline needs a new icon.
-            return "memory-icon";
+            return "heap-allocations-icon";
         case WebInspector.TimelineRecord.Type.Script:
             return "script-icon";
         case WebInspector.TimelineRecord.Type.RenderingFrame:
             return "rendering-frame-icon";
         default:
-            console.error("Unknown Timeline type:", timeline.type);
+            console.error("Unknown Timeline type:", timelineType);
         }
 
         return null;
     }
 
-    static genericClassNameForTimeline(timeline)
+    static genericClassNameForTimelineType(timelineType)
     {
-        switch (timeline.type) {
+        switch (timelineType) {
         case WebInspector.TimelineRecord.Type.Network:
             return "network";
         case WebInspector.TimelineRecord.Type.Layout:
@@ -166,7 +165,7 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
         case WebInspector.TimelineRecord.Type.RenderingFrame:
             return "rendering-frame";
         default:
-            console.error("Unknown Timeline type:", timeline.type);
+            console.error("Unknown Timeline type:", timelineType);
         }
 
         return null;
@@ -307,8 +306,11 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
         console.assert(this._displayedContentView);
 
         this._restoredShowingTimelineRecordingContentView = cookie[WebInspector.TimelineTabContentView.ShowingTimelineRecordingContentViewCookieKey];
-        if (!this._restoredShowingTimelineRecordingContentView)
+        if (!this._restoredShowingTimelineRecordingContentView) {
+            if (!this.contentBrowser.currentContentView)
+                this._showTimelineViewForType(WebInspector.TimelineTabContentView.OverviewTimelineIdentifierCookieValue);
             return;
+        }
 
         let selectedTimelineViewIdentifier = cookie[WebInspector.TimelineTabContentView.SelectedTimelineViewIdentifierCookieKey];
         if (selectedTimelineViewIdentifier === WebInspector.TimelineRecord.Type.RenderingFrame && !WebInspector.FPSInstrument.supported())
@@ -394,8 +396,9 @@ WebInspector.TimelineTabContentView = class TimelineTabContentView extends WebIn
 
     _recordButtonClicked(event)
     {
+        let shouldCreateNewRecording = window.event ? window.event.shiftKey : false;
         this._recordButton.toggled = !WebInspector.timelineManager.isCapturing();
-        this._toggleRecording(event.shiftKey);
+        this._toggleRecording(shouldCreateNewRecording);
     }
 
     _recordingsTreeSelectionDidChange(event)

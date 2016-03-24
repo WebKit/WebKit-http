@@ -46,6 +46,10 @@ h1 {
     flex: 0 1 1em;
 }
 
+.hidden {
+    display: none;
+}
+
 button {
     flex: 0 0 auto;
     display: block;
@@ -68,6 +72,10 @@ button:active {
     background-color: rgba(0, 0, 0, .2);
 }
 
+button:disabled {
+    border-color: rgba(96, 96, 96, .5);
+    color: rgba(96, 96, 96, .5);
+}
 
 @media screen and (min-device-width: 768px) {
     section {
@@ -105,10 +113,27 @@ button:active {
     flex: 1 0 auto;
 }
 
-#intro p {
-    flex: 1 1 auto;
-    padding: 0 0 10vh 0;
+#intro > p {
+    flex: 0 1 auto;
+    padding: .5em 0;
+    margin: 0;
     font-size: 2em;
+}
+
+#intro .orientation-check {
+    padding: 10vh 0;
+    text-align: center;
+}
+
+#intro .orientation-check p {
+    font-size: 1em;
+    color: hsl(11, 72%, 50%);
+    margin-bottom: 1em;
+    -apple-trailing-word: -apple-partially-balanced;
+}
+
+#intro .orientation-check button {
+    margin: 0 auto;
 }
 
 @media screen and (min-device-width: 768px) {
@@ -148,13 +173,6 @@ button:active {
     margin: 0 auto;
 }
 
-@media screen and (min-device-width: 1800px) {
-    .frame-container > iframe {
-        width: 1600px;
-        height: 800px;
-    }
-}
-
 @media screen and (max-device-width: 414px) {
     #test-container {
         padding: 0;
@@ -163,7 +181,6 @@ button:active {
     .frame-container {
         width: 100%;
         height: 100%;
-        overflow: hidden;
     }
 
     .frame-container > iframe {
@@ -172,9 +189,24 @@ button:active {
     }
 }
 
-@media screen and (max-device-width: 1024px) {
+@media screen and (min-device-width: 768px) and (max-device-width: 1024px) {
     .frame-container > iframe {
         width: 900px;
+        height: 600px;
+    }
+}
+
+@media screen and (min-device-width: 1024px) and (max-device-width: 1366px) {
+    .frame-container > iframe {
+        width: 1200px;
+        height: 800px;
+    }
+}
+
+@media screen and (min-width: 1800px) {
+    .frame-container > iframe {
+        width: 1600px;
+        height: 800px;
     }
 }
 

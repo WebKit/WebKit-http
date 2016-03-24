@@ -298,7 +298,7 @@ webkit.org/b/155050 storage/indexeddb/intversion-open-in-upgradeneeded.html [ Sk
 
 webkit.org/b/155138 [ Yosemite ] inspector/console/addInspectedNode.html [ Pass Timeout ]
 
-webkit.org/b/154606 [ Release Yosemite ] imported/w3c/indexeddb/idbcursor-advance-continue-async.htm [ Pass Timeout ]
+webkit.org/b/154606 [ Release Yosemite ] imported/w3c/web-platform-tests/IndexedDB/idbcursor-advance-continue-async.htm [ Pass Timeout ]
 
 webkit.org/b/155151 [ Debug ElCapitan ] media/track/track-cues-pause-on-exit.html [ Pass Timeout ]
 
@@ -455,3 +455,5 @@ imported/blink/fast/transforms/transform-update-frame-overflow.html [ Pass Image
 imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/span/adjacent-spanners-with-margin.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/overflow/hidden-html-auto-body.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/155757 [ Debug ElCapitan ] media/media-document-audio-repaint.html [ Skip ]

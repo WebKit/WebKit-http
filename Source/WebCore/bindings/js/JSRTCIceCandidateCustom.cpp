@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2016 Ericsson AB. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +26,7 @@
 
 #include "config.h"
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
 #include "JSRTCIceCandidate.h"
 
@@ -65,7 +66,18 @@ EncodedJSValue JSC_HOST_CALL constructJSRTCIceCandidate(ExecState* exec)
     return JSValue::encode(CREATE_DOM_WRAPPER(jsConstructor->globalObject(), RTCIceCandidate, iceCandidate.get()));
 }
 
+JSValue JSRTCIceCandidate::sdpMid(ExecState& state) const
+{
+    return jsOwnedStringOrNull(&state, wrapped().sdpMid());
+}
+
+JSValue JSRTCIceCandidate::sdpMLineIndex(ExecState&) const
+{
+    Optional<unsigned short> index = wrapped().sdpMLineIndex();
+    return index ? JSValue(index.value()) : jsNull();
+}
+
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(WEB_RTC)
 

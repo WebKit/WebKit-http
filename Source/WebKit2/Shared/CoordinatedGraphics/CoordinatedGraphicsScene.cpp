@@ -29,13 +29,12 @@
 #include <WebCore/TextureMapperGL.h>
 #include <WebCore/TextureMapperLayer.h>
 #include <wtf/Atomics.h>
-#include <wtf/MainThread.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void CoordinatedGraphicsScene::dispatchOnMainThread(std::function<void()> function)
+void CoordinatedGraphicsScene::dispatchOnMainThread(std::function<void()>&& function)
 {
     if (RunLoop::isMain())
         function();
@@ -43,7 +42,7 @@ void CoordinatedGraphicsScene::dispatchOnMainThread(std::function<void()> functi
         RunLoop::main().dispatch(WTFMove(function));
 }
 
-void CoordinatedGraphicsScene::dispatchOnClientRunLoop(std::function<void()> function)
+void CoordinatedGraphicsScene::dispatchOnClientRunLoop(std::function<void()>&& function)
 {
     if (&m_clientRunLoop == &RunLoop::current())
         function();
@@ -672,7 +671,7 @@ void CoordinatedGraphicsScene::purgeGLResources()
     setActive(false);
 
     RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
+    dispatchOnMainThread([protector] {
         protector->purgeBackingStores();
     });
 }
@@ -685,7 +684,7 @@ void CoordinatedGraphicsScene::dispatchCommitScrollOffset(uint32_t layerID, cons
 void CoordinatedGraphicsScene::commitScrollOffset(uint32_t layerID, const IntSize& offset)
 {
     RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
+    dispatchOnMainThread([protector, layerID, offset] {
         protector->dispatchCommitScrollOffset(layerID, offset);
     });
 }
@@ -711,7 +710,7 @@ void CoordinatedGraphicsScene::detach()
     m_client = 0;
 }
 
-void CoordinatedGraphicsScene::appendUpdate(std::function<void()> function)
+void CoordinatedGraphicsScene::appendUpdate(std::function<void()>&& function)
 {
     ASSERT(isMainThread());
     LockHolder locker(m_renderQueueMutex);
@@ -726,7 +725,7 @@ void CoordinatedGraphicsScene::setActive(bool active)
     m_isActive = active;
     if (m_isActive) {
         RefPtr<CoordinatedGraphicsScene> protector(this);
-        dispatchOnMainThread([=] {
+        dispatchOnMainThread([protector] {
             protector->renderNextFrame();
         });
     }

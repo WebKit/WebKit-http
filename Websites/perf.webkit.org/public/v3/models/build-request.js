@@ -1,12 +1,14 @@
+'use strict';
 
 class BuildRequest extends DataModelObject {
 
     constructor(id, object)
     {
         super(id, object);
-        console.assert(object.testGroup instanceof TestGroup);
+        console.assert(!object.testGroup || object.testGroup instanceof TestGroup);
         this._testGroup = object.testGroup;
-        this._testGroup.addBuildRequest(this);
+        if (this._testGroup)
+            this._testGroup.addBuildRequest(this);
         this._order = object.order;
         console.assert(object.rootSet instanceof RootSet);
         this._rootSet = object.rootSet;
@@ -61,3 +63,6 @@ class BuildRequest extends DataModelObject {
         this._testGroup.didSetResult(this);
     }
 }
+
+if (typeof module != 'undefined')
+    module.exports.BuildRequest = BuildRequest;

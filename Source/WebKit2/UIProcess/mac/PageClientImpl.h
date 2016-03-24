@@ -62,10 +62,7 @@ public:
 private:
     // PageClient
     std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() override;
-    void setViewNeedsDisplay(const WebCore::IntRect&) override;
-    void displayView() override;
-    bool canScrollView() override;
-    void scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset) override;
+    void setViewNeedsDisplay(const WebCore::Region&) override;
     void requestScroll(const WebCore::FloatPoint& scrollPosition, const WebCore::IntPoint& scrollOrigin, bool isProgrammaticScroll) override;
 
     WebCore::IntSize viewSize() override;

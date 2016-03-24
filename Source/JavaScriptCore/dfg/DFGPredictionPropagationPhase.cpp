@@ -744,7 +744,6 @@ private:
         case DFG::Jump:
         case Branch:
         case Switch:
-        case Breakpoint:
         case ProfileWillCall:
         case ProfileDidCall:
         case ProfileType:
@@ -1016,7 +1015,6 @@ private:
     
 bool performPredictionPropagation(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Prediction Propagation Phase");
     return runPhase<PredictionPropagationPhase>(graph);
 }
 

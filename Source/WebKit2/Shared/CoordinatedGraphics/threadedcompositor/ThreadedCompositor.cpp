@@ -82,7 +82,7 @@ void ThreadedCompositor::setNeedsDisplay()
 void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
     RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
+    callOnCompositingThread([protector, handle] {
         protector->m_nativeSurfaceHandle = handle;
         protector->m_scene->setActive(true);
     });
@@ -91,7 +91,7 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
 void ThreadedCompositor::setDeviceScaleFactor(float scale)
 {
     RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
+    callOnCompositingThread([protector, scale] {
         protector->m_deviceScaleFactor = scale;
         protector->scheduleDisplayImmediately();
     });
@@ -100,7 +100,7 @@ void ThreadedCompositor::setDeviceScaleFactor(float scale)
 void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
     RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
+    callOnCompositingThread([protector, size] {
 #if PLATFORM(WPE)
         if (protector->m_surface)
             protector->m_surface->resize(size);
@@ -112,7 +112,7 @@ void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 void ThreadedCompositor::didChangeViewportAttribute(const ViewportAttributes& attr)
 {
     RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
+    callOnCompositingThread([protector, attr] {
         protector->viewportController()->didChangeViewportAttribute(attr);
     });
 }
@@ -120,7 +120,7 @@ void ThreadedCompositor::didChangeViewportAttribute(const ViewportAttributes& at
 void ThreadedCompositor::didChangeContentsSize(const IntSize& size)
 {
     RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
+    callOnCompositingThread([protector, size] {
         protector->viewportController()->didChangeContentsSize(size);
     });
 }
@@ -128,7 +128,7 @@ void ThreadedCompositor::didChangeContentsSize(const IntSize& size)
 void ThreadedCompositor::scrollTo(const IntPoint& position)
 {
     RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
+    callOnCompositingThread([protector, position] {
         protector->viewportController()->scrollTo(position);
     });
 }
@@ -136,7 +136,7 @@ void ThreadedCompositor::scrollTo(const IntPoint& position)
 void ThreadedCompositor::scrollBy(const IntSize& delta)
 {
     RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
+    callOnCompositingThread([protector, delta] {
         protector->viewportController()->scrollBy(delta);
     });
 }
@@ -201,9 +201,9 @@ void ThreadedCompositor::scheduleDisplayImmediately()
 
 void ThreadedCompositor::didChangeVisibleRect()
 {
+    RefPtr<ThreadedCompositor> protector(this);
     FloatRect visibleRect = viewportController()->visibleContentsRect();
     float scale = viewportController()->pageScaleFactor();
-    RefPtr<ThreadedCompositor> protector(this);
     RunLoop::main().dispatch([protector, visibleRect, scale] {
         protector->m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });

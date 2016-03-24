@@ -296,6 +296,7 @@ list(APPEND WebCore_SOURCES
     page/scrolling/mac/ScrollingTreeStickyNode.mm
 
     platform/LocalizedStrings.cpp
+    platform/RuntimeApplicationChecks.mm
     platform/ScrollableArea.cpp
     platform/VNodeTracker.cpp
 
@@ -326,6 +327,7 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/DisplaySleepDisablerCocoa.cpp
     platform/cocoa/KeyEventCocoa.mm
     platform/cocoa/LocalizedStringsCocoa.mm
+    platform/cocoa/MIMETypeRegistryCocoa.mm
     platform/cocoa/MachSendRight.cpp
     platform/cocoa/MemoryPressureHandlerCocoa.mm
     platform/cocoa/NetworkExtensionContentFilter.mm
@@ -470,7 +472,6 @@ list(APPEND WebCore_SOURCES
     platform/mac/Language.mm
     platform/mac/LocalCurrentGraphicsContext.mm
     platform/mac/LoggingMac.mm
-    platform/mac/MIMETypeRegistryMac.mm
     platform/mac/NSScrollerImpDetails.mm
     platform/mac/PasteboardMac.mm
     platform/mac/PlatformClockCA.cpp
@@ -484,6 +485,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/SSLKeyGeneratorMac.cpp
     platform/mac/ScrollAnimatorMac.mm
     platform/mac/ScrollViewMac.mm
+    platform/mac/ScrollableAreaMac.mm
     platform/mac/ScrollbarThemeMac.mm
     platform/mac/SerializedPlatformRepresentationMac.mm
     platform/mac/SharedBufferMac.mm
@@ -837,6 +839,7 @@ set(ObjC_Bindings_IDL_FILES
     html/HTMLMapElement.idl
     html/HTMLMarqueeElement.idl
     html/HTMLMenuElement.idl
+    html/HTMLMediaElement.idl
     html/HTMLMetaElement.idl
     html/HTMLModElement.idl
     html/HTMLOListElement.idl
@@ -860,8 +863,10 @@ set(ObjC_Bindings_IDL_FILES
     html/HTMLTextAreaElement.idl
     html/HTMLTitleElement.idl
     html/HTMLUListElement.idl
+    html/HTMLVideoElement.idl
+    html/MediaError.idl
+    html/TimeRanges.idl
     html/ValidityState.idl
-
     page/AbstractView.idl
 
     xml/XPathExpression.idl
