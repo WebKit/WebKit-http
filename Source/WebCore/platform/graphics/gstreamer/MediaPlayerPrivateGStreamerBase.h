@@ -100,6 +100,7 @@ public:
 
     void setVisible(bool) override { }
     void setSize(const IntSize&) override;
+    void setPosition(const IntPoint&) override;
     void sizeChanged();
 
     void triggerDrain();
@@ -221,6 +222,7 @@ protected:
     mutable MediaPlayer::NetworkState m_networkState;
     mutable bool m_isEndReached;
     IntSize m_size;
+    IntPoint m_position;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
 #if USE(GSTREAMER_GL)

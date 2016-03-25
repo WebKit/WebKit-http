@@ -2156,7 +2156,17 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     if (videoSinkPad)
         g_signal_connect_swapped(videoSinkPad.get(), "notify::caps", G_CALLBACK(videoSinkCapsChangedCallback), this);
 #endif
+
+#if USE(WESTEROS_SINK) && USE(HOLE_PUNCH_GSTREAMER)
+    GstElementFactory *westerosfactory = gst_element_factory_find("westerossink");
+    GstElement* sinkElement = gst_element_factory_create(westerosfactory,"WesterosVideoSink");
+    g_object_set(m_pipeline.get(), "video-sink", sinkElement, nullptr);
+    g_object_set(G_OBJECT(sinkElement),"zorder",0.0f,nullptr);
+#endif
+
+#if !USE(WESTEROS_SINK)
     g_object_set(m_pipeline.get(), "audio-sink", createAudioSink(), nullptr);
+#endif
     configurePlaySink();
 
     // On 1.4.2 and newer we use the audio-filter property instead.

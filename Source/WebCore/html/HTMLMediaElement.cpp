@@ -4472,6 +4472,13 @@ void HTMLMediaElement::mediaPlayerSizeChanged(MediaPlayer*)
         scheduleResizeEventIfSizeChanged();
     if (renderer())
         renderer()->updateFromElement();
+
+#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
+    IntRect windowRect = document().view()->contentsToScreen(renderer()->absoluteBoundingBoxRect(true));
+    //style() is having relative values w.r.t immediate container. Hence we need to substract left,top values from immediate container to get correct x,y values.
+    player()->setPosition(IntPoint(windowRect.x() - renderer()->style().left().intValue(),windowRect.y() -renderer()->style().top().intValue()));
+#endif
+
     endProcessingMediaPlayerCallback();
 }
 

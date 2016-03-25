@@ -12,6 +12,7 @@ namespace WPE {
 namespace ViewBackend {
 
 class WesterosViewbackendInput;
+class WesterosViewbackendOutput;
 
 class ViewBackendWesteros final : public ViewBackend {
 public:
@@ -27,6 +28,7 @@ public:
 
 private:
     WesterosViewbackendInput* m_input_handler;
+    WesterosViewbackendOutput* m_output_handler;
     WstCompositor* m_compositor;
     Client* m_client;
     uint32_t m_width;

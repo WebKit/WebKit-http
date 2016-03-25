@@ -146,6 +146,7 @@ public:
     virtual bool didLoadingProgress() const = 0;
 
     virtual void setSize(const IntSize&) = 0;
+    virtual void setPosition(const IntPoint&) {};
 
     virtual void paint(GraphicsContext&, const FloatRect&) = 0;
 

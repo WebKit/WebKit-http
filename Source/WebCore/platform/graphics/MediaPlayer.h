@@ -328,6 +328,7 @@ public:
 
     IntSize size() const { return m_size; }
     void setSize(const IntSize& size);
+    void setPosition(const IntPoint&);
 
     bool load(const URL&, const ContentType&, const String& keySystem);
 #if ENABLE(MEDIA_SOURCE)

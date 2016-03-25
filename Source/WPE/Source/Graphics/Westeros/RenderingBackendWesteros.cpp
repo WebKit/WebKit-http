@@ -91,11 +91,7 @@ RenderingBackendWesteros::RenderingBackendWesteros()
  , m_registry(nullptr)
  , m_compositor(nullptr)
 {
-    if (const char* nestedDisplay = std::getenv("WPE_WESTEROS_NESTED_DISPLAY")) {
-        m_display = wl_display_connect(nestedDisplay);
-    } else {
-        m_display = wl_display_connect(nullptr);
-    }
+    m_display = wl_display_connect(nullptr);
     g_WlDisplay = m_display;
 
     if(!m_display)

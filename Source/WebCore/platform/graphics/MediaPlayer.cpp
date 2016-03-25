@@ -153,6 +153,7 @@ public:
     bool didLoadingProgress() const override { return false; }
 
     void setSize(const IntSize&) override { }
+    void setPosition(const IntPoint&) override { }
 
     void paint(GraphicsContext&, const FloatRect&) override { }
 
@@ -812,6 +813,12 @@ void MediaPlayer::setSize(const IntSize& size)
     m_size = size;
     m_private->setSize(size);
 }
+
+void MediaPlayer::setPosition(const IntPoint& position)
+{
+    m_private->setPosition(position);
+}
+
 
 bool MediaPlayer::visible() const
 {
