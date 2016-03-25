@@ -903,9 +903,10 @@ void LauncherWindow::animatedYFlip()
 {
     qobject_cast<WebViewGraphicsBased*>(m_view)->animatedYFlip();
 }
-void LauncherWindow::toggleSpatialNavigation(bool b)
+
+void LauncherWindow::toggleSpatialNavigation(bool enable)
 {
-    page()->settings()->setAttribute(QWebSettings::SpatialNavigationEnabled, b);
+    page()->settings()->setAttribute(QWebSettings::SpatialNavigationEnabled, enable);
 }
 
 void LauncherWindow::toggleFullScreenMode(bool enable)

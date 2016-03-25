@@ -44,12 +44,12 @@ public:
 
     virtual QWebPage* createWindow(QWebPage::WebWindowType);
     virtual QObject* createPlugin(const QString&, const QUrl&, const QStringList&, const QStringList&);
-    virtual bool supportsExtension(QWebPage::Extension extension) const;
-    virtual bool extension(Extension extension, const ExtensionOption* option, ExtensionReturn* output);
+    virtual bool supportsExtension(QWebPage::Extension) const;
+    virtual bool extension(Extension, const ExtensionOption*, ExtensionReturn*);
 
-    virtual bool acceptNavigationRequest(QWebFrame* frame, const QNetworkRequest& request, NavigationType type);
+    virtual bool acceptNavigationRequest(QWebFrame*, const QNetworkRequest&, NavigationType);
 
-    QString userAgentForUrl(const QUrl& url) const;
+    QString userAgentForUrl(const QUrl&) const;
     void setInterruptingJavaScriptEnabled(bool enabled) { m_interruptingJavaScriptEnabled = enabled; }
 
     virtual bool shouldInterruptJavaScript();
@@ -57,11 +57,11 @@ public:
     void javaScriptConsoleMessage(const QString &message, int lineNumber, const QString &sourceID) override;
 
 public Q_SLOTS:
-    void openUrlInDefaultBrowser(const QUrl& url = QUrl());
+    void openUrlInDefaultBrowser(const QUrl& = QUrl());
     void setUserAgent(const QString& ua) { m_userAgent = ua; }
     void authenticationRequired(QNetworkReply*, QAuthenticator*);
-    void requestPermission(QWebFrame* frame, QWebPage::Feature feature);
-    void featurePermissionRequestCanceled(QWebFrame* frame, QWebPage::Feature feature);
+    void requestPermission(QWebFrame*, QWebPage::Feature);
+    void featurePermissionRequestCanceled(QWebFrame*, QWebPage::Feature);
 
 private:
     void applyProxy();

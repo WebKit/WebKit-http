@@ -99,7 +99,7 @@ public:
 
     void sendTouchEvent();
 
-    bool eventFilter(QObject* obj, QEvent* event);
+    bool eventFilter(QObject*, QEvent*);
 
 protected Q_SLOTS:
     void loadStarted();
@@ -131,7 +131,7 @@ protected Q_SLOTS:
     void toggleResizesToContents(bool toggle);
     void toggleWebGL(bool toggle);
     void toggleWebAudio(bool toggle);
-    void toggleSpatialNavigation(bool b);
+    void toggleSpatialNavigation(bool enable);
     void toggleFullScreenMode(bool enable);
     void toggleFrameFlattening(bool toggle);
     void toggleJavaScriptEnabled(bool enable);

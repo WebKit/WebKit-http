@@ -82,8 +82,8 @@ public:
 
     virtual void getPropertyNames(ExecState*, PropertyNameArray&);
 
-    JSValue stringValue(ExecState* exec) const;
-    JSValue numberValue(ExecState* exec) const;
+    JSValue stringValue(ExecState*) const;
+    JSValue numberValue(ExecState*) const;
     JSValue booleanValue() const;
 
     QObject* getObject() const { return m_object.data(); }

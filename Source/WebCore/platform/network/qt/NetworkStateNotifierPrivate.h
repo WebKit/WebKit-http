@@ -33,7 +33,7 @@ class NetworkStateNotifier;
 class NetworkStateNotifierPrivate : public QObject {
     Q_OBJECT
 public:
-    NetworkStateNotifierPrivate(NetworkStateNotifier* notifier);
+    NetworkStateNotifierPrivate(NetworkStateNotifier*);
     ~NetworkStateNotifierPrivate();
 
     void setNetworkAccessAllowed(bool);

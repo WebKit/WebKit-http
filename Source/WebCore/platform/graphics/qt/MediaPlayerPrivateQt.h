@@ -119,9 +119,9 @@ public:
     void restoreVideoItem();
 
     // QAbstractVideoSurface methods
-    virtual bool start(const QVideoSurfaceFormat& format);
-    virtual QList<QVideoFrame::PixelFormat> supportedPixelFormats(QAbstractVideoBuffer::HandleType handleType = QAbstractVideoBuffer::NoHandle) const;
-    virtual bool present(const QVideoFrame& frame);
+    virtual bool start(const QVideoSurfaceFormat&);
+    virtual QList<QVideoFrame::PixelFormat> supportedPixelFormats(QAbstractVideoBuffer::HandleType = QAbstractVideoBuffer::NoHandle) const;
+    virtual bool present(const QVideoFrame&);
 
 private Q_SLOTS:
     void mediaStatusChanged(QMediaPlayer::MediaStatus);

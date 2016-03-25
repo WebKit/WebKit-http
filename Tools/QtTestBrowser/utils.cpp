@@ -47,7 +47,7 @@ QString formatKeys(QList<QString> keys)
     return result;
 }
 
-QList<QString> enumToKeys(const QMetaObject o, const QString& name, const QString& strip)
+QList<QString> enumToKeys(const QMetaObject &o, const QString& name, const QString& strip)
 {
     QList<QString> list;
 

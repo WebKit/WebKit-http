@@ -47,17 +47,17 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow();
 
-    void addCompleterEntry(const QUrl& url);
+    void addCompleterEntry(const QUrl&);
 
     void load(const QString& url);
-    void load(const QUrl& url);
+    void load(const QUrl&);
 
     WebPage* page() const;
     void setPage(WebPage*);
 
 protected Q_SLOTS:
-    void setAddressUrl(const QString& url);
-    void setAddressUrl(const QUrl& url);
+    void setAddressUrl(const QString&);
+    void setAddressUrl(const QUrl&);
     void openFile();
     void openLocation();
     void changeLocation();

@@ -39,7 +39,7 @@ class UrlLoader : public QObject {
     Q_OBJECT
 
 public:
-    UrlLoader(QWebFrame* frame, const QString& inputFileName, int timeoutSeconds, int extraTimeSeconds);
+    UrlLoader(QWebFrame*, const QString& inputFileName, int timeoutSeconds, int extraTimeSeconds);
 
 public Q_SLOTS:
     void loadNext();

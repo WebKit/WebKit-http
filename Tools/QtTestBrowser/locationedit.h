@@ -45,7 +45,7 @@ public:
     void setPageIcon(const QIcon&);
 
 public Q_SLOTS:
-    void setProgress(int progress);
+    void setProgress(int);
 
 private Q_SLOTS:
     void reset();

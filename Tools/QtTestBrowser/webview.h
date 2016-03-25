@@ -75,18 +75,18 @@ class WebViewGraphicsBased : public QGraphicsView {
 
 public:
     WebViewGraphicsBased(QWidget* parent);
-    void setPage(QWebPage* page);
+    void setPage(QWebPage*);
 
     void setItemCacheMode(QGraphicsItem::CacheMode mode) { graphicsWebView()->setCacheMode(mode); }
     QGraphicsItem::CacheMode itemCacheMode() { return graphicsWebView()->cacheMode(); }
 
-    void setFrameRateMeasurementEnabled(bool enabled);
+    void setFrameRateMeasurementEnabled(bool);
     bool frameRateMeasurementEnabled() const { return m_measureFps; }
 
     virtual void resizeEvent(QResizeEvent*);
-    virtual void paintEvent(QPaintEvent* event);
+    virtual void paintEvent(QPaintEvent*);
 
-    void setResizesToContents(bool b);
+    void setResizesToContents(bool);
     bool resizesToContents() const { return m_resizesToContents; }
 
     void setYRotation(qreal angle);

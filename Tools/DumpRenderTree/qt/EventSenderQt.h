@@ -54,7 +54,7 @@ class EventSender : public QObject {
     Q_OBJECT
 public:
     EventSender(QWebPage* parent);
-    virtual bool eventFilter(QObject* watched, QEvent* event);
+    virtual bool eventFilter(QObject* watched, QEvent*);
     void resetClickCount() { m_clickCount = 0; }
 
 public Q_SLOTS:
