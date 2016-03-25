@@ -46,7 +46,7 @@ public:
         // TODO: Wrap with #ifndef NDEBUG
         if (g_getenv("WEBKIT2_PAUSE_WEB_PROCESS_ON_LAUNCH")) {
             g_printerr("WebProcess PID: %d\n", getpid());
-            WTF::sleep(30);
+            sleep(30u);
         }
 
         // Despite using system CAs to validate certificates we're
