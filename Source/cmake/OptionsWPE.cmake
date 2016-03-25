@@ -95,8 +95,8 @@ if (USE_WPE_BACKEND_BCM_RPI)
 endif ()
 
 if (USE_WPE_BACKEND_WESTEROS)
+    find_package(Wayland REQUIRED)
     find_package(WaylandEGL REQUIRED)
-    find_package(westeros-egl REQUIRED)
     find_package(westeros REQUIRED)
 endif(USE_WPE_BACKEND_WESTEROS)
 
