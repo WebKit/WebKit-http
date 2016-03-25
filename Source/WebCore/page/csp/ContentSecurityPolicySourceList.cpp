@@ -103,7 +103,7 @@ bool ContentSecurityPolicySourceList::isProtocolAllowedByStar(const URL& url) co
     // "img-src *" and either a data URL or blob URL to match "media-src *" for web compatibility.
     // FIXME: We should not hardcode the directive names. We should make use of the constants in ContentSecurityPolicyDirectiveList.cpp.
     // See <https://bugs.webkit.org/show_bug.cgi?id=155133>.
-    bool isAllowed = url.protocolIsInHTTPFamily();
+    bool isAllowed = url.protocolIsInHTTPFamily() || url.protocolIs("ws") || url.protocolIs("wss");
     if (equalLettersIgnoringASCIICase(m_directiveName, "img-src"))
         isAllowed |= url.protocolIsData();
     else if (equalLettersIgnoringASCIICase(m_directiveName, "media-src"))
