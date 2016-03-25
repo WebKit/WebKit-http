@@ -99,11 +99,6 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     initInspectorServer();
 #endif
 
-    if (!parameters.urlSchemesRegisteredAsLocal.contains("resource")) {
-        WebCore::SchemeRegistry::registerURLSchemeAsLocal("resource");
-        parameters.urlSchemesRegisteredAsLocal.append("resource");
-    }
-
     parameters.memoryCacheDisabled = m_memoryCacheDisabled || cacheModel() == CacheModelDocumentViewer;
 }
 
