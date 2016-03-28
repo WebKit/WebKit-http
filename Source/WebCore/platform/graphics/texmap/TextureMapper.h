@@ -20,8 +20,6 @@
 #ifndef TextureMapper_h
 #define TextureMapper_h
 
-#if USE(TEXTURE_MAPPER)
-
 #if PLATFORM(QT)
 #include <qglobal.h>
 #if defined(QT_OPENGL_ES_2) && !defined(TEXMAP_OPENGL_ES_2)
@@ -133,7 +131,5 @@ private:
 };
 
 }
-
-#endif
 
 #endif
