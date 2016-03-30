@@ -254,6 +254,10 @@ list(APPEND WebCoreTestSupport_SOURCES
     platform/qt/QtTestSupport.cpp
 )
 
+list(APPEND WebCoreTestSupport_LIBRARIES
+    WebCore
+)
+
 # From PlatformWin.cmake
 if (WIN32)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
