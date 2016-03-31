@@ -1095,6 +1095,8 @@ public:
     void didRestoreScrollPosition();
 
     void setFocus(bool focused);
+    void setWindowFrame(const WebCore::FloatRect&);
+    void getWindowFrame(WebCore::FloatRect&);
 
     bool isResourceCachingDisabled() const { return m_isResourceCachingDisabled; }
     void setResourceCachingDisabled(bool);
@@ -1198,8 +1200,6 @@ private:
     void getStatusBarIsVisible(bool& statusBarIsVisible);
     void setIsResizable(bool isResizable);
     void getIsResizable(bool& isResizable);
-    void setWindowFrame(const WebCore::FloatRect&);
-    void getWindowFrame(WebCore::FloatRect&);
     void screenToRootView(const WebCore::IntPoint& screenPoint, WebCore::IntPoint& windowPoint);
     void rootViewToScreen(const WebCore::IntRect& viewRect, WebCore::IntRect& result);
 #if PLATFORM(IOS)

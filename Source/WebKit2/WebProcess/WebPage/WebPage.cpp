@@ -2161,7 +2161,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
         handled = m_footerBanner->mouseEvent(mouseEvent);
 #endif // !PLATFORM(IOS)
 
-    if (!handled && canHandleUserEvents()) {
+    if (!handled) {
         CurrentEvent currentEvent(mouseEvent);
 
         // We need to do a full, normal hit test during this mouse event if the page is active or if a mouse
@@ -2190,13 +2190,10 @@ void WebPage::wheelEvent(const WebWheelEvent& wheelEvent)
 {
     m_page->pageThrottler().didReceiveUserInput();
 
-    bool handled = false;
+    CurrentEvent currentEvent(wheelEvent);
 
-    if (canHandleUserEvents()) {
-        CurrentEvent currentEvent(wheelEvent);
+    bool handled = handleWheelEvent(wheelEvent, m_page.get());
 
-        handled = handleWheelEvent(wheelEvent, m_page.get());
-    }
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(wheelEvent.type()), handled));
 }
 
@@ -2214,16 +2211,13 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
 {
     m_page->pageThrottler().didReceiveUserInput();
 
-    bool handled = false;
+    CurrentEvent currentEvent(keyboardEvent);
 
-    if (canHandleUserEvents()) {
-        CurrentEvent currentEvent(keyboardEvent);
+    bool handled = handleKeyEvent(keyboardEvent, m_page.get());
+    // FIXME: Platform default behaviors should be performed during normal DOM event dispatch (in most cases, in default keydown event handler).
+    if (!handled)
+        handled = performDefaultBehaviorForKeyEvent(keyboardEvent);
 
-        handled = handleKeyEvent(keyboardEvent, m_page.get());
-        // FIXME: Platform default behaviors should be performed during normal DOM event dispatch (in most cases, in default keydown event handler).
-        if (!handled)
-            handled = performDefaultBehaviorForKeyEvent(keyboardEvent);
-    }
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled));
 }
 
@@ -2295,13 +2289,10 @@ void WebPage::touchEventSync(const WebTouchEvent& touchEvent, bool& handled)
 #elif ENABLE(TOUCH_EVENTS)
 void WebPage::touchEvent(const WebTouchEvent& touchEvent)
 {
+    CurrentEvent currentEvent(touchEvent);
 
-    bool handled = false;
-    if (canHandleUserEvents()) {
-        CurrentEvent currentEvent(touchEvent);
+    bool handled = handleTouchEvent(touchEvent, m_page.get());
 
-        handled = handleTouchEvent(touchEvent, m_page.get());
-    }
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(touchEvent.type()), handled));
 }
 #endif
@@ -2317,11 +2308,8 @@ static bool handleGestureEvent(const WebGestureEvent& event, Page* page)
 
 void WebPage::gestureEvent(const WebGestureEvent& gestureEvent)
 {
-    bool handled = false;
-    if (canHandleUserEvents()) {
-        CurrentEvent currentEvent(gestureEvent);
-        handled = handleGestureEvent(gestureEvent, m_page.get());
-    }
+    CurrentEvent currentEvent(gestureEvent);
+    bool handled = handleGestureEvent(gestureEvent, m_page.get());
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(gestureEvent.type()), handled));
 }
 
@@ -2457,15 +2445,6 @@ void WebPage::setCanStartMediaTimerFired()
 {
     if (m_page)
         m_page->setCanStartMedia(true);
-}
-
-inline bool WebPage::canHandleUserEvents() const
-{
-#if USE(COORDINATED_GRAPHICS)
-    // Should apply only if the area was frozen by didStartPageTransition().
-    return !m_drawingArea->layerTreeStateIsFrozen();
-#endif
-    return true;
 }
 
 void WebPage::updateIsInWindow(bool isInitialState)

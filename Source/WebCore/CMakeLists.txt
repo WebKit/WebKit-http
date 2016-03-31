@@ -855,18 +855,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
-    Modules/indexeddb/client/IDBAnyImpl.cpp
     Modules/indexeddb/client/IDBConnectionToServer.cpp
-    Modules/indexeddb/client/IDBCursorImpl.cpp
-    Modules/indexeddb/client/IDBCursorWithValueImpl.cpp
-    Modules/indexeddb/client/IDBDatabaseImpl.cpp
-    Modules/indexeddb/client/IDBFactoryImpl.cpp
-    Modules/indexeddb/client/IDBIndexImpl.cpp
-    Modules/indexeddb/client/IDBObjectStoreImpl.cpp
-    Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp
-    Modules/indexeddb/client/IDBRequestImpl.cpp
-    Modules/indexeddb/client/IDBTransactionImpl.cpp
-    Modules/indexeddb/client/IDBVersionChangeEventImpl.cpp
     Modules/indexeddb/client/TransactionOperation.cpp
 
     Modules/indexeddb/server/IDBConnectionToClient.cpp
@@ -2074,7 +2063,9 @@ set(WebCore_SOURCES
     page/animation/KeyframeAnimation.cpp
 
     page/csp/ContentSecurityPolicy.cpp
+    page/csp/ContentSecurityPolicyDirective.cpp
     page/csp/ContentSecurityPolicyDirectiveList.cpp
+    page/csp/ContentSecurityPolicyDirectiveNames.cpp
     page/csp/ContentSecurityPolicyMediaListDirective.cpp
     page/csp/ContentSecurityPolicyResponseHeaders.cpp
     page/csp/ContentSecurityPolicySource.cpp
@@ -2948,7 +2939,7 @@ if (ENABLE_ALLINONE_BUILD)
         svg/SVGAllInOne.cpp
     )
     foreach (allInOne ${allInOnes})
-        PROCESS_ALLINONE_FILE("${WebCore_SOURCES}" ${allInOne} newSources ${AllInOne})
+        PROCESS_ALLINONE_FILE("${WebCore_SOURCES}" ${allInOne} newSources FALSE)
         set(WebCore_SOURCES
             ${allInOne}
             ${newSources}
@@ -3469,7 +3460,7 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/inline-and-minify-stylesheets-and-scripts.py ${WEBCORE_DIR}/inspector/InspectorOverlayPage.html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.combined.html
     COMMAND ${PERL_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl InspectorOverlayPage_html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.combined.html ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.h
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.h)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InspectorOverlayPage.h)
 
 
 # Generate CommandLineAPIModuleSource.h
@@ -3481,11 +3472,11 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py < ${WEBCORE_DIR}/inspector/CommandLineAPIModuleSource.js >> ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js
     COMMAND ${PERL_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl CommandLineAPIModuleSource_js ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h)
 
 
 MAKE_HASH_TOOLS(${WEBCORE_DIR}/platform/ColorData)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/ColorData.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/ColorData.cpp)
 
 
 # Generate XMLViewerCSS.h
@@ -3496,8 +3487,7 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/cssmin.py < ${WEBCORE_DIR}/xml/XMLViewer.css > ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.css
     COMMAND ${PERL_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl XMLViewer_css ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.css ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h)
-
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerCSS.h)
 
 # Generate XMLViewerJS.h
 add_custom_command(
@@ -3507,8 +3497,7 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py < ${WEBCORE_DIR}/xml/XMLViewer.js > ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.js
     COMMAND ${PERL_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl XMLViewer_js ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewer.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerJS.h
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerJS.h)
-
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLViewerJS.h)
 
 # Generate HTML entity table
 add_custom_command(
@@ -3517,7 +3506,7 @@ add_custom_command(
     DEPENDS ${WEBCORE_DIR}/html/parser/create-html-entity-table
     COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/html/parser/create-html-entity-table -o ${DERIVED_SOURCES_WEBCORE_DIR}/HTMLEntityTable.cpp ${WEBCORE_DIR}/html/parser/HTMLEntityNames.in
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTMLEntityTable.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTMLEntityTable.cpp)
 
 # Generate HTTP header names
 add_custom_command(
@@ -3527,7 +3516,7 @@ add_custom_command(
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
     COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/platform/network/create-http-header-name-table ${WEBCORE_DIR}/platform/network/HTTPHeaderNames.in "${GPERF_EXECUTABLE}"
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTTPHeaderNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTTPHeaderNames.cpp)
 
 # Generate CSS property names
 add_custom_command(
@@ -3538,12 +3527,11 @@ add_custom_command(
     COMMAND ${PERL_EXECUTABLE} -ne "print" ${WebCore_CSS_PROPERTY_NAMES} > ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.in
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/css/makeprop.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --gperf-executable "${GPERF_EXECUTABLE}"
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/StylePropertyShorthandFunctions.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/StylePropertyShorthandFunctions.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/CSSParser.cpp CSSValueKeywords.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp CSSPropertyNames.h)
-
 
 # Generate CSS value keywords
 add_custom_command(
@@ -3554,7 +3542,7 @@ add_custom_command(
     COMMAND ${PERL_EXECUTABLE} -ne "print" ${WebCore_CSS_VALUE_KEYWORDS} > ${DERIVED_SOURCES_WEBCORE_DIR}/CSSValueKeywords.in
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/css/makevalues.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}"
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSValueKeywords.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSValueKeywords.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/CSSParser.cpp CSSValueKeywords.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/CSSPrimitiveValueMappings.h CSSValueKeywords.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp CSSValueKeywords.h)
@@ -3566,14 +3554,14 @@ add_custom_command(
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
     COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoClassAndCompatibilityElementMap.py ${WEBCORE_DIR}/css/SelectorPseudoClassAndCompatibilityElementMap.in "${GPERF_EXECUTABLE}" "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoClassAndCompatibilityElementMap.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoClassAndCompatibilityElementMap.cpp)
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.cpp
     MAIN_DEPENDENCY ${WEBCORE_DIR}/css/makeSelectorPseudoElementsMap.py
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
     COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/css/makeSelectorPseudoElementsMap.py ${WEBCORE_DIR}/css/SelectorPseudoElementTypeMap.in "${GPERF_EXECUTABLE}" "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}"
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SelectorPseudoElementTypeMap.cpp)
 
 # Generate user agent styles
 add_custom_command(
@@ -3582,7 +3570,7 @@ add_custom_command(
     DEPENDS ${WebCore_USER_AGENT_STYLE_SHEETS} ${WEBCORE_DIR}/bindings/scripts/preprocessor.pm
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/css/make-css-file-arrays.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentStyleSheets.h ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentStyleSheetsData.cpp ${WebCore_USER_AGENT_STYLE_SHEETS}
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentStyleSheetsData.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentStyleSheetsData.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/StyleResolver.cpp UserAgentStyleSheetsData.cpp UserAgentStyleSheets.h)
 
 if (WebCore_USER_AGENT_SCRIPTS)
@@ -3597,7 +3585,7 @@ if (WebCore_USER_AGENT_SCRIPTS)
         DEPENDS ${WebCore_USER_AGENT_SCRIPTS}
         COMMAND "PYTHONPATH=${JavaScriptCore_SCRIPTS_DIR}" ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp ${WebCore_USER_AGENT_SCRIPTS}
         VERBATIM)
-    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp)
+    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp)
     ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES} UserAgentScriptsData.cpp UserAgentScripts.h)
 endif ()
 
@@ -3613,7 +3601,7 @@ if (WebCore_SDP_PROCESSOR_SCRIPTS)
         DEPENDS ${WebCore_SDP_PROCESSOR_SCRIPTS}
         COMMAND "PYTHONPATH=${JavaScriptCore_SCRIPTS_DIR}" ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp ${WebCore_SDP_PROCESSOR_SCRIPTS}
         VERBATIM)
-    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp)
+    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp)
     ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES} SDPProcessorScriptsData.cpp SDPProcessorScripts.h)
 endif ()
 
@@ -3624,14 +3612,14 @@ add_custom_command(
     DEPENDS ${WebCore_PLUG_INS_RESOURCES} ${WEBCORE_DIR}/bindings/scripts/preprocessor.pm
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/css/make-css-file-arrays.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" ${DERIVED_SOURCES_WEBCORE_DIR}/PlugInsResources.h ${DERIVED_SOURCES_WEBCORE_DIR}/PlugInsResourcesData.cpp ${WebCore_PLUG_INS_RESOURCES}
     VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/PlugInsResourcesData.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/PlugInsResourcesData.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/StyleResolver.cpp PlugInsResourcesData.cpp PlugInsResources.h)
 
 GENERATE_GRAMMAR(cssyy ${WEBCORE_DIR}/css/CSSGrammar.y.in ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.h ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}")
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSGrammar.cpp)
 
 GENERATE_GRAMMAR(xpathyy ${WEBCORE_DIR}/xml/XPathGrammar.y ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.h ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp "")
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp)
 
 
 set(IDL_INCLUDES "")
@@ -3677,7 +3665,7 @@ set(ADDITIONAL_BINDINGS_DEPENDENCIES
     ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
 )
 
-GENERATE_BINDINGS(WebCore_SOURCES
+GENERATE_BINDINGS(WebCore_DERIVED_SOURCES
     "${WebCore_IDL_FILES}"
     "${WEBCORE_DIR}"
     "${IDL_INCLUDES}"
@@ -3739,7 +3727,7 @@ foreach (_builtinSource ${WebCore_BUILTINS_SOURCES})
         DEPENDS ${BUILTINS_GENERATOR_SCRIPTS}
         COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py --framework WebCore --output-directory ${DERIVED_SOURCES_WEBCORE_DIR} ${_builtinSource}
         VERBATIM)
-    list(APPEND WebCore_SOURCES
+    list(APPEND WebCore_DERIVED_SOURCES
         ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}Builtins.h
     )
     ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/bindings/js/WebCoreJSBuiltins.cpp ${_objectName}Builtins.cpp)
@@ -3750,21 +3738,21 @@ ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/html/HTMLTreeBuilder.cpp 
 
 
 GENERATE_DOM_NAMES(HTML ${WEBCORE_DIR}/html/HTMLAttributeNames.in ${WEBCORE_DIR}/html/HTMLTagNames.in "")
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTMLNames.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/HTMLElementFactory.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/JSHTMLElementWrapperFactory.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTMLNames.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/HTMLElementFactory.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/JSHTMLElementWrapperFactory.cpp)
 
 
 GENERATE_EVENT_FACTORY(${WEBCORE_DIR}/dom/EventNames.in EventInterfaces.h)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventInterfaces.h)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventInterfaces.h)
 
 
 GENERATE_EVENT_FACTORY(${WEBCORE_DIR}/dom/EventTargetFactory.in EventTargetInterfaces.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/EventNames.cpp EventTargetInterfaces.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/DOMAllInOne.cpp EventTargetInterfaces.h)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventTargetInterfaces.h)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventTargetInterfaces.h)
 
 
 GENERATE_EXCEPTION_CODE_DESCRIPTION(${WEBCORE_DIR}/dom/DOMExceptions.in ExceptionCodeDescription.cpp)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/ExceptionCodeDescription.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/ExceptionCodeDescription.cpp)
 
 
 GENERATE_SETTINGS_MACROS(${WEBCORE_DIR}/page/Settings.in SettingsMacros.h)
@@ -3772,13 +3760,13 @@ list(APPEND WebCoreTestSupport_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSe
 
 
 GENERATE_FONT_NAMES(${WEBCORE_DIR}/css/WebKitFontFamilyNames.in)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitFontFamilyNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitFontFamilyNames.cpp)
 
 
 GENERATE_DOM_NAMES(MathML ${WEBCORE_DIR}/mathml/mathattrs.in ${WEBCORE_DIR}/mathml/mathtags.in "")
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/MathMLNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/MathMLNames.cpp)
 if (ENABLE_MATHML)
-    list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/MathMLElementFactory.cpp)
+    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/MathMLElementFactory.cpp)
 endif ()
 
 # SVG extra defines need to map to a numerical value for correct preprocessing of svgtags.in.
@@ -3788,29 +3776,54 @@ if (ENABLE_SVG_FONTS)
 endif ()
 
 GENERATE_DOM_NAMES(SVG ${WEBCORE_DIR}/svg/svgattrs.in ${WEBCORE_DIR}/svg/svgtags.in "${SVG_EXTRA_DEFINES}")
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SVGNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SVGNames.cpp)
 
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SVGElementFactory.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/JSSVGElementWrapperFactory.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SVGElementFactory.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/JSSVGElementWrapperFactory.cpp)
 
 GENERATE_DOM_NAMES(XLink ${WEBCORE_DIR}/svg/xlinkattrs.in)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XLinkNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XLinkNames.cpp)
 
 
 GENERATE_DOM_NAMES(XMLNS ${WEBCORE_DIR}/xml/xmlnsattrs.in)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNSNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNSNames.cpp)
 
 
 GENERATE_DOM_NAMES(XML ${WEBCORE_DIR}/xml/xmlattrs.in)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNames.cpp)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNames.cpp)
 
-WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_SOURCES})
+if (ENABLE_ALLINONE_BUILD)
+    message(STATUS "All-in-One DerivedSources build is enabled.")
+    PROCESS_ALLINONE_FILE("${WebCore_DERIVED_SOURCES}" DerivedSources.cpp newSources TRUE)
+    set(WebCore_DERIVED_SOURCES DerivedSources.cpp ${newSources})
+endif ()
+
+WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_DERIVED_SOURCES})
 WEBKIT_WRAP_SOURCELIST(${WebCoreTestSupport_IDL_FILES} ${WebCoreTestSupport_SOURCES})
 
 if (MSVC)
     ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCorePrefix.cpp" WebCore_SOURCES)
+    ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCoreDerivedSourcesPrefix.cpp" WebCore_DERIVED_SOURCES)
+endif ()
+
+if (PORT STREQUAL "WPE")
+list(APPEND WebCore_SOURCES ${WebCore_DERIVED_SOURCES})
+else ()
+# This is split into a separate library as a workaround for command line length
+# limits. This should no longer be needed when CMake supports Ninja response
+# files on OS X.
+add_library(WebCoreDerivedSources STATIC ${WebCore_DERIVED_SOURCES})
+set_target_properties(WebCoreDerivedSources PROPERTIES OUTPUT_NAME WebCoreDerivedSources${DEBUG_SUFFIX})
+set_target_properties(WebCoreDerivedSources PROPERTIES FOLDER "WebCore")
+if (NOT WIN32)
+    list(APPEND WebCore_LIBRARIES WebCoreDerivedSources)
+endif ()
 endif ()
 
 WEBKIT_FRAMEWORK(WebCore)
+
+if (WIN32)
+    add_dependencies(WebCore WebCoreDerivedSources)
+endif ()
 
 # The -ftree-sra optimization (implicit with -O2) causes crashes when
 # allocating large chunks of memory using bmalloc on Intel 32bit.

@@ -412,6 +412,7 @@ namespace WTF {
 
         ValueType* lookup(const Key& key) { return lookup<IdentityTranslatorType>(key); }
         template<typename HashTranslator, typename T> ValueType* lookup(const T&);
+        template<typename HashTranslator, typename T> ValueType* inlineLookup(const T&);
 
 #if !ASSERT_DISABLED
         void checkTableConsistency() const;
@@ -455,7 +456,7 @@ namespace WTF {
         ValueType* reinsert(ValueType&&);
 
         static void initializeBucket(ValueType& bucket);
-        static void deleteBucket(ValueType& bucket) { bucket.~ValueType(); Traits::constructDeletedValue(bucket); }
+        static void deleteBucket(ValueType& bucket) { hashTraitsDeleteBucket<Traits>(bucket); }
 
         FullLookupType makeLookupResult(ValueType* position, bool found, unsigned hash)
             { return FullLookupType(LookupType(position, found), hash); }
@@ -594,6 +595,13 @@ namespace WTF {
     template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
     template<typename HashTranslator, typename T>
     inline auto HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::lookup(const T& key) -> ValueType*
+    {
+        return inlineLookup<HashTranslator>(key);
+    }
+
+    template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
+    template<typename HashTranslator, typename T>
+    ALWAYS_INLINE auto HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::inlineLookup(const T& key) -> ValueType*
     {
         checkKey<HashTranslator>(key);
 
@@ -1100,18 +1108,26 @@ namespace WTF {
     template<typename Functor>
     inline void HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::removeIf(const Functor& functor)
     {
+        // We must use local copies in case "functor" or "deleteBucket"
+        // make a function call, which prevents the compiler from keeping
+        // the values in register.
+        unsigned removedBucketCount = 0;
+        ValueType* table = m_table;
+
         for (unsigned i = m_tableSize; i--;) {
-            if (isEmptyOrDeletedBucket(m_table[i]))
+            ValueType& bucket = table[i];
+            if (isEmptyOrDeletedBucket(bucket))
                 continue;
             
-            if (!functor(m_table[i]))
+            if (!functor(bucket))
                 continue;
             
-            deleteBucket(m_table[i]);
-            ++m_deletedCount;
-            --m_keyCount;
+            deleteBucket(bucket);
+            ++removedBucketCount;
         }
-        
+        m_deletedCount += removedBucketCount;
+        m_keyCount -= removedBucketCount;
+
         if (shouldShrink())
             shrink();
         

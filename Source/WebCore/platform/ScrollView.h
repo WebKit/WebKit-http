@@ -286,7 +286,7 @@ public:
 
     WEBCORE_EXPORT IntPoint rootViewToContents(const IntPoint&) const;
     WEBCORE_EXPORT IntPoint contentsToRootView(const IntPoint&) const;
-    IntRect rootViewToContents(const IntRect&) const;
+    WEBCORE_EXPORT IntRect rootViewToContents(const IntRect&) const;
     WEBCORE_EXPORT IntRect contentsToRootView(const IntRect&) const;
 
     IntPoint viewToContents(const IntPoint&) const;
@@ -367,10 +367,10 @@ public:
     virtual void paintScrollCorner(GraphicsContext&, const IntRect& cornerRect);
     virtual void paintScrollbar(GraphicsContext&, Scrollbar&, const IntRect&);
 
-    IntRect convertFromScrollbarToContainingView(const Scrollbar*, const IntRect&) const override;
-    IntRect convertFromContainingViewToScrollbar(const Scrollbar*, const IntRect&) const override;
-    IntPoint convertFromScrollbarToContainingView(const Scrollbar*, const IntPoint&) const override;
-    IntPoint convertFromContainingViewToScrollbar(const Scrollbar*, const IntPoint&) const override;
+    IntRect convertFromScrollbarToContainingView(const Scrollbar&, const IntRect&) const override;
+    IntRect convertFromContainingViewToScrollbar(const Scrollbar&, const IntRect&) const override;
+    IntPoint convertFromScrollbarToContainingView(const Scrollbar&, const IntPoint&) const override;
+    IntPoint convertFromContainingViewToScrollbar(const Scrollbar&, const IntPoint&) const override;
 
     void calculateAndPaintOverhangAreas(GraphicsContext&, const IntRect& dirtyRect);
 

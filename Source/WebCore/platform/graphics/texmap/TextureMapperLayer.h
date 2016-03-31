@@ -20,15 +20,13 @@
 #ifndef TextureMapperLayer_h
 #define TextureMapperLayer_h
 
-#if USE(TEXTURE_MAPPER)
-
-#include <limits>
 #include "FilterOperations.h"
 #include "FloatRect.h"
 #include "GraphicsLayerTransform.h"
 #include "TextureMapper.h"
 #include "TextureMapperAnimation.h"
 #include "TextureMapperBackingStore.h"
+#include <limits>
 
 namespace WebCore {
 
@@ -264,6 +262,5 @@ private:
 };
 
 }
-#endif
 
 #endif // TextureMapperLayer_h

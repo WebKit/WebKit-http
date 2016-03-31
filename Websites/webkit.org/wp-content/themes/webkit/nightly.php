@@ -3,58 +3,16 @@
  * Template Name: Nightly Downloads
  **/
 
-define('WEBKIT_NIGHTLY_ARCHIVE_URL', "http://nightly.webkit.org/builds/trunk/%s/all");
-
-function get_nightly_build() {
-    return get_nightly_download_details('mac');
-}
-
-function get_nightly_source() {
-    return get_nightly_download_details('src');
-}
-
-function get_nightly_download_details( $type = 'mac' ) {
-    $types = array('mac', 'src');
-    if ( ! in_array($type, $types) ) 
-        $type = $types[0];
-    
-    $cachekey = 'nightly_download_' . $type;
-    if ( false !== ( $cached = get_transient($cachekey) ) )
-        return json_decode($cached);
-	
-    $url = sprintf(WEBKIT_NIGHTLY_ARCHIVE_URL, $type);
-    $resource = fopen($url, 'r');
-    $rawdata = fread($resource, 128);
-    list($data,) = explode("\n", $rawdata);
-    fclose($resource);
-    
-    if ( ! empty($data) ) {
-        $record = explode(',', $data);
-        set_transient($cachekey, json_encode($record), HOUR_IN_SECONDS * 6); // Expire every 6 hours
-        return $record;
-	}
-    
-    return false;
-    
-}
-
 add_filter('the_content', function ($content) {
-        
+
     $build = get_nightly_build();
     $source = get_nightly_source();
-    
-    $content = sprintf($content, 
-                        
-        $build[0], 
-        date(get_option( 'date_format' ), $build[1]),
-        $build[2],
-    
-        $source[0],
-        date(get_option( 'date_format' ), $source[1]),
-        $source[2]
-                            
+
+    $content = sprintf($content,
+        $build[0], $build[1], $build[2],
+        $source[0], $source[1], $source[2]
     );
-    
+
     return $content;
 });
 
@@ -100,10 +58,6 @@ body {
     font-weight: 200;
 }
 
-#nightly img {
-    width: 33%;
-}
-
 #nightly blockquote:first-child p {
     color: #FFD15E;
 }
@@ -119,27 +73,30 @@ body {
 #nightly a.download {
     color: #ffffff;
     font-size: 3rem;
+    background: none;
+    padding-right: 0;
 }
 
 .page-template-nightly hr {
     border-color: #999;
 }
+
 .page-template-nightly #footer-nav a {
     color: #999;
 }
 </style>
 
-	<?php if (have_posts()) : while (have_posts()) : the_post(); ?>
+    <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
         <article class="page" id="nightly">
-			<h1><a href="<?php echo get_permalink() ?>" rel="bookmark" title="Permanent Link: <?php the_title(); ?>"><?php the_title(); ?></a></h1>
-            
-			<div class="bodycopy">
-				<?php the_content(''); ?>
-			</div>
-            
+            <h1><a href="<?php echo get_permalink() ?>" rel="bookmark" title="Permanent Link: <?php the_title(); ?>"><?php the_title(); ?></a></h1>
+
+            <div class="bodycopy">
+                <?php the_content(''); ?>
+            </div>
+
         </article>
 
-	<?php endwhile; endif; ?>
+    <?php endwhile; endif; ?>
 
 <?php get_footer(); ?>

@@ -65,16 +65,14 @@ class Timer;
 // ================================================
 
 struct FrameData {
-    WTF_MAKE_NONCOPYABLE(FrameData);
 public:
     FrameData()
-        : m_frame(0)
-        , m_orientation(DefaultImageOrientation)
+        : m_orientation(DefaultImageOrientation)
         , m_subsamplingLevel(0)
         , m_duration(0)
         , m_haveMetadata(false)
         , m_isComplete(false)
-        , m_hasAlpha(true) 
+        , m_hasAlpha(true)
         , m_frameBytes(0)
     {
     }
@@ -88,7 +86,7 @@ public:
     // Returns whether there was cached image data to clear.
     bool clear(bool clearMetadata);
 
-    NativeImagePtr m_frame;
+    NativeImagePtr m_image;
     ImageOrientation m_orientation;
     SubsamplingLevel m_subsamplingLevel;
     float m_duration;
@@ -108,16 +106,16 @@ class BitmapImage final : public Image {
     friend class GradientImage;
     friend class GraphicsContext;
 public:
-    static Ref<BitmapImage> create(PassNativeImagePtr nativeImage, ImageObserver* observer = 0)
+    static Ref<BitmapImage> create(NativeImagePtr&& nativeImage, ImageObserver* observer = nullptr)
     {
-        return adoptRef(*new BitmapImage(nativeImage, observer));
+        return adoptRef(*new BitmapImage(WTFMove(nativeImage), observer));
     }
-    static Ref<BitmapImage> create(ImageObserver* observer = 0)
+    static Ref<BitmapImage> create(ImageObserver* observer = nullptr)
     {
         return adoptRef(*new BitmapImage(observer));
     }
 #if PLATFORM(WIN)
-    WEBCORE_EXPORT static PassRefPtr<BitmapImage> create(HBITMAP);
+    WEBCORE_EXPORT static RefPtr<BitmapImage> create(HBITMAP);
 #endif
     virtual ~BitmapImage();
     
@@ -125,7 +123,7 @@ public:
 
     // FloatSize due to override.
     FloatSize size() const override;
-    IntSize sizeRespectingOrientation(ImageOrientationDescription = ImageOrientationDescription()) const;
+    IntSize sizeRespectingOrientation() const;
 
     bool getHotSpot(IntPoint&) const override;
 
@@ -172,7 +170,7 @@ public:
     Evas_Object* getEvasObject(Evas*) override;
 #endif
 
-    PassNativeImagePtr nativeImageForCurrentFrame() override;
+    NativeImagePtr nativeImageForCurrentFrame() override;
     ImageOrientation orientationForCurrentFrame() override { return frameOrientationAtIndex(currentFrame()); }
 
     bool currentFrameKnownToBeOpaque() override;
@@ -181,16 +179,14 @@ public:
     
     bool canAnimate();
 
-    bool allowSubsampling() const { return m_allowSubsampling; }
-    void setAllowSubsampling(bool allowSubsampling) { m_allowSubsampling = allowSubsampling; }
+    void setAllowSubsampling(bool allowSubsampling) { m_source.setAllowSubsampling(allowSubsampling); }
 
     size_t currentFrame() const { return m_currentFrame; }
     
 private:
     bool isBitmapImage() const override { return true; }
 
-    void updateSize(ImageOrientationDescription = ImageOrientationDescription()) const;
-    void determineMinimumSubsamplingLevel() const;
+    void updateSize() const;
 
 protected:
     enum RepetitionCountStatus {
@@ -199,8 +195,8 @@ protected:
       Certain     // The repetition count is known to be correct.
     };
 
-    WEBCORE_EXPORT BitmapImage(PassNativeImagePtr, ImageObserver* = 0);
-    WEBCORE_EXPORT BitmapImage(ImageObserver* = 0);
+    WEBCORE_EXPORT BitmapImage(NativeImagePtr&&, ImageObserver* = nullptr);
+    WEBCORE_EXPORT BitmapImage(ImageObserver* = nullptr);
 
 #if PLATFORM(WIN)
     void drawFrameMatchingSourceSize(GraphicsContext&, const FloatRect& dstRect, const IntSize& srcSize, CompositeOperator) override;
@@ -214,10 +210,10 @@ protected:
 
     size_t frameCount();
 
-    PassNativeImagePtr frameAtIndex(size_t, float presentationScaleHint = 1);
-    PassNativeImagePtr copyUnscaledFrameAtIndex(size_t);
+    NativeImagePtr frameImageAtIndex(size_t, float presentationScaleHint = 1);
+    NativeImagePtr copyUnscaledFrameImageAtIndex(size_t);
 
-    bool haveFrameAtIndex(size_t);
+    bool haveFrameImageAtIndex(size_t);
 
     bool frameIsCompleteAtIndex(size_t);
     float frameDurationAtIndex(size_t);
@@ -297,11 +293,6 @@ private:
     mutable IntSize m_size; // The size to use for the overall image (will just be the size of the first image).
     mutable IntSize m_sizeRespectingOrientation;
 
-    mutable SubsamplingLevel m_minimumSubsamplingLevel;
-
-    mutable unsigned m_imageOrientation : 4; // ImageOrientationEnum
-    mutable unsigned m_shouldRespectImageOrientation : 1; // RespectImageOrientationEnum
-
     size_t m_currentFrame; // The index of the current frame of animation.
     Vector<FrameData, 1> m_frames; // An array of the cached frames of the animation. We have to ref frames to pin them in the cache.
 
@@ -329,8 +320,6 @@ private:
     double m_progressiveLoadChunkTime;
     uint16_t m_progressiveLoadChunkCount;
 #endif
-
-    bool m_allowSubsampling : 1; // Whether we should attempt subsampling if this image is very large.
     bool m_isSolidColor : 1; // Whether or not we are a 1x1 solid image.
     bool m_checkedForSolidColor : 1; // Whether we've checked the frame for solid color.
 

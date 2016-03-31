@@ -45,7 +45,7 @@ typedef int ExceptionCode;
 
 class FetchRequest final : public FetchBodyOwner {
 public:
-    static RefPtr<FetchRequest> create(ScriptExecutionContext&, FetchRequest*, const Dictionary&, ExceptionCode&);
+    static RefPtr<FetchRequest> create(ScriptExecutionContext&, FetchRequest&, const Dictionary&, ExceptionCode&);
     static RefPtr<FetchRequest> create(ScriptExecutionContext&, const String&, const Dictionary&, ExceptionCode&);
 
     // Request API
@@ -71,6 +71,9 @@ public:
         String referrer;
         String integrity;
     };
+
+    const FetchOptions& fetchOptions() const { return m_internalRequest.options; }
+    ResourceRequest internalRequest() const;
 
 private:
     FetchRequest(ScriptExecutionContext&, FetchBody&&, Ref<FetchHeaders>&&, InternalRequest&&);

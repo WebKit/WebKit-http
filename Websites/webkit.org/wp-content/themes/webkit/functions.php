@@ -3,8 +3,6 @@
 // Declare theme features
 add_theme_support( 'post-thumbnails' );
 
-function register_menus() {
-}
 add_action( 'init', function () {
     register_nav_menu('site-nav', __( 'Site Navigation' ));
     register_nav_menu('footer-nav', __( 'Footer Navigation' ));
@@ -20,6 +18,42 @@ function modify_contact_methods($profile_fields) {
     unset($profile_fields['jabber']);
 
     return $profile_fields;
+}
+
+function get_nightly_build ($type = 'builds') {
+    if (!class_exists('SyncWebKitNightlyBuilds'))
+        return false;
+    
+    $WebKitBuilds = SyncWebKitNightlyBuilds::object();
+    $build = $WebKitBuilds->latest($type);
+    return $build;
+}
+
+function get_nightly_source () {
+    return get_nightly_build('source');
+}
+
+function get_nightly_archives ($limit) {
+    if (!class_exists('SyncWebKitNightlyBuilds'))
+        return array();
+    
+    $WebKitBuilds = SyncWebKitNightlyBuilds::object();
+    $builds = $WebKitBuilds->records('builds', $limit);
+    return (array)$builds;
+}
+
+function get_nightly_builds_json () {
+    if (!class_exists('SyncWebKitNightlyBuilds'))
+        return '';
+
+    $WebKitBuilds = SyncWebKitNightlyBuilds::object();
+    $records = $WebKitBuilds->records('builds', 100000);
+    $builds = array();
+    foreach ( $records as $build ) {
+        $builds[] = $build[0];
+    }
+    $json = json_encode($builds);
+    return empty($json) ? "''" : $json;
 }
 
 add_filter('user_contactmethods', function ($fields) {
@@ -44,6 +78,21 @@ add_action('init', function () {
         'after_title' => '',
     ));
 } );
+
+// Start Page internal rewrite handling
+add_action('after_setup_theme', function () {
+    add_rewrite_rule(
+        'nightly/start/([^/]+)/([0-9]+)/?$',
+        'index.php?pagename=nightly/start&nightly_branch=$matches[1]&nightly_build=$matches[2]',
+        'top'
+    );
+});
+
+add_filter('query_vars', function( $query_vars ) {
+    $query_vars[] = 'nightly_build';
+    $query_vars[] = 'nightly_branch';
+    return $query_vars;
+});
 
 add_filter('the_title', function( $title ) {
     if ( is_admin() ) return $title;
@@ -72,17 +121,33 @@ add_action('wp_head', function () {
         echo '<script type="text/javascript">' . $script . '</script>';
 });
 
+add_action('the_post', function($post) {
+    global $pages;
+
+    if (!(is_single() || is_page())) return;
+
+    $content = $post->post_content;
+    if (strpos($content, 'abovetitle') === false) return;
+    if (strpos($content, '<img') !== 0) return;
+
+    $post->post_title_img = substr($content, 0, strpos($content, ">\n") + 3);
+    $post->post_content = str_replace($post->post_title_img, '', $content);
+    $pages = array($post->post_content);
+});
+
+function before_the_title() {
+    $post = get_post();
+
+    if ( isset($post->post_title_img) )
+        echo wp_make_content_images_responsive($post->post_title_img);
+}
+
 // Hide category 41: Legacy from archives
 add_filter('pre_get_posts', function ($query) {
     if ( $query->is_home() )
         $query->set('cat', '-41');
     return $query;
 });
-
-include('widgets/post.php');
-include('widgets/icon.php');
-include('widgets/twitter.php');
-include('widgets/page.php');
 
 add_filter( 'get_the_excerpt', function( $excerpt ) {
     $sentences = preg_split( '/(\.|!|\?)\s/', $excerpt, 2, PREG_SPLIT_DELIM_CAPTURE );
@@ -93,6 +158,11 @@ add_filter( 'get_the_excerpt', function( $excerpt ) {
     return $sentences[0] . $sentences[1];
 
 });
+
+include('widgets/post.php');
+include('widgets/icon.php');
+include('widgets/twitter.php');
+include('widgets/page.php');
 
 function table_of_contents() {
     if ( class_exists('WebKitTableOfContents') )
@@ -144,6 +214,9 @@ function tag_post_image_luminance( $post_id ) {
 }
 
 function calculate_image_luminance($image_url) {
+    if (!function_exists('ImageCreateFromString'))
+        return 1;
+
     // Get original image dimensions
     $size = getimagesize($image_url);
 
@@ -207,8 +280,6 @@ add_filter('next_post_link', function ( $format ) {
 add_filter('previous_post_link', function ( $format ) {
     return str_replace('href=', 'class="page-numbers prev-post" href=', $format);
 });
-
-
 
 // Queue global scripts
 add_action( 'wp_enqueue_scripts', function () {

@@ -10,6 +10,145 @@
         * Source/cmake/OptionsJSCOnly.cmake:
         set WTF_LIBRARY_TYPE to STATIC if ENABLE_STATIC_JSC is set
 
+2016-03-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198781.
+        https://bugs.webkit.org/show_bug.cgi?id=155986
+
+        broke windows clean build (Requested by alexchristensen on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Win] CMake seems to build all generated files every time"
+        https://bugs.webkit.org/show_bug.cgi?id=155872
+        http://trac.webkit.org/changeset/198781
+
+2016-03-29  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] CMake seems to build all generated files every time
+        https://bugs.webkit.org/show_bug.cgi?id=155872
+
+        Reviewed by Alex Christensen.
+
+        This seems to be caused by Visual Studio being unhappy receiving multiple output targets
+        for its custom build rules. If I limit the output to just the header file on Windows, the
+        dependency check seems to do the right thing.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2016-03-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac Ninja build after r198766.
+
+        * Source/cmake/WebKitMacros.cmake:
+        WebCore_DERIVED_SOURCES are intentionally in a separate library to reduce linker line length.
+        This is now only specific to WebKit2_DERIVED_SOURCES, so I'm moving it there.
+
+2016-03-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r198766.
+
+        * Source/cmake/WebKitMacros.cmake:
+        Use the filename from the cpp so that WebCorePrefix.cpp and WebCoreDerivedSourcesPrefix.cpp 
+        generate unique .pch files, even though they both include WebCorePrefix.h
+
+2016-03-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Ninja build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=151399
+
+        Reviewed by Darin Adler.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/WebKitMacros.cmake:
+
+2016-03-27  Daniel Bates  <dabates@apple.com>
+
+        WebKit.xcworkspace "All Source" scheme always copies OS X WebKitSystemInterface libraries
+        https://bugs.webkit.org/show_bug.cgi?id=155889
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fixes an issue where building the "All Source" scheme in WebKit.xcworkspace would
+        always copy the OS X WebKitSystemInterface libraries regardless of the selected
+        base SDK. In particular, it would copy the OS X WebKitSystemInterface libraries
+        when building with SDK iphonesimulator. WebKit.xcworkspace should copy the SDK-
+        specific WebKitSystemInterface libraries.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2016-03-25  Brady Eidson  <beidson@apple.com>
+
+        Soften push/replaceState frequency restrictions.
+        <rdar://problem/25228439> and https://bugs.webkit.org/show_bug.cgi?id=155901
+        
+        Rubber-stamped by Timothy Hatcher.
+
+        * ManualTests/state-objects-time-limit.html: Added.
+
+2016-03-25  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r197358): WebKitSystemInterface.h copied into directory named "--llvm"
+        https://bugs.webkit.org/show_bug.cgi?id=155838
+
+        Reviewed by Alexey Proskuryakov.
+
+        Do not pass command line flag --llvm when calling script copy-webkitlibraries-to-product-directory
+        to avoid copying the WebKitSystemInterface libraries to an incorrect location. The --llvm flag was
+        removed from copy-webkitlibraries-to-product-directory in <http://trac.webkit.org/changeset/197358>.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2016-03-25  Bill Ming  <mbbill@gmail.com>
+
+        Detect correct number of processors on windows
+        https://bugs.webkit.org/show_bug.cgi?id=155884
+
+        Reviewed by Alex Christensen.
+
+        * Tools/Scripts/run-jsc-stress-tests:
+
+2016-03-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Improve CMake build performance 
+        https://bugs.webkit.org/show_bug.cgi?id=155871
+        <rdar://problem/24747822>
+
+        Reviewed by Alex Christensen.
+
+        Add a flag to the PROCESS_ALLINONE_FILE macro so that it does not remove
+        the files contained in the passed all-in-one file, since this breaks
+        dependency checking and generation of the derived sources from the IDL.
+        Instead, include the header files in the project so that all files get
+        generated.        
+        
+        * Source/cmake/WebKitMacros: Updated for 'DerivedSources.cpp' use case.
+
+2016-03-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Turned on ENABLE_REQUEST_ANIMATION_FRAME by default for any port.
+        https://bugs.webkit.org/show_bug.cgi?id=155882
+
+        Reviewed by Michael Catanzaro.
+
+        It was already enabled in all trunk ports, and is required for
+        WebInspectorUI to work.
+
+        * Source/cmake/OptionsGTK.cmake: Removed duplication of default value.
+        * Source/cmake/OptionsMac.cmake: Ditto.
+        * Source/cmake/WebKitFeatures.cmake: Turned
+        ENABLE_REQUEST_ANIMATION_FRAME ON.
+
+2016-03-24  Bill Ming  <mbbill@gmail.com>
+
+        Determine architecture for running jsc stress tests on windows
+        https://bugs.webkit.org/show_bug.cgi?id=155840
+
+        Reviewed by Alex Christensen.
+
+        * Tools/Scripts/run-jsc-stress-tests:
+
 2016-03-23  Bill Ming  <mbbill@gmail.com>
 
         Fixed ninja build path.

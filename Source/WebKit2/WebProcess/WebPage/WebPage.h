@@ -1150,8 +1150,6 @@ private:
     void changeSelectedIndex(int32_t index);
     void setCanStartMediaTimerFired();
 
-    bool canHandleUserEvents() const;
-
     static bool platformCanHandleRequest(const WebCore::ResourceRequest&);
 
     static PluginView* focusedPluginViewForFrame(WebCore::Frame&);

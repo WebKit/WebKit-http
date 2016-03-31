@@ -32,6 +32,7 @@
     Conditional=MEDIA_SOURCE,
     NoInterfaceObject,
     ActiveDOMObject,
+    UsePointersEvenForNonNullableObjectArguments,
 ] interface SourceBuffer : EventTarget {
 
     readonly attribute boolean updating;
