@@ -3805,6 +3805,9 @@ if (MSVC)
     ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCoreDerivedSourcesPrefix.cpp" WebCore_DERIVED_SOURCES)
 endif ()
 
+if (PORT STREQUAL "WPE")
+list(APPEND WebCore_SOURCES ${WebCore_DERIVED_SOURCES})
+else ()
 # This is split into a separate library as a workaround for command line length
 # limits. This should no longer be needed when CMake supports Ninja response
 # files on OS X.
@@ -3813,6 +3816,7 @@ set_target_properties(WebCoreDerivedSources PROPERTIES OUTPUT_NAME WebCoreDerive
 set_target_properties(WebCoreDerivedSources PROPERTIES FOLDER "WebCore")
 if (NOT WIN32)
     list(APPEND WebCore_LIBRARIES WebCoreDerivedSources)
+endif ()
 endif ()
 
 WEBKIT_FRAMEWORK(WebCore)
