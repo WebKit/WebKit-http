@@ -67,7 +67,7 @@ RenderingBackendIntelCE::Surface::~Surface() = default;
 
 EGLNativeWindowType RenderingBackendIntelCE::Surface::nativeWindow()
 {
-    return (EGLNativeWindowType)GDL_PLANE_ID_UPP_C;
+    return (EGLNativeWindowType)GDL_PLANE_ID_UPP_D;
 }
 
 void RenderingBackendIntelCE::Surface::resize(uint32_t, uint32_t)
