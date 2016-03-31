@@ -53,6 +53,13 @@ static gdl_ret_t setup_plane(gdl_plane_id_t plane) {
     dstRect.width = WIDTH;
     dstRect.height = HEIGHT;
 
+    gdl_display_info_t displayInfo;
+    rc = gdl_get_display_info(GDL_DISPLAY_ID_0, &displayInfo);
+    if (GDL_SUCCESS == rc) {
+        dstRect.width = displayInfo.tvmode.width;
+        dstRect.height = displayInfo.tvmode.height;
+    }
+
     srcRect.origin.x = 0;
     srcRect.origin.y = 0;
     srcRect.width = WIDTH;
