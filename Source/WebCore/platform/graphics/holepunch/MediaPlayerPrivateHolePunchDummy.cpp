@@ -39,9 +39,9 @@ using namespace std;
 
 namespace WebCore {
 
-static HashSet<String> mimeTypeCache()
+static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, cache, ());
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache;
     static bool typeListInitialized = false;
 
     if (typeListInitialized)
@@ -83,13 +83,13 @@ static HashSet<String> mimeTypeCache()
     };
 
     for (unsigned i = 0; i < (sizeof(mimeTypes) / sizeof(*mimeTypes)); ++i)
-        cache.add(String(mimeTypes[i]));
+        cache.get().add(String(mimeTypes[i]));
 
     typeListInitialized = true;
     return cache;
 }
 
-void MediaPlayerPrivateHolePunchDummy::getSupportedTypes(HashSet<String>& types)
+void MediaPlayerPrivateHolePunchDummy::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
 {
     types = mimeTypeCache();
 }

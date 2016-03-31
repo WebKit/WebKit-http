@@ -32,6 +32,11 @@
 #include "NotImplemented.h"
 #include <wtf/glib/GMutexLocker.h>
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperGL.h"
+#include "TextureMapperPlatformLayerBuffer.h"
+#endif
+
 using namespace std;
 
 namespace WebCore {
@@ -41,8 +46,8 @@ MediaPlayerPrivateHolePunchBase::MediaPlayerPrivateHolePunchBase(MediaPlayer* pl
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
-    LockHolder locker(m_platformLayerProxy->mutex());
-    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect));
+    LockHolder locker(m_platformLayerProxy->lock());
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect));
 #endif
 }
 
