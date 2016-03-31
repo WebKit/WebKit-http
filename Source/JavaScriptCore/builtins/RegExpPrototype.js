@@ -23,25 +23,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+function advanceStringIndexUnicode(string, stringLength, index)
+{
+    // This function implements AdvanceStringIndex described in ES6 21.2.5.2.3, steps 6-11.
+    // It assumes that "unicode" is true for its callers.
+    "use strict";
+
+    if (index + 1 >= stringLength)
+        return index + 1;
+
+    let first = string.@charCodeAt(index);
+    if (first < 0xD800 || first > 0xDBFF)
+        return index + 1;
+
+    let second = string.@charCodeAt(index + 1);
+    if (second < 0xDC00 || second > 0xDFFF)
+        return index + 1;
+
+    return index + 2;
+}
+
 function match(str)
 {
     "use strict";
-
-    function advanceStringIndexUnicode(string, stringLength, index)
-    {
-        if (index + 1 >= stringLength)
-            return index + 1;
-
-        let first = string.@charCodeAt(index);
-        if (first < 0xD800 || first > 0xDBFF)
-            return index + 1;
-
-        let second = string.@charCodeAt(index + 1);
-        if (second < 0xDC00 || second > 0xDFFF)
-            return index + 1;
-
-        return index + 2;
-    }
 
     if (!(this instanceof @Object))
         throw new @TypeError("RegExp.prototype.@@match requires that |this| be an Object");
@@ -52,35 +56,39 @@ function match(str)
     if (!regexp.global)
         return regexp.exec(stringArg);
 
+    let unicode = regexp.unicode;
     regexp.lastIndex = 0;
-
     let resultList = [];
+    let execFunc = regexp.exec;
 
-    if (regexp.exec !== @RegExp.prototype.@exec && typeof(regexp.exec) === "function") {
+    if (execFunc !== @RegExp.prototype.@exec && typeof execFunc === "function") {
         // Match using the overridden exec.
-        let unicode = regexp.unicode;
-        let stringLength = str.length;
+        let stringLength = stringArg.length;
 
         while (true) {
-            let result = regexp.exec(stringArg);
+            let result = execFunc(stringArg);
             
             if (result === null) {
                 if (resultList.length === 0)
                     return null;
                 return resultList;
-            } else if (!@isObject(result))
+            }
+
+            if (!@isObject(result))
                 throw new @TypeError("RegExp.prototype.@@match call to RegExp.exec didn't return null or an object");
 
             let resultString = @toString(result[0]);
 
             if (!resultString.length) {
                 if (unicode)
-                    regexp.lastIndex = advanceStringIndexUnicode(stringArg, stringLength, regexp.lastIndex);
+                    regexp.lastIndex = @advanceStringIndexUnicode(stringArg, stringLength, regexp.lastIndex);
                 else
                     regexp.lastIndex++;
             }
 
             resultList.@push(resultString);
+
+            execFunc = regexp.exec;
         }
     }
 

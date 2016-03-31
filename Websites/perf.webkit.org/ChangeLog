@@ -1,3 +1,201 @@
+2016-03-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make dependency injection in unit tests more explicit
+        https://bugs.webkit.org/show_bug.cgi?id=156006
+
+        Reviewed by Joseph Pecoraro.
+
+        Make the dependency injection of model objects in unit tests explicit so that server tests that create
+        "real" model objects won't create these mock objects. Now each test that uses mock model objects would call
+        MockModels.inject() to inject before / beforeEach and access each object using a property on MockModels
+        instead of them being implicitly defined on the global object.
+
+        Similarly, MockRemoteAPI now only replaces global.RemoteAPI during each test so that server tests can use
+        real RemoteAPI to access the test Apache server.
+
+        * unit-tests/analysis-task-tests.js:
+        * unit-tests/buildbot-syncer-tests.js:
+        (createSampleBuildRequest):
+        * unit-tests/measurement-adaptor-tests.js:
+        * unit-tests/measurement-set-tests.js:
+        * unit-tests/resources/mock-remote-api.js:
+        (MockRemoteAPI.getJSONWithStatus):
+        (MockRemoteAPI.inject): Added. Override RemoteAPI on the global object during each test.
+        * unit-tests/resources/mock-v3-models.js:
+        (MockModels.inject): Added. Create mock model objects before each test, and clear all static maps of
+        various v3 model classes (to remove all singleton objects for those model classes).
+        * unit-tests/test-groups-tests.js:
+
+2016-03-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        BuildbotSyncer should be able to fetch JSON from buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=155921
+
+        Reviewed by Joseph Pecoraro.
+
+        Added BuildbotSyncer.pullBuildbot which fetches pending, in-progress, and finished builds from buildbot
+        with lots of unit tests as this has historically been a source of subtle bugs in the old script.
+
+        New implementation fixes a subtle bug in the old pythons script which overlooked the possibility that
+        the state of some builds may change between each HTTP request. In the old script, we fetched the list
+        of the pending builds, and requested -1, -2, etc... builds for N times. But between each request,
+        a pending build may start running or an in-progress build finish and shift the offset by one. The new
+        script avoids this problem by first requesting all pending builds, then all in-progress and finished
+        builds in a single HTTP request. The results are then merged so that entries for in-progress and
+        finished builds would override the entries for pending builds if they overlap.
+
+        Also renamed RemoteAPI.fetchJSON to RemoteAPI.getJSON to match v3 UI's RemoteAPI. This change makes
+        the class interchangeable between frontend (public/v3/remote.js) and backend (tools/js/remote.js).
+
+        * server-tests/api-build-requests-tests.js:
+        * server-tests/api-manifest.js:
+        * tools/js/buildbot-syncer.js:
+        (BuildbotBuildEntry): Removed the unused argument "type". Store the syncer as an instance variable as
+        we'd need to query for the buildbot URL. Also fixed a bug that _isInProgress was true for finished
+        builds as 'currentStep' is always defined but null in those builds.
+        (BuildbotBuildEntry.prototype.buildNumber): Added.
+        (BuildbotBuildEntry.prototype.isPending): Added.
+        (BuildbotBuildEntry.prototype.hasFinished): Added.
+        (BuildbotSyncer.prototype.pullBuildbot): Added. Fetches pending builds first and then finished builds.
+        (BuildbotSyncer.prototype._pullRecentBuilds): Added. Fetches in-progress and finished builds.
+        (BuildbotSyncer.prototype.urlForPendingBuildsJSON): Added.
+        (BuildbotSyncer.prototype.urlForBuildJSON): Added.
+        (BuildbotSyncer.prototype.url): Added.
+        (BuildbotSyncer.prototype.urlForBuildNumber): Added.
+        * tools/js/remote.js:
+        (RemoteAPI.prototype.getJSON): Renamed from fetchJSON.
+        (RemoteAPI.prototype.getJSONWithStatus): Renamed from fetchJSONWithStatus.
+        * tools/js/v3-models.js: Load tools/js/remote.js instead of public/v3/remote.js inside node.
+        * unit-tests/buildbot-syncer-tests.js: Added a lot of unit tests for BuildbotSyncer.pullBuildbot
+        (samplePendingBuild):
+        (sampleInProgressBuild): Added.
+        (sampleFinishedBuild): Added.
+        * unit-tests/resources/mock-remote-api.js:
+        (global.RemoteAPI.getJSON): Use the same mock as getJSONWithStatus.
+
+2016-03-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Migrate admin-regenerate-manifest.js to mocha.js and test v3 UI code
+        https://bugs.webkit.org/show_bug.cgi?id=155863
+
+        Reviewed by Joseph Pecoraro.
+
+        Replaced admin-regenerate-manifest.js by a new mocha.js tests using the new server testing capability
+        added in r198642 and tested v3 UI code (parsing manifest.json and creating models). Also removed
+        /admin/regenerate-manifest since it has been superseded by /api/manifest.
+
+        This patch also extracts manifest.js out of main.js so that it could be used and tested without the
+        DOM support in node.
+
+        * public/admin/regenerate-manifest.php: Deleted.
+        * public/include/db.php: Fixed a regression from r198642 since CONFIG_DIR now doesn't end with
+        a trailing backslash.
+        * public/include/manifest.php:
+        (ManifestGenerator::bug_trackers): Avoid a warning message when there are no repositories.
+        * public/v3/index.html:
+        * public/v3/main.js:
+        (main):
+        * public/v3/models/bug-tracker.js:
+        (BugTracker.prototype.newBugUrl): Added.
+        (BugTracker.prototype.repositories): Added.
+        * public/v3/models/manifest.js: Added. Extracted from main.js.
+        (Manifest.fetch): Moved from main.js' fetchManifest.
+        (Manifest._didFetchManifest): Moved from main.js' didFetchManifest.
+        * public/v3/models/platform.js:
+        (Platform.prototype.hasTest): Fixed the bug that "test" here was shadowing the function parameter of
+        the same name. This is tested by the newly added test cases.
+        * server-tests/api-build-requests-tests.js:
+        * server-tests/api-manifest.js: Added. Migrated test cases from tests/admin-regenerate-manifest.js
+        with additional assertions for v3 UI model objects.
+        * server-tests/resources/test-server.js:
+        (TestServer.prototype.start):
+        (TestServer.prototype.testConfig): Renamed from _constructTestConfig now that this is a public API.
+        Also no longer takes dataDirectory as an argument since it's always the same.
+        (TestServer.prototype._ensureDataDirectory): Fixed a bug that we weren't making public/data.
+        (TestServer.prototype.cleanDataDirectory): Added. Remove all files inside public/data between tests.
+        (TestServer.prototype.inject): Added. Calls before, etc... because always calling before had an
+        unintended side effect of slowing down unit tests even through they don't need Postgres or Apache.
+        * tests/admin-regenerate-manifest.js: Removed.
+        * tools/js/database.js:
+        * tools/js/v3-models.js:
+
+2016-03-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add mocha server tests for /api/build-requests
+        https://bugs.webkit.org/show_bug.cgi?id=155831
+
+        Reviewed by Chris Dumez.
+
+        Added the new mocha.js based server-tests for /api/build-requests. The new harness automatically:
+         - starts a new Apache instance
+         - switches the database during testing via setting an environmental variable 
+         - backups and restores public/data directory during testing
+
+        As a result, developer no longer has to manually setup Apache, edit config.json manually to use
+        a testing database, or run /api/manifest.php to re-generate the manifest file after testing.
+
+        This patch also makes ID resolution optional on /api/build-requests so that v3 model based syncing
+        scripts can re-use the same code as the v3 UI to process the JSON. tools/sync-with-buildbot.py has
+        been modified to use this option (useLegacyIdResolution).
+
+        * config.json: Added configurations for the test httpd server.
+        * init-database.sql: Don't error when tables and types don't exist (when database is empty).
+        * public/api/build-requests.php:
+        (main): Made the ID resolution optional with useLegacyIdResolution. Also removed "updates" from the
+        results JSON since it's never used.
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::__construct):
+        (BuildRequestsFetcher::fetch_roots_for_set_if_needed): Fixed the bug that we would include the same
+        commit multiple times for each root set.
+        * public/include/db.php:
+        (config): If present, use ORG_WEBKIT_PERF_CONFIG_PATH instead of Websites/perf.webkit.org/config.json.
+        * server-tests: Added.
+        * server-tests/api-build-requests-tests.js: Added. Tests for /api/build-requests.
+        (.addMockData):
+        * server-tests/resources: Added.
+        * server-tests/resources/test-server.conf: Added. Apache configuration file for testing.
+        * server-tests/resources/test-server.js: Added.
+        (TestSever): Added.
+        (TestSever.prototype.start): Added.
+        (TestSever.prototype.stop): Added.
+        (TestSever.prototype.remoteAPI): Added. Configures RemoteAPI to be used with the test sever.
+        (TestSever.prototype.database): Added. Returns Database configured to use the test database.
+        (TestSever.prototype._constructTestConfig): Creates config.json for testing. The file is generated by
+        _start and db.php's config() reads it from the environmental variable: ORG_WEBKIT_PERF_CONFIG_PATH.
+        (TestSever.prototype._ensureDataDirectory): Renames public/data to public/original-data if exists,
+        and creates a new empty public/data.
+        (TestSever.prototype._restoreDataDirectory): Deletes public/data and renames public/original-data
+        back to public/data.
+        (TestSever.prototype._ensureTestDatabase): Drops the test database if exists and creates a new one.
+        (TestSever.prototype.initDatabase): Run init-database.sql to start each test with a consistent state.
+        (TestSever.prototype._executePgsqlCommand): Executes a postgres command line tool such as psql.
+        (TestSever.prototype._determinePgsqlDirectory): Finds the directory that contains psql.
+        (TestSever.prototype._startApache): Starts an Apache instance for testing.
+        (TestSever.prototype._stopApache): Stops the Apache instance for testing.
+        (TestSever.prototype._waitForPid): Waits for the Apache pid file to appear or disappear.
+        (before): Start the test server at the beginning.
+        (beforeEach): Re-initialize all tables before each test.
+        (after): Stop the test server at the end.
+        * tools/js/config.js:
+        (Config.prototype.path):
+        (Config.prototype.serverRoot): Added. The path to Websites/perf.webkit.org/public/.
+        (Config.prototype.pathFromRoot): Added. Resolves a path from Websites/perf.webkit.org.
+        * tools/js/database.js:
+        (Database): Now optionally takes the database name to use a different database during testing.
+        (Database.prototype.connect):
+        (Database.prototype.query): Added.
+        (Database.prototype.insert): Added.
+        (tableToPrefixMap): Maps table name to its prefix. Used by Database.insert.
+        * tools/js/remote.js: Added.
+        (RemoteAPI): Added. This is node.js equivalent of RemoteAPI in public/v3/remote.js.
+        (RemoteAPI.prototype.configure): Added.
+        (RemoteAPI.prototype.fetchJSON): Added.
+        (RemoteAPI.prototype.fetchJSONWithStatus): Added.
+        (RemoteAPI.prototype.sendHttpRequest): Added.
+        * tools/sync-with-buildbot.py:
+        (main): Use useLegacyIdResolution as this script relies on the legacy behavior.
+        * unit-tests/checkconfig.js: pg was never directly used in this test.
+
 2016-03-23  Ryosuke Niwa  <rniwa@webkit.org>
 
         Delete a file that was supposed to be removed in r198614 for real.

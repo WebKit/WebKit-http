@@ -10,6 +10,7 @@ endif ()
 link_directories(../../WebKitLibraries)
 
 find_library(ACCELERATE_LIBRARY accelerate)
+find_library(AVFOUNDATION_LIBRARY AVFoundation)
 find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
 find_library(AUDIOUNIT_LIBRARY AudioUnit)
 find_library(CARBON_LIBRARY Carbon)
@@ -31,6 +32,7 @@ list(APPEND WebCore_LIBRARIES
     ${ACCELERATE_LIBRARY}
     ${AUDIOTOOLBOX_LIBRARY}
     ${AUDIOUNIT_LIBRARY}
+    ${AVFOUNDATION_LIBRARY}
     ${CARBON_LIBRARY}
     ${COCOA_LIBRARY}
     ${COREAUDIO_LIBRARY}
@@ -49,6 +51,7 @@ list(APPEND WebCore_LIBRARIES
 )
 
 add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
+add_definitions(-iframework ${AVFOUNDATION_LIBRARY}/Versions/Current/Frameworks)
 
 find_library(DATADETECTORSCORE_FRAMEWORK DataDetectorsCore HINTS /System/Library/PrivateFrameworks)
 if (NOT DATADETECTORSCORE_FRAMEWORK-NOTFOUND)
@@ -141,7 +144,7 @@ add_custom_command(
     COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/platform/text/mac/make-charset-table.pl ${WEBCORE_DIR}/platform/text/mac/character-sets.txt ${WEBCORE_DIR}/platform/text/mac/mac-encodings.txt kTextEncoding > ${DERIVED_SOURCES_WEBCORE_DIR}/CharsetData.cpp
     VERBATIM)
 
-list(APPEND WebCore_SOURCES
+list(APPEND WebCore_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBCORE_DIR}/CharsetData.cpp
 )
 
@@ -532,6 +535,7 @@ list(APPEND WebCore_SOURCES
 
     platform/network/cocoa/CredentialCocoa.mm
     platform/network/cocoa/ProtectionSpaceCocoa.mm
+    platform/network/cocoa/ResourceLoadTiming.mm
     platform/network/cocoa/ResourceRequestCocoa.mm
     platform/network/cocoa/ResourceResponseCocoa.mm
     platform/network/cocoa/WebCoreNSURLSession.mm
@@ -595,7 +599,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     Modules/notifications
     Modules/webdatabase
 
-    Modules/indexeddb/legacy
+    Modules/indexeddb/client
     Modules/indexeddb/shared
     Modules/indexeddb/server
 
@@ -909,7 +913,7 @@ set(ObjC_BINDINGS_NO_MM
     XPathNSResolver
 )
 
-GENERATE_BINDINGS(WebCore_SOURCES
+GENERATE_BINDINGS(WebCore_DERIVED_SOURCES
     "${ObjC_Bindings_IDL_FILES}"
     "${WEBCORE_DIR}"
     "${IDL_INCLUDES}"

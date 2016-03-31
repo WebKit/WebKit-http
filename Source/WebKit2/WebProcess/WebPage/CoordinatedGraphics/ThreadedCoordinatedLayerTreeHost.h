@@ -96,9 +96,9 @@ public:
     void scheduleAnimation() override;
 #endif
 
-    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
+    void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
 
-    static PassRefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
+    static RefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
 
 protected:
     explicit ThreadedCoordinatedLayerTreeHost(WebPage*);

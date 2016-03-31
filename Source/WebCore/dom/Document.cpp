@@ -133,6 +133,7 @@
 #include "ProcessingInstruction.h"
 #include "RenderChildIterator.h"
 #include "RenderLayerCompositor.h"
+#include "RenderTreeUpdater.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "ResourceLoadObserver.h"
@@ -533,7 +534,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_scheduledTasksAreSuspended(false)
     , m_visualUpdatesAllowed(true)
     , m_visualUpdatesSuppressionTimer(*this, &Document::visualUpdatesSuppressionTimerFired)
-    , m_sharedObjectPoolClearTimer(*this, &Document::sharedObjectPoolClearTimerFired)
+    , m_sharedObjectPoolClearTimer(*this, &Document::clearSharedObjectPool)
 #ifndef NDEBUG
     , m_didDispatchViewportPropertiesChanged(false)
 #endif
@@ -1926,15 +1927,22 @@ void Document::recalcStyle(Style::Change change)
         }
 
         Style::TreeResolver resolver(*this);
-        resolver.resolve(change);
-
-        updatedCompositingLayers = frameView.updateCompositingLayersAfterStyleChange();
+        auto styleUpdate = resolver.resolve(change);
 
         clearNeedsStyleRecalc();
         clearChildNeedsStyleRecalc();
         unscheduleStyleRecalc();
 
         m_inStyleRecalc = false;
+
+        if (styleUpdate) {
+            TemporaryChange<bool> inRenderTreeUpdate(m_inRenderTreeUpdate, true);
+
+            RenderTreeUpdater updater(*this);
+            updater.commit(WTFMove(styleUpdate));
+        }
+
+        updatedCompositingLayers = frameView.updateCompositingLayersAfterStyleChange();
     }
 
     // If we wanted to call implicitClose() during recalcStyle, do so now that we're finished.
@@ -2052,7 +2060,10 @@ Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& el
     TemporaryChange<bool> change(m_ignorePendingStylesheets, true);
     auto elementStyle = element.resolveStyle(parentStyle);
 
-    Style::commitRelationsToDocument(WTFMove(elementStyle.relations));
+    if (elementStyle.relations) {
+        Style::Update emptyUpdate(*this);
+        Style::commitRelations(WTFMove(elementStyle.relations), emptyUpdate);
+    }
 
     return WTFMove(elementStyle.renderStyle);
 }
@@ -4645,6 +4656,7 @@ void Document::setInPageCache(bool flag)
 
         clearStyleResolver();
         clearSelectorQueryCache();
+        clearSharedObjectPool();
     } else {
         if (childNeedsStyleRecalc())
             scheduleStyleRecalc();
@@ -5091,9 +5103,10 @@ void Document::finishedParsing()
     m_cachedResourceLoader->clearPreloads();
 }
 
-void Document::sharedObjectPoolClearTimerFired()
+void Document::clearSharedObjectPool()
 {
     m_sharedObjectPool = nullptr;
+    m_sharedObjectPoolClearTimer.stop();
 }
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)

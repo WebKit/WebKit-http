@@ -3,9 +3,43 @@
     "description": "Automation domain exposes commands for automating user interactions with the browser.",
     "types": [
         {
+            "id": "Point",
+            "type": "object",
+            "properties": [
+                { "name": "x", "type": "number" },
+                { "name": "y", "type": "number" }
+            ]
+        },
+        {
+            "id": "Size",
+            "type": "object",
+            "properties": [
+                { "name": "width", "type": "number" },
+                { "name": "height", "type": "number" }
+            ]
+        },
+        {
+            "id": "Rect",
+            "type": "object",
+            "properties": [
+                { "name": "origin", "$ref": "Point" },
+                { "name": "size", "$ref": "Size" }
+            ]
+        },
+        {
             "id": "BrowsingContextHandle",
             "type": "string",
             "description": "An opaque identifier for a browsing context."
+        },
+        {
+            "id": "FrameHandle",
+            "type": "string",
+            "description": "An opaque identifier for a frame in a page."
+        },
+        {
+            "id": "NodeHandle",
+            "type": "string",
+            "description": "An opaque identifier for a node in a page."
         },
         {
             "id": "ErrorMessage",
@@ -13,8 +47,14 @@
             "description": "This enum contains predefined error messages that can be used to signal a well-defined error condition, such as a missing implementation, unknown window handle, and so forth. The backend signals one of these errors by using it as a prefix of the commands's error message (the errorString argument in generated C++ backend dispatchers). This will be reported to the frontend as a protocol error with a JSON-RPC error code of 'ServerError'. It is up to the frontend whether and how to deal with errors.",
             "enum": [
                 "InternalError",
+                "JavaScriptError",
                 "WindowNotFound",
-                "NotImplemented"
+                "FrameNotFound",
+                "NodeNotFound",
+                "NoJavaScriptDialog",
+                "NotImplemented",
+                "MissingParameter",
+                "InvalidParameter"
             ]
         },
         {
@@ -24,7 +64,44 @@
             "properties": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "Opaque handle for a browsing context (window or tab). Used as a key for window-related commands." },
                 { "name": "active", "type": "boolean", "description": "Whether the browsing context has focus at the time the command is handled." },
-                { "name": "url", "type": "string", "description": "The URL loaded by the browsing context at the time the command is handled." }
+                { "name": "url", "type": "string", "description": "The URL loaded by the browsing context at the time the command is handled." },
+                { "name": "windowSize", "$ref": "Size", "description": "The current size of the browsing context's window." },
+                { "name": "windowOrigin", "$ref": "Point", "description": "The current (x, y) position of the browsing context's window relative to the top-left of the screen." }
+            ]
+        },
+        {
+            "id": "MouseInteraction",
+            "type": "string",
+            "description": "Enumerates different ways of interacting with a mouse cursor.",
+            "enum": [
+                "Move",
+                "Down",
+                "Up",
+                "SingleClick",
+                "DoubleClick"
+            ]
+        },
+        {
+            "id": "MouseButton",
+            "type": "string",
+            "description": "Enumerates different mouse buttons that can be used.",
+            "enum": [
+                "None",
+                "Left",
+                "Middle",
+                "Right"
+            ]
+        },
+        {
+            "id": "KeyModifier",
+            "type": "string",
+            "description": "Enumerates different key modifiers that can remain pressed during other mouse/touch interactions.",
+            "enum": [
+                "CapsLock",
+                "Control",
+                "Shift",
+                "Meta",
+                "Alt"
             ]
         }
     ],
@@ -62,9 +139,26 @@
         },
         {
             "name": "switchToBrowsingContext",
-            "description": "Activates the specified browsing context.",
+            "description": "Activates the specified browsing context and optional frame, which gives them focus (causing the 'focus' DOM event to fire, and 'blur' DOM event to fire for the previous browsing context and frame).",
             "parameters": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be made active." }
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be made focused." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame that should be focused. Defaults to the main frame if omitted." }
+            ]
+        },
+        {
+            "name": "resizeWindowOfBrowsingContext",
+            "description": "Resizes the window of the specified browsing context to the specified size.",
+            "parameters": [
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to be resized." },
+                { "name": "size", "$ref": "Size", "description": "The new size for the browsing context's window." }
+            ]
+        },
+        {
+            "name": "moveWindowOfBrowsingContext",
+            "description": "Moves the window of the specified browsing context to the specified position.",
+            "parameters": [
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to be moved." },
+                { "name": "origin", "$ref": "Point", "description": "The new origin for the browsing context's window. The position is interpreted in screen coordinate space, relative to the upper left corner of the screen." }
             ]
         },
         {
@@ -94,6 +188,119 @@
             "description": "Reloads the current page in a browsing context.",
             "parameters": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be reloaded." }
+            ]
+        },
+        {
+            "name": "evaluateJavaScriptFunction",
+            "description": "Evaluates a script function in a browsing context and calls it with the supplied arguments.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context the script should be evaluated." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame the script should be evaluated. The main frame is used if this parameter empty string or excluded." },
+                { "name": "function", "type": "string", "description": "The script to evaluate in the browsing context. It must be a function result." },
+                { "name": "arguments", "type": "array", "items": { "type": "string" }, "description": "The arguments to pass to the function when called. They will be parsed as JSON before calling the function." },
+                { "name": "expectsImplicitCallbackArgument", "type": "boolean", "description": "The function expects a callback function as the last argument. It is expected to call this callback with a result." }
+            ],
+            "returns": [
+                { "name": "result", "type": "string", "description": "The result returned by the called function. It is JSON encoded after the function returns or calls the callback." }
+            ],
+            "async": true
+        },
+        {
+            "name": "performMouseInteraction",
+            "description": "Simulates interaction with a mouse cursor.",
+            "parameters": [
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The browsing context to be interacted with." },
+                { "name": "position", "$ref": "Point", "description": "The requested position for the mouse cursor, specified in viewport coordinates." },
+                { "name": "button", "$ref": "MouseButton", "description": "The button to use to perform the interaction. This parameter only has an effect for the <code>Down</code>, <code>Up</code>, <code>Click</code>, and <code>DoubleClick</code> mouse interactions." },
+                { "name": "interaction", "$ref": "MouseInteraction", "description": "The type of interaction to be performed with the mouse cursor." },
+                { "name": "modifiers", "type": "array", "items": { "$ref": "KeyModifier" }, "description": "Key modifiers to be active during the mouse interaction." }
+            ],
+            "returns": [
+                { "name": "position", "$ref": "Point", "description": "The updated position of the mouse cursor, specified in viewport coordinates." }
+            ]
+        },
+        {
+            "name": "resolveChildFrameHandle",
+            "description": "Determines the <code>FrameHandle</code> based on the ordinal, name or node handle of a child frame.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context in which to search for the frame." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame in which to search for the frame. The main frame is used if this parameter empty string or excluded." },
+                { "name": "ordinal", "type": "integer", "optional": true, "description": "The ordinal of the child frame to resolve as a <code>FrameHandle</code>. This is analogous to 'window.frames[ordinal]' in JavaScript." },
+                { "name": "name", "type": "string", "optional": true, "description": "The name of the child frame to resolve as a <code>FrameHandle</code>. This is analogous to 'window.frames[name]' in JavaScript." },
+                { "name": "nodeHandle", "$ref": "NodeHandle", "optional": true, "description": "The handle of the child frame owner element to resolve as a <code>FrameHandle</code>." }
+            ],
+            "returns": [
+                { "name": "result", "$ref": "FrameHandle", "description": "The <code>FrameHandle</code> for the requested frame." }
+            ],
+            "async": true
+        },
+        {
+            "name": "resolveParentFrameHandle",
+            "description": "Determines the <code>FrameHandle</code> for the parent frame of the supplied <code>FrameHandle</code>.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context the frame is located." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "description": "The handle for the frame that should resolve its parent frame." }
+            ],
+            "returns": [
+                { "name": "result", "$ref": "FrameHandle", "description": "The <code>FrameHandle</code> for the requested frame." }
+            ],
+            "async": true
+        },
+        {
+            "name": "computeElementLayout",
+            "description": "Computes the layout for an element.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context the frame is located." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "description": "The handle for the frame that contains the element." },
+                { "name": "nodeHandle", "$ref": "NodeHandle", "description": "The handle of the element to use." },
+                { "name": "scrollIntoViewIfNeeded", "optional": true, "type": "boolean", "description": "If the element should be scrolled into view before computing its layout." },
+                { "name": "useViewportCoordinates", "optional": true, "type": "boolean", "description": "If the result coordinates should be represented as viewport coordinates or not. Defaults to false, which means coordinates should be represented as page coordinates." }
+            ],
+            "returns": [
+                { "name": "rect", "$ref": "Rect", "description": "The layout rect for the requested element. Specified in page or viewport coordinates based on the useViewportCoordinates parameter." }
+            ],
+            "async": true
+        },
+        {
+            "name": "isShowingJavaScriptDialog",
+            "description": "Checks if a browsing context is showing a JavaScript alert, confirm, or prompt dialog.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." }
+            ],
+            "returns": [
+                { "name": "result", "type": "boolean", "description": "If the browsing context is showing a JavaScript dialog or not." }
+            ]
+        },
+        {
+            "name": "dismissCurrentJavaScriptDialog",
+            "description": "Dismisses a JavaScript alert, confirm, or prompt dialog currently showing in a browsing context. Equivalent to clicking the 'Cancel' button.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." }
+            ]
+        },
+        {
+            "name": "acceptCurrentJavaScriptDialog",
+            "description": "Accepts a JavaScript alert, confirm, or prompt dialog currently showing in a browsing context. Equivalent to clicking the 'OK' button.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." }
+            ]
+        },
+        {
+            "name": "messageOfCurrentJavaScriptDialog",
+            "description": "Returns the text displayed in a JavaScript alert, confirm, or prompt dialog currently showing in a browsing context.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." }
+            ],
+            "returns": [
+                { "name": "message", "type": "string", "description": "Text being displayed in the current JavaScript dialog." }
+            ]
+        },
+        {
+            "name": "setUserInputForCurrentJavaScriptPrompt",
+            "description": "Sets the user entered value in a JavaScript prompt dialog currently showing in a browsing context.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." },
+                { "name": "userInput", "type": "string", "description": "The text to enter in the prompt." }
             ]
         }
     ]

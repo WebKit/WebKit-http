@@ -381,10 +381,6 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
     bool isBodyRenderer = isBody();
     bool isDocElementRenderer = isDocumentElementRenderer();
 
-    // Set the text color if we're the body.
-    if (isBodyRenderer)
-        document().setTextColor(newStyle.visitedDependentColor(CSSPropertyColor));
-
     if (isDocElementRenderer || isBodyRenderer) {
         // Propagate the new writing mode and direction up to the RenderView.
         auto* documentElementRenderer = document().documentElement()->renderer();
@@ -692,6 +688,15 @@ RoundedRect::Radii RenderBox::borderRadii() const
     bounds.moveBy(LayoutPoint(borderLeft, borderTop));
     bounds.contract(borderLeft + style.borderRightWidth(), borderTop + style.borderBottomWidth());
     return style.getRoundedBorderFor(bounds).radii();
+}
+
+LayoutRect RenderBox::contentBoxRect() const
+{
+    LayoutUnit x = borderLeft() + paddingLeft();
+    if (layer() && layer()->verticalScrollbarIsOnLeft())
+        x += verticalScrollbarWidth();
+    LayoutUnit y = borderTop() + paddingTop();
+    return LayoutRect(x, y, contentWidth(), contentHeight());
 }
 
 IntRect RenderBox::absoluteContentBox() const

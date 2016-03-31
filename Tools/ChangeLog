@@ -1,3 +1,162 @@
+2016-03-30  Daniel Bates  <dabates@apple.com>
+
+        run-webkit-tests must create parent directory of user's cache directory before running tests
+        https://bugs.webkit.org/show_bug.cgi?id=156009
+        <rdar://problem/25442682>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The script run-webkit-tests must create the parent directory of the user's cache directory
+        before running tests because a WebKit2 child process expects that this directory exists
+        when it starts.
+
+        The script run-webkit-tests influences the path chosen by a WebKit2 child process for the
+        user's temporary directory and user's cache directory via the environment variable
+        DIRHELPER_USER_DIR_SUFFIX. For the user's temporary directory, run-webkit-tests creates it
+        as part of setting up the test environment. But run-webkit-tests does not create the user's
+        cache directory. Therefore there is race between the time AppKit creates it and when the
+        launched WebContent and Network processes query for the path to the user's cache directory
+        such that the OS may return the empty string to the WebContent and Network processes if
+        queried for this directory before AppKit creates it.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._path_to_user_cache_directory): Added. Base class implementation that returns the
+        empty string. We will override this method for the OS X port to return the path to the
+        user's cache directory with the specified suffix.
+        (Port.remove_cache_directory): Deleted.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.__init__): Initialize self._driver_user_directory_suffix and self._driver_user_cache_directory
+        to the suffix to use for the user's temporary and cache directories and the path to the
+        user's cache directory, respectively.
+        (Driver._setup_environ_for_driver): Modified to set the environment variable DIRHELPER_USER_DIR_SUFFIX
+        to self._driver_user_directory_suffix.
+        (Driver._start): Compute the user directory suffix and the path to the user's cache
+        directory. Create the user's cache directory (if applicable).
+        (Driver.stop): Modified to remove directory self._driver_user_cache_directory (if applicable).
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.user_cache_directory): Added. Overrides Port._path_to_user_cache_directory().
+        (MacPort.remove_cache_directory): Deleted.
+
+2016-03-29  Benjamin Poulain  <bpoulain@apple.com>
+
+        [WTF] Removing a smart pointer from HashTable issues two stores to the same location
+        https://bugs.webkit.org/show_bug.cgi?id=155676
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+
+2016-03-29  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add machine-readable results for JSC stress tests
+        https://bugs.webkit.org/show_bug.cgi?id=155771
+
+        Reviewed by Darin Adler and Dean Johnson
+
+        Add an option to output JSC stress test results to a user-specified file in JSON format.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Add JSON output support
+        (readAllLines): Remove trailing newline from the end of each item
+
+2016-03-29  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2016-03-29  Timothy Hatcher  <timothy@apple.com>
+
+        Update WebKit nightly to have a red needle to better match Safari
+
+        https://bugs.webkit.org/show_bug.cgi?id=155983
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebKitLauncher/webkit.icns:
+
+2016-03-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        Adding myself as a reviewer.
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-03-25  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Dromaeo patch used by run-benchmark should not include an invalid address.
+        https://bugs.webkit.org/show_bug.cgi?id=155910
+
+        Reviewed by Ryosuke Niwa.
+
+        Should not use invalid 'http://127.0.0.1/Icons/w3c_home' in the patched version of test.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Dromaeo.patch:
+
+2016-03-25  Daniel Bates  <dabates@apple.com>
+
+        Add WebKitSystemInterface for iOS 9.3
+        https://bugs.webkit.org/show_bug.cgi?id=155893
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-03-25  Daniel Bates  <dabates@apple.com>
+
+        Use webkitdirs::determineXcodeSDK() instead of webkitdirs::willUseIOSDeviceSDK()
+        in copy-webkitlibraries-to-product-directory
+        https://bugs.webkit.org/show_bug.cgi?id=155869
+
+        Reviewed by Alexey Proskuryakov.
+
+        It is sufficient and more direct to call webkitdirs::determineXcodeSDK() instead of
+        webkitdirs::willUseIOSDeviceSDK() to process the --sdk/--device/--ios-simulator command
+        line argument.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-03-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Turned on ENABLE_REQUEST_ANIMATION_FRAME by default for any port.
+        https://bugs.webkit.org/show_bug.cgi?id=155882
+
+        Reviewed by Michael Catanzaro.
+
+        It was already enabled in all trunk ports, and is required for
+        WebInspectorUI to work.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-03-24  Jeremy Zerfas  <WebKit@JeremyZerfas.com>
+
+        Improve update-webkit-dependency script.
+        https://bugs.webkit.org/show_bug.cgi?id=155576
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/update-webkit-dependency:
+        -Updated script to also use ETags for helping to determine whether dependency is up to date.
+        -Updated script so it usually won't need to download the entire dependency each time it is
+         ran.
+        -Updated script to ensure zip file contains expected directories before trying to install.
+        -Added some more error checking and improved error messages.
+        (lastModifiedToUnixTime): Deleted.
+
+        * Scripts/update-webkit-wincairo-libs:
+        -Corrected comment about what script does.
+
+2016-03-24 Bill Ming <mbbill@gmail.com>
+
+        Fix webkitpy tests after r198617
+        https://bugs.webkit.org/show_bug.cgi?id=155827
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/tool/steps/confirmdiff.py:
+        (ConfirmDiff._show_pretty_diff):
+
 2016-03-23  Bill Ming  <mbbill@gmail.com>
 
         webkit-patch failed to open pretty diff on Windows
