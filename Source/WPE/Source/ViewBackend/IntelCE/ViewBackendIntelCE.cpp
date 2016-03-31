@@ -101,7 +101,7 @@ ViewBackendIntelCE::ViewBackendIntelCE()
     : m_width(WIDTH)
     , m_height(HEIGHT)
 {
-    gdl_plane_id_t plane = GDL_PLANE_ID_UPP_C;
+    gdl_plane_id_t plane = GDL_PLANE_ID_UPP_D;
     gdl_init(0);
     setup_plane(plane);
 }
