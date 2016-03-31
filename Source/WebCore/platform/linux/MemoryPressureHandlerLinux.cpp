@@ -53,8 +53,8 @@ namespace WebCore {
 static const unsigned s_minimumHoldOffTime = 5;
 static const unsigned s_holdOffMultiplier = 20;
 static const unsigned s_pollTimeSec = 1;
-static const size_t s_memCriticalLimit = 100 * KB * KB; // 100 MB
-static const size_t s_memNonCriticalLimit = 300 * KB * KB; // 300 MB
+static const size_t s_memCriticalLimit = 30 * KB * KB; // 30 MB
+static const size_t s_memNonCriticalLimit = 70 * KB * KB; // 70 MB
 static size_t s_pollMaximumProcessMemoryCriticalLimit = 0;
 static size_t s_pollMaximumProcessMemoryNonCriticalLimit = 0;
 
