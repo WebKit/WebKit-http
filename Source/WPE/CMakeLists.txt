@@ -5,7 +5,7 @@ find_package(Libudev REQUIRED)
 set(USE_KEY_INPUT_HANDLING_LINUX_INPUT OFF CACHE BOOL "Whether to use <linux/input.h> event codes for keyboard event handling")
 
 if (USE_WPE_VIRTUAL_KEYBOARD)
-    find_package(LibGenerics REQUIRED)
+    find_package(LibVirtualKeyboard REQUIRED)
     add_definitions(-DKEY_INPUT_HANDLING_VIRTUAL=1)
 endif()
 
