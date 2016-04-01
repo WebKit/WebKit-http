@@ -36,9 +36,4 @@ void WebsiteDataStore::platformDestroy()
 {
 }
 
-void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::time_point)
-{
-}
-
-
 } // namespace WebKit

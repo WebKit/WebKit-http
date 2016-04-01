@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebPageProxy.h"
 
+#include "WebsiteDataStore.h"
 #include <WebCore/NotImplemented.h>
 
 namespace WebKit {
@@ -46,6 +47,11 @@ void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::Recen
 }
 
 void WebPageProxy::loadRecentSearches(const String&, Vector<WebCore::RecentSearch>&)
+{
+    notImplemented();
+}
+
+void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::time_point)
 {
     notImplemented();
 }
