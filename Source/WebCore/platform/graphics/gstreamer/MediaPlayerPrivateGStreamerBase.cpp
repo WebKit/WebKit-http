@@ -345,6 +345,7 @@ void MediaPlayerPrivateGStreamerBase::setVolume(float volume)
     gst_stream_volume_set_volume(m_volumeElement.get(), GST_STREAM_VOLUME_FORMAT_CUBIC, static_cast<double>(volume));
 }
 
+#if PLATFORM(WPE)
 float MediaPlayerPrivateGStreamerBase::volume() const
 {
     if (!m_volumeElement)
@@ -352,7 +353,7 @@ float MediaPlayerPrivateGStreamerBase::volume() const
 
     return gst_stream_volume_get_volume(m_volumeElement.get(), GST_STREAM_VOLUME_FORMAT_CUBIC);
 }
-
+#endif
 
 void MediaPlayerPrivateGStreamerBase::notifyPlayerOfVolumeChange()
 {
@@ -370,7 +371,9 @@ void MediaPlayerPrivateGStreamerBase::notifyPlayerOfVolumeChange()
 void MediaPlayerPrivateGStreamerBase::volumeChangedCallback(MediaPlayerPrivateGStreamerBase* player)
 {
     // This is called when m_volumeElement receives the notify::volume signal.
+#if PLATFORM(WPE)
     LOG_MEDIA_MESSAGE("Volume changed to: %f", player->volume());
+#endif
 
     player->m_notifier.notify(MainThreadNotification::VolumeChanged, [player] { player->notifyPlayerOfVolumeChange(); });
 }
