@@ -46,16 +46,18 @@ class Identifier;
 
 #define JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
     macro(undefined) \
+    macro(Infinity) \
     macro(arrayIterationKindKey) \
     macro(arrayIterationKindValue) \
     macro(arrayIterationKindKeyValue) \
+    macro(MAX_STRING_LENGTH) \
     macro(promiseStatePending) \
     macro(promiseStateFulfilled) \
     macro(promiseStateRejected) \
     macro(symbolIterator) \
     macro(symbolMatch) \
     macro(symbolSearch) \
-    macro(symbolSpecies)
+    macro(symbolSpecies) \
 
 class BytecodeIntrinsicRegistry {
     WTF_MAKE_NONCOPYABLE(BytecodeIntrinsicRegistry);

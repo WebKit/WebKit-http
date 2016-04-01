@@ -38,10 +38,9 @@
 
 namespace WebCore {
 
-BitmapImage::BitmapImage(PassRefPtr<cairo_surface_t> nativeImage, ImageObserver* observer)
+BitmapImage::BitmapImage(RefPtr<cairo_surface_t>&& nativeImage, ImageObserver* observer)
     : Image(observer)
     , m_size(cairoSurfaceSize(nativeImage.get()))
-    , m_minimumSubsamplingLevel(0)
     , m_currentFrame(0)
     , m_repetitionCount(cAnimationNone)
     , m_repetitionCountStatus(Unknown)
@@ -58,7 +57,7 @@ BitmapImage::BitmapImage(PassRefPtr<cairo_surface_t> nativeImage, ImageObserver*
 {
     m_frames.grow(1);
     m_frames[0].m_hasAlpha = cairo_surface_get_content(nativeImage.get()) != CAIRO_CONTENT_COLOR;
-    m_frames[0].m_frame = nativeImage;
+    m_frames[0].m_image = WTFMove(nativeImage);
     m_frames[0].m_haveMetadata = true;
 
     checkForSolidColor();
@@ -72,7 +71,7 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& dst, const Flo
 
     startAnimation();
 
-    RefPtr<cairo_surface_t> surface = frameAtIndex(m_currentFrame);
+    auto surface = frameImageAtIndex(m_currentFrame);
     if (!surface) // If it's too early we won't have an image yet.
         return;
 
@@ -122,11 +121,6 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& dst, const Flo
         imageObserver()->didDraw(this);
 }
 
-void BitmapImage::determineMinimumSubsamplingLevel() const
-{
-    m_minimumSubsamplingLevel = 0;
-}
-
 void BitmapImage::checkForSolidColor()
 {
     m_isSolidColor = false;
@@ -135,7 +129,7 @@ void BitmapImage::checkForSolidColor()
     if (frameCount() > 1)
         return;
 
-    RefPtr<cairo_surface_t> surface = frameAtIndex(m_currentFrame);
+    auto surface = frameImageAtIndex(m_currentFrame);
     if (!surface) // If it's too early we won't have an image yet.
         return;
 
@@ -158,8 +152,8 @@ bool FrameData::clear(bool clearMetadata)
     if (clearMetadata)
         m_haveMetadata = false;
 
-    if (m_frame) {
-        m_frame = nullptr;
+    if (m_image) {
+        m_image = nullptr;
         return true;
     }
     return false;

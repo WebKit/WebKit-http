@@ -171,7 +171,7 @@ void RenderInline::styleWillChange(StyleDifference diff, const RenderStyle& newS
     // Check if this inline can hold absolute positioned elmements even after the style change.
     if (canContainAbsolutelyPositionedObjects() && newStyle.position() == StaticPosition) {
         // RenderInlines forward their absolute positioned descendants to their (non-anonymous) containing block.
-        auto* container = containingBlockForAbsolutePosition();
+        auto* container = containingBlockForAbsolutePosition(this);
         if (container && !container->canContainAbsolutelyPositionedObjects())
             container->removePositionedObjects(nullptr, NewContainingBlock);
     }
@@ -416,6 +416,7 @@ RenderPtr<RenderInline> RenderInline::clone() const
     RenderPtr<RenderInline> cloneInline = createRenderer<RenderInline>(*element(), style());
     cloneInline->initializeStyle();
     cloneInline->setFlowThreadState(flowThreadState());
+    cloneInline->setHasOutlineAutoAncestor(hasOutlineAutoAncestor());
     return cloneInline;
 }
 

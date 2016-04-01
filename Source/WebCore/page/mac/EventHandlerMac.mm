@@ -75,6 +75,8 @@ namespace WebCore {
 const double EventHandler::TextDragDelay = 0.15;
 #endif
 
+const double resetLatchedStateTimeout = 0.1;
+
 static RetainPtr<NSEvent>& currentNSEventSlot()
 {
     static NeverDestroyed<RetainPtr<NSEvent>> event;
@@ -931,8 +933,34 @@ static bool latchedToFrameOrBody(ContainerNode& container)
     return is<HTMLFrameSetElement>(container) || is<HTMLBodyElement>(container);
 }
 
+void EventHandler::clearOrScheduleClearingLatchedStateIfNeeded(const PlatformWheelEvent& event)
+{
+    if (!m_frame.isMainFrame())
+        return;
+
+    // Platform does not provide an indication that it will switch from non-momentum to momentum scrolling
+    // when handling wheel events.
+    // Logic below installs a timer when non-momentum scrolling ends. If momentum scroll does not start within that interval,
+    // reset the latched state. If it does, stop the timer, leaving the latched state untouched.
+    if (!m_pendingMomentumWheelEventsTimer.isActive()) {
+        if (event.isEndOfNonMomentumScroll())
+            m_pendingMomentumWheelEventsTimer.startOneShot(resetLatchedStateTimeout);
+    } else {
+        // If another wheel event scrolling starts, stop the timer manually, and reset the latched state immediately.
+        if (event.shouldConsiderLatching()) {
+            m_frame.mainFrame().resetLatchingState();
+            m_pendingMomentumWheelEventsTimer.stop();
+        } else if (event.isTransitioningToMomentumScroll()) {
+            // Wheel events machinary is transitioning to momenthum scrolling, so no need to reset latched state. Stop the timer.
+            m_pendingMomentumWheelEventsTimer.stop();
+        }
+    }
+}
+
 void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheelEvent, const HitTestResult& result, RefPtr<Element>& wheelEventTarget, RefPtr<ContainerNode>& scrollableContainer, ScrollableArea*& scrollableArea, bool& isOverWidget)
 {
+    clearOrScheduleClearingLatchedStateIfNeeded(wheelEvent);
+
     FrameView* view = m_frame.view();
 
     scrollableContainer = nullptr;
@@ -1104,6 +1132,63 @@ VisibleSelection EventHandler::selectClosestWordFromHitTestResultBasedOnLookup(c
         return VisibleSelection(*range);
 
     return VisibleSelection();
+}
+
+static IntSize autoscrollAdjustmentFactorForScreenBoundaries(const IntPoint& screenPoint, const FloatRect& screenRect)
+{
+    // If the window is at the edge of the screen, and the mouse position is also at that edge of the screen,
+    // we need to adjust the autoscroll amount in order for the user to be able to autoscroll in that direction.
+    // We can pretend that the mouse position is slightly beyond the edge of the screen, and then autoscrolling
+    // will occur as excpected. This function figures out just how much to adjust the autoscroll amount by
+    // in order to get autoscrolling to feel natural in this situation.
+
+    IntSize adjustmentFactor;
+    
+#define EDGE_DISTANCE_THRESHOLD 50
+#define PIXELS_MULTIPLIER 20
+
+    float screenLeftEdge = screenRect.x();
+    float insetScreenLeftEdge = screenLeftEdge + EDGE_DISTANCE_THRESHOLD;
+    float screenRightEdge = screenRect.maxX();
+    float insetScreenRightEdge = screenRightEdge - EDGE_DISTANCE_THRESHOLD;
+    if (screenPoint.x() >= screenLeftEdge && screenPoint.x() < insetScreenLeftEdge) {
+        float distanceFromEdge = screenPoint.x() - screenLeftEdge - EDGE_DISTANCE_THRESHOLD;
+        if (distanceFromEdge < 0)
+            adjustmentFactor.setWidth((distanceFromEdge / EDGE_DISTANCE_THRESHOLD) * PIXELS_MULTIPLIER);
+    } else if (screenPoint.x() >= insetScreenRightEdge && screenPoint.x() < screenRightEdge) {
+        float distanceFromEdge = EDGE_DISTANCE_THRESHOLD - (screenRightEdge - screenPoint.x());
+        if (distanceFromEdge > 0)
+            adjustmentFactor.setWidth((distanceFromEdge / EDGE_DISTANCE_THRESHOLD) * PIXELS_MULTIPLIER);
+    }
+
+    float screenTopEdge = screenRect.y();
+    float insetScreenTopEdge = screenTopEdge + EDGE_DISTANCE_THRESHOLD;
+    float screenBottomEdge = screenRect.maxY();
+    float insetScreenBottomEdge = screenBottomEdge - EDGE_DISTANCE_THRESHOLD;
+
+    if (screenPoint.y() >= screenTopEdge && screenPoint.y() < insetScreenTopEdge) {
+        float distanceFromEdge = screenPoint.y() - screenTopEdge - EDGE_DISTANCE_THRESHOLD;
+        if (distanceFromEdge < 0)
+            adjustmentFactor.setHeight((distanceFromEdge / EDGE_DISTANCE_THRESHOLD) * PIXELS_MULTIPLIER);
+    } else if (screenPoint.y() >= insetScreenBottomEdge && screenPoint.y() < screenBottomEdge) {
+        float distanceFromEdge = EDGE_DISTANCE_THRESHOLD - (screenBottomEdge - screenPoint.y());
+        if (distanceFromEdge > 0)
+            adjustmentFactor.setHeight((distanceFromEdge / EDGE_DISTANCE_THRESHOLD) * PIXELS_MULTIPLIER);
+    }
+
+    return adjustmentFactor;
+}
+
+IntPoint EventHandler::effectiveMousePositionForSelectionAutoscroll() const
+{
+    Page* page = m_frame.page();
+    if (!page)
+        return m_lastKnownMousePosition;
+
+    NSScreen *screen = screenForDisplayID(page->chrome().displayID());
+    IntSize autoscrollAdjustmentFactor = autoscrollAdjustmentFactorForScreenBoundaries(m_lastKnownMouseGlobalPosition, toUserSpace(screen.frame, nil));
+
+    return m_lastKnownMousePosition + autoscrollAdjustmentFactor;
 }
 
 }

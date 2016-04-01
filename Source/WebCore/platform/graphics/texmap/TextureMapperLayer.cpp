@@ -25,8 +25,6 @@
 #include "Region.h"
 #include <wtf/MathExtras.h>
 
-#if USE(TEXTURE_MAPPER)
-
 namespace WebCore {
 
 class TextureMapperPaintOptions {
@@ -783,4 +781,3 @@ void TextureMapperLayer::didCommitScrollOffset(const IntSize& offset)
 }
 
 }
-#endif

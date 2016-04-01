@@ -47,9 +47,6 @@ namespace WebCore {
 
 BitmapImage::BitmapImage(ImageObserver* observer)
     : Image(observer)
-    , m_minimumSubsamplingLevel(0)
-    , m_imageOrientation(OriginTopLeft)
-    , m_shouldRespectImageOrientation(false)
     , m_currentFrame(0)
     , m_repetitionCount(cAnimationNone)
     , m_repetitionCountStatus(Unknown)
@@ -62,9 +59,6 @@ BitmapImage::BitmapImage(ImageObserver* observer)
     // FIXME: We should expose a setting to enable/disable progressive loading remove the PLATFORM(IOS)-guard.
     , m_progressiveLoadChunkTime(0)
     , m_progressiveLoadChunkCount(0)
-    , m_allowSubsampling(true)
-#else
-    , m_allowSubsampling(false)
 #endif
     , m_isSolidColor(false)
     , m_checkedForSolidColor(false)
@@ -96,7 +90,7 @@ void BitmapImage::startTimer(double delay)
     m_frameTimer->startOneShot(delay);
 }
 
-bool BitmapImage::haveFrameAtIndex(size_t index)
+bool BitmapImage::haveFrameImageAtIndex(size_t index)
 {
     if (index >= frameCount())
         return false;
@@ -104,7 +98,7 @@ bool BitmapImage::haveFrameAtIndex(size_t index)
     if (index >= m_frames.size())
         return false;
 
-    return m_frames[index].m_frame;
+    return m_frames[index].m_image;
 }
 
 bool BitmapImage::hasSingleSecurityOrigin() const
@@ -184,9 +178,9 @@ void BitmapImage::cacheFrame(size_t index, SubsamplingLevel subsamplingLevel, Im
         m_frames.grow(numFrames);
 
     if (frameCaching == CacheMetadataAndFrame) {
-        m_frames[index].m_frame = m_source.createFrameAtIndex(index, subsamplingLevel);
+        m_frames[index].m_image = m_source.createFrameImageAtIndex(index, subsamplingLevel);
         m_frames[index].m_subsamplingLevel = subsamplingLevel;
-        if (numFrames == 1 && m_frames[index].m_frame)
+        if (numFrames == 1 && m_frames[index].m_image)
             checkForSolidColor();
     }
 
@@ -204,7 +198,7 @@ void BitmapImage::cacheFrame(size_t index, SubsamplingLevel subsamplingLevel, Im
     if (!subsamplingLevel && frameSize != m_size)
         m_hasUniformFrameSize = false;
 
-    if (m_frames[index].m_frame) {
+    if (m_frames[index].m_image) {
         int deltaBytes = safeCast<int>(m_frames[index].m_frameBytes);
         m_decodedSize += deltaBytes;
         // The fully-decoded frame will subsume the partially decoded data used
@@ -236,20 +230,15 @@ void BitmapImage::didDecodeProperties() const
         imageObserver()->decodedSizeChanged(this, deltaBytes);
 }
 
-void BitmapImage::updateSize(ImageOrientationDescription description) const
+void BitmapImage::updateSize() const
 {
     if (!m_sizeAvailable || m_haveSize)
         return;
 
-    m_size = m_source.size(description);
-    m_sizeRespectingOrientation = m_source.size(ImageOrientationDescription(RespectImageOrientation, description.imageOrientation()));
-
-    m_imageOrientation = static_cast<unsigned>(description.imageOrientation());
-    m_shouldRespectImageOrientation = static_cast<unsigned>(description.respectImageOrientation());
+    m_size = m_source.size();
+    m_sizeRespectingOrientation = m_source.sizeRespectingOrientation();
 
     m_haveSize = true;
-
-    determineMinimumSubsamplingLevel();
     didDecodeProperties();
 }
 
@@ -259,9 +248,9 @@ FloatSize BitmapImage::size() const
     return m_size;
 }
 
-IntSize BitmapImage::sizeRespectingOrientation(ImageOrientationDescription description) const
+IntSize BitmapImage::sizeRespectingOrientation() const
 {
-    updateSize(description);
+    updateSize();
     return m_sizeRespectingOrientation;
 }
 
@@ -379,23 +368,23 @@ bool BitmapImage::ensureFrameIsCached(size_t index, ImageFrameCaching frameCachi
         return false;
 
     if (index >= m_frames.size()
-        || (frameCaching == CacheMetadataAndFrame && !m_frames[index].m_frame)
+        || (frameCaching == CacheMetadataAndFrame && !m_frames[index].m_image)
         || (frameCaching == CacheMetadataOnly && !m_frames[index].m_haveMetadata))
         cacheFrame(index, 0, frameCaching);
 
     return true;
 }
 
-PassNativeImagePtr BitmapImage::frameAtIndex(size_t index, float presentationScaleHint)
+NativeImagePtr BitmapImage::frameImageAtIndex(size_t index, float presentationScaleHint)
 {
     if (index >= frameCount())
         return nullptr;
 
-    SubsamplingLevel subsamplingLevel = std::min(m_source.subsamplingLevelForScale(presentationScaleHint), m_minimumSubsamplingLevel);
+    SubsamplingLevel subsamplingLevel = m_source.subsamplingLevelForScale(presentationScaleHint);
 
     // We may have cached a frame with a higher subsampling level, in which case we need to
     // re-decode with a lower level.
-    if (index < m_frames.size() && m_frames[index].m_frame && subsamplingLevel < m_frames[index].m_subsamplingLevel) {
+    if (index < m_frames.size() && m_frames[index].m_image && subsamplingLevel < m_frames[index].m_subsamplingLevel) {
         // If the image is already cached, but at too small a size, re-decode a larger version.
         int sizeChange = -m_frames[index].m_frameBytes;
         m_frames[index].clear(true);
@@ -406,10 +395,10 @@ PassNativeImagePtr BitmapImage::frameAtIndex(size_t index, float presentationSca
     }
 
     // If we haven't fetched a frame yet, do so.
-    if (index >= m_frames.size() || !m_frames[index].m_frame)
+    if (index >= m_frames.size() || !m_frames[index].m_image)
         cacheFrame(index, subsamplingLevel, CacheMetadataAndFrame);
 
-    return m_frames[index].m_frame;
+    return m_frames[index].m_image;
 }
 
 bool BitmapImage::frameIsCompleteAtIndex(size_t index)
@@ -428,9 +417,9 @@ float BitmapImage::frameDurationAtIndex(size_t index)
     return m_frames[index].m_duration;
 }
 
-PassNativeImagePtr BitmapImage::nativeImageForCurrentFrame()
+NativeImagePtr BitmapImage::nativeImageForCurrentFrame()
 {
-    return frameAtIndex(currentFrame());
+    return frameImageAtIndex(currentFrame());
 }
 
 bool BitmapImage::frameHasAlphaAtIndex(size_t index)
@@ -452,7 +441,7 @@ bool BitmapImage::currentFrameKnownToBeOpaque()
 ImageOrientation BitmapImage::frameOrientationAtIndex(size_t index)
 {
     if (!ensureFrameIsCached(index, CacheMetadataOnly))
-        return DefaultImageOrientation;
+        return ImageOrientation();
 
     if (m_frames[index].m_haveMetadata)
         return m_frames[index].m_orientation;
@@ -710,13 +699,10 @@ void BitmapImage::dump(TextStream& ts) const
         ts.dumpProperty("current-frame", m_currentFrame);
     }
     
-    if (allowSubsampling())
-        ts.dumpProperty("allow-subsampling", allowSubsampling());
     if (m_isSolidColor)
         ts.dumpProperty("solid-color", m_isSolidColor);
     
-    if (m_imageOrientation != OriginTopLeft)
-        ts.dumpProperty("orientation", m_imageOrientation);
+    m_source.dump(ts);
 }
 
 }

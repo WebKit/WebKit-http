@@ -1,3 +1,766 @@
+2016-03-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use references instead of pointers in scrollbar-related code
+        https://bugs.webkit.org/show_bug.cgi?id=155998
+
+        Reviewed by Dean Jackson.
+
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.h:
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm:
+        (WebKit::PDFPlugin::convertFromScrollbarToContainingView):
+        (WebKit::PDFPlugin::convertFromContainingViewToScrollbar):
+        (WebKit::PDFPlugin::invalidateScrollbarRect):
+
+2016-03-29  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION: Yosemite-only: com.apple.WebKit.Plugin.32.Development crashed in PluginProcessShim.dylib: WebKit::shimMachVMMap + 26
+        <http://webkit.org/b/156000>
+        <rdar://problem/25272133>
+
+        Reviewed by Joseph Pecoraro.
+
+        * PluginProcess/mac/PluginProcessShim.mm:
+        (WebKit::shimMachVMMap): Add SUPPRESS_ASAN attribute on
+        Yosemite.
+
+2016-03-28  Enrica Casucci  <enrica@apple.com>
+
+        When moving focus from one select element to another (iPhone) the value is committed to the newly focused element.
+        https://bugs.webkit.org/show_bug.cgi?id=155958
+        rdar://problem/22738524
+
+        Reviewed by Tim Horton.
+
+        We should not delay the call to endEditing until we receive
+        stopAssistingNode, because by then the assisted node might have already
+        changed. We need to call endEditing to commit potential changes every
+        time we tap. This way we can make sure the editing session on the select
+        element has been completed. This affects only single select elements on
+        iPhone, where the change to the actual DOM element is delayed until we
+        stop interacting with the element. On iPad or for multi-select elements,
+        the change to the DOM happens immediately.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _singleTapCommited:]):
+        (-[WKContentView _attemptClickAtLocation:]):
+        (-[WKContentView _stopAssistingNode]):
+
+2016-03-29  Brian Burg  <bburg@apple.com>
+
+        Unreviewed build fix after r198793.
+
+        * UIProcess/API/Cocoa/_WKAutomationSession.h:
+        * UIProcess/API/Cocoa/_WKAutomationSession.mm:
+        The wasEventSynthesizedForAutomation method should only be available on Mac.
+
+2016-03-29  Brian Burg  <bburg@apple.com>
+
+        Unreviewed build fix after r198792.
+
+        * UIProcess/Cocoa/WebAutomationSessionCocoa.mm:
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+        We (still) can't use lightweight generics in Objective-C code.
+        Also, use RetainPtr instead of new, since this is not ARC code.
+
+2016-03-29  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build after r198792.
+
+        * PlatformMac.cmake:
+
+2016-03-29  Brian Burg  <bburg@apple.com>
+
+        Web Automation: Add SPI to tell whether an NSEvent was synthesized for automation
+        https://bugs.webkit.org/show_bug.cgi?id=155963
+        <rdar://problem/25405747>
+
+        Reviewed by Timothy Hatcher.
+
+        Tag all NSEvents that were synthesized with an associated object before sending.
+        Do all associated object work below the API layer so we don't get into trouble
+        using things that may be guarded by WK_API_ENABLED.
+
+        * UIProcess/API/Cocoa/_WKAutomationSession.h:
+        * UIProcess/API/Cocoa/_WKAutomationSession.mm:
+        (-[_WKAutomationSession wasEventSynthesizedForAutomation:]):
+        Forward to the wrapped session object.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Cocoa/WebAutomationSessionCocoa.mm:
+        (WebKit::WebAutomationSession::sendSynthesizedEventsToPage):
+        Tag outgoing NSEvents with the session identifier as an associated object.
+
+        (WebKit::WebAutomationSession::wasEventSynthesizedForAutomation):
+        Check an incoming NSEvent to see if its associated object is the session identifier.
+
+2016-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Automation: implement Automation.performMouseInteraction
+        https://bugs.webkit.org/show_bug.cgi?id=155606
+        <rdar://problem/25227576>
+
+        Reviewed by Timothy Hatcher.
+
+        This method implements common mouse interactions by synthesizing native events.
+        The creation and dispatching of simulated events is implemented separately per
+        application/window/event framework. This patch adds an implementation for ports
+        that use AppKit.
+
+        The event is created synthetically in a platform-specific way and delivered to
+        the platform's window in the UIProcess. The event goes through all the
+        layers of processing that a real mouse event could go through once it reaches
+        WebKit itself.
+
+        * UIProcess/Automation/Automation.json: Add new enums and command.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::protocolModifierToWebEventModifier):
+        (WebKit::WebAutomationSession::performMouseInteraction): Added.
+        Clip the requested cursor position so that it stays within the selected window's
+        frame and doesn't wander off into other windows or applications. Fire it using
+        the platform-specific simulation method.
+
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction): Added.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Cocoa/WebAutomationSessionCocoa.mm:
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction): Added.
+        Convert Automation protocol values to AppKit values. Simulate and dispatch
+        one or more events depending on the desired interaction.
+        * WebKit2Prefix.h: Include AppKitCompatibilityDeclarations.h so newer
+        NSEventTypes can be used.
+
+2016-03-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Follow up to r198580.
+
+        Simplify the code even more as suggested by Darin.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::setViewNeedsDisplay):
+
+2016-03-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac Ninja build after r198766.
+
+        * CMakeLists.txt:
+
+2016-03-28  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Remove abstract base classes for all IDB DOM classes.
+        https://bugs.webkit.org/show_bug.cgi?id=155951
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+
+2016-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Automation: add commands to move and resize a browsing context's window
+        https://bugs.webkit.org/show_bug.cgi?id=155349
+        <rdar://problem/25104911>
+
+        Reviewed by Timothy Hatcher.
+
+        Parse the new origin or size and request the window to change to the
+        new frame. This calls through to PageUIClient::setWindowFrame().
+
+        * UIProcess/Automation/Automation.json:
+        Add new enum values for protocol parsing error cases.
+        Add new commands.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext):
+        Added. Parse the incoming payload and bail if nothing would happen
+        or the values are not usable or out of range. Complain if a change
+        did not happen when the requested and actual size are different.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/WebPageProxy.h: Move setWindowFrame to be public.
+
+2016-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Automation: split protocol object BrowsingContext.windowFrame into two separate members
+        https://bugs.webkit.org/show_bug.cgi?id=155952
+        <rdar://problem/25393597>
+
+        Reviewed by Timothy Hatcher.
+
+        Using the name 'windowFrame' causes conflicts with some Objective-C code.
+
+        * UIProcess/Automation/Automation.json:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::buildBrowsingContextForPage):
+
+2016-03-28  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Unreviewed build fix after r198736.
+        https://bugs.webkit.org/show_bug.cgi?id=155221
+
+        Unreviewed.
+
+        * CMakeLists.txt: Fix typo, add WebAutomationSession.cpp and declare JavaScriptCore_SCRIPTS_DIR.
+        * WebProcess/Automation/WebAutomationSessionProxy.h: Add missing include.
+
+2016-03-28  Alex Christensen  <achristensen@webkit.org>
+
+        Use std::exchange for std::functions instead of WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=155950
+        rdar://problem/25348817
+
+        Reviewed by Anders Carlsson.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::convertTaskToDownload):
+        (WebKit::NetworkLoad::setPendingDownloadID):
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        This makes the member variable nullptr when the value is moved so we don't use it again.
+
+2016-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Automation: report the browsing context's window frame (size and origin)
+        https://bugs.webkit.org/show_bug.cgi?id=155323
+        <rdar://problem/25094089>
+
+        Reviewed by Timothy Hatcher.
+
+        To prepare for implementing resize and move commands, add a
+        windowFrame member to the browsing context protocol type.
+
+        * UIProcess/Automation/Automation.json:
+        Add a frame Rect to BrowsingContext.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::handleForWebPageProxy):
+        (WebKit::WebAutomationSession::buildBrowsingContextForPage):
+        Extract the code to build a BrowsingContext object. Add
+        code to calculate and insert the page's window frame size.
+
+        (WebKit::WebAutomationSession::getBrowsingContexts):
+        (WebKit::WebAutomationSession::getBrowsingContext):
+        (WebKit::WebAutomationSession::createBrowsingContext):
+        (WebKit::WebAutomationSession::switchToBrowsingContext):
+        Refactoring as above.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        Adjust signatures.
+
+        * UIProcess/WebPageProxy.h: Make getWindowFrame public.
+
+2016-03-28  Brian Burg  <bburg@apple.com>
+
+        Unreviewed, fix the build.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        InspectorProtocolObjects.h was renamed to AutomationProtocolObjects.h.
+
+2016-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Disk cache speculative validation requests do not have the 'Referer' HTTP header set
+        https://bugs.webkit.org/show_bug.cgi?id=155890
+        <rdar://problem/25279962>
+
+        Reviewed by Antti Koivisto.
+
+        Disk cache speculative validation requests did not have the 'Referer'
+        HTTP header set. This was breaking some streaming sites (such as
+        twitch.tv).
+
+        We now store all the original request's HTTP headers in the disk cache
+        so we can re-use them for the speculative validation requests. When the
+        actual request comes later on, we also make sure that the HTTP headers
+        used in the speculative validation request match the ones from the
+        effective request. If they don't we don't use the speculatively
+        validated resource as the server may return a different resource in
+        such case.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::retrieve):
+        Pass the effective ResourceRequest to the NetworkCacheSpeculativeLoadManager
+        so it can check that the speculative validation request's HTTP headers
+        match the effective request's headers.
+
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        (WebKit::NetworkCache::constructRevalidationRequest):
+        (WebKit::NetworkCache::SpeculativeLoadManager::PreloadedEntry::PreloadedEntry):
+        (WebKit::NetworkCache::SpeculativeLoadManager::PreloadedEntry::revalidationRequest):
+        (WebKit::NetworkCache::SpeculativeLoadManager::PreloadedEntry::wasRevalidated):
+        We now have a member in PreloadedEntry to keep the request used for validation, if
+        speculative validation was done. This is so that we can compare its HTTP headers
+        with the ones of the effective request later on.
+
+        (WebKit::NetworkCache::dumpHTTPHeadersDiff):
+        Debug function that prints which HTTP headers did not match in the speculative
+        validation request and in the effective request.
+
+        (WebKit::NetworkCache::requestsHeadersMatch):
+        New utility function to check that the speculative validation request's HTTP
+        headers match the ones of the effective requests. Note that we allow for
+        headers related to validation to differ.
+
+        (WebKit::NetworkCache::SpeculativeLoadManager::canUsePreloadedEntry):
+        (WebKit::NetworkCache::SpeculativeLoadManager::canUsePendingPreload):
+        (WebKit::NetworkCache::SpeculativeLoadManager::retrieve):
+        Check that the speculative validation request's HTTP headers match the
+        ones of the effective request. If they don't then do not use the
+        speculatively validated resource.
+
+        (WebKit::NetworkCache::SpeculativeLoadManager::addPreloadedEntry):
+        (WebKit::NetworkCache::SpeculativeLoadManager::revalidateEntry):
+        (WebKit::NetworkCache::SpeculativeLoadManager::preloadEntry):
+        (WebKit::NetworkCache::SpeculativeLoadManager::startSpeculativeRevalidation):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.h:
+
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp:
+        (WebKit::NetworkCache::SubresourceInfo::encode):
+        (WebKit::NetworkCache::SubresourceInfo::decode):
+        (WebKit::NetworkCache::SubresourcesEntry::encodeAsStorageRecord):
+        (WebKit::NetworkCache::SubresourcesEntry::decodeStorageRecord):
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.h:
+        (WebKit::NetworkCache::SubresourceInfo::SubresourceInfo):
+        - Keep all the request's headers in SubresourceInfo instead of just the
+          'User-Agent' one.
+        - Drop the custom copy constructor / assignment operator for
+          SubresourceInfo that were making isolated copies on the members.
+          We technically don't need to use SubresourceInfo objects in other
+          threads than the main one. In SpeculativeLoadManager::preloadEntry(),
+          we now make capture a SubresourceInfo* in the lambda to avoid calling
+          the copy constructor. We also make sure that the object gets destroyed
+          in the lambda function, which is executed in the main thread.
+
+2016-03-25  Timothy Hatcher  <timothy@apple.com>
+
+        Web Automation: Add Automation protocol commands to handle JavaScript dialogs
+
+        https://bugs.webkit.org/show_bug.cgi?id=155888
+        rdar://problem/25360218
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/API/APIAutomationSessionClient.h:
+        (API::AutomationSessionClient::isShowingJavaScriptDialogOnPage): Added.
+        (API::AutomationSessionClient::dismissCurrentJavaScriptDialogOnPage): Added.
+        (API::AutomationSessionClient::acceptCurrentJavaScriptDialogOnPage): Added.
+        (API::AutomationSessionClient::messageOfCurrentJavaScriptDialogOnPage): Added.
+        (API::AutomationSessionClient::setUserInputForCurrentJavaScriptPromptOnPage): Added.
+
+        * UIProcess/API/Cocoa/_WKAutomationSessionDelegate.h:
+
+        * UIProcess/Automation/Automation.json: Added new commands.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::isShowingJavaScriptDialog): Added.
+        (WebKit::WebAutomationSession::dismissCurrentJavaScriptDialog): Added.
+        (WebKit::WebAutomationSession::acceptCurrentJavaScriptDialog): Added.
+        (WebKit::WebAutomationSession::messageOfCurrentJavaScriptDialog): Added.
+        (WebKit::WebAutomationSession::setUserInputForCurrentJavaScriptPrompt): Added.
+        * UIProcess/Automation/WebAutomationSession.h:
+
+        * UIProcess/Cocoa/AutomationSessionClient.h:
+        * UIProcess/Cocoa/AutomationSessionClient.mm:
+        (WebKit::AutomationSessionClient::AutomationSessionClient): Added.
+        (WebKit::AutomationSessionClient::isShowingJavaScriptDialogOnPage): Added.
+        (WebKit::AutomationSessionClient::dismissCurrentJavaScriptDialogOnPage): Added.
+        (WebKit::AutomationSessionClient::acceptCurrentJavaScriptDialogOnPage): Added.
+        (WebKit::AutomationSessionClient::messageOfCurrentJavaScriptDialogOnPage): Added.
+        (WebKit::AutomationSessionClient::setUserInputForCurrentJavaScriptPromptOnPage): Added.
+
+2016-03-24  Timothy Hatcher  <timothy@apple.com>
+
+        Web Automation: Add commands to compute layout of an element
+
+        https://bugs.webkit.org/show_bug.cgi?id=155841
+        rdar://problem/25340075
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/Automation/Automation.json: Added computeElementLayout.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::computeElementLayout): Added.
+        (WebKit::WebAutomationSession::didComputeElementLayout): Added.
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/WebAutomationSession.messages.in:
+        (DidComputeElementLayout): Added.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        (WebKit::WebAutomationSessionProxy::computeElementLayout): Added.
+        * WebProcess/Automation/WebAutomationSessionProxy.h:
+        * WebProcess/Automation/WebAutomationSessionProxy.messages.in:
+        (ComputeElementLayout): Added.
+
+2016-03-18  Timothy Hatcher  <timothy@apple.com>
+
+        Web Automation: Add Automation protocol commands to resolve frames as handles
+
+        https://bugs.webkit.org/show_bug.cgi?id=155650
+        rdar://problem/25242422
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/Automation/Automation.json:
+        Added resolveFrameHandle and resolveParentFrameHandle.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::webFrameProxyForHandle): Added.
+        (WebKit::WebAutomationSession::handleForWebFrameID): Added.
+        (WebKit::WebAutomationSession::handleForWebFrameProxy): Added.
+        (WebKit::WebAutomationSession::evaluateJavaScriptFunction): Use frame handles now.
+        (WebKit::WebAutomationSession::resolveChildFrameHandle): Added.
+        (WebKit::WebAutomationSession::didChildResolveFrame): Added.
+        (WebKit::WebAutomationSession::resolveParentFrameHandle): Added.
+        (WebKit::WebAutomationSession::didResolveParentFrame): Added.
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/WebAutomationSession.messages.in:
+        (DidResolveChildFrame): Added.
+        (DidResolveParentFrame): Added.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        (WebKit::WebAutomationSessionProxy::elementForNodeHandle): Added.
+        (WebKit::WebAutomationSessionProxy::resolveChildFrameWithOrdinal): Added.
+        (WebKit::WebAutomationSessionProxy::resolveChildFrameWithNodeHandle): Added.
+        (WebKit::WebAutomationSessionProxy::resolveChildFrameWithName): Added.
+        (WebKit::WebAutomationSessionProxy::resolveParentFrame): Added.
+        (WebKit::WebAutomationSessionProxy::focusFrame): Added.
+        * WebProcess/Automation/WebAutomationSessionProxy.h:
+        * WebProcess/Automation/WebAutomationSessionProxy.messages.in:
+        (ResolveChildFrameWithOrdinal): Added.
+        (ResolveChildFrameWithNodeHandle): Added.
+        (ResolveChildFrameWithName): Added.
+        (ResolveParentFrame): Added.
+        (FocusFrame): Added.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.js:
+        (AutomationSessionProxy.prototype.nodeForIdentifier): Added.
+        Public method that eats the exception thrown by the private method.
+
+2016-03-17  Timothy Hatcher  <timothy@apple.com>
+
+        Web Automation: Add Automation.evaluateJavaScriptFunction
+
+        https://bugs.webkit.org/show_bug.cgi?id=155524
+        rdar://problem/25181888
+
+        Reviewed by Joseph Pecoraro.
+
+        * UIProcess/Automation/Automation.json: Added evaluateJavaScriptFunction command.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::evaluateJavaScriptFunction): Added.
+        (WebKit::WebAutomationSession::didEvaluateJavaScriptFunction): Added.
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/WebAutomationSession.messages.in: Added didEvaluateJavaScriptFunction.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        (WebKit::toJSArray): Added.
+        (WebKit::callPropertyFunction): Added.
+        (WebKit::evaluateJavaScriptCallback): Added.
+        (WebKit::WebAutomationSessionProxy::didClearWindowObjectForFrame): Dispatch pending callbacks as errors.
+        (WebKit::WebAutomationSessionProxy::evaluateJavaScriptFunction): Added.
+        (WebKit::WebAutomationSessionProxy::didEvaluateJavaScriptFunction): Added.
+        * WebProcess/Automation/WebAutomationSessionProxy.h:
+
+        * WebProcess/Automation/WebAutomationSessionProxy.js:
+        (AutomationSessionProxy): Added maps for node handles.
+        (AutomationSessionProxy.prototype.evaluateJavaScriptFunction): Added.
+        (AutomationSessionProxy.prototype._jsonParse): Added.
+        (AutomationSessionProxy.prototype._jsonStringify): Added.
+        (AutomationSessionProxy.prototype._reviveJSONValue): Added.
+        (AutomationSessionProxy.prototype._replaceJSONValue): Added.
+        (AutomationSessionProxy.prototype._createNodeHandle): Added.
+        (AutomationSessionProxy.prototype._nodeForIdentifier): Added.
+        (AutomationSessionProxy.prototype._identifierForNode): Added.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.messages.in: Added evaluateJavaScriptFunction.
+
+2016-03-14  Timothy Hatcher  <timothy@apple.com>
+
+        Add WebAutomationSessionProxy for WebProcess side automation tasks
+
+        https://bugs.webkit.org/show_bug.cgi?id=155221
+        rdar://problem/25054868
+
+        Reviewed by Joseph Pecoraro.
+
+        * CMakeLists.txt: Add build step to build-in WebAutomationSessionProxy.js.
+        * DerivedSources.make: Ditto.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::~WebAutomationSession):
+        (WebKit::WebAutomationSession::setProcessPool): Add / remove message receiver.
+        * UIProcess/Automation/WebAutomationSession.h:
+
+        * UIProcess/Automation/WebAutomationSession.messages.in: Added.
+        Test message to get things to build.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::removeMessageReceiver):
+        (WebKit::WebProcessPool::setAutomationSession):
+        * UIProcess/WebProcessPool.h:
+
+        * WebKit2.xcodeproj/project.pbxproj: Added new files.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp: Added.
+        (WebKit::toJSString):
+        (WebKit::toJSValue):
+        (WebKit::WebAutomationSessionProxy::WebAutomationSessionProxy):
+        (WebKit::WebAutomationSessionProxy::~WebAutomationSessionProxy):
+        (WebKit::evaluate):
+        (WebKit::createUUID):
+        (WebKit::WebAutomationSessionProxy::scriptObjectForFrame):
+        (WebKit::WebAutomationSessionProxy::didClearWindowObjectForFrame):
+        Create a script object per frame that is evaluated from WebAutomationSessionProxy.js.
+        Clear the script object when the window object is cleared.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.h: Added.
+        (WebKit::WebAutomationSessionProxy::test):
+        Added test message to let the messages files build.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.js: Added.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.messages.in: Added.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld):
+        Call WebAutomationSessionProxy::didClearWindowObjectForFrame to clear the script object.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::ensureAutomationSessionProxy):
+        (WebKit::WebProcess::destroyAutomationSessionProxy):
+        Creates and destroys the WebAutomationSessionProxy when the UIProcess WebAutomationSession
+        is set or removed on the WebProcessPool.
+
+        * WebProcess/WebProcess.h:
+        (WebKit::WebProcess::automationSessionProxy): Added.
+
+        * WebProcess/WebProcess.messages.in: Added. Test message to get things to build.
+
+2016-03-28  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the build after r198728.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::gestureEvent):
+
+2016-03-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix for the threaded compositor feature after r198655.
+        Adjust the first parameter of ThreadSafeCoordinatedSurface::copyToTexture().
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::copyToTexture):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.h:
+
+2016-03-27  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] REGRESSION(r188793): It made 200 layout tests and Bindings/event-target-wrapper.html performance test fail
+        https://bugs.webkit.org/show_bug.cgi?id=148470
+
+        Reviewed by Darin Adler.
+
+        UI events are suppressed in webPage after r188793.
+        I revert the r136133 for passing the events to WebPage
+
+        * WebProcess/WebPage/WebPage.cpp: Removed the codes which was uploaded at r136133.
+        (WebKit::WebPage::mouseEvent):
+        (WebKit::WebPage::wheelEvent):
+        (WebKit::WebPage::keyEvent):
+        (WebKit::WebPage::touchEvent):
+        (WebKit::WebPage::canHandleUserEvents): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+
+2016-03-26  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the build.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _takeViewSnapshot]):
+
+2016-03-26  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the build.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _takeViewSnapshot]):
+
+2016-03-26  Dean Jackson  <dino@apple.com>
+
+        Fix build after my most recent commit.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (WebKit::bufferFormat): Delete the WebKitAdditions include.
+
+2016-03-25  Dean Jackson  <dino@apple.com>
+
+        Move extended color detection into Open Source
+        https://bugs.webkit.org/show_bug.cgi?id=155909
+        <rdar://problem/25369754>
+
+        Reviewed by Anders Carlsson.
+
+        The code for detecting extended color displays
+        was hidden while the iPad Pro 9.7" was in development.
+        Now it is public, move the detection to Open Source.
+
+        While doing this, add a new method to PlatformScreen
+        so that we have a more obvious way to detect such
+        displays.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::bufferFormat): No need to use WebKitAdditions any
+        more.
+
+2016-03-26  Dan Bernstein  <mitz@apple.com>
+
+        Treat SHA-1-signed certificates as insecure by default.
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/APIPageConfiguration.h: Initialize m_treatsSHA1SignedCertificatesAsInsecure
+          to true.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]): Initialize _treatsSHA1SignedCertificatesAsInsecure to YES.
+
+2016-03-25  Dean Jackson  <dino@apple.com>
+
+        Remove use of extern "C" to include QuartzCore files
+        https://bugs.webkit.org/show_bug.cgi?id=155905
+
+        Reviewed by Anders Carlson.
+
+        We can avoid having to wrap constants in extern "C", since they
+        are mangled the same in both C and C++.
+
+        * UIProcess/mac/RemoteLayerTreeHost.mm: Remove the
+        mention of CABackdropLayer.
+
+2016-03-25  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: protocol generator should prefix C++ filenames with the protocol group
+        https://bugs.webkit.org/show_bug.cgi?id=155859
+        <rdar://problem/25349859>
+
+        Reviewed by Alex Christensen and Joseph Pecoraro.
+
+        Adjust header include and build system paths.
+
+        * CMakeLists.txt:
+        Revert the workaround introduced in r198659 since this change fixes the
+        underlying issue.
+
+        * DerivedSources.make:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        * UIProcess/Automation/WebAutomationSession.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused lambda capture after r196984.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+        resourceResponse is not used in the lambda.
+
+2016-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * PlatformMac.cmake:
+
+2016-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * CMakeLists.txt:
+        Temporarily add DERIVED_SOURCES_JAVASCRIPTCORE_DIR after DERIVED_SOURCES_WEBCORE_DIR,
+        because both contain a unique header named InspectorBackendDispatchers.h and this include
+        order includes the correct one for WebKit2 first.
+        * PlatformMac.cmake:
+        Add new files.  Optionally link to AVFAudio.
+
+2016-03-24  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Change NativeImagePtr for CG to be RetainPtr<CGImageRef>
+        https://bugs.webkit.org/show_bug.cgi?id=155412
+
+        Reviewed by Darin Adler.
+
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp:
+        (WebKit::WebCoordinatedSurface::createWithSurface):
+        (WebKit::WebCoordinatedSurface::create):
+        (WebKit::WebCoordinatedSurface::WebCoordinatedSurface):
+        (WebKit::WebCoordinatedSurface::copyToTexture):
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.h:
+        * Shared/ShareableBitmap.cpp:
+        (WebKit::ShareableBitmap::create):
+        (WebKit::ShareableBitmap::createShareable):
+        (WebKit::ShareableBitmap::ShareableBitmap):
+        * Shared/ShareableBitmap.h:
+        Replace PassRefPtr with RefPtr and use WTFMove() instead of RefPtr::release()
+        when passing the RefPtr.
+        
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        (WebKit::createSurfaceFromData):
+        (WebKit::ShareableBitmap::createCairoSurface):
+        Replace PassRefPtr with RefPtr.
+        
+        (WebKit::ShareableBitmap::createImage):
+        * Shared/cg/ShareableBitmapCG.cpp:
+        (WebKit::ShareableBitmap::createImage):
+        Replace PassRefPtr with RefPtr and use the move semantics when calling
+        BitmapImage::create().
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::createCoordinatedSurface):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::createCoordinatedSurface):
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        Replace PassRefPtr with RefPtr
+
+2016-03-24  Enrica Casucci  <enrica@apple.com>
+
+        Adopt new SPI from DataDetectorsCore to decide link behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=155780
+        rdar://problem/25303631
+
+        Reviewed by Sam Weinig.
+
+        Changed use of data detection functions to take
+        a reference to Element instead of a pointer.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::handleTap):
+        (WebKit::WebPage::commitPotentialTap):
+        (WebKit::WebPage::getPositionInformation):
+
+2016-03-24  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Disable network cache speculative validation by default
+        https://bugs.webkit.org/show_bug.cgi?id=155857
+        <rdar://problem/25233210>
+
+        Reviewed by Alex Christensen.
+
+        Disable network cache speculative validation by default. Clients such
+        as Safari now use the API added in r198544 to enable if they want.
+
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+
+2016-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix null dereferencing in NetworkLoad::continueCanAuthenticateAgainstProtectionSpace
+        https://bugs.webkit.org/show_bug.cgi?id=155799
+        rdar://25289012
+
+        Reviewed by Tim Horton.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        Null-check all the things!
+
 2016-03-23  Tim Horton  <timothy_horton@apple.com>
 
         MiniBrowser doesn't use accelerated drawing in WebKit2 windows if a WebKit1 window was opened first
