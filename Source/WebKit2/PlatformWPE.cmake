@@ -248,6 +248,7 @@ list(APPEND WebKit2_LIBRARIES
 )
 
 set(InspectorFiles
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Base/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Controllers/*.css
@@ -258,14 +259,15 @@ set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/ESLint/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/Esprima/*.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.png
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Models/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Protocol/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Proxies/*.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Test/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.css
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.png
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Workers/HeapSnapshot/*.js
 )
 
 file(GLOB InspectorFilesDependencies
