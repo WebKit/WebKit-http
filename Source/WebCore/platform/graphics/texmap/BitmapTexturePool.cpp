@@ -76,7 +76,7 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 
     if (!m_textures.isEmpty()) {
         std::sort(m_textures.begin(), m_textures.end(),
-                  [](const Entry& a, const Entry& b) { return a.m_lastUsedTime > b.m_lastUsedTime; });
+            [](const Entry& a, const Entry& b) { return a.m_lastUsedTime > b.m_lastUsedTime; });
 
         for (size_t i = 0; i < m_textures.size(); ++i) {
             if (m_textures[i].m_lastUsedTime < minUsedTime) {
@@ -88,7 +88,7 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 
     if (!m_attachmentTextures.isEmpty()) {
         std::sort(m_attachmentTextures.begin(), m_attachmentTextures.end(),
-                  [](const Entry& a, const Entry& b) { return a.m_lastUsedTime > b.m_lastUsedTime; });
+            [](const Entry& a, const Entry& b) { return a.m_lastUsedTime > b.m_lastUsedTime; });
 
         for (size_t i = 0; i < m_attachmentTextures.size(); ++i) {
             if (m_attachmentTextures[i].m_lastUsedTime < minUsedTime) {
