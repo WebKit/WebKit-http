@@ -1112,14 +1112,14 @@ sub isGtk()
     return portName() eq GTK;
 }
 
-sub isWPE()
-{
-    return portName() eq WPE;
-}
-
 sub isJSCOnly()
 {
     return portName() eq JSCOnly;
+}
+
+sub isWPE()
+{
+    return portName() eq WPE;
 }
 
 # Determine if this is debian, ubuntu, linspire, or something similar.
