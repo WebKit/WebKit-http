@@ -33,6 +33,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#ifdef KEY_INPUT_HANDLING_VIRTUAL
+
+#endif
+
 namespace WPE {
 
 struct libinput_interface g_interface = {
