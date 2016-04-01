@@ -28,10 +28,9 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
-#include "CompositingManager.h"
 #include "CoordinatedGraphicsScene.h"
 #include "SimpleViewportController.h"
-#include <WebCore/GLContext.h>
+// #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
 #include <wtf/Atomics.h>
@@ -41,12 +40,17 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
+#if PLATFORM(WPE)
+#include "CompositingManager.h"
+#endif
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
 
 namespace WebCore {
 struct CoordinatedGraphicsState;
+class GLContext;
 }
 
 namespace WebKit {
@@ -55,7 +59,11 @@ class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 class WebPage;
 
-class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public CompositingManager::Client {
+class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient
+#if PLATFORM(WPE)
+    , public CompositingManager::Client
+#endif
+    {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -83,7 +91,9 @@ public:
     void scrollTo(const WebCore::IntPoint&);
     void scrollBy(const WebCore::IntSize&);
 
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
+#endif
 
 private:
     ThreadedCompositor(Client*, WebPage&);
@@ -94,9 +104,11 @@ private:
     void updateViewport() override;
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
+#if PLATFORM(WPE)
     // CompositingManager::Client
     virtual void releaseBuffer(uint32_t) override;
     virtual void frameComplete() override;
+#endif
 
     void renderLayerTree();
     void scheduleDisplayImmediately();
@@ -131,7 +143,9 @@ private:
     Condition m_terminateRunLoopCondition;
     Lock m_terminateRunLoopConditionLock;
 
+#if PLATFORM(WPE)
     std::unique_ptr<CompositingManager> m_compositingManager;
+#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {

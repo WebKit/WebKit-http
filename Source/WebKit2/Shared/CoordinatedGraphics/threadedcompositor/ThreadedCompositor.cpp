@@ -57,7 +57,9 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     : m_client(client)
     , m_deviceScaleFactor(1)
     , m_threadIdentifier(0)
+#if PLATFORM(WPE)
     , m_compositingManager(std::make_unique<CompositingManager>(*this))
+#endif
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(*this)))
 #endif
@@ -65,12 +67,16 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     m_clientRendersNextFrame.store(false);
     m_coordinateUpdateCompletionWithClient.store(false);
     createCompositingThread();
+#if PLATFORM(WPE)
     m_compositingManager->establishConnection(webPage, m_compositingRunLoop->runLoop());
+#endif
 }
 
 ThreadedCompositor::~ThreadedCompositor()
 {
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     m_displayRefreshMonitor->invalidate();
+#endif
     terminateCompositingThread();
 }
 
@@ -325,6 +331,7 @@ void ThreadedCompositor::terminateCompositingThread()
     m_terminateRunLoopCondition.wait(m_terminateRunLoopConditionLock);
 }
 
+#if PLATFORM(WPE)
 static void debugThreadedCompositorFPS()
 {
     static double lastTime = currentTime();
@@ -362,6 +369,7 @@ void ThreadedCompositor::frameComplete()
     if (!shouldCoordinateUpdateCompletionWithClient)
         m_compositingRunLoop->updateCompleted();
 }
+#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
