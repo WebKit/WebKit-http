@@ -104,7 +104,7 @@ void ProcessLauncher::launchProcess()
     argv[i++] = 0;
 
     GUniqueOutPtr<GError> error;
-    if (!g_spawn_async(0, argv, 0, G_SPAWN_LEAVE_DESCRIPTORS_OPEN, childSetupFunction, GINT_TO_POINTER(socketPair.server), &pid, &error.outPtr())) {
+    if (!g_spawn_async(nullptr, argv, nullptr, (GSpawnFlags)(G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_LEAVE_DESCRIPTORS_OPEN), childSetupFunction, GINT_TO_POINTER(socketPair.server), &pid, &error.outPtr())) {
         g_printerr("Unable to fork a new WebProcess: %s.\n", error->message);
         ASSERT_NOT_REACHED();
     }
