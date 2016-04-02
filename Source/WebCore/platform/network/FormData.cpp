@@ -277,6 +277,26 @@ String FormData::flattenToString() const
     return Latin1Encoding().decode(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 }
 
+unsigned long long FormData::sizeInBytes() const
+{
+    unsigned size = 0;
+    size_t n = m_elements.size();
+    for (size_t i = 0; i < n; ++i) {
+        const FormDataElement& e = m_elements[i];
+        switch (e.m_type) {
+        case FormDataElement::Type::Data:
+            size += e.m_data.size();
+            break;
+        case FormDataElement::Type::EncodedFile:
+            size += e.m_fileLength - e.m_fileStart;
+            break;
+        case FormDataElement::Type::EncodedBlob:
+            break;
+        }
+    }
+    return size;
+}
+
 static void appendBlobResolved(FormData* formData, const URL& url)
 {
     if (!blobRegistry().isBlobRegistryImpl()) {
