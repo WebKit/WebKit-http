@@ -32,6 +32,7 @@
 #include <libinput.h>
 #include <libudev.h>
 #include <memory>
+#include <WPE/Input/Events.h>
 
 namespace WPE {
 
@@ -48,7 +49,7 @@ public:
     void setHandlePointerEvents(bool handle);
     void setHandleTouchEvents(bool handle);
     void setPointerBounds(uint32_t, uint32_t);
-
+    void handleKeyboardEvent(Input::KeyboardEvent&&);
 private:
     LibinputServer();
     ~LibinputServer();
@@ -60,7 +61,6 @@ private:
 
     struct udev* m_udev;
     struct libinput* m_libinput;
-
     Input::Client* m_client;
     std::unique_ptr<Input::KeyboardEventHandler> m_keyboardEventHandler;
     std::unique_ptr<Input::KeyboardEventRepeating> m_keyboardEventRepeating;
@@ -72,6 +72,10 @@ private:
     bool m_handleTouchEvents { false };
     std::array<Input::TouchEvent::Raw, 10> m_touchEvents;
     void handleTouchEvent(struct libinput_event *event, Input::TouchEvent::Type type);
+
+#ifdef KEY_INPUT_HANDLING_VIRTUAL
+    void* m_virtualkeyboard;
+#endif
 
     class EventSource {
     public:

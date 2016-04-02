@@ -33,10 +33,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#ifdef KEY_INPUT_HANDLING_VIRTUAL
-
-#endif
-
 namespace WPE {
 
 struct libinput_interface g_interface = {
@@ -51,6 +47,27 @@ struct libinput_interface g_interface = {
     }
 };
 
+#ifdef KEY_INPUT_HANDLING_VIRTUAL
+
+#include <gluelogic/virtualkeyboard/VirtualKeyboard.h>
+
+static const char * connectorName = "/tmp/keyhandler";
+
+static void VirtualKeyboardCallback(actiontype /* type */ , unsigned int /* code */)
+{
+    // LibinputServer& server = LibinputServer::singleton();
+    //Input::KeyboardEvent::Raw rawEvent{
+    //    libinput_event_keyboard_get_time(keyEvent),
+    //    libinput_event_keyboard_get_key(keyEvent),
+    //    libinput_event_keyboard_get_key_state(keyEvent)
+    //};
+
+    //Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(rawEvent);
+    //server.handleKeyboardEvent({ rawEvent.time, std::get<0>(result), std::get<1>(result), (type == PRESSED), std::get<2>(result) });
+}
+
+#endif
+
 LibinputServer& LibinputServer::singleton()
 {
     static LibinputServer server;
@@ -62,6 +79,9 @@ LibinputServer::LibinputServer()
     , m_keyboardEventRepeating(new Input::KeyboardEventRepeating(*this))
     , m_pointerCoords(0, 0)
     , m_pointerBounds(1, 1)
+#ifdef KEY_INPUT_HANDLING_VIRTUAL
+    , m_virtualkeyboard(nullptr)
+#endif
 {
     m_udev = udev_new();
     if (!m_udev)
@@ -87,11 +107,23 @@ LibinputServer::LibinputServer()
     g_source_set_priority(baseSource, G_PRIORITY_DEFAULT);
     g_source_attach(baseSource, g_main_context_get_thread_default());
 
+#ifdef KEY_INPUT_HANDLING_VIRTUAL
+    m_virtualkeyboard = Construct(connectorName, VirtualKeyboardCallback);
+    if (m_virtualkeyboard == nullptr) {
+      fprintf(stderr, "[LibinputServer] Initialization of virtual keyboard failed!!!\n");
+    }
+#endif
+
     fprintf(stderr, "[LibinputServer] Initialization succeeded.\n");
 }
 
 LibinputServer::~LibinputServer()
 {
+#ifdef KEY_INPUT_HANDLING_VIRTUAL
+    if (m_virtualkeyboard != nullptr) {
+       Destruct(m_virtualkeyboard);
+    }
+#endif
     libinput_unref(m_libinput);
     udev_unref(m_udev);
 }
@@ -99,6 +131,14 @@ LibinputServer::~LibinputServer()
 void LibinputServer::setClient(Input::Client* client)
 {
     m_client = client;
+}
+
+void LibinputServer::handleKeyboardEvent(Input::KeyboardEvent&& actionEvent)
+{
+    if (m_client != nullptr)
+    {
+        // m_client->handleKeyboardEvent(actionEvent);
+    }
 }
 
 void LibinputServer::setHandlePointerEvents(bool handle)
