@@ -90,11 +90,11 @@ void DragClientQt::willPerformDragSourceAction(DragSourceAction, const IntPoint&
 {
 }
 
-void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, DataTransfer& clipboard, Frame& frame, bool)
+void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, DataTransfer& dataTransfer, Frame& frame, bool)
 {
 #if ENABLE(DRAG_SUPPORT)
-    QMimeData* clipboardData = clipboard->pasteboard().clipboardData();
-    clipboard->pasteboard().invalidateWritableData();
+    QMimeData* clipboardData = dataTransfer.pasteboard().clipboardData();
+    dataTransfer.pasteboard().invalidateWritableData();
     QObject* view = m_chromeClient->platformPageClient()->ownerWidget();
     if (view) {
         QDrag* drag = new QDrag(view);
@@ -102,15 +102,15 @@ void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint&, const IntP
             drag->setPixmap(*dragImage);
         else if (clipboardData && clipboardData->hasImage())
             drag->setPixmap(qvariant_cast<QPixmap>(clipboardData->imageData()));
-        DragOperation dragOperationMask = clipboard->sourceOperation();
+        DragOperation dragOperationMask = dataTransfer.sourceOperation();
         drag->setMimeData(clipboardData);
         Qt::DropAction actualDropAction = drag->exec(dragOperationsToDropActions(dragOperationMask));
 
         // Send dragEnd event
-        PlatformMouseEvent me(m_chromeClient->screenToRootView(QCursor::pos()), QCursor::pos(), LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0);
-        frame->eventHandler().dragSourceEndedAt(me, dropActionToDragOperation(actualDropAction));
+        PlatformMouseEvent me(m_chromeClient->screenToRootView(QCursor::pos()), QCursor::pos(), LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0, ForceAtClick);
+        frame.eventHandler().dragSourceEndedAt(me, dropActionToDragOperation(actualDropAction));
     }
-    frame->page()->dragController().dragEnded();
+    frame.page()->dragController().dragEnded();
 #endif
 }
 
