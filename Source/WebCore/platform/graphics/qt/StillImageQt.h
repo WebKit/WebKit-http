@@ -44,6 +44,11 @@ namespace WebCore {
             return adoptRef(new StillImage(pixmap));
         }
 
+        static PassRefPtr<StillImage> create(QPixmap&& pixmap)
+        {
+            return adoptRef(new StillImage(WTFMove(pixmap)));
+        }
+
         bool currentFrameKnownToBeOpaque() override;
 
         // FIXME: StillImages are underreporting decoded sizes and will be unable
@@ -57,6 +62,7 @@ namespace WebCore {
     private:
         StillImage(const QPixmap&);
         StillImage(const QPixmap*);
+        StillImage(QPixmap&&);
         ~StillImage() override;
         
         const QPixmap* m_pixmap;

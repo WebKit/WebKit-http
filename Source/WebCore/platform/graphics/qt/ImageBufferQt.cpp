@@ -129,8 +129,7 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavio
 
 RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior scaleBehavior)
 {
-    // FIXME?
-    return imageBuffer->copyImage(DontCopyBackingStore, scaleBehavior);
+    return StillImage::create(WTFMove(imageBuffer->m_data.m_pixmap));
 }
 
 BackingStoreCopy ImageBuffer::fastCopyImageMode()
