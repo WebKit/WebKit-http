@@ -134,9 +134,9 @@ private:
 
 InspectorClientQt::InspectorClientQt(QWebPageAdapter* page)
     : m_inspectedWebPage(page)
-    , m_frontendWebPage(0)
-    , m_frontendClient(0)
-    , m_remoteFrontEndChannel(0)
+    , m_frontendWebPage(nullptr)
+    , m_frontendClient(nullptr)
+    , m_remoteFrontEndChannel(nullptr)
 {
     InspectorServerQt* webInspectorServer = InspectorServerQt::server();
     if (webInspectorServer)
@@ -178,26 +178,27 @@ Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::Inspec
     inspectorUrl = inspector->property("_q_inspectorUrl").toUrl();
 #endif
     if (!inspectorUrl.isValid())
-        inspectorUrl = QUrl(QLatin1String("qrc:/webkit/inspector/inspector.html"));
+        inspectorUrl = QUrl(QLatin1String("qrc:/webkit/inspector/UserInterface/Main.html"));
 
 #ifndef QT_NO_PROPERTIES
     QVariant inspectorJavaScriptWindowObjects = inspector->property("_q_inspectorJavaScriptWindowObjects");
     if (inspectorJavaScriptWindowObjects.isValid())
         inspectorPage->handle()->setProperty("_q_inspectorJavaScriptWindowObjects", inspectorJavaScriptWindowObjects);
 #endif
-    inspectorPage->mainFrameAdapter()->load(QNetworkRequest(inspectorUrl));
-    m_inspectedWebPage->setInspectorFrontend(view);
 
     // Is 'controller' the same object as 'inspectorController' (which appears to be unused)?
     InspectorController& controller = inspectorPage->page->inspectorController();
-    std::unique_ptr<InspectorFrontendClientQt> frontendClient = std::make_unique<InspectorFrontendClientQt>(m_inspectedWebPage, WTFMove(inspectorView), inspectorPage->page, this);
-    m_frontendClient = frontendClient.get();
-    controller.setInspectorFrontendClient(frontendClient.release());
+    m_frontendClient = std::make_unique<InspectorFrontendClientQt>(m_inspectedWebPage, inspectorController, WTFMove(inspectorView), inspectorPage->page, this);
+    controller.setInspectorFrontendClient(m_frontendClient.get());
     m_frontendWebPage = inspectorPage;
 
     // Web Inspector should not belong to any other page groups since it is a specialized debugger window.
     m_frontendWebPage->page->setGroupName("__WebInspectorPageGroup__");
     frontendChannel = this;
+
+    inspectorPage->mainFrameAdapter()->load(QNetworkRequest(inspectorUrl));
+    m_inspectedWebPage->setInspectorFrontend(view);
+
     return frontendChannel;
 }
 
@@ -259,8 +260,8 @@ bool InspectorClientQt::sendMessageToFrontend(const String& message)
     return doDispatchMessageOnFrontendPage(frontendPage, message);
 }
 
-InspectorFrontendClientQt::InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt* inspectorClient)
-    : InspectorFrontendClientLocal(&inspectedWebPage->page->inspectorController(), inspectorPage, std::make_unique<InspectorFrontendSettingsQt>())
+InspectorFrontendClientQt::InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, InspectorController* inspectedPageController, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt* inspectorClient)
+    : InspectorFrontendClientLocal(inspectedPageController, inspectorPage, std::make_unique<InspectorFrontendSettingsQt>())
     , m_inspectedWebPage(inspectedWebPage)
     , m_inspectorView(WTFMove(inspectorView))
     , m_destroyingInspectorView(false)
@@ -283,8 +284,7 @@ void InspectorFrontendClientQt::frontendLoaded()
 
 String InspectorFrontendClientQt::localizedStringsURL()
 {
-    notImplemented();
-    return String();
+    return ASCIILiteral("qrc:/webkit/inspector/Localizations/en.lproj/localizedStrings.js");
 }
 
 void InspectorFrontendClientQt::bringToFront()

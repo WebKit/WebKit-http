@@ -70,7 +70,7 @@ public:
 private:
     QWebPageAdapter* m_inspectedWebPage;
     QWebPageAdapter* m_frontendWebPage;
-    InspectorFrontendClientQt* m_frontendClient;
+    std::unique_ptr<InspectorFrontendClientQt> m_frontendClient;
     bool m_remoteInspector;
     InspectorServerRequestHandlerQt* m_remoteFrontEndChannel;
 
@@ -79,7 +79,8 @@ private:
 
 class InspectorFrontendClientQt : public InspectorFrontendClientLocal {
 public:
-    InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt*);
+    InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, InspectorController* inspectedPageController,
+        std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt*);
     ~InspectorFrontendClientQt() override;
 
     void frontendLoaded() override;

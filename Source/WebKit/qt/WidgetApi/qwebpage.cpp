@@ -641,6 +641,16 @@ void QWebPagePrivate::createWebInspector(QObject** inspectorView, QWebPageAdapte
     QWebPage* page = new WebKit::InspectorClientWebPage;
     *inspectorView = page->view();
     *inspectorPage = page->d;
+
+    // FIXME: Find out what's going on with Settings
+    page->settings()->setAttribute(QWebSettings::AcceleratedCompositingEnabled, false);
+
+    // We treat "qrc:" scheme as local, but by default local content is not allowed to use
+    // LocalStorage which is required for Inspector to work.
+    // See https://bugs.webkit.org/show_bug.cgi?id=155265
+    // Alternatively we can make "qrc:" scheme non-local like GTK port does:
+    // https://bugs.webkit.org/show_bug.cgi?id=155497
+    page->settings()->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
 }
 
 #ifndef QT_NO_MENU

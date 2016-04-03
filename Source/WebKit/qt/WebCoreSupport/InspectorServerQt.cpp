@@ -225,7 +225,7 @@ void InspectorServerRequestHandlerQt::tcpReadyRead()
             QString indexHtml = QLatin1String("<html><head><title>Remote Web Inspector</title></head><body><ul>\n");
             for (QMap<int, InspectorClientQt* >::const_iterator it = m_server->m_inspectorClients.begin(); it != m_server->m_inspectorClients.end(); ++it) {
 
-                indexHtml.append(QString::fromLatin1("<li><a href=\"/webkit/inspector/inspector.html?page=%1\">%2</li>\n")
+                indexHtml.append(QString::fromLatin1("<li><a href=\"/webkit/inspector/UserInterface/Main.html?page=%1\">%2</li>\n")
                     .arg(it.key())
                     .arg(QUrl(it.value()->m_inspectedWebPage->mainFrameAdapter()->url).toString()));
             }
