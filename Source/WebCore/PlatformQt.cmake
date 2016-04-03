@@ -140,6 +140,8 @@ list(APPEND WebCore_SOURCES
     platform/text/Hyphenation.cpp
     platform/text/LocaleICU.cpp
 
+    platform/text/hyphen/HyphenationLibHyphen.cpp
+
     platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
 
@@ -226,6 +228,7 @@ list(APPEND WebCore_SOURCES
 
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+    ${HYPHEN_INCLUDE_DIR}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${Qt5Gui_INCLUDE_DIRS}
@@ -237,6 +240,7 @@ list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_LIBRARIES
+    ${HYPHEN_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
     ${Qt5Core_LIBRARIES}
