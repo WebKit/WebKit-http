@@ -249,11 +249,9 @@ static void initializeSupportedImageMIMETypes()
         supportedImageMIMETypes->add(mimeType.constData());
         supportedImageResourceMIMETypes->add(mimeType.constData());
     }
-#if ENABLE(SVG)
-    // Do not treat SVG as images directly if WebKit can handle them.
+    // Do not treat SVG as images directly because WebKit can handle them.
     supportedImageMIMETypes->remove("image/svg+xml");
     supportedImageResourceMIMETypes->remove("image/svg+xml");
-#endif
 #endif // PLATFORM(QT)
 #endif // USE(CG)
 }
