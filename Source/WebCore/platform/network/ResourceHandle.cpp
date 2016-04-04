@@ -212,6 +212,10 @@ bool ResourceHandle::shouldContentSniffURL(const URL& url)
     if (shouldForceContentSniffing)
         return true;
 #endif
+#if PLATFORM(QT)
+    if (url.protocolIs("qrc"))
+        return false;
+#endif
     // We shouldn't content sniff file URLs as their MIME type should be established via their extension.
     return !url.protocolIs("file");
 }
