@@ -244,8 +244,10 @@ static void initializeSupportedImageMIMETypes()
 #endif
 
 #if PLATFORM(QT)
-    QList<QByteArray> mimeTypes = QImageReader::supportedMimeTypes();
-    Q_FOREACH(const QByteArray& mimeType, mimeTypes) {
+    const QList<QByteArray> mimeTypes = QImageReader::supportedMimeTypes();
+    for (const QByteArray& mimeType : mimeTypes) {
+        if (mimeType.isEmpty())
+            continue;
         supportedImageMIMETypes->add(mimeType.constData());
         supportedImageResourceMIMETypes->add(mimeType.constData());
     }
@@ -278,8 +280,10 @@ static void initializeSupportedImageMIMETypesForEncoding()
     supportedImageMIMETypesForEncoding->add("image/gif");
 #endif
 #elif PLATFORM(QT)
-    QList<QByteArray> mimeTypes = QImageWriter::supportedMimeTypes();
-    Q_FOREACH(const QByteArray& mimeType, mimeTypes) {
+    const QList<QByteArray> mimeTypes = QImageWriter::supportedMimeTypes();
+    for (const QByteArray& mimeType : mimeTypes) {
+        if (mimeType.isEmpty())
+            continue;
         supportedImageMIMETypesForEncoding->add(mimeType.constData());
     }
 #elif PLATFORM(GTK)
