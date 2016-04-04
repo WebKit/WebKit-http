@@ -55,8 +55,10 @@ class GLContext;
 
 namespace WebKit {
 
+class CompositingRunLoop;
 class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
+class DisplayRefreshMonitor;
 class WebPage;
 
 class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient
@@ -148,54 +150,10 @@ private:
 #endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {
-    public:
-        DisplayRefreshMonitor(ThreadedCompositor&);
-
-        virtual bool requestRefreshCallback() override;
-
-        bool requiresDisplayRefreshCallback();
-        void dispatchDisplayRefreshCallback();
-        void invalidate();
-
-    private:
-        void displayRefreshCallback();
-        RunLoop::Timer<DisplayRefreshMonitor> m_displayRefreshTimer;
-        ThreadedCompositor* m_compositor;
-    };
+    friend class DisplayRefreshMonitor;
     RefPtr<DisplayRefreshMonitor> m_displayRefreshMonitor;
 #endif
 
-    class CompositingRunLoop {
-        WTF_MAKE_NONCOPYABLE(CompositingRunLoop);
-        WTF_MAKE_FAST_ALLOCATED;
-    public:
-        CompositingRunLoop(std::function<void ()>&&);
-
-        void callOnCompositingRunLoop(std::function<void ()>&&);
-
-        bool isActive();
-        void scheduleUpdate();
-        void stopUpdates();
-
-        void updateCompleted();
-
-        RunLoop& runLoop() { return m_runLoop; }
-
-    private:
-        enum class UpdateState {
-            Completed,
-            InProgress,
-            PendingAfterCompletion,
-        };
-
-        void updateTimerFired();
-
-        RunLoop& m_runLoop;
-        RunLoop::Timer<CompositingRunLoop> m_updateTimer;
-        std::function<void ()> m_updateFunction;
-        Atomic<UpdateState> m_updateState;
-    };
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
     Atomic<bool> m_clientRendersNextFrame;
