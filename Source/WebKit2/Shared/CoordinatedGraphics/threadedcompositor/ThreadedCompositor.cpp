@@ -24,17 +24,17 @@
  */
 
 #include "config.h"
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
 #include "ThreadedCompositor.h"
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+
+#include "CompositingRunLoop.h"
+#include "DisplayRefreshMonitor.h"
 #include <WebCore/GLContextEGL.h>
 #include <WebCore/PlatformDisplayWPE.h>
 #include <WebCore/TransformationMatrix.h>
 #include <cstdio>
 #include <cstdlib>
-#include <wtf/Atomics.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
 
@@ -47,179 +47,6 @@
 using namespace WebCore;
 
 namespace WebKit {
-
-class CompositingRunLoop {
-    WTF_MAKE_NONCOPYABLE(CompositingRunLoop);
-    WTF_MAKE_FAST_ALLOCATED;
-public:
-    CompositingRunLoop(std::function<void ()>&&);
-
-    void callOnCompositingRunLoop(std::function<void ()>&&);
-
-    bool isActive();
-    void scheduleUpdate();
-    void stopUpdates();
-
-    void updateCompleted();
-
-    RunLoop& runLoop() { return m_runLoop; }
-
-private:
-    enum class UpdateState {
-        Completed,
-        InProgress,
-        PendingAfterCompletion,
-    };
-
-    void updateTimerFired();
-
-    RunLoop& m_runLoop;
-    RunLoop::Timer<CompositingRunLoop> m_updateTimer;
-    std::function<void ()> m_updateFunction;
-    Atomic<UpdateState> m_updateState;
-};
-
-CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
-    : m_runLoop(RunLoop::current())
-    , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
-    , m_updateFunction(WTFMove(updateFunction))
-{
-    m_updateState.store(UpdateState::Completed);
-}
-
-void CompositingRunLoop::callOnCompositingRunLoop(std::function<void ()>&& function)
-{
-    if (&m_runLoop == &RunLoop::current()) {
-        function();
-        return;
-    }
-
-    m_runLoop.dispatch(WTFMove(function));
-}
-
-bool CompositingRunLoop::isActive()
-{
-    return m_updateState.load() != UpdateState::Completed;
-}
-
-void CompositingRunLoop::scheduleUpdate()
-{
-    if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
-        m_updateTimer.startOneShot(0);
-        return;
-    }
-
-    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::PendingAfterCompletion))
-        return;
-}
-
-void CompositingRunLoop::stopUpdates()
-{
-    m_updateTimer.stop();
-    m_updateState.store(UpdateState::Completed);
-}
-
-void CompositingRunLoop::updateCompleted()
-{
-    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
-        return;
-
-    if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::InProgress)) {
-        m_updateTimer.startOneShot(0);
-        return;
-    }
-
-    ASSERT_NOT_REACHED();
-}
-
-void CompositingRunLoop::updateTimerFired()
-{
-    m_updateFunction();
-}
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {
-public:
-    DisplayRefreshMonitor(ThreadedCompositor&);
-
-    virtual bool requestRefreshCallback() override;
-
-    bool requiresDisplayRefreshCallback();
-    void dispatchDisplayRefreshCallback();
-    void invalidate();
-
-private:
-    void displayRefreshCallback();
-    RunLoop::Timer<DisplayRefreshMonitor> m_displayRefreshTimer;
-    ThreadedCompositor* m_compositor;
-};
-
-DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedCompositor& compositor)
-    : WebCore::DisplayRefreshMonitor(0)
-    , m_displayRefreshTimer(RunLoop::main(), this, &DisplayRefreshMonitor::displayRefreshCallback)
-    , m_compositor(&compositor)
-{
-    m_displayRefreshTimer.setPriority(G_PRIORITY_HIGH + 30);
-}
-
-bool DisplayRefreshMonitor::requestRefreshCallback()
-{
-    LockHolder locker(mutex());
-    setIsScheduled(true);
-
-    if (isPreviousFrameDone() && m_compositor) {
-        m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
-        if (!m_compositor->m_compositingRunLoop->isActive())
-            m_compositor->m_compositingRunLoop->scheduleUpdate();
-    }
-
-    return true;
-}
-
-bool DisplayRefreshMonitor::requiresDisplayRefreshCallback()
-{
-    LockHolder locker(mutex());
-    return isScheduled() && isPreviousFrameDone();
-}
-
-void DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
-{
-    m_displayRefreshTimer.startOneShot(0);
-}
-
-void DisplayRefreshMonitor::invalidate()
-{
-    m_compositor = nullptr;
-}
-
-void DisplayRefreshMonitor::displayRefreshCallback()
-{
-    bool shouldHandleDisplayRefreshNotification = false;
-    {
-        LockHolder locker(mutex());
-        shouldHandleDisplayRefreshNotification = isScheduled() && isPreviousFrameDone();
-        if (shouldHandleDisplayRefreshNotification) {
-            setIsPreviousFrameDone(false);
-            setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
-        }
-    }
-
-    if (shouldHandleDisplayRefreshNotification)
-        DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
-
-    if (m_compositor) {
-        if (m_compositor->m_clientRendersNextFrame.compareExchangeStrong(true, false))
-            m_compositor->m_scene->renderNextFrame();
-        if (m_compositor->m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
-            m_compositor->m_compositingRunLoop->updateCompleted();
-        if (isScheduled()) {
-            m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
-            if (!m_compositor->m_compositingRunLoop->isActive())
-                m_compositor->m_compositingRunLoop->scheduleUpdate();
-        }
-    }
-}
-#endif
 
 Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client, WebPage& webPage)
 {
@@ -234,7 +61,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     , m_compositingManager(std::make_unique<CompositingManager>(*this))
 #endif
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(*this)))
+    , m_displayRefreshMonitor(adoptRef(new WebKit::DisplayRefreshMonitor(*this)))
 #endif
 {
     m_clientRendersNextFrame.store(false);
