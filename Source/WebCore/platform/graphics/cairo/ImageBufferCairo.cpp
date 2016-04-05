@@ -153,6 +153,7 @@ void ImageBufferData::swapBuffersIfNeeded()
     cairo_set_operator(m_compositorCr.get(), CAIRO_OPERATOR_SOURCE);
     cairo_paint(m_compositorCr.get());
     cairo_surface_flush(m_compositorSurface.get());
+    glFlush();
 
     m_bufferChanged = false;
     if (previousActiveContext)
