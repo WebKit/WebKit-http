@@ -154,9 +154,9 @@ void InspectorClientQt::inspectedPageDestroyed()
 
 Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::InspectorController* inspectorController)
 {
-    Inspector::FrontendChannel* frontendChannel = 0;
-    QObject* view = 0;
-    QWebPageAdapter* inspectorPage = 0;
+    Inspector::FrontendChannel* frontendChannel = nullptr;
+    QObject* view = nullptr;
+    QWebPageAdapter* inspectorPage = nullptr;
     m_inspectedWebPage->createWebInspector(&view, &inspectorPage);
     std::unique_ptr<QObject> inspectorView(view);
 
@@ -205,8 +205,8 @@ void InspectorClientQt::bringFrontendToFront()
 
 void InspectorClientQt::releaseFrontendPage()
 {
-    m_frontendWebPage = 0;
-    m_frontendClient = 0;
+    m_frontendWebPage = nullptr;
+    m_frontendClient = nullptr;
 }
 
 void InspectorClientQt::attachAndReplaceRemoteFrontend(InspectorServerRequestHandlerQt* channel)
@@ -217,7 +217,7 @@ void InspectorClientQt::attachAndReplaceRemoteFrontend(InspectorServerRequestHan
 
 void InspectorClientQt::detachRemoteFrontend()
 {
-    m_remoteFrontEndChannel = 0;
+    m_remoteFrontEndChannel = nullptr;
     m_inspectedWebPage->page->inspectorController().disconnectFrontend(this);
 }
 
