@@ -1,8 +1,10 @@
 set(QtTestBrowser_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
-    "${CMAKE_BINARY_DIR}/include/QtWebKit"
-    "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets"
+    "${CMAKE_SOURCE_DIR}/Source"
     "${DERIVED_SOURCES_WEBKIT_DIR}"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/runtime"
     "${WEBCORE_DIR}"
