@@ -252,6 +252,8 @@ public:
         return FormURLEncoded;
     }
 
+    unsigned long long sizeInBytes() const;
+
 private:
     FormData();
     FormData(const FormData&);

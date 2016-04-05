@@ -52,7 +52,7 @@ public:
     static void sendPing(Frame&, const URL& pingURL, const URL& destinationURL);
     static void sendViolationReport(Frame&, const URL& reportURL, RefPtr<FormData>&& report, ViolationReportType);
 
-private:
+protected:
     static void startPingLoad(Frame&, ResourceRequest&);
 };
 

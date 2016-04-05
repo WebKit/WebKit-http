@@ -8,6 +8,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/fetch"
     "${WEBCORE_DIR}/Modules/geolocation"
+    "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/client"
     "${WEBCORE_DIR}/Modules/indexeddb/server"
@@ -135,6 +136,7 @@ set(WebCore_IDL_INCLUDES
     Modules/encryptedmedia
     Modules/fetch
     Modules/geolocation
+    Modules/beacon
     Modules/indexeddb
     Modules/indieui
     Modules/mediasession
@@ -179,6 +181,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/geolocation/PositionCallback.idl
     Modules/geolocation/PositionError.idl
     Modules/geolocation/PositionErrorCallback.idl
+
+    Modules/beacon/NavigatorBeacon.idl
 
     Modules/indexeddb/DOMWindowIndexedDatabase.idl
     Modules/indexeddb/IDBAny.idl
@@ -830,6 +834,8 @@ set(WebCore_SOURCES
     Modules/geolocation/Geolocation.cpp
     Modules/geolocation/GeolocationController.cpp
     Modules/geolocation/NavigatorGeolocation.cpp
+
+    Modules/beacon/NavigatorBeacon.cpp
 
     Modules/indexeddb/DOMWindowIndexedDatabase.cpp
     Modules/indexeddb/IDBAny.cpp
@@ -1895,6 +1901,7 @@ set(WebCore_SOURCES
     inspector/WebInjectedScriptHost.cpp
     inspector/WebInjectedScriptManager.cpp
 
+    loader/BeaconLoader.cpp
     loader/ContentFilter.cpp
     loader/CookieJar.cpp
     loader/CrossOriginAccessControl.cpp
