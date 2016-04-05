@@ -104,7 +104,7 @@ void ProcessLauncher::launchProcess()
     argv[i++] = 0;
 
     GUniqueOutPtr<GError> error;
-    if (!g_spawn_async(nullptr, argv, nullptr, (GSpawnFlags)(G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_LEAVE_DESCRIPTORS_OPEN), childSetupFunction, GINT_TO_POINTER(socketPair.server), &pid, &error.outPtr())) {
+    if (!g_spawn_async(nullptr, argv, nullptr, static_cast<GSpawnFlags>(G_SPAWN_LEAVE_DESCRIPTORS_OPEN | G_SPAWN_DO_NOT_REAP_CHILD), childSetupFunction, GINT_TO_POINTER(socketPair.server), &pid, &error.outPtr())) {
         g_printerr("Unable to fork a new WebProcess: %s.\n", error->message);
         ASSERT_NOT_REACHED();
     }
@@ -112,6 +112,8 @@ void ProcessLauncher::launchProcess()
     // Don't expose the parent socket to potential future children.
     while (fcntl(socketPair.client, F_SETFD, FD_CLOEXEC) == -1)
         RELEASE_ASSERT(errno != EINTR);
+
+    g_child_watch_add(pid, [](GPid pid, gint, gpointer) { g_spawn_close_pid(pid); }, nullptr);
 
     close(socketPair.client);
     m_processIdentifier = pid;
