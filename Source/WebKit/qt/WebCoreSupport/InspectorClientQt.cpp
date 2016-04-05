@@ -145,15 +145,11 @@ InspectorClientQt::InspectorClientQt(QWebPageAdapter* page)
 
 void InspectorClientQt::inspectedPageDestroyed()
 {
-    notImplemented();
-    // FIXME
-//    closeInspectorFrontend();
-//
-//    InspectorServerQt* webInspectorServer = InspectorServerQt::server();
-//    if (webInspectorServer)
-//        webInspectorServer->unregisterClient(this);
-//
-//    delete this;
+    InspectorServerQt* webInspectorServer = InspectorServerQt::server();
+    if (webInspectorServer)
+        webInspectorServer->unregisterClient(this);
+
+    delete this;
 }
 
 Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::InspectorController* inspectorController)
@@ -225,6 +221,11 @@ void InspectorClientQt::detachRemoteFrontend()
     m_inspectedWebPage->page->inspectorController().disconnectFrontend(this);
 }
 
+void InspectorClientQt::closeFrontendWindow()
+{
+    m_frontendClient->closeWindow();
+}
+
 void InspectorClientQt::highlight()
 {
     hideHighlight();
@@ -294,6 +295,10 @@ void InspectorFrontendClientQt::bringToFront()
 
 void InspectorFrontendClientQt::closeWindow()
 {
+#ifndef QT_NO_PROPERTIES
+    if (QObject *inspector = m_inspectedWebPage->inspectorHandle())
+        inspector->setProperty("visible", false);
+#endif
     destroyInspectorView(true);
 }
 
@@ -335,20 +340,25 @@ void InspectorFrontendClientQt::destroyInspectorView(bool notifyInspectorControl
         return;
     m_destroyingInspectorView = true;
 
+    if (Page* frontendPage = this->frontendPage())
+        frontendPage->inspectorController().setInspectorFrontendClient(nullptr);
+
     // Inspected page may have already been destroyed.
     if (m_inspectedWebPage) {
         // Clear reference from QWebInspector to the frontend view.
-        m_inspectedWebPage->setInspectorFrontend(0);
+        m_inspectedWebPage->setInspectorFrontend(nullptr);
     }
 
     if (notifyInspectorController)
         m_inspectedWebPage->page->inspectorController().disconnectFrontend(m_inspectorClient);
+
+    // If we delete view right here it will delete QWebPageAdapter in the middle
+    // of mouseReleaseEvent()
+    QObject* view = m_inspectorView.release();
+    view->deleteLater();
+
     if (m_inspectorClient)
         m_inspectorClient->releaseFrontendPage();
-
-    // Clear pointer before deleting WebView to avoid recursive calls to its destructor.
-    // FIXME: Check what's going on here
-    m_inspectorView = nullptr;
 }
 
 void InspectorFrontendClientQt::inspectorClientDestroyed()

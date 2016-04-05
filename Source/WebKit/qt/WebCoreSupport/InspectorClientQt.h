@@ -67,6 +67,8 @@ public:
     void attachAndReplaceRemoteFrontend(InspectorServerRequestHandlerQt *channel);
     void detachRemoteFrontend();
 
+    void closeFrontendWindow();
+
 private:
     QWebPageAdapter* m_inspectedWebPage;
     QWebPageAdapter* m_frontendWebPage;

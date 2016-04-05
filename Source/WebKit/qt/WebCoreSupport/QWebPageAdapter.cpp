@@ -1036,8 +1036,9 @@ void QWebPageAdapter::didShowInspector()
 
 void QWebPageAdapter::didCloseInspector()
 {
-    // FIXME: Call InspectorFrontendClientQt::closeWindow()
-    // page->inspectorController().close();
+    InspectorClient* inspectorClient = page->inspectorController().inspectorClient();
+    if (inspectorClient)
+        static_cast<InspectorClientQt*>(inspectorClient)->closeFrontendWindow();
 }
 
 void QWebPageAdapter::updateActionInternal(QWebPageAdapter::MenuAction action, const char* commandName, bool* enabled, bool* checked)
