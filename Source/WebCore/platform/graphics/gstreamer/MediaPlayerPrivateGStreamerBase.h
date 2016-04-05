@@ -176,7 +176,7 @@ public:
     void setVideoSourceRotation(VideoSourceRotation rotation);
 
 #if USE(GSTREAMER_GL)
-    PassNativeImagePtr nativeImageForCurrentTime() override;
+    NativeImagePtr nativeImageForCurrentTime() override;
 #endif
 
 protected:
