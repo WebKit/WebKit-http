@@ -71,7 +71,9 @@ public:
     FloatSize naturalSize() const override;
 
     void setVolume(float) override;
+#if PLATFORM(WPE)
     float volume() const override;
+#endif
 
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();

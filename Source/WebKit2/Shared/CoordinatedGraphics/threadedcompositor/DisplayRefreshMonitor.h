@@ -23,42 +23,37 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WebPageProxy.h"
+#ifndef ThreadedCompositor_DisplayRefreshMonitor_h
+#define ThreadedCompositor_DisplayRefreshMonitor_h
 
-#include "WebsiteDataStore.h"
-#include <WebCore/NotImplemented.h>
+#if USE(COORDINATED_GRAPHICS_THREADED) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+
+#include <WebCore/DisplayRefreshMonitor.h>
+
+#include <wtf/RunLoop.h>
 
 namespace WebKit {
 
-void WebPageProxy::platformInitialize()
-{
-    notImplemented();
-}
+class ThreadedCompositor;
 
-String WebPageProxy::standardUserAgent(const String&)
-{
-    return "Mozilla/5.0 (Linux; x86_64 GNU/Linux) AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 Safari/601.1";
-}
+class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {
+public:
+    DisplayRefreshMonitor(ThreadedCompositor&);
 
-void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&)
-{
-    notImplemented();
-}
+    virtual bool requestRefreshCallback() override;
 
-void WebPageProxy::loadRecentSearches(const String&, Vector<WebCore::RecentSearch>&)
-{
-    notImplemented();
-}
+    bool requiresDisplayRefreshCallback();
+    void dispatchDisplayRefreshCallback();
+    void invalidate();
 
-void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::time_point)
-{
-    notImplemented();
-}
-
-void WebPageProxy::editorStateChanged(const EditorState&)
-{
-    notImplemented();
-}
+private:
+    void displayRefreshCallback();
+    RunLoop::Timer<DisplayRefreshMonitor> m_displayRefreshTimer;
+    ThreadedCompositor* m_compositor;
+};
 
 } // namespace WebKit
+
+#endif // USE(COORDINATED_GRAPHICS_THREADED) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+
+#endif // ThreadedCompositor_DisplayRefreshMonitorTC_h

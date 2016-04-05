@@ -1103,7 +1103,7 @@ macro setEntryAddress(index, label)
         pcrtoaddr label, t1
         move index, t4
         storep t1, [a0, t4, 8]
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
+    elsif ARMv7 or ARMv7_TRADITIONAL
         mvlbl (label - _relativePCBase), t4
         addp t4, t1, t4
         move index, t3

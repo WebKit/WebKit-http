@@ -34,7 +34,6 @@
 #include "WebPageCreationParameters.h"
 #include "WebPreferencesKeys.h"
 #include "WebProcess.h"
-#include <WebCore/DisplayRefreshMonitor.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
@@ -334,16 +333,6 @@ void DrawingAreaImpl::scheduleCompositingLayerFlushImmediately()
 {
     scheduleCompositingLayerFlush();
 }
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-RefPtr<WebCore::DisplayRefreshMonitor> DrawingAreaImpl::createDisplayRefreshMonitor(PlatformDisplayID displayID)
-{
-    if (!m_layerTreeHost)
-        return nullptr;
-
-    return m_layerTreeHost->createDisplayRefreshMonitor(displayID);
-}
-#endif
 
 void DrawingAreaImpl::updateBackingStoreState(uint64_t stateID, bool respondImmediately, float deviceScaleFactor, const WebCore::IntSize& size, const WebCore::IntSize& scrollOffset)
 {

@@ -32,7 +32,6 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
 #include "DrawingAreaProxyMessages.h"
-#include "DrawingAreaWPE.h"
 #include "NotImplemented.h"
 #include "ThreadSafeCoordinatedSurface.h"
 #include "WebPage.h"
@@ -46,6 +45,10 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
 #include <wtf/CurrentTime.h>
+
+#if PLATFORM(WPE)
+#include "DrawingAreaWPE.h"
+#endif
 
 using namespace WebCore;
 
@@ -183,7 +186,9 @@ void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const WebCore
 
 void ThreadedCoordinatedLayerTreeHost::compositorDidFlushLayers()
 {
+#if PLATFORM(WPE)
     static_cast<DrawingAreaWPE*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
+#endif
 }
 
 void ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged(float scale, const IntPoint& origin)

@@ -23,42 +23,52 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WebPageProxy.h"
+#ifndef ThreadedCompositor_CompositingRunLoop_h
+#define ThreadedCompositor_CompositingRunLoop_h
 
-#include "WebsiteDataStore.h"
-#include <WebCore/NotImplemented.h>
+#if USE(COORDINATED_GRAPHICS_THREADED)
+
+#include <functional>
+#include <wtf/Atomics.h>
+#include <wtf/FastMalloc.h>
+#include <wtf/Noncopyable.h>
+#include <wtf/RunLoop.h>
 
 namespace WebKit {
 
-void WebPageProxy::platformInitialize()
-{
-    notImplemented();
-}
+class CompositingRunLoop {
+    WTF_MAKE_NONCOPYABLE(CompositingRunLoop);
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    CompositingRunLoop(std::function<void ()>&&);
 
-String WebPageProxy::standardUserAgent(const String&)
-{
-    return "Mozilla/5.0 (Linux; x86_64 GNU/Linux) AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 Safari/601.1";
-}
+    void callOnCompositingRunLoop(std::function<void ()>&&);
 
-void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&)
-{
-    notImplemented();
-}
+    bool isActive();
+    void scheduleUpdate();
+    void stopUpdates();
 
-void WebPageProxy::loadRecentSearches(const String&, Vector<WebCore::RecentSearch>&)
-{
-    notImplemented();
-}
+    void updateCompleted();
 
-void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::time_point)
-{
-    notImplemented();
-}
+    RunLoop& runLoop() { return m_runLoop; }
 
-void WebPageProxy::editorStateChanged(const EditorState&)
-{
-    notImplemented();
-}
+private:
+    enum class UpdateState {
+        Completed,
+        InProgress,
+        PendingAfterCompletion,
+    };
+
+    void updateTimerFired();
+
+    RunLoop& m_runLoop;
+    RunLoop::Timer<CompositingRunLoop> m_updateTimer;
+    std::function<void ()> m_updateFunction;
+    Atomic<UpdateState> m_updateState;
+};
 
 } // namespace WebKit
+
+#endif // USE(COORDINATED_GRAPHICS_THREADED)
+
+#endif // ThreadedCompositor_CompositingRunLoop_h
