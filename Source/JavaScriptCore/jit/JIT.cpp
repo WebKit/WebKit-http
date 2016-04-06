@@ -228,6 +228,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_get_scope)
         DEFINE_OP(op_eq)
         DEFINE_OP(op_eq_null)
+        DEFINE_OP(op_try_get_by_id)
         case op_get_array_length:
         DEFINE_OP(op_get_by_id)
         DEFINE_OP(op_get_by_val)
@@ -325,6 +326,9 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_enumerator_structure_pname)
         DEFINE_OP(op_enumerator_generic_pname)
         DEFINE_OP(op_to_index_string)
+            
+        DEFINE_OP(op_log_shadow_chicken_prologue)
+        DEFINE_OP(op_log_shadow_chicken_tail)
         default:
             RELEASE_ASSERT_NOT_REACHED();
         }
@@ -403,6 +407,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_create_this)
         DEFINE_SLOWCASE_OP(op_div)
         DEFINE_SLOWCASE_OP(op_eq)
+        DEFINE_SLOWCASE_OP(op_try_get_by_id)
         case op_get_array_length:
         DEFINE_SLOWCASE_OP(op_get_by_id)
         DEFINE_SLOWCASE_OP(op_get_by_val)
@@ -515,7 +520,7 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
     if (m_vm->typeProfiler())
         m_vm->typeProfilerLog()->processLogEntries(ASCIILiteral("Preparing for JIT compilation."));
     
-    if (Options::dumpDisassembly() || m_vm->m_perBytecodeProfiler)
+    if (Options::dumpDisassembly() || (m_vm->m_perBytecodeProfiler && Options::disassembleBaselineForProfiler()))
         m_disassembler = std::make_unique<JITDisassembler>(m_codeBlock);
     if (m_vm->m_perBytecodeProfiler) {
         m_compilation = adoptRef(
@@ -716,7 +721,8 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
         patchBuffer.didAlreadyDisassemble();
     }
     if (m_compilation) {
-        m_disassembler->reportToProfiler(m_compilation.get(), patchBuffer);
+        if (Options::disassembleBaselineForProfiler())
+            m_disassembler->reportToProfiler(m_compilation.get(), patchBuffer);
         m_vm->m_perBytecodeProfiler->addCompilation(m_compilation);
     }
 

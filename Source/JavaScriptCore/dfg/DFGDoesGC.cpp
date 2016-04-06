@@ -90,6 +90,7 @@ bool doesGC(Graph& graph, Node* node)
     case ArithRound:
     case ArithFloor:
     case ArithCeil:
+    case ArithTrunc:
     case ArithFRound:
     case ArithSin:
     case ArithCos:
@@ -116,6 +117,7 @@ bool doesGC(Graph& graph, Node* node)
     case PutClosureVar:
     case GetRegExpObjectLastIndex:
     case SetRegExpObjectLastIndex:
+    case RecordRegExpCachedResult:
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
     case PutGlobalVariable:
@@ -232,6 +234,8 @@ bool doesGC(Graph& graph, Node* node)
     case GetFromArguments:
     case PutToArguments:
     case CopyRest:
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
         return false;
 
     case CreateActivation:

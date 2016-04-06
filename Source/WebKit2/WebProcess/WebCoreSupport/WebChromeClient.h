@@ -245,6 +245,7 @@ private:
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
     void setUpVideoControlsManager(WebCore::HTMLVideoElement&) override;
+    void clearVideoControlsManager() override;
     void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
     void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) override;
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -335,7 +336,6 @@ private:
 #endif
 
     void didInvalidateDocumentMarkerRects() override;
-    bool mediaShouldUsePersistentCache() const override;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

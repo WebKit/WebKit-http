@@ -315,6 +315,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
             out.print(anotherComma, pointerDumpInContext(freeze(m_codeBlock->constantBuffer(node->startConstant())[i]), context));
         out.print("]");
     }
+    if (node->hasLazyJSValue())
+        out.print(comma, node->lazyJSValue());
     if (node->hasIndexingType())
         out.print(comma, IndexingTypeDump(node->indexingType()));
     if (node->hasTypedArrayType())
@@ -512,7 +514,7 @@ void Graph::dump(PrintStream& out, DumpContext* context)
             RELEASE_ASSERT(block->ssa);
             out.print("  Availability: ", block->ssa->availabilityAtHead, "\n");
             out.print("  Live: ", nodeListDump(block->ssa->liveAtHead), "\n");
-            out.print("  Values: ", nodeMapDump(block->ssa->valuesAtHead, context), "\n");
+            out.print("  Values: ", nodeValuePairListDump(block->ssa->valuesAtHead, context), "\n");
             break;
         } }
         for (size_t i = 0; i < block->size(); ++i) {

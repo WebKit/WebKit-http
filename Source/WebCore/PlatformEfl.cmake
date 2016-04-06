@@ -319,7 +319,7 @@ list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 if (USE_EGL)
-    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/surfaces/egl"
     )
 endif ()
@@ -452,5 +452,3 @@ if (DEVELOPER_MODE)
         add_definitions(-DTEST_HYPHENATAION_PATH=\"${CMAKE_SOURCE_DIR}/WebKitBuild/DependenciesEFL/Root/webkitgtk-test-dicts\")
     endif ()
 endif ()
-
-list(APPEND WebCore_DERIVED_SOURCES ${WebCore_SOURCES})

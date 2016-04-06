@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004-2008, 2012-2013, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2008, 2012-2013, 2015-2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2006 Bjoern Graf (bjoern.graf@gmail.com)
  *
  *  This library is free software; you can redistribute it and/or
@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include "ArrayPrototype.h"
+#include "BuiltinExecutables.h"
 #include "ButterflyInlines.h"
 #include "BytecodeGenerator.h"
 #include "CodeBlock.h"
@@ -32,6 +33,7 @@
 #include "Disassembler.h"
 #include "Exception.h"
 #include "ExceptionHelpers.h"
+#include "GetterSetter.h"
 #include "HeapProfiler.h"
 #include "HeapSnapshotBuilder.h"
 #include "HeapStatistics.h"
@@ -51,6 +53,7 @@
 #include "JSWASMModule.h"
 #include "ProfilerDatabase.h"
 #include "SamplingProfiler.h"
+#include "ShadowChicken.h"
 #include "StackVisitor.h"
 #include "StructureInlines.h"
 #include "StructureRareDataInlines.h"
@@ -104,6 +107,10 @@
 
 #if PLATFORM(EFL)
 #include <Ecore.h>
+#endif
+
+#if !defined(PATH_MAX)
+#define PATH_MAX 4096
 #endif
 
 using namespace JSC;
@@ -547,6 +554,7 @@ static EncodedJSValue JSC_HOST_CALL functionCreateProxy(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCreateRuntimeArray(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCreateImpureGetter(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCreateCustomGetterObject(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionCreateBuiltin(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionSetImpureGetterDelegate(ExecState*);
 
 static EncodedJSValue JSC_HOST_CALL functionSetElementRoot(ExecState*);
@@ -567,6 +575,7 @@ static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionForceGCSlowPaths(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionHeapSize(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionAddressOf(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionGetGetterSetter(ExecState*);
 #ifndef NDEBUG
 static EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState*);
 #endif
@@ -620,6 +629,8 @@ static EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecStat
 static EncodedJSValue JSC_HOST_CALL functionSetSamplingFlags(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionClearSamplingFlags(ExecState*);
 #endif
+
+static EncodedJSValue JSC_HOST_CALL functionShadowChickenFunctionsOnStack(ExecState*);
 
 struct Script {
     bool isFile;
@@ -736,6 +747,7 @@ protected:
         addFunction(vm, "forceGCSlowPaths", functionForceGCSlowPaths, 0);
         addFunction(vm, "gcHeapSize", functionHeapSize, 0);
         addFunction(vm, "addressOf", functionAddressOf, 1);
+        addFunction(vm, "getGetterSetter", functionGetGetterSetter, 2);
 #ifndef NDEBUG
         addFunction(vm, "dumpCallFrame", functionDumpCallFrame, 0);
 #endif
@@ -759,6 +771,7 @@ protected:
         addFunction(vm, "setSamplingFlags", functionSetSamplingFlags, 1);
         addFunction(vm, "clearSamplingFlags", functionClearSamplingFlags, 1);
 #endif
+        addFunction(vm, "shadowChickenFunctionsOnStack", functionShadowChickenFunctionsOnStack, 0);
         addConstructableFunction(vm, "Root", functionCreateRoot, 0);
         addConstructableFunction(vm, "Element", functionCreateElement, 1);
         addFunction(vm, "getElement", functionGetElement, 1);
@@ -784,6 +797,7 @@ protected:
 
         addFunction(vm, "createImpureGetter", functionCreateImpureGetter, 1);
         addFunction(vm, "createCustomGetterObject", functionCreateCustomGetterObject, 0);
+        addFunction(vm, "createBuiltin", functionCreateBuiltin, 2);
         addFunction(vm, "setImpureGetterDelegate", functionSetImpureGetterDelegate, 2);
 
         addFunction(vm, "dumpTypesForAllVariables", functionDumpTypesForAllVariables , 0);
@@ -1144,7 +1158,7 @@ public:
     {
     }
 
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         m_trace.append(String::format("    %zu   %s\n", visitor->index(), visitor->toString().utf8().data()));
         return StackVisitor::Continue;
@@ -1324,6 +1338,30 @@ EncodedJSValue JSC_HOST_CALL functionAddressOf(ExecState* exec)
     return returnValue;
 }
 
+static EncodedJSValue JSC_HOST_CALL functionGetGetterSetter(ExecState* exec)
+{
+    JSValue value = exec->argument(0);
+    if (!value.isObject())
+        return JSValue::encode(jsUndefined());
+
+    JSValue property = exec->argument(1);
+    if (!property.isString())
+        return JSValue::encode(jsUndefined());
+
+    Identifier ident = Identifier::fromString(&exec->vm(), property.toString(exec)->value(exec));
+
+    PropertySlot slot(value, PropertySlot::InternalMethodType::VMInquiry);
+    value.getPropertySlot(exec, ident, slot);
+
+    JSValue result;
+    if (slot.isCacheableGetter())
+        result = slot.getterSetter();
+    else
+        result = jsNull();
+
+    return JSValue::encode(result);
+}
+
 EncodedJSValue JSC_HOST_CALL functionVersion(ExecState*)
 {
     // We need this function for compatibility with the Mozilla JS tests but for now
@@ -1436,6 +1474,11 @@ EncodedJSValue JSC_HOST_CALL functionClearSamplingFlags(ExecState* exec)
     return JSValue::encode(jsNull());
 }
 #endif
+
+EncodedJSValue JSC_HOST_CALL functionShadowChickenFunctionsOnStack(ExecState* exec)
+{
+    return JSValue::encode(exec->vm().shadowChicken().functionsOnStack(exec));
+}
 
 EncodedJSValue JSC_HOST_CALL functionReadline(ExecState* exec)
 {
@@ -1706,6 +1749,22 @@ EncodedJSValue JSC_HOST_CALL functionLoadModule(ExecState* exec)
     if (error)
         return JSValue::encode(exec->vm().throwException(exec, error));
     return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL functionCreateBuiltin(ExecState* exec)
+{
+    if (exec->argumentCount() < 1 || !exec->argument(0).isString())
+        return JSValue::encode(jsUndefined());
+
+    String functionText = exec->argument(0).toString(exec)->value(exec);
+    if (exec->hadException())
+        return JSValue::encode(JSValue());
+
+    VM& vm = exec->vm();
+    const SourceCode& source = makeSource(functionText);
+    JSFunction* func = JSFunction::createBuiltinFunction(vm, BuiltinExecutables::createExecutable(vm, source, Identifier::fromString(&vm, "foo"), ConstructorKind::None, ConstructAbility::CannotConstruct)->link(vm, source), exec->lexicalGlobalObject());
+
+    return JSValue::encode(func);
 }
 
 EncodedJSValue JSC_HOST_CALL functionCheckModuleSyntax(ExecState* exec)

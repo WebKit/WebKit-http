@@ -1,3 +1,83 @@
+2016-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Simplify API of Test model by removing Test.setParentTest
+        https://bugs.webkit.org/show_bug.cgi?id=156055
+
+        Reviewed by Joseph Pecoraro.
+
+        Removed Test.setParentTest. Keep track of the child-parent relationship using the static map instead.
+
+        Now each test only stores parent's id and uses the ID static map in Test.parentTest().
+
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest.buildObjectsFromIdMap): Removed the code to create the map of child-parent
+        relationship and call setParentTest.
+        * public/v3/models/test.js:
+        (Test): Updated a static map by the name of "childTestMap" to store itself. We should probably sort
+        child tests using some fixed criteria in the future instead of relying on the creation order but
+        preserve the old code's ordering for now.
+        (Test.prototype.parentTest): Look up the static map by the parent test's id.
+        (Test.prototype.onlyContainsSingleMetric):
+        (Test.prototype.setParentTest): Deleted.
+        (Test.prototype.childTests): Look up the child test map.
+
+2016-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        BuildRequest should have associated platform and test
+        https://bugs.webkit.org/show_bug.cgi?id=156054
+
+        Reviewed by Joseph Pecoraro.
+
+        Added methods to retrieve the platform and the test associated with a build request with tests.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest):
+        (BuildRequest.prototype.platform): Added.
+        (BuildRequest.prototype.test): Added.
+        * server-tests/api-build-requests-tests.js:
+        * server-tests/api-manifest.js: Fixed a typo. This tests /api/manifest, not /api/build-requests.
+        * unit-tests/buildbot-syncer-tests.js:
+        (.createSampleBuildRequest): Now takes Platform and Test objects to avoid hitting assertions in
+        BuildRequest's constructor.
+
+2016-03-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        BuildRequest should have a method to fetch all in-progress and pending requests for a triggerable
+        https://bugs.webkit.org/show_bug.cgi?id=156008
+
+        Reviewed by Darin Adler.
+
+        Add a method to BuildRequest that fetches all pending and in-progress requests for a triggerable.
+
+        Now, new syncing scripts must be able to figure out the build slave the first build requests in
+        a given test group had used in order to schedule subsequent build requests in the test group.
+
+        For this purpose, /api/build-requests has been modified to return all build requests whose test
+        group had not finished yet. A test group is finished if all build requests in the test group had
+        finished (completed, failed, or canceled).
+
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestFetcher::fetch_incomplete_requests_for_triggerable): Return all build requests in test
+        groups that have not been finished.
+        * public/v3/models/build-request.js:
+        (BuildRequest):
+        (BuildRequest.prototype.testGroupId): Added.
+        (BuildRequest.prototype.isPending): Renamed from hasPending to fix a bad grammar.
+        (BuildRequest.fetchForTriggerable): Added.
+        (BuildRequest.constructBuildRequestsFromData): Extracted from _createModelsFromFetchedTestGroups in
+        TestGroup.
+        * public/v3/models/manifest.js:
+        (Manifest.fetch): Use the full path from root so that it works in server tests.
+        * public/v3/models/test-group.js:
+        (TestGroup.hasPending):
+        (TestGroup._createModelsFromFetchedTestGroups):
+        * server-tests/api-build-requests-tests.js: Added tests to ensure all build requests for a test group
+        is present in the response returned by /api/build-requests iff any build request in the group had not
+        finished yet.
+        (.addMockData):
+        (.addAnotherMockTestGroup): Added.
+        * unit-tests/test-groups-tests.js:
+
 2016-03-29  Ryosuke Niwa  <rniwa@webkit.org>
 
         Make dependency injection in unit tests more explicit

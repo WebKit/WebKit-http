@@ -169,7 +169,7 @@ void NetworkLoad::sharedWillSendRedirectedRequest(const ResourceRequest& request
 
 #if USE(NETWORK_SESSION)
 
-void NetworkLoad::convertTaskToDownload(DownloadID downloadID)
+void NetworkLoad::convertTaskToDownload(DownloadID downloadID, const ResourceRequest& updatedRequest)
 {
     if (!m_task)
         return;
@@ -178,16 +178,22 @@ void NetworkLoad::convertTaskToDownload(DownloadID downloadID)
     
     ASSERT(m_responseCompletionHandler);
     if (m_responseCompletionHandler)
-        NetworkProcess::singleton().findPendingDownloadLocation(*m_task.get(), std::exchange(m_responseCompletionHandler, nullptr));
+        NetworkProcess::singleton().findPendingDownloadLocation(*m_task.get(), std::exchange(m_responseCompletionHandler, nullptr), updatedRequest);
 }
 
 void NetworkLoad::setPendingDownloadID(DownloadID downloadID)
 {
+    if (!m_task)
+        return;
+
     m_task->setPendingDownloadID(downloadID);
 }
 
 void NetworkLoad::setPendingDownload(PendingDownload& pendingDownload)
 {
+    if (!m_task)
+        return;
+
     m_task->setPendingDownload(pendingDownload);
 }
 
@@ -230,7 +236,7 @@ void NetworkLoad::didReceiveResponseNetworkSession(const ResourceResponse& respo
 {
     ASSERT(isMainThread());
     if (m_task && m_task->pendingDownloadID().downloadID())
-        NetworkProcess::singleton().findPendingDownloadLocation(*m_task.get(), completionHandler);
+        NetworkProcess::singleton().findPendingDownloadLocation(*m_task.get(), completionHandler, m_task->currentRequest());
     else if (sharedDidReceiveResponse(response) == NetworkLoadClient::ShouldContinueDidReceiveResponse::Yes)
         completionHandler(PolicyUse);
     else

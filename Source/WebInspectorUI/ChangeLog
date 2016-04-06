@@ -1,3 +1,246 @@
+2016-04-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not create CodeMirror color/gradient markers in JavaScript resources
+        https://bugs.webkit.org/show_bug.cgi?id=156278
+        <rdar://problem/25570404>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._hasStyleSheetContents):
+        (WebInspector.SourceCodeTextEditor.prototype._updateEditableMarkers):
+        Only spend the time to create style markers for style sheet contents.
+
+2016-04-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make the Timelines sidebar wider
+
+        https://bugs.webkit.org/show_bug.cgi?id=156257
+        rdar://problem/25564218
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview): Added. Set define --timeline-sidebar-width.
+        (.timeline-overview > .navigation-bar.timelines): Use --timeline-sidebar-width.
+        (.timeline-overview > .tree-outline.timelines): Ditto.
+        (.timeline-overview > .scroll-container): Ditto.
+        (.timeline-overview > .timeline-ruler): Ditto.
+        (.timeline-overview > .graphs-container): Ditto.
+
+2016-04-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Command-Option-R opens Inspector details sidebar or Responsive Design Mode, should only do one
+
+        https://bugs.webkit.org/show_bug.cgi?id=156258
+        rdar://problem/25483871
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Change shortcuts to Command-Option-0 and Command-Shift-0.
+
+2016-04-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Should not allow selecting no Timelines when editing in Timeline tab
+        https://bugs.webkit.org/show_bug.cgi?id=156223
+        <rdar://problem/25552221>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype._startEditingInstruments):
+        Register EnabledDidChange event handler for all tree elements.
+
+        (WebInspector.TimelineOverview.prototype._stopEditingInstruments):
+        Unregister event handler for enabled tree elements. The rest are removed
+        from the tree outline once editing has completed.
+
+        (WebInspector.TimelineOverview.prototype._timelineTreeElementEnabledDidChange):
+        Enable "Done" button if at least one timeline is enabled.
+
+        * UserInterface/Views/TimelineTreeElement.js:
+        Dispatch a new event, EnabledDidChange, when the checkbox state changes.
+
+        (WebInspector.TimelineTreeElement.prototype._showCheckbox):
+        (WebInspector.TimelineTreeElement.prototype._clickHandler):
+        (WebInspector.TimelineTreeElement.prototype._dispatchEnabledDidChangeEvent):
+        (WebInspector.TimelineTreeElement):
+
+2016-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: Error: Can't make a ContentView for an unknown representedObject (ApplicationCacheManifest)
+        https://bugs.webkit.org/show_bug.cgi?id=156139
+        <rdar://problem/25511926>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject):
+        Improve the error message to get the name of the represented object.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._isTreeElementWithoutRepresentedObject):
+        Treat ApplicationCacheManifestTreeElement like other Host elements. Nothing to save/show.
+
+        * UserInterface/Views/ApplicationCacheManifestTreeElement.js:
+        (WebInspector.ApplicationCacheManifestTreeElement):
+        * UserInterface/Views/DatabaseHostTreeElement.js:
+        (WebInspector.DatabaseHostTreeElement):
+        * UserInterface/Views/IndexedDatabaseHostTreeElement.js:
+        (WebInspector.IndexedDatabaseHostTreeElement):
+        Auto-expand these folders, as they are not useful when collapsed.
+
+2016-04-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception in CSS with string "constructor" (WebInspector.Color.fromString())
+        https://bugs.webkit.org/show_bug.cgi?id=156183
+        <rdar://problem/25539279>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/Color.js:
+        (WebInspector.Color.fromString):
+        Fix the uncaught exception issue. Only look at own properties of
+        our keyword map to avoid values like "toString" and "constructor".
+
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        (handleError):
+        (handleUncaughtException):
+        (handleUncaughtExceptionRecord):
+        Generalize uncaught exception handler error sheet to get
+        exception records from both uncaught exceptions (window.onerror)
+        and general Runtime Error objects (TypeError, etc).
+
+        * UserInterface/Base/Utilities.js:
+        (window.promiseLogError.window.promiseLogError):
+        Add a fallback log exception helper.
+
+        * UserInterface/Controllers/AnalyzerManager.js:
+        (WebInspector.AnalyzerManager.prototype.getAnalyzerMessagesForSourceCode):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        Add catch handlers to Promises to log exceptions.
+
+2016-04-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed follow-up to r198968. Remove debug statements.
+
+        * Scripts/remove-console-asserts.pl:
+        (removeConsoleAssertsInFile):
+
+2016-04-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove console.asserts from Worker code in optimized builds
+        https://bugs.webkit.org/show_bug.cgi?id=156124
+        <rdar://problem/25505031>
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/copy-user-interface-resources.pl:
+        Remove console asserts on the Worker results directory.
+
+        * Scripts/remove-console-asserts.pl:
+        (removeConsoleAssertsInFile):
+        (removeConsoleAssertsInDirectory):
+        Refactor into functions for a file and a file for
+        recursing through directories.
+
+2016-03-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ScriptSyntaxTree doesn't handle RestElement AST nodes
+        https://bugs.webkit.org/show_bug.cgi?id=156085
+
+        Reviewed by Saam Barati.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._gatherIdentifiersInDeclaration.gatherIdentifiers):
+        (WebInspector.ScriptSyntaxTree.prototype._gatherIdentifiersInDeclaration):
+        When searching for identifiers in Function parameters, pass
+        through the RestElement to its argument.
+
+        (WebInspector.ScriptSyntaxTree.prototype._recurse):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        Create a ScriptSyntaxTree RestElement node.
+        Also, every case in recurse visits the current
+        node, so simplify the code!
+
+2016-03-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused ScriptProfiler.Samples.totalTime
+        https://bugs.webkit.org/show_bug.cgi?id=156002
+
+        Reviewed by Saam Barati.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.scriptProfilerTrackingCompleted):
+        * UserInterface/Models/CallingContextTree.js:
+        (WebInspector.CallingContextTree.prototype.get totalExecutionTime): Deleted.
+        (WebInspector.CallingContextTree.prototype.reset): Deleted.
+        (WebInspector.CallingContextTree.prototype.increaseExecutionTime): Deleted.
+        Remove unused totalExecutionTime.
+
+2016-03-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Calculate more accurate time per-sample instead of assuming 1ms
+        https://bugs.webkit.org/show_bug.cgi?id=155961
+        <rdar://problem/25404505>
+
+        Reviewed by Geoffrey Garen.
+
+        Give each sample a duration based on the best time bounds we have available.
+        Script Profiler Events give us time bounds for (nearly) all script evaluations.
+        The only evaluations that are missed are Inspector scripts.
+
+        The duration per-sample is computed per-event:
+
+            durationPerSample = (event.endTime - event.startTime) / numSamplesInTimeRange.
+
+        If a 10ms Script Event contains 5 samples, they would each get a 2ms duration.
+        If a 0.5ms Script Event contains 1 sample, it would get a 0.5ms duration.
+
+        We were seeing an average of 1.6-1.8ms per sample for events that had more
+        than 3 samples.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.scriptProfilerTrackingCompleted):
+        Associate a time duration per sample. For each Script Event we compute
+        an average time for all the samples in the event and assign it to the sample.
+
+        * UserInterface/Models/CallingContextTree.js:
+        (WebInspector.CallingContextTree.prototype.totalDurationInTimeRange):
+        (WebInspector.CallingContextTree.prototype.numberOfSamplesInTimeRange): Deleted.
+        Accumulate the duration by checking each sample. Number of samples
+        is now meaningless.
+        
+        (WebInspector.CallingContextTree.prototype.updateTreeWithStackTrace):
+        (WebInspector.CCTNode):
+        (WebInspector.CCTNode.prototype.addTimestampAndExpressionLocation):
+        Give CCTNodes a list of durations and leafDurations that parallels
+        the timestamps and leafTimestamps lists of individual samples.
+
+        (WebInspector.CCTNode.prototype.filteredTimestampsAndDuration):
+        (WebInspector.CCTNode.prototype.filteredLeafTimestampsAndDuration):
+        (WebInspector.CCTNode.prototype.filteredTimestamps): Deleted.
+        (WebInspector.CCTNode.prototype.numberOfLeafTimestamps): Deleted.
+        Whenever we get a list of timestamps, also compute the duration
+        of those timestamps at the same time.
+
+        * UserInterface/Views/ProfileDataGridNode.js:
+        (WebInspector.ProfileDataGridNode):
+        (WebInspector.ProfileDataGridNode.prototype._updateChildrenForModifiers):
+        (WebInspector.ProfileDataGridNode.prototype._recalculateData):
+        * UserInterface/Views/ProfileDataGridTree.js:
+        (WebInspector.ProfileDataGridTree):
+        (WebInspector.ProfileDataGridTree.prototype.get totalSampleTime):
+        (WebInspector.ProfileDataGridTree.prototype._updateCurrentFocusDetails):
+        (WebInspector.ProfileDataGridTree.prototype.get sampleInterval): Deleted.
+        (WebInspector.ProfileDataGridTree.prototype.get numberOfSamples): Deleted.
+        Instead of computing total time from (samples * sampleInterval),
+        accumulate it by adding up the duration of each individual sample.
+        Update the Profile Data Grid nodes to use the new calculations.
+
 2016-03-29  Dana Burkart and Matthew Hanson  <dburkart@apple.com>
 
         Web Inspector: JS PrettyPrinting in do/while loops, "while" should be on the same line as "}" if there was a closing brace

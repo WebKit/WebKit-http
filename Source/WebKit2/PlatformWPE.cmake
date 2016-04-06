@@ -111,8 +111,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
 
-    UIProcess/Network/soup/NetworkProcessProxySoup.cpp
-
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
@@ -134,7 +132,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/wpe/WebPasteboardProxyWPE.cpp
     UIProcess/wpe/WebPreferencesWPE.cpp
     UIProcess/wpe/WebProcessPoolWPE.cpp
-    UIProcess/wpe/WebProcessProxyWPE.cpp
 
     WebProcess/Cookies/soup/WebCookieManagerSoup.cpp
     WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp

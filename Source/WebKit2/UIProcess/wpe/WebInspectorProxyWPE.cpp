@@ -26,8 +26,6 @@
 #include "config.h"
 #include "WebInspectorProxy.h"
 
-#if ENABLE(INSPECTOR)
-
 #include <WebCore/NotImplemented.h>
 #include <wtf/text/WTFString.h>
 
@@ -147,5 +145,3 @@ void WebInspectorProxy::platformAttachAvailabilityChanged(bool)
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(INSPECTOR)

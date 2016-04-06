@@ -851,6 +851,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBRequest.cpp
     Modules/indexeddb/IDBRequestCompletionEvent.cpp
     Modules/indexeddb/IDBTransaction.cpp
+    Modules/indexeddb/IDBValue.cpp
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
@@ -1044,6 +1045,7 @@ set(WebCore_SOURCES
     accessibility/AccessibilityARIAGrid.cpp
     accessibility/AccessibilityARIAGridCell.cpp
     accessibility/AccessibilityARIAGridRow.cpp
+    accessibility/AccessibilityAttachment.cpp
     accessibility/AccessibilityImageMapLink.cpp
     accessibility/AccessibilityList.cpp
     accessibility/AccessibilityListBox.cpp
@@ -1565,8 +1567,6 @@ set(WebCore_SOURCES
     editing/RemoveNodeCommand.cpp
     editing/RemoveNodePreservingChildrenCommand.cpp
     editing/RenderedPosition.cpp
-    editing/ReplaceDeleteFromTextNodeCommand.cpp
-    editing/ReplaceInsertIntoTextNodeCommand.cpp
     editing/ReplaceNodeWithSpanCommand.cpp
     editing/ReplaceSelectionCommand.cpp
     editing/SetNodeAttributeCommand.cpp
@@ -2629,12 +2629,14 @@ set(WebCore_SOURCES
     style/IdChangeInvalidation.cpp
     style/InlineTextBoxStyle.cpp
     style/RenderTreePosition.cpp
+    style/RenderTreeUpdater.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleRelations.cpp
     style/StyleResolveForDocument.cpp
     style/StyleSharingResolver.cpp
     style/StyleTreeResolver.cpp
+    style/StyleUpdate.cpp
 
     svg/SVGAElement.cpp
     svg/SVGAltGlyphDefElement.cpp
@@ -3420,8 +3422,8 @@ list(APPEND WebCoreTestSupport_SOURCES
 )
 
 set(WebCoreTestSupport_LIBRARIES
-    JavaScriptCore${DEBUG_SUFFIX}
-    WTF${DEBUG_SUFFIX}
+    PRIVATE JavaScriptCore${DEBUG_SUFFIX}
+    PRIVATE WTF${DEBUG_SUFFIX}
 )
 
 # Modules that the bindings generator scripts may use
@@ -3803,9 +3805,6 @@ if (MSVC)
     ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCoreDerivedSourcesPrefix.cpp" WebCore_DERIVED_SOURCES)
 endif ()
 
-if (PORT STREQUAL "WPE")
-list(APPEND WebCore_SOURCES ${WebCore_DERIVED_SOURCES})
-else ()
 # This is split into a separate library as a workaround for command line length
 # limits. This should no longer be needed when CMake supports Ninja response
 # files on OS X.
@@ -3815,11 +3814,16 @@ set_target_properties(WebCoreDerivedSources PROPERTIES FOLDER "WebCore")
 if (NOT WIN32)
     list(APPEND WebCore_LIBRARIES WebCoreDerivedSources)
 endif ()
-endif ()
 
 WEBKIT_FRAMEWORK(WebCore)
 
+if (APPLE)
+    set_target_properties(WebCore PROPERTIES LINK_FLAGS "-sub_library libobjc -umbrella WebKit -allowable_client WebCoreTestSupport -allowable_client WebKit2 -allowable_client WebKitLegacy")
+endif ()
+
 if (WIN32)
+    add_custom_target(WebCoreDerivedSources_PreBuild COMMAND ${WebCore_DERIVED_SOURCES_PRE_BUILD_COMMAND} VERBATIM)
+    add_dependencies(WebCoreDerivedSources WebCoreDerivedSources_PreBuild)
     add_dependencies(WebCore WebCoreDerivedSources)
 endif ()
 

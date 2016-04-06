@@ -260,12 +260,6 @@ storage/storagequota-query-usage.html
 storage/storagequota-request-quota.html
 fast/workers/worker-storagequota-query-usage.html
 
-# Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
-fast/dom/HTMLAnchorElement/anchor-nodownload.html
-fast/dom/HTMLAnchorElement/anchor-download.html
-fast/dom/HTMLAnchorElement/anchor-nodownload-set.html
-fast/dom/HTMLAnchorElement/anchor-download-unset.html
-
 # HTTP 204 (No Content) should be ignored
 webkit.org/b/60206 http/tests/navigation/response204.html
 
@@ -1144,29 +1138,6 @@ webkit.org/b/141534 [ Yosemite ] media/video-load-networkState.html [ Pass Crash
 
 webkit.org/b/142726 [ Yosemite+ ] fast/images/animated-png.html [ ImageOnlyFailure ]
 
-# Skip media control tests until new controls are finalized
-webkit.org/b/142142 media/video-no-audio.html [ Skip ]
-webkit.org/b/142142 media/controls-strict.html [ Skip ]
-webkit.org/b/142142 media/video-volume-slider.html [ Skip ]
-webkit.org/b/142142 media/controls-styling.html [ Skip ]
-webkit.org/b/142142 media/video-display-toggle.html [ Skip ]
-webkit.org/b/142142 media/audio-controls-rendering.html [ Skip ]
-webkit.org/b/142142 media/video-zoom-controls.html [ Skip ]
-webkit.org/b/142142 fast/hidpi/video-controls-in-hidpi.html [ Skip ]
-webkit.org/b/142142 media/video-controls-rendering.html [ Skip ]
-webkit.org/b/142142 accessibility/media-element.html [ Skip ]
-webkit.org/b/142142 media/controls-without-preload.html [ Skip ]
-webkit.org/b/142142 media/media-controls-clone.html [ Skip ]
-webkit.org/b/142142 fast/layers/video-layer.html [ Skip ]
-webkit.org/b/142142 media/video-empty-source.html [ Skip ]
-webkit.org/b/142142 media/audio-delete-while-slider-thumb-clicked.html [ Skip ]
-webkit.org/b/142142 media/controls-after-reload.html [ Skip ]
-webkit.org/b/142142 media/nodesFromRect-shadowContent.html [ Skip ]
-webkit.org/b/142142 media/video-initially-hidden-volume-slider-up.html [ Skip ]
-webkit.org/b/142142 fullscreen/video-controls-override.html [ Skip ]
-webkit.org/b/142142 http/tests/media/hls/video-controls-live-stream.html [ Skip ]
-webkit.org/b/142142 media/video-volume-slider-drag.html [ Skip ]
-
 # Fails when an actual AppleTV is nearby.
 webkit.org/b/148912 media/controls/airplay-picker.html [ Pass Failure ]
 
@@ -1242,6 +1213,7 @@ webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Fa
 webkit.org/b/155607 inspector/unit-tests/heap-snapshot.html [ Pass Timeout ]
 webkit.org/b/155607 inspector/heap/snapshot.html [ Pass Timeout ]
 webkit.org/b/143719 inspector/console/console-api.html [ Pass Timeout ]
+webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
 
 webkit.org/b/152029 inspector/debugger/command-line-api-exception.html [ Pass Timeout ]
 
@@ -1350,3 +1322,6 @@ webkit.org/b/155505 [ ElCapitan+ ] http/tests/security/contentSecurityPolicy/use
 
 webkit.org/b/154688 inspector/controller/runtime-controller.html [ Pass Timeout ]
 
+webkit.org/b/156112 [ ElCapitan ] media/audio-controls-rendering.html [ Pass Failure ]
+webkit.org/b/156112 [ ElCapitan ] media/controls-strict.html [ Pass Failure ]
+webkit.org/b/156112 [ ElCapitan ] media/controls-without-preload.html [ Pass Failure ]

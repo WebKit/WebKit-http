@@ -139,6 +139,10 @@ namespace WebCore {
     String contextMenuItemTagToggleMediaLoop();
     String contextMenuItemTagEnterVideoFullscreen();
     String contextMenuItemTagExitVideoFullscreen();
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    String contextMenuItemTagEnterVideoEnhancedFullscreen();
+    String contextMenuItemTagExitVideoEnhancedFullscreen();
+#endif
     String contextMenuItemTagMediaPlay();
     String contextMenuItemTagMediaPause();
     String contextMenuItemTagMediaMute();
@@ -163,6 +167,7 @@ namespace WebCore {
     String AXFooterRoleDescriptionText();
     String AXFileUploadButtonText();
     String AXSearchFieldCancelButtonText();
+    String AXAttachmentRoleText();
     
     String AXButtonActionVerb();
     String AXRadioButtonActionVerb();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010, 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2010, 2012-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1095,6 +1095,14 @@ void CodeBlock::dumpBytecode(
             printBinaryOp(out, exec, location, it, "in");
             break;
         }
+        case op_try_get_by_id: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int id0 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "try_get_by_id");
+            out.printf("%s, %s, %s", registerName(r0).data(), registerName(r1).data(), idName(id0, identifier(id0)).data());
+            break;
+        }
         case op_get_by_id:
         case op_get_array_length: {
             printGetByIdOp(out, exec, location, it);
@@ -1305,6 +1313,14 @@ void CodeBlock::dumpBytecode(
         }
         case op_watchdog: {
             printLocationAndOp(out, exec, location, it, "watchdog");
+            break;
+        }
+        case op_log_shadow_chicken_prologue: {
+            printLocationAndOp(out, exec, location, it, "log_shadow_chicken_prologue");
+            break;
+        }
+        case op_log_shadow_chicken_tail: {
+            printLocationAndOp(out, exec, location, it, "log_shadow_chicken_tail");
             break;
         }
         case op_switch_imm: {
@@ -1869,20 +1885,27 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             m_constantRegisters[registerIndex].set(*m_vm, this, m_globalObject->jsCellForLinkTimeConstant(type));
     }
 
+#if !ASSERT_DISABLED
     HashSet<int, WTF::IntHash<int>, WTF::UnsignedWithZeroKeyHashTraits<int>> clonedConstantSymbolTables;
+#endif
     {
+#if !ASSERT_DISABLED
         HashSet<SymbolTable*> clonedSymbolTables;
+#endif
+        bool hasTypeProfiler = !!vm.typeProfiler();
         for (unsigned i = 0; i < m_constantRegisters.size(); i++) {
             if (m_constantRegisters[i].get().isEmpty())
                 continue;
             if (SymbolTable* symbolTable = jsDynamicCast<SymbolTable*>(m_constantRegisters[i].get())) {
-                RELEASE_ASSERT(clonedSymbolTables.add(symbolTable).isNewEntry);
-                if (m_vm->typeProfiler()) {
+                ASSERT(clonedSymbolTables.add(symbolTable).isNewEntry);
+                if (hasTypeProfiler) {
                     ConcurrentJITLocker locker(symbolTable->m_lock);
                     symbolTable->prepareForTypeProfiling(locker);
                 }
                 m_constantRegisters[i].set(*m_vm, this, symbolTable->cloneScopePart(*m_vm));
+#if !ASSERT_DISABLED
                 clonedConstantSymbolTables.add(i + FirstConstantRegisterIndex);
+#endif
             }
         }
     }
@@ -1898,10 +1921,11 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         replaceConstant(unlinkedModuleProgramCodeBlock->moduleEnvironmentSymbolTableConstantRegisterOffset(), clonedSymbolTable);
     }
 
+    bool shouldUpdateFunctionHasExecutedCache = vm.typeProfiler() || vm.controlFlowProfiler();
     m_functionDecls = RefCountedArray<WriteBarrier<FunctionExecutable>>(unlinkedCodeBlock->numberOfFunctionDecls());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionDecls(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
-        if (vm.typeProfiler() || vm.controlFlowProfiler())
+        if (shouldUpdateFunctionHasExecutedCache)
             vm.functionHasExecutedCache()->insertUnexecutedRange(ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
         m_functionDecls[i].set(*m_vm, this, unlinkedExecutable->link(*m_vm, ownerExecutable->source()));
     }
@@ -1909,7 +1933,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     m_functionExprs = RefCountedArray<WriteBarrier<FunctionExecutable>>(unlinkedCodeBlock->numberOfFunctionExprs());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionExprs(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionExpr(i);
-        if (vm.typeProfiler() || vm.controlFlowProfiler())
+        if (shouldUpdateFunctionHasExecutedCache)
             vm.functionHasExecutedCache()->insertUnexecutedRange(ownerExecutable->sourceID(), unlinkedExecutable->typeProfilingStartOffset(), unlinkedExecutable->typeProfilingEndOffset());
         m_functionExprs[i].set(*m_vm, this, unlinkedExecutable->link(*m_vm, ownerExecutable->source()));
     }
@@ -2081,11 +2105,13 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         case op_get_array_length:
             CRASH();
 
+#if !ASSERT_DISABLED
         case op_create_lexical_environment: {
             int symbolTableIndex = pc[3].u.operand;
-            RELEASE_ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
+            ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
             break;
         }
+#endif
 
         case op_resolve_scope: {
             const Identifier& ident = identifier(pc[3].u.operand);
@@ -2150,12 +2176,12 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 // Only do watching if the property we're putting to is not anonymous.
                 if (static_cast<unsigned>(pc[2].u.operand) != UINT_MAX) {
                     int symbolTableIndex = pc[5].u.operand;
-                    RELEASE_ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
+                    ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
                     SymbolTable* symbolTable = jsCast<SymbolTable*>(getConstant(symbolTableIndex));
                     const Identifier& ident = identifier(pc[2].u.operand);
                     ConcurrentJITLocker locker(symbolTable->m_lock);
                     auto iter = symbolTable->find(locker, ident.impl());
-                    RELEASE_ASSERT(iter != symbolTable->end(locker));
+                    ASSERT(iter != symbolTable->end(locker));
                     iter->value.prepareToWatch();
                     instructions[i + 5].u.watchpointSet = iter->value.watchpointSet();
                 } else
@@ -2221,7 +2247,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             }
             case ProfileTypeBytecodeLocallyResolved: {
                 int symbolTableIndex = pc[2].u.operand;
-                RELEASE_ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
+                ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
                 SymbolTable* symbolTable = jsCast<SymbolTable*>(getConstant(symbolTableIndex));
                 const Identifier& ident = identifier(pc[4].u.operand);
                 ConcurrentJITLocker locker(symbolTable->m_lock);
@@ -3376,7 +3402,7 @@ public:
         , m_didRecurse(false)
     { }
 
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         CallFrame* currentCallFrame = visitor->callFrame();
 
@@ -3401,9 +3427,9 @@ public:
 private:
     CallFrame* m_startCallFrame;
     CodeBlock* m_codeBlock;
-    unsigned m_depthToCheck;
-    bool m_foundStartCallFrame;
-    bool m_didRecurse;
+    mutable unsigned m_depthToCheck;
+    mutable bool m_foundStartCallFrame;
+    mutable bool m_didRecurse;
 };
 
 void CodeBlock::noticeIncomingCall(ExecState* callerFrame)

@@ -23,6 +23,10 @@ set(DumpRenderTreeLib_SOURCES
     win/WorkQueueItemWin.cpp
 )
 
+list(APPEND TestNetscapePlugin_LIBRARIES
+    WebKit
+)
+
 set(DumpRenderTree_SOURCES
     ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp
 )
@@ -51,6 +55,7 @@ endif ()
 list(APPEND TestNetscapePlugin_LIBRARIES
     Msimg32
     Shlwapi
+    WebKit
 )
 
 set(ImageDiff_SOURCES
@@ -74,6 +79,7 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
 )
 
 list(APPEND DumpRenderTree_LIBRARIES
+    WebKit
     shlwapi
 )
 

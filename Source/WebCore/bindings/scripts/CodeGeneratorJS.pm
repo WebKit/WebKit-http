@@ -378,7 +378,7 @@ sub GetCustomIsReachable
 sub IsDOMGlobalObject
 {
     my $interface = shift;
-    return $interface->name eq "DOMWindow" || $codeGenerator->InheritsInterface($interface, "WorkerGlobalScope");
+    return $interface->name eq "DOMWindow" || $codeGenerator->InheritsInterface($interface, "WorkerGlobalScope") || $interface->name eq "TestGlobalObject";
 }
 
 sub GenerateGetOwnPropertySlotBody
@@ -721,16 +721,33 @@ sub OperationShouldBeOnInstance
     my $interface = shift;
     my $function = shift;
 
-    # FIXME: The bindings generator does not support putting runtime-enabled on the instance yet.
-    return 0 if $function->signature->extendedAttributes->{"EnabledAtRuntime"};
-
     return 1 if IsDOMGlobalObject($interface);
+
+    # FIXME: The bindings generator does not support putting runtime-enabled on the instance yet (except for global objects).
+    return 0 if $function->signature->extendedAttributes->{"EnabledAtRuntime"};
 
     # [Unforgeable] operations should be on the instance.
     # https://heycam.github.io/webidl/#Unforgeable
     return 1 if IsUnforgeable($interface, $function);
 
     return 0;
+}
+
+sub GetJSCAttributesForAttribute
+{
+    my $interface = shift;
+    my $attribute = shift;
+
+    my @specials = ();
+    push(@specials, "DontDelete") if IsUnforgeable($interface, $attribute);
+
+    # As per Web IDL specification, constructor properties on the ECMAScript global object should not be enumerable.
+    my $is_global_constructor = $attribute->signature->type =~ /Constructor$/;
+    push(@specials, "DontEnum") if ($attribute->signature->extendedAttributes->{"NotEnumerable"} || $is_global_constructor);
+    push(@specials, "ReadOnly") if IsReadonly($attribute);
+    push(@specials, "CustomAccessor") unless $is_global_constructor or IsJSBuiltin($interface, $attribute);
+    push(@specials, "Accessor | Builtin") if  IsJSBuiltin($interface, $attribute);
+    return (@specials > 0) ? join(" | ", @specials) : "0";
 }
 
 sub GetIndexedGetterFunction
@@ -1243,6 +1260,14 @@ sub GenerateHeader
         push(@headerContent, "    }\n\n");
     }
 
+    if (IsDOMGlobalObject($interface)) {
+        if ($interfaceName eq "DOMWindow") {
+            push(@headerContent, "    void finishCreation(JSC::VM&, JSDOMWindowShell*);\n");
+        } else {
+            push(@headerContent, "    void finishCreation(JSC::VM&);\n");
+        }
+    }
+
     # Index setter
     if ($interface->extendedAttributes->{"CustomIndexedSetter"}) {
         push(@headerContent, "    void indexSetter(JSC::ExecState*, unsigned index, JSC::JSValue);\n");
@@ -1392,19 +1417,17 @@ sub GeneratePropertiesHashTable
     foreach my $attribute (@{$interface->attributes}) {
         next if ($attribute->isStatic);
         next if AttributeShouldBeOnInstance($interface, $attribute) != $isInstance;
+
+        # Global objects add RuntimeEnabled attributes after creation so do not add them to the static table.
+        if (IsDOMGlobalObject($interface) && $attribute->signature->extendedAttributes->{"EnabledAtRuntime"}) {
+            $propertyCount -= 1;
+            next;
+        }
+
         my $name = $attribute->signature->name;
         push(@$hashKeys, $name);
 
-        my @specials = ();
-        push(@specials, "DontDelete") if IsUnforgeable($interface, $attribute);
-
-        # As per Web IDL specification, constructor properties on the ECMAScript global object should not be enumerable.
-        my $is_global_constructor = $attribute->signature->type =~ /Constructor$/;
-        push(@specials, "DontEnum") if ($attribute->signature->extendedAttributes->{"NotEnumerable"} || $is_global_constructor);
-        push(@specials, "ReadOnly") if IsReadonly($attribute);
-        push(@specials, "CustomAccessor") unless $is_global_constructor or IsJSBuiltin($interface, $attribute);
-        push(@specials, "Accessor | Builtin") if  IsJSBuiltin($interface, $attribute);
-        my $special = (@specials > 0) ? join(" | ", @specials) : "0";
+        my $special = GetJSCAttributesForAttribute($interface, $attribute);
         push(@$hashSpecials, $special);
 
         my $getter = GetAttributeGetterName($interfaceName, $className, $interface, $attribute);
@@ -1432,6 +1455,12 @@ sub GeneratePropertiesHashTable
         next if OperationShouldBeOnInstance($interface, $function) != $isInstance;
         next if $function->signature->name eq "[Symbol.Iterator]";
 
+        # Global objects add RuntimeEnabled operations after creation so do not add them to the static table.
+        if (IsDOMGlobalObject($interface) && $function->signature->extendedAttributes->{"EnabledAtRuntime"}) {
+            $propertyCount -= 1;
+            next;
+        }
+
         my $name = $function->signature->name;
         push(@$hashKeys, $name);
 
@@ -1450,7 +1479,7 @@ sub GeneratePropertiesHashTable
 
         if ($function->signature->extendedAttributes->{"EnabledAtRuntime"}) {
             if ($isInstance) {
-                die "We currently do not support [EnabledAtRuntime] operations on the instance.";
+                die "We currently do not support [EnabledAtRuntime] operations on the instance (except for global objects).";
             } else {
                 push(@$runtimeEnabledFunctions, $function);
             }
@@ -2191,7 +2220,53 @@ sub GenerateImplementation
         push(@implContent, "}\n\n");
     }
 
-    unless (IsDOMGlobalObject($interface)) {
+    if (IsDOMGlobalObject($interface)) {
+        if ($interfaceName eq "DOMWindow") {
+            push(@implContent, "void ${className}::finishCreation(VM& vm, JSDOMWindowShell* shell)\n");
+            push(@implContent, "{\n");
+            push(@implContent, "    Base::finishCreation(vm, shell);\n\n");
+        } else {
+            push(@implContent, "void ${className}::finishCreation(VM& vm)\n");
+            push(@implContent, "{\n");
+            push(@implContent, "    Base::finishCreation(vm);\n\n");
+        }
+        # Support for RuntimeEnabled attributes on global objects.
+        foreach my $attribute (@{$interface->attributes}) {
+            next unless $attribute->signature->extendedAttributes->{"EnabledAtRuntime"};
+
+            AddToImplIncludes("RuntimeEnabledFeatures.h");
+            my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
+            push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
+            my $enable_function = GetRuntimeEnableFunctionName($attribute->signature);
+            my $attributeName = $attribute->signature->name;
+            push(@implContent, "    if (${enable_function}()) {\n");
+            my $getter = GetAttributeGetterName($interfaceName, $className, $interface, $attribute);
+            my $setter = IsReadonly($attribute) ? "nullptr" : GetAttributeSetterName($interfaceName, $className, $interface, $attribute);
+            push(@implContent, "        auto* customGetterSetter = CustomGetterSetter::create(vm, $getter, $setter);\n");
+            my $jscAttributes = GetJSCAttributesForAttribute($interface, $attribute);
+            push(@implContent, "        putDirectCustomAccessor(vm, vm.propertyNames->$attributeName, customGetterSetter, attributesForStructure($jscAttributes));\n");
+            push(@implContent, "    }\n");
+            push(@implContent, "#endif\n") if $conditionalString;
+        }
+        # Support for RuntimeEnabled operations on global objects.
+        foreach my $function (@{$interface->functions}) {
+            next unless $function->signature->extendedAttributes->{"EnabledAtRuntime"};
+            next if $function->{overloadIndex} && $function->{overloadIndex} > 1;
+
+            AddToImplIncludes("RuntimeEnabledFeatures.h");
+            my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
+            push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
+            my $enable_function = GetRuntimeEnableFunctionName($function->signature);
+            my $functionName = $function->signature->name;
+            my $implementationFunction = GetFunctionName($interface, $className, $function);
+            my $functionLength = GetFunctionLength($function);
+            my $jsAttributes = ComputeFunctionSpecial($interface, $function);
+            push(@implContent, "    if (${enable_function}())\n");
+            push(@implContent, "        putDirectNativeFunction(vm, this, vm.propertyNames->$functionName, $functionLength, $implementationFunction, NoIntrinsic, attributesForStructure($jsAttributes));\n");
+            push(@implContent, "#endif\n") if $conditionalString;
+        }
+        push(@implContent, "}\n\n");
+    } else {
         push(@implContent, "JSObject* ${className}::createPrototype(VM& vm, JSGlobalObject* globalObject)\n");
         push(@implContent, "{\n");
         if ($hasParent && $parentClassName ne "JSC::DOMNodeFilter") {
@@ -2358,12 +2433,7 @@ sub GenerateImplementation
 
             # Global constructors can be disabled at runtime.
             if ($attribute->signature->type =~ /Constructor$/) {
-                if ($attribute->signature->extendedAttributes->{"EnabledAtRuntime"}) {
-                    AddToImplIncludes("RuntimeEnabledFeatures.h");
-                    my $enable_function = GetRuntimeEnableFunctionName($attribute->signature);
-                    push(@implContent, "    if (!${enable_function}())\n");
-                    push(@implContent, "        return JSValue::encode(jsUndefined());\n");
-                } elsif ($attribute->signature->extendedAttributes->{"EnabledBySetting"}) {
+                if ($attribute->signature->extendedAttributes->{"EnabledBySetting"}) {
                     AddToImplIncludes("Frame.h");
                     AddToImplIncludes("Settings.h");
                     my $enable_function = ToMethodName($attribute->signature->extendedAttributes->{"EnabledBySetting"}) . "Enabled";
@@ -3595,7 +3665,13 @@ sub GenerateReturnParameters
     my $function = shift;
     my @arguments;
 
-    push(@arguments, "DeferredWrapper(state, castedThis->globalObject(), promiseDeferred)") if IsReturningPromise($function);
+    if (IsReturningPromise($function)) {
+        if ($function->isStatic) {
+            push(@arguments, "DeferredWrapper(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), promiseDeferred)");
+        } else {
+            push(@arguments, "DeferredWrapper(state, castedThis->globalObject(), promiseDeferred)");
+        }
+    }
     push(@arguments, "ec") if $function->signature->extendedAttributes->{"RaisesException"} || $function->signature->extendedAttributes->{"RaisesExceptionWithMessage"};
     return @arguments;
 }

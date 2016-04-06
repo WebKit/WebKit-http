@@ -35,6 +35,8 @@ class RenderStyle;
 
 namespace Style {
 
+class Update;
+
 struct Relation {
     enum Type {
         AffectedByActive,
@@ -66,7 +68,7 @@ struct Relation {
 using Relations = Vector<Relation, 8>;
 
 std::unique_ptr<Relations> commitRelationsToRenderStyle(RenderStyle&, const Element&, const Relations&);
-void commitRelationsToDocument(std::unique_ptr<Relations>);
+void commitRelations(std::unique_ptr<Relations>, Update&);
 
 }
 }
