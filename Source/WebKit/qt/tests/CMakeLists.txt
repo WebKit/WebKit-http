@@ -11,11 +11,7 @@ include_directories(SYSTEM
     ${Qt5Test_INCLUDE_DIRS}
 )
 
-set(tst_qwebframe_SOURCES qwebframe/tst_qwebframe.cpp)
-qt5_add_resources(tst_qwebframe_SOURCES qwebframe/tst_qwebframe.qrc)
-add_executable(tst_qwebframe ${tst_qwebframe_SOURCES})
-add_test(tst_qwebframe "${CMAKE_CURRENT_BINARY_DIR}/tst_qwebframe")
-target_link_libraries(tst_qwebframe
+set(QtWK1ApiTests_LIBRARIES
     ${Qt5Gui_LIBRARIES}
     ${Qt5Network_LIBRARIES}
     ${Qt5Test_LIBRARIES}
@@ -23,3 +19,28 @@ target_link_libraries(tst_qwebframe
     WebCoreTestSupport
     WebKitWidgets
 )
+
+# Inspired by EFL WK2 tests
+set(QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY
+    ${CMAKE_BINARY_DIR}/tests
+)
+
+set(QtWK1ApiTests
+    qwebframe
+)
+
+if (ENABLE_API_TESTS)
+    foreach (testName ${QtWK1ApiTests})
+        set(tst_${testName}_SOURCES ${testName}/tst_${testName}.cpp)
+        if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${testName}/tst_${testName}.qrc")
+            qt5_add_resources(tst_${testName}_SOURCES ${testName}/tst_${testName}.qrc)
+        endif ()
+
+        add_executable(tst_${testName} ${tst_${testName}_SOURCES})
+        target_link_libraries(tst_${testName} ${QtWK1ApiTests_LIBRARIES})
+        set_target_properties(tst_${testName} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY})
+
+        add_test(${testName} "${QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY}/tst_${testName}")
+        set_tests_properties(${testName} PROPERTIES TIMEOUT 60)
+    endforeach ()
+endif ()
