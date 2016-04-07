@@ -28,6 +28,8 @@
 #include <qaccessiblewidget.h>
 #endif
 
+#ifndef QT_NO_ACCESSIBILITY
+
 class QWebFrame;
 class QWebPage;
 class QWebView;
@@ -82,5 +84,7 @@ public:
     int childCount() const;
     QAccessibleInterface* child(int index) const;
 };
+
+#endif // !QT_NO_ACCESSIBILITY
 
 #endif

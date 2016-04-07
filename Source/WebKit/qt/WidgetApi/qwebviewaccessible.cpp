@@ -18,6 +18,9 @@
  */
 
 #include "config.h"
+
+#ifndef QT_NO_ACCESSIBILITY
+
 #include "qwebviewaccessible_p.h"
 
 #include "qwebframe.h"
@@ -150,3 +153,5 @@ QAccessibleInterface* QWebViewAccessible::child(int index) const
         return new QWebPageAccessible(view()->page());
     return 0;
 }
+
+#endif // !QT_NO_ACCESSIBILITY
