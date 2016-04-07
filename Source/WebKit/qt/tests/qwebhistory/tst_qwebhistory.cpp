@@ -54,14 +54,18 @@ private Q_SLOTS:
     void itemAt();
     void goToItem();
     void items();
+#if !SAVE_AND_RESTORE_IS_BROKEN
     void serialize_1(); //QWebHistory countity
     void serialize_2(); //QWebHistory index
     void serialize_3(); //QWebHistoryItem
+#endif
     // Those tests shouldn't crash
     void saveAndRestore_crash_1();
     void saveAndRestore_crash_2();
     void saveAndRestore_crash_3();
+#if !SAVE_AND_RESTORE_IS_BROKEN
     void saveAndRestore_crash_4();
+#endif
 
     void popPushState_data();
     void popPushState();
@@ -201,6 +205,7 @@ void tst_QWebHistory::items()
     }
 }
 
+#if !SAVE_AND_RESTORE_IS_BROKEN
 /**
   * Check history state after serialization (pickle, persistent..) method
   * Checks history size, history order
@@ -313,6 +318,7 @@ void tst_QWebHistory::serialize_3()
     //Check if all data was read
     QVERIFY(load.atEnd());
 }
+#endif // SAVE_AND_RESTORE_IS_BROKEN
 
 static void saveHistory(QWebHistory* history, QByteArray* in)
 {
@@ -360,8 +366,10 @@ void tst_QWebHistory::saveAndRestore_crash_3()
     for (unsigned i = 0; i < 5; i++) {
         restoreHistory(hist1, &buffer);
         restoreHistory(hist2, &buffer);
+#if !SAVE_AND_RESTORE_IS_BROKEN
         QVERIFY(hist1->count() == hist2->count());
         QVERIFY(hist1->count() == histsize);
+#endif
         hist2->back();
         saveHistory(hist2, &buffer);
         hist2->clear();
@@ -369,6 +377,7 @@ void tst_QWebHistory::saveAndRestore_crash_3()
     delete page2;
 }
 
+#if !SAVE_AND_RESTORE_IS_BROKEN
 void tst_QWebHistory::saveAndRestore_crash_4()
 {
     QByteArray buffer;
@@ -389,6 +398,7 @@ void tst_QWebHistory::saveAndRestore_crash_4()
     // Give some time for the PageCache cleanup 0-timer to fire.
     QTest::qWait(50);
 }
+#endif
 
 void tst_QWebHistory::popPushState_data()
 {

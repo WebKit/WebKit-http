@@ -592,10 +592,8 @@ QMap<QString, QWebHistoryItem> DumpRenderTreeSupportQt::getChildHistoryItems(con
     unsigned size = children.size();
     QMap<QString, QWebHistoryItem> kids;
     for (unsigned i = 0; i < size; ++i) {
-#if !HISTORY_IS_BROKEN
         QWebHistoryItem kid(new QWebHistoryItemPrivate(children[i].get()));
         kids.insert(DumpRenderTreeSupportQt::historyItemTarget(kid), kid);
-#endif
     }
     return kids;
 }

@@ -40,6 +40,13 @@ public:
             i->ref();
         item = i;
     }
+
+    QWebHistoryItemPrivate(WebCore::HistoryItem& i)
+    {
+        i.ref();
+        item = &i;
+    }
+
     ~QWebHistoryItemPrivate()
     {
         if (item)
@@ -62,6 +69,8 @@ public:
     {
         lst->deref();
     }
+
+    void goToItem(WebCore::HistoryItem* item);
 
     QWebPageAdapter* page();
 

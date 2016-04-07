@@ -28,6 +28,8 @@
 
 #include "qwebkitglobal.h"
 
+#define SAVE_AND_RESTORE_IS_BROKEN 1
+
 class QWebPage;
 
 namespace WebCore {

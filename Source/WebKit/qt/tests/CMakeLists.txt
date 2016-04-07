@@ -27,6 +27,8 @@ set(QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY
 
 set(QtWK1ApiTests
     qwebframe
+    qwebhistory
+    qwebhistoryinterface
 )
 
 if (ENABLE_API_TESTS)
