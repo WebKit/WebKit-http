@@ -216,7 +216,8 @@ add_custom_command(
             --rccExecutable ${RCC_EXECUTABLE}
             --resourceName WebInspector
             --add UserInterface/Protocol/InspectorBackendCommands.js
-            ${InspectorFilesDependencies}
+            ${InspectorFiles}
+    VERBATIM
 )
 
 list(APPEND WebCore_SOURCES

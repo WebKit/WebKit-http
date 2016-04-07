@@ -57,7 +57,7 @@ sub processArgs {
         "rccExecutable=s" => \$rccExecutable,
         "resourceName=s" => \$resourceName
     );
-    @sources = @ARGV;
+    @sources = map { glob } @ARGV;
     checkDir($baseDir);
     make_path($outDir);
     -x $rccExecutable or die "File $rccExecutable is not executable";
