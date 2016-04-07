@@ -36,6 +36,13 @@ extern "C" {
 WK_EXPORT WKViewRef WKViewCreate(WKPageConfigurationRef);
 WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
 
+enum {
+    kWKViewStateIsVisible = 1 << 0,
+};
+typedef uint32_t WKViewState;
+
+WK_EXPORT void WKViewSetViewState(WKViewRef, WKViewState);
+
 #ifdef __cplusplus
 }
 #endif

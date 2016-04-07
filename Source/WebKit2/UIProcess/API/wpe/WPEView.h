@@ -31,6 +31,7 @@
 #include "WebPageProxy.h"
 #include <WPE/Input/Handling.h>
 #include <WPE/ViewBackend/ViewBackend.h>
+#include <WebCore/ViewState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
@@ -56,6 +57,9 @@ public:
     const WebCore::IntSize& size() const { return m_size; }
     void setSize(const WebCore::IntSize& size);
 
+    WebCore::ViewState::Flags viewState() const { return m_viewStateFlags; }
+    void setViewState(WebCore::ViewState::Flags);
+
     // WPE::Input::Client
     void handleKeyboardEvent(WPE::Input::KeyboardEvent&&) override;
     void handlePointerEvent(WPE::Input::PointerEvent&&) override;
@@ -70,7 +74,9 @@ private:
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
     std::unique_ptr<WPE::ViewBackend::ViewBackend> m_viewBackend;
     std::unique_ptr<WebKit::CompositingManagerProxy> m_compositingManagerProxy;
+
     WebCore::IntSize m_size;
+    WebCore::ViewState::Flags m_viewStateFlags;
 };
 
 } // namespace WKWPE
