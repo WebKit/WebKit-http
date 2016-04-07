@@ -42,3 +42,8 @@ WKPageRef WKViewGetPage(WKViewRef view)
 {
     return toAPI(&toImpl(view)->page());
 }
+
+void WKViewSetViewState(WKViewRef view, WKViewState viewState)
+{
+    toImpl(view)->setViewState(toViewStateFlags(viewState));
+}

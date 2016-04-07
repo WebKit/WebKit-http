@@ -30,6 +30,7 @@
 #include "WPEView.h"
 #include "WebContextMenuProxy.h"
 #include <WebCore/NotImplemented.h>
+#include <WebCore/ViewState.h>
 
 namespace WebKit {
 
@@ -58,26 +59,22 @@ WebCore::IntSize PageClientImpl::viewSize()
 
 bool PageClientImpl::isViewWindowActive()
 {
-    // FIXME: Needs proper implementation.
-    return true;
+    return m_view.viewState() & WebCore::ViewState::WindowIsActive;
 }
 
 bool PageClientImpl::isViewFocused()
 {
-    // FIXME: Needs proper implementation.
-    return true;
+    return m_view.viewState() & WebCore::ViewState::IsFocused;
 }
 
 bool PageClientImpl::isViewVisible()
 {
-    // FIXME: Needs proper implementation.
-    return true;
+    return m_view.viewState() & WebCore::ViewState::IsVisible;
 }
 
 bool PageClientImpl::isViewInWindow()
 {
-    // FIXME: Needs proper implementation.
-    return true;
+    return m_view.viewState() & WebCore::ViewState::IsInWindow;
 }
 
 void PageClientImpl::processDidExit()
