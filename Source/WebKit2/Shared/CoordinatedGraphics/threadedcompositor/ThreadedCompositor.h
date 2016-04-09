@@ -30,7 +30,6 @@
 
 #include "CoordinatedGraphicsScene.h"
 #include "SimpleViewportController.h"
-// #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
 #include <wtf/Atomics.h>

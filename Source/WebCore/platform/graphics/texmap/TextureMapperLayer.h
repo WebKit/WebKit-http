@@ -26,7 +26,6 @@
 #include "TextureMapper.h"
 #include "TextureMapperAnimation.h"
 #include "TextureMapperBackingStore.h"
-#include <limits>
 
 namespace WebCore {
 
@@ -50,7 +49,7 @@ public:
         , m_effectTarget(0)
         , m_contentsLayer(0)
         , m_currentOpacity(1)
-        , m_centerZ(std::numeric_limits<float>::lowest())
+        , m_centerZ(0)
         , m_textureMapper(0)
         , m_fixedToViewport(false)
         , m_id(0)

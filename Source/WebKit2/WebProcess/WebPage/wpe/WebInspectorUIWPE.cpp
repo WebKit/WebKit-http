@@ -26,8 +26,6 @@
 #include "config.h"
 #include "WebInspectorUI.h"
 
-#if ENABLE(INSPECTOR)
-
 namespace WebKit {
 
 bool WebInspectorUI::canSave()
@@ -41,5 +39,3 @@ String WebInspectorUI::localizedStringsURL()
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(INSPECTOR)

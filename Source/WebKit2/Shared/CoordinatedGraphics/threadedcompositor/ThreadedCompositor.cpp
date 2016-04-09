@@ -31,12 +31,15 @@
 #include "CompositingRunLoop.h"
 #include "DisplayRefreshMonitor.h"
 #include <WebCore/GLContextEGL.h>
-#include <WebCore/PlatformDisplayWPE.h>
 #include <WebCore/TransformationMatrix.h>
 #include <cstdio>
 #include <cstdlib>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
+
+#if PLATFORM(WPE)
+#include <WebCore/PlatformDisplayWPE.h>
+#endif
 
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>

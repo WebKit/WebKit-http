@@ -1,3 +1,304 @@
+2016-04-05  Alex Christensen  <achristensen@webkit.org>
+
+        Make CMake-generated binaries on Mac able to run
+        https://bugs.webkit.org/show_bug.cgi?id=156268
+
+        Reviewed by Daniel Bates.
+
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformMac.cmake:
+        * DumpRenderTree/PlatformWin.cmake:
+        * TestWebKitAPI/PlatformMac.cmake:
+
+2016-04-05  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add a runtime flag to fetch API and related constructs
+        https://bugs.webkit.org/show_bug.cgi?id=156113
+ 
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebGL2Enabled):
+        (WTR::TestRunner::setFetchAPIEnabled):
+        (WTR::TestRunner::setAllowUniversalAccessFromFileURLs):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-04-05  Keith Miller  <keith_miller@apple.com>
+
+        Make Keith a reviewer!
+        https://bugs.webkit.org/show_bug.cgi?id=156246
+
+        Reviewed by Mark Lam.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-04-05  Antoine Quint  <graouts@apple.com>
+
+        [WebGL2] Allow enabling WebGL2 with a runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=156166
+        <rdar://problem/25526929>
+
+        Always enable WebGL2 during testing.
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebGL2Enabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-04-04  Bill Ming  <mbbill@gmail.com>
+
+        [win] run-webkit-tests failed to launch DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=156150
+
+        Reviewed by Alex Christensen.
+
+        * Tools/Scripts/webkitpy/port/base.py:
+
+2016-04-04  Bill Ming  <mbbill@gmail.com>
+
+        prepare-ChangeLog set endl incorrectly.
+        https://bugs.webkit.org/show_bug.cgi?id=156151
+
+        Reviewed by Alex Christensen.
+
+        * Tools/Scripts/prepare-ChangeLog:
+
+2016-04-03  Sam Weinig  <sam@webkit.org>
+
+        Add SPI to allow install script message handlers in isolated worlds
+        https://bugs.webkit.org/show_bug.cgi?id=156153
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        Add new test, WKUserContentController.ScriptMessageHandlerBasicPostIsolatedWorld
+
+2016-04-04  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Build fix for r198956.
+
+        Unreviewed.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadInvalidURLRequest.mm:
+        (-[LoadInvalidURLNavigationActionDelegate webView:didFailProvisionalNavigation:withError:]):
+        * TestWebKitAPI/Tests/mac/LoadInvalidURLRequest.mm:
+        (-[LoadInvalidURLWebFrameLoadDelegate webView:didFailProvisionalLoadWithError:forFrame:]):
+
+2016-04-04  Bill Ming  <mbbill@gmail.com>
+
+        [win] prepare-ChangeLog should treat windows path differently.
+        https://bugs.webkit.org/show_bug.cgi?id=156120
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/prepare-ChangeLog:
+
+2016-04-04  Alejandro G. Castro  <alex@igalia.com>
+
+        REGRESSION(r198492): [GTK] The WEB_RTC flag was not correctly added in some situations
+        https://bugs.webkit.org/show_bug.cgi?id=156164
+
+        Reviewed by Philippe Normand.
+
+        Enable the new WEB_RTC option by default for Gtk+.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-04-03  Dan Bernstein  <mitz@apple.com>
+
+        Use the correct value for the first nightly build with frameworks built for OS X 10.11.
+
+        * Scripts/bisect-builds:
+        (makeNightlyList):
+
+2016-04-03  Dan Bernstein  <mitz@apple.com>
+
+        Made bisect-builds work again.
+
+        Rubber-stamped by Sam Weinig.
+
+        * Scripts/bisect-builds:
+        Changed to use HTTPS to access nightly.webkit.org, and added a minimum revision for OS X 10.11.
+
+2016-04-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Build fix for r198956.
+
+        Unreviewed.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ProvisionalURLNotChange.mm: Renamed from Tools/TestWebKitAPI/Tests/WebKit2Cocoa/ProvisionalURLChange.mm.
+        (-[ProvisionalURLNotChangeController webView:didFinishNavigation:]):
+        (-[ProvisionalURLNotChangeController webView:didFailProvisionalNavigation:withError:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsInvalidScheme.mm:
+        (-[LoadInvalidSchemeDelegate browsingContextController:didFailProvisionalLoadWithError:]):
+        (TestWebKitAPI::TEST):
+
+2016-04-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should dispatchDidFailProvisionalLoad while loading invalid URLs
+        https://bugs.webkit.org/show_bug.cgi?id=155995
+        <rdar://problem/14967004>
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadAlternateHTMLString.mm:
+        (-[LoadAlternateHTMLStringFromProvisionalLoadErrorController webView:didFailProvisionalNavigation:withError:]):
+        (-[LoadAlternateHTMLStringFromProvisionalLoadErrorController webView:didStartProvisionalNavigation:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadInvalidURLRequest.mm: Added.
+        (literalURL):
+        (-[LoadInvalidURLNavigationActionDelegate webView:didCommitNavigation:]):
+        (-[LoadInvalidURLNavigationActionDelegate webView:didFailProvisionalNavigation:withError:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/LoadInvalidURLRequest.html: Added.
+        * TestWebKitAPI/Tests/mac/LoadInvalidURLRequest.mm: Added.
+        (-[LoadInvalidURLWebFrameLoadDelegate webView:didCommitLoadForFrame:]):
+        (-[LoadInvalidURLWebFrameLoadDelegate webView:didFailProvisionalLoadWithError:forFrame:]):
+        (TestWebKitAPI::TEST):
+
+2016-04-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Confirm <a download> satisfies specification criteria
+        https://bugs.webkit.org/show_bug.cgi?id=156057
+
+        Reviewed by Andy Estes.
+
+        Revise WebKitTestRunner:
+        (1) Provide a download client delegate.
+        (2) Teach WKTR to wait to finish a test until a download finishes.
+        (3) Allow WKTR to notify the current TestRunner that it can finish.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage): Update to recognize a new
+        message "NotifyDownloadDone".
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForNavigationAction): Handle 'download'
+        attribute case.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::waitUntilDownload): Added.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::shouldFinishAfterDownload): Added.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions): Set up the download client.
+        (WTR::TestController::downloadDidStart): Added.
+        (WTR::TestController::decideDestinationWithSuggestedFilename): Added.
+        (WTR::TestController::downloadDidFinish): Added.
+        (WTR::TestController::downloadDidFail): Added.
+        (WTR::TestController::downloadDidCancel): Added.
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::notifyDownloadDone): Added.
+        * WebKitTestRunner/TestInvocation.h:
+
+2016-04-01  Alex Christensen  <achristensen@webkit.org>
+
+        Compile DumpRenderTree with CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156088
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/DefaultPolicyDelegate.m:
+        (-[DefaultPolicyDelegate webView:decidePolicyForNavigationAction:request:frame:decisionListener:]):
+        * DumpRenderTree/DumpRenderTreeFileDraggingSource.m:
+        * DumpRenderTree/PlatformMac.cmake: Added.
+        * DumpRenderTree/PlatformWin.cmake:
+        * DumpRenderTree/mac/AppleScriptController.m:
+        (convertAEDescToObject):
+        * DumpRenderTree/mac/DumpRenderTreeMain.mm:
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+
+2016-03-31  Bill Ming  <mbbill@gmail.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=156094
+        [Win] TestWebCore target build sometimes fail.
+
+        Reviewed by Alex Christensen.
+
+        * Tools/TestWebKitAPI/PlatformWin.cmake:
+
+2016-03-31  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Bump EFL version to 1.17.0
+        https://bugs.webkit.org/show_bug.cgi?id=153008
+
+        Reviewed by Michael Catanzaro.
+
+        Original author is Csaba Osztrogonác  <ossy@webkit.org>
+
+        * efl/jhbuild.modules:
+
+2016-03-31  Daniel Bates  <dabates@apple.com>
+
+        run-webkit-tests fails to create user's cache directory when System Integrity Protection is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=156071
+        <rdar://problem/25467827>
+
+        Reviewed by Brent Fulgham.
+
+        Fixes an issue where run-webkit-tests will fail to create the suffixed user's cache directory
+        on non-Apple Internal machines with System Integrity Protection enabled because the OS only
+        honors the suffix, specified by the environment variable DIRHELPER_USER_DIR_SUFFIX, in
+        privileged processes. And python(1) does not have sufficient privileges. As a workaround for
+        systems that have System Integrity Protection enabled we compute the path to the suffixed
+        user's cache directory by hand.
+
+        Additionally, fix an issue where the user's cache directory created by run-webkit-test was
+        never deleted on cessation of the test run.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._start): Actually store the path to the user's cache directory in self._driver_user_cache_directory
+        so that we can delete this directory on cessation of the test run.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort):
+        (MacPort._path_to_user_cache_directory): Unset the environment variable DIRHELPER_USER_DIR_SUFFIX (if set),
+        query the OS for the path to the user's cache directory and concatenate this path with the
+        specified suffix.
+
+2016-03-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should set Original URL of a download request correctly
+        https://bugs.webkit.org/show_bug.cgi?id=155914
+        <rdar://problem/10473811>
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadRequestOriginalURLDelegate initWithExpectOriginalURL:]):
+        (-[DownloadRequestOriginalURLDelegate _downloadDidStart:]):
+        (-[DownloadRequestOriginalURLNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DownloadRequestOriginalURL.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DownloadRequestOriginalURL2.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DownloadRequestOriginalURLFrame.html: Added.
+
+2016-03-30  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend animometer timeout for slow CPUs.
+        https://bugs.webkit.org/show_bug.cgi?id=156047
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend animometer timeout to 30 minutes for slow device.
+
+        * Scripts/webkitpy/benchmark_runner/data/plans/animometer.plan:
+
 2016-03-30  Daniel Bates  <dabates@apple.com>
 
         run-webkit-tests must create parent directory of user's cache directory before running tests

@@ -186,6 +186,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithRound:
     case ArithFloor:
     case ArithCeil:
+    case ArithTrunc:
     case ArithSin:
     case ArithCos:
     case ArithLog:
@@ -288,6 +289,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CountExecution:
     case ForceOSRExit:
     case CheckWatchdogTimer:
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
     case StringFromCharCode:
     case NewTypedArray:
     case Unreachable:
@@ -335,6 +338,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case StringReplace:
     case GetRegExpObjectLastIndex:
     case SetRegExpObjectLastIndex:
+    case RecordRegExpCachedResult:
         return true;
 
     case BottomValue:

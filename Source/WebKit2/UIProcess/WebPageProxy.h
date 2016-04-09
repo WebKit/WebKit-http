@@ -1021,7 +1021,10 @@ public:
     void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t);
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
 
-    bool isPlayingVideoWithAudio() const;
+#if PLATFORM(MAC)
+    void videoControlsManagerDidChange();
+    bool hasActiveVideoForControlsManager() const;
+#endif
 
 #if ENABLE(MEDIA_SESSION)
     void hasMediaSessionWithActiveMediaElementsDidChange(bool);
@@ -1512,6 +1515,7 @@ private:
 
     std::unique_ptr<WebNavigationState> m_navigationState;
     String m_failingProvisionalLoadURL;
+    bool m_isLoadingAlternateHTMLStringForFailingProvisionalLoad { false };
 
     std::unique_ptr<DrawingAreaProxy> m_drawingArea;
 #if ENABLE(ASYNC_SCROLLING)
@@ -1808,6 +1812,10 @@ private:
 #if PLATFORM(IOS)
     bool m_hasDeferredStartAssistingNode { false };
     std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
+#endif
+
+#if ENABLE(DOWNLOAD_ATTRIBUTE)
+    bool m_syncNavigationActionHasDownloadAttribute { false };
 #endif
 };
 

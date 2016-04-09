@@ -365,7 +365,8 @@ private:
 
         case ArithRound:
         case ArithFloor:
-        case ArithCeil: {
+        case ArithCeil:
+        case ArithTrunc: {
             if (m_graph.unaryArithShouldSpeculateInt32(node, FixupPass)) {
                 fixIntOrBooleanEdge(node->child1());
                 insertCheck<Int32Use>(m_indexInBlock, node->child1().node());
@@ -1299,6 +1300,7 @@ private:
         case StoreBarrier:
         case GetRegExpObjectLastIndex:
         case SetRegExpObjectLastIndex:
+        case RecordRegExpCachedResult:
             // These are just nodes that we don't currently expect to see during fixup.
             // If we ever wanted to insert them prior to fixup, then we just have to create
             // fixup rules for them.
@@ -1506,6 +1508,8 @@ private:
         case CheckBadCell:
         case CheckNotEmpty:
         case CheckWatchdogTimer:
+        case LogShadowChickenPrologue:
+        case LogShadowChickenTail:
         case Unreachable:
         case ExtractOSREntryLocal:
         case LoopHint:

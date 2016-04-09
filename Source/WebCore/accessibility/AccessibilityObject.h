@@ -237,6 +237,9 @@ enum AccessibilityTextSource {
     TitleTagText,
     PlaceholderText,
     LabelByElementText,
+    TitleText,
+    SubtitleText,
+    ActionText,
 };
     
 struct AccessibilityText {
@@ -391,6 +394,11 @@ struct VisiblePositionRange {
         , end(e)
     { }
 
+    VisiblePositionRange(const VisibleSelection& selection)
+        : start(selection.start())
+        , end(selection.end())
+    { }
+
     bool isNull() const { return start.isNull() || end.isNull(); }
 };
 
@@ -473,7 +481,7 @@ public:
 
     bool accessibilityObjectContainsText(String *) const;
 
-    virtual bool isAttachment() const { return false; }
+    virtual bool isAttachmentElement() const { return false; }
     virtual bool isHeading() const { return false; }
     virtual bool isLink() const { return false; }
     virtual bool isImage() const { return false; }
@@ -490,6 +498,7 @@ public:
     virtual bool isRadioButton() const { return roleValue() == RadioButtonRole; }
     virtual bool isListBox() const { return roleValue() == ListBoxRole; }
     virtual bool isListBoxOption() const { return false; }
+    virtual bool isAttachment() const { return false; }
     virtual bool isMediaTimeline() const { return false; }
     virtual bool isMenuRelated() const { return false; }
     virtual bool isMenu() const { return false; }
@@ -634,7 +643,7 @@ public:
     bool supportsRangeValue() const;
     String identifierAttribute() const;
     void classList(Vector<String>&) const;
-    const AtomicString& roleDescription() const;
+    virtual String roleDescription() const;
     AccessibilityARIACurrentState ariaCurrentState() const;
     
     // This function checks if the object should be ignored when there's a modal dialog displayed.
@@ -839,7 +848,7 @@ public:
     
     RefPtr<Range> rangeForPlainTextRange(const PlainTextRange&) const;
 
-    String stringForVisiblePositionRange(const VisiblePositionRange&) const;
+    static String stringForVisiblePositionRange(const VisiblePositionRange&);
     String stringForRange(RefPtr<Range>) const;
     virtual IntRect boundsForVisiblePositionRange(const VisiblePositionRange&) const { return IntRect(); }
     virtual IntRect boundsForRange(const RefPtr<Range>) const { return IntRect(); }
@@ -877,7 +886,7 @@ public:
     virtual String doAXStringForRange(const PlainTextRange&) const { return String(); }
     virtual IntRect doAXBoundsForRange(const PlainTextRange&) const { return IntRect(); }
     virtual IntRect doAXBoundsForRangeUsingCharacterOffset(const PlainTextRange&) const { return IntRect(); }
-    String listMarkerTextForNodeAndPosition(Node*, const VisiblePosition&) const;
+    static String listMarkerTextForNodeAndPosition(Node*, const VisiblePosition&);
 
     unsigned doAXLineForIndex(unsigned);
 

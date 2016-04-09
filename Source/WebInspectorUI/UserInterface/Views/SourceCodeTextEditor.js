@@ -78,9 +78,9 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         else
             this._sourceCode.addEventListener(WebInspector.SourceCode.Event.SourceMapAdded, this._sourceCodeSourceMapAdded, this);
 
-        sourceCode.requestContent().then(this._contentAvailable.bind(this));
+        sourceCode.requestContent().then(this._contentAvailable.bind(this)).catch(handlePromiseException);
 
-        // FIXME: Cmd+L shorcut doesn't actually work.
+        // FIXME: Cmd+L shortcut doesn't actually work.
         new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command, "L", this.showGoToLineDialog.bind(this), this.element);
         new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, "G", this.showGoToLineDialog.bind(this), this.element);
     }
@@ -1573,11 +1573,22 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         this._mouseIsOverPopover = this._popover.element.contains(event.relatedTarget);
     }
 
+    _hasStyleSheetContents()
+    {
+        let mimeType = this.mimeType;
+        return mimeType === "text/css"
+            || mimeType === "text/x-less"
+            || mimeType === "text/x-sass"
+            || mimeType === "text/x-scss";
+    }
+
     _updateEditableMarkers(range)
     {
-        this.createColorMarkers(range);
-        this.createGradientMarkers(range);
-        this.createCubicBezierMarkers(range);
+        if (this._hasStyleSheetContents()) {
+            this.createColorMarkers(range);
+            this.createGradientMarkers(range);
+            this.createCubicBezierMarkers(range);
+        }
 
         this._updateTokenTrackingControllerState();
     }

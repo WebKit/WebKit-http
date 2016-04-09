@@ -134,6 +134,9 @@ typedef const char* optionString;
     \
     v(bool, useFunctionDotArguments, true, nullptr) \
     v(bool, useTailCalls, true, nullptr) \
+    v(bool, alwaysUseShadowChicken, false, nullptr) \
+    v(unsigned, shadowChickenLogSize, 1000, nullptr) \
+    v(unsigned, shadowChickenStackSizeLimit, 100000, nullptr) \
     \
     /* dumpDisassembly implies dumpDFGDisassembly. */ \
     v(bool, dumpDisassembly, false, "dumps disassembly of all JIT compiled code upon compilation") \
@@ -187,10 +190,12 @@ typedef const char* optionString;
     v(bool, ftlCrashes, false, nullptr) /* fool-proof way of checking that you ended up in the FTL. ;-) */\
     v(bool, clobberAllRegsInFTLICSlowPath, !ASSERT_DISABLED, nullptr) \
     v(bool, useAccessInlining, true, nullptr) \
-    v(unsigned, maxAccessVariantListSize, 8, nullptr) \
+    v(unsigned, maxAccessVariantListSize, 13, nullptr) \
+    v(unsigned, megamorphicLoadCost, 10, nullptr) \
     v(bool, usePolyvariantDevirtualization, true, nullptr) \
     v(bool, usePolymorphicAccessInlining, true, nullptr) \
     v(bool, usePolymorphicCallInlining, true, nullptr) \
+    v(bool, usePolymorphicCallInliningForNonStubStatus, false, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSize, 15, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSizeForTopTier, 5, nullptr) \
     v(unsigned, maxPolymorphicCallVariantsForInlining, 5, nullptr) \
@@ -208,6 +213,7 @@ typedef const char* optionString;
     v(int32, priorityDeltaOfFTLCompilerThreads, computePriorityDeltaOfWorkerThreads(-2, 0), nullptr) \
     \
     v(bool, useProfiler, false, nullptr) \
+    v(bool, disassembleBaselineForProfiler, true, nullptr) \
     \
     v(bool, useArchitectureSpecificOptimizations, true, nullptr) \
     \

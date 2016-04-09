@@ -987,6 +987,10 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setShadowDOMEnabled:YES];
     [preferences setCustomElementsEnabled:YES];
 
+    [preferences setWebGL2Enabled:YES];
+
+    [preferences setFetchAPIEnabled:YES];
+
     [preferences setHiddenPageDOMTimerThrottlingEnabled:NO];
     [preferences setHiddenPageCSSAnimationSuspensionEnabled:NO];
 

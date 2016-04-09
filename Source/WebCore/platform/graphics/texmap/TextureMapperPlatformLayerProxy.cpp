@@ -34,7 +34,7 @@
 #include "TextureMapperPlatformLayerBuffer.h"
 
 const double s_releaseUnusedSecondsTolerance = 1;
-const double s_releaseUnusedBuffersTimerInterval = 1.2;
+const double s_releaseUnusedBuffersTimerInterval = 0.5;
 
 namespace WebCore {
 

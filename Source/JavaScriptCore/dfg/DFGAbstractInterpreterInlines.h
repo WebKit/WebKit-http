@@ -850,7 +850,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case ArithRound:
     case ArithFloor:
-    case ArithCeil: {
+    case ArithCeil:
+    case ArithTrunc: {
         JSValue operand = forNode(node->child1()).value();
         if (operand && operand.isNumber()) {
             double roundedValue = 0;
@@ -858,9 +859,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 roundedValue = jsRound(operand.asNumber());
             else if (node->op() == ArithFloor)
                 roundedValue = floor(operand.asNumber());
-            else {
-                ASSERT(node->op() == ArithCeil);
+            else if (node->op() == ArithCeil)
                 roundedValue = ceil(operand.asNumber());
+            else {
+                ASSERT(node->op() == ArithTrunc);
+                roundedValue = trunc(operand.asNumber());
             }
 
             if (producesInteger(node->arithRoundingMode())) {
@@ -1170,7 +1173,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
         // FIXME: We could use the masquerades-as-undefined watchpoint here.
         // https://bugs.webkit.org/show_bug.cgi?id=144456
-        if (!(abstractChild.m_type & ~(SpecObject - SpecObjectOther))) {
+        if (!(abstractChild.m_type & ~(SpecObject - SpecObjectOther - SpecFunction))) {
             setConstant(node, *m_graph.freeze(vm->smallStrings.objectString()));
             break;
         }
@@ -1952,6 +1955,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case SetRegExpObjectLastIndex:
+    case RecordRegExpCachedResult:
         break;
         
     case GetFromArguments:
@@ -2622,6 +2626,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case CheckWatchdogTimer:
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
         break;
 
     case ProfileWillCall:

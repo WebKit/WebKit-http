@@ -507,6 +507,24 @@ String contextMenuItemTagExitVideoFullscreen()
     return WEB_UI_STRING("Exit Full Screen", "Video Exit Fullscreen context menu item");
 }
 
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+
+#if USE(APPLE_INTERNAL_SDK)
+#include <WebKitAdditions/ContextMenuLocalizedStringsAdditions.cpp>
+#else
+String contextMenuItemTagEnterVideoEnhancedFullscreen()
+{
+    return { };
+}
+
+String contextMenuItemTagExitVideoEnhancedFullscreen()
+{
+    return { };
+}
+#endif
+
+#endif
+
 String contextMenuItemTagMediaPlay()
 {
     return WEB_UI_STRING("Play", "Media Play context menu item");
@@ -601,6 +619,11 @@ String AXFileUploadButtonText()
     return WEB_UI_STRING("file upload button", "accessibility role description for a file upload button");
 }
 
+String AXAttachmentRoleText()
+{
+    return WEB_UI_STRING("attachment", "accessibility role description for an attachment element");
+}
+    
 String AXSearchFieldCancelButtonText()
 {
     return WEB_UI_STRING("cancel", "accessibility description for a search field cancel button");

@@ -42,6 +42,7 @@
 #include "DFGNodeOrigin.h"
 #include "DFGNodeType.h"
 #include "DFGObjectMaterializationData.h"
+#include "DFGOpInfo.h"
 #include "DFGTransition.h"
 #include "DFGUseKind.h"
 #include "DFGVariableAccessData.h"
@@ -217,20 +218,6 @@ struct StackAccessData {
     FlushFormat format;
     
     FlushedAt flushedAt() { return FlushedAt(format, machineLocal); }
-};
-
-// This type used in passing an immediate argument to Node constructor;
-// distinguishes an immediate value (typically an index into a CodeBlock data structure - 
-// a constant index, argument, or identifier) from a Node*.
-struct OpInfo {
-    OpInfo() : m_value(0) { }
-    explicit OpInfo(int32_t value) : m_value(static_cast<uintptr_t>(value)) { }
-    explicit OpInfo(uint32_t value) : m_value(static_cast<uintptr_t>(value)) { }
-#if OS(DARWIN) || USE(JSVALUE64)
-    explicit OpInfo(size_t value) : m_value(static_cast<uintptr_t>(value)) { }
-#endif
-    explicit OpInfo(void* value) : m_value(reinterpret_cast<uintptr_t>(value)) { }
-    uintptr_t m_value;
 };
 
 // === Node ===
@@ -943,7 +930,7 @@ struct Node {
     NodeFlags arithNodeFlags()
     {
         NodeFlags result = m_flags & NodeArithFlagsMask;
-        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == ArithRound || op() == ArithFloor || op() == ArithCeil || op() == DoubleAsInt32)
+        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == ArithRound || op() == ArithFloor || op() == ArithCeil || op() == ArithTrunc || op() == DoubleAsInt32)
             return result;
         return result & ~NodeBytecodeNeedsNegZero;
     }
@@ -1351,6 +1338,7 @@ struct Node {
         case ArithRound:
         case ArithFloor:
         case ArithCeil:
+        case ArithTrunc:
         case GetDirectPname:
         case GetById:
         case GetByIdFlush:
@@ -1733,7 +1721,7 @@ struct Node {
 
     bool hasArithRoundingMode()
     {
-        return op() == ArithRound || op() == ArithFloor || op() == ArithCeil;
+        return op() == ArithRound || op() == ArithFloor || op() == ArithCeil || op() == ArithTrunc;
     }
 
     Arith::RoundingMode arithRoundingMode()
@@ -2338,6 +2326,25 @@ CString nodeMapDump(const T& nodeMap, DumpContext* context = 0)
     CommaPrinter comma;
     for(unsigned i = 0; i < keys.size(); ++i)
         out.print(comma, keys[i], "=>", inContext(nodeMap.get(keys[i]), context));
+    return out.toCString();
+}
+
+template<typename IteratorType>
+inline bool nodeValuePairComparator(IteratorType a, IteratorType b)
+{
+    return nodeComparator(a.node, b.node);
+}
+
+template<typename T>
+CString nodeValuePairListDump(const T& nodeValuePairList, DumpContext* context = 0)
+{
+    T sortedList = nodeValuePairList;
+    std::sort(sortedList.begin(), sortedList.end(), nodeValuePairComparator<decltype(*sortedList.begin())>);
+
+    StringPrintStream out;
+    CommaPrinter comma;
+    for (const auto& pair : sortedList)
+        out.print(comma, pair.node, "=>", inContext(pair.value, context));
     return out.toCString();
 }
 

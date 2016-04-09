@@ -33,8 +33,10 @@
 #include "CallLinkStatus.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
+#include "DFGAbstractHeap.h"
 #include "DFGArrayMode.h"
 #include "DFGCapabilities.h"
+#include "DFGClobberize.h"
 #include "DFGClobbersExitState.h"
 #include "DFGGraph.h"
 #include "DFGJITCode.h"
@@ -177,6 +179,7 @@ private:
     template<typename ChecksFunctor>
     bool handleMinMax(int resultOperand, NodeType op, int registerOffset, int argumentCountIncludingThis, const ChecksFunctor& insertChecks);
 
+    void refineStatically(CallLinkStatus&, Node* callTarget);
     // Handle calls. This resolves issues surrounding inlining and intrinsics.
     enum Terminality { Terminal, NonTerminal };
     Terminality handleCall(
@@ -230,8 +233,7 @@ private:
     Node* store(Node* base, unsigned identifier, const PutByIdVariant&, Node* value);
         
     void handleGetById(
-        int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber,
-        const GetByIdStatus&);
+        int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber, GetByIdStatus);
     void emitPutById(
         Node* base, unsigned identifierNumber, Node* value,  const PutByIdStatus&, bool isDirect);
     void handlePutById(
@@ -1167,15 +1169,22 @@ ByteCodeParser::Terminality ByteCodeParser::handleCall(
         registerOffset, callLinkStatus, getPrediction());
 }
 
+void ByteCodeParser::refineStatically(CallLinkStatus& callLinkStatus, Node* callTarget)
+{
+    if (callTarget->isCellConstant()) {
+        callLinkStatus.setProvenConstantCallee(CallVariant(callTarget->asCell()));
+        return;
+    }
+}
+
 ByteCodeParser::Terminality ByteCodeParser::handleCall(
     int result, NodeType op, InlineCallFrame::Kind kind, unsigned instructionSize,
     Node* callTarget, int argumentCountIncludingThis, int registerOffset,
     CallLinkStatus callLinkStatus, SpeculatedType prediction)
 {
     ASSERT(registerOffset <= 0);
-    
-    if (callTarget->isCellConstant())
-        callLinkStatus.setProvenConstantCallee(CallVariant(callTarget->asCell()));
+
+    refineStatically(callLinkStatus, callTarget);
     
     if (Options::verboseDFGByteCodeParsing())
         dataLog("    Handling call at ", currentCodeOrigin(), ": ", callLinkStatus, "\n");
@@ -1227,8 +1236,7 @@ ByteCodeParser::Terminality ByteCodeParser::handleVarargsCall(Instruction* pc, N
     CallLinkStatus callLinkStatus = CallLinkStatus::computeFor(
         m_inlineStackTop->m_profiledBlock, currentCodeOrigin(),
         m_inlineStackTop->m_callLinkInfos, m_callContextMap);
-    if (callTarget->isCellConstant())
-        callLinkStatus.setProvenConstantCallee(CallVariant(callTarget->asCell()));
+    refineStatically(callLinkStatus, callTarget);
     
     if (Options::verboseDFGByteCodeParsing())
         dataLog("    Varargs call link status at ", currentCodeOrigin(), ": ", callLinkStatus, "\n");
@@ -1785,6 +1793,18 @@ bool ByteCodeParser::handleInlining(
         return false;
     }
     
+    // If the claim is that this did not originate from a stub, then we don't want to emit a switch
+    // statement. Whenever the non-stub profiling says that it could take slow path, it really means that
+    // it has no idea.
+    if (!Options::usePolymorphicCallInliningForNonStubStatus()
+        && !callLinkStatus.isBasedOnStub()) {
+        if (verbose) {
+            dataLog("Bailing inlining (non-stub polymorphism).\n");
+            dataLog("Stack: ", currentCodeOrigin(), "\n");
+        }
+        return false;
+    }
+    
     unsigned oldOffset = m_currentIndex;
     
     bool allAreClosureCalls = true;
@@ -2203,7 +2223,8 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         
     case RoundIntrinsic:
     case FloorIntrinsic:
-    case CeilIntrinsic: {
+    case CeilIntrinsic:
+    case TruncIntrinsic: {
         if (argumentCountIncludingThis == 1) {
             insertChecks();
             set(VirtualRegister(resultOperand), addToGraph(JSConstant, OpInfo(m_constantNaN)));
@@ -2217,9 +2238,11 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
                 op = ArithRound;
             else if (intrinsic == FloorIntrinsic)
                 op = ArithFloor;
-            else {
-                ASSERT(intrinsic == CeilIntrinsic);
+            else if (intrinsic == CeilIntrinsic)
                 op = ArithCeil;
+            else {
+                ASSERT(intrinsic == TruncIntrinsic);
+                op = ArithTrunc;
             }
             Node* roundNode = addToGraph(op, OpInfo(0), OpInfo(prediction), operand);
             set(VirtualRegister(resultOperand), roundNode);
@@ -2864,8 +2887,24 @@ Node* ByteCodeParser::store(Node* base, unsigned identifier, const PutByIdVarian
 
 void ByteCodeParser::handleGetById(
     int destinationOperand, SpeculatedType prediction, Node* base, unsigned identifierNumber,
-    const GetByIdStatus& getByIdStatus)
+    GetByIdStatus getByIdStatus)
 {
+    // Attempt to reduce the set of things in the GetByIdStatus.
+    if (base->op() == NewObject) {
+        bool ok = true;
+        for (unsigned i = m_currentBlock->size(); i--;) {
+            Node* node = m_currentBlock->at(i);
+            if (node == base)
+                break;
+            if (writesOverlap(m_graph, node, JSCell_structureID)) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok)
+            getByIdStatus.filter(base->structure());
+    }
+    
     NodeType getById = getByIdStatus.makesCalls() ? GetByIdFlush : GetById;
     
     if (!getByIdStatus.isSimple() || !getByIdStatus.numVariants() || !Options::useAccessInlining()) {
@@ -4170,8 +4209,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 OpInfo(m_graph.freeze(static_cast<JSCell*>(actualPointerFor(
                     m_inlineStackTop->m_codeBlock, currentInstruction[2].u.specialPointer)))),
                 get(VirtualRegister(currentInstruction[1].u.operand)));
-            addToGraph(Jump, OpInfo(m_currentIndex + OPCODE_LENGTH(op_jneq_ptr)));
-            LAST_OPCODE(op_jneq_ptr);
+            NEXT_OPCODE(op_jneq_ptr);
 
         case op_resolve_scope: {
             int dst = currentInstruction[1].u.operand;
@@ -4745,6 +4783,22 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(ToIndexString, 
                 get(VirtualRegister(currentInstruction[2].u.operand))));
             NEXT_OPCODE(op_to_index_string);
+        }
+            
+        case op_log_shadow_chicken_prologue: {
+            if (!m_inlineStackTop->m_inlineCallFrame)
+                addToGraph(LogShadowChickenPrologue);
+            NEXT_OPCODE(op_log_shadow_chicken_prologue);
+        }
+
+        case op_log_shadow_chicken_tail: {
+            if (!m_inlineStackTop->m_inlineCallFrame) {
+                // FIXME: The right solution for inlining is to elide these whenever the tail call
+                // ends up being inlined.
+                // https://bugs.webkit.org/show_bug.cgi?id=155686
+                addToGraph(LogShadowChickenTail);
+            }
+            NEXT_OPCODE(op_log_shadow_chicken_tail);
         }
 
         default:

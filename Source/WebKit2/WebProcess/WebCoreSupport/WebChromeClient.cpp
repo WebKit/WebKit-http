@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -223,6 +223,7 @@ Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& reques
     navigationActionData.isProcessingUserGesture = navigationAction.processingUserGesture();
     navigationActionData.canHandleRequest = m_page->canHandleRequest(request.resourceRequest());
     navigationActionData.shouldOpenExternalURLsPolicy = navigationAction.shouldOpenExternalURLsPolicy();
+    navigationActionData.downloadAttribute = navigationAction.downloadAttribute();
 
     uint64_t newPageID = 0;
     WebPageCreationParameters parameters;
@@ -860,6 +861,11 @@ void WebChromeClient::setUpVideoControlsManager(WebCore::HTMLVideoElement& video
     m_page->videoFullscreenManager()->setUpVideoControlsManager(videoElement);
 }
 
+void WebChromeClient::clearVideoControlsManager()
+{
+    m_page->videoFullscreenManager()->clearVideoControlsManager();
+}
+
 void WebChromeClient::enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement& videoElement, WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
     ASSERT(mode != HTMLMediaElementEnums::VideoFullscreenModeNone);
@@ -1145,11 +1151,6 @@ void WebChromeClient::requestInstallMissingMediaPlugins(const String& details, c
 void WebChromeClient::didInvalidateDocumentMarkerRects()
 {
     m_page->findController().didInvalidateDocumentMarkerRects();
-}
-    
-bool WebChromeClient::mediaShouldUsePersistentCache() const
-{
-    return m_page->mediaShouldUsePersistentCache();
 }
 
 } // namespace WebKit

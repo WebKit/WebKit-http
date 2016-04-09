@@ -967,19 +967,9 @@ void AccessibilityRenderObject::addRadioButtonGroupMembers(AccessibilityChildren
     Node* node = this->node();
     if (is<HTMLInputElement>(node)) {
         HTMLInputElement& input = downcast<HTMLInputElement>(*node);
-        // if there's a form, then this is easy
-        if (input.form()) {
-            for (auto& associateElement : input.form()->namedElements(input.name())) {
-                if (AccessibilityObject* object = axObjectCache()->getOrCreate(&associateElement.get()))
-                    linkedUIElements.append(object);
-            }
-        } else {
-            for (auto& associateElement : descendantsOfType<HTMLInputElement>(node->document())) {
-                if (associateElement.isRadioButton() && associateElement.name() == input.name()) {
-                    if (AccessibilityObject* object = axObjectCache()->getOrCreate(&associateElement))
-                        linkedUIElements.append(object);
-                }
-            }
+        for (auto& radioSibling : input.radioButtonGroup()) {
+            if (AccessibilityObject* object = axObjectCache()->getOrCreate(radioSibling))
+                linkedUIElements.append(object);
         }
     } else {
         // If we didn't find any radio button siblings with the traditional naming, lets search for a radio group role and find its children.
@@ -2249,6 +2239,12 @@ AccessibilityObject* AccessibilityRenderObject::elementAccessibilityHitTest(cons
     return AccessibilityObject::elementAccessibilityHitTest(point);
 }
     
+static bool shouldUseShadowHostForHitTesting(Node* shadowHost)
+{
+    // We need to allow automation of mouse events on video tags.
+    return shadowHost && !shadowHost->hasTagName(videoTag);
+}
+
 AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPoint& point) const
 {
     if (!m_renderer || !m_renderer->hasLayer())
@@ -2261,9 +2257,12 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPo
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
     HitTestResult hitTestResult = HitTestResult(point);
     layer->hitTest(request, hitTestResult);
-    if (!hitTestResult.innerNode())
+    Node* node = hitTestResult.innerNode();
+    if (!node)
         return nullptr;
-    Node* node = hitTestResult.innerNode()->deprecatedShadowAncestorNode();
+    Node* shadowAncestorNode = node->shadowHost();
+    if (shouldUseShadowHostForHitTesting(shadowAncestorNode))
+        node = shadowAncestorNode;
     ASSERT(node);
 
     if (is<HTMLAreaElement>(*node))
