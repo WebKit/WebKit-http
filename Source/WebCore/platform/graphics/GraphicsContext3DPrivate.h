@@ -56,7 +56,6 @@ private:
     GraphicsContext3D::RenderStyle m_renderStyle;
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    void swapPlatformTexture();
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
     RefPtr<BitmapTextureGL> m_compositorTexture;
 #endif
