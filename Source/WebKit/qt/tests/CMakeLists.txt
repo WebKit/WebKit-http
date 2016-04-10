@@ -26,9 +26,15 @@ set(QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY
 )
 
 set(QtWK1ApiTests
+    qgraphicswebview
+    qobjectbridge
+    qwebelement
     qwebframe
     qwebhistory
     qwebhistoryinterface
+    qwebinspector
+    qwebsecurityorigin
+    qwebview
 )
 
 if (ENABLE_API_TESTS)
