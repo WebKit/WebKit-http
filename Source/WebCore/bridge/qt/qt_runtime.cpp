@@ -103,14 +103,15 @@ typedef enum {
     QObj,
     Object,
     Null,
-    RTUint8Array
+    RTUint8Array,
+    RTUint8ClampedArray
 } JSRealType;
 
 #if defined(QTWK_RUNTIME_CONVERSION_DEBUG) || defined(QTWK_RUNTIME_MATCH_DEBUG)
 QDebug operator<<(QDebug dbg, const JSRealType &c)
 {
      const char *map[] = { "Variant", "Number", "Boolean", "RTString", "Date",
-         "Array", "RTObject", "Object", "Null"};
+         "Array", "RTObject", "Object", "Null", "RTUint8Array", "RTUint8ClampedArray"};
 
      dbg.nospace() << "JSType(" << ((int)c) << ", " <<  map[c] << ")";
 
@@ -150,6 +151,11 @@ static bool isJSUint8Array(JSObjectRef object)
     return toJS(object)->inherits(JSUint8Array::info());
 }
 
+static bool isJSUint8ClampedArray(JSObjectRef object)
+{
+    return toJS(object)->inherits(JSUint8ClampedArray::info());
+}
+
 static bool isJSArray(JSObjectRef object)
 {
     return toJS(object)->inherits(JSArray::info());
@@ -182,6 +188,8 @@ static JSRealType valueRealType(JSContextRef context, JSValueRef value, JSValueR
 
     if (isJSUint8Array(object))
         return RTUint8Array;
+    if (isJSUint8ClampedArray(object))
+        return RTUint8ClampedArray;
     if (isJSArray(object))
             return Array;
     if (isJSDate(object))
@@ -359,6 +367,7 @@ QVariant convertValueToQVariant(JSContextRef context, JSValueRef value, QMetaTyp
                 hint = QMetaType::QObjectStar;
                 break;
             case RTUint8Array:
+            case RTUint8ClampedArray:
                 hint = QMetaType::QByteArray;
                 break;
             case Array:
@@ -494,6 +503,10 @@ QVariant convertValueToQVariant(JSContextRef context, JSValueRef value, QMetaTyp
         case QMetaType::QByteArray: {
             if (type == RTUint8Array) {
                 RefPtr<JSC::Uint8Array> arr = toUint8Array(toJS(toJS(context), value));
+                ret = QVariant(QByteArray(reinterpret_cast<const char*>(arr->data()), arr->length()));
+                dist = 0;
+            } else if (type == RTUint8ClampedArray) {
+                RefPtr<JSC::Uint8ClampedArray> arr = toUint8ClampedArray(toJS(toJS(context), value));
                 ret = QVariant(QByteArray(reinterpret_cast<const char*>(arr->data()), arr->length()));
                 dist = 0;
             } else {
