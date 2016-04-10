@@ -979,6 +979,8 @@ void QWebElement::appendInside(const QString &markup)
 
     ExceptionCode exception = 0;
     RefPtr<DocumentFragment> fragment =  createContextualFragment(markup, downcast<HTMLElement>(m_element), AllowScriptingContent, exception);
+    if (!fragment)
+        return;
 
     m_element->appendChild(*fragment, exception);
 }
@@ -1024,6 +1026,8 @@ void QWebElement::prependInside(const QString &markup)
 
     ExceptionCode exception = 0;
     RefPtr<DocumentFragment> fragment =  createContextualFragment(markup, downcast<HTMLElement>(m_element), AllowScriptingContent, exception);
+    if (!fragment)
+        return;
 
     if (m_element->hasChildNodes())
         m_element->insertBefore(*fragment, m_element->firstChild(), exception);
