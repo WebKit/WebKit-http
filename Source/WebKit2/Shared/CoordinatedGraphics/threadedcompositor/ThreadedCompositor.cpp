@@ -261,7 +261,7 @@ void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
         protector->m_clientRendersNextFrame.store(true);
         bool coordinateUpdate = std::any_of(state.layersToUpdate.begin(), state.layersToUpdate.end(),
             [](const std::pair<CoordinatedLayerID, CoordinatedGraphicsLayerState>& it) {
-                return it.second.platformLayerChanged;
+                return it.second.platformLayerChanged || it.second.platformLayerUpdated;
             });
         protector->m_coordinateUpdateCompletionWithClient.store(coordinateUpdate);
     });

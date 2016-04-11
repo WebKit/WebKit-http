@@ -163,6 +163,7 @@ private:
     void createPlatformLayerIfNeeded();
 #endif
     void syncPlatformLayer();
+    void updatePlatformLayer();
 #if USE(COORDINATED_GRAPHICS_THREADED)
     void platformLayerWillBeDestroyed() override;
     void setPlatformLayerNeedsDisplay() override;
@@ -233,6 +234,7 @@ private:
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     bool m_shouldSyncPlatformLayer : 1;
+    bool m_shouldUpdatePlatformLayer : 1;
 #endif
 
     CoordinatedGraphicsLayerClient* m_coordinator;
