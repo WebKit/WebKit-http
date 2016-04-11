@@ -2181,7 +2181,7 @@ void tst_QObjectBridge::introspectQtMethods()
         QCOMPARE(evalJS("descriptor.set"), sUndefined);
         QCOMPARE(evalJS(QString::fromLatin1("descriptor.value === %0['%1']").arg(methodLookup).arg(name)), sTrue);
         QCOMPARE(evalJS(QString::fromLatin1("descriptor.enumerable")), sFalse);
-        QCOMPARE(evalJS(QString::fromLatin1("descriptor.configurable")), sFalse);
+        QCOMPARE(evalJS(QString::fromLatin1("descriptor.configurable")), name == "name" ? sTrue : sFalse);
     }
 
     QVERIFY(evalJSV("var props=[]; for (var p in myObject.deleteLater) {props.push(p);}; props.sort()").toStringList().isEmpty());
