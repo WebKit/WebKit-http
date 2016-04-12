@@ -1460,6 +1460,7 @@ void AppendPipeline::handleAppsrcNeedDataReceived()
 void AppendPipeline::handleAppsrcAtLeastABufferLeft()
 {
     m_appsrcAtLeastABufferLeft = true;
+    TRACE_MEDIA_MESSAGE("received buffer-left from appsrc");
 #ifndef DEBUG_APPEND_PIPELINE_PADS
     removeAppsrcDataLeavingProbe();
 #endif
@@ -1975,18 +1976,18 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
 
 void AppendPipeline::reportAppsrcAtLeastABufferLeft()
 {
+    TRACE_MEDIA_MESSAGE("buffer left appsrc, reposting to bus");
     GstStructure* structure = gst_structure_new_empty("appsrc-buffer-left");
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc), structure);
     gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("buffer left appsrc, reposting to bus");
 }
 
 void AppendPipeline::reportAppsrcNeedDataReceived()
 {
+    TRACE_MEDIA_MESSAGE("received need-data signal at appsrc, reposting to bus");
     GstStructure* structure = gst_structure_new_empty("appsrc-need-data");
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc), structure);
     gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("received need-data signal at appsrc, reposting to bus");
 }
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
