@@ -165,13 +165,13 @@ NativeImagePtr ImageSource::createFrameImageAtIndex(size_t index, SubsamplingLev
     if (!initialized())
         return nullptr;
 
+    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
+    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
+        return nullptr;
+
     // Zero-height images can cause problems for some ports.  If we have an
     // empty image dimension, just bail.
     if (size().isEmpty())
-        return nullptr;
-
-    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
-    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
         return nullptr;
 
     // Return the buffer contents as a native image.  For some ports, the data
