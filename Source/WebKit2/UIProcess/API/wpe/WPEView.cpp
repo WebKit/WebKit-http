@@ -43,7 +43,7 @@ View::View(const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
     , m_viewBackend(WPE::ViewBackend::ViewBackend::create())
     , m_size{ 800, 600 }
-    , m_viewStateFlags(WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
+    , m_viewStateFlags(WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
 {
     auto configuration = baseConfiguration.copy();
     auto* preferences = configuration->preferences();
@@ -87,7 +87,7 @@ void View::setSize(const WebCore::IntSize& size)
 void View::setViewState(WebCore::ViewState::Flags flags)
 {
     // For now IsInWindow should always be present, i.e. is not configurable.
-    static const WebCore::ViewState::Flags defaultFlags = WebCore::ViewState::IsInWindow;
+    static const WebCore::ViewState::Flags defaultFlags = WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsInWindow;
 
     WebCore::ViewState::Flags changedFlags = m_viewStateFlags ^ (defaultFlags | flags);
     m_viewStateFlags = defaultFlags | flags;
