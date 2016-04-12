@@ -935,9 +935,13 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 {
     for (HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> >::iterator it = m_appendPipelinesMap.begin(); it != m_appendPipelinesMap.end(); ++it) {
-        gst_element_send_event(it->value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-            gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
-        it->value->setAppendStage(AppendPipeline::AppendStage::Ongoing);
+        if (it->value->appendStage() == AppendPipeline::AppendStage::KeyNegotiation) {
+            TRACE_MEDIA_MESSAGE("append pipeline %p in key negotiation, setting key", it->value.get());
+            gst_element_send_event(it->value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+                gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
+            it->value->setAppendStage(AppendPipeline::AppendStage::Ongoing);
+        } else
+            TRACE_MEDIA_MESSAGE("append pipeline %p not in key negotiation", it->value.get());
     }
 }
 #endif
