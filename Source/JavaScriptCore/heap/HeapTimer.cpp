@@ -171,7 +171,7 @@ HeapTimer::HeapTimer(VM* vm)
         static_cast<HeapTimer*>(userData)->timerDidFire();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
-    g_source_set_priority(m_timer.get(), G_PRIORITY_HIGH + 30);
+    g_source_set_priority(m_timer.get(), G_PRIORITY_HIGH + 40);
     g_source_attach(m_timer.get(), g_main_context_get_thread_default());
 }
 
