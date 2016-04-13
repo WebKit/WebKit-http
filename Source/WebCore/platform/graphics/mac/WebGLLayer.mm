@@ -51,6 +51,18 @@ using namespace WebCore;
     _context = context;
     self = [super init];
     _devicePixelRatio = context->getContextAttributes().devicePixelRatio;
+#if PLATFORM(IOS)
+    CGFloat components[4] = { 1.0, 0, 255 / 123, 1.0 };
+    self.backgroundColor = adoptCF(CGColorCreate(sRGBColorSpaceRef(), components)).get();
+
+    glLayer = [[CAEAGLLayer alloc] init];
+    glLayer.anchorPoint = CGPointMake(0, 0);
+
+    CGFloat glComponents[4] = { 1.0, 0, 0, 1.0 };
+    glLayer.backgroundColor = adoptCF(CGColorCreate(sRGBColorSpaceRef(), glComponents)).get();
+
+    [self addSublayer:glLayer];
+#endif
 #if PLATFORM(MAC)
     self.contentsScale = _devicePixelRatio;
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
@@ -179,6 +191,32 @@ static void freeData(void *, const void *data, size_t /* size */)
     [super display];
 #endif
     _context->markLayerComposited();
+}
+
+- (void)setBounds:(CGRect)bounds
+{
+    [super setBounds:bounds];
+    [self updateGLLayerTransform];
+}
+
+- (void)setBackingStoreSize:(CGSize)size
+{
+    [glLayer setBounds:CGRectMake(0, 0, size.width, size.height)];
+    [self updateGLLayerTransform];
+}
+
+- (void)updateGLLayerTransform
+{
+//    CGFloat boundsWidth = self.bounds.size.width;
+//    self.contentsScale = boundsWidth == 0 ? 1 : backingStoreSize.width / self.bounds.size.width;
+//    glLayer.transform = CATransform3DIdentity CATransform3DMakeScale();
+    if (glLayer.bounds.size.width == 0 || glLayer.bounds.size.height == 0)
+        glLayer.transform = CATransform3DIdentity;
+    else {
+        CGFloat sx = self.bounds.size.width / glLayer.bounds.size.width;
+        CGFloat sy = self.bounds.size.height / glLayer.bounds.size.height;
+        glLayer.transform = CATransform3DMakeScale(sx, sy, 1);
+    }
 }
 
 @end
