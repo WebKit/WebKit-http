@@ -312,13 +312,13 @@ float ImageDecoder::frameDurationAtIndex(size_t index)
 
 NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel)
 {
+    ImageFrame* buffer = frameBufferAtIndex(index);
+    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
+        return nullptr;
+
     // Zero-height images can cause problems for some ports. If we have an
     // empty image dimension, just bail.
     if (size().isEmpty())
-        return nullptr;
-
-    ImageFrame* buffer = frameBufferAtIndex(index);
-    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
         return nullptr;
 
     // Return the buffer contents as a native image. For some ports, the data
