@@ -53,17 +53,30 @@ struct libinput_interface g_interface = {
 
 static const char * connectorName = "/tmp/keyhandler";
 
-static void VirtualKeyboardCallback(actiontype /* type */ , unsigned int /* code */)
+static void VirtualKeyboardCallback(actiontype type , unsigned int code)
 {
-    // LibinputServer& server = LibinputServer::singleton();
-    //Input::KeyboardEvent::Raw rawEvent{
-    //    libinput_event_keyboard_get_time(keyEvent),
-    //    libinput_event_keyboard_get_key(keyEvent),
-    //    libinput_event_keyboard_get_key_state(keyEvent)
-    //};
+   if (type != COMPLETED)
+   {
+      // RELEASED  = 0,
+      // PRESSED   = 1,
+      // REPEAT    = 2,
+      // COMPLETED = 3
+      LibinputServer::singleton().VirtualInput (type, code);
+   }
+}
 
-    //Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(rawEvent);
-    //server.handleKeyboardEvent({ rawEvent.time, std::get<0>(result), std::get<1>(result), (type == PRESSED), std::get<2>(result) });
+void LibinputServer::VirtualInput (unsigned int type, unsigned int code)
+{
+    Input::KeyboardEvent::Raw rawEvent;
+
+    rawEvent.time = time(nullptr);
+    rawEvent.key = code;
+    rawEvent.state = type;
+
+    printf ("Sending out key: %d, %d, %d\n", rawEvent.time, rawEvent.key, rawEvent.state);
+
+    Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(rawEvent);
+    m_client->handleKeyboardEvent({ rawEvent.time, std::get<0>(result), std::get<1>(result), !!rawEvent.state, std::get<2>(result) });
 }
 
 #endif
@@ -112,9 +125,13 @@ LibinputServer::LibinputServer()
     if (m_virtualkeyboard == nullptr) {
       fprintf(stderr, "[LibinputServer] Initialization of virtual keyboard failed!!!\n");
     }
+    else {
+       fprintf(stderr, "[LibinputServer] Initialization of virtual keyboard and linux input system succeeded.\n");
+    }
+#else
+    fprintf(stderr, "[LibinputServer] Initialization of linux input system succeeded.\n");
 #endif
 
-    fprintf(stderr, "[LibinputServer] Initialization succeeded.\n");
 }
 
 LibinputServer::~LibinputServer()

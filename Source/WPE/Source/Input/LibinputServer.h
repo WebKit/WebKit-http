@@ -74,6 +74,10 @@ private:
     void handleTouchEvent(struct libinput_event *event, Input::TouchEvent::Type type);
 
 #ifdef KEY_INPUT_HANDLING_VIRTUAL
+public:
+    void VirtualInput (unsigned int type, unsigned int code);
+
+private:
     void* m_virtualkeyboard;
 #endif
 
