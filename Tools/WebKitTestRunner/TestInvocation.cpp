@@ -171,7 +171,7 @@ end:
 
     if (m_webProcessIsUnresponsive)
         dumpWebProcessUnresponsiveness();
-    else if (!TestController::singleton().resetStateToConsistentValues()) {
+    else if (!TestController::singleton().resetStateToConsistentValues(m_options)) {
         // The process froze while loading about:blank, let's start a fresh one.
         // It would be nice to report that the previous test froze after dumping results, but we have no way to do that.
         TestController::singleton().terminateWebContentProcess();
@@ -662,6 +662,20 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef isKeyValue = static_cast<WKBooleanRef>(messageBody);
         TestController::singleton().mainWebView()->setWindowIsKey(WKBooleanGetValue(isKeyValue));
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetViewSize")) {
+        ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
+
+        WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
+        WKRetainPtr<WKStringRef> widthKey(AdoptWK, WKStringCreateWithUTF8CString("width"));
+        WKRetainPtr<WKStringRef> heightKey(AdoptWK, WKStringCreateWithUTF8CString("height"));
+
+        WKDoubleRef widthWK = static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, widthKey.get()));
+        WKDoubleRef heightWK = static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, heightKey.get()));
+
+        TestController::singleton().mainWebView()->resizeTo(WKDoubleGetValue(widthWK), WKDoubleGetValue(heightWK));
         return nullptr;
     }
 

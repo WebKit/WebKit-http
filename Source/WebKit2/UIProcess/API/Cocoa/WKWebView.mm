@@ -224,9 +224,11 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     Optional<CGRect> _frozenVisibleContentRect;
     Optional<CGRect> _frozenUnobscuredContentRect;
 
-    BOOL _needsToRestoreExposedRect;
-    BOOL _commitDidRestoreExposedRect;
-    WebCore::FloatRect _exposedRectToRestore;
+    BOOL _needsToRestoreScrollPosition;
+    BOOL _commitDidRestoreScrollPosition;
+    WebCore::FloatPoint _scrollOffsetToRestore;
+    WebCore::FloatSize _obscuredInsetWhenSaved;
+
     BOOL _needsToRestoreUnobscuredCenter;
     WebCore::FloatPoint _unobscuredCenterToRestore;
     uint64_t _firstTransactionIDAfterPageRestore;
@@ -237,6 +239,9 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     RetainPtr<UIView <WKWebViewContentProvider>> _customContentView;
     RetainPtr<UIView> _customContentFixedOverlayView;
+
+    RetainPtr<NSTimer> _enclosingScrollViewScrollTimer;
+    BOOL _didScrollSinceLastTimerFire;
 
     WebCore::Color _scrollViewBackgroundColor;
 
@@ -1004,7 +1009,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     _delayUpdateVisibleContentRects = NO;
     if (_hadDelayedUpdateVisibleContentRects) {
         _hadDelayedUpdateVisibleContentRects = NO;
-        [self _updateVisibleContentRects];
+        [self _updateVisibleContentRectAfterScrollInView:_scrollView.get()];
     }
 }
 
@@ -1112,7 +1117,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     _needsResetViewStateAfterCommitLoadForMainFrame = NO;
     _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
     [_contentView setHidden:NO];
-    _needsToRestoreExposedRect = NO;
+    _needsToRestoreScrollPosition = NO;
     _needsToRestoreUnobscuredCenter = NO;
     _scrollViewBackgroundColor = WebCore::Color();
     _delayUpdateVisibleContentRects = NO;
@@ -1211,15 +1216,17 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
     bool isTransactionAfterPageRestore = layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore;
 
-    if (_needsToRestoreExposedRect && isTransactionAfterPageRestore) {
-        _needsToRestoreExposedRect = NO;
+    if (_needsToRestoreScrollPosition && isTransactionAfterPageRestore) {
+        _needsToRestoreScrollPosition = NO;
 
         if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
-            WebCore::FloatPoint exposedPosition = _exposedRectToRestore.location();
-            exposedPosition.scale(_scaleToRestore, _scaleToRestore);
+            WebCore::FloatPoint scaledScrollOffset = _scrollOffsetToRestore;
+            scaledScrollOffset.scale(_scaleToRestore, _scaleToRestore);
+            WebCore::FloatPoint contentOffsetInScrollViewCoordinates = scaledScrollOffset - _obscuredInsetWhenSaved;
 
-            changeContentOffsetBoundedInValidRange(_scrollView.get(), exposedPosition);
-            _commitDidRestoreExposedRect = YES;
+            changeContentOffsetBoundedInValidRange(_scrollView.get(), contentOffsetInScrollViewCoordinates);
+            _commitDidRestoreScrollPosition = YES;
+
             if (_gestureController)
                 _gestureController->didRestoreScrollPosition();
         }
@@ -1250,7 +1257,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
 - (void)_layerTreeCommitComplete
 {
-    _commitDidRestoreExposedRect = NO;
+    _commitDidRestoreScrollPosition = NO;
 }
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition nextValidLayerTreeTransactionID:(uint64_t)nextValidLayerTreeTransactionID
@@ -1280,7 +1287,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         _gestureController->didRestoreScrollPosition();
 }
 
-- (void)_restorePageStateToExposedRect:(WebCore::FloatRect)exposedRect scrollOrigin:(WebCore::IntPoint)scrollOrigin scale:(double)scale
+- (void)_restorePageScrollPosition:(WebCore::FloatPoint)scrollPosition scrollOrigin:(WebCore::FloatPoint)scrollOrigin previousObscuredInset:(WebCore::FloatSize)obscuredInset scale:(double)scale
 {
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
@@ -1289,12 +1296,11 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         return;
 
     _needsToRestoreUnobscuredCenter = NO;
-    _needsToRestoreExposedRect = YES;
+    _needsToRestoreScrollPosition = YES;
     _firstTransactionIDAfterPageRestore = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).nextLayerTreeTransactionID();
     
-    // Move the exposed rect into scrollView coordinates.
-    exposedRect.move(toFloatSize(scrollOrigin));
-    _exposedRectToRestore = exposedRect;
+    _scrollOffsetToRestore = WebCore::ScrollableArea::scrollOffsetFromPosition(WebCore::FloatPoint(scrollPosition), WebCore::toFloatSize(scrollOrigin));
+    _obscuredInsetWhenSaved = obscuredInset;
     _scaleToRestore = scale;
 }
 
@@ -1306,7 +1312,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     if (_customContentView)
         return;
 
-    _needsToRestoreExposedRect = NO;
+    _needsToRestoreScrollPosition = NO;
     _needsToRestoreUnobscuredCenter = YES;
     _firstTransactionIDAfterPageRestore = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).nextLayerTreeTransactionID();
     _unobscuredCenterToRestore = center;
@@ -1405,7 +1411,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)_scrollToContentScrollPosition:(WebCore::FloatPoint)scrollPosition scrollOrigin:(WebCore::IntPoint)scrollOrigin
 {
-    if (_commitDidRestoreExposedRect || _dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
+    if (_commitDidRestoreScrollPosition || _dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
 
     WebCore::FloatPoint contentOffset = WebCore::ScrollableArea::scrollOffsetFromPosition(scrollPosition, toFloatSize(scrollOrigin));
@@ -1747,7 +1753,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (![self usesStandardContentView])
         return;
 
-    [self _updateVisibleContentRects];
+    [self _updateVisibleContentRectAfterScrollInView:_scrollView.get()];
     [_contentView didFinishScrolling];
 }
 
@@ -1801,7 +1807,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (![self usesStandardContentView])
         [_customContentView scrollViewDidScroll:(UIScrollView *)scrollView];
 
-    [self _updateVisibleContentRects];
+    [self _updateVisibleContentRectAfterScrollInView:scrollView];
     
     if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPerfData = _page->scrollingPerformanceData())
         scrollPerfData->didScroll([self visibleRectInViewCoordinates]);
@@ -1810,13 +1816,13 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView
 {
     [self _updateScrollViewBackground];
-    [self _updateVisibleContentRects];
+    [self _updateVisibleContentRectAfterScrollInView:scrollView];
 }
 
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
 {
     ASSERT(scrollView == _scrollView);
-    [self _updateVisibleContentRects];
+    [self _updateVisibleContentRectAfterScrollInView:scrollView];
     [_contentView didZoomToScale:scale];
 }
 
@@ -1831,7 +1837,55 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     [_contentView didInterruptScrolling];
+    [self _updateVisibleContentRectAfterScrollInView:scrollView];
+}
+
+- (CGRect)_visibleRectInEnclosingScrollView:(UIScrollView *)enclosingScrollView
+{
+    if (!enclosingScrollView)
+        return self.bounds;
+
+    CGRect exposedRect = [enclosingScrollView convertRect:enclosingScrollView.bounds toView:self];
+    return CGRectIntersectsRect(exposedRect, self.bounds) ? CGRectIntersection(exposedRect, self.bounds) : CGRectZero;
+}
+
+- (CGRect)_visibleContentRect
+{
+    CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:self.bounds toView:_contentView.get()];
+    
+    if (UIScrollView *enclosingScroller = [self _scroller]) {
+        CGRect viewVisibleRect = [self _visibleRectInEnclosingScrollView:enclosingScroller];
+        CGRect viewVisibleContentRect = [self convertRect:viewVisibleRect toView:_contentView.get()];
+        visibleRectInContentCoordinates = CGRectIntersection(visibleRectInContentCoordinates, viewVisibleContentRect);
+    }
+
+    return visibleRectInContentCoordinates;
+}
+
+// Called when some ancestor UIScrollView scrolls.
+- (void)_didScroll
+{
+    [self _updateVisibleContentRectAfterScrollInView:[self _scroller]];
+
+    const NSTimeInterval ScrollingEndedTimerInterval = 0.032;
+    if (!_enclosingScrollViewScrollTimer) {
+        _enclosingScrollViewScrollTimer = adoptNS([[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:ScrollingEndedTimerInterval]
+            interval:0 target:self selector:@selector(_enclosingScrollerScrollingEnded:) userInfo:nil repeats:YES]);
+        [[NSRunLoop mainRunLoop] addTimer:_enclosingScrollViewScrollTimer.get() forMode:NSDefaultRunLoopMode];
+    }
+    _didScrollSinceLastTimerFire = YES;
+}
+
+- (void)_enclosingScrollerScrollingEnded:(NSTimer *)timer
+{
+    if (_didScrollSinceLastTimerFire) {
+        _didScrollSinceLastTimerFire = NO;
+        return;
+    }
+
     [self _updateVisibleContentRects];
+    [_enclosingScrollViewScrollTimer invalidate];
+    _enclosingScrollViewScrollTimer = nil;
 }
 
 - (void)_frameOrBoundsChanged
@@ -1844,7 +1898,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
             _page->setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(bounds.size));
         if (!_overridesMaximumUnobscuredSize)
             _page->setMaximumUnobscuredSize(WebCore::FloatSize(bounds.size));
-        if (WebKit::DrawingAreaProxy* drawingArea = _page->drawingArea())
+        if (auto drawingArea = _page->drawingArea())
             drawingArea->setSize(WebCore::IntSize(bounds.size), WebCore::IntSize(), WebCore::IntSize());
     }
 
@@ -1874,6 +1928,29 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)_updateVisibleContentRects
 {
+    // For visible rect updates not associated with a spefic UIScrollView, just consider our own scroller.
+    [self _updateVisibleContentRectAfterScrollInView:_scrollView.get()];
+}
+
+- (void)_updateVisibleContentRectAfterScrollInView:(UIScrollView *)scrollView
+{
+    BOOL isStableState = !([scrollView isDragging] || [scrollView isDecelerating] || [scrollView isZooming] || [scrollView _isAnimatingZoom] || [scrollView _isScrollingToTop]);
+
+    if (isStableState && scrollView == _scrollView.get())
+        isStableState = !_isChangingObscuredInsetsInteractively;
+    
+    if (isStableState && scrollView == _scrollView.get())
+        isStableState = ![self _scrollViewIsRubberBanding];
+
+    // FIXME: this can be made static after we stop supporting iOS 8.x.
+    if (isStableState && [scrollView respondsToSelector:@selector(_isInterruptingDeceleration)])
+        isStableState = ![scrollView performSelector:@selector(_isInterruptingDeceleration)];
+
+    [self _updateContentRectsWithState:isStableState];
+}
+
+- (void)_updateContentRectsWithState:(BOOL)inStableState
+{
     if (![self usesStandardContentView]) {
         [_customContentView web_computedContentInsetDidChange];
         return;
@@ -1891,7 +1968,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     CGRect fullViewRect = self.bounds;
-    CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:fullViewRect toView:_contentView.get()];
+    CGRect visibleRectInContentCoordinates = [self _visibleContentRect];
 
     UIEdgeInsets computedContentInsetUnadjustedForKeyboard = [self _computedContentInset];
     if (!_haveSetObscuredInsets)
@@ -1902,17 +1979,10 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     CGFloat scaleFactor = contentZoomScale(self);
 
-    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView _isAnimatingZoom] || [_scrollView _isScrollingToTop] || [self _scrollViewIsRubberBanding]);
-
-    // FIXME: this can be made static after we stop supporting iOS 8.x.
-    if (isStableState && [_scrollView respondsToSelector:@selector(_isInterruptingDeceleration)])
-        isStableState = ![_scrollView performSelector:@selector(_isInterruptingDeceleration)];
-
 #if ENABLE(CSS_SCROLL_SNAP) && ENABLE(ASYNC_SCROLLING)
-    if (isStableState) {
+    if (inStableState) {
         WebKit::RemoteScrollingCoordinatorProxy* coordinator = _page->scrollingCoordinatorProxy();
         if (coordinator && coordinator->hasActiveSnapPoint()) {
-            CGRect fullViewRect = self.bounds;
             CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, computedContentInsetUnadjustedForKeyboard);
             
             CGPoint currentPoint = [_scrollView contentOffset];
@@ -1931,9 +2001,11 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates
         unobscuredRect:unobscuredRectInContentCoordinates
         unobscuredRectInScrollViewCoordinates:unobscuredRect
+        obscuredInset:CGSizeMake(_obscuredInsets.left, _obscuredInsets.top)
         scale:scaleFactor minimumScale:[_scrollView minimumZoomScale]
-        inStableState:isStableState
-        isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively];
+        inStableState:inStableState
+        isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively
+        enclosedInScrollView:[self _scroller] != nil];
 }
 
 - (void)_didFinishLoadForMainFrame

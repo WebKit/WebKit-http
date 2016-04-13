@@ -1,3 +1,457 @@
+2016-04-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r199444): Perf dashboard always fetches all measurement sets
+        https://bugs.webkit.org/show_bug.cgi?id=156534
+
+        Reviewed by Darin Adler.
+
+        The bug was cased by SummaryPage's constructor fetching all measurement sets. Since each page is always
+        constructed in main(), this resulted in all measurement sets being fetched on all pages.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPage):
+        (SummaryPage.prototype.open): Fetch measurement set JSONs here.
+        (SummaryPage.prototype._createConfigurationGroup): Renamed from _createConfigurationGroupAndStartFetchingData.
+
+2016-04-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a summary page to v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=156531
+
+        Reviewed by Stephanie Lewis.
+
+        Add new "Summary" page, which shows the average difference (better or worse) from the baseline across
+        multiple platforms and tests by a single number.
+
+        * public/include/manifest.php:
+        (ManifestGenerator::generate): Include "summary" in manifest.json.
+        * public/shared/statistics.js:
+        (Statistics.mean): Added.
+        (Statistics.median): Added.
+        * public/v3/components/ratio-bar-graph.js: Added.
+        (RatioBarGraph): Shows a horizontal bar graph that visualizes the relative difference (e.g. 3% better).
+        (RatioBarGraph.prototype.update):
+        (RatioBarGraph.prototype.render):
+        (RatioBarGraph.cssTemplate):
+        (RatioBarGraph.htmlTemplate):
+        * public/v3/index.html:
+        * public/v3/main.js:
+        (main): Instantiate SummaryPage and add it to the navigation bar and the router.
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest): Let "summary" pass through from manifest.json to main().
+        * public/v3/models/measurement-set.js:
+        (MeasurementSet.prototype._failedToFetchJSON): Invoke the callback with an error or true in order for
+        the callback can detect a failure.
+        (MeasurementSet.prototype._invokeCallbacks): Ditto.
+        * public/v3/pages/charts-page.js:
+        (ChartsPage.createStateForConfigurationList): Added to add a hyperlink from summary page to charts page.
+        * public/v3/pages/summary-page.js: Added.
+        (SummaryPage): Added.
+        (SummaryPage.prototype.routeName): Added.
+        (SummaryPage.prototype.open): Added.
+        (SummaryPage.prototype.render): Added.
+        (SummaryPage.prototype._createConfigurationGroupAndStartFetchingData): Added.
+        (SummaryPage.prototype._constructTable): Added.
+        (SummaryPage.prototype._constructRatioGraph): Added.
+        (SummaryPage.htmlTemplate): Added.
+        (SummaryPage.cssTemplate): Added.
+        (SummaryPageConfigurationGroup): Added. Represents a set of platforms and tests shown in a single cell.
+        (SummaryPageConfigurationGroup.prototype.ratio): Added.
+        (SummaryPageConfigurationGroup.prototype.label): Added.
+        (SummaryPageConfigurationGroup.prototype.changeType): Added.
+        (SummaryPageConfigurationGroup.prototype.configurationList): Added.
+        (SummaryPageConfigurationGroup.prototype.fetchAndComputeSummary): Added.
+        (SummaryPageConfigurationGroup.prototype._computeSummary): Added.
+        (SummaryPageConfigurationGroup.prototype._fetchAndComputeRatio): Added. Invoked for each time series in
+        the set, and stores the computed ratio of the current values to the baseline in this._setToRatio.
+        The results are aggregated by _computeSummary as a single number later.
+        (SummaryPageConfigurationGroup._medianForTimeRange): Added.
+        (SummaryPageConfigurationGroup._fetchData): A thin wrapper to make MeasurementSet.fetchBetween promise
+        friendly since MeasurementSet doesn't support Promise at the moment (but it should!).
+        * server-tests/api-manifest.js: Updated a test case.
+
+2016-04-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make sync-buildbot.js fault safe
+        https://bugs.webkit.org/show_bug.cgi?id=156498
+
+        Reviewed by Chris Dumez.
+
+        Fixed a bug that sync-buildbot.js will continue to schedule build requests from multiple test groups
+        if multiple test groups are simultaneously in-progress on the same builder. Also fixed a bug that if
+        a build request had failed without leaving a trace (i.e. no entry on any of the builders we know of),
+        sync-buildbot.js throws an exception.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Added test cases.
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype.scheduleRequestInGroupIfAvailable): Renamed. Optionally takes the slave name.
+        When this parameter is specified, schedule the request only if the specified slave is available.
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._scheduleNextRequestInGroupIfSlaveIsAvailable): Always use
+        scheduleRequestInGroupIfAvailable to schedule a new build request. Using scheduleRequest for non-first
+        build requests was problematic when there were multiple test groups with pending requests because then
+        we would schedule those pending requests without checking whether there is already a pending job or if
+        we have previously scheduled a job. Also fallback to use any syncer / builder when groupInfo.syncer is
+        not set even if the next request was not the first one in the test group since we can't determine on
+        which builder preceding requests are processed in such cases.
+        * unit-tests/buildbot-syncer-tests.js:
+
+2016-04-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace script runner to use mocha.js tests
+        https://bugs.webkit.org/show_bug.cgi?id=156490
+
+        Reviewed by Chris Dumez.
+
+        Replaced run-tests.js, which was a whole test harness for running legacy tests by tools/run-tests.py
+        which is a thin wrapper around mocha.js.
+
+        * run-tests.js: Removed.
+        * tests: Removed.
+        * tools/run-tests.py: Added.
+        (main):
+
+2016-04-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New syncing script sometimes schedules a build request on a wrong builder
+        https://bugs.webkit.org/show_bug.cgi?id=156489
+
+        Reviewed by Stephanie Lewis.
+
+        The bug was caused by _scheduleNextRequestInGroupIfSlaveIsAvailable scheduling the next build request on
+        any available syncer regardless of whether the request is the first one in the test group or not because
+        BuildRequest.order was returning a string instead of a number.
+
+        Also fixed a bug that BuildbotTriggerable.syncOnce was re-ordering test groups by their id's instead of
+        respecting the order in which the perf dashboard returned.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.order): Force the order to be a number.
+        * server-tests/api-build-requests-tests.js: Assert the order as numbers.
+        * server-tests/resources/mock-data.js:
+        (MockData.addAnotherMockTestGroup): Changed the test group id to 601, which is after the first mock data.
+        The old number was masking a bug in BuildbotTriggerable that it was re-ordering test groups by their id's
+        instead of using the order set forth by the perf dashboard.
+        (MockData.mockTestSyncConfigWithSingleBuilder):
+        * server-tests/tools-buildbot-triggerable-tests.js: Added a test case for scheduling two build requests in
+        a single call to syncOnce. Each build request should be scheduled on the same builder as the previous build
+        requests in the same test group.
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.syncOnce): Order test groups by groupOrder, which is the index at which first
+        build request in the group appeared.
+        (BuildbotTriggerable.prototype._scheduleNextRequestInGroupIfSlaveIsAvailable): Don't re-order build requests
+        as they're already sorted on the server side.
+        (BuildbotTriggerable._testGroupMapForBuildRequests): Added groupOrder to test group info 
+
+2016-04-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. Don't treat a build number 0 as a pending build.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotBuildEntry.prototype.isPending):
+
+2016-04-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Escape builder names in url* and pathFor* methods of BuildbotSyncer
+        https://bugs.webkit.org/show_bug.cgi?id=156427
+
+        Reviewed by Darin Adler.
+
+        The build fix in r199251 breaks other usage of RemoteAPI. Fix it properly by escaping builder names in
+        various methods of BuildbotSyncer.
+
+        Also fixed a typo in the logging and a bug that the new syncing script never updated "scheduled" to "running".
+
+        * server-tests/resources/mock-data.js:
+        (MockData.mockTestSyncConfigWithTwoBuilders): Renamed "some-builder-2" to "some builder 2" to test the
+        new escaping behavior in tools-buildbot-triggerable-tests.js and buildbot-syncer-tests.js.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Added tests for status url, and added a new test case
+        for updating "scheduled" to "running".
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotBuildEntry.buildRequestStatusIfUpdateIsNeeded): Update the status to "running" when the request's
+        status is "scheduled" and the buildbot's build is currently in progress.
+        (BuildbotSyncer.prototype.pathForPendingBuildsJSON): Escape the builder name.
+        (BuildbotSyncer.prototype.pathForBuildJSON): Ditto.
+        (BuildbotSyncer.prototype.pathForForceBuild): Ditto.
+        (BuildbotSyncer.prototype.url): Ditto.
+        (BuildbotSyncer.prototype.urlForBuildNumber): Ditto.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._pullBuildbotOnAllSyncers):
+        (BuildbotTriggerable.prototype._scheduleNextRequestInGroupIfSlaveIsAvailable): Fixed a typo. We are
+        scheduling new build requests, not syncing them.
+        * tools/js/remote.js:
+        (RemoteAPI.sendHttpRequest): Reverted r199251.
+        * unit-tests/buildbot-syncer-tests.js:
+
+2016-04-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. We need to escape the path or http.request would fail.
+
+        * tools/js/remote.js:
+
+2016-04-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix various bugs in the new syncing script
+        https://bugs.webkit.org/show_bug.cgi?id=156393
+
+        Reviewed by Darin Adler.
+
+        * server-tests/resources/common-operations.js: Added. This file was supposed to be added in r199191.
+        (addBuilderForReport):
+        (addSlaveForReport):
+        (connectToDatabaseInEveryTest):
+        (submitReport):
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._pullBuildbotOnAllSyncers): Don't log every time we pull from buildbot
+        builder as this dramatically increases the amount of log we generate.
+        * tools/js/parse-arguments.js:
+        (parseArguments): Fixed a typo. This should be parseArgument*s*, not parseArgument.
+        * tools/js/remote.js:
+        (RemoteAPI.prototype.url): Fixed a bug that portSuffix wasn't being expanded in the template literal.
+        (RemoteAPI.prototype.configure): Added more validations with nice error messages.
+        (RemoteAPI.prototype.sendHttpRequest): Falling back to port 80 isn't right when scheme is https. Compute
+        the right port in configure instead based on the scheme.
+        * tools/sync-buildbot.js:
+        (syncLoop): Fixed the bug that syncing multiple times fail because Manifest.fetch() create new Platform
+        and Test objects. This results in various references in BuildRequest objects to get outdated. Fixing this
+        properly in Manifest.fetch() because we do need to "forget" about some tests and platforms in some cases.
+        For now, delete all v3 model objects and start over in each syncing cycle.
+        * unit-tests/tools-js-remote-tests.js: Added. Unit tests for the aforementioned changes to RemoteAPI.
+
+2016-04-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        sync-buildbot.js doesn't mark disappeared builds as failed
+        https://bugs.webkit.org/show_bug.cgi?id=156386
+
+        Reviewed by Chris Dumez.
+
+        Fix a bug that new syncing script doesn't mark builds that it scheduled but doesn't appear when queried
+        by buildbot's JSON API. These are builds that got canceled by humans (e.g. buildbot was restarted, data
+        loss, pending build was canceled, etc...)
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Added a test case.
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._pullBuildbotOnAllSyncers): Added a set of build requests we've matched
+        against BuildbotBuildEntry's. Mark build requests that didn't have any entry but supposed to be in either
+        'scheduled' or 'running' status as failed.
+
+2016-04-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        A/B testing bots should prioritize user created test groups
+        https://bugs.webkit.org/show_bug.cgi?id=156375
+
+        Reviewed by Chris Dumez.
+
+        Order build requests preferring user created ones over ones automatically created by detect-changes.js.
+
+        Also fixed a bug in BuildbotSyncer.scheduleFirstRequestInGroupIfAvailable that it was scheduling a new
+        build request on a builder/slave even when we had previously scheduled another build request.
+
+        * public/include/build-requests-fetcher.php:
+        (BuildRequestsFetcher::fetch_incomplete_requests_for_triggerable): Order build requested based on
+        author_order which is 0 when it's created by an user and 1 when it's created by detect-changes.js.
+        Since we're using ascending order, this would put user created test groups first.
+        * server-tests/api-build-requests-tests.js: Updated an existing test case and added a new test case
+        for testing that build requests for an user created test group shows up first.
+        * server-tests/resources/mock-data.js:
+        (MockData.addAnotherMockTestGroup): Takes an extra argument to specify the author name.
+        * server-tests/tools-buildbot-triggerable-tests.js: Added a test case for testing that build requests
+        for an user created test group shows up first.
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer): Added _slavesWithNewRequests to keep track of build slaves on which we have already
+        scheduled new build requests. Don't schedule more requests on these slaves.
+        (BuildbotSyncer.prototype.scheduleRequest):
+        (BuildbotSyncer.prototype.scheduleFirstRequestInGroupIfAvailable): Add the specified slave name (or null
+        when slaveList is not specified) to _slavesWithNewRequests.
+        (BuildbotSyncer.prototype.pullBuildbot): Clear the set after pulling buildbot since any build request
+        we have previously scheduled should be included in one of the entires now.
+        * unit-tests/buildbot-syncer-tests.js: Added test cases for the aforementioned bug.
+        (sampleiOSConfig): Added a second slave for new test cases.
+
+2016-04-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Migrate legacy perf dashboard tests to mocha.js based tests
+        https://bugs.webkit.org/show_bug.cgi?id=156335
+
+        Reviewed by Chris Dumez.
+
+        Migrated all legacy run-tests.js tests to mocha.js based tests. Since the new harness uses Promise
+        for most of asynchronous operations, refactored the tests to use Promises as well, and added more
+        assertions where appropriate.
+
+        Also consolidated common helper functions into server-tests/resources/common-operations.js.
+        Unfortunately there were multiple inconsistent implementations of addBuilder/addSlave. Some were
+        taking an array of reports while others were taking a single report. New shared implementation in
+        common-operations.js now takes a single report.
+
+        Also decreased the timeout in most tests from 10s to 1s so that tests fail early when they timeout.
+        Most of tests are passing under 100ms on my computer so 1s should be plenty still.
+
+        * run-tests.js: Removed.
+        * server-tests/admin-platforms-tests.js: Moved from tests/admin-platforms.js.
+        (reportsForDifferentPlatforms):
+        * server-tests/admin-reprocess-report-tests.js: Moved from tests/admin-reprocess-report.js.
+        (.addBuilder): Moved to common-operations.js.
+        * server-tests/api-build-requests-tests.js:
+        * server-tests/api-manifest.js: Use MockData.resetV3Models() instead of manually clearing maps.
+        * server-tests/api-measurement-set-tests.js: Moved from tests/api-measurement-set.js.
+        (.queryPlatformAndMetric):
+        (.format):
+        * server-tests/api-report-commits-tests.js: Moved from tests/api-report-commits.js.
+        * server-tests/api-report-tests.js: Moved from tests/api-report.js.
+        (.emptyReport):
+        (.emptySlaveReport):
+        (.reportWithSameSubtestName):
+        * server-tests/resources/common-operations.js: Added.
+        (addBuilderForReport): Extracted from tests.
+        (addSlaveForReport): Ditto.
+        (connectToDatabaseInEveryTest): Added.
+        (submitReport): Extracted from admin-platforms-tests.js.
+        * server-tests/resources/test-server.js:
+        (TestServer): Make TestServer a singleton since it doesn't make any sense for each module to start
+        its own Apache instance (that would certainly will fail).
+        * server-tests/tools-buildbot-triggerable-tests.js:
+        * tests: Removed.
+        * tools/js/database.js:
+        (Database.prototype.selectAll): Added.
+        (Database.prototype.selectFirstRow): Added.
+        (Database.prototype.selectRows): Added. Dynamically construct a query string based on arguments.
+
+2016-04-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New buildbot syncing scripts that supports multiple builders and slaves
+        https://bugs.webkit.org/show_bug.cgi?id=156269
+
+        Reviewed by Chris Dumez.
+
+        Add sync-buildbot.js that supports scheduling A/B testing jobs on multiple builders and slaves.
+        The old python script (sync-with-buildbot.py) could only support a single builder and slave
+        for each platform, test pair.
+
+        The main logic is implemented in BuildbotTriggerable.syncOnce. Various helper methods are added
+        throughout the codebase and tests have been refactored.
+
+        BuildbotSyncer has been updated to support multiple platform, test pairs. It's now responsible
+        for syncing everything on each builder (on a buildbot).
+
+        Added more unit tests for BuildbotSyncer and server tests for BuildbotTriggerable, and refactored
+        test helpers and mocks as needed.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.status): Added.
+        (BuildRequest.prototype.isScheduled): Added.
+        * public/v3/models/metric.js:
+        (Metric.prototype.fullName): Added.
+        * public/v3/models/platform.js:
+        (Platform): Added the map based on platform name.
+        (Platform.findByName): Added.
+        * public/v3/models/test.js:
+        (Test.topLevelTests):
+        (Test.findByPath): Added. Finds a test based on an array of test names; e.g. ['A', 'B'] would
+        find the test whose name is "B" which has a parent test named "A".
+        (Test.prototype.fullName): Added.
+        * server-tests/api-build-requests-tests.js:
+        (addMockData): Moved to resources/mock-data.js.
+        (addAnotherMockTestGroup): Ditto.
+        * server-tests/resources/mock-data.js: Added.
+        (MockData.resetV3Models): Added.
+        (MockData.addMockData): Moved from api-build-requests-tests.js.
+        (MockData.addAnotherMockTestGroup): Ditto.
+        (MockData.mockTestSyncConfigWithSingleBuilder): Added.
+        (MockData.mockTestSyncConfigWithTwoBuilders): Added.
+        (MockData.pendingBuild): Added.
+        (MockData.runningBuild): Added.
+        (MockData.finishedBuild): Added.
+        * server-tests/resources/test-server.js:
+        (TestServer):
+        (TestServer.prototype.remoteAPI):
+        (TestServer.prototype._ensureTestDatabase): Don't fail even if the test database doesn't exit.
+        (TestServer.prototype._startApache): Create a RemoteAPI instance to access the test sever.
+        (TestServer.prototype._waitForPid): Increase the timeout.
+        (TestServer.prototype.inject): Replace global.RemoteAPI during the test and restore it afterwards.
+        * server-tests/tools-buildbot-triggerable-tests.js: Added. Tests BuildbotTriggerable.syncOnce.
+        (MockLogger): Added.
+        (MockLogger.prototype.log): Added.
+        (MockLogger.prototype.error): Added.
+        * tools/detect-changes.js:
+        (parseArgument): Moved to js/parse-arguments.js.
+        * tools/js/buildbot-syncer.js:
+        (BuildbotBuildEntry):
+        (BuildbotBuildEntry.prototype.syncer): Added.
+        (BuildbotBuildEntry.prototype.buildRequestStatusIfUpdateIsNeeded): Added. Returns a new status
+        for a build request (of the matching build request ID) if it needs to be updated in the server.
+        (BuildbotSyncer): This class 
+        (BuildbotSyncer.prototype.addTestConfiguration): Added.
+        (BuildbotSyncer.prototype.testConfigurations): Returns the list of test configurations.
+        (BuildbotSyncer.prototype.matchesConfiguration): Returns true iff the request can be scheduled on
+        this builder.
+        (BuildbotSyncer.prototype.scheduleRequest): Added. Schedules a new job on buildbot for a request.
+        (BuildbotSyncer.prototype.scheduleFirstRequestInGroupIfAvailable): Added. Schedules a new job for
+        the specified build request on the first slave that's available.
+        (BuildbotSyncer.prototype.pullBuildbot): Return a list of BuildbotBuildEntry instead of an object.
+        Also store it on an instance variable so that scheduleFirstRequestInGroupIfAvailable could use it.
+        (BuildbotSyncer.prototype._pullRecentBuilds):
+        (BuildbotSyncer.prototype.pathForPendingBuildsJSON): Renamed from urlForPendingBuildsJSON and now
+        only returns the path instead of the full URL since RemoteAPI takes a path, not full URL.
+        (BuildbotSyncer.prototype.pathForBuildJSON): Ditto from pathForBuildJSON.
+        (BuildbotSyncer.prototype.pathForForceBuild): Added.
+        (BuildbotSyncer.prototype.url): Use RemoteAPI's url method instead of manually constructing URL.
+        (BuildbotSyncer.prototype.urlForBuildNumber): Ditto.
+        (BuildbotSyncer.prototype._propertiesForBuildRequest): Now that each syncer can have multiple test
+        configurations associated with it, find the one matching for this request.
+        (BuildbotSyncer._loadConfig): Create a syncer per builder and add all test configurations to it.
+        (BuildbotSyncer._validateAndMergeConfig): Added the support for 'SlaveList', which is a list of
+        slave names present on this builder.
+        * tools/js/buildbot-triggerable.js: Added.
+        (BuildbotTriggerable): Added.
+        (BuildbotTriggerable.prototype.name): Added.
+        (BuildbotTriggerable.prototype.syncOnce): Added. The main logic for the syncing script. It pulls
+        existing build requests from the perf dashboard, pulls buildbot for pending and running/completed
+        builds on each builder (represented by each syncer), schedules build requests on buildbot if there
+        is any builder/slave available, and updates the status of build requests in the database.
+        (BuildbotTriggerable.prototype._validateRequests): Added.
+        (BuildbotTriggerable.prototype._pullBuildbotOnAllSyncers): Added.
+        (BuildbotTriggerable.prototype._scheduleNextRequestInGroupIfSlaveIsAvailable): Added.
+        (BuildbotTriggerable._testGroupMapForBuildRequests): Added.
+        * tools/js/database.js:
+        * tools/js/parse-arguments.js: Added. Extracted out of tools/detect-changes.js.
+        (parseArguments):
+        * tools/js/remote.js:
+        (RemoteAPI): Now optionally takes the server configuration.
+        (RemoteAPI.prototype.url): Added.
+        (RemoteAPI.prototype.getJSON): Removed the code for specifying request content.
+        (RemoteAPI.prototype.getJSONWithStatus): Ditto.
+        (RemoteAPI.prototype.postJSON): Added.
+        (RemoteAPI.prototype.postFormUrlencodedData): Added.
+        (RemoteAPI.prototype.sendHttpRequest): Fixed the code to specify auth.
+        * tools/js/v3-models.js: Don't include RemoteAPI here as they require a configuration for each host.
+        * tools/sync-buildbot.js: Added.
+        (main): Added. Parse the arguments and start the loop.
+        (syncLoop): Added.
+        * unit-tests/buildbot-syncer-tests.js: Added tests for pullBuildbot, scheduleRequest, as well as
+        scheduleFirstRequestInGroupIfAvailable. Refactored helper functions as needed.
+        (sampleiOSConfig):
+        (smallConfiguration): Added.
+        (smallPendingBuild): Added.
+        (smallInProgressBuild): Added.
+        (smallFinishedBuild): Added.
+        (createSampleBuildRequest): Create a unique build request for each platform.
+        (samplePendingBuild): Optionally specify build time and slave name.
+        (sampleInProgressBuild): Optionally specify slave name.
+        (sampleFinishedBuild): Ditto.
+        * unit-tests/resources/mock-remote-api.js:
+        (assert.notReached.assert.notReached):
+        (MockRemoteAPI.url): Added.
+        (MockRemoteAPI.postFormUrlencodedData): Added.
+        (MockRemoteAPI._addRequest): Extracted from getJSONWithStatus.
+        (MockRemoteAPI.waitForRequest): Extracted from inject. For tools-buildbot-triggerable-tests.js, we
+        need to instantiate a RemoteAPI for buildbot without replacing global.RemoteAPI.
+        (MockRemoteAPI.inject):
+        (MockRemoteAPI.reset): Added.
+
 2016-03-30  Ryosuke Niwa  <rniwa@webkit.org>
 
         Simplify API of Test model by removing Test.setParentTest

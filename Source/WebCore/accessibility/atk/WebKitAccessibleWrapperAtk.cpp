@@ -590,11 +590,12 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case ApplicationRole:
         return ATK_ROLE_APPLICATION;
     case DocumentRegionRole:
-    case GroupRole:
     case RadioGroupRole:
     case SVGRootRole:
     case TabPanelRole:
         return ATK_ROLE_PANEL;
+    case GroupRole:
+        return coreObject->isStyleFormatGroup() ? ATK_ROLE_SECTION : ATK_ROLE_PANEL;
     case RowHeaderRole:
         return ATK_ROLE_ROW_HEADER;
     case ColumnHeaderRole:
@@ -659,7 +660,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
         return ATK_ROLE_TOOL_TIP;
     case WebAreaRole:
         return ATK_ROLE_DOCUMENT_WEB;
-    case LandmarkApplicationRole:
+    case WebApplicationRole:
         return ATK_ROLE_EMBEDDED;
 #if ATK_CHECK_VERSION(2, 11, 3)
     case ApplicationLogRole:

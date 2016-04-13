@@ -47,11 +47,51 @@ class ScratchRegisterAllocator;
 
 struct AccessGenerationState;
 
+// An AccessCase describes one of the cases of a PolymorphicAccess. A PolymorphicAccess represents a
+// planned (to generate in future) or generated stub for some inline cache. That stub contains fast
+// path code for some finite number of fast cases, each described by an AccessCase object.
+//
+// An AccessCase object has a lifecycle that proceeds through several states. Note that the states
+// of AccessCase have a lot to do with the global effect epoch (we'll say epoch for short). This is
+// a simple way of reasoning about the state of the system outside this AccessCase. Any observable
+// effect - like storing to a property, changing an object's structure, etc. - increments the epoch.
+// The states are:
+//
+// Primordial:   This is an AccessCase that was just allocated. It does not correspond to any actual
+//               code and it is not owned by any PolymorphicAccess. In this state, the AccessCase
+//               assumes that it is in the same epoch as when it was created. This is important
+//               because it may make claims about itself ("I represent a valid case so long as you
+//               register a watchpoint on this set") that could be contradicted by some outside
+//               effects (like firing and deleting the watchpoint set in question). This is also the
+//               state that an AccessCase is in when it is cloned (AccessCase::clone()).
+//
+// Committed:    This happens as soon as some PolymorphicAccess takes ownership of this AccessCase.
+//               In this state, the AccessCase no longer assumes anything about the epoch. To
+//               accomplish this, PolymorphicAccess calls AccessCase::commit(). This must be done
+//               during the same epoch when the AccessCase was created, either by the client or by
+//               clone(). When created by the client, committing during the same epoch works because
+//               we can be sure that whatever watchpoint sets they spoke of are still valid. When
+//               created by clone(), we can be sure that the set is still valid because the original
+//               of the clone still has watchpoints on it.
+//
+// Generated:    This is the state when the PolymorphicAccess generates code for this case by
+//               calling AccessCase::generate() or AccessCase::generateWithGuard(). At this point
+//               the case object will have some extra stuff in it, like possibly the CallLinkInfo
+//               object associated with the inline cache.
+//               FIXME: Moving into the Generated state should not mutate the AccessCase object or
+//               put more stuff into it. If we fix this, then we can get rid of AccessCase::clone().
+//               https://bugs.webkit.org/show_bug.cgi?id=156456
+//
+// An AccessCase may be destroyed while in any of these states.
+//
+// We will sometimes buffer committed AccessCases in the PolymorphicAccess object before generating
+// code. This allows us to only regenerate once we've accumulated (hopefully) more than one new
+// AccessCase.
 class AccessCase {
     WTF_MAKE_NONCOPYABLE(AccessCase);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum AccessType {
+    enum AccessType : uint8_t {
         Load,
         MegamorphicLoad,
         Transition,
@@ -68,7 +108,15 @@ public:
         InHit,
         InMiss,
         ArrayLength,
-        StringLength
+        StringLength,
+        DirectArgumentsLength,
+        ScopedArgumentsLength
+    };
+    
+    enum State : uint8_t {
+        Primordial,
+        Committed,
+        Generated
     };
 
     static std::unique_ptr<AccessCase> tryGet(
@@ -109,9 +157,8 @@ public:
 
     ~AccessCase();
     
-    std::unique_ptr<AccessCase> clone() const;
-    
     AccessType type() const { return m_type; }
+    State state() const { return m_state; }
     PropertyOffset offset() const { return m_offset; }
     bool viaProxy() const { return m_rareData ? m_rareData->viaProxy : false; }
     
@@ -151,21 +198,10 @@ public:
     }
 
     JSObject* alternateBase() const;
-    
-    bool doesCalls() const
-    {
-        switch (type()) {
-        case Getter:
-        case Setter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-            return true;
-        default:
-            return false;
-        }
-    }
+
+    // If you supply the optional vector, this will append the set of cells that this will need to keep alive
+    // past the call.
+    bool doesCalls(Vector<JSCell*>* cellsToMark = nullptr) const;
 
     bool isGetter() const
     {
@@ -179,14 +215,19 @@ public:
         }
     }
 
+    // This can return null even for a getter/setter, if it hasn't been generated yet. That's
+    // actually somewhat likely because of how we do buffering of new cases.
     CallLinkInfo* callLinkInfo() const
     {
         if (!m_rareData)
             return nullptr;
         return m_rareData->callLinkInfo.get();
     }
-
-    // Is it still possible for this case to ever be taken?
+    
+    // Is it still possible for this case to ever be taken?  Must call this as a prerequisite for
+    // calling generate() and friends.  If this returns true, then you can call generate().  If
+    // this returns false, then generate() will crash.  You must call generate() in the same epoch
+    // as when you called couldStillSucceed().
     bool couldStillSucceed() const;
     
     static bool canEmitIntrinsicGetter(JSFunction*, Structure*);
@@ -207,6 +248,14 @@ private:
     AccessCase();
 
     bool visitWeak(VM&) const;
+    
+    // FIXME: This only exists because of how AccessCase puts post-generation things into itself.
+    // https://bugs.webkit.org/show_bug.cgi?id=156456
+    std::unique_ptr<AccessCase> clone() const;
+    
+    // Perform any action that must be performed before the end of the epoch in which the case
+    // was created. Returns a set of watchpoint sets that will need to be watched.
+    Vector<WatchpointSet*, 2> commit(VM&, const Identifier&);
 
     // Fall through on success. Two kinds of failures are supported: fall-through, which means that we
     // should try a different case; and failure, which means that this was the right case but it needs
@@ -215,9 +264,12 @@ private:
 
     // Fall through on success, add a jump to the failure list on failure.
     void generate(AccessGenerationState&);
+    
+    void generateImpl(AccessGenerationState&);
     void emitIntrinsicGetter(AccessGenerationState&);
     
     AccessType m_type { Load };
+    State m_state { Primordial };
     PropertyOffset m_offset { invalidOffset };
 
     // Usually this is the structure that we expect the base object to have. But, this is the *new*
@@ -238,6 +290,8 @@ private:
         
         bool viaProxy;
         RefPtr<WatchpointSet> additionalSet;
+        // FIXME: This should probably live in the stub routine object.
+        // https://bugs.webkit.org/show_bug.cgi?id=156456
         std::unique_ptr<CallLinkInfo> callLinkInfo;
         union {
             PropertySlot::GetValueFunc getter;
@@ -256,7 +310,9 @@ public:
     enum Kind {
         MadeNoChanges,
         GaveUp,
-        GeneratedNewCode
+        Buffered,
+        GeneratedNewCode,
+        GeneratedFinalCode // Generated so much code that we never want to generate code again.
     };
     
     AccessGenerationResult()
@@ -266,13 +322,15 @@ public:
     AccessGenerationResult(Kind kind)
         : m_kind(kind)
     {
-        ASSERT(kind != GeneratedNewCode);
+        RELEASE_ASSERT(kind != GeneratedNewCode);
+        RELEASE_ASSERT(kind != GeneratedFinalCode);
     }
     
-    AccessGenerationResult(MacroAssemblerCodePtr code)
-        : m_kind(GeneratedNewCode)
+    AccessGenerationResult(Kind kind, MacroAssemblerCodePtr code)
+        : m_kind(kind)
         , m_code(code)
     {
+        RELEASE_ASSERT(kind == GeneratedNewCode || kind == GeneratedFinalCode);
         RELEASE_ASSERT(code);
     }
     
@@ -297,7 +355,15 @@ public:
     
     bool madeNoChanges() const { return m_kind == MadeNoChanges; }
     bool gaveUp() const { return m_kind == GaveUp; }
+    bool buffered() const { return m_kind == Buffered; }
     bool generatedNewCode() const { return m_kind == GeneratedNewCode; }
+    bool generatedFinalCode() const { return m_kind == GeneratedFinalCode; }
+    
+    // If we gave up on this attempt to generate code, or if we generated the "final" code, then we
+    // should give up after this.
+    bool shouldGiveUpNow() const { return gaveUp() || generatedFinalCode(); }
+    
+    bool generatedSomeCode() const { return generatedNewCode() || generatedFinalCode(); }
     
     void dump(PrintStream&) const;
     
@@ -313,14 +379,15 @@ public:
     PolymorphicAccess();
     ~PolymorphicAccess();
 
-    // This may return null, in which case the old stub routine is left intact. You are required to
-    // pass a vector of non-null access cases. This will prune the access cases by rejecting any case
-    // in the list that is subsumed by a later case in the list.
-    AccessGenerationResult regenerateWithCases(
+    // When this fails (returns GaveUp), this will leave the old stub intact but you should not try
+    // to call this method again for that PolymorphicAccess instance.
+    AccessGenerationResult addCases(
         VM&, CodeBlock*, StructureStubInfo&, const Identifier&, Vector<std::unique_ptr<AccessCase>>);
 
-    AccessGenerationResult regenerateWithCase(
+    AccessGenerationResult addCase(
         VM&, CodeBlock*, StructureStubInfo&, const Identifier&, std::unique_ptr<AccessCase>);
+    
+    AccessGenerationResult regenerate(VM&, CodeBlock*, StructureStubInfo&, const Identifier&);
     
     bool isEmpty() const { return m_list.isEmpty(); }
     unsigned size() const { return m_list.size(); }
@@ -348,6 +415,10 @@ private:
     friend struct AccessGenerationState;
     
     typedef Vector<std::unique_ptr<AccessCase>, 2> ListType;
+    
+    void commit(
+        VM&, std::unique_ptr<WatchpointsOnStructureStubInfo>&, CodeBlock*, StructureStubInfo&,
+        const Identifier&, AccessCase&);
 
     MacroAssemblerCodePtr regenerate(
         VM&, CodeBlock*, StructureStubInfo&, const Identifier&, ListType& cases);
@@ -376,7 +447,6 @@ struct AccessGenerationState {
     GPRReg baseGPR { InvalidGPRReg };
     JSValueRegs valueRegs;
     GPRReg scratchGPR { InvalidGPRReg };
-    Vector<std::function<void(LinkBuffer&)>> callbacks;
     const Identifier* ident;
     std::unique_ptr<WatchpointsOnStructureStubInfo> watchpoints;
     Vector<WriteBarrier<JSCell>> weakReferences;
@@ -386,11 +456,11 @@ struct AccessGenerationState {
     void restoreScratch();
     void succeed();
 
-    void calculateLiveRegistersForCallAndExceptionHandling();
+    void calculateLiveRegistersForCallAndExceptionHandling(const RegisterSet& extra = RegisterSet());
 
-    void preserveLiveRegistersToStackForCall();
+    void preserveLiveRegistersToStackForCall(const RegisterSet& extra = RegisterSet());
 
-    void restoreLiveRegistersFromStackForCall(bool isGetter);
+    void restoreLiveRegistersFromStackForCall(bool isGetter = false);
     void restoreLiveRegistersFromStackForCallWithThrownException();
     void restoreLiveRegistersFromStackForCall(const RegisterSet& dontRestore);
 
@@ -419,6 +489,8 @@ struct AccessGenerationState {
     bool needsToRestoreRegistersIfException() const { return m_needsToRestoreRegistersIfException; }
     CallSiteIndex originalCallSiteIndex() const;
     
+    void emitExplicitExceptionHandler();
+    
 private:
     const RegisterSet& liveRegistersToPreserveAtExceptionHandlingCallSite()
     {
@@ -441,6 +513,7 @@ namespace WTF {
 
 void printInternal(PrintStream&, JSC::AccessGenerationResult::Kind);
 void printInternal(PrintStream&, JSC::AccessCase::AccessType);
+void printInternal(PrintStream&, JSC::AccessCase::State);
 
 } // namespace WTF
 

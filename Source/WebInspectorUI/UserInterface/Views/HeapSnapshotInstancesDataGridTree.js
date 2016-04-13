@@ -25,7 +25,7 @@
 
 WebInspector.HeapSnapshotInstancesDataGridTree = class HeapSnapshotInstancesDataGridTree extends WebInspector.Object
 {
-    constructor(heapSnapshot, sortComparator, includeInternalObjects)
+    constructor(heapSnapshot, sortComparator)
     {
         super();
 
@@ -35,8 +35,8 @@ WebInspector.HeapSnapshotInstancesDataGridTree = class HeapSnapshotInstancesData
 
         this._children = [];
         this._sortComparator = sortComparator;
-        this._includeInternalObjects = includeInternalObjects;
 
+        this._visible = false;
         this._popover = null;
         this._popoverNode = null;
 
@@ -69,20 +69,9 @@ WebInspector.HeapSnapshotInstancesDataGridTree = class HeapSnapshotInstancesData
 
     get heapSnapshot() { return this._heapSnapshot; }
 
-    get includeInternalObjects()
+    get visible()
     {
-        return this._includeInternalObjects;
-    }
-
-    set includeInternalObjects(includeInternal)
-    {
-        if (this._includeInternalObjects === includeInternal)
-            return;
-
-        this._includeInternalObjects = includeInternal;
-
-        this._populateTopLevel();
-        this.sort();
+        return this._visible;
     }
 
     get popover()
@@ -140,8 +129,15 @@ WebInspector.HeapSnapshotInstancesDataGridTree = class HeapSnapshotInstancesData
         }
     }
 
+    shown()
+    {
+        this._visible = true;
+    }
+
     hidden()
     {
+        this._visible = false;
+
         if (this._popover && this._popover.visible)
             this._popover.dismiss();
     }
@@ -159,12 +155,11 @@ WebInspector.HeapSnapshotInstancesDataGridTree = class HeapSnapshotInstancesData
     {
         this.removeChildren();
 
-        // Populate the first level with the different classes.
+        // Populate the first level with the different non-internal classes.
         for (let [className, {size, retainedSize, count, internalCount}] of this._heapSnapshot.categories) {
-            let allInternal = count === internalCount;
-            if (!this._includeInternalObjects && allInternal)
+            if (count === internalCount)
                 continue;
-            this.appendChild(new WebInspector.HeapSnapshotClassDataGridNode({className, size, retainedSize, count, allInternal}, this));
+            this.appendChild(new WebInspector.HeapSnapshotClassDataGridNode({className, size, retainedSize, count}, this));
         }
     }
 };

@@ -22,7 +22,7 @@
 #ifndef ElementRareData_h
 #define ElementRareData_h
 
-#include "AttributeDOMTokenList.h"
+#include "DOMTokenList.h"
 #include "DatasetDOMStringMap.h"
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
@@ -92,8 +92,8 @@ public:
     RenderStyle* computedStyle() const { return m_computedStyle.get(); }
     void setComputedStyle(Ref<RenderStyle>&& computedStyle) { m_computedStyle = WTFMove(computedStyle); }
 
-    AttributeDOMTokenList* classList() const { return m_classList.get(); }
-    void setClassList(std::unique_ptr<AttributeDOMTokenList> classList) { m_classList = WTFMove(classList); }
+    DOMTokenList* classList() const { return m_classList.get(); }
+    void setClassList(std::unique_ptr<DOMTokenList> classList) { m_classList = WTFMove(classList); }
 
     DatasetDOMStringMap* dataset() const { return m_dataset.get(); }
     void setDataset(std::unique_ptr<DatasetDOMStringMap> dataset) { m_dataset = WTFMove(dataset); }
@@ -106,6 +106,9 @@ public:
 
     bool hasPendingResources() const { return m_hasPendingResources; }
     void setHasPendingResources(bool has) { m_hasPendingResources = has; }
+
+    bool hasDisplayContents() const { return m_hasDisplayContents; }
+    void setHasDisplayContents(bool value) { m_hasDisplayContents = value; }
 
 private:
     int m_tabIndex;
@@ -126,6 +129,7 @@ private:
     unsigned m_childrenAffectedByLastChildRules : 1;
     unsigned m_childrenAffectedByBackwardPositionalRules : 1;
     unsigned m_childrenAffectedByPropertyBasedBackwardPositionalRules : 1;
+    unsigned m_hasDisplayContents : 1;
 
     RegionOversetState m_regionOversetState;
 
@@ -134,7 +138,7 @@ private:
     RefPtr<RenderStyle> m_computedStyle;
 
     std::unique_ptr<DatasetDOMStringMap> m_dataset;
-    std::unique_ptr<AttributeDOMTokenList> m_classList;
+    std::unique_ptr<DOMTokenList> m_classList;
     RefPtr<ShadowRoot> m_shadowRoot;
     std::unique_ptr<NamedNodeMap> m_attributeMap;
 
@@ -166,6 +170,7 @@ inline ElementRareData::ElementRareData(RenderElement* renderer)
     , m_childrenAffectedByLastChildRules(false)
     , m_childrenAffectedByBackwardPositionalRules(false)
     , m_childrenAffectedByPropertyBasedBackwardPositionalRules(false)
+    , m_hasDisplayContents(false)
     , m_regionOversetState(RegionUndefined)
     , m_minimumSizeForResizing(defaultMinimumSizeForResizing())
 {
@@ -193,6 +198,7 @@ inline void ElementRareData::setAfterPseudoElement(RefPtr<PseudoElement>&& pseud
 inline void ElementRareData::resetComputedStyle()
 {
     m_computedStyle = nullptr;
+    m_hasDisplayContents = false;
     setStyleAffectedByEmpty(false);
     setChildIndex(0);
 }

@@ -31,11 +31,13 @@
 #include "BinarySwitch.h"
 #include "CCallHelpers.h"
 #include "CodeBlock.h"
+#include "DirectArguments.h"
 #include "GetterSetter.h"
 #include "Heap.h"
 #include "JITOperations.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
+#include "ScopedArguments.h"
 #include "ScratchRegisterAllocator.h"
 #include "StructureStubClearingWatchpoint.h"
 #include "StructureStubInfo.h"
@@ -45,6 +47,14 @@
 namespace JSC {
 
 static const bool verbose = false;
+
+// EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned on an even-numbered register (r0, r2 or [sp]).
+// To prevent the assembler from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
+#if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
+#define EABI_32BIT_DUMMY_ARG      CCallHelpers::TrustedImm32(0),
+#else
+#define EABI_32BIT_DUMMY_ARG
+#endif
 
 void AccessGenerationResult::dump(PrintStream& out) const
 {
@@ -70,7 +80,7 @@ void AccessGenerationState::succeed()
     success.append(jit->jump());
 }
 
-void AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling()
+void AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling(const RegisterSet& extra)
 {
     if (!m_calculatedRegistersForCallAndExceptionHandling) {
         m_calculatedRegistersForCallAndExceptionHandling = true;
@@ -81,12 +91,16 @@ void AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling()
             RELEASE_ASSERT(JITCode::isOptimizingJIT(jit->codeBlock()->jitType()));
 
         m_liveRegistersForCall = RegisterSet(m_liveRegistersToPreserveAtExceptionHandlingCallSite, allocator->usedRegisters());
+        m_liveRegistersForCall.merge(extra);
         m_liveRegistersForCall.exclude(RegisterSet::registersToNotSaveForJSCall());
+        m_liveRegistersForCall.merge(extra);
     }
 }
 
-void AccessGenerationState::preserveLiveRegistersToStackForCall()
+void AccessGenerationState::preserveLiveRegistersToStackForCall(const RegisterSet& extra)
 {
+    calculateLiveRegistersForCallAndExceptionHandling(extra);
+    
     unsigned extraStackPadding = 0;
     unsigned numberOfStackBytesUsedForRegisterPreservation = ScratchRegisterAllocator::preserveRegistersToStackForCall(*jit, liveRegistersForCall(), extraStackPadding);
     if (m_numberOfStackBytesUsedForRegisterPreservation != std::numeric_limits<unsigned>::max())
@@ -154,6 +168,38 @@ const HandlerInfo& AccessGenerationState::originalExceptionHandler() const
 }
 
 CallSiteIndex AccessGenerationState::originalCallSiteIndex() const { return stubInfo->callSiteIndex; }
+
+void AccessGenerationState::emitExplicitExceptionHandler()
+{
+    restoreScratch();
+    jit->copyCalleeSavesToVMCalleeSavesBuffer();
+    if (needsToRestoreRegistersIfException()) {
+        // To the JIT that produces the original exception handling
+        // call site, they will expect the OSR exit to be arrived
+        // at from genericUnwind. Therefore we must model what genericUnwind
+        // does here. I.e, set callFrameForCatch and copy callee saves.
+
+        jit->storePtr(GPRInfo::callFrameRegister, jit->vm()->addressOfCallFrameForCatch());
+        CCallHelpers::Jump jumpToOSRExitExceptionHandler = jit->jump();
+
+        // We don't need to insert a new exception handler in the table
+        // because we're doing a manual exception check here. i.e, we'll
+        // never arrive here from genericUnwind().
+        HandlerInfo originalHandler = originalExceptionHandler();
+        jit->addLinkTask(
+            [=] (LinkBuffer& linkBuffer) {
+                linkBuffer.link(jumpToOSRExitExceptionHandler, originalHandler.nativeCode);
+            });
+    } else {
+        jit->setupArguments(CCallHelpers::TrustedImmPtr(jit->vm()), GPRInfo::callFrameRegister);
+        CCallHelpers::Call lookupExceptionHandlerCall = jit->call();
+        jit->addLinkTask(
+            [=] (LinkBuffer& linkBuffer) {
+                linkBuffer.link(lookupExceptionHandlerCall, lookupExceptionHandler);
+            });
+        jit->jumpToExceptionHandler();
+    }
+}
 
 AccessCase::AccessCase()
 {
@@ -242,13 +288,6 @@ std::unique_ptr<AccessCase> AccessCase::transition(
         && oldStructure->outOfLineCapacity()) {
         return nullptr;
     }
-
-    // Skip optimizing the case where we need realloc, and the structure has
-    // indexing storage.
-    // FIXME: We shouldn't skip this! Implement it!
-    // https://bugs.webkit.org/show_bug.cgi?id=130914
-    if (oldStructure->couldHaveIndexingHeader())
-        return nullptr;
 
     std::unique_ptr<AccessCase> result(new AccessCase());
 
@@ -358,6 +397,24 @@ std::unique_ptr<AccessCase> AccessCase::clone() const
     return result;
 }
 
+Vector<WatchpointSet*, 2> AccessCase::commit(VM& vm, const Identifier& ident)
+{
+    RELEASE_ASSERT(m_state == Primordial);
+    
+    Vector<WatchpointSet*, 2> result;
+    
+    if ((structure() && structure()->needImpurePropertyWatchpoint())
+        || m_conditionSet.needImpurePropertyWatchpoint())
+        result.append(vm.ensureWatchpointSetForImpureProperty(ident));
+
+    if (additionalSet())
+        result.append(additionalSet());
+    
+    m_state = Committed;
+    
+    return result;
+}
+
 bool AccessCase::guardedByStructureCheck() const
 {
     if (viaProxy())
@@ -367,6 +424,8 @@ bool AccessCase::guardedByStructureCheck() const
     case MegamorphicLoad:
     case ArrayLength:
     case StringLength:
+    case DirectArgumentsLength:
+    case ScopedArgumentsLength:
         return false;
     default:
         return true;
@@ -378,6 +437,29 @@ JSObject* AccessCase::alternateBase() const
     if (customSlotBase())
         return customSlotBase();
     return conditionSet().slotBaseCondition().object();
+}
+
+bool AccessCase::doesCalls(Vector<JSCell*>* cellsToMark) const
+{
+    switch (type()) {
+    case Getter:
+    case Setter:
+    case CustomValueGetter:
+    case CustomAccessorGetter:
+    case CustomValueSetter:
+    case CustomAccessorSetter:
+        return true;
+    case Transition:
+        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()
+            && structure()->couldHaveIndexingHeader()) {
+            if (cellsToMark)
+                cellsToMark->append(newStructure());
+            return true;
+        }
+        return false;
+    default:
+        return false;
+    }
 }
 
 bool AccessCase::couldStillSucceed() const
@@ -414,6 +496,8 @@ void AccessCase::dump(PrintStream& out) const
     out.print(m_type, ":(");
 
     CommaPrinter comma;
+    
+    out.print(comma, m_state);
 
     if (m_type == Transition)
         out.print(comma, "structure = ", pointerDump(structure()), " -> ", pointerDump(newStructure()));
@@ -461,6 +545,11 @@ bool AccessCase::visitWeak(VM& vm) const
 void AccessCase::generateWithGuard(
     AccessGenerationState& state, CCallHelpers::JumpList& fallThrough)
 {
+    SuperSamplerScope superSamplerScope(false);
+
+    RELEASE_ASSERT(m_state == Committed);
+    m_state = Generated;
+    
     CCallHelpers& jit = *state.jit;
     VM& vm = *jit.vm();
     const Identifier& ident = *state.ident;
@@ -492,6 +581,46 @@ void AccessCase::generateWithGuard(
                 CCallHelpers::Address(baseGPR, JSCell::typeInfoTypeOffset()),
                 CCallHelpers::TrustedImm32(StringType)));
         break;
+    }
+        
+    case DirectArgumentsLength: {
+        ASSERT(!viaProxy());
+        fallThrough.append(
+            jit.branch8(
+                CCallHelpers::NotEqual,
+                CCallHelpers::Address(baseGPR, JSCell::typeInfoTypeOffset()),
+                CCallHelpers::TrustedImm32(DirectArgumentsType)));
+
+        fallThrough.append(
+            jit.branchTestPtr(
+                CCallHelpers::NonZero,
+                CCallHelpers::Address(baseGPR, DirectArguments::offsetOfOverrides())));
+        jit.load32(
+            CCallHelpers::Address(baseGPR, DirectArguments::offsetOfLength()),
+            valueRegs.payloadGPR());
+        jit.boxInt32(valueRegs.payloadGPR(), valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        state.succeed();
+        return;
+    }
+        
+    case ScopedArgumentsLength: {
+        ASSERT(!viaProxy());
+        fallThrough.append(
+            jit.branch8(
+                CCallHelpers::NotEqual,
+                CCallHelpers::Address(baseGPR, JSCell::typeInfoTypeOffset()),
+                CCallHelpers::TrustedImm32(ScopedArgumentsType)));
+
+        fallThrough.append(
+            jit.branchTest8(
+                CCallHelpers::NonZero,
+                CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfOverrodeThings())));
+        jit.load32(
+            CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfTotalLength()),
+            valueRegs.payloadGPR());
+        jit.boxInt32(valueRegs.payloadGPR(), valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        state.succeed();
+        return;
     }
         
     case MegamorphicLoad: {
@@ -634,21 +763,24 @@ void AccessCase::generateWithGuard(
         break;
     } };
 
-    generate(state);
+    generateImpl(state);
 }
-
-// EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned on an even-numbered register (r0, r2 or [sp]).
-// To prevent the assembler from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
-#if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
-#define EABI_32BIT_DUMMY_ARG      CCallHelpers::TrustedImm32(0),
-#else
-#define EABI_32BIT_DUMMY_ARG
-#endif
 
 void AccessCase::generate(AccessGenerationState& state)
 {
+    RELEASE_ASSERT(m_state == Committed);
+    m_state = Generated;
+    
+    generateImpl(state);
+}
+
+void AccessCase::generateImpl(AccessGenerationState& state)
+{
+    SuperSamplerScope superSamplerScope(false);
     if (verbose)
         dataLog("Generating code for: ", *this, "\n");
+    
+    ASSERT(m_state == Generated); // We rely on the callers setting this for us.
     
     CCallHelpers& jit = *state.jit;
     VM& vm = *jit.vm();
@@ -661,13 +793,6 @@ void AccessCase::generate(AccessGenerationState& state)
 
     ASSERT(m_conditionSet.structuresEnsureValidityAssumingImpurePropertyWatchpoint());
 
-    if ((structure() && structure()->needImpurePropertyWatchpoint())
-        || m_conditionSet.needImpurePropertyWatchpoint())
-        vm.registerWatchpointForImpureProperty(ident, state.addWatchpoint());
-
-    if (additionalSet())
-        additionalSet()->add(state.addWatchpoint());
-
     for (const ObjectPropertyCondition& condition : m_conditionSet) {
         Structure* structure = condition.object()->structure();
 
@@ -677,6 +802,10 @@ void AccessCase::generate(AccessGenerationState& state)
         }
 
         if (!condition.structureEnsuresValidityAssumingImpurePropertyWatchpoint(structure)) {
+            // The reason why this cannot happen is that we require that PolymorphicAccess calls
+            // AccessCase::generate() only after it has verified that
+            // AccessCase::couldStillSucceed() returned true.
+            
             dataLog("This condition is no longer met: ", condition, "\n");
             RELEASE_ASSERT_NOT_REACHED();
         }
@@ -778,7 +907,6 @@ void AccessCase::generate(AccessGenerationState& state)
 
         // Stuff for custom getters/setters.
         CCallHelpers::Call operationCall;
-        CCallHelpers::Call lookupExceptionHandlerCall;
 
         // Stuff for JS getters/setters.
         CCallHelpers::DataLabelPtr addressOfLinkFunctionCheck;
@@ -790,11 +918,8 @@ void AccessCase::generate(AccessGenerationState& state)
 
         // This also does the necessary calculations of whether or not we're an
         // exception handling call site.
-        state.calculateLiveRegistersForCallAndExceptionHandling();
         state.preserveLiveRegistersToStackForCall();
 
-        // Need to make sure that whenever this call is made in the future, we remember the
-        // place that we made it from.
         jit.store32(
             CCallHelpers::TrustedImm32(state.callSiteIndexForExceptionHandlingOrOriginal().bits()),
             CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
@@ -913,11 +1038,11 @@ void AccessCase::generate(AccessGenerationState& state)
 
             done.link(&jit);
 
-            jit.addPtr(CCallHelpers::TrustedImm32((jit.codeBlock()->stackPointerOffset() * sizeof(Register)) - state.preservedReusedRegisterState.numberOfBytesPreserved - state.numberOfStackBytesUsedForRegisterPreservation()),
+            jit.addPtr(CCallHelpers::TrustedImm32((codeBlock->stackPointerOffset() * sizeof(Register)) - state.preservedReusedRegisterState.numberOfBytesPreserved - state.numberOfStackBytesUsedForRegisterPreservation()),
                 GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
             state.restoreLiveRegistersFromStackForCall(isGetter());
 
-            state.callbacks.append(
+            jit.addLinkTask(
                 [=, &vm] (LinkBuffer& linkBuffer) {
                     m_rareData->callLinkInfo->setCallLocations(
                         linkBuffer.locationOfNearCall(slowPathCall),
@@ -929,12 +1054,10 @@ void AccessCase::generate(AccessGenerationState& state)
                         CodeLocationLabel(vm.getCTIStub(linkCallThunkGenerator).code()));
                 });
         } else {
-            // Need to make room for the C call so any of our stack spillage isn't overwritten.
-            // We also need to make room because we may be an inline cache in the FTL and not
-            // have a JIT call frame.
-            bool needsToMakeRoomOnStackForCCall = state.numberOfStackBytesUsedForRegisterPreservation() || codeBlock->jitType() == JITCode::FTLJIT;
-            if (needsToMakeRoomOnStackForCCall)
-                jit.makeSpaceOnStackForCCall();
+            // Need to make room for the C call so any of our stack spillage isn't overwritten. It's
+            // hard to track if someone did spillage or not, so we just assume that we always need
+            // to make some space here.
+            jit.makeSpaceOnStackForCCall();
 
             // getter: EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName);
             // setter: void (*PutValueFunc)(ExecState*, EncodedJSValue thisObject, EncodedJSValue value);
@@ -963,51 +1086,23 @@ void AccessCase::generate(AccessGenerationState& state)
             jit.storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
 
             operationCall = jit.call();
+            jit.addLinkTask(
+                [=] (LinkBuffer& linkBuffer) {
+                    linkBuffer.link(operationCall, FunctionPtr(m_rareData->customAccessor.opaque));
+                });
+
             if (m_type == CustomValueGetter || m_type == CustomAccessorGetter)
                 jit.setupResults(valueRegs);
-            if (needsToMakeRoomOnStackForCCall)
-                jit.reclaimSpaceOnStackForCCall();
+            jit.reclaimSpaceOnStackForCCall();
 
             CCallHelpers::Jump noException =
                 jit.emitExceptionCheck(CCallHelpers::InvertedExceptionCheck);
 
-            bool didSetLookupExceptionHandler = false;
             state.restoreLiveRegistersFromStackForCallWithThrownException();
-            state.restoreScratch();
-            jit.copyCalleeSavesToVMCalleeSavesBuffer();
-            if (state.needsToRestoreRegistersIfException()) {
-                // To the JIT that produces the original exception handling
-                // call site, they will expect the OSR exit to be arrived
-                // at from genericUnwind. Therefore we must model what genericUnwind
-                // does here. I.e, set callFrameForCatch and copy callee saves.
-
-                jit.storePtr(GPRInfo::callFrameRegister, vm.addressOfCallFrameForCatch());
-                CCallHelpers::Jump jumpToOSRExitExceptionHandler = jit.jump();
-
-                // We don't need to insert a new exception handler in the table
-                // because we're doing a manual exception check here. i.e, we'll
-                // never arrive here from genericUnwind().
-                HandlerInfo originalHandler = state.originalExceptionHandler();
-                state.callbacks.append(
-                    [=] (LinkBuffer& linkBuffer) {
-                        linkBuffer.link(jumpToOSRExitExceptionHandler, originalHandler.nativeCode);
-                    });
-            } else {
-                jit.setupArguments(CCallHelpers::TrustedImmPtr(&vm), GPRInfo::callFrameRegister);
-                lookupExceptionHandlerCall = jit.call();
-                didSetLookupExceptionHandler = true;
-                jit.jumpToExceptionHandler();
-            }
+            state.emitExplicitExceptionHandler();
         
             noException.link(&jit);
             state.restoreLiveRegistersFromStackForCall(isGetter());
-
-            state.callbacks.append(
-                [=] (LinkBuffer& linkBuffer) {
-                    linkBuffer.link(operationCall, FunctionPtr(m_rareData->customAccessor.opaque));
-                    if (didSetLookupExceptionHandler)
-                        linkBuffer.link(lookupExceptionHandlerCall, lookupExceptionHandler);
-                });
         }
         state.succeed();
         return;
@@ -1042,9 +1137,8 @@ void AccessCase::generate(AccessGenerationState& state)
     }
 
     case Transition: {
-        // AccessCase::transition() should have returned null.
+        // AccessCase::transition() should have returned null if this wasn't true.
         RELEASE_ASSERT(GPRInfo::numberOfRegisters >= 6 || !structure()->outOfLineCapacity() || structure()->outOfLineCapacity() == newStructure()->outOfLineCapacity());
-        RELEASE_ASSERT(!structure()->couldHaveIndexingHeader());
 
         if (InferredType* type = newStructure()->inferredTypeFor(ident.impl())) {
             if (verbose)
@@ -1055,7 +1149,11 @@ void AccessCase::generate(AccessGenerationState& state)
         } else if (verbose)
             dataLog("Don't have type.\n");
         
-        CCallHelpers::JumpList slowPath;
+        // NOTE: This logic is duplicated in AccessCase::doesCalls(). It's important that doesCalls() knows
+        // exactly when this would make calls.
+        bool allocating = newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity();
+        bool reallocating = allocating && structure()->outOfLineCapacity();
+        bool allocatingInline = allocating && !structure()->couldHaveIndexingHeader();
 
         ScratchRegisterAllocator allocator(stubInfo.patch.usedRegisters);
         allocator.lock(baseGPR);
@@ -1065,75 +1163,120 @@ void AccessCase::generate(AccessGenerationState& state)
         allocator.lock(valueRegs);
         allocator.lock(scratchGPR);
 
-        GPRReg scratchGPR2 = allocator.allocateScratchGPR();
-        GPRReg scratchGPR3;
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()
-            && structure()->outOfLineCapacity())
+        GPRReg scratchGPR2 = InvalidGPRReg;
+        GPRReg scratchGPR3 = InvalidGPRReg;
+        if (allocatingInline) {
+            scratchGPR2 = allocator.allocateScratchGPR();
             scratchGPR3 = allocator.allocateScratchGPR();
-        else
-            scratchGPR3 = InvalidGPRReg;
+        }
 
         ScratchRegisterAllocator::PreservedState preservedState =
             allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
+        
+        CCallHelpers::JumpList slowPath;
 
         ASSERT(structure()->transitionWatchpointSetHasBeenInvalidated());
 
-        bool scratchGPRHasStorage = false;
-        bool needsToMakeRoomOnStackForCCall = !preservedState.numberOfBytesPreserved && codeBlock->jitType() == JITCode::FTLJIT;
-
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
+        if (allocating) {
             size_t newSize = newStructure()->outOfLineCapacity() * sizeof(JSValue);
-            CopiedAllocator* copiedAllocator = &vm.heap.storageAllocator();
-
-            if (!structure()->outOfLineCapacity()) {
-                jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
-                slowPath.append(
-                    jit.branchSubPtr(
-                        CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
-                jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
-                jit.negPtr(scratchGPR);
-                jit.addPtr(
-                    CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
-                jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
-            } else {
-                size_t oldSize = structure()->outOfLineCapacity() * sizeof(JSValue);
-                ASSERT(newSize > oldSize);
             
-                jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR3);
-                jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
-                slowPath.append(
-                    jit.branchSubPtr(
-                        CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
-                jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
-                jit.negPtr(scratchGPR);
-                jit.addPtr(
-                    CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
-                jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
-                // We have scratchGPR = new storage, scratchGPR3 = old storage,
-                // scratchGPR2 = available
-                for (size_t offset = 0; offset < oldSize; offset += sizeof(void*)) {
-                    jit.loadPtr(
-                        CCallHelpers::Address(
-                            scratchGPR3,
-                            -static_cast<ptrdiff_t>(
-                                offset + sizeof(JSValue) + sizeof(void*))),
-                        scratchGPR2);
-                    jit.storePtr(
-                        scratchGPR2,
-                        CCallHelpers::Address(
-                            scratchGPR,
-                            -static_cast<ptrdiff_t>(offset + sizeof(JSValue) + sizeof(void*))));
+            if (allocatingInline) {
+                CopiedAllocator* copiedAllocator = &vm.heap.storageAllocator();
+
+                if (!reallocating) {
+                    jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
+                    slowPath.append(
+                        jit.branchSubPtr(
+                            CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
+                    jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
+                    jit.negPtr(scratchGPR);
+                    jit.addPtr(
+                        CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
+                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
+                } else {
+                    // Handle the case where we are reallocating (i.e. the old structure/butterfly
+                    // already had out-of-line property storage).
+                    size_t oldSize = structure()->outOfLineCapacity() * sizeof(JSValue);
+                    ASSERT(newSize > oldSize);
+            
+                    jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR3);
+                    jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
+                    slowPath.append(
+                        jit.branchSubPtr(
+                            CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
+                    jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
+                    jit.negPtr(scratchGPR);
+                    jit.addPtr(
+                        CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
+                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
+                    // We have scratchGPR = new storage, scratchGPR3 = old storage,
+                    // scratchGPR2 = available
+                    for (size_t offset = 0; offset < oldSize; offset += sizeof(void*)) {
+                        jit.loadPtr(
+                            CCallHelpers::Address(
+                                scratchGPR3,
+                                -static_cast<ptrdiff_t>(
+                                    offset + sizeof(JSValue) + sizeof(void*))),
+                            scratchGPR2);
+                        jit.storePtr(
+                            scratchGPR2,
+                            CCallHelpers::Address(
+                                scratchGPR,
+                                -static_cast<ptrdiff_t>(offset + sizeof(JSValue) + sizeof(void*))));
+                    }
                 }
+            } else {
+                // Handle the case where we are allocating out-of-line using an operation.
+                RegisterSet extraRegistersToPreserve;
+                extraRegistersToPreserve.set(baseGPR);
+                extraRegistersToPreserve.set(valueRegs);
+                state.preserveLiveRegistersToStackForCall(extraRegistersToPreserve);
+                
+                jit.store32(
+                    CCallHelpers::TrustedImm32(
+                        state.callSiteIndexForExceptionHandlingOrOriginal().bits()),
+                    CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+                
+                jit.makeSpaceOnStackForCCall();
+                
+                if (!reallocating) {
+                    jit.setupArgumentsWithExecState(baseGPR);
+                    
+                    CCallHelpers::Call operationCall = jit.call();
+                    jit.addLinkTask(
+                        [=] (LinkBuffer& linkBuffer) {
+                            linkBuffer.link(
+                                operationCall,
+                                FunctionPtr(operationReallocateButterflyToHavePropertyStorageWithInitialCapacity));
+                        });
+                } else {
+                    // Handle the case where we are reallocating (i.e. the old structure/butterfly
+                    // already had out-of-line property storage).
+                    jit.setupArgumentsWithExecState(
+                        baseGPR, CCallHelpers::TrustedImm32(newSize / sizeof(JSValue)));
+                    
+                    CCallHelpers::Call operationCall = jit.call();
+                    jit.addLinkTask(
+                        [=] (LinkBuffer& linkBuffer) {
+                            linkBuffer.link(
+                                operationCall,
+                                FunctionPtr(operationReallocateButterflyToGrowPropertyStorage));
+                        });
+                }
+                
+                jit.reclaimSpaceOnStackForCCall();
+                jit.move(GPRInfo::returnValueGPR, scratchGPR);
+                
+                CCallHelpers::Jump noException =
+                    jit.emitExceptionCheck(CCallHelpers::InvertedExceptionCheck);
+                
+                state.restoreLiveRegistersFromStackForCallWithThrownException();
+                state.emitExplicitExceptionHandler();
+                
+                noException.link(&jit);
+                state.restoreLiveRegistersFromStackForCall();
             }
-
-            jit.storePtr(scratchGPR, CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()));
-            scratchGPRHasStorage = true;
         }
-
-        uint32_t structureBits = bitwise_cast<uint32_t>(newStructure()->id());
-        jit.store32(
-            CCallHelpers::TrustedImm32(structureBits),
-            CCallHelpers::Address(baseGPR, JSCell::structureIDOffset()));
 
         if (isInlineOffset(m_offset)) {
             jit.storeValue(
@@ -1143,97 +1286,61 @@ void AccessCase::generate(AccessGenerationState& state)
                     JSObject::offsetOfInlineStorage() +
                     offsetInInlineStorage(m_offset) * sizeof(JSValue)));
         } else {
-            if (!scratchGPRHasStorage)
+            if (!allocating)
                 jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR);
             jit.storeValue(
                 valueRegs,
                 CCallHelpers::Address(scratchGPR, offsetInButterfly(m_offset) * sizeof(JSValue)));
         }
-
-        ScratchBuffer* scratchBuffer = nullptr;
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity())
-            scratchBuffer = vm.scratchBufferForSize(allocator.desiredScratchBufferSizeForCall());
-
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
-            CCallHelpers::Call callFlushWriteBarrierBuffer;
+        
+        // If we had allocated using an operation then we would have already executed the store
+        // barrier and we would have already stored the butterfly into the object.
+        if (allocatingInline) {
             CCallHelpers::Jump ownerIsRememberedOrInEden = jit.jumpIfIsRememberedOrInEden(baseGPR);
             WriteBarrierBuffer& writeBarrierBuffer = jit.vm()->heap.writeBarrierBuffer();
             jit.load32(writeBarrierBuffer.currentIndexAddress(), scratchGPR2);
-            CCallHelpers::Jump needToFlush =
+            slowPath.append(
                 jit.branch32(
                     CCallHelpers::AboveOrEqual, scratchGPR2,
-                    CCallHelpers::TrustedImm32(writeBarrierBuffer.capacity()));
-
+                    CCallHelpers::TrustedImm32(writeBarrierBuffer.capacity())));
+            
             jit.add32(CCallHelpers::TrustedImm32(1), scratchGPR2);
             jit.store32(scratchGPR2, writeBarrierBuffer.currentIndexAddress());
-
-            jit.move(CCallHelpers::TrustedImmPtr(writeBarrierBuffer.buffer()), scratchGPR);
+            
+            jit.move(CCallHelpers::TrustedImmPtr(writeBarrierBuffer.buffer()), scratchGPR3);
             // We use an offset of -sizeof(void*) because we already added 1 to scratchGPR2.
             jit.storePtr(
                 baseGPR,
                 CCallHelpers::BaseIndex(
-                    scratchGPR, scratchGPR2, CCallHelpers::ScalePtr,
+                    scratchGPR3, scratchGPR2, CCallHelpers::ScalePtr,
                     static_cast<int32_t>(-sizeof(void*))));
-
-            CCallHelpers::Jump doneWithBarrier = jit.jump();
-            needToFlush.link(&jit);
-
-            // FIXME: We should restoreReusedRegistersByPopping() before this. Then, we wouldn't need
-            // padding in preserveReusedRegistersByPushing(). Or, maybe it would be even better if the
-            // barrier slow path was just the normal slow path, below.
-            // https://bugs.webkit.org/show_bug.cgi?id=149030
-            allocator.preserveUsedRegistersToScratchBufferForCall(jit, scratchBuffer, scratchGPR2);
-            if (needsToMakeRoomOnStackForCCall)
-                jit.makeSpaceOnStackForCCall();
-            jit.setupArgumentsWithExecState(baseGPR);
-            callFlushWriteBarrierBuffer = jit.call();
-            if (needsToMakeRoomOnStackForCCall)
-                jit.reclaimSpaceOnStackForCCall();
-            allocator.restoreUsedRegistersFromScratchBufferForCall(
-                jit, scratchBuffer, scratchGPR2);
-
-            doneWithBarrier.link(&jit);
             ownerIsRememberedOrInEden.link(&jit);
-
-            state.callbacks.append(
-                [=] (LinkBuffer& linkBuffer) {
-                    linkBuffer.link(callFlushWriteBarrierBuffer, operationFlushWriteBarrierBuffer);
-                });
+            
+            // We set the new butterfly and the structure last. Doing it this way ensures that
+            // whatever we had done up to this point is forgotten if we choose to branch to slow
+            // path.
+            
+            jit.storePtr(scratchGPR, CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()));
         }
         
+        uint32_t structureBits = bitwise_cast<uint32_t>(newStructure()->id());
+        jit.store32(
+            CCallHelpers::TrustedImm32(structureBits),
+            CCallHelpers::Address(baseGPR, JSCell::structureIDOffset()));
+
         allocator.restoreReusedRegistersByPopping(jit, preservedState);
         state.succeed();
-
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
-            slowPath.link(&jit);
-            allocator.restoreReusedRegistersByPopping(jit, preservedState);
-            allocator.preserveUsedRegistersToScratchBufferForCall(jit, scratchBuffer, scratchGPR);
-            if (needsToMakeRoomOnStackForCCall)
-                jit.makeSpaceOnStackForCCall();
-#if USE(JSVALUE64)
-            jit.setupArgumentsWithExecState(
-                baseGPR,
-                CCallHelpers::TrustedImmPtr(newStructure()),
-                CCallHelpers::TrustedImm32(m_offset),
-                valueRegs.gpr());
-#else
-            jit.setupArgumentsWithExecState(
-                baseGPR,
-                CCallHelpers::TrustedImmPtr(newStructure()),
-                CCallHelpers::TrustedImm32(m_offset),
-                valueRegs.payloadGPR(), valueRegs.tagGPR());
-#endif
-            CCallHelpers::Call operationCall = jit.call();
-            if (needsToMakeRoomOnStackForCCall)
-                jit.reclaimSpaceOnStackForCCall();
-            allocator.restoreUsedRegistersFromScratchBufferForCall(jit, scratchBuffer, scratchGPR);
-            state.succeed();
-
-            state.callbacks.append(
-                [=] (LinkBuffer& linkBuffer) {
-                    linkBuffer.link(operationCall, operationReallocateStorageAndFinishPut);
-                });
-        }
+        
+        // We will have a slow path if we were allocating without the help of an operation.
+        if (allocatingInline) {
+            if (allocator.didReuseRegisters()) {
+                slowPath.link(&jit);
+                allocator.restoreReusedRegistersByPopping(jit, preservedState);
+                state.failAndIgnore.append(jit.jump());
+            } else
+                state.failAndIgnore.append(slowPath);
+        } else
+            RELEASE_ASSERT(slowPath.empty());
         return;
     }
 
@@ -1253,7 +1360,7 @@ void AccessCase::generate(AccessGenerationState& state)
         state.succeed();
         return;
     }
-
+        
     case IntrinsicGetter: {
         RELEASE_ASSERT(isValidOffset(offset()));
 
@@ -1269,11 +1376,13 @@ void AccessCase::generate(AccessGenerationState& state)
         emitIntrinsicGetter(state);
         return;
     }
-    
+
+    case DirectArgumentsLength:
+    case ScopedArgumentsLength:
     case MegamorphicLoad:
-        // These need to be handled by generateWithGuard(), since the guard is part of the megamorphic load
-        // algorithm. We can be sure that nobody will call generate() directly for MegamorphicLoad since
-        // MegamorphicLoad is not guarded by a structure check.
+        // These need to be handled by generateWithGuard(), since the guard is part of the
+        // algorithm. We can be sure that nobody will call generate() directly for these since they
+        // are not guarded by structure checks.
         RELEASE_ASSERT_NOT_REACHED();
     }
     
@@ -1283,10 +1392,12 @@ void AccessCase::generate(AccessGenerationState& state)
 PolymorphicAccess::PolymorphicAccess() { }
 PolymorphicAccess::~PolymorphicAccess() { }
 
-AccessGenerationResult PolymorphicAccess::regenerateWithCases(
+AccessGenerationResult PolymorphicAccess::addCases(
     VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident,
     Vector<std::unique_ptr<AccessCase>> originalCasesToAdd)
 {
+    SuperSamplerScope superSamplerScope(false);
+    
     // This method will add the originalCasesToAdd to the list one at a time while preserving the
     // invariants:
     // - If a newly added case canReplace() any existing case, then the existing case is removed before
@@ -1327,76 +1438,26 @@ AccessGenerationResult PolymorphicAccess::regenerateWithCases(
     if (casesToAdd.isEmpty())
         return AccessGenerationResult::MadeNoChanges;
 
-    // Now construct the list of cases as they should appear if we are successful. This means putting
-    // all of the previous cases in this list in order but excluding those that can be replaced, and
-    // then adding the new cases.
-    ListType newCases;
-    for (auto& oldCase : m_list) {
-        // Ignore old cases that cannot possibly succeed anymore.
-        if (!oldCase->couldStillSucceed())
-            continue;
-
-        // Figure out if this is replaced by any new cases.
-        bool found = false;
-        for (auto& caseToAdd : casesToAdd) {
-            if (caseToAdd->canReplace(*oldCase)) {
-                found = true;
-                break;
-            }
-        }
-        if (found)
-            continue;
-        
-        newCases.append(oldCase->clone());
+    // Now add things to the new list. Note that at this point, we will still have old cases that
+    // may be replaced by the new ones. That's fine. We will sort that out when we regenerate.
+    for (auto& caseToAdd : casesToAdd) {
+        commit(vm, m_watchpoints, codeBlock, stubInfo, ident, *caseToAdd);
+        m_list.append(WTFMove(caseToAdd));
     }
-    for (auto& caseToAdd : casesToAdd)
-        newCases.append(WTFMove(caseToAdd));
-
-    if (verbose)
-        dataLog("newCases: ", listDump(newCases), "\n");
     
-    // See if we are close to having too many cases and if some of those cases can be subsumed by a
-    // megamorphic load.
-    if (newCases.size() >= Options::maxAccessVariantListSize()) {
-        unsigned numSelfLoads = 0;
-        for (auto& newCase : newCases) {
-            if (newCase->canBeReplacedByMegamorphicLoad())
-                numSelfLoads++;
-        }
-        
-        if (numSelfLoads >= Options::megamorphicLoadCost()) {
-            if (auto mega = AccessCase::megamorphicLoad(vm, codeBlock)) {
-                newCases.removeAllMatching(
-                    [&] (std::unique_ptr<AccessCase>& newCase) -> bool {
-                        return newCase->canBeReplacedByMegamorphicLoad();
-                    });
-                
-                newCases.append(WTFMove(mega));
-            }
-        }
-    }
+    if (verbose)
+        dataLog("After addCases: m_list: ", listDump(m_list), "\n");
 
-    if (newCases.size() > Options::maxAccessVariantListSize()) {
-        if (verbose)
-            dataLog("Too many cases.\n");
-        return AccessGenerationResult::GaveUp;
-    }
-
-    MacroAssemblerCodePtr result = regenerate(vm, codeBlock, stubInfo, ident, newCases);
-    if (!result)
-        return AccessGenerationResult::GaveUp;
-
-    m_list = WTFMove(newCases);
-    return result;
+    return AccessGenerationResult::Buffered;
 }
 
-AccessGenerationResult PolymorphicAccess::regenerateWithCase(
+AccessGenerationResult PolymorphicAccess::addCase(
     VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident,
     std::unique_ptr<AccessCase> newAccess)
 {
     Vector<std::unique_ptr<AccessCase>> newAccesses;
     newAccesses.append(WTFMove(newAccess));
-    return regenerateWithCases(vm, codeBlock, stubInfo, ident, WTFMove(newAccesses));
+    return addCases(vm, codeBlock, stubInfo, ident, WTFMove(newAccesses));
 }
 
 bool PolymorphicAccess::visitWeak(VM& vm) const
@@ -1423,12 +1484,32 @@ void PolymorphicAccess::dump(PrintStream& out) const
     out.print("]");
 }
 
-MacroAssemblerCodePtr PolymorphicAccess::regenerate(
-    VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident,
-    PolymorphicAccess::ListType& cases)
+void PolymorphicAccess::commit(
+    VM& vm, std::unique_ptr<WatchpointsOnStructureStubInfo>& watchpoints, CodeBlock* codeBlock,
+    StructureStubInfo& stubInfo, const Identifier& ident, AccessCase& accessCase)
 {
+    // NOTE: We currently assume that this is relatively rare. It mainly arises for accesses to
+    // properties on DOM nodes. For sure we cache many DOM node accesses, but even in
+    // Real Pages (TM), we appear to spend most of our time caching accesses to properties on
+    // vanilla objects or exotic objects from within JSC (like Arguments, those are super popular).
+    // Those common kinds of JSC object accesses don't hit this case.
+    
+    for (WatchpointSet* set : accessCase.commit(vm, ident)) {
+        Watchpoint* watchpoint =
+            WatchpointsOnStructureStubInfo::ensureReferenceAndAddWatchpoint(
+                watchpoints, codeBlock, &stubInfo, ObjectPropertyCondition());
+        
+        set->add(watchpoint);
+    }
+}
+
+AccessGenerationResult PolymorphicAccess::regenerate(
+    VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident)
+{
+    SuperSamplerScope superSamplerScope(false);
+    
     if (verbose)
-        dataLog("Generating code for cases: ", listDump(cases), "\n");
+        dataLog("Regenerate with m_list: ", listDump(m_list), "\n");
     
     AccessGenerationState state;
 
@@ -1459,11 +1540,73 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
     state.preservedReusedRegisterState =
         allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
 
+    // Regenerating is our opportunity to figure out what our list of cases should look like. We
+    // do this here. The newly produced 'cases' list may be smaller than m_list. We don't edit
+    // m_list in-place because we may still fail, in which case we want the PolymorphicAccess object
+    // to be unmutated. For sure, we want it to hang onto any data structures that may be referenced
+    // from the code of the current stub (aka previous).
+    ListType cases;
+    for (unsigned i = 0; i < m_list.size(); ++i) {
+        AccessCase& someCase = *m_list[i];
+        // Ignore cases that cannot possibly succeed anymore.
+        if (!someCase.couldStillSucceed())
+            continue;
+        
+        // Figure out if this is replaced by any later case.
+        bool found = false;
+        for (unsigned j = i + 1; j < m_list.size(); ++j) {
+            if (m_list[j]->canReplace(someCase)) {
+                found = true;
+                break;
+            }
+        }
+        if (found)
+            continue;
+        
+        // FIXME: Do we have to clone cases that aren't generated? Maybe we can just take those
+        // from m_list, since we don't have to keep those alive if we fail.
+        // https://bugs.webkit.org/show_bug.cgi?id=156493
+        cases.append(someCase.clone());
+    }
+    
+    if (verbose)
+        dataLog("In regenerate: cases: ", listDump(cases), "\n");
+    
+    // Now that we've removed obviously unnecessary cases, we can check if the megamorphic load
+    // optimization is applicable. Note that we basically tune megamorphicLoadCost according to code
+    // size. It would be faster to just allow more repatching with many load cases, and avoid the
+    // megamorphicLoad optimization, if we had infinite executable memory.
+    if (cases.size() >= Options::megamorphicLoadCost()) {
+        unsigned numSelfLoads = 0;
+        for (auto& newCase : cases) {
+            if (newCase->canBeReplacedByMegamorphicLoad())
+                numSelfLoads++;
+        }
+        
+        if (numSelfLoads >= Options::megamorphicLoadCost()) {
+            if (auto mega = AccessCase::megamorphicLoad(vm, codeBlock)) {
+                cases.removeAllMatching(
+                    [&] (std::unique_ptr<AccessCase>& newCase) -> bool {
+                        return newCase->canBeReplacedByMegamorphicLoad();
+                    });
+                
+                cases.append(WTFMove(mega));
+            }
+        }
+    }
+    
+    if (verbose)
+        dataLog("Optimized cases: ", listDump(cases), "\n");
+    
+    // At this point we're convinced that 'cases' contains the cases that we want to JIT now and we
+    // won't change that set anymore.
+    
     bool allGuardedByStructureCheck = true;
     bool hasJSGetterSetterCall = false;
-    for (auto& entry : cases) {
-        allGuardedByStructureCheck &= entry->guardedByStructureCheck();
-        if (entry->type() == AccessCase::Getter || entry->type() == AccessCase::Setter)
+    for (auto& newCase : cases) {
+        commit(vm, state.watchpoints, codeBlock, stubInfo, ident, *newCase);
+        allGuardedByStructureCheck &= newCase->guardedByStructureCheck();
+        if (newCase->type() == AccessCase::Getter || newCase->type() == AccessCase::Setter)
             hasJSGetterSetterCall = true;
     }
 
@@ -1539,7 +1682,7 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
 
         HandlerInfo oldHandler = state.originalExceptionHandler();
         CallSiteIndex newExceptionHandlingCallSite = state.callSiteIndexForExceptionHandling();
-        state.callbacks.append(
+        jit.addLinkTask(
             [=] (LinkBuffer& linkBuffer) {
                 linkBuffer.link(jumpToOSRExitExceptionHandler, oldHandler.nativeCode);
 
@@ -1561,7 +1704,7 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
     if (linkBuffer.didFailToAllocate()) {
         if (verbose)
             dataLog("Did fail to allocate.\n");
-        return MacroAssemblerCodePtr();
+        return AccessGenerationResult::GaveUp;
     }
 
     CodeLocationLabel successLabel =
@@ -1573,9 +1716,6 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
         failure,
         stubInfo.callReturnLocation.labelAtOffset(stubInfo.patch.deltaCallToSlowCase));
     
-    for (auto callback : state.callbacks)
-        callback(linkBuffer);
-
     if (verbose)
         dataLog(*codeBlock, " ", stubInfo.codeOrigin, ": Generating polymorphic access stub for ", listDump(cases), "\n");
 
@@ -1584,21 +1724,32 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
         ("%s", toCString("Access stub for ", *codeBlock, " ", stubInfo.codeOrigin, " with return point ", successLabel, ": ", listDump(cases)).data()));
 
     bool doesCalls = false;
+    Vector<JSCell*> cellsToMark;
     for (auto& entry : cases)
-        doesCalls |= entry->doesCalls();
+        doesCalls |= entry->doesCalls(&cellsToMark);
     
-    m_stubRoutine = createJITStubRoutine(code, vm, codeBlock, doesCalls, nullptr, codeBlockThatOwnsExceptionHandlers, callSiteIndexForExceptionHandling);
+    m_stubRoutine = createJITStubRoutine(code, vm, codeBlock, doesCalls, cellsToMark, codeBlockThatOwnsExceptionHandlers, callSiteIndexForExceptionHandling);
     m_watchpoints = WTFMove(state.watchpoints);
     if (!state.weakReferences.isEmpty())
         m_weakReferences = std::make_unique<Vector<WriteBarrier<JSCell>>>(WTFMove(state.weakReferences));
     if (verbose)
         dataLog("Returning: ", code.code(), "\n");
-    return code.code();
+    
+    m_list = WTFMove(cases);
+    
+    AccessGenerationResult::Kind resultKind;
+    if (m_list.size() >= Options::maxAccessVariantListSize())
+        resultKind = AccessGenerationResult::GeneratedFinalCode;
+    else
+        resultKind = AccessGenerationResult::GeneratedNewCode;
+    
+    return AccessGenerationResult(resultKind, code.code());
 }
 
 void PolymorphicAccess::aboutToDie()
 {
-    m_stubRoutine->aboutToDie();
+    if (m_stubRoutine)
+        m_stubRoutine->aboutToDie();
 }
 
 } // namespace JSC
@@ -1616,8 +1767,14 @@ void printInternal(PrintStream& out, AccessGenerationResult::Kind kind)
     case AccessGenerationResult::GaveUp:
         out.print("GaveUp");
         return;
+    case AccessGenerationResult::Buffered:
+        out.print("Buffered");
+        return;
     case AccessGenerationResult::GeneratedNewCode:
         out.print("GeneratedNewCode");
+        return;
+    case AccessGenerationResult::GeneratedFinalCode:
+        out.print("GeneratedFinalCode");
         return;
     }
     
@@ -1677,6 +1834,29 @@ void printInternal(PrintStream& out, AccessCase::AccessType type)
         return;
     case AccessCase::StringLength:
         out.print("StringLength");
+        return;
+    case AccessCase::DirectArgumentsLength:
+        out.print("DirectArgumentsLength");
+        return;
+    case AccessCase::ScopedArgumentsLength:
+        out.print("ScopedArgumentsLength");
+        return;
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, AccessCase::State state)
+{
+    switch (state) {
+    case AccessCase::Primordial:
+        out.print("Primordial");
+        return;
+    case AccessCase::Committed:
+        out.print("Committed");
+        return;
+    case AccessCase::Generated:
+        out.print("Generated");
         return;
     }
 

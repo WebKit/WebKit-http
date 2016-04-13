@@ -122,6 +122,7 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/ArgumentCodersMac.mm
     Shared/mac/AttributedString.mm
     Shared/mac/ChildProcessMac.mm
+    Shared/mac/CodeSigning.mm
     Shared/mac/ColorSpaceData.mm
     Shared/mac/CookieStorageShim.mm
     Shared/mac/CookieStorageShimLibrary.cpp
@@ -158,6 +159,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/APIUserScript.cpp
     UIProcess/API/APIUserStyleSheet.cpp
     UIProcess/API/APIWebsiteDataRecord.cpp
+
+    UIProcess/API/C/mac/WKContextPrivateMac.mm
+    UIProcess/API/C/mac/WKPagePrivateMac.mm
 
     UIProcess/API/Cocoa/APISerializedScriptValueCocoa.mm
     UIProcess/API/Cocoa/APIUserContentExtensionStoreCocoa.mm
@@ -414,10 +418,6 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/page"
 )
 
-set(WEBKIT2_EXTRA_DEPENDENCIES
-     WebKit2-forwarding-headers
-)
-
 set(XPCService_SOURCES
     Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm
     Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm
@@ -444,8 +444,8 @@ list(APPEND DatabaseProcess_SOURCES
 )
 
 # FIXME: These should not have Development in production builds.
-set(WebKit2_WebProcess_OUTPUT_NAME com.apple.WebKit.WebContent.Development.xpc)
-set(WebKit2_NetworkProcess_OUTPUT_NAME com.apple.WebKit.Networking.Development.xpc)
+set(WebKit2_WebProcess_OUTPUT_NAME com.apple.WebKit.WebContent.Development)
+set(WebKit2_NetworkProcess_OUTPUT_NAME com.apple.WebKit.Networking.Development)
 
 add_definitions("-include WebKit2Prefix.h")
 
@@ -492,6 +492,8 @@ set(WebKit2_FORWARDING_HEADERS_DIRECTORIES
     UIProcess/Cocoa
 
     UIProcess/API/C
+
+    UIProcess/API/C/mac
     UIProcess/API/cpp
 
     WebProcess/WebPage
@@ -515,6 +517,8 @@ endforeach ()
 
 # FIXME: Forwarding headers should be complete copies of the header.
 set(WebKitLegacyForwardingHeaders
+    DOM.h
+    DOMCore.h
     DOMElement.h
     DOMException.h
     DOMObject.h
@@ -522,6 +526,7 @@ set(WebKitLegacyForwardingHeaders
     WebApplicationCache.h
     WebCache.h
     WebCoreStatistics.h
+    WebDOMOperations.h
     WebDOMOperationsPrivate.h
     WebDataSource.h
     WebDataSourcePrivate.h
@@ -714,6 +719,7 @@ foreach (_file ${WebCoreForwardingHeaders})
 endforeach ()
 
 # FIXME: These should not be necessary.
+file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/WKImageCG.h "#import <WebKit2/Shared/API/c/cg/WKImageCG.h>")
 file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/WebStorageManagerPrivate.h "#import <WebKit/mac/Storage/WebStorageManagerPrivate.h>")
 file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/WebDatabaseManagerPrivate.h "#import <WebKit/mac/Storage/WebDatabaseManagerPrivate.h>")
 

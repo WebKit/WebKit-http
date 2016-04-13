@@ -36,12 +36,12 @@ Ref<HTMLOptionsCollection> HTMLOptionsCollection::create(HTMLSelectElement& sele
     return adoptRef(*new HTMLOptionsCollection(select));
 }
 
-void HTMLOptionsCollection::add(HTMLElement* element, HTMLElement* beforeElement, ExceptionCode& ec)
+void HTMLOptionsCollection::add(HTMLElement& element, HTMLElement* beforeElement, ExceptionCode& ec)
 {
     selectElement().add(element, beforeElement, ec);
 }
 
-void HTMLOptionsCollection::add(HTMLElement* element, int beforeIndex, ExceptionCode& ec)
+void HTMLOptionsCollection::add(HTMLElement& element, int beforeIndex, ExceptionCode& ec)
 {
     add(element, item(beforeIndex), ec);
 }
@@ -51,7 +51,7 @@ void HTMLOptionsCollection::remove(int index)
     selectElement().removeByIndex(index);
 }
 
-void HTMLOptionsCollection::remove(HTMLOptionElement* option)
+void HTMLOptionsCollection::remove(HTMLOptionElement& option)
 {
     selectElement().remove(option);
 }

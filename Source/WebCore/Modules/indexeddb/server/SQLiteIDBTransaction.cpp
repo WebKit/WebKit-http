@@ -27,8 +27,10 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "FileSystem.h"
 #include "IDBCursorInfo.h"
 #include "IndexedDB.h"
+#include "Logging.h"
 #include "SQLiteIDBBackingStore.h"
 #include "SQLiteIDBCursor.h"
 #include "SQLiteTransaction.h"
@@ -67,6 +69,7 @@ IDBError SQLiteIDBTransaction::begin(SQLiteDatabase& database)
 
 IDBError SQLiteIDBTransaction::commit()
 {
+    LOG(IndexedDB, "SQLiteIDBTransaction::commit");
     if (!m_sqliteTransaction || !m_sqliteTransaction->inProgress())
         return { IDBDatabaseException::UnknownError, ASCIILiteral("No SQLite transaction in progress to commit") };
 
@@ -75,12 +78,49 @@ IDBError SQLiteIDBTransaction::commit()
     if (m_sqliteTransaction->inProgress())
         return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to commit SQLite transaction in database backend") };
 
+    deleteBlobFilesIfNecessary();
+    moveBlobFilesIfNecessary();
+
     reset();
     return { };
 }
 
+void SQLiteIDBTransaction::moveBlobFilesIfNecessary()
+{
+    String databaseDirectory = m_backingStore.fullDatabaseDirectory();
+    for (auto& entry : m_blobTemporaryAndStoredFilenames) {
+        m_backingStore.temporaryFileHandler().prepareForAccessToTemporaryFile(entry.first);
+
+        if (!hardLinkOrCopyFile(entry.first, pathByAppendingComponent(databaseDirectory, entry.second)))
+            LOG_ERROR("Failed to link/copy temporary blob file '%s' to location '%s'", entry.first.utf8().data(), pathByAppendingComponent(databaseDirectory, entry.second).utf8().data());
+
+        m_backingStore.temporaryFileHandler().accessToTemporaryFileComplete(entry.first);
+    }
+
+    m_blobTemporaryAndStoredFilenames.clear();
+}
+
+void SQLiteIDBTransaction::deleteBlobFilesIfNecessary()
+{
+    String databaseDirectory = m_backingStore.fullDatabaseDirectory();
+    for (auto& entry : m_blobRemovedFilenames) {
+        String fullPath = pathByAppendingComponent(databaseDirectory, entry);
+        m_backingStore.temporaryFileHandler().prepareForAccessToTemporaryFile(entry);
+        m_backingStore.temporaryFileHandler().accessToTemporaryFileComplete(entry);
+    }
+
+    m_blobRemovedFilenames.clear();
+}
+
 IDBError SQLiteIDBTransaction::abort()
 {
+    for (auto& entry : m_blobTemporaryAndStoredFilenames) {
+        m_backingStore.temporaryFileHandler().prepareForAccessToTemporaryFile(entry.first);
+        m_backingStore.temporaryFileHandler().accessToTemporaryFileComplete(entry.first);
+    }
+
+    m_blobTemporaryAndStoredFilenames.clear();
+
     if (!m_sqliteTransaction || !m_sqliteTransaction->inProgress())
         return { IDBDatabaseException::UnknownError, ASCIILiteral("No SQLite transaction in progress to abort") };
 
@@ -97,6 +137,7 @@ void SQLiteIDBTransaction::reset()
 {
     m_sqliteTransaction = nullptr;
     clearCursors();
+    ASSERT(m_blobTemporaryAndStoredFilenames.isEmpty());
 }
 
 std::unique_ptr<SQLiteIDBCursor> SQLiteIDBTransaction::maybeOpenBackingStoreCursor(uint64_t objectStoreID, uint64_t indexID, const IDBKeyRangeData& range)
@@ -170,6 +211,18 @@ bool SQLiteIDBTransaction::inProgress() const
 {
     return m_sqliteTransaction && m_sqliteTransaction->inProgress();
 }
+
+void SQLiteIDBTransaction::addBlobFile(const String& temporaryPath, const String& storedFilename)
+{
+    m_blobTemporaryAndStoredFilenames.append({ temporaryPath, storedFilename });
+}
+
+void SQLiteIDBTransaction::addRemovedBlobFile(const String& removedFilename)
+{
+    ASSERT(!m_blobRemovedFilenames.contains(removedFilename));
+    m_blobRemovedFilenames.add(removedFilename);
+}
+
 
 } // namespace IDBServer
 } // namespace WebCore

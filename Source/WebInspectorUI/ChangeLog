@@ -1,3 +1,753 @@
+2016-04-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: save inspector's zoom factor as a persistent setting across sessions
+        https://bugs.webkit.org/show_bug.cgi?id=156522
+        <rdar://problem/25635774>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Initialize the setting and immediately set the zoom before the frontend page loads.
+
+        (WebInspector._increaseZoom):
+        (WebInspector._decreaseZoom):
+        (WebInspector._resetZoom):
+        Use the internal get/set method which updates the WebInspector.Setting.
+
+        (WebInspector._setZoomFactor):
+        Added. Round-trip through the frontend host method in case it further clamps the value.
+
+        (WebInspector._zoomFactor):
+        Added. Just return the setting, since there's no other way for zoom to have changed.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show the normal Native icon for all Internal objects in Heap Snapshots
+        https://bugs.webkit.org/show_bug.cgi?id=156513
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HeapSnapshotClusterContentView.js:
+        (WebInspector.HeapSnapshotClusterContentView.iconStyleClassNameForClassName):
+        Show the native icon for internal objects.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keyboard shortcut for "Inspect Element" only works when Web Inspector is open.
+        https://bugs.webkit.org/show_bug.cgi?id=111193
+        <rdar://problem/13325889>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.set inspectModeEnabled):
+        (WebInspector.DOMTreeManager.set inspectModeEnabled.callback):
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setElementSelectionEnabled):
+        Frontend API to enable element selection.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to expand Objects in Heap Allocations View to see exactly what it retains
+        https://bugs.webkit.org/show_bug.cgi?id=156419
+        <rdar://problem/25633863>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        Remove strings, and fix sort.
+
+        * UserInterface/Models/HeapSnapshotRootPath.js:
+        (WebInspector.HeapSnapshotRootPath.pathComponentForIndividualEdge):
+        (WebInspector.HeapSnapshotRootPath.canPropertyNameBeDotAccess):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendPropertyName):
+        (WebInspector.HeapSnapshotRootPath.prototype._canPropertyNameBeDotAccess):
+        Provide a helper to get an path component string for an individual edge.
+
+        * UserInterface/Models/PropertyPreview.js:
+        (WebInspector.PropertyPreview):
+        Fix an assert that may have errantly fired for an empty string name.
+
+        * UserInterface/Proxies/HeapSnapshotNodeProxy.js:
+        (WebInspector.HeapSnapshotNodeProxy):
+        (WebInspector.HeapSnapshotNodeProxy.deserialize):
+        Include "hasChildren" property in the original proxy message.
+
+        (WebInspector.HeapSnapshotNodeProxy.prototype.retainedNodes):
+        The method now also returns a list of edges for each of the retained nodes.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.createCellContent):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.sort):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._populate):
+        An instance DataGrid node can now show children. It can expand to show
+        its retained node graph.
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js:
+        (HeapSnapshot.instancesWithClassName):
+        (HeapSnapshot.prototype.dominatedNodes):
+        (HeapSnapshot.prototype.retainers):
+        (HeapSnapshot.prototype.serializeNode):
+        Remove unnecessary calls to bind in favor of using the `thisObject` argument.
+
+        (HeapSnapshot.prototype.retainedNodes):
+        Return a parallel list of edges for each of the nodes.
+
+        * UserInterface/Views/HeapSnapshotClassDataGridNode.js:
+        (WebInspector.HeapSnapshotClassDataGridNode.prototype.createCellContent):
+        (WebInspector.HeapSnapshotClassDataGridNode.prototype._populate):
+        * UserInterface/Views/HeapSnapshotClusterContentView.js:
+        (WebInspector.HeapSnapshotClusterContentView.prototype.get summaryContentView):
+        (WebInspector.HeapSnapshotClusterContentView.prototype.get instancesContentView):
+        (WebInspector.HeapSnapshotClusterContentView.prototype.shown):
+        (WebInspector.HeapSnapshotClusterContentView):
+        (WebInspector.HeapSnapshotClusterContentView.prototype.get navigationItems): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._contentViewExtraArguments): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._toggleShowInternalObjectsSetting): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._updateViewsForShowInternalObjectsSettingValue): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._updateShowInternalObjectsButtonNavigationItem): Deleted.
+        * UserInterface/Views/HeapSnapshotInstancesContentView.js:
+        (WebInspector.HeapSnapshotInstancesContentView):
+        (WebInspector.HeapSnapshotInstancesContentView.prototype.get showInternalObjects): Deleted.
+        (WebInspector.HeapSnapshotInstancesContentView.prototype.set showInternalObjects): Deleted.
+        * UserInterface/Views/HeapSnapshotInstancesDataGridTree.js:
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype._populateTopLevel):
+        (WebInspector.HeapSnapshotInstancesDataGridTree):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.get includeInternalObjects): Deleted.
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.set includeInternalObjects): Deleted.
+        * UserInterface/Views/HeapSnapshotSummaryContentView.js:
+        Remove the show/hide internal objects button. In the Instances view we will
+        only show non-Internal objects at the top level, and show internal objects
+        when those instances are expanded.
+
+2016-04-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: clearing the console should exit all console groups
+        https://bugs.webkit.org/show_bug.cgi?id=156496
+        <rdar://problem/25676416>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._logCleared):
+        Reset nesting level to zero.
+
+2016-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tab Bar items get unreadable at narrow window widths, should collapse earlier
+        https://bugs.webkit.org/show_bug.cgi?id=156477
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype.layout):
+        Hide-titles sooner since a width of 60 results in only a few characters
+        and looks poor.
+
+2016-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unstyled nodes in ObjectTree previews look poor
+        https://bugs.webkit.org/show_bug.cgi?id=156475
+        <rdar://problem/25667351>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPreview):
+        Treat nodes as simple values.
+
+        (WebInspector.ObjectPreviewView.prototype._initTitleElement):
+        (WebInspector.ObjectPreviewView.prototype._appendValuePreview):
+        Format nodes nicely, and treat them as lossy since they have properties.
+
+2016-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: HeapSnapshot instance property path popover should include a descriptive header
+        https://bugs.webkit.org/show_bug.cgi?id=156431
+        <rdar://problem/25633594>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendTitle):
+        Title for the popover. Because localization may change the location of the @1234
+        in the string, localize first with a placeholder, and then replace the placeholder
+        with the @1234 link.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendPath):
+        Give the table a container for extra padding.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendPathRow):
+        Do not include the space before @1234 as part of the clickable link.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler):
+        Include a title when the popover shows a root path.
+
+        * UserInterface/Views/HeapSnapshotInstancesContentView.css:
+        (.heap-snapshot-instance-popover-content > .title):
+        (.heap-snapshot-instance-popover-content):
+        (.heap-snapshot-instance-popover-content > .table-container):
+        (.heap-snapshot-instance-popover-content table):
+        Provide styles for the title. Let the title extend across the entire
+        popover horizontally, but pad the table so that it appears more
+        centered under the title. Because the table has border collapse we have
+        to wrap it in a container to give it back the padding we want.
+
+2016-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: XHRs and Web Worker scripts are not searchable
+        https://bugs.webkit.org/show_bug.cgi?id=154214
+        <rdar://problem/24643587>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.resourceCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.resourcesCallback):
+        Carry forward the requestId property if it is available.
+
+2016-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Allocation snapshot hover persists after switching tabs
+        https://bugs.webkit.org/show_bug.cgi?id=156430
+        <rdar://problem/25633800>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler):
+        Don't show the popover if the tree is no longer visible.
+
+        * UserInterface/Views/HeapSnapshotInstancesContentView.js:
+        (WebInspector.HeapSnapshotInstancesContentView.prototype.shown):
+        * UserInterface/Views/HeapSnapshotInstancesDataGridTree.js:
+        (WebInspector.HeapSnapshotInstancesDataGridTree):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.get visible):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.shown):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.hidden):
+        Give the tree a visible state and have its containing ContentView
+        update it with normal ContentView shown/hidden.
+
+        * UserInterface/Views/Popover.js:
+        We are presenting while we were dismissing, so completely clear the
+        dismissing state.
+
+2016-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Fix asserts and uncaught exception showing Timeline Tab
+        https://bugs.webkit.org/show_bug.cgi?id=156411
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView):
+        (WebInspector.OverviewTimelineView.prototype.closed):
+        Gracefully handle if we do not have a Network Timeline.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.prototype._changeViewMode):
+        This function is always called by the constructor, so the assert
+        is not useful since it can be called when FPS is not supported.
+
+2016-04-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Attempting to dismiss a popover that is already being dismissed causes an error
+        https://bugs.webkit.org/show_bug.cgi?id=156385
+        <rdar://problem/25617962>
+
+        Reviewed by Timothy Hatcher.
+
+        The Popover element is removed from the DOM once it's fade-out transition
+        completes. Since Popover.dismiss proceeds as long as it's element has a
+        parent, successive calls to dismiss can run before the popover is removed.
+
+        Rather than rely on the presence of the popover in the DOM, set a "dismissing"
+        flag the first time dismiss is called, before the fade-out animation begins.
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WebInspector.BreakpointPopoverController.prototype._conditionCodeMirrorEscapeOrEnterKey):
+        Check for null popover.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover):
+        (WebInspector.Popover.prototype.dismiss):
+        Do nothing if already dismissing.
+
+        (WebInspector.Popover.prototype.handleEvent):
+        Reset dismissing flag after style transition completes.
+
+2016-04-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Quick Open fails to match pattern "bB" in file "abBc"
+        https://bugs.webkit.org/show_bug.cgi?id=156398
+
+        Reviewed by Timothy Hatcher.
+
+        Correct an off-by-one error in the backtrack routine that set the dead
+        branch index to the character just before the match that was popped.
+        The dead branch index should equal the index of the popped match.
+
+        * UserInterface/Controllers/ResourceQueryController.js:
+        (WebInspector.ResourceQueryController.prototype._findQueryMatches.backtrack):
+        (WebInspector.ResourceQueryController.prototype._findQueryMatches):
+
+2016-04-07  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: OpenResourceDialog should keep its resources list up-to-date
+        https://bugs.webkit.org/show_bug.cgi?id=155321
+        <rdar://problem/25093890>
+
+        Reviewed by Timothy Hatcher.
+
+        The Quick Open dialog should listen for resource change events, refreshing
+        the resource list and current query results as needed.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WebInspector.OpenResourceDialog):
+        (WebInspector.OpenResourceDialog.prototype.didDismissDialog):
+        Unregister resource event handlers.
+
+        (WebInspector.OpenResourceDialog.prototype.didPresentDialog):
+        Register resource event handlers and add main frame resources.
+
+        (WebInspector.OpenResourceDialog.prototype._addResource):
+        Add resource to the query controller, if valid. Optionally suppress
+        the potentially expensive filter update, which is useful when adding
+        multiple resources at once.
+
+        (WebInspector.OpenResourceDialog.prototype._addResourcesForFrame):
+        Add the entire frame resource tree and update dialog filter.
+
+        (WebInspector.OpenResourceDialog.prototype._mainResourceDidChange):
+        (WebInspector.OpenResourceDialog.prototype._resourceWasAdded):
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ProfileView source links are off by 1 line, worse in pretty printed code
+        https://bugs.webkit.org/show_bug.cgi?id=156371
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ProfileDataGridNode.js:
+        (WebInspector.ProfileDataGridNode.prototype._displayContent):
+        Switch the 1-based locations in the CCT data structure to 0-based for SourceCodeLocation.
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception: No resource with given URL found
+        https://bugs.webkit.org/show_bug.cgi?id=156259
+        <rdar://problem/25564749>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        SourceCode.prototype.requestContent will reject if it cannot load
+        content for the given resource. In that case, we already have an
+        earlier catch handler that displays an error message in the
+        ContentView, so we shouldn't show an Uncaught Exception page.
+        Really, we should not reject the original promise here, and
+        instead resolve it with an object describing the error, but
+        short term we should remove the uncaught exception handler for
+        this case.
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Take snapshot navigation button should match navigation button styles
+        https://bugs.webkit.org/show_bug.cgi?id=156355
+        <rdar://problem/25325172>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/Camera.svg: Added.
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView):
+        Use the new image for the navigation bar button.
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inspector hangs when trying to view a large XHR resource
+        https://bugs.webkit.org/show_bug.cgi?id=144107
+        <rdar://problem/20669463>
+
+        Reviewed by Timothy Hatcher.
+
+        Previously auto formatting (initial pretty print of source code) in TextEditor
+        was done synchronously in this order:
+        
+          (1) revealing the Editor as soon as we have content
+          (2) set the CodeMirror value
+          (3) pretty print with the CodeMirror editor
+          (4) set the CodeMirror value
+              => Layout
+          
+        At the end, CodeMirror would layout once with the new content. This approach
+        performs very poorly when step (3) is an asynchronous action, because it would
+        mean CodeMirror would layout for both (2) and at the end (4) and the layout
+        itself can be very costly if the content is minified and so has very long
+        lines at the top of the file that need to be syntax highlighted and visible
+        since we do not wrap.
+
+        This patch changes the order of operations to benefit asynchronous formatting.
+        When SourceCodeTextEditor determines that it can autoformat it:
+
+          (1) set the CodeMirror value
+          (2) pretty print to source text
+          (3) reveal the Editor when pretty printing is done
+          (4) set the CodeMirror value
+              => Layout
+
+        This maintains the fact that to undo pretty printing we can just "undo" the
+        editor to get the original text. This also means we only do a single
+        CodeMirror layout, with the pretty printed and therefore more manageable
+        source text for highlighting. It also means we continue to show a loading
+        indicator in the editor while we are pretty printing. If this is truely
+        done asynchronously, which is the case for JavaScript with FormatterWorker,
+        then the loading indicator will animate smoothly.
+
+        This sequence also works with the traditional synchronous formatters,
+        which we still have for CSS.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.contentViewForRepresentedObject):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.showDefaultContentViewForTreeElement):
+        (WebInspector.NavigationSidebarPanel.prototype._checkElementsForPendingViewStateCookie):
+        BreakpointTreeElements can now be restored and reselected when its
+        source code is null. Avoid deleting the pending cookie data if a
+        ContentView was not shown for the resource. When the Breakpoint
+        and SourceCode get hooked up, this code will run again and work.
+
+        * UserInterface/Views/ScriptContentView.js:
+        (WebInspector.ScriptContentView.prototype._togglePrettyPrint):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype._togglePrettyPrint):
+        * UserInterface/Views/TextContentView.js:
+        (WebInspector.TextContentView.prototype._togglePrettyPrint):
+        New API for toggling formatting, now that it is an async operation.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WebInspector.SourceCodeTextEditor.prototype.prettyPrint):
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithContent):
+        (WebInspector.SourceCodeTextEditor.prototype._proceedPopulateWithContent):
+        (WebInspector.SourceCodeTextEditor.prototype._prepareEditorForInitialContent):
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithInlineScriptContent.scriptContentAvailable):
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithInlineScriptContent):
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithScriptContent):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorUpdatedFormatting):
+        (WebInspector.SourceCodeTextEditor.prototype._contentWillPopulate): Deleted.
+        Move auto formatting logic into SourceCodeTextEditor, because it
+        determines if content should be auto formatted, and it loads the
+        initial content so it can determine when to show the editor for
+        the first time.
+
+        When we get the initial content and determine we have to autoformat,
+        setup the TextEditor, but don't proceed with WillPopulate/DidPopulate
+        until after we have formatted text.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.set string.update):
+        (WebInspector.TextEditor.prototype.set string):
+        (WebInspector.TextEditor.prototype.updateFormattedState):
+        (WebInspector.TextEditor.prototype.hasFormatter):
+        (WebInspector.TextEditor.prototype._format):
+        (WebInspector.TextEditor.prototype.prettyPrint):
+        (WebInspector.TextEditor.prototype._canUseFormatterWorker):
+        (WebInspector.TextEditor.prototype._startWorkerPrettyPrint):
+        (WebInspector.TextEditor.prototype._startCodeMirrorPrettyPrint):
+        (WebInspector.TextEditor.prototype._finishPrettyPrint):
+        (WebInspector.TextEditor.prototype._undoFormatting):
+        (WebInspector.TextEditor.prototype._updateAfterFormatting):
+        Break up the synchronous pretty printing code into multiple steps.
+        One path can be asynchronous formatting via FormatterWorker, another
+        path may be synchronous formatting using the CodeMirror formatters.
+
+        (WebInspector.TextEditor.prototype.set formatted): Deleted.
+        Remove the synchronous `set formatted` setter. Replace with
+        updateFormattedState().
+
+        (WebInspector.TextEditor.prototype.set autoFormat): Deleted.
+        Remove the TextEditor's autoformat. Since formatting can be async, having
+        the TextEditor showing and asynchronously format its initial contents is
+        a recipe for poor performance causing multiple layouts of different content.
+        Instead, autoformatting is handled by SourceCodeTextEditor, and TextEditor
+        can then be shown when it has the right data.
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve JavaScript pretty printing
+        https://bugs.webkit.org/show_bug.cgi?id=156178
+        <rdar://problem/25535719>
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new EsprimaFormatter which pretty prints JavaScript source text
+        using the Esprima AST and Tokens. Currently we use CodeMirror's
+        tokenizer for pretty printing. By moving to Esprima for pretty
+        printing we get a few advantages: (1) can be used within a Worker
+        as there are no dependencies on DOM objects, (2) a full featured AST
+        gives more context to handling individual tokens. One disadvantage
+        is that Esprima requires valid input, so scripts with syntax errors
+        will not work.
+
+        EsprimaFormatter works by:
+        - Getting the Esprima AST and token stream.
+        - Walk all AST nodes:
+          - when entering an AST node, handle any tokens before the start of this node
+          - when leaving an AST node, handle any tokens that were inside the node
+        - Whenever we handle a new node or token check if we should preserve any
+          newlines or comments that do not show up in the AST or token stream.
+
+        This allows us to handle any token based on its context. Currently the
+        formatter prefers to operate on tokens based on their context. So the
+        formatter has a case for each AST node type and handles the tokens
+        within that AST node. A small exception is made to special case the
+        handling of semicolons.
+
+        * Scripts/copy-user-interface-resources-dryrun.rb:
+        Add a generic check for -h, -help, --help to print usage.
+
+        * Tools/Formatting/EsprimaFormatterDebug.js: Added.
+        (EsprimaFormatterDebug):
+        (EsprimaFormatterDebug.prototype.get debugText):
+        (EsprimaFormatterDebug.prototype._pad):
+        (EsprimaFormatterDebug.prototype._debugHeader):
+        (EsprimaFormatterDebug.prototype._debugFooter):
+        (EsprimaFormatterDebug.prototype._debug):
+        (EsprimaFormatterDebug.prototype._debugComments):
+        (EsprimaFormatterDebug.prototype._debugAfterProgramNode):
+        (EsprimaFormatterDebug.prototype._before):
+        (EsprimaFormatterDebug.prototype._after):
+        * Tools/Formatting/codemirror-additions.css: Copied from Source/WebInspectorUI/Tools/PrettyPrinting/codemirror-additions.css.
+        * Tools/Formatting/index.html: Added.
+        * Tools/PrettyPrinting/codemirror-additions.css:
+        (pre): Deleted.
+        (a.download): Deleted.
+        * Tools/PrettyPrinting/index.html:
+        * Tools/PrettyPrinting/populate/jquery.min.js: Removed.
+        Add a Formatter tool that is similiar to the PrettyPrinting tool but
+        outputs debug information for Esprima tokens. This is useful for
+        iterating on tests, performance measurements, and general debugging
+        of token stream for any input.
+
+        * UserInterface/Controllers/FormatterSourceMap.js:
+        (WebInspector.FormatterSourceMap.fromSourceMapData):
+        (WebInspector.FormatterSourceMap.fromBuilder): Deleted.
+        Switch to constructing with a common data objects, instead of a Builder.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        New files and moved files.
+
+        * UserInterface/Proxies/FormatterWorkerProxy.js: Added.
+        (WebInspector.FormatterWorkerProxy):
+        (WebInspector.FormatterWorkerProxy.singleton):
+        (WebInspector.FormatterWorkerProxy.canFormat):
+        (WebInspector.FormatterWorkerProxy.prototype.formatJavaScript):
+        (WebInspector.FormatterWorkerProxy.prototype.performAction):
+        (WebInspector.FormatterWorkerProxy.prototype._postMessage):
+        (WebInspector.FormatterWorkerProxy.prototype._handleMessage):
+        Main world object which provides a static formatJavaScript action.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._formattedContentFromEditor):
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.prettyPrint.prettyPrintAndUpdateEditor):
+        (WebInspector.TextEditor.prototype.prettyPrint):
+        * UserInterface/Workers/Formatter/FormatterContentBuilder.js: Renamed from Source/WebInspectorUI/UserInterface/Controllers/FormatterContentBuilder.js.
+        (FormatterContentBuilder):
+        Simplify construction of a Builder. The constructor objects were always
+        the same and often unnecessary. Also move out of the WebInspector
+        namespace signifying it can be used within a Worker.
+
+        (FormatterContentBuilder.prototype.get originalContent): Deleted.
+        (FormatterContentBuilder.prototype.get formattedContent): Deleted.
+        (FormatterContentBuilder.prototype.get sourceMapData): Added.
+        Simplify getting all the data needed for SourceMaps.
+
+        (FormatterContentBuilder.prototype.setOriginalLineEndings):
+        A client may wish to pre-fill line endings instead of filling
+        while building.
+
+        (FormatterContentBuilder.prototype.appendNewline):
+        Auto-clear trailing whitespace on the previous line.
+
+        * UserInterface/Workers/Formatter/ESTreeWalker.js: Added.
+        (ESTreeWalker):
+        (ESTreeWalker.prototype.walk):
+        (ESTreeWalker.prototype._walk):
+        (ESTreeWalker.prototype._walkArray):
+        (ESTreeWalker.prototype._walkChildren):
+        Walk AST nodes in an ESTree format. Due to the spec's incompleteness
+        this is essentially Esprima's ESTree.
+
+        * UserInterface/Workers/Formatter/EsprimaFormatter.js: Added.
+        (EsprimaFormatter):
+        (EsprimaFormatter.isWhitespace):
+        (EsprimaFormatter.prototype.get formattedText):
+        (EsprimaFormatter.prototype.get sourceMapData):
+        (EsprimaFormatter.prototype._insertNewlinesBeforeToken):
+        (EsprimaFormatter.prototype._insertComment):
+        (EsprimaFormatter.prototype._insertSameLineTrailingComments):
+        (EsprimaFormatter.prototype._insertCommentsAndNewlines):
+        (EsprimaFormatter.prototype._before):
+        (EsprimaFormatter.prototype._after):
+        (EsprimaFormatter.prototype._isInForHeader):
+        (EsprimaFormatter.prototype._isRangeWhitespace):
+        (EsprimaFormatter.prototype._handleTokenAtNode):
+        (EsprimaFormatter.prototype._exitNode):
+        (EsprimaFormatter.prototype._afterProgram):
+        Pretty print source text.
+
+        * UserInterface/Workers/Formatter/FormatterUtilities.js: Added.
+        (Array.prototype.lastValue):
+        (String.prototype.lineEndings):
+        (isECMAScriptWhitespace):
+        (isECMAScriptLineTerminator):
+        Helpers used by the classes in the Worker code.
+        
+        * UserInterface/Workers/Formatter/FormatterWorker.js: Added.
+        (FormatterWorker):
+        (FormatterWorker.prototype.formatJavaScript):
+        (FormatterWorker.prototype._handleMessage):
+        Handle the formatJavaScript action.
+
+2016-04-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Improve filtering in OpenResourceDialog
+        https://bugs.webkit.org/show_bug.cgi?id=155324
+        <rdar://problem/25094504>
+
+        Reviewed by Joseph Pecoraro and Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        (value):
+        Added String methods isLowerCase, isUpperCase, removeWhitespace.
+
+        * UserInterface/Controllers/ResourceQueryController.js: Added.
+        (WebInspector.ResourceQueryController):
+        (WebInspector.ResourceQueryController.prototype.addResource):
+        (WebInspector.ResourceQueryController.prototype.removeResource):
+        Add and remove the resources to be queried.
+
+        (WebInspector.ResourceQueryController.prototype.reset):
+        Reset controller state. Current just clears resources.
+
+        (WebInspector.ResourceQueryController.prototype.executeQuery):
+        Executes a query against the list of resources and returns a list of
+        QueryResult objects, with at most one result per resource, ordered by
+        descending rank.
+
+        The query string is stripped of whitespace characters and lowercased
+        before use. Prior to running the query, resources undergo a one-time
+        pre-processing step to locate special characters.
+
+        (WebInspector.ResourceQueryController.prototype._findQueryMatches.pushMatch):
+        (WebInspector.ResourceQueryController.prototype._findQueryMatches.matchNextSpecialCharacter):
+        (WebInspector.ResourceQueryController.prototype._findQueryMatches.backtrack):
+        (WebInspector.ResourceQueryController.prototype._findQueryMatches):
+        Returns a list of query matches for a single resource, along with metadata
+        which is used to rank the matches. The algorithm attempts to match the
+        entire query, first comparing each query character against "special" characters
+        in the resource (commonly used filename separators, the first character,
+        and camel-case word boundaries).
+
+        If there are remaining query characters after exhausting special characters,
+        regular characters are matched starting from the last matched special
+        character. Failing that, the algorithm attempts to find a match by backtracking.
+        To backtrack, the last match is discarded and the query position decremented.
+        If a special match is now the last match, matching starts again from the
+        next character in the filename after the match. If a normal match is now
+        the last match, keep discarding until a special match is found or no matches
+        remain. The query fails if no matches remain. For example, consider:
+
+           Query: "abcd"
+           Filename: "AxBcdCx"
+
+        The capital A, B, and C are all special characters, and are successfully
+        matched with the first three query characters. Having exhausted the special
+        characters the "d" at the end of the query is compared with the "x" at
+        the end of the filename, and fails to match. Backtracking then kicks in.
+        The last match, "C", is discarded and the search position in the query
+        decremented. The search resumes after the next to last match, "B", and now
+        matches the non-special characters "cd", yielding the following: "A Bcd  ".
+
+        (WebInspector.ResourceQueryController.prototype._findSpecialCharacterIndices):
+        Pre-processing step for resources. Locates the positions of special
+        characters in the resource filename. Special characters are defined as:
+
+           1. The first character
+           2. Common filename separators, and the character immediately following.
+           3. A capital letter that follows a lowercase character.
+
+        * UserInterface/Models/ResourceQueryMatch.js: Added.
+        Helper class used internally by the controller and QueryResult classes.
+        (WebInspector.ResourceQueryMatch):
+        (WebInspector.ResourceQueryMatch.prototype.get type):
+        (WebInspector.ResourceQueryMatch.prototype.get index):
+        (WebInspector.ResourceQueryMatch.prototype.get queryIndex):
+
+        * UserInterface/Models/ResourceQueryResult.js: Added.
+        Holds a resource that matched the executed query.
+        (WebInspector.ResourceQueryResult):
+        (WebInspector.ResourceQueryResult.prototype.get resource):
+        (WebInspector.ResourceQueryResult.prototype.get rank):
+        Ranking relative to other results returned by the query. Used by
+        the ResourceQueryController to sort results.
+
+        (WebInspector.ResourceQueryResult.prototype.get matchingTextRanges):
+        Get TextRanges for matching substrings in the resource display name.
+
+        (WebInspector.ResourceQueryResult.prototype._calculateRank):
+        Calculate the rank of the result. Matches are scored based on the type
+        of match (Special vs. Normal), the location of the match within the filename
+        (matches closer to the beginning are scored higher), and whether the match
+        is adjacent to the previous match.
+
+        Values assigned to each ranking criteria are somewhat arbitrary, and may
+        be fine-tuned over time to produce better results.
+
+        (WebInspector.ResourceQueryResult.prototype._createMatchingTextRanges):
+        (WebInspector.ResourceQueryResult.prototype.__test_createMatchesMask):
+        Test API for visualizing matches. For a result returned from the query
+        "abce", run against a filename "abcde", the mask is "a c e".
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        New files.
+
+        * UserInterface/Views/Dialog.js:
+        (WebInspector.Dialog.prototype.dismiss):
+        (WebInspector.Dialog.prototype.didDismissDialog):
+        Add hook for subclasses to perform actions after on dialog dismissal.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WebInspector.OpenResourceDialog):
+        (WebInspector.OpenResourceDialog.prototype._populateResourceTreeOutline.createHighlightedTitleFragment):
+        (WebInspector.OpenResourceDialog.prototype._populateResourceTreeOutline):
+        Add tree elements for each QueryResult returned by the last query, creating
+        titles with contiguous matching query characters wrapped in highlight spans.
+
+        (WebInspector.OpenResourceDialog.prototype.didDismissDialog):
+        Clear resources from the ResourceQueryController.
+        (WebInspector.OpenResourceDialog.prototype.didPresentDialog):
+        Add resources to the ResourceQueryController.
+        (WebInspector.OpenResourceDialog.prototype._updateFilter):
+        Execute the filter text as a resource query.
+
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline.large .item .titles): Deleted.
+        Line height too small, hid the bottom border of highlighted matches in
+        tree element title spans. Removing the style had no negative visual impact
+        on the Quick Open or Timelines tree outlines (the only "large" trees).
+
 2016-04-05  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Do not create CodeMirror color/gradient markers in JavaScript resources

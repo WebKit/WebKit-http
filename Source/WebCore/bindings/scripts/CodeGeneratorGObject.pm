@@ -299,7 +299,7 @@ sub SkipFunction {
 
     my $functionName = "webkit_dom_" . $decamelize . "_" . $prefix . decamelize($function->signature->name);
     my $functionReturnType = $prefix eq "set_" ? "void" : $function->signature->type;
-    my $isCustomFunction = $function->signature->extendedAttributes->{"Custom"} || $function->signature->extendedAttributes->{"CustomBinding"};
+    my $isCustomFunction = $function->signature->extendedAttributes->{"Custom"};
     my $callWith = $function->signature->extendedAttributes->{"CallWith"};
     my $isUnsupportedCallWith = $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments") || $codeGenerator->ExtendedAttributeContains($callWith, "CallStack") || $codeGenerator->ExtendedAttributeContains($callWith, "FirstWindow") || $codeGenerator->ExtendedAttributeContains($callWith, "ActiveWindow");
 
@@ -1109,6 +1109,9 @@ sub GenerateFunction {
         }
         if ($paramIsGDOMType || ($paramIDLType eq "DOMString")) {
             $paramName = "converted" . $codeGenerator->WK_ucfirst($paramName);
+            if ($prefix ne "set_" && $codeGenerator->ShouldPassWrapperByReference($param, $parentNode)) {
+                $paramName = "*$paramName";
+            }
         }
         if ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
             $paramName = "WTF::getPtr(" . $paramName . ")";

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
+set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
 
 set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
@@ -334,7 +335,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSValue.idl
     css/CSSValueList.idl
     css/Counter.idl
-    css/DOMWindowCSS.idl
+    css/DOMCSSNamespace.idl
     css/FontFace.idl
     css/FontFaceSet.idl
     css/MediaList.idl
@@ -1299,6 +1300,7 @@ set(WebCore_SOURCES
     css/CSSFontValue.cpp
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
+    css/CSSGridAutoRepeatValue.cpp
     css/CSSGridLineNamesValue.cpp
     css/CSSGridTemplateAreasValue.cpp
     css/CSSGroupingRule.cpp
@@ -1341,7 +1343,7 @@ set(WebCore_SOURCES
     css/CSSValuePool.cpp
     css/CSSVariableDependentValue.cpp
     css/CSSVariableValue.cpp
-    css/DOMWindowCSS.cpp
+    css/DOMCSSNamespace.cpp
     css/DocumentRuleSets.cpp
     css/ElementRuleCollector.cpp
     css/FontVariantBuilder.cpp
@@ -1609,7 +1611,6 @@ set(WebCore_SOURCES
     history/HistoryItem.cpp
     history/PageCache.cpp
 
-    html/AttributeDOMTokenList.cpp
     html/Autofill.cpp
     html/BaseButtonInputType.cpp
     html/BaseCheckableInputType.cpp
@@ -2216,6 +2217,7 @@ set(WebCore_SOURCES
     platform/graphics/Image.cpp
     platform/graphics/ImageBuffer.cpp
     platform/graphics/ImageOrientation.cpp
+    platform/graphics/ImageSource.cpp
     platform/graphics/IntPoint.cpp
     platform/graphics/IntRect.cpp
     platform/graphics/IntSize.cpp
@@ -2972,7 +2974,6 @@ set(WebCore_PLUG_INS_RESOURCES
 set(WebCore_LIBRARIES
     ${ICU_LIBRARIES}
     JavaScriptCore${DEBUG_SUFFIX}
-    WTF${DEBUG_SUFFIX}
 )
 
 if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
@@ -3423,7 +3424,6 @@ list(APPEND WebCoreTestSupport_SOURCES
 
 set(WebCoreTestSupport_LIBRARIES
     PRIVATE JavaScriptCore${DEBUG_SUFFIX}
-    PRIVATE WTF${DEBUG_SUFFIX}
 )
 
 # Modules that the bindings generator scripts may use
@@ -3798,6 +3798,7 @@ if (ENABLE_ALLINONE_BUILD)
 endif ()
 
 WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_DERIVED_SOURCES})
+WEBKIT_WRAP_SOURCELIST(${WebCore_SOURCES})
 WEBKIT_WRAP_SOURCELIST(${WebCoreTestSupport_IDL_FILES} ${WebCoreTestSupport_SOURCES})
 
 if (MSVC)
@@ -3810,7 +3811,6 @@ endif ()
 # files on OS X.
 add_library(WebCoreDerivedSources STATIC ${WebCore_DERIVED_SOURCES})
 set_target_properties(WebCoreDerivedSources PROPERTIES OUTPUT_NAME WebCoreDerivedSources${DEBUG_SUFFIX})
-set_target_properties(WebCoreDerivedSources PROPERTIES FOLDER "WebCore")
 if (NOT WIN32)
     list(APPEND WebCore_LIBRARIES WebCoreDerivedSources)
 endif ()
@@ -3843,7 +3843,6 @@ include_directories(${WebCoreTestSupport_INCLUDE_DIRECTORIES})
 add_library(WebCoreTestSupport ${WebCoreTestSupport_LIBRARY_TYPE} ${WebCoreTestSupport_SOURCES})
 add_dependencies(WebCoreTestSupport WebCore)
 target_link_libraries(WebCoreTestSupport ${WebCoreTestSupport_LIBRARIES})
-set_target_properties(WebCoreTestSupport PROPERTIES FOLDER "WebCore")
 
 if (WebCoreTestSupport_OUTPUT_NAME)
     set_target_properties(WebCoreTestSupport PROPERTIES OUTPUT_NAME ${WebCoreTestSupport_OUTPUT_NAME})
@@ -3854,7 +3853,6 @@ endif ()
 
 if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
-    set_target_properties(ANGLESupport PROPERTIES FOLDER "WebCore")
 
     # Suppress null conversion warnings for sources in Source/ThirdParty/ANGLE
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -3880,4 +3878,10 @@ endif ()
 # https://bugs.webkit.org/show_bug.cgi?id=145377
 if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND WTF_CPU_ARM AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9") AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.3"))
     set_source_files_properties(svg/SVGPathElement.cpp PROPERTIES COMPILE_FLAGS "-O2")
+endif ()
+
+if (MSVC)
+    set_target_properties(WebCore PROPERTIES
+        COMPILE_PDB_NAME ${WebCore_OUTPUT_NAME}
+    )
 endif ()

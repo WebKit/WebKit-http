@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  *
  * Portions are Copyright (C) 1998 Netscape Communications Corporation.
  *
@@ -2346,6 +2346,8 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
     if (!box)
         return;
 
+    LOG_WITH_STREAM(Scrolling, stream << "RenderLayer::scrollTo " << position);
+
     ScrollPosition newPosition = position;
     if (!box->isHTMLMarquee()) {
         // Ensure that the dimensions will be computed if they need to be (for overflow:hidden blocks).
@@ -3375,7 +3377,7 @@ void RenderLayer::computeScrollDimensions()
 
     int scrollableLeftOverflow = overflowLeft() - box->borderLeft();
     if (box->style().isLeftToRightDirection() && box->style().shouldPlaceBlockDirectionScrollbarOnLeft() && m_vBar)
-        scrollableLeftOverflow -= m_vBar->width();
+        scrollableLeftOverflow -= m_vBar->occupiedWidth();
     int scrollableTopOverflow = overflowTop() - box->borderTop();
     setScrollOrigin(IntPoint(-scrollableLeftOverflow, -scrollableTopOverflow));
 }

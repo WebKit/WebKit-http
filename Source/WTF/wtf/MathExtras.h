@@ -181,9 +181,12 @@ inline int clampToInteger(float value)
     return clampTo<int>(value);
 }
 
-inline int clampToInteger(unsigned x)
+template<typename T>
+inline int clampToInteger(T x)
 {
-    const unsigned intMax = static_cast<unsigned>(std::numeric_limits<int>::max());
+    static_assert(std::numeric_limits<T>::is_integer, "T must be an integer.");
+
+    const T intMax = static_cast<unsigned>(std::numeric_limits<int>::max());
 
     if (x >= intMax)
         return std::numeric_limits<int>::max();

@@ -221,6 +221,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/PlatformMouseEventGtk.cpp
     platform/gtk/PlatformScreenGtk.cpp
     platform/gtk/PlatformWheelEventGtk.cpp
+    platform/gtk/RenderThemeGadget.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
     platform/gtk/SoundGtk.cpp
     platform/gtk/WidgetGtk.cpp
@@ -280,7 +281,10 @@ list(APPEND WebCore_LIBRARIES
     ${X11_Xrender_LIB}
     ${X11_Xt_LIB}
     ${ZLIB_LIBRARIES}
+    WTF
 )
+
+list(APPEND WebCoreTestSupport_LIBRARIES WTF)
 
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
@@ -545,7 +549,7 @@ list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
 
     Modules/webdatabase/Database.idl
 
-    css/DOMWindowCSS.idl
+    css/DOMCSSNamespace.idl
     css/MediaQueryList.idl
     css/StyleMedia.idl
 
