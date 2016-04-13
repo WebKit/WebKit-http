@@ -45,6 +45,7 @@ using namespace WebCore;
 @implementation WebGLLayer
 
 @synthesize context=_context;
+@synthesize glLayer=_glLayer;
 
 -(id)initWithGraphicsContext3D:(GraphicsContext3D*)context
 {
@@ -52,16 +53,13 @@ using namespace WebCore;
     self = [super init];
     _devicePixelRatio = context->getContextAttributes().devicePixelRatio;
 #if PLATFORM(IOS)
-    CGFloat components[4] = { 1.0, 0, 255 / 123, 1.0 };
-    self.backgroundColor = adoptCF(CGColorCreate(sRGBColorSpaceRef(), components)).get();
-
-    glLayer = [[CAEAGLLayer alloc] init];
-    glLayer.anchorPoint = CGPointMake(0, 0);
-
-    CGFloat glComponents[4] = { 1.0, 0, 0, 1.0 };
-    glLayer.backgroundColor = adoptCF(CGColorCreate(sRGBColorSpaceRef(), glComponents)).get();
-
-    [self addSublayer:glLayer];
+    _glLayer = [[CAEAGLLayer alloc] init];
+    _glLayer.anchorPoint = CGPointMake(0, 0);
+    _glLayer.actions = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
+                        [NSNull null], @"transform",
+                        [NSNull null], @"bounds",
+                        nil];
+    [self addSublayer:_glLayer];
 #endif
 #if PLATFORM(MAC)
     self.contentsScale = _devicePixelRatio;
@@ -201,21 +199,18 @@ static void freeData(void *, const void *data, size_t /* size */)
 
 - (void)setBackingStoreSize:(CGSize)size
 {
-    [glLayer setBounds:CGRectMake(0, 0, size.width, size.height)];
+    [_glLayer setBounds:CGRectMake(0, 0, size.width, size.height)];
     [self updateGLLayerTransform];
 }
 
 - (void)updateGLLayerTransform
 {
-//    CGFloat boundsWidth = self.bounds.size.width;
-//    self.contentsScale = boundsWidth == 0 ? 1 : backingStoreSize.width / self.bounds.size.width;
-//    glLayer.transform = CATransform3DIdentity CATransform3DMakeScale();
-    if (glLayer.bounds.size.width == 0 || glLayer.bounds.size.height == 0)
-        glLayer.transform = CATransform3DIdentity;
+    if (_glLayer.bounds.size.width == 0 || _glLayer.bounds.size.height == 0)
+        _glLayer.transform = CATransform3DIdentity;
     else {
-        CGFloat sx = self.bounds.size.width / glLayer.bounds.size.width;
-        CGFloat sy = self.bounds.size.height / glLayer.bounds.size.height;
-        glLayer.transform = CATransform3DMakeScale(sx, sy, 1);
+        CGFloat sx = self.bounds.size.width / _glLayer.bounds.size.width;
+        CGFloat sy = self.bounds.size.height / _glLayer.bounds.size.height;
+        _glLayer.transform = CATransform3DMakeScale(sx, sy, 1);
     }
 }
 

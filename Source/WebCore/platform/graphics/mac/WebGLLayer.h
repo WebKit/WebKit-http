@@ -41,9 +41,8 @@ namespace WebCore {
 {
     WebCore::GraphicsContext3D* _context;
     float _devicePixelRatio;
-
 #if PLATFORM(IOS)
-    CAEAGLLayer* glLayer;
+    CAEAGLLayer* _glLayer;
 #endif
 }
 
@@ -54,6 +53,7 @@ namespace WebCore {
 - (CGImageRef)copyImageSnapshotWithColorSpace:(CGColorSpaceRef)colorSpace;
 
 #if PLATFORM(IOS)
+@property (readonly, nonatomic) CAEAGLLayer* glLayer;
 - (void)setBackingStoreSize:(CGSize)size;
 #endif
 
