@@ -342,10 +342,10 @@ GraphicsContext3D::~GraphicsContext3D()
 #if PLATFORM(IOS)
 bool GraphicsContext3D::setRenderbufferStorageFromDrawable(GC3Dsizei width, GC3Dsizei height)
 {
-    [m_webGLLayer setBounds:CGRectMake(0, 0, width, height)];
+    [m_webGLLayer setBackingStoreSize:CGSizeMake(width, height)];
     [m_webGLLayer setOpaque:(m_internalColorFormat != GL_RGBA8)];
 
-    return [m_contextObj renderbufferStorage:GL_RENDERBUFFER fromDrawable:static_cast<id<EAGLDrawable>>(m_webGLLayer.get())];
+    return [m_contextObj renderbufferStorage:GL_RENDERBUFFER fromDrawable:static_cast<id<EAGLDrawable>>(m_webGLLayer.get().glLayer)];
 }
 #endif
 

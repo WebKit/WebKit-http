@@ -45,12 +45,22 @@ using namespace WebCore;
 @implementation WebGLLayer
 
 @synthesize context=_context;
+@synthesize glLayer=_glLayer;
 
 -(id)initWithGraphicsContext3D:(GraphicsContext3D*)context
 {
     _context = context;
     self = [super init];
     _devicePixelRatio = context->getContextAttributes().devicePixelRatio;
+#if PLATFORM(IOS)
+    _glLayer = [[CAEAGLLayer alloc] init];
+    _glLayer.anchorPoint = CGPointMake(0, 0);
+    _glLayer.actions = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
+                        [NSNull null], @"transform",
+                        [NSNull null], @"bounds",
+                        nil];
+    [self addSublayer:_glLayer];
+#endif
 #if PLATFORM(MAC)
     self.contentsScale = _devicePixelRatio;
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
@@ -179,6 +189,29 @@ static void freeData(void *, const void *data, size_t /* size */)
     [super display];
 #endif
     _context->markLayerComposited();
+}
+
+- (void)setBounds:(CGRect)bounds
+{
+    [super setBounds:bounds];
+    [self updateGLLayerTransform];
+}
+
+- (void)setBackingStoreSize:(CGSize)size
+{
+    [_glLayer setBounds:CGRectMake(0, 0, size.width, size.height)];
+    [self updateGLLayerTransform];
+}
+
+- (void)updateGLLayerTransform
+{
+    if (_glLayer.bounds.size.width == 0 || _glLayer.bounds.size.height == 0)
+        _glLayer.transform = CATransform3DIdentity;
+    else {
+        CGFloat sx = self.bounds.size.width / _glLayer.bounds.size.width;
+        CGFloat sy = self.bounds.size.height / _glLayer.bounds.size.height;
+        _glLayer.transform = CATransform3DMakeScale(sx, sy, 1);
+    }
 }
 
 @end
