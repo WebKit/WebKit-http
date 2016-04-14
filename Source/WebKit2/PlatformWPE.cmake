@@ -117,8 +117,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
 
-    UIProcess/Databases/wpe/DatabaseProcessProxyWPE.cpp
-    
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
@@ -278,7 +276,6 @@ set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.css
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Workers/HeapSnapshot/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
 )
 
 file(GLOB InspectorFilesDependencies
