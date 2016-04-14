@@ -73,7 +73,7 @@ void LibinputServer::VirtualInput (unsigned int type, unsigned int code)
     rawEvent.key = code;
     rawEvent.state = type;
 
-    printf ("Sending out key: %d, %d, %d\n", rawEvent.time, rawEvent.key, rawEvent.state);
+    // printf ("Sending out key: %d, %d, %d\n", rawEvent.time, rawEvent.key, rawEvent.state);
 
     Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(rawEvent);
     m_client->handleKeyboardEvent({ rawEvent.time, std::get<0>(result), std::get<1>(result), !!rawEvent.state, std::get<2>(result) });
