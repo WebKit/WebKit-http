@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2003, 2004, 2006, 2007, 2008 Apple Inc.  All right reserved.
+ * Copyright (C) 2003, 2004, 2006, 2007, 2008, 2016 Apple Inc.  All right reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -34,63 +34,50 @@ namespace WebCore {
 
 class RenderObject;
 
-template <class Iterator> class MidpointState {
+template <class Iterator> class WhitespaceCollapsingState {
 public:
-    MidpointState()
-    {
-        reset();
-    }
-    
     void reset()
     {
-        m_numMidpoints = 0;
-        m_currentMidpoint = 0;
+        m_transitions.clear();
+        m_currentTransition = 0;
     }
     
-    void startIgnoringSpaces(const Iterator& midpoint)
+    void startIgnoringSpaces(const Iterator& transition)
     {
-        ASSERT(!(m_numMidpoints % 2));
-        addMidpoint(midpoint);
+        ASSERT(!(m_transitions.size() % 2));
+        m_transitions.append(transition);
     }
 
-    void stopIgnoringSpaces(const Iterator& midpoint)
+    void stopIgnoringSpaces(const Iterator& transition)
     {
-        ASSERT(m_numMidpoints % 2);
-        addMidpoint(midpoint);
+        ASSERT(m_transitions.size() % 2);
+        m_transitions.append(transition);
     }
 
     // When ignoring spaces, this needs to be called for objects that need line boxes such as RenderInlines or
     // hard line breaks to ensure that they're not ignored.
-    void ensureLineBoxInsideIgnoredSpaces(RenderObject* renderer)
+    void ensureLineBoxInsideIgnoredSpaces(RenderObject& renderer)
     {
-        Iterator midpoint(0, renderer, 0);
-        stopIgnoringSpaces(midpoint);
-        startIgnoringSpaces(midpoint);
+        Iterator transition(0, &renderer, 0);
+        stopIgnoringSpaces(transition);
+        startIgnoringSpaces(transition);
     }
 
-    Vector<Iterator>& midpoints() { return m_midpoints; }
-    unsigned numMidpoints() const { return m_numMidpoints; }
-    unsigned currentMidpoint() const { return m_currentMidpoint; }
-    void setCurrentMidpoint(unsigned currentMidpoint) { m_currentMidpoint = currentMidpoint; }
-    void incrementCurrentMidpoint() { ++m_currentMidpoint; }
-    void decrementNumMidpoints() { --m_numMidpoints; }
-    bool betweenMidpoints() const { return m_currentMidpoint % 2; }
+    void decrementTransitionAt(size_t index)
+    {
+        m_transitions[index].fastDecrement();
+    }
+
+    const Vector<Iterator>& transitions() { return m_transitions; }
+    size_t numTransitions() const { return m_transitions.size(); }
+    size_t currentTransition() const { return m_currentTransition; }
+    void setCurrentTransition(size_t currentTransition) { m_currentTransition = currentTransition; }
+    void incrementCurrentTransition() { ++m_currentTransition; }
+    void decrementNumTransitions() { m_transitions.shrink(m_transitions.size() - 1); }
+    bool betweenTransitions() const { return m_currentTransition % 2; }
 private:
-    // The goal is to reuse the line state across multiple
-    // lines so we just keep an array around for midpoints and never clear it across multiple
-    // lines. We track the number of items and position using the two other variables.
-    Vector<Iterator> m_midpoints;
-    unsigned m_numMidpoints;
-    unsigned m_currentMidpoint;
-
-    void addMidpoint(const Iterator& midpoint)
-    {
-        if (m_midpoints.size() <= m_numMidpoints)
-            m_midpoints.grow(m_numMidpoints + 10);
-
-        Iterator* midpointsIterator = m_midpoints.data();
-        midpointsIterator[m_numMidpoints++] = midpoint;
-    }
+    Vector<Iterator> m_transitions;
+    size_t m_currentTransition { 0 };
 };
 
 // The BidiStatus at a given position (typically the end of a line) can
@@ -155,10 +142,9 @@ struct BidiCharacterRun {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     BidiCharacterRun(int start, int stop, BidiContext* context, UCharDirection direction)
-        : m_override(context->override())
-        , m_next(0)
-        , m_start(start)
+        : m_start(start)
         , m_stop(stop)
+        , m_override(context->override())
     {
         if (direction == U_OTHER_NEUTRAL)
             direction = context->dir();
@@ -177,22 +163,33 @@ public:
         }
     }
 
+    ~BidiCharacterRun()
+    {
+        // Delete the linked list in a loop to prevent destructor recursion.
+        auto next = WTFMove(m_next);
+        while (next)
+            next = WTFMove(next->m_next);
+    }
+
     int start() const { return m_start; }
     int stop() const { return m_stop; }
     unsigned char level() const { return m_level; }
     bool reversed(bool visuallyOrdered) { return m_level % 2 && !visuallyOrdered; }
     bool dirOverride(bool visuallyOrdered) { return m_override || visuallyOrdered; }
 
-    BidiCharacterRun* next() const { return m_next; }
-    void setNext(BidiCharacterRun* next) { m_next = next; }
+    BidiCharacterRun* next() const { return m_next.get(); }
+    std::unique_ptr<BidiCharacterRun> takeNext() { return WTFMove(m_next); }
+    void setNext(std::unique_ptr<BidiCharacterRun>&& next) { m_next = WTFMove(next); }
 
-    // Do not add anything apart from bitfields until after m_next. See https://bugs.webkit.org/show_bug.cgi?id=100173
-    bool m_override : 1;
-    bool m_hasHyphen : 1; // Used by BidiRun subclass which is a layering violation but enables us to save 8 bytes per object on 64-bit.
-    unsigned char m_level;
-    BidiCharacterRun* m_next;
+private:
+    std::unique_ptr<BidiCharacterRun> m_next;
+
+public:
     int m_start;
     int m_stop;
+    unsigned char m_level;
+    bool m_override : 1;
+    bool m_hasHyphen : 1; // Used by BidiRun subclass which is a layering violation but enables us to save 8 bytes per object on 64-bit.
 };
 
 enum VisualDirectionOverride {
@@ -237,7 +234,7 @@ public:
     const BidiStatus& status() const { return m_status; }
     void setStatus(const BidiStatus s) { m_status = s; }
 
-    MidpointState<Iterator>& midpointState() { return m_midpointState; }
+    WhitespaceCollapsingState<Iterator>& whitespaceCollapsingState() { return m_whitespaceCollapsingState; }
 
     // The current algorithm handles nested isolates one layer of nesting at a time.
     // But when we layout each isolated span, we will walk into (and ignore) all
@@ -257,8 +254,8 @@ public:
     // It's unclear if this is still needed.
     void markCurrentRunEmpty() { m_emptyRun = true; }
 
-    void setMidpointForIsolatedRun(Run&, unsigned);
-    unsigned midpointForIsolatedRun(Run&);
+    void setWhitespaceCollapsingTransitionForIsolatedRun(Run&, size_t);
+    unsigned whitespaceCollapsingTransitionForIsolatedRun(Run&);
 
 protected:
     // FIXME: Instead of InlineBidiResolvers subclassing this method, we should
@@ -282,10 +279,10 @@ protected:
     // into createBidiRunsForLine by the caller.
     BidiRunList<Run> m_runs;
 
-    MidpointState<Iterator> m_midpointState;
+    WhitespaceCollapsingState<Iterator> m_whitespaceCollapsingState;
 
     unsigned m_nestedIsolateCount;
-    HashMap<Run*, unsigned> m_midpointForIsolatedRun;
+    HashMap<Run*, unsigned> m_whitespaceCollapsingTransitionForIsolatedRun;
 
 private:
     void raiseExplicitEmbeddingLevel(UCharDirection from, UCharDirection to);
@@ -341,7 +338,7 @@ void BidiResolverBase<Iterator, Run, Subclass>::appendRunInternal()
         }
 
         if (endOffset >= startOffset)
-            m_runs.addRun(new Run(startOffset, endOffset + 1, context(), m_direction));
+            m_runs.appendRun(std::make_unique<Run>(startOffset, endOffset + 1, context(), m_direction));
 
         m_eor.increment();
         m_sor = m_eor;
@@ -972,16 +969,16 @@ void BidiResolverBase<Iterator, Run, Subclass>::createBidiRunsForLine(const Iter
 }
 
 template <class Iterator, class Run, class Subclass>
-void BidiResolverBase<Iterator, Run, Subclass>::setMidpointForIsolatedRun(Run& run, unsigned midpoint)
+void BidiResolverBase<Iterator, Run, Subclass>::setWhitespaceCollapsingTransitionForIsolatedRun(Run& run, size_t transition)
 {
-    ASSERT(!m_midpointForIsolatedRun.contains(&run));
-    m_midpointForIsolatedRun.add(&run, midpoint);
+    ASSERT(!m_whitespaceCollapsingTransitionForIsolatedRun.contains(&run));
+    m_whitespaceCollapsingTransitionForIsolatedRun.add(&run, transition);
 }
 
 template<class Iterator, class Run, class Subclass>
-unsigned BidiResolverBase<Iterator, Run, Subclass>::midpointForIsolatedRun(Run& run)
+unsigned BidiResolverBase<Iterator, Run, Subclass>::whitespaceCollapsingTransitionForIsolatedRun(Run& run)
 {
-    return m_midpointForIsolatedRun.take(&run);
+    return m_whitespaceCollapsingTransitionForIsolatedRun.take(&run);
 }
 
 } // namespace WebCore

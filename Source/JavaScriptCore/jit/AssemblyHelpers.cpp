@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -417,6 +417,56 @@ void AssemblyHelpers::emitStoreStructureWithTypeInfo(AssemblyHelpers& jit, Trust
     jit.store32(TrustedImm32(structurePtr->objectInitializationBlob()), MacroAssembler::Address(dest, JSCell::indexingTypeOffset()));
     jit.storePtr(structure, MacroAssembler::Address(dest, JSCell::structureIDOffset()));
 #endif
+}
+
+void AssemblyHelpers::loadProperty(GPRReg object, GPRReg offset, JSValueRegs result)
+{
+    Jump isInline = branch32(LessThan, offset, TrustedImm32(firstOutOfLineOffset));
+    
+    loadPtr(Address(object, JSObject::butterflyOffset()), result.payloadGPR());
+    neg32(offset);
+    signExtend32ToPtr(offset, offset);
+    Jump ready = jump();
+    
+    isInline.link(this);
+    addPtr(
+        TrustedImm32(
+            static_cast<int32_t>(sizeof(JSObject)) -
+            (static_cast<int32_t>(firstOutOfLineOffset) - 2) * static_cast<int32_t>(sizeof(EncodedJSValue))),
+        object, result.payloadGPR());
+    
+    ready.link(this);
+    
+    loadValue(
+        BaseIndex(
+            result.payloadGPR(), offset, TimesEight, (firstOutOfLineOffset - 2) * sizeof(EncodedJSValue)),
+        result);
+}
+
+void AssemblyHelpers::emitLoadStructure(RegisterID source, RegisterID dest, RegisterID scratch)
+{
+#if USE(JSVALUE64)
+    load32(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
+    loadPtr(vm()->heap.structureIDTable().base(), scratch);
+    loadPtr(MacroAssembler::BaseIndex(scratch, dest, MacroAssembler::TimesEight), dest);
+#else
+    UNUSED_PARAM(scratch);
+    loadPtr(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
+#endif
+}
+
+void AssemblyHelpers::makeSpaceOnStackForCCall()
+{
+    unsigned stackOffset = WTF::roundUpToMultipleOf(stackAlignmentBytes(), maxFrameExtentForSlowPathCall);
+    if (stackOffset)
+        subPtr(TrustedImm32(stackOffset), stackPointerRegister);
+}
+
+void AssemblyHelpers::reclaimSpaceOnStackForCCall()
+{
+    unsigned stackOffset = WTF::roundUpToMultipleOf(stackAlignmentBytes(), maxFrameExtentForSlowPathCall);
+    if (stackOffset)
+        addPtr(TrustedImm32(stackOffset), stackPointerRegister);
 }
 
 #if USE(JSVALUE64)

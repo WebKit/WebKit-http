@@ -1363,13 +1363,6 @@ platform/ios-simulator/ios/fast/coordinates/mouse-event.html
 platform/ios-simulator/ios/fast/coordinates/touch-event-zoomed.html
 platform/ios-simulator/ios/fast/coordinates/touch-event.html
 
-platform/ios-simulator/ios/fast/forms/range-input-container-touches.html
-platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html
-platform/ios-simulator/ios/fast/forms/range-input-touches.html
-platform/ios-simulator/ios/fast/html/textarea-auto-sizing-disable.html
-platform/ios-simulator/ios/fast/text/data-detectors/phone-disabled.html
-platform/ios-simulator/ios/fast/text/data-detectors/phone.html
-
 # Flaky tests:
 compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants.html [ Failure Pass ]
 compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants2.html [ Failure Pass ]
@@ -1852,7 +1845,7 @@ editing/selection/move-by-character-005.html [ Failure Pass ]
 editing/selection/move-by-character-6.html [ Failure Pass ]
 editing/selection/move-by-line-002.html [ Failure Pass ]
 editing/selection/move-by-sentence-001.html [ Failure Pass ]
-http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Failure Pass ]
+webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Pass Timeout ]
 perf/mouse-event.html [ Failure Pass ]
 perf/rel-list-remove.html [ Failure Pass ]
 platform/ios-simulator/ios/fast/coordinates/document-elementFromPoint.html [ Failure Pass ]
@@ -1962,3 +1955,9 @@ webkit.org/b/155737 compositing/repaint/become-overlay-composited-layer.html [ P
 webkit.org/b/155947 [ Debug ] fast/loader/scroll-position-restored-on-back.html [ Pass Failure ]
 
 webkit.org/b/155948 transitions/cancel-transition.html [ Pass Failure ]
+
+# <a download> is not supported with NETWORK_SESSION yet.
+webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
+webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
+webkit.org/b/156067 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
+webkit.org/b/156067 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]

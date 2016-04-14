@@ -28,10 +28,10 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
+#include "FloatRect.h"
 #include "Logging.h"
-#include <WebCore/FloatRect.h>
-#include <WebCore/MediaPlaybackTargetMock.h>
-#include <WebCore/WebMediaSessionManager.h>
+#include "MediaPlaybackTargetMock.h"
+#include "WebMediaSessionManager.h"
 
 using namespace WebCore;
 
@@ -70,7 +70,7 @@ void MediaPlaybackTargetPickerMock::timerFired()
     currentDeviceDidChange();
 }
 
-void MediaPlaybackTargetPickerMock::showPlaybackTargetPicker(const FloatRect&, bool checkActiveRoute, const String&)
+void MediaPlaybackTargetPickerMock::showPlaybackTargetPicker(const FloatRect&, bool checkActiveRoute)
 {
     if (!client() || m_showingMenu)
         return;

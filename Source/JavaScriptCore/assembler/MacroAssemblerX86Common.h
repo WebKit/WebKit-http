@@ -270,14 +270,20 @@ public:
 
     void and32(Address op1, RegisterID op2, RegisterID dest)
     {
-        move32IfNeeded(op2, dest);
-        and32(op1, dest);
+        if (op2 == dest)
+            and32(op1, dest);
+        else if (op1.base == dest) {
+            load32(op1, dest);
+            and32(op2, dest);
+        } else {
+            zeroExtend32ToPtr(op2, dest);
+            and32(op1, dest);
+        }
     }
 
     void and32(RegisterID op1, Address op2, RegisterID dest)
     {
-        move32IfNeeded(op1, dest);
-        and32(op2, dest);
+        and32(op2, op1, dest);
     }
 
     void and32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -360,16 +366,22 @@ public:
         m_assembler.imull_mr(src.offset, src.base, dest);
     }
 
-    void mul32(Address src1, RegisterID src2, RegisterID dest)
+    void mul32(Address op1, RegisterID op2, RegisterID dest)
     {
-        move32IfNeeded(src2, dest);
-        mul32(src1, dest);
+        if (op2 == dest)
+            mul32(op1, dest);
+        else if (op1.base == dest) {
+            load32(op1, dest);
+            mul32(op2, dest);
+        } else {
+            zeroExtend32ToPtr(op2, dest);
+            mul32(op1, dest);
+        }
     }
 
     void mul32(RegisterID src1, Address src2, RegisterID dest)
     {
-        move32IfNeeded(src1, dest);
-        mul32(src2, dest);
+        mul32(src2, src1, dest);
     }
     
     void mul32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -450,14 +462,20 @@ public:
 
     void or32(Address op1, RegisterID op2, RegisterID dest)
     {
-        move32IfNeeded(op2, dest);
-        or32(op1, dest);
+        if (op2 == dest)
+            or32(op1, dest);
+        else if (op1.base == dest) {
+            load32(op1, dest);
+            or32(op2, dest);
+        } else {
+            zeroExtend32ToPtr(op2, dest);
+            or32(op1, dest);
+        }
     }
 
     void or32(RegisterID op1, Address op2, RegisterID dest)
     {
-        move32IfNeeded(op1, dest);
-        or32(op2, dest);
+        or32(op2, op1, dest);
     }
 
     void or32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -609,14 +627,20 @@ public:
 
     void xor32(Address op1, RegisterID op2, RegisterID dest)
     {
-        move32IfNeeded(op2, dest);
-        xor32(op1, dest);
+        if (op2 == dest)
+            xor32(op1, dest);
+        else if (op1.base == dest) {
+            load32(op1, dest);
+            xor32(op2, dest);
+        } else {
+            zeroExtend32ToPtr(op2, dest);
+            xor32(op1, dest);
+        }
     }
 
     void xor32(RegisterID op1, Address op2, RegisterID dest)
     {
-        move32IfNeeded(op1, dest);
-        xor32(op2, dest);
+        xor32(op2, op1, dest);
     }
 
     void xor32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -709,6 +733,26 @@ public:
     void floorFloat(Address src, FPRegisterID dst)
     {
         m_assembler.roundss_mr(src.offset, src.base, dst, X86Assembler::RoundingType::TowardNegativeInfiniti);
+    }
+
+    void roundTowardZeroDouble(FPRegisterID src, FPRegisterID dst)
+    {
+        m_assembler.roundsd_rr(src, dst, X86Assembler::RoundingType::TowardZero);
+    }
+
+    void roundTowardZeroDouble(Address src, FPRegisterID dst)
+    {
+        m_assembler.roundsd_mr(src.offset, src.base, dst, X86Assembler::RoundingType::TowardZero);
+    }
+
+    void roundTowardZeroFloat(FPRegisterID src, FPRegisterID dst)
+    {
+        m_assembler.roundss_rr(src, dst, X86Assembler::RoundingType::TowardZero);
+    }
+
+    void roundTowardZeroFloat(Address src, FPRegisterID dst)
+    {
+        m_assembler.roundss_mr(src.offset, src.base, dst, X86Assembler::RoundingType::TowardZero);
     }
 
     // Memory access operations:
@@ -1066,96 +1110,124 @@ public:
 
     void addDouble(FPRegisterID src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.addsd_rr(src, dest);
+        addDouble(src, dest, dest);
     }
 
     void addDouble(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest)
-            addDouble(op2, dest);
+        if (supportsAVX())
+            m_assembler.vaddsd_rr(op1, op2, dest);
         else {
-            moveDouble(op2, dest);
-            addDouble(op1, dest);
+            ASSERT(isSSE2Present());
+            if (op1 == dest)
+                m_assembler.addsd_rr(op2, dest);
+            else {
+                moveDouble(op2, dest);
+                m_assembler.addsd_rr(op1, dest);
+            }
         }
     }
 
     void addDouble(Address src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.addsd_mr(src.offset, src.base, dest);
+        addDouble(src, dest, dest);
     }
 
     void addDouble(Address op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op2 == dest) {
-            addDouble(op1, dest);
-            return;
-        }
+        if (supportsAVX())
+            m_assembler.vaddsd_mr(op1.offset, op1.base, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.addsd_mr(op1.offset, op1.base, dest);
+                return;
+            }
 
-        loadDouble(op1, dest);
-        addDouble(op2, dest);
+            loadDouble(op1, dest);
+            addDouble(op2, dest);
+        }
     }
 
     void addDouble(FPRegisterID op1, Address op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest) {
-            addDouble(op2, dest);
-            return;
-        }
+        addDouble(op2, op1, dest);
+    }
 
-        loadDouble(op2, dest);
-        addDouble(op1, dest);
+    void addDouble(BaseIndex op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vaddsd_mr(op1.offset, op1.base, op1.index, op1.scale, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.addsd_mr(op1.offset, op1.base, op1.index, op1.scale, dest);
+                return;
+            }
+            loadDouble(op1, dest);
+            addDouble(op2, dest);
+        }
     }
 
     void addFloat(FPRegisterID src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.addss_rr(src, dest);
+        addFloat(src, dest, dest);
     }
 
     void addFloat(Address src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.addss_mr(src.offset, src.base, dest);
+        addFloat(src, dest, dest);
     }
 
     void addFloat(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest)
-            addFloat(op2, dest);
+        if (supportsAVX())
+            m_assembler.vaddss_rr(op1, op2, dest);
         else {
-            moveDouble(op2, dest);
-            addFloat(op1, dest);
+            ASSERT(isSSE2Present());
+            if (op1 == dest)
+                m_assembler.addss_rr(op2, dest);
+            else {
+                moveDouble(op2, dest);
+                m_assembler.addss_rr(op1, dest);
+            }
         }
     }
 
     void addFloat(Address op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op2 == dest) {
-            addFloat(op1, dest);
-            return;
-        }
+        if (supportsAVX())
+            m_assembler.vaddss_mr(op1.offset, op1.base, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.addss_mr(op1.offset, op1.base, dest);
+                return;
+            }
 
-        loadFloat(op1, dest);
-        addFloat(op2, dest);
+            loadFloat(op1, dest);
+            addFloat(op2, dest);
+        }
     }
 
     void addFloat(FPRegisterID op1, Address op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest) {
-            addFloat(op2, dest);
-            return;
-        }
+        addFloat(op2, op1, dest);
+    }
 
-        loadFloat(op2, dest);
-        addFloat(op1, dest);
+    void addFloat(BaseIndex op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vaddss_mr(op1.offset, op1.base, op1.index, op1.scale, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.addss_mr(op1.offset, op1.base, op1.index, op1.scale, dest);
+                return;
+            }
+            loadFloat(op1, dest);
+            addFloat(op2, dest);
+        }
     }
 
     void divDouble(FPRegisterID src, FPRegisterID dest)
@@ -1193,125 +1265,209 @@ public:
 
     void subDouble(FPRegisterID src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.subsd_rr(src, dest);
+        subDouble(dest, src, dest);
     }
 
     void subDouble(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
     {
-        // B := A - B is invalid.
-        ASSERT(op1 == dest || op2 != dest);
+        if (supportsAVX())
+            m_assembler.vsubsd_rr(op1, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
 
-        moveDouble(op1, dest);
-        subDouble(op2, dest);
+            // B := A - B is invalid.
+            ASSERT(op1 == dest || op2 != dest);
+            moveDouble(op1, dest);
+            m_assembler.subsd_rr(op2, dest);
+        }
+    }
+
+    void subDouble(FPRegisterID op1, Address op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vsubsd_mr(op1, op2.offset, op2.base, dest);
+        else {
+            moveDouble(op1, dest);
+            m_assembler.subsd_mr(op2.offset, op2.base, dest);
+        }
+    }
+
+    void subDouble(FPRegisterID op1, BaseIndex op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vsubsd_mr(op1, op2.offset, op2.base, op2.index, op2.scale, dest);
+        else {
+            moveDouble(op1, dest);
+            m_assembler.subsd_mr(op2.offset, op2.base, op2.index, op2.scale, dest);
+        }
     }
 
     void subDouble(Address src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.subsd_mr(src.offset, src.base, dest);
+        subDouble(dest, src, dest);
     }
 
     void subFloat(FPRegisterID src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.subss_rr(src, dest);
+        subFloat(dest, src, dest);
+    }
+
+    void subFloat(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vsubss_rr(op1, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            // B := A - B is invalid.
+            ASSERT(op1 == dest || op2 != dest);
+            moveDouble(op1, dest);
+            m_assembler.subss_rr(op2, dest);
+        }
+    }
+
+    void subFloat(FPRegisterID op1, Address op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vsubss_mr(op1, op2.offset, op2.base, dest);
+        else {
+            moveDouble(op1, dest);
+            m_assembler.subss_mr(op2.offset, op2.base, dest);
+        }
+    }
+
+    void subFloat(FPRegisterID op1, BaseIndex op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vsubss_mr(op1, op2.offset, op2.base, op2.index, op2.scale, dest);
+        else {
+            moveDouble(op1, dest);
+            m_assembler.subss_mr(op2.offset, op2.base, op2.index, op2.scale, dest);
+        }
     }
 
     void subFloat(Address src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.subss_mr(src.offset, src.base, dest);
+        subFloat(dest, src, dest);
     }
 
     void mulDouble(FPRegisterID src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.mulsd_rr(src, dest);
+        mulDouble(src, dest, dest);
     }
 
     void mulDouble(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest)
-            mulDouble(op2, dest);
+        if (supportsAVX())
+            m_assembler.vmulsd_rr(op1, op2, dest);
         else {
-            moveDouble(op2, dest);
-            mulDouble(op1, dest);
+            ASSERT(isSSE2Present());
+            if (op1 == dest)
+                m_assembler.mulsd_rr(op2, dest);
+            else {
+                moveDouble(op2, dest);
+                m_assembler.mulsd_rr(op1, dest);
+            }
         }
     }
 
     void mulDouble(Address src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.mulsd_mr(src.offset, src.base, dest);
+        mulDouble(src, dest, dest);
     }
 
     void mulDouble(Address op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op2 == dest) {
-            mulDouble(op1, dest);
-            return;
+        if (supportsAVX())
+            m_assembler.vmulsd_mr(op1.offset, op1.base, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.mulsd_mr(op1.offset, op1.base, dest);
+                return;
+            }
+            loadDouble(op1, dest);
+            mulDouble(op2, dest);
         }
-        loadDouble(op1, dest);
-        mulDouble(op2, dest);
     }
 
     void mulDouble(FPRegisterID op1, Address op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest) {
+        return mulDouble(op2, op1, dest);
+    }
+
+    void mulDouble(BaseIndex op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vmulsd_mr(op1.offset, op1.base, op1.index, op1.scale, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.mulsd_mr(op1.offset, op1.base, op1.index, op1.scale, dest);
+                return;
+            }
+            loadDouble(op1, dest);
             mulDouble(op2, dest);
-            return;
         }
-        loadDouble(op2, dest);
-        mulDouble(op1, dest);
     }
 
     void mulFloat(FPRegisterID src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.mulss_rr(src, dest);
+        mulFloat(src, dest, dest);
     }
 
     void mulFloat(Address src, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        m_assembler.mulss_mr(src.offset, src.base, dest);
+        mulFloat(src, dest, dest);
     }
 
     void mulFloat(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest)
-            mulFloat(op2, dest);
+        if (supportsAVX())
+            m_assembler.vmulss_rr(op1, op2, dest);
         else {
-            moveDouble(op2, dest);
-            mulFloat(op1, dest);
+            ASSERT(isSSE2Present());
+            if (op1 == dest)
+                m_assembler.mulss_rr(op2, dest);
+            else {
+                moveDouble(op2, dest);
+                m_assembler.mulss_rr(op1, dest);
+            }
         }
     }
 
     void mulFloat(Address op1, FPRegisterID op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op2 == dest) {
-            mulFloat(op1, dest);
-            return;
+        if (supportsAVX())
+            m_assembler.vmulss_mr(op1.offset, op1.base, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.mulss_mr(op1.offset, op1.base, dest);
+                return;
+            }
+            loadFloat(op1, dest);
+            mulFloat(op2, dest);
         }
-        loadFloat(op1, dest);
-        mulFloat(op2, dest);
     }
 
     void mulFloat(FPRegisterID op1, Address op2, FPRegisterID dest)
     {
-        ASSERT(isSSE2Present());
-        if (op1 == dest) {
+        mulFloat(op2, op1, dest);
+    }
+
+    void mulFloat(BaseIndex op1, FPRegisterID op2, FPRegisterID dest)
+    {
+        if (supportsAVX())
+            m_assembler.vmulss_mr(op1.offset, op1.base, op1.index, op1.scale, op2, dest);
+        else {
+            ASSERT(isSSE2Present());
+            if (op2 == dest) {
+                m_assembler.mulss_mr(op1.offset, op1.base, op1.index, op1.scale, dest);
+                return;
+            }
+            loadFloat(op1, dest);
             mulFloat(op2, dest);
-            return;
         }
-        loadFloat(op2, dest);
-        mulFloat(op1, dest);
     }
 
     void andDouble(FPRegisterID src, FPRegisterID dst)
@@ -2072,7 +2228,7 @@ public:
 
     Jump branch8(RelationalCondition cond, BaseIndex left, TrustedImm32 right)
     {
-        ASSERT(!(right.m_value & 0xFFFFFF00));
+        ASSERT(std::numeric_limits<int8_t>::min() <= right.m_value && right.m_value <= std::numeric_limits<int8_t>::max());
 
         m_assembler.cmpb_im(right.m_value, left.offset, left.base, left.index, left.scale);
         return Jump(m_assembler.jCC(x86Condition(cond)));
@@ -2143,16 +2299,21 @@ public:
         return branchAdd32(cond, src1, dest);
     }
 
-    Jump branchAdd32(ResultCondition cond, Address src1, RegisterID src2, RegisterID dest)
+    Jump branchAdd32(ResultCondition cond, Address op1, RegisterID op2, RegisterID dest)
     {
-        move32IfNeeded(src2, dest);
-        return branchAdd32(cond, src1, dest);
+        if (op2 == dest)
+            return branchAdd32(cond, op1, dest);
+        if (op1.base == dest) {
+            load32(op1, dest);
+            return branchAdd32(cond, op2, dest);
+        }
+        zeroExtend32ToPtr(op2, dest);
+        return branchAdd32(cond, op1, dest);
     }
 
     Jump branchAdd32(ResultCondition cond, RegisterID src1, Address src2, RegisterID dest)
     {
-        move32IfNeeded(src1, dest);
-        return branchAdd32(cond, src2, dest);
+        return branchAdd32(cond, src2, src1, dest);
     }
 
     Jump branchAdd32(ResultCondition cond, RegisterID src, TrustedImm32 imm, RegisterID dest)
@@ -2452,38 +2613,50 @@ public:
 
     static bool supportsFloatingPointRounding()
     {
-        if (s_sse4_1CheckState == CPUIDCheckState::NotChecked) {
-            int flags = 0;
+        if (s_sse4_1CheckState == CPUIDCheckState::NotChecked)
+            updateEax1EcxFlags();
+        return s_sse4_1CheckState == CPUIDCheckState::Set;
+    }
+
+    static bool supportsAVX()
+    {
+        if (s_avxCheckState == CPUIDCheckState::NotChecked)
+            updateEax1EcxFlags();
+        return s_avxCheckState == CPUIDCheckState::Set;
+    }
+
+    static void updateEax1EcxFlags()
+    {
+        int flags = 0;
 #if COMPILER(MSVC)
-            int cpuInfo[4];
-            __cpuid(cpuInfo, 0x1);
-            flags = cpuInfo[2];
+        int cpuInfo[4];
+        __cpuid(cpuInfo, 0x1);
+        flags = cpuInfo[2];
 #elif COMPILER(GCC_OR_CLANG)
 #if CPU(X86_64)
-            asm (
-                "movl $0x1, %%eax;"
-                "cpuid;"
-                "movl %%ecx, %0;"
-                : "=g" (flags)
-                :
-                : "%eax", "%ebx", "%ecx", "%edx"
-                );
+        asm (
+            "movl $0x1, %%eax;"
+            "cpuid;"
+            "movl %%ecx, %0;"
+            : "=g" (flags)
+            :
+            : "%eax", "%ebx", "%ecx", "%edx"
+            );
 #else
-            asm (
-                "movl $0x1, %%eax;"
-                "pushl %%ebx;"
-                "cpuid;"
-                "popl %%ebx;"
-                "movl %%ecx, %0;"
-                : "=g" (flags)
-                :
-                : "%eax", "%ecx", "%edx"
-                );
+        asm (
+            "movl $0x1, %%eax;"
+            "pushl %%ebx;"
+            "cpuid;"
+            "popl %%ebx;"
+            "movl %%ecx, %0;"
+            : "=g" (flags)
+            :
+            : "%eax", "%ecx", "%edx"
+            );
 #endif
 #endif // COMPILER(GCC_OR_CLANG)
-            s_sse4_1CheckState = (flags & (1 << 19)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
-        }
-        return s_sse4_1CheckState == CPUIDCheckState::Set;
+        s_sse4_1CheckState = (flags & (1 << 19)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
+        s_avxCheckState = (flags & (1 << 28)) ? CPUIDCheckState::Set : CPUIDCheckState::Clear;
     }
 
 #if ENABLE(MASM_PROBE)
@@ -2731,7 +2904,8 @@ private:
         Clear,
         Set
     };
-    static CPUIDCheckState s_sse4_1CheckState;
+    JS_EXPORT_PRIVATE static CPUIDCheckState s_sse4_1CheckState;
+    JS_EXPORT_PRIVATE static CPUIDCheckState s_avxCheckState;
     static CPUIDCheckState s_lzcntCheckState;
 };
 

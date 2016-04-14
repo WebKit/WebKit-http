@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -149,6 +149,9 @@ public:
         }
 #endif
     }
+    
+    // Note that this clobbers offset.
+    void loadProperty(GPRReg object, GPRReg offset, JSValueRegs result);
 
     void moveValueRegs(JSValueRegs srcRegs, JSValueRegs destRegs)
     {
@@ -1209,29 +1212,7 @@ public:
         return argumentsStart(codeOrigin.inlineCallFrame);
     }
     
-    void emitLoadStructure(RegisterID source, RegisterID dest, RegisterID scratch)
-    {
-#if USE(JSVALUE64)
-        load32(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
-        loadPtr(vm()->heap.structureIDTable().base(), scratch);
-        loadPtr(MacroAssembler::BaseIndex(scratch, dest, MacroAssembler::TimesEight), dest);
-#else
-        UNUSED_PARAM(scratch);
-        loadPtr(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
-#endif
-    }
-
-    static void emitLoadStructure(AssemblyHelpers& jit, RegisterID base, RegisterID dest, RegisterID scratch)
-    {
-#if USE(JSVALUE64)
-        jit.load32(MacroAssembler::Address(base, JSCell::structureIDOffset()), dest);
-        jit.loadPtr(jit.vm()->heap.structureIDTable().base(), scratch);
-        jit.loadPtr(MacroAssembler::BaseIndex(scratch, dest, MacroAssembler::TimesEight), dest);
-#else
-        UNUSED_PARAM(scratch);
-        jit.loadPtr(MacroAssembler::Address(base, JSCell::structureIDOffset()), dest);
-#endif
-    }
+    void emitLoadStructure(RegisterID source, RegisterID dest, RegisterID scratch);
 
     void emitStoreStructureWithTypeInfo(TrustedImmPtr structure, RegisterID dest, RegisterID)
     {
@@ -1344,19 +1325,8 @@ public:
 
     Vector<BytecodeAndMachineOffset>& decodedCodeMapFor(CodeBlock*);
 
-    void makeSpaceOnStackForCCall()
-    {
-        unsigned stackOffset = WTF::roundUpToMultipleOf(stackAlignmentBytes(), maxFrameExtentForSlowPathCall);
-        if (stackOffset)
-            subPtr(TrustedImm32(stackOffset), stackPointerRegister);
-    }
-
-    void reclaimSpaceOnStackForCCall()
-    {
-        unsigned stackOffset = WTF::roundUpToMultipleOf(stackAlignmentBytes(), maxFrameExtentForSlowPathCall);
-        if (stackOffset)
-            addPtr(TrustedImm32(stackOffset), stackPointerRegister);
-    }
+    void makeSpaceOnStackForCCall();
+    void reclaimSpaceOnStackForCCall();
 
 #if USE(JSVALUE64)
     void emitRandomThunk(JSGlobalObject*, GPRReg scratch0, GPRReg scratch1, GPRReg scratch2, FPRReg result);

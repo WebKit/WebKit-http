@@ -75,14 +75,6 @@ private:
     void destroyNativeSurfaceHandleForCompositing(bool&) override;
 #endif
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
-#endif
-
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&) override { };
-#endif
-
     // IPC message handlers.
     void updateBackingStoreState(uint64_t backingStoreStateID, bool respondImmediately, float deviceScaleFactor, const WebCore::IntSize&, const WebCore::IntSize& scrollOffset) override;
     void didUpdate() override;

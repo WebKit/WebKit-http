@@ -236,6 +236,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)webGLEnabled;
 - (void)setWebGLEnabled:(BOOL)enabled;
 
+- (BOOL)webGL2Enabled;
+- (void)setWebGL2Enabled:(BOOL)enabled;
+
 - (BOOL)forceSoftwareWebGLRendering;
 - (void)setForceSoftwareWebGLRendering:(BOOL)forced;
 
@@ -480,6 +483,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setCustomElementsEnabled:(BOOL)flag;
 - (BOOL)customElementsEnabled;
+
+- (void)setFetchAPIEnabled:(BOOL)flag;
+- (BOOL)fetchAPIEnabled;
 
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 @property (nonatomic) BOOL mediaDataLoadsAutomatically;

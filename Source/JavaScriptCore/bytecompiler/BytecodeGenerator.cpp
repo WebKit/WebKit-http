@@ -861,6 +861,8 @@ void BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeSta
         pushScopedControlFlowContext();
     m_symbolTableStack.append(SymbolTableStackEntry{ Strong<SymbolTable>(*m_vm, functionSymbolTable), m_lexicalEnvironmentRegister, false, symbolTableConstantIndex });
 
+    m_varScopeSymbolTableIndex = m_symbolTableStack.size() - 1;
+
     // This completes step 28 of section 9.2.12.
     for (unsigned i = 0; i < valuesToMoveIntoVars.size(); i++) {
         ASSERT(!isSimpleParameterList);
@@ -1090,6 +1092,7 @@ UnlinkedValueProfile BytecodeGenerator::emitProfiledOpcode(OpcodeID opcodeID)
 void BytecodeGenerator::emitEnter()
 {
     emitOpcode(op_enter);
+    emitLogShadowChickenPrologueIfNecessary();
     emitWatchdog();
 }
 
@@ -1934,6 +1937,30 @@ void BytecodeGenerator::initializeBlockScopedFunctions(VariableEnvironment& envi
     }
 }
 
+void BytecodeGenerator::hoistSloppyModeFunctionIfNecessary(const Identifier& functionName)
+{
+    if (m_scopeNode->hasSloppyModeHoistedFunction(functionName.impl())) {
+        Variable currentFunctionVariable = variable(functionName);
+        RefPtr<RegisterID> currentValue;
+        if (RegisterID* local = currentFunctionVariable.local())
+            currentValue = local;
+        else {
+            RefPtr<RegisterID> scope = emitResolveScope(nullptr, currentFunctionVariable);
+            currentValue = emitGetFromScope(newTemporary(), scope.get(), currentFunctionVariable, DoNotThrowIfNotFound);
+        }
+        
+        ASSERT(m_varScopeSymbolTableIndex);
+        ASSERT(*m_varScopeSymbolTableIndex < m_symbolTableStack.size());
+        SymbolTableStackEntry& varScope = m_symbolTableStack[*m_varScopeSymbolTableIndex];
+        SymbolTable* varSymbolTable = varScope.m_symbolTable.get();
+        ASSERT(varSymbolTable->scopeType() == SymbolTable::ScopeType::VarScope);
+        SymbolTableEntry entry = varSymbolTable->get(functionName.impl());
+        ASSERT(!entry.isNull());
+        bool isLexicallyScoped = false;
+        emitPutToScope(varScope.m_scope, variableForLocalEntry(functionName, entry, varScope.m_symbolTableConstantIndex, isLexicallyScoped), currentValue.get(), DoNotThrowIfNotFound, NotInitialization);
+    }
+}
+
 void BytecodeGenerator::popLexicalScope(VariableEnvironmentNode* node)
 {
     VariableEnvironment& environment = node->lexicalVariables();
@@ -2342,6 +2369,17 @@ RegisterID* BytecodeGenerator::emitInstanceOfCustom(RegisterID* dst, RegisterID*
     instructions().append(value->index());
     instructions().append(constructor->index());
     instructions().append(hasInstanceValue->index());
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitTryGetById(RegisterID* dst, RegisterID* base, const Identifier& property)
+{
+    ASSERT_WITH_MESSAGE(!parseIndex(property), "Indexed properties are not supported with tryGetById.");
+
+    emitOpcode(op_try_get_by_id);
+    instructions().append(kill(dst));
+    instructions().append(base->index());
+    instructions().append(addConstant(property));
     return dst;
 }
 
@@ -2947,7 +2985,7 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
 {
     ASSERT(opcodeID == op_call || opcodeID == op_call_eval || opcodeID == op_tail_call);
     ASSERT(func->refCount());
-
+    
     if (m_shouldEmitProfileHooks)
         emitMove(callArguments.profileHookRegister(), func);
 
@@ -2981,6 +3019,9 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
 
     RefPtr<Label> done = newLabel();
     expectedFunction = emitExpectedFunctionSnippet(dst, func, expectedFunction, callArguments, done.get());
+    
+    if (opcodeID == op_tail_call)
+        emitLogShadowChickenTailIfNecessary();
     
     // Emit call.
     UnlinkedArrayProfile arrayProfile = newArrayProfile();
@@ -3032,6 +3073,9 @@ RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst,
     
     emitExpressionInfo(divot, divotStart, divotEnd);
 
+    if (opcode == op_tail_call_varargs)
+        emitLogShadowChickenTailIfNecessary();
+    
     // Emit call.
     UnlinkedArrayProfile arrayProfile = newArrayProfile();
     UnlinkedValueProfile profile = emitProfiledOpcode(opcode);
@@ -3049,6 +3093,20 @@ RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst,
         instructions().append(profileHookRegister->index());
     }
     return dst;
+}
+
+void BytecodeGenerator::emitLogShadowChickenPrologueIfNecessary()
+{
+    if (!m_shouldEmitDebugHooks && !Options::alwaysUseShadowChicken())
+        return;
+    emitOpcode(op_log_shadow_chicken_prologue);
+}
+
+void BytecodeGenerator::emitLogShadowChickenTailIfNecessary()
+{
+    if (!m_shouldEmitDebugHooks && !Options::alwaysUseShadowChicken())
+        return;
+    emitOpcode(op_log_shadow_chicken_tail);
 }
 
 void BytecodeGenerator::emitCallDefineProperty(RegisterID* newObj, RegisterID* propertyNameRegister,

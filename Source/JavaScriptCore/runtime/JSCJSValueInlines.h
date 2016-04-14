@@ -746,6 +746,11 @@ inline bool JSValue::inherits(const ClassInfo* classInfo) const
     return isCell() && asCell()->inherits(classInfo);
 }
 
+inline const ClassInfo* JSValue::classInfoOrNull() const
+{
+    return isCell() ? asCell()->classInfo() : nullptr;
+}
+
 inline JSValue JSValue::toThis(ExecState* exec, ECMAMode ecmaMode) const
 {
     return isCell() ? asCell()->methodTable(exec->vm())->toThis(asCell(), exec, ecmaMode) : toThisSlowCase(exec, ecmaMode);
@@ -842,6 +847,13 @@ inline bool JSValue::putByIndex(ExecState* exec, unsigned propertyName, JSValue 
         return putToPrimitiveByIndex(exec, propertyName, value, shouldThrow);
 
     return asCell()->methodTable(exec->vm())->putByIndex(asCell(), exec, propertyName, value, shouldThrow);
+}
+
+inline Structure* JSValue::structureOrNull() const
+{
+    if (isCell())
+        return asCell()->structure();
+    return nullptr;
 }
 
 inline JSValue JSValue::structureOrUndefined() const

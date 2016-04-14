@@ -53,6 +53,8 @@ public:
     bool pageAllowsDataLoading(const HTMLMediaElement&) const;
     bool pageAllowsPlaybackAfterResuming(const HTMLMediaElement&) const;
 
+    bool canControlControlsManager(const HTMLMediaElement&) const;
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void showPlaybackTargetPicker(const HTMLMediaElement&);
     bool hasWirelessPlaybackTargets(const HTMLMediaElement&) const;
@@ -114,7 +116,6 @@ private:
     void setPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
     void externalOutputDeviceAvailableDidChange(bool) override;
     void setShouldPlayToPlaybackTarget(bool) override;
-    void customPlaybackActionSelected() override;
 #endif
 #if PLATFORM(IOS)
     bool requiresPlaybackTargetRouteMonitoring() const override;

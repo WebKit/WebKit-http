@@ -417,6 +417,7 @@ flex
 -webkit-flex
 inline-flex
 -webkit-inline-flex
+contents
 -webkit-grid
 -webkit-inline-grid
 //none
@@ -1184,7 +1185,7 @@ style
 
 // will-change
 scroll-position
-contents
+//contents
 
 #if defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
 // touch-action
@@ -1196,3 +1197,13 @@ allow-end
 first
 force-end
 last
+
+// color-gamut
+p3
+rec2020
+
+#if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
+// auto-repeat
+auto-fill
+auto-fit
+#endif

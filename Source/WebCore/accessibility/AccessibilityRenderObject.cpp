@@ -644,8 +644,7 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
         return downcast<RenderMathMLOperator>(*m_renderer).element().textContent();
 #endif
 
-    // rangeOfContents does not include CSS-generated content.
-    if (m_renderer->isBeforeOrAfterContent())
+    if (shouldGetTextFromNode(mode))
         return AccessibilityNodeObject::textUnderElement(mode);
 
     // We use a text iterator for text objects AND for those cases where we are
@@ -657,12 +656,6 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
         Document* nodeDocument = nullptr;
         RefPtr<Range> textRange;
         if (Node* node = m_renderer->node()) {
-            // rangeOfContents does not include CSS-generated content.
-            Node* firstChild = node->pseudoAwareFirstChild();
-            Node* lastChild = node->pseudoAwareLastChild();
-            if ((firstChild && firstChild->isPseudoElement()) || (lastChild && lastChild->isPseudoElement()))
-                return AccessibilityNodeObject::textUnderElement(mode);
-
             nodeDocument = &node->document();
             textRange = rangeOfContents(*node);
         } else {
@@ -718,6 +711,31 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
     }
     
     return AccessibilityNodeObject::textUnderElement(mode);
+}
+
+bool AccessibilityRenderObject::shouldGetTextFromNode(AccessibilityTextUnderElementMode mode) const
+{
+    if (!m_renderer)
+        return false;
+
+    // AccessibilityRenderObject::textUnderElement() gets the text of anonymous blocks by using
+    // the child nodes to define positions. CSS tables and their anonymous descendants lack
+    // children with nodes.
+    if (m_renderer->isAnonymous() && m_renderer->isTablePart())
+        return mode.childrenInclusion == AccessibilityTextUnderElementMode::TextUnderElementModeIncludeAllChildren;
+
+    // AccessibilityRenderObject::textUnderElement() calls rangeOfContents() to create the text
+    // range. rangeOfContents() does not include CSS-generated content.
+    if (m_renderer->isBeforeOrAfterContent())
+        return true;
+    if (Node* node = m_renderer->node()) {
+        Node* firstChild = node->pseudoAwareFirstChild();
+        Node* lastChild = node->pseudoAwareLastChild();
+        if ((firstChild && firstChild->isPseudoElement()) || (lastChild && lastChild->isPseudoElement()))
+            return true;
+    }
+
+    return false;
 }
 
 Node* AccessibilityRenderObject::node() const
@@ -967,19 +985,9 @@ void AccessibilityRenderObject::addRadioButtonGroupMembers(AccessibilityChildren
     Node* node = this->node();
     if (is<HTMLInputElement>(node)) {
         HTMLInputElement& input = downcast<HTMLInputElement>(*node);
-        // if there's a form, then this is easy
-        if (input.form()) {
-            for (auto& associateElement : input.form()->namedElements(input.name())) {
-                if (AccessibilityObject* object = axObjectCache()->getOrCreate(&associateElement.get()))
-                    linkedUIElements.append(object);
-            }
-        } else {
-            for (auto& associateElement : descendantsOfType<HTMLInputElement>(node->document())) {
-                if (associateElement.isRadioButton() && associateElement.name() == input.name()) {
-                    if (AccessibilityObject* object = axObjectCache()->getOrCreate(&associateElement))
-                        linkedUIElements.append(object);
-                }
-            }
+        for (auto& radioSibling : input.radioButtonGroup()) {
+            if (AccessibilityObject* object = axObjectCache()->getOrCreate(radioSibling))
+                linkedUIElements.append(object);
         }
     } else {
         // If we didn't find any radio button siblings with the traditional naming, lets search for a radio group role and find its children.
@@ -2249,6 +2257,12 @@ AccessibilityObject* AccessibilityRenderObject::elementAccessibilityHitTest(cons
     return AccessibilityObject::elementAccessibilityHitTest(point);
 }
     
+static bool shouldUseShadowHostForHitTesting(Node* shadowHost)
+{
+    // We need to allow automation of mouse events on video tags.
+    return shadowHost && !shadowHost->hasTagName(videoTag);
+}
+
 AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPoint& point) const
 {
     if (!m_renderer || !m_renderer->hasLayer())
@@ -2261,9 +2275,12 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPo
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
     HitTestResult hitTestResult = HitTestResult(point);
     layer->hitTest(request, hitTestResult);
-    if (!hitTestResult.innerNode())
+    Node* node = hitTestResult.innerNode();
+    if (!node)
         return nullptr;
-    Node* node = hitTestResult.innerNode()->deprecatedShadowAncestorNode();
+    Node* shadowAncestorNode = node->shadowHost();
+    if (shouldUseShadowHostForHitTesting(shadowAncestorNode))
+        node = shadowAncestorNode;
     ASSERT(node);
 
     if (is<HTMLAreaElement>(*node))
@@ -2594,7 +2611,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         return SVGRootRole;
     
     if (isStyleFormatGroup())
-        return GroupRole;
+        return is<RenderInline>(*m_renderer) ? InlineRole : GroupRole;
     
 #if ENABLE(MATHML)
     if (node && node->hasTagName(MathMLNames::mathTag))
@@ -3980,7 +3997,7 @@ int AccessibilityRenderObject::mathLineThickness() const
     if (!is<RenderMathMLFraction>(m_renderer))
         return -1;
     
-    return downcast<RenderMathMLFraction>(*m_renderer).lineThickness();
+    return downcast<RenderMathMLFraction>(*m_renderer).relativeLineThickness();
 }
 
 #endif

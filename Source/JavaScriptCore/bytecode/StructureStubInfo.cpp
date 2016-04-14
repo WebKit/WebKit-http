@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,9 @@
 namespace JSC {
 
 #if ENABLE(JIT)
+
+static const bool verbose = false;
+
 StructureStubInfo::StructureStubInfo(AccessType accessType)
     : callSiteIndex(UINT_MAX)
     , accessType(accessType)
@@ -40,6 +43,7 @@ StructureStubInfo::StructureStubInfo(AccessType accessType)
     , countdown(1) // For a totally clear stub, we'll patch it after the first execution.
     , repatchCount(0)
     , numberOfCoolDowns(0)
+    , bufferingCountdown(0)
     , resetByGC(false)
     , tookSlowPath(false)
     , everConsidered(false)
@@ -104,40 +108,96 @@ void StructureStubInfo::aboutToDie()
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-MacroAssemblerCodePtr StructureStubInfo::addAccessCase(
+AccessGenerationResult StructureStubInfo::addAccessCase(
     CodeBlock* codeBlock, const Identifier& ident, std::unique_ptr<AccessCase> accessCase)
 {
     VM& vm = *codeBlock->vm();
     
+    if (verbose)
+        dataLog("Adding access case: ", accessCase, "\n");
+    
     if (!accessCase)
-        return MacroAssemblerCodePtr();
+        return AccessGenerationResult::GaveUp;
     
-    if (cacheType == CacheType::Stub)
-        return u.stub->regenerateWithCase(vm, codeBlock, *this, ident, WTFMove(accessCase));
-
-    std::unique_ptr<PolymorphicAccess> access = std::make_unique<PolymorphicAccess>();
+    AccessGenerationResult result;
     
-    Vector<std::unique_ptr<AccessCase>> accessCases;
+    if (cacheType == CacheType::Stub) {
+        result = u.stub->addCase(vm, codeBlock, *this, ident, WTFMove(accessCase));
+        
+        if (verbose)
+            dataLog("Had stub, result: ", result, "\n");
+
+        if (!result.buffered()) {
+            bufferedStructures.clear();
+            return result;
+        }
+    } else {
+        std::unique_ptr<PolymorphicAccess> access = std::make_unique<PolymorphicAccess>();
+        
+        Vector<std::unique_ptr<AccessCase>> accessCases;
+        
+        std::unique_ptr<AccessCase> previousCase =
+            AccessCase::fromStructureStubInfo(vm, codeBlock, *this);
+        if (previousCase)
+            accessCases.append(WTFMove(previousCase));
+        
+        accessCases.append(WTFMove(accessCase));
+        
+        result = access->addCases(vm, codeBlock, *this, ident, WTFMove(accessCases));
+        
+        if (verbose)
+            dataLog("Created stub, result: ", result, "\n");
+
+        if (!result.buffered()) {
+            bufferedStructures.clear();
+            return result;
+        }
+        
+        initStub(codeBlock, WTFMove(access));
+    }
     
-    std::unique_ptr<AccessCase> previousCase =
-        AccessCase::fromStructureStubInfo(vm, codeBlock, *this);
-    if (previousCase)
-        accessCases.append(WTFMove(previousCase));
-
-    accessCases.append(WTFMove(accessCase));
-
-    MacroAssemblerCodePtr result =
-        access->regenerateWithCases(vm, codeBlock, *this, ident, WTFMove(accessCases));
-
-    if (!result)
-        return MacroAssemblerCodePtr();
-
-    initStub(codeBlock, WTFMove(access));
+    RELEASE_ASSERT(!result.generatedSomeCode());
+    
+    // If we didn't buffer any cases then bail. If this made no changes then we'll just try again
+    // subject to cool-down.
+    if (!result.buffered()) {
+        if (verbose)
+            dataLog("Didn't buffer anything, bailing.\n");
+        bufferedStructures.clear();
+        return result;
+    }
+    
+    // The buffering countdown tells us if we should be repatching now.
+    if (bufferingCountdown) {
+        if (verbose)
+            dataLog("Countdown is too high: ", bufferingCountdown, ".\n");
+        return result;
+    }
+    
+    // Forget the buffered structures so that all future attempts to cache get fully handled by the
+    // PolymorphicAccess.
+    bufferedStructures.clear();
+    
+    result = u.stub->regenerate(vm, codeBlock, *this, ident);
+    
+    if (verbose)
+        dataLog("Regeneration result: ", result, "\n");
+    
+    RELEASE_ASSERT(!result.buffered());
+    
+    if (!result.generatedSomeCode())
+        return result;
+    
+    // If we generated some code then we don't want to attempt to repatch in the future until we
+    // gather enough cases.
+    bufferingCountdown = Options::repatchBufferingCountdown();
     return result;
 }
 
 void StructureStubInfo::reset(CodeBlock* codeBlock)
 {
+    bufferedStructures.clear();
+    
     if (cacheType == CacheType::Unset)
         return;
     
@@ -148,8 +208,11 @@ void StructureStubInfo::reset(CodeBlock* codeBlock)
     }
 
     switch (accessType) {
+    case AccessType::GetPure:
+        resetGetByID(codeBlock, *this, GetByIDKind::Pure);
+        break;
     case AccessType::Get:
-        resetGetByID(codeBlock, *this);
+        resetGetByID(codeBlock, *this, GetByIDKind::Normal);
         break;
     case AccessType::Put:
         resetPutByID(codeBlock, *this);
@@ -166,6 +229,8 @@ void StructureStubInfo::reset(CodeBlock* codeBlock)
 void StructureStubInfo::visitWeakReferences(CodeBlock* codeBlock)
 {
     VM& vm = *codeBlock->vm();
+    
+    bufferedStructures.clear();
 
     switch (cacheType) {
     case CacheType::GetByIdSelf:

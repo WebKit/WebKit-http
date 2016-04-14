@@ -335,7 +335,7 @@ void StyleResolver::sweepMatchedPropertiesCache()
     m_matchedPropertiesCacheAdditionsSinceLastSweep = 0;
 }
 
-StyleResolver::State::State(Element& element, RenderStyle* parentStyle, const RenderRegion* regionForStyling, const SelectorFilter* selectorFilter)
+StyleResolver::State::State(Element& element, RenderStyle* parentStyle, RenderStyle* documentElementStyle, const RenderRegion* regionForStyling, const SelectorFilter* selectorFilter)
     : m_element(&element)
     , m_parentStyle(parentStyle)
     , m_regionForStyling(regionForStyling)
@@ -348,7 +348,10 @@ StyleResolver::State::State(Element& element, RenderStyle* parentStyle, const Re
 
     auto& document = element.document();
     auto* documentElement = document.documentElement();
-    m_rootElementStyle = (!documentElement || documentElement == &element) ? document.renderStyle() : documentElement->renderStyle();
+    if (!documentElement || documentElement == &element)
+        m_rootElementStyle = document.renderStyle();
+    else
+        m_rootElementStyle = documentElementStyle ? documentElementStyle : documentElement->renderStyle();
 
     updateConversionData();
 }
@@ -375,7 +378,7 @@ ElementStyle StyleResolver::styleForElement(Element& element, RenderStyle* paren
 {
     RELEASE_ASSERT(!m_inLoadPendingImages);
 
-    m_state = State(element, parentStyle, regionForStyling, selectorFilter);
+    m_state = State(element, parentStyle, m_overrideDocumentElementStyle.get(), regionForStyling, selectorFilter);
     State& state = m_state;
 
     if (state.parentStyle()) {
@@ -720,6 +723,7 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
     case TABLE_COLUMN:
     case TABLE_CELL:
     case TABLE_CAPTION:
+    case CONTENTS:
         return BLOCK;
     case NONE:
         ASSERT_NOT_REACHED();
@@ -762,6 +766,15 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     style.setOriginalDisplay(style.display());
 
     if (style.display() != NONE) {
+        if (style.display() == CONTENTS) {
+            // FIXME: Enable for all elements.
+            bool elementSupportsDisplayContents = false;
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+            elementSupportsDisplayContents = is<HTMLSlotElement>(e);
+#endif
+            if (!elementSupportsDisplayContents)
+                style.setDisplay(INLINE);
+        }
         // If we have a <td> that specifies a float property, in quirks mode we just drop the float
         // property.
         // Sites also commonly use display:inline/block on <td>s and <table>s. In quirks mode we force

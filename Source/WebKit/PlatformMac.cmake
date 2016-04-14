@@ -15,6 +15,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/jsc"
     "${WEBCORE_DIR}/bridge/objc"
     "${WEBCORE_DIR}/ForwardingHeaders/inspector"
+    "${WEBCORE_DIR}/html/track"
     "${WEBCORE_DIR}/loader/archive/cf"
     "${WEBCORE_DIR}/loader/cf"
     "${WEBCORE_DIR}/loader/mac"
@@ -38,6 +39,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/text/cf"
     "${WEBCORE_DIR}/platform/text/mac"
     "${WEBCORE_DIR}/plugins/mac"
+    "${WEBCORE_DIR}/rendering/shapes"
     "${WTF_DIR}"
     ../../WebKitLibraries
 )
@@ -148,6 +150,7 @@ list(APPEND WebKit_SOURCES
 
     mac/Storage/WebDatabaseManager.mm
     mac/Storage/WebDatabaseManagerClient.mm
+    mac/Storage/WebDatabaseProvider.mm
     mac/Storage/WebDatabaseQuotaManager.mm
     mac/Storage/WebStorageManager.mm
     mac/Storage/WebStorageTrackerClient.mm
@@ -176,6 +179,7 @@ list(APPEND WebKit_SOURCES
     mac/WebCoreSupport/WebPlatformStrategies.mm
     mac/WebCoreSupport/WebProgressTrackerClient.mm
     mac/WebCoreSupport/WebSecurityOrigin.mm
+    mac/WebCoreSupport/WebSelectionServiceController.mm
     mac/WebCoreSupport/WebSystemInterface.mm
     mac/WebCoreSupport/WebUserMediaClient.mm
     mac/WebCoreSupport/WebVisitedLinkStore.mm
@@ -234,8 +238,6 @@ set(WebKitLegacy_FORWARDING_HEADERS_DIRECTORIES
     mac/WebCoreSupport
     mac/WebInspector
     mac/WebView
-    ${WEBCORE_DIR}/bindings/objc
-    ${WEBCORE_DIR}/plugins
 )
 
 set(WebKitLegacy_FORWARDING_HEADERS_FILES
@@ -325,6 +327,7 @@ file(COPY
     mac/Plugins/Hosted/WebKitPluginHostTypes.defs
     mac/Plugins/Hosted/WebKitPluginHostTypes.h
 DESTINATION ${DERIVED_SOURCES_WEBKITLEGACY_DIR})
+
 add_custom_command(
     OUTPUT
         ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginAgentReplyServer.c
@@ -354,6 +357,22 @@ list(APPEND WebKit_SOURCES
 WEBKIT_CREATE_FORWARDING_HEADERS(WebKitLegacy DIRECTORIES ${WebKitLegacy_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebKitLegacy_FORWARDING_HEADERS_FILES})
 WEBKIT_CREATE_FORWARDING_HEADERS(WebKit DIRECTORIES ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy)
 
+# FIXME: Forwarding headers should be copies of actual headers.
+file(GLOB ObjCHeaders ${WEBCORE_DIR}/bindings/objc/*.h)
+foreach (_file ${ObjCHeaders})
+    get_filename_component(_name ${_file} NAME)
+    if (NOT EXISTS ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy/${_name})
+        file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy/${_name} "#import <WebCore/${_name}>")
+    endif ()
+endforeach ()
+file(GLOB ObjCHeaders ${WEBCORE_DIR}/plugins/*.h)
+foreach (_file ${ObjCHeaders})
+    get_filename_component(_name ${_file} NAME)
+    if (NOT EXISTS ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy/${_name})
+        file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy/${_name} "#import <WebCore/${_name}>")
+    endif ()
+endforeach ()
+
 set(WebKit_OUTPUT_NAME WebKitLegacy)
 
 set(WebKitLegacy_WebCore_FORWARDING_HEADERS
@@ -369,3 +388,5 @@ foreach (_file ${WebKitLegacy_WebCore_FORWARDING_HEADERS})
         file(WRITE ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/${_file} "#import <WebCore/${_file}>")
     endif ()
 endforeach ()
+
+set(CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS} "-compatibility_version 1 -current_version ${WEBKIT_MAC_VERSION}")

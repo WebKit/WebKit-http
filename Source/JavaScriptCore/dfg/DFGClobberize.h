@@ -107,6 +107,17 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     if (edgesUseStructure(graph, node))
         read(JSCell_structureID);
     
+    // We allow the runtime to perform a stack scan at any time. We don't model which nodes get implemented
+    // by calls into the runtime. For debugging we might replace the implementation of any node with a call
+    // to the runtime, and that call may walk stack. Therefore, each node must read() anything that a stack
+    // scan would read. That's what this does.
+    for (InlineCallFrame* inlineCallFrame = node->origin.semantic.inlineCallFrame; inlineCallFrame; inlineCallFrame = inlineCallFrame->directCaller.inlineCallFrame) {
+        if (inlineCallFrame->isClosureCall)
+            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + JSStack::Callee));
+        if (inlineCallFrame->isVarargs())
+            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + JSStack::ArgumentCount));
+    }
+    
     switch (node->op()) {
     case JSConstant:
     case DoubleConstant:
@@ -142,6 +153,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetGlobalObject:
     case StringCharCodeAt:
     case CompareStrictEq:
+    case IsJSArray:
+    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -181,7 +194,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(MathDotRandomState);
         write(MathDotRandomState);
         return;
-        
+
+    case IsArrayObject:
     case HasGenericProperty:
     case HasStructureProperty:
     case GetEnumerableLength:
@@ -305,6 +319,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithRound:
     case ArithFloor:
     case ArithCeil:
+    case ArithTrunc:
         def(PureValue(node, static_cast<uintptr_t>(node->arithRoundingMode())));
         return;
 
@@ -397,6 +412,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
+    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
         read(MiscFields);
@@ -836,7 +852,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(NamedPropertyLoc, heap, node->child2()), LazyNode(node));
         return;
     }
-        
+
+    case TryGetById: {
+        read(Heap);
+        return;
+    }
+
     case MultiGetByOffset: {
         read(JSCell_structureID);
         read(JSObject_butterfly);
@@ -915,6 +936,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case SetRegExpObjectLastIndex:
         write(RegExpObject_lastIndex);
         def(HeapLocation(RegExpObjectLastIndexLoc, RegExpObject_lastIndex, node->child1()), LazyNode(node->child2().node()));
+        return;
+
+    case RecordRegExpCachedResult:
+        write(RegExpState);
         return;
         
     case GetFromArguments: {
@@ -1064,8 +1089,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;
-    
-    case NewArrowFunction:
+
     case NewFunction:
     case NewGeneratorFunction:
         if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
@@ -1079,7 +1103,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         if (node->child2().useKind() == RegExpObjectUse
             && node->child3().useKind() == StringUse) {
             read(RegExpState);
+            read(RegExpObject_lastIndex);
             write(RegExpState);
+            write(RegExpObject_lastIndex);
             return;
         }
         read(World);
@@ -1091,7 +1117,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             && node->child2().useKind() == RegExpObjectUse
             && node->child3().useKind() == StringUse) {
             read(RegExpState);
+            read(RegExpObject_lastIndex);
             write(RegExpState);
+            write(RegExpObject_lastIndex);
             return;
         }
         read(World);
@@ -1148,6 +1176,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CheckWatchdogTimer:
         read(InternalState);
         write(InternalState);
+        return;
+        
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
+        write(SideState);
         return;
         
     case LastNodeType:

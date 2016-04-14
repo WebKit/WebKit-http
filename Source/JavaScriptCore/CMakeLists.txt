@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
+set_property(DIRECTORY . PROPERTY FOLDER "JavaScriptCore")
 
 set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
@@ -171,6 +172,7 @@ set(JavaScriptCore_SOURCES
     bindings/ScriptValue.cpp
 
     builtins/BuiltinExecutables.cpp
+    builtins/BuiltinExecutableCreator.cpp
 
     bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp
     bytecode/ArrayAllocationProfile.cpp
@@ -507,10 +509,12 @@ set(JavaScriptCore_SOURCES
     interpreter/Interpreter.cpp
     interpreter/JSStack.cpp
     interpreter/ProtoCallFrame.cpp
+    interpreter/ShadowChicken.cpp
     interpreter/StackVisitor.cpp
 
     jit/AssemblyHelpers.cpp
     jit/BinarySwitch.cpp
+    jit/CCallHelpers.cpp
     jit/CachedRecovery.cpp
     jit/CallFrameShuffleData.cpp
     jit/CallFrameShuffler.cpp
@@ -522,6 +526,7 @@ set(JavaScriptCore_SOURCES
     jit/GCAwareJITStubRoutine.cpp
     jit/GPRInfo.cpp
     jit/HostCallReturnValue.cpp
+    jit/ICStats.cpp
     jit/IntrinsicEmitter.cpp
     jit/JIT.cpp
     jit/JITAddGenerator.cpp
@@ -633,6 +638,7 @@ set(JavaScriptCore_SOURCES
     runtime/DirectArguments.cpp
     runtime/DirectArgumentsOffset.cpp
     runtime/DumpContext.cpp
+    runtime/ECMAScriptSpecInternalFunctions.cpp
     runtime/Error.cpp
     runtime/ErrorConstructor.cpp
     runtime/ErrorHandlingScope.cpp
@@ -1324,10 +1330,12 @@ add_subdirectory(shell)
 WEBKIT_WRAP_SOURCELIST(${JavaScriptCore_SOURCES})
 WEBKIT_FRAMEWORK(JavaScriptCore)
 
-if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
-    POPULATE_LIBRARY_VERSION(JAVASCRIPTCORE)
-    set_target_properties(JavaScriptCore PROPERTIES VERSION ${JAVASCRIPTCORE_VERSION} SOVERSION ${JAVASCRIPTCORE_VERSION_MAJOR})
-    install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
+if (NOT APPLE)
+    if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
+        POPULATE_LIBRARY_VERSION(JAVASCRIPTCORE)
+        set_target_properties(JavaScriptCore PROPERTIES VERSION ${JAVASCRIPTCORE_VERSION} SOVERSION ${JAVASCRIPTCORE_VERSION_MAJOR})
+        install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
+    endif ()
 endif ()
 
 # Force staging of shared scripts, even if they aren't directly used to build JavaScriptCore.

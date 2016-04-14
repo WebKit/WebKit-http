@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "FileSystem.h"
 #include "IDBConnectionToClient.h"
 #include "IDBConnectionToServer.h"
 #include "IDBCursorInfo.h"
@@ -35,6 +36,7 @@
 #include "IDBOpenDBRequest.h"
 #include "IDBRequestData.h"
 #include "IDBResultData.h"
+#include "IDBValue.h"
 #include "Logging.h"
 #include <wtf/RunLoop.h>
 
@@ -55,7 +57,7 @@ Ref<InProcessIDBServer> InProcessIDBServer::create(const String& databaseDirecto
 }
 
 InProcessIDBServer::InProcessIDBServer()
-    : m_server(IDBServer::IDBServer::create())
+    : m_server(IDBServer::IDBServer::create(*this))
 {
     relaxAdoptionRequirement();
     m_connectionToServer = IDBClient::IDBConnectionToServer::create(*this);
@@ -63,7 +65,7 @@ InProcessIDBServer::InProcessIDBServer()
 }
 
 InProcessIDBServer::InProcessIDBServer(const String& databaseDirectoryPath)
-    : m_server(IDBServer::IDBServer::create(databaseDirectoryPath))
+    : m_server(IDBServer::IDBServer::create(databaseDirectoryPath, *this))
 {
     relaxAdoptionRequirement();
     m_connectionToServer = IDBClient::IDBConnectionToServer::create(*this);
@@ -287,14 +289,13 @@ void InProcessIDBServer::deleteIndex(const IDBRequestData& requestData, uint64_t
     });
 }
 
-void InProcessIDBServer::putOrAdd(const IDBRequestData& requestData, IDBKey* key, SerializedScriptValue& value, const IndexedDB::ObjectStoreOverwriteMode overwriteMode)
+void InProcessIDBServer::putOrAdd(const IDBRequestData& requestData, IDBKey* key, const IDBValue& value, const IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     RefPtr<InProcessIDBServer> self(this);
     IDBKeyData keyData(key);
-    auto valueData = ThreadSafeDataBuffer::copyVector(value.data());
 
-    RunLoop::current().dispatch([this, self, requestData, keyData, valueData, overwriteMode] {
-        m_server->putOrAdd(requestData, keyData, valueData, overwriteMode);
+    RunLoop::current().dispatch([this, self, requestData, keyData, value, overwriteMode] {
+        m_server->putOrAdd(requestData, keyData, value, overwriteMode);
     });
 }
 
@@ -398,6 +399,11 @@ void InProcessIDBServer::didFireVersionChangeEvent(uint64_t databaseConnectionId
     RunLoop::current().dispatch([this, self, databaseConnectionIdentifier, requestIdentifier] {
         m_server->didFireVersionChangeEvent(databaseConnectionIdentifier, requestIdentifier);
     });
+}
+
+void InProcessIDBServer::accessToTemporaryFileComplete(const String& path)
+{
+    deleteFile(path);
 }
 
 } // namespace WebCore

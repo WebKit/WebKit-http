@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -489,7 +489,7 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
 
     // Some preferences (notably mock scroll bars setting) currently cannot be re-applied to an existing view, so we need to set them now.
     // FIXME: Migrate these preferences to WKContextConfigurationRef.
-    resetPreferencesToConsistentValues();
+    resetPreferencesToConsistentValues(options);
 
     platformCreateWebView(configuration.get(), options);
     WKPageUIClientV6 pageUIClient = {
@@ -585,7 +585,22 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
     };
     WKPageSetPageNavigationClient(m_mainWebView->page(), &pageNavigationClient.base);
 
-
+    WKContextDownloadClientV0 downloadClient = {
+        { 0, this },
+        downloadDidStart,
+        0, // didReceiveAuthenticationChallenge
+        0, // didReceiveResponse
+        0, // didReceiveData
+        0, // shouldDecodeSourceDataOfMIMEType
+        decideDestinationWithSuggestedFilename,
+        0, // didCreateDestination
+        downloadDidFinish,
+        downloadDidFail,
+        downloadDidCancel,
+        0 // processDidCrash;
+    };
+    WKContextSetDownloadClient(context(), &downloadClient.base);
+    
     // this should just be done on the page?
     WKPageInjectedBundleClientV0 injectedBundleClient = {
         { 0, this },
@@ -618,11 +633,11 @@ void TestController::ensureViewSupportsOptionsForTest(const TestInvocation& test
 
     createWebViewWithOptions(options);
 
-    if (!resetStateToConsistentValues())
+    if (!resetStateToConsistentValues(options))
         TestInvocation::dumpWebProcessUnresponsiveness("<unknown> - TestController::run - Failed to reset state to consistent values\n");
 }
 
-void TestController::resetPreferencesToConsistentValues()
+void TestController::resetPreferencesToConsistentValues(const TestOptions& options)
 {
     // Reset preferences
     WKPreferencesRef preferences = platformPreferences();
@@ -649,7 +664,7 @@ void TestController::resetPreferencesToConsistentValues()
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
     WKPreferencesSetTabToLinksEnabled(preferences, false);
     WKPreferencesSetInteractiveFormValidationEnabled(preferences, true);
-    WKPreferencesSetMockScrollbarsEnabled(preferences, true);
+    WKPreferencesSetMockScrollbarsEnabled(preferences, options.useMockScrollbars);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
@@ -689,7 +704,7 @@ void TestController::resetPreferencesToConsistentValues()
     platformResetPreferencesToConsistentValues();
 }
 
-bool TestController::resetStateToConsistentValues()
+bool TestController::resetStateToConsistentValues(const TestOptions& options)
 {
     TemporaryChange<State> changeState(m_state, Resetting);
     m_beforeUnloadReturnValue = true;
@@ -729,7 +744,7 @@ bool TestController::resetStateToConsistentValues()
 
     // FIXME: Is this needed? Nothing in TestController changes preferences during tests, and if there is
     // some other code doing this, it should probably be responsible for cleanup too.
-    resetPreferencesToConsistentValues();
+    resetPreferencesToConsistentValues(options);
 
 #if !PLATFORM(COCOA)
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
@@ -939,6 +954,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.useDataDetection = parseBooleanTestHeaderValue(value);
         if (key == "rtlScrollbars")
             testOptions.useRTLScrollbars = parseBooleanTestHeaderValue(value);
+        if (key == "useMockScrollbars")
+            testOptions.useMockScrollbars = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1626,6 +1643,85 @@ void TestController::didReceiveAuthenticationChallenge(WKPageRef page, WKAuthent
     WKRetainPtr<WKStringRef> password(AdoptWK, WKStringCreateWithUTF8CString(m_authenticationPassword.utf8().data()));
     WKRetainPtr<WKCredentialRef> credential(AdoptWK, WKCredentialCreate(username.get(), password.get(), kWKCredentialPersistenceForSession));
     WKAuthenticationDecisionListenerUseCredential(decisionListener, credential.get());
+}
+
+    
+// WKContextDownloadClient
+
+void TestController::downloadDidStart(WKContextRef context, WKDownloadRef download, const void* clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->downloadDidStart(context, download);
+}
+    
+WKStringRef TestController::decideDestinationWithSuggestedFilename(WKContextRef context, WKDownloadRef download, WKStringRef filename, bool* allowOverwrite, const void* clientInfo)
+{
+    return static_cast<TestController*>(const_cast<void*>(clientInfo))->decideDestinationWithSuggestedFilename(context, download, filename, allowOverwrite);
+}
+
+void TestController::downloadDidFinish(WKContextRef context, WKDownloadRef download, const void* clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->downloadDidFinish(context, download);
+}
+
+void TestController::downloadDidFail(WKContextRef context, WKDownloadRef download, WKErrorRef error, const void* clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->downloadDidFail(context, download, error);
+}
+
+void TestController::downloadDidCancel(WKContextRef context, WKDownloadRef download, const void* clientInfo)
+{
+    static_cast<TestController*>(const_cast<void*>(clientInfo))->downloadDidCancel(context, download);
+}
+
+void TestController::downloadDidStart(WKContextRef context, WKDownloadRef download)
+{
+    m_currentInvocation->outputText("Download started.\n");
+}
+
+WKStringRef TestController::decideDestinationWithSuggestedFilename(WKContextRef, WKDownloadRef, WKStringRef filename, bool*& allowOverwrite)
+{
+    StringBuilder builder;
+    builder.append("Downloading URL with suggested filename \"");
+    builder.append(toWTFString(filename));
+    builder.append("\"\n");
+
+    m_currentInvocation->outputText(builder.toString());
+
+    return nullptr;
+}
+
+void TestController::downloadDidFinish(WKContextRef, WKDownloadRef)
+{
+    m_currentInvocation->outputText("Download completed.\n");
+    m_currentInvocation->notifyDownloadDone();
+}
+
+void TestController::downloadDidFail(WKContextRef, WKDownloadRef, WKErrorRef error)
+{
+    String message = String::format("Download failed.\n");
+    m_currentInvocation->outputText(message);
+    
+    WKRetainPtr<WKStringRef> errorDomain = adoptWK(WKErrorCopyDomain(error));
+    WKRetainPtr<WKStringRef> errorDescription = adoptWK(WKErrorCopyLocalizedDescription(error));
+    int errorCode = WKErrorGetErrorCode(error);
+
+    StringBuilder errorBuilder;
+    errorBuilder.append("Failed: ");
+    errorBuilder.append(toWTFString(errorDomain));
+    errorBuilder.append(", code=");
+    errorBuilder.appendNumber(errorCode);
+    errorBuilder.append(", description=");
+    errorBuilder.append(toWTFString(errorDescription));
+    errorBuilder.append("\n");
+
+    m_currentInvocation->outputText(errorBuilder.toString());
+    m_currentInvocation->notifyDownloadDone();
+}
+
+void TestController::downloadDidCancel(WKContextRef, WKDownloadRef)
+{
+    m_currentInvocation->outputText("Download cancelled.\n");
+    m_currentInvocation->notifyDownloadDone();
 }
 
 void TestController::processDidCrash()

@@ -207,7 +207,6 @@ FrameView::FrameView(Frame& frame)
     , m_delayedScrollEventTimer(*this, &FrameView::sendScrollEvent)
     , m_isTrackingRepaints(false)
     , m_shouldUpdateWhileOffscreen(true)
-    , m_exposedRect(FloatRect::infiniteRect())
     , m_deferSetNeedsLayoutCount(0)
     , m_setNeedsLayoutWasDeferred(false)
     , m_speculativeTilingEnabled(false)
@@ -2484,16 +2483,22 @@ void FrameView::adjustTiledBackingScrollability()
     
     bool horizontallyScrollable;
     bool verticallyScrollable;
+    bool clippedByAncestorView = static_cast<bool>(m_viewExposedRect);
+
+#if PLATFORM(IOS)
+    if (Page* page = frame().page())
+        clippedByAncestorView |= page->enclosedInScrollView();
+#endif
 
     if (delegatesScrolling()) {
         IntSize documentSize = contentsSize();
         IntSize visibleSize = this->visibleSize();
         
-        horizontallyScrollable = documentSize.width() > visibleSize.width();
-        verticallyScrollable = documentSize.height() > visibleSize.height();
+        horizontallyScrollable = clippedByAncestorView || documentSize.width() > visibleSize.width();
+        verticallyScrollable = clippedByAncestorView || documentSize.height() > visibleSize.height();
     } else {
-        horizontallyScrollable = horizontalScrollbar();
-        verticallyScrollable = verticalScrollbar();
+        horizontallyScrollable = clippedByAncestorView || horizontalScrollbar();
+        verticallyScrollable = clippedByAncestorView || verticalScrollbar();
     }
 
     TiledBacking::Scrollability scrollability = TiledBacking::NotScrollable;
@@ -4258,7 +4263,8 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
         return true;
 
     // Require the document to grow a bit.
-    static const int documentHeightThreshold = 200;
+    // Using a value of 48 allows the header on Google's search page to render immediately before search results populate later.
+    static const int documentHeightThreshold = 48;
     LayoutRect overflowRect = documentElement->renderBox()->layoutOverflowRect();
     if (snappedIntRect(overflowRect).height() < documentHeightThreshold)
         return false;
@@ -4908,24 +4914,31 @@ void FrameView::notifyWidgets(WidgetNotification notification)
         widget->notifyWidget(notification);
 }
 
-void FrameView::setExposedRect(FloatRect exposedRect)
+void FrameView::setViewExposedRect(Optional<FloatRect> viewExposedRect)
 {
-    if (m_exposedRect == exposedRect)
+    if (m_viewExposedRect == viewExposedRect)
         return;
-    m_exposedRect = exposedRect;
+
+    LOG_WITH_STREAM(Scrolling, stream << "FrameView " << this << " setViewExposedRect " << (viewExposedRect ? viewExposedRect.value() : FloatRect()));
+
+    bool hasRectChanged = !m_viewExposedRect == !viewExposedRect;
+    m_viewExposedRect = viewExposedRect;
 
     // FIXME: We should support clipping to the exposed rect for subframes as well.
     if (!frame().isMainFrame())
         return;
+
     if (TiledBacking* tiledBacking = this->tiledBacking()) {
+        if (hasRectChanged)
+            adjustTiledBackingScrollability();
         adjustTiledBackingCoverage();
-        tiledBacking->setTiledScrollingIndicatorPosition(exposedRect.location());
+        tiledBacking->setTiledScrollingIndicatorPosition(m_viewExposedRect ? m_viewExposedRect.value().location() : FloatPoint());
     }
 
     if (auto* view = renderView())
         view->compositor().scheduleLayerFlush(false /* canThrottle */);
 
-    frame().mainFrame().pageOverlayController().didChangeExposedRect();
+    frame().mainFrame().pageOverlayController().didChangeViewExposedRect();
 }
     
 void FrameView::setViewportSizeForCSSViewportUnits(IntSize size)

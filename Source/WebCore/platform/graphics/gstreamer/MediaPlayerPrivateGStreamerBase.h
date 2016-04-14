@@ -27,18 +27,14 @@
 #include "GRefPtrGStreamer.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
+#include "PlatformLayer.h"
 #include "TextureMapperGL.h"
+#include "TextureMapperPlatformLayer.h"
+#include "TextureMapperPlatformLayerProxy.h"
 #include <glib.h>
 #include <wtf/Condition.h>
 #include <wtf/Forward.h>
 #include <wtf/RunLoop.h>
-
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
-#include "TextureMapperPlatformLayer.h"
-#endif
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#include "TextureMapperPlatformLayerProxy.h"
-#endif
 
 typedef struct _GstMessage GstMessage;
 typedef struct _GstStreamVolume GstStreamVolume;
@@ -63,10 +59,8 @@ class PlayreadySession;
 void registerWebKitGStreamerElements();
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
-    , public TextureMapperPlatformLayer
-#elif USE(COORDINATED_GRAPHICS_THREADED)
-    , public TextureMapperPlatformLayerProxyProvider
+#if USE(COORDINATED_GRAPHICS_THREADED) || (USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS))
+    , public PlatformLayer
 #endif
 {
 
@@ -83,7 +77,9 @@ public:
     FloatSize naturalSize() const override;
 
     void setVolume(float) override;
+#if PLATFORM(WPE)
     float volume() const override;
+#endif
 
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();

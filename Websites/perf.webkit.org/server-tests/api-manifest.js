@@ -6,23 +6,18 @@ require('../tools/js/v3-models.js');
 
 let TestServer = require('./resources/test-server.js');
 
-describe('/api/build-requests', function () {
-    this.timeout(10000);
+describe('/api/manifest', function () {
+    this.timeout(1000);
     TestServer.inject();
 
     beforeEach(function () {
-        Builder.clearStaticMap();
-        BugTracker.clearStaticMap();
-        Test.clearStaticMap();
-        Metric.clearStaticMap();
-        Platform.clearStaticMap();
-        Repository.clearStaticMap();
+        MockData.resetV3Models();
     });
 
     it("should generate an empty manifest when database is empty", function (done) {
         TestServer.remoteAPI().getJSON('/api/manifest').then(function (manifest) {
             assert.deepEqual(Object.keys(manifest).sort(), ['all', 'bugTrackers', 'builders', 'dashboard', 'dashboards',
-                'elapsedTime', 'metrics', 'repositories', 'siteTitle', 'status', 'tests']);
+                'elapsedTime', 'metrics', 'repositories', 'siteTitle', 'status', 'summary', 'tests']);
 
             assert.equal(typeof(manifest.elapsedTime), 'number');
             delete manifest.elapsedTime;
@@ -37,6 +32,7 @@ describe('/api/build-requests', function () {
                 metrics: {},
                 repositories: {},
                 tests: {},
+                summary: {},
                 status: 'OK'
             });
             done();

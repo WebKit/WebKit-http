@@ -186,10 +186,12 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithRound:
     case ArithFloor:
     case ArithCeil:
+    case ArithTrunc:
     case ArithSin:
     case ArithCos:
     case ArithLog:
     case ValueAdd:
+    case TryGetById:
     case GetById:
     case GetByIdFlush:
     case PutById:
@@ -250,6 +252,9 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case OverridesHasInstance:
     case InstanceOf:
     case InstanceOfCustom:
+    case IsArrayObject:
+    case IsJSArray:
+    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -259,6 +264,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case IsFunction:
     case TypeOf:
     case LogicalNot:
+    case CallObjectConstructor:
     case ToPrimitive:
     case ToString:
     case SetFunctionName:
@@ -273,7 +279,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CreateClonedArguments:
     case GetFromArguments:
     case PutToArguments:
-    case NewArrowFunction:
     case NewFunction:
     case NewGeneratorFunction:
     case Jump:
@@ -288,6 +293,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CountExecution:
     case ForceOSRExit:
     case CheckWatchdogTimer:
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
     case StringFromCharCode:
     case NewTypedArray:
     case Unreachable:
@@ -335,6 +342,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case StringReplace:
     case GetRegExpObjectLastIndex:
     case SetRegExpObjectLastIndex:
+    case RecordRegExpCachedResult:
         return true;
 
     case BottomValue:

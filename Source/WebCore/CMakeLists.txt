@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
+set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
 
 set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
@@ -338,7 +339,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSValue.idl
     css/CSSValueList.idl
     css/Counter.idl
-    css/DOMWindowCSS.idl
+    css/DOMCSSNamespace.idl
     css/FontFace.idl
     css/FontFaceSet.idl
     css/MediaList.idl
@@ -858,6 +859,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBRequest.cpp
     Modules/indexeddb/IDBRequestCompletionEvent.cpp
     Modules/indexeddb/IDBTransaction.cpp
+    Modules/indexeddb/IDBValue.cpp
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
@@ -1051,6 +1053,7 @@ set(WebCore_SOURCES
     accessibility/AccessibilityARIAGrid.cpp
     accessibility/AccessibilityARIAGridCell.cpp
     accessibility/AccessibilityARIAGridRow.cpp
+    accessibility/AccessibilityAttachment.cpp
     accessibility/AccessibilityImageMapLink.cpp
     accessibility/AccessibilityList.cpp
     accessibility/AccessibilityListBox.cpp
@@ -1304,6 +1307,7 @@ set(WebCore_SOURCES
     css/CSSFontValue.cpp
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
+    css/CSSGridAutoRepeatValue.cpp
     css/CSSGridLineNamesValue.cpp
     css/CSSGridTemplateAreasValue.cpp
     css/CSSGroupingRule.cpp
@@ -1346,7 +1350,7 @@ set(WebCore_SOURCES
     css/CSSValuePool.cpp
     css/CSSVariableDependentValue.cpp
     css/CSSVariableValue.cpp
-    css/DOMWindowCSS.cpp
+    css/DOMCSSNamespace.cpp
     css/DocumentRuleSets.cpp
     css/ElementRuleCollector.cpp
     css/FontVariantBuilder.cpp
@@ -1572,8 +1576,6 @@ set(WebCore_SOURCES
     editing/RemoveNodeCommand.cpp
     editing/RemoveNodePreservingChildrenCommand.cpp
     editing/RenderedPosition.cpp
-    editing/ReplaceDeleteFromTextNodeCommand.cpp
-    editing/ReplaceInsertIntoTextNodeCommand.cpp
     editing/ReplaceNodeWithSpanCommand.cpp
     editing/ReplaceSelectionCommand.cpp
     editing/SetNodeAttributeCommand.cpp
@@ -1616,7 +1618,6 @@ set(WebCore_SOURCES
     history/HistoryItem.cpp
     history/PageCache.cpp
 
-    html/AttributeDOMTokenList.cpp
     html/Autofill.cpp
     html/BaseButtonInputType.cpp
     html/BaseCheckableInputType.cpp
@@ -2225,6 +2226,7 @@ set(WebCore_SOURCES
     platform/graphics/Image.cpp
     platform/graphics/ImageBuffer.cpp
     platform/graphics/ImageOrientation.cpp
+    platform/graphics/ImageSource.cpp
     platform/graphics/IntPoint.cpp
     platform/graphics/IntRect.cpp
     platform/graphics/IntSize.cpp
@@ -2638,12 +2640,14 @@ set(WebCore_SOURCES
     style/IdChangeInvalidation.cpp
     style/InlineTextBoxStyle.cpp
     style/RenderTreePosition.cpp
+    style/RenderTreeUpdater.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleRelations.cpp
     style/StyleResolveForDocument.cpp
     style/StyleSharingResolver.cpp
     style/StyleTreeResolver.cpp
+    style/StyleUpdate.cpp
 
     svg/SVGAElement.cpp
     svg/SVGAltGlyphDefElement.cpp
@@ -2979,7 +2983,6 @@ set(WebCore_PLUG_INS_RESOURCES
 set(WebCore_LIBRARIES
     ${ICU_LIBRARIES}
     JavaScriptCore${DEBUG_SUFFIX}
-    WTF${DEBUG_SUFFIX}
 )
 
 if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
@@ -3429,8 +3432,7 @@ list(APPEND WebCoreTestSupport_SOURCES
 )
 
 set(WebCoreTestSupport_LIBRARIES
-    JavaScriptCore${DEBUG_SUFFIX}
-    WTF${DEBUG_SUFFIX}
+    PRIVATE JavaScriptCore${DEBUG_SUFFIX}
 )
 
 # Modules that the bindings generator scripts may use
@@ -3805,6 +3807,7 @@ if (ENABLE_ALLINONE_BUILD)
 endif ()
 
 WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_DERIVED_SOURCES})
+WEBKIT_WRAP_SOURCELIST(${WebCore_SOURCES})
 WEBKIT_WRAP_SOURCELIST(${WebCoreTestSupport_IDL_FILES} ${WebCoreTestSupport_SOURCES})
 
 if (MSVC)
@@ -3812,23 +3815,24 @@ if (MSVC)
     ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCoreDerivedSourcesPrefix.cpp" WebCore_DERIVED_SOURCES)
 endif ()
 
-if (PORT STREQUAL "WPE")
-list(APPEND WebCore_SOURCES ${WebCore_DERIVED_SOURCES})
-else ()
 # This is split into a separate library as a workaround for command line length
 # limits. This should no longer be needed when CMake supports Ninja response
 # files on OS X.
 add_library(WebCoreDerivedSources STATIC ${WebCore_DERIVED_SOURCES})
 set_target_properties(WebCoreDerivedSources PROPERTIES OUTPUT_NAME WebCoreDerivedSources${DEBUG_SUFFIX})
-set_target_properties(WebCoreDerivedSources PROPERTIES FOLDER "WebCore")
 if (NOT WIN32)
     list(APPEND WebCore_LIBRARIES WebCoreDerivedSources)
-endif ()
 endif ()
 
 WEBKIT_FRAMEWORK(WebCore)
 
+if (APPLE)
+    set_target_properties(WebCore PROPERTIES LINK_FLAGS "-sub_library libobjc -umbrella WebKit -allowable_client WebCoreTestSupport -allowable_client WebKit2 -allowable_client WebKitLegacy")
+endif ()
+
 if (WIN32)
+    add_custom_target(WebCoreDerivedSources_PreBuild COMMAND ${WebCore_DERIVED_SOURCES_PRE_BUILD_COMMAND} VERBATIM)
+    add_dependencies(WebCoreDerivedSources WebCoreDerivedSources_PreBuild)
     add_dependencies(WebCore WebCoreDerivedSources)
 endif ()
 
@@ -3848,7 +3852,6 @@ include_directories(${WebCoreTestSupport_INCLUDE_DIRECTORIES})
 add_library(WebCoreTestSupport ${WebCoreTestSupport_LIBRARY_TYPE} ${WebCoreTestSupport_SOURCES})
 add_dependencies(WebCoreTestSupport WebCore)
 target_link_libraries(WebCoreTestSupport ${WebCoreTestSupport_LIBRARIES})
-set_target_properties(WebCoreTestSupport PROPERTIES FOLDER "WebCore")
 
 if (WebCoreTestSupport_OUTPUT_NAME)
     set_target_properties(WebCoreTestSupport PROPERTIES OUTPUT_NAME ${WebCoreTestSupport_OUTPUT_NAME})
@@ -3859,7 +3862,6 @@ endif ()
 
 if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
-    set_target_properties(ANGLESupport PROPERTIES FOLDER "WebCore")
 
     # Suppress null conversion warnings for sources in Source/ThirdParty/ANGLE
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -3885,4 +3887,10 @@ endif ()
 # https://bugs.webkit.org/show_bug.cgi?id=145377
 if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND WTF_CPU_ARM AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9") AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.3"))
     set_source_files_properties(svg/SVGPathElement.cpp PROPERTIES COMPILE_FLAGS "-O2")
+endif ()
+
+if (MSVC)
+    set_target_properties(WebCore PROPERTIES
+        COMPILE_PDB_NAME ${WebCore_OUTPUT_NAME}
+    )
 endif ()

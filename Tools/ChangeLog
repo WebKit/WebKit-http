@@ -1,3 +1,580 @@
+2016-04-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Python test webkitpy.common.system.executive_unittest.ExecutiveTest.serial_test_kill_process is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=155367
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/common/system/executive.py: (Executive.kill_process):
+        Don't flakily consume the return code with waitpid, callers need to do waitpid on
+        their own. Not sure if this line of code was even intentional.
+
+2016-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Flakey crash after ScrollAnimatorMac destruction
+        https://bugs.webkit.org/show_bug.cgi?id=156372
+
+        Reviewed by Darin Adler.
+
+        Implement the new <!-- webkit-test-runner --> flag.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WKR::PlatformWebView::viewSupportsOptions):
+
+2016-04-12  Tomas Popela  <tpopela@redhat.com>
+
+        Modify the CXXFLAGS in webkitdirs.pm just on architectures where the flags are supported
+        https://bugs.webkit.org/show_bug.cgi?id=156338
+
+        Reviewed by Michael Catanzaro.
+
+        Add the "-march=pentium4 -msse2 -mfpmath=sse " into the CXXFLAGS just
+        for the i686 where it is supported and not for other architectures
+        (such as s390(x) and ppc(64)) where the build will fail with these
+        CXXFLAGS.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+
+2016-04-11  Alex Christensen  <achristensen@webkit.org>
+
+        Build MiniBrowser with CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156471
+
+        Reviewed by Daniel Bates.
+
+        * CMakeLists.txt:
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformWin.cmake:
+        * MiniBrowser/mac/CMakeLists.txt: Added.
+
+2016-04-11  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Do not pass context to EwkViewCreate
+        https://bugs.webkit.org/show_bug.cgi?id=156461
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewUserViewportToContents.cpp:
+        (TestWebKitAPI::TEST): Removed context argument from EwkViewCreate calls.
+        * TestWebKitAPI/efl/PlatformWebView.cpp:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView): Ditto.
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::PlatformWebView): Ditto.
+
+2016-04-11  Fujii Hironori  <Hironori.Fujii@jp.sony.com>
+
+        [CMake] Make FOLDER property INHERITED
+        https://bugs.webkit.org/show_bug.cgi?id=156460
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformWin.cmake:
+        * ImageDiff/CMakeLists.txt:
+        * MiniBrowser/efl/CMakeLists.txt:
+        * MiniBrowser/gtk/CMakeLists.txt:
+        * MiniBrowser/win/CMakeLists.txt:
+        Set FOLDER property as a directory property not a target property
+
+2016-04-10  Caitlin Potter  <caitp@igalia.com>
+
+        [Tools] correctly check for braces in multiline branches in macro definition
+        https://bugs.webkit.org/show_bug.cgi?id=156441
+
+        Reviewed by Darin Adler.
+
+        Prevents emitting whitespace/braces warning for code like the
+        following:
+
+        ```
+        #define MACRO(x) \
+            if (x) { \
+                doTheThing(); \
+                continue; \
+            }
+        ```
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_braces):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_line_breaking):
+
+2016-04-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Testharness-based tests that time out should be able to produce a detailed output
+        https://bugs.webkit.org/show_bug.cgi?id=145313
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Adding timeout readonly accessor to TestRunner for both WK1 and WK2.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (getTimeoutCallback): The js "timeout" property getter.
+        (TestRunner::staticValues): Adding "timeout" property to DumpRenderTree so that testRunner.timeout called from JS returns the timeout value.
+        * DumpRenderTree/TestRunner.h:
+        (TestRunner::timeout): Adding access to DRT m_timeout private value.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl: Adding timeout readonly attribute so that testRunner.timeout can be called from JS.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h: Adding DOM timeout getter to implement timeout IDL definition.
+        (WTR::TestRunner::timeout):
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        stylebot should know about TestWebKitAPI FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=156387
+
+        Rubber-stamped by Dan Bernstein.
+
+        * Scripts/webkitpy/style/checkers/featuredefines.py:
+        (FeatureDefinesChecker.check):
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ENABLE_ES6_CLASS_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=156384
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2016-04-06  Dean Jackson  <dino@apple.com>
+
+        Watchlist modifications:
+        - remove roger_fong
+        - add myself to a few areas
+        - remove graouts from WebInspectorAPI
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2016-04-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to test effect of view exposed rect on tiled backing
+        https://bugs.webkit.org/show_bug.cgi?id=156365
+
+        Reviewed by Tim Horton.
+
+        Expose testRunner.setViewSize() and internals.setViewExposedRect() to enable
+        testing of tile coverage when setViewExposedRect() is passed a non-null rectangle.
+
+        testRunner.setViewSize() is used instead of using window.resizeTo(), since we
+        can't easily resize a window to larger than the screen being tested on.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (setViewSizeCallback):
+        (TestRunner::staticFunctions):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setViewSize):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::postSetViewSize):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setViewSize):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2016-04-07  Jason Marcell  <jmarcell@apple.com>
+
+        Adding layout tests for the bot watcher's dashboard QUnit tests.
+        https://bugs.webkit.org/show_bug.cgi?id=155272
+
+        Reviewed by Daniel Bates.
+
+        Moved supporting resources into a resources folder and updated index.html accordingly
+        to point to the new locations. Added code to tests.js to dumpAsText when QUnit is done.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/index-expected.txt: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/index.html: Updated to point to tests.js and Mock files in resources directory.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotQueue.js: Renamed from
+        Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockBuildbotQueue.js.
+        (MockBuildbotQueue):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotQueueView.js: Renamed from
+        Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockBuildbotQueueView.js.
+        (MockBuildbotQueueView):
+        (MockBuildbotQueueView.prototype._latestProductiveIteration):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockTrac.js: Renamed from
+        Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js.
+        (MockTrac):
+        (MockTrac.prototype.get oldestRecordedRevisionNumber):
+        (MockTrac.prototype.get latestRecordedRevisionNumber):
+        (MockTrac.prototype.loadMoreHistoricalData):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/test-fixture-git-trac-rss.xml: Renamed from
+        Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/test-fixture-git-trac-rss.xml.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/test-fixture-trac-rss.xml: Renamed from
+        Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/test-fixture-trac-rss.xml.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/tests.js: Renamed from
+        Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js.
+        Updated the unit tests for Trac._loaded() to point to the XML files that are now located in the 'resources' directory.
+        (QUnit.done): Added. Removes machine-specific output from test results and calls testRunner.notifyDone to let the layout test harness know that all testing is done.
+        * Scripts/run-dashboard-tests: Added.
+
+2016-04-06  ChangSeok Oh  <changseok@webkit.org>
+
+        Unreviewed, Update my primary email address and expertise.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-04-06  Jon Lee  <jonlee@apple.com>
+
+        Update the Animometer patch and plan files
+        https://bugs.webkit.org/show_bug.cgi?id=156263
+
+        Reviewed by Ryosuke Niwa.
+
+        Measure the latest set of tests by updating the plan revision to r199134.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/Animometer.patch: Update to run the master suite only.
+        * Scripts/webkitpy/benchmark_runner/data/plans/animometer.plan: Update to use the release page instead
+        of the developer page.
+
+2016-04-06  Saam barati  <sbarati@apple.com>
+
+        jsc-layout-tests.yaml/js/script-tests/regress-141098.js failing on Yosemite Debug after r198989
+        https://bugs.webkit.org/show_bug.cgi?id=156187
+
+        Reviewed by Keith Miller.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-04-06  Alex Christensen  <achristensen@webkit.org>
+
+        Compile WebKitTestRunner with CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156310
+
+        Reviewed by Daniel Bates.
+
+        * CMakeLists.txt:
+        * WebKitTestRunner/CMakeLists.txt:
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        * WebKitTestRunner/PlatformEfl.cmake:
+        * WebKitTestRunner/PlatformGTK.cmake:
+        * WebKitTestRunner/PlatformMac.cmake: Added.
+
+2016-04-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement operator== and operator!= for Optional<>
+        https://bugs.webkit.org/show_bug.cgi?id=156266
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/Optional.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-04-05  Alex Christensen  <achristensen@webkit.org>
+
+        Make CMake-generated binaries on Mac able to run
+        https://bugs.webkit.org/show_bug.cgi?id=156268
+
+        Reviewed by Daniel Bates.
+
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformMac.cmake:
+        * DumpRenderTree/PlatformWin.cmake:
+        * TestWebKitAPI/PlatformMac.cmake:
+
+2016-04-05  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add a runtime flag to fetch API and related constructs
+        https://bugs.webkit.org/show_bug.cgi?id=156113
+ 
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebGL2Enabled):
+        (WTR::TestRunner::setFetchAPIEnabled):
+        (WTR::TestRunner::setAllowUniversalAccessFromFileURLs):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-04-05  Keith Miller  <keith_miller@apple.com>
+
+        Make Keith a reviewer!
+        https://bugs.webkit.org/show_bug.cgi?id=156246
+
+        Reviewed by Mark Lam.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-04-05  Antoine Quint  <graouts@apple.com>
+
+        [WebGL2] Allow enabling WebGL2 with a runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=156166
+        <rdar://problem/25526929>
+
+        Always enable WebGL2 during testing.
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebGL2Enabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-04-04  Bill Ming  <mbbill@gmail.com>
+
+        [win] run-webkit-tests failed to launch DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=156150
+
+        Reviewed by Alex Christensen.
+
+        * Tools/Scripts/webkitpy/port/base.py:
+
+2016-04-04  Bill Ming  <mbbill@gmail.com>
+
+        prepare-ChangeLog set endl incorrectly.
+        https://bugs.webkit.org/show_bug.cgi?id=156151
+
+        Reviewed by Alex Christensen.
+
+        * Tools/Scripts/prepare-ChangeLog:
+
+2016-04-03  Sam Weinig  <sam@webkit.org>
+
+        Add SPI to allow install script message handlers in isolated worlds
+        https://bugs.webkit.org/show_bug.cgi?id=156153
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        Add new test, WKUserContentController.ScriptMessageHandlerBasicPostIsolatedWorld
+
+2016-04-04  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Build fix for r198956.
+
+        Unreviewed.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadInvalidURLRequest.mm:
+        (-[LoadInvalidURLNavigationActionDelegate webView:didFailProvisionalNavigation:withError:]):
+        * TestWebKitAPI/Tests/mac/LoadInvalidURLRequest.mm:
+        (-[LoadInvalidURLWebFrameLoadDelegate webView:didFailProvisionalLoadWithError:forFrame:]):
+
+2016-04-04  Bill Ming  <mbbill@gmail.com>
+
+        [win] prepare-ChangeLog should treat windows path differently.
+        https://bugs.webkit.org/show_bug.cgi?id=156120
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/prepare-ChangeLog:
+
+2016-04-04  Alejandro G. Castro  <alex@igalia.com>
+
+        REGRESSION(r198492): [GTK] The WEB_RTC flag was not correctly added in some situations
+        https://bugs.webkit.org/show_bug.cgi?id=156164
+
+        Reviewed by Philippe Normand.
+
+        Enable the new WEB_RTC option by default for Gtk+.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-04-03  Dan Bernstein  <mitz@apple.com>
+
+        Use the correct value for the first nightly build with frameworks built for OS X 10.11.
+
+        * Scripts/bisect-builds:
+        (makeNightlyList):
+
+2016-04-03  Dan Bernstein  <mitz@apple.com>
+
+        Made bisect-builds work again.
+
+        Rubber-stamped by Sam Weinig.
+
+        * Scripts/bisect-builds:
+        Changed to use HTTPS to access nightly.webkit.org, and added a minimum revision for OS X 10.11.
+
+2016-04-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Build fix for r198956.
+
+        Unreviewed.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ProvisionalURLNotChange.mm: Renamed from Tools/TestWebKitAPI/Tests/WebKit2Cocoa/ProvisionalURLChange.mm.
+        (-[ProvisionalURLNotChangeController webView:didFinishNavigation:]):
+        (-[ProvisionalURLNotChangeController webView:didFailProvisionalNavigation:withError:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsInvalidScheme.mm:
+        (-[LoadInvalidSchemeDelegate browsingContextController:didFailProvisionalLoadWithError:]):
+        (TestWebKitAPI::TEST):
+
+2016-04-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should dispatchDidFailProvisionalLoad while loading invalid URLs
+        https://bugs.webkit.org/show_bug.cgi?id=155995
+        <rdar://problem/14967004>
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadAlternateHTMLString.mm:
+        (-[LoadAlternateHTMLStringFromProvisionalLoadErrorController webView:didFailProvisionalNavigation:withError:]):
+        (-[LoadAlternateHTMLStringFromProvisionalLoadErrorController webView:didStartProvisionalNavigation:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LoadInvalidURLRequest.mm: Added.
+        (literalURL):
+        (-[LoadInvalidURLNavigationActionDelegate webView:didCommitNavigation:]):
+        (-[LoadInvalidURLNavigationActionDelegate webView:didFailProvisionalNavigation:withError:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/LoadInvalidURLRequest.html: Added.
+        * TestWebKitAPI/Tests/mac/LoadInvalidURLRequest.mm: Added.
+        (-[LoadInvalidURLWebFrameLoadDelegate webView:didCommitLoadForFrame:]):
+        (-[LoadInvalidURLWebFrameLoadDelegate webView:didFailProvisionalLoadWithError:forFrame:]):
+        (TestWebKitAPI::TEST):
+
+2016-04-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Confirm <a download> satisfies specification criteria
+        https://bugs.webkit.org/show_bug.cgi?id=156057
+
+        Reviewed by Andy Estes.
+
+        Revise WebKitTestRunner:
+        (1) Provide a download client delegate.
+        (2) Teach WKTR to wait to finish a test until a download finishes.
+        (3) Allow WKTR to notify the current TestRunner that it can finish.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage): Update to recognize a new
+        message "NotifyDownloadDone".
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForNavigationAction): Handle 'download'
+        attribute case.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::waitUntilDownload): Added.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::shouldFinishAfterDownload): Added.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions): Set up the download client.
+        (WTR::TestController::downloadDidStart): Added.
+        (WTR::TestController::decideDestinationWithSuggestedFilename): Added.
+        (WTR::TestController::downloadDidFinish): Added.
+        (WTR::TestController::downloadDidFail): Added.
+        (WTR::TestController::downloadDidCancel): Added.
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::notifyDownloadDone): Added.
+        * WebKitTestRunner/TestInvocation.h:
+
+2016-04-01  Alex Christensen  <achristensen@webkit.org>
+
+        Compile DumpRenderTree with CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156088
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/DefaultPolicyDelegate.m:
+        (-[DefaultPolicyDelegate webView:decidePolicyForNavigationAction:request:frame:decisionListener:]):
+        * DumpRenderTree/DumpRenderTreeFileDraggingSource.m:
+        * DumpRenderTree/PlatformMac.cmake: Added.
+        * DumpRenderTree/PlatformWin.cmake:
+        * DumpRenderTree/mac/AppleScriptController.m:
+        (convertAEDescToObject):
+        * DumpRenderTree/mac/DumpRenderTreeMain.mm:
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+
+2016-03-31  Bill Ming  <mbbill@gmail.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=156094
+        [Win] TestWebCore target build sometimes fail.
+
+        Reviewed by Alex Christensen.
+
+        * Tools/TestWebKitAPI/PlatformWin.cmake:
+
+2016-03-31  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Bump EFL version to 1.17.0
+        https://bugs.webkit.org/show_bug.cgi?id=153008
+
+        Reviewed by Michael Catanzaro.
+
+        Original author is Csaba Osztrogonác  <ossy@webkit.org>
+
+        * efl/jhbuild.modules:
+
+2016-03-31  Daniel Bates  <dabates@apple.com>
+
+        run-webkit-tests fails to create user's cache directory when System Integrity Protection is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=156071
+        <rdar://problem/25467827>
+
+        Reviewed by Brent Fulgham.
+
+        Fixes an issue where run-webkit-tests will fail to create the suffixed user's cache directory
+        on non-Apple Internal machines with System Integrity Protection enabled because the OS only
+        honors the suffix, specified by the environment variable DIRHELPER_USER_DIR_SUFFIX, in
+        privileged processes. And python(1) does not have sufficient privileges. As a workaround for
+        systems that have System Integrity Protection enabled we compute the path to the suffixed
+        user's cache directory by hand.
+
+        Additionally, fix an issue where the user's cache directory created by run-webkit-test was
+        never deleted on cessation of the test run.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._start): Actually store the path to the user's cache directory in self._driver_user_cache_directory
+        so that we can delete this directory on cessation of the test run.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort):
+        (MacPort._path_to_user_cache_directory): Unset the environment variable DIRHELPER_USER_DIR_SUFFIX (if set),
+        query the OS for the path to the user's cache directory and concatenate this path with the
+        specified suffix.
+
+2016-03-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WebKit should set Original URL of a download request correctly
+        https://bugs.webkit.org/show_bug.cgi?id=155914
+        <rdar://problem/10473811>
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadRequestOriginalURLDelegate initWithExpectOriginalURL:]):
+        (-[DownloadRequestOriginalURLDelegate _downloadDidStart:]):
+        (-[DownloadRequestOriginalURLNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DownloadRequestOriginalURL.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DownloadRequestOriginalURL2.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DownloadRequestOriginalURLFrame.html: Added.
+
+2016-03-30  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend animometer timeout for slow CPUs.
+        https://bugs.webkit.org/show_bug.cgi?id=156047
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend animometer timeout to 30 minutes for slow device.
+
+        * Scripts/webkitpy/benchmark_runner/data/plans/animometer.plan:
+
 2016-03-30  Daniel Bates  <dabates@apple.com>
 
         run-webkit-tests must create parent directory of user's cache directory before running tests

@@ -89,6 +89,7 @@ public:
     void queueReload();
     void removeAllVisitedLinks();
     void setAcceptsEditing(bool);
+    void setFetchAPIEnabled(bool);
     void setAllowUniversalAccessFromFileURLs(bool);
     void setAllowFileAccessFromFileURLs(bool);
     void setAppCacheMaximumSize(unsigned long long quota);
@@ -258,6 +259,8 @@ public:
     bool windowIsKey() const { return m_windowIsKey; }
     void setWindowIsKey(bool);
 
+    void setViewSize(double width, double height);
+
     bool alwaysAcceptCookies() const { return m_alwaysAcceptCookies; }
     void setAlwaysAcceptCookies(bool);
     
@@ -355,6 +358,7 @@ public:
     bool hasPendingWebNotificationClick() const { return m_hasPendingWebNotificationClick; }
 
     void setCustomTimeout(int duration) { m_timeout = duration; }
+    double timeout() { return m_timeout; }
 
 private:
     TestRunner(const std::string& testURL, const std::string& expectedPixelHash);

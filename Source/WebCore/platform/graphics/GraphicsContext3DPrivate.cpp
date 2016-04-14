@@ -37,7 +37,7 @@
 #include "OpenGLShims.h"
 #endif
 
-#if USE(TEXTURE_MAPPER) && USE(TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER_GL)
 #include <texmap/TextureMapperGL.h>
 #endif
 
@@ -97,23 +97,21 @@ RefPtr<TextureMapperPlatformLayerProxy> GraphicsContext3DPrivate::proxy() const
 void GraphicsContext3DPrivate::swapBuffersIfNeeded()
 {
     ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
-    if (!m_context->layerComposited())
-        swapPlatformTexture();
-}
-
-void GraphicsContext3DPrivate::swapPlatformTexture()
-{
-    ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
-    LockHolder locker(m_platformLayerProxy->lock());
+    if (m_context->layerComposited())
+        return;
 
     m_context->prepareTexture();
     IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
     TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, flags));
+
+    {
+        LockHolder holder(m_platformLayerProxy->lock());
+        m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, flags));
+    }
 
     m_context->markLayerComposited();
 }
-#elif USE(TEXTURE_MAPPER) && !USE(COORDINATED_GRAPHICS_THREADED)
+#elif USE(TEXTURE_MAPPER)
 void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     if (!m_glContext)

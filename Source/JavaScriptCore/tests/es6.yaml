@@ -875,13 +875,13 @@
 - path: es6/miscellaneous_function_length_is_configurable.js
   cmd: runES6 :normal
 - path: es6/miscellaneous_no_assignments_allowed_in_for-in_head.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/miscellaneous_RegExp_constructor_can_alter_flags.js
   cmd: runES6 :normal
 - path: es6/new.target_assignment_is_an_early_error.js
   cmd: runES6 :normal
 - path: es6/non-strict_function_semantics_hoisted_block-level_function_declaration.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Promise_is_subclassable_Promise.all.js
   cmd: runES6 :fail
 - path: es6/Promise_is_subclassable_Promise.race.js
@@ -955,7 +955,7 @@
 - path: es6/Proxy_internal_get_calls_Array.from.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.prototype.concat.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.prototype.pop.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_Array.prototype.reverse.js
@@ -1007,9 +1007,9 @@
 - path: es6/Proxy_internal_get_calls_RegExp.prototype[Symbol.search].js
   cmd: runES6 :fail
 - path: es6/Proxy_internal_get_calls_RegExp.prototype[Symbol.split].js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_RegExp_constructor.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_String.prototype.match.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_String.prototype.replace.js
@@ -1017,7 +1017,7 @@
 - path: es6/Proxy_internal_get_calls_String.prototype.search.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_String.prototype.split.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_String.raw.js
   cmd: runES6 :normal
 - path: es6/Proxy_internal_get_calls_ToPrimitive.js
@@ -1093,7 +1093,7 @@
 - path: es6/RegExp.prototype_properties_RegExp.prototype[Symbol.search].js
   cmd: runES6 :normal
 - path: es6/RegExp.prototype_properties_RegExp.prototype[Symbol.split].js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/RegExp.prototype_properties_RegExp[Symbol.species].js
   cmd: runES6 :normal
 - path: es6/RegExp_is_subclassable_correct_prototype_chain.js
@@ -1195,7 +1195,7 @@
 - path: es6/well-known_symbols_Symbol.hasInstance.js
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.isConcatSpreadable.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.match.js
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.replace.js
@@ -1215,14 +1215,16 @@
 - path: es6/well-known_symbols_Symbol.species_existence.js
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.species_RegExp.prototype[Symbol.split].js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.split.js
-  cmd: runES6 :fail
+  cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.toPrimitive.js
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.toStringTag.js
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.toStringTag_misc._built-ins.js
+  cmd: runES6 :normal
+- path: es6/well-known_symbols_Symbol.toStringTag_new_built-ins.js
   cmd: runES6 :normal
 - path: es6/well-known_symbols_Symbol.match_String.prototype.startsWith.js
   cmd: runES6 :normal

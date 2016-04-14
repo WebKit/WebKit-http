@@ -29,7 +29,7 @@ messages -> NetworkConnectionToWebProcess LegacyReceiver {
     SetDefersLoading(uint64_t resourceLoadIdentifier, bool defers)
     PrefetchDNS(String hostname)
 
-    StartDownload(WebCore::SessionID sessionID, WebKit::DownloadID downloadID, WebCore::ResourceRequest request)
+    StartDownload(WebCore::SessionID sessionID, WebKit::DownloadID downloadID, WebCore::ResourceRequest request, String suggestedName)
     ConvertMainResourceLoadToDownload(WebCore::SessionID sessionID, uint64_t mainResourceLoadIdentifier, WebKit::DownloadID downloadID, WebCore::ResourceRequest request, WebCore::ResourceResponse response)
 
     CookiesForDOM(WebCore::SessionID sessionID, WebCore::URL firstParty, WebCore::URL url) -> (String result)
@@ -38,6 +38,7 @@ messages -> NetworkConnectionToWebProcess LegacyReceiver {
     CookieRequestHeaderFieldValue(WebCore::SessionID sessionID, WebCore::URL firstParty, WebCore::URL url) -> (String result)
     GetRawCookies(WebCore::SessionID sessionID, WebCore::URL firstParty, WebCore::URL url) -> (Vector<WebCore::Cookie> cookies)
     DeleteCookie(WebCore::SessionID sessionID, WebCore::URL url, String cookieName)
+    AddCookie(WebCore::SessionID sessionID, WebCore::URL url, struct WebCore::Cookie cookie)
 
     RegisterFileBlobURL(WebCore::URL url, String path, WebKit::SandboxExtension::Handle extensionHandle, String contentType)
     RegisterBlobURL(WebCore::URL url, Vector<WebCore::BlobPart> blobParts, String contentType)
@@ -45,5 +46,7 @@ messages -> NetworkConnectionToWebProcess LegacyReceiver {
     RegisterBlobURLForSlice(WebCore::URL url, WebCore::URL srcURL, int64_t start, int64_t end)
     UnregisterBlobURL(WebCore::URL url)
     BlobSize(WebCore::URL url) -> (uint64_t resultSize)
+    WriteBlobsToTemporaryFiles(Vector<String> blobURLs, uint64_t requestIdentifier)
+
     EnsureLegacyPrivateBrowsingSession()
 }

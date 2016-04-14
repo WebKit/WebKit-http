@@ -38,13 +38,71 @@ VMHeap::VMHeap()
 LargeObject VMHeap::allocateChunk(std::lock_guard<StaticMutex>& lock)
 {
     Chunk* chunk =
-        new (vmAllocate(chunkSize, chunkSize)) Chunk(lock);
+        new (vmAllocate(chunkSize, chunkSize)) Chunk(lock, ObjectType::Large);
 
 #if BOS(DARWIN)
     m_zone.addChunk(chunk);
 #endif
 
-    return LargeObject(chunk->begin());
+    size_t alignment = largeAlignment;
+    size_t metadataSize = roundUpToMultipleOf(alignment, sizeof(Chunk));
+
+    Range range(chunk->bytes() + metadataSize, chunkSize - metadataSize);
+    BASSERT(range.size() <= largeObjectMax);
+
+    BeginTag* beginTag = Chunk::beginTag(range.begin());
+    beginTag->setRange(range);
+    beginTag->setFree(true);
+    beginTag->setVMState(VMState::Virtual);
+
+    EndTag* endTag = Chunk::endTag(range.begin(), range.size());
+    endTag->init(beginTag);
+
+    // Mark the left and right edges of our range as allocated. This naturally
+    // prevents merging logic from overflowing left (into metadata) or right
+    // (beyond our chunk), without requiring special-case checks.
+
+    EndTag* leftSentinel = beginTag->prev();
+    BASSERT(leftSentinel >= chunk->boundaryTags().begin());
+    BASSERT(leftSentinel < chunk->boundaryTags().end());
+    leftSentinel->initSentinel();
+
+    BeginTag* rightSentinel = endTag->next();
+    BASSERT(rightSentinel >= chunk->boundaryTags().begin());
+    BASSERT(rightSentinel < chunk->boundaryTags().end());
+    rightSentinel->initSentinel();
+
+    return LargeObject(range.begin());
+}
+
+void VMHeap::allocateSmallChunk(std::lock_guard<StaticMutex>& lock, size_t pageClass)
+{
+    Chunk* chunk =
+        new (vmAllocate(chunkSize, chunkSize)) Chunk(lock, ObjectType::Small);
+
+#if BOS(DARWIN)
+    m_zone.addChunk(chunk);
+#endif
+
+    size_t pageSize = bmalloc::pageSize(pageClass);
+    size_t smallPageCount = pageSize / smallPageSize;
+
+    // We align to our page size in order to guarantee that we can service
+    // aligned allocation requests at equal and smaller powers of two.
+    size_t metadataSize = divideRoundingUp(sizeof(Chunk), pageSize) * pageSize;
+
+    Object begin(chunk, metadataSize);
+    Object end(chunk, chunkSize);
+
+    for (Object it = begin; it + pageSize <= end; it = it + pageSize) {
+        SmallPage* page = it.page();
+        new (page) SmallPage;
+
+        for (size_t i = 0; i < smallPageCount; ++i)
+            page[i].setSlide(i);
+
+        m_smallPages[pageClass].push(page);
+    }
 }
 
 } // namespace bmalloc

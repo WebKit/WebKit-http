@@ -64,6 +64,7 @@ NSString *WebStorageDirectoryDefaultsKey = @"WebKitLocalStorageDatabasePathPrefe
 NSString *WebKitJSCJITEnabledDefaultsKey = @"WebKitJSCJITEnabledDefaultsKey";
 NSString *WebKitJSCFTLJITEnabledDefaultsKey = @"WebKitJSCFTLJITEnabledDefaultsKey";
 NSString *WebKitMediaKeysStorageDirectoryDefaultsKey = @"WebKitMediaKeysStorageDirectory";
+NSString *WebKitMediaCacheDirectoryDefaultsKey = @"WebKitMediaCacheDirectory";
 
 #if !PLATFORM(IOS)
 static NSString *WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification = @"NSApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification";
@@ -171,10 +172,6 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.shouldEnableFTLJIT = [defaults boolForKey:WebKitJSCFTLJITEnabledDefaultsKey];
     parameters.shouldEnableMemoryPressureReliefLogging = [defaults boolForKey:@"LogMemoryJetsamDetails"];
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
-
-#if PLATFORM(MAC)
-    parameters.shouldRewriteConstAsVar = MacApplication::isIBooks();
-#endif
 
 #if HAVE(HOSTED_CORE_ANIMATION)
 #if !PLATFORM(IOS)
@@ -338,6 +335,25 @@ String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
     if (!localStorageDirectory || ![localStorageDirectory isKindOfClass:[NSString class]])
         localStorageDirectory = @"~/Library/WebKit/LocalStorage";
     return stringByResolvingSymlinksInPath([localStorageDirectory stringByStandardizingPath]);
+}
+
+String WebProcessPool::legacyPlatformDefaultMediaCacheDirectory()
+{
+    registerUserDefaultsIfNeeded();
+    
+    NSString *mediaKeysCacheDirectory = [[NSUserDefaults standardUserDefaults] objectForKey:WebKitMediaCacheDirectoryDefaultsKey];
+    if (!mediaKeysCacheDirectory || ![mediaKeysCacheDirectory isKindOfClass:[NSString class]]) {
+        mediaKeysCacheDirectory = NSTemporaryDirectory();
+        
+        if (!WebKit::processHasContainer()) {
+            NSString *bundleIdentifier = [NSBundle mainBundle].bundleIdentifier;
+            if (!bundleIdentifier)
+                bundleIdentifier = [NSProcessInfo processInfo].processName;
+            mediaKeysCacheDirectory = [mediaKeysCacheDirectory stringByAppendingPathComponent:bundleIdentifier];
+        }
+        mediaKeysCacheDirectory = [mediaKeysCacheDirectory stringByAppendingPathComponent:@"WebKit/MediaCache"];
+    }
+    return stringByResolvingSymlinksInPath([mediaKeysCacheDirectory stringByStandardizingPath]);
 }
 
 String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()

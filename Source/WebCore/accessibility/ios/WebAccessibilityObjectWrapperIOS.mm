@@ -28,6 +28,7 @@
 
 #if HAVE(ACCESSIBILITY) && PLATFORM(IOS)
 
+#import "AccessibilityAttachment.h"
 #import "AccessibilityRenderObject.h"
 #import "AccessibilityScrollView.h"
 #import "AccessibilityTable.h"
@@ -503,7 +504,6 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case DocumentNoteRole:
     case DocumentRegionRole:
     case FooterRole:
-    case LandmarkApplicationRole:
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
@@ -821,7 +821,6 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case IgnoredRole:
         case InlineRole:
         case LabelRole:
-        case LandmarkApplicationRole:
         case LandmarkBannerRole:
         case LandmarkComplementaryRole:
         case LandmarkContentInfoRole:
@@ -876,6 +875,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case UnknownRole:
         case UserInterfaceTooltipRole:
         case VideoRole:
+        case WebApplicationRole:
         case WebAreaRole:
         case WindowRole:
         case RowGroupRole:
@@ -1252,6 +1252,9 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
         return [NSString stringWithFormat:@"%.2f", m_object->valueForRange()];
     }
 
+    if (is<AccessibilityAttachment>(m_object) && downcast<AccessibilityAttachment>(m_object)->hasProgress())
+        return [NSString stringWithFormat:@"%.2f", m_object->valueForRange()];
+    
     if (m_object->isHeading())
         return [NSString stringWithFormat:@"%d", m_object->headingLevel()];
     

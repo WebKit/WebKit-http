@@ -69,6 +69,8 @@ public:
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
+    static ptrdiff_t offsetOfCachedResult() { return OBJECT_OFFSETOF(RegExpConstructor, m_cachedResult); }
+
 protected:
     void finishCreation(VM&, RegExpPrototype*, GetterSetter* species);
 
@@ -85,7 +87,7 @@ private:
 
 RegExpConstructor* asRegExpConstructor(JSValue);
 
-JSObject* constructRegExp(ExecState*, JSGlobalObject*, const ArgList&, JSValue newTarget = jsUndefined());
+JSObject* constructRegExp(ExecState*, JSGlobalObject*, const ArgList&, JSObject* callee = nullptr, JSValue newTarget = jsUndefined());
 
 inline RegExpConstructor* asRegExpConstructor(JSValue value)
 {
@@ -145,6 +147,8 @@ ALWAYS_INLINE bool isRegExp(VM& vm, ExecState* exec, JSValue value)
 
     return object->inherits(RegExpObject::info());
 }
+
+EncodedJSValue JSC_HOST_CALL esSpecRegExpCreate(ExecState*);
 
 } // namespace JSC
 

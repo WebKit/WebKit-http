@@ -119,7 +119,7 @@ namespace JSC { namespace DFG {
     /* Bitwise operators call ToInt32 on their operands. */\
     macro(ValueToInt32, NodeResultInt32) \
     /* Used to box the result of URShift nodes (result has range 0..2^32-1). */\
-    macro(UInt32ToNumber, NodeResultNumber) \
+    macro(UInt32ToNumber, NodeResultNumber | NodeMustGenerate) \
     /* Converts booleans to numbers but passes everything else through. */\
     macro(BooleanToNumber, NodeResultJS) \
     \
@@ -158,6 +158,7 @@ namespace JSC { namespace DFG {
     macro(ArithRound, NodeResultNumber) \
     macro(ArithFloor, NodeResultNumber) \
     macro(ArithCeil, NodeResultNumber) \
+    macro(ArithTrunc, NodeResultNumber) \
     macro(ArithSqrt, NodeResultNumber) \
     macro(ArithSin, NodeResultNumber) \
     macro(ArithCos, NodeResultNumber) \
@@ -181,6 +182,7 @@ namespace JSC { namespace DFG {
     macro(PutByValDirect, NodeMustGenerate | NodeHasVarArgs) \
     macro(PutByVal, NodeMustGenerate | NodeHasVarArgs) \
     macro(PutByValAlias, NodeMustGenerate | NodeHasVarArgs) \
+    macro(TryGetById, NodeResultJS) \
     macro(GetById, NodeResultJS | NodeMustGenerate) \
     macro(GetByIdFlush, NodeResultJS | NodeMustGenerate) \
     macro(PutById, NodeMustGenerate) \
@@ -223,6 +225,7 @@ namespace JSC { namespace DFG {
     macro(VarInjectionWatchpoint, NodeMustGenerate) \
     macro(GetRegExpObjectLastIndex, NodeResultJS) \
     macro(SetRegExpObjectLastIndex, NodeMustGenerate) \
+    macro(RecordRegExpCachedResult, NodeMustGenerate | NodeHasVarArgs) \
     macro(CheckCell, NodeMustGenerate) \
     macro(CheckNotEmpty, NodeMustGenerate) \
     macro(CheckBadCell, NodeMustGenerate) \
@@ -263,6 +266,10 @@ namespace JSC { namespace DFG {
     macro(TailCallVarargsInlinedCaller, NodeResultJS | NodeMustGenerate) \
     macro(TailCallForwardVarargsInlinedCaller, NodeResultJS | NodeMustGenerate) \
     \
+    /* Shadow Chicken */\
+    macro(LogShadowChickenPrologue, NodeMustGenerate) \
+    macro(LogShadowChickenTail, NodeMustGenerate) \
+    \
     /* Allocations. */\
     macro(NewObject, NodeResultJS) \
     macro(NewArray, NodeResultJS | NodeHasVarArgs) \
@@ -290,6 +297,11 @@ namespace JSC { namespace DFG {
     macro(OverridesHasInstance, NodeMustGenerate | NodeResultBoolean) \
     macro(InstanceOf, NodeResultBoolean) \
     macro(InstanceOfCustom, NodeMustGenerate | NodeResultBoolean) \
+    \
+    /* I'd like to call this IsArray but then we get namespace problems with the indexing type name. Also, it is marked must generate because it can throw. */ \
+    macro(IsArrayObject, NodeMustGenerate | NodeResultBoolean) \
+    macro(IsJSArray, NodeResultBoolean) \
+    macro(IsArrayConstructor, NodeResultBoolean) \
     macro(IsUndefined, NodeResultBoolean) \
     macro(IsBoolean, NodeResultBoolean) \
     macro(IsNumber, NodeResultBoolean) \
@@ -301,6 +313,7 @@ namespace JSC { namespace DFG {
     macro(LogicalNot, NodeResultBoolean) \
     macro(ToPrimitive, NodeResultJS | NodeMustGenerate) \
     macro(ToString, NodeResultJS | NodeMustGenerate) \
+    macro(CallObjectConstructor, NodeResultJS) \
     macro(CallStringConstructor, NodeResultJS | NodeMustGenerate) \
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
@@ -321,7 +334,6 @@ namespace JSC { namespace DFG {
     \
     macro(NewFunction, NodeResultJS) \
     \
-    macro(NewArrowFunction, NodeResultJS) \
     macro(NewGeneratorFunction, NodeResultJS) \
     \
     /* These aren't terminals but always exit */ \

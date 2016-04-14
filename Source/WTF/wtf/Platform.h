@@ -103,20 +103,6 @@
 #define USE_ARENA_ALLOC_ALIGNMENT_INTEGER 1
 #endif /* MIPS */
 
-/* CPU(PPC) - PowerPC 32-bit */
-#if (  defined(__ppc__)        \
-    || defined(__PPC__)        \
-    || defined(__powerpc__)    \
-    || defined(__powerpc)      \
-    || defined(__POWERPC__)    \
-    || defined(_M_PPC)         \
-    || defined(__PPC))         \
-    && defined(__BYTE_ORDER__) \
-    && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-#define WTF_CPU_PPC 1
-#define WTF_CPU_BIG_ENDIAN 1
-#endif
-
 /* CPU(PPC64) - PowerPC 64-bit Big Endian */
 #if (  defined(__ppc64__)      \
     || defined(__PPC64__))     \
@@ -136,6 +122,21 @@
 #define WTF_CPU_PPC64LE 1
 #endif
 
+/* CPU(PPC) - PowerPC 32-bit */
+#if (  defined(__ppc__)        \
+    || defined(__PPC__)        \
+    || defined(__powerpc__)    \
+    || defined(__powerpc)      \
+    || defined(__POWERPC__)    \
+    || defined(_M_PPC)         \
+    || defined(__PPC))         \
+    && !CPU(PPC64)             \
+    && defined(__BYTE_ORDER__) \
+    && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#define WTF_CPU_PPC 1
+#define WTF_CPU_BIG_ENDIAN 1
+#endif
+
 /* CPU(SH4) - SuperH SH-4 */
 #if defined(__SH4__)
 #define WTF_CPU_SH4 1
@@ -148,7 +149,8 @@
 #endif
 
 /* CPU(S390) - S390 32-bit */
-#if defined(__s390__)
+#if (  defined(__s390__)        \
+    && !CPU(S390X))
 #define WTF_CPU_S390 1
 #define WTF_CPU_BIG_ENDIAN 1
 #endif
@@ -769,7 +771,7 @@
    values get stored to atomically. This is trivially true on 64-bit platforms,
    but not true at all on 32-bit platforms where values are composed of two
    separate sub-values. */
-#if (OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(WPE)) && ENABLE(DFG_JIT) && USE(JSVALUE64)
+#if ENABLE(DFG_JIT) && USE(JSVALUE64)
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 
@@ -1159,12 +1161,6 @@
 #define USE_OS_LOG 1
 #if USE(APPLE_INTERNAL_SDK)
 #define USE_OS_STATE 1
-#endif
-#endif
-
-#if defined(ENABLE_SEPARATED_WX_HEAP)
-#if !(CPU(ARM64) && ((PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000)))
-#undef ENABLE_SEPARATED_WX_HEAP
 #endif
 #endif
 

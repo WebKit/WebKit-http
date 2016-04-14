@@ -123,6 +123,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'CDATASection').hasOwnProperty('get
 PASS Object.getOwnPropertyDescriptor(global, 'CDATASection').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'CDATASection').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'CDATASection').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'CSS').value is CSS
+PASS Object.getOwnPropertyDescriptor(global, 'CSS').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'CSS').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'CSS').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'CSS').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').value is CSSCharsetRule
 PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').hasOwnProperty('set') is false
@@ -268,6 +273,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'Counter').hasOwnProperty('get') is
 PASS Object.getOwnPropertyDescriptor(global, 'Counter').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'Counter').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'Counter').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'Crypto').value is Crypto
+PASS Object.getOwnPropertyDescriptor(global, 'Crypto').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'Crypto').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'Crypto').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'Crypto').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'CustomEvent').value is CustomEvent
 PASS Object.getOwnPropertyDescriptor(global, 'CustomEvent').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'CustomEvent').hasOwnProperty('set') is false
@@ -2113,6 +2123,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'WeakSet').hasOwnProperty('get') is
 PASS Object.getOwnPropertyDescriptor(global, 'WeakSet').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WeakSet').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'WeakSet').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').value is WebGL2RenderingContext
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGL2RenderingContext').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLActiveInfo').value is WebGLActiveInfo
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLActiveInfo').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLActiveInfo').hasOwnProperty('set') is false
@@ -2188,6 +2203,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'WebGLUniformLocation').hasOwnPrope
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLUniformLocation').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLUniformLocation').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebGLUniformLocation').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'WebGLVertexArrayObject').value is WebGLVertexArrayObject
+PASS Object.getOwnPropertyDescriptor(global, 'WebGLVertexArrayObject').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGLVertexArrayObject').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGLVertexArrayObject').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'WebGLVertexArrayObject').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').value is WebKitAnimationEvent
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').hasOwnProperty('set') is false

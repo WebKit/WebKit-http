@@ -1,11 +1,17 @@
 'use strict';
 
 let assert = require('assert');
+
+let MockData = require('./resources/mock-data.js');
 let TestServer = require('./resources/test-server.js');
 
 describe('/api/build-requests', function () {
-    this.timeout(10000);
+    this.timeout(1000);
     TestServer.inject();
+
+    beforeEach(function () {
+        MockData.resetV3Models();
+    });
 
     it('should return "TriggerableNotFound" when the database is empty', function (done) {
         TestServer.remoteAPI().getJSON('/api/build-requests/build-webkit').then(function (content) {
@@ -29,37 +35,10 @@ describe('/api/build-requests', function () {
         }).catch(done);
     });
 
-    function addMockData(db)
-    {
-        return Promise.all([
-            db.insert('build_triggerables', {id: 1, name: 'build-webkit'}),
-            db.insert('repositories', {id: 9, name: 'OS X'}),
-            db.insert('repositories', {id: 11, name: 'WebKit'}),
-            db.insert('commits', {id: 87832, repository: 9, revision: '10.11 15A284'}),
-            db.insert('commits', {id: 93116, repository: 11, revision: '191622', time: new Date(1445945816878)}),
-            db.insert('commits', {id: 96336, repository: 11, revision: '192736', time: new Date(1448225325650)}),
-            db.insert('platforms', {id: 65, name: 'some platform'}),
-            db.insert('tests', {id: 200, name: 'some test'}),
-            db.insert('test_metrics', {id: 300, test: 200, name: 'some metric'}),
-            db.insert('root_sets', {id: 401}),
-            db.insert('roots', {set: 401, commit: 87832}),
-            db.insert('roots', {set: 401, commit: 93116}),
-            db.insert('root_sets', {id: 402}),
-            db.insert('roots', {set: 402, commit: 87832}),
-            db.insert('roots', {set: 402, commit: 96336}),
-            db.insert('analysis_tasks', {id: 500, platform: 65, metric: 300, name: 'some task'}),
-            db.insert('analysis_test_groups', {id: 600, task: 500, name: 'some test group'}),
-            db.insert('build_requests', {id: 700, triggerable: 1, platform: 65, test: 200, group: 600, order: 0, root_set: 401}),
-            db.insert('build_requests', {id: 701, triggerable: 1, platform: 65, test: 200, group: 600, order: 1, root_set: 402}),
-            db.insert('build_requests', {id: 702, triggerable: 1, platform: 65, test: 200, group: 600, order: 2, root_set: 401}),
-            db.insert('build_requests', {id: 703, triggerable: 1, platform: 65, test: 200, group: 600, order: 3, root_set: 402}),
-        ]);
-    }
-
     it('should return build requets associated with a given triggerable with appropriate roots and rootSets', function (done) {
         let db = TestServer.database();
         db.connect().then(function () {
-            return addMockData(db);
+            return MockData.addMockData(db);
         }).then(function () {
             return TestServer.remoteAPI().getJSONWithStatus('/api/build-requests/build-webkit');
         }).then(function (content) {
@@ -114,10 +93,10 @@ describe('/api/build-requests', function () {
         }).catch(done);
     });
 
-    it('should return support useLegacyIdResolution option', function (done) {
+    it('should support useLegacyIdResolution option', function (done) {
         let db = TestServer.database();
         db.connect().then(function () {
-            return addMockData(db);
+            return MockData.addMockData(db);
         }).then(function () {
             return TestServer.remoteAPI().getJSONWithStatus('/api/build-requests/build-webkit?useLegacyIdResolution=true');
         }).then(function (content) {
@@ -172,4 +151,256 @@ describe('/api/build-requests', function () {
         }).catch(done);
     });
 
+    it('should be fetchable by BuildRequest.fetchForTriggerable', function (done) {
+        let db = TestServer.database();
+        db.connect().then(function () {
+            return MockData.addMockData(db);
+        }).then(function () {
+            return Manifest.fetch();
+        }).then(function () {
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then(function (buildRequests) {
+            assert.equal(buildRequests.length, 4);
+
+            let test = Test.findById(200);
+            assert(test);
+
+            let platform = Platform.findById(65);
+            assert(platform);
+
+            assert.equal(buildRequests[0].id(), 700);
+            assert.equal(buildRequests[0].testGroupId(), 600);
+            assert.equal(buildRequests[0].test(), test);
+            assert.equal(buildRequests[0].platform(), platform);
+            assert.equal(buildRequests[0].order(), 0);
+            assert.ok(buildRequests[0].rootSet() instanceof RootSet);
+            assert.ok(!buildRequests[0].hasFinished());
+            assert.ok(!buildRequests[0].hasStarted());
+            assert.ok(buildRequests[0].isPending());
+            assert.equal(buildRequests[0].statusLabel(), 'Waiting to be scheduled');
+
+            assert.equal(buildRequests[1].id(), 701);
+            assert.equal(buildRequests[1].testGroupId(), 600);
+            assert.equal(buildRequests[1].test(), test);
+            assert.equal(buildRequests[1].platform(), platform);
+            assert.equal(buildRequests[1].order(), 1);
+            assert.ok(buildRequests[1].rootSet() instanceof RootSet);
+            assert.ok(!buildRequests[1].hasFinished());
+            assert.ok(!buildRequests[1].hasStarted());
+            assert.ok(buildRequests[1].isPending());
+            assert.equal(buildRequests[1].statusLabel(), 'Waiting to be scheduled');
+
+            assert.equal(buildRequests[2].id(), 702);
+            assert.equal(buildRequests[2].testGroupId(), 600);
+            assert.equal(buildRequests[2].test(), test);
+            assert.equal(buildRequests[2].platform(), platform);
+            assert.equal(buildRequests[2].order(), 2);
+            assert.ok(buildRequests[2].rootSet() instanceof RootSet);
+            assert.ok(!buildRequests[2].hasFinished());
+            assert.ok(!buildRequests[2].hasStarted());
+            assert.ok(buildRequests[2].isPending());
+            assert.equal(buildRequests[2].statusLabel(), 'Waiting to be scheduled');
+
+            assert.equal(buildRequests[3].id(), 703);
+            assert.equal(buildRequests[3].testGroupId(), 600);
+            assert.equal(buildRequests[3].test(), test);
+            assert.equal(buildRequests[3].platform(), platform);
+            assert.equal(buildRequests[3].order(), 3);
+            assert.ok(buildRequests[3].rootSet() instanceof RootSet);
+            assert.ok(!buildRequests[3].hasFinished());
+            assert.ok(!buildRequests[3].hasStarted());
+            assert.ok(buildRequests[3].isPending());
+            assert.equal(buildRequests[3].statusLabel(), 'Waiting to be scheduled');
+
+            let osx = Repository.findById(9);
+            assert.equal(osx.name(), 'OS X');
+
+            let webkit = Repository.findById(11);
+            assert.equal(webkit.name(), 'WebKit');
+
+            let firstRootSet = buildRequests[0].rootSet();
+            assert.equal(buildRequests[2].rootSet(), firstRootSet);
+
+            let secondRootSet = buildRequests[1].rootSet();
+            assert.equal(buildRequests[3].rootSet(), secondRootSet);
+
+            assert.equal(firstRootSet.revisionForRepository(osx), '10.11 15A284');
+            assert.equal(firstRootSet.revisionForRepository(webkit), '191622');
+
+            assert.equal(secondRootSet.revisionForRepository(osx), '10.11 15A284');
+            assert.equal(secondRootSet.revisionForRepository(webkit), '192736');
+
+            let osxCommit = firstRootSet.commitForRepository(osx);
+            assert.equal(osxCommit.revision(), '10.11 15A284');
+            assert.equal(osxCommit, secondRootSet.commitForRepository(osx));
+
+            let firstWebKitCommit = firstRootSet.commitForRepository(webkit);
+            assert.equal(firstWebKitCommit.revision(), '191622');
+            assert.equal(+firstWebKitCommit.time(), 1445945816878);
+
+            let secondWebKitCommit = secondRootSet.commitForRepository(webkit);
+            assert.equal(secondWebKitCommit.revision(), '192736');
+            assert.equal(+secondWebKitCommit.time(), 1448225325650);
+
+            done();
+        }).catch(done);
+    });
+
+    it('should not include a build request if all requests in the same group had been completed', function (done) {
+        let db = TestServer.database();
+        db.connect().then(function () {
+            return MockData.addMockData(db, ['completed', 'completed', 'completed', 'completed']);
+        }).then(function () {
+            return Manifest.fetch();
+        }).then(function () {
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then(function (buildRequests) {
+            assert.equal(buildRequests.length, 0);
+            done();
+        }).catch(done);
+    });
+
+    it('should not include a build request if all requests in the same group had been failed or cancled', function (done) {
+        let db = TestServer.database();
+        db.connect().then(function () {
+            return MockData.addMockData(db, ['failed', 'failed', 'canceled', 'canceled']);
+        }).then(function () {
+            return Manifest.fetch();
+        }).then(function () {
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then(function (buildRequests) {
+            assert.equal(buildRequests.length, 0);
+            done();
+        }).catch(done);
+    });
+
+    it('should include all build requests of a test group if one of the reqeusts in the group had not been finished', function (done) {
+        let db = TestServer.database();
+        db.connect().then(function () {
+            return MockData.addMockData(db, ['completed', 'completed', 'scheduled', 'pending']);
+        }).then(function () {
+            return Manifest.fetch();
+        }).then(function () {
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then(function (buildRequests) {
+            assert.equal(buildRequests.length, 4);
+            assert.ok(buildRequests[0].hasFinished());
+            assert.ok(buildRequests[0].hasStarted());
+            assert.ok(!buildRequests[0].isPending());
+            assert.ok(buildRequests[1].hasFinished());
+            assert.ok(buildRequests[1].hasStarted());
+            assert.ok(!buildRequests[1].isPending());
+            assert.ok(!buildRequests[2].hasFinished());
+            assert.ok(buildRequests[2].hasStarted());
+            assert.ok(!buildRequests[2].isPending());
+            assert.ok(!buildRequests[3].hasFinished());
+            assert.ok(!buildRequests[3].hasStarted());
+            assert.ok(buildRequests[3].isPending());
+            done();
+        }).catch(done);
+    });
+
+    it('should include all build requests of a test group if one of the reqeusts in the group is still running', function (done) {
+        let db = TestServer.database();
+        db.connect().then(function () {
+            return MockData.addMockData(db, ['completed', 'completed', 'completed', 'running']);
+        }).then(function () {
+            return Manifest.fetch();
+        }).then(function () {
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then(function (buildRequests) {
+            assert.equal(buildRequests.length, 4);
+            assert.ok(buildRequests[0].hasFinished());
+            assert.ok(buildRequests[0].hasStarted());
+            assert.ok(!buildRequests[0].isPending());
+            assert.ok(buildRequests[1].hasFinished());
+            assert.ok(buildRequests[1].hasStarted());
+            assert.ok(!buildRequests[1].isPending());
+            assert.ok(buildRequests[2].hasFinished());
+            assert.ok(buildRequests[2].hasStarted());
+            assert.ok(!buildRequests[2].isPending());
+            assert.ok(!buildRequests[3].hasFinished());
+            assert.ok(buildRequests[3].hasStarted());
+            assert.ok(!buildRequests[3].isPending());
+            done();
+        }).catch(done);
+    });
+
+    it('should order build requests based on test group creation time and order', function (done) {
+        let db = TestServer.database();
+        db.connect().then(function () {
+            return Promise.all([MockData.addMockData(db), MockData.addAnotherMockTestGroup(db)]);
+        }).then(function () {
+            return Manifest.fetch();
+        }).then(function () {
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then(function (buildRequests) {
+            assert.equal(buildRequests.length, 8);
+            assert.equal(buildRequests[0].id(), 700);
+            assert.equal(buildRequests[0].testGroupId(), 600);
+            assert.strictEqual(buildRequests[0].order(), 0);
+            assert.equal(buildRequests[1].id(), 701);
+            assert.equal(buildRequests[1].testGroupId(), 600);
+            assert.strictEqual(buildRequests[1].order(), 1);
+            assert.equal(buildRequests[2].id(), 702);
+            assert.equal(buildRequests[2].testGroupId(), 600);
+            assert.strictEqual(buildRequests[2].order(), 2);
+            assert.equal(buildRequests[3].id(), 703);
+            assert.equal(buildRequests[3].testGroupId(), 600);
+            assert.strictEqual(buildRequests[3].order(), 3);
+
+            assert.equal(buildRequests[4].id(), 710);
+            assert.equal(buildRequests[4].testGroupId(), 601);
+            assert.strictEqual(buildRequests[4].order(), 0);
+            assert.equal(buildRequests[5].id(), 711);
+            assert.equal(buildRequests[5].testGroupId(), 601);
+            assert.strictEqual(buildRequests[5].order(), 1);
+            assert.equal(buildRequests[6].id(), 712);
+            assert.equal(buildRequests[6].testGroupId(), 601);
+            assert.strictEqual(buildRequests[6].order(), 2);
+            assert.equal(buildRequests[7].id(), 713);
+            assert.equal(buildRequests[7].testGroupId(), 601);
+            assert.strictEqual(buildRequests[7].order(), 3);
+            done();
+        }).catch(done);
+    });
+
+    it('should place build requests created by user before automatically created ones', function (done) {
+        let db = TestServer.database();
+        db.connect().then(function () {
+            return Promise.all([MockData.addMockData(db), MockData.addAnotherMockTestGroup(db, null, 'rniwa')]);
+        }).then(function () {
+            return Manifest.fetch();
+        }).then(function () {
+            return BuildRequest.fetchForTriggerable('build-webkit');
+        }).then(function (buildRequests) {
+            assert.equal(buildRequests.length, 8);
+            assert.equal(buildRequests[0].id(), 710);
+            assert.equal(buildRequests[0].testGroupId(), 601);
+            assert.strictEqual(buildRequests[0].order(), 0);
+            assert.equal(buildRequests[1].id(), 711);
+            assert.equal(buildRequests[1].testGroupId(), 601);
+            assert.strictEqual(buildRequests[1].order(), 1);
+            assert.equal(buildRequests[2].id(), 712);
+            assert.equal(buildRequests[2].testGroupId(), 601);
+            assert.strictEqual(buildRequests[2].order(), 2);
+            assert.equal(buildRequests[3].id(), 713);
+            assert.equal(buildRequests[3].testGroupId(), 601);
+            assert.strictEqual(buildRequests[3].order(), 3);
+
+            assert.equal(buildRequests[4].id(), 700);
+            assert.equal(buildRequests[4].testGroupId(), 600);
+            assert.strictEqual(buildRequests[4].order(), 0);
+            assert.equal(buildRequests[5].id(), 701);
+            assert.equal(buildRequests[5].testGroupId(), 600);
+            assert.strictEqual(buildRequests[5].order(), 1);
+            assert.equal(buildRequests[6].id(), 702);
+            assert.equal(buildRequests[6].testGroupId(), 600);
+            assert.strictEqual(buildRequests[6].order(), 2);
+            assert.equal(buildRequests[7].id(), 703);
+            assert.equal(buildRequests[7].testGroupId(), 600);
+            assert.strictEqual(buildRequests[7].order(), 3);
+            done();
+        }).catch(done);
+    });
 });

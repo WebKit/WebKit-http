@@ -33,6 +33,7 @@
 #include "LLIntData.h"
 #include "LowLevelInterpreter.h"
 #include "PolymorphicAccess.h"
+#include "StructureStubInfo.h"
 #include <wtf/ListDump.h>
 
 namespace JSC {
@@ -75,7 +76,7 @@ GetByIdStatus GetByIdStatus::computeFromLLInt(CodeBlock* profiledBlock, unsigned
     
     Instruction* instruction = profiledBlock->instructions().begin() + bytecodeIndex;
     
-    if (instruction[0].u.opcode == LLInt::getOpcode(op_get_array_length))
+    if (instruction[0].u.opcode == LLInt::getOpcode(op_get_array_length) || instruction[0].u.opcode == LLInt::getOpcode(op_try_get_by_id))
         return GetByIdStatus(NoInformation, false);
 
     StructureID structureID = instruction[4].u.structureID;
@@ -210,7 +211,8 @@ GetByIdStatus GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback(
                 JSFunction* intrinsicFunction = nullptr;
 
                 switch (access.type()) {
-                case AccessCase::Load: {
+                case AccessCase::Load:
+                case AccessCase::GetGetter: {
                     break;
                 }
                 case AccessCase::IntrinsicGetter: {
@@ -218,11 +220,11 @@ GetByIdStatus GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback(
                     break;
                 }
                 case AccessCase::Getter: {
-                    CallLinkInfo* callLinkInfo = access.callLinkInfo();
-                    ASSERT(callLinkInfo);
-                    callLinkStatus = std::make_unique<CallLinkStatus>(
-                        CallLinkStatus::computeFor(
-                            locker, profiledBlock, *callLinkInfo, callExitSiteData));
+                    callLinkStatus = std::make_unique<CallLinkStatus>();
+                    if (CallLinkInfo* callLinkInfo = access.callLinkInfo()) {
+                        *callLinkStatus = CallLinkStatus::computeFor(
+                            locker, profiledBlock, *callLinkInfo, callExitSiteData);
+                    }
                     break;
                 }
                 default: {
@@ -348,6 +350,22 @@ bool GetByIdStatus::makesCalls() const
     RELEASE_ASSERT_NOT_REACHED();
 
     return false;
+}
+
+void GetByIdStatus::filter(const StructureSet& set)
+{
+    if (m_state != Simple)
+        return;
+    
+    // FIXME: We could also filter the variants themselves.
+    
+    m_variants.removeAllMatching(
+        [&] (GetByIdVariant& variant) -> bool {
+            return !variant.structureSet().overlaps(set);
+        });
+    
+    if (m_variants.isEmpty())
+        m_state = NoInformation;
 }
 
 void GetByIdStatus::dump(PrintStream& out) const

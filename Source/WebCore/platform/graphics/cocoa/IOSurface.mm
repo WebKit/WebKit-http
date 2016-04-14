@@ -36,6 +36,7 @@
 #import "ImageBufferDataCG.h"
 #import "MachSendRight.h"
 #import <wtf/Assertions.h>
+#import <wtf/MathExtras.h>
 
 #if PLATFORM(IOS)
 // Move this into the SPI header once it's possible to put inside the APPLE_INTERNAL_SDK block.
@@ -239,7 +240,20 @@ IOSurface::IOSurface(IOSurfaceRef surface, ColorSpace colorSpace)
 
 IntSize IOSurface::maximumSize()
 {
-    return IntSize(IOSurfaceGetPropertyMaximum(kIOSurfaceWidth), IOSurfaceGetPropertyMaximum(kIOSurfaceHeight));
+    IntSize maxSize(clampToInteger(IOSurfaceGetPropertyMaximum(kIOSurfaceWidth)), clampToInteger(IOSurfaceGetPropertyMaximum(kIOSurfaceHeight)));
+
+    // Protect against maxSize being { 0, 0 }.
+    const int iOSMaxSurfaceDimensionLowerBound = 1024;
+
+#if PLATFORM(IOS)
+    // Match limits imposed by Core Animation. FIXME: should have API for this <rdar://problem/25454148>
+    const int iOSMaxSurfaceDimension = 8 * 1024;
+#else
+    // IOSurface::maximumSize() can return { INT_MAX, INT_MAX } when hardware acceleration is unavailable.
+    const int iOSMaxSurfaceDimension = 32 * 1024;
+#endif
+
+    return maxSize.constrainedBetween({ iOSMaxSurfaceDimensionLowerBound, iOSMaxSurfaceDimensionLowerBound }, { iOSMaxSurfaceDimension, iOSMaxSurfaceDimension });
 }
 
 MachSendRight IOSurface::createSendRight() const
@@ -288,7 +302,7 @@ CGContextRef IOSurface::ensurePlatformContext()
     case Format::RGB10:
     case Format::RGB10A8:
         // A half-float format will be used if CG needs to read back the IOSurface contents,
-        // but for an IOSurface-to-IOSurface copy, there shoud be no conversion.
+        // but for an IOSurface-to-IOSurface copy, there should be no conversion.
         bitsPerComponent = 16;
         bitsPerPixel = 64;
         bitmapInfo = kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder16Host | kCGBitmapFloatComponents;

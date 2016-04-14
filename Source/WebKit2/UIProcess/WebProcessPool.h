@@ -259,6 +259,7 @@ public:
 
     void updateAutomationCapabilities() const;
     void setAutomationSession(RefPtr<WebAutomationSession>&&);
+    WebAutomationSession* automationSession() const { return m_automationSession.get(); }
 
     // Defaults to false.
     void setHTTPPipeliningEnabled(bool);
@@ -360,6 +361,7 @@ public:
     static String legacyPlatformDefaultIndexedDBDatabaseDirectory();
     static String legacyPlatformDefaultWebSQLDatabaseDirectory();
     static String legacyPlatformDefaultMediaKeysStorageDirectory();
+    static String legacyPlatformDefaultMediaCacheDirectory();
     static String legacyPlatformDefaultApplicationCacheDirectory();
     static String legacyPlatformDefaultNetworkCacheDirectory();
     static bool isNetworkCacheEnabled();

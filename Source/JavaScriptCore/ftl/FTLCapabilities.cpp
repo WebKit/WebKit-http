@@ -99,6 +99,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ArithRound:
     case ArithFloor:
     case ArithCeil:
+    case ArithTrunc:
     case ArithSqrt:
     case ArithLog:
     case ArithFRound:
@@ -113,7 +114,6 @@ inline CapabilityLevel canCompile(Node* node)
     case SkipScope:
     case GetGlobalObject:
     case CreateActivation:
-    case NewArrowFunction:
     case NewFunction:
     case NewGeneratorFunction:
     case GetClosureVar:
@@ -161,10 +161,12 @@ inline CapabilityLevel canCompile(Node* node)
     case GetScope:
     case GetCallee:
     case GetArgumentCount:
+    case CallObjectConstructor:
     case ToString:
     case CallStringConstructor:
     case MakeRope:
     case NewArrayWithSize:
+    case TryGetById:
     case GetById:
     case GetByIdFlush:
     case ToThis:
@@ -174,6 +176,9 @@ inline CapabilityLevel canCompile(Node* node)
     case Throw:
     case ThrowReferenceError:
     case Unreachable:
+    case IsArrayObject:
+    case IsJSArray:
+    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -227,7 +232,10 @@ inline CapabilityLevel canCompile(Node* node)
     case StringReplace:
     case GetRegExpObjectLastIndex:
     case SetRegExpObjectLastIndex:
+    case RecordRegExpCachedResult:
     case SetFunctionName:
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
         // These are OK.
         break;
 

@@ -160,9 +160,9 @@ void WebPageProxy::autocorrectionDataCallback(const Vector<WebCore::FloatRect>& 
     callback->performCallbackWithReturnValue(rects, fontName, fontSize, fontTraits);
 }
 
-void WebPageProxy::dictationContextCallback(const String& selectedText, const String& beforeText, const String& afterText, uint64_t callbackID)
+void WebPageProxy::selectionContextCallback(const String& selectedText, const String& beforeText, const String& afterText, uint64_t callbackID)
 {
-    auto callback = m_callbacks.take<DictationContextCallback>(callbackID);
+    auto callback = m_callbacks.take<SelectionContextCallback>(callbackID);
     if (!callback) {
         ASSERT_NOT_REACHED();
         return;
@@ -182,18 +182,16 @@ void WebPageProxy::autocorrectionContextCallback(const String& beforeText, const
     callback->performCallbackWithReturnValue(beforeText, markedText, selectedText, afterText, location, length);
 }
 
-void WebPageProxy::updateVisibleContentRects(const WebCore::FloatRect& exposedRect, const WebCore::FloatRect& unobscuredRect, const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, bool allowShrinkToFit, double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate)
+void WebPageProxy::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdate)
 {
     if (!isValid())
         return;
 
-    VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(exposedRect, unobscuredRect, unobscuredRectInScrollViewCoordinates, customFixedPositionRect, scale, inStableState, isChangingObscuredInsetsInteractively, allowShrinkToFit, timestamp, horizontalVelocity, verticalVelocity, scaleChangeRate, downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea()).lastCommittedLayerTreeTransactionID());
-
-    if (visibleContentRectUpdateInfo == m_lastVisibleContentRectUpdate)
+    if (visibleContentRectUpdate == m_lastVisibleContentRectUpdate)
         return;
 
-    m_lastVisibleContentRectUpdate = visibleContentRectUpdateInfo;
-    m_process->send(Messages::ViewUpdateDispatcher::VisibleContentRectUpdate(m_pageID, visibleContentRectUpdateInfo), 0);
+    m_lastVisibleContentRectUpdate = visibleContentRectUpdate;
+    m_process->send(Messages::ViewUpdateDispatcher::VisibleContentRectUpdate(m_pageID, visibleContentRectUpdate), 0);
 }
 
 void WebPageProxy::resendLastVisibleContentRects()
@@ -555,15 +553,15 @@ void WebPageProxy::getAutocorrectionContext(String& beforeContext, String& marke
     m_process->sendSync(Messages::WebPage::GetAutocorrectionContext(), Messages::WebPage::GetAutocorrectionContext::Reply(beforeContext, markedText, selectedText, afterContext, location, length), m_pageID);
 }
 
-void WebPageProxy::getLookupContextAtPoint(const WebCore::IntPoint& point, std::function<void(const String&, CallbackBase::Error)> callbackFunction)
+void WebPageProxy::getSelectionContext(std::function<void(const String&, const String&, const String&, CallbackBase::Error)> callbackFunction)
 {
     if (!isValid()) {
-        callbackFunction(String(), CallbackBase::Error::Unknown);
+        callbackFunction(String(), String(), String(), CallbackBase::Error::Unknown);
         return;
     }
     
     uint64_t callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
-    m_process->send(Messages::WebPage::GetLookupContextAtPoint(point, callbackID), m_pageID);
+    m_process->send(Messages::WebPage::GetSelectionContext(callbackID), m_pageID);
 }
 
 void WebPageProxy::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, std::function<void(const String&, CallbackBase::Error)> callbackFunction)
@@ -819,9 +817,9 @@ void WebPageProxy::couldNotRestorePageState()
     m_pageClient.couldNotRestorePageState();
 }
 
-void WebPageProxy::restorePageState(const WebCore::FloatRect& exposedContentRect, const WebCore::IntPoint& scrollOrigin, double scale)
+void WebPageProxy::restorePageState(const WebCore::FloatPoint& scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatSize& obscuredInsetOnSave, double scale)
 {
-    m_pageClient.restorePageState(exposedContentRect, scrollOrigin, scale);
+    m_pageClient.restorePageState(scrollPosition, scrollOrigin, obscuredInsetOnSave, scale);
 }
 
 void WebPageProxy::restorePageCenterAndScale(const WebCore::FloatPoint& center, double scale)

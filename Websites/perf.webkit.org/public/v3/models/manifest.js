@@ -4,8 +4,8 @@ class Manifest {
 
     static fetch()
     {
-        return RemoteAPI.getJSON('../data/manifest.json').catch(function () {
-            return RemoteAPI.getJSON('../api/manifest/');
+        return RemoteAPI.getJSON('/data/manifest.json').catch(function () {
+            return RemoteAPI.getJSON('/api/manifest/');
         }).then(this._didFetchManifest.bind(this));
     }
 
@@ -15,15 +15,8 @@ class Manifest {
 
         var tests = [];
         var testParentMap = {};
-        for (var testId in rawResponse.tests) {
-            var test = rawResponse.tests[testId];
-            var topLevel = !test.parentId;
-            if (test.parentId)
-                testParentMap[testId] = parseInt(test.parentId);
-            tests.push(new Test(testId, test, topLevel));
-        }
-        for (var testId in testParentMap)
-            Test.findById(testId).setParentTest(Test.findById(testParentMap[testId]));
+        for (var testId in rawResponse.tests)
+            tests.push(new Test(testId, rawResponse.tests[testId]));
 
         function buildObjectsFromIdMap(idMap, constructor, resolver) {
             for (var id in idMap) {
@@ -55,6 +48,7 @@ class Manifest {
         return {
             siteTitle: rawResponse.siteTitle,
             dashboards: rawResponse.dashboards, // FIXME: Add an abstraction around dashboards.
+            summary: rawResponse.summary,
         }
     }
 }

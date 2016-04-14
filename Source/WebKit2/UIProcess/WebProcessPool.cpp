@@ -128,6 +128,7 @@ static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::
     configuration.localStorageDirectory = processPoolConfiguration.localStorageDirectory();
     configuration.webSQLDatabaseDirectory = processPoolConfiguration.webSQLDatabaseDirectory();
     configuration.applicationCacheDirectory = processPoolConfiguration.applicationCacheDirectory();
+    configuration.mediaCacheDirectory = processPoolConfiguration.mediaCacheDirectory();
     configuration.mediaKeysStorageDirectory = processPoolConfiguration.mediaKeysStorageDirectory();
     configuration.networkCacheDirectory = processPoolConfiguration.diskCacheDirectory();
 
@@ -544,6 +545,10 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     if (!parameters.webSQLDatabaseDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.webSQLDatabaseDirectory, parameters.webSQLDatabaseDirectoryExtensionHandle);
 
+    parameters.mediaCacheDirectory = m_configuration->mediaCacheDirectory();
+    if (!parameters.mediaCacheDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(parameters.mediaCacheDirectory, parameters.mediaCacheDirectoryExtensionHandle);
+    
 #if ENABLE(SECCOMP_FILTERS)
     parameters.cookieStorageDirectory = this->cookieStorageDirectory();
 #endif
@@ -788,8 +793,14 @@ DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const Reso
     SessionID sessionID = initiatingPage ? initiatingPage->sessionID() : SessionID::defaultSessionID();
 
     if (networkProcess()) {
-        // FIXME (NetworkProcess): Replicate whatever FrameLoader::setOriginalURLForDownloadRequest does with the request here.
-        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), request), 0);
+        ResourceRequest updatedRequest(request);
+        // Request's firstPartyForCookies will be used as Original URL of the download request.
+        // We set the value to top level document's URL.
+        if (initiatingPage)
+            updatedRequest.setFirstPartyForCookies(URL(URL(), initiatingPage->pageLoadState().url()));
+        else
+            updatedRequest.setFirstPartyForCookies(URL());
+        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), updatedRequest), 0);
         return downloadProxy;
     }
 

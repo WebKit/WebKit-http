@@ -33,6 +33,7 @@
 #include "IDBResultData.h"
 #include "IDBServer.h"
 #include "IDBTransactionInfo.h"
+#include "IDBValue.h"
 #include "Logging.h"
 #include "ScopeGuard.h"
 #include "UniqueIDBDatabaseConnection.h"
@@ -683,13 +684,13 @@ void UniqueIDBDatabase::didPerformDeleteIndex(uint64_t callbackIdentifier, const
     performErrorCallback(callbackIdentifier, error);
 }
 
-void UniqueIDBDatabase::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const ThreadSafeDataBuffer& valueData, IndexedDB::ObjectStoreOverwriteMode overwriteMode, KeyDataCallback callback)
+void UniqueIDBDatabase::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const IDBValue& value, IndexedDB::ObjectStoreOverwriteMode overwriteMode, KeyDataCallback callback)
 {
     ASSERT(isMainThread());
     LOG(IndexedDB, "(main) UniqueIDBDatabase::putOrAdd");
 
     uint64_t callbackID = storeCallback(callback);
-    m_server.postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performPutOrAdd, callbackID, requestData.transactionIdentifier(), requestData.objectStoreIdentifier(), keyData, valueData, overwriteMode));
+    m_server.postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performPutOrAdd, callbackID, requestData.transactionIdentifier(), requestData.objectStoreIdentifier(), keyData, value, overwriteMode));
 }
 
 VM& UniqueIDBDatabase::databaseThreadVM()
@@ -709,7 +710,7 @@ ExecState& UniqueIDBDatabase::databaseThreadExecState()
     return *globalObject.get()->globalExec();
 }
 
-void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const ThreadSafeDataBuffer& originalRecordValue, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
+void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const IDBValue& originalRecordValue, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     ASSERT(!isMainThread());
     LOG(IndexedDB, "(db) UniqueIDBDatabase::performPutOrAdd");
@@ -764,7 +765,7 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
     if (usedKeyIsGenerated && !objectStoreInfo->keyPath().isNull()) {
         JSLockHolder locker(databaseThreadVM());
 
-        JSValue value = deserializeIDBValueDataToJSValue(databaseThreadExecState(), originalRecordValue);
+        JSValue value = deserializeIDBValueDataToJSValue(databaseThreadExecState(), originalRecordValue.data());
         if (value.isUndefined()) {
             m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(IDBDatabaseException::ConstraintError, ASCIILiteral("Unable to deserialize record value for record key injection")), usedKey));
             return;
@@ -794,7 +795,11 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
         return;
     }
 
-    error = m_backingStore->addRecord(transactionIdentifier, *objectStoreInfo, usedKey, injectedRecordValue.data() ? injectedRecordValue : originalRecordValue);
+    if (injectedRecordValue.data())
+        error = m_backingStore->addRecord(transactionIdentifier, *objectStoreInfo, usedKey, { injectedRecordValue, originalRecordValue.blobURLs(), originalRecordValue.blobFilePaths() });
+    else
+        error = m_backingStore->addRecord(transactionIdentifier, *objectStoreInfo, usedKey, originalRecordValue);
+
     if (!error.isNull()) {
         m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, error, usedKey));
         return;
@@ -835,10 +840,10 @@ void UniqueIDBDatabase::performGetRecord(uint64_t callbackIdentifier, const IDBR
 
     ASSERT(m_backingStore);
 
-    ThreadSafeDataBuffer valueData;
-    IDBError error = m_backingStore->getRecord(transactionIdentifier, objectStoreIdentifier, keyRangeData, valueData);
+    IDBGetResult result;
+    IDBError error = m_backingStore->getRecord(transactionIdentifier, objectStoreIdentifier, keyRangeData, result);
 
-    m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformGetRecord, callbackIdentifier, error, valueData));
+    m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformGetRecord, callbackIdentifier, error, result));
 }
 
 void UniqueIDBDatabase::performGetIndexRecord(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, IndexedDB::IndexRecordType recordType, const IDBKeyRangeData& range)

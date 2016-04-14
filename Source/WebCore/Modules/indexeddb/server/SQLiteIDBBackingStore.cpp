@@ -36,6 +36,7 @@
 #include "IDBObjectStoreInfo.h"
 #include "IDBSerialization.h"
 #include "IDBTransactionInfo.h"
+#include "IDBValue.h"
 #include "IndexKey.h"
 #include "Logging.h"
 #include "SQLiteDatabase.h"
@@ -109,6 +110,23 @@ static const String& v2RecordsTableSchemaAlternate()
     return v2RecordsTableSchemaString;
 }
 
+static const String v3RecordsTableSchema(const String& tableName)
+{
+    return makeString("CREATE TABLE ", tableName, " (objectStoreID INTEGER NOT NULL ON CONFLICT FAIL, key TEXT COLLATE IDBKEY NOT NULL ON CONFLICT FAIL, value NOT NULL ON CONFLICT FAIL, recordID INTEGER PRIMARY KEY)");
+}
+
+static const String& v3RecordsTableSchema()
+{
+    static NeverDestroyed<WTF::String> v3RecordsTableSchemaString(v3RecordsTableSchema("Records"));
+    return v3RecordsTableSchemaString;
+}
+
+static const String& v3RecordsTableSchemaAlternate()
+{
+    static NeverDestroyed<WTF::String> v3RecordsTableSchemaString(v3RecordsTableSchema("\"Records\""));
+    return v3RecordsTableSchemaString;
+}
+
 static const String v1IndexRecordsTableSchema(const String& tableName)
 {
     return makeString("CREATE TABLE ", tableName, " (indexID INTEGER NOT NULL ON CONFLICT FAIL, objectStoreID INTEGER NOT NULL ON CONFLICT FAIL, key TEXT COLLATE IDBKEY NOT NULL ON CONFLICT FAIL, value NOT NULL ON CONFLICT FAIL)");
@@ -143,9 +161,43 @@ static const String& v2IndexRecordsTableSchemaAlternate()
     return v2IndexRecordsTableSchemaString;
 }
 
+static const String blobRecordsTableSchema(const String& tableName)
+{
+    return makeString("CREATE TABLE ", tableName, " (objectStoreRow INTEGER NOT NULL ON CONFLICT FAIL, blobURL TEXT NOT NULL ON CONFLICT FAIL)");
+}
 
-SQLiteIDBBackingStore::SQLiteIDBBackingStore(const IDBDatabaseIdentifier& identifier, const String& databaseRootDirectory)
+static const String& blobRecordsTableSchema()
+{
+    static NeverDestroyed<String> blobRecordsTableSchemaString(blobRecordsTableSchema("BlobRecords"));
+    return blobRecordsTableSchemaString;
+}
+
+static const String& blobRecordsTableSchemaAlternate()
+{
+    static NeverDestroyed<String> blobRecordsTableSchemaString(blobRecordsTableSchema("\"BlobRecords\""));
+    return blobRecordsTableSchemaString;
+}
+
+static const String blobFilesTableSchema(const String& tableName)
+{
+    return makeString("CREATE TABLE ", tableName, " (blobURL TEXT NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT FAIL, fileName TEXT NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT FAIL)");
+}
+
+static const String& blobFilesTableSchema()
+{
+    static NeverDestroyed<String> blobFilesTableSchemaString(blobFilesTableSchema("BlobFiles"));
+    return blobFilesTableSchemaString;
+}
+
+static const String& blobFilesTableSchemaAlternate()
+{
+    static NeverDestroyed<String> blobFilesTableSchemaString(blobFilesTableSchema("\"BlobFiles\""));
+    return blobFilesTableSchemaString;
+}
+
+SQLiteIDBBackingStore::SQLiteIDBBackingStore(const IDBDatabaseIdentifier& identifier, const String& databaseRootDirectory, IDBBackingStoreTemporaryFileHandler& fileHandler)
     : m_identifier(identifier)
+    , m_temporaryFileHandler(fileHandler)
 {
     m_absoluteDatabaseDirectory = identifier.databaseDirectoryRelativeToRoot(databaseRootDirectory);
 }
@@ -201,7 +253,7 @@ static bool createOrMigrateRecordsTableIfNecessary(SQLiteDatabase& database)
 
         // If there is no Records table at all, create it and then bail.
         if (sqliteResult == SQLITE_DONE) {
-            if (!database.executeCommand(v2RecordsTableSchema())) {
+            if (!database.executeCommand(v3RecordsTableSchema())) {
                 LOG_ERROR("Could not create Records table in database (%i) - %s", database.lastError(), database.lastErrorMsg());
                 return false;
             }
@@ -220,24 +272,25 @@ static bool createOrMigrateRecordsTableIfNecessary(SQLiteDatabase& database)
     ASSERT(!currentSchema.isEmpty());
 
     // If the schema in the backing store is the current schema, we're done.
-    if (currentSchema == v2RecordsTableSchema() || currentSchema == v2RecordsTableSchemaAlternate())
+    if (currentSchema == v3RecordsTableSchema() || currentSchema == v3RecordsTableSchemaAlternate())
         return true;
 
     // If the record table is not the current schema then it must be one of the previous schemas.
     // If it is not then the database is in an unrecoverable state and this should be considered a fatal error.
-    if (currentSchema != v1RecordsTableSchema() && currentSchema != v1RecordsTableSchemaAlternate())
+    if (currentSchema != v1RecordsTableSchema() && currentSchema != v1RecordsTableSchemaAlternate()
+        && currentSchema != v2RecordsTableSchema() && currentSchema != v2RecordsTableSchemaAlternate())
         RELEASE_ASSERT_NOT_REACHED();
 
     SQLiteTransaction transaction(database);
     transaction.begin();
 
     // Create a temporary table with the correct schema and migrate all existing content over.
-    if (!database.executeCommand(v2RecordsTableSchema("_Temp_Records"))) {
+    if (!database.executeCommand(v3RecordsTableSchema("_Temp_Records"))) {
         LOG_ERROR("Could not create temporary records table in database (%i) - %s", database.lastError(), database.lastErrorMsg());
         return false;
     }
 
-    if (!database.executeCommand("INSERT INTO _Temp_Records SELECT * FROM Records")) {
+    if (!database.executeCommand("INSERT INTO _Temp_Records (objectStoreID, key, value) SELECT objectStoreID, CAST(key AS TEXT), value FROM Records")) {
         LOG_ERROR("Could not migrate existing Records content (%i) - %s", database.lastError(), database.lastErrorMsg());
         return false;
     }
@@ -253,6 +306,78 @@ static bool createOrMigrateRecordsTableIfNecessary(SQLiteDatabase& database)
     }
 
     transaction.commit();
+
+    return true;
+}
+
+bool SQLiteIDBBackingStore::ensureValidBlobTables()
+{
+    ASSERT(m_sqliteDB);
+    ASSERT(m_sqliteDB->isOpen());
+
+    String currentSchema;
+    {
+        // Fetch the schema for an existing blob record table.
+        SQLiteStatement statement(*m_sqliteDB, "SELECT type, sql FROM sqlite_master WHERE tbl_name='BlobRecords'");
+        if (statement.prepare() != SQLITE_OK) {
+            LOG_ERROR("Unable to prepare statement to fetch schema for the BlobRecords table.");
+            return false;
+        }
+
+        int sqliteResult = statement.step();
+
+        // If there is no BlobRecords table at all, create it..
+        if (sqliteResult == SQLITE_DONE) {
+            if (!m_sqliteDB->executeCommand(blobRecordsTableSchema())) {
+                LOG_ERROR("Could not create BlobRecords table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+                return false;
+            }
+
+            currentSchema = blobRecordsTableSchema();
+        } else if (sqliteResult != SQLITE_ROW) {
+            LOG_ERROR("Error executing statement to fetch schema for the BlobRecords table.");
+            return false;
+        } else
+            currentSchema = statement.getColumnText(1);
+    }
+
+    if (currentSchema != blobRecordsTableSchema() && currentSchema != blobRecordsTableSchemaAlternate()) {
+        LOG_ERROR("Invalid BlobRecords table schema found");
+        return false;
+    }
+
+    {
+        // Fetch the schema for an existing blob file table.
+        SQLiteStatement statement(*m_sqliteDB, "SELECT type, sql FROM sqlite_master WHERE tbl_name='BlobFiles'");
+        if (statement.prepare() != SQLITE_OK) {
+            LOG_ERROR("Unable to prepare statement to fetch schema for the BlobFiles table.");
+            return false;
+        }
+
+        int sqliteResult = statement.step();
+
+        // If there is no BlobFiles table at all, create it and then bail.
+        if (sqliteResult == SQLITE_DONE) {
+            if (!m_sqliteDB->executeCommand(blobFilesTableSchema())) {
+                LOG_ERROR("Could not create BlobFiles table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+                return false;
+            }
+
+            return true;
+        }
+
+        if (sqliteResult != SQLITE_ROW) {
+            LOG_ERROR("Error executing statement to fetch schema for the BlobFiles table.");
+            return false;
+        }
+
+        currentSchema = statement.getColumnText(1);
+    }
+
+    if (currentSchema != blobFilesTableSchema() && currentSchema != blobFilesTableSchemaAlternate()) {
+        LOG_ERROR("Invalid BlobFiles table schema found");
+        return false;
+    }
 
     return true;
 }
@@ -594,6 +719,12 @@ IDBError SQLiteIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info
         return { IDBDatabaseException::UnknownError, ASCIILiteral("Error creating or migrating Index Records table in database") };
     }
 
+    if (!ensureValidBlobTables()) {
+        LOG_ERROR("Error creating or confirming Blob Records tables in database");
+        m_sqliteDB = nullptr;
+        return { IDBDatabaseException::UnknownError, ASCIILiteral("Error creating or confirming Blob Records tables in database") };
+    }
+
     auto databaseInfo = extractExistingDatabaseInfo();
     if (!databaseInfo)
         databaseInfo = createAndPopulateInitialDatabaseInfo();
@@ -810,9 +941,24 @@ IDBError SQLiteIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& t
         }
     }
 
+    // Delete all unused Blob URL records.
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM BlobRecords WHERE objectStoreRow NOT IN (SELECT recordID FROM Records)"));
+        if (sql.prepare() != SQLITE_OK
+            || sql.step() != SQLITE_DONE) {
+            LOG_ERROR("Could not delete Blob URL records(%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return { IDBDatabaseException::UnknownError, ASCIILiteral("Could not delete stored blob records for deleted object store") };
+        }
+    }
+
+    // Delete all unused Blob File records.
+    auto error = deleteUnusedBlobFileRecords(*transaction);
+    if (!error.isNull())
+        return error;
+
     m_databaseInfo->deleteObjectStore(objectStoreIdentifier);
 
-    return true;
+    return { };
 }
 
 IDBError SQLiteIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreID)
@@ -1120,6 +1266,47 @@ IDBError SQLiteIDBBackingStore::keyExistsInObjectStore(const IDBResourceIdentifi
     return { };
 }
 
+IDBError SQLiteIDBBackingStore::deleteUnusedBlobFileRecords(SQLiteIDBTransaction& transaction)
+{
+    LOG(IndexedDB, "SQLiteIDBBackingStore::deleteUnusedBlobFileRecords");
+
+    // Gather the set of blob URLs and filenames that are no longer in use.
+    HashSet<String> removedBlobFilenames;
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("SELECT fileName FROM BlobFiles WHERE blobURL NOT IN (SELECT blobURL FROM BlobRecords)"));
+
+        if (sql.prepare() != SQLITE_OK) {
+            LOG_ERROR("Error deleting stored blobs (%i) (Could not gather unused blobURLs) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return { IDBDatabaseException::UnknownError, ASCIILiteral("Error deleting stored blobs") };
+        }
+
+        int result = sql.step();
+        while (result == SQLITE_ROW)
+            removedBlobFilenames.add(sql.getColumnText(1));
+
+        if (result != SQLITE_DONE) {
+            LOG_ERROR("Error deleting stored blobs (%i) (Could not gather unused blobURLs) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return { IDBDatabaseException::UnknownError, ASCIILiteral("Error deleting stored blobs") };
+        }
+    }
+
+    // Remove the blob records that are no longer in use.
+    if (!removedBlobFilenames.isEmpty()) {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM BlobFiles WHERE blobURL NOT IN (SELECT blobURL FROM BlobRecords)"));
+
+        if (sql.prepare() != SQLITE_OK
+            || sql.step() != SQLITE_DONE) {
+            LOG_ERROR("Error deleting stored blobs (%i) (Could not delete blobFile records) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return { IDBDatabaseException::UnknownError, ASCIILiteral("Error deleting stored blobs") };
+        }
+    }
+
+    for (auto& file : removedBlobFilenames)
+        transaction.addRemovedBlobFile(file);
+
+    return { };
+}
+
 IDBError SQLiteIDBBackingStore::deleteRecord(SQLiteIDBTransaction& transaction, int64_t objectStoreID, const IDBKeyData& keyData)
 {
     LOG(IndexedDB, "SQLiteIDBBackingStore::deleteRecord - key %s, object store %" PRIu64, keyData.loggingString().utf8().data(), objectStoreID);
@@ -1135,6 +1322,53 @@ IDBError SQLiteIDBBackingStore::deleteRecord(SQLiteIDBTransaction& transaction, 
         LOG_ERROR("Unable to serialize IDBKeyData to be removed from the database");
         return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to serialize IDBKeyData to be removed from the database") };
     }
+
+    // Get the record ID
+    int64_t recordID;
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("SELECT recordID FROM Records WHERE objectStoreID = ? AND key = CAST(? AS TEXT);"));
+
+        if (sql.prepare() != SQLITE_OK
+            || sql.bindInt64(1, objectStoreID) != SQLITE_OK
+            || sql.bindBlob(2, keyBuffer->data(), keyBuffer->size()) != SQLITE_OK) {
+            LOG_ERROR("Could not delete record from object store %" PRIi64 " (%i) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return { IDBDatabaseException::UnknownError, ASCIILiteral("Failed to delete record from object store") };
+        }
+
+        int result = sql.step();
+
+        // If there's no record ID, there's no record to delete.
+        if (result == SQLITE_DONE)
+            return { };
+
+        if (result != SQLITE_ROW) {
+            LOG_ERROR("Could not delete record from object store %" PRIi64 " (%i) (unable to fetch record ID) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return { IDBDatabaseException::UnknownError, ASCIILiteral("Failed to delete record from object store") };
+        }
+
+        recordID = sql.getColumnInt64(0);
+    }
+
+    if (recordID < 1) {
+        LOG_ERROR("Could not delete record from object store %" PRIi64 " (%i) (record ID is invalid) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+        return { IDBDatabaseException::UnknownError, ASCIILiteral("Failed to delete record from object store") };
+    }
+
+    // Delete the blob records for this object store record.
+    {
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM BlobRecords WHERE objectStoreRow = ?;"));
+
+        if (sql.prepare() != SQLITE_OK
+            || sql.bindInt64(1, recordID) != SQLITE_OK
+            || sql.step() != SQLITE_DONE) {
+            LOG_ERROR("Could not delete record from object store %" PRIi64 " (%i) (Could not delete BlobRecords records) - %s", objectStoreID, m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+            return { IDBDatabaseException::UnknownError, ASCIILiteral("Failed to delete record from object store") };
+        }
+    }
+
+    auto error = deleteUnusedBlobFileRecords(transaction);
+    if (!error.isNull())
+        return error;
 
     // Delete record from object store
     {
@@ -1282,13 +1516,14 @@ IDBError SQLiteIDBBackingStore::updateAllIndexesForAddRecord(const IDBObjectStor
     return error;
 }
 
-IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
+IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const IDBValue& value)
 {
     LOG(IndexedDB, "SQLiteIDBBackingStore::addRecord - key %s, object store %" PRIu64, keyData.loggingString().utf8().data(), objectStoreInfo.identifier());
 
     ASSERT(m_sqliteDB);
     ASSERT(m_sqliteDB->isOpen());
-    ASSERT(value.data());
+    ASSERT(value.data().data());
+    ASSERT(value.blobURLs().size() == value.blobFilePaths().size());
 
     auto* transaction = m_transactions.get(transactionIdentifier);
     if (!transaction || !transaction->inProgress()) {
@@ -1305,19 +1540,23 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
         LOG_ERROR("Unable to serialize IDBKey to be stored in an object store");
         return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to serialize IDBKey to be stored in an object store") };
     }
+
+    int64_t recordID = 0;
     {
-        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO Records VALUES (?, CAST(? AS TEXT), ?);"));
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO Records VALUES (?, CAST(? AS TEXT), ?, NULL);"));
         if (sql.prepare() != SQLITE_OK
             || sql.bindInt64(1, objectStoreInfo.identifier()) != SQLITE_OK
             || sql.bindBlob(2, keyBuffer->data(), keyBuffer->size()) != SQLITE_OK
-            || sql.bindBlob(3, value.data()->data(), value.data()->size()) != SQLITE_OK
+            || sql.bindBlob(3, value.data().data()->data(), value.data().data()->size()) != SQLITE_OK
             || sql.step() != SQLITE_DONE) {
             LOG_ERROR("Could not put record for object store %" PRIi64 " in Records table (%i) - %s", objectStoreInfo.identifier(), m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
             return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to store record in object store") };
         }
+
+        recordID = m_sqliteDB->lastInsertRowID();
     }
 
-    auto error = updateAllIndexesForAddRecord(objectStoreInfo, keyData, value);
+    auto error = updateAllIndexesForAddRecord(objectStoreInfo, keyData, value.data());
 
     if (!error.isNull()) {
         SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM Records WHERE objectStoreID = ? AND key = CAST(? AS TEXT);"));
@@ -1328,6 +1567,59 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
             LOG_ERROR("Indexing new object store record failed, but unable to remove the object store record itself");
             return { IDBDatabaseException::UnknownError, ASCIILiteral("Indexing new object store record failed, but unable to remove the object store record itself") };
         }
+
+        return error;
+    }
+
+    const Vector<String>& blobURLs = value.blobURLs();
+    const Vector<String>& blobFiles = value.blobFilePaths();
+    for (size_t i = 0; i < blobURLs.size(); ++i) {
+        auto& url = blobURLs[i];
+        {
+            SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO BlobRecords VALUES (?, ?);"));
+            if (sql.prepare() != SQLITE_OK
+                || sql.bindInt64(1, recordID) != SQLITE_OK
+                || sql.bindText(2, url) != SQLITE_OK
+                || sql.step() != SQLITE_DONE) {
+                LOG_ERROR("Unable to record Blob record in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to record Blob record in database") };
+            }
+        }
+        int64_t potentialFileNameInteger = m_sqliteDB->lastInsertRowID();
+
+        // If we already have a file for this blobURL, nothing left to do.
+        {
+            SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("SELECT fileName FROM BlobFiles WHERE blobURL = ?;"));
+            if (sql.prepare() != SQLITE_OK
+                || sql.bindText(1, url) != SQLITE_OK) {
+                LOG_ERROR("Unable to examine Blob filenames in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to examine Blob filenames in database") };
+            }
+
+            int result = sql.step();
+            if (result != SQLITE_ROW && result != SQLITE_DONE) {
+                LOG_ERROR("Unable to examine Blob filenames in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to examine Blob filenames in database") };
+            }
+
+            if (result == SQLITE_ROW)
+                continue;
+        }
+
+        // We don't already have a file for this blobURL, so commit our file as a unique filename
+        String storedFilename = String::format("%" PRId64 ".blob", potentialFileNameInteger);
+        {
+            SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO BlobFiles VALUES (?, ?);"));
+            if (sql.prepare() != SQLITE_OK
+                || sql.bindText(1, url) != SQLITE_OK
+                || sql.bindText(2, storedFilename) != SQLITE_OK
+                || sql.step() != SQLITE_DONE) {
+                LOG_ERROR("Unable to record Blob file record in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to record Blob file record in database") };
+            }
+        }
+
+        transaction->addBlobFile(blobFiles[i], storedFilename);
     }
 
     transaction->notifyCursorsOfChanges(objectStoreInfo.identifier());
@@ -1335,7 +1627,7 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
     return error;
 }
 
-IDBError SQLiteIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreID, const IDBKeyRangeData& keyRange, ThreadSafeDataBuffer& resultValue)
+IDBError SQLiteIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreID, const IDBKeyRangeData& keyRange, IDBGetResult& resultValue)
 {
     LOG(IndexedDB, "SQLiteIDBBackingStore::getRecord - key range %s, object store %" PRIu64, keyRange.loggingString().utf8().data(), objectStoreID);
 
@@ -1446,10 +1738,8 @@ IDBError SQLiteIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& tran
     else {
         if (type == IndexedDB::IndexRecordType::Key)
             getResult = { cursor->currentPrimaryKey() };
-        else {
-            getResult = { SharedBuffer::create(cursor->currentValueBuffer().data(), cursor->currentValueBuffer().size()).ptr() };
-            getResult.setKeyData(cursor->currentPrimaryKey());
-        }
+        else
+            getResult = { SharedBuffer::create(cursor->currentValueBuffer().data(), cursor->currentValueBuffer().size()), cursor->currentPrimaryKey() };
     }
 
     return { };
@@ -1676,6 +1966,32 @@ void SQLiteIDBBackingStore::deleteBackingStore()
     String dbFilename = fullDatabasePath();
 
     LOG(IndexedDB, "SQLiteIDBBackingStore::deleteBackingStore deleting file '%s' on disk", dbFilename.utf8().data());
+
+    Vector<String> blobFiles;
+    {
+        bool errored = true;
+
+        SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("SELECT fileName FROM BlobFiles;"));
+        if (sql.prepare() == SQLITE_OK) {
+            int result = sql.step();
+            while (result == SQLITE_ROW) {
+                blobFiles.append(sql.getColumnText(0));
+                result = sql.step();
+            }
+
+            if (result == SQLITE_DONE)
+                errored = false;
+        }
+
+        if (errored)
+            LOG_ERROR("Error getting all blob filenames to be deleted");
+    }
+
+    String databaseDirectory = fullDatabaseDirectory();
+    for (auto& file : blobFiles) {
+        String fullPath = pathByAppendingComponent(databaseDirectory, file);
+        deleteFile(fullPath);
+    }
 
     if (m_sqliteDB) {
         m_sqliteDB->close();

@@ -106,6 +106,7 @@ my (
     $mediaSourceSupport,
     $mediaStatisticsSupport,
     $mediaStreamSupport,
+    $webRTCSupport,
     $meterElementSupport,
     $mhtmlSupport,
     $modulesSupport,
@@ -183,9 +184,6 @@ my @features = (
 
     { option => "channel-messaging", desc => "Toggle Channel Messaging support",
       define => "ENABLE_CHANNEL_MESSAGING", default => 1, value => \$channelMessagingSupport },
-
-    { option => "class-syntax", desc => "Toggle ES6 class syntax support",
-      define => "ENABLE_ES6_CLASS_SYNTAX", default => 1, value => \$classSyntax },
 
     { option => "generators", desc => "Toggle ES6 generators support",
       define => "ENABLE_ES6_GENERATORS", default => 1, value => \$generatorsSupport },
@@ -336,6 +334,9 @@ my @features = (
 
     { option => "media-stream", desc => "Toggle Media Stream support",
       define => "ENABLE_MEDIA_STREAM", default => (isGtk()), value => \$mediaStreamSupport },
+
+    { option => "web-rtc", desc => "Toggle WebRTC support",
+      define => "ENABLE_WEB_RTC", default => (isGtk()), value => \$webRTCSupport },
 
     { option => "meter-element", desc => "Toggle Meter Element support",
       define => "ENABLE_METER_ELEMENT", default => !isAppleWinWebKit(), value => \$meterElementSupport },

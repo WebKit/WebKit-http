@@ -63,7 +63,6 @@ public:
     void setIsReparsingFunction() { m_isReparsingFunction = true; }
     bool isReparsingFunction() const { return m_isReparsingFunction; }
 
-    void setTokenPosition(JSToken* tokenRecord);
     JSTokenType lex(JSToken*, unsigned, bool strictMode);
     bool nextTokenIsColon();
     int lineNumber() const { return m_lineNumber; }
@@ -85,7 +84,9 @@ public:
 
     // Functions for use after parsing.
     bool sawError() const { return m_error; }
+    void setSawError(bool sawError) { m_error = sawError; }
     String getErrorMessage() const { return m_lexErrorMessage; }
+    void setErrorMessage(const String& errorMessage) { m_lexErrorMessage = errorMessage; }
     String sourceURL() const { return m_sourceURLDirective; }
     String sourceMappingURL() const { return m_sourceMappingURLDirective; }
     void clear();

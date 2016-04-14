@@ -57,6 +57,8 @@ fast/history/page-cache-suspended-audiocontext.html
 # No mousewheel events on iOS
 fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
+fast/events/wheel-event-destroys-frame.html [ Skip ]
+fast/events/wheel-event-destroys-overflow.html [ Skip ]
 
 # Not supported on iOS
 batterystatus
@@ -87,10 +89,14 @@ http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-allowed.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-blocked.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-02.html
+http/tests/security/contentSecurityPolicy/embed-with-no-url-allowed-by-default-src-star.html
+http/tests/security/contentSecurityPolicy/embed-with-no-url-allowed-by-star.html
 http/tests/security/contentSecurityPolicy/object-src-param-code-blocked.html
 http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked.html
 http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html
 http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html
+http/tests/security/contentSecurityPolicy/object-with-no-url-allowed-by-default-src-star.html
+http/tests/security/contentSecurityPolicy/object-with-no-url-allowed-by-star.html
 
 # Pointer-lock not supported on iOS
 pointer-lock
@@ -103,6 +109,12 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
 
 # No touch events
 fast/shadow-dom/touch-event-ios.html [ Skip ]
+platform/ios-simulator/ios/fast/forms/range-input-container-touches.html [ Skip ]
+platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html [ Skip ]
+platform/ios-simulator/ios/fast/forms/range-input-touches.html [ Skip ]
+platform/ios-simulator/ios/fast/html/textarea-auto-sizing-disable.html [ Skip ]
+platform/ios-simulator/ios/fast/text/data-detectors/phone-disabled.html [ Skip ]
+platform/ios-simulator/ios/fast/text/data-detectors/phone.html [ Skip ]
 
 # MediaSource is not currently supported on iOS.
 fast/history/page-cache-media-source-closed-2.html [ Skip ]
@@ -234,6 +246,8 @@ fast/scrolling/scroll-animator-basic-events.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
 fast/events/prevent-default-prevents-interaction-with-scrollbars.html [ Skip ]
+fast/text/text-disappear-on-deselect.html [ ImageOnlyFailure ]
+
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
@@ -640,6 +654,10 @@ js/dom/global-constructors-attributes.html [ Failure ]
 pageoverlay/overlay-large-document-scrolled.html [ Failure ]
 pageoverlay/overlay-large-document.html [ Failure ]
 webkit.org/b/153337 pageoverlay/overlay-installation.html [ Pass Failure ]
+
+# These tests require the Latin Modern Math font.
+mathml/opentype/fraction-line.html [ Pass ImageOnlyFailure ]
+mathml/presentation/fractions-linethickness.html [ Pass ImageOnlyFailure ]
 
 # MathML tests that fail:
 mathml/opentype/horizontal.html [ Failure ]
@@ -2043,6 +2061,7 @@ fast/regions/percentage-margins-mixed-ltr-dominant-regions.html [ ImageOnlyFailu
 fast/regions/percentage-margins-mixed-rtl-dominant-regions.html [ ImageOnlyFailure ]
 fast/regions/percentage-margins-rtl-variable-width-regions.html [ ImageOnlyFailure ]
 fast/regions/percentage-margins-variable-width-regions.html [ ImageOnlyFailure ]
+fast/regions/position-writing-modes-in-variable-width-regions.html [ ImageOnlyFailure ]
 fast/regions/positioning/fixed-in-named-flow-position-changed.html [ ImageOnlyFailure ]
 fast/regions/positioning/fixed-inside-fixed-in-named-flow.html [ ImageOnlyFailure ]
 fast/regions/positioning/fixed-inside-named-flow-zIndex.html [ ImageOnlyFailure ]
@@ -2999,9 +3018,6 @@ webkit.org/b/155372 [ Debug ] css3/masking/mask-svg-script-none-to-png.html [ Pa
 webkit.org/b/155339 [ Debug ] imported/blink/fast/multicol/dynamic/multicol-with-abspos-svg-with-foreignobject-with-multicol-crash.html [ Pass Crash ]
 webkit.org/b/155339 [ Debug ] imported/blink/fast/multicol/dynamic/relayout-abspos-in-relpos-spanner.html [ Pass Crash ]
 
-webkit.org/b/94458 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html [ Pass Crash ]
-webkit.org/b/94458 [ Debug ] http/tests/security/aboutBlank/window-open-self-about-blank.html [ Pass Crash ]
-
 webkit.org/b/155565 [ Debug ] mathml/very-large-stretchy-operators.html [ Skip ]
 
 # RTL Scrollbars are not implemented on iOS.
@@ -3009,3 +3025,13 @@ fast/scrolling/rtl-scrollbars-sticky-document-2.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-sticky-document.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-sticky-iframe-2.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-sticky-iframe.html [ ImageOnlyFailure ]
+
+# iOS list box controls are not drawn in the standard way.
+fast/forms/listbox-padding-clip.html [ ImageOnlyFailure ]
+fast/forms/listbox-padding-clip-overlay.html [ ImageOnlyFailure ]
+
+# No focusring on iOS.
+fast/images/image-map-outline-in-positioned-container.html [ Pass ImageOnlyFailure ]
+fast/images/image-map-outline-with-paint-root-offset.html [ Pass ImageOnlyFailure ]
+fast/images/image-map-outline-with-scale-transform.html [ Pass ImageOnlyFailure ]
+ 

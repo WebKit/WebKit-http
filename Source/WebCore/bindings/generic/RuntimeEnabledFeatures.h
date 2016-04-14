@@ -134,7 +134,7 @@ public:
     bool webkitGetUserMediaEnabled() const { return m_isMediaStreamEnabled; }
     bool webkitMediaStreamEnabled() const { return m_isMediaStreamEnabled; }
 #endif
-#if ENABLE(WEBRTC)
+#if ENABLE(WEB_RTC)
     bool peerConnectionEnabled() const { return m_isMediaStreamEnabled && m_isPeerConnectionEnabled; }
     void setPeerConnectionEnabled(bool isEnabled) { m_isPeerConnectionEnabled = isEnabled; }
     bool webkitRTCPeerConnectionEnabled() const { return peerConnectionEnabled(); }
@@ -217,6 +217,16 @@ public:
     bool customElementsEnabled() const { return m_areCustomElementsEnabled; }
 #endif
 
+#if ENABLE(WEBGL2)
+    void setWebGL2Enabled(bool isEnabled) { m_isWebGL2Enabled = isEnabled; }
+    bool webGL2Enabled() const { return m_isWebGL2Enabled; }
+#endif
+
+#if ENABLE(FETCH_API)
+    void setFetchAPIEnabled(bool isEnabled) { m_isFetchAPIEnabled = isEnabled; }
+    bool fetchAPIEnabled() const { return m_isFetchAPIEnabled; }
+#endif
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 private:
@@ -246,7 +256,7 @@ private:
 #if ENABLE(MEDIA_STREAM)
     bool m_isMediaStreamEnabled;
 #endif
-#if ENABLE(WEBRTC)
+#if ENABLE(WEB_RTC)
     bool m_isPeerConnectionEnabled;
 #endif
 
@@ -308,6 +318,14 @@ private:
 
 #if ENABLE(CUSTOM_ELEMENTS)
     bool m_areCustomElementsEnabled;
+#endif
+
+#if ENABLE(WEBGL2)
+    bool m_isWebGL2Enabled;
+#endif
+
+#if ENABLE(FETCH_API)
+    bool m_isFetchAPIEnabled { false };
 #endif
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;

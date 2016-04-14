@@ -28,6 +28,7 @@
 #if PLATFORM(MAC)
 #import "ChildProcess.h"
 
+#import "CodeSigning.h"
 #import "SandboxInitializationParameters.h"
 #import "WebKitSystemInterface.h"
 #import <WebCore/CFNetworkSPI.h>
@@ -38,7 +39,6 @@
 #import <pwd.h>
 #import <stdlib.h>
 #import <sysexits.h>
-#import <wtf/cf/TypeCastsCF.h>
 #import <wtf/spi/darwin/SandboxSPI.h>
 
 #if USE(APPLE_INTERNAL_SDK)
@@ -78,67 +78,21 @@ void ChildProcess::platformInitialize()
     [[NSFileManager defaultManager] changeCurrentDirectoryPath:[[NSBundle mainBundle] bundlePath]];
 }
 
-// FIXME: Remove this macro guard once we fix <rdar://problem/24308793>.
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-static RetainPtr<SecCodeRef> findSecCodeForProcess(pid_t pid)
-{
-    RetainPtr<CFNumberRef> pidCFNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &pid));
-    const void* keys[] = { kSecGuestAttributePid };
-    const void* values[] = { pidCFNumber.get() };
-    RetainPtr<CFDictionaryRef> attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-    SecCodeRef code = nullptr;
-    if (SecCodeCopyGuestWithAttributes(nullptr, attributes.get(), kSecCSDefaultFlags, &code))
-        return nullptr;
-    return adoptCF(code);
-}
-#endif
-
 void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
 {
     NSBundle *webkit2Bundle = [NSBundle bundleForClass:NSClassFromString(@"WKView")];
     String defaultProfilePath = [webkit2Bundle pathForResource:[[NSBundle mainBundle] bundleIdentifier] ofType:@"sb"];
 
+    bool willUseUserDirectorySuffixInitializationParameter = false;
     if (sandboxParameters.userDirectorySuffix().isNull()) {
-        // FIXME: Remove this macro guard once we fix <rdar://problem/24308793>.
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-        if (const OSObjectPtr<xpc_connection_t>& xpcConnection = parameters.connectionIdentifier.xpcConnection) {
-            pid_t clientProcessID = xpc_connection_get_pid(xpcConnection.get());
-            RetainPtr<SecCodeRef> code = findSecCodeForProcess(clientProcessID);
-            RELEASE_ASSERT(code);
-
-            CFStringRef appleSignedOrMacAppStoreSignedOrAppleDeveloperSignedRequirement = CFSTR("(anchor apple) or (anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.9]) or (anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] and certificate leaf[field.1.2.840.113635.100.6.1.13])");
-            SecRequirementRef signingRequirement = nullptr;
-            OSStatus status = SecRequirementCreateWithString(appleSignedOrMacAppStoreSignedOrAppleDeveloperSignedRequirement, kSecCSDefaultFlags, &signingRequirement);
-            RELEASE_ASSERT(status == errSecSuccess);
-
-            status = SecCodeCheckValidity(code.get(), kSecCSDefaultFlags, signingRequirement);
-            if (status == errSecSuccess) {
-                String clientIdentifierToUse;
-                CFDictionaryRef signingInfo = nullptr;
-                status = SecCodeCopySigningInformation(code.get(), kSecCSDefaultFlags, &signingInfo);
-                RELEASE_ASSERT(status == errSecSuccess);
-                if (CFDictionaryRef plist = dynamic_cf_cast<CFDictionaryRef>(CFDictionaryGetValue(signingInfo, kSecCodeInfoPList)))
-                    clientIdentifierToUse = String(dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(plist, kCFBundleIdentifierKey)));
-                else
-                    clientIdentifierToUse = String(dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(signingInfo, kSecCodeInfoIdentifier)));
-                CFRelease(signingInfo);
-                RELEASE_ASSERT(!clientIdentifierToUse.isEmpty());
-                sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', clientIdentifierToUse));
-            } else {
-                // Unsigned, signed by a third party, or has an invalid/malformed signature
-                auto userDirectorySuffix = parameters.extraInitializationData.find("user-directory-suffix");
-                if (userDirectorySuffix != parameters.extraInitializationData.end())
-                    sandboxParameters.setUserDirectorySuffix([makeString(userDirectorySuffix->value, '/', String([[NSBundle mainBundle] bundleIdentifier])) fileSystemRepresentation]);
-                sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', parameters.clientIdentifier));
-            }
-            CFRelease(signingRequirement);
+        auto userDirectorySuffix = parameters.extraInitializationData.find("user-directory-suffix");
+        if (userDirectorySuffix != parameters.extraInitializationData.end()) {
+            willUseUserDirectorySuffixInitializationParameter = true;
+            sandboxParameters.setUserDirectorySuffix([makeString(userDirectorySuffix->value, '/', String([[NSBundle mainBundle] bundleIdentifier])) fileSystemRepresentation]);
         } else {
-            // Legacy client
-            sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', parameters.clientIdentifier));
+            String defaultUserDirectorySuffix = makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', parameters.clientIdentifier);
+            sandboxParameters.setUserDirectorySuffix(defaultUserDirectorySuffix);
         }
-#else
-        sandboxParameters.setUserDirectorySuffix(makeString(String([[NSBundle mainBundle] bundleIdentifier]), '+', parameters.clientIdentifier));
-#endif
     }
 
     Vector<String> osVersionParts;
@@ -217,7 +171,16 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
     // This will override LSFileQuarantineEnabled from Info.plist unless sandbox quarantine is globally disabled.
     OSStatus error = WKEnableSandboxStyleFileQuarantine();
     if (error) {
-        WTFLogAlways("%s: Couldn't enable sandbox style file quarantine: %ld\n", getprogname(), (long)error);
+        WTFLogAlways("%s: Couldn't enable sandbox style file quarantine: %ld\n", getprogname(), static_cast<long>(error));
+        exit(EX_NOPERM);
+    }
+
+    if (willUseUserDirectorySuffixInitializationParameter)
+        return;
+    String clientCodeSigningIdentifier = codeSigningIdentifierForProcess(xpc_connection_get_pid(parameters.connectionIdentifier.xpcConnection.get()));
+    bool isClientCodeSigned = !clientCodeSigningIdentifier.isNull();
+    if (isClientCodeSigned && clientCodeSigningIdentifier != parameters.clientIdentifier) {
+        WTFLogAlways("%s: Code signing identifier of client differs from passed client identifier.\n", getprogname());
         exit(EX_NOPERM);
     }
 }

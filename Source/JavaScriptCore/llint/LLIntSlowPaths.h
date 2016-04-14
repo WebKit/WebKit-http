@@ -69,6 +69,7 @@ LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_array_buffer);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_regexp);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_instanceof);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_instanceof_custom);
+LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_try_get_by_id);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_get_by_id);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_get_arguments_length);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_put_by_id);
@@ -122,6 +123,8 @@ LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_handle_exception);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_get_from_scope);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_put_to_scope);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_check_if_exception_is_uncatchable_and_notify_profiler);
+LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_log_shadow_chicken_prologue);
+LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_log_shadow_chicken_tail);
 extern "C" SlowPathReturnType llint_throw_stack_overflow_error(VM*, ProtoCallFrame*) WTF_INTERNAL;
 #if !ENABLE(JIT)
 extern "C" SlowPathReturnType llint_stack_check_at_vm_entry(VM*, Register*) WTF_INTERNAL;

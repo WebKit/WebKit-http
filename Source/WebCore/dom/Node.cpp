@@ -51,6 +51,7 @@
 #include "KeyboardEvent.h"
 #include "Logging.h"
 #include "MutationEvent.h"
+#include "NoEventDispatchAssertion.h"
 #include "NodeOrString.h"
 #include "NodeRenderStyle.h"
 #include "ProcessingInstruction.h"
@@ -746,7 +747,7 @@ inline void Node::updateAncestorsForStyleRecalc()
     if (it != end) {
         it->setDirectChildNeedsStyleRecalc();
 
-        if (is<Element>(*it) && downcast<Element>(*it).childrenAffectedByPropertyBasedBackwardPositionalRules()) {
+        if (it->childrenAffectedByPropertyBasedBackwardPositionalRules()) {
             if (it->styleChangeType() < FullStyleChange)
                 it->setStyleChange(FullStyleChange);
         }
@@ -761,15 +762,23 @@ inline void Node::updateAncestorsForStyleRecalc()
         }
     }
 
-    Document& document = this->document();
-    if (document.childNeedsStyleRecalc())
-        document.scheduleStyleRecalc();
+    auto* documentElement = document().documentElement();
+    if (!documentElement)
+        return;
+    if (!documentElement->childNeedsStyleRecalc() && !documentElement->needsStyleRecalc())
+        return;
+    document().setChildNeedsStyleRecalc();
+    document().scheduleStyleRecalc();
 }
 
 void Node::setNeedsStyleRecalc(StyleChangeType changeType)
 {
     ASSERT(changeType != NoStyleChange);
     if (!inRenderedDocument())
+        return;
+
+    // FIXME: This should eventually be an ASSERT.
+    if (document().inRenderTreeUpdate())
         return;
 
     StyleChangeType existingChangeType = styleChangeType();

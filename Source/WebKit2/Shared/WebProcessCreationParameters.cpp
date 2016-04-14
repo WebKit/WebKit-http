@@ -65,6 +65,8 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << applicationCacheDirectoryExtensionHandle;
     encoder << webSQLDatabaseDirectory;
     encoder << webSQLDatabaseDirectoryExtensionHandle;
+    encoder << mediaCacheDirectory;
+    encoder << mediaCacheDirectoryExtensionHandle;
 #if ENABLE(SECCOMP_FILTERS)
     encoder << cookieStorageDirectory;
 #endif
@@ -99,7 +101,6 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << resourceLoadStatisticsEnabled;
     encoder << fontWhitelist;
     encoder << iconDatabaseEnabled;
-    encoder << shouldRewriteConstAsVar;
     encoder << terminationTimeout;
     encoder << languages;
     encoder << textCheckerState;
@@ -160,6 +161,10 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
         return false;
     if (!decoder.decode(parameters.webSQLDatabaseDirectoryExtensionHandle))
         return false;
+    if (!decoder.decode(parameters.mediaCacheDirectory))
+        return false;
+    if (!decoder.decode(parameters.mediaCacheDirectoryExtensionHandle))
+        return false;
 #if ENABLE(SECCOMP_FILTERS)
     if (!decoder.decode(parameters.cookieStorageDirectory))
         return false;
@@ -219,8 +224,6 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
     if (!decoder.decode(parameters.fontWhitelist))
         return false;
     if (!decoder.decode(parameters.iconDatabaseEnabled))
-        return false;
-    if (!decoder.decode(parameters.shouldRewriteConstAsVar))
         return false;
     if (!decoder.decode(parameters.terminationTimeout))
         return false;

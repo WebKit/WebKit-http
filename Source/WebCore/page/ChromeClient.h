@@ -342,6 +342,7 @@ public:
 #if ENABLE(VIDEO)
     virtual void enterVideoFullscreenForVideoElement(HTMLVideoElement&, HTMLMediaElementEnums::VideoFullscreenMode) { }
     virtual void setUpVideoControlsManager(HTMLVideoElement&) { }
+    virtual void clearVideoControlsManager() { }
 #endif
     virtual void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) { }
     virtual void exitVideoFullscreenToModeWithoutAnimation(WebCore::HTMLVideoElement&, HTMLMediaElementEnums::VideoFullscreenMode /*targetMode*/) { }
@@ -454,9 +455,7 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void addPlaybackTargetPickerClient(uint64_t /*contextId*/) { }
     virtual void removePlaybackTargetPickerClient(uint64_t /*contextId*/) { }
-
-    virtual void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* isVideo */, const String& /*customMenuItemTitle*/) { }
-
+    virtual void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* isVideo */) { }
     virtual void playbackTargetPickerClientStateDidChange(uint64_t /*contextId*/, MediaProducer::MediaStateFlags) { }
     virtual void setMockMediaPlaybackTargetPickerEnabled(bool)  { }
     virtual void setMockMediaPlaybackTargetPickerState(const String&, WebCore::MediaPlaybackTargetContext::State) { }
@@ -469,8 +468,6 @@ public:
 #endif
 
     virtual void didInvalidateDocumentMarkerRects() { }
-
-    virtual bool mediaShouldUsePersistentCache() const { return true; }
 
 protected:
     virtual ~ChromeClient() { }

@@ -542,11 +542,9 @@
       },
       "ChangSeok Oh" : {
          "emails" : [
-            "changseok.oh@collabora.com",
-            "changseok.oh@collabora.co.uk",
-            "kevin.cs.oh@gmail.com"
+            "changseok@webkit.org"
          ],
-         "expertise" : "The WebKitGTK+ port, H/W acceleration",
+         "expertise" : "The WebKitGTK+ port, H/W acceleration, Layout and Rendering",
          "nicks" : [
             "changseok"
          ]
@@ -866,6 +864,11 @@
          "expertise" : "The EFLWebKit Port",
          "nicks" : [
             "dwim"
+         ]
+      },
+      "Doug Russell" : {
+         "emails" : [
+            "d_russell@apple.com"
          ]
       },
       "Drew Wilson" : {
@@ -1682,15 +1685,6 @@
          ],
          "nicks" : [
             "silverroots"
-         ]
-      },
-      "Keith Miller" : {
-         "emails" : [
-            "keith_miller@apple.com"
-         ],
-         "nicks" : [
-            "keith_miller",
-            "keith_miller_"
          ]
       },
       "Keith Rollin" : {
@@ -4437,6 +4431,16 @@
          "expertise" : "Multipart Mixed Replace, HTML Editing",
          "nicks" : [
             "justing"
+         ]
+      },
+      "Keith Miller" : {
+         "emails" : [
+            "keith_miller@apple.com"
+         ],
+         "expertise" : "JavaScript/ECMAScript",
+         "nicks" : [
+            "keith_miller",
+            "keith_miller_"
          ]
       },
       "Ken Kocienda" : {

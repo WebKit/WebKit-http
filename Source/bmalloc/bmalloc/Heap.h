@@ -74,6 +74,12 @@ private:
     static void heapDestructor() __attribute__((destructor));
     
     void initializeLineMetadata();
+    void initializePageMetadata();
+
+    void allocateSmallBumpRangesByMetadata(std::lock_guard<StaticMutex>&,
+        size_t sizeClass, BumpAllocator&, BumpRangeCache&);
+    void allocateSmallBumpRangesByObject(std::lock_guard<StaticMutex>&,
+        size_t sizeClass, BumpAllocator&, BumpRangeCache&);
 
     SmallPage* allocateSmallPage(std::lock_guard<StaticMutex>&, size_t sizeClass);
 
@@ -89,18 +95,16 @@ private:
     XLargeRange splitAndAllocate(XLargeRange&, size_t alignment, size_t);
 
     void concurrentScavenge();
-    void scavengeSmallPage(std::lock_guard<StaticMutex>&);
-    void scavengeSmallPages(std::lock_guard<StaticMutex>&);
+    void scavengeSmallPages(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
     void scavengeLargeObjects(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
     void scavengeXLargeObjects(std::unique_lock<StaticMutex>&, std::chrono::milliseconds);
 
     size_t m_vmPageSizePhysical;
-
     Vector<LineMetadata> m_smallLineMetadata;
+    std::array<size_t, sizeClassCount> m_pageClasses;
 
     std::array<List<SmallPage>, sizeClassCount> m_smallPagesWithFreeLines;
-
-    List<SmallPage> m_smallPages;
+    std::array<List<SmallPage>, pageClassCount> m_smallPages;
 
     SegregatedFreeList m_largeObjects;
     
@@ -113,6 +117,15 @@ private:
 
     VMHeap m_vmHeap;
 };
+
+inline void Heap::allocateSmallBumpRanges(
+    std::lock_guard<StaticMutex>& lock, size_t sizeClass,
+    BumpAllocator& allocator, BumpRangeCache& rangeCache)
+{
+    if (sizeClass < bmalloc::sizeClass(smallLineSize))
+        return allocateSmallBumpRangesByMetadata(lock, sizeClass, allocator, rangeCache);
+    return allocateSmallBumpRangesByObject(lock, sizeClass, allocator, rangeCache);
+}
 
 inline void Heap::derefSmallLine(std::lock_guard<StaticMutex>& lock, Object object)
 {

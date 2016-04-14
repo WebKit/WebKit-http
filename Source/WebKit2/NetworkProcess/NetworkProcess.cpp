@@ -293,6 +293,21 @@ void NetworkProcess::destroyPrivateBrowsingSession(SessionID sessionID)
     SessionTracker::destroySession(sessionID);
 }
 
+void NetworkProcess::grantSandboxExtensionsToDatabaseProcessForBlobs(const Vector<String>& filenames, std::function<void ()> completionHandler)
+{
+    static uint64_t lastRequestID;
+
+    uint64_t requestID = ++lastRequestID;
+    m_sandboxExtensionForBlobsCompletionHandlers.set(requestID, completionHandler);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::GrantSandboxExtensionsToDatabaseProcessForBlobs(requestID, filenames), 0);
+}
+
+void NetworkProcess::didGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t requestID)
+{
+    if (auto handler = m_sandboxExtensionForBlobsCompletionHandlers.take(requestID))
+        handler();
+}
+
 static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, std::function<void (Vector<WebsiteData::Entry>)> completionHandler)
 {
 #if ENABLE(NETWORK_CACHE)
@@ -497,11 +512,11 @@ void NetworkProcess::pendingDownloadCanceled(DownloadID downloadID)
     downloadProxyConnection()->send(Messages::DownloadProxy::DidCancel({ }), downloadID.downloadID());
 }
 
-void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler completionHandler)
+void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler completionHandler, const ResourceRequest& updatedRequest)
 {
     uint64_t destinationID = networkDataTask.pendingDownloadID().downloadID();
-    downloadProxyConnection()->send(Messages::DownloadProxy::DidStart(networkDataTask.currentRequest()), destinationID);
-    
+    downloadProxyConnection()->send(Messages::DownloadProxy::DidStart(updatedRequest, String()), destinationID);
+
     downloadManager().willDecidePendingDownloadDestination(networkDataTask, completionHandler);
     downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), networkDataTask.suggestedFilename()), destinationID);
 }

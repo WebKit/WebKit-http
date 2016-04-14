@@ -2488,6 +2488,13 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
 #endif
 
+#if ENABLE(FETCH_API)
+    RuntimeEnabledFeatures::sharedFeatures().setFetchAPIEnabled([preferences fetchAPIEnabled]);
+#endif
+
+#if ENABLE(WEBGL2)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled([preferences webGL2Enabled]);
+#endif
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -5500,7 +5507,6 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 {
     return [[self preferences] identifier];
 }
-
 
 - (void)setUIDelegate:delegate
 {
@@ -8736,7 +8742,7 @@ bool LayerFlushController::flushLayers()
         return;
 
     NSRect rectInScreenCoordinates = [self.window convertRectToScreen:NSMakeRect(location.x(), location.y(), 0, 0)];
-    [self _devicePicker]->showPlaybackTargetPicker(clientId, rectInScreenCoordinates, hasVideo, { });
+    [self _devicePicker]->showPlaybackTargetPicker(clientId, rectInScreenCoordinates, hasVideo);
 }
 
 - (void)_playbackTargetPickerClientStateDidChange:(uint64_t)clientId state:(WebCore::MediaProducer::MediaStateFlags)state

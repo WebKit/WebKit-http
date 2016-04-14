@@ -66,6 +66,7 @@
 #include "MainFrame.h"
 #include "MutationObserverInterestGroup.h"
 #include "MutationRecord.h"
+#include "NoEventDispatchAssertion.h"
 #include "NodeRenderStyle.h"
 #include "PlatformWheelEvent.h"
 #include "PointerLockController.h"
@@ -74,6 +75,7 @@
 #include "RenderNamedFlowFragment.h"
 #include "RenderRegion.h"
 #include "RenderTheme.h"
+#include "RenderTreeUpdater.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "SVGDocumentExtensions.h"
@@ -1328,7 +1330,7 @@ void Element::classAttributeChanged(const AtomicString& newClassString)
 
     if (hasRareData()) {
         if (auto* classList = elementRareData()->classList())
-            classList->attributeValueChanged(newClassString);
+            classList->associatedAttributeValueChanged(newClassString);
     }
 }
 
@@ -1371,6 +1373,18 @@ StyleResolver& Element::styleResolver()
 ElementStyle Element::resolveStyle(RenderStyle* parentStyle)
 {
     return styleResolver().styleForElement(*this, parentStyle);
+}
+
+bool Element::hasDisplayContents() const
+{
+    return hasRareData() && elementRareData()->hasDisplayContents();
+}
+
+void Element::setHasDisplayContents(bool value)
+{
+    if (hasDisplayContents() == value)
+        return;
+    ensureElementRareData().setHasDisplayContents(value);
 }
 
 // Returns true is the given attribute is an event handler.
@@ -1476,7 +1490,7 @@ const AtomicString& Element::imageSourceURL() const
 
 bool Element::rendererIsNeeded(const RenderStyle& style)
 {
-    return style.display() != NONE;
+    return style.display() != NONE && style.display() != CONTENTS;
 }
 
 RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
@@ -2483,11 +2497,8 @@ RenderStyle& Element::resolveComputedStyle()
     // Collect ancestors until we find one that has style.
     auto composedAncestors = composedTreeAncestors(*this);
     for (auto& ancestor : composedAncestors) {
-        if (!is<Element>(ancestor))
-            break;
-        auto& ancestorElement = downcast<Element>(ancestor);
-        elementsRequiringComputedStyle.prepend(&ancestorElement);
-        if (auto* existingStyle = ancestorElement.existingComputedStyle()) {
+        elementsRequiringComputedStyle.prepend(&ancestor);
+        if (auto* existingStyle = ancestor.existingComputedStyle()) {
             computedStyle = existingStyle;
             break;
         }
@@ -2564,8 +2575,6 @@ void Element::setChildrenAffectedByPropertyBasedBackwardPositionalRules()
 void Element::setChildIndex(unsigned index)
 {
     ElementRareData& rareData = ensureElementRareData();
-    if (RenderStyle* style = renderStyle())
-        style->setUnique();
     rareData.setChildIndex(index);
 }
 
@@ -2707,7 +2716,7 @@ static void disconnectPseudoElement(PseudoElement* pseudoElement)
     if (!pseudoElement)
         return;
     if (pseudoElement->renderer())
-        Style::detachRenderTree(*pseudoElement);
+        RenderTreeUpdater::tearDownRenderers(*pseudoElement);
     ASSERT(pseudoElement->hostElement());
     pseudoElement->clearHostElement();
 }
@@ -2761,7 +2770,7 @@ DOMTokenList& Element::classList()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.classList())
-        data.setClassList(std::make_unique<AttributeDOMTokenList>(*this, HTMLNames::classAttr));
+        data.setClassList(std::make_unique<DOMTokenList>(*this, HTMLNames::classAttr));
     return *data.classList();
 }
 

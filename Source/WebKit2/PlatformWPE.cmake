@@ -68,6 +68,8 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
     Shared/CoordinatedGraphics/SimpleViewportController.cpp
 
+    Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/DisplayRefreshMonitor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
 
@@ -117,8 +119,6 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Databases/wpe/DatabaseProcessProxyWPE.cpp
     
-    UIProcess/Network/soup/NetworkProcessProxySoup.cpp
-
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
@@ -140,7 +140,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/wpe/WebPasteboardProxyWPE.cpp
     UIProcess/wpe/WebPreferencesWPE.cpp
     UIProcess/wpe/WebProcessPoolWPE.cpp
-    UIProcess/wpe/WebProcessProxyWPE.cpp
 
     WebProcess/Cookies/soup/WebCookieManagerSoup.cpp
     WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp
@@ -259,6 +258,7 @@ list(APPEND WebKit2_LIBRARIES
 )
 
 set(InspectorFiles
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Base/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Controllers/*.css
@@ -269,6 +269,8 @@ set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/ESLint/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/Esprima/*.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/*.png
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/*.svg
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Models/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Protocol/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Proxies/*.js
@@ -276,8 +278,6 @@ set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.css
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Workers/HeapSnapshot/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/*.png
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/*.svg
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
 )
 

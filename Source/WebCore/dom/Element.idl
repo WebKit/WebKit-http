@@ -19,9 +19,9 @@
  */
 
 [
-    UsePointersEvenForNonNullableObjectArguments,
     JSCustomHeader,
     JSGenerateToNativeObject,
+    ExportMacro=WEBCORE_EXPORT,
 ] interface Element : Node {
 
     // DOM Level 1 Core
@@ -46,8 +46,8 @@
 
 #if !defined(LANGUAGE_OBJECTIVE_C)
     // For ObjC this is defined on Node for legacy support.
-    readonly attribute NamedNodeMap     attributes;
-    boolean            hasAttributes();
+    readonly attribute NamedNodeMap attributes;
+    boolean hasAttributes();
 #endif
 
     // DOM Level 2 Core
@@ -55,8 +55,7 @@
     [ObjCLegacyUnnamedParameters] DOMString? getAttributeNS([Default=Undefined] optional DOMString? namespaceURI, [Default=Undefined] optional DOMString localName);
 
     [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
-    void setAttributeNS([Default=Undefined] optional DOMString? namespaceURI,
-        [Default=Undefined] optional DOMString qualifiedName, [Default=Undefined] optional DOMString value);
+    void setAttributeNS([Default=Undefined] optional DOMString? namespaceURI, [Default=Undefined] optional DOMString qualifiedName, [Default=Undefined] optional DOMString value);
 
     [ObjCLegacyUnnamedParameters, InvokesCustomElementLifecycleCallbacks] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
 
@@ -197,10 +196,10 @@
     [NotEnumerable] attribute EventHandler onanimationiteration;
     [NotEnumerable] attribute EventHandler onanimationstart;
     [NotEnumerable] attribute EventHandler ontransitionend;
-    [NotEnumerable] attribute EventHandler onwebkitanimationend;
-    [NotEnumerable] attribute EventHandler onwebkitanimationiteration;
-    [NotEnumerable] attribute EventHandler onwebkitanimationstart;
-    [NotEnumerable] attribute EventHandler onwebkittransitionend;
+    [NotEnumerable, ImplementedAs=onwebkitAnimationEnd] attribute EventHandler onwebkitanimationend;
+    [NotEnumerable, ImplementedAs=onwebkitAnimationIteration] attribute EventHandler onwebkitanimationiteration;
+    [NotEnumerable, ImplementedAs=onwebkitAnimationStart] attribute EventHandler onwebkitanimationstart;
+    [NotEnumerable, ImplementedAs=onwebkitTransitionEnd] attribute EventHandler onwebkittransitionend;
     [NotEnumerable, Conditional=IOS_GESTURE_EVENTS] attribute EventHandler ongesturechange;
     [NotEnumerable, Conditional=IOS_GESTURE_EVENTS] attribute EventHandler ongestureend;
     [NotEnumerable, Conditional=IOS_GESTURE_EVENTS] attribute EventHandler ongesturestart;

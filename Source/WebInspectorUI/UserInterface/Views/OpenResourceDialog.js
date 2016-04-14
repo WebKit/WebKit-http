@@ -58,14 +58,35 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
 
         this.element.appendChild(this._treeOutline.element);
 
-        this._resources = [];
-        this._filteredResources = [];
+        this._queryController = new WebInspector.ResourceQueryController;
+        this._filteredResults = [];
     }
 
     // Protected
 
     _populateResourceTreeOutline()
     {
+        function createHighlightedTitleFragment(title, highlightTextRanges)
+        {
+            let titleFragment = document.createDocumentFragment();
+            let lastIndex = 0;
+            for (let textRange of highlightTextRanges) {
+                if (textRange.startColumn > lastIndex)
+                    titleFragment.append(title.substring(lastIndex, textRange.startColumn));
+
+                let highlightSpan = document.createElement("span");
+                highlightSpan.classList.add("highlighted");
+                highlightSpan.append(title.substring(textRange.startColumn, textRange.endColumn));
+                titleFragment.append(highlightSpan);
+                lastIndex = textRange.endColumn;
+            }
+
+            if (lastIndex < title.length)
+                titleFragment.append(title.substring(lastIndex, title.length));
+
+            return titleFragment;
+        }
+
         function createTreeElement(representedObject)
         {
             let treeElement = null;
@@ -80,14 +101,16 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
             return treeElement;
         }
 
-        for (let resource of this._filteredResources) {
+        for (let result of this._filteredResults) {
+            let resource = result.resource;
+            if (this._treeOutline.findTreeElement(resource))
+                continue;
+
             let treeElement = createTreeElement(resource);
             if (!treeElement)
                 continue;
 
-            if (this._treeOutline.findTreeElement(resource))
-                continue;
-
+            treeElement.mainTitle = createHighlightedTitleFragment(resource.displayName, result.matchingTextRanges);
             this._treeOutline.appendChild(treeElement);
         }
 
@@ -95,23 +118,24 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
             this._treeOutline.children[0].select(true, false, true, true);
     }
 
+    didDismissDialog()
+    {
+        WebInspector.Frame.removeEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
+        WebInspector.Frame.removeEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
+
+        this._queryController.reset();
+    }
+
     didPresentDialog()
     {
+        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
+        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
+
+        if (WebInspector.frameResourceManager.mainFrame)
+            this._addResourcesForFrame(WebInspector.frameResourceManager.mainFrame);
+
         this._inputElement.focus();
         this._clear();
-
-        let frames = [WebInspector.frameResourceManager.mainFrame];
-        while (frames.length) {
-            let frame = frames.shift();
-            for (let resource of frame.resources) {
-                if (!this.representedObjectIsValid(resource))
-                    continue;
-
-                this._resources.push(resource);
-            }
-
-            frames = frames.concat(frame.childFrames);
-        }
     }
 
     // Private
@@ -193,7 +217,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
 
     _updateFilter()
     {
-        this._filteredResources = [];
+        this._filteredResults = [];
         this._treeOutline.hidden = true;
         this._treeOutline.removeChildren();
 
@@ -201,27 +225,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
         if (!filterText)
             return;
 
-        // FIXME: <https://webkit.org/b/155324> Web Inspector: Improve filtering in OpenResourceDialog
-        let filters = [simpleGlobStringToRegExp(filterText)];
-
-        for (let resource of this._resources) {
-            for (let i = 0; i < filters.length; ++i) {
-                if (!filters[i].test(resource.displayName))
-                    continue;
-
-                resource.__weight = filters.length - i;
-                this._filteredResources.push(resource);
-                break;
-            }
-        }
-
-        // Sort filtered resources by weight, then alphabetically.
-        this._filteredResources.sort((a, b) => {
-            if (a.__weight === b.__weight)
-                return a.displayName.localeCompare(b.displayName);
-
-            return b.__weight - a.__weight;
-        });
+        this._filteredResults = this._queryController.executeQuery(filterText);
 
         this._populateResourceTreeOutline();
         if (this._treeOutline.children.length)
@@ -238,6 +242,48 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
             return;
 
         this.dismiss(treeElement.representedObject);
+    }
+
+    _addResource(resource, suppressFilterUpdate)
+    {
+        if (!this.representedObjectIsValid(resource))
+            return;
+
+        this._queryController.addResource(resource);
+        if (suppressFilterUpdate)
+            return;
+
+        this._updateFilter();
+    }
+
+    _addResourcesForFrame(frame)
+    {
+        const suppressFilterUpdate = true;
+
+        let frames = [frame];
+        while (frames.length) {
+            let currentFrame = frames.shift();
+            let resources = [currentFrame.mainResource].concat(currentFrame.resources);
+            for (let resource of resources)
+                this._addResource(resource, suppressFilterUpdate);
+
+            frames = frames.concat(frame.childFrames);
+        }
+
+        this._updateFilter();
+    }
+
+    _mainResourceDidChange(event)
+    {
+        if (event.target.isMainFrame())
+            this._queryController.reset();
+
+        this._addResource(event.target.mainResource);
+    }
+
+    _resourceWasAdded(event)
+    {
+        this._addResource(event.data.resource);
     }
 };
 

@@ -1032,7 +1032,7 @@ void WebChromeClient::removePlaybackTargetPickerClient(uint64_t contextId)
     [m_webView _removePlaybackTargetPickerClient:contextId];
 }
 
-void WebChromeClient::showPlaybackTargetPicker(uint64_t contextId, const WebCore::IntPoint& location, bool hasVideo, const String&)
+void WebChromeClient::showPlaybackTargetPicker(uint64_t contextId, const WebCore::IntPoint& location, bool hasVideo)
 {
     [m_webView _showPlaybackTargetPicker:contextId location:location hasVideo:hasVideo];
 }
@@ -1053,8 +1053,3 @@ void WebChromeClient::setMockMediaPlaybackTargetPickerState(const String& name, 
 }
 
 #endif
-
-bool WebChromeClient::mediaShouldUsePersistentCache() const
-{
-    return [[NSURLCache sharedURLCache] diskCapacity] > 0;
-}

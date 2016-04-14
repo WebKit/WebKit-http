@@ -97,7 +97,6 @@ bool Settings::gMockCaptureDevicesEnabled = false;
 bool Settings::gShouldUseHighResolutionTimers = true;
 #endif
     
-bool Settings::gShouldRewriteConstAsVar = false;
 bool Settings::gShouldRespectPriorityInCSSAttributeSetters = false;
 bool Settings::gLowPowerVideoAudioBufferSizeEnabled = false;
 bool Settings::gResourceLoadStatisticsEnabledEnabled = false;
@@ -627,6 +626,10 @@ void Settings::setScrollingPerformanceLoggingEnabled(bool enabled)
         m_page->mainFrame().view()->setScrollingPerformanceLoggingEnabled(enabled);
 }
 
+// It's very important that this setting doesn't change in the middle of a document's lifetime.
+// The Mac port uses this flag when registering and deregistering platform-dependent scrollbar
+// objects. Therefore, if this changes at an unexpected time, deregistration may not happen
+// correctly, which may cause the platform to follow dangling pointers.
 void Settings::setMockScrollbarsEnabled(bool flag)
 {
     gMockScrollbarsEnabled = flag;

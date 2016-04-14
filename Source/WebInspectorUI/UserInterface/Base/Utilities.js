@@ -484,6 +484,22 @@ Object.defineProperty(Array.prototype, "partition",
     }
 });
 
+Object.defineProperty(String.prototype, "isLowerCase",
+{
+    value: function()
+    {
+        return String(this) === this.toLowerCase();
+    }
+});
+
+Object.defineProperty(String.prototype, "isUpperCase",
+{
+    value: function()
+    {
+        return String(this) === this.toUpperCase();
+    }
+});
+
 Object.defineProperty(String.prototype, "trimMiddle",
 {
     value: function(maxLength)
@@ -529,6 +545,14 @@ Object.defineProperty(String.prototype, "collapseWhitespace",
     value: function()
     {
         return this.replace(/[\s\xA0]+/g, " ");
+    }
+});
+
+Object.defineProperty(String.prototype, "removeWhitespace",
+{
+    value: function()
+    {
+        return this.replace(/[\s\xA0]+/g, "");
     }
 });
 
@@ -1243,4 +1267,11 @@ function decodeBase64ToBlob(base64Data, mimeType)
 function timestamp()
 {
     return window.performance ? performance.now() : Date.now();
+}
+
+if (!window.handlePromiseException) {
+    window.handlePromiseException = function handlePromiseException(error)
+    {
+        console.error("Uncaught exception in Promise", error);
+    };
 }

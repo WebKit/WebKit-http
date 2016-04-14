@@ -36,7 +36,6 @@
 #include "FrameView.h"
 #include "HTMLAudioElement.h"
 #include "HTMLMediaElement.h"
-#include "HTMLMediaElementEnums.h"
 #include "HTMLNames.h"
 #include "HTMLVideoElement.h"
 #include "HitTestResult.h"
@@ -213,6 +212,31 @@ bool MediaElementSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement
     return true;
 }
 
+bool MediaElementSession::canControlControlsManager(const HTMLMediaElement& element) const
+{
+    // FIXME: rdar://problem/25537071 Audio elements should be able to have a controls manager as well.
+    // Audio elements should probably only have a controls manager if they started playing via a user gesture.
+    if (!element.isVideo())
+        return false;
+
+    if (!playbackPermitted(element))
+        return false;
+
+    RenderBox* renderer = downcast<RenderBox>(element.renderer());
+    if (!renderer)
+        return false;
+
+    if (renderer->clientWidth() >= elementMainContentMinimumWidth && renderer->clientHeight() >= elementMainContentMinimumHeight) {
+        if (element.hasAudio() && element.hasVideo())
+            return true;
+    }
+
+    if (ScriptController::processingUserGestureForMedia())
+        return true;
+
+    return false;
+}
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 void MediaElementSession::showPlaybackTargetPicker(const HTMLMediaElement& element)
 {
@@ -235,8 +259,7 @@ void MediaElementSession::showPlaybackTargetPicker(const HTMLMediaElement& eleme
     }
 #endif
 
-    String customMenuItemTitle = element.playbackTargetPickerCustomActionName();
-    element.document().showPlaybackTargetPicker(*this, is<HTMLVideoElement>(element), customMenuItemTitle);
+    element.document().showPlaybackTargetPicker(*this, is<HTMLVideoElement>(element));
 }
 
 bool MediaElementSession::hasWirelessPlaybackTargets(const HTMLMediaElement&) const
@@ -339,16 +362,20 @@ void MediaElementSession::externalOutputDeviceAvailableDidChange(bool hasTargets
 
 bool MediaElementSession::canPlayToWirelessPlaybackTarget() const
 {
+#if !PLATFORM(IOS)
     if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
         return false;
+#endif
 
     return client().canPlayToWirelessPlaybackTarget();
 }
 
 bool MediaElementSession::isPlayingToWirelessPlaybackTarget() const
 {
+#if !PLATFORM(IOS)
     if (!m_playbackTarget || !m_playbackTarget->hasActiveRoute())
         return false;
+#endif
 
     return client().isPlayingToWirelessPlaybackTarget();
 }
@@ -358,11 +385,6 @@ void MediaElementSession::setShouldPlayToPlaybackTarget(bool shouldPlay)
     LOG(Media, "MediaElementSession::setShouldPlayToPlaybackTarget - shouldPlay %s", shouldPlay ? "TRUE" : "FALSE");
     m_shouldPlayToPlaybackTarget = shouldPlay;
     client().setShouldPlayToPlaybackTarget(shouldPlay);
-}
-
-void MediaElementSession::customPlaybackActionSelected()
-{
-    client().customPlaybackActionSelected();
 }
 
 void MediaElementSession::mediaStateDidChange(const HTMLMediaElement& element, MediaProducer::MediaStateFlags state)

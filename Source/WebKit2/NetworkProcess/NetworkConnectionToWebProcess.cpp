@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,13 @@
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkLoad.h"
 #include "NetworkProcess.h"
+#include "NetworkProcessConnectionMessages.h"
 #include "NetworkResourceLoadParameters.h"
 #include "NetworkResourceLoader.h"
 #include "NetworkResourceLoaderMessages.h"
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
+#include "WebCoreArgumentCoders.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/PingHandle.h>
 #include <WebCore/PlatformCookieJar.h>
@@ -186,9 +188,9 @@ static NetworkStorageSession& storageSession(SessionID sessionID)
     return NetworkStorageSession::defaultStorageSession();
 }
 
-void NetworkConnectionToWebProcess::startDownload(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request)
+void NetworkConnectionToWebProcess::startDownload(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedName)
 {
-    NetworkProcess::singleton().downloadManager().startDownload(sessionID, downloadID, request);
+    NetworkProcess::singleton().downloadManager().startDownload(sessionID, downloadID, request, suggestedName);
 }
 
 void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(SessionID sessionID, uint64_t mainResourceLoadIdentifier, DownloadID downloadID, const ResourceRequest& request, const ResourceResponse& response)
@@ -206,7 +208,7 @@ void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(SessionID 
     }
 
 #if USE(NETWORK_SESSION)
-    loader->networkLoad()->convertTaskToDownload(downloadID);
+    loader->networkLoad()->convertTaskToDownload(downloadID, request);
 #else
     networkProcess.downloadManager().convertHandleToDownload(downloadID, loader->networkLoad()->handle(), request, response);
 
@@ -247,6 +249,11 @@ void NetworkConnectionToWebProcess::deleteCookie(SessionID sessionID, const URL&
     WebCore::deleteCookie(storageSession(sessionID), url, cookieName);
 }
 
+void NetworkConnectionToWebProcess::addCookie(SessionID sessionID, const URL& url, const Cookie& cookie)
+{
+    WebCore::addCookie(storageSession(sessionID), url, cookie);
+}
+
 void NetworkConnectionToWebProcess::registerFileBlobURL(const URL& url, const String& path, const SandboxExtension::Handle& extensionHandle, const String& contentType)
 {
     RefPtr<SandboxExtension> extension = SandboxExtension::create(extensionHandle);
@@ -277,6 +284,30 @@ void NetworkConnectionToWebProcess::unregisterBlobURL(const URL& url)
 void NetworkConnectionToWebProcess::blobSize(const URL& url, uint64_t& resultSize)
 {
     resultSize = NetworkBlobRegistry::singleton().blobSize(this, url);
+}
+
+void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, uint64_t requestIdentifier)
+{
+    RefPtr<NetworkConnectionToWebProcess> protector(this);
+
+    Vector<RefPtr<WebCore::BlobDataFileReference>> fileReferences;
+    for (auto& url : blobURLs)
+        fileReferences.appendVector(NetworkBlobRegistry::singleton().filesInBlob(*this, { ParsedURLString, url }));
+
+    for (auto& file : fileReferences)
+        file->prepareForFileAccess();
+
+    NetworkBlobRegistry::singleton().writeBlobsToTemporaryFiles(blobURLs, [this, protector, requestIdentifier, fileReferences](const Vector<String>& fileNames) {
+        for (auto& file : fileReferences)
+            file->revokeFileAccess();
+
+        NetworkProcess::singleton().grantSandboxExtensionsToDatabaseProcessForBlobs(fileNames, [this, protector, requestIdentifier, fileNames]() {
+            if (!m_connection || !m_connection->isValid())
+                return;
+
+            m_connection->send(Messages::NetworkProcessConnection::DidWriteBlobsToTemporaryFiles(requestIdentifier, fileNames), 0);
+        });
+    });
 }
 
 void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2011, 2014-2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #include "Scrollbar.h"
 #include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -62,6 +63,8 @@ public:
     virtual bool requestScrollPositionUpdate(const ScrollPosition&) { return false; }
 
     WEBCORE_EXPORT bool handleWheelEvent(const PlatformWheelEvent&);
+
+    WeakPtr<ScrollableArea> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 #if ENABLE(CSS_SCROLL_SNAP)
     const Vector<LayoutUnit>* horizontalSnapOffsets() const { return m_horizontalSnapOffsets.get(); };
@@ -180,8 +183,8 @@ public:
     int verticalScrollbarIntrusion() const;
     WEBCORE_EXPORT IntSize scrollbarIntrusion() const;
 
-    virtual Scrollbar* horizontalScrollbar() const { return 0; }
-    virtual Scrollbar* verticalScrollbar() const { return 0; }
+    virtual Scrollbar* horizontalScrollbar() const { return nullptr; }
+    virtual Scrollbar* verticalScrollbar() const { return nullptr; }
 
     const IntPoint& scrollOrigin() const { return m_scrollOrigin; }
     bool scrollOriginChanged() const { return m_scrollOriginChanged; }
@@ -293,15 +296,15 @@ public:
     bool isPinnedVerticallyInDirection(int verticalScrollDelta) const;
 #endif
 
-    virtual TiledBacking* tiledBacking() const { return 0; }
+    virtual TiledBacking* tiledBacking() const { return nullptr; }
 
     // True if scrolling happens by moving compositing layers.
     virtual bool usesCompositedScrolling() const { return false; }
     // True if the contents can be scrolled asynchronously (i.e. by a ScrollingCoordinator).
     virtual bool usesAsyncScrolling() const { return false; }
 
-    virtual GraphicsLayer* layerForHorizontalScrollbar() const { return 0; }
-    virtual GraphicsLayer* layerForVerticalScrollbar() const { return 0; }
+    virtual GraphicsLayer* layerForHorizontalScrollbar() const { return nullptr; }
+    virtual GraphicsLayer* layerForVerticalScrollbar() const { return nullptr; }
 
     bool hasLayerForHorizontalScrollbar() const;
     bool hasLayerForVerticalScrollbar() const;
@@ -327,10 +330,10 @@ protected:
     virtual void invalidateScrollCornerRect(const IntRect&) = 0;
 
     friend class ScrollingCoordinator;
-    virtual GraphicsLayer* layerForScrolling() const { return 0; }
-    virtual GraphicsLayer* layerForScrollCorner() const { return 0; }
+    virtual GraphicsLayer* layerForScrolling() const { return nullptr; }
+    virtual GraphicsLayer* layerForScrollCorner() const { return nullptr; }
 #if ENABLE(RUBBER_BANDING)
-    virtual GraphicsLayer* layerForOverhangAreas() const { return 0; }
+    virtual GraphicsLayer* layerForOverhangAreas() const { return nullptr; }
 #endif
 
     bool hasLayerForScrollCorner() const;
@@ -348,6 +351,8 @@ private:
     virtual void setScrollOffset(const ScrollOffset&) = 0;
 
     mutable std::unique_ptr<ScrollAnimator> m_scrollAnimator;
+
+    WeakPtrFactory<ScrollableArea> m_weakPtrFactory { this };
 
 #if ENABLE(CSS_SCROLL_SNAP)
     std::unique_ptr<Vector<LayoutUnit>> m_horizontalSnapOffsets;

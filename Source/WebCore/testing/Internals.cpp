@@ -1661,7 +1661,7 @@ public:
     {
     }
 
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         ++m_iterations;
         if (m_iterations < 2)
@@ -1674,8 +1674,8 @@ public:
     CodeBlock* codeBlock() const { return m_codeBlock; }
 
 private:
-    int m_iterations;
-    CodeBlock* m_codeBlock;
+    mutable int m_iterations;
+    mutable CodeBlock* m_codeBlock;
 };
 
 String Internals::parserMetaData(Deprecated::ScriptValue value)
@@ -2387,6 +2387,18 @@ void Internals::setFixedLayoutSize(int width, int height, ExceptionCode& ec)
     }
     FrameView* frameView = document->view();
     frameView->setFixedLayoutSize(IntSize(width, height));
+}
+
+void Internals::setViewExposedRect(float x, float y, float width, float height, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->view()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    FrameView* frameView = document->view();
+    frameView->setViewExposedRect(FloatRect(x, y, width, height));
 }
 
 void Internals::setHeaderHeight(float height)

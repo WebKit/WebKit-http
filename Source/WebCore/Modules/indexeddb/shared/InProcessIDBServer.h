@@ -46,7 +46,7 @@ namespace IDBServer {
 class IDBServer;
 }
 
-class InProcessIDBServer final : public IDBClient::IDBConnectionToServerDelegate, public IDBServer::IDBConnectionToClientDelegate, public RefCounted<InProcessIDBServer> {
+class InProcessIDBServer final : public IDBClient::IDBConnectionToServerDelegate, public IDBServer::IDBConnectionToClientDelegate, public RefCounted<InProcessIDBServer>, public IDBServer::IDBBackingStoreTemporaryFileHandler {
 public:
     WEBCORE_EXPORT static Ref<InProcessIDBServer> create();
     WEBCORE_EXPORT static Ref<InProcessIDBServer> create(const String& databaseDirectoryPath);
@@ -65,7 +65,7 @@ public:
     void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier) final;
     void createIndex(const IDBRequestData&, const IDBIndexInfo&) final;
     void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName) final;
-    void putOrAdd(const IDBRequestData&, IDBKey*, SerializedScriptValue&, const IndexedDB::ObjectStoreOverwriteMode) final;
+    void putOrAdd(const IDBRequestData&, IDBKey*, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode) final;
     void getRecord(const IDBRequestData&, const IDBKeyRangeData&) final;
     void getCount(const IDBRequestData&, const IDBKeyRangeData&) final;
     void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&) final;
@@ -99,6 +99,9 @@ public:
 
     void ref() override { RefCounted<InProcessIDBServer>::ref(); }
     void deref() override { RefCounted<InProcessIDBServer>::deref(); }
+
+    void prepareForAccessToTemporaryFile(const String&) override { }
+    void accessToTemporaryFileComplete(const String& path) override;
 
 private:
     InProcessIDBServer();

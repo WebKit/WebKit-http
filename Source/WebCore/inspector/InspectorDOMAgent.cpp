@@ -63,6 +63,8 @@
 #include "HTMLNames.h"
 #include "HTMLTemplateElement.h"
 #include "HitTestResult.h"
+#include "InspectorClient.h"
+#include "InspectorController.h"
 #include "InspectorHistory.h"
 #include "InspectorNodeFinder.h"
 #include "InspectorOverlay.h"
@@ -1015,7 +1017,9 @@ void InspectorDOMAgent::setSearchingForNode(ErrorString& errorString, bool enabl
 {
     if (m_searchingForNode == enabled)
         return;
+
     m_searchingForNode = enabled;
+
     if (enabled) {
         m_inspectModeHighlightConfig = highlightConfigFromInspectorObject(errorString, highlightInspectorObject);
         if (!m_inspectModeHighlightConfig)
@@ -1024,6 +1028,9 @@ void InspectorDOMAgent::setSearchingForNode(ErrorString& errorString, bool enabl
         hideHighlight(errorString);
 
     m_overlay->didSetSearchingForNode(m_searchingForNode);
+
+    if (InspectorClient* client = m_pageAgent->page().inspectorController().inspectorClient())
+        client->elementSelectionChanged(m_searchingForNode);
 }
 
 std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspectorObject(ErrorString& errorString, const InspectorObject* highlightInspectorObject)
@@ -1669,9 +1676,9 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
                 String ariaRelevantAttrValue = axObject->ariaLiveRegionRelevant();
                 if (!ariaRelevantAttrValue.isEmpty()) {
                     // FIXME: Pass enum values rather than strings once unblocked. http://webkit.org/b/133711
-                    String ariaRelevantAdditions = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::DOM::LiveRegionRelevant::Additions);
-                    String ariaRelevantRemovals = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::DOM::LiveRegionRelevant::Removals);
-                    String ariaRelevantText = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::DOM::LiveRegionRelevant::Text);
+                    String ariaRelevantAdditions = Inspector::Protocol::InspectorHelpers::getEnumConstantValue(Inspector::Protocol::DOM::LiveRegionRelevant::Additions);
+                    String ariaRelevantRemovals = Inspector::Protocol::InspectorHelpers::getEnumConstantValue(Inspector::Protocol::DOM::LiveRegionRelevant::Removals);
+                    String ariaRelevantText = Inspector::Protocol::InspectorHelpers::getEnumConstantValue(Inspector::Protocol::DOM::LiveRegionRelevant::Text);
                     liveRegionRelevant = Inspector::Protocol::Array<String>::create();
                     const SpaceSplitString& values = SpaceSplitString(ariaRelevantAttrValue, true);
                     // @aria-relevant="all" is exposed as ["additions","removals","text"], in order.

@@ -24,7 +24,7 @@
 #include "config.h"
 #include "HTMLAnchorElement.h"
 
-#include "AttributeDOMTokenList.h"
+#include "DOMTokenList.h"
 #include "ElementIterator.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -46,6 +46,7 @@
 #include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
 #include "Settings.h"
+#include "URLUtils.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -74,15 +75,6 @@ Ref<HTMLAnchorElement> HTMLAnchorElement::create(const QualifiedName& tagName, D
 HTMLAnchorElement::~HTMLAnchorElement()
 {
     clearRootEditableElementForSelectionOnMouseDown();
-}
-
-// This function does not allow leading spaces before the port number.
-static unsigned parsePortFromStringPosition(const String& value, unsigned portStart, unsigned& portEnd)
-{
-    portEnd = portStart;
-    while (isASCIIDigit(value[portEnd]))
-        ++portEnd;
-    return value.substring(portStart, portEnd - portStart).toUInt();
 }
 
 bool HTMLAnchorElement::supportsFocus() const
@@ -260,7 +252,7 @@ void HTMLAnchorElement::parseAttribute(const QualifiedName& name, const AtomicSt
         if (SpaceSplitString::spaceSplitStringContainsValue(value, "noreferrer", true))
             m_linkRelations |= RelationNoReferrer;
         if (m_relList)
-            m_relList->attributeValueChanged(value);
+            m_relList->associatedAttributeValueChanged(value);
     }
     else
         HTMLElement::parseAttribute(name, value);
@@ -311,7 +303,7 @@ bool HTMLAnchorElement::hasRel(uint32_t relation) const
 DOMTokenList& HTMLAnchorElement::relList()
 {
     if (!m_relList) 
-        m_relList = std::make_unique<AttributeDOMTokenList>(*this, HTMLNames::relAttr);
+        m_relList = std::make_unique<DOMTokenList>(*this, HTMLNames::relAttr);
     return *m_relList;
 }
 
@@ -562,22 +554,12 @@ void HTMLAnchorElement::handleClick(Event* event)
     URL kurl = document().completeURL(url.toString());
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
-    if (hasAttribute(downloadAttr)) {
-        ResourceRequest request(kurl);
-
-        // FIXME: Why are we not calling addExtraFieldsToMainResourceRequest() if this check fails? It sets many important header fields.
-        if (!hasRel(RelationNoReferrer)) {
-            String referrer = SecurityPolicy::generateReferrerHeader(document().referrerPolicy(), kurl, frame->loader().outgoingReferrer());
-            if (!referrer.isEmpty())
-                request.setHTTPReferrer(referrer);
-            frame->loader().addExtraFieldsToMainResourceRequest(request);
-        }
-
-        frame->loader().client().startDownload(request, fastGetAttribute(downloadAttr));
-    } else
+    auto downloadAttribute = fastGetAttribute(downloadAttr);
+#else
+    auto downloadAttribute = nullAtom;
 #endif
 
-    frame->loader().urlSelected(kurl, target(), event, LockHistory::No, LockBackForwardList::No, hasRel(RelationNoReferrer) ? NeverSendReferrer : MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate());
+    frame->loader().urlSelected(kurl, target(), event, LockHistory::No, LockBackForwardList::No, hasRel(RelationNoReferrer) ? NeverSendReferrer : MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate(), downloadAttribute);
 
     sendPings(kurl);
 }

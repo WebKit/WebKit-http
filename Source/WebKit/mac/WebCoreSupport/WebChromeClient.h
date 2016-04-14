@@ -213,13 +213,11 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     void addPlaybackTargetPickerClient(uint64_t /*contextId*/) override;
     void removePlaybackTargetPickerClient(uint64_t /*contextId*/) override;
-    void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* hasVideo */, const String&) override;
+    void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* hasVideo */) override;
     void playbackTargetPickerClientStateDidChange(uint64_t /*contextId*/, WebCore::MediaProducer::MediaStateFlags) override;
     void setMockMediaPlaybackTargetPickerEnabled(bool) override;
     void setMockMediaPlaybackTargetPickerState(const String&, WebCore::MediaPlaybackTargetContext::State) override;
 #endif
-    
-    bool mediaShouldUsePersistentCache() const override;
 
 private:
     WebView *m_webView;

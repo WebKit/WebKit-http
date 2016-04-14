@@ -241,6 +241,7 @@ public:
     bool isCustomGetterSetter() const;
     bool isObject() const;
     bool inherits(const ClassInfo*) const;
+    const ClassInfo* classInfoOrNull() const;
         
     // Extracting the value.
     bool getString(ExecState*, WTF::String&) const;
@@ -307,6 +308,7 @@ public:
     JSCell* asCell() const;
     JS_EXPORT_PRIVATE bool isValidCallee();
 
+    Structure* structureOrNull() const;
     JSValue structureOrUndefined() const;
 
     JS_EXPORT_PRIVATE void dump(PrintStream&) const;

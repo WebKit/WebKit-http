@@ -317,7 +317,6 @@ bool AccessibilityObject::accessibleNameDerivesFromContent() const
     case ImageRole:
     case ListRole:
     case ListBoxRole:
-    case LandmarkApplicationRole:
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
@@ -340,6 +339,7 @@ bool AccessibilityObject::accessibleNameDerivesFromContent() const
     case ToolbarRole:
     case TreeGridRole:
     case TreeRole:
+    case WebApplicationRole:
         return false;
     default:
         break;
@@ -396,8 +396,7 @@ bool AccessibilityObject::isLandmark() const
 {
     AccessibilityRole role = roleValue();
     
-    return role == LandmarkApplicationRole
-        || role == LandmarkBannerRole
+    return role == LandmarkBannerRole
         || role == LandmarkComplementaryRole
         || role == LandmarkContentInfoRole
         || role == LandmarkMainRole
@@ -1258,7 +1257,7 @@ static String listMarkerTextForNode(Node* node)
 }
 
 // Returns the text associated with a list marker if this node is contained within a list item.
-String AccessibilityObject::listMarkerTextForNodeAndPosition(Node* node, const VisiblePosition& visiblePositionStart) const
+String AccessibilityObject::listMarkerTextForNodeAndPosition(Node* node, const VisiblePosition& visiblePositionStart)
 {
     // If the range does not contain the start of the line, the list marker text should not be included.
     if (!isStartOfLine(visiblePositionStart))
@@ -1305,7 +1304,7 @@ String AccessibilityObject::stringForRange(RefPtr<Range> range) const
     return builder.toString();
 }
 
-String AccessibilityObject::stringForVisiblePositionRange(const VisiblePositionRange& visiblePositionRange) const
+String AccessibilityObject::stringForVisiblePositionRange(const VisiblePositionRange& visiblePositionRange)
 {
     if (visiblePositionRange.isNull())
         return String();
@@ -2028,7 +2027,7 @@ static void initializeRoleMap()
     const RoleEntry roles[] = {
         { "alert", ApplicationAlertRole },
         { "alertdialog", ApplicationAlertDialogRole },
-        { "application", LandmarkApplicationRole },
+        { "application", WebApplicationRole },
         { "article", DocumentArticleRole },
         { "banner", LandmarkBannerRole },
         { "button", ButtonRole },
@@ -2153,7 +2152,7 @@ bool AccessibilityObject::hasHighlighting() const
     return false;
 }
 
-const AtomicString& AccessibilityObject::roleDescription() const
+String AccessibilityObject::roleDescription() const
 {
     return getAttribute(aria_roledescriptionAttr);
 }
@@ -2347,7 +2346,8 @@ bool AccessibilityObject::supportsRangeValue() const
     return isProgressIndicator()
         || isSlider()
         || isScrollbar()
-        || isSpinButton();
+        || isSpinButton()
+        || isAttachmentElement();
 }
     
 bool AccessibilityObject::supportsARIASetSize() const

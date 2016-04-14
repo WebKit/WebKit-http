@@ -98,6 +98,10 @@ WK_EXPORT void WKPreferencesSetWebGLEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetWebGLEnabled(WKPreferencesRef);
 
 // Defaults to false.
+WK_EXPORT void WKPreferencesSetWebGL2Enabled(WKPreferencesRef, bool);
+WK_EXPORT bool WKPreferencesGetWebGL2Enabled(WKPreferencesRef);
+
+// Defaults to false.
 WK_EXPORT void WKPreferencesSetForceSoftwareWebGLRendering(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetForceSoftwareWebGLRendering(WKPreferencesRef);
 
@@ -410,6 +414,10 @@ WK_EXPORT bool WKPreferencesGetShadowDOMEnabled(WKPreferencesRef);
 // Defaults to false
 WK_EXPORT void WKPreferencesSetCustomElementsEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetCustomElementsEnabled(WKPreferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetFetchAPIEnabled(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

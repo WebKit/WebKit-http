@@ -31,11 +31,13 @@
 #include "ConcurrentJITLock.h"
 #include "ExitingJITType.h"
 #include "GetByIdVariant.h"
-#include "StructureStubInfo.h"
 
 namespace JSC {
 
 class CodeBlock;
+class StructureStubInfo;
+
+typedef HashMap<CodeOrigin, StructureStubInfo*, CodeOriginApproximateHash> StubInfoMap;
 
 class GetByIdStatus {
 public:
@@ -91,6 +93,9 @@ public:
     bool makesCalls() const;
     
     bool wasSeenInJIT() const { return m_wasSeenInJIT; }
+    
+    // Attempts to reduce the set of variants to fit the given structure set. This may be approximate.
+    void filter(const StructureSet&);
     
     void dump(PrintStream&) const;
     

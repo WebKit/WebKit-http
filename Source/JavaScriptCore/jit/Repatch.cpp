@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,14 +33,17 @@
 #include "CallFrameShuffler.h"
 #include "DFGOperations.h"
 #include "DFGSpeculativeJIT.h"
+#include "DirectArguments.h"
 #include "FTLThunks.h"
 #include "GCAwareJITStubRoutine.h"
 #include "GetterSetter.h"
+#include "ICStats.h"
 #include "JIT.h"
 #include "JITInlines.h"
 #include "LinkBuffer.h"
 #include "JSCInlines.h"
 #include "PolymorphicAccess.h"
+#include "ScopedArguments.h"
 #include "ScratchRegisterAllocator.h"
 #include "StackAlignment.h"
 #include "StructureRareDataInlines.h"
@@ -93,7 +96,7 @@ static void repatchCall(CodeBlock* codeBlock, CodeLocationCall call, FunctionPtr
 
 static void repatchByIdSelfAccess(
     CodeBlock* codeBlock, StructureStubInfo& stubInfo, Structure* structure,
-    PropertyOffset offset, const FunctionPtr &slowPathFunction,
+    PropertyOffset offset, const FunctionPtr& slowPathFunction,
     bool compact)
 {
     // Only optimize once!
@@ -161,6 +164,8 @@ static void resetPutByIDCheckAndLoad(StructureStubInfo& stubInfo)
 
 static void replaceWithJump(StructureStubInfo& stubInfo, const MacroAssemblerCodePtr target)
 {
+    RELEASE_ASSERT(target);
+    
     if (MacroAssembler::canJumpReplacePatchableBranch32WithPatch()) {
         MacroAssembler::replaceWithJump(
             MacroAssembler::startOfPatchableBranch32WithPatchOnAddress(
@@ -211,7 +216,21 @@ static bool forceICFailure(ExecState*)
     return Options::forceICFailure();
 }
 
-static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo)
+inline J_JITOperation_ESsiJI appropriateOptimizingGetByIdFunction(GetByIDKind kind)
+{
+    if (kind == GetByIDKind::Normal)
+        return operationGetByIdOptimize;
+    return operationTryGetByIdOptimize;
+}
+
+inline J_JITOperation_ESsiJI appropriateGenericGetByIdFunction(GetByIDKind kind)
+{
+    if (kind == GetByIDKind::Normal)
+        return operationGetById;
+    return operationTryGetById;
+}
+
+static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo, GetByIDKind kind)
 {
     if (forceICFailure(exec))
         return GiveUpOnCache;
@@ -225,11 +244,24 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
 
     std::unique_ptr<AccessCase> newCase;
 
-    if (isJSArray(baseValue) && propertyName == exec->propertyNames().length)
-        newCase = AccessCase::getLength(vm, codeBlock, AccessCase::ArrayLength);
-    else if (isJSString(baseValue) && propertyName == exec->propertyNames().length)
-        newCase = AccessCase::getLength(vm, codeBlock, AccessCase::StringLength);
-    else {
+    if (propertyName == vm.propertyNames->length) {
+        if (isJSArray(baseValue))
+            newCase = AccessCase::getLength(vm, codeBlock, AccessCase::ArrayLength);
+        else if (isJSString(baseValue))
+            newCase = AccessCase::getLength(vm, codeBlock, AccessCase::StringLength);
+        else if (DirectArguments* arguments = jsDynamicCast<DirectArguments*>(baseValue)) {
+            // If there were overrides, then we can handle this as a normal property load! Guarding
+            // this with such a check enables us to add an IC case for that load if needed.
+            if (!arguments->overrodeThings())
+                newCase = AccessCase::getLength(vm, codeBlock, AccessCase::DirectArgumentsLength);
+        } else if (ScopedArguments* arguments = jsDynamicCast<ScopedArguments*>(baseValue)) {
+            // Ditto.
+            if (!arguments->overrodeThings())
+                newCase = AccessCase::getLength(vm, codeBlock, AccessCase::ScopedArgumentsLength);
+        }
+    }
+    
+    if (!newCase) {
         if (!slot.isCacheable() && !slot.isUnset())
             return GiveUpOnCache;
 
@@ -259,8 +291,9 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
             && action == AttemptToCache
             && !structure->needImpurePropertyWatchpoint()
             && !loadTargetFromProxy) {
+            LOG_IC((ICEvent::GetByIdSelfPatch, structure->classInfo(), propertyName));
             structure->startWatchingPropertyForReplacements(vm, slot.cachedOffset());
-            repatchByIdSelfAccess(codeBlock, stubInfo, structure, slot.cachedOffset(), operationGetByIdOptimize, true);
+            repatchByIdSelfAccess(codeBlock, stubInfo, structure, slot.cachedOffset(), appropriateOptimizingGetByIdFunction(kind), true);
             stubInfo.initGetByIdSelf(codeBlock, structure, slot.cachedOffset());
             return RetryCacheLater;
         }
@@ -293,7 +326,19 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
         if (slot.isCacheableGetter())
             getter = jsDynamicCast<JSFunction*>(slot.getterSetter()->getter());
 
-        if (!loadTargetFromProxy && getter && AccessCase::canEmitIntrinsicGetter(getter, structure))
+        if (kind == GetByIDKind::Pure) {
+            AccessCase::AccessType type;
+            if (slot.isCacheableValue())
+                type = AccessCase::Load;
+            else if (slot.isUnset())
+                type = AccessCase::Miss;
+            else if (slot.isCacheableGetter())
+                type = AccessCase::GetGetter;
+            else
+                RELEASE_ASSERT_NOT_REACHED();
+
+            newCase = AccessCase::tryGet(vm, codeBlock, type, offset, structure, conditionSet, loadTargetFromProxy, slot.watchpointSet());
+        } else if (!loadTargetFromProxy && getter && AccessCase::canEmitIntrinsicGetter(getter, structure))
             newCase = AccessCase::getIntrinsic(vm, codeBlock, getter, slot.cachedOffset(), structure, conditionSet);
         else {
             AccessCase::AccessType type;
@@ -315,23 +360,27 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
         }
     }
 
-    MacroAssemblerCodePtr codePtr =
-        stubInfo.addAccessCase(codeBlock, propertyName, WTFMove(newCase));
+    LOG_IC((ICEvent::GetByIdAddAccessCase, baseValue.classInfoOrNull(), propertyName));
 
-    if (!codePtr)
-        return GiveUpOnCache;
+    AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, propertyName, WTFMove(newCase));
 
-    replaceWithJump(stubInfo, codePtr);
+    if (result.generatedSomeCode()) {
+        LOG_IC((ICEvent::GetByIdReplaceWithJump, baseValue.classInfoOrNull(), propertyName));
+        
+        RELEASE_ASSERT(result.code());
+        replaceWithJump(stubInfo, result.code());
+    }
     
-    return RetryCacheLater;
+    return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
 }
 
-void repatchGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo)
+void repatchGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo, GetByIDKind kind)
 {
+    SuperSamplerScope superSamplerScope(false);
     GCSafeConcurrentJITLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
-    if (tryCacheGetByID(exec, baseValue, propertyName, slot, stubInfo) == GiveUpOnCache)
-        repatchCall(exec->codeBlock(), stubInfo.callReturnLocation, operationGetById);
+    if (tryCacheGetByID(exec, baseValue, propertyName, slot, stubInfo, kind) == GiveUpOnCache)
+        repatchCall(exec->codeBlock(), stubInfo.callReturnLocation, appropriateGenericGetByIdFunction(kind));
 }
 
 static V_JITOperation_ESsiJJI appropriateGenericPutByIdFunction(const PutPropertySlot &slot, PutKind putKind)
@@ -386,7 +435,9 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
                 && MacroAssembler::isPtrAlignedAddressOffset(maxOffsetRelativeToBase(slot.cachedOffset()))
                 && !structure->needImpurePropertyWatchpoint()
                 && !structure->inferredTypeFor(ident.impl())) {
-
+                
+                LOG_IC((ICEvent::PutByIdSelfPatch, structure->classInfo(), ident));
+                
                 repatchByIdSelfAccess(
                     codeBlock, stubInfo, structure, slot.cachedOffset(),
                     appropriateOptimizingPutByIdFunction(slot, putKind), false);
@@ -457,22 +508,27 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
         }
     }
 
-    MacroAssemblerCodePtr codePtr = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
+    LOG_IC((ICEvent::PutByIdAddAccessCase, structure->classInfo(), ident));
     
-    if (!codePtr)
-        return GiveUpOnCache;
-
-    resetPutByIDCheckAndLoad(stubInfo);
-    MacroAssembler::repatchJump(
-        stubInfo.callReturnLocation.jumpAtOffset(
-            stubInfo.patch.deltaCallToJump),
-        CodeLocationLabel(codePtr));
+    AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
     
-    return RetryCacheLater;
+    if (result.generatedSomeCode()) {
+        LOG_IC((ICEvent::PutByIdReplaceWithJump, structure->classInfo(), ident));
+        
+        RELEASE_ASSERT(result.code());
+        resetPutByIDCheckAndLoad(stubInfo);
+        MacroAssembler::repatchJump(
+            stubInfo.callReturnLocation.jumpAtOffset(
+                stubInfo.patch.deltaCallToJump),
+            CodeLocationLabel(result.code()));
+    }
+    
+    return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
 }
 
 void repatchPutByID(ExecState* exec, JSValue baseValue, Structure* structure, const Identifier& propertyName, const PutPropertySlot& slot, StructureStubInfo& stubInfo, PutKind putKind)
 {
+    SuperSamplerScope superSamplerScope(false);
     GCSafeConcurrentJITLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
     if (tryCachePutByID(exec, baseValue, structure, propertyName, slot, stubInfo, putKind) == GiveUpOnCache)
@@ -511,24 +567,30 @@ static InlineCacheAction tryRepatchIn(
     if (!conditionSet.isValid())
         return GiveUpOnCache;
 
+    LOG_IC((ICEvent::InAddAccessCase, structure->classInfo(), ident));
+
     std::unique_ptr<AccessCase> newCase = AccessCase::in(
         vm, codeBlock, wasFound ? AccessCase::InHit : AccessCase::InMiss, structure, conditionSet);
 
-    MacroAssemblerCodePtr codePtr = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
-    if (!codePtr)
-        return GiveUpOnCache;
-
-    MacroAssembler::repatchJump(
-        stubInfo.callReturnLocation.jumpAtOffset(stubInfo.patch.deltaCallToJump),
-        CodeLocationLabel(codePtr));
+    AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
     
-    return RetryCacheLater;
+    if (result.generatedSomeCode()) {
+        LOG_IC((ICEvent::InReplaceWithJump, structure->classInfo(), ident));
+        
+        RELEASE_ASSERT(result.code());
+        MacroAssembler::repatchJump(
+            stubInfo.callReturnLocation.jumpAtOffset(stubInfo.patch.deltaCallToJump),
+            CodeLocationLabel(result.code()));
+    }
+    
+    return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
 }
 
 void repatchIn(
     ExecState* exec, JSCell* base, const Identifier& ident, bool wasFound,
     const PropertySlot& slot, StructureStubInfo& stubInfo)
 {
+    SuperSamplerScope superSamplerScope(false);
     if (tryRepatchIn(exec, base, ident, wasFound, slot, stubInfo) == GiveUpOnCache)
         repatchCall(exec->codeBlock(), stubInfo.callReturnLocation, operationIn);
 }
@@ -901,9 +963,9 @@ void linkPolymorphicCall(
         callLinkInfo.remove();
 }
 
-void resetGetByID(CodeBlock* codeBlock, StructureStubInfo& stubInfo)
+void resetGetByID(CodeBlock* codeBlock, StructureStubInfo& stubInfo, GetByIDKind kind)
 {
-    repatchCall(codeBlock, stubInfo.callReturnLocation, operationGetByIdOptimize);
+    repatchCall(codeBlock, stubInfo.callReturnLocation, appropriateOptimizingGetByIdFunction(kind));
     resetGetByIDCheckAndLoad(stubInfo);
     MacroAssembler::repatchJump(stubInfo.callReturnLocation.jumpAtOffset(stubInfo.patch.deltaCallToJump), stubInfo.callReturnLocation.labelAtOffset(stubInfo.patch.deltaCallToSlowCase));
 }

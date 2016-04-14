@@ -405,7 +405,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/ImageBufferCG.cpp
     platform/graphics/cg/ImageBufferDataCG.cpp
     platform/graphics/cg/ImageCG.cpp
-    platform/graphics/cg/ImageSourceCG.cpp
+    platform/graphics/cg/ImageDecoderCG.cpp
     platform/graphics/cg/ImageSourceCGMac.mm
     platform/graphics/cg/IntPointCG.cpp
     platform/graphics/cg/IntRectCG.cpp
@@ -646,6 +646,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/graphics/cocoa
     platform/graphics/cg
     platform/graphics/filters
+    platform/graphics/opentype
     platform/graphics/mac
     platform/graphics/transforms
 
@@ -922,3 +923,15 @@ GENERATE_BINDINGS(WebCore_DERIVED_SOURCES
     ${IDL_ATTRIBUTES_FILE}
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
     ${ADDITIONAL_BINDINGS_DEPENDENCIES})
+
+set(WebCoreTestSupport_LIBRARY_TYPE SHARED)
+list(APPEND WebCoreTestSupport_LIBRARIES PRIVATE WebCore)
+list(APPEND WebCoreTestSupport_SOURCES
+    bindings/js/JSMockContentFilterSettingsCustom.cpp
+
+    testing/Internals.mm
+    testing/MockContentFilter.cpp
+    testing/MockContentFilterSettings.cpp
+)
+
+set(CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS} "-compatibility_version 1 -current_version ${WEBKIT_MAC_VERSION}")

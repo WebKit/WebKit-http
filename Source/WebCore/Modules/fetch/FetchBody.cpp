@@ -33,7 +33,6 @@
 
 #include "DOMRequestState.h"
 #include "Dictionary.h"
-#include "ExceptionCode.h"
 #include "FetchBodyOwner.h"
 #include "FormData.h"
 #include "HTTPParsers.h"
@@ -82,60 +81,24 @@ FetchBody FetchBody::extractFromBody(FetchBody* body)
     if (!body)
         return { };
 
-    body->m_isDisturbed = true;
     return FetchBody(WTFMove(*body));
-}
-
-bool FetchBody::processIfEmptyOrDisturbed(Consumer::Type type, DeferredWrapper& promise)
-{
-    if (m_type == Type::None) {
-        switch (type) {
-        case Consumer::Type::Text:
-            promise.resolve(String());
-            return true;
-        case Consumer::Type::Blob:
-            promise.resolve<RefPtr<Blob>>(Blob::create());
-            return true;
-        case Consumer::Type::JSON:
-            promise.reject<ExceptionCode>(SYNTAX_ERR);
-            return true;
-        case Consumer::Type::ArrayBuffer:
-            fulfillPromiseWithArrayBuffer(promise, nullptr, 0);
-            return true;
-        default:
-            ASSERT_NOT_REACHED();
-            promise.reject<ExceptionCode>(0);
-            return true;
-        };
-    }
-
-    if (m_isDisturbed) {
-        promise.reject<ExceptionCode>(TypeError);
-        return true;
-    }
-    m_isDisturbed = true;
-    return false;
 }
 
 void FetchBody::arrayBuffer(FetchBodyOwner& owner, DeferredWrapper&& promise)
 {
-    if (processIfEmptyOrDisturbed(Consumer::Type::ArrayBuffer, promise))
-        return;
+    ASSERT(m_type != Type::None);
     consume(owner, Consumer::Type::ArrayBuffer, WTFMove(promise));
 }
 
 void FetchBody::blob(FetchBodyOwner& owner, DeferredWrapper&& promise)
 {
-    if (processIfEmptyOrDisturbed(Consumer::Type::Blob, promise))
-        return;
-
+    ASSERT(m_type != Type::None);
     consume(owner, Consumer::Type::Blob, WTFMove(promise));
 }
 
 void FetchBody::json(FetchBodyOwner& owner, DeferredWrapper&& promise)
 {
-    if (processIfEmptyOrDisturbed(Consumer::Type::JSON, promise))
-        return;
+    ASSERT(m_type != Type::None);
 
     if (m_type == Type::Text) {
         fulfillPromiseWithJSON(promise, m_text);
@@ -146,8 +109,7 @@ void FetchBody::json(FetchBodyOwner& owner, DeferredWrapper&& promise)
 
 void FetchBody::text(FetchBodyOwner& owner, DeferredWrapper&& promise)
 {
-    if (processIfEmptyOrDisturbed(Consumer::Type::Text, promise))
-        return;
+    ASSERT(m_type != Type::None);
 
     if (m_type == Type::Text) {
         promise.resolve(m_text);
@@ -201,7 +163,7 @@ void FetchBody::consumeText(Consumer::Type type, DeferredWrapper& promise)
     ASSERT(type == Consumer::Type::ArrayBuffer || type == Consumer::Type::Blob);
 
     if (type == Consumer::Type::ArrayBuffer) {
-        Vector<char> data = extractFromText();
+        Vector<uint8_t> data = extractFromText();
         fulfillPromiseWithArrayBuffer(promise, data.data(), data.size());
         return;
     }
@@ -232,12 +194,12 @@ void FetchBody::consumeBlob(FetchBodyOwner& owner, Consumer::Type type, Deferred
     owner.loadBlob(*m_blob, loadingType(type));
 }
 
-Vector<char> FetchBody::extractFromText() const
+Vector<uint8_t> FetchBody::extractFromText() const
 {
     ASSERT(m_type == Type::Text);
     // FIXME: This double allocation is not efficient. Might want to fix that at WTFString level.
     CString data = m_text.utf8();
-    Vector<char> value(data.length());
+    Vector<uint8_t> value(data.length());
     memcpy(value.data(), data.data(), data.length());
     return value;
 }
@@ -245,10 +207,10 @@ Vector<char> FetchBody::extractFromText() const
 static inline RefPtr<Blob> blobFromArrayBuffer(ArrayBuffer* buffer, const String& contentType)
 {
     if (!buffer)
-        return Blob::create(Vector<char>(), contentType);
+        return Blob::create(Vector<uint8_t>(), contentType);
 
     // FIXME: We should try to move buffer to Blob without doing this copy.
-    Vector<char> value(buffer->byteLength());
+    Vector<uint8_t> value(buffer->byteLength());
     memcpy(value.data(), buffer->data(), buffer->byteLength());
     return Blob::create(WTFMove(value), contentType);
 }
