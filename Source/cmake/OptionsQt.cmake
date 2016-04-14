@@ -78,15 +78,18 @@ find_package(PNG REQUIRED)
 find_package(Sqlite REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(ICU REQUIRED)
+find_package(Threads REQUIRED)
 
 if (ENABLE_XSLT)
     find_package(LibXslt 1.1.7 REQUIRED)
 endif ()
 
-if (NOT WIN32)
-    find_package(Threads REQUIRED)
-    find_package(Fontconfig 2.8.0 REQUIRED)
+find_package(Fontconfig)
+
+if (FONTCONFIG_FOUND)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_FONTCONFIG 1)
 endif ()
+
 find_package(WebP)
 
 if (WEBP_FOUND)
