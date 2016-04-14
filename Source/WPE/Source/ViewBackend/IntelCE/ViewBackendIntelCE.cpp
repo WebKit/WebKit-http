@@ -42,6 +42,7 @@
 
 // Initializes a plane for the graphics to be rendered to
 static gdl_ret_t setup_plane(gdl_plane_id_t plane) {
+    gdl_boolean_t usePremultAlpha = GDL_TRUE;
     gdl_boolean_t useScaler = GDL_FALSE;
     gdl_pixel_format_t pixelFormat = GDL_PF_ARGB_32;
     gdl_color_space_t colorSpace = GDL_COLOR_SPACE_RGB;
@@ -59,9 +60,8 @@ static gdl_ret_t setup_plane(gdl_plane_id_t plane) {
     if (GDL_SUCCESS == rc) {
         dstRect.width = displayInfo.tvmode.width;
         dstRect.height = displayInfo.tvmode.height;
-        if (dstRect.height != HEIGHT) {
+        if (dstRect.height != HEIGHT)
             useScaler = GDL_TRUE;
-        }
     }
 
     srcRect.origin.x = 0;
@@ -70,40 +70,35 @@ static gdl_ret_t setup_plane(gdl_plane_id_t plane) {
     srcRect.height = HEIGHT;
 
     rc = gdl_plane_reset(plane);
-    if (GDL_SUCCESS == rc) {
+    if (GDL_SUCCESS == rc)
         rc = gdl_plane_config_begin(plane);
-    }
 
-    if (GDL_SUCCESS == rc) {
+    if (GDL_SUCCESS == rc)
+        rc = gdl_plane_set_attr(GDL_PLANE_ALPHA_PREMULT, &usePremultAlpha);
+
+    if (GDL_SUCCESS == rc)
         rc = gdl_plane_set_attr(GDL_PLANE_SRC_COLOR_SPACE, &colorSpace);
-    }
 
-    if (GDL_SUCCESS == rc) {
+    if (GDL_SUCCESS == rc)
         rc = gdl_plane_set_attr(GDL_PLANE_SCALE, &useScaler);
-    }
 
-    if (GDL_SUCCESS == rc) {
+    if (GDL_SUCCESS == rc)
         rc = gdl_plane_set_attr(GDL_PLANE_PIXEL_FORMAT, &pixelFormat);
-    }
 
-    if (GDL_SUCCESS == rc) {
+    if (GDL_SUCCESS == rc)
         rc = gdl_plane_set_attr(GDL_PLANE_DST_RECT, &dstRect);
-    }
 
-    if (GDL_SUCCESS == rc) {
+    if (GDL_SUCCESS == rc)
         rc = gdl_plane_set_attr(GDL_PLANE_SRC_RECT, &srcRect);
-    }
 
-    if (GDL_SUCCESS == rc) {
+    if (GDL_SUCCESS == rc)
         rc = gdl_plane_config_end(GDL_FALSE);
-    } else {
+    else
         gdl_plane_config_end(GDL_TRUE);
-    }
 
-    if (GDL_SUCCESS != rc) {
+    if (GDL_SUCCESS != rc)
         fprintf(stderr, "GDL configuration failed! GDL error code is 0x%x\n",
                 rc);
-    }
 
     return rc;
 }
