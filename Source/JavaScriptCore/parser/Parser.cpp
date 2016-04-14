@@ -287,16 +287,7 @@ String Parser<LexerType>::parseInner(const Identifier& calleeName, SourceParseMo
         }
     }
 
-    bool validEnding;
-    if (isArrowFunctionBodyExpression) {
-        ASSERT(m_lexer->isReparsingFunction());
-        // When we reparse and stack overflow, we're not guaranteed a valid ending. If we don't run out of stack space,
-        // then of course this will always be valid because we already parsed for syntax errors. But we must
-        // be cautious in case we run out of stack space.
-        validEnding = isEndOfArrowFunction(); 
-    } else
-        validEnding = consume(EOFTOK);
-
+    bool validEnding = consume(EOFTOK);
     if (!sourceElements || !validEnding) {
         if (hasError())
             parseError = m_errorMessage;
@@ -542,9 +533,6 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseStatementList
 {
     // The grammar is documented here:
     // http://www.ecma-international.org/ecma-262/6.0/index.html#sec-statements
-
-    failIfStackOverflow();
-
     DepthManager statementDepth(&m_statementDepth);
     m_statementDepth++;
     TreeStatement result = 0;
@@ -576,11 +564,9 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseStatementList
 
         break;
     }
-#if ENABLE(ES6_CLASS_SYNTAX)
     case CLASSTOKEN:
         result = parseClassDeclaration(context);
         break;
-#endif
     case FUNCTION:
         result = parseFunctionDeclaration(context);
         break;
@@ -858,13 +844,8 @@ template <class TreeBuilder> TreeSourceElements Parser<LexerType>::parseArrowFun
     
     context.setEndOffset(expr, m_lastTokenEndPosition.offset);
 
-    failIfFalse(isEndOfArrowFunction(), "Expected a ';', ']', '}', ')', ',', line terminator or EOF following a arrow function statement");
-
     JSTextPosition end = tokenEndPosition();
     
-    if (!m_lexer->prevTerminator())
-        setEndOfStatement();
-
     TreeSourceElements sourceElements = context.createSourceElements();
     TreeStatement body = context.createReturnStatement(location, expr, start, end);
     context.setEndOffset(body, m_lastTokenEndPosition.offset);
@@ -2174,9 +2155,7 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
     
     popScope(functionScope, TreeBuilder::NeedsFreeVariableInfo);
     
-    if (functionBodyType == ArrowFunctionBodyExpression)
-        failIfFalse(isEndOfArrowFunction(), "Expected the closing ';' ',' ']' ')' '}', line terminator or EOF after arrow function");
-    else {
+    if (functionBodyType != ArrowFunctionBodyExpression) {
         matchOrFail(CLOSEBRACE, "Expected a closing '}' after a ", stringForFunctionMode(mode), " body");
         next();
     }
@@ -2831,11 +2810,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclara
         SavePoint savePoint = createSavePoint();
 
         bool startsWithFunction = match(FUNCTION);
-        if (startsWithFunction
-#if ENABLE(ES6_CLASS_SYNTAX)
-                || match(CLASSTOKEN)
-#endif
-                ) {
+        if (startsWithFunction || match(CLASSTOKEN)) {
             isFunctionOrClassDeclaration = true;
             next();
 
@@ -2854,13 +2829,10 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclara
                 DepthManager statementDepth(&m_statementDepth);
                 m_statementDepth = 1;
                 result = parseFunctionDeclaration(context);
-            }
-#if ENABLE(ES6_CLASS_SYNTAX)
-            else {
+            } else {
                 ASSERT(match(CLASSTOKEN));
                 result = parseClassDeclaration(context);
             }
-#endif
         } else {
             // export default expr;
             //
@@ -2971,11 +2943,9 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclara
             break;
         }
 
-#if ENABLE(ES6_CLASS_SYNTAX)
         case CLASSTOKEN:
             result = parseClassDeclaration(context, ExportType::Exported);
             break;
-#endif
 
         default:
             failWithMessage("Expected either a declaration or a variable statement");
@@ -3724,12 +3694,10 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
     switch (m_token.m_type) {
     case FUNCTION:
         return parseFunctionExpression(context);
-#if ENABLE(ES6_CLASS_SYNTAX)
     case CLASSTOKEN: {
         ParserClassInfo<TreeBuilder> info;
         return parseClass(context, FunctionNoRequirements, info);
     }
-#endif
     case OPENBRACE:
         if (strictMode())
             return parseStrictObjectLiteral(context);
@@ -3909,12 +3877,8 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
         newCount++;
     }
 
-#if ENABLE(ES6_CLASS_SYNTAX)
     bool baseIsSuper = match(SUPER);
     semanticFailIfTrue(baseIsSuper && newCount, "Cannot use new with super");
-#else
-    bool baseIsSuper = false;
-#endif
 
     bool baseIsNewTarget = false;
     if (newCount && match(DOT)) {

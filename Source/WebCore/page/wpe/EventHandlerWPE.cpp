@@ -69,7 +69,7 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
     return false;
 }
 
-bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent&, Widget&)
+bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent&, Widget&)
 {
     notImplemented();
     return false;

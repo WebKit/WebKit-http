@@ -112,9 +112,6 @@ webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
 # This test verifies dynamic manipulation of the mroot and msqrt elements.
 mathml/roots-removeChild.html [ ImageOnlyFailure ]
 
-# There is a small 1px size difference but this will be fixed when we refactor completely RenderMathMLFraction.
-mathml/presentation/fractions-positions.html [ Skip ]
-
 # For now we ignore margin/padding/border properties of MathML renderers.
 mathml/presentation/bug97990.html [ Skip ]
 
@@ -299,7 +296,6 @@ webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflectio
 
 # WPT tests that fail after doing full test repository reimport and need further investigation
 imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-document.htm [ Pass Failure ]
-imported/w3c/web-platform-tests/dom/nodes/MutationObserver-childList.html [ Timeout ]
 imported/w3c/web-platform-tests/dom/nodes/Document-createElement-namespace.html [ Pass Failure ]
 webkit.org/b/155516 [ Debug ] imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-coords.html [ Skip ]
 webkit.org/b/155516 [ Release ] imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-coords.html [ Failure ]
@@ -322,8 +318,6 @@ imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-worker-twi
 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-bogus.htm [ Skip ]
 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-cors.htm [ Skip ]
 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-non-cors.htm [ Skip ]
-
-imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Timeout ]
 
 # New W3C ref tests that are failing.
 webkit.org/b/148856 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ ImageOnlyFailure ]
@@ -386,12 +380,6 @@ imported/w3c/web-platform-tests/tools [ Skip ]
 # Tests marked as pass or fail until wpt server proves to be stable enough
 imported/w3c/web-platform-tests/domparsing/DOMParser-parseFromString-html.html [ Pass Failure ]
 imported/w3c/web-platform-tests/domparsing/insert-adjacent.html [ Pass Failure ]
-
-# W3C html timing out tests
-imported/w3c/web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/010.html [ Failure Timeout ]
-imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/link-style-error-01.html [ Timeout ]
-imported/w3c/web-platform-tests/html/semantics/document-metadata/the-style-element/style-error-01.html [ Timeout ]
-imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/viewport-change.html [ Timeout ]
 
 # Imported W3C canvas failed tests
 webkit.org/b/138676 imported/w3c/canvas/2d.pattern.image.null.html [ Failure ]
@@ -508,6 +496,9 @@ imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre
 imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-N-between-Rs.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-N-between-Rs.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/html/dom/elements/global-attributes/style-01.html [ ImageOnlyFailure ]
+
+imported/w3c/web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/010.html [ Failure Timeout ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/viewport-change.html [ Failure ]
 
 # Imported Mozilla SVG tests
 webkit.org/b/5968 imported/mozilla/svg/linearGradient-basic-03.svg [ ImageOnlyFailure ]
@@ -674,8 +665,6 @@ webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-2.html [ Failure ]
 webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-3.html [ Failure ]
 
 [ Debug ] js/regress-141098.html [ Slow ]
-
-webkit.org/b/144258 [ Debug ] js/class-syntax-semicolon.html [ Skip ]
 
 # IDBVersionChangeEvent tests need to be rewritten to use event constructors instead of createEvent,
 # after we implement the IDBVersionChangeEvent constructor.
@@ -905,9 +894,8 @@ loader/stateobjects/replacestate-size.html [ Slow ]
 imported/blink/fast/multicol/outlines-at-column-boundaries.html [ ImageOnlyFailure ]
 fast/multicol/multicol-with-child-renderLayer-for-input.html [ ImageOnlyFailure ]
 
-webkit.org/b/94458 http/tests/security/aboutBlank/security-context-write.html [ Skip ]
-
-webkit.org/b/156179 [ Debug ] fast/loader/opaque-base-url.html [ Skip ]
+# Assertion failure in MessagePort::contextDestroyed, usually attributed to later tests
+webkit.org/b/94458 http/tests/security/MessagePort/event-listener-context.html [ Skip ]
 
 ########################################
 ### START OF IndexedDB failures

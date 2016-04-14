@@ -249,6 +249,11 @@ void NetworkConnectionToWebProcess::deleteCookie(SessionID sessionID, const URL&
     WebCore::deleteCookie(storageSession(sessionID), url, cookieName);
 }
 
+void NetworkConnectionToWebProcess::addCookie(SessionID sessionID, const URL& url, const Cookie& cookie)
+{
+    WebCore::addCookie(storageSession(sessionID), url, cookie);
+}
+
 void NetworkConnectionToWebProcess::registerFileBlobURL(const URL& url, const String& path, const SandboxExtension::Handle& extensionHandle, const String& contentType)
 {
     RefPtr<SandboxExtension> extension = SandboxExtension::create(extensionHandle);
@@ -296,10 +301,12 @@ void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<Stri
         for (auto& file : fileReferences)
             file->revokeFileAccess();
 
-        if (!m_connection || !m_connection->isValid())
-            return;
+        NetworkProcess::singleton().grantSandboxExtensionsToDatabaseProcessForBlobs(fileNames, [this, protector, requestIdentifier, fileNames]() {
+            if (!m_connection || !m_connection->isValid())
+                return;
 
-        m_connection->send(Messages::NetworkProcessConnection::DidWriteBlobsToTemporaryFiles(requestIdentifier, fileNames), 0);
+            m_connection->send(Messages::NetworkProcessConnection::DidWriteBlobsToTemporaryFiles(requestIdentifier, fileNames), 0);
+        });
     });
 }
 

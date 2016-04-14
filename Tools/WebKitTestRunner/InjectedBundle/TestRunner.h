@@ -71,6 +71,7 @@ public:
     void waitUntilDone();
     void notifyDone();
     double preciseTime();
+    double timeout() { return m_timeout; }
 
     // Other dumping.
     void dumpBackForwardList() { m_shouldDumpBackForwardListsForAllWindows = true; }
@@ -245,6 +246,8 @@ public:
     void setBackingScaleFactor(double, JSValueRef);
 
     void setWindowIsKey(bool);
+
+    void setViewSize(double width, double height);
 
     void callAddChromeInputFieldCallback();
     void callRemoveChromeInputFieldCallback();

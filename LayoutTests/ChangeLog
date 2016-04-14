@@ -1,3 +1,1346 @@
+2016-04-13  Mark Lam  <mark.lam@apple.com>
+
+        ES6: Implement String.prototype.split and RegExp.prototype[@@split].
+        https://bugs.webkit.org/show_bug.cgi?id=156013
+
+        Reviewed by Keith Miller.
+
+        Re-landing r199393 now that the shadow chicken crash has been fixed.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/string-prototype-properties-expected.txt:
+
+        * js/regress/regexp-prototype-split-observable-side-effects-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects2-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects2.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects4-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects4.html: Added.
+
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects2.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-flags.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-global.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-ignoreCase.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-multiline.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-sticky.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-unicode.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects4.js: Added.
+
+        * js/regress/script-tests/string-prototype-split-observable-side-effects.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects2.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-flags.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-global.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-ignoreCase.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-multiline.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-sticky.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-unicode.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects4.js: Added.
+
+        * js/regress/string-prototype-split-observable-side-effects-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects2-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects2.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-flags-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-flags.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-global-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-global.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects4-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects4.html: Added.
+
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.14_String.prototype.split/S15.5.4.14_A1_T3-expected.txt:
+
+2016-04-12  Antti Koivisto  <antti@apple.com>
+
+        Crash at com.apple.JavaScriptCore: bool WTF::startsWith<WTF::StringImpl, WTF::StringImpl> + 8
+        https://bugs.webkit.org/show_bug.cgi?id=156512
+        rdar://problem/24220567
+
+        Reviewed by Benjamin Poulain.
+
+        Land a test that verifies that setting attr to null does not crash with attribute selectors.
+        This was fixed by http://trac.webkit.org/changeset/199392.
+
+        * fast/css/attribute-selector-null-crash-expected.html: Added.
+        * fast/css/attribute-selector-null-crash.html: Added.
+
+2016-04-12  Mark Lam  <mark.lam@apple.com>
+
+        Rollout: ES6: Implement String.prototype.split and RegExp.prototype[@@split].
+        https://bugs.webkit.org/show_bug.cgi?id=156013
+
+        Speculative rollout to fix 32-bit shadow-chicken.yaml/tests/v8-v6/v8-regexp.js.shadow-chicken test failure.
+
+        Not reviewed.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/string-prototype-properties-expected.txt:
+        * js/regress/regexp-prototype-split-observable-side-effects-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects2-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects2.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects4-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects4.html: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects2.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-flags.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-global.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-ignoreCase.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-multiline.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-sticky.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-unicode.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects4.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects2.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-flags.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-global.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-ignoreCase.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-multiline.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-sticky.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-unicode.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects4.js: Removed.
+        * js/regress/string-prototype-split-observable-side-effects-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects2-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects2.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-flags-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-flags.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-global-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-global.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects4-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects4.html: Removed.
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.14_String.prototype.split/S15.5.4.14_A1_T3-expected.txt:
+
+2016-04-12  Keith Miller  <keith_miller@apple.com>
+
+        [ES6] Add support for Symbol.isConcatSpreadable.
+        https://bugs.webkit.org/show_bug.cgi?id=155351
+
+        Reviewed by Saam Barati.
+
+        Fix tests for Symbol.isConcatSpreadable on the Symbol object.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/array-prototype-properties-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2016-04-12  Mark Lam  <mark.lam@apple.com>
+
+        ES6: Implement String.prototype.split and RegExp.prototype[@@split].
+        https://bugs.webkit.org/show_bug.cgi?id=156013
+
+        Reviewed by Keith Miller.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/string-prototype-properties-expected.txt:
+
+        * js/regress/regexp-prototype-split-observable-side-effects-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects2-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects2.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects4-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects4.html: Added.
+
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects2.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-flags.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-global.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-ignoreCase.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-multiline.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-sticky.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-unicode.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects4.js: Added.
+
+        * js/regress/script-tests/string-prototype-split-observable-side-effects.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects2.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-flags.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-global.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-ignoreCase.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-multiline.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-sticky.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-unicode.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects4.js: Added.
+
+        * js/regress/string-prototype-split-observable-side-effects-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects2-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects2.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-flags-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-flags.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-global-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-global.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects4-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects4.html: Added.
+
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.14_String.prototype.split/S15.5.4.14_A1_T3-expected.txt:
+
+2016-04-12  Chris Dumez  <cdumez@apple.com>
+
+        Attr.value should not be nullable
+        https://bugs.webkit.org/show_bug.cgi?id=156515
+
+        Reviewed by Benjamin Poulain.
+
+        Add layout test and rebaseline existing one now that Attr.value is no
+        longer nullable.
+
+        * fast/dom/Attr/value-not-nullable-expected.txt: Added.
+        * fast/dom/Attr/value-not-nullable.html: Added.
+        * fast/dom/coreDOM-element-attribute-js-null-expected.txt:
+        * fast/dom/coreDOM-element-attribute-js-null.xhtml:
+
+2016-04-12  David Kilzer  <ddkilzer@apple.com>
+
+        Web Inspector: inspector/heap/getRemoteObject.html is flakey
+        <http://webkit.org/b/156077>
+
+        Unreviewed test expectations update.
+
+        * platform/mac-wk2/TestExpectations:
+        (inspector/heap/getRemoteObject.html): Update bug number.
+
+2016-04-12  David Kilzer  <ddkilzer@apple.com>
+
+        Web Inspector: inspector/heap/getRemoteObject.html is flakey
+        <http://webkit.org/b/156514>
+
+        Unreviewed test expectations update.
+
+        * platform/mac-wk2/TestExpectations:
+        (inspector/heap/getRemoteObject.html): Mark as flakey.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to expand Objects in Heap Allocations View to see exactly what it retains
+        https://bugs.webkit.org/show_bug.cgi?id=156419
+        <rdar://problem/25633863>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/heap-snapshot-expected.txt:
+        * inspector/unit-tests/heap-snapshot.html:
+        Add a quick test that retainedNodes returns a list of edges.
+
+2016-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] Overlay scrollbars push contents inwards
+        https://bugs.webkit.org/show_bug.cgi?id=156225
+        <rdar://problem/25137040>
+
+        Reviewed by Darin Adler.
+
+        * fast/scrolling/rtl-scrollbars-overlay-no-push-contents-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overlay-no-push-contents.html: Added.
+
+2016-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Flakey crash after ScrollAnimatorMac destruction
+        https://bugs.webkit.org/show_bug.cgi?id=156372
+
+        Reviewed by Darin Adler.
+
+        Migrate to the new mechanism for disabling mock scrollbars in tests.
+
+        * fast/scrolling/rtl-scrollbars-animation-property.html:
+
+2016-04-12  Saam barati  <sbarati@apple.com>
+
+        We incorrectly parse arrow function expressions
+        https://bugs.webkit.org/show_bug.cgi?id=156373
+
+        Reviewed by Mark Lam.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+        (catch):
+
+2016-03-17  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Add parsing support for <auto-repeat> syntax
+        https://bugs.webkit.org/show_bug.cgi?id=155583
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set-expected.txt: Added.
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set.html: Added.
+
+2016-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Remove failing assertion in ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=156485
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/fragment-shader-assertion-expected.txt: Added.
+        * fast/canvas/webgl/fragment-shader-assertion.html: Added.
+
+2016-04-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Use WeakPtrs to avoid using deallocated Widgets and ScrollableAreas
+        https://bugs.webkit.org/show_bug.cgi?id=156420
+        <rdar://problem/25637378>
+
+        Reviewed by Darin Adler.
+
+        * fast/events/wheel-event-destroys-overflow-expected.txt: Added.
+        * fast/events/wheel-event-destroys-overflow.html: Added.
+        * platform/ios-simulator/TestExpectations: Skip wheel-event test on iOS.
+
+2016-04-11  Dean Jackson  <dino@apple.com>
+
+        putImageData needs to premultiply input
+        https://bugs.webkit.org/show_bug.cgi?id=156488
+        <rdar://problem/25672675>
+
+        Reviewed by Zalan Bujtas.
+
+        Tests that putImageData is taking unmultiplied data,
+        premultiplying it, then copying into the backing store.
+
+        * fast/canvas/putImageData-unmultiplied-expected.html: Added.
+        * fast/canvas/putImageData-unmultiplied.html: Added.
+
+2016-04-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unskip imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm
+        https://bugs.webkit.org/show_bug.cgi?id=156480
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-04-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Skip imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm on ios-simulators
+        https://bugs.webkit.org/show_bug.cgi?id=156480
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-04-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        fast/loader/opaque-base-url.html crashing during mac and ios debug tests
+        https://bugs.webkit.org/show_bug.cgi?id=156179
+        <rdar://problem/25507719>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/loader/iframe-src-invalid-url-expected.txt: Added.
+        * fast/loader/iframe-src-invalid-url.html: Added.
+
+2016-04-11  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Merge CG ImageSource and non CG ImageSource implementation in one file
+        https://bugs.webkit.org/show_bug.cgi?id=155456
+
+        Reviewed by Darin Adler.
+        
+        Add a test for image sub-sampling. The image subsampling is enabled by
+        default for iOS platform only. But it can be explicitly enabled through
+        the setting ImageSubsamplingEnabled.
+
+        * fast/images/image-subsampling-expected.html: Added.
+        * fast/images/image-subsampling.html: Added.
+
+2016-04-11  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r193857): Text selection causes text to disappear.
+        https://bugs.webkit.org/show_bug.cgi?id=156448
+        rdar://problem/25578952
+
+        Reviewed by Simon Fraser.
+
+        Apparently when the end position of the selection range is smaller than the start position, we need
+        to repaint the entire text as it indicates selection clearing.
+
+        * fast/text/text-disappear-on-deselect-expected.html: Added.
+        * fast/text/text-disappear-on-deselect.html: Added.
+
+2016-04-11  Chris Dumez  <cdumez@apple.com>
+
+        DOMTokenList.contains() should not throw
+        https://bugs.webkit.org/show_bug.cgi?id=156453
+
+        Reviewed by Ryosuke Niwa.
+
+        Update existing layout tests now that DOMTokenList.contains() no longer
+        throws when called with an invalid token.
+
+        * fast/dom/HTMLElement/class-list-expected.txt:
+        * fast/dom/HTMLElement/class-list-quirks-expected.txt:
+        * fast/dom/HTMLElement/script-tests/class-list.js:
+        (shouldThrowDOMException): Deleted.
+        * fast/dom/HTMLOutputElement/dom-settable-token-list-expected.txt:
+        * fast/dom/HTMLOutputElement/script-tests/dom-settable-token-list.js:
+        (shouldThrowDOMException): Deleted.
+        * fast/dom/rel-list-expected.txt:
+        * fast/dom/rel-list.html:
+
+2016-04-11  Frederic Wang  <fwang@igalia.com>
+
+        Refactor RenderMathMLFraction layout to avoid using flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=153917
+
+        Reviewed by Sergio Villar Senin.
+
+        * TestExpectations: No longer skip mathml/presentation/fractions-positions.html
+        * mathml/opentype/fraction-line-expected.html: Added. New test to verify AxisHeight and
+        FractionRuleThickness parameters.
+        * mathml/opentype/fraction-line.html: Added. New test to verify axis height and rule
+        thickness parameters.
+        * mathml/presentation/fractions-linethickness-expected.html: Adjust the test to be sure that
+        the default rule thickness is 1px.
+        * mathml/presentation/fractions-linethickness.html: Adjust the test to be sure that the
+        default rule thickness is 1px.
+        * platform/gtk/mathml/presentation/roots-expected.txt: Update reference to take into account
+        changes in the render tree.
+        * platform/ios-simulator/mathml/presentation/roots-expected.txt: Ditto
+        * platform/mac/TestExpectations: Mark fraction-line and fractions-linethickness as
+        possibly failing since these tests require Latin Modern Math to work reliably.
+        * platform/ios-simulator/TestExpectations: Ditto
+
+2016-04-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199290.
+        https://bugs.webkit.org/show_bug.cgi?id=156465
+
+        broke 300 tests (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Merge CG ImageSource and non CG ImageSource implementation in
+        one file"
+        https://bugs.webkit.org/show_bug.cgi?id=155456
+        http://trac.webkit.org/changeset/199290
+
+2016-04-11  Frederic Wang  <fwang@igalia.com>
+
+        Refactor RenderMathMLUnderOver layout functions to avoid using flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=153742
+
+        Reviewed by Sergio Villar Senin.
+
+        Apply some small adjustments to the expectations of MathML tests after
+        the refactoring of RenderMathMLUnderOver. We also add a test for
+        non-stretchy horizontal operators in underover.
+
+        * platform/gtk/mathml/opentype/horizontal-expected.png:
+        * platform/gtk/mathml/opentype/horizontal-expected.txt:
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.png:
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+        * platform/mac/mathml/opentype/opentype-stretchy-horizontal-expected.png:
+        * platform/mac/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+        * mathml/mn-as-list-item-assert.html: Move the test description out of the invalid munderover
+        so that it is still displayed.
+        * mathml/mn-as-list-item-assert-expected.txt: Update the text expectation.
+        * mathml/presentation/underover-nonstretchy-horizontal.html: Ensure that nonstretchy horizontal operators are not stretched in munderover.
+        * mathml/presentation/underover-nonstretchy-horizontal-expected.html: Ditto.
+
+2016-04-11  Antti Koivisto  <antti@apple.com>
+
+        Implement functional :host() pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=156397
+        <rdar://problem/25621445>
+
+        Reviewed by Darin Adler.
+
+        Enable, fix and expand the test.
+
+        * fast/shadow-dom/css-scoping-shadow-host-functional-rule.html:
+        * platform/mac/TestExpectations:
+
+2016-04-11  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Merge CG ImageSource and non CG ImageSource implementation in one file
+        https://bugs.webkit.org/show_bug.cgi?id=155456
+
+        Reviewed by Darin Adler.
+        
+        Add a test for image sub-sampling. The image subsampling is enabled by
+        default for iOS platform only. But it can be explicitly enabled through
+        the setting ImageSubsamplingEnabled.
+
+        * fast/images/image-subsampling-expected.html: Added.
+        * fast/images/image-subsampling.html: Added.
+
+2016-04-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199268.
+        https://bugs.webkit.org/show_bug.cgi?id=156440
+
+        Broke Windows build (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Implement functional :host() pseudo class"
+        https://bugs.webkit.org/show_bug.cgi?id=156397
+        http://trac.webkit.org/changeset/199268
+
+2016-04-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Update another GStreamer test expectation
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2016-04-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Update some more IndexedDB test expectations.
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2016-04-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Remove failure expectation from storage/indexeddb/connection-leak.html
+
+        It's skipped in the global TestExpectations, see bug #152643.
+
+        * platform/gtk/TestExpectations:
+
+2016-04-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Gardening unexpected passes and IndexedDB tests.
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2016-04-09  Antti Koivisto  <antti@apple.com>
+
+        Implement functional :host() pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=156397
+        <rdar://problem/25621445>
+
+        Reviewed by Darin Adler.
+
+        Enable, fix and expand the test.
+
+        * fast/shadow-dom/css-scoping-shadow-host-functional-rule.html:
+        * platform/mac/TestExpectations:
+
+2016-04-07  Darin Adler  <darin@apple.com>
+
+        Improve IDL support for object arguments that are neither optional nor nullable
+        https://bugs.webkit.org/show_bug.cgi?id=156149
+
+        Reviewed by Chris Dumez.
+
+        * fast/canvas/canvas-path-addPath-expected.txt: Updated expected result to expect
+        TypeError rather than TYPE_MISMATCH_ERR. A progression.
+        * fast/text/font-face-set-javascript-expected.txt: Ditto.
+
+2016-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: XHRs and Web Worker scripts are not searchable
+        https://bugs.webkit.org/show_bug.cgi?id=154214
+        <rdar://problem/24643587>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/page/resources/search-script.js: Added.
+        * inspector/page/resources/search-stylesheet.css: Added.
+        * inspector/page/resources/search-worker.js: Added.
+        * inspector/page/resources/search-xhr.txt: Added.
+        * inspector/page/searchInResources-expected.txt: Added.
+        * inspector/page/searchInResources.html: Added.
+        Test for the Page domain's search commands.
+
+2016-04-08  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: "AXLandmarkApplication" is an inappropriate subrole for ARIA "application" since it's no longer a landmark
+        https://bugs.webkit.org/show_bug.cgi?id=155403
+
+        Reviewed by Chris Fleizach.
+
+        The new subrole is AXWebApplication and the new role description is "web application".
+        As part of the fix, the WebCore AccessibilityRole for ARIA's "application" role was
+        renamed from LandmarkApplicationRole to WebApplicationRole.
+
+        The roles-exposed.html and aria-grouping-roles.html test expectations were also updated.
+
+        * accessibility/mac/aria-grouping-roles-expected.txt:
+        * accessibility/mac/aria-grouping-roles.html:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2016-04-08  Zalan Bujtas  <zalan@apple.com>
+
+        Focus ring drawn at incorrect location on image map with CSS transform.
+        https://bugs.webkit.org/show_bug.cgi?id=143527
+        <rdar://problem/21908735>
+
+        Reviewed by Simon Fraser.
+
+        Implement pathForFocusRing for HTMLAreaElement.
+
+        * fast/images/image-map-outline-in-positioned-container-expected.html: Added.
+        * fast/images/image-map-outline-in-positioned-container.html: Added.
+        * fast/images/image-map-outline-with-paint-root-offset-expected.html: Added.
+        * fast/images/image-map-outline-with-paint-root-offset.html: Added.
+        * fast/images/image-map-outline-with-scale-transform-expected.html: Added.
+        * fast/images/image-map-outline-with-scale-transform.html: Added.
+
+2016-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Add IC support for arguments.length
+        https://bugs.webkit.org/show_bug.cgi?id=156389
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/direct-arguments-length-expected.txt: Added.
+        * js/regress/direct-arguments-length.html: Added.
+        * js/regress/direct-arguments-overridden-length-expected.txt: Added.
+        * js/regress/direct-arguments-overridden-length.html: Added.
+        * js/regress/direct-arguments-possibly-overridden-length-expected.txt: Added.
+        * js/regress/direct-arguments-possibly-overridden-length.html: Added.
+        * js/regress/scoped-arguments-length-expected.txt: Added.
+        * js/regress/scoped-arguments-length.html: Added.
+        * js/regress/scoped-arguments-overridden-length-expected.txt: Added.
+        * js/regress/scoped-arguments-overridden-length.html: Added.
+        * js/regress/scoped-arguments-possibly-overridden-length-expected.txt: Added.
+        * js/regress/scoped-arguments-possibly-overridden-length.html: Added.
+        * js/regress/script-tests/direct-arguments-length.js: Added.
+        (args):
+        * js/regress/script-tests/direct-arguments-overridden-length.js: Added.
+        (args):
+        * js/regress/script-tests/direct-arguments-possibly-overridden-length.js: Added.
+        (args1):
+        (args2):
+        * js/regress/script-tests/scoped-arguments-length.js: Added.
+        (args):
+        * js/regress/script-tests/scoped-arguments-overridden-length.js: Added.
+        (args):
+        * js/regress/script-tests/scoped-arguments-possibly-overridden-length.js: Added.
+        (args1):
+        (args2):
+
+2016-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Redefining a method of the same name hits an assertion
+        https://bugs.webkit.org/show_bug.cgi?id=144258
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations:
+        * js/script-tests/class-syntax-semicolon.js:
+        This test no longer asserts.
+
+2016-04-08  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Crash getting text under element in CSS table
+        https://bugs.webkit.org/show_bug.cgi?id=156328
+
+        Reviewed by Chris Fleizach.
+
+        While this crash is currently seen only for ATK, there is nothing to
+        prevent another port from attempting to get all the text under a CSS
+        RenderTable. Hence the shared test.
+
+        * accessibility/generated-content-with-display-table-crash.html: Added.
+        * platform/gtk/accessibility/generated-content-with-display-table-crash-expected.txt: Added.
+        * platform/mac/accessibility/generated-content-with-display-table-crash-expected.txt: Added.
+
+2016-04-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Quick Open fails to match pattern "bB" in file "abBc"
+        https://bugs.webkit.org/show_bug.cgi?id=156398
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/resource-query-controller-expected.txt:
+        * inspector/unit-tests/resource-query-controller.html:
+        Test that two repeated characters in the search string are correctly
+        matched when the first character is lowercase and the second is uppercase.
+
+2016-04-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Testharness-based tests that time out should be able to produce a detailled output
+        https://bugs.webkit.org/show_bug.cgi?id=145313
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * TestExpectations: Removed TIMEOUT for some tests for which testharness.timeout will be called just before WTR times out.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/request/request-cache-expected.txt: GTK specific baseline.
+        * resources/testharnessreport.js:
+        (add_completion_callback): Improving error logging message. Dumping of the tests status in error case.
+
+2016-04-08  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Fix positioned items with grid gaps
+        https://bugs.webkit.org/show_bug.cgi?id=156288
+
+        Reviewed by Darin Adler.
+
+        Added new tests checking the right behavior.
+
+        * fast/css-grid-layout/grid-positioned-items-gaps-expected.txt: Added.
+        * fast/css-grid-layout/grid-positioned-items-gaps-rtl-expected.txt: Added.
+        * fast/css-grid-layout/grid-positioned-items-gaps-rtl.html: Added.
+        * fast/css-grid-layout/grid-positioned-items-gaps.html: Added.
+
+2016-04-08  John Wilander  <wilander@apple.com>
+
+        CSP: Block XHR when calling XMLHttpRequest.send() and throw network error.
+        https://bugs.webkit.org/show_bug.cgi?id=153598
+        <rdar://problem/24391483>
+
+        Reviewed by Darin Adler.
+
+        * fast/workers/resources/worker-inherits-csp-blocks-xhr.js:
+        (catch):
+        * fast/workers/worker-inherits-csp-blocks-xhr-expected.txt:
+            Changed expected error from DOMException.SECURITY_ERR to DOMException.NETWORK_ERR.
+        * http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-blocked.html:
+            Now tests that XMLHttpRequest.send() is blocked if the URL voilates the connect-src directive in CSP.
+        * http/tests/security/contentSecurityPolicy/resources/worker.php:
+            Added two additional calls to XMLHttpRequest.send() and switched to receiving an error event to make
+            existing tests work with code changes.
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-malformed-meta.html:
+            Added an additional call to XMLHttpRequest.send() and switched to receiving an error event to make 
+            existing test work with code changes.
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-for-xhr-expected.txt:
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-for-xhr.html:
+            Added an additional call to XMLHttpRequest.send() and switched to receiving an error event to make 
+            existing tests work with code changes.
+            Refactored test mechnism with additional parameters to cover synchronous/asynchronous as well as 
+            same-origin/cross-origin in isolated worlds.
+
+2016-04-07  Darin Adler  <darin@apple.com>
+
+        FontFaceSet binding does not handle null correctly
+        https://bugs.webkit.org/show_bug.cgi?id=156141
+
+        Reviewed by Youenn Fablet.
+
+        * fast/text/font-face-set-javascript-expected.txt: Added expected results for new tests.
+        * fast/text/font-face-set-javascript.html: Added tests for handling of null, also added tests for
+        the has function.
+
+2016-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Implementing caching transition puts that need to reallocate with indexing storage
+        https://bugs.webkit.org/show_bug.cgi?id=130914
+
+        Reviewed by Saam Barati.
+
+        * js/regress/put-by-id-transition-with-indexing-header-expected.txt: Added.
+        * js/regress/put-by-id-transition-with-indexing-header.html: Added.
+        * js/regress/script-tests/put-by-id-transition-with-indexing-header.js: Added.
+        (allocate):
+
+2016-04-07  Ada Chan  <adachan@apple.com>
+
+        Roll out the css change in mediaControlsApple.css that has been causing assertions in layout for multiple tests
+        https://bugs.webkit.org/show_bug.cgi?id=156381
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/media/media-document-audio-repaint-expected.txt:
+        * platform/mac/media/video-zoom-controls-expected.txt:
+
+2016-04-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, rolling out r199199.
+
+        Revision breaks layout tests
+
+        Reverted changeset:
+
+        "fast/loader/opaque-base-url.html crashing during mac and ios
+        debug tests"
+        https://bugs.webkit.org/show_bug.cgi?id=156179
+        http://trac.webkit.org/changeset/199199
+
+2016-04-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to test effect of view exposed rect on tiled backing
+        https://bugs.webkit.org/show_bug.cgi?id=156365
+
+        Reviewed by Tim Horton.
+
+        Tests for tile size and tile coverage when we have an exposed view rect.
+
+        * tiled-drawing/tile-coverage-view-exposed-rect-expected.txt: Added.
+        * tiled-drawing/tile-coverage-view-exposed-rect.html: Added.
+        * tiled-drawing/tile-size-view-exposed-rect-expected.txt: Added.
+        * tiled-drawing/tile-size-view-exposed-rect.html: Added.
+
+2016-04-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        fast/loader/opaque-base-url.html crashing during mac and ios debug tests
+        https://bugs.webkit.org/show_bug.cgi?id=156179
+        <rdar://problem/25507719>
+
+        Reviewed by Andy Estes.
+
+        * TestExpectations:
+        * fast/url/data-uri-based-urls-expected.txt: Added.
+        * fast/url/data-uri-based-urls.html: Added.
+        * fast/url/relative-expected.txt:
+
+2016-04-07  Ada Chan  <adachan@apple.com>
+
+        Skip a couple more tests that are asserting in FrameView::scheduleRelayoutOfSubtree().
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-04-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Mark http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html as timeout in ios-simulator-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=149087
+
+        Unreviewed, test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-04-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Test expectation gardening for
+        Assertion failure in MessagePort::contextDestroyed in http/tests/security/MessagePort/event-listener-context.html,
+        usually attributed to later tests
+        https://bugs.webkit.org/show_bug.cgi?id=94458
+
+        http/tests/security/MessagePort/event-listener-context.html is the only culprit,
+        so it should be skipped everywhere, and subsequent tests shouldn't be marked.
+
+        * TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-04-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Wheel event callback removing the window causes crash in WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=150871
+        <rdar://problem/23418283>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/wheel-event-destroys-frame-expected.txt: Added.
+        * fast/events/wheel-event-destroys-frame.html: Added.
+        * platform/ios-simulator/TestExpectations: Skip wheel-event test on iOS.
+
+2016-04-07  Saam barati  <sbarati@apple.com>
+
+        Initial implementation of annex b.3.3 behavior was incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=156276
+
+        Reviewed by Keith Miller.
+
+        * js/function-declarations-in-switch-statement-expected.txt:
+        * js/script-tests/function-declarations-in-switch-statement.js:
+
+2016-04-06  Ada Chan  <adachan@apple.com>
+
+        Rename TextTrackRepresentationiOS to TextTrackRepresentationCocoa and enable on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156245
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+        Skip some tests with assertions after changes in MediaControlsApple.css.
+
+        * platform/mac/media/media-document-audio-repaint-expected.txt:
+        * platform/mac/media/video-zoom-controls-expected.txt:
+        Rebaseline some tests after changes in MediaControlsApple.css.
+
+2016-04-07  Daniel Bates  <dabates@apple.com>
+
+        CSP: Remove tests for unimplemented directive referrer
+        https://bugs.webkit.org/show_bug.cgi?id=156353
+
+        Reviewed by Andy Estes.
+
+        The Content Security Policy directive referrer was removed from the Content Security Policy Level 2 spec.,
+        <https://w3c.github.io/webappsec-csp/2/> (Editor's Draft, 29 August 2015). It was never implemented.
+        The functionality provided by this directive has been incorporated into its own meta tag and is covered
+        by the Referrer Policy spec., <https://w3c.github.io/webappsec-referrer-policy/>.
+
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-http-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-http.html: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-https-expected.txt: Removed.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-https.html: Removed.
+        * http/tests/security/contentSecurityPolicy/resources/referrer-test-endpoint.php: Removed.
+        * http/tests/security/contentSecurityPolicy/resources/referrer-test.js: Removed.
+        * http/tests/security/contentSecurityPolicy/resources/referrer-test.php: Removed.
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed follow-up fix to r199168. Add missing newline in expected output.
+
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/single-statement-blocks-expected.js:
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve JavaScript pretty printing
+        https://bugs.webkit.org/show_bug.cgi?id=156178
+        <rdar://problem/25535719>
+
+        Reviewed by Timothy Hatcher.
+
+        Expand the JavaScript formatting tests.
+
+        * inspector/codemirror/resources/prettyprinting/javascript-tests/single-statement-blocks-expected.js:
+        Update output now that the builder removes extra trailing whitespace automatically.
+
+        * inspector/codemirror/resources/prettyprinting/utilities.js:
+        Update due to simplified construction.
+
+        * inspector/formatting/formatting-javascript-expected.txt: Added.
+        * inspector/formatting/formatting-javascript.html: Added.
+        * inspector/formatting/resources/javascript-tests/arrow-functions-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/arrow-functions.js: Added.
+        * inspector/formatting/resources/javascript-tests/classes-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/classes.js: Added.
+        * inspector/formatting/resources/javascript-tests/comments-and-preserve-newlines-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/comments-and-preserve-newlines.js: Added.
+        * inspector/formatting/resources/javascript-tests/comments-only-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/comments-only.js: Added.
+        * inspector/formatting/resources/javascript-tests/do-while-statement-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/do-while-statement.js: Added.
+        * inspector/formatting/resources/javascript-tests/for-statements-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/for-statements.js: Added.
+        * inspector/formatting/resources/javascript-tests/functions-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/functions.js: Added.
+        * inspector/formatting/resources/javascript-tests/generators-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/generators.js: Added.
+        * inspector/formatting/resources/javascript-tests/if-statement-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/if-statement.js: Added.
+        * inspector/formatting/resources/javascript-tests/label-break-continue-block-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/label-break-continue-block.js: Added.
+        * inspector/formatting/resources/javascript-tests/logic-expressions-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/logic-expressions.js: Added.
+        * inspector/formatting/resources/javascript-tests/new-expression-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/new-expression.js: Added.
+        * inspector/formatting/resources/javascript-tests/object-array-literal-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/object-array-literal.js: Added.
+        * inspector/formatting/resources/javascript-tests/return-statement-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/return-statement.js: Added.
+        * inspector/formatting/resources/javascript-tests/sample-jquery-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/sample-jquery.js: Added.
+        * inspector/formatting/resources/javascript-tests/sample-normal-utilities-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/sample-normal-utilities.js: Added.
+        * inspector/formatting/resources/javascript-tests/sample-webinspector-object-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/sample-webinspector-object.js: Added.
+        * inspector/formatting/resources/javascript-tests/switch-case-default-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/switch-case-default.js: Added.
+        * inspector/formatting/resources/javascript-tests/ternary-expressions-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/ternary-expressions.js: Added.
+        * inspector/formatting/resources/javascript-tests/throw-statement-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/throw-statement.js: Added.
+        * inspector/formatting/resources/javascript-tests/try-catch-finally-statements-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/try-catch-finally-statements.js: Added.
+        * inspector/formatting/resources/javascript-tests/unary-binary-expressions-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/unary-binary-expressions.js: Added.
+        * inspector/formatting/resources/javascript-tests/variable-declaration-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/variable-declaration.js: Added.
+        * inspector/formatting/resources/javascript-tests/while-statement-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/while-statement.js: Added.
+        * inspector/formatting/resources/javascript-tests/with-statement-expected.js: Added.
+        * inspector/formatting/resources/javascript-tests/with-statement.js: Added.
+        * inspector/formatting/resources/utilities.js: Added.
+        Expanded test coverage for the new formatter.
+
+2016-04-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Marking storage/indexeddb/modern/autoincrement-abort-private.html as flaky on Macs
+        https://bugs.webkit.org/show_bug.cgi?id=156351
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-04-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199128 and r199141.
+        https://bugs.webkit.org/show_bug.cgi?id=156348
+
+        Causes crashes on multiple webpages (Requested by keith_mi_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "[ES6] Add support for Symbol.isConcatSpreadable."
+        https://bugs.webkit.org/show_bug.cgi?id=155351
+        http://trac.webkit.org/changeset/199128
+
+        "Unreviewed, uncomment accidentally commented line in test."
+        http://trac.webkit.org/changeset/199141
+
+2016-04-07  Daniel Bates  <dabates@apple.com>
+
+        CSP: Should only honor CSP policy delivered in meta tag that is a descendent of <head>
+        https://bugs.webkit.org/show_bug.cgi?id=59858
+        <rdar://problem/25603538>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests to ensure that we ignore the meta tags for Content-Security-Policy, Content-Security-Policy-Report-Only,
+        X-WebKit-CSP, and X-WebKit-CSP-Report-Only if it is not a descendent of <head>.
+
+        * http/tests/security/contentSecurityPolicy/meta-tag-ignored-if-not-in-head-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/meta-tag-ignored-if-not-in-head.html: Added.
+        * http/tests/security/contentSecurityPolicy/meta-tag-ignored-if-not-in-head2-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/meta-tag-ignored-if-not-in-head2.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-only-meta-tag-ignored-if-not-in-head-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-only-meta-tag-ignored-if-not-in-head.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-only-meta-tag-ignored-if-not-in-head2-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-only-meta-tag-ignored-if-not-in-head2.html: Added.
+
+2016-04-06  Sam Weinig  <sam@webkit.org>
+
+        window.Crypto is missing
+        <rdar://problem/25584034>
+        https://bugs.webkit.org/show_bug.cgi?id=156307
+
+        Reviewed by Joseph Pecoraro.
+
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+        Update for the new Crypto constructor.
+
+2016-04-07  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (197987): Ingredient lists on smittenkitchen.com are full justified instead of left justified.
+        https://bugs.webkit.org/show_bug.cgi?id=156326
+        <rdar://problem/25519393>
+
+        Reviewed by Antti Koivisto.
+
+        According to the spec (https://drafts.csswg.org/css-text-3/#text-align-property) 
+        unless otherwise specified by text-align-last, the last line before
+        a forced break or the end of the block is start-aligned.
+
+        In this patch we check if a forced break is present and we apply text alignment accordingly.
+
+        Test: fast/css3-text/css3-text-justify/text-justify-last-line-simple-line-layout.html
+
+        * fast/css3-text/css3-text-justify/text-justify-last-line-simple-line-layout-expected.html: Added.
+        * fast/css3-text/css3-text-justify/text-justify-last-line-simple-line-layout.html: Added.
+
+2016-04-07  Antti Koivisto  <antti@apple.com>
+
+        Shadow DOM: Implement display: contents for slots
+        https://bugs.webkit.org/show_bug.cgi?id=149439
+        <rdar://problem/22731922>
+
+        Reviewed by Ryosuke Niwa.
+
+        * platform/mac/TestExpectations:
+
+        Enable fast/shadow-dom/css-scoping-shadow-slot-display-override.html, the test for overriding slot display value.
+
+2016-04-07  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Content box incorrectly used as non-auto min-height
+        https://bugs.webkit.org/show_bug.cgi?id=155946
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css-grid-layout/min-height-border-box-expected.txt: Added.
+        * fast/css-grid-layout/min-height-border-box.html: Added.
+
+2016-04-07  Antti Koivisto  <antti@apple.com>
+
+        Reverting previous due to bad LayoutTest ChangeLog.
+
+        * platform/mac/TestExpectations:
+
+2016-04-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION (r188591): thingiverse.com direct messaging UI is not rendered properly
+        https://bugs.webkit.org/show_bug.cgi?id=156241
+        <rdar://problem/25262213>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/zero-sized-fonts-expected.txt: Added.
+        * fast/text/zero-sized-fonts.html: Added.
+
+2016-04-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Improve filtering in OpenResourceDialog
+        https://bugs.webkit.org/show_bug.cgi?id=155324
+        <rdar://problem/25094504>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add test coverage for ResourceQueryController.
+
+        * inspector/unit-tests/resource-query-controller-expected.txt: Added.
+        * inspector/unit-tests/resource-query-controller.html: Added.
+
+2016-04-06  Saam barati  <sbarati@apple.com>
+
+        jsc-layout-tests.yaml/js/script-tests/regress-141098.js failing on Yosemite Debug after r198989
+        https://bugs.webkit.org/show_bug.cgi?id=156187
+
+        Reviewed by Keith Miller.
+
+        * js/script-tests/regress-141098.js:
+
+2016-04-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Belatedly rebaseline several test expectations after r196244
+        
+        Unreviewed
+
+        * platform/gtk/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/gtk/fast/block/positioning/auto/vertical-rl/007-expected.txt:
+        * platform/gtk/fast/block/positioning/vertical-rl/fixed-positioning-expected.txt:
+        * platform/gtk/fast/borders/border-antialiasing-expected.txt:
+        * platform/gtk/fast/clip/001-expected.txt:
+        * platform/gtk/fast/clip/013-expected.txt:
+        * platform/gtk/fast/clip/014-expected.txt:
+        * platform/gtk/fast/clip/016-expected.txt:
+        * platform/gtk/fast/clip/outline-overflowClip-expected.txt:
+        * platform/gtk/fast/css/clip-zooming-expected.txt:
+        * platform/gtk/fast/forms/validation-message-appearance-expected.txt:
+        * platform/gtk/fast/line-grid/line-grid-inside-columns-expected.txt:
+        * platform/gtk/fast/line-grid/line-grid-into-columns-expected.txt:
+        * platform/gtk/fast/lists/scrolled-marker-paint-expected.txt:
+        * platform/gtk/fast/multicol/client-rects-expected.txt:
+        * platform/gtk/fast/multicol/column-break-with-balancing-expected.txt:
+        * platform/gtk/fast/multicol/column-rules-expected.txt:
+        * platform/gtk/fast/multicol/column-rules-stacking-expected.txt:
+        * platform/gtk/fast/multicol/columns-shorthand-parsing-expected.txt:
+        * platform/gtk/fast/multicol/float-paginate-complex-expected.txt:
+        * platform/gtk/fast/multicol/float-paginate-empty-lines-expected.txt:
+        * platform/gtk/fast/multicol/float-paginate-expected.txt:
+        * platform/gtk/fast/multicol/layers-in-multicol-expected.txt:
+        * platform/gtk/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/gtk/fast/multicol/max-height-columns-block-expected.txt:
+        * platform/gtk/fast/multicol/nested-columns-expected.txt:
+        * platform/gtk/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/gtk/fast/multicol/overflow-across-columns-expected.txt:
+        * platform/gtk/fast/multicol/overflow-across-columns-percent-height-expected.txt:
+        * platform/gtk/fast/multicol/overflow-unsplittable-expected.txt:
+        * platform/gtk/fast/multicol/paginate-block-replaced-expected.txt:
+        * platform/gtk/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/gtk/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/gtk/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/gtk/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/gtk/fast/multicol/pagination/LeftToRight-bt-expected.txt:
+        * platform/gtk/fast/multicol/pagination/LeftToRight-rl-expected.txt:
+        * platform/gtk/fast/multicol/pagination/LeftToRight-tb-expected.txt:
+        * platform/gtk/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/gtk/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/gtk/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt:
+        * platform/gtk/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/gtk/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/gtk/fast/multicol/pagination/TopToBottom-bt-expected.txt:
+        * platform/gtk/fast/multicol/pagination/TopToBottom-lr-expected.txt:
+        * platform/gtk/fast/multicol/pagination/TopToBottom-rl-expected.txt:
+        * platform/gtk/fast/multicol/positive-leading-expected.txt:
+        * platform/gtk/fast/multicol/scrolling-column-rules-expected.txt:
+        * platform/gtk/fast/multicol/span/anonymous-style-inheritance-expected.txt:
+        * platform/gtk/fast/multicol/span/span-as-immediate-child-complex-splitting-expected.txt:
+        * platform/gtk/fast/multicol/span/span-as-immediate-child-property-removal-expected.txt:
+        * platform/gtk/fast/multicol/span/span-as-immediate-columns-child-removal-expected.txt:
+        * platform/gtk/fast/multicol/span/span-as-nested-columns-child-dynamic-expected.txt:
+        * platform/gtk/fast/multicol/span/span-as-nested-columns-child-expected.txt:
+        * platform/gtk/fast/multicol/span/span-margin-collapsing-expected.txt:
+        * platform/gtk/fast/multicol/table-vertical-align-expected.txt:
+        * platform/gtk/fast/multicol/tall-image-behavior-expected.txt:
+        * platform/gtk/fast/multicol/vertical-lr/column-break-with-balancing-expected.txt:
+        * platform/gtk/fast/multicol/vertical-lr/column-rules-expected.txt:
+        * platform/gtk/fast/multicol/vertical-lr/float-multicol-expected.txt:
+        * platform/gtk/fast/multicol/vertical-lr/float-paginate-complex-expected.txt:
+        * platform/gtk/fast/multicol/vertical-lr/float-paginate-expected.txt:
+        * platform/gtk/fast/multicol/vertical-lr/nested-columns-expected.txt:
+        * platform/gtk/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/gtk/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/gtk/fast/multicol/vertical-rl/float-multicol-expected.txt:
+        * platform/gtk/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+        * platform/gtk/fast/multicol/vertical-rl/float-paginate-expected.txt:
+        * platform/gtk/fast/multicol/vertical-rl/nested-columns-expected.txt:
+        * platform/gtk/fast/overflow/clip-rects-fixed-ancestor-expected.txt:
+        * platform/gtk/fast/overflow/float-in-relpositioned-expected.txt:
+        * platform/gtk/fast/overflow/overflow-auto-position-absolute-expected.txt:
+        * platform/gtk/fast/overflow/overflow-rtl-expected.txt:
+        * platform/gtk/fast/overflow/paged-x-div-expected.txt:
+        * platform/gtk/fast/overflow/paged-x-div-with-column-gap-expected.txt:
+        * platform/gtk/fast/overflow/paged-x-on-root-expected.txt:
+        * platform/gtk/fast/overflow/paged-x-with-column-gap-expected.txt:
+        * platform/gtk/fast/overflow/paged-y-div-expected.txt:
+        * platform/gtk/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/gtk/fast/regions/repaint/region-painting-via-layout-expected.txt:
+        * platform/gtk/fast/repaint/box-shadow-h-expected.txt:
+        * platform/gtk/fast/repaint/box-shadow-v-expected.txt:
+        * platform/gtk/fast/repaint/layer-outline-expected.txt:
+        * platform/gtk/fast/repaint/layer-outline-horizontal-expected.txt:
+        * platform/gtk/fast/table/edge-offsets-expected.txt:
+        * platform/gtk/fast/transforms/overflow-with-transform-expected.txt:
+        * platform/gtk/fast/transforms/rotated-transform-affects-scrolling-1-expected.txt: Added.
+        * platform/gtk/fast/transforms/rotated-transform-affects-scrolling-2-expected.txt: Added.
+        * platform/gtk/printing/single-line-must-not-be-split-into-two-pages-expected.txt:
+        * platform/gtk/scrollbars/scrollbars-on-positioned-content-expected.txt:
+        * platform/gtk/svg/custom/getscreenctm-in-scrollable-div-area-nested-expected.txt:
+        * platform/gtk/svg/custom/image-rescale-clip-expected.txt:
+
+2016-03-29  Keith Miller  <keith_miller@apple.com>
+
+        [ES6] Add support for Symbol.isConcatSpreadable.
+        https://bugs.webkit.org/show_bug.cgi?id=155351
+
+        Reviewed by Saam Barati.
+
+        Fix tests for Symbol.isConcatSpreadable on the Symbol object.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/array-prototype-properties-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2016-04-06  Sam Weinig  <sam@webkit.org>
+
+        window.CSS should be a constructor with static functions
+        <rdar://problem/25580516>
+        https://bugs.webkit.org/show_bug.cgi?id=156294
+
+        Reviewed by Chris Dumez.
+
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+        Update for new CSS constructor property.
+
+2016-04-06  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        REGRESSION(r195463): [GTK] accessibility/roles-computedRoleString.html and accessibility/roles-exposed.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=153696
+
+        Reviewed by Chris Fleizach.
+
+        Now that RenderInline style format groups are exposed as InlineRole, there is
+        no longer a corresponding computed role for ins, samp, and var elements. Updated
+        the roles-computedRoleString.html test and expectations accordingly. Also added
+        the now-correct results for Gtk for both of the previously-failing tests.
+
+        * accessibility/roles-computedRoleString-expected.txt: Updated.
+        * accessibility/roles-computedRoleString.html: Updated.
+        * platform/gtk/TestExpectations: Unskip the two tests which are now passing.
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt: Updated.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated.
+
 2016-04-06  Keith Miller  <keith_miller@apple.com>
 
         RegExp constructor should use Symbol.match and other properties

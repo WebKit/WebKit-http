@@ -1330,7 +1330,7 @@ void Element::classAttributeChanged(const AtomicString& newClassString)
 
     if (hasRareData()) {
         if (auto* classList = elementRareData()->classList())
-            classList->attributeValueChanged(newClassString);
+            classList->associatedAttributeValueChanged(newClassString);
     }
 }
 
@@ -1373,6 +1373,18 @@ StyleResolver& Element::styleResolver()
 ElementStyle Element::resolveStyle(RenderStyle* parentStyle)
 {
     return styleResolver().styleForElement(*this, parentStyle);
+}
+
+bool Element::hasDisplayContents() const
+{
+    return hasRareData() && elementRareData()->hasDisplayContents();
+}
+
+void Element::setHasDisplayContents(bool value)
+{
+    if (hasDisplayContents() == value)
+        return;
+    ensureElementRareData().setHasDisplayContents(value);
 }
 
 // Returns true is the given attribute is an event handler.
@@ -1478,7 +1490,7 @@ const AtomicString& Element::imageSourceURL() const
 
 bool Element::rendererIsNeeded(const RenderStyle& style)
 {
-    return style.display() != NONE;
+    return style.display() != NONE && style.display() != CONTENTS;
 }
 
 RenderPtr<RenderElement> Element::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
@@ -2758,7 +2770,7 @@ DOMTokenList& Element::classList()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.classList())
-        data.setClassList(std::make_unique<AttributeDOMTokenList>(*this, HTMLNames::classAttr));
+        data.setClassList(std::make_unique<DOMTokenList>(*this, HTMLNames::classAttr));
     return *data.classList();
 }
 

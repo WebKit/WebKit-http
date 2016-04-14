@@ -152,6 +152,8 @@ bool FrameData::clear(bool clearMetadata)
     if (clearMetadata)
         m_haveMetadata = false;
 
+    m_subsamplingLevel = 0;
+
     if (m_image) {
         m_image = nullptr;
         return true;

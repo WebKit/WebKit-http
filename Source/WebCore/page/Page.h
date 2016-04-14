@@ -293,7 +293,15 @@ public:
 
     float topContentInset() const { return m_topContentInset; }
     WEBCORE_EXPORT void setTopContentInset(float);
+
+#if PLATFORM(IOS)
+    FloatSize obscuredInset() const { return m_obscuredInset; }
+    void setObscuredInset(FloatSize inset) { m_obscuredInset = inset; }
     
+    bool enclosedInScrollView() const { return m_enclosedInScrollView; }
+    void setEnclosedInScrollView(bool f) { m_enclosedInScrollView = f; }
+#endif
+
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     float textAutosizingWidth() const { return m_textAutosizingWidth; }
     void setTextAutosizingWidth(float textAutosizingWidth) { m_textAutosizingWidth = textAutosizingWidth; }
@@ -474,9 +482,7 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(uint64_t);
     void removePlaybackTargetPickerClient(uint64_t);
-
-    void showPlaybackTargetPicker(uint64_t, const IntPoint&, bool, const String&);
-
+    void showPlaybackTargetPicker(uint64_t, const IntPoint&, bool);
     void playbackTargetPickerClientStateDidChange(uint64_t, MediaProducer::MediaStateFlags);
     WEBCORE_EXPORT void setMockMediaPlaybackTargetPickerEnabled(bool);
     WEBCORE_EXPORT void setMockMediaPlaybackTargetPickerState(const String&, MediaPlaybackTargetContext::State);
@@ -484,7 +490,6 @@ public:
     WEBCORE_EXPORT void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
     WEBCORE_EXPORT void playbackTargetAvailabilityDidChange(uint64_t, bool);
     WEBCORE_EXPORT void setShouldPlayToPlaybackTarget(uint64_t, bool);
-    WEBCORE_EXPORT void customPlaybackActionSelected(uint64_t);
 #endif
 
     RefPtr<WheelEventTestTrigger> testTrigger() const { return m_testTrigger; }
@@ -599,7 +604,13 @@ private:
     float m_viewScaleFactor { 1 };
 
     float m_topContentInset;
-    
+
+#if PLATFORM(IOS)
+    // This is only used for history scroll position restoration.
+    FloatSize m_obscuredInset;
+    bool m_enclosedInScrollView { false };
+#endif
+
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     float m_textAutosizingWidth;
 #endif

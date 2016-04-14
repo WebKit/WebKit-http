@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner <thetalecrafter@gmail.com>.
  * Copyright (C) 2016 Yusuke Suzuki <utatane.tea@gmail.com>
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +42,7 @@ function match(regexp)
     }
 
     let thisString = @toString(this);
-    let createdRegExp = new @RegExp(regexp, @undefined);
+    let createdRegExp = @regExpCreate(regexp, @undefined);
     return createdRegExp[@symbolMatch](thisString);
 }
 
@@ -62,7 +63,7 @@ function search(regexp)
     }
 
     var thisString = @toString(this);
-    var createdRegExp = new @RegExp(regexp, @undefined);
+    var createdRegExp = @regExpCreate(regexp, @undefined);
     return createdRegExp[@symbolSearch](thisString);
 }
 
@@ -123,4 +124,23 @@ function repeat(count)
     }
 
     return @repeatSlowPath(string, count);
+}
+
+function split(separator, limit)
+{
+    "use strict";
+    
+    if (this == null) {
+        if (this === null)
+            throw new @TypeError("String.prototype.split requires that |this| not be null");
+        throw new @TypeError("String.prototype.split requires that |this| not be undefined");
+    }
+    
+    if (separator != null) {
+        var splitter = separator[@symbolSplit];
+        if (splitter != @undefined)
+            return splitter.@call(separator, this, limit);
+    }
+    
+    return @stringSplitFast.@call(this, separator, limit);
 }

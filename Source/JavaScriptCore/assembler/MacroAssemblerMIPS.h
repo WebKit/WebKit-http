@@ -1055,6 +1055,33 @@ public:
         }
     }
 
+    void store8(TrustedImm32 imm, ImplicitAddress address)
+    {
+        if (address.offset >= -32768 && address.offset <= 32767
+            && !m_fixedWidth) {
+            if (!imm.m_value)
+                m_assembler.sb(MIPSRegisters::zero, address.base, address.offset);
+            else {
+                move(imm, immTempRegister);
+                m_assembler.sb(immTempRegister, address.base, address.offset);
+            }
+        } else {
+            /*
+                lui     addrTemp, (offset + 0x8000) >> 16
+                addu    addrTemp, addrTemp, base
+                sb      immTemp, (offset & 0xffff)(addrTemp)
+              */
+            m_assembler.lui(addrTempRegister, (address.offset + 0x8000) >> 16);
+            m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
+            if (!imm.m_value && !m_fixedWidth)
+                m_assembler.sb(MIPSRegisters::zero, addrTempRegister, address.offset);
+            else {
+                move(imm, immTempRegister);
+                m_assembler.sb(immTempRegister, addrTempRegister, address.offset);
+            }
+        }
+    }
+
     void store16(RegisterID src, BaseIndex address)
     {
         if (address.offset >= -32768 && address.offset <= 32767
@@ -1499,20 +1526,36 @@ public:
 
     Jump branchTest32(ResultCondition cond, RegisterID reg, RegisterID mask)
     {
-        ASSERT((cond == Zero) || (cond == NonZero));
+        ASSERT((cond == Zero) || (cond == NonZero) || (cond == Signed));
         m_assembler.andInsn(cmpTempRegister, reg, mask);
-        if (cond == Zero)
+        switch (cond) {
+        case Zero:
             return branchEqual(cmpTempRegister, MIPSRegisters::zero);
-        return branchNotEqual(cmpTempRegister, MIPSRegisters::zero);
+        case NonZero:
+            return branchNotEqual(cmpTempRegister, MIPSRegisters::zero);
+        case Signed:
+            m_assembler.slt(cmpTempRegister, cmpTempRegister, MIPSRegisters::zero);
+            return branchNotEqual(cmpTempRegister, MIPSRegisters::zero);
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
     }
 
     Jump branchTest32(ResultCondition cond, RegisterID reg, TrustedImm32 mask = TrustedImm32(-1))
     {
-        ASSERT((cond == Zero) || (cond == NonZero));
+        ASSERT((cond == Zero) || (cond == NonZero) || (cond == Signed));
         if (mask.m_value == -1 && !m_fixedWidth) {
-            if (cond == Zero)
+            switch (cond) {
+            case Zero:
                 return branchEqual(reg, MIPSRegisters::zero);
-            return branchNotEqual(reg, MIPSRegisters::zero);
+            case NonZero:
+                return branchNotEqual(reg, MIPSRegisters::zero);
+            case Signed:
+                m_assembler.slt(cmpTempRegister, reg, MIPSRegisters::zero);
+                return branchNotEqual(cmpTempRegister, MIPSRegisters::zero);
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+            }
         }
         move(mask, immTempRegister);
         return branchTest32(cond, reg, immTempRegister);

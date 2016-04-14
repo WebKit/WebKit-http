@@ -118,13 +118,14 @@ typedef const char* optionString;
     \
     v(bool, crashIfCantAllocateJITMemory, false, nullptr) \
     v(unsigned, jitMemoryReservationSize, 0, "Set this number to change the executable allocation size in ExecutableAllocatorFixedVMPool. (In bytes.)") \
-    v(bool, useSeparatedWXHeap, true, nullptr) \
+    v(bool, useSeparatedWXHeap, false, nullptr) \
     \
     v(bool, forceCodeBlockLiveness, false, nullptr) \
     v(bool, forceICFailure, false, nullptr) \
     \
     v(unsigned, repatchCountForCoolDown, 10, nullptr) \
     v(unsigned, initialCoolDownCount, 20, nullptr) \
+    v(unsigned, repatchBufferingCountdown, 7, nullptr) \
     \
     v(bool, dumpGeneratedBytecodes, false, nullptr) \
     v(bool, dumpBytecodeLivenessResults, false, nullptr) \
@@ -278,9 +279,6 @@ typedef const char* optionString;
     \
     v(unsigned, reoptimizationRetryCounterMax, 0, nullptr)  \
     \
-    v(bool, assertICSizing, false, "crash if estimated IC sizes are inadequate")  \
-    v(bool, dumpFailedICSizing, false, "dumps a log entry if estimated IC sizes are inadequate")  \
-    \
     v(unsigned, minimumOptimizationDelay, 1, nullptr) \
     v(unsigned, maximumOptimizationDelay, 5, nullptr) \
     v(double, desiredProfileLivenessRate, 0.75, nullptr) \
@@ -350,6 +348,8 @@ typedef const char* optionString;
     v(optionString, functionOverrides, nullptr, "file with debugging overrides for function bodies") \
     \
     v(unsigned, watchdog, 0, "watchdog timeout (0 = Disabled, N = a timeout period of N milliseconds)") \
+    \
+    v(bool, useICStats, false, nullptr) \
     \
     v(bool, dumpModuleRecord, false, nullptr) \
     v(bool, dumpModuleLoadingState, false, nullptr) \

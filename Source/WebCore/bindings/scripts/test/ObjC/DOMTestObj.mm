@@ -391,6 +391,20 @@
     IMPL->setAttributeWithoutSynchronization(WebCore::HTMLNames::customContentURLAttrAttr, newReflectedCustomURLAttr);
 }
 
+#if ENABLE(TEST_FEATURE)
+- (NSString *)enabledAtRuntimeAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->enabledAtRuntimeAttribute();
+}
+
+- (void)setEnabledAtRuntimeAttribute:(NSString *)newEnabledAtRuntimeAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setEnabledAtRuntimeAttribute(newEnabledAtRuntimeAttribute);
+}
+#endif
+
 - (int)attrWithGetterException
 {
     WebCore::JSMainThreadNullState state;
@@ -927,6 +941,26 @@
     return kit(WTF::getPtr(IMPL->putForwardsNullableAttribute()));
 }
 
+
+#if ENABLE(TEST_FEATURE)
+- (void)enabledAtRuntimeOperation:(NSString *)testParam
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->enabledAtRuntimeOperation(testParam);
+}
+
+#endif
+
+
+#if ENABLE(TEST_FEATURE)
+- (void)enabledAtRuntimeOperation:(int)testParam
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->enabledAtRuntimeOperation(testParam);
+}
+
+#endif
+
 - (void)voidMethod
 {
     WebCore::JSMainThreadNullState state;
@@ -936,7 +970,9 @@
 - (void)voidMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->voidMethodWithArgs(longArg, strArg, core(objArg));
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
+    IMPL->voidMethodWithArgs(longArg, strArg, *core(objArg));
 }
 
 - (char)byteMethod
@@ -948,7 +984,9 @@
 - (char)byteMethodWithArgs:(char)byteArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->byteMethodWithArgs(byteArg, strArg, core(objArg));
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
+    return IMPL->byteMethodWithArgs(byteArg, strArg, *core(objArg));
 }
 
 - (unsigned char)octetMethod
@@ -960,7 +998,9 @@
 - (unsigned char)octetMethodWithArgs:(unsigned char)octetArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->octetMethodWithArgs(octetArg, strArg, core(objArg));
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
+    return IMPL->octetMethodWithArgs(octetArg, strArg, *core(objArg));
 }
 
 - (int)longMethod
@@ -972,7 +1012,9 @@
 - (int)longMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->longMethodWithArgs(longArg, strArg, core(objArg));
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
+    return IMPL->longMethodWithArgs(longArg, strArg, *core(objArg));
 }
 
 - (DOMTestObj *)objMethod
@@ -984,7 +1026,9 @@
 - (DOMTestObj *)objMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->objMethodWithArgs(longArg, strArg, core(objArg))));
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
+    return kit(WTF::getPtr(IMPL->objMethodWithArgs(longArg, strArg, *core(objArg))));
 }
 
 - (int)unforgeableMethod
@@ -1032,8 +1076,10 @@
 - (DOMTestObj *)methodThatRequiresAllArgsAndThrows:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
     WebCore::ExceptionCode ec = 0;
-    DOMTestObj *result = kit(WTF::getPtr(IMPL->methodThatRequiresAllArgsAndThrows(strArg, core(objArg), ec)));
+    DOMTestObj *result = kit(WTF::getPtr(IMPL->methodThatRequiresAllArgsAndThrows(strArg, *core(objArg), ec)));
     WebCore::raiseOnDOMError(ec);
     return result;
 }
@@ -1073,7 +1119,9 @@
 - (void)customMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->customMethodWithArgs(longArg, strArg, core(objArg));
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
+    IMPL->customMethodWithArgs(longArg, strArg, *core(objArg));
 }
 
 
@@ -1091,7 +1139,9 @@
 - (void)jsBuiltinMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->jsBuiltinMethodWithArgs(longArg, strArg, core(objArg));
+    if (!objArg)
+        WebCore::raiseTypeErrorException();
+    IMPL->jsBuiltinMethodWithArgs(longArg, strArg, *core(objArg));
 }
 
 #endif
@@ -1099,15 +1149,19 @@
 - (void)addEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture
 {
     WebCore::JSMainThreadNullState state;
+    if (!listener)
+        WebCore::raiseTypeErrorException();
     RefPtr<WebCore::EventListener> nativeEventListener = WebCore::ObjCEventListener::wrap(listener);
-    IMPL->addEventListener(type, WTF::getPtr(nativeEventListener), useCapture);
+    IMPL->addEventListener(type, *WTF::getPtr(nativeEventListener), useCapture);
 }
 
 - (void)removeEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture
 {
     WebCore::JSMainThreadNullState state;
+    if (!listener)
+        WebCore::raiseTypeErrorException();
     RefPtr<WebCore::EventListener> nativeEventListener = WebCore::ObjCEventListener::wrap(listener);
-    IMPL->removeEventListener(type, WTF::getPtr(nativeEventListener), useCapture);
+    IMPL->removeEventListener(type, *WTF::getPtr(nativeEventListener), useCapture);
 }
 
 - (void)withScriptStateVoid
@@ -1306,7 +1360,9 @@
 - (void)convert1:(DOMTestNode *)value
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->convert1(core(value));
+    if (!value)
+        WebCore::raiseTypeErrorException();
+    IMPL->convert1(*core(value));
 }
 
 - (void)convert2:(DOMTestNode *)value
@@ -1369,7 +1425,9 @@
 - (void)variadicNodeMethod:(DOMNode *)head tail:(DOMNode *)tail
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->variadicNodeMethod(core(head), core(tail));
+    if (!head)
+        WebCore::raiseTypeErrorException();
+    IMPL->variadicNodeMethod(*core(head), core(tail));
 }
 
 - (void)any:(float)a b:(int)b
