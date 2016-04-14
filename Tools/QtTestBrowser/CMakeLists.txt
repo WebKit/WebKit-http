@@ -39,7 +39,6 @@ set(QtTestBrowser_LIBRARIES
     ${Qt5Gui_LIBRARIES}
     ${Qt5Network_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
-    WebCoreTestSupport
     WebKitWidgets
 )
 
@@ -55,6 +54,14 @@ if (Qt5OpenGL_FOUND)
         ${Qt5OpenGL_LIBRARIES}
     )
     add_definitions(-DQT_CONFIGURED_WITH_OPENGL)
+endif ()
+
+if (NOT SHARED_CORE)
+    # FIXME: Static WebCoreTestSupport links another copy of WebCore
+    list(APPEND QtTestBrowser_LIBRARIES
+        WebCoreTestSupport
+    )
+    add_definitions(-DHAVE_QTTESTSUPPORT)
 endif ()
 
 # TODO: Add code for HAVE_QTPRINTSUPPORT and HAVE_FONTCONFIG
