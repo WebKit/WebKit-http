@@ -19,7 +19,7 @@ set(CMAKE_C_COMPILER   ${STBGCC_PATH}/bin-ccache/mipsel-linux-gcc)
 set(CMAKE_CXX_COMPILER ${STBGCC_PATH}/bin-ccache/mipsel-linux-g++)
 
 # where is the target environment
-set(CMAKE_FIND_ROOT_PATH ${STBGCC_PATH}/target)
+set(CMAKE_FIND_ROOT_PATH ${STBGCC_PATH}/target ${EXTRA_ROOT_PATH})
 
 # search for programs in the build host directories
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
