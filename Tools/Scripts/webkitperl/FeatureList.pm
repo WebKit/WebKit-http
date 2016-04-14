@@ -123,6 +123,7 @@ my (
     $registerProtocolHandlerSupport,
     $requestAnimationFrameSupport,
     $resourceTimingSupport,
+    $samplingProfilerSupport,
     $scriptedSpeechSupport,
     $seccompFiltersSupport,
     $shadowDOMSupport,
@@ -387,6 +388,9 @@ my @features = (
 
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
       define => "ENABLE_REQUEST_ANIMATION_FRAME", default => 1, value => \$requestAnimationFrameSupport },
+
+    { option => "sampling-profiler", desc => "Toggle JSC Sampling Profiler",
+      define => "ENABLE_SAMPLING_PROFILER", default => 1, value => \$samplingProfilerSupport },
 
     { option => "seccomp-filters", desc => "Toggle Seccomp Filter sandbox",
       define => "ENABLE_SECCOMP_FILTERS", default => 0, value => \$seccompFiltersSupport },
