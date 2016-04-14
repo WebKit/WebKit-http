@@ -50,6 +50,9 @@ endif ()
 
 WEBKIT_FRAMEWORK(WebKit)
 
+set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+install(TARGETS WebKit DESTINATION "${LIB_INSTALL_DIR}")
+
 add_dependencies(WebKit WebCore)
 if (WIN32)
     add_dependencies(WebKit WebKitGUID)

@@ -237,7 +237,12 @@ WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit DIRECTORIES qt/Api)
 ecm_generate_headers(
     QtWebKit_FORWARDING_HEADERS
     HEADER_NAMES
-        QWebElement
+        QWebDatabase
+        QWebElement,QWebElementCollection
+        QWebHistory,QWebHistoryItem
+        QWebHistoryInterface
+        QWebKitPlatformPlugin,QWebHapticFeedbackPlayer,QWebFullScreenVideoHandler,QWebNotificationData,QWebNotificationPresenter,QWebSelectData,QWebSelectMethod,QWebSpellChecker,QWebTouchModifier
+        QWebPluginFactory
         QWebSecurityOrigin
         QWebSettings
     COMMON_HEADER
@@ -246,11 +251,29 @@ ecm_generate_headers(
         qt/Api
     OUTPUT_DIR
         "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit"
+    REQUIRED_HEADERS
+        QtWebKit_HEADERS
+)
+
+install(
+    FILES
+        qt/Api/qwebkitglobal.h
+        ${QtWebKit_HEADERS}
+        ${QtWebKit_FORWARDING_HEADERS}
+    DESTINATION
+        ${CMAKE_INSTALL_PREFIX}/include/QtWebKit
+)
+
+file(GLOB QtWebKit_PRIVATE_HEADERS qt/Api/*_p.h)
+install(
+    FILES
+        ${QtWebKit_PRIVATE_HEADERS}
+    DESTINATION
+        ${CMAKE_INSTALL_PREFIX}/include/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
 )
 
 set(WebKit_LIBRARY_TYPE SHARED)
 set(WebKit_OUTPUT_NAME Qt5WebKit)
-
 
 ############     WebKitWidgets     ############
 
@@ -310,7 +333,9 @@ WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKitWidgets DIRECTORIES qt/WidgetApi)
 ecm_generate_headers(
     QtWebKitWidgets_FORWARDING_HEADERS
     HEADER_NAMES
+        QGraphicsWebView
         QWebFrame,QWebHitTestResult
+        QWebInspector
         QWebPage
         QWebView
     COMMON_HEADER
@@ -319,6 +344,24 @@ ecm_generate_headers(
         qt/WidgetApi
     OUTPUT_DIR
         "${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets"
+    REQUIRED_HEADERS
+        QtWebKitWidgets_HEADERS
+)
+
+install(
+    FILES
+        ${QtWebKitWidgets_HEADERS}
+        ${QtWebKitWidgets_FORWARDING_HEADERS}
+    DESTINATION
+        ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets
+)
+
+file(GLOB QtWebKitWidgets_PRIVATE_HEADERS qt/WidgetApi/*_p.h)
+install(
+    FILES
+        ${QtWebKitWidgets_PRIVATE_HEADERS}
+    DESTINATION
+        ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets/private
 )
 
 if (WIN32)
@@ -367,5 +410,8 @@ set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
 
 WEBKIT_FRAMEWORK(WebKitWidgets)
 add_dependencies(WebKitWidgets WebKit)
+
+set_target_properties(WebKitWidgets PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+install(TARGETS WebKitWidgets DESTINATION "${LIB_INSTALL_DIR}")
 
 add_subdirectory(qt/tests)
