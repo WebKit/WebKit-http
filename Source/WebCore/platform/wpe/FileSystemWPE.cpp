@@ -351,4 +351,11 @@ bool unloadModule(PlatformModule module)
     return g_module_close(module);
 #endif
 }
+
+bool hardLinkOrCopyFile(const String&, const String&)
+{
+    // FIXME: Implement
+    return false;
+}
+
 }
