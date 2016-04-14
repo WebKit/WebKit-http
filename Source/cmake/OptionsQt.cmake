@@ -85,6 +85,10 @@ if (NOT WIN32)
 endif ()
 find_package(WebP)
 
+if (WEBP_FOUND)
+    SET_AND_EXPOSE_TO_BUILD(USE_WEBP 1)
+endif ()
+
 find_package(Qt5Core 5.2 REQUIRED)
 find_package(Qt5Gui 5.2 REQUIRED)
 find_package(Qt5Network 5.2 REQUIRED)
