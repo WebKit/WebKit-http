@@ -77,6 +77,16 @@ View::~View()
     m_viewBackend->setInputClient(nullptr);
 }
 
+void View::initializeClient(const WKViewClientBase* client)
+{
+    m_client.initialize(client);
+}
+
+void View::frameDisplayed()
+{
+    m_client.frameDisplayed(*this);
+}
+
 void View::setSize(const WebCore::IntSize& size)
 {
     m_size = size;

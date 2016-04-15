@@ -82,6 +82,8 @@ void CompositingManagerProxy::releaseBuffer(uint32_t handle)
 void CompositingManagerProxy::frameComplete()
 {
     m_connection->send(Messages::CompositingManager::FrameComplete(), 0);
+
+    m_view.frameDisplayed();
 }
 
 void CompositingManagerProxy::setSize(uint32_t width, uint32_t height)

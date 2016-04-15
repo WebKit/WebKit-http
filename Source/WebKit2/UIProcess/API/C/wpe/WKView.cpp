@@ -47,3 +47,8 @@ void WKViewSetViewState(WKViewRef view, WKViewState viewState)
 {
     toImpl(view)->setViewState(toViewStateFlags(viewState));
 }
+
+void WKViewSetViewClient(WKViewRef view, const WKViewClientBase* client)
+{
+    toImpl(view)->initializeClient(client);
+}

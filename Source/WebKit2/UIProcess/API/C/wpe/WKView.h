@@ -43,6 +43,22 @@ typedef uint32_t WKViewState;
 
 WK_EXPORT void WKViewSetViewState(WKViewRef, WKViewState);
 
+typedef void (*WKViewFrameDisplayed)(WKViewRef view, const void* clientInfo);
+
+typedef struct WKViewClientBase {
+    int version;
+    const void* clientInfo;
+} WKViewClientBase;
+
+typedef struct WKViewClientV0 {
+    WKViewClientBase base;
+
+    // version 0
+    WKViewFrameDisplayed frameDisplayed;
+} WKViewClientV0;
+
+WK_EXPORT void WKViewSetViewClient(WKViewRef, const WKViewClientBase*);
+
 #ifdef __cplusplus
 }
 #endif

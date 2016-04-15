@@ -29,11 +29,14 @@
 #include "APIObject.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
+#include "WPEViewClient.h"
 #include <WPE/Input/Handling.h>
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <WebCore/ViewState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
+
+typedef struct WKViewClientBase WKViewClientBase;
 
 namespace WebKit {
 class CompositingManagerProxy;
@@ -49,6 +52,10 @@ public:
     {
         return new View(configuration);
     }
+
+    // Client methods
+    void initializeClient(const WKViewClientBase*);
+    void frameDisplayed();
 
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
@@ -69,6 +76,8 @@ public:
 private:
     View(const API::PageConfiguration&);
     virtual ~View();
+
+    ViewClient m_client;
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
