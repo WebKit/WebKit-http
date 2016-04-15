@@ -252,6 +252,10 @@ protected:
 
 private:
 
+#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
+    void updateVideoRectangle();
+#endif
+
 #if ENABLE(ENCRYPTED_MEDIA)
 #if USE(DXDRM)
     DiscretixSession* m_dxdrmSession;

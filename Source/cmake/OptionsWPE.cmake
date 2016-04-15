@@ -40,6 +40,7 @@ WEBKIT_OPTION_DEFINE(USE_WPE_BACKEND_DRM_TEGRA "Whether to enable support for th
 WEBKIT_OPTION_DEFINE(USE_WPE_BACKEND_WAYLAND "Whether to enable support for the Wayland WPE backend" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WPE_BACKEND_WESTEROS "Whether to enable support for the Westeros WPE backend" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WESTEROS_SINK "Westeros-Sink to be used as video-sink for GStreamer video player" PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(USE_FUSION_SINK "Fusion-Sink to be used as video-sink for GStreamer video player" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_GBM "Whether to enable support for the GBM WPE rendering backend" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_BCM_RPI "Whether to enable support for the BCM RPi rendering backend" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_BCM_NEXUS "Whether to enable support for the BCM_NEXUS rendering backend" PUBLIC OFF)

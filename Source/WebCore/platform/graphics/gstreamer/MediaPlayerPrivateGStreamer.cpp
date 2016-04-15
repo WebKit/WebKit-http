@@ -375,19 +375,26 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
 
     gst_query_unref(query);
 
-#if PLATFORM(BCM_NEXUS)
-// implement getting pts time from broadcom decoder directly for seek functionality
+#if PLATFORM(BCM_NEXUS) || USE(FUSION_SINK)
+    // implement getting pts time from broadcom decoder directly for seek functionality
     gint64 currentPts = -1;
+#if PLATFORM(BCM_NEXUS)
     GstElement* videoDec = findVideoDecoder(m_pipeline.get());
-    if (videoDec) {
-        g_object_get(videoDec, "video_pts", &currentPts, NULL);
-    }
-    if (currentPts > 0) {
+    const char* videoPtsPropertyName = "video_pts";
+#elif USE(FUSION_SINK)
+    GstElement* videoDec = nullptr;
+    g_object_get(m_pipeline.get(), "video-sink", &videoDec, nullptr);
+    const char* videoPtsPropertyName = "video-pts";
+#endif
+
+    if (videoDec)
+        g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
+
+    if (currentPts)
         result = (static_cast<double>(currentPts * GST_MSECOND) / 45) / GST_SECOND;
-    }
-    if (result == 0 && m_seekTime != 0) {
+
+    if (!result && m_seekTime)
         result = m_seekTime;
-    }
 #endif
 
     LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
@@ -2123,6 +2130,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     g_signal_connect_swapped(m_pipeline.get(), "notify::source", G_CALLBACK(sourceChangedCallback), this);
     g_signal_connect_swapped(m_pipeline.get(), "video-changed", G_CALLBACK(videoChangedCallback), this);
     g_signal_connect_swapped(m_pipeline.get(), "audio-changed", G_CALLBACK(audioChangedCallback), this);
+
 #if ENABLE(VIDEO_TRACK)
     if (webkitGstCheckVersion(1, 1, 2)) {
         g_signal_connect_swapped(m_pipeline.get(), "text-changed", G_CALLBACK(textChangedCallback), this);
