@@ -166,15 +166,19 @@ if (USE_QT_MULTIMEDIA)
     )
 endif ()
 
-qt5_add_resources(WebCore_SOURCES
-    WebCore.qrc
-)
-
-if (ENABLE_INSPECTOR_UI)
-    include(${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/PlatformQt.cmake)
-    list(APPEND WebCore_SOURCES
-        ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/qrc_WebInspector.cpp
+# Do it in the WebCore to support SHARED_CORE since WebKitWidgets won't load WebKit in that case.
+# This should match the opposite statement in WebKit/PlatformQt.cmake
+if (NOT WIN32)
+    qt5_add_resources(WebCore_SOURCES
+        WebCore.qrc
     )
+
+    if (ENABLE_INSPECTOR_UI)
+        include("${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/PlatformQt.cmake")
+        list(APPEND WebCore_SOURCES
+            "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/qrc_WebInspector.cpp"
+        )
+    endif ()
 endif ()
 
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS

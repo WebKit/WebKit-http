@@ -232,6 +232,21 @@ if (ENABLE_VIDEO)
     )
 endif ()
 
+# Resources have to be included directly in the final binary for MSVC.
+# The linker won't pick them from a static library since they aren't referenced.
+if (WIN32)
+    qt5_add_resources(WebKit_SOURCES
+        "${WEBCORE_DIR}/WebCore.qrc"
+    )
+
+    if (ENABLE_INSPECTOR_UI)
+        include("${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/PlatformQt.cmake")
+        list(APPEND WebKit_SOURCES
+            "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/qrc_WebInspector.cpp"
+        )
+    endif ()
+endif ()
+
 WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit DIRECTORIES qt/Api)
 
 ecm_generate_headers(
