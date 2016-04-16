@@ -2338,7 +2338,10 @@ template<typename T>
 CString nodeValuePairListDump(const T& nodeValuePairList, DumpContext* context = 0)
 {
     T sortedList = nodeValuePairList;
+    // gcc 4.8 gets lost on this sort, so we don't sort in that case.
+#if !COMPILER(GCC) || GCC_VERSION_AT_LEAST(4, 9, 0)
     std::sort(sortedList.begin(), sortedList.end(), nodeValuePairComparator<decltype(*sortedList.begin())>);
+#endif
 
     StringPrintStream out;
     CommaPrinter comma;
