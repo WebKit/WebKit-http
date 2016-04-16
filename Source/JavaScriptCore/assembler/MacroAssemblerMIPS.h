@@ -2499,6 +2499,11 @@ public:
             m_assembler.movd(dest, src);
     }
 
+    void moveZeroToDouble(FPRegisterID reg)
+    {
+        convertInt32ToDouble(MIPSRegisters::zero, reg);
+    }
+
     void swapDouble(FPRegisterID fr1, FPRegisterID fr2)
     {
         moveDouble(fr1, fpTempRegister);
