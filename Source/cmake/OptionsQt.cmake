@@ -371,7 +371,7 @@ if (WEBP_FOUND)
 endif ()
 
 set(REQUIRED_QT_VERSION 5.2.0)
-set(QT_REQUIRED_COMPONENTS Core Gui Network Sql)
+set(QT_REQUIRED_COMPONENTS Core Gui Network)
 
 # FIXME: Allow building w/o these components
 list(APPEND QT_REQUIRED_COMPONENTS
