@@ -320,20 +320,8 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
 {
     m_pipeline = pipeline;
-#if USE(HOLE_PUNCH_GSTREAMER)
-    GstElement* sinkElement = nullptr;
-
-    INFO_MEDIA_MESSAGE("setPipeline: Setting video sink size and position to x:%d y:%d, width=%d, height=%d\n",m_position.x(),m_position.y(), m_size.width(),m_size.height());
-
-
-#if USE(WESTEROS_SINK) || USE(FUSION_SINK)
-    g_object_get(m_pipeline.get(), "video-sink", &sinkElement, nullptr);
-    if(!sinkElement)
-        return;
-
-    GUniquePtr<gchar> rectString(g_strdup_printf("%d,%d,%d,%d", m_position.x(), m_position.y(), m_size.width(),m_size.height()));
-    g_object_set(sinkElement, "rectangle", rectString.get(), nullptr);
-#endif
+#if USE(HOLE_PUNCH_GSTREAMER) && (USE(WESTEROS_SINK) || USE(FUSION_SINK))
+    updateVideoRectangle();
 #endif
 }
 
@@ -870,8 +858,6 @@ void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
     if(!m_pipeline)
         return;
 
-    INFO_MEDIA_MESSAGE("Setting video sink size and position to x:%d y:%d, width=%d, height=%d", m_position.x(), m_position.y(), m_size.width(), m_size.height());
-
 #if USE(WESTEROS_SINK) || USE(FUSION_SINK)
     updateVideoRectangle();
 #endif
@@ -884,6 +870,8 @@ void MediaPlayerPrivateGStreamerBase::updateVideoRectangle()
     g_object_get(m_pipeline.get(), "video-sink", &sinkElement, nullptr);
     if(!sinkElement)
         return;
+
+    INFO_MEDIA_MESSAGE("Setting video sink size and position to x:%d y:%d, width=%d, height=%d", m_position.x(), m_position.y(), m_size.width(), m_size.height());
 
     GUniquePtr<gchar> rectString(g_strdup_printf("%d,%d,%d,%d", m_position.x(), m_position.y(), m_size.width(),m_size.height()));
     g_object_set(sinkElement, "rectangle", rectString.get(), nullptr);
