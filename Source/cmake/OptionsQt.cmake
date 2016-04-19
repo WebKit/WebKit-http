@@ -113,13 +113,23 @@ set(CMAKE_AUTOMOC ON)
 
 # TODO: figure out if we can run automoc only on Qt sources
 
+if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(COMPILER_IS_GCC_OR_CLANG ON)
+endif ()
+
 # From OptionsEfl.cmake
 # Optimize binary size for release builds by removing dead sections on unix/gcc.
-if (CMAKE_COMPILER_IS_GNUCC AND UNIX AND NOT APPLE)
+if (COMPILER_IS_GCC_OR_CLANG AND UNIX AND NOT APPLE)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti")
     set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
+
+    if (NOT SHARED_CORE)
+        set(CMAKE_C_FLAGS_RELEASE "-fvisibility=hidden ${CMAKE_C_FLAGS_RELEASE}")
+        set(CMAKE_CXX_FLAGS_RELEASE "-fvisibility=hidden -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS_RELEASE}")
+    endif ()
 endif ()
+
 
 if (ENABLE_VIDEO)
     SET_AND_EXPOSE_TO_BUILD(ENABLE_MEDIA_CONTROLS_SCRIPT ON)
