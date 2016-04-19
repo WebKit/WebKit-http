@@ -128,36 +128,36 @@ static uint32_t keyCodeToUTF32(uint32_t key, bool state)
 
 KeyboardEventHandler::Result KeyboardEventHandlerLinuxInput::handleKeyboardEvent(const KeyboardEvent::Raw& event)
 {
-    uint8_t keyModifiers = 0;
-
     switch (event.key) {
     case KEY_LEFTCTRL:
     case KEY_RIGHTCTRL:
         m_modifiers.ctrl = !!event.state;
-        if (m_modifiers.ctrl)
-            keyModifiers |= KeyboardEvent::Control;
         break;
     case KEY_LEFTSHIFT:
     case KEY_RIGHTSHIFT:
         m_modifiers.shift = !!event.state;
-        if (m_modifiers.shift)
-            keyModifiers |= KeyboardEvent::Shift;
         break;
     case KEY_LEFTALT:
     case KEY_RIGHTALT:
         m_modifiers.alt = !!event.state;
-        if (m_modifiers.alt)
-            keyModifiers |= KeyboardEvent::Alt;
         break;
     case KEY_LEFTMETA:
     case KEY_RIGHTMETA:
         m_modifiers.meta = !!event.state;
-        if (m_modifiers.meta)
-            keyModifiers |= KeyboardEvent::Meta;
         break;
     default:
         break;
     }
+
+    uint8_t keyModifiers = 0;
+    if (m_modifiers.ctrl)
+        keyModifiers |= KeyboardEvent::Control;
+    if (m_modifiers.shift)
+        keyModifiers |= KeyboardEvent::Shift;
+    if (m_modifiers.alt)
+        keyModifiers |= KeyboardEvent::Alt;
+    if (m_modifiers.meta)
+        keyModifiers |= KeyboardEvent::Meta;
 
     // TODO: Range check.
 
