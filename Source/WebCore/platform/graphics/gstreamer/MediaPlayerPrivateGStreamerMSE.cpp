@@ -2117,7 +2117,8 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
     }
 #endif
 
-    m_mediaSourceClient->durationChanged(m_initialDuration);
+    if (m_initialDuration > m_mediaSourceClient->duration())
+        m_mediaSourceClient->durationChanged(m_initialDuration);
 
     m_oldTrack = m_track;
 
