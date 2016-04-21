@@ -935,9 +935,13 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 {
     for (HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> >::iterator it = m_appendPipelinesMap.begin(); it != m_appendPipelinesMap.end(); ++it) {
-        gst_element_send_event(it->value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-            gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
-        it->value->setAppendStage(AppendPipeline::AppendStage::Ongoing);
+        if (it->value->appendStage() == AppendPipeline::AppendStage::KeyNegotiation) {
+            TRACE_MEDIA_MESSAGE("append pipeline %p in key negotiation, setting key", it->value.get());
+            gst_element_send_event(it->value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+                gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
+            it->value->setAppendStage(AppendPipeline::AppendStage::Ongoing);
+        } else
+            TRACE_MEDIA_MESSAGE("append pipeline %p not in key negotiation", it->value.get());
     }
 }
 #endif
@@ -1460,6 +1464,7 @@ void AppendPipeline::handleAppsrcNeedDataReceived()
 void AppendPipeline::handleAppsrcAtLeastABufferLeft()
 {
     m_appsrcAtLeastABufferLeft = true;
+    TRACE_MEDIA_MESSAGE("received buffer-left from appsrc");
 #ifndef DEBUG_APPEND_PIPELINE_PADS
     removeAppsrcDataLeavingProbe();
 #endif
@@ -1975,18 +1980,18 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
 
 void AppendPipeline::reportAppsrcAtLeastABufferLeft()
 {
+    TRACE_MEDIA_MESSAGE("buffer left appsrc, reposting to bus");
     GstStructure* structure = gst_structure_new_empty("appsrc-buffer-left");
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc), structure);
     gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("buffer left appsrc, reposting to bus");
 }
 
 void AppendPipeline::reportAppsrcNeedDataReceived()
 {
+    TRACE_MEDIA_MESSAGE("received need-data signal at appsrc, reposting to bus");
     GstStructure* structure = gst_structure_new_empty("appsrc-need-data");
     GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc), structure);
     gst_bus_post(m_bus.get(), message);
-    TRACE_MEDIA_MESSAGE("received need-data signal at appsrc, reposting to bus");
 }
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)

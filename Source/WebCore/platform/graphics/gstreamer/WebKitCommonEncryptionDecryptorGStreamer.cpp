@@ -204,8 +204,15 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     LockHolder locker(priv->mutex);
 
     // The key might not have been received yet. Wait for it.
-    if (!priv->keyReceived)
+    if (!priv->keyReceived) {
+        GST_DEBUG_OBJECT(self, "key not available yet, waiting for it");
         priv->condition.wait(priv->mutex);
+        if (!priv->keyReceived) {
+            GST_ERROR_OBJECT(self, "key not available");
+            return GST_FLOW_NOT_SUPPORTED;
+        }
+        GST_DEBUG_OBJECT(self, "key received, continuing");
+    }
 
     protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
     if (!protectionMeta) {
@@ -262,6 +269,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     }
 
     ivBuffer = gst_value_get_buffer(value);
+    GST_TRACE_OBJECT(self, "decrypting");
     if (!klass->decrypt(self, ivBuffer, buffer, subSampleCount, subSamplesBuffer)) {
         GST_ERROR_OBJECT(self, "Decryption failed");
         klass->releaseCipher(self);
@@ -316,6 +324,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
     }
     case GST_EVENT_CUSTOM_DOWNSTREAM_OOB: {
         if (klass->handleKeyResponse(self, event)) {
+            GST_DEBUG_OBJECT(self, "key received");
             priv->keyReceived = true;
             priv->condition.notifyOne();
         }

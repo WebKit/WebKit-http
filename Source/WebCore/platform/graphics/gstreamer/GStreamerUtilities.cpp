@@ -192,20 +192,28 @@ GstElement* createGstDecryptor(const gchar* protectionSystem)
     GList *decryptors = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECRYPTOR,
                                                               GST_RANK_MARGINAL);
 
+    LOG_MEDIA_MESSAGE("looking for decryptor for %s", protectionSystem);
+
     for (GList* walk = decryptors; !decryptor && walk; walk = g_list_next(walk)) {
         GstElementFactory* factory = reinterpret_cast<GstElementFactory*>(walk->data);
         const GList *tmpl = gst_element_factory_get_static_pad_templates(factory);
+
+        TRACE_MEDIA_MESSAGE("checking factory %s", GST_OBJECT_NAME(factory));
 
         for (const GList* current = tmpl; current && !decryptor; current = g_list_next(current)) {
             GstStaticPadTemplate* templ = static_cast<GstStaticPadTemplate*>(current->data);
             GstCaps* caps = gst_static_pad_template_get_caps(templ);
             guint leng = gst_caps_get_size(caps);
 
+            TRACE_MEDIA_MESSAGE("factory %s caps has size %u", GST_OBJECT_NAME(factory), leng);
             for (guint i = 0; !decryptor && i < leng; ++i) {
                 GstStructure* st = gst_caps_get_structure(caps, i);
+                TRACE_MEDIA_MESSAGE("checking structure %s", gst_structure_get_name(st));
                 if (gst_structure_has_field_typed(st, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD, G_TYPE_STRING)) {
                     const gchar* sys_id = gst_structure_get_string(st, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD);
+                    TRACE_MEDIA_MESSAGE("structure %s has protection system %s", gst_structure_get_name(st), sys_id);
                     if (!g_ascii_strcasecmp(protectionSystem, sys_id)) {
+                        LOG_MEDIA_MESSAGE("found decryptor %s for %s", GST_OBJECT_NAME(factory), protectionSystem);
                         decryptor = gst_element_factory_create(factory, nullptr);
                         break;
                     }
@@ -215,6 +223,7 @@ GstElement* createGstDecryptor(const gchar* protectionSystem)
         }
     }
     gst_plugin_feature_list_free(decryptors);
+    TRACE_MEDIA_MESSAGE("returning decryptor %p", decryptor);
     return decryptor;
 }
 #endif
