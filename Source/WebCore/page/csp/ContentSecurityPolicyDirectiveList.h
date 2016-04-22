@@ -24,21 +24,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ContentSecurityPolicyDirectiveList_h
-#define ContentSecurityPolicyDirectiveList_h
+#pragma once
 
 #include "ContentSecurityPolicy.h"
 #include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicyMediaListDirective.h"
 #include "ContentSecurityPolicySourceListDirective.h"
 #include "URL.h"
-#include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
+class Frame;
+
 class ContentSecurityPolicyDirectiveList {
     WTF_MAKE_FAST_ALLOCATED;
-    WTF_MAKE_NONCOPYABLE(ContentSecurityPolicyDirectiveList)
 public:
     static std::unique_ptr<ContentSecurityPolicyDirectiveList> create(ContentSecurityPolicy&, const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicy::PolicyFrom);
     ContentSecurityPolicyDirectiveList(ContentSecurityPolicy&, ContentSecurityPolicyHeaderType);
@@ -57,23 +56,22 @@ public:
     const ContentSecurityPolicyDirective* violatedDirectiveForStyleNonce(const String&) const;
 
     const ContentSecurityPolicyDirective* violatedDirectiveForBaseURI(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForChildContext(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForConnectSource(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForFont(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForFormAction(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForFrame(const URL&) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForChildContext(const URL&, bool didReceiveRedirectResponse) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForConnectSource(const URL&, bool didReceiveRedirectResponse) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForFont(const URL&, bool didReceiveRedirectResponse) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForFormAction(const URL&, bool didReceiveRedirectResponse) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForFrame(const URL&, bool didReceiveRedirectResponse) const;
     const ContentSecurityPolicyDirective* violatedDirectiveForFrameAncestor(const Frame&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForImage(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForMedia(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForObjectSource(const URL&, ContentSecurityPolicySourceListDirective::ShouldAllowEmptyURLIfSourceListIsNotNone) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForImage(const URL&, bool didReceiveRedirectResponse) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForMedia(const URL&, bool didReceiveRedirectResponse) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForObjectSource(const URL&, bool didReceiveRedirectResponse, ContentSecurityPolicySourceListDirective::ShouldAllowEmptyURLIfSourceListIsNotNone) const;
     const ContentSecurityPolicyDirective* violatedDirectiveForPluginType(const String& type, const String& typeAttribute) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForScript(const URL&) const;
-    const ContentSecurityPolicyDirective* violatedDirectiveForStyle(const URL&) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForScript(const URL&, bool didReceiveRedirectResponse) const;
+    const ContentSecurityPolicyDirective* violatedDirectiveForStyle(const URL&, bool didReceiveRedirectResponse) const;
 
     const ContentSecurityPolicyDirective* defaultSrc() const { return m_defaultSrc.get(); }
 
     const String& evalDisabledErrorMessage() const { return m_evalDisabledErrorMessage; }
-    ContentSecurityPolicy::ReflectedXSSDisposition reflectedXSSDisposition() const { return m_reflectedXSSDisposition; }
     bool isReportOnly() const { return m_reportOnly; }
     const Vector<String>& reportURIs() const { return m_reportURIs; }
 
@@ -86,7 +84,6 @@ private:
     bool parseDirective(const UChar* begin, const UChar* end, String& name, String& value);
     void parseReportURI(const String& name, const String& value);
     void parsePluginTypes(const String& name, const String& value);
-    void parseReflectedXSS(const String& name, const String& value);
     void addDirective(const String& name, const String& value);
     void applySandboxPolicy(const String& name, const String& sandboxPolicy);
 
@@ -105,7 +102,6 @@ private:
 
     bool m_reportOnly;
     bool m_haveSandboxPolicy;
-    ContentSecurityPolicy::ReflectedXSSDisposition m_reflectedXSSDisposition;
 
     std::unique_ptr<ContentSecurityPolicyMediaListDirective> m_pluginTypes;
     std::unique_ptr<ContentSecurityPolicySourceListDirective> m_baseURI;
@@ -128,5 +124,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif /* ContentSecurityPolicyDirectiveList_h */

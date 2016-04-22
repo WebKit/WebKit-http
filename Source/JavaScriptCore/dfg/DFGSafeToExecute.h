@@ -192,6 +192,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithLog:
     case ValueAdd:
     case TryGetById:
+    case DeleteById:
     case GetById:
     case GetByIdFlush:
     case PutById:
@@ -262,6 +263,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
+    case IsRegExpObject:
     case TypeOf:
     case LogicalNot:
     case CallObjectConstructor:
@@ -343,6 +345,9 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetRegExpObjectLastIndex:
     case SetRegExpObjectLastIndex:
     case RecordRegExpCachedResult:
+    case GetDynamicVar:
+    case PutDynamicVar:
+    case ResolveScope:
         return true;
 
     case BottomValue:

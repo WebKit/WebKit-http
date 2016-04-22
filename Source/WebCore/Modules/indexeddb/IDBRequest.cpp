@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,17 +29,20 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "DOMError.h"
-#include "DOMRequestState.h"
 #include "Event.h"
 #include "EventQueue.h"
 #include "IDBBindingUtilities.h"
+#include "IDBConnectionProxy.h"
 #include "IDBCursor.h"
 #include "IDBDatabase.h"
 #include "IDBDatabaseException.h"
 #include "IDBEventDispatcher.h"
+#include "IDBIndex.h"
 #include "IDBKeyData.h"
+#include "IDBObjectStore.h"
 #include "IDBResultData.h"
 #include "Logging.h"
+#include "ScopeGuard.h"
 #include "ScriptExecutionContext.h"
 #include "ThreadSafeDataBuffer.h"
 #include <wtf/NeverDestroyed.h>
@@ -66,10 +69,10 @@ Ref<IDBRequest> IDBRequest::createGet(ScriptExecutionContext& context, IDBIndex&
     return adoptRef(*new IDBRequest(context, index, requestedRecordType, transaction));
 }
 
-IDBRequest::IDBRequest(IDBClient::IDBConnectionToServer& connection, ScriptExecutionContext& context)
+IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBClient::IDBConnectionProxy& connectionProxy)
     : ActiveDOMObject(&context)
-    , m_connection(connection)
-    , m_resourceIdentifier(connection)
+    , m_resourceIdentifier(connectionProxy.serverConnectionIdentifier())
+    , m_connectionProxy(connectionProxy)
 {
     suspendIfNeeded();
 }
@@ -77,9 +80,9 @@ IDBRequest::IDBRequest(IDBClient::IDBConnectionToServer& connection, ScriptExecu
 IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBObjectStore& objectStore, IDBTransaction& transaction)
     : ActiveDOMObject(&context)
     , m_transaction(&transaction)
-    , m_connection(transaction.serverConnection())
     , m_resourceIdentifier(transaction.serverConnection())
-    , m_source(IDBAny::create(objectStore))
+    , m_objectStoreSource(&objectStore)
+    , m_connectionProxy(transaction.database().connectionProxy())
 {
     suspendIfNeeded();
 }
@@ -87,10 +90,11 @@ IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBObjectStore& objectSt
 IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBCursor& cursor, IDBTransaction& transaction)
     : ActiveDOMObject(&context)
     , m_transaction(&transaction)
-    , m_connection(transaction.serverConnection())
     , m_resourceIdentifier(transaction.serverConnection())
-    , m_source(cursor.source())
+    , m_objectStoreSource(cursor.objectStore())
+    , m_indexSource(cursor.index())
     , m_pendingCursor(&cursor)
+    , m_connectionProxy(transaction.database().connectionProxy())
 {
     suspendIfNeeded();
 
@@ -100,9 +104,9 @@ IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBCursor& cursor, IDBTr
 IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBIndex& index, IDBTransaction& transaction)
     : ActiveDOMObject(&context)
     , m_transaction(&transaction)
-    , m_connection(transaction.serverConnection())
     , m_resourceIdentifier(transaction.serverConnection())
-    , m_source(IDBAny::create(index))
+    , m_indexSource(&index)
+    , m_connectionProxy(transaction.database().connectionProxy())
 {
     suspendIfNeeded();
 }
@@ -115,21 +119,8 @@ IDBRequest::IDBRequest(ScriptExecutionContext& context, IDBIndex& index, Indexed
 
 IDBRequest::~IDBRequest()
 {
-    if (m_result) {
-        auto type = m_result->type();
-        if (type == IDBAny::Type::IDBCursor || type == IDBAny::Type::IDBCursorWithValue)
-            m_result->idbCursor()->clearRequest();
-    }
-}
-
-RefPtr<WebCore::IDBAny> IDBRequest::result(ExceptionCodeWithMessage& ec) const
-{
-    if (m_readyState == IDBRequestReadyState::Done)
-        return m_result;
-
-    ec.code = IDBDatabaseException::InvalidStateError;
-    ec.message = ASCIILiteral("Failed to read the 'result' property from 'IDBRequest': The request has not finished.");
-    return nullptr;
+    if (m_cursorResult)
+        m_cursorResult->clearRequest();
 }
 
 unsigned short IDBRequest::errorCode(ExceptionCode&) const
@@ -139,7 +130,7 @@ unsigned short IDBRequest::errorCode(ExceptionCode&) const
 
 RefPtr<DOMError> IDBRequest::error(ExceptionCodeWithMessage& ec) const
 {
-    if (m_readyState == IDBRequestReadyState::Done)
+    if (m_isDone)
         return m_domError;
 
     ec.code = IDBDatabaseException::InvalidStateError;
@@ -147,19 +138,16 @@ RefPtr<DOMError> IDBRequest::error(ExceptionCodeWithMessage& ec) const
     return nullptr;
 }
 
-RefPtr<WebCore::IDBAny> IDBRequest::source() const
-{
-    return m_source;
-}
-
 void IDBRequest::setSource(IDBCursor& cursor)
 {
     ASSERT(!m_cursorRequestNotifier);
 
-    m_source = IDBAny::create(cursor);
+    m_objectStoreSource = nullptr;
+    m_indexSource = nullptr;
+    m_cursorSource = &cursor;
     m_cursorRequestNotifier = std::make_unique<ScopeGuard>([this]() {
-        ASSERT(m_source->type() == IDBAny::Type::IDBCursor || m_source->type() == IDBAny::Type::IDBCursorWithValue);
-        m_source->idbCursor()->decrementOutstandingRequestCount();
+        ASSERT(m_cursorSource);
+        m_cursorSource->decrementOutstandingRequestCount();
     });
 }
 
@@ -179,57 +167,30 @@ RefPtr<WebCore::IDBTransaction> IDBRequest::transaction() const
 
 const String& IDBRequest::readyState() const
 {
-    static WTF::NeverDestroyed<String> pendingString("pending");
-    static WTF::NeverDestroyed<String> doneString("done");
-
-    switch (m_readyState) {
-    case IDBRequestReadyState::Pending:
-        return pendingString;
-    case IDBRequestReadyState::Done:
-        return doneString;
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-    }
+    static NeverDestroyed<String> pendingString(ASCIILiteral("pending"));
+    static NeverDestroyed<String> doneString(ASCIILiteral("done"));
+    return m_isDone ? doneString : pendingString;
 }
 
 uint64_t IDBRequest::sourceObjectStoreIdentifier() const
 {
-    if (!m_source)
-        return 0;
-
-    if (m_source->type() == IDBAny::Type::IDBObjectStore) {
-        auto* objectStore = m_source->idbObjectStore().get();
-        if (!objectStore)
-            return 0;
-        return objectStore->info().identifier();
-    }
-
-    if (m_source->type() == IDBAny::Type::IDBIndex) {
-        auto* index = m_source->idbIndex().get();
-        if (!index)
-            return 0;
-        return index->info().objectStoreIdentifier();
-    }
-
+    if (m_objectStoreSource)
+        return m_objectStoreSource->info().identifier();
+    if (m_indexSource)
+        return m_indexSource->info().objectStoreIdentifier();
     return 0;
 }
 
 uint64_t IDBRequest::sourceIndexIdentifier() const
 {
-    if (!m_source)
+    if (!m_indexSource)
         return 0;
-    if (m_source->type() != IDBAny::Type::IDBIndex)
-        return 0;
-    if (!m_source->idbIndex())
-        return 0;
-
-    return m_source->idbIndex()->info().identifier();
+    return m_indexSource->info().identifier();
 }
 
 IndexedDB::IndexRecordType IDBRequest::requestedIndexRecordType() const
 {
-    ASSERT(m_source);
-    ASSERT(m_source->type() == IDBAny::Type::IDBIndex);
+    ASSERT(m_indexSource);
 
     return m_requestedIndexRecordType;
 }
@@ -277,7 +238,7 @@ bool IDBRequest::dispatchEvent(Event& event)
     ASSERT(!m_contextStopped);
 
     if (event.type() != eventNames().blockedEvent)
-        m_readyState = IDBRequestReadyState::Done;
+        m_isDone = true;
 
     Vector<RefPtr<EventTarget>> targets;
     targets.append(this);
@@ -321,55 +282,66 @@ void IDBRequest::uncaughtExceptionInEventHandler()
     LOG(IndexedDB, "IDBRequest::uncaughtExceptionInEventHandler");
 
     if (m_transaction && m_idbError.code() != IDBDatabaseException::AbortError)
-        m_transaction->abortDueToFailedRequest(DOMError::create(IDBDatabaseException::getErrorName(IDBDatabaseException::AbortError)));
+        m_transaction->abortDueToFailedRequest(DOMError::create(IDBDatabaseException::getErrorName(IDBDatabaseException::AbortError), ASCIILiteral("IDBTransaction will abort due to uncaught exception in an event handler")));
 }
 
-void IDBRequest::setResult(const IDBKeyData* keyData)
+void IDBRequest::setResult(const IDBKeyData& keyData)
 {
-    if (!keyData) {
-        m_result = nullptr;
+    auto* context = scriptExecutionContext();
+    if (!context)
         return;
-    }
 
-    Deprecated::ScriptValue value = idbKeyDataToScriptValue(scriptExecutionContext(), *keyData);
-    m_result = IDBAny::create(WTFMove(value));
+    clearResult();
+    m_scriptResult = { context->vm(), idbKeyDataToScriptValue(*context, keyData) };
 }
 
 void IDBRequest::setResult(uint64_t number)
 {
-    ASSERT(scriptExecutionContext());
-    m_result = IDBAny::create(Deprecated::ScriptValue(scriptExecutionContext()->vm(), JSC::JSValue(number)));
-}
-
-void IDBRequest::setResultToStructuredClone(const ThreadSafeDataBuffer& valueData)
-{
-    LOG(IndexedDB, "IDBRequest::setResultToStructuredClone");
-
-    auto context = scriptExecutionContext();
+    auto* context = scriptExecutionContext();
     if (!context)
         return;
 
-    Deprecated::ScriptValue value = deserializeIDBValueData(*context, valueData);
-    m_result = IDBAny::create(WTFMove(value));
+    clearResult();
+    m_scriptResult = { context->vm(), JSC::jsNumber(number) };
+}
+
+void IDBRequest::setResultToStructuredClone(const IDBValue& value)
+{
+    LOG(IndexedDB, "IDBRequest::setResultToStructuredClone");
+
+    auto* context = scriptExecutionContext();
+    if (!context)
+        return;
+
+    clearResult();
+    m_scriptResult = { context->vm(), deserializeIDBValueToJSValue(*context, value) };
+}
+
+void IDBRequest::clearResult()
+{
+    m_scriptResult = { };
+    m_cursorResult = nullptr;
+    m_databaseResult = nullptr;
 }
 
 void IDBRequest::setResultToUndefined()
 {
-    m_result = IDBAny::createUndefined();
+    auto* context = scriptExecutionContext();
+    if (!context)
+        return;
+
+    clearResult();
+    m_scriptResult = { context->vm(), JSC::jsUndefined() };
 }
 
 IDBCursor* IDBRequest::resultCursor()
 {
-    if (!m_result)
-        return nullptr;
-    if (m_result->type() == IDBAny::Type::IDBCursor || m_result->type() == IDBAny::Type::IDBCursorWithValue)
-        return m_result->idbCursor().get();
-    return nullptr;
+    return m_cursorResult.get();
 }
 
 void IDBRequest::willIterateCursor(IDBCursor& cursor)
 {
-    ASSERT(m_readyState == IDBRequestReadyState::Done);
+    ASSERT(m_isDone);
     ASSERT(scriptExecutionContext());
     ASSERT(m_transaction);
     ASSERT(!m_pendingCursor);
@@ -378,8 +350,8 @@ void IDBRequest::willIterateCursor(IDBCursor& cursor)
 
     m_pendingCursor = &cursor;
     m_hasPendingActivity = true;
-    m_result = nullptr;
-    m_readyState = IDBRequestReadyState::Pending;
+    clearResult();
+    m_isDone = false;
     m_domError = nullptr;
     m_idbError = { };
 
@@ -391,12 +363,13 @@ void IDBRequest::willIterateCursor(IDBCursor& cursor)
 void IDBRequest::didOpenOrIterateCursor(const IDBResultData& resultData)
 {
     ASSERT(m_pendingCursor);
-    m_result = nullptr;
+
+    clearResult();
 
     if (resultData.type() == IDBResultType::IterateCursorSuccess || resultData.type() == IDBResultType::OpenCursorSuccess) {
         m_pendingCursor->setGetResult(*this, resultData.getResult());
         if (resultData.getResult().isDefined())
-            m_result = IDBAny::create(*m_pendingCursor);
+            m_cursorResult = m_pendingCursor;
     }
 
     m_cursorRequestNotifier = nullptr;
@@ -407,7 +380,7 @@ void IDBRequest::didOpenOrIterateCursor(const IDBResultData& resultData)
 
 void IDBRequest::requestCompleted(const IDBResultData& resultData)
 {
-    m_readyState = IDBRequestReadyState::Done;
+    m_isDone = true;
 
     m_idbError = resultData.error();
     if (!m_idbError.isNull())
@@ -421,7 +394,7 @@ void IDBRequest::onError()
     LOG(IndexedDB, "IDBRequest::onError");
 
     ASSERT(!m_idbError.isNull());
-    m_domError = DOMError::create(m_idbError.name());
+    m_domError = DOMError::create(m_idbError.name(), m_idbError.message());
     enqueueEvent(Event::create(eventNames().errorEvent, true, true));
 }
 
@@ -430,6 +403,12 @@ void IDBRequest::onSuccess()
     LOG(IndexedDB, "IDBRequest::onSuccess");
 
     enqueueEvent(Event::create(eventNames().successEvent, false, false));
+}
+
+void IDBRequest::setResult(Ref<IDBDatabase>&& database)
+{
+    clearResult();
+    m_databaseResult = WTFMove(database);
 }
 
 } // namespace WebCore

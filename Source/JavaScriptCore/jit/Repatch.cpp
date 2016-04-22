@@ -55,11 +55,6 @@
 
 namespace JSC {
 
-// Beware: in this code, it is not safe to assume anything about the following registers
-// that would ordinarily have well-known values:
-// - tagTypeNumberRegister
-// - tagMaskRegister
-
 static FunctionPtr readCallTarget(CodeBlock* codeBlock, CodeLocationCall call)
 {
     FunctionPtr result = MacroAssembler::readCallTarget(call);
@@ -795,10 +790,7 @@ void linkPolymorphicCall(
         // Verify that we have a function and stash the executable in scratchGPR.
 
 #if USE(JSVALUE64)
-        // We can't rely on tagMaskRegister being set, so we do this the hard
-        // way.
-        stubJit.move(MacroAssembler::TrustedImm64(TagMask), scratchGPR);
-        slowPath.append(stubJit.branchTest64(CCallHelpers::NonZero, calleeGPR, scratchGPR));
+        slowPath.append(stubJit.branchTest64(CCallHelpers::NonZero, calleeGPR, GPRInfo::tagMaskRegister));
 #else
         // We would have already checked that the callee is a cell.
 #endif
@@ -926,6 +918,8 @@ void linkPolymorphicCall(
     
     RELEASE_ASSERT(callCases.size() == calls.size());
     for (CallToCodePtr callToCodePtr : calls) {
+        // Tail call special-casing ensures proper linking on ARM Thumb2, where a tail call jumps to an address
+        // with a non-decorated bottom bit but a normal call calls an address with a decorated bottom bit.
         bool isTailCall = callToCodePtr.call.isFlagSet(CCallHelpers::Call::Tail);
         patchBuffer.link(
             callToCodePtr.call, FunctionPtr(isTailCall ? callToCodePtr.codePtr.dataLocation() : callToCodePtr.codePtr.executableAddress()));

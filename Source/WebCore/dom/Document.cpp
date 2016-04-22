@@ -201,6 +201,11 @@
 #include "RenderFullScreen.h"
 #endif
 
+#if ENABLE(INDEXED_DATABASE)
+#include "IDBConnectionProxy.h"
+#include "IDBOpenDBRequest.h"
+#endif
+
 #if PLATFORM(IOS)
 #include "CSSFontSelector.h"
 #include "DeviceMotionClientIOS.h"
@@ -3103,6 +3108,21 @@ void Document::disableEval(const String& errorMessage)
     frame()->script().disableEval(errorMessage);
 }
 
+#if ENABLE(INDEXED_DATABASE)
+IDBClient::IDBConnectionProxy* Document::idbConnectionProxy()
+{
+    if (!m_idbConnectionProxy) {
+        Page* currentPage = page();
+        if (!currentPage)
+            return nullptr;
+
+        m_idbConnectionProxy = IDBClient::IDBConnectionProxy::create(currentPage->idbConnection());
+    }
+
+    return m_idbConnectionProxy.get();
+}
+#endif // ENABLE(INDEXED_DATABASE)
+
 bool Document::canNavigate(Frame* targetFrame)
 {
     if (!m_frame)
@@ -3304,15 +3324,9 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
             unsigned long requestIdentifier = 0;
             if (frameLoader.activeDocumentLoader() && frameLoader.activeDocumentLoader()->mainResourceLoader())
                 requestIdentifier = frameLoader.activeDocumentLoader()->mainResourceLoader()->identifier();
-            if (frameLoader.shouldInterruptLoadForXFrameOptions(content, url(), requestIdentifier)) {
-                String message = "Refused to display '" + url().stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
-                frameLoader.stopAllLoaders();
-                // Stopping the loader isn't enough, as we're already parsing the document; to honor the header's
-                // intent, we must navigate away from the possibly partially-rendered document to a location that
-                // doesn't inherit the parent's SecurityOrigin.
-                frame->navigationScheduler().scheduleLocationChange(this, securityOrigin(), SecurityOrigin::urlWithUniqueSecurityOrigin(), String());
-                addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, requestIdentifier);
-            }
+
+            String message = "The X-Frame-Option '" + content + "' supplied in a <meta> element was ignored. X-Frame-Options may only be provided by an HTTP header sent with the document.";
+            addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, requestIdentifier);
         }
         break;
 
@@ -3321,19 +3335,9 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
             contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Enforce);
         break;
 
-    case HTTPHeaderName::ContentSecurityPolicyReportOnly:
-        if (isInDocumentHead)
-            contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Report);
-        break;
-
     case HTTPHeaderName::XWebKitCSP:
         if (isInDocumentHead)
             contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedEnforce);
-        break;
-
-    case HTTPHeaderName::XWebKitCSPReportOnly:
-        if (isInDocumentHead)
-            contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedReport);
         break;
 
     default:

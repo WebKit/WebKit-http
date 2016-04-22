@@ -453,6 +453,18 @@ private:
             if (Node::shouldSpeculateNumberOrBoolean(node->child1().node(), node->child2().node())) {
                 fixDoubleOrBooleanEdge(node->child1());
                 fixDoubleOrBooleanEdge(node->child2());
+            }
+            if (node->op() != CompareEq
+                && node->child1()->shouldSpeculateNotCell()
+                && node->child2()->shouldSpeculateNotCell()) {
+                if (node->child1()->shouldSpeculateNumberOrBoolean())
+                    fixDoubleOrBooleanEdge(node->child1());
+                else
+                    fixEdge<DoubleRepUse>(node->child1());
+                if (node->child2()->shouldSpeculateNumberOrBoolean())
+                    fixDoubleOrBooleanEdge(node->child2());
+                else
+                    fixEdge<DoubleRepUse>(node->child2());
                 node->clearFlags(NodeMustGenerate);
                 break;
             }
@@ -1467,6 +1479,13 @@ private:
             break;
         }
 
+        case ResolveScope:
+        case GetDynamicVar:
+        case PutDynamicVar: {
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
+
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
@@ -1502,6 +1521,7 @@ private:
         case NewRegexp:
         case ProfileWillCall:
         case ProfileDidCall:
+        case DeleteById:
         case IsArrayObject:
         case IsJSArray:
         case IsArrayConstructor:
@@ -1510,6 +1530,7 @@ private:
         case IsNumber:
         case IsObjectOrNull:
         case IsFunction:
+        case IsRegExpObject:
         case CreateDirectArguments:
         case CreateClonedArguments:
         case Jump:

@@ -71,15 +71,12 @@ list(APPEND WebCore_SOURCES
     accessibility/atk/WebKitAccessibleUtil.cpp
     accessibility/atk/WebKitAccessibleWrapperAtk.cpp
 
-    editing/SmartReplace.cpp
-
     editing/atk/FrameSelectionAtk.cpp
 
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
     platform/KillRingNone.cpp
-    platform/PlatformStrategies.cpp
 
     platform/audio/glib/AudioBusGLib.cpp
 
@@ -88,14 +85,16 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
+    platform/glib/EventLoopGlib.cpp
+    platform/glib/FileSystemGlib.cpp
+    platform/glib/GamepadsGlib.cpp
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
+    platform/glib/SharedBufferGlib.cpp
 
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
-    platform/graphics/ImageSource.cpp
-    platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BackingStoreBackendCairoX11.cpp
@@ -142,14 +141,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/x11/XUniqueResource.cpp
 
     platform/gtk/ErrorsGtk.cpp
-    platform/gtk/EventLoopGtk.cpp
-    platform/gtk/FileSystemGtk.cpp
-    platform/gtk/GamepadsGtk.cpp
-    platform/gtk/LanguageGtk.cpp
-    platform/gtk/LoggingGtk.cpp
     platform/gtk/MIMETypeRegistryGtk.cpp
     platform/gtk/ScrollAnimatorGtk.cpp
-    platform/gtk/SharedBufferGtk.cpp
     platform/gtk/TemporaryLinkStubs.cpp
     platform/gtk/UserAgentGtk.cpp
 
@@ -189,6 +182,9 @@ list(APPEND WebCore_SOURCES
     platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
 
     platform/text/hyphen/HyphenationLibHyphen.cpp
+
+    platform/unix/LanguageUnix.cpp
+    platform/unix/LoggingUnix.cpp
 )
 
 list(APPEND WebCorePlatformGTK_SOURCES

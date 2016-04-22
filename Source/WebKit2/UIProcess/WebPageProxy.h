@@ -45,6 +45,7 @@
 #include "ProcessThrottler.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
+#include "UserInterfaceLayoutDirection.h"
 #include "UserMediaPermissionRequestManagerProxy.h"
 #include "VisibleContentRectUpdateInfo.h"
 #include "WKBase.h"
@@ -192,6 +193,7 @@ class WebBackForwardListItem;
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebFullScreenManagerProxy;
+class WebPlaybackSessionManagerProxy;
 class WebNavigationState;
 class WebVideoFullscreenManagerProxy;
 class WebKeyboardEvent;
@@ -328,7 +330,8 @@ public:
     WebFullScreenManagerProxy* fullScreenManager();
 #endif
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    RefPtr<WebVideoFullscreenManagerProxy> videoFullscreenManager();
+    WebPlaybackSessionManagerProxy* playbackSessionManager();
+    WebVideoFullscreenManagerProxy* videoFullscreenManager();
 #endif
 
 #if PLATFORM(IOS)
@@ -1103,6 +1106,8 @@ public:
     bool isResourceCachingDisabled() const { return m_isResourceCachingDisabled; }
     void setResourceCachingDisabled(bool);
 
+    UserInterfaceLayoutDirection userInterfaceLayoutDirection();
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
     void platformInitialize();
@@ -1211,7 +1216,7 @@ private:
     void runBeforeUnloadConfirmPanel(const String& message, uint64_t frameID, RefPtr<Messages::WebPageProxy::RunBeforeUnloadConfirmPanel::DelayedReply>);
     void didChangeViewportProperties(const WebCore::ViewportAttributes&);
     void pageDidScroll();
-    void runOpenPanel(uint64_t frameID, const WebCore::FileChooserSettings&);
+    void runOpenPanel(uint64_t frameID, const WebCore::SecurityOriginData&, const WebCore::FileChooserSettings&);
     void printFrame(uint64_t frameID);
     void exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, PassRefPtr<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>);
     void reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>);
@@ -1548,6 +1553,7 @@ private:
     RefPtr<WebFullScreenManagerProxy> m_fullScreenManager;
 #endif
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    RefPtr<WebPlaybackSessionManagerProxy> m_playbackSessionManager;
     RefPtr<WebVideoFullscreenManagerProxy> m_videoFullscreenManager;
 #endif
 #if PLATFORM(IOS)

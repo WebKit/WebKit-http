@@ -32,6 +32,7 @@
 #include "DatabaseProcessMessages.h"
 #include "DatabaseProcessProxyMessages.h"
 #include "DatabaseToWebProcessConnection.h"
+#include "WebCoreArgumentCoders.h"
 #include "WebCrossThreadCopier.h"
 #include "WebsiteData.h"
 #include <WebCore/CrossThreadTask.h>
@@ -305,7 +306,6 @@ void DatabaseProcess::deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<
 #endif
 }
 
-#if ENABLE(INDEXED_DATABASE)
 void DatabaseProcess::grantSandboxExtensionsForBlobs(const Vector<String>& paths, const SandboxExtension::HandleArray& handles)
 {
     ASSERT(paths.size() == handles.size());
@@ -316,6 +316,7 @@ void DatabaseProcess::grantSandboxExtensionsForBlobs(const Vector<String>& paths
     }
 }
 
+#if ENABLE(INDEXED_DATABASE)
 void DatabaseProcess::prepareForAccessToTemporaryFile(const String& path)
 {
     if (auto extension = m_blobTemporaryFileSandboxExtensions.get(path))
@@ -348,9 +349,7 @@ Vector<RefPtr<WebCore::SecurityOrigin>> DatabaseProcess::indexedDatabaseOrigins(
 
     return securityOrigins;
 }
-#endif
 
-#if ENABLE(INDEXED_DATABASE)
 static void removeAllDatabasesForOriginPath(const String& originPath, std::chrono::system_clock::time_point modifiedSince)
 {
     // FIXME: We should also close/invalidate any live handles to the database files we are about to delete.
@@ -405,6 +404,21 @@ void DatabaseProcess::deleteIndexedDatabaseEntriesModifiedSince(std::chrono::sys
         removeAllDatabasesForOriginPath(originPath, modifiedSince);
 }
 #endif
+
+void DatabaseProcess::getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, std::function<void (const SandboxExtension::HandleArray&)> completionHandler)
+{
+    static uint64_t lastRequestID;
+
+    uint64_t requestID = ++lastRequestID;
+    m_sandboxExtensionForBlobsCompletionHandlers.set(requestID, completionHandler);
+    parentProcessConnection()->send(Messages::DatabaseProcessProxy::GetSandboxExtensionsForBlobFiles(requestID, filenames), 0);
+}
+
+void DatabaseProcess::didGetSandboxExtensionsForBlobFiles(uint64_t requestID, const SandboxExtension::HandleArray& handles)
+{
+    if (auto handler = m_sandboxExtensionForBlobsCompletionHandlers.take(requestID))
+        handler(handles);
+}
 
 #if !PLATFORM(COCOA)
 void DatabaseProcess::initializeProcess(const ChildProcessInitializationParameters&)

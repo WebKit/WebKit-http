@@ -41,6 +41,9 @@ PASS
 -- Running test case: EsprimaFormatter.JavaScript.object-array-literal.js
 PASS
 
+-- Running test case: EsprimaFormatter.JavaScript.other-statements.js
+PASS
+
 -- Running test case: EsprimaFormatter.JavaScript.return-statement.js
 PASS
 
@@ -56,10 +59,10 @@ PASS
 -- Running test case: EsprimaFormatter.JavaScript.switch-case-default.js
 PASS
 
--- Running test case: EsprimaFormatter.JavaScript.ternary-expressions.js
+-- Running test case: EsprimaFormatter.JavaScript.template-strings.js
 PASS
 
--- Running test case: EsprimaFormatter.JavaScript.throw-statement.js
+-- Running test case: EsprimaFormatter.JavaScript.ternary-expressions.js
 PASS
 
 -- Running test case: EsprimaFormatter.JavaScript.try-catch-finally-statements.js

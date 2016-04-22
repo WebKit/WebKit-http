@@ -169,6 +169,10 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent&, bool)
 {
 }
 
+void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&)
+{
+}
+
 RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy&)
 {
     return nullptr;
@@ -262,6 +266,11 @@ bool PageClientImpl::decidePolicyForInstallMissingMediaPluginsPermissionRequest(
 
 void PageClientImpl::didRestoreScrollPosition()
 {
+}
+
+UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirection()
+{
+    return UserInterfaceLayoutDirection::LTR;
 }
 
 } // namespace WebKit

@@ -870,6 +870,9 @@ private:
         case IsFunction:
             compileIsFunction();
             break;
+        case IsRegExpObject:
+            compileIsRegExpObject();
+            break;
         case TypeOf:
             compileTypeOf();
             break;
@@ -965,6 +968,15 @@ private:
             break;
         case RecordRegExpCachedResult:
             compileRecordRegExpCachedResult();
+            break;
+        case ResolveScope:
+            compileResolveScope();
+            break;
+        case GetDynamicVar:
+            compileGetDynamicVar();
+            break;
+        case PutDynamicVar:
+            compilePutDynamicVar();
             break;
 
         case PhantomLocal:
@@ -1461,7 +1473,11 @@ private:
         
         LBasicBlock lastNext = m_out.appendTo(isCellCase, slowCase);
         ValueFromBlock fastResult = m_out.anchor(value);
-        m_out.branch(isType(value, FinalObjectType), usually(continuation), rarely(slowCase));
+        m_out.branch(
+            m_out.testIsZero32(
+                m_out.load8ZeroExt32(value, m_heaps.JSCell_typeInfoFlags),
+                m_out.constInt32(OverridesToThis)),
+            usually(continuation), rarely(slowCase));
         
         m_out.appendTo(slowCase, continuation);
         J_JITOperation_EJ function;
@@ -2403,6 +2419,8 @@ private:
         B3::PatchpointValue* patchpoint = m_out.patchpoint(Void);
         patchpoint->appendSomeRegister(base);
         patchpoint->appendSomeRegister(value);
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
 
         // FIXME: If this is a PutByIdFlush, we might want to late-clobber volatile registers.
@@ -4865,6 +4883,8 @@ private:
         RefPtr<PatchpointExceptionHandle> exceptionHandle =
             preparePatchpointForExceptions(patchpoint);
         
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
         patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
         patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
@@ -4953,6 +4973,9 @@ private:
 
         PatchpointValue* patchpoint = m_out.patchpoint(Void);
         patchpoint->appendVector(arguments);
+
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
 
         // Prevent any of the arguments from using the scratch register.
         patchpoint->clobberEarly(RegisterSet::macroScratchRegisters());
@@ -5071,6 +5094,9 @@ private:
         RefPtr<PatchpointExceptionHandle> exceptionHandle =
             preparePatchpointForExceptions(patchpoint);
         
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
         patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
         patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
@@ -5902,7 +5928,26 @@ private:
             m_out.boolean, notCellResult, functionResult, objectResult, slowResult);
         setBoolean(result);
     }
-    
+
+    void compileIsRegExpObject()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(
+            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
+        ValueFromBlock cellResult = m_out.anchor(isRegExpObject(value, provenType(m_node->child1())));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
     void compileTypeOf()
     {
         Edge child = m_node->child1();
@@ -5934,12 +5979,20 @@ private:
                 UniquedStringImpl* str = bitwise_cast<UniquedStringImpl*>(string->tryGetValueImpl());
                 B3::PatchpointValue* patchpoint = m_out.patchpoint(Int64);
                 patchpoint->appendSomeRegister(cell);
+                patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+                patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
                 patchpoint->clobber(RegisterSet::macroScratchRegisters());
+
+                RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
 
                 State* state = &m_ftlState;
                 patchpoint->setGenerator(
                     [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                         AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                        // This is the direct exit target for operation calls. We don't need a JS exceptionHandle because we don't
+                        // cache Proxy objects.
+                        Box<CCallHelpers::JumpList> exceptions = exceptionHandle->scheduleExitCreation(params)->jumps(jit);
 
                         GPRReg baseGPR = params[1].gpr();
                         GPRReg resultGPR = params[0].gpr();
@@ -5964,7 +6017,7 @@ private:
                                 CCallHelpers::Label slowPathBegin = jit.label();
                                 CCallHelpers::Call slowPathCall = callOperation(
                                     *state, params.unavailableRegisters(), jit,
-                                    node->origin.semantic, nullptr, operationInOptimize,
+                                    node->origin.semantic, exceptions.get(), operationInOptimize,
                                     resultGPR, CCallHelpers::TrustedImmPtr(stubInfo), baseGPR,
                                     CCallHelpers::TrustedImmPtr(str)).call();
                                 jit.jump().linkTo(done, &jit);
@@ -7393,6 +7446,8 @@ private:
 
         B3::PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendSomeRegister(base);
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
 
         // FIXME: If this is a GetByIdFlush, we might get some performance boost if we claim that it
         // clobbers volatile registers late. It's not necessary for correctness, though, since the
@@ -7506,6 +7561,27 @@ private:
         }
         
         DFG_CRASH(m_graph, m_node, "Bad use kinds");
+    }
+
+    void compileResolveScope()
+    {
+        UniquedStringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        setJSValue(vmCall(m_out.intPtr, m_out.operation(operationResolveScope),
+            m_callFrame, lowCell(m_node->child1()), m_out.constIntPtr(uid)));
+    }
+
+    void compileGetDynamicVar()
+    {
+        UniquedStringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        setJSValue(vmCall(m_out.int64, m_out.operation(operationGetDynamicVar),
+            m_callFrame, lowCell(m_node->child1()), m_out.constIntPtr(uid), m_out.constInt32(m_node->getPutInfo())));
+    }
+
+    void compilePutDynamicVar()
+    {
+        UniquedStringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        setJSValue(vmCall(Void, m_out.operation(operationPutDynamicVar),
+            m_callFrame, lowCell(m_node->child1()), lowJSValue(m_node->child2()), m_out.constIntPtr(uid), m_out.constInt32(m_node->getPutInfo())));
     }
     
     void compareEqObjectOrOtherToObject(Edge leftChild, Edge rightChild)
@@ -9950,7 +10026,16 @@ private:
             m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoFlags),
             m_out.constInt32(MasqueradesAsUndefined | TypeOfShouldCallGetCallData));
     }
-    
+
+    LValue isRegExpObject(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, SpecRegExpObject))
+            return proven;
+        return m_out.equal(
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(RegExpObjectType));
+    }
+
     LValue isType(LValue cell, JSType type)
     {
         return m_out.equal(

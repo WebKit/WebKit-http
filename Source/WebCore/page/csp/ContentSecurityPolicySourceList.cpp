@@ -38,16 +38,6 @@
 
 namespace WebCore {
 
-static inline bool isExperimentalDirectiveName(const String& name)
-{
-#if ENABLE(CSP_NEXT)
-    return equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::reflectedXSS);
-#else
-    UNUSED_PARAM(name);
-    return false;
-#endif
-}
-
 static bool isCSPDirectiveName(const String& name)
 {
     return equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::baseURI)
@@ -63,8 +53,7 @@ static bool isCSPDirectiveName(const String& name)
         || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::reportURI)
         || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::sandbox)
         || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::scriptSrc)
-        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::styleSrc)
-        || isExperimentalDirectiveName(name);
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::styleSrc);
 }
 
 static bool isSourceCharacter(UChar c)
@@ -139,7 +128,7 @@ bool ContentSecurityPolicySourceList::isProtocolAllowedByStar(const URL& url) co
     return isAllowed;
 }
 
-bool ContentSecurityPolicySourceList::matches(const URL& url)
+bool ContentSecurityPolicySourceList::matches(const URL& url, bool didReceiveRedirectResponse)
 {
     if (m_allowStar && isProtocolAllowedByStar(url))
         return true;
@@ -148,7 +137,7 @@ bool ContentSecurityPolicySourceList::matches(const URL& url)
         return true;
 
     for (auto& entry : m_list) {
-        if (entry.matches(url))
+        if (entry.matches(url, didReceiveRedirectResponse))
             return true;
     }
 

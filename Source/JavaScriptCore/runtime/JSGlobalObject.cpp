@@ -257,7 +257,6 @@ void JSGlobalObject::setGlobalThis(VM& vm, JSObject* globalThis)
     m_globalThis.set(vm, this, globalThis);
 }
 
-
 static JSObject* getGetterById(ExecState* exec, JSObject* base, const Identifier& ident)
 {
     JSValue baseValue = JSValue(base);
@@ -550,6 +549,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSFunction* privateFuncHasInstanceBoundFunction = JSFunction::create(vm, this, 0, String(), hasInstanceBoundFunction);
     JSFunction* privateFuncInstanceOf = JSFunction::create(vm, this, 0, String(), objectPrivateFuncInstanceOf);
     JSFunction* privateFuncThisTimeValue = JSFunction::create(vm, this, 0, String(), dateProtoFuncGetTime);
+    JSFunction* privateFuncThisNumberValue = JSFunction::create(vm, this, 0, String(), numberProtoFuncValueOf);
     JSFunction* privateFuncIsArrayConstructor = JSFunction::create(vm, this, 0, String(), arrayConstructorPrivateFuncIsArrayConstructor, IsArrayConstructorIntrinsic);
     JSFunction* privateFuncIsJSArray = JSFunction::create(vm, this, 0, String(), arrayProtoPrivateFuncIsJSArray, IsJSArrayIntrinsic);
     JSFunction* privateFuncConcatMemcpy = JSFunction::create(vm, this, 0, String(), arrayProtoPrivateFuncConcatMemcpy);
@@ -625,6 +625,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->MapPrivateName, mapConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().generatorResumePrivateName(), JSFunction::createBuiltinFunction(vm, generatorPrototypeGeneratorResumeCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().thisTimeValuePrivateName(), privateFuncThisTimeValue, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().thisNumberValuePrivateName(), privateFuncThisNumberValue, DontEnum | DontDelete | ReadOnly),
 #if ENABLE(INTL)
         GlobalPropertyInfo(vm.propertyNames->builtinNames().CollatorPrivateName(), intl->getDirect(vm, vm.propertyNames->Collator), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().DateTimeFormatPrivateName(), intl->getDirect(vm, vm.propertyNames->DateTimeFormat), DontEnum | DontDelete | ReadOnly),
@@ -632,7 +633,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
 #endif // ENABLE(INTL)
 
         GlobalPropertyInfo(vm.propertyNames->isConstructorPrivateName, JSFunction::create(vm, this, 1, String(), esSpecIsConstructor, NoIntrinsic), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->isRegExpPrivateName, JSFunction::create(vm, this, 1, String(), esSpecIsRegExp, NoIntrinsic), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->isRegExpObjectPrivateName, JSFunction::create(vm, this, 1, String(), esSpecIsRegExpObject, IsRegExpObjectIntrinsic), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().speciesConstructorPrivateName(), JSFunction::createBuiltinFunction(vm, globalObjectSpeciesConstructorCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
 
         GlobalPropertyInfo(vm.propertyNames->regExpProtoFlagsGetterPrivateName, regExpProtoFlagsGetterObject, DontEnum | DontDelete | ReadOnly),
@@ -644,10 +645,14 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->regExpProtoUnicodeGetterPrivateName, regExpProtoUnicodeGetterObject, DontEnum | DontDelete | ReadOnly),
 
         // RegExp.prototype helpers.
+        GlobalPropertyInfo(vm.propertyNames->regExpBuiltinExecPrivateName, m_regExpPrototype->getDirect(vm, vm.propertyNames->exec), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->regExpCreatePrivateName, JSFunction::create(vm, this, 2, String(), esSpecRegExpCreate, NoIntrinsic), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().hasObservableSideEffectsForRegExpMatchPrivateName(), JSFunction::createBuiltinFunction(vm, regExpPrototypeHasObservableSideEffectsForRegExpMatchCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().hasObservableSideEffectsForRegExpSplitPrivateName(), JSFunction::createBuiltinFunction(vm, regExpPrototypeHasObservableSideEffectsForRegExpSplitCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().advanceStringIndexPrivateName(), JSFunction::createBuiltinFunction(vm, regExpPrototypeAdvanceStringIndexCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpExecPrivateName(), JSFunction::createBuiltinFunction(vm, regExpPrototypeRegExpExecCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->regExpMatchFastPrivateName, JSFunction::create(vm, this, 2, String(), regExpProtoFuncMatchFast), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->regExpSearchFastPrivateName, JSFunction::create(vm, this, 2, String(), regExpProtoFuncSearchFast), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->regExpSplitFastPrivateName, JSFunction::create(vm, this, 2, String(), regExpProtoFuncSplitFast), DontEnum | DontDelete | ReadOnly),
 
         // String.prototype helpers.

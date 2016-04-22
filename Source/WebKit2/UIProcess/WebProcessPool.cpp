@@ -128,6 +128,7 @@ static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::
     configuration.localStorageDirectory = processPoolConfiguration.localStorageDirectory();
     configuration.webSQLDatabaseDirectory = processPoolConfiguration.webSQLDatabaseDirectory();
     configuration.applicationCacheDirectory = processPoolConfiguration.applicationCacheDirectory();
+    configuration.applicationCacheFlatFileSubdirectoryName = processPoolConfiguration.applicationCacheFlatFileSubdirectoryName();
     configuration.mediaCacheDirectory = processPoolConfiguration.mediaCacheDirectory();
     configuration.mediaKeysStorageDirectory = processPoolConfiguration.mediaKeysStorageDirectory();
     configuration.networkCacheDirectory = processPoolConfiguration.diskCacheDirectory();
@@ -538,6 +539,8 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
         SandboxExtension::createHandle(parameters.injectedBundlePath, SandboxExtension::ReadOnly, parameters.injectedBundlePathExtensionHandle);
 
     parameters.applicationCacheDirectory = m_configuration->applicationCacheDirectory();
+    parameters.applicationCacheFlatFileSubdirectoryName = m_configuration->applicationCacheFlatFileSubdirectoryName();
+
     if (!parameters.applicationCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.applicationCacheDirectory, parameters.applicationCacheDirectoryExtensionHandle);
 
@@ -624,6 +627,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     parameters.pluginLoadClientPolicies = m_pluginLoadClientPolicies;
+    parameters.pluginLoadClientPoliciesForPrivateBrowsing = m_pluginLoadClientPoliciesForPrivateBrowsing;
 #endif
 
 #if OS(LINUX)
@@ -644,9 +648,6 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
 #if PLATFORM(COCOA)
     process->send(Messages::WebProcess::SetQOS(webProcessLatencyQOS(), webProcessThroughputQOS()), 0);
-#endif
-#if PLATFORM(IOS)
-    ApplicationCacheStorage::singleton().setDefaultOriginQuota(25ULL * 1024 * 1024);
 #endif
 
     if (WebPreferences::anyPagesAreUsingPrivateBrowsing())
@@ -1321,29 +1322,37 @@ void WebProcessPool::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)
     m_client.plugInInformationBecameAvailable(this, API::Array::create(WTFMove(plugins)).ptr());
 }
 
-void WebProcessPool::setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
+void WebProcessPool::setPluginLoadClientPolicyForPrivateBrowsing(PrivateBrowsing privateBrowsing, WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    HashMap<String, HashMap<String, uint8_t>> policiesByIdentifier;
-    if (m_pluginLoadClientPolicies.contains(host))
-        policiesByIdentifier = m_pluginLoadClientPolicies.get(host);
+    auto& pluginLoadClientPolicies = privateBrowsing == PrivateBrowsing::Yes ? m_pluginLoadClientPolicies : m_pluginLoadClientPoliciesForPrivateBrowsing;
 
-    HashMap<String, uint8_t> versionsToPolicies;
-    if (policiesByIdentifier.contains(bundleIdentifier))
-        versionsToPolicies = policiesByIdentifier.get(bundleIdentifier);
+    HashMap<String, HashMap<String, uint8_t>> policiesByIdentifier = pluginLoadClientPolicies.get(host);
+    HashMap<String, uint8_t> versionsToPolicies = policiesByIdentifier.get(bundleIdentifier);
 
     versionsToPolicies.set(versionString, policy);
     policiesByIdentifier.set(bundleIdentifier, versionsToPolicies);
-    m_pluginLoadClientPolicies.set(host, policiesByIdentifier);
+    pluginLoadClientPolicies.set(host, policiesByIdentifier);
 #endif
+}
 
+void WebProcessPool::setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
+{
+    setPluginLoadClientPolicyForPrivateBrowsing(PrivateBrowsing::No, policy, host, bundleIdentifier, versionString);
     sendToAllProcesses(Messages::WebProcess::SetPluginLoadClientPolicy(policy, host, bundleIdentifier, versionString));
+}
+
+void WebProcessPool::setPrivateBrowsingPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy policy, const String& host, const String& bundleIdentifier, const String& versionString)
+{
+    setPluginLoadClientPolicyForPrivateBrowsing(PrivateBrowsing::Yes, policy, host, bundleIdentifier, versionString);
+    sendToAllProcesses(Messages::WebProcess::SetPrivateBrowsingPluginLoadClientPolicy(policy, host, bundleIdentifier, versionString));
 }
 
 void WebProcessPool::clearPluginClientPolicies()
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     m_pluginLoadClientPolicies.clear();
+    m_pluginLoadClientPoliciesForPrivateBrowsing.clear();
 #endif
     sendToAllProcesses(Messages::WebProcess::ClearPluginClientPolicies());
 }

@@ -714,6 +714,7 @@ public:
     void cachedPutById(CodeOrigin, GPRReg basePayloadGPR, GPRReg valueTagGPR, GPRReg valuePayloadGPR, GPRReg scratchGPR, unsigned identifierNumber, PutKind, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
 #endif
 
+    void compileDeleteById(Node*);
     void compileTryGetById(Node*);
     void compileIn(Node*);
     
@@ -737,6 +738,7 @@ public:
     void compileIsJSArray(Node*);
     void compileIsArrayConstructor(Node*);
     void compileIsArrayObject(Node*);
+    void compileIsRegExpObject(Node*);
     
     void emitCall(Node*);
     
@@ -1249,7 +1251,24 @@ public:
         return appendCall(operation);
     }
 
+    JITCompiler::Call callOperation(C_JITOperation_EJscI operation, GPRReg result, GPRReg arg1, UniquedStringImpl* impl)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(impl));
+        return appendCallSetResult(operation, result);
+    }
+
+
 #if USE(JSVALUE64)
+    JITCompiler::Call callOperation(V_JITOperation_EOJIUi operation, GPRReg arg1, GPRReg arg2, UniquedStringImpl* impl, unsigned value)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(impl), TrustedImm32(value));
+        return appendCall(operation);
+    }
+    JITCompiler::Call callOperation(J_JITOperation_EOIUi operation, GPRReg result, GPRReg arg1, UniquedStringImpl* impl, unsigned value)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(impl), TrustedImm32(value));
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(J_JITOperation_E operation, GPRReg result)
     {
         m_jit.setupArgumentsExecState();
@@ -1468,6 +1487,15 @@ public:
         m_jit.setupArgumentsWithExecState(arg1);
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(S_JITOperation_EJI operation, GPRReg result, GPRReg arg1, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(uid));
+        return appendCallSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(S_JITOperation_EJI operation, GPRReg result, JSValueRegs arg1, UniquedStringImpl* uid)
+    {
+        return callOperation(operation, result, arg1.gpr(), uid);
+    }
     JITCompiler::Call callOperation(S_JITOperation_EJJ operation, GPRReg result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
@@ -1646,6 +1674,16 @@ public:
 #define SH4_32BIT_DUMMY_ARG
 #endif
 
+    JITCompiler::Call callOperation(V_JITOperation_EOJIUi operation, GPRReg arg1, GPRReg arg2Tag, GPRReg arg2Payload, UniquedStringImpl* impl, unsigned value)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2Payload, arg2Tag, TrustedImmPtr(impl), TrustedImm32(value));
+        return appendCall(operation);
+    }
+    JITCompiler::Call callOperation(J_JITOperation_EOIUi operation, GPRReg resultTag, GPRReg resultPayload, GPRReg arg1, UniquedStringImpl* impl, unsigned value)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(impl), TrustedImm32(value));
+        return appendCallSetResult(operation, resultPayload, resultTag);
+    }
     JITCompiler::Call callOperation(D_JITOperation_G operation, FPRReg result, JSGlobalObject* globalObject)
     {
         m_jit.setupArguments(TrustedImmPtr(globalObject));
@@ -1880,6 +1918,17 @@ public:
     JITCompiler::Call callOperation(S_JITOperation_EJ operation, GPRReg result, JSValueRegs arg1)
     {
         return callOperation(operation, result, arg1.tagGPR(), arg1.payloadGPR());
+    }
+
+    JITCompiler::Call callOperation(S_JITOperation_EJI operation, GPRReg result, GPRReg arg1Tag, GPRReg arg1Payload, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, TrustedImmPtr(uid));
+        return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(S_JITOperation_EJI operation, GPRReg result, JSValueRegs arg1Regs, UniquedStringImpl* uid)
+    {
+        return callOperation(operation, result, arg1Regs.tagGPR(), arg1Regs.payloadGPR(), uid);
     }
 
     JITCompiler::Call callOperation(S_JITOperation_EJJ operation, GPRReg result, GPRReg arg1Tag, GPRReg arg1Payload, GPRReg arg2Tag, GPRReg arg2Payload)
@@ -2456,6 +2505,9 @@ public:
     void compileMaterializeNewObject(Node*);
     void compileRecordRegExpCachedResult(Node*);
     void compileCallObjectConstructor(Node*);
+    void compileResolveScope(Node*);
+    void compileGetDynamicVar(Node*);
+    void compilePutDynamicVar(Node*);
 
     void moveTrueTo(GPRReg);
     void moveFalseTo(GPRReg);

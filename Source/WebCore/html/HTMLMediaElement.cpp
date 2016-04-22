@@ -85,6 +85,7 @@
 #include "ShadowRoot.h"
 #include "TimeRanges.h"
 #include "UserContentController.h"
+#include "UserGestureIndicator.h"
 #include <limits>
 #include <runtime/Uint8Array.h>
 #include <wtf/CurrentTime.h>
@@ -147,7 +148,6 @@
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
 #include "JSMediaControlsHost.h"
 #include "MediaControlsHost.h"
-#include "ScriptGlobalObject.h"
 #include <bindings/ScriptObject.h>
 #endif
 
@@ -497,6 +497,9 @@ HTMLMediaElement::~HTMLMediaElement()
 
     setShouldDelayLoadEvent(false);
     unregisterWithDocument(document());
+
+    if (document().page())
+        document().page()->chrome().client().clearPlaybackControlsManager(*this);
 
 #if ENABLE(VIDEO_TRACK)
     if (m_audioTracks) {
@@ -4823,10 +4826,8 @@ void HTMLMediaElement::updatePlayState()
     LOG(Media, "HTMLMediaElement::updatePlayState(%p) - shouldBePlaying = %s, playerPaused = %s", this, boolString(shouldBePlaying), boolString(playerPaused));
 
     if (shouldBePlaying) {
-        if (document().page() && m_mediaSession->canControlControlsManager(*this)) {
-            HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
-            document().page()->chrome().client().setUpVideoControlsManager(asVideo);
-        }
+        if (document().page() && m_mediaSession->canControlControlsManager(*this))
+            document().page()->chrome().client().setUpPlaybackControlsManager(*this);
 
         setDisplayMode(Video);
         invalidateCachedTime();
@@ -4860,8 +4861,8 @@ void HTMLMediaElement::updatePlayState()
         startPlaybackProgressTimer();
         setPlaying(true);
     } else {
-        if (endedPlayback() && document().page() && is<HTMLVideoElement>(*this))
-            document().page()->chrome().client().clearVideoControlsManager();
+        if (endedPlayback() && document().page())
+            document().page()->chrome().client().clearPlaybackControlsManager(*this);
 
         if (!playerPaused)
             m_player->pause();
@@ -5029,7 +5030,10 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
 
     if (m_videoFullscreenMode != VideoFullscreenModeNone)
         exitFullscreen();
-    
+
+    if (document().page())
+        document().page()->chrome().client().clearPlaybackControlsManager(*this);
+
     m_inActiveDocument = false;
 
     // Stop the playback without generating events
@@ -5308,11 +5312,21 @@ bool HTMLMediaElement::isFullscreen() const
     return false;
 }
 
-void HTMLMediaElement::toggleFullscreenState()
+bool HTMLMediaElement::isStandardFullscreen() const
 {
-    LOG(Media, "HTMLMediaElement::toggleFullscreenState(%p) - isFullscreen() is %s", this, boolString(isFullscreen()));
+#if ENABLE(FULLSCREEN_API)
+    if (document().webkitIsFullScreen() && document().webkitCurrentFullScreenElement() == this)
+        return true;
+#endif
+
+    return m_videoFullscreenMode == VideoFullscreenModeStandard;
+}
+
+void HTMLMediaElement::toggleStandardFullscreenState()
+{
+    LOG(Media, "HTMLMediaElement::toggleStandardFullscreenState(%p) - isStandardFullscreen() is %s", this, boolString(isStandardFullscreen()));
     
-    if (isFullscreen())
+    if (isStandardFullscreen())
         exitFullscreen();
     else
         enterFullscreen();
@@ -6640,6 +6654,7 @@ void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::Remo
 {
     LOG(Media, "HTMLMediaElement::didReceiveRemoteControlCommand(%p) - %i", this, static_cast<int>(command));
 
+    UserGestureIndicator remoteControlUserGesture(DefinitelyProcessingUserGesture, &document());
     switch (command) {
     case PlatformMediaSession::PlayCommand:
         play();

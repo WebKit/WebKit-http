@@ -31,7 +31,7 @@
 namespace WebKit {
 namespace WebPreferencesKey {
 
-#define DEFINE_KEY_GETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue) \
+#define DEFINE_KEY_GETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
         const String& KeyLower##Key() \
         { \
             static NeverDestroyed<String> key(ASCIILiteral(#KeyUpper)); \
@@ -40,6 +40,7 @@ namespace WebPreferencesKey {
 
 FOR_EACH_WEBKIT_PREFERENCE(DEFINE_KEY_GETTERS)
 FOR_EACH_WEBKIT_DEBUG_PREFERENCE(DEFINE_KEY_GETTERS)
+FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(DEFINE_KEY_GETTERS)
 
 #undef DEFINE_KEY_GETTERS
 

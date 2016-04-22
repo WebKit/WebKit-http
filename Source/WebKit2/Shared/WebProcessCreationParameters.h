@@ -68,7 +68,8 @@ struct WebProcessCreationParameters {
 
     UserData initializationUserData;
 
-    String applicationCacheDirectory;    
+    String applicationCacheDirectory;
+    String applicationCacheFlatFileSubdirectoryName;
     SandboxExtension::Handle applicationCacheDirectoryExtensionHandle;
     String webSQLDatabaseDirectory;
     SandboxExtension::Handle webSQLDatabaseDirectoryExtensionHandle;
@@ -163,6 +164,7 @@ struct WebProcessCreationParameters {
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     HashMap<String, HashMap<String, HashMap<String, uint8_t>>> pluginLoadClientPolicies;
+    HashMap<String, HashMap<String, HashMap<String, uint8_t>>> pluginLoadClientPoliciesForPrivateBrowsing;
 #endif
 
 #if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)

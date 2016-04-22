@@ -63,6 +63,12 @@ class Identifier;
     macro(symbolSearch) \
     macro(symbolSpecies) \
     macro(symbolSplit) \
+    macro(GeneratorResumeModeNormal) \
+    macro(GeneratorResumeModeThrow) \
+    macro(GeneratorResumeModeReturn) \
+    macro(GeneratorStateCompleted) \
+    macro(GeneratorStateExecuting) \
+
 
 class BytecodeIntrinsicRegistry {
     WTF_MAKE_NONCOPYABLE(BytecodeIntrinsicRegistry);
