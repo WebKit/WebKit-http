@@ -72,16 +72,6 @@ static GRefPtr<GstSample> webkitVideoSinkRequestRender(WebKitVideoSink*, GstBuff
 
 class VideoRenderRequestScheduler {
 public:
-    VideoRenderRequestScheduler()
-#if !USE(COORDINATED_GRAPHICS_THREADED)
-        : m_timer(RunLoop::main(), this, &VideoRenderRequestScheduler::render)
-#endif
-    {
-#if PLATFORM(GTK) && !USE(COORDINATED_GRAPHICS_THREADED)
-        // Use a higher priority than WebCore timers (G_PRIORITY_HIGH_IDLE + 20).
-        m_timer.setPriority(G_PRIORITY_HIGH_IDLE + 19);
-#endif
-    }
 
     void start()
     {
@@ -95,7 +85,6 @@ public:
         m_sample = nullptr;
         m_unlocked = true;
 #if !USE(COORDINATED_GRAPHICS_THREADED)
-        m_timer.stop();
         m_dataCondition.notifyOne();
 #endif
     }
@@ -115,8 +104,11 @@ public:
             webkitVideoSinkRepaintRequested(sink, m_sample.get());
         m_sample = nullptr;
 #else
-        m_sink = sink;
-        m_timer.startOneShot(0);
+        GRefPtr<WebKitVideoSink> sinkHolder = sink;
+        RunLoop::main().dispatch([this, sinkHolder]() {
+            render(sinkHolder.get());
+        });
+
         m_dataCondition.wait(m_sampleMutex);
 #endif
         return true;
@@ -125,13 +117,12 @@ public:
 private:
 
 #if !USE(COORDINATED_GRAPHICS_THREADED)
-    void render()
+    void render(WebKitVideoSink* sink)
     {
         LockHolder locker(m_sampleMutex);
         GRefPtr<GstSample> sample = WTFMove(m_sample);
-        GRefPtr<WebKitVideoSink> sink = WTFMove(m_sink);
         if (sample && !m_unlocked && LIKELY(GST_IS_SAMPLE(sample.get())))
-            webkitVideoSinkRepaintRequested(sink.get(), sample.get());
+            webkitVideoSinkRepaintRequested(sink, sample.get());
         m_dataCondition.notifyOne();
     }
 #endif
@@ -140,9 +131,7 @@ private:
     GRefPtr<GstSample> m_sample;
 
 #if !USE(COORDINATED_GRAPHICS_THREADED)
-    RunLoop::Timer<VideoRenderRequestScheduler> m_timer;
     Condition m_dataCondition;
-    GRefPtr<WebKitVideoSink> m_sink;
 #endif
 
     // If this is true all processing should finish ASAP
