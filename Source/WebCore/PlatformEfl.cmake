@@ -68,8 +68,6 @@ list(APPEND WebCore_SOURCES
     accessibility/atk/WebKitAccessibleUtil.cpp
     accessibility/atk/WebKitAccessibleWrapperAtk.cpp
 
-    editing/SmartReplace.cpp
-
     editing/atk/FrameSelectionAtk.cpp
 
     editing/efl/EditorEfl.cpp
@@ -101,9 +99,7 @@ list(APPEND WebCore_SOURCES
     platform/efl/EventLoopEfl.cpp
     platform/efl/FileSystemEfl.cpp
     platform/efl/GamepadsEfl.cpp
-    platform/efl/LanguageEfl.cpp
     platform/efl/LocalizedStringsEfl.cpp
-    platform/efl/LoggingEfl.cpp
     platform/efl/MIMETypeRegistryEfl.cpp
     platform/efl/MainThreadSharedTimerEfl.cpp
     platform/efl/PasteboardEfl.cpp
@@ -123,9 +119,7 @@ list(APPEND WebCore_SOURCES
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
 
-    platform/graphics/ImageSource.cpp
     platform/graphics/PlatformDisplay.cpp
-    platform/graphics/WOFFFileFormat.cpp
 
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
@@ -223,6 +217,9 @@ list(APPEND WebCore_SOURCES
     platform/text/enchant/TextCheckerEnchant.cpp
 
     platform/text/hyphen/HyphenationLibHyphen.cpp
+
+    platform/unix/LanguageUnix.cpp
+    platform/unix/LoggingUnix.cpp
 
     rendering/RenderThemeEfl.cpp
 )

@@ -268,7 +268,6 @@ set(WebKit2_SOURCES
     Shared/WebMediaSessionMetadata.cpp
     Shared/WebMemorySampler.cpp
     Shared/WebMouseEvent.cpp
-    Shared/WebOpenPanelParameters.cpp
     Shared/WebPageCreationParameters.cpp
     Shared/WebPageGroupData.cpp
     Shared/WebPlatformTouchPoint.cpp
@@ -395,12 +394,14 @@ set(WebKit2_SOURCES
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
 
+    UIProcess/API/APIExperimentalFeature.cpp
     UIProcess/API/APIFrameInfo.cpp
     UIProcess/API/APIHitTestResult.cpp
     UIProcess/API/APINavigation.cpp
     UIProcess/API/APINavigationData.cpp
     UIProcess/API/APIPageConfiguration.cpp
     UIProcess/API/APIProcessPoolConfiguration.cpp
+    UIProcess/API/APIOpenPanelParameters.cpp
     UIProcess/API/APISession.cpp
     UIProcess/API/APISessionState.cpp
     UIProcess/API/APIUserContentExtension.cpp
@@ -862,7 +863,7 @@ if (WebKit2_NetworkProcess_OUTPUT_NAME)
     set_target_properties(NetworkProcess PROPERTIES OUTPUT_NAME ${WebKit2_NetworkProcess_OUTPUT_NAME})
 endif ()
 
-if (ENABLE_PLUGIN_PROCESS AND NOT APPLE)
+if (ENABLE_PLUGIN_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
     add_definitions(-DENABLE_PLUGIN_PROCESS=1)
     add_executable(PluginProcess ${PluginProcess_SOURCES})
     add_webkit2_prefix_header(PluginProcess)
@@ -874,7 +875,7 @@ if (ENABLE_PLUGIN_PROCESS AND NOT APPLE)
     endif ()
 endif ()
 
-if (ENABLE_DATABASE_PROCESS AND NOT APPLE)
+if (ENABLE_DATABASE_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
     add_definitions(-DENABLE_DATABASE_PROCESS=1)
     add_executable(DatabaseProcess ${DatabaseProcess_SOURCES})
     add_webkit2_prefix_header(DatabaseProcess)
@@ -886,8 +887,8 @@ if (ENABLE_DATABASE_PROCESS AND NOT APPLE)
     endif ()
 endif ()
 
-if (APPLE)
-    set(_web_xpc_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.Development.xpc/Contents)
+if ("${PORT}" STREQUAL "Mac")
+    set(_web_xpc_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/XPCServices/com.apple.WebKit.WebContent.Development.xpc/Contents)
     make_directory(${_web_xpc_dir}/MacOS)
     make_directory(${_web_xpc_dir}/Resources)
     make_directory(${_web_xpc_dir}/_CodeSignature)
@@ -904,7 +905,7 @@ if (APPLE)
     set_target_properties(WebProcess PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${_web_xpc_dir}/MacOS")
 
 
-    set(_net_xpc_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.Development.xpc/Contents)
+    set(_net_xpc_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/XPCServices/com.apple.WebKit.Networking.Development.xpc/Contents)
     make_directory(${_net_xpc_dir}/MacOS)
     make_directory(${_net_xpc_dir}/_CodeSignature)
 

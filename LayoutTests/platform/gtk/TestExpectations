@@ -677,13 +677,13 @@ webkit.org/b/154390 http/tests/media/video-query-url.html [ Failure ]
 webkit.org/b/154390 http/tests/media/video-throttled-load-metadata.html [ Failure ]
 webkit.org/b/154390 http/tests/media/video-served-as-text.html [ Failure ]
 webkit.org/b/154390 http/tests/media/video-redirect.html [ Failure ]
-webkit.org/b/154390 http/tests/media/hls/video-controller-getStartDate.html [ Timeout Failure ]
-webkit.org/b/154390 http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Timeout Failure ]
-webkit.org/b/154390 http/tests/media/hls/hls-video-resize.html [ Timeout Failure ]
-webkit.org/b/154390 http/tests/media/hls/hls-audio-tracks.html [ Timeout Failure ]
-webkit.org/b/154390 http/tests/media/hls/hls-audio-tracks-has-audio.html [ Timeout Failure ]
-webkit.org/b/154390 http/tests/media/hls/hls-accessiblity-describes-video.html [ Timeout Failure ]
-webkit.org/b/154390 http/tests/media/hls/video-cookie.html [ Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/video-controller-getStartDate.html [ Timeout Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Timeout Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-video-resize.html [ Timeout Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-audio-tracks.html [ Timeout Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-audio-tracks-has-audio.html [ Timeout Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-accessiblity-describes-video.html [ Timeout Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/video-cookie.html [ Failure ]
 webkit.org/b/154390 http/tests/security/local-video-source-from-remote.html [ Timeout Pass ]
 
 webkit.org/b/155505 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Skip ]
@@ -1404,6 +1404,12 @@ webkit.org/b/149916 inspector/unit-tests/object.html [ Pass Slow ]
 
 Bug(GTK) http/tests/misc/large-js-program.php [ Pass Slow ]
 
+[ Debug ] editing/selection/move-by-character-brute-force.html [ Pass Timeout ]
+[ Debug ] editing/selection/move-by-word-visually-inline-block-positioned-element.html [ Pass Timeout ]
+[ Debug ] editing/selection/move-by-word-visually-mac.html [ Failure Timeout ]
+[ Debug ] editing/selection/move-by-word-visually-multi-line.html [ Pass Timeout ]
+[ Debug ] editing/selection/move-by-word-visually-multi-space.html [ Failure Timeout ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of slow tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1444,7 +1450,6 @@ webkit.org/b/122571 inspector/debugger/call-frame-this-nonstrict.html [ Timeout 
 webkit.org/b/122571 inspector/debugger/setBreakpoint-column.html [ Timeout Pass ]
 webkit.org/b/122571 inspector/debugger/setBreakpoint-condition.html [ Timeout Pass ]
 webkit.org/b/122571 inspector/debugger/removeBreakpoint.html [ Timeout Pass ]
-webkit.org/b/122571 inspector/debugger/setVariableValue.html [ Timeout Pass ]
 webkit.org/b/122571 inspector/debugger/call-frame-this-strict.html [ Timeout Pass ]
 webkit.org/b/122571 inspector/dom/request-child-nodes-depth.html [ Timeout Pass ]
 webkit.org/b/122571 inspector/dom/focus.html [ Failure Timeout Pass ]
@@ -1697,7 +1702,7 @@ webkit.org/b/63706 fast/events/drag-customData.html  [ Timeout ]
 fast/events/touch/scroll-without-mouse-lacks-mousemove-events.html
 
 # WebKit2 testRunner.setEditingBehaviour appears broken sometimes.
-webkit.org/b/144764 editing/selection/move-by-word-visually-mac.html [ Failure ]
+webkit.org/b/144764 [ Release ] editing/selection/move-by-word-visually-mac.html [ Failure ]
 Bug(GTK) editing/selection/extend-after-mouse-selection.html [ Failure ]
 
 # WebKit2 needs textInputController.selectedRange
@@ -2077,8 +2082,6 @@ webkit.org/b/112228 svg/custom/resources-css-scaled.html [ ImageOnlyFailure ]
 
 webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure Pass ]
 
-webkit.org/b/112705 fast/dom/icon-url-property.html [ Failure ]
-
 webkit.org/b/113772 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_iframe_self_navigation.html [ Failure ]
 webkit.org/b/113772 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_cached.html [ Failure ]
 
@@ -2401,8 +2404,6 @@ webkit.org/b/85594 fast/dom/navigator-detached-no-crash.html [ Failure ]
 webkit.org/b/143471 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
 webkit.org/b/143871 svg/W3C-SVG-1.1-SE/linking-uri-01-b.svg [ Failure ]
 
-webkit.org/b/143924 fast/text/hyphen-min-preferred-width.html [ Skip ]
-
 webkit.org/b/144575 http/tests/loading/promote-img-preload-priority.html [ Failure ]
 
 webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
@@ -2467,7 +2468,6 @@ webkit.org/b/151267 imported/blink/css3/blending/mix-blend-mode-with-squashing-l
 webkit.org/b/151267 imported/blink/css3/blending/svg-blend-overlapping-elements.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/css3/blending/svg-isolation-foreign-no-isolation.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/css3/blending/svg-isolation-nested-svg-no-isolation.html [ ImageOnlyFailure ]
-webkit.org/b/151267 imported/blink/editing/selection/deleteFromDocument-crash.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/fast/canvas/canvas-clip-stack-persistence.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/fast/css/fixed-overlaps-absolute-in-clip.html [ ImageOnlyFailure Pass ]
 webkit.org/b/151267 imported/blink/fast/css/tab-size-complex-path.html [ ImageOnlyFailure ]
@@ -2525,8 +2525,6 @@ webkit.org/b/152908 pageoverlay/overlay-large-document-scrolled.html [ Failure ]
 webkit.org/b/152908 pageoverlay/overlay-large-document.html [ Failure ]
 webkit.org/b/152908 pageoverlay/overlay-small-frame-mouse-events.html [ Failure ]
 webkit.org/b/152908 pageoverlay/overlay-small-frame-paints.html [ Failure ]
-
-webkit.org/b/153062 accessibility/gtk/entry-and-password.html [ Failure ]
 
 webkit.org/b/153602 fast/table/003.html [ Failure ]
 webkit.org/b/153602 fast/text/emoji.html [ Failure ]

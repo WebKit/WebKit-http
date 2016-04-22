@@ -29,9 +29,10 @@
     SkipVTableValidation,
     JSCustomMarkFunction,
     GenerateIsReachable=Impl,
+    Exposed=(Window,Worker),
 ] interface IDBObjectStore {
     readonly attribute DOMString? name;
-    [ImplementedAs=keyPathAny] readonly attribute IDBAny keyPath;
+    [ImplementationReturnType=IDBKeyPath] readonly attribute any keyPath;
     readonly attribute DOMStringList indexNames;
     readonly attribute IDBTransaction transaction;
     readonly attribute boolean autoIncrement;

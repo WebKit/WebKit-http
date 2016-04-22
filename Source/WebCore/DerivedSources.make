@@ -98,7 +98,6 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/geolocation/PositionError.idl \
     $(WebCore)/Modules/geolocation/PositionErrorCallback.idl \
     $(WebCore)/Modules/indexeddb/DOMWindowIndexedDatabase.idl \
-    $(WebCore)/Modules/indexeddb/IDBAny.idl \
     $(WebCore)/Modules/indexeddb/IDBCursor.idl \
     $(WebCore)/Modules/indexeddb/IDBCursorWithValue.idl \
     $(WebCore)/Modules/indexeddb/IDBDatabase.idl \
@@ -182,6 +181,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/streams/ReadableStream.idl \
     $(WebCore)/Modules/streams/ReadableStreamController.idl \
     $(WebCore)/Modules/streams/ReadableStreamReader.idl \
+    $(WebCore)/Modules/streams/ReadableStreamSource.idl \
     $(WebCore)/Modules/streams/WritableStream.idl \
     $(WebCore)/Modules/webaudio/AudioBuffer.idl \
     $(WebCore)/Modules/webaudio/AudioBufferCallback.idl \

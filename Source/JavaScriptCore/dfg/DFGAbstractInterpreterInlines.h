@@ -392,9 +392,23 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case DoubleRep: {
         JSValue child = forNode(node->child1()).value();
-        if (child && child.isNumber()) {
-            setConstant(node, jsDoubleNumber(child.asNumber()));
-            break;
+        if (child) {
+            if (child.isNumber()) {
+                setConstant(node, jsDoubleNumber(child.asNumber()));
+                break;
+            }
+            if (child.isUndefined()) {
+                setConstant(node, jsDoubleNumber(PNaN));
+                break;
+            }
+            if (child.isNull() || child.isFalse()) {
+                setConstant(node, jsDoubleNumber(0));
+                break;
+            }
+            if (child.isTrue()) {
+                setConstant(node, jsDoubleNumber(1));
+                break;
+            }
         }
 
         SpeculatedType type = forNode(node->child1()).m_type;
@@ -974,7 +988,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case IsString:
     case IsObject:
     case IsObjectOrNull:
-    case IsFunction: {
+    case IsFunction:
+    case IsRegExpObject: {
         AbstractValue child = forNode(node->child1());
         if (child.value()) {
             bool constantWasSet = true;
@@ -1048,6 +1063,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     }
                 } else
                     setConstant(node, jsBoolean(false));
+                break;
+            case IsRegExpObject:
+                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->type() == RegExpObjectType));
                 break;
             default:
                 constantWasSet = false;
@@ -1191,6 +1209,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
             break;
+
+        case IsRegExpObject:
+            // We don't have a SpeculatedType for Proxies yet so we can't do better at proving false.
+            if (!(child.m_type & ~SpecRegExpObject)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            if (!(child.m_type & SpecObject)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            break;
+
         default:
             break;
         }
@@ -1281,11 +1314,24 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
             
-            if (node->op() == CompareEq && leftConst.isString() && rightConst.isString()) {
+            if (leftConst.isString() && rightConst.isString()) {
                 const StringImpl* a = asString(leftConst)->tryGetValueImpl();
                 const StringImpl* b = asString(rightConst)->tryGetValueImpl();
                 if (a && b) {
-                    setConstant(node, jsBoolean(WTF::equal(a, b)));
+                    bool result;
+                    if (node->op() == CompareEq)
+                        result = WTF::equal(a, b);
+                    else if (node->op() == CompareLess)
+                        result = codePointCompare(a, b) < 0;
+                    else if (node->op() == CompareLessEq)
+                        result = codePointCompare(a, b) <= 0;
+                    else if (node->op() == CompareGreater)
+                        result = codePointCompare(a, b) > 0;
+                    else if (node->op() == CompareGreaterEq)
+                        result = codePointCompare(a, b) >= 0;
+                    else
+                        RELEASE_ASSERT_NOT_REACHED();
+                    setConstant(node, jsBoolean(result));
                     break;
                 }
             }
@@ -2076,6 +2122,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(SpecInt32);
         break;
     }
+
+    case DeleteById: {
+        // FIXME: This could decide if the delete will be successful based on the set of structures that
+        // we get from our base value. https://bugs.webkit.org/show_bug.cgi?id=156611
+        clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).setType(SpecBoolean);
+        break;
+    }
         
     case CheckStructure: {
         AbstractValue& value = forNode(node->child1());
@@ -2626,8 +2680,23 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case GetGlobalVar:
         forNode(node).makeHeapTop();
         break;
+
     case GetGlobalLexicalVariable:
         forNode(node).makeBytecodeTop();
+        break;
+
+    case GetDynamicVar:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).makeBytecodeTop();
+        break;
+
+    case PutDynamicVar:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        break;
+
+    case ResolveScope:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).setType(m_graph, SpecObject);
         break;
         
     case VarInjectionWatchpoint:

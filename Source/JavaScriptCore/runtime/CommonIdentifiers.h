@@ -405,6 +405,7 @@
     macro(NumberFormat) \
     macro(intlSubstituteValue) \
     macro(thisTimeValue) \
+    macro(thisNumberValue) \
     macro(newTargetLocal) \
     macro(derivedConstructor) \
     macro(isBoundFunction) \
@@ -414,7 +415,7 @@
     macro(isJSArray) \
     macro(isArrayConstructor) \
     macro(isConstructor) \
-    macro(isRegExp) \
+    macro(isRegExpObject) \
     macro(concatMemcpy) \
     macro(appendMemcpy) \
     macro(predictFinalLengthFromArgumunts) \
@@ -426,6 +427,8 @@
     macro(setIteratorNext) \
     macro(MapIterator) \
     macro(mapIteratorNext) \
+    macro(regExpBuiltinExec) \
+    macro(regExpMatchFast) \
     macro(regExpProtoFlagsGetter) \
     macro(regExpProtoGlobalGetter) \
     macro(regExpProtoIgnoreCaseGetter) \
@@ -433,6 +436,7 @@
     macro(regExpProtoSourceGetter) \
     macro(regExpProtoStickyGetter) \
     macro(regExpProtoUnicodeGetter) \
+    macro(regExpSearchFast) \
     macro(regExpSplitFast) \
     macro(stringIncludesInternal) \
     macro(stringSplitFast) \

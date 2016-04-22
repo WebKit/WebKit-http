@@ -37,11 +37,14 @@
 #include "Operations.h"
 #include "Strong.h"
 #include "StrongInlines.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
+
 class InspectorValue;
+
+JS_EXPORT_PRIVATE RefPtr<InspectorValue> toInspectorValue(JSC::ExecState&, JSC::JSValue);
+
 }
 
 namespace Deprecated {

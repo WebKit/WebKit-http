@@ -213,7 +213,6 @@ public:
         , m_lexicalVariables(WTFMove(other.m_lexicalVariables))
         , m_usedVariables(WTFMove(other.m_usedVariables))
         , m_closedVariableCandidates(WTFMove(other.m_closedVariableCandidates))
-        , m_writtenVariables(WTFMove(other.m_writtenVariables))
         , m_moduleScopeData(WTFMove(other.m_moduleScopeData))
         , m_functionDeclarations(WTFMove(other.m_functionDeclarations))
     {
@@ -298,7 +297,7 @@ public:
     }
     bool isLexicalScope() { return m_isLexicalScope; }
 
-    const IdentifierSet& closedVariableCandidates() const { return m_closedVariableCandidates; }
+    const HashSet<UniquedStringImpl*>& closedVariableCandidates() const { return m_closedVariableCandidates; }
     VariableEnvironment& declaredVariables() { return m_declaredVariables; }
     VariableEnvironment& lexicalVariables() { return m_lexicalVariables; }
     VariableEnvironment& finalizeLexicalEnvironment() 
@@ -324,16 +323,15 @@ public:
         // lexical scope off the stack, we should find which variables are truly captured, and which
         // variable still may be captured in a parent scope.
         if (m_lexicalVariables.size() && m_closedVariableCandidates.size()) {
-            auto end = m_closedVariableCandidates.end();
-            for (auto iter = m_closedVariableCandidates.begin(); iter != end; ++iter)
-                m_lexicalVariables.markVariableAsCapturedIfDefined(iter->get());
+            for (UniquedStringImpl* impl : m_closedVariableCandidates)
+                m_lexicalVariables.markVariableAsCapturedIfDefined(impl);
         }
 
         // We can now purge values from the captured candidates because they're captured in this scope.
         {
             for (auto entry : m_lexicalVariables) {
                 if (entry.value.isCaptured())
-                    m_closedVariableCandidates.remove(entry.key);
+                    m_closedVariableCandidates.remove(entry.key.get());
             }
         }
     }
@@ -465,12 +463,6 @@ public:
         return m_declaredParameters.contains(ident.get()) || hasDeclaredVariable(ident);
     }
     
-    void declareWrite(const Identifier* ident)
-    {
-        ASSERT(m_strictMode);
-        m_writtenVariables.add(ident->impl());
-    }
-
     void preventAllVariableDeclarations()
     {
         m_allowsVarDeclarations = false; 
@@ -594,17 +586,9 @@ public:
         // Propagate closed variable candidates downwards within the same function.
         // Cross function captures will be realized via m_usedVariables propagation.
         if (shouldTrackClosedVariables && !nestedScope->m_isFunctionBoundary && nestedScope->m_closedVariableCandidates.size()) {
-            IdentifierSet::iterator end = nestedScope->m_closedVariableCandidates.end();
-            IdentifierSet::iterator begin = nestedScope->m_closedVariableCandidates.begin();
+            auto end = nestedScope->m_closedVariableCandidates.end();
+            auto begin = nestedScope->m_closedVariableCandidates.begin();
             m_closedVariableCandidates.add(begin, end);
-        }
-
-        if (nestedScope->m_writtenVariables.size()) {
-            for (UniquedStringImpl* impl : nestedScope->m_writtenVariables) {
-                if (nestedScope->m_declaredVariables.contains(impl) || nestedScope->m_lexicalVariables.contains(impl))
-                    continue;
-                m_writtenVariables.add(impl);
-            }
         }
     }
     
@@ -632,32 +616,18 @@ public:
         }
     }
 
-    void getCapturedVars(IdentifierSet& capturedVariables, bool& modifiedParameter, bool& modifiedArguments)
+    void getCapturedVars(IdentifierSet& capturedVariables)
     {
         if (m_needsFullActivation || m_usesEval) {
-            modifiedParameter = true;
             for (auto& entry : m_declaredVariables)
                 capturedVariables.add(entry.key);
             return;
         }
-        for (IdentifierSet::iterator ptr = m_closedVariableCandidates.begin(); ptr != m_closedVariableCandidates.end(); ++ptr) {
+        for (UniquedStringImpl* impl : m_closedVariableCandidates) {
             // We refer to m_declaredVariables here directly instead of a hasDeclaredVariable because we want to mark the callee as captured.
-            if (!m_declaredVariables.contains(*ptr)) 
+            if (!m_declaredVariables.contains(impl)) 
                 continue;
-            capturedVariables.add(*ptr);
-        }
-        modifiedParameter = false;
-        if (shadowsArguments())
-            modifiedArguments = true;
-        if (m_declaredParameters.size()) {
-            for (UniquedStringImpl* impl : m_writtenVariables) {
-                if (impl == m_vm->propertyNames->arguments.impl())
-                    modifiedArguments = true;
-                if (!m_declaredParameters.contains(impl))
-                    continue;
-                modifiedParameter = true;
-                break;
-            }
+            capturedVariables.add(impl);
         }
     }
     void setStrictMode() { m_strictMode = true; }
@@ -665,9 +635,9 @@ public:
     bool isValidStrictMode() const { return m_isValidStrictMode; }
     bool shadowsArguments() const { return m_shadowsArguments; }
 
-    void copyCapturedVariablesToVector(const UniquedStringImplPtrSet& capturedVariables, Vector<RefPtr<UniquedStringImpl>>& vector)
+    void copyCapturedVariablesToVector(const UniquedStringImplPtrSet& usedVariables, Vector<UniquedStringImpl*, 8>& vector)
     {
-        for (UniquedStringImpl* impl : capturedVariables) {
+        for (UniquedStringImpl* impl : usedVariables) {
             if (m_declaredVariables.contains(impl) || m_lexicalVariables.contains(impl))
                 continue;
             vector.append(impl);
@@ -681,7 +651,6 @@ public:
         parameters.strictMode = m_strictMode;
         parameters.needsFullActivation = m_needsFullActivation;
         parameters.innerArrowFunctionFeatures = m_innerArrowFunctionFeatures;
-        copyCapturedVariablesToVector(m_writtenVariables, parameters.writtenVariables);
         for (const UniquedStringImplPtrSet& set : m_usedVariables)
             copyCapturedVariablesToVector(set, parameters.usedVariables);
     }
@@ -696,8 +665,6 @@ public:
         UniquedStringImplPtrSet& destSet = m_usedVariables.last();
         for (unsigned i = 0; i < info->usedVariablesCount; ++i)
             destSet.add(info->usedVariables()[i]);
-        for (unsigned i = 0; i < info->writtenVariablesCount; ++i)
-            m_writtenVariables.add(info->writtenVariables()[i]);
     }
 
 private:
@@ -772,8 +739,7 @@ private:
     VariableEnvironment m_lexicalVariables;
     Vector<UniquedStringImplPtrSet, 6> m_usedVariables;
     UniquedStringImplPtrSet m_sloppyModeHoistableFunctionCandidates;
-    IdentifierSet m_closedVariableCandidates;
-    UniquedStringImplPtrSet m_writtenVariables;
+    HashSet<UniquedStringImpl*> m_closedVariableCandidates;
     RefPtr<ModuleScopeData> m_moduleScopeData;
     DeclarationStacks::FunctionStack m_functionDeclarations;
 };
@@ -1175,12 +1141,6 @@ private:
         return m_scopeStack[i].hasDeclaredParameter(ident);
     }
     
-    void declareWrite(const Identifier* ident)
-    {
-        if (!m_syntaxAlreadyValidated || strictMode())
-            m_scopeStack.last().declareWrite(ident);
-    }
-
     bool exportName(const Identifier& ident)
     {
         ASSERT(currentScope().index() == 0);

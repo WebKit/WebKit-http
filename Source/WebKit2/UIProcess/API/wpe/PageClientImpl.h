@@ -76,6 +76,7 @@ private:
 
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool) override;
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool) override;
+    virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
 
     virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
 #if ENABLE(CONTEXT_MENUS)
@@ -111,6 +112,8 @@ private:
 #endif
 
     virtual void didRestoreScrollPosition() override;
+
+    virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
     WKWPE::View& m_view;
 };

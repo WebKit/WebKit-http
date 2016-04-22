@@ -31,12 +31,19 @@
 #ifndef HTTPParsers_h
 #define HTTPParsers_h
 
-#include "ContentSecurityPolicy.h"
 #include <wtf/Forward.h>
 #include <wtf/Optional.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+enum class XSSProtectionDisposition {
+    Invalid,
+    Disabled,
+    Enabled,
+    BlockEnabled,
+};
 
 enum ContentDispositionType {
     ContentDispositionNone,
@@ -70,7 +77,7 @@ String filenameFromHTTPContentDisposition(const String&);
 String extractMIMETypeFromMediaType(const String&);
 String extractCharsetFromMediaType(const String&); 
 void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, unsigned int& charsetLen, unsigned int start = 0);
-ContentSecurityPolicy::ReflectedXSSDisposition parseXSSProtectionHeader(const String& header, String& failureReason, unsigned& failurePosition, String& reportURL);
+XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& failureReason, unsigned& failurePosition, String& reportURL);
 String extractReasonPhraseFromHTTPStatusLine(const String&);
 XFrameOptionsDisposition parseXFrameOptionsHeader(const String&);
 
@@ -84,7 +91,7 @@ ContentTypeOptionsDisposition parseContentTypeOptionsHeader(const String& header
 // Parsing Complete HTTP Messages.
 enum HTTPVersion { Unknown, HTTP_1_0, HTTP_1_1 };
 size_t parseHTTPRequestLine(const char* data, size_t length, String& failureReason, String& method, String& url, HTTPVersion&);
-size_t parseHTTPHeader(const char* data, size_t length, String& failureReason, String& nameStr, String& valueStr, bool strict = true);
+size_t parseHTTPHeader(const char* data, size_t length, String& failureReason, StringView& nameStr, String& valueStr, bool strict = true);
 size_t parseHTTPRequestBody(const char* data, size_t length, Vector<unsigned char>& body);
 
 inline bool isHTTPSpace(UChar character)

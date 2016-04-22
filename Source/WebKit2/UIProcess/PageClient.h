@@ -27,6 +27,7 @@
 #define PageClient_h
 
 #include "ShareableBitmap.h"
+#include "UserInterfaceLayoutDirection.h"
 #include "WebColorPicker.h"
 #include "WebPageProxy.h"
 #include "WebPopupMenuProxy.h"
@@ -151,7 +152,7 @@ public:
 
     virtual void handleDownloadRequest(DownloadProxy*) = 0;
 
-    virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, WebOpenPanelParameters*, WebOpenPanelResultListenerProxy*) { return false; }
+    virtual bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, API::OpenPanelParameters*, WebOpenPanelResultListenerProxy*) { return false; }
 
     virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
 
@@ -167,6 +168,7 @@ public:
     virtual void clearAllEditCommands() = 0;
     virtual bool canUndoRedo(WebPageProxy::UndoOrRedo) = 0;
     virtual void executeUndoRedo(WebPageProxy::UndoOrRedo) = 0;
+    virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) = 0;
 #if PLATFORM(COCOA)
     virtual void accessibilityWebProcessTokenReceived(const IPC::DataReference&) = 0;
     virtual bool executeSavedCommandBySelector(const String& selector) = 0;
@@ -178,7 +180,6 @@ public:
     virtual void setAcceleratedCompositingRootLayer(LayerOrView *) = 0;
     virtual LayerOrView *acceleratedCompositingRootLayer() const = 0;
     virtual PassRefPtr<ViewSnapshot> takeViewSnapshot() = 0;
-    virtual void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) = 0;
 #if ENABLE(MAC_GESTURE_EVENTS)
     virtual void gestureEventWasNotHandledByWebCore(const NativeWebGestureEvent&) = 0;
 #endif
@@ -363,6 +364,8 @@ public:
     virtual void didRestoreScrollPosition() = 0;
 
     virtual bool windowIsFrontWindowUnderMouse(const NativeWebMouseEvent&) { return false; }
+
+    virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() = 0;
 };
 
 } // namespace WebKit

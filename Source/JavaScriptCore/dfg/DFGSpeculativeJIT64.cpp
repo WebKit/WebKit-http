@@ -3897,10 +3897,11 @@ void SpeculativeJIT::compile(Node* node)
         
         MacroAssembler::JumpList slowCases;
         slowCases.append(m_jit.branchIfNotCell(JSValueRegs(thisValueGPR)));
-        slowCases.append(m_jit.branch8(
-            MacroAssembler::NotEqual,
-            MacroAssembler::Address(thisValueGPR, JSCell::typeInfoTypeOffset()),
-            TrustedImm32(FinalObjectType)));
+        slowCases.append(
+            m_jit.branchTest8(                             
+                MacroAssembler::NonZero,
+                MacroAssembler::Address(thisValueGPR, JSCell::typeInfoFlagsOffset()),
+                MacroAssembler::TrustedImm32(OverridesToThis)));
         m_jit.move(thisValueGPR, tempGPR);
         J_JITOperation_EJ function;
         if (m_jit.graph().executableFor(node->origin.semantic)->isStrictMode())
@@ -4131,6 +4132,11 @@ void SpeculativeJIT::compile(Node* node)
     case GetArrayLength:
         compileGetArrayLength(node);
         break;
+
+    case DeleteById: {
+        compileDeleteById(node);
+        break;
+    }
         
     case CheckCell: {
         SpeculateCellOperand cell(this, node->child1());
@@ -4353,6 +4359,21 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case PutDynamicVar: {
+        compilePutDynamicVar(node);
+        break;
+    }
+
+    case GetDynamicVar: {
+        compileGetDynamicVar(node);
+        break;
+    }
+
+    case ResolveScope: {
+        compileResolveScope(node);
+        break;
+    }
+
     case NotifyWrite: {
         compileNotifyWrite(node);
         break;
@@ -4539,6 +4560,11 @@ void SpeculativeJIT::compile(Node* node)
 
     case IsFunction: {
         compileIsFunction(node);
+        break;
+    }
+
+    case IsRegExpObject: {
+        compileIsRegExpObject(node);
         break;
     }
 

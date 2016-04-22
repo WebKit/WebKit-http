@@ -180,23 +180,16 @@ MacroAssemblerCodeRef virtualThunkFor(VM* vm, CallLinkInfo& callLinkInfo)
     // the DFG knows that the value is definitely a cell, or definitely a function.
     
 #if USE(JSVALUE64)
-    jit.move(CCallHelpers::TrustedImm64(TagMask), GPRInfo::regT4);
-    
     slowCase.append(
         jit.branchTest64(
-            CCallHelpers::NonZero, GPRInfo::regT0, GPRInfo::regT4));
+            CCallHelpers::NonZero, GPRInfo::regT0, GPRInfo::tagMaskRegister));
 #else
     slowCase.append(
         jit.branch32(
             CCallHelpers::NotEqual, GPRInfo::regT1,
             CCallHelpers::TrustedImm32(JSValue::CellTag)));
 #endif
-    jit.emitLoadStructure(GPRInfo::regT0, GPRInfo::regT4, GPRInfo::regT1);
-    slowCase.append(
-        jit.branchPtr(
-            CCallHelpers::NotEqual,
-            CCallHelpers::Address(GPRInfo::regT4, Structure::classInfoOffset()),
-            CCallHelpers::TrustedImmPtr(JSFunction::info())));
+    slowCase.append(jit.branchIfNotType(GPRInfo::regT0, JSFunctionType));
     
     // Now we know we have a JSFunction.
     
@@ -935,6 +928,42 @@ MacroAssemblerCodeRef absThunkGenerator(VM* vm)
     SpecializedThunkJIT jit(vm, 1);
     if (!jit.supportsFloatingPointAbs())
         return MacroAssemblerCodeRef::createSelfManagedCodeRef(vm->jitStubs->ctiNativeCall(vm));
+
+#if USE(JSVALUE64)
+    unsigned virtualRegisterIndex = CallFrame::argumentOffset(0);
+    jit.load64(AssemblyHelpers::addressFor(virtualRegisterIndex), GPRInfo::regT0);
+    MacroAssembler::Jump notInteger = jit.branch64(MacroAssembler::Below, GPRInfo::regT0, GPRInfo::tagTypeNumberRegister);
+
+    // Abs Int32.
+    jit.rshift32(GPRInfo::regT0, MacroAssembler::TrustedImm32(31), GPRInfo::regT1);
+    jit.add32(GPRInfo::regT1, GPRInfo::regT0);
+    jit.xor32(GPRInfo::regT1, GPRInfo::regT0);
+
+    // IntMin cannot be inverted.
+    MacroAssembler::Jump integerIsIntMin = jit.branchTest32(MacroAssembler::Signed, GPRInfo::regT0);
+
+    // Box and finish.
+    jit.or64(GPRInfo::tagTypeNumberRegister, GPRInfo::regT0);
+    MacroAssembler::Jump doneWithIntegers = jit.jump();
+
+    // Handle Doubles.
+    notInteger.link(&jit);
+    jit.appendFailure(jit.branchTest64(MacroAssembler::Zero, GPRInfo::regT0, GPRInfo::tagTypeNumberRegister));
+    jit.unboxDoubleWithoutAssertions(GPRInfo::regT0, GPRInfo::regT0, FPRInfo::fpRegT0);
+    MacroAssembler::Label absFPR0Label = jit.label();
+    jit.absDouble(FPRInfo::fpRegT0, FPRInfo::fpRegT1);
+    jit.boxDouble(FPRInfo::fpRegT1, GPRInfo::regT0);
+
+    // Tail.
+    doneWithIntegers.link(&jit);
+    jit.returnJSValue(GPRInfo::regT0);
+
+    // We know the value of regT0 is IntMin. We could load that value from memory but
+    // it is simpler to just convert it.
+    integerIsIntMin.link(&jit);
+    jit.convertInt32ToDouble(GPRInfo::regT0, FPRInfo::fpRegT0);
+    jit.jump().linkTo(absFPR0Label, &jit);
+#else
     MacroAssembler::Jump nonIntJump;
     jit.loadInt32Argument(0, SpecializedThunkJIT::regT0, nonIntJump);
     jit.rshift32(SpecializedThunkJIT::regT0, MacroAssembler::TrustedImm32(31), SpecializedThunkJIT::regT1);
@@ -947,6 +976,7 @@ MacroAssemblerCodeRef absThunkGenerator(VM* vm)
     jit.loadDoubleArgument(0, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0);
     jit.absDouble(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1);
     jit.returnDouble(SpecializedThunkJIT::fpRegT1);
+#endif
     return jit.finalize(vm->jitStubs->ctiNativeTailCall(vm), "abs");
 }
 

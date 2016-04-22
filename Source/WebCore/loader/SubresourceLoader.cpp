@@ -185,8 +185,8 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
             if (m_frame)
                 m_frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), emptyString(), DiagnosticLoggingResultFail, ShouldSample::Yes);
         }
-        
-        if (!m_documentLoader->cachedResourceLoader().canRequest(m_resource->type(), newRequest.url(), options())) {
+
+        if (!m_documentLoader->cachedResourceLoader().canRequest(m_resource->type(), newRequest.url(), options(), false /* forPreload */, true /* didReceiveRedirectResponse */)) {
             cancel();
             return;
         }
@@ -371,6 +371,7 @@ static void logResourceLoaded(Frame* frame, CachedResource::Type type)
     case CachedResource::SVGDocumentResource:
         resourceType = DiagnosticLoggingKeys::svgDocumentKey();
         break;
+    case CachedResource::LinkPreload:
 #if ENABLE(LINK_PREFETCH)
     case CachedResource::LinkPrefetch:
     case CachedResource::LinkSubresource:

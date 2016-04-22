@@ -260,6 +260,11 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
     return _webView.URL;
 }
 
+- (NSView *)mainContentView
+{
+    return _webView;
+}
+
 - (BOOL)validateUserInterfaceItem:(id <NSValidatedUserInterfaceItem>)item
 {
     SEL action = item.action;
@@ -445,6 +450,24 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
         [input validateEditing];
         completionHandler(response == NSAlertFirstButtonReturn ? [input stringValue] : nil);
         [alert release];
+    }];
+}
+
+#if __has_feature(objc_generics)
+- (void)webView:(WKWebView *)webView runOpenPanelWithParameters:(WKOpenPanelParameters *)parameters initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSArray<NSURL *> * URLs))completionHandler
+#else
+- (void)webView:(WKWebView *)webView runOpenPanelWithParameters:(WKOpenPanelParameters *)parameters initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSArray *URLs))completionHandler
+#endif
+{
+    NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+
+    openPanel.allowsMultipleSelection = parameters.allowsMultipleSelection;
+
+    [openPanel beginSheetModalForWindow:webView.window completionHandler:^(NSInteger result) {
+        if (result == NSFileHandlingPanelOKButton)
+            completionHandler(openPanel.URLs);
+        else
+            completionHandler(nil);
     }];
 }
 

@@ -61,6 +61,7 @@ class Object;
 }
 
 namespace WebCore {
+class ApplicationCacheStorage;
 class CertificateInfo;
 class PageGroup;
 class ResourceRequest;
@@ -127,6 +128,7 @@ public:
     void plugInDidStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, WebCore::SessionID);
     void plugInDidReceiveUserInteraction(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, WebCore::SessionID);
     void setPluginLoadClientPolicy(uint8_t policy, const String& host, const String& bundleIdentifier, const String& versionString);
+    void setPrivateBrowsingPluginLoadClientPolicy(uint8_t policy, const String& host, const String& bundleIdentifier, const String& versionString);
     void clearPluginClientPolicies();
 
     bool fullKeyboardAccessEnabled() const { return m_fullKeyboardAccessEnabled; }
@@ -206,6 +208,8 @@ public:
     bool hasRichContentServices() const { return m_hasRichContentServices; }
 #endif
 
+    WebCore::ApplicationCacheStorage& applicationCacheStorage() { return *m_applicationCacheStorage; }
+
     void prefetchDNS(const String&);
 
     WebAutomationSessionProxy* automationSessionProxy() { return m_automationSessionProxy.get(); }
@@ -255,7 +259,6 @@ private:
 
     void platformSetCacheModel(CacheModel);
     void platformClearResourceCaches(ResourceCachesToClear);
-    void clearApplicationCache();
 
     void setEnhancedAccessibility(bool);
     
@@ -368,6 +371,10 @@ private:
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
+#if PLATFORM(MAC)
+    enum class PrivateBrowsing { Yes, No };
+    void setPluginLoadClientPolicies(const HashMap<String, HashMap<String, HashMap<String, uint8_t>>>&, PrivateBrowsing);
+#endif
     RefPtr<PluginProcessConnectionManager> m_pluginProcessConnectionManager;
 #endif
 
@@ -380,6 +387,8 @@ private:
     HashSet<uint64_t> m_pagesInWindows;
     WebCore::Timer m_nonVisibleProcessCleanupTimer;
     WebCore::Timer m_statisticsChangedTimer;
+
+    RefPtr<WebCore::ApplicationCacheStorage> m_applicationCacheStorage;
 
 #if PLATFORM(IOS)
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;

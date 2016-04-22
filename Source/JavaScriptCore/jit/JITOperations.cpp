@@ -1115,6 +1115,9 @@ EncodedJSValue JIT_OPERATION operationNewGeneratorFunctionWithInvalidatedRealloc
 
 void JIT_OPERATION operationSetFunctionName(ExecState* exec, JSCell* funcCell, EncodedJSValue encodedName)
 {
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
     JSFunction* func = jsCast<JSFunction*>(funcCell);
     JSValue name = JSValue::decode(encodedName);
     func->setFunctionName(exec, name);
@@ -1863,7 +1866,13 @@ EncodedJSValue JIT_OPERATION operationGetByValString(ExecState* exec, EncodedJSV
     return JSValue::encode(result);
 }
 
-EncodedJSValue JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue encodedBase, const Identifier* identifier)
+EncodedJSValue JIT_OPERATION operationDeleteByIdJSResult(ExecState* exec, EncodedJSValue base, UniquedStringImpl* uid)
+{
+    return JSValue::encode(jsBoolean(operationDeleteById(exec, base, uid)));
+}
+
+
+size_t JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue encodedBase, UniquedStringImpl* uid)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
@@ -1871,11 +1880,10 @@ EncodedJSValue JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue
     JSObject* baseObj = JSValue::decode(encodedBase).toObject(exec);
     if (!baseObj)
         JSValue::encode(JSValue());
-    bool couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, exec, *identifier);
-    JSValue result = jsBoolean(couldDelete);
+    bool couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, exec, Identifier::fromUid(&vm, uid));
     if (!couldDelete && exec->codeBlock()->isStrictMode())
         vm.throwException(exec, createTypeError(exec, ASCIILiteral("Unable to delete property.")));
-    return JSValue::encode(result);
+    return couldDelete;
 }
 
 EncodedJSValue JIT_OPERATION operationInstanceOf(ExecState* exec, EncodedJSValue encodedValue, EncodedJSValue encodedProto)
@@ -2037,7 +2045,7 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
     bool hasProperty = scope->hasProperty(exec, ident);
     if (hasProperty
         && scope->isGlobalLexicalEnvironment()
-        && getPutInfo.initializationMode() != Initialization) {
+        && !isInitialization(getPutInfo.initializationMode())) {
         // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
         PropertySlot slot(scope, PropertySlot::InternalMethodType::Get);
         JSGlobalLexicalEnvironment::getOwnPropertySlot(scope, exec, ident, slot);
@@ -2052,7 +2060,7 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
         return;
     }
 
-    PutPropertySlot slot(scope, codeBlock->isStrictMode(), PutPropertySlot::UnknownContext, getPutInfo.initializationMode() == Initialization);
+    PutPropertySlot slot(scope, codeBlock->isStrictMode(), PutPropertySlot::UnknownContext, isInitialization(getPutInfo.initializationMode()));
     scope->methodTable()->put(scope, exec, ident, value, slot);
     
     if (exec->vm().exception())

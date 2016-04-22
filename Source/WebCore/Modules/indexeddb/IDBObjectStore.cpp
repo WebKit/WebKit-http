@@ -28,8 +28,8 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "DOMRequestState.h"
 #include "DOMStringList.h"
+#include "Document.h"
 #include "IDBBindingUtilities.h"
 #include "IDBCursor.h"
 #include "IDBDatabase.h"
@@ -42,8 +42,13 @@
 #include "IDBTransaction.h"
 #include "IndexedDB.h"
 #include "Logging.h"
+#include "Page.h"
+#include "ScriptExecutionContext.h"
+#include "ScriptState.h"
 #include "SerializedScriptValue.h"
 #include <wtf/Locker.h>
+
+using namespace JSC;
 
 namespace WebCore {
 
@@ -80,17 +85,12 @@ bool IDBObjectStore::hasPendingActivity() const
     return !m_transaction->isFinished();
 }
 
-const String IDBObjectStore::name() const
+const String& IDBObjectStore::name() const
 {
     return m_info.name();
 }
 
-RefPtr<IDBAny> IDBObjectStore::keyPathAny() const
-{
-    return IDBAny::create(m_info.keyPath());
-}
-
-const IDBKeyPath IDBObjectStore::keyPath() const
+const IDBKeyPath& IDBObjectStore::keyPath() const
 {
     return m_info.keyPath();
 }
@@ -125,7 +125,7 @@ RefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext& context, I
     return openCursor(context, keyRange, IDBCursor::directionNext(), ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext& context, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
 {
     return openCursor(context, key, IDBCursor::directionNext(), ec);
 }
@@ -155,7 +155,7 @@ RefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext& context, I
     return WTFMove(request);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext& context, const Deprecated::ScriptValue& key, const String& direction, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext& context, JSValue key, const String& direction, ExceptionCodeWithMessage& ec)
 {
     RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(context, key, ec.code);
     if (ec.code) {
@@ -166,7 +166,7 @@ RefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext& context, c
     return openCursor(context, keyRange.get(), direction, ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::get(ScriptExecutionContext& context, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::get(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBObjectStore::get");
 
@@ -182,8 +182,7 @@ RefPtr<IDBRequest> IDBObjectStore::get(ScriptExecutionContext& context, const De
         return nullptr;
     }
 
-    DOMRequestState requestState(&context);
-    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(&requestState, key);
+    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(context, key);
     if (!idbKey || idbKey->type() == KeyType::Invalid) {
         ec.code = IDBDatabaseException::DataError;
         ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBObjectStore': The parameter is not a valid key.");
@@ -219,12 +218,12 @@ RefPtr<IDBRequest> IDBObjectStore::get(ScriptExecutionContext& context, IDBKeyRa
     return WTFMove(request);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::add(JSC::ExecState& state, JSC::JSValue value, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::add(ExecState& state, JSValue value, ExceptionCodeWithMessage& ec)
 {
     return putOrAdd(state, value, nullptr, IndexedDB::ObjectStoreOverwriteMode::NoOverwrite, InlineKeyCheck::Perform, ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::add(JSC::ExecState& execState, JSC::JSValue value, JSC::JSValue key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::add(ExecState& execState, JSValue value, JSValue key, ExceptionCodeWithMessage& ec)
 {
     RefPtr<IDBKey> idbKey;
     if (!key.isUndefined())
@@ -232,7 +231,7 @@ RefPtr<IDBRequest> IDBObjectStore::add(JSC::ExecState& execState, JSC::JSValue v
     return putOrAdd(execState, value, idbKey, IndexedDB::ObjectStoreOverwriteMode::NoOverwrite, InlineKeyCheck::Perform, ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::put(JSC::ExecState& execState, JSC::JSValue value, JSC::JSValue key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::put(ExecState& execState, JSValue value, JSValue key, ExceptionCodeWithMessage& ec)
 {
     RefPtr<IDBKey> idbKey;
     if (!key.isUndefined())
@@ -240,19 +239,26 @@ RefPtr<IDBRequest> IDBObjectStore::put(JSC::ExecState& execState, JSC::JSValue v
     return putOrAdd(execState, value, idbKey, IndexedDB::ObjectStoreOverwriteMode::Overwrite, InlineKeyCheck::Perform, ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::put(JSC::ExecState& state, JSC::JSValue value, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::put(ExecState& state, JSValue value, ExceptionCodeWithMessage& ec)
 {
     return putOrAdd(state, value, nullptr, IndexedDB::ObjectStoreOverwriteMode::Overwrite, InlineKeyCheck::Perform, ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::putForCursorUpdate(JSC::ExecState& state, JSC::JSValue value, JSC::JSValue key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::putForCursorUpdate(ExecState& state, JSValue value, JSValue key, ExceptionCodeWithMessage& ec)
 {
     return putOrAdd(state, value, scriptValueToIDBKey(state, key), IndexedDB::ObjectStoreOverwriteMode::OverwriteForCursor, InlineKeyCheck::DoNotPerform, ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, JSC::JSValue value, RefPtr<IDBKey> key, IndexedDB::ObjectStoreOverwriteMode overwriteMode, InlineKeyCheck inlineKeyCheck, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::putOrAdd(ExecState& state, JSValue value, RefPtr<IDBKey> key, IndexedDB::ObjectStoreOverwriteMode overwriteMode, InlineKeyCheck inlineKeyCheck, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBObjectStore::putOrAdd");
+
+    auto context = scriptExecutionContextFromExecState(&state);
+    if (!context) {
+        ec.code = IDBDatabaseException::UnknownError;
+        ec.message = ASCIILiteral("Unable to store record in object store because it does not have a valid script execution context");
+        return nullptr;
+    }
 
     // The IDB spec for several IDBObjectStore methods states that transaction related exceptions should fire before
     // the exception for an object store being deleted.
@@ -287,8 +293,14 @@ RefPtr<IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, JSC::JSValue 
         return nullptr;
     }
 
-    if (serializedValue->hasBlobURLs()) {
-        // FIXME: Add Blob/File/FileList support
+    bool privateBrowsingEnabled = false;
+    if (context->isDocument()) {
+        if (auto* page = static_cast<Document*>(context)->page())
+            privateBrowsingEnabled = page->sessionID().isEphemeral();
+    }
+
+    if (serializedValue->hasBlobURLs() && privateBrowsingEnabled) {
+        // https://bugs.webkit.org/show_bug.cgi?id=156347 - Support Blobs in private browsing.
         ec.code = IDBDatabaseException::DataCloneError;
         ec.message = ASCIILiteral("Failed to store record in an IDBObjectStore: BlobURLs are not yet supported.");
         return nullptr;
@@ -339,14 +351,7 @@ RefPtr<IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, JSC::JSValue 
         return nullptr;
     }
 
-    auto context = scriptExecutionContextFromExecState(&state);
-    if (!context) {
-        ec.code = IDBDatabaseException::UnknownError;
-        return nullptr;
-    }
-
-    Ref<IDBRequest> request = m_transaction->requestPutOrAdd(*context, *this, key.get(), *serializedValue, overwriteMode);
-    return adoptRef(request.leakRef());
+    return m_transaction->requestPutOrAdd(*context, *this, key.get(), *serializedValue, overwriteMode);
 }
 
 RefPtr<IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext& context, IDBKeyRange* keyRange, ExceptionCodeWithMessage& ec)
@@ -392,22 +397,21 @@ RefPtr<IDBRequest> IDBObjectStore::doDelete(ScriptExecutionContext& context, IDB
     return WTFMove(request);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext& context, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
 {
-    return modernDelete(context, key.jsValue(), ec);
+    return modernDelete(context, key, ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::modernDelete(ScriptExecutionContext& context, JSC::JSValue key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::modernDelete(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
 {
-    DOMRequestState requestState(&context);
-    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(&requestState, key);
+    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(context, key);
     if (!idbKey || idbKey->type() == KeyType::Invalid) {
         ec.code = IDBDatabaseException::DataError;
         ec.message = ASCIILiteral("Failed to execute 'delete' on 'IDBObjectStore': The parameter is not a valid key.");
         return nullptr;
     }
 
-    return doDelete(context, &IDBKeyRange::create(idbKey.get()).get(), ec);
+    return doDelete(context, &IDBKeyRange::create(idbKey.releaseNonNull()).get(), ec);
 }
 
 RefPtr<IDBRequest> IDBObjectStore::clear(ScriptExecutionContext& context, ExceptionCodeWithMessage& ec)
@@ -590,12 +594,11 @@ RefPtr<IDBRequest> IDBObjectStore::count(ScriptExecutionContext& context, Except
     return doCount(context, IDBKeyRangeData::allKeys(), ec);
 }
 
-RefPtr<IDBRequest> IDBObjectStore::count(ScriptExecutionContext& context, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBObjectStore::count(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBObjectStore::count");
 
-    DOMRequestState requestState(&context);
-    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(&requestState, key);
+    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(context, key);
     if (!idbKey || idbKey->type() == KeyType::Invalid) {
         ec.code = IDBDatabaseException::DataError;
         ec.message = ASCIILiteral("Failed to execute 'count' on 'IDBObjectStore': The parameter is not a valid key.");
@@ -649,7 +652,7 @@ void IDBObjectStore::rollbackInfoForVersionChangeAbort()
     m_info = m_originalInfo;
 }
 
-void IDBObjectStore::visitReferencedIndexes(JSC::SlotVisitor& visitor) const
+void IDBObjectStore::visitReferencedIndexes(SlotVisitor& visitor) const
 {
     Locker<Lock> locker(m_referencedIndexLock);
     for (auto& index : m_referencedIndexes.values())

@@ -160,6 +160,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case IsNumber:
     case IsString:
     case IsObject:
+    case IsRegExpObject:
     case LogicalNot:
     case CheckInBounds:
     case DoubleRep:
@@ -445,6 +446,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PutGetterSetterById:
     case PutGetterByVal:
     case PutSetterByVal:
+    case DeleteById:
     case ArrayPush:
     case ArrayPop:
     case Call:
@@ -460,6 +462,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case In:
     case ValueAdd:
     case SetFunctionName:
+    case GetDynamicVar:
+    case PutDynamicVar:
+    case ResolveScope:
         read(World);
         write(Heap);
         return;
@@ -1140,6 +1145,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CompareLessEq:
     case CompareGreater:
     case CompareGreaterEq:
+        if (node->isBinaryUseKind(StringUse)) {
+            read(HeapObjectCount);
+            write(HeapObjectCount);
+            return;
+        }
         if (!node->isBinaryUseKind(UntypedUse)) {
             def(PureValue(node));
             return;
