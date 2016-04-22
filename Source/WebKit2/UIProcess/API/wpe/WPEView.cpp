@@ -63,6 +63,10 @@ View::View(const API::PageConfiguration& baseConfiguration)
     auto* pool = configuration->processPool();
     m_pageProxy = pool->createWebPage(*m_pageClient, WTFMove(configuration));
 
+#if PLATFORM(INTEL_CE)
+    m_pageProxy->setDrawsBackground(false);
+#endif
+
     // Construct the CompositingManagerProxy before initializing the WebPageProxy.
     m_compositingManagerProxy = std::make_unique<CompositingManagerProxy>(*this);
     m_viewBackend->setClient(m_compositingManagerProxy.get());
