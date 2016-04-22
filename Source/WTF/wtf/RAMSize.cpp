@@ -64,7 +64,7 @@ static size_t customRAMSize()
         bool ok = false;
         size_t size = size_t(value.toUInt64(&ok));
         if (ok)
-            return size;
+            return size * units;
     }
 
     return 0;
