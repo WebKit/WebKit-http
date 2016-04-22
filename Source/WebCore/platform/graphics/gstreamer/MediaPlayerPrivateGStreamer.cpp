@@ -2170,7 +2170,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     g_object_set(G_OBJECT(sinkElement),"zorder",0.0f,nullptr);
 #endif
 
-#if !USE(WESTEROS_SINK)
+#if !USE(WESTEROS_SINK) && !USE(FUSION_SINK)
     g_object_set(m_pipeline.get(), "audio-sink", createAudioSink(), nullptr);
 #endif
     configurePlaySink();
