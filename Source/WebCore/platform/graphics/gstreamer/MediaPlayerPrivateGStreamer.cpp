@@ -390,8 +390,13 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     if (videoDec)
         g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
 
-    if (currentPts)
+    if (currentPts) {
+#if PLATFORM(BCM_NEXUS)
         result = (static_cast<double>(currentPts * GST_MSECOND) / 45) / GST_SECOND;
+#else
+        result = currentPts / GST_SECOND;
+#endif
+    }
 
     if (!result && m_seekTime)
         result = m_seekTime;
