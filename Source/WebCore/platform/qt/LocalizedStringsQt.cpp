@@ -814,6 +814,12 @@ String textTrackNoLabelText()
     notImplemented();
     return String();
 }
+
+String audioTrackNoLabelText()
+{
+    notImplemented();
+    return String();
+}
 #endif
 
 String snapshottedPlugInLabelTitle()
