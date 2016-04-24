@@ -994,7 +994,7 @@ void SourceBuffer::setActive(bool active)
 
 void SourceBuffer::sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString& error)
 {
-    LOG(MediaSource, "SourceBuffer::sourceBufferPrivateDidEndStream(%p) - result = %s", this, String(error).utf8().data());
+    LOG(MediaSource, "SourceBuffer::sourceBufferPrivateDidEndStream(%p) - result = %s", this, error.string().utf8().data());
 
     if (!isRemoved())
         m_source->streamEndedWithError(error, IgnorableExceptionCode());
