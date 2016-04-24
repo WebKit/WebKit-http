@@ -168,7 +168,7 @@ endif ()
 
 # Do it in the WebCore to support SHARED_CORE since WebKitWidgets won't load WebKit in that case.
 # This should match the opposite statement in WebKit/PlatformQt.cmake
-if (NOT WIN32)
+if (SHARED_CORE)
     qt5_add_resources(WebCore_SOURCES
         WebCore.qrc
     )

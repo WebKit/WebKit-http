@@ -232,9 +232,9 @@ if (ENABLE_VIDEO)
     )
 endif ()
 
-# Resources have to be included directly in the final binary for MSVC.
+# Resources have to be included directly in the final binary.
 # The linker won't pick them from a static library since they aren't referenced.
-if (WIN32)
+if (NOT SHARED_CORE)
     qt5_add_resources(WebKit_SOURCES
         "${WEBCORE_DIR}/WebCore.qrc"
     )
