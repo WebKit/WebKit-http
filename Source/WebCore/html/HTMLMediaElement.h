@@ -543,6 +543,8 @@ private:
     virtual void mediaPlayerRenderingModeChanged(MediaPlayer*) override;
     virtual void mediaPlayerEngineUpdated(MediaPlayer*) override;
     
+    Document* mediaPlayerOwningDocument() override;
+
     virtual void mediaPlayerFirstVideoFrameAvailable(MediaPlayer*) override;
     virtual void mediaPlayerCharacteristicChanged(MediaPlayer*) override;
 

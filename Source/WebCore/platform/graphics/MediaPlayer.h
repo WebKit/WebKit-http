@@ -66,6 +66,7 @@ namespace WebCore {
 
 class AudioSourceProvider;
 class AuthenticationChallenge;
+class Document;
 class MediaPlaybackTarget;
 #if ENABLE(MEDIA_SOURCE)
 class MediaSourcePrivateClient;
@@ -139,6 +140,9 @@ class MediaPlayerRequestInstallMissingPluginsCallback;
 class MediaPlayerClient {
 public:
     virtual ~MediaPlayerClient() { }
+
+    // Get the document which the media player is owned by
+    virtual Document* mediaPlayerOwningDocument() { return 0; }
 
     // the network state has changed
     virtual void mediaPlayerNetworkStateChanged(MediaPlayer*) { }
