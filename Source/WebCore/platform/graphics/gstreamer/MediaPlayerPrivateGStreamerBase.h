@@ -42,6 +42,7 @@ typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
 typedef struct _GstGLDisplay GstGLDisplay;
+typedef struct _GstPadProbeInfo GstPadProbeInfo;
 
 namespace WebCore {
 
@@ -202,6 +203,7 @@ protected:
 
 #if USE(GSTREAMER_GL)
     static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstBuffer*, GstPad*, GstBaseSink*);
+    void clearCurrentBuffer();
 #endif
 
     void notifyPlayerOfVolumeChange();

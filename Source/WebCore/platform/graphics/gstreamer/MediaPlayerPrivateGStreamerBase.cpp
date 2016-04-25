@@ -826,6 +826,22 @@ gboolean MediaPlayerPrivateGStreamerBase::drawCallback(MediaPlayerPrivateGStream
     player->triggerRepaint(sample.get());
     return TRUE;
 }
+
+void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
+{
+    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+    m_sample.clear();
+
+    LockHolder holder(m_platformLayerProxy->lock());
+
+    if (!m_platformLayerProxy->isActive())
+        return;
+
+    // FIXME: Remove this black frame while drain or flush event
+    // we can make a copy current frame to the temporal texture,
+    // or make the decoder's buffer pool more flexible.
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, 0));
+}
 #endif
 
 void MediaPlayerPrivateGStreamerBase::triggerDrain()
@@ -1015,7 +1031,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
         return nullptr;
 
     gboolean result = TRUE;
-    GstElement* videoSink = gst_bin_new(nullptr);
+    GstElement* videoSink = gst_bin_new("webkitvideosinkbin");
     GstElement* upload = gst_element_factory_make("glupload", nullptr);
     GstElement* colorconvert = gst_element_factory_make("glcolorconvert", nullptr);
 
@@ -1044,6 +1060,16 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
     gst_element_add_pad(videoSink, gst_ghost_pad_new("sink", pad.get()));
 
     g_object_set(fakesink, "enable-last-sample", FALSE, "signal-handoffs", TRUE, "silent", TRUE, "sync", TRUE, nullptr);
+
+    pad = adoptGRef(gst_element_get_static_pad(fakesink, "sink"));
+    gst_pad_add_probe (pad.get(), GST_PAD_PROBE_TYPE_EVENT_FLUSH, [] (GstPad*, GstPadProbeInfo* info,  gpointer userData) -> GstPadProbeReturn {
+        if (GST_EVENT_TYPE (GST_PAD_PROBE_INFO_EVENT (info)) != GST_EVENT_FLUSH_START)
+            return GST_PAD_PROBE_OK;
+
+        auto* player = static_cast<MediaPlayerPrivateGStreamerBase*>(userData);
+        player->clearCurrentBuffer();
+        return GST_PAD_PROBE_OK;
+    }, this, nullptr);
 
     if (result)
         g_signal_connect_swapped(fakesink, "handoff", G_CALLBACK(drawCallback), this);
