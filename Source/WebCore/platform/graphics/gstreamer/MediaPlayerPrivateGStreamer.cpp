@@ -1119,9 +1119,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                     GstElement* sink = static_cast<GstElement*>(g_value_get_object(&item));
                     GstEvent* event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
                                                            gst_structure_new_empty("commit-load"));
-                    gboolean sent = gst_element_send_event(sink, event);
-                    if (sent)
-                        done = TRUE;
+                    gst_element_send_event(sink, event);
                     break;
                 }
                 case GST_ITERATOR_RESYNC:
