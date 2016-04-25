@@ -135,6 +135,7 @@ struct _WebKitMediaSrcPrivate
     int appSrcSeekDataCount;
     int appSrcNeedDataCount;
 
+    guint seekNeedsDataTag;
     WebCore::MediaPlayerPrivateGStreamerMSE* mediaPlayerPrivate;
 };
 
@@ -256,6 +257,7 @@ static void webkit_media_src_init(WebKitMediaSrc* src)
     src->priv->appSrcSeekDataCount = 0;
     src->priv->appSrcNeedDataCount = 0;
     src->priv->appSrcSeekDataNextAction = Nothing;
+    src->priv->seekNeedsDataTag = 0;
 
     // No need to reset Stream.appSrcNeedDataFlag because there are no Streams at this point yet.
 }
@@ -284,6 +286,11 @@ static void webKitMediaSrcFinalize(GObject* object)
 
     if (priv->mediaPlayerPrivate)
         priv->mediaPlayerPrivate = 0;
+
+    if (priv->seekNeedsDataTag) {
+        g_source_remove(priv->seekNeedsDataTag);
+        priv->seekNeedsDataTag = 0;
+    }
 
     // We used a placement new for construction, the destructor won't be called automatically.
     priv->~_WebKitMediaSrcPrivate();
@@ -738,6 +745,7 @@ static gboolean seekNeedsDataMainThread (gpointer user_data)
     GST_OBJECT_LOCK(webKitMediaSrc);
     MediaTime seekTime = webKitMediaSrc->priv->seekTime;
     WebCore::MediaPlayerPrivateGStreamerMSE* mediaPlayerPrivate = webKitMediaSrc->priv->mediaPlayerPrivate;
+    webKitMediaSrc->priv->seekNeedsDataTag = 0;
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
     if (mediaPlayerPrivate==nullptr)
@@ -796,8 +804,14 @@ static void app_src_need_data (GstAppSrc *src, guint length, gpointer user_data)
         case MediaSourceSeekToTime:
             if (WTF::isMainThread())
                 seekNeedsDataMainThread(user_data);
-            else
-                g_timeout_add(0, GSourceFunc(seekNeedsDataMainThread), user_data);
+            else {
+                GST_OBJECT_LOCK(webKitMediaSrc);
+                if (webKitMediaSrc->priv->seekNeedsDataTag == 0) {
+                    webKitMediaSrc->priv->seekNeedsDataTag =
+                        g_timeout_add(0, GSourceFunc(seekNeedsDataMainThread), user_data);
+                }
+                GST_OBJECT_UNLOCK(webKitMediaSrc);
+            }
             break;
         case Nothing:
             break;
