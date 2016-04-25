@@ -27,7 +27,7 @@ namespace WebKit {
 class FullScreenVideoWidget;
 
 // We do not use ENABLE or USE because moc does not expand these macros.
-#if defined(WTF_USE_QT_MULTIMEDIA) && WTF_USE_QT_MULTIMEDIA
+#if defined(USE_QT_MULTIMEDIA) && USE_QT_MULTIMEDIA
 class DefaultFullScreenVideoHandler : public QWebFullScreenVideoHandler {
     Q_OBJECT
 public:

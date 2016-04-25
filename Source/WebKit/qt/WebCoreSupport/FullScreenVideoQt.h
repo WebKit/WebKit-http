@@ -40,7 +40,7 @@ class MediaPlayerPrivateQt;
 #endif
 
 // We do not use ENABLE or USE because moc does not expand these macros.
-#if defined(WTF_USE_GSTREAMER) && WTF_USE_GSTREAMER && defined(WTF_USE_NATIVE_FULLSCREEN_VIDEO) && WTF_USE_NATIVE_FULLSCREEN_VIDEO
+#if defined(USE_GSTREAMER) && USE_GSTREAMER && defined(USE_NATIVE_FULLSCREEN_VIDEO) && USE_NATIVE_FULLSCREEN_VIDEO
 class FullScreenVideoWindow;
 
 class GStreamerFullScreenVideoHandler : public QObject {

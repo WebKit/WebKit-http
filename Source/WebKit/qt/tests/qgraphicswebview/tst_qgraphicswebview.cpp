@@ -44,12 +44,12 @@ private Q_SLOTS:
     void windowResizeEvent();
     void horizontalScrollbarTest();
 
-#if !(defined(WTF_USE_QT_MOBILE_THEME) && WTF_USE_QT_MOBILE_THEME)
+#if !(defined(USE_QT_MOBILE_THEME) && USE_QT_MOBILE_THEME)
     void setPalette_data();
     void setPalette();
 #endif
     void renderHints();
-#if defined(WTF_USE_TILED_BACKING_STORE) && WTF_USE_TILED_BACKING_STORE
+#if defined(USE_TILED_BACKING_STORE) && USE_TILED_BACKING_STORE
     void bug57798();
     void bug56929();
 #endif
@@ -202,7 +202,7 @@ void tst_QGraphicsWebView::widgetsRenderingThroughCache()
     QCOMPARE(referencePixmap.toImage(), viewWithTiling.toImage());
 }
 
-#if defined(WTF_USE_TILED_BACKING_STORE) && WTF_USE_TILED_BACKING_STORE
+#if defined(USE_TILED_BACKING_STORE) && USE_TILED_BACKING_STORE
 void tst_QGraphicsWebView::bug57798()
 {
     // When content size grows from less than viewport size to more than that, tiles may need to be regenerated.
@@ -341,7 +341,7 @@ void tst_QGraphicsWebView::focusInputTypes()
     delete view;
 }
 
-#if !(defined(WTF_USE_QT_MOBILE_THEME) && WTF_USE_QT_MOBILE_THEME)
+#if !(defined(USE_QT_MOBILE_THEME) && USE_QT_MOBILE_THEME)
 void tst_QGraphicsWebView::setPalette_data()
 {
     QTest::addColumn<bool>("active");

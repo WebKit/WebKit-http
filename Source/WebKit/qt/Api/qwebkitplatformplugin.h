@@ -27,7 +27,7 @@
  *  and may be changed from version to version or even be completely removed.
 */
 
-#if defined(WTF_USE_QT_MULTIMEDIA) && WTF_USE_QT_MULTIMEDIA
+#if defined(USE_QT_MULTIMEDIA) && USE_QT_MULTIMEDIA
 #include <QMediaPlayer>
 #endif
 #include <QtCore/QObject>
@@ -122,7 +122,7 @@ public:
     virtual unsigned hitTestPaddingForTouch(const PaddingDirection) const = 0;
 };
 
-#if defined(WTF_USE_QT_MULTIMEDIA) && WTF_USE_QT_MULTIMEDIA
+#if defined(USE_QT_MULTIMEDIA) && USE_QT_MULTIMEDIA
 class QWebFullScreenVideoHandler : public QObject {
     Q_OBJECT
 public:

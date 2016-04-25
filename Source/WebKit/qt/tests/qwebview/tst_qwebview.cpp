@@ -55,7 +55,7 @@ private Q_SLOTS:
     void horizontalScrollbarTest();
 
     void crashTests();
-#if !(defined(WTF_USE_QT_MOBILE_THEME) && WTF_USE_QT_MOBILE_THEME)
+#if !(defined(USE_QT_MOBILE_THEME) && USE_QT_MOBILE_THEME)
     void setPalette_data();
     void setPalette();
 #endif
@@ -330,7 +330,7 @@ void tst_QWebView::horizontalScrollbarTest()
 }
 
 
-#if !(defined(WTF_USE_QT_MOBILE_THEME) && WTF_USE_QT_MOBILE_THEME)
+#if !(defined(USE_QT_MOBILE_THEME) && USE_QT_MOBILE_THEME)
 void tst_QWebView::setPalette_data()
 {
     QTest::addColumn<bool>("active");
