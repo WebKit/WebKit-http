@@ -96,7 +96,7 @@ AudioSourceProviderGStreamer::AudioSourceProviderGStreamer()
 
 AudioSourceProviderGStreamer::~AudioSourceProviderGStreamer()
 {
-    GRefPtr<GstElement> deinterleave = adoptGRef(gst_bin_get_by_name(GST_BIN(m_audioSinkBin.get()), "deinterleave"));
+    GRefPtr<GstElement> deinterleave = m_audioSinkBin ? adoptGRef(gst_bin_get_by_name(GST_BIN(m_audioSinkBin.get()), "deinterleave")) : NULL;
     if (deinterleave) {
         g_signal_handler_disconnect(deinterleave.get(), m_deinterleavePadAddedHandlerId);
         g_signal_handler_disconnect(deinterleave.get(), m_deinterleaveNoMorePadsHandlerId);
