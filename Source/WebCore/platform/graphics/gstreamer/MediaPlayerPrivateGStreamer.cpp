@@ -1107,6 +1107,39 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         CString dotFileName = String::format("webkit-video.%s_%s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState)).utf8();
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.data());
         INFO_MEDIA_MESSAGE("Playbin changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
+
+#ifdef USE(FUSION_SINK)
+        if (currentState == GST_STATE_READY && newState == GST_STATE_PAUSED) {
+            GstIterator* iter = gst_bin_iterate_sinks(GST_BIN(m_pipeline.get()));
+            bool done = false;
+            while (!done) {
+                GValue item = G_VALUE_INIT;
+                switch (gst_iterator_next(iter, &item)) {
+                case GST_ITERATOR_OK: {
+                    GstElement* sink = static_cast<GstElement*>(g_value_get_object(&item));
+                    GstEvent* event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+                                                           gst_structure_new_empty("commit-load"));
+                    gboolean sent = gst_element_send_event(sink, event);
+                    if (sent)
+                        done = TRUE;
+                    break;
+                }
+                case GST_ITERATOR_RESYNC:
+                    gst_iterator_resync(iter);
+                    break;
+                case GST_ITERATOR_ERROR:
+                    FALLTHROUGH;
+                case GST_ITERATOR_DONE:
+                    done = true;
+                    break;
+                }
+
+                g_value_unset(&item);
+            }
+
+            gst_iterator_free(iter);
+        }
+#endif
         break;
     }
     case GST_MESSAGE_BUFFERING:
