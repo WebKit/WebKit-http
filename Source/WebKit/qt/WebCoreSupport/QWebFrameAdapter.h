@@ -179,10 +179,8 @@ public:
     QString uniqueName() const;
 
     void renderRelativeCoords(QPainter*, int layers, const QRegion& clip);
-    void renderFrameExtras(WebCore::GraphicsContext*, int layers, const QRegion& clip);
-#if USE(ACCELERATED_COMPOSITING)
-    void renderCompositedLayers(WebCore::GraphicsContext*, const WebCore::IntRect& clip);
-#endif
+    void renderFrameExtras(WebCore::GraphicsContext&, int layers, const QRegion& clip);
+    void renderCompositedLayers(WebCore::GraphicsContext&, const WebCore::IntRect& clip);
 #if USE(TILED_BACKING_STORE)
     void setTiledBackingStoreFrozen(bool);
     bool tiledBackingStoreFrozen() const;

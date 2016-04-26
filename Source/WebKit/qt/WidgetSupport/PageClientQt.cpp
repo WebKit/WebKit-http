@@ -32,10 +32,8 @@
 #include <QGLWidget>
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
 #include "TextureMapper.h"
 #include "texmap/TextureMapperLayer.h"
-#endif
 
 QWindow* QWebPageClient::ownerWindow() const
 {
@@ -181,7 +179,7 @@ void PageClientQGraphicsWidget::repaintViewport()
 
 bool PageClientQGraphicsWidget::makeOpenGLContextCurrentIfAvailable()
 {
-#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL) && defined(QT_OPENGL_LIB)
+#if USE(TEXTURE_MAPPER_GL) && defined(QT_OPENGL_LIB)
     QGraphicsView* graphicsView = firstGraphicsView();
     if (graphicsView && graphicsView->viewport()) {
         QGLWidget* glWidget = qobject_cast<QGLWidget*>(graphicsView->viewport());

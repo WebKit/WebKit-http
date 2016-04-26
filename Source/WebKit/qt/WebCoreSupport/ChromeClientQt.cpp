@@ -42,6 +42,7 @@
 #include "FrameLoaderClientQt.h"
 #include "FrameView.h"
 #include "Geolocation.h"
+#include "GraphicsLayer.h"
 #include "HTMLFormElement.h"
 #include "HitTestResult.h"
 #include "Icon.h"
@@ -73,9 +74,6 @@
 #include <qwindow.h>
 #include <wtf/CurrentTime.h>
 
-#if USE(ACCELERATED_COMPOSITING)
-#include "GraphicsLayer.h"
-#endif
 
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
 #include "FullScreenVideoQt.h"
@@ -168,11 +166,7 @@ bool ChromeClientQt::allowsAcceleratedCompositing() const
 {
     if (!platformPageClient())
         return false;
-#if USE(ACCELERATED_COMPOSITING)
     return true;
-#else
-    return false;
-#endif
 }
 
 FloatRect ChromeClientQt::pageRect()
@@ -596,11 +590,10 @@ void ChromeClientQt::serviceScriptedAnimations()
 }
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
 void ChromeClientQt::attachRootGraphicsLayer(Frame* frame, GraphicsLayer* graphicsLayer)
 {
     if (!m_textureMapperLayerClient)
-        m_textureMapperLayerClient = adoptPtr(new TextureMapperLayerClientQt(m_webPage->mainFrameAdapter()));
+        m_textureMapperLayerClient = std::make_unique<TextureMapperLayerClientQt>(m_webPage->mainFrameAdapter());
     m_textureMapperLayerClient->setRootGraphicsLayer(graphicsLayer);
 }
 
@@ -625,8 +618,6 @@ ChromeClient::CompositingTriggerFlags ChromeClientQt::allowedCompositingTriggers
 
     return 0;
 }
-
-#endif
 
 #if USE(TILED_BACKING_STORE)
 IntRect ChromeClientQt::visibleRectForTiledBackingStore() const
@@ -731,19 +722,7 @@ void ChromeClientQt::exceededDatabaseQuota(WebCore::Frame*, const WTF::String& d
 {
 }
 
-void ChromeClientQt::attachRootGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*)
-{
-}
-
 void ChromeClientQt::attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*)
-{
-}
-
-void ChromeClientQt::setNeedsOneShotDrawingSynchronization()
-{
-}
-
-void ChromeClientQt::scheduleCompositingLayerFlush()
 {
 }
 

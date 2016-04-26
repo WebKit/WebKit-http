@@ -448,8 +448,7 @@ QUrl QWebFrameAdapter::baseUrl() const
     return frame->document()->baseURL();
 }
 
-#if USE(ACCELERATED_COMPOSITING)
-void QWebFrameAdapter::renderCompositedLayers(WebCore::GraphicsContext* context, const WebCore::IntRect& clip)
+void QWebFrameAdapter::renderCompositedLayers(WebCore::GraphicsContext& context, const WebCore::IntRect& clip)
 {
     WebCore::Page* page = frame->page();
     if (!page)
@@ -457,7 +456,7 @@ void QWebFrameAdapter::renderCompositedLayers(WebCore::GraphicsContext* context,
     if (TextureMapperLayerClientQt* client = static_cast<ChromeClientQt&>(page->chrome().client()).m_textureMapperLayerClient.get())
         client->renderCompositedLayers(context, clip);
 }
-#endif
+
 // FIXME: this might not be necessary, but for the sake of not breaking things, we'll use that for now.
 QUrl QWebFrameAdapter::coreFrameUrl() const
 {
@@ -549,11 +548,9 @@ void QWebFrameAdapter::renderRelativeCoords(QPainter* painter, int layers, const
 
             context.restore();
         }
-#if USE(ACCELERATED_COMPOSITING)
         renderCompositedLayers(context, IntRect(clipBoundingRect));
-#endif
     }
-    renderFrameExtras(&context, layers, clip);
+    renderFrameExtras(context, layers, clip);
 
     if (frame->page()->inspectorController().highlightedNode()) {
         context.save();
@@ -562,11 +559,11 @@ void QWebFrameAdapter::renderRelativeCoords(QPainter* painter, int layers, const
     }
 }
 
-void QWebFrameAdapter::renderFrameExtras(WebCore::GraphicsContext* context, int layers, const QRegion& clip)
+void QWebFrameAdapter::renderFrameExtras(GraphicsContext& context, int layers, const QRegion& clip)
 {
     if (!(layers & (PanIconLayer | ScrollBarLayer)))
         return;
-    QPainter* painter = context->platformContext();
+    QPainter* painter = context.platformContext();
     WebCore::FrameView* view = frame->view();
     QVector<QRect> vector = clip.rects();
     for (int i = 0; i < vector.size(); ++i) {
@@ -585,10 +582,10 @@ void QWebFrameAdapter::renderFrameExtras(WebCore::GraphicsContext* context, int 
             && (view->horizontalScrollbar() || view->verticalScrollbar())) {
 
             QRect rect = intersectedRect;
-            context->translate(x, y);
+            context.translate(x, y);
             rect.translate(-x, -y);
-            view->paintScrollbars(*context, rect);
-            context->translate(-x, -y);
+            view->paintScrollbars(context, rect);
+            context.translate(-x, -y);
         }
 
 #if ENABLE(PAN_SCROLLING)
@@ -663,10 +660,8 @@ bool QWebFrameAdapter::renderFromTiledBackingStore(QPainter* painter, const QReg
         context.restore();
     }
 
-#if USE(ACCELERATED_COMPOSITING)
     renderCompositedLayers(&context, IntRect(clip.boundingRect()));
     renderFrameExtras(&context, QWebFrameAdapter::ScrollBarLayer | QWebFrameAdapter::PanIconLayer, clip);
-#endif
     return true;
 }
 #endif

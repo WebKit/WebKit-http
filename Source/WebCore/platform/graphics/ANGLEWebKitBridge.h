@@ -36,6 +36,8 @@
 #include <OpenGL/gl.h>
 #elif PLATFORM(WIN)
 #include "OpenGLESShims.h"
+#elif PLATFORM(QT)
+#include <qopengl.h>
 #elif PLATFORM(GTK) || PLATFORM(EFL)
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>

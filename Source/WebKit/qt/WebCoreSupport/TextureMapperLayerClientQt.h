@@ -32,8 +32,7 @@ namespace WebCore {
 
 class TextureMapperLayer;
 
-#if USE(ACCELERATED_COMPOSITING)
-class TextureMapperLayerClientQt {
+class TextureMapperLayerClientQt : public GraphicsLayerClient {
 public:
     TextureMapperLayerClientQt(QWebFrameAdapter*);
     ~TextureMapperLayerClientQt();
@@ -44,18 +43,17 @@ public:
 
     void setRootGraphicsLayer(GraphicsLayer*);
 
-    void syncLayers(Timer<TextureMapperLayerClientQt>*);
+    void syncLayers();
 
-    void renderCompositedLayers(GraphicsContext*, const IntRect& clip);
+    void renderCompositedLayers(GraphicsContext&, const IntRect& clip);
 private:
     QWebFrameAdapter* m_frame;
     std::unique_ptr<GraphicsLayer> m_rootGraphicsLayer;
-    Timer<TextureMapperLayerClientQt> m_syncTimer;
+    Timer m_syncTimer;
     WebCore::TextureMapperLayer* m_rootTextureMapperLayer;
     std::unique_ptr<WebCore::TextureMapper> m_textureMapper;
     WebCore::TextureMapperFPSCounter m_fpsCounter;
 };
-#endif
 
 }
 

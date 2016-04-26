@@ -140,13 +140,11 @@ public:
     void reachedMaxAppCacheSize(int64_t spaceNeeded) override;
     void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) override;
 
-#if USE(ACCELERATED_COMPOSITING)
     // This is a hook for WebCore to tell us what we need to do with the GraphicsLayers.
     void attachRootGraphicsLayer(Frame*, GraphicsLayer*) override;
     void setNeedsOneShotDrawingSynchronization() override;
     void scheduleCompositingLayerFlush() override;
-    virtual CompositingTriggerFlags allowedCompositingTriggers() const;
-#endif
+    CompositingTriggerFlags allowedCompositingTriggers() const override;
     bool allowsAcceleratedCompositing() const override;
 
 #if USE(TILED_BACKING_STORE)
@@ -195,10 +193,7 @@ public:
     void wheelEventHandlersChanged(bool) override { }
 
     void exceededDatabaseQuota(Frame *, const WTF::String &databaseName, DatabaseDetails) override;
-    void attachRootGraphicsLayer(Frame *, GraphicsLayer *) override;
     void attachViewOverlayGraphicsLayer(Frame *, GraphicsLayer *) override;
-    void setNeedsOneShotDrawingSynchronization() override;
-    void scheduleCompositingLayerFlush() override;
 
     QWebFullScreenVideoHandler* createFullScreenVideoHandler();
 
@@ -223,9 +218,7 @@ public:
 
     mutable QtPlatformPlugin m_platformPlugin;
 
-#if USE(ACCELERATED_COMPOSITING)
     std::unique_ptr<TextureMapperLayerClientQt> m_textureMapperLayerClient;
-#endif
 };
 }
 

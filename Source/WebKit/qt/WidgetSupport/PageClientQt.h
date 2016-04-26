@@ -132,11 +132,9 @@ public:
         , overlay(0)
     {
         Q_ASSERT(view);
-#if USE(ACCELERATED_COMPOSITING)
         // the overlay and stays alive for the lifetime of
         // this QGraphicsWebView as the scrollbars are needed when there's no compositing
         view->setFlag(QGraphicsItem::ItemUsesExtendedStyleOption);
-#endif
     }
 
     virtual ~PageClientQGraphicsWidget();

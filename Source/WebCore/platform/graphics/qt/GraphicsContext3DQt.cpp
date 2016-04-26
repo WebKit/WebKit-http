@@ -19,6 +19,8 @@
 #include "config.h"
 #include "GraphicsContext3D.h"
 
+#if ENABLE(GRAPHICS_CONTEXT_3D)
+
 #if USE(OPENGL_ES_2)
 #include "Extensions3DOpenGLES.h"
 #else
@@ -43,8 +45,6 @@
 #if USE(TEXTURE_MAPPER_GL)
 #include <texmap/TextureMapperGL.h>
 #endif
-
-#if USE(3D_GRAPHICS)
 
 namespace WebCore {
 
@@ -566,4 +566,4 @@ void GraphicsContext3D::setErrorMessageCallback(PassOwnPtr<ErrorMessageCallback>
 
 }
 
-#endif // USE(3D_GRAPHICS)
+#endif // ENABLE(GRAPHICS_CONTEXT_3D)
