@@ -158,10 +158,10 @@ public:
 #endif
 
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
-    virtual bool supportsFullscreenForNode(const Node*);
-    virtual void enterFullscreenForNode(Node*);
-    virtual void exitFullscreenForNode(Node*);
-    virtual bool requiresFullscreenForVideoPlayback();
+    bool supportsVideoFullscreen(MediaPlayerEnums::VideoFullscreenMode) override;
+    void enterVideoFullscreenForVideoElement(HTMLVideoElement&, MediaPlayerEnums::VideoFullscreenMode) override;
+    void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) override;
+    bool requiresFullscreenForVideoPlayback() override;
     FullScreenVideoQt* fullScreenVideo();
 #endif
 

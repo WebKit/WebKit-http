@@ -27,9 +27,6 @@
  *  and may be changed from version to version or even be completely removed.
 */
 
-#if defined(USE_QT_MULTIMEDIA) && USE_QT_MULTIMEDIA
-#include <QMediaPlayer>
-#endif
 #include <QtCore/QObject>
 #include <QtCore/QRect>
 #include <QtCore/QUrl>
@@ -123,20 +120,7 @@ public:
 };
 
 #if defined(USE_QT_MULTIMEDIA) && USE_QT_MULTIMEDIA
-class QWebFullScreenVideoHandler : public QObject {
-    Q_OBJECT
-public:
-    QWebFullScreenVideoHandler() {}
-    virtual ~QWebFullScreenVideoHandler() {}
-    virtual bool requiresFullScreenForVideoPlayback() const = 0;
-
-Q_SIGNALS:
-    void fullScreenClosed();
-
-public Q_SLOTS:
-    virtual void enterFullScreen(QMediaPlayer*) = 0;
-    virtual void exitFullScreen() = 0;
-};
+#include "qwebfullscreenvideohandler.h"
 #endif
 
 class QWebSpellChecker : public QObject {

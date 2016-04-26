@@ -68,8 +68,8 @@ public:
     FullScreenVideoQt(ChromeClientQt*);
     ~FullScreenVideoQt();
 
-    virtual void enterFullScreenForNode(Node*);
-    virtual void exitFullScreenForNode(Node*);
+    void enterFullScreenForNode(HTMLVideoElement*);
+    void exitVideoFullscreen(HTMLVideoElement*);
     bool requiresFullScreenForVideoPlayback();
     bool isValid() const;
 

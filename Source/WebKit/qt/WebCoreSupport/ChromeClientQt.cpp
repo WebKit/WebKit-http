@@ -652,10 +652,9 @@ FullScreenVideoQt* ChromeClientQt::fullScreenVideo()
     return m_fullScreenVideo;
 }
 
-bool ChromeClientQt::supportsFullscreenForNode(const Node* node)
+bool ChromeClientQt::supportsVideoFullscreen(HTMLMediaElementEnums::VideoFullscreenMode)
 {
-    ASSERT(node);
-    return isHTMLVideoElement(node) && fullScreenVideo()->isValid();
+    return fullScreenVideo()->isValid();
 }
 
 bool ChromeClientQt::requiresFullscreenForVideoPlayback()
@@ -663,19 +662,15 @@ bool ChromeClientQt::requiresFullscreenForVideoPlayback()
     return fullScreenVideo()->requiresFullScreenForVideoPlayback();
 }
 
-void ChromeClientQt::enterFullscreenForNode(Node* node)
+void ChromeClientQt::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement, MediaPlayerEnums::VideoFullscreenMode)
 {
-    ASSERT(node && isHTMLVideoElement(node));
-
-    fullScreenVideo()->enterFullScreenForNode(node);
+    fullScreenVideo()->enterFullScreenForNode(&videoElement);
 }
 
-void ChromeClientQt::exitFullscreenForNode(Node* node)
+void ChromeClientQt::exitVideoFullscreenForVideoElement(HTMLVideoElement& videoElement)
 {
-    ASSERT(node && isHTMLVideoElement(node));
-
-    fullScreenVideo()->exitFullScreenForNode(node);
-} 
+    fullScreenVideo()->exitVideoFullscreen(&videoElement);
+}
 #endif
 
 std::unique_ptr<QWebSelectMethod> ChromeClientQt::createSelectPopup() const
@@ -699,7 +694,7 @@ void ChromeClientQt::dispatchViewportPropertiesDidChange(const ViewportArguments
 #if USE(QT_MULTIMEDIA)
 QWebFullScreenVideoHandler* ChromeClientQt::createFullScreenVideoHandler()
 {
-    QWebFullScreenVideoHandler* handler = m_platformPlugin.createFullScreenVideoHandler().leakPtr();
+    QWebFullScreenVideoHandler* handler = m_platformPlugin.createFullScreenVideoHandler().release();
     if (!handler)
         handler = m_webPage->createFullScreenVideoHandler();
     return handler;

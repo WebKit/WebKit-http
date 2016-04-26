@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2012 Digia Plc and/or its subsidiary(-ies).
- * Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -16,32 +16,30 @@
  * along with this library; see the file COPYING.LIB.  If not, write to
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
+ *
  */
-#ifndef DefaultFullScreenVideoHandler_h
-#define DefaultFullScreenVideoHandler_h
 
-#include "qwebfullscreenvideohandler.h"
+#pragma once
 
-namespace WebKit {
+/*
+ *  Warning: The contents of this file is not part of the public QtWebKit API
+ *  and may be changed from version to version or even be completely removed.
+ */
 
-class FullScreenVideoWidget;
+#include <QMediaPlayer>
+#include <QObject>
 
-class DefaultFullScreenVideoHandler : public QWebFullScreenVideoHandler {
+class QWebFullScreenVideoHandler : public QObject {
     Q_OBJECT
 public:
-    DefaultFullScreenVideoHandler();
-    virtual ~DefaultFullScreenVideoHandler();
-    bool requiresFullScreenForVideoPlayback() const;
+    QWebFullScreenVideoHandler() {}
+    virtual ~QWebFullScreenVideoHandler() {}
+    virtual bool requiresFullScreenForVideoPlayback() const = 0;
+
+Q_SIGNALS:
+    void fullScreenClosed();
 
 public Q_SLOTS:
-    void enterFullScreen(QMediaPlayer*);
-    void exitFullScreen();
-
-private:
-    static bool s_shouldForceFullScreenVideoPlayback;
-    FullScreenVideoWidget *m_fullScreenWidget;
+    virtual void enterFullScreen(QMediaPlayer*) = 0;
+    virtual void exitFullScreen() = 0;
 };
-
-} // namespace WebKit
-
-#endif // DefaultFullScreenVideoHandler_h

@@ -22,7 +22,6 @@
 #include "config.h"
 #include "qwebpage.h"
 
-//#include "DefaultFullScreenVideoHandler.h"
 #include "InitWebKitQt.h"
 #include "InspectorClientQt.h"
 #include "InspectorClientWebPage.h"
@@ -82,6 +81,10 @@
 #include <QUrl>
 #if defined(Q_WS_X11)
 #include <QX11Info>
+#endif
+
+#if USE(QT_MULTIMEDIA)
+#include "DefaultFullScreenVideoHandler.h"
 #endif
 
 using namespace WebCore;

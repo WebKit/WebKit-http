@@ -51,25 +51,23 @@
 #include <wtf/HashSet.h>
 #include <wtf/text/CString.h>
 
-#if USE(ACCELERATED_COMPOSITING)
 #include "texmap/TextureMapper.h"
-#endif
 
 using namespace WTF;
 
 namespace WebCore {
 
-PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateQt::create(MediaPlayer* player)
+std::unique_ptr<MediaPlayerPrivateInterface> MediaPlayerPrivateQt::create(MediaPlayer* player)
 {
-    return adoptPtr(new MediaPlayerPrivateQt(player));
+    return std::make_unique<MediaPlayerPrivateQt>(player);
 }
 
 void MediaPlayerPrivateQt::registerMediaEngine(MediaEngineRegistrar registrar)
 {
-    registrar(create, getSupportedTypes, supportsType, 0, 0, 0);
+    registrar(create, getSupportedTypes, supportsType, 0, 0, 0, 0);
 }
 
-void MediaPlayerPrivateQt::getSupportedTypes(HashSet<String> &supported)
+void MediaPlayerPrivateQt::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& supported)
 {
     QStringList types = QMediaPlayer::supportedMimeTypes();
 
@@ -80,13 +78,16 @@ void MediaPlayerPrivateQt::getSupportedTypes(HashSet<String> &supported)
     }
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateQt::supportsType(const String& mime, const String& codec, const URL&)
+MediaPlayer::SupportsType MediaPlayerPrivateQt::supportsType(const MediaEngineSupportParameters& parameters)
 {
-    if (!mime.startsWith("audio/") && !mime.startsWith("video/"))
+    if (parameters.isMediaStream || parameters.isMediaSource)
+        return MediaPlayer::IsNotSupported;
+
+    if (!parameters.type.startsWith("audio/") && !parameters.type.startsWith("video/"))
         return MediaPlayer::IsNotSupported;
 
     // Parse and trim codecs.
-    QString codecStr = codec;
+    QString codecStr = parameters.codecs;
     QStringList codecList = codecStr.split(QLatin1Char(','), QString::SkipEmptyParts);
     QStringList codecListTrimmed;
     foreach (const QString& codecStrNotTrimmed, codecList) {
@@ -95,7 +96,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateQt::supportsType(const String& mime,
             codecListTrimmed.append(codecStrTrimmed);
     }
 
-    if (QMediaPlayer::hasSupport(mime, codecListTrimmed) >= QMultimedia::ProbablySupported)
+    if (QMediaPlayer::hasSupport(parameters.type, codecListTrimmed) >= QMultimedia::ProbablySupported)
         return MediaPlayer::IsSupported;
 
     return MediaPlayer::MayBeSupported;
@@ -201,7 +202,7 @@ void MediaPlayerPrivateQt::commitLoad(const String& url)
         QNetworkRequest request = QNetworkRequest(rUrl);
 
         // Grab the current document
-        Document* document = m_webCorePlayer->mediaPlayerClient()->mediaPlayerOwningDocument();
+        Document* document = m_webCorePlayer->client().mediaPlayerOwningDocument();
 
         // Grab the frame and network manager
         Frame* frame = document ? document->frame() : 0;
@@ -324,9 +325,9 @@ float MediaPlayerPrivateQt::currentTime() const
     return m_mediaPlayer->position() / 1000.0f;
 }
 
-PassRefPtr<TimeRanges> MediaPlayerPrivateQt::buffered() const
+std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateQt::buffered() const
 {
-    RefPtr<TimeRanges> buffered = TimeRanges::create();
+    auto buffered = std::make_unique<PlatformTimeRanges>();
 
     if (!m_mediaPlayerControl)
         return buffered;
@@ -336,10 +337,11 @@ PassRefPtr<TimeRanges> MediaPlayerPrivateQt::buffered() const
     foreach (const QMediaTimeInterval interval, playbackRanges.intervals()) {
         float rangeMin = static_cast<float>(interval.start()) / 1000.0f;
         float rangeMax = static_cast<float>(interval.end()) / 1000.0f;
-        buffered->add(rangeMin, rangeMax);
+        buffered->add(MediaTime::createWithFloat(rangeMin),
+                      MediaTime::createWithFloat(rangeMax));
     }
 
-    return buffered.release();
+    return buffered;
 }
 
 float MediaPlayerPrivateQt::maxTimeSeekable() const
@@ -363,7 +365,7 @@ bool MediaPlayerPrivateQt::didLoadingProgress() const
     return didLoadingProgress;
 }
 
-unsigned MediaPlayerPrivateQt::totalBytes() const
+unsigned long long MediaPlayerPrivateQt::totalBytes() const
 {
     if (m_mediaPlayer->availableMetaData().contains(QMediaMetaData::Size))
         return m_mediaPlayer->metaData(QMediaMetaData::Size).toInt();
@@ -546,7 +548,7 @@ void MediaPlayerPrivateQt::setSize(const IntSize& size)
     m_currentSize = size;
 }
 
-IntSize MediaPlayerPrivateQt::naturalSize() const
+FloatSize MediaPlayerPrivateQt::naturalSize() const
 {
     if (!hasVideo() ||  m_readyState < MediaPlayer::HaveMetadata) {
         LOG(Media, "MediaPlayerPrivateQt::naturalSize() -> 0x0 (!hasVideo || !haveMetaData)");
@@ -606,40 +608,38 @@ bool MediaPlayerPrivateQt::present(const QVideoFrame& frame)
 
 // End QAbstractVideoSurface implementation.
 
-void MediaPlayerPrivateQt::paint(GraphicsContext* context, const IntRect& rect)
+void MediaPlayerPrivateQt::paint(GraphicsContext& context, const FloatRect& rect)
 {
-#if USE(ACCELERATED_COMPOSITING)
     if (m_composited)
         return;
-#endif
     paintCurrentFrameInContext(context, rect);
 }
 
-void MediaPlayerPrivateQt::paintCurrentFrameInContext(GraphicsContext* context, const IntRect& rect)
+void MediaPlayerPrivateQt::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& rect)
 {
-    if (context->paintingDisabled())
+    if (context.paintingDisabled())
         return;
 
     if (!m_currentVideoFrame.isValid())
         return;
 
-    QPainter* painter = context->platformContext();
+    QPainter* painter = context.platformContext();
 
     if (m_currentVideoFrame.handleType() == QAbstractVideoBuffer::QPixmapHandle) {
-        painter->drawPixmap(rect, m_currentVideoFrame.handle().value<QPixmap>());
+        painter->drawPixmap(QRectF(rect), m_currentVideoFrame.handle().value<QPixmap>(), QRectF(0, 0, rect.width(), rect.height()));
     } else if (m_currentVideoFrame.map(QAbstractVideoBuffer::ReadOnly)) {
         QImage image(m_currentVideoFrame.bits(),
                      m_frameFormat.frameSize().width(),
                      m_frameFormat.frameSize().height(),
                      m_currentVideoFrame.bytesPerLine(),
                      QVideoFrame::imageFormatFromPixelFormat(m_frameFormat.pixelFormat()));
-        const QRect target = rect;
+        const QRectF target = rect;
 
         if (m_frameFormat.scanLineDirection() == QVideoSurfaceFormat::BottomToTop) {
             const QTransform oldTransform = painter->transform();
             painter->scale(1, -1);
             painter->translate(0, -target.bottom());
-            painter->drawImage(QRect(target.x(), 0, target.width(), target.height()), image);
+            painter->drawImage(QRectF(target.x(), 0, target.width(), target.height()), image);
             painter->setTransform(oldTransform);
         } else {
             painter->drawImage(target, image);
@@ -649,11 +649,9 @@ void MediaPlayerPrivateQt::paintCurrentFrameInContext(GraphicsContext* context, 
     }
 }
 
-#if USE(ACCELERATED_COMPOSITING)
-void MediaPlayerPrivateQt::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
+void MediaPlayerPrivateQt::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
 }
-#endif
 
 PlatformMedia MediaPlayerPrivateQt::platformMedia() const
 {

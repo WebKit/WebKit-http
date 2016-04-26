@@ -91,6 +91,7 @@ struct PlatformMedia {
         AVFoundationMediaPlayerType,
         AVFoundationCFMediaPlayerType,
         AVFoundationAssetType,
+        QtMediaPlayerType,
     } type;
 
     union {
@@ -100,6 +101,7 @@ struct PlatformMedia {
         AVPlayer* avfMediaPlayer;
         AVCFPlayer* avcfMediaPlayer;
         AVAsset* avfAsset;
+        MediaPlayerPrivateInterface* qtMediaPlayer;
     } media;
 };
 

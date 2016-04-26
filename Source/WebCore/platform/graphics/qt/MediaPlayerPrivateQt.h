@@ -33,95 +33,90 @@ class QGraphicsVideoItem;
 class QGraphicsScene;
 QT_END_NAMESPACE
 
-#if USE(ACCELERATED_COMPOSITING)
 #include "TextureMapperPlatformLayer.h"
-#endif
 
 namespace WebCore {
 
 class MediaPlayerPrivateQt : public QAbstractVideoSurface, public MediaPlayerPrivateInterface
-#if USE(ACCELERATED_COMPOSITING)
                            , public TextureMapperPlatformLayer
-#endif
 {
 
     Q_OBJECT
 
 public:
-    static PassOwnPtr<MediaPlayerPrivateInterface> create(MediaPlayer*);
+    static std::unique_ptr<MediaPlayerPrivateInterface> create(MediaPlayer*);
+    explicit MediaPlayerPrivateQt(MediaPlayer*);
     ~MediaPlayerPrivateQt();
 
     static void registerMediaEngine(MediaEngineRegistrar);
-    static void getSupportedTypes(HashSet<String>&);
-    static MediaPlayer::SupportsType supportsType(const String&, const String&, const URL&);
+    static void getSupportedTypes(HashSet<WTF::String, WTF::ASCIICaseInsensitiveHash>&);
+    static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters& parameters);
     static bool isAvailable() { return true; }
 
-    bool hasVideo() const;
-    bool hasAudio() const;
+    bool hasVideo() const override;
+    bool hasAudio() const override;
 
-    void load(const String &url);
+    void load(const String &url) override;
     void commitLoad(const String& url);
     void resumeLoad();
-    void cancelLoad();
+    void cancelLoad() override;
 
-    void play();
-    void pause();
-    void prepareToPlay();
+    void play() override;
+    void pause() override;
+    void prepareToPlay() override;
 
-    bool paused() const;
-    bool seeking() const;
+    bool paused() const override;
+    bool seeking() const override;
 
-    float duration() const;
-    float currentTime() const;
-    void seek(float);
+    float duration() const override;
+    float currentTime() const override;
+    void seek(float) override;
 
-    void setRate(float);
-    void setVolume(float);
+    void setRate(float) override;
+    void setVolume(float) override;
 
-    bool supportsMuting() const;
-    void setMuted(bool);
+    bool supportsMuting() const override;
+    void setMuted(bool) override;
 
-    void setPreload(MediaPlayer::Preload);
+    void setPreload(MediaPlayer::Preload) override;
 
-    MediaPlayer::NetworkState networkState() const;
-    MediaPlayer::ReadyState readyState() const;
+    MediaPlayer::NetworkState networkState() const override;
+    MediaPlayer::ReadyState readyState() const override;
 
-    PassRefPtr<TimeRanges> buffered() const;
-    float maxTimeSeekable() const;
-    bool didLoadingProgress() const;
-    unsigned totalBytes() const;
+    std::unique_ptr<PlatformTimeRanges> buffered() const override;
+    float maxTimeSeekable() const override;
+    bool didLoadingProgress() const override;
+    unsigned long long totalBytes() const override;
 
-    void setVisible(bool);
+    void setVisible(bool) override;
 
-    IntSize naturalSize() const;
-    void setSize(const IntSize&);
+    FloatSize naturalSize() const override;
+    void setSize(const IntSize&) override;
 
-    void paint(GraphicsContext*, const IntRect&);
+    void paint(GraphicsContext&, const FloatRect&) override;
     // reimplemented for canvas drawImage(HTMLVideoElement)
-    void paintCurrentFrameInContext(GraphicsContext*, const IntRect&);
+    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
 
-    bool supportsFullscreen() const { return true; }
+    bool supportsFullscreen() const override { return true; }
 
-#if USE(ACCELERATED_COMPOSITING)
     // whether accelerated rendering is supported by the media engine for the current media.
-    virtual bool supportsAcceleratedRendering() const { return false; }
+    bool supportsAcceleratedRendering() const override { return false; }
     // called when the rendering system flips the into or out of accelerated rendering mode.
-    virtual void acceleratedRenderingStateChanged() { }
+    void acceleratedRenderingStateChanged() override { }
     // Const-casting here is safe, since all of TextureMapperPlatformLayer's functions are const.g
-    virtual PlatformLayer* platformLayer() const { return 0; }
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect& targetRect, const TransformationMatrix&, float opacity);
-#endif
+    PlatformLayer* platformLayer() const override { return 0; }
+    void paintToTextureMapper(TextureMapper&, const FloatRect& targetRect, const TransformationMatrix&, float opacity) override;
 
-    virtual PlatformMedia platformMedia() const;
+    PlatformMedia platformMedia() const override;
 
     QMediaPlayer* mediaPlayer() const { return m_mediaPlayer; }
     void removeVideoItem();
     void restoreVideoItem();
 
     // QAbstractVideoSurface methods
-    virtual bool start(const QVideoSurfaceFormat&);
-    virtual QList<QVideoFrame::PixelFormat> supportedPixelFormats(QAbstractVideoBuffer::HandleType = QAbstractVideoBuffer::NoHandle) const;
-    virtual bool present(const QVideoFrame&);
+    bool start(const QVideoSurfaceFormat&) override;
+    QList<QVideoFrame::PixelFormat> supportedPixelFormats(QAbstractVideoBuffer::HandleType = QAbstractVideoBuffer::NoHandle) const override;
+    bool present(const QVideoFrame&) override;
 
 private Q_SLOTS:
     void mediaStatusChanged(QMediaPlayer::MediaStatus);
@@ -137,11 +132,9 @@ private Q_SLOTS:
 private:
     void updateStates();
 
-    virtual String engineDescription() const { return "Qt"; }
+    String engineDescription() const override { return "Qt"; }
 
 private:
-    MediaPlayerPrivateQt(MediaPlayer*);
-
     MediaPlayer* m_webCorePlayer;
     QMediaPlayer* m_mediaPlayer;
     QMediaPlayerControl* m_mediaPlayerControl;

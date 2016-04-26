@@ -160,12 +160,6 @@ if (ENABLE_GAMEPAD)
     )
 endif ()
 
-if (USE_QT_MULTIMEDIA)
-    list(APPEND WebCore_SOURCES
-        platform/graphics/qt/MediaPlayerPrivateQt.cpp
-    )
-endif ()
-
 # Do it in the WebCore to support SHARED_CORE since WebKitWidgets won't load WebKit in that case.
 # This should match the opposite statement in WebKit/PlatformQt.cmake
 if (SHARED_CORE)
@@ -230,6 +224,15 @@ if (USE_GSTREAMER)
     include(platform/GStreamer.cmake)
     list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/ImageGStreamerQt.cpp
+    )
+endif ()
+
+if (USE_QT_MULTIMEDIA)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/qt/MediaPlayerPrivateQt.cpp
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${Qt5Multimedia_LIBRARIES}
     )
 endif ()
 
