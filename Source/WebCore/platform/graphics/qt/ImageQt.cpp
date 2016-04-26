@@ -102,6 +102,9 @@ bool FrameData::clear(bool clearMetadata)
     if (clearMetadata)
         m_haveMetadata = false;
 
+    m_orientation = DefaultImageOrientation;
+    m_subsamplingLevel = 0;
+
     if (m_frame) {
         delete m_frame;
         m_frame = 0;
@@ -140,6 +143,7 @@ void Image::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, const 
 
 BitmapImage::BitmapImage(QPixmap* pixmap, ImageObserver* observer)
     : Image(observer)
+    , m_minimumSubsamplingLevel(0)
     , m_currentFrame(0)
     , m_frames(0)
     , m_repetitionCount(cAnimationNone)
