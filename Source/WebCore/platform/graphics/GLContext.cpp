@@ -115,6 +115,7 @@ void GLContext::cleanupActiveContextsAtExit()
 }
 #endif // PLATFORM(X11)
 
+
 std::unique_ptr<GLContext> GLContext::createContextForWindow(GLNativeWindowType windowHandle, GLContext* sharingContext)
 {
 #if PLATFORM(WAYLAND) && USE(EGL)
