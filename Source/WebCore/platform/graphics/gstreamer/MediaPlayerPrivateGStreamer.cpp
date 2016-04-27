@@ -1108,7 +1108,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.data());
         INFO_MEDIA_MESSAGE("Playbin changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
 
-#ifdef USE(FUSION_SINK)
+#if USE(FUSION_SINK)
         if (currentState == GST_STATE_READY && newState == GST_STATE_PAUSED) {
             GstIterator* iter = gst_bin_iterate_sinks(GST_BIN(m_pipeline.get()));
             bool done = false;

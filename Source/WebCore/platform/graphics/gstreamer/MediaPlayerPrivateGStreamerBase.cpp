@@ -855,9 +855,6 @@ void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
 
     m_position = position;
 
-    if(!m_pipeline)
-        return;
-
 #if USE(WESTEROS_SINK) || USE(FUSION_SINK)
     updateVideoRectangle();
 #endif
@@ -866,8 +863,11 @@ void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
 #if USE(WESTEROS_SINK) || USE(FUSION_SINK)
 void MediaPlayerPrivateGStreamerBase::updateVideoRectangle()
 {
+    if (!m_pipeline)
+        return;
+
     GRefPtr<GstElement> sinkElement;
-    g_object_get(m_pipeline.get(), "video-sink", sinkElement.outPtr(), nullptr);
+    g_object_get(m_pipeline.get(), "video-sink", &sinkElement.outPtr(), nullptr);
     if(!sinkElement)
         return;
 
