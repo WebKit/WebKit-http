@@ -234,6 +234,7 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
 - (void)dealloc
 {
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(resolveBounds) object:nil];
+    [_pixelBufferAttributes release];
     [super dealloc];
 }
 
@@ -458,6 +459,7 @@ static void WebAVPlayerLayerView_startRoutingVideoToPictureInPicturePlayerLayerV
     [pipPlayerLayer setVideoGravity:playerLayer.videoGravity];
     [pipPlayerLayer setModelVideoLayerFrame:playerLayer.modelVideoLayerFrame];
     [pipPlayerLayer setPlayerController:playerLayer.playerController];
+    [pipPlayerLayer setFullscreenInterface:playerLayer.fullscreenInterface];
     [pipView addSubview:playerLayerView.videoView];
 }
 

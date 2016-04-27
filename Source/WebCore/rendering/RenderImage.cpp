@@ -119,7 +119,7 @@ void RenderImage::collectSelectionRects(Vector<SelectionRect>& rects, unsigned, 
 
 using namespace HTMLNames;
 
-RenderImage::RenderImage(Element& element, Ref<RenderStyle>&& style, StyleImage* styleImage, const float imageDevicePixelRatio)
+RenderImage::RenderImage(Element& element, RenderStyle&& style, StyleImage* styleImage, const float imageDevicePixelRatio)
     : RenderReplaced(element, WTFMove(style), IntSize())
     , m_imageResource(styleImage ? std::make_unique<RenderImageResourceStyleImage>(*styleImage) : std::make_unique<RenderImageResource>())
     , m_needsToSetSizeForAltText(false)
@@ -135,7 +135,7 @@ RenderImage::RenderImage(Element& element, Ref<RenderStyle>&& style, StyleImage*
         m_hasShadowControls = downcast<HTMLImageElement>(element).hasShadowControls();
 }
 
-RenderImage::RenderImage(Document& document, Ref<RenderStyle>&& style, StyleImage* styleImage)
+RenderImage::RenderImage(Document& document, RenderStyle&& style, StyleImage* styleImage)
     : RenderReplaced(document, WTFMove(style), IntSize())
     , m_imageResource(styleImage ? std::make_unique<RenderImageResourceStyleImage>(*styleImage) : std::make_unique<RenderImageResource>())
     , m_needsToSetSizeForAltText(false)
@@ -716,8 +716,8 @@ void RenderImage::layoutShadowControls(const LayoutSize& oldSize)
 
     if (shadowControlsNeedCustomLayoutMetrics()) {
         controlsRenderer->setLocation(LayoutPoint(borderLeft(), borderTop()) + LayoutSize(paddingLeft(), paddingTop()));
-        controlsRenderer->style().setHeight(Length(newSize.height(), Fixed));
-        controlsRenderer->style().setWidth(Length(newSize.width(), Fixed));
+        controlsRenderer->mutableStyle().setHeight(Length(newSize.height(), Fixed));
+        controlsRenderer->mutableStyle().setWidth(Length(newSize.width(), Fixed));
     }
 
     controlsRenderer->setNeedsLayout(MarkOnlyThis);

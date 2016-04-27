@@ -48,25 +48,46 @@ const ElementUpdate* Update::elementUpdate(const Element& element) const
     return &it->value;
 }
 
+ElementUpdate* Update::elementUpdate(const Element& element)
+{
+    auto it = m_elements.find(&element);
+    if (it == m_elements.end())
+        return nullptr;
+    return &it->value;
+}
+
 bool Update::textUpdate(const Text& text) const
 {
     return m_texts.contains(&text);
 }
 
-RenderStyle* Update::elementStyle(const Element& element) const
+const RenderStyle* Update::elementStyle(const Element& element) const
 {
     if (auto* update = elementUpdate(element))
         return update->style.get();
-    return element.renderStyle();
+    auto* renderer = element.renderer();
+    if (!renderer)
+        return nullptr;
+    return &renderer->style();
 }
 
-void Update::addElement(Element& element, Element* parent, ElementUpdate& change)
+RenderStyle* Update::elementStyle(const Element& element)
+{
+    if (auto* update = elementUpdate(element))
+        return update->style.get();
+    auto* renderer = element.renderer();
+    if (!renderer)
+        return nullptr;
+    return &renderer->mutableStyle();
+}
+
+void Update::addElement(Element& element, Element* parent, ElementUpdate&& elementUpdate)
 {
     ASSERT(!m_elements.contains(&element));
     ASSERT(composedTreeAncestors(element).first() == parent);
 
     addPossibleRoot(parent);
-    m_elements.add(&element, change);
+    m_elements.add(&element, WTFMove(elementUpdate));
 }
 
 void Update::addText(Text& text, Element* parent)

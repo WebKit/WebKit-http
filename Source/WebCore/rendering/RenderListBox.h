@@ -40,7 +40,7 @@ class HTMLSelectElement;
 
 class RenderListBox final : public RenderBlockFlow, public ScrollableArea {
 public:
-    RenderListBox(HTMLSelectElement&, Ref<RenderStyle>&&);
+    RenderListBox(HTMLSelectElement&, RenderStyle&&);
     virtual ~RenderListBox();
 
     HTMLSelectElement& selectElement() const;
@@ -155,6 +155,8 @@ private:
     void paintItemForeground(PaintInfo&, const LayoutPoint&, int listIndex);
     void paintItemBackground(PaintInfo&, const LayoutPoint&, int listIndex);
     void scrollToRevealSelection();
+
+    bool shouldPlaceBlockDirectionScrollbarOnLeft() const final { return RenderBlockFlow::shouldPlaceBlockDirectionScrollbarOnLeft(); }
 
     bool m_optionsChanged;
     bool m_scrollToRevealSelectionAfterLayout;

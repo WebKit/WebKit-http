@@ -70,7 +70,7 @@ static inline bool elementHasDirectionAuto(const Element& element)
     return is<HTMLElement>(element) && downcast<HTMLElement>(element).hasDirectionAuto();
 }
 
-RefPtr<RenderStyle> SharingResolver::resolve(const Element& searchElement, const Update& update)
+std::unique_ptr<RenderStyle> SharingResolver::resolve(const Element& searchElement, const Update& update)
 {
     if (!is<StyledElement>(searchElement))
         return nullptr;
@@ -136,7 +136,7 @@ RefPtr<RenderStyle> SharingResolver::resolve(const Element& searchElement, const
 
     m_elementsSharingStyle.add(&element, shareElement);
 
-    return RenderStyle::clone(update.elementStyle(*shareElement));
+    return RenderStyle::clonePtr(*update.elementStyle(*shareElement));
 }
 
 StyledElement* SharingResolver::findSibling(const Context& context, Node* node, unsigned& count) const

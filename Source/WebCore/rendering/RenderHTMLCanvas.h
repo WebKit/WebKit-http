@@ -34,7 +34,7 @@ class HTMLCanvasElement;
 
 class RenderHTMLCanvas final : public RenderReplaced {
 public:
-    RenderHTMLCanvas(HTMLCanvasElement&, Ref<RenderStyle>&&);
+    RenderHTMLCanvas(HTMLCanvasElement&, RenderStyle&&);
 
     HTMLCanvasElement& canvasElement() const;
 

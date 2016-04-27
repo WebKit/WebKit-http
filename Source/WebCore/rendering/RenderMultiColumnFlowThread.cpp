@@ -38,7 +38,7 @@ namespace WebCore {
 
 bool RenderMultiColumnFlowThread::gShiftingSpanner = false;
 
-RenderMultiColumnFlowThread::RenderMultiColumnFlowThread(Document& document, Ref<RenderStyle>&& style)
+RenderMultiColumnFlowThread::RenderMultiColumnFlowThread(Document& document, RenderStyle&& style)
     : RenderFlowThread(document, WTFMove(style))
     , m_lastSetWorkedOn(nullptr)
     , m_columnCount(1)
@@ -239,7 +239,7 @@ static bool isValidColumnSpanner(RenderMultiColumnFlowThread* flowThread, Render
     ASSERT(descendant->isDescendantOf(flowThread));
 
     // First make sure that the renderer itself has the right properties for becoming a spanner.
-    RenderStyle& style = descendant->style();
+    auto& style = descendant->style();
     if (style.columnSpan() != ColumnSpanAll || !is<RenderBox>(*descendant) || descendant->isFloatingOrOutOfFlowPositioned())
         return false;
 
@@ -338,7 +338,7 @@ RenderObject* RenderMultiColumnFlowThread::processPossibleSpannerDescendant(Rend
     // Need to create a new column set when there's no set already created. We also always insert
     // another column set after a spanner. Even if it turns out that there are no renderers
     // following the spanner, there may be bottom margins there, which take up space.
-    RenderMultiColumnSet* newSet = new RenderMultiColumnSet(*this, RenderStyle::createAnonymousStyleWithDisplay(&multicolContainer->style(), BLOCK));
+    RenderMultiColumnSet* newSet = new RenderMultiColumnSet(*this, RenderStyle::createAnonymousStyleWithDisplay(multicolContainer->style(), BLOCK));
     newSet->initializeStyle();
     multicolContainer->RenderBlock::addChild(newSet, insertBeforeMulticolChild);
     invalidateRegions();

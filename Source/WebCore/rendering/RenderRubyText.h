@@ -37,7 +37,7 @@ namespace WebCore {
 
 class RenderRubyText final : public RenderBlockFlow {
 public:
-    RenderRubyText(Element&, Ref<RenderStyle>&&);
+    RenderRubyText(Element&, RenderStyle&&);
     virtual ~RenderRubyText();
 
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }

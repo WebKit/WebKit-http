@@ -428,12 +428,12 @@ uint64_t Document::s_globalTreeVersion = 0;
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 void TextAutoSizingTraits::constructDeletedValue(TextAutoSizingKey& slot)
 {
-    new (&slot) TextAutoSizingKey(TextAutoSizingKey::deletedKeyStyle(), TextAutoSizingKey::deletedKeyDoc());
+    new (&slot) TextAutoSizingKey(TextAutoSizingKey::Deleted);
 }
 
 bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
 {
-    return value.style() == TextAutoSizingKey::deletedKeyStyle() && value.doc() == TextAutoSizingKey::deletedKeyDoc();
+    return value.isDeleted();
 }
 #endif
 
@@ -544,9 +544,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #ifndef NDEBUG
     , m_didDispatchViewportPropertiesChanged(false)
 #endif
-#if ENABLE(TEMPLATE_ELEMENT)
     , m_templateDocumentHost(nullptr)
-#endif
 #if ENABLE(WEB_REPLAY)
     , m_inputCursor(EmptyInputCursor::create())
 #endif
@@ -620,11 +618,9 @@ Document::~Document()
     m_deviceMotionClient->deviceMotionControllerDestroyed();
     m_deviceOrientationClient->deviceOrientationControllerDestroyed();
 #endif
-    
-#if ENABLE(TEMPLATE_ELEMENT)
+
     if (m_templateDocument)
         m_templateDocument->setTemplateDocumentHost(nullptr); // balanced in templateDocument().
-#endif
 
     // FIXME: Should we reset m_domWindow when we detach from the Frame?
     if (m_domWindow)
@@ -1031,7 +1027,7 @@ RefPtr<Node> Document::adoptNode(Node& source, ExceptionCode& ec)
     case ATTRIBUTE_NODE: {                   
         auto& attr = downcast<Attr>(source);
         if (attr.ownerElement())
-            attr.ownerElement()->removeAttributeNode(&attr, ec);
+            attr.ownerElement()->removeAttributeNode(attr, ec);
         break;
     }       
     default:
@@ -1876,10 +1872,10 @@ void Document::recalcStyle(Style::Change change)
             // font selector, so set a font selector if needed.
             if (Settings* settings = this->settings()) {
                 if (settings->fontFallbackPrefersPictographs())
-                    documentStyle.get().fontCascade().update(&fontSelector());
+                    documentStyle.fontCascade().update(&fontSelector());
             }
 
-            auto documentChange = Style::determineChange(documentStyle.get(), m_renderView->style());
+            auto documentChange = Style::determineChange(documentStyle, m_renderView->style());
             if (documentChange != Style::NoChange)
                 renderView()->setStyle(WTFMove(documentStyle));
         }
@@ -2008,7 +2004,7 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
     m_ignorePendingStylesheets = oldIgnore;
 }
 
-Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& element, RenderStyle* parentStyle)
+std::unique_ptr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& element, const RenderStyle* parentStyle)
 {
     ASSERT(&element.document() == this);
 
@@ -2128,13 +2124,13 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
 
 bool Document::isPageBoxVisible(int pageIndex)
 {
-    Ref<RenderStyle> pageStyle(ensureStyleResolver().styleForPage(pageIndex));
+    std::unique_ptr<RenderStyle> pageStyle(ensureStyleResolver().styleForPage(pageIndex));
     return pageStyle->visibility() != HIDDEN; // display property doesn't apply to @page.
 }
 
 void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft)
 {
-    RefPtr<RenderStyle> style = ensureStyleResolver().styleForPage(pageIndex);
+    std::unique_ptr<RenderStyle> style = ensureStyleResolver().styleForPage(pageIndex);
 
     int width = pageSize.width();
     int height = pageSize.height();
@@ -2515,7 +2511,7 @@ void Document::setVisuallyOrdered()
 {
     m_visuallyOrdered = true;
     if (renderView())
-        renderView()->style().setRTLOrdering(VisualOrder);
+        renderView()->mutableStyle().setRTLOrdering(VisualOrder);
 }
 
 Ref<DocumentParser> Document::createParser()
@@ -3068,7 +3064,7 @@ IDBClient::IDBConnectionProxy* Document::idbConnectionProxy()
         if (!currentPage)
             return nullptr;
 
-        m_idbConnectionProxy = IDBClient::IDBConnectionProxy::create(currentPage->idbConnection());
+        m_idbConnectionProxy = &currentPage->idbConnection().proxy();
     }
 
     return m_idbConnectionProxy.get();
@@ -5291,11 +5287,11 @@ HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 void Document::addAutoSizingNode(Node* node, float candidateSize)
 {
-    TextAutoSizingKey key(&node->renderer()->style(), &document());
-    TextAutoSizingMap::AddResult result = m_textAutoSizedNodes.add(key, nullptr);
-    if (result.isNewEntry)
-        result.iterator->value = TextAutoSizingValue::create();
-    result.iterator->value->addNode(node, candidateSize);
+    TextAutoSizingKey key(&node->renderer()->style());
+    auto addResult = m_textAutoSizedNodes.ensure(WTFMove(key), [] {
+        return TextAutoSizingValue::create();
+    });
+    addResult.iterator->value->addNode(node, candidateSize);
 }
 
 void Document::validateAutoSizingNodes()
@@ -5305,23 +5301,17 @@ void Document::validateAutoSizingNodes()
         TextAutoSizingValue* value = keyValuePair.value.get();
         // Update all the nodes in the collection to reflect the new
         // candidate size.
-        if (!value)
-            continue;
-
         value->adjustNodeSizes();
-        if (!value->numNodes())
-            nodesForRemoval.append(keyValuePair.key);
     }
-    for (auto& key : nodesForRemoval)
-        m_textAutoSizedNodes.remove(key);
+    m_textAutoSizedNodes.removeIf([] (TextAutoSizingMap::KeyValuePairType& keyAndValue) {
+        return !keyAndValue.value->numNodes();
+    });
 }
     
 void Document::resetAutoSizingNodes()
 {
-    for (auto& value : m_textAutoSizedNodes.values()) {
-        if (value)
-            value->reset();
-    }
+    for (auto& value : m_textAutoSizedNodes.values())
+        value->reset();
     m_textAutoSizedNodes.clear();
 }
 
@@ -5841,7 +5831,7 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
     bool shouldCreatePlaceholder = is<RenderBox>(renderer);
     if (shouldCreatePlaceholder) {
         m_savedPlaceholderFrameRect = downcast<RenderBox>(*renderer).frameRect();
-        m_savedPlaceholderRenderStyle = RenderStyle::clone(&renderer->style());
+        m_savedPlaceholderRenderStyle = RenderStyle::clonePtr(renderer->style());
     }
 
     if (m_fullScreenElement != documentElement())
@@ -5918,10 +5908,10 @@ void Document::setFullScreenRenderer(RenderFullScreen* renderer)
         return;
 
     if (renderer && m_savedPlaceholderRenderStyle) 
-        renderer->createPlaceholder(m_savedPlaceholderRenderStyle.releaseNonNull(), m_savedPlaceholderFrameRect);
+        renderer->createPlaceholder(WTFMove(m_savedPlaceholderRenderStyle), m_savedPlaceholderFrameRect);
     else if (renderer && m_fullScreenRenderer && m_fullScreenRenderer->placeholder()) {
         RenderBlock* placeholder = m_fullScreenRenderer->placeholder();
-        renderer->createPlaceholder(RenderStyle::clone(&placeholder->style()), placeholder->frameRect());
+        renderer->createPlaceholder(RenderStyle::clonePtr(placeholder->style()), placeholder->frameRect());
     }
 
     if (m_fullScreenRenderer)
@@ -6683,7 +6673,6 @@ Locale& Document::getCachedLocale(const AtomicString& locale)
     return *(result.iterator->value);
 }
 
-#if ENABLE(TEMPLATE_ELEMENT)
 Document& Document::ensureTemplateDocument()
 {
     if (const Document* document = templateDocument())
@@ -6698,7 +6687,6 @@ Document& Document::ensureTemplateDocument()
 
     return *m_templateDocument;
 }
-#endif
 
 Ref<FontFaceSet> Document::fonts()
 {

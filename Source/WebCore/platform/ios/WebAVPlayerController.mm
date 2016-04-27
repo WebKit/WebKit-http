@@ -27,7 +27,7 @@
 #import "config.h"
 #import "WebAVPlayerController.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && HAVE(AVKIT)
 
 #import "AVKitSPI.h"
 #import "Logging.h"
@@ -71,6 +71,7 @@ using namespace WebCore;
     [_legibleMediaSelectionOptions release];
     [_currentAudioMediaSelectionOption release];
     [_currentLegibleMediaSelectionOption release];
+    [_externalPlaybackAirPlayDeviceLocalizedName release];
     [super dealloc];
 }
 
@@ -453,6 +454,13 @@ using namespace WebCore;
 @end
 
 @implementation WebAVMediaSelectionOption
+
+- (void)dealloc
+{
+    [_localizedDisplayName release];
+    [super dealloc];
+}
+
 @end
 
 #endif // PLATFORM(IOS)

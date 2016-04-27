@@ -161,7 +161,6 @@ public:
     void setScrollViewPosition(int x, int y, ExceptionCode&);
     void setViewBaseBackgroundColor(const String& colorValue, ExceptionCode&);
 
-    void setPagination(const String& mode, int gap, ExceptionCode& ec) { setPagination(mode, gap, 0, ec); }
     void setPagination(const String& mode, int gap, int pageLength, ExceptionCode&);
     void setPaginationLineGridEnabled(bool, ExceptionCode&);
     String configurationForViewport(float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode&);
@@ -243,8 +242,7 @@ public:
         LAYER_TREE_INCLUDES_PAINTING_PHASES = 8,
         LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16
     };
-    String layerTreeAsText(Document&, unsigned flags, ExceptionCode&) const;
-    String layerTreeAsText(Document&, ExceptionCode&) const;
+    String layerTreeAsText(Document&, unsigned short flags, ExceptionCode&) const;
     String repaintRectsAsText(ExceptionCode&) const;
     String scrollingStateTreeAsText(ExceptionCode&) const;
     String mainThreadScrollingReasons(ExceptionCode&) const;
@@ -257,11 +255,9 @@ public:
         // Values need to be kept in sync with Internals.idl.
         DISPLAY_LIST_INCLUDES_PLATFORM_OPERATIONS = 1,
     };
-    String displayListForElement(Element&, unsigned flags, ExceptionCode&);
-    String displayListForElement(Element&, ExceptionCode&);
+    String displayListForElement(Element&, unsigned short flags, ExceptionCode&);
 
-    String replayDisplayListForElement(Element&, unsigned flags, ExceptionCode&);
-    String replayDisplayListForElement(Element&, ExceptionCode&);
+    String replayDisplayListForElement(Element&, unsigned short flags, ExceptionCode&);
 
     void garbageCollectDocumentResources(ExceptionCode&) const;
 

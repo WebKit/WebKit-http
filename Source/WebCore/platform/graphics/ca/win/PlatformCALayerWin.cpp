@@ -437,6 +437,11 @@ void PlatformCALayerWin::setSublayerTransform(const TransformationMatrix& value)
     setNeedsCommit();
 }
 
+bool PlatformCALayerWin::isHidden() const
+{
+    return CACFLayerIsHidden(m_layer.get());
+}
+
 void PlatformCALayerWin::setHidden(bool value)
 {
     CACFLayerSetHidden(m_layer.get(), value);

@@ -77,12 +77,12 @@ void PseudoElement::clearHostElement()
     m_hostElement = nullptr;
 }
 
-Optional<ElementStyle> PseudoElement::resolveCustomStyle(RenderStyle& parentStyle, RenderStyle*)
+Optional<ElementStyle> PseudoElement::resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle*)
 {
     auto* style = m_hostElement->renderer()->getCachedPseudoStyle(m_pseudoId, &parentStyle);
     if (!style)
         return Nullopt;
-    return ElementStyle(*style);
+    return ElementStyle(RenderStyle::clonePtr(*style));
 }
 
 void PseudoElement::didAttachRenderers()
@@ -122,7 +122,7 @@ void PseudoElement::didRecalcStyle(Style::Change)
         // We only manage the style for the generated content which must be images or text.
         if (!is<RenderImage>(*child) && !is<RenderQuote>(*child))
             continue;
-        Ref<RenderStyle> createdStyle = RenderStyle::createStyleInheritingFromPseudoStyle(renderer.style());
+        auto createdStyle = RenderStyle::createStyleInheritingFromPseudoStyle(renderer.style());
         downcast<RenderElement>(*child).setStyle(WTFMove(createdStyle));
     }
 }

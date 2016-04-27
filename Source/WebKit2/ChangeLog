@@ -1,3 +1,296 @@
+2016-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r200094): [FreeType] Vertical text is broken after r200094
+        https://bugs.webkit.org/show_bug.cgi?id=157066
+
+        Reviewed by Martin Robinson.
+
+        Add Source/WebCore/platform/graphics/freetype to the list of include dirs, because now FontPlatformData.h
+        includes FcUniquePtr.h.
+
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+
+2016-04-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: SecurityError: DOM Exception 18: An attempt was made to break through the security policy of the user agent.
+        https://bugs.webkit.org/show_bug.cgi?id=156991
+        <rdar://problem/25913475>
+
+        Reviewed by Timothy Hatcher.
+
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::platformCreateInspectorPage):
+        Explicitly always allow access to storage for Web Inspector content just
+        in case, as we already allow universal file access.
+
+2016-04-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WK2] [OS X] Create API for switching RTL scrollbar policy
+        https://bugs.webkit.org/show_bug.cgi?id=156948
+        <rdar://problem/25707757>
+
+        Reviewed by Darin Adler.
+
+        Add the new API.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]):
+        (-[WKWebViewConfiguration encodeWithCoder:]):
+        (-[WKWebViewConfiguration initWithCoder:]):
+        (-[WKWebViewConfiguration copyWithZone:]):
+        * UIProcess/WebPageProxy.cpp:
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-04-26  Beth Dakin  <bdakin@apple.com>
+
+        Check to make sure shouldRequestCandidates() before requesting candidates
+        https://bugs.webkit.org/show_bug.cgi?id=157038
+        -and corresponding-
+        rdar://problem/25910418
+
+        Reviewed by Tim Horton.
+
+        This patch limits requesting and showing candidates to cases where 
+        shouldRequestCandidates() is true. This patch also caches the sequence number 
+        returned by [NSSpellChecker requestCandidatesForSelectedRange:] to make sure 
+        it is equal to the sequence number sent to the callback handler so that we do 
+        not show candidates for old requests.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::updateWebViewImplAdditions):
+        (WebKit::WebViewImpl::shouldRequestCandidates):
+        (WebKit::WebViewImpl::showCandidates):
+        (WebKit::WebViewImpl::requestCandidatesForSelectionIfNeeded):
+        (WebKit::WebViewImpl::handleRequestedCandidates):
+
+2016-04-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Update expectation result in ewk_context_preferred_languages API test
+        https://bugs.webkit.org/show_bug.cgi?id=157027
+
+        Reviewed by Carlos Garcia Campos.
+
+        platformLanguage() has been returning lower case value since r199815. Thus existing expected result
+        needs to be updated together.
+
+        * UIProcess/API/efl/tests/test_ewk2_context.cpp: Change en-US with en-us.
+        (TEST_F):
+
+2016-04-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        Mark two methods in the CoordinatedGraphicsScene and the
+        ThreadedCoordinatedLayerTreeHost classes as overrides, fixing
+        the compiler warnings.
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+
+2016-04-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove the build flag for template elements
+        https://bugs.webkit.org/show_bug.cgi?id=157022
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-04-25  Chris Dumez  <cdumez@apple.com>
+
+        Crash under -[WKWebView _mayAutomaticallyShowVideoPictureInPicture] + 32 (WKWebView.mm:309)
+        https://bugs.webkit.org/show_bug.cgi?id=156990
+        <rdar://problem/25904376>
+
+        Reviewed by Jer Noble.
+
+        In case of WebProcess crash, WebPageProxy::processDidCrash() will call resetState() which
+        will nullify WebPageProxy::m_videoFullscreenManager. In WebPageProxy::reattachToWebProcess(),
+        we then call updateViewState() before re-initializing m_videoFullscreenManager, and
+        updateViewState() ends up calling [WKWebView _mayAutomaticallyShowVideoPictureInPicture]
+        which dereferences WebPageProxy::m_videoFullscreenManager without null check. This patch
+        adds a null check for m_videoFullscreenManager in _mayAutomaticallyShowVideoPictureInPicture.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _mayAutomaticallyShowVideoPictureInPicture]):
+
+2016-04-25  Dan Bernstein  <mitz@apple.com>
+
+        Fix a couple of mistakes from r199700.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h: Added availability attributes to new properties.
+        * WebKit2.xcodeproj/project.pbxproj: Demoted _WKExperimentalFeatureInternal.h from Private to Project.
+
+2016-04-24  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Update the ewk_settings_offline_web_application_cache_enabled_get() expected value after r199854.
+        https://bugs.webkit.org/show_bug.cgi?id=156968
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/C/WKPreferencesRef.h: Update the comment.
+        * UIProcess/API/efl/tests/test_ewk2_settings.cpp: 
+        (TEST_F):
+
+2016-04-23  Andy Estes  <aestes@apple.com>
+
+        Fix issues found by the clang static analyzer
+        https://bugs.webkit.org/show_bug.cgi?id=156956
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/API/Cocoa/WKPreviewActionItem.mm:
+        (-[WKPreviewAction dealloc]): Added to release _identifier.
+        * UIProcess/_WKWebViewPrintFormatter.mm:
+        (-[_WKWebViewPrintFormatter dealloc]): Released _frameToPrint.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView inputView]): -createPeripheralWithView: returned a retained object, but the method name did not
+        match Cocoa conventions. Called -initWithView: instead.
+        (-[WKContentView _showAttachmentSheet]): Stored the _WKActivatedElementInfo in a RetainPtr.
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]): Ditto.
+        (+[WKAutocorrectionContext autocorrectionContextWithData:markedText:selectedText:afterText:selectedRangeInMarkedText:]):
+        The properties contextBeforeSelection, selectedText, markedText, and contextAfterSelection have the 'copy'
+        annotation in UIWKAutocorrectionContext, so the additional copy made here would be leaked. Removed the extra copy.
+        (-[WKAutocorrectionContext dealloc]): Deleted.
+        * UIProcess/ios/forms/WKFormInputControl.h: Removed -createPeripheralWithView: and declared -initWithView:.
+        * UIProcess/ios/forms/WKFormInputControl.mm:
+        (-[WKFormInputControl initWithView:]): Changed to return instancetype.
+        (+[WKFormInputControl createPeripheralWithView:]): Deleted.
+        * UIProcess/ios/forms/WKFormSelectControl.h: Removed -createPeripheralWithView: and declared -initWithView:.
+        * UIProcess/ios/forms/WKFormSelectControl.mm:
+        (+[WKFormSelectControl createPeripheralWithView:]): Deleted.
+        * UIProcess/mac/LegacySessionStateCoding.cpp:
+        (WebKit::decodeLegacySessionState): If dynamic_cf_cast returned nullptr, the result of
+        CFPropertyListCreateWithData would leak. Stored the CFPropertyListRef in a RetainPtr before calling dynamic_cf_cast.
+        * UIProcess/mac/ServicesController.mm:
+        (WebKit::ServicesController::refreshExistingServices): Used a RetainPtr for attachment and cell.
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::setupServicesMenu): Used a RetainPtr for groupEntry.
+
+2016-04-23  Chris Dumez  <cdumez@apple.com>
+
+        Tie the DiagnosticLoggingClient's lifetime to the Page
+        https://bugs.webkit.org/show_bug.cgi?id=156938
+        <rdar://problem/25851499>
+
+        Reviewed by Antti Koivisto.
+
+        * WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.cpp:
+        (WebKit::WebDiagnosticLoggingClient::pageDestroyed):
+        (WebKit::WebDiagnosticLoggingClient::mainFrameDestroyed): Deleted.
+        * WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::willStartUserTriggeredZooming):
+
+2016-04-23  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/25893246> WebKit2 has failed to build: error: use of undeclared identifier 'm_playbackSessionManager'
+
+        Fixed the non-AVKit build.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _isShowingVideoPictureInPicture]):
+        (-[WKWebView _mayAutomaticallyShowVideoPictureInPicture]):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::fullScreenManager):
+        (WebKit::WebPageProxy::playbackSessionManager):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::applicationDidBecomeActive):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::createScrollingCoordinator):
+        (WebKit::WebChromeClient::supportsVideoFullscreen):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::inspectorUI):
+        (WebKit::WebPage::playbackSessionManager):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/cocoa/WebVideoFullscreenManager.h:
+        * WebProcess/cocoa/WebVideoFullscreenManager.mm:
+
+2016-04-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fixing a typo in my last commit.
+
+        Unreviewed build fix.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.messages.in:
+        * WebProcess/cocoa/WebVideoFullscreenManager.messages.in:
+
+2016-04-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Missed some macros to fix builds that do not support AVKit.
+
+        Unreviewed build fix.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.messages.in:
+        * WebProcess/cocoa/WebVideoFullscreenManager.messages.in:
+
+2016-04-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fix builds that do not support AVKit
+
+        Unreviewed build fix.
+
+        * UIProcess/WebPageProxy.h:
+
+2016-04-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Take 2 for fixing builds that do not support AVKit
+
+        Unreviewed build fix.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetState):
+
+2016-04-22  Anders Carlsson  <andersca@apple.com>
+
+        WKWebView WebSQL is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=156928
+        rdar://problem/19029603
+
+        Reviewed by Beth Dakin.
+
+        Give databases a default quota of 50 MB, matching what we have in UIWebView.
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::UIClient::exceededDatabaseQuota):
+
+2016-04-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fix builds that do not support AVKit
+
+        Unreviewed build fix.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.h:
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.mm:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        (WebKit::WebPageProxy::viewDidLeaveWindow):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+
+2016-04-22  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Rework the ownership/RefCounting model of IDBConnectionToServer and IDBConnectionProxy.
+        https://bugs.webkit.org/show_bug.cgi?id=156916
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::WebIDBConnectionToServer):
+
 2016-04-22  Zan Dobersek  <zdobersek@igalia.com>
 
         NetworkCacheIOChannelSoup: detach the newly-created IOChannel::readSync thread

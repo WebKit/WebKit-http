@@ -983,7 +983,7 @@ TransformationMatrix RenderLayer::currentTransform(RenderStyle::ApplyTransformOr
     if (renderer().style().isRunningAcceleratedAnimation()) {
         TransformationMatrix currTransform;
         FloatRect pixelSnappedBorderRect = snapRectToDevicePixels(box->borderBoxRect(), box->document().deviceScaleFactor());
-        RefPtr<RenderStyle> style = renderer().animation().getAnimatedStyleForRenderer(renderer());
+        std::unique_ptr<RenderStyle> style = renderer().animation().getAnimatedStyleForRenderer(renderer());
         style->applyTransform(currTransform, pixelSnappedBorderRect, applyOrigin);
         makeMatrixRenderable(currTransform, canRender3DTransforms());
         return currTransform;
@@ -2689,7 +2689,7 @@ void RenderLayer::resize(const PlatformMouseEvent& evt, const LayoutSize& oldOff
     element->setMinimumSizeForResizing(minimumSize);
     
     LayoutSize adjustedOldOffset = LayoutSize(oldOffset.width() / zoomFactor, oldOffset.height() / zoomFactor);
-    if (renderer->style().shouldPlaceBlockDirectionScrollbarOnLeft()) {
+    if (shouldPlaceBlockDirectionScrollbarOnLeft()) {
         newOffset.setWidth(-newOffset.width());
         adjustedOldOffset.setWidth(-adjustedOldOffset.width());
     }
@@ -2791,34 +2791,34 @@ bool RenderLayer::isActive() const
     return page && page->focusController().isActive();
 }
 
-static int cornerStart(const RenderLayer* layer, int minX, int maxX, int thickness)
+static int cornerStart(const RenderLayer& layer, int minX, int maxX, int thickness)
 {
-    if (layer->renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
-        return minX + layer->renderer().style().borderLeftWidth();
-    return maxX - thickness - layer->renderer().style().borderRightWidth();
+    if (layer.shouldPlaceBlockDirectionScrollbarOnLeft())
+        return minX + layer.renderer().style().borderLeftWidth();
+    return maxX - thickness - layer.renderer().style().borderRightWidth();
 }
 
-static LayoutRect cornerRect(const RenderLayer* layer, const LayoutRect& bounds)
+static LayoutRect cornerRect(const RenderLayer& layer, const LayoutRect& bounds)
 {
     int horizontalThickness;
     int verticalThickness;
-    if (!layer->verticalScrollbar() && !layer->horizontalScrollbar()) {
+    if (!layer.verticalScrollbar() && !layer.horizontalScrollbar()) {
         // FIXME: This isn't right.  We need to know the thickness of custom scrollbars
         // even when they don't exist in order to set the resizer square size properly.
         horizontalThickness = ScrollbarTheme::theme().scrollbarThickness();
         verticalThickness = horizontalThickness;
-    } else if (layer->verticalScrollbar() && !layer->horizontalScrollbar()) {
-        horizontalThickness = layer->verticalScrollbar()->width();
+    } else if (layer.verticalScrollbar() && !layer.horizontalScrollbar()) {
+        horizontalThickness = layer.verticalScrollbar()->width();
         verticalThickness = horizontalThickness;
-    } else if (layer->horizontalScrollbar() && !layer->verticalScrollbar()) {
-        verticalThickness = layer->horizontalScrollbar()->height();
+    } else if (layer.horizontalScrollbar() && !layer.verticalScrollbar()) {
+        verticalThickness = layer.horizontalScrollbar()->height();
         horizontalThickness = verticalThickness;
     } else {
-        horizontalThickness = layer->verticalScrollbar()->width();
-        verticalThickness = layer->horizontalScrollbar()->height();
+        horizontalThickness = layer.verticalScrollbar()->width();
+        verticalThickness = layer.horizontalScrollbar()->height();
     }
     return LayoutRect(cornerStart(layer, bounds.x(), bounds.maxX(), horizontalThickness),
-        bounds.maxY() - verticalThickness - layer->renderer().style().borderBottomWidth(),
+        bounds.maxY() - verticalThickness - layer.renderer().style().borderBottomWidth(),
         horizontalThickness, verticalThickness);
 }
 
@@ -2833,14 +2833,14 @@ IntRect RenderLayer::scrollCornerRect() const
     bool hasVerticalBar = m_vBar && !m_vBar->isOverlayScrollbar();
     bool hasResizer = renderer().style().resize() != RESIZE_NONE;
     if ((hasHorizontalBar && hasVerticalBar) || (hasResizer && (hasHorizontalBar || hasVerticalBar)))
-        return snappedIntRect(cornerRect(this, renderBox()->borderBoxRect()));
+        return snappedIntRect(cornerRect(*this, renderBox()->borderBoxRect()));
     return IntRect();
 }
 
-static LayoutRect resizerCornerRect(const RenderLayer* layer, const LayoutRect& bounds)
+static LayoutRect resizerCornerRect(const RenderLayer& layer, const LayoutRect& bounds)
 {
-    ASSERT(layer->renderer().isBox());
-    if (layer->renderer().style().resize() == RESIZE_NONE)
+    ASSERT(layer.renderer().isBox());
+    if (layer.renderer().style().resize() == RESIZE_NONE)
         return LayoutRect();
     return cornerRect(layer, bounds);
 }
@@ -2852,7 +2852,7 @@ LayoutRect RenderLayer::scrollCornerAndResizerRect() const
         return LayoutRect();
     LayoutRect scrollCornerAndResizer = scrollCornerRect();
     if (scrollCornerAndResizer.isEmpty())
-        scrollCornerAndResizer = resizerCornerRect(this, box->borderBoxRect());
+        scrollCornerAndResizer = resizerCornerRect(*this, box->borderBoxRect());
     return scrollCornerAndResizer;
 }
 
@@ -2996,7 +2996,7 @@ IntRect RenderLayer::rectForVerticalScrollbar(const IntRect& borderBoxRect) cons
 LayoutUnit RenderLayer::verticalScrollbarStart(int minX, int maxX) const
 {
     const RenderBox* box = renderBox();
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         return minX + box->borderLeft();
     return maxX - box->borderRight() - m_vBar->width();
 }
@@ -3005,8 +3005,8 @@ LayoutUnit RenderLayer::horizontalScrollbarStart(int minX) const
 {
     const RenderBox* box = renderBox();
     int x = minX + box->borderLeft();
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
-        x += m_vBar ? m_vBar->width() : roundToInt(resizerCornerRect(this, box->borderBoxRect()).width());
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
+        x += m_vBar ? m_vBar->width() : roundToInt(resizerCornerRect(*this, box->borderBoxRect()).width());
     return x;
 }
 
@@ -3270,7 +3270,7 @@ IntSize RenderLayer::offsetFromResizeCorner(const IntPoint& absolutePoint) const
     // Currently the resize corner is either the bottom right corner or the bottom left corner.
     // FIXME: This assumes the location is 0, 0. Is this guaranteed to always be the case?
     IntSize elementSize = size();
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft())
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         elementSize.setWidth(0);
     IntPoint resizerPoint = IntPoint(elementSize);
     IntPoint localPoint = roundedIntPoint(absoluteToContents(absolutePoint));
@@ -3309,7 +3309,7 @@ void RenderLayer::positionOverflowControls(const IntSize& offsetFromRoot)
     if (m_scrollCorner)
         m_scrollCorner->setFrameRect(scrollCorner);
     if (m_resizer)
-        m_resizer->setFrameRect(resizerCornerRect(this, borderBox));
+        m_resizer->setFrameRect(resizerCornerRect(*this, borderBox));
 
     if (isComposited())
         backing()->positionOverflowControlsLayers();
@@ -3376,7 +3376,7 @@ void RenderLayer::computeScrollDimensions()
     m_scrollSize.setHeight(overflowBottom() - overflowTop());
 
     int scrollableLeftOverflow = overflowLeft() - box->borderLeft();
-    if (box->style().isLeftToRightDirection() && box->style().shouldPlaceBlockDirectionScrollbarOnLeft() && m_vBar)
+    if (box->style().isLeftToRightDirection() && box->shouldPlaceBlockDirectionScrollbarOnLeft() && m_vBar)
         scrollableLeftOverflow -= m_vBar->occupiedWidth();
     int scrollableTopOverflow = overflowTop() - box->borderTop();
     setScrollOrigin(IntPoint(-scrollableLeftOverflow, -scrollableTopOverflow));
@@ -3551,7 +3551,7 @@ bool RenderLayer::overflowControlsIntersectRect(const IntRect& localRect) const
     if (scrollCornerRect().intersects(localRect))
         return true;
     
-    if (resizerCornerRect(this, borderBox).intersects(localRect))
+    if (resizerCornerRect(*this, borderBox).intersects(localRect))
         return true;
 
     return false;
@@ -3670,7 +3670,7 @@ void RenderLayer::drawPlatformResizerImage(GraphicsContext& context, const Layou
         cornerResizerSize = resizeCornerImage->size();
     }
 
-    if (renderer().style().shouldPlaceBlockDirectionScrollbarOnLeft()) {
+    if (shouldPlaceBlockDirectionScrollbarOnLeft()) {
         context.save();
         context.translate(resizerCornerRect.x() + cornerResizerSize.width(), resizerCornerRect.y() + resizerCornerRect.height() - cornerResizerSize.height());
         context.scale(FloatSize(-1.0, 1.0));
@@ -3694,7 +3694,7 @@ void RenderLayer::paintResizer(GraphicsContext& context, const LayoutPoint& pain
     RenderBox* box = renderBox();
     ASSERT(box);
 
-    LayoutRect absRect = resizerCornerRect(this, box->borderBoxRect());
+    LayoutRect absRect = resizerCornerRect(*this, box->borderBoxRect());
     absRect.moveBy(paintOffset);
     if (!absRect.intersects(damageRect))
         return;
@@ -3736,7 +3736,7 @@ bool RenderLayer::isPointInResizeControl(const IntPoint& absolutePoint) const
     IntPoint localPoint = roundedIntPoint(absoluteToContents(absolutePoint));
 
     IntRect localBounds(IntPoint(), snappedIntRect(box->frameRect()).size());
-    return resizerCornerRect(this, localBounds).contains(localPoint);
+    return resizerCornerRect(*this, localBounds).contains(localPoint);
 }
 
 bool RenderLayer::hitTestOverflowControls(HitTestResult& result, const IntPoint& localPoint)
@@ -3749,7 +3749,7 @@ bool RenderLayer::hitTestOverflowControls(HitTestResult& result, const IntPoint&
     
     IntRect resizeControlRect;
     if (renderer().style().resize() != RESIZE_NONE) {
-        resizeControlRect = snappedIntRect(resizerCornerRect(this, box->borderBoxRect()));
+        resizeControlRect = snappedIntRect(resizerCornerRect(*this, box->borderBoxRect()));
         if (resizeControlRect.contains(localPoint))
             return true;
     }
@@ -4111,7 +4111,7 @@ bool RenderLayer::setupClipPath(GraphicsContext& context, const LayerPaintingInf
         rootRelativeBoundsComputed = true;
     }
 
-    RenderStyle& style = renderer().style();
+    auto& style = renderer().style();
     ASSERT(style.clipPath());
     if (is<ShapeClipPathOperation>(*style.clipPath()) || (is<BoxClipPathOperation>(*style.clipPath()) && is<RenderBox>(renderer()))) {
         WindRule windRule;
@@ -5228,7 +5228,7 @@ bool RenderLayer::hitTestResizerInFragments(const LayerFragments& layerFragments
 
     for (int i = layerFragments.size() - 1; i >= 0; --i) {
         const LayerFragment& fragment = layerFragments.at(i);
-        if (fragment.backgroundRect.intersects(hitTestLocation) && resizerCornerRect(this, snappedIntRect(fragment.layerBounds)).contains(hitTestLocation.roundedPoint()))
+        if (fragment.backgroundRect.intersects(hitTestLocation) && resizerCornerRect(*this, snappedIntRect(fragment.layerBounds)).contains(hitTestLocation.roundedPoint()))
             return true;
     }
     
@@ -6789,7 +6789,7 @@ void RenderLayer::updateScrollableAreaSet(bool hasOverflow)
 void RenderLayer::updateScrollCornerStyle()
 {
     RenderElement* actualRenderer = rendererForScrollbar(renderer());
-    RefPtr<RenderStyle> corner = renderer().hasOverflowClip() ? actualRenderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &actualRenderer->style()) : nullptr;
+    auto corner = renderer().hasOverflowClip() ? actualRenderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &actualRenderer->style()) : nullptr;
 
     if (!corner) {
         m_scrollCorner = nullptr;
@@ -6797,17 +6797,17 @@ void RenderLayer::updateScrollCornerStyle()
     }
 
     if (!m_scrollCorner) {
-        m_scrollCorner = createRenderer<RenderScrollbarPart>(renderer().document(), corner.releaseNonNull());
+        m_scrollCorner = createRenderer<RenderScrollbarPart>(renderer().document(), WTFMove(*corner));
         m_scrollCorner->setParent(&renderer());
         m_scrollCorner->initializeStyle();
     } else
-        m_scrollCorner->setStyle(corner.releaseNonNull());
+        m_scrollCorner->setStyle(WTFMove(*corner));
 }
 
 void RenderLayer::updateResizerStyle()
 {
     RenderElement* actualRenderer = rendererForScrollbar(renderer());
-    RefPtr<RenderStyle> resizer = renderer().hasOverflowClip() ? actualRenderer->getUncachedPseudoStyle(PseudoStyleRequest(RESIZER), &actualRenderer->style()) : nullptr;
+    auto resizer = renderer().hasOverflowClip() ? actualRenderer->getUncachedPseudoStyle(PseudoStyleRequest(RESIZER), &actualRenderer->style()) : nullptr;
 
     if (!resizer) {
         m_resizer = nullptr;
@@ -6815,11 +6815,11 @@ void RenderLayer::updateResizerStyle()
     }
 
     if (!m_resizer) {
-        m_resizer = createRenderer<RenderScrollbarPart>(renderer().document(), resizer.releaseNonNull());
+        m_resizer = createRenderer<RenderScrollbarPart>(renderer().document(), WTFMove(*resizer));
         m_resizer->setParent(&renderer());
         m_resizer->initializeStyle();
     } else
-        m_resizer->setStyle(resizer.releaseNonNull());
+        m_resizer->setStyle(WTFMove(*resizer));
 }
 
 RenderLayer* RenderLayer::reflectionLayer() const
@@ -6844,10 +6844,10 @@ void RenderLayer::removeReflection()
     m_reflection = nullptr;
 }
 
-Ref<RenderStyle> RenderLayer::createReflectionStyle()
+RenderStyle RenderLayer::createReflectionStyle()
 {
     auto newStyle = RenderStyle::create();
-    newStyle.get().inheritFrom(&renderer().style());
+    newStyle.inheritFrom(&renderer().style());
     
     // Map in our transform.
     TransformOperations transform;
@@ -6873,10 +6873,10 @@ Ref<RenderStyle> RenderLayer::createReflectionStyle()
             transform.operations().append(TranslateTransformOperation::create(renderer().style().boxReflect()->offset(), Length(0, Fixed), TransformOperation::TRANSLATE));
             break;
     }
-    newStyle.get().setTransform(transform);
+    newStyle.setTransform(transform);
 
     // Map in our mask.
-    newStyle.get().setMaskBoxImage(renderer().style().boxReflect()->mask());
+    newStyle.setMaskBoxImage(renderer().style().boxReflect()->mask());
 
     return newStyle;
 }

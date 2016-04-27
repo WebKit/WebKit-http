@@ -36,24 +36,28 @@ class RenderElement : public RenderObject {
 public:
     virtual ~RenderElement();
 
-    static RenderPtr<RenderElement> createFor(Element&, Ref<RenderStyle>&&);
+    static RenderPtr<RenderElement> createFor(Element&, RenderStyle&&);
 
     bool hasInitializedStyle() const { return m_hasInitializedStyle; }
 
-    RenderStyle& style() const { return const_cast<RenderStyle&>(m_style.get()); }
-    RenderStyle& firstLineStyle() const;
+    const RenderStyle& style() const { return m_style; }
+    const RenderStyle& firstLineStyle() const;
+
+    // FIXME: Style shouldn't be mutated.
+    RenderStyle& mutableStyle() { return m_style; }
 
     void initializeStyle();
 
     // Calling with minimalStyleDifference > StyleDifferenceEqual indicates that
     // out-of-band state (e.g. animations) requires that styleDidChange processing
     // continue even if the style isn't different from the current style.
-    void setStyle(Ref<RenderStyle>&&, StyleDifference minimalStyleDifference = StyleDifferenceEqual);
+    void setStyle(RenderStyle&&, StyleDifference minimalStyleDifference = StyleDifferenceEqual);
 
     // The pseudo element style can be cached or uncached.  Use the cached method if the pseudo element doesn't respect
     // any pseudo classes (and therefore has no concept of changing state).
-    RenderStyle* getCachedPseudoStyle(PseudoId, RenderStyle* parentStyle = nullptr) const;
-    PassRefPtr<RenderStyle> getUncachedPseudoStyle(const PseudoStyleRequest&, RenderStyle* parentStyle = nullptr, RenderStyle* ownStyle = nullptr) const;
+    const RenderStyle* getCachedPseudoStyle(PseudoId, const RenderStyle* parentStyle = nullptr) const;
+    RenderStyle* getMutableCachedPseudoStyle(PseudoId, const RenderStyle* parentStyle = nullptr);
+    std::unique_ptr<RenderStyle> getUncachedPseudoStyle(const PseudoStyleRequest&, const RenderStyle* parentStyle = nullptr, const RenderStyle* ownStyle = nullptr) const;
 
     // This is null for anonymous renderers.
     Element* element() const { return downcast<Element>(RenderObject::node()); }
@@ -69,7 +73,7 @@ public:
     bool canContainAbsolutelyPositionedObjects() const;
 
     Color selectionColor(int colorProperty) const;
-    PassRefPtr<RenderStyle> selectionPseudoStyle() const;
+    std::unique_ptr<RenderStyle> selectionPseudoStyle() const;
 
     // Obtains the selection colors that should be used when painting a selection.
     Color selectionBackgroundColor() const;
@@ -132,11 +136,11 @@ public:
 
     // Used only by Element::pseudoStyleCacheIsInvalid to get a first line style based off of a
     // given new style, without accessing the cache.
-    PassRefPtr<RenderStyle> uncachedFirstLineStyle(RenderStyle*) const;
+    std::unique_ptr<RenderStyle> uncachedFirstLineStyle(RenderStyle*) const;
 
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
-    void setStyleInternal(Ref<RenderStyle>&& style) { m_style = WTFMove(style); }
+    void setStyleInternal(RenderStyle&& style) { m_style = WTFMove(style); }
 
     // Repaint only if our old bounds and new bounds are different. The caller may pass in newBounds and newOutlineBox if they are known.
     bool repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldBounds, const LayoutRect& oldOutlineBox, const LayoutRect* newBoundsPtr = nullptr, const LayoutRect* newOutlineBoxPtr = nullptr);
@@ -223,8 +227,8 @@ protected:
     
     typedef unsigned BaseTypeFlags;
 
-    RenderElement(Element&, Ref<RenderStyle>&&, BaseTypeFlags);
-    RenderElement(Document&, Ref<RenderStyle>&&, BaseTypeFlags);
+    RenderElement(Element&, RenderStyle&&, BaseTypeFlags);
+    RenderElement(Document&, RenderStyle&&, BaseTypeFlags);
 
     bool layerCreationAllowedForSubtree() const;
 
@@ -272,7 +276,7 @@ protected:
     void updateOutlineAutoAncestor(bool hasOutlineAuto) const;
 
 private:
-    RenderElement(ContainerNode&, Ref<RenderStyle>&&, BaseTypeFlags);
+    RenderElement(ContainerNode&, RenderStyle&&, BaseTypeFlags);
     void node() const = delete;
     void nonPseudoNode() const = delete;
     void generatingNode() const = delete;
@@ -298,7 +302,7 @@ private:
 #endif
 
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
-    RenderStyle* cachedFirstLineStyle() const;
+    const RenderStyle* cachedFirstLineStyle() const;
 
     void newImageAnimationFrameAvailable(CachedImage&) final;
 
@@ -332,7 +336,7 @@ private:
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;
 
-    Ref<RenderStyle> m_style;
+    RenderStyle m_style;
 
     // FIXME: Get rid of this hack.
     // Store state between styleWillChange and styleDidChange
@@ -450,14 +454,14 @@ inline bool RenderObject::isRenderInline() const
     return is<RenderElement>(*this) && downcast<RenderElement>(*this).isRenderInline();
 }
 
-inline RenderStyle& RenderObject::style() const
+inline const RenderStyle& RenderObject::style() const
 {
     if (isText())
         return m_parent->style();
     return downcast<RenderElement>(*this).style();
 }
 
-inline RenderStyle& RenderObject::firstLineStyle() const
+inline const RenderStyle& RenderObject::firstLineStyle() const
 {
     if (isText())
         return m_parent->firstLineStyle();

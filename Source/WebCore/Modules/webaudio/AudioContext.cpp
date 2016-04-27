@@ -481,18 +481,6 @@ Ref<MediaStreamAudioDestinationNode> AudioContext::createMediaStreamDestination(
 
 #endif
 
-RefPtr<ScriptProcessorNode> AudioContext::createScriptProcessor(size_t bufferSize, ExceptionCode& ec)
-{
-    // Set number of input/output channels to stereo by default.
-    return createScriptProcessor(bufferSize, 2, 2, ec);
-}
-
-RefPtr<ScriptProcessorNode> AudioContext::createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, ExceptionCode& ec)
-{
-    // Set number of output channels to stereo by default.
-    return createScriptProcessor(bufferSize, numberOfInputChannels, 2, ec);
-}
-
 RefPtr<ScriptProcessorNode> AudioContext::createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, size_t numberOfOutputChannels, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
@@ -557,12 +545,6 @@ Ref<GainNode> AudioContext::createGain()
     return GainNode::create(*this, m_destinationNode->sampleRate());
 }
 
-RefPtr<DelayNode> AudioContext::createDelay(ExceptionCode& ec)
-{
-    const double defaultMaxDelayTime = 1;
-    return createDelay(defaultMaxDelayTime, ec);
-}
-
 RefPtr<DelayNode> AudioContext::createDelay(double maxDelayTime, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
@@ -571,12 +553,6 @@ RefPtr<DelayNode> AudioContext::createDelay(double maxDelayTime, ExceptionCode& 
     if (ec)
         return nullptr;
     return WTFMove(node);
-}
-
-RefPtr<ChannelSplitterNode> AudioContext::createChannelSplitter(ExceptionCode& ec)
-{
-    const unsigned ChannelSplitterDefaultNumberOfOutputs = 6;
-    return createChannelSplitter(ChannelSplitterDefaultNumberOfOutputs, ec);
 }
 
 RefPtr<ChannelSplitterNode> AudioContext::createChannelSplitter(size_t numberOfOutputs, ExceptionCode& ec)
@@ -592,12 +568,6 @@ RefPtr<ChannelSplitterNode> AudioContext::createChannelSplitter(size_t numberOfO
     }
 
     return node;
-}
-
-RefPtr<ChannelMergerNode> AudioContext::createChannelMerger(ExceptionCode& ec)
-{
-    const unsigned ChannelMergerDefaultNumberOfInputs = 6;
-    return createChannelMerger(ChannelMergerDefaultNumberOfInputs, ec);
 }
 
 RefPtr<ChannelMergerNode> AudioContext::createChannelMerger(size_t numberOfInputs, ExceptionCode& ec)

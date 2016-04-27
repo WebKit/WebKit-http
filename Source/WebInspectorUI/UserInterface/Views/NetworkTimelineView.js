@@ -88,10 +88,11 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
             columns[column].sortable = true;
 
         this._dataGrid = new WebInspector.TimelineDataGrid(columns);
-        this._dataGrid.addEventListener(WebInspector.TimelineDataGrid.Event.FiltersDidChange, this._dataGridFiltersDidChange, this);
-        this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
+        this._dataGrid.sortDelegate = this;
         this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("network-timeline-view-sort", "requestSent");
         this._dataGrid.sortOrderSetting = new WebInspector.Setting("network-timeline-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
+
+        this.setupDataGrid(this._dataGrid);
 
         this.element.classList.add("network");
         this.addSubview(this._dataGrid);
@@ -138,11 +139,6 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         this._dataGrid.closed();
     }
 
-    matchTreeElementAgainstCustomFilters(treeElement)
-    {
-        return this._dataGrid.treeElementMatchesActiveScopeFilters(treeElement);
-    }
-
     reset()
     {
         super.reset();
@@ -150,6 +146,21 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         this._dataGrid.reset();
 
         this._pendingRecords = [];
+    }
+
+    // TimelineDataGrid sort delegate
+
+    dataGridSortComparator(sortColumnIdentifier, sortDirection, node1, node2)
+    {
+        if (sortColumnIdentifier !== "name")
+            return null;
+
+        let displayName1 = node1.displayName();
+        let displayName2 = node2.displayName();
+        if (displayName1 !== displayName2)
+            return displayName1.localeCompare(displayName2) * sortDirection;
+
+        return node1.resource.url.localeCompare(node2.resource.url) * sortDirection;
     }
 
     // Protected
@@ -218,15 +229,5 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         this._pendingRecords.push(resourceTimelineRecord);
 
         this.needsLayout();
-    }
-
-    _dataGridFiltersDidChange(event)
-    {
-        // FIXME: <https://webkit.org/b/154924> Web Inspector: hook up grid row filtering in the new Timelines UI
-    }
-
-    _dataGridNodeSelected(event)
-    {
-        this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
     }
 };
