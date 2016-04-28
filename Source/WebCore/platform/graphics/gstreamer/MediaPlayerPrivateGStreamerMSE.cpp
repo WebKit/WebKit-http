@@ -275,6 +275,17 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
     load(mediasourceUri);
 }
 
+FloatSize MediaPlayerPrivateGStreamerMSE::naturalSize() const
+{
+    if (!hasVideo())
+        return FloatSize();
+
+    if (!m_videoSize.isEmpty())
+        return m_videoSize;
+
+    return MediaPlayerPrivateGStreamerBase::naturalSize();
+}
+
 void MediaPlayerPrivateGStreamerMSE::pause()
 {
     m_paused = true;
