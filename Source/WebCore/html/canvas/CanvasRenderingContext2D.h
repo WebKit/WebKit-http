@@ -193,10 +193,11 @@ public:
     void webkitPutImageDataHD(ImageData*, float dx, float dy, ExceptionCode&);
     void webkitPutImageDataHD(ImageData*, float dx, float dy, float dirtyX, float dirtyY, float dirtyWidth, float dirtyHeight, ExceptionCode&);
 
-    void drawSystemFocusRing(Element* element);
-    void drawSystemFocusRing(DOMPath* path, Element* element);
     void drawFocusIfNeeded(Element*);
     void drawFocusIfNeeded(DOMPath&, Element*);
+
+    void drawSystemFocusRing(Element* element);
+    void drawSystemFocusRing(DOMPath& path, Element* element);
 
     float webkitBackingStorePixelRatio() const { return 1; }
 

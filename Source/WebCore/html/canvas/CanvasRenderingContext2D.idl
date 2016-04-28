@@ -192,8 +192,8 @@ interface CanvasRenderingContext2D : CanvasRenderingContext {
     void drawFocusIfNeeded(Element? element); // FIXME: The element parameter should not be nullable.
     void drawFocusIfNeeded(DOMPath path, Element? element); // FIXME: The element parameter should not be nullable.
 
-    void drawSystemFocusRing(Element element);
-    void drawSystemFocusRing(DOMPath path, Element element);
+    void drawSystemFocusRing(Element? element); // FIXME: The element parameter should not be nullable.
+    void drawSystemFocusRing(DOMPath path, Element? element); // FIXME: The element parameter should not be nullable.
 
     readonly attribute float webkitBackingStorePixelRatio;
 
