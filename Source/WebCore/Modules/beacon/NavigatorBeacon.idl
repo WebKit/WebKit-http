@@ -1,7 +1,7 @@
 [
 ] partial interface Navigator { 
-    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=Undefined] optional Blob data);
-    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=Undefined] optional ArrayBufferView data);
-    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=Undefined] optional DOMFormData data);
-    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=NullString] optional DOMString data);
+    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=Undefined] Blob? data);
+    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=Undefined] ArrayBufferView? data);
+    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=Undefined] DOMFormData? data);
+    [CallWith=ScriptExecutionContext, RaisesException] boolean sendBeacon(DOMString url, [Default=NullString] DOMString? data);
 }; 

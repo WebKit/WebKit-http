@@ -73,7 +73,7 @@ bool NavigatorBeacon::beaconResult(ScriptExecutionContext&, bool allowed, int se
     return allowed;
 }
 
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, Blob*& data, ExceptionCode& ec)
+bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, Blob* data, ExceptionCode& ec)
 {
     NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
 
@@ -103,7 +103,7 @@ bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& c
     return impl.beaconResult(context, allowed, bytes);
 }
 
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, DOMFormData*& data, ExceptionCode& ec)
+bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, DOMFormData* data, ExceptionCode& ec)
 {
     NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
 
