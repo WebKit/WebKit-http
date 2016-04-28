@@ -51,6 +51,8 @@ public:
     void load(const String &url) override;
     void load(const String& url, MediaSourcePrivateClient*) override;
 
+    FloatSize naturalSize() const override;
+
     void setDownloadBuffering() override { };
 
     bool isLiveStream() const override { return false; }
