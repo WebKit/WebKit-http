@@ -3869,11 +3869,16 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
         ADD_TARGET_PROPERTIES(ANGLESupport COMPILE_FLAGS "-Wno-null-conversion")
     endif ()
 
+    set(ANGLE_PLATFORM_DEFINITIONS )
+    if (PORT STREQUAL "WPE")
+        list(APPEND ANGLE_PLATFORM_DEFINITIONS "USE_WPE")
+    endif ()
     # Enable the ESSL and GLSL translators.
     set_property(TARGET ANGLESupport
         PROPERTY COMPILE_DEFINITIONS
         ANGLE_ENABLE_ESSL
-        ANGLE_ENABLE_GLSL)
+        ANGLE_ENABLE_GLSL
+        ${ANGLE_PLATFORM_DEFINITIONS})
 
     target_include_directories(ANGLESupport PRIVATE
         "${THIRDPARTY_DIR}/ANGLE/include"
