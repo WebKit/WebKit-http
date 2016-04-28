@@ -24,6 +24,11 @@
  */
 
 #include "config.h"
+
+#if PLATFORM(WPE)
+#include "Logging.h"
+#endif
+
 #include "MemoryPressureHandler.h"
 
 #include "CSSValuePool.h"
@@ -186,7 +191,10 @@ void MemoryPressureHandler::releaseMemory(Critical critical, Synchronous synchro
 
 void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
 {
-#if !LOG_ALWAYS_DISABLED
+#if PLATFORM(WPE)
+#define STRING_SPECIFICATION "%s"
+#define MEMORYPRESSURE_LOG(...) LOG(MemoryPressure, __VA_ARGS__)
+#elif !LOG_ALWAYS_DISABLED
 #define STRING_SPECIFICATION "%{public}s"
 #define MEMORYPRESSURE_LOG(...) LOG_ALWAYS(true, __VA_ARGS__)
 #else
