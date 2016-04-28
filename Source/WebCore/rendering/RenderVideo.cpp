@@ -48,7 +48,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderVideo::RenderVideo(HTMLVideoElement& element, Ref<RenderStyle>&& style)
+RenderVideo::RenderVideo(HTMLVideoElement& element, RenderStyle&& style)
     : RenderMedia(element, WTFMove(style))
 {
     setIntrinsicSize(calculateIntrinsicSize());
@@ -76,21 +76,22 @@ void RenderVideo::intrinsicSizeChanged()
     updateIntrinsicSize(); 
 }
 
-void RenderVideo::updateIntrinsicSize()
+bool RenderVideo::updateIntrinsicSize()
 {
     LayoutSize size = calculateIntrinsicSize();
     size.scale(style().effectiveZoom());
 
     // Never set the element size to zero when in a media document.
     if (size.isEmpty() && document().isMediaDocument())
-        return;
+        return false;
 
     if (size == intrinsicSize())
-        return;
+        return false;
 
     setIntrinsicSize(size);
     setPreferredLogicalWidthsDirty(true);
     setNeedsLayout();
+    return true;
 }
     
 LayoutSize RenderVideo::calculateIntrinsicSize()
@@ -207,6 +208,7 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 void RenderVideo::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
+    updateIntrinsicSize();
     RenderMedia::layout();
     updatePlayer();
 }
@@ -227,7 +229,9 @@ void RenderVideo::updatePlayer()
     if (documentBeingDestroyed())
         return;
 
-    updateIntrinsicSize();
+    bool intrinsicSizeChanged;
+    intrinsicSizeChanged = updateIntrinsicSize();
+    ASSERT_UNUSED(intrinsicSizeChanged, !intrinsicSizeChanged || !view().frameView().isInRenderTreeLayout());
 
     MediaPlayer* mediaPlayer = videoElement().player();
     if (!mediaPlayer)

@@ -28,8 +28,8 @@
     EnabledAtRuntime=IndexedDB,
     SkipVTableValidation,
 ] interface IDBFactory {
-    [CallWith=ScriptExecutionContext, RaisesException] IDBOpenDBRequest open(DOMString name, [EnforceRange] optional unsigned long long version);
-    [CallWith=ScriptExecutionContext, RaisesException] IDBOpenDBRequest deleteDatabase(DOMString name);
+    [CallWith=ScriptExecutionContext, RaisesExceptionWithMessage] IDBOpenDBRequest open(DOMString name, [EnforceRange] optional unsigned long long version);
+    [CallWith=ScriptExecutionContext, RaisesExceptionWithMessage] IDBOpenDBRequest deleteDatabase(DOMString name);
     [CallWith=ScriptExecutionContext, RaisesExceptionWithMessage] short cmp(any first, any second);
 };
 

@@ -70,7 +70,7 @@ static inline bool elementHasDirectionAuto(const Element& element)
     return is<HTMLElement>(element) && downcast<HTMLElement>(element).hasDirectionAuto();
 }
 
-RefPtr<RenderStyle> SharingResolver::resolve(const Element& searchElement, const Update& update)
+std::unique_ptr<RenderStyle> SharingResolver::resolve(const Element& searchElement, const Update& update)
 {
     if (!is<StyledElement>(searchElement))
         return nullptr;
@@ -88,7 +88,8 @@ RefPtr<RenderStyle> SharingResolver::resolve(const Element& searchElement, const
     if (element.isSVGElement() && downcast<SVGElement>(element).animatedSMILStyleProperties())
         return nullptr;
     // Ids stop style sharing if they show up in the stylesheets.
-    if (element.hasID() && m_ruleSets.features().idsInRules.contains(element.idForStyleResolution().impl()))
+    auto& id = element.idForStyleResolution();
+    if (!id.isNull() && m_ruleSets.features().idsInRules.contains(id.impl()))
         return nullptr;
     if (parentElementPreventsSharing(parentElement))
         return nullptr;
@@ -135,7 +136,7 @@ RefPtr<RenderStyle> SharingResolver::resolve(const Element& searchElement, const
 
     m_elementsSharingStyle.add(&element, shareElement);
 
-    return RenderStyle::clone(update.elementStyle(*shareElement));
+    return RenderStyle::clonePtr(*update.elementStyle(*shareElement));
 }
 
 StyledElement* SharingResolver::findSibling(const Context& context, Node* node, unsigned& count) const
@@ -237,7 +238,8 @@ bool SharingResolver::canShareStyleWithElement(const Context& context, const Sty
     if (candidateElement.affectsNextSiblingElementStyle() || candidateElement.styleIsAffectedByPreviousSibling())
         return false;
 
-    if (candidateElement.hasID() && m_ruleSets.features().idsInRules.contains(candidateElement.idForStyleResolution().impl()))
+    auto& candidateElementId = candidateElement.idForStyleResolution();
+    if (!candidateElementId.isNull() && m_ruleSets.features().idsInRules.contains(candidateElementId.impl()))
         return false;
 
     bool isControl = is<HTMLFormControlElement>(candidateElement);

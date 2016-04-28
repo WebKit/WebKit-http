@@ -515,6 +515,7 @@ private:
                 case PhantomNewGeneratorFunction:
                 case PhantomCreateActivation:
                 case GetMyArgumentByVal:
+                case GetMyArgumentByValOutOfBounds:
                 case PutHint:
                 case CheckStructureImmediate:
                 case MaterializeCreateActivation:
@@ -662,6 +663,7 @@ private:
                 case TailCallForwardVarargsInlinedCaller:
                 case ConstructForwardVarargs:
                 case GetMyArgumentByVal:
+                case GetMyArgumentByValOutOfBounds:
                     break;
 
                 case Check:
@@ -692,7 +694,7 @@ private:
         if (m_graph.m_planStage < PlanStage::AfterFixup)
             return;
         
-        VALIDATE((node, edge), edge.useKind() == DoubleRepUse || edge.useKind() == DoubleRepRealUse || edge.useKind() == DoubleRepMachineIntUse);
+        VALIDATE((node, edge), edge.useKind() == DoubleRepUse || edge.useKind() == DoubleRepRealUse || edge.useKind() == DoubleRepAnyIntUse);
     }
 
     void checkOperand(

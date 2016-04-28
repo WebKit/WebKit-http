@@ -71,11 +71,12 @@ WebInspector.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends
         for (var column in columns)
             columns[column].sortable = true;
 
-        this._dataGrid = new WebInspector.ScriptTimelineDataGrid(null, columns, this);
-        this._dataGrid.addEventListener(WebInspector.TimelineDataGrid.Event.FiltersDidChange, this._dataGridFiltersDidChange, this);
-        this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
+        this._dataGrid = new WebInspector.ScriptTimelineDataGrid(columns);
+        this._dataGrid.sortDelegate = this;
         this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("script-timeline-view-sort", "startTime");
         this._dataGrid.sortOrderSetting = new WebInspector.Setting("script-timeline-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
+
+        this.setupDataGrid(this._dataGrid);
 
         this.element.classList.add("script");
         this.addSubview(this._dataGrid);
@@ -143,6 +144,21 @@ WebInspector.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends
         this._dataGrid.reset();
 
         this._pendingRecords = [];
+    }
+
+    // TimelineDataGrid sort delegate
+
+    dataGridSortComparator(sortColumnIdentifier, sortDirection, node1, node2)
+    {
+        if (sortColumnIdentifier !== "name")
+            return null;
+
+        let displayName1 = node1.displayName();
+        let displayName2 = node2.displayName();
+        if (displayName1 !== displayName2)
+            return displayName1.localeCompare(displayName2) * sortDirection;
+
+        return node1.subtitle.localeCompare(node2.subtitle) * sortDirection;
     }
 
     // Protected
@@ -219,15 +235,5 @@ WebInspector.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends
     _scriptTimelineRecordRefreshed(event)
     {
         this.needsLayout();
-    }
-
-    _dataGridFiltersDidChange(event)
-    {
-        // FIXME: <https://webkit.org/b/154924> Web Inspector: hook up grid row filtering in the new Timelines UI
-    }
-
-    _dataGridNodeSelected(event)
-    {
-        this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
     }
 };

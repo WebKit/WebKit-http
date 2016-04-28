@@ -195,7 +195,7 @@ void FileInputType::handleDOMActivateEvent(Event* event)
     event->setDefaultHandled();
 }
 
-RenderPtr<RenderElement> FileInputType::createInputRenderer(Ref<RenderStyle>&& style)
+RenderPtr<RenderElement> FileInputType::createInputRenderer(RenderStyle&& style)
 {
     return createRenderer<RenderFileUploadControl>(element(), WTFMove(style));
 }
@@ -295,8 +295,10 @@ void FileInputType::requestIcon(const Vector<String>& paths)
 #if PLATFORM(IOS)
     UNUSED_PARAM(paths);
 #else
-    if (!paths.size())
+    if (!paths.size()) {
+        updateRendering(nullptr);
         return;
+    }
 
     Chrome* chrome = this->chrome();
     if (!chrome)

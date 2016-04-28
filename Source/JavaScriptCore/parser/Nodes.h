@@ -626,14 +626,15 @@ namespace JSC {
         enum Type { Constant = 1, Getter = 2, Setter = 4, Computed = 8, Shorthand = 16 };
         enum PutType { Unknown, KnownDirect };
 
-        PropertyNode(const Identifier&, ExpressionNode*, Type, PutType, SuperBinding);
-        PropertyNode(ExpressionNode* propertyName, ExpressionNode*, Type, PutType, SuperBinding);
+        PropertyNode(const Identifier&, ExpressionNode*, Type, PutType, SuperBinding, bool isClassProperty);
+        PropertyNode(ExpressionNode* propertyName, ExpressionNode*, Type, PutType, SuperBinding, bool isClassProperty);
 
         ExpressionNode* expressionName() const { return m_expression; }
         const Identifier* name() const { return m_name; }
 
         Type type() const { return static_cast<Type>(m_type); }
         bool needsSuperBinding() const { return m_needsSuperBinding; }
+        bool isClassProperty() const { return m_isClassProperty; }
         PutType putType() const { return static_cast<PutType>(m_putType); }
 
     private:
@@ -644,6 +645,7 @@ namespace JSC {
         unsigned m_type : 5;
         unsigned m_needsSuperBinding : 1;
         unsigned m_putType : 1;
+        unsigned m_isClassProperty: 1;
     };
 
     class PropertyListNode : public ExpressionNode {
@@ -1592,8 +1594,6 @@ namespace JSC {
         bool usesEval() const { return m_features & EvalFeature; }
         bool usesArguments() const { return (m_features & ArgumentsFeature) && !(m_features & ShadowsArgumentsFeature); }
         bool usesArrowFunction() const { return m_features & ArrowFunctionFeature; }
-        bool modifiesParameter() const { return m_features & ModifiedParameterFeature; }
-        bool modifiesArguments() const { return m_features & (EvalFeature | ModifiedArgumentsFeature); }
         bool isStrictMode() const { return m_features & StrictModeFeature; }
         void setUsesArguments() { m_features |= ArgumentsFeature; }
         bool usesThis() const { return m_features & ThisFeature; }

@@ -83,7 +83,7 @@ const int defaultSize = 4;
 // widget, but I'm not sure this is right for the new control.
 const int baselineAdjustment = 7;
 
-RenderListBox::RenderListBox(HTMLSelectElement& element, Ref<RenderStyle>&& style)
+RenderListBox::RenderListBox(HTMLSelectElement& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
     , m_optionsChanged(true)
     , m_scrollToRevealSelectionAfterLayout(false)
@@ -239,7 +239,7 @@ int RenderListBox::size() const
 int RenderListBox::numVisibleItems() const
 {
     // Only count fully visible rows. But don't return 0 even if only part of a row shows.
-    return std::max<int>(1, (contentHeight() + rowSpacing) / itemHeight());
+    return std::max<int>(1, (contentHeight() + paddingBottom() + rowSpacing) / itemHeight());
 }
 
 int RenderListBox::numItems() const
@@ -266,7 +266,7 @@ int RenderListBox::baselinePosition(FontBaseline baselineType, bool firstLine, L
 LayoutRect RenderListBox::itemBoundingBoxRect(const LayoutPoint& additionalOffset, int index)
 {
     LayoutUnit x = additionalOffset.x() + borderLeft() + paddingLeft();
-    if (verticalScrollbarIsOnLeft() && m_vBar)
+    if (shouldPlaceBlockDirectionScrollbarOnLeft() && m_vBar)
         x += m_vBar->occupiedWidth();
     LayoutUnit y = additionalOffset.y() + borderTop() + paddingTop() + itemHeight() * (index - m_indexOffset);
     return LayoutRect(x, y, contentWidth(), itemHeight());
@@ -345,7 +345,7 @@ void RenderListBox::paintScrollbar(PaintInfo& paintInfo, const LayoutPoint& pain
     if (!m_vBar)
         return;
 
-    LayoutUnit left = paintOffset.x() + (verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
+    LayoutUnit left = paintOffset.x() + (shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
     LayoutUnit top = paintOffset.y() + borderTop();
     LayoutUnit width = m_vBar->width();
     LayoutUnit height = this->height() - (borderTop() + borderBottom());
@@ -354,7 +354,7 @@ void RenderListBox::paintScrollbar(PaintInfo& paintInfo, const LayoutPoint& pain
     m_vBar->paint(paintInfo.context(), snappedIntRect(paintInfo.rect));
 }
 
-static LayoutSize itemOffsetForAlignment(TextRun textRun, RenderStyle* itemStyle, FontCascade itemFont, LayoutRect itemBoudingBox)
+static LayoutSize itemOffsetForAlignment(TextRun textRun, const RenderStyle* itemStyle, FontCascade itemFont, LayoutRect itemBoudingBox)
 {
     ETextAlign actualAlignment = itemStyle->textAlign();
     // FIXME: Firefox doesn't respect JUSTIFY. Should we?
@@ -379,7 +379,7 @@ void RenderListBox::paintItemForeground(PaintInfo& paintInfo, const LayoutPoint&
     const Vector<HTMLElement*>& listItems = selectElement().listItems();
     HTMLElement* listItemElement = listItems[listIndex];
 
-    RenderStyle& itemStyle = *listItemElement->computedStyle();
+    auto& itemStyle = *listItemElement->computedStyle();
 
     if (itemStyle.visibility() == HIDDEN)
         return;
@@ -423,7 +423,7 @@ void RenderListBox::paintItemBackground(PaintInfo& paintInfo, const LayoutPoint&
 {
     const Vector<HTMLElement*>& listItems = selectElement().listItems();
     HTMLElement* listItemElement = listItems[listIndex];
-    RenderStyle& itemStyle = *listItemElement->computedStyle();
+    auto& itemStyle = *listItemElement->computedStyle();
 
     Color backColor;
     if (is<HTMLOptionElement>(*listItemElement) && downcast<HTMLOptionElement>(*listItemElement).selected()) {
@@ -448,7 +448,7 @@ bool RenderListBox::isPointInOverflowControl(HitTestResult& result, const Layout
     if (!m_vBar || !m_vBar->shouldParticipateInHitTesting())
         return false;
 
-    LayoutUnit x = accumulatedOffset.x() + (verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
+    LayoutUnit x = accumulatedOffset.x() + (shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
     LayoutUnit y = accumulatedOffset.y() + borderTop();
     LayoutUnit width = m_vBar->width();
     LayoutUnit height = this->height() - borderTop() - borderBottom();
@@ -466,13 +466,13 @@ int RenderListBox::listIndexAtOffset(const LayoutSize& offset)
     if (!numItems())
         return -1;
 
-    if (offset.height() < borderTop() + paddingTop() || offset.height() > height() - paddingBottom() - borderBottom())
+    if (offset.height() < borderTop() || offset.height() > height() - borderBottom())
         return -1;
 
     int scrollbarWidth = m_vBar ? m_vBar->width() : 0;
-    if (verticalScrollbarIsOnLeft() && (offset.width() < borderLeft() + paddingLeft() + scrollbarWidth || offset.width() > width() - borderRight() - paddingRight()))
+    if (shouldPlaceBlockDirectionScrollbarOnLeft() && (offset.width() < borderLeft() + paddingLeft() + scrollbarWidth || offset.width() > width() - borderRight() - paddingRight()))
         return -1;
-    if (!verticalScrollbarIsOnLeft() && (offset.width() < borderLeft() + paddingLeft() || offset.width() > width() - borderRight() - paddingRight() - scrollbarWidth))
+    if (!shouldPlaceBlockDirectionScrollbarOnLeft() && (offset.width() < borderLeft() + paddingLeft() || offset.width() > width() - borderRight() - paddingRight() - scrollbarWidth))
         return -1;
 
     int newOffset = (offset.height() - borderTop() - paddingTop()) / itemHeight() + m_indexOffset;
@@ -726,8 +726,10 @@ bool RenderListBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
 
 LayoutRect RenderListBox::controlClipRect(const LayoutPoint& additionalOffset) const
 {
-    LayoutRect clipRect = contentBoxRect();
-    if (verticalScrollbarIsOnLeft() && (!layer() || !layer()->verticalScrollbarIsOnLeft()))
+    // Clip against the padding box, to give <option>s and overlay scrollbar some extra space
+    // to get painted.
+    LayoutRect clipRect = paddingBoxRect();
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         clipRect.move(m_vBar->occupiedWidth(), 0);
     clipRect.moveBy(additionalOffset);
     return clipRect;
@@ -742,14 +744,14 @@ bool RenderListBox::isActive() const
 void RenderListBox::invalidateScrollbarRect(Scrollbar& scrollbar, const IntRect& rect)
 {
     IntRect scrollRect = rect;
-    scrollRect.move(verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width(), borderTop());
+    scrollRect.move(shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width(), borderTop());
     repaintRectangle(scrollRect);
 }
 
 IntRect RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& scrollbar, const IntRect& scrollbarRect) const
 {
     IntRect rect = scrollbarRect;
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     rect.move(scrollbarLeft, scrollbarTop);
     return view().frameView().convertFromRendererToContainingView(this, rect);
@@ -758,7 +760,7 @@ IntRect RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& scr
 IntRect RenderListBox::convertFromContainingViewToScrollbar(const Scrollbar& scrollbar, const IntRect& parentRect) const
 {
     IntRect rect = view().frameView().convertFromContainingViewToRenderer(this, parentRect);
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     rect.move(-scrollbarLeft, -scrollbarTop);
     return rect;
@@ -767,7 +769,7 @@ IntRect RenderListBox::convertFromContainingViewToScrollbar(const Scrollbar& scr
 IntPoint RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& scrollbar, const IntPoint& scrollbarPoint) const
 {
     IntPoint point = scrollbarPoint;
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     point.move(scrollbarLeft, scrollbarTop);
     return view().frameView().convertFromRendererToContainingView(this, point);
@@ -776,7 +778,7 @@ IntPoint RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& sc
 IntPoint RenderListBox::convertFromContainingViewToScrollbar(const Scrollbar& scrollbar, const IntPoint& parentPoint) const
 {
     IntPoint point = view().frameView().convertFromContainingViewToRenderer(this, parentPoint);
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     point.move(-scrollbarLeft, -scrollbarTop);
     return point;

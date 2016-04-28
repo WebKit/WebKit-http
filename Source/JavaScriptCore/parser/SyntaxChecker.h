@@ -38,30 +38,30 @@ public:
         BinaryExprContext(SyntaxChecker& context)
             : m_context(&context)
         {
-            m_context->m_topBinaryExprs.append(m_context->m_topBinaryExpr);
+            m_token = m_context->m_topBinaryExpr;
             m_context->m_topBinaryExpr = 0;
         }
         ~BinaryExprContext()
         {
-            m_context->m_topBinaryExpr = m_context->m_topBinaryExprs.last();
-            m_context->m_topBinaryExprs.removeLast();
+            m_context->m_topBinaryExpr = m_token;
         }
     private:
+        int m_token;
         SyntaxChecker* m_context;
     };
     struct UnaryExprContext {
         UnaryExprContext(SyntaxChecker& context)
             : m_context(&context)
         {
-            m_context->m_topUnaryTokens.append(m_context->m_topUnaryToken);
+            m_token = m_context->m_topUnaryToken;
             m_context->m_topUnaryToken = 0;
         }
         ~UnaryExprContext()
         {
-            m_context->m_topUnaryToken = m_context->m_topUnaryTokens.last();
-            m_context->m_topUnaryTokens.removeLast();
+            m_context->m_topUnaryToken = m_token;
         }
     private:
+        int m_token;
         SyntaxChecker* m_context;
     };
     
@@ -202,20 +202,20 @@ public:
 
     int createArgumentsList(const JSTokenLocation&, int) { return ArgumentsListResult; }
     int createArgumentsList(const JSTokenLocation&, int, int) { return ArgumentsListResult; }
-    Property createProperty(const Identifier* name, int, PropertyNode::Type type, PropertyNode::PutType, bool complete, SuperBinding = SuperBinding::NotNeeded)
+    Property createProperty(const Identifier* name, int, PropertyNode::Type type, PropertyNode::PutType, bool complete, SuperBinding, bool)
     {
         if (!complete)
             return Property(type);
         ASSERT(name);
         return Property(name, type);
     }
-    Property createProperty(VM* vm, ParserArena& parserArena, double name, int, PropertyNode::Type type, PropertyNode::PutType, bool complete)
+    Property createProperty(VM* vm, ParserArena& parserArena, double name, int, PropertyNode::Type type, PropertyNode::PutType, bool complete, SuperBinding, bool)
     {
         if (!complete)
             return Property(type);
         return Property(&parserArena.identifierArena().makeNumericIdentifier(vm, name), type);
     }
-    Property createProperty(int, int, PropertyNode::Type type, PropertyNode::PutType, bool, SuperBinding = SuperBinding::NotNeeded)
+    Property createProperty(int, int, PropertyNode::Type type, PropertyNode::PutType, bool, SuperBinding, bool)
     {
         return Property(type);
     }
@@ -269,18 +269,18 @@ public:
     void appendExportSpecifier(ExportSpecifierList, ExportSpecifier) { }
 
     int appendConstDecl(const JSTokenLocation&, int, const Identifier*, int) { return StatementResult; }
-    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool strict, const Identifier* name, const ParserFunctionInfo<SyntaxChecker>&, SuperBinding)
+    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool strict, const Identifier* name, const ParserFunctionInfo<SyntaxChecker>&, bool)
     {
         ASSERT(name);
         if (!strict)
             return Property(type);
         return Property(name, type);
     }
-    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool, int, const ParserFunctionInfo<SyntaxChecker>&, SuperBinding)
+    Property createGetterOrSetterProperty(const JSTokenLocation&, PropertyNode::Type type, bool, int, const ParserFunctionInfo<SyntaxChecker>&, bool)
     {
         return Property(type);
     }
-    Property createGetterOrSetterProperty(VM* vm, ParserArena& parserArena, const JSTokenLocation&, PropertyNode::Type type, bool strict, double name, const ParserFunctionInfo<SyntaxChecker>&, SuperBinding)
+    Property createGetterOrSetterProperty(VM* vm, ParserArena& parserArena, const JSTokenLocation&, PropertyNode::Type type, bool strict, double name, const ParserFunctionInfo<SyntaxChecker>&, bool)
     {
         if (!strict)
             return Property(type);
@@ -397,8 +397,6 @@ public:
 private:
     int m_topBinaryExpr;
     int m_topUnaryToken;
-    Vector<int, 8> m_topBinaryExprs;
-    Vector<int, 8> m_topUnaryTokens;
 };
 
 }

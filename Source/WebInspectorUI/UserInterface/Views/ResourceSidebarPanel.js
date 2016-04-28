@@ -275,11 +275,11 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
         // We don't add scripts without URLs here. Those scripts can quickly clutter the interface and
         // are usually more transient. They will get added if/when they need to be shown in a content view.
-        if (!script.url)
+        if (!script.url && !script.sourceURL)
             return;
 
         // If the script URL matches a resource we can assume it is part of that resource and does not need added.
-        if (script.resource)
+        if (script.resource || script.dynamicallyAddedScriptElement)
             return;
 
         var insertIntoTopLevel = false;

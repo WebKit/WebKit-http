@@ -45,60 +45,12 @@ function advanceStringIndex(string, index, unicode)
     return index + 2;
 }
 
-function match(str)
-{
-    "use strict";
-
-    if (!@isObject(this))
-        throw new @TypeError("RegExp.prototype.@@match requires that |this| be an Object");
-
-    let regexp = this;
-    let stringArg = @toString(str);
-
-    if (!regexp.global)
-        return regexp.exec(stringArg);
-
-    let unicode = regexp.unicode;
-    regexp.lastIndex = 0;
-    let resultList = [];
-    let execFunc = regexp.exec;
-
-    if (execFunc !== @RegExp.prototype.@exec && typeof execFunc === "function") {
-        // Match using the overridden exec.
-        let stringLength = stringArg.length;
-
-        while (true) {
-            let result = execFunc(stringArg);
-            
-            if (result === null) {
-                if (resultList.length === 0)
-                    return null;
-                return resultList;
-            }
-
-            if (!@isObject(result))
-                throw new @TypeError("RegExp.prototype.@@match call to RegExp.exec didn't return null or an object");
-
-            let resultString = @toString(result[0]);
-
-            if (!resultString.length)
-                regexp.lastIndex = @advanceStringIndex(stringArg, regexp.lastIndex, unicode);
-
-            resultList.@push(resultString);
-
-            execFunc = regexp.exec;
-        }
-    }
-
-    return regexp.@match(stringArg);
-}
-
 function regExpExec(regexp, str)
 {
     "use strict";
 
     let exec = regexp.exec;
-    let builtinExec = @RegExp.prototype.@exec;
+    let builtinExec = @regExpBuiltinExec;
     if (exec !== builtinExec && typeof exec === "function") {
         let result = exec.@call(regexp, str);
         if (result !== null && !@isObject(result))
@@ -108,10 +60,269 @@ function regExpExec(regexp, str)
     return builtinExec.@call(regexp, str);
 }
 
+function hasObservableSideEffectsForRegExpMatch(regexp) {
+    // This is accessed by the RegExpExec internal function.
+    let regexpExec = @tryGetById(regexp, "exec");
+    if (regexpExec !== @regExpBuiltinExec)
+        return true;
+
+    let regexpGlobal = @tryGetById(regexp, "global");
+    if (regexpGlobal !== @regExpProtoGlobalGetter)
+        return true;
+    let regexpUnicode = @tryGetById(regexp, "unicode");
+    if (regexpUnicode !== @regExpProtoUnicodeGetter)
+        return true;
+
+    return !@isRegExpObject(regexp);
+}
+
+function match(strArg)
+{
+    "use strict";
+
+    if (!@isObject(this))
+        throw new @TypeError("RegExp.prototype.@@match requires that |this| be an Object");
+
+    let regexp = this;
+
+    // Check for observable side effects and call the fast path if there aren't any.
+    if (!@hasObservableSideEffectsForRegExpMatch(regexp))
+        return @regExpMatchFast.@call(regexp, strArg);
+
+    let str = @toString(strArg);
+
+    if (!regexp.global)
+        return @regExpExec(regexp, str);
+    
+    let unicode = regexp.unicode;
+    regexp.lastIndex = 0;
+    let resultList = [];
+    let stringLength = str.length;
+
+    while (true) {
+        let result = @regExpExec(regexp, str);
+        
+        if (result === null) {
+            if (resultList.length === 0)
+                return null;
+            return resultList;
+        }
+
+        if (!@isObject(result))
+            throw new @TypeError("RegExp.prototype.@@match call to RegExp.exec didn't return null or an object");
+
+        let resultString = @toString(result[0]);
+
+        if (!resultString.length)
+            regexp.lastIndex = @advanceStringIndex(str, regexp.lastIndex, unicode);
+
+        resultList.@push(resultString);
+    }
+}
+
+function replace(strArg, replace)
+{
+    "use strict";
+
+    function getSubstitution(matched, str, position, captures, replacement)
+    {
+        "use strict";
+
+        let matchLength = matched.length;
+        let stringLength = str.length;
+        let tailPos = position + matchLength;
+        let m = captures.length;
+        let replacementLength = replacement.length;
+        let result = "";
+        let lastStart = 0;
+
+        for (let start = 0; start = replacement.indexOf("$", lastStart), start !== -1; lastStart = start) {
+            if (start - lastStart > 0)
+                result = result + replacement.substring(lastStart, start);
+            start++;
+            let ch = replacement.charAt(start);
+            if (ch === "")
+                result = result + "$";
+            else {
+                switch (ch)
+                {
+                case "$":
+                    result = result + "$";
+                    start++;
+                    break;
+                case "&":
+                    result = result + matched;
+                    start++;
+                    break;
+                case "`":
+                    if (position > 0)
+                        result = result + str.substring(0, position);
+                    start++;
+                    break;
+                case "'":
+                    if (tailPos < stringLength)
+                        result = result + str.substring(tailPos);
+                    start++;
+                    break;
+                default:
+                    let chCode = ch.charCodeAt(0);
+                    if (chCode >= 0x30 && chCode <= 0x39) {
+                        start++;
+                        let n = chCode - 0x30;
+                        if (n > m)
+                            break;
+                        if (start < replacementLength) {
+                            let nextChCode = replacement.charCodeAt(start);
+                            if (nextChCode >= 0x30 && nextChCode <= 0x39) {
+                                let nn = 10 * n + nextChCode - 0x30;
+                                if (nn <= m) {
+                                    n = nn;
+                                    start++;
+                                }
+                            }
+                        }
+
+                        if (n == 0)
+                            break;
+
+                        if (captures[n] != @undefined)
+                            result = result + captures[n];
+                    } else
+                        result = result + "$";
+                    break;
+                }
+            }
+        }
+
+        return result + replacement.substring(lastStart);
+    }
+
+    if (!(this instanceof @Object))
+        throw new @TypeError("RegExp.prototype.@@replace requires that |this| be an Object");
+
+    let regexp = this;
+
+    let str = @toString(strArg);
+    let stringLength = str.length;
+    let functionalReplace = typeof replace === 'function';
+
+    if (!functionalReplace)
+        replace = @toString(replace);
+
+    let global = regexp.global;
+    let unicode = false;
+
+    if (global) {
+        unicode = regexp.unicode;
+        regexp.lastIndex = 0;
+    }
+
+    let resultList = [];
+    let result;
+    let done = false;
+    while (!done) {
+        result = @regExpExec(regexp, str);
+
+        if (result === null)
+            done = true;
+        else {
+            resultList.@push(result);
+            if (!global)
+                done = true;
+            else {
+                let matchStr = @toString(result[0]);
+
+                if (!matchStr.length)
+                    regexp.lastIndex = @advanceStringIndex(str, regexp.lastIndex, unicode);
+            }
+        }
+    }
+
+    let accumulatedResult = "";
+    let nextSourcePosition = 0;
+    let lastPosition = 0;
+
+    for (result of resultList) {
+        let nCaptures = result.length - 1;
+        if (nCaptures < 0)
+            nCaptures = 0;
+        let matched = @toString(result[0]);
+        let matchLength = matched.length;
+        let position = result.index;
+        position = (position > stringLength) ? stringLength : position;
+        position = (position < 0) ? 0 : position;
+
+        let captures = [];
+        for (let n = 1; n <= nCaptures; n++) {
+            let capN = result[n];
+            if (capN !== @undefined)
+                capN = @toString(capN);
+            captures[n] = capN;
+        }
+
+        let replacement;
+
+        if (functionalReplace) {
+            let replacerArgs = [ matched ].concat(captures.slice(1));
+            replacerArgs.@push(position);
+            replacerArgs.@push(str);
+
+            let replValue = replace.@apply(@undefined, replacerArgs);
+            replacement = @toString(replValue);
+        } else
+            replacement = getSubstitution(matched, str, position, captures, replace);
+
+        if (position >= nextSourcePosition && position >= lastPosition) {
+            accumulatedResult = accumulatedResult + str.substring(nextSourcePosition, position) + replacement;
+            nextSourcePosition = position + matchLength;
+            lastPosition = position;
+        }
+    }
+
+    if (nextSourcePosition >= stringLength)
+        return  accumulatedResult;
+
+    return accumulatedResult + str.substring(nextSourcePosition);
+}
+
+// 21.2.5.9 RegExp.prototype[@@search] (string)
+function search(strArg)
+{
+    "use strict";
+
+    let regexp = this;
+
+    // Check for observable side effects and call the fast path if there aren't any.
+    if (@isRegExpObject(regexp) && @tryGetById(regexp, "exec") === @regExpBuiltinExec)
+        return @regExpSearchFast.@call(regexp, strArg);
+
+    // 1. Let rx be the this value.
+    // 2. If Type(rx) is not Object, throw a TypeError exception.
+    if (!@isObject(this))
+        throw new @TypeError("RegExp.prototype.@@search requires that |this| be an Object");
+
+    // 3. Let S be ? ToString(string).
+    let str = @toString(strArg)
+
+    // 4. Let previousLastIndex be ? Get(rx, "lastIndex").
+    let previousLastIndex = regexp.lastIndex;
+    // 5. Perform ? Set(rx, "lastIndex", 0, true).
+    regexp.lastIndex = 0;
+    // 6. Let result be ? RegExpExec(rx, S).
+    let result = @regExpExec(regexp, str);
+    // 7. Perform ? Set(rx, "lastIndex", previousLastIndex, true).
+    regexp.lastIndex = previousLastIndex;
+    // 8. If result is null, return -1.
+    if (result === null)
+        return -1;
+    // 9. Return ? Get(result, "index").
+    return result.index;
+}
+
 function hasObservableSideEffectsForRegExpSplit(regexp) {
     // This is accessed by the RegExpExec internal function.
     let regexpExec = @tryGetById(regexp, "exec");
-    if (regexpExec !== @RegExp.prototype.@exec)
+    if (regexpExec !== @regExpBuiltinExec)
         return true;
     
     // This is accessed by step 5 below.
@@ -141,7 +352,7 @@ function hasObservableSideEffectsForRegExpSplit(regexp) {
     if (regexpSource !== @regExpProtoSourceGetter)
         return true;
     
-    return !@isRegExp(regexp);
+    return !@isRegExpObject(regexp);
 }
 
 // ES 21.2.5.11 RegExp.prototype[@@split](string, limit)
@@ -276,4 +487,3 @@ function split(string, limit)
     // 22. Return A.
     return result;
 }
-

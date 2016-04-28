@@ -1789,6 +1789,10 @@ class CppStyleTest(CppStyleTestBase):
             '    } @catch (NSException *exception) {\n'
             '    }\n',
             '')
+        self.assert_multi_line_lint(
+            '    @synchronized (self) {\n'
+            '    }\n',
+            '')
 
     def test_mismatching_spaces_in_parens(self):
         self.assert_lint('if (foo ) {', 'Extra space before ) in if'
@@ -3580,6 +3584,22 @@ class NoNonVirtualDestructorsTest(CppStyleTestBase):
                     FOO_ONE
                 };''',
             ['enum members should use InterCaps with an initial capital letter or initial \'k\' for C-style enums.  [readability/enum_casing] [4]'] * 5)
+
+        # Allow all-caps enum for JSTokenType
+        self.assert_multi_line_lint(
+            '''\
+                enum JSTokenType {
+                    NULLTOKEN = KeywordTokenFlag,
+                    TRUETOKEN,
+                    FALSETOKEN,
+                    // ...
+                };''',
+            '')
+
+        self.assert_multi_line_lint(
+            '''\
+                enum JSTokenType { NULLTOKEN = KeywordTokenFlag, TRUETOKEN, FALSETOKEN };''',
+            '')
 
         self.assert_multi_line_lint(
             '''\

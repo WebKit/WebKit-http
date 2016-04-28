@@ -208,6 +208,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${FORWARDING_HEADERS_DIR}"
     "${DERIVED_SOURCES_DIR}"
     "${WEBCORE_DIR}/platform/graphics/cairo"
+    "${WEBCORE_DIR}/platform/graphics/freetype"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/network/soup"
@@ -239,6 +240,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${BCM_HOST_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${EGL_INCLUDE_DIRS}
+    ${FREETYPE2_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
@@ -249,6 +251,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
 list(APPEND WebKit2_LIBRARIES
     ${BCM_HOST_LIBRARIES}
     ${CAIRO_LIBRARIES}
+    ${FREETYPE2_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${GSTREAMER_LIBRARIES}
     ${HARFBUZZ_LIBRARIES}

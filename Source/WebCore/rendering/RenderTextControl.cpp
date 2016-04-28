@@ -36,7 +36,7 @@
 
 namespace WebCore {
 
-RenderTextControl::RenderTextControl(HTMLTextFormControlElement& element, Ref<RenderStyle>&& style)
+RenderTextControl::RenderTextControl(HTMLTextFormControlElement& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
 {
 }
@@ -65,8 +65,8 @@ void RenderTextControl::styleDidChange(StyleDifference diff, const RenderStyle* 
     if (innerTextRenderer) {
         // We may have set the width and the height in the old style in layout().
         // Reset them now to avoid getting a spurious layout hint.
-        innerTextRenderer->style().setHeight(Length());
-        innerTextRenderer->style().setWidth(Length());
+        innerTextRenderer->mutableStyle().setHeight(Length());
+        innerTextRenderer->mutableStyle().setWidth(Length());
         innerTextRenderer->setStyle(textFormControlElement().createInnerTextStyle(style()));
     }
     textFormControlElement().updatePlaceholderVisibility();

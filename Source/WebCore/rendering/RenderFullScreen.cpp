@@ -36,7 +36,7 @@ namespace WebCore {
 
 class RenderFullScreenPlaceholder final : public RenderBlockFlow {
 public:
-    RenderFullScreenPlaceholder(RenderFullScreen& owner, Ref<RenderStyle>&& style)
+    RenderFullScreenPlaceholder(RenderFullScreen& owner, RenderStyle&& style)
         : RenderBlockFlow(owner.document(), WTFMove(style))
         , m_owner(owner) 
     {
@@ -54,7 +54,7 @@ void RenderFullScreenPlaceholder::willBeDestroyed()
     RenderBlockFlow::willBeDestroyed();
 }
 
-RenderFullScreen::RenderFullScreen(Document& document, Ref<RenderStyle>&& style)
+RenderFullScreen::RenderFullScreen(Document& document, RenderStyle&& style)
     : RenderFlexibleBox(document, WTFMove(style))
     , m_placeholder(0)
 {
@@ -78,28 +78,28 @@ void RenderFullScreen::willBeDestroyed()
     RenderFlexibleBox::willBeDestroyed();
 }
 
-static Ref<RenderStyle> createFullScreenStyle()
+static RenderStyle createFullScreenStyle()
 {
-    auto fullscreenStyle = RenderStyle::createDefaultStyle();
+    auto fullscreenStyle = RenderStyle::create();
 
     // Create a stacking context:
-    fullscreenStyle.get().setZIndex(INT_MAX);
+    fullscreenStyle.setZIndex(INT_MAX);
 
-    fullscreenStyle.get().setFontDescription({ });
-    fullscreenStyle.get().fontCascade().update(nullptr);
+    fullscreenStyle.setFontDescription({ });
+    fullscreenStyle.fontCascade().update(nullptr);
 
-    fullscreenStyle.get().setDisplay(FLEX);
-    fullscreenStyle.get().setJustifyContentPosition(ContentPositionCenter);
-    fullscreenStyle.get().setAlignItemsPosition(ItemPositionCenter);
-    fullscreenStyle.get().setFlexDirection(FlowColumn);
+    fullscreenStyle.setDisplay(FLEX);
+    fullscreenStyle.setJustifyContentPosition(ContentPositionCenter);
+    fullscreenStyle.setAlignItemsPosition(ItemPositionCenter);
+    fullscreenStyle.setFlexDirection(FlowColumn);
     
-    fullscreenStyle.get().setPosition(FixedPosition);
-    fullscreenStyle.get().setWidth(Length(100.0, Percent));
-    fullscreenStyle.get().setHeight(Length(100.0, Percent));
-    fullscreenStyle.get().setLeft(Length(0, WebCore::Fixed));
-    fullscreenStyle.get().setTop(Length(0, WebCore::Fixed));
+    fullscreenStyle.setPosition(FixedPosition);
+    fullscreenStyle.setWidth(Length(100.0, Percent));
+    fullscreenStyle.setHeight(Length(100.0, Percent));
+    fullscreenStyle.setLeft(Length(0, WebCore::Fixed));
+    fullscreenStyle.setTop(Length(0, WebCore::Fixed));
     
-    fullscreenStyle.get().setBackgroundColor(Color::black);
+    fullscreenStyle.setBackgroundColor(Color::black);
 
     return fullscreenStyle;
 }
@@ -185,19 +185,19 @@ void RenderFullScreen::setPlaceholder(RenderBlock* placeholder)
     m_placeholder = placeholder;
 }
 
-void RenderFullScreen::createPlaceholder(Ref<RenderStyle>&& style, const LayoutRect& frameRect)
+void RenderFullScreen::createPlaceholder(std::unique_ptr<RenderStyle> style, const LayoutRect& frameRect)
 {
-    if (style.get().width().isAuto())
-        style.get().setWidth(Length(frameRect.width(), Fixed));
-    if (style.get().height().isAuto())
-        style.get().setHeight(Length(frameRect.height(), Fixed));
+    if (style->width().isAuto())
+        style->setWidth(Length(frameRect.width(), Fixed));
+    if (style->height().isAuto())
+        style->setHeight(Length(frameRect.height(), Fixed));
 
     if (m_placeholder) {
-        m_placeholder->setStyle(WTFMove(style));
+        m_placeholder->setStyle(WTFMove(*style));
         return;
     }
 
-    m_placeholder = new RenderFullScreenPlaceholder(*this, WTFMove(style));
+    m_placeholder = new RenderFullScreenPlaceholder(*this, WTFMove(*style));
     m_placeholder->initializeStyle();
     if (parent()) {
         parent()->addChild(m_placeholder, this);

@@ -315,6 +315,7 @@
     macro(isConcatSpreadable) \
     macro(iterator) \
     macro(match) \
+    macro(replace) \
     macro(search) \
     macro(species) \
     macro(split) \
@@ -405,6 +406,7 @@
     macro(NumberFormat) \
     macro(intlSubstituteValue) \
     macro(thisTimeValue) \
+    macro(thisNumberValue) \
     macro(newTargetLocal) \
     macro(derivedConstructor) \
     macro(isBoundFunction) \
@@ -414,7 +416,7 @@
     macro(isJSArray) \
     macro(isArrayConstructor) \
     macro(isConstructor) \
-    macro(isRegExp) \
+    macro(isRegExpObject) \
     macro(concatMemcpy) \
     macro(appendMemcpy) \
     macro(predictFinalLengthFromArgumunts) \
@@ -424,8 +426,12 @@
     macro(regExpCreate) \
     macro(SetIterator) \
     macro(setIteratorNext) \
+    macro(replaceUsingRegExp) \
+    macro(replaceUsingStringSearch) \
     macro(MapIterator) \
     macro(mapIteratorNext) \
+    macro(regExpBuiltinExec) \
+    macro(regExpMatchFast) \
     macro(regExpProtoFlagsGetter) \
     macro(regExpProtoGlobalGetter) \
     macro(regExpProtoIgnoreCaseGetter) \
@@ -433,7 +439,10 @@
     macro(regExpProtoSourceGetter) \
     macro(regExpProtoStickyGetter) \
     macro(regExpProtoUnicodeGetter) \
+    macro(regExpReplaceFast) \
+    macro(regExpSearchFast) \
     macro(regExpSplitFast) \
+    macro(regExpPrototypeSymbolReplace) \
     macro(stringIncludesInternal) \
     macro(stringSplitFast) \
     macro(stringSubstrInternal) \

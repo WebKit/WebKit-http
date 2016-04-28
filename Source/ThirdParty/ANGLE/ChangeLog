@@ -1,3 +1,64 @@
+2016-04-26  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][ANGLE] Display object is not created.
+        https://bugs.webkit.org/show_bug.cgi?id=157042
+
+        Reviewed by Alex Christensen.
+
+        The CreateDisplayFromAttribs function will not create a DisplayD3D object when the requested
+        type is EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE, because ANGLE_ENABLE_OPENGL is not defined.
+        We should be able to create a DisplayD3D object without defining ANGLE_ENABLE_OPENGL.
+
+        * src/libANGLE/Display.cpp:
+
+2016-04-26  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][WebGL] Enable ESSL and GLSL translators.
+        https://bugs.webkit.org/show_bug.cgi?id=157002
+
+        Reviewed by Darin Adler.
+
+        Enable support for ESSL and GLSL translators, and add missing files.
+
+        * CMakeLists.txt:
+
+2016-04-22  Joonghun Park  <jh718.park@samsung.com>
+
+        [ANGLE] Remove deprecated auto_ptr warning. Unreviewed.
+        https://bugs.webkit.org/show_bug.cgi?id=156894
+
+        * src/compiler/preprocessor/MacroExpander.h: Use std::unique_ptr instead of std::auto_ptr.
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r199738
+
+        * CMakeLists.txt:
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r199738
+
+        * CMakeLists.txt:
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix.
+
+        * src/compiler/translator/Intermediate.h: Added.
+        (TIntermediate::TIntermediate):
+        * src/compiler/translator/intermediate.h: Removed.
+        Changed case of Intermediate.h file name for case sensitive file systems.
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=156755
+
+        Reviewed by Dean Jackson.
+
+        Huge list of changed files omitted.
+
 2016-04-12  Alex Christensen  <achristensen@webkit.org>
 
         Remove failing assertion in ANGLE

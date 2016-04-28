@@ -1,3 +1,413 @@
+2016-04-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove the build flag for template elements
+        https://bugs.webkit.org/show_bug.cgi?id=157022
+
+        Reviewed by Daniel Bates.
+
+        * wtf/FeatureDefines.h:
+
+2016-04-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Heap corruption is detected when destructing JSGlobalObject
+        https://bugs.webkit.org/show_bug.cgi?id=156831
+
+        Reviewed by Mark Lam.
+
+        WebKit uses CRT static library on Windows.  Each copy of the CRT
+        library has its own heap manager, allocating memory in one CRT
+        library and passing the pointer across a DLL boundary to be freed
+        by a different copy of the CRT library is a potential cause for
+        heap corruption.
+
+          Potential Errors Passing CRT Objects Across DLL Boundaries
+          <https://msdn.microsoft.com/en-us/library/ms235460(v=vs.140).aspx>
+
+        JSGlobalObject::createRareDataIfNeeded is inlined but
+        JSGlobalObject::~JSGlobalObject is not.  Then, the heap of
+        allocating JSGlobalObjectRareData is WebKit.dll, but deallocating
+        JavaScriptCore.dll.  Adding WTF_MAKE_FAST_ALLOCATED to
+        JSGlobalObjectRareData ensures heap consistency of it.  WTF::Lock
+        also needs WTF_MAKE_FAST_ALLOCATED because it is allocated from
+        the inlined constructor of JSGlobalObjectRareData.
+
+        * wtf/Lock.h: Add WTF_MAKE_FAST_ALLOCATED.
+
+2016-04-21  Saam barati  <sbarati@apple.com>
+
+        Lets do less locking of symbol tables in the BytecodeGenerator where we don't have race conditions
+        https://bugs.webkit.org/show_bug.cgi?id=156821
+
+        Reviewed by Filip Pizlo.
+
+        This patch introduces a new constructor for Locker which implies no
+        locking is necessary. You instantiate such a locker like so:
+        `Locker<Lock> locker(Locker<Lock>::NoLockingNecessary);`
+
+        This is useful to for very specific places when it is not yet
+        required to engage in a specified locking protocol. As an example,
+        we use this in JSC when we allocate a particular object that
+        engages in a locking protocol with the concurrent compiler thread,
+        but before a concurrent compiler thread that could have access
+        to the object exists.
+
+        * wtf/Locker.h:
+        (WTF::Locker::Locker):
+        (WTF::Locker::~Locker):
+
+2016-04-19  Michael Saboff  <msaboff@apple.com>
+
+        iTunes crashing JavaScriptCore.dll
+        https://bugs.webkit.org/show_bug.cgi?id=156647
+
+        Reviewed by Filip Pizlo.
+
+        If a thread was created without using the WTF thread apis and that thread uses
+        a JavaScript VM and that thread exits with the VM still around, JSC won't know
+        that the thread has exited.  Currently, we use ThreadSpecificThreadExit() to
+        clean up any thread specific keys.  Cleaning up these keys is how JSC is
+        notified of a thread exit.  We only call ThreadSpecificThreadExit() from
+        wtfThreadEntryPoint() when the thread entry point function returns.
+        This mechanism was put in place for Windows because we layer the WTF::ThreadSpecific
+        functionality on top of TLS (Thread Local Storage), but TLS doesn't have
+        a thread exiting callback the way that pthread_create_key does.
+
+        The fix is to change from using TLS to using FLS (Fiber Local Storage).  Although
+        Windows allows multiple fibers per thread, WebKit is not designed to work with a
+        multiple fibers per thread.  When there is only one fiber per thread, FLS works just
+        like TLS, but it has the destroy callback.
+
+        I restructured the Windows version of WTF::ThreadSpecific to be almost the same
+        as the pthread version.  Added THREAD_SPECIFIC_CALL to set the correct
+        calling convenction for Windows 32 bit.
+
+        * wtf/ThreadSpecific.h:
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::threadSpecificSet):
+        (WTF::threadSpecificGet):
+        (WTF::ThreadSpecific<T>::ThreadSpecific):
+        (WTF::ThreadSpecific<T>::~ThreadSpecific):
+        (WTF::ThreadSpecific<T>::get):
+        (WTF::ThreadSpecific<T>::set):
+        (WTF::ThreadSpecific<T>::destroy):
+        Restructured to use FLS.  Renamed TLS* to FLS*.
+
+        * wtf/ThreadSpecificWin.cpp:
+        (WTF::flsKeyCount):
+        (WTF::flsKeys):
+        Renamed from tlsKey*() to flsKey*().
+
+        (WTF::destructorsList): Deleted.
+        (WTF::destructorsMutex): Deleted.
+        (WTF::PlatformThreadSpecificKey::PlatformThreadSpecificKey): Deleted.
+        (WTF::PlatformThreadSpecificKey::~PlatformThreadSpecificKey): Deleted.
+        (WTF::PlatformThreadSpecificKey::setValue): Deleted.
+        (WTF::PlatformThreadSpecificKey::value): Deleted.
+        (WTF::PlatformThreadSpecificKey::callDestructor): Deleted.
+        (WTF::tlsKeyCount): Deleted.
+        (WTF::tlsKeys): Deleted.
+        (WTF::threadSpecificKeyCreate): Deleted.
+        (WTF::threadSpecificKeyDelete): Deleted.
+        (WTF::threadSpecificSet): Deleted.
+        (WTF::threadSpecificGet): Deleted.
+        (WTF::ThreadSpecificThreadExit): Deleted.
+
+        * wtf/ThreadingWin.cpp:
+        (WTF::wtfThreadEntryPoint): Eliminated call to ThreadSpecificThreadExit.
+
+2016-04-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Add more locking algorithms to the LockSpeedTest.
+
+        Rubber stamped by Saam Barati.
+
+        * benchmarks/LockSpeedTest.cpp:
+        (main):
+
+2016-04-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Clean up the ParkingLot uparking API a bit
+        https://bugs.webkit.org/show_bug.cgi?id=156746
+
+        Reviewed by Saam Barati and Geoffrey Garen.
+        
+        Previously, unparkOne() would either return a boolean to tell you if there are any more threads on
+        the queue or it would pass your callback a pair of booleans - one to tell if a thread was unparked
+        and another to tell if there are any more threads. This was an annoying inconsistency. What if you
+        wanted to know if unparkOne() unparked a thread but you don't care to use callbacks?
+
+        This fixes unparkOne() to use a struct called UnparkResult for both of its variants. This makes the
+        code a bit cleaner.
+
+        * wtf/Atomics.h: Add some more atomic ops.
+        (WTF::Atomic::exchangeAndAdd):
+        (WTF::Atomic::exchange):
+        * wtf/Condition.h: Change calls to unparkOne().
+        (WTF::ConditionBase::notifyOne):
+        * wtf/Lock.cpp: Change calls to unparkOne().
+        (WTF::LockBase::unlockSlow):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        * wtf/ParkingLot.h: Switch to using ScopedLambda and introduce UnparkResult.
+
+2016-04-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199726.
+        https://bugs.webkit.org/show_bug.cgi?id=156748
+
+        WebKit tests crash on Windows 32 (Requested by msaboff on
+        #webkit).
+
+        Reverted changeset:
+
+        "iTunes crashing JavaScriptCore.dll"
+        https://bugs.webkit.org/show_bug.cgi?id=156647
+        http://trac.webkit.org/changeset/199726
+
+2016-04-19  Michael Saboff  <msaboff@apple.com>
+
+        iTunes crashing JavaScriptCore.dll
+        https://bugs.webkit.org/show_bug.cgi?id=156647
+
+        Reviewed by Saam Barati.
+
+        If a thread was created without using the WTF thread apis and that thread uses
+        a JavaScript VM and that thread exits with the VM still around, JSC won't know
+        that the thread has exited.  Currently, we use ThreadSpecificThreadExit() to
+        clean up any thread specific keys.  Cleaning up these keys is how JSC is
+        notified of a thread exit.  We only call ThreadSpecificThreadExit() from
+        wtfThreadEntryPoint() when the thread entry point function returns.
+        This mechanism was put in place for Windows because we layer the WTF::ThreadSpecific
+        functionality on top of TLS (Thread Local Storage), but TLS doesn't have
+        a thread exiting callback the way that pthread_create_key.
+
+        The fix is to change from using TLS to using FLS (Fiber Local Storage).  Although
+        Windows allows multiple fibers per thread, WebKit is not designed to work with a
+        multiple fibers per thread.  When there is only one fiber per thread, FLS works just
+        like TLS, but it has the destroy callback.
+
+        I restructured the Windows version of WTF::ThreadSpecific to be almost the same
+        as the pthread version.
+
+        * wtf/ThreadSpecific.h:
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::threadSpecificSet):
+        (WTF::threadSpecificGet):
+        (WTF::ThreadSpecific<T>::ThreadSpecific):
+        (WTF::ThreadSpecific<T>::~ThreadSpecific):
+        (WTF::ThreadSpecific<T>::get):
+        (WTF::ThreadSpecific<T>::set):
+        (WTF::ThreadSpecific<T>::destroy):
+        Restructured to use FLS.  Renamed TLS* to FLS*.
+
+        * wtf/ThreadSpecificWin.cpp:
+        (WTF::flsKeyCount):
+        (WTF::flsKeys):
+        Renamed from tlsKey*() to flsKey*().
+
+        (WTF::destructorsList): Deleted.
+        (WTF::destructorsMutex): Deleted.
+        (WTF::PlatformThreadSpecificKey::PlatformThreadSpecificKey): Deleted.
+        (WTF::PlatformThreadSpecificKey::~PlatformThreadSpecificKey): Deleted.
+        (WTF::PlatformThreadSpecificKey::setValue): Deleted.
+        (WTF::PlatformThreadSpecificKey::value): Deleted.
+        (WTF::PlatformThreadSpecificKey::callDestructor): Deleted.
+        (WTF::tlsKeyCount): Deleted.
+        (WTF::tlsKeys): Deleted.
+        (WTF::threadSpecificKeyCreate): Deleted.
+        (WTF::threadSpecificKeyDelete): Deleted.
+        (WTF::threadSpecificSet): Deleted.
+        (WTF::threadSpecificGet): Deleted.
+        (WTF::ThreadSpecificThreadExit): Deleted.
+
+        * wtf/ThreadingWin.cpp:
+        (WTF::wtfThreadEntryPoint): Eliminated call to ThreadSpecificThreadExit.
+
+2016-04-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK] Use Generic WorkQueue instead of WorkQueueGLib
+        https://bugs.webkit.org/show_bug.cgi?id=156721
+
+        Reviewed by Benjamin Poulain.
+
+        WorkQueueGLib includes platform-dependent part only for WorkQueue::dispatchAfter.
+        However, its code is related to RunLoopGLib rather than WorkQueueGLib.
+        In this patch, we move the code from WorkQueueGLib to RunLoopGLib, drop WorkQueueGLib
+        and use WorkQueueGeneric.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::DispatchAfterContext::dispatch):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/glib/WorkQueueGLib.cpp: Removed.
+        (WTF::WorkQueue::platformInitialize): Deleted.
+        (WTF::WorkQueue::platformInvalidate): Deleted.
+        (WTF::WorkQueue::dispatch): Deleted.
+        (WTF::DispatchAfterContext::DispatchAfterContext): Deleted.
+        (WTF::DispatchAfterContext::~DispatchAfterContext): Deleted.
+        (WTF::DispatchAfterContext::dispatch): Deleted.
+        (WTF::WorkQueue::dispatchAfter): Deleted.
+
+2016-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSCOnly] Implement RunLoop and remove glib dependency
+        https://bugs.webkit.org/show_bug.cgi?id=155706
+
+        Reviewed by Michael Catanzaro.
+
+        Add missing RunLoop and WorkQueue platform code for JSCOnly port.
+        The implementation does not use platform specific things. Instead, we
+        implement them on WTF framework; using condition variables to construct
+        the run loop and timers.
+
+        Since the fallback is implemented, it is not necessary for JSCOnly port
+        to depend on GLib's RunLoop abstraction. So this patch removes its
+        dependency. As a result, now, JSCOnly port removes dependencies except for the system ICU.
+
+        We clean up event loop ifdefs by introducing USE_XXX_EVENT_LOOP flags.
+        USE(XXX_EVENT_LOOP) is exclusive to each other. So from now, we do not need to take care
+        of the order of if-defs for the event loops. (For example, USE(GLIB) should have lead before
+        OS(DARWIN) in WorkQueue.h for WebKitGTK on Darwin.)
+
+        EVENT_LOOP determination is done in Platform.h. This follows the style of WTF PLATFORM.
+
+        * wtf/Platform.h:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/generic/MainThreadGeneric.cpp: Renamed from Source/WTF/wtf/none/MainThreadNone.cpp.
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/generic/RunLoopGeneric.cpp: Added.
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+        (WTF::RunLoop::TimerBase::ScheduledTask::fired):
+        (WTF::RunLoop::TimerBase::ScheduledTask::scheduledTimePoint):
+        (WTF::RunLoop::TimerBase::ScheduledTask::updateReadyTime):
+        (WTF::RunLoop::TimerBase::ScheduledTask::EarliestSchedule::operator()):
+        (WTF::RunLoop::TimerBase::ScheduledTask::isActive):
+        (WTF::RunLoop::TimerBase::ScheduledTask::deactivate):
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::~RunLoop):
+        (WTF::RunLoop::populateTasks):
+        (WTF::RunLoop::runImpl):
+        (WTF::RunLoop::run):
+        (WTF::RunLoop::iterate):
+        (WTF::RunLoop::stop):
+        (WTF::RunLoop::wakeUp):
+        (WTF::RunLoop::schedule):
+        (WTF::RunLoop::scheduleAndWakeUp):
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::TimerBase):
+        (WTF::RunLoop::TimerBase::~TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+        * wtf/generic/WorkQueueGeneric.cpp: Added.
+        (WorkQueue::platformInitialize):
+        (WorkQueue::platformInvalidate):
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/none/MainThreadNone.cpp:
+        (WTF::initializeMainThreadPlatform): Deleted.
+        (WTF::scheduleDispatchFunctionsOnMainThread): Deleted.
+        * wtf/none/RunLoopNone.cpp:
+        (WTF::RunLoop::RunLoop): Deleted.
+        (WTF::RunLoop::~RunLoop): Deleted.
+        (WTF::RunLoop::run): Deleted.
+        (WTF::RunLoop::stop): Deleted.
+        (WTF::RunLoop::wakeUp): Deleted.
+        (WTF::RunLoop::TimerBase::TimerBase): Deleted.
+        (WTF::RunLoop::TimerBase::~TimerBase): Deleted.
+        (WTF::RunLoop::TimerBase::start): Deleted.
+        (WTF::RunLoop::TimerBase::stop): Deleted.
+        (WTF::RunLoop::TimerBase::isActive): Deleted.
+        * wtf/none/WorkQueueNone.cpp:
+        (WorkQueue::platformInitialize): Deleted.
+        (WorkQueue::platformInvalidate): Deleted.
+        (WorkQueue::dispatch): Deleted.
+        (WorkQueue::dispatchAfter): Deleted.
+
+2016-04-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199621.
+        https://bugs.webkit.org/show_bug.cgi?id=156708
+
+        made windows tests crash (Requested by alexchristensen on
+        #webkit).
+
+        Reverted changeset:
+
+        "iTunes crashing JavaScriptCore.dll"
+        https://bugs.webkit.org/show_bug.cgi?id=156647
+        http://trac.webkit.org/changeset/199621
+
+2016-04-15  Michael Saboff  <msaboff@apple.com>
+
+        iTunes crashing JavaScriptCore.dll
+        https://bugs.webkit.org/show_bug.cgi?id=156647
+
+        Reviewed by Geoffrey Garen.
+
+        If a thread was created without using the WTF thread apis and that thread uses
+        a JavaScript VM and that thread exits with the VM still around, JSC won't know
+        that the thread has exited.  Currently, we use ThreadSpecificThreadExit() to
+        clean up any thread specific keys.  Cleaning up these keys is how JSC is
+        notified of a thread exit.  We only call ThreadSpecificThreadExit() from
+        wtfThreadEntryPoint() when the thread entry point function returns.
+        This mechanism was put in place for Windos because we layer the WTF::ThreadSpecific
+        functionality on top of TLS (Thread Local Storage), but TLS doesn't have
+        a thread exiting callback the way that pthread_create_key.
+
+        The fix is to change from using TLS to using FLS (Fiber Local Storage).  Although
+        Windows allows multiple fibers per thread, WebKit is not designed to work with a
+        multiple fibers per thread.  When ther is only one fiber per thread, FLS works just
+        like TLS, but it has the destroy callback.
+
+        I restructured the Windows version of WTF::ThreadSpecific to be almost the same
+        as the pthread version.
+        
+        * wtf/ThreadSpecific.h:
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::threadSpecificSet):
+        (WTF::threadSpecificGet):
+        (WTF::ThreadSpecific<T>::ThreadSpecific):
+        (WTF::ThreadSpecific<T>::~ThreadSpecific):
+        (WTF::ThreadSpecific<T>::get):
+        (WTF::ThreadSpecific<T>::set):
+        (WTF::ThreadSpecific<T>::destroy):
+        Restructured to use FLS.  Renamed TLS* to FLS*.
+
+        * wtf/ThreadSpecificWin.cpp:
+        (WTF::flsKeyCount):
+        (WTF::flsKeys):
+        Renamed from tlsKey*() to flsKey*().
+
+        (WTF::destructorsList): Deleted.
+        (WTF::destructorsMutex): Deleted.
+        (WTF::PlatformThreadSpecificKey::PlatformThreadSpecificKey): Deleted.
+        (WTF::PlatformThreadSpecificKey::~PlatformThreadSpecificKey): Deleted.
+        (WTF::PlatformThreadSpecificKey::setValue): Deleted.
+        (WTF::PlatformThreadSpecificKey::value): Deleted.
+        (WTF::PlatformThreadSpecificKey::callDestructor): Deleted.
+        (WTF::tlsKeyCount): Deleted.
+        (WTF::tlsKeys): Deleted.
+        (WTF::threadSpecificKeyCreate): Deleted.
+        (WTF::threadSpecificKeyDelete): Deleted.
+        (WTF::threadSpecificSet): Deleted.
+        (WTF::threadSpecificGet): Deleted.
+        (WTF::ThreadSpecificThreadExit): Deleted.
+
+        * wtf/ThreadingWin.cpp:
+        (WTF::wtfThreadEntryPoint): Eliminated call to ThreadSpecificThreadExit.
+
 2016-04-12  Filip Pizlo  <fpizlo@apple.com>
 
         PolymorphicAccess should buffer AccessCases before regenerating

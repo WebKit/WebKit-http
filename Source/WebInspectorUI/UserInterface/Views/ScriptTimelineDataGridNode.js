@@ -87,6 +87,24 @@ WebInspector.ScriptTimelineDataGridNode = class ScriptTimelineDataGridNode exten
         return this._cachedData;
     }
 
+    get subtitle()
+    {
+        if (this._subtitle !== undefined)
+            return this._subtitle;
+
+        this._subtitle = "";
+
+        if (this._record.eventType === WebInspector.ScriptTimelineRecord.EventType.TimerInstalled) {
+            let timeoutString = Number.secondsToString(this._record.details.timeout / 1000);
+            if (this._record.details.repeating)
+                this._subtitle = WebInspector.UIString("%s interval").format(timeoutString);
+            else
+                this._subtitle = WebInspector.UIString("%s delay").format(timeoutString);
+        }
+
+        return this._subtitle;
+    }
+
     updateRangeTimes(startTime, endTime)
     {
         var oldRangeStartTime = this._rangeStartTime;
@@ -138,6 +156,16 @@ WebInspector.ScriptTimelineDataGridNode = class ScriptTimelineDataGridNode exten
         return super.createCellContent(columnIdentifier, cell);
     }
 
+    // Protected
+
+    filterableDataForColumn(columnIdentifier)
+    {
+        if (columnIdentifier === "name")
+            return [this.displayName(), this.subtitle];
+
+        return super.filterableDataForColumn(columnIdentifier);
+    }
+
     // Private
 
     _createNameCellDocumentFragment(cellElement)
@@ -145,16 +173,11 @@ WebInspector.ScriptTimelineDataGridNode = class ScriptTimelineDataGridNode exten
         let fragment = document.createDocumentFragment();
         fragment.append(this.displayName());
 
-        if (this._record.eventType === WebInspector.ScriptTimelineRecord.EventType.TimerInstalled) {
+        if (this.subtitle) {
             let subtitleElement = document.createElement("span");
             subtitleElement.classList.add("subtitle");
+            subtitleElement.textContent = this.subtitle;
             fragment.append(subtitleElement);
-
-            let timeoutString = Number.secondsToString(this._record.details.timeout / 1000);
-            if (this._record.details.repeating)
-                subtitleElement.textContent = WebInspector.UIString("%s interval").format(timeoutString);
-            else
-                subtitleElement.textContent = WebInspector.UIString("%s delay").format(timeoutString);
         }
 
         return fragment;

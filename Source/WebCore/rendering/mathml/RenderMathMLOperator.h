@@ -39,8 +39,8 @@ namespace WebCore {
 
 class RenderMathMLOperator : public RenderMathMLToken {
 public:
-    RenderMathMLOperator(MathMLElement&, Ref<RenderStyle>&&);
-    RenderMathMLOperator(Document&, Ref<RenderStyle>&&, const String& operatorString, MathMLOperatorDictionary::Form, unsigned short flags = 0);
+    RenderMathMLOperator(MathMLElement&, RenderStyle&&);
+    RenderMathMLOperator(Document&, RenderStyle&&, const String& operatorString, MathMLOperatorDictionary::Form, unsigned short flags = 0);
 
     virtual void stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit depthBelowBaseline);
     void stretchTo(LayoutUnit width);
@@ -51,7 +51,9 @@ public:
     // FIXME: The displaystyle property is not implemented (https://bugs.webkit.org/show_bug.cgi?id=118737).
     bool isLargeOperatorInDisplayStyle() const { return !hasOperatorFlag(MathMLOperatorDictionary::Stretchy) && hasOperatorFlag(MathMLOperatorDictionary::LargeOp); }
     bool isVertical() const { return m_isVertical; }
+    LayoutUnit italicCorrection() const;
 
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
     void updateStyle() final;
 
     void paint(PaintInfo&, const LayoutPoint&) override;
@@ -59,14 +61,13 @@ public:
     void updateTokenContent(const String& operatorString);
     void updateTokenContent() final;
     void updateOperatorProperties();
-    void setOperatorFlagAndScheduleLayoutIfNeeded(MathMLOperatorDictionary::Flag, const AtomicString& attributeValue);
+    void updateFromElement() final;
     LayoutUnit trailingSpaceError();
 
 protected:
     virtual void setOperatorProperties();
     void computePreferredLogicalWidths() override;
     void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
-    float advanceForGlyph(const GlyphData&) const;
     void setLeadingSpace(LayoutUnit leadingSpace) { m_leadingSpace = leadingSpace; }
     void setTrailingSpace(LayoutUnit trailingSpace) { m_trailingSpace = trailingSpace; }
     UChar textContent() const { return m_textContent; }
@@ -128,21 +129,17 @@ private:
     };
 
     const char* renderName() const override { return isAnonymous() ? "RenderMathMLOperator (anonymous)" : "RenderMathMLOperator"; }
-    void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) override;
-    bool isRenderMathMLOperator() const override { return true; }
+    void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) final;
+    bool isRenderMathMLOperator() const final { return true; }
     // The following operators are invisible: U+2061 FUNCTION APPLICATION, U+2062 INVISIBLE TIMES, U+2063 INVISIBLE SEPARATOR, U+2064 INVISIBLE PLUS.
     bool isInvisibleOperator() const { return 0x2061 <= m_textContent && m_textContent <= 0x2064; }
-    bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const final;
 
-    Optional<int> firstLineBaseline() const override;
-    RenderMathMLOperator* unembellishedOperator() override { return this; }
+    Optional<int> firstLineBaseline() const final;
+    RenderMathMLOperator* unembellishedOperator() final { return this; }
     void rebuildTokenContent(const String& operatorString);
-    void updateFromElement() override;
 
     bool shouldAllowStretching() const;
-
-    FloatRect boundsForGlyph(const GlyphData&) const;
-    float heightForGlyph(const GlyphData&) const;
 
     bool getGlyphAssemblyFallBack(Vector<OpenTypeMathData::AssemblyPart>, StretchyData&) const;
     StretchyData getDisplayStyleLargeOperator(UChar) const;

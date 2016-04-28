@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Google Inc. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved. 
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved. 
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RuntimeEnabledFeatures_h
-#define RuntimeEnabledFeatures_h
+#pragma once
 
 #include "PlatformExportMacros.h"
 #include <wtf/NeverDestroyed.h>
@@ -62,9 +61,16 @@ public:
     void setGeolocationEnabled(bool isEnabled) { m_isGeolocationEnabled = isEnabled; }
     bool geolocationEnabled() const { return m_isGeolocationEnabled; }
 
+#if ENABLE(INDEXED_DATABASE)
     void setWebkitIndexedDBEnabled(bool isEnabled) { m_isIndexedDBEnabled = isEnabled; }
     bool webkitIndexedDBEnabled() const { return m_isIndexedDBEnabled; }
     bool indexedDBEnabled() const { return m_isIndexedDBEnabled; }
+#endif
+
+#if ENABLE(INDEXED_DATABASE_IN_WORKERS)
+    void setIndexedDBWorkersEnabled(bool isEnabled) { m_isIndexedDBWorkersEnabled = isEnabled; }
+    bool indexedDBWorkersEnabled() const { return m_isIndexedDBWorkersEnabled; }
+#endif
 
 #if ENABLE(CSS_SHAPES)
     void setCSSShapesEnabled(bool isEnabled) { m_isCSSShapesEnabled = isEnabled; }
@@ -122,6 +128,9 @@ public:
     bool deviceOrientationEnabled() const { return m_isDeviceOrientationEnabled; }
     bool deviceOrientationEventEnabled() const { return m_isDeviceOrientationEnabled; }
     bool ondeviceorientationEnabled() const { return m_isDeviceOrientationEnabled; }
+
+    void setLinkPreloadEnabled(bool isEnabled) { m_isLinkPreloadEnabled = isEnabled; }
+    bool linkPreloadEnabled() const { return m_isLinkPreloadEnabled; }
 
 #if ENABLE(JAVASCRIPT_I18N_API)
     bool javaScriptI18NAPIEnabled() const;
@@ -227,6 +236,11 @@ public:
     bool fetchAPIEnabled() const { return m_isFetchAPIEnabled; }
 #endif
 
+#if ENABLE(DOWNLOAD_ATTRIBUTE)
+    void setDownloadAttributeEnabled(bool isEnabled) { m_isDownloadAttributeEnabled = isEnabled; }
+    bool downloadAttributeEnabled() const { return m_isDownloadAttributeEnabled; }
+#endif
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 private:
@@ -239,15 +253,23 @@ private:
     bool m_isApplicationCacheEnabled;
     bool m_isDataTransferItemsEnabled;
     bool m_isGeolocationEnabled;
-    bool m_isIndexedDBEnabled;
     bool m_isTouchEnabled;
     bool m_isDeviceMotionEnabled;
     bool m_isDeviceOrientationEnabled;
+    bool m_isLinkPreloadEnabled;
     bool m_isCSSShapesEnabled;
     bool m_isCSSRegionsEnabled;
     bool m_isCSSCompositingEnabled;
     bool m_isLangAttributeAwareFormControlUIEnabled;
     bool m_isPluginReplacementEnabled;
+
+#if ENABLE(INDEXED_DATABASE)
+    bool m_isIndexedDBEnabled;
+#endif
+
+#if ENABLE(INDEXED_DATABASE_IN_WORKERS)
+    bool m_isIndexedDBWorkersEnabled;
+#endif
 
 #if ENABLE(JAVASCRIPT_I18N_API)
     bool m_isJavaScriptI18NAPIEnabled;
@@ -328,9 +350,11 @@ private:
     bool m_isFetchAPIEnabled { false };
 #endif
 
+#if ENABLE(DOWNLOAD_ATTRIBUTE)
+    bool m_isDownloadAttributeEnabled { false };
+#endif
+
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };
 
 } // namespace WebCore
-
-#endif // RuntimeEnabledFeatures_h

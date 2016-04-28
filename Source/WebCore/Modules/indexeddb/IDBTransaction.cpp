@@ -29,6 +29,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "DOMError.h"
+#include "DOMWindow.h"
 #include "Event.h"
 #include "EventQueue.h"
 #include "IDBCursorWithValue.h"
@@ -36,6 +37,7 @@
 #include "IDBDatabaseException.h"
 #include "IDBError.h"
 #include "IDBEventDispatcher.h"
+#include "IDBIndex.h"
 #include "IDBKeyData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBObjectStore.h"
@@ -596,7 +598,7 @@ void IDBTransaction::didCreateIndexOnServer(const IDBResultData& resultData)
         return;
 
     // Otherwise, failure to create an index forced abortion of the transaction.
-    abortDueToFailedRequest(DOMError::create(IDBDatabaseException::getErrorName(resultData.error().code())));
+    abortDueToFailedRequest(DOMError::create(IDBDatabaseException::getErrorName(resultData.error().code()), resultData.error().message()));
 }
 
 Ref<IDBRequest> IDBTransaction::requestOpenCursor(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBCursorInfo& info)
@@ -733,12 +735,12 @@ void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultDa
 
     if (request.sourceIndexIdentifier() && request.requestedIndexRecordType() == IndexedDB::IndexRecordType::Key) {
         if (!result.keyData().isNull())
-            request.setResult(&result.keyData());
+            request.setResult(result.keyData());
         else
             request.setResultToUndefined();
     } else {
         if (resultData.getResult().value().data().data())
-            request.setResultToStructuredClone(resultData.getResult().value().data());
+            request.setResultToStructuredClone(resultData.getResult().value());
         else
             request.setResultToUndefined();
     }
@@ -878,7 +880,17 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
     RefPtr<IDBTransaction> protector(this);
     RefPtr<IDBClient::TransactionOperation> operationRef(&operation);
     value->writeBlobsToDiskForIndexedDB([protector, this, operationRef, key, value, overwriteMode](const IDBValue& idbValue) {
-        serverConnection().putOrAdd(*operationRef, key.get(), idbValue, overwriteMode);
+        if (idbValue.data().data()) {
+            serverConnection().putOrAdd(*operationRef, key.get(), idbValue, overwriteMode);
+            return;
+        }
+
+        // If the IDBValue doesn't have any data, then something went wrong writing the blobs to disk.
+        // In that case, we cannot successfully store this record, so we callback with an error.
+        auto result = IDBResultData::error(operationRef->identifier(), { IDBDatabaseException::UnknownError, ASCIILiteral("Error preparing Blob/File data to be stored in object store") });
+        callOnMainThread([protector, this, operationRef, result]() {
+            operationRef->completed(result);
+        });
     });
 }
 
@@ -886,7 +898,10 @@ void IDBTransaction::didPutOrAddOnServer(IDBRequest& request, const IDBResultDat
 {
     LOG(IndexedDB, "IDBTransaction::didPutOrAddOnServer");
 
-    request.setResult(resultData.resultKey());
+    if (auto* result = resultData.resultKey())
+        request.setResult(*result);
+    else
+        request.setResultToUndefined();
     request.requestCompleted(resultData);
 }
 

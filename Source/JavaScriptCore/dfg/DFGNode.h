@@ -681,14 +681,14 @@ struct Node {
         return asJSValue().asNumber();
     }
      
-    bool isMachineIntConstant()
+    bool isAnyIntConstant()
     {
-        return isConstant() && constant()->value().isMachineInt();
+        return isConstant() && constant()->value().isAnyInt();
     }
      
-    int64_t asMachineInt()
+    int64_t asAnyInt()
     {
-        return asJSValue().asMachineInt();
+        return asJSValue().asAnyInt();
     }
      
     bool isBooleanConstant()
@@ -875,6 +875,10 @@ struct Node {
         case PutGetterById:
         case PutSetterById:
         case PutGetterSetterById:
+        case DeleteById:
+        case GetDynamicVar:
+        case PutDynamicVar:
+        case ResolveScope:
             return true;
         default:
             return false;
@@ -885,6 +889,23 @@ struct Node {
     {
         ASSERT(hasIdentifier());
         return m_opInfo;
+    }
+
+    bool hasGetPutInfo()
+    {
+        switch (op()) {
+        case GetDynamicVar:
+        case PutDynamicVar:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    unsigned getPutInfo()
+    {
+        ASSERT(hasGetPutInfo());
+        return m_opInfo2;
     }
 
     bool hasAccessorAttributes()
@@ -1363,6 +1384,7 @@ struct Node {
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case StringReplace:
+        case StringReplaceRegExp:
             return true;
         default:
             return false;
@@ -1899,9 +1921,9 @@ struct Node {
         return isInt32OrBooleanSpeculationExpectingDefined(prediction());
     }
     
-    bool shouldSpeculateMachineInt()
+    bool shouldSpeculateAnyInt()
     {
-        return isMachineIntSpeculation(prediction());
+        return isAnyIntSpeculation(prediction());
     }
     
     bool shouldSpeculateDouble()
@@ -2132,9 +2154,9 @@ struct Node {
             && op2->shouldSpeculateInt32OrBooleanExpectingDefined();
     }
     
-    static bool shouldSpeculateMachineInt(Node* op1, Node* op2)
+    static bool shouldSpeculateAnyInt(Node* op1, Node* op2)
     {
-        return op1->shouldSpeculateMachineInt() && op2->shouldSpeculateMachineInt();
+        return op1->shouldSpeculateAnyInt() && op2->shouldSpeculateAnyInt();
     }
     
     static bool shouldSpeculateNumber(Node* op1, Node* op2)
@@ -2328,20 +2350,14 @@ CString nodeMapDump(const T& nodeMap, DumpContext* context = 0)
     return out.toCString();
 }
 
-template<typename IteratorType>
-inline bool nodeValuePairComparator(IteratorType a, IteratorType b)
-{
-    return nodeComparator(a.node, b.node);
-}
-
 template<typename T>
 CString nodeValuePairListDump(const T& nodeValuePairList, DumpContext* context = 0)
 {
+    using V = typename T::ValueType;
     T sortedList = nodeValuePairList;
-    // gcc 4.8 gets lost on this sort, so we don't sort in that case.
-#if !COMPILER(GCC) || GCC_VERSION_AT_LEAST(4, 9, 0)
-    std::sort(sortedList.begin(), sortedList.end(), nodeValuePairComparator<decltype(*sortedList.begin())>);
-#endif
+    std::sort(sortedList.begin(), sortedList.end(), [](const V& a, const V& b) {
+        return nodeComparator(a.node, b.node);
+    });
 
     StringPrintStream out;
     CommaPrinter comma;

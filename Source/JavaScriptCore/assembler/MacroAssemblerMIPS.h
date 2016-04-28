@@ -2576,7 +2576,7 @@ public:
 
     void moveZeroToDouble(FPRegisterID reg)
     {
-        m_assembler.mtc1(MIPSRegisters::zero, reg);
+        convertInt32ToDouble(MIPSRegisters::zero, reg);
     }
 
     void swapDouble(FPRegisterID fr1, FPRegisterID fr2)

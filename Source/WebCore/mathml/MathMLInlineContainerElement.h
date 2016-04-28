@@ -43,7 +43,7 @@ protected:
     void childrenChanged(const ChildChange&) override;
 
 private:
-    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 };
     
 }

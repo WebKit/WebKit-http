@@ -190,6 +190,7 @@ inline void StyleResolver::State::clear()
 {
     m_element = nullptr;
     m_parentStyle = nullptr;
+    m_ownedParentStyle = nullptr;
     m_regionForStyling = nullptr;
     m_pendingImageProperties.clear();
     m_filtersWithPendingSVGDocuments.clear();
@@ -335,7 +336,7 @@ void StyleResolver::sweepMatchedPropertiesCache()
     m_matchedPropertiesCacheAdditionsSinceLastSweep = 0;
 }
 
-StyleResolver::State::State(Element& element, RenderStyle* parentStyle, RenderStyle* documentElementStyle, const RenderRegion* regionForStyling, const SelectorFilter* selectorFilter)
+StyleResolver::State::State(const Element& element, const RenderStyle* parentStyle, const RenderStyle* documentElementStyle, const RenderRegion* regionForStyling, const SelectorFilter* selectorFilter)
     : m_element(&element)
     , m_parentStyle(parentStyle)
     , m_regionForStyling(regionForStyling)
@@ -361,32 +362,37 @@ inline void StyleResolver::State::updateConversionData()
     m_cssToLengthConversionData = CSSToLengthConversionData(m_style.get(), m_rootElementStyle, m_element ? document().renderView() : nullptr);
 }
 
-inline void StyleResolver::State::setStyle(Ref<RenderStyle>&& style)
+inline void StyleResolver::State::setStyle(std::unique_ptr<RenderStyle> style)
 {
     m_style = WTFMove(style);
     updateConversionData();
 }
-static inline bool isAtShadowBoundary(const Element* element)
+
+void StyleResolver::State::setParentStyle(std::unique_ptr<RenderStyle> parentStyle)
 {
-    if (!element)
-        return false;
-    ContainerNode* parentNode = element->parentNode();
+    m_ownedParentStyle = WTFMove(parentStyle);
+    m_parentStyle = m_ownedParentStyle.get();
+}
+
+static inline bool isAtShadowBoundary(const Element& element)
+{
+    auto* parentNode = element.parentNode();
     return parentNode && parentNode->isShadowRoot();
 }
 
-ElementStyle StyleResolver::styleForElement(Element& element, RenderStyle* parentStyle, RuleMatchingBehavior matchingBehavior, const RenderRegion* regionForStyling, const SelectorFilter* selectorFilter)
+ElementStyle StyleResolver::styleForElement(const Element& element, const RenderStyle* parentStyle, RuleMatchingBehavior matchingBehavior, const RenderRegion* regionForStyling, const SelectorFilter* selectorFilter)
 {
     RELEASE_ASSERT(!m_inLoadPendingImages);
 
-    m_state = State(element, parentStyle, m_overrideDocumentElementStyle.get(), regionForStyling, selectorFilter);
+    m_state = State(element, parentStyle, m_overrideDocumentElementStyle, regionForStyling, selectorFilter);
     State& state = m_state;
 
     if (state.parentStyle()) {
-        state.setStyle(RenderStyle::create());
-        state.style()->inheritFrom(state.parentStyle(), isAtShadowBoundary(&element) ? RenderStyle::AtShadowBoundary : RenderStyle::NotAtShadowBoundary);
+        state.setStyle(RenderStyle::createPtr());
+        state.style()->inheritFrom(state.parentStyle(), isAtShadowBoundary(element) ? RenderStyle::AtShadowBoundary : RenderStyle::NotAtShadowBoundary);
     } else {
         state.setStyle(defaultStyleForElement());
-        state.setParentStyle(RenderStyle::clone(state.style()));
+        state.setParentStyle(RenderStyle::clonePtr(*state.style()));
     }
 
     auto& style = *state.style();
@@ -435,7 +441,7 @@ ElementStyle StyleResolver::styleForElement(Element& element, RenderStyle* paren
     return { state.takeStyle(), WTFMove(elementStyleRelations) };
 }
 
-Ref<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementStyle, const StyleKeyframe* keyframe, KeyframeValue& keyframeValue)
+std::unique_ptr<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementStyle, const StyleKeyframe* keyframe, KeyframeValue& keyframeValue)
 {
     RELEASE_ASSERT(!m_inLoadPendingImages);
 
@@ -447,8 +453,8 @@ Ref<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementStyle
     State& state = m_state;
 
     // Create the style
-    state.setStyle(RenderStyle::clone(elementStyle));
-    state.setParentStyle(RenderStyle::clone(elementStyle));
+    state.setStyle(RenderStyle::clonePtr(*elementStyle));
+    state.setParentStyle(RenderStyle::clonePtr(*elementStyle));
 
     TextDirection direction;
     WritingMode writingMode;
@@ -493,7 +499,7 @@ Ref<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementStyle
     return state.takeStyle();
 }
 
-void StyleResolver::keyframeStylesForAnimation(Element& element, const RenderStyle* elementStyle, KeyframeList& list)
+void StyleResolver::keyframeStylesForAnimation(const Element& element, const RenderStyle* elementStyle, KeyframeList& list)
 {
     list.clear();
 
@@ -517,13 +523,12 @@ void StyleResolver::keyframeStylesForAnimation(Element& element, const RenderSty
 
         const StyleKeyframe* keyframe = keyframes[i].get();
 
-        KeyframeValue keyframeValue(0, nullptr);
-        keyframeValue.setStyle(styleForKeyframe(elementStyle, keyframe, keyframeValue));
-
         // Add this keyframe style to all the indicated key times
-        for (auto& key: keyframe->keys()) {
+        for (auto& key : keyframe->keys()) {
+            KeyframeValue keyframeValue(0, nullptr);
+            keyframeValue.setStyle(styleForKeyframe(elementStyle, keyframe, keyframeValue));
             keyframeValue.setKey(key);
-            list.insert(keyframeValue);
+            list.insert(WTFMove(keyframeValue));
         }
     }
 
@@ -537,7 +542,7 @@ void StyleResolver::keyframeStylesForAnimation(Element& element, const RenderSty
         }
         KeyframeValue keyframeValue(0, nullptr);
         keyframeValue.setStyle(styleForKeyframe(elementStyle, zeroPercentKeyframe, keyframeValue));
-        list.insert(keyframeValue);
+        list.insert(WTFMove(keyframeValue));
     }
 
     // If the 100% keyframe is missing, create it (but only if there is at least one other keyframe)
@@ -549,22 +554,22 @@ void StyleResolver::keyframeStylesForAnimation(Element& element, const RenderSty
         }
         KeyframeValue keyframeValue(1, nullptr);
         keyframeValue.setStyle(styleForKeyframe(elementStyle, hundredPercentKeyframe, keyframeValue));
-        list.insert(keyframeValue);
+        list.insert(WTFMove(keyframeValue));
     }
 }
 
-PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(Element& element, const PseudoStyleRequest& pseudoStyleRequest, RenderStyle& parentStyle)
+std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element& element, const PseudoStyleRequest& pseudoStyleRequest, const RenderStyle& parentStyle)
 {
     m_state = State(element, &parentStyle);
 
     State& state = m_state;
 
     if (m_state.parentStyle()) {
-        state.setStyle(RenderStyle::create());
+        state.setStyle(RenderStyle::createPtr());
         state.style()->inheritFrom(m_state.parentStyle());
     } else {
         state.setStyle(defaultStyleForElement());
-        state.setParentStyle(RenderStyle::clone(state.style()));
+        state.setParentStyle(RenderStyle::clonePtr(*state.style()));
     }
 
     // Since we don't use pseudo-elements in any of our quirk/print user agent rules, don't waste time walking
@@ -603,17 +608,17 @@ PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(Element& element, c
     return state.takeStyle();
 }
 
-Ref<RenderStyle> StyleResolver::styleForPage(int pageIndex)
+std::unique_ptr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
 {
     RELEASE_ASSERT(!m_inLoadPendingImages);
 
     auto* documentElement = m_document.documentElement();
     if (!documentElement)
-        return RenderStyle::create();
+        return RenderStyle::createPtr();
 
     m_state = State(*documentElement, m_document.renderStyle());
 
-    m_state.setStyle(RenderStyle::create());
+    m_state.setStyle(RenderStyle::createPtr());
     m_state.style()->inheritFrom(m_state.rootElementStyle());
 
     PageRuleCollector collector(m_state, m_ruleSets);
@@ -647,9 +652,9 @@ Ref<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     return m_state.takeStyle();
 }
 
-Ref<RenderStyle> StyleResolver::defaultStyleForElement()
+std::unique_ptr<RenderStyle> StyleResolver::defaultStyleForElement()
 {
-    m_state.setStyle(RenderStyle::create());
+    m_state.setStyle(RenderStyle::createPtr());
     // Make sure our fonts are initialized if we don't inherit them from our parent style.
     initializeFontStyle(documentSettings());
     if (documentSettings())
@@ -736,10 +741,10 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
 // CSS requires text-decoration to be reset at each DOM element for tables, 
 // inline blocks, inline tables, shadow DOM crossings, floating elements,
 // and absolute or relatively positioned elements.
-static bool doesNotInheritTextDecoration(const RenderStyle& style, Element* e)
+static bool doesNotInheritTextDecoration(const RenderStyle& style, const Element& element)
 {
     return style.display() == TABLE || style.display() == INLINE_TABLE
-        || style.display() == INLINE_BLOCK || style.display() == INLINE_BOX || isAtShadowBoundary(e)
+        || style.display() == INLINE_BLOCK || style.display() == INLINE_BOX || isAtShadowBoundary(element)
         || style.isFloating() || style.hasOutOfFlowPosition();
 }
 
@@ -760,7 +765,7 @@ void StyleResolver::adjustStyleForInterCharacterRuby()
         style->setWritingMode(LeftToRightWritingMode);
 }
 
-void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& parentStyle, Element *e)
+void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& parentStyle, const Element* element)
 {
     // Cache our original display.
     style.setOriginalDisplay(style.display());
@@ -770,62 +775,64 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
             // FIXME: Enable for all elements.
             bool elementSupportsDisplayContents = false;
 #if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
-            elementSupportsDisplayContents = is<HTMLSlotElement>(e);
+            elementSupportsDisplayContents = is<HTMLSlotElement>(element);
 #endif
             if (!elementSupportsDisplayContents)
                 style.setDisplay(INLINE);
         }
-        // If we have a <td> that specifies a float property, in quirks mode we just drop the float
-        // property.
-        // Sites also commonly use display:inline/block on <td>s and <table>s. In quirks mode we force
-        // these tags to retain their display types.
-        if (document().inQuirksMode() && e) {
-            if (e->hasTagName(tdTag)) {
-                style.setDisplay(TABLE_CELL);
-                style.setFloating(NoFloat);
-            } else if (is<HTMLTableElement>(*e))
-                style.setDisplay(style.isDisplayInlineType() ? INLINE_TABLE : TABLE);
-        }
-
-        if (e && (e->hasTagName(tdTag) || e->hasTagName(thTag))) {
-            if (style.whiteSpace() == KHTML_NOWRAP) {
-                // Figure out if we are really nowrapping or if we should just
-                // use normal instead. If the width of the cell is fixed, then
-                // we don't actually use NOWRAP.
-                if (style.width().isFixed())
-                    style.setWhiteSpace(NORMAL);
-                else
-                    style.setWhiteSpace(NOWRAP);
+        if (element) {
+            // If we have a <td> that specifies a float property, in quirks mode we just drop the float
+            // property.
+            // Sites also commonly use display:inline/block on <td>s and <table>s. In quirks mode we force
+            // these tags to retain their display types.
+            if (document().inQuirksMode()) {
+                if (element->hasTagName(tdTag)) {
+                    style.setDisplay(TABLE_CELL);
+                    style.setFloating(NoFloat);
+                } else if (is<HTMLTableElement>(*element))
+                    style.setDisplay(style.isDisplayInlineType() ? INLINE_TABLE : TABLE);
             }
+
+            if (element->hasTagName(tdTag) || element->hasTagName(thTag)) {
+                if (style.whiteSpace() == KHTML_NOWRAP) {
+                    // Figure out if we are really nowrapping or if we should just
+                    // use normal instead. If the width of the cell is fixed, then
+                    // we don't actually use NOWRAP.
+                    if (style.width().isFixed())
+                        style.setWhiteSpace(NORMAL);
+                    else
+                        style.setWhiteSpace(NOWRAP);
+                }
+            }
+
+            // Tables never support the -webkit-* values for text-align and will reset back to the default.
+            if (is<HTMLTableElement>(*element) && (style.textAlign() == WEBKIT_LEFT || style.textAlign() == WEBKIT_CENTER || style.textAlign() == WEBKIT_RIGHT))
+                style.setTextAlign(TASTART);
+
+            // Frames and framesets never honor position:relative or position:absolute. This is necessary to
+            // fix a crash where a site tries to position these objects. They also never honor display.
+            if (element->hasTagName(frameTag) || element->hasTagName(framesetTag)) {
+                style.setPosition(StaticPosition);
+                style.setDisplay(BLOCK);
+            }
+
+            // Ruby text does not support float or position. This might change with evolution of the specification.
+            if (element->hasTagName(rtTag)) {
+                style.setPosition(StaticPosition);
+                style.setFloating(NoFloat);
+            }
+
+            // FIXME: We shouldn't be overriding start/-webkit-auto like this. Do it in html.css instead.
+            // Table headers with a text-align of -webkit-auto will change the text-align to center.
+            if (element->hasTagName(thTag) && style.textAlign() == TASTART)
+                style.setTextAlign(CENTER);
+
+            if (element->hasTagName(legendTag))
+                style.setDisplay(BLOCK);
         }
-
-        // Tables never support the -webkit-* values for text-align and will reset back to the default.
-        if (is<HTMLTableElement>(e) && (style.textAlign() == WEBKIT_LEFT || style.textAlign() == WEBKIT_CENTER || style.textAlign() == WEBKIT_RIGHT))
-            style.setTextAlign(TASTART);
-
-        // Frames and framesets never honor position:relative or position:absolute. This is necessary to
-        // fix a crash where a site tries to position these objects. They also never honor display.
-        if (e && (e->hasTagName(frameTag) || e->hasTagName(framesetTag))) {
-            style.setPosition(StaticPosition);
-            style.setDisplay(BLOCK);
-        }
-
-        // Ruby text does not support float or position. This might change with evolution of the specification.
-        if (e && e->hasTagName(rtTag)) {
-            style.setPosition(StaticPosition);
-            style.setFloating(NoFloat);
-        }
-
-        // FIXME: We shouldn't be overriding start/-webkit-auto like this. Do it in html.css instead.
-        // Table headers with a text-align of -webkit-auto will change the text-align to center.
-        if (e && e->hasTagName(thTag) && style.textAlign() == TASTART)
-            style.setTextAlign(CENTER);
-
-        if (e && e->hasTagName(legendTag))
-            style.setDisplay(BLOCK);
 
         // Absolute/fixed positioned elements, floating elements and the document element need block-like outside display.
-        if (style.hasOutOfFlowPosition() || style.isFloating() || (e && e->document().documentElement() == e))
+        if (style.hasOutOfFlowPosition() || style.isFloating() || (element && element->document().documentElement() == element))
             style.setDisplay(equivalentBlockDisplay(style.display(), style.isFloating(), !document().inQuirksMode()));
 
         // FIXME: Don't support this mutation for pseudo styles like first-letter or first-line, since it's not completely
@@ -867,45 +874,48 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     // Auto z-index becomes 0 for the root element and transparent objects. This prevents
     // cases where objects that should be blended as a single unit end up with a non-transparent
     // object wedged in between them. Auto z-index also becomes 0 for objects that specify transforms/masks/reflections.
-    if (style.hasAutoZIndex() && ((e && e->document().documentElement() == e)
-        || style.opacity() < 1.0f
-        || style.hasTransformRelatedProperty()
-        || style.hasMask()
-        || style.clipPath()
-        || style.boxReflect()
-        || style.hasFilter()
+    if (style.hasAutoZIndex()) {
+        if ((element && element->document().documentElement() == element)
+            || style.opacity() < 1.0f
+            || style.hasTransformRelatedProperty()
+            || style.hasMask()
+            || style.clipPath()
+            || style.boxReflect()
+            || style.hasFilter()
 #if ENABLE(FILTERS_LEVEL_2)
-        || style.hasBackdropFilter()
+            || style.hasBackdropFilter()
 #endif
-        || style.hasBlendMode()
-        || style.hasIsolation()
-        || style.position() == StickyPosition
-        || (style.position() == FixedPosition && documentSettings() && documentSettings()->fixedPositionCreatesStackingContext())
-        || style.hasFlowFrom()
-        || style.willChangeCreatesStackingContext()
-        ))
-        style.setZIndex(0);
-
-    // Textarea considers overflow visible as auto.
-    if (is<HTMLTextAreaElement>(e)) {
-        style.setOverflowX(style.overflowX() == OVISIBLE ? OAUTO : style.overflowX());
-        style.setOverflowY(style.overflowY() == OVISIBLE ? OAUTO : style.overflowY());
+            || style.hasBlendMode()
+            || style.hasIsolation()
+            || style.position() == StickyPosition
+            || (style.position() == FixedPosition && documentSettings() && documentSettings()->fixedPositionCreatesStackingContext())
+            || style.hasFlowFrom()
+            || style.willChangeCreatesStackingContext())
+            style.setZIndex(0);
     }
 
-    // Disallow -webkit-user-modify on :pseudo and ::pseudo elements.
-    if (e && !e->shadowPseudoId().isNull())
-        style.setUserModify(READ_ONLY);
+    if (element) {
+        // Textarea considers overflow visible as auto.
+        if (is<HTMLTextAreaElement>(*element)) {
+            style.setOverflowX(style.overflowX() == OVISIBLE ? OAUTO : style.overflowX());
+            style.setOverflowY(style.overflowY() == OVISIBLE ? OAUTO : style.overflowY());
+        }
 
-    if (doesNotInheritTextDecoration(style, e))
+        // Disallow -webkit-user-modify on :pseudo and ::pseudo elements.
+        if (!element->shadowPseudoId().isNull())
+            style.setUserModify(READ_ONLY);
+
+        // For now, <marquee> requires an overflow clip to work properly.
+        if (is<HTMLMarqueeElement>(*element)) {
+            style.setOverflowX(OHIDDEN);
+            style.setOverflowY(OHIDDEN);
+        }
+    }
+
+    if (element && doesNotInheritTextDecoration(style, *element))
         style.setTextDecorationsInEffect(style.textDecoration());
     else
         style.addToTextDecorationsInEffect(style.textDecoration());
-
-    // For now, <marquee> requires an overflow clip to work properly.
-    if (is<HTMLMarqueeElement>(e)) {
-        style.setOverflowX(OHIDDEN);
-        style.setOverflowY(OHIDDEN);
-    }
 
     // If either overflow value is not visible, change to auto.
     if (style.overflowX() == OVISIBLE && style.overflowY() != OVISIBLE) {
@@ -919,7 +929,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     // Call setStylesForPaginationMode() if a pagination mode is set for any non-root elements. If these
     // styles are specified on a root element, then they will be incorporated in
     // Style::createForDocument().
-    if ((style.overflowY() == OPAGEDX || style.overflowY() == OPAGEDY) && !(e && (e->hasTagName(htmlTag) || e->hasTagName(bodyTag))))
+    if ((style.overflowY() == OPAGEDX || style.overflowY() == OPAGEDY) && !(element && (element->hasTagName(htmlTag) || element->hasTagName(bodyTag))))
         style.setColumnStylesFromPaginationMode(WebCore::paginationModeForRenderStyle(style));
 
     // Table rows, sections and the table itself will support overflow:hidden and will ignore scroll/auto.
@@ -954,16 +964,16 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
 
     // Important: Intrinsic margins get added to controls before the theme has adjusted the style, since the theme will
     // alter fonts and heights/widths.
-    if (is<HTMLFormControlElement>(e) && style.fontSize() >= 11) {
+    if (is<HTMLFormControlElement>(element) && style.fontSize() >= 11) {
         // Don't apply intrinsic margins to image buttons. The designer knows how big the images are,
         // so we have to treat all image buttons as though they were explicitly sized.
-        if (!is<HTMLInputElement>(*e) || !downcast<HTMLInputElement>(*e).isImageButton())
+        if (!is<HTMLInputElement>(*element) || !downcast<HTMLInputElement>(*element).isImageButton())
             addIntrinsicMargins(style);
     }
 
     // Let the theme also have a crack at adjusting the style.
     if (style.hasAppearance())
-        RenderTheme::defaultTheme()->adjustStyle(*this, style, e, m_state.hasUAAppearance(), m_state.borderData(), m_state.backgroundData(), m_state.backgroundColor());
+        RenderTheme::defaultTheme()->adjustStyle(*this, style, element, m_state.hasUAAppearance(), m_state.borderData(), m_state.backgroundData(), m_state.backgroundColor());
 
     // If we have first-letter pseudo style, do not share this style.
     if (style.hasPseudoStyle(FIRST_LETTER))
@@ -972,6 +982,8 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     // FIXME: when dropping the -webkit prefix on transform-style, we should also have opacity < 1 cause flattening.
     if (style.preserves3D() && (style.overflowX() != OVISIBLE
         || style.overflowY() != OVISIBLE
+        || style.hasClip()
+        || style.clipPath()
         || style.hasFilter()
 #if ENABLE(FILTERS_LEVEL_2)
         || style.hasBackdropFilter()
@@ -979,18 +991,18 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         || style.hasBlendMode()))
         style.setTransformStyle3D(TransformStyle3DFlat);
 
-    if (e && e->isSVGElement()) {
+    if (is<SVGElement>(element)) {
         // Only the root <svg> element in an SVG document fragment tree honors css position
-        if (!(e->hasTagName(SVGNames::svgTag) && e->parentNode() && !e->parentNode()->isSVGElement()))
+        if (!(element->hasTagName(SVGNames::svgTag) && element->parentNode() && !element->parentNode()->isSVGElement()))
             style.setPosition(RenderStyle::initialPosition());
 
         // RenderSVGRoot handles zooming for the whole SVG subtree, so foreignObject content should
         // not be scaled again.
-        if (e->hasTagName(SVGNames::foreignObjectTag))
+        if (element->hasTagName(SVGNames::foreignObjectTag))
             style.setEffectiveZoom(RenderStyle::initialZoom());
 
         // SVG text layout code expects us to be a block-level style element.
-        if ((e->hasTagName(SVGNames::foreignObjectTag) || e->hasTagName(SVGNames::textTag)) && style.isDisplayInlineType())
+        if ((element->hasTagName(SVGNames::foreignObjectTag) || element->hasTagName(SVGNames::textTag)) && style.isDisplayInlineType())
             style.setDisplay(BLOCK);
     }
 
@@ -1000,7 +1012,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         style.setJustifyItems(parentStyle.justifyItems());
 }
 
-bool StyleResolver::checkRegionStyle(Element* regionElement)
+bool StyleResolver::checkRegionStyle(const Element* regionElement)
 {
     unsigned rulesSize = m_ruleSets.authorStyle()->regionSelectorsAndRuleSets().size();
     for (unsigned i = 0; i < rulesSize; ++i) {
@@ -1055,12 +1067,12 @@ void StyleResolver::updateFont()
     m_state.setFontDirty(false);
 }
 
-Vector<RefPtr<StyleRule>> StyleResolver::styleRulesForElement(Element* e, unsigned rulesToInclude)
+Vector<RefPtr<StyleRule>> StyleResolver::styleRulesForElement(const Element* element, unsigned rulesToInclude)
 {
-    return pseudoStyleRulesForElement(e, NOPSEUDO, rulesToInclude);
+    return pseudoStyleRulesForElement(element, NOPSEUDO, rulesToInclude);
 }
 
-Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(Element* element, PseudoId pseudoId, unsigned rulesToInclude)
+Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(const Element* element, PseudoId pseudoId, unsigned rulesToInclude)
 {
     if (!element || !element->document().haveStylesheetsLoaded())
         return Vector<RefPtr<StyleRule>>();
@@ -1201,8 +1213,8 @@ void StyleResolver::addToMatchedPropertiesCache(const RenderStyle* style, const 
     cacheItem.ranges = matchResult.ranges;
     // Note that we don't cache the original RenderStyle instance. It may be further modified.
     // The RenderStyle in the cache is really just a holder for the substructures and never used as-is.
-    cacheItem.renderStyle = RenderStyle::clone(style);
-    cacheItem.parentRenderStyle = RenderStyle::clone(parentStyle);
+    cacheItem.renderStyle = RenderStyle::clonePtr(*style);
+    cacheItem.parentRenderStyle = RenderStyle::clonePtr(*parentStyle);
     m_matchedPropertiesCache.add(hash, WTFMove(cacheItem));
 }
 
@@ -1287,7 +1299,7 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         // style declarations. We then only need to apply the inherited properties, if any, as their values can depend on the 
         // element context. This is fast and saves memory by reusing the style data structures.
         state.style()->copyNonInheritedFrom(cacheItem->renderStyle.get());
-        if (state.parentStyle()->inheritedDataShared(cacheItem->parentRenderStyle.get()) && !isAtShadowBoundary(&element)) {
+        if (state.parentStyle()->inheritedDataShared(cacheItem->parentRenderStyle.get()) && !isAtShadowBoundary(element)) {
             EInsideLink linkStatus = state.style()->insideLink();
             // If the cache item parent style has identical inherited properties to the current parent style then the
             // resulting style will be identical too. We copy the inherited properties over from the cache and are done.
@@ -1378,11 +1390,11 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
     addToMatchedPropertiesCache(state.style(), state.parentStyle(), cacheHash, matchResult);
 }
 
-void StyleResolver::applyPropertyToStyle(CSSPropertyID id, CSSValue* value, RenderStyle* style)
+void StyleResolver::applyPropertyToStyle(CSSPropertyID id, CSSValue* value, std::unique_ptr<RenderStyle> style)
 {
     m_state = State();
-    m_state.setParentStyle(*style);
-    m_state.setStyle(*style);
+    m_state.setParentStyle(RenderStyle::clonePtr(*style));
+    m_state.setStyle(WTFMove(style));
     applyPropertyToCurrentStyle(id, value);
 }
 
@@ -1619,7 +1631,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, SelectorChe
     }
 
     if (isInherit && !state.parentStyle()->hasExplicitlyInheritedProperties() && !CSSProperty::isInheritedProperty(id))
-        state.parentStyle()->setHasExplicitlyInheritedProperties();
+        const_cast<RenderStyle*>(state.parentStyle())->setHasExplicitlyInheritedProperties();
     
     if (id == CSSPropertyCustom) {
         CSSCustomPropertyValue* customProperty = &downcast<CSSCustomPropertyValue>(*valueToApply);
@@ -1722,7 +1734,7 @@ void StyleResolver::checkForTextSizeAdjust(RenderStyle* style)
 }
 #endif
 
-void StyleResolver::checkForZoomChange(RenderStyle* style, RenderStyle* parentStyle)
+void StyleResolver::checkForZoomChange(RenderStyle* style, const RenderStyle* parentStyle)
 {
     if (!parentStyle)
         return;
@@ -1736,7 +1748,7 @@ void StyleResolver::checkForZoomChange(RenderStyle* style, RenderStyle* parentSt
     style->setFontDescription(newFontDescription);
 }
 
-void StyleResolver::checkForGenericFamilyChange(RenderStyle* style, RenderStyle* parentStyle)
+void StyleResolver::checkForGenericFamilyChange(RenderStyle* style, const RenderStyle* parentStyle)
 {
     const auto& childFont = style->fontDescription();
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -37,11 +38,13 @@
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "ContainerNode.h"
+#include "CrossOriginAccessControl.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
 #include "LinkRelAttribute.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "StyleResolver.h"
 
@@ -83,16 +86,57 @@ void LinkLoader::notifyFinished(CachedResource* resource)
     m_cachedLinkResource = nullptr;
 }
 
-bool LinkLoader::loadLink(const LinkRelAttribute& relAttribute, const URL& href, Document& document)
+Optional<CachedResource::Type> LinkLoader::resourceTypeFromAsAttribute(const String& as)
 {
-    // We'll record this URL per document, even if we later only use it in top level frames
-    if (relAttribute.iconType != InvalidIcon && href.isValid() && !href.isEmpty()) {
-        if (!m_client.shouldLoadLink())
-            return false;
-        if (Frame* frame = document.frame())
-            frame->loader().client().dispatchDidChangeIcons(relAttribute.iconType);
+    if (as.isEmpty())
+        return CachedResource::LinkPreload;
+    if (equalLettersIgnoringASCIICase(as, "image"))
+        return CachedResource::ImageResource;
+    if (equalLettersIgnoringASCIICase(as, "script"))
+        return CachedResource::Script;
+    if (equalLettersIgnoringASCIICase(as, "style"))
+        return CachedResource::CSSStyleSheet;
+    if (equalLettersIgnoringASCIICase(as, "media"))
+        return CachedResource::MediaResource;
+    if (equalLettersIgnoringASCIICase(as, "font"))
+        return CachedResource::FontResource;
+#if ENABLE(VIDEO_TRACK)
+    if (equalLettersIgnoringASCIICase(as, "track"))
+        return CachedResource::TextTrackResource;
+#endif
+    return Nullopt;
+}
+
+static void preloadIfNeeded(const LinkRelAttribute& relAttribute, const URL& href, Document& document, const String& as, const String& crossOriginMode)
+{
+    if (!document.loader() || !relAttribute.isLinkPreload)
+        return;
+
+    ASSERT(RuntimeEnabledFeatures::sharedFeatures().linkPreloadEnabled());
+    if (!href.isValid()) {
+        document.addConsoleMessage(MessageSource::Other, MessageLevel::Error, String("<link rel=preload> has an invalid `href` value"));
+        return;
+    }
+    auto type = LinkLoader::resourceTypeFromAsAttribute(as);
+    if (!type) {
+        document.addConsoleMessage(MessageSource::Other, MessageLevel::Error, String("<link rel=preload> must have a valid `as` value"));
+        return;
     }
 
+    ResourceRequest resourceRequest(document.completeURL(href));
+    CachedResourceRequest linkRequest(resourceRequest, CachedResource::defaultPriorityForResourceType(type.value()));
+    linkRequest.setInitiator("link");
+
+    if (!crossOriginMode.isNull()) {
+        StoredCredentials allowCredentials = equalLettersIgnoringASCIICase(crossOriginMode, "use-credentials") ? AllowStoredCredentials : DoNotAllowStoredCredentials;
+        updateRequestForAccessControl(linkRequest.mutableResourceRequest(), document.securityOrigin(), allowCredentials);
+    }
+    linkRequest.setForPreload(true);
+    document.cachedResourceLoader().preload(type.value(), linkRequest, emptyString());
+}
+
+bool LinkLoader::loadLink(const LinkRelAttribute& relAttribute, const URL& href, const String& as, const String& crossOrigin, Document& document)
+{
     if (relAttribute.isDNSPrefetch) {
         Settings* settings = document.settings();
         // FIXME: The href attribute of the link element can be in "//hostname" form, and we shouldn't attempt
@@ -100,6 +144,9 @@ bool LinkLoader::loadLink(const LinkRelAttribute& relAttribute, const URL& href,
         if (settings && settings->dnsPrefetchingEnabled() && href.isValid() && !href.isEmpty() && document.frame())
             document.frame()->loader().client().prefetchDNS(href.host());
     }
+
+    if (m_client.shouldLoadLink())
+        preloadIfNeeded(relAttribute, href, document, as, crossOrigin);
 
 #if ENABLE(LINK_PREFETCH)
     if ((relAttribute.isLinkPrefetch || relAttribute.isLinkSubresource) && href.isValid() && document.frame()) {

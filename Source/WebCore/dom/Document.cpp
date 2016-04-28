@@ -201,6 +201,11 @@
 #include "RenderFullScreen.h"
 #endif
 
+#if ENABLE(INDEXED_DATABASE)
+#include "IDBConnectionProxy.h"
+#include "IDBOpenDBRequest.h"
+#endif
+
 #if PLATFORM(IOS)
 #include "CSSFontSelector.h"
 #include "DeviceMotionClientIOS.h"
@@ -423,12 +428,12 @@ uint64_t Document::s_globalTreeVersion = 0;
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 void TextAutoSizingTraits::constructDeletedValue(TextAutoSizingKey& slot)
 {
-    new (&slot) TextAutoSizingKey(TextAutoSizingKey::deletedKeyStyle(), TextAutoSizingKey::deletedKeyDoc());
+    new (&slot) TextAutoSizingKey(TextAutoSizingKey::Deleted);
 }
 
 bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
 {
-    return value.style() == TextAutoSizingKey::deletedKeyStyle() && value.doc() == TextAutoSizingKey::deletedKeyDoc();
+    return value.isDeleted();
 }
 #endif
 
@@ -539,9 +544,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #ifndef NDEBUG
     , m_didDispatchViewportPropertiesChanged(false)
 #endif
-#if ENABLE(TEMPLATE_ELEMENT)
     , m_templateDocumentHost(nullptr)
-#endif
 #if ENABLE(WEB_REPLAY)
     , m_inputCursor(EmptyInputCursor::create())
 #endif
@@ -615,11 +618,9 @@ Document::~Document()
     m_deviceMotionClient->deviceMotionControllerDestroyed();
     m_deviceOrientationClient->deviceOrientationControllerDestroyed();
 #endif
-    
-#if ENABLE(TEMPLATE_ELEMENT)
+
     if (m_templateDocument)
         m_templateDocument->setTemplateDocumentHost(nullptr); // balanced in templateDocument().
-#endif
 
     // FIXME: Should we reset m_domWindow when we detach from the Frame?
     if (m_domWindow)
@@ -987,16 +988,11 @@ Ref<CSSStyleDeclaration> Document::createCSSStyleDeclaration()
     return *propertySet->ensureCSSStyleDeclaration();
 }
 
-RefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCode& ec)
+RefPtr<Node> Document::importNode(Node& nodeToImport, bool deep, ExceptionCode& ec)
 {
-    if (!importedNode) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
-
-    switch (importedNode->nodeType()) {
+    switch (nodeToImport.nodeType()) {
     case DOCUMENT_FRAGMENT_NODE:
-        if (importedNode->isShadowRoot())
+        if (nodeToImport.isShadowRoot())
             break;
         FALLTHROUGH;
     case ELEMENT_NODE:
@@ -1004,11 +1000,11 @@ RefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCode& 
     case CDATA_SECTION_NODE:
     case PROCESSING_INSTRUCTION_NODE:
     case COMMENT_NODE:
-        return importedNode->cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf);
+        return nodeToImport.cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf);
 
     case ATTRIBUTE_NODE:
         // FIXME: This will "Attr::normalize" child nodes of Attr.
-        return Attr::create(*this, QualifiedName(nullAtom, downcast<Attr>(*importedNode).name(), nullAtom), downcast<Attr>(*importedNode).value());
+        return Attr::create(*this, QualifiedName(nullAtom, downcast<Attr>(nodeToImport).name(), nullAtom), downcast<Attr>(nodeToImport).value());
 
     case DOCUMENT_NODE: // Can't import a document into another document.
     case DOCUMENT_TYPE_NODE: // FIXME: Support cloning a DocumentType node per DOM4.
@@ -1020,48 +1016,43 @@ RefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCode& 
 }
 
 
-RefPtr<Node> Document::adoptNode(Node* source, ExceptionCode& ec)
+RefPtr<Node> Document::adoptNode(Node& source, ExceptionCode& ec)
 {
-    if (!source) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
-
     EventQueueScope scope;
 
-    switch (source->nodeType()) {
+    switch (source.nodeType()) {
     case DOCUMENT_NODE:
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
     case ATTRIBUTE_NODE: {                   
-        Attr& attr = downcast<Attr>(*source);
+        auto& attr = downcast<Attr>(source);
         if (attr.ownerElement())
-            attr.ownerElement()->removeAttributeNode(&attr, ec);
+            attr.ownerElement()->removeAttributeNode(attr, ec);
         break;
     }       
     default:
-        if (source->isShadowRoot()) {
+        if (source.isShadowRoot()) {
             // ShadowRoot cannot disconnect itself from the host node.
             ec = HIERARCHY_REQUEST_ERR;
             return nullptr;
         }
-        if (is<HTMLFrameOwnerElement>(*source)) {
-            HTMLFrameOwnerElement& frameOwnerElement = downcast<HTMLFrameOwnerElement>(*source);
+        if (is<HTMLFrameOwnerElement>(source)) {
+            auto& frameOwnerElement = downcast<HTMLFrameOwnerElement>(source);
             if (frame() && frame()->tree().isDescendantOf(frameOwnerElement.contentFrame())) {
                 ec = HIERARCHY_REQUEST_ERR;
                 return nullptr;
             }
         }
-        if (source->parentNode()) {
-            source->parentNode()->removeChild(*source, ec);
+        if (source.parentNode()) {
+            source.parentNode()->removeChild(source, ec);
             if (ec)
                 return nullptr;
         }
     }
 
-    adoptIfNeeded(source);
+    adoptIfNeeded(&source);
 
-    return source;
+    return &source;
 }
 
 bool Document::hasValidNamespaceForElements(const QualifiedName& qName)
@@ -1773,52 +1764,14 @@ Ref<Range> Document::createRange()
     return Range::create(*this);
 }
 
-RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, bool, ExceptionCode& ec)
+Ref<NodeIterator> Document::createNodeIterator(Node& root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, bool)
 {
-    return createNodeIterator(root, whatToShow, WTFMove(filter), ec);
-}
-
-RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, ExceptionCode& ec)
-{
-    if (!root) {
-        ec = TypeError;
-        return nullptr;
-    }
     return NodeIterator::create(root, whatToShow, WTFMove(filter));
 }
 
-RefPtr<NodeIterator> Document::createNodeIterator(Node* root, unsigned long whatToShow, ExceptionCode& ec)
+Ref<TreeWalker> Document::createTreeWalker(Node& root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, bool)
 {
-    return createNodeIterator(root, whatToShow, nullptr, ec);
-}
-
-RefPtr<NodeIterator> Document::createNodeIterator(Node* root, ExceptionCode& ec)
-{
-    return createNodeIterator(root, 0xFFFFFFFF, nullptr, ec);
-}
-
-RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, bool, ExceptionCode& ec)
-{
-    return createTreeWalker(root, whatToShow, WTFMove(filter), ec);
-}
-
-RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&& filter, ExceptionCode& ec)
-{
-    if (!root) {
-        ec = TypeError;
-        return nullptr;
-    }
-    return TreeWalker::create(*root, whatToShow, WTFMove(filter));
-}
-
-RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, ExceptionCode& ec)
-{
-    return createTreeWalker(root, whatToShow, nullptr, ec);
-}
-
-RefPtr<TreeWalker> Document::createTreeWalker(Node* root, ExceptionCode& ec)
-{
-    return createTreeWalker(root, 0xFFFFFFFF, nullptr, ec);
+    return TreeWalker::create(root, whatToShow, WTFMove(filter));
 }
 
 void Document::scheduleForcedStyleRecalc()
@@ -1919,10 +1872,10 @@ void Document::recalcStyle(Style::Change change)
             // font selector, so set a font selector if needed.
             if (Settings* settings = this->settings()) {
                 if (settings->fontFallbackPrefersPictographs())
-                    documentStyle.get().fontCascade().update(&fontSelector());
+                    documentStyle.fontCascade().update(&fontSelector());
             }
 
-            auto documentChange = Style::determineChange(documentStyle.get(), m_renderView->style());
+            auto documentChange = Style::determineChange(documentStyle, m_renderView->style());
             if (documentChange != Style::NoChange)
                 renderView()->setStyle(WTFMove(documentStyle));
         }
@@ -2051,7 +2004,7 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
     m_ignorePendingStylesheets = oldIgnore;
 }
 
-Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& element, RenderStyle* parentStyle)
+std::unique_ptr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& element, const RenderStyle* parentStyle)
 {
     ASSERT(&element.document() == this);
 
@@ -2171,13 +2124,13 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
 
 bool Document::isPageBoxVisible(int pageIndex)
 {
-    Ref<RenderStyle> pageStyle(ensureStyleResolver().styleForPage(pageIndex));
+    std::unique_ptr<RenderStyle> pageStyle(ensureStyleResolver().styleForPage(pageIndex));
     return pageStyle->visibility() != HIDDEN; // display property doesn't apply to @page.
 }
 
 void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft)
 {
-    RefPtr<RenderStyle> style = ensureStyleResolver().styleForPage(pageIndex);
+    std::unique_ptr<RenderStyle> style = ensureStyleResolver().styleForPage(pageIndex);
 
     int width = pageSize.width();
     int height = pageSize.height();
@@ -2558,7 +2511,7 @@ void Document::setVisuallyOrdered()
 {
     m_visuallyOrdered = true;
     if (renderView())
-        renderView()->style().setRTLOrdering(VisualOrder);
+        renderView()->mutableStyle().setRTLOrdering(VisualOrder);
 }
 
 Ref<DocumentParser> Document::createParser()
@@ -2675,7 +2628,7 @@ void Document::setBodyOrFrameset(RefPtr<HTMLElement>&& newBody, ExceptionCode& e
 
     if (&newBody->document() != this) {
         ec = 0;
-        RefPtr<Node> node = importNode(newBody.get(), true, ec);
+        RefPtr<Node> node = importNode(*newBody, true, ec);
         if (ec)
             return;
         
@@ -3103,6 +3056,21 @@ void Document::disableEval(const String& errorMessage)
     frame()->script().disableEval(errorMessage);
 }
 
+#if ENABLE(INDEXED_DATABASE)
+IDBClient::IDBConnectionProxy* Document::idbConnectionProxy()
+{
+    if (!m_idbConnectionProxy) {
+        Page* currentPage = page();
+        if (!currentPage)
+            return nullptr;
+
+        m_idbConnectionProxy = &currentPage->idbConnection().proxy();
+    }
+
+    return m_idbConnectionProxy.get();
+}
+#endif // ENABLE(INDEXED_DATABASE)
+
 bool Document::canNavigate(Frame* targetFrame)
 {
     if (!m_frame)
@@ -3304,15 +3272,9 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
             unsigned long requestIdentifier = 0;
             if (frameLoader.activeDocumentLoader() && frameLoader.activeDocumentLoader()->mainResourceLoader())
                 requestIdentifier = frameLoader.activeDocumentLoader()->mainResourceLoader()->identifier();
-            if (frameLoader.shouldInterruptLoadForXFrameOptions(content, url(), requestIdentifier)) {
-                String message = "Refused to display '" + url().stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
-                frameLoader.stopAllLoaders();
-                // Stopping the loader isn't enough, as we're already parsing the document; to honor the header's
-                // intent, we must navigate away from the possibly partially-rendered document to a location that
-                // doesn't inherit the parent's SecurityOrigin.
-                frame->navigationScheduler().scheduleLocationChange(this, securityOrigin(), SecurityOrigin::urlWithUniqueSecurityOrigin(), String());
-                addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, requestIdentifier);
-            }
+
+            String message = "The X-Frame-Option '" + content + "' supplied in a <meta> element was ignored. X-Frame-Options may only be provided by an HTTP header sent with the document.";
+            addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, requestIdentifier);
         }
         break;
 
@@ -3321,19 +3283,9 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
             contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Enforce);
         break;
 
-    case HTTPHeaderName::ContentSecurityPolicyReportOnly:
-        if (isInDocumentHead)
-            contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Report);
-        break;
-
     case HTTPHeaderName::XWebKitCSP:
         if (isInDocumentHead)
             contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedEnforce);
-        break;
-
-    case HTTPHeaderName::XWebKitCSPReportOnly:
-        if (isInDocumentHead)
-            contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedReport);
         break;
 
     default:
@@ -5335,11 +5287,11 @@ HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 void Document::addAutoSizingNode(Node* node, float candidateSize)
 {
-    TextAutoSizingKey key(&node->renderer()->style(), &document());
-    TextAutoSizingMap::AddResult result = m_textAutoSizedNodes.add(key, nullptr);
-    if (result.isNewEntry)
-        result.iterator->value = TextAutoSizingValue::create();
-    result.iterator->value->addNode(node, candidateSize);
+    TextAutoSizingKey key(&node->renderer()->style());
+    auto addResult = m_textAutoSizedNodes.ensure(WTFMove(key), [] {
+        return TextAutoSizingValue::create();
+    });
+    addResult.iterator->value->addNode(node, candidateSize);
 }
 
 void Document::validateAutoSizingNodes()
@@ -5349,23 +5301,17 @@ void Document::validateAutoSizingNodes()
         TextAutoSizingValue* value = keyValuePair.value.get();
         // Update all the nodes in the collection to reflect the new
         // candidate size.
-        if (!value)
-            continue;
-
         value->adjustNodeSizes();
-        if (!value->numNodes())
-            nodesForRemoval.append(keyValuePair.key);
     }
-    for (auto& key : nodesForRemoval)
-        m_textAutoSizedNodes.remove(key);
+    m_textAutoSizedNodes.removeIf([] (TextAutoSizingMap::KeyValuePairType& keyAndValue) {
+        return !keyAndValue.value->numNodes();
+    });
 }
     
 void Document::resetAutoSizingNodes()
 {
-    for (auto& value : m_textAutoSizedNodes.values()) {
-        if (value)
-            value->reset();
-    }
+    for (auto& value : m_textAutoSizedNodes.values())
+        value->reset();
     m_textAutoSizedNodes.clear();
 }
 
@@ -5885,7 +5831,7 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
     bool shouldCreatePlaceholder = is<RenderBox>(renderer);
     if (shouldCreatePlaceholder) {
         m_savedPlaceholderFrameRect = downcast<RenderBox>(*renderer).frameRect();
-        m_savedPlaceholderRenderStyle = RenderStyle::clone(&renderer->style());
+        m_savedPlaceholderRenderStyle = RenderStyle::clonePtr(renderer->style());
     }
 
     if (m_fullScreenElement != documentElement())
@@ -5962,10 +5908,10 @@ void Document::setFullScreenRenderer(RenderFullScreen* renderer)
         return;
 
     if (renderer && m_savedPlaceholderRenderStyle) 
-        renderer->createPlaceholder(m_savedPlaceholderRenderStyle.releaseNonNull(), m_savedPlaceholderFrameRect);
+        renderer->createPlaceholder(WTFMove(m_savedPlaceholderRenderStyle), m_savedPlaceholderFrameRect);
     else if (renderer && m_fullScreenRenderer && m_fullScreenRenderer->placeholder()) {
         RenderBlock* placeholder = m_fullScreenRenderer->placeholder();
-        renderer->createPlaceholder(RenderStyle::clone(&placeholder->style()), placeholder->frameRect());
+        renderer->createPlaceholder(RenderStyle::clonePtr(placeholder->style()), placeholder->frameRect());
     }
 
     if (m_fullScreenRenderer)
@@ -6727,7 +6673,6 @@ Locale& Document::getCachedLocale(const AtomicString& locale)
     return *(result.iterator->value);
 }
 
-#if ENABLE(TEMPLATE_ELEMENT)
 Document& Document::ensureTemplateDocument()
 {
     if (const Document* document = templateDocument())
@@ -6742,7 +6687,6 @@ Document& Document::ensureTemplateDocument()
 
     return *m_templateDocument;
 }
-#endif
 
 Ref<FontFaceSet> Document::fonts()
 {

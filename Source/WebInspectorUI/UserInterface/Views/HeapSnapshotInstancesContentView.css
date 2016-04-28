@@ -31,6 +31,10 @@
     bottom: 0;
 }
 
+.heap-snapshot > .data-grid td .sub-retained {
+    color: hsl(0, 0%, 60%);
+}
+
 .heap-snapshot > .data-grid td .percentage {
     width: 45px;
     margin-left: 4px;
@@ -65,7 +69,6 @@
     position: relative;
     width: 16px;
     height: 16px;
-    margin-top: 1px;
     margin-left: 2px;
 }
 
@@ -78,7 +81,6 @@
     position: relative;
     width: 16px;
     height: 16px;
-    margin-top: 1px;
     margin-right: 4px;
     content: url(../Images/TypeUndefined.svg);
 }
@@ -122,8 +124,7 @@
 .heap-snapshot > .data-grid td .formatted-node-preview,
 .heap-snapshot > .data-grid td .object-preview {
     text-indent: 0; /* Do not inherit the DataGrid's indent. */
-    display: inline-block;
-    height: 16px;
+    line-height: initial;
 }
 
 .heap-snapshot-instance-popover-content > .title {

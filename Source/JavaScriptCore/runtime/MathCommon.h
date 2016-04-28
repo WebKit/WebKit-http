@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,8 @@
 #define MathCommon_h
 
 #include "JITOperations.h"
+#include <cmath>
+#include <wtf/Optional.h>
 
 #ifndef JIT_OPERATION
 #define JIT_OPERATION
@@ -52,6 +54,34 @@ inline int clz32(uint32_t number)
     }
     return zeroCount;
 #endif
+}
+
+inline Optional<double> safeReciprocalForDivByConst(double constant)
+{
+    // No "weird" numbers (NaN, Denormal, etc).
+    if (!constant || !std::isnormal(constant))
+        return Nullopt;
+
+    int exponent;
+    if (std::frexp(constant, &exponent) != 0.5)
+        return Nullopt;
+
+    // Note that frexp() returns the value divided by two
+    // so we to offset this exponent by one.
+    exponent -= 1;
+
+    // A double exponent is between -1022 and 1023.
+    // Nothing we can do to invert 1023.
+    if (exponent == 1023)
+        return Nullopt;
+
+    double reciprocal = std::ldexp(1, -exponent);
+    ASSERT(std::isnormal(reciprocal));
+    ASSERT(1. / constant == reciprocal);
+    ASSERT(constant == 1. / reciprocal);
+    ASSERT(1. == constant * reciprocal);
+
+    return reciprocal;
 }
 
 extern "C" {

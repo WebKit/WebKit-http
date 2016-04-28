@@ -38,12 +38,10 @@
 namespace WebCore {
 
 class AffineTransform;
-class CSSCursorImageValue;
 class CSSStyleDeclaration;
 class CSSValue;
 class Document;
 class SVGAttributeToPropertyMap;
-class SVGCursorElement;
 class SVGDocumentExtensions;
 class SVGElementRareData;
 class SVGSVGElement;
@@ -106,11 +104,6 @@ public:
 
     bool getBoundingBox(FloatRect&, SVGLocatable::StyleUpdateStrategy = SVGLocatable::AllowStyleUpdate);
 
-    void setCursorElement(SVGCursorElement*);
-    void cursorElementRemoved();
-    void setCursorImageValue(CSSCursorImageValue*);
-    void cursorImageValueRemoved();
-
     SVGElement* correspondingElement() const;
     SVGUseElement* correspondingUseElement() const;
 
@@ -119,7 +112,7 @@ public:
     void synchronizeAnimatedSVGAttribute(const QualifiedName&) const;
     static void synchronizeAllAnimatedSVGAttribute(SVGElement*);
  
-    Optional<ElementStyle> resolveCustomStyle(RenderStyle& parentStyle, RenderStyle* shadowHostStyle) override;
+    Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
 
     static void synchronizeRequiredFeatures(SVGElement* contextElement);
     static void synchronizeRequiredExtensions(SVGElement* contextElement);
@@ -188,7 +181,7 @@ protected:
     class InstanceInvalidationGuard;
 
 private:
-    RenderStyle* computedStyle(PseudoId = NOPSEUDO) final;
+    const RenderStyle* computedStyle(PseudoId = NOPSEUDO) final;
 
     virtual bool isSupported(StringImpl* feature, StringImpl* version) const;
 

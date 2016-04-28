@@ -23,67 +23,41 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "LargeObject.h"
 #include "PerProcess.h"
 #include "VMHeap.h"
 #include <thread>
 
 namespace bmalloc {
 
-VMHeap::VMHeap()
-    : m_largeObjects(VMState::HasPhysical::False)
+XLargeRange VMHeap::tryAllocateLargeChunk(std::lock_guard<StaticMutex>&, size_t alignment, size_t size)
 {
-}
+    // We allocate VM in aligned multiples to increase the chances that
+    // the OS will provide contiguous ranges that we can merge.
+    size_t roundedAlignment = roundUpToMultipleOf<chunkSize>(alignment);
+    if (roundedAlignment < alignment) // Check for overflow
+        return XLargeRange();
+    alignment = roundedAlignment;
 
-LargeObject VMHeap::allocateChunk(std::lock_guard<StaticMutex>& lock)
-{
-    Chunk* chunk =
-        new (vmAllocate(chunkSize, chunkSize)) Chunk(lock, ObjectType::Large);
+    size_t roundedSize = roundUpToMultipleOf<chunkSize>(size);
+    if (roundedSize < size) // Check for overflow
+        return XLargeRange();
+    size = roundedSize;
 
+    void* memory = tryVMAllocate(alignment, size);
+    if (!memory)
+        return XLargeRange();
+
+    Chunk* chunk = static_cast<Chunk*>(memory);
+    
 #if BOS(DARWIN)
     m_zone.addChunk(chunk);
 #endif
 
-    size_t alignment = largeAlignment;
-    size_t metadataSize = roundUpToMultipleOf(alignment, sizeof(Chunk));
-
-    Range range(chunk->bytes() + metadataSize, chunkSize - metadataSize);
-    BASSERT(range.size() <= largeObjectMax);
-
-    BeginTag* beginTag = Chunk::beginTag(range.begin());
-    beginTag->setRange(range);
-    beginTag->setFree(true);
-    beginTag->setVMState(VMState::Virtual);
-
-    EndTag* endTag = Chunk::endTag(range.begin(), range.size());
-    endTag->init(beginTag);
-
-    // Mark the left and right edges of our range as allocated. This naturally
-    // prevents merging logic from overflowing left (into metadata) or right
-    // (beyond our chunk), without requiring special-case checks.
-
-    EndTag* leftSentinel = beginTag->prev();
-    BASSERT(leftSentinel >= chunk->boundaryTags().begin());
-    BASSERT(leftSentinel < chunk->boundaryTags().end());
-    leftSentinel->initSentinel();
-
-    BeginTag* rightSentinel = endTag->next();
-    BASSERT(rightSentinel >= chunk->boundaryTags().begin());
-    BASSERT(rightSentinel < chunk->boundaryTags().end());
-    rightSentinel->initSentinel();
-
-    return LargeObject(range.begin());
+    return XLargeRange(chunk->bytes(), size, 0);
 }
 
 void VMHeap::allocateSmallChunk(std::lock_guard<StaticMutex>& lock, size_t pageClass)
 {
-    Chunk* chunk =
-        new (vmAllocate(chunkSize, chunkSize)) Chunk(lock, ObjectType::Small);
-
-#if BOS(DARWIN)
-    m_zone.addChunk(chunk);
-#endif
-
     size_t pageSize = bmalloc::pageSize(pageClass);
     size_t smallPageCount = pageSize / smallPageSize;
 
@@ -91,12 +65,28 @@ void VMHeap::allocateSmallChunk(std::lock_guard<StaticMutex>& lock, size_t pageC
     // aligned allocation requests at equal and smaller powers of two.
     size_t metadataSize = divideRoundingUp(sizeof(Chunk), pageSize) * pageSize;
 
+    void* memory = vmAllocate(chunkSize, chunkSize);
+    Chunk* chunk = static_cast<Chunk*>(memory);
+
     Object begin(chunk, metadataSize);
     Object end(chunk, chunkSize);
 
+    // Establish guard pages before writing to Chunk memory to work around
+    // an edge case in the Darwin VM system (<rdar://problem/25910098>).
+    vmRevokePermissions(begin.begin(), pageSize);
+    vmRevokePermissions(end.begin() - pageSize, pageSize);
+
+    begin = begin + pageSize;
+    end = end - pageSize;
+
+    new (chunk) Chunk(lock);
+
+#if BOS(DARWIN)
+    m_zone.addChunk(chunk);
+#endif
+
     for (Object it = begin; it + pageSize <= end; it = it + pageSize) {
         SmallPage* page = it.page();
-        new (page) SmallPage;
 
         for (size_t i = 0; i < smallPageCount; ++i)
             page[i].setSlide(i);

@@ -91,7 +91,17 @@
 #import <WebKitSystemInterface.h>
 #import <sys/stat.h>
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebViewImplIncludes.h>
+#endif
+
 SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
+
+@interface NSApplication ()
+- (BOOL)isSpeaking;
+- (void)speakString:(NSString *)string;
+- (void)stopSpeaking:(id)sender;
+@end
 
 // FIXME: Move to an SPI header.
 @interface NSTextInputContext (WKNSTextInputContextDetails)
@@ -111,6 +121,7 @@ SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 - (void)startObservingFontPanel;
 - (void)startObservingLookupDismissal;
 @end
+
 
 @implementation WKWindowVisibilityObserver
 
@@ -428,7 +439,12 @@ void WebViewImpl::updateWebViewImplAdditions()
 {
 }
 
-void WebViewImpl::showCandidates(NSArray *candidates, NSString *string, NSRect rectOfTypedString, NSView *view, void (^completionHandler)(NSTextCheckingResult *acceptedCandidate))
+bool WebViewImpl::shouldRequestCandidates() const
+{
+    return false;
+}
+
+void WebViewImpl::showCandidates(NSArray *candidates, NSString *string, NSRect rectOfTypedString, NSRange selectedRange, NSView *view, void (^completionHandler)(NSTextCheckingResult *acceptedCandidate))
 {
 }
 
@@ -2136,6 +2152,9 @@ void WebViewImpl::capitalizeWord()
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
 void WebViewImpl::requestCandidatesForSelectionIfNeeded()
 {
+    if (!shouldRequestCandidates())
+        return;
+
     const EditorState& editorState = m_page->editorState();
     if (!editorState.isContentEditable)
         return;
@@ -2147,10 +2166,10 @@ void WebViewImpl::requestCandidatesForSelectionIfNeeded()
     m_lastStringForCandidateRequest = postLayoutData.stringForCandidateRequest;
 
 #if HAVE(ADVANCED_SPELL_CHECKING)
-    NSRange rangeForCandidates = NSMakeRange(postLayoutData.candidateRequestStartPosition, postLayoutData.selectedTextLength);
+    NSRange selectedRange = NSMakeRange(postLayoutData.candidateRequestStartPosition, postLayoutData.selectedTextLength);
     NSTextCheckingTypes checkingTypes = NSTextCheckingTypeSpelling | NSTextCheckingTypeReplacement | NSTextCheckingTypeCorrection;
     auto weakThis = createWeakPtr();
-    [[NSSpellChecker sharedSpellChecker] requestCandidatesForSelectedRange:rangeForCandidates inString:postLayoutData.paragraphContextForCandidateRequest types:checkingTypes options:nil inSpellDocumentWithTag:spellCheckerDocumentTag() completionHandler:[weakThis](NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates) {
+    m_lastCandidateRequestSequenceNumber = [[NSSpellChecker sharedSpellChecker] requestCandidatesForSelectedRange:selectedRange inString:postLayoutData.paragraphContextForCandidateRequest types:checkingTypes options:nil inSpellDocumentWithTag:spellCheckerDocumentTag() completionHandler:[weakThis](NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (!weakThis)
                 return;
@@ -2162,6 +2181,12 @@ void WebViewImpl::requestCandidatesForSelectionIfNeeded()
 
 void WebViewImpl::handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates)
 {
+    if (!shouldRequestCandidates())
+        return;
+
+    if (m_lastCandidateRequestSequenceNumber != sequenceNumber)
+        return;
+
     const EditorState& editorState = m_page->editorState();
     if (!editorState.isContentEditable)
         return;
@@ -2175,8 +2200,9 @@ void WebViewImpl::handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NS
     if (m_lastStringForCandidateRequest != postLayoutData.stringForCandidateRequest)
         return;
 
+    NSRange selectedRange = NSMakeRange(postLayoutData.candidateRequestStartPosition, postLayoutData.selectedTextLength);
     auto weakThis = createWeakPtr();
-    showCandidates(candidates, postLayoutData.stringForCandidateRequest, postLayoutData.selectionClipRect, m_view, [weakThis](NSTextCheckingResult *acceptedCandidate) {
+    showCandidates(candidates, postLayoutData.paragraphContextForCandidateRequest, postLayoutData.selectionClipRect, selectedRange, m_view, [weakThis](NSTextCheckingResult *acceptedCandidate) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (!weakThis)
                 return;

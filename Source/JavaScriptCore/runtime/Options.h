@@ -125,7 +125,7 @@ typedef const char* optionString;
     \
     v(unsigned, repatchCountForCoolDown, 10, nullptr) \
     v(unsigned, initialCoolDownCount, 20, nullptr) \
-    v(unsigned, repatchBufferingCountdown, 7, nullptr) \
+    v(unsigned, repatchBufferingCountdown, 10, nullptr) \
     \
     v(bool, dumpGeneratedBytecodes, false, nullptr) \
     v(bool, dumpBytecodeLivenessResults, false, nullptr) \
@@ -192,7 +192,7 @@ typedef const char* optionString;
     v(bool, clobberAllRegsInFTLICSlowPath, !ASSERT_DISABLED, nullptr) \
     v(bool, useAccessInlining, true, nullptr) \
     v(unsigned, maxAccessVariantListSize, 13, nullptr) \
-    v(unsigned, megamorphicLoadCost, 10, nullptr) \
+    v(unsigned, megamorphicLoadCost, 999, nullptr) /* This used to be 10, but we're temporarily testing what happens when the feature is disabled. */\
     v(bool, usePolyvariantDevirtualization, true, nullptr) \
     v(bool, usePolymorphicAccessInlining, true, nullptr) \
     v(bool, usePolymorphicCallInlining, true, nullptr) \
@@ -316,9 +316,14 @@ typedef const char* optionString;
     v(unsigned, forceRAMSize, 0, nullptr) \
     v(bool, recordGCPauseTimes, false, nullptr) \
     v(bool, logHeapStatisticsAtExit, false, nullptr) \
+    \
     v(bool, useTypeProfiler, false, nullptr) \
     v(bool, useControlFlowProfiler, false, nullptr) \
+    \
     v(bool, useSamplingProfiler, false, nullptr) \
+    v(unsigned, sampleInterval, 1000, "Time between stack traces in microseconds.") \
+    v(bool, collectSamplingProfilerDataForJSCShell, false, "This corresponds to the JSC shell's --sample option.") \
+    \
     v(bool, alwaysGeneratePCToCodeOriginMap, false, "This will make sure we always generate a PCToCodeOriginMap for JITed code.") \
     \
     v(bool, verifyHeap, false, nullptr) \

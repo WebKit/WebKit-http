@@ -54,37 +54,6 @@ FontPlatformData::FontPlatformData(CTFontRef font, float size, bool syntheticBol
 #endif
 }
 
-FontPlatformData::~FontPlatformData()
-{
-}
-
-void FontPlatformData::platformDataInit(const FontPlatformData& f)
-{
-    m_font = f.m_font;
-
-    m_cgFont = f.m_cgFont;
-    m_ctFont = f.m_ctFont;
-
-#if PLATFORM(IOS)
-    m_isEmoji = f.m_isEmoji;
-#endif
-}
-
-const FontPlatformData& FontPlatformData::platformDataAssign(const FontPlatformData& f)
-{
-    m_cgFont = f.m_cgFont;
-    if (m_font && f.m_font && CFEqual(m_font.get(), f.m_font.get()))
-        return *this;
-    m_font = f.m_font;
-    m_ctFont = f.m_ctFont;
-
-#if PLATFORM(IOS)
-    m_isEmoji = f.m_isEmoji;
-#endif
-
-    return *this;
-}
-
 bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const
 {
     bool result = false;
@@ -106,28 +75,6 @@ CTFontRef FontPlatformData::registeredFont() const
     if (platformFont && adoptCF(CTFontCopyAttribute(platformFont, kCTFontURLAttribute)))
         return platformFont;
     return nullptr;
-}
-
-void FontPlatformData::setFont(CTFontRef font)
-{
-    ASSERT_ARG(font, font);
-
-    if (m_font == font)
-        return;
-
-    m_font = font;
-    m_size = CTFontGetSize(font);
-    m_cgFont = adoptCF(CTFontCopyGraphicsFont(font, nullptr));
-
-    CTFontSymbolicTraits traits = CTFontGetSymbolicTraits(m_font.get());
-    m_isColorBitmapFont = traits & kCTFontTraitColorGlyphs;
-    m_isSystemFont = CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(m_font.get())).get());
-
-#if PLATFORM(IOS)
-    m_isEmoji = CTFontIsAppleColorEmoji(m_font.get());
-#endif
-    
-    m_ctFont = nullptr;
 }
 
 inline int mapFontWidthVariantToCTFeatureSelector(FontWidthVariant variant)
@@ -210,7 +157,7 @@ RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck() const
     return objectForEqualityCheck(ctFont());
 }
 
-PassRefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
+RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
 {
     if (RetainPtr<CFDataRef> data = adoptCF(CGFontCopyTableForTag(cgFont(), table)))
         return SharedBuffer::wrapCFData(data.get());

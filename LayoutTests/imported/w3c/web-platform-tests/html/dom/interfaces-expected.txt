@@ -167,13 +167,9 @@ FAIL Document interface: calling createProcessingInstruction(DOMString,DOMString
             fn.apply(obj, args);
         }" did not throw
 PASS Document interface: iframe.contentDocument must inherit property "importNode" with the proper type (20) 
-FAIL Document interface: calling importNode(Node,boolean) on iframe.contentDocument with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: NotSupportedError: DOM Exception 9" ("NotSupportedError") expected object "TypeError" ("TypeError")
+PASS Document interface: calling importNode(Node,boolean) on iframe.contentDocument with too few arguments must throw TypeError 
 PASS Document interface: iframe.contentDocument must inherit property "adoptNode" with the proper type (21) 
-FAIL Document interface: calling adoptNode(Node) on iframe.contentDocument with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: NotSupportedError: DOM Exception 9" ("NotSupportedError") expected object "TypeError" ("TypeError")
+PASS Document interface: calling adoptNode(Node) on iframe.contentDocument with too few arguments must throw TypeError 
 PASS Document interface: iframe.contentDocument must inherit property "createAttribute" with the proper type (22) 
 FAIL Document interface: calling createAttribute(DOMString) on iframe.contentDocument with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
             fn.apply(obj, args);
@@ -482,13 +478,9 @@ FAIL Document interface: calling createProcessingInstruction(DOMString,DOMString
             fn.apply(obj, args);
         }" did not throw
 PASS Document interface: document.implementation.createDocument(null, "", null) must inherit property "importNode" with the proper type (20) 
-FAIL Document interface: calling importNode(Node,boolean) on document.implementation.createDocument(null, "", null) with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: NotSupportedError: DOM Exception 9" ("NotSupportedError") expected object "TypeError" ("TypeError")
+PASS Document interface: calling importNode(Node,boolean) on document.implementation.createDocument(null, "", null) with too few arguments must throw TypeError 
 PASS Document interface: document.implementation.createDocument(null, "", null) must inherit property "adoptNode" with the proper type (21) 
-FAIL Document interface: calling adoptNode(Node) on document.implementation.createDocument(null, "", null) with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: NotSupportedError: DOM Exception 9" ("NotSupportedError") expected object "TypeError" ("TypeError")
+PASS Document interface: calling adoptNode(Node) on document.implementation.createDocument(null, "", null) with too few arguments must throw TypeError 
 PASS Document interface: document.implementation.createDocument(null, "", null) must inherit property "createAttribute" with the proper type (22) 
 FAIL Document interface: calling createAttribute(DOMString) on document.implementation.createDocument(null, "", null) with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
             fn.apply(obj, args);
@@ -1092,17 +1084,11 @@ FAIL Element interface: calling getAttributeNodeNS(DOMString,DOMString) on docum
             fn.apply(obj, args);
         }" did not throw
 PASS Element interface: document.createElement("noscript") must inherit property "setAttributeNode" with the proper type (19) 
-FAIL Element interface: calling setAttributeNode(Attr) on document.createElement("noscript") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: TypeMismatchError: DOM Exception 17" ("TypeMismatchError") expected object "TypeError" ("TypeError")
+PASS Element interface: calling setAttributeNode(Attr) on document.createElement("noscript") with too few arguments must throw TypeError 
 PASS Element interface: document.createElement("noscript") must inherit property "setAttributeNodeNS" with the proper type (20) 
-FAIL Element interface: calling setAttributeNodeNS(Attr) on document.createElement("noscript") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: TypeMismatchError: DOM Exception 17" ("TypeMismatchError") expected object "TypeError" ("TypeError")
+PASS Element interface: calling setAttributeNodeNS(Attr) on document.createElement("noscript") with too few arguments must throw TypeError 
 PASS Element interface: document.createElement("noscript") must inherit property "removeAttributeNode" with the proper type (21) 
-FAIL Element interface: calling removeAttributeNode(Attr) on document.createElement("noscript") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: TypeMismatchError: DOM Exception 17" ("TypeMismatchError") expected object "TypeError" ("TypeError")
+PASS Element interface: calling removeAttributeNode(Attr) on document.createElement("noscript") with too few arguments must throw TypeError 
 PASS Element interface: document.createElement("noscript") must inherit property "closest" with the proper type (22) 
 PASS Element interface: calling closest(DOMString) on document.createElement("noscript") with too few arguments must throw TypeError 
 PASS Element interface: document.createElement("noscript") must inherit property "matches" with the proper type (23) 
@@ -1366,7 +1352,7 @@ PASS HTMLLinkElement interface object name
 PASS HTMLLinkElement interface: existence and properties of interface prototype object 
 PASS HTMLLinkElement interface: existence and properties of interface prototype object's "constructor" property 
 PASS HTMLLinkElement interface: attribute href 
-FAIL HTMLLinkElement interface: attribute crossOrigin assert_true: The prototype object must have a property "crossOrigin" expected true got false
+PASS HTMLLinkElement interface: attribute crossOrigin 
 PASS HTMLLinkElement interface: attribute rel 
 PASS HTMLLinkElement interface: attribute relList 
 PASS HTMLLinkElement interface: attribute media 
@@ -1379,7 +1365,7 @@ PASS HTMLLinkElement interface: attribute target
 PASS HTMLLinkElement must be primary interface of document.createElement("link") 
 PASS Stringification of document.createElement("link") 
 PASS HTMLLinkElement interface: document.createElement("link") must inherit property "href" with the proper type (0) 
-FAIL HTMLLinkElement interface: document.createElement("link") must inherit property "crossOrigin" with the proper type (1) assert_inherits: property "crossOrigin" not found in prototype chain
+PASS HTMLLinkElement interface: document.createElement("link") must inherit property "crossOrigin" with the proper type (1) 
 PASS HTMLLinkElement interface: document.createElement("link") must inherit property "rel" with the proper type (2) 
 PASS HTMLLinkElement interface: document.createElement("link") must inherit property "relList" with the proper type (3) 
 PASS HTMLLinkElement interface: document.createElement("link") must inherit property "media" with the proper type (4) 

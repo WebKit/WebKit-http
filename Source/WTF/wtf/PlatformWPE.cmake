@@ -1,9 +1,9 @@
 list(APPEND WTF_SOURCES
+    generic/WorkQueueGeneric.cpp
     glib/GRefPtr.cpp
     glib/GLibUtilities.cpp
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
-    glib/WorkQueueGLib.cpp
 )
 
 list(APPEND WTF_LIBRARIES

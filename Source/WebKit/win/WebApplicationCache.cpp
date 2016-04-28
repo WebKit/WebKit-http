@@ -33,8 +33,13 @@
 #include <WebCore/ApplicationCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/COMPtr.h>
+#include <WebCore/FileSystem.h>
 #include <WebCore/SecurityOrigin.h>
 #include <comutil.h>
+
+using namespace WebCore;
+
+static CFStringRef WebKitLocalCacheDefaultsKey = CFSTR("WebKitLocalCache");
 
 // WebApplicationCache ---------------------------------------------------------------------------
 
@@ -58,9 +63,24 @@ WebApplicationCache* WebApplicationCache::createInstance()
     return instance;
 }
 
+static String applicationCachePath()
+{
+    String path = localUserSpecificStorageDirectory();
+
+#if USE(CF)
+    auto cacheDirectoryPreference = adoptCF(CFPreferencesCopyAppValue(WebKitLocalCacheDefaultsKey, kCFPreferencesCurrentApplication));
+    if (cacheDirectoryPreference && CFStringGetTypeID() == CFGetTypeID(cacheDirectoryPreference.get()))
+        path = static_cast<CFStringRef>(cacheDirectoryPreference.get());
+#endif
+
+    return path;
+}
+
 WebCore::ApplicationCacheStorage& WebApplicationCache::storage()
 {
-    return WebCore::ApplicationCacheStorage::singleton();
+    static ApplicationCacheStorage& storage = ApplicationCacheStorage::create(applicationCachePath(), "ApplicationCache").leakRef();
+
+    return storage;
 }
 
 // IUnknown -------------------------------------------------------------------

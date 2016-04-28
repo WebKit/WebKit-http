@@ -146,8 +146,8 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     // Private extended attribute
     [Private] DOMString privateMethod(DOMString argument);
 
-    void addEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    void removeEventListener(DOMString type, EventListener listener, optional boolean useCapture);
+    void addEventListener(DOMString type, EventListener listener, optional boolean useCapture = false);
+    void removeEventListener(DOMString type, EventListener listener, optional boolean useCapture = false);
     attribute EventHandler onfoo;
     [ImplementedAs=onfoo] attribute EventHandler onwebkitfoo;
 
@@ -179,9 +179,24 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     void    methodWithNonOptionalArgAndOptionalArg(long nonOpt, optional long opt);
     void    methodWithNonOptionalArgAndTwoOptionalArgs(long nonOpt, optional long opt1, optional long opt2);
     void    methodWithOptionalString(optional DOMString str);
+    void    methodWithOptionalAtomicString([AtomicString] optional DOMString str);
     void    methodWithOptionalStringAndDefaultValue(optional DOMString str = "foo");
-    void    methodWithOptionalStringIsUndefined([Default=Undefined] optional DOMString str);
-    void    methodWithOptionalStringIsNullString([Default=NullString] optional DOMString str);
+    void    methodWithOptionalAtomicStringAndDefaultValue([AtomicString] optional DOMString str = "foo");
+    void    methodWithOptionalStringIsNull(optional DOMString str = null);
+    void    methodWithOptionalAtomicStringIsNull([AtomicString] optional DOMString str = null);
+    void    methodWithOptionalStringIsEmptyString(optional DOMString str = "");
+    void    methodWithOptionalAtomicStringIsEmptyString([AtomicString] optional DOMString str = "");
+    void    methodWithOptionalDoubleIsNaN(optional unrestricted double number = NaN);
+    void    methodWithOptionalFloatIsNaN(optional unrestricted float number = NaN);
+    void    methodWithOptionalSequence(optional sequence<DOMString> sequence = []);
+    void    methodWithOptionalLongLong(optional long long number);
+    void    methodWithOptionalLongLongIsZero(optional long long number = 0);
+    void    methodWithOptionalUnsignedLongLong(optional unsigned long long number);
+    void    methodWithOptionalUnsignedLongLongIsZero(optional unsigned long long number = 0);
+    void    methodWithOptionalArray(optional DOMString[] array);
+    void    methodWithOptionalArrayIsEmpty(optional DOMString[] array = []);
+    void    methodWithOptionalBoolean(optional boolean b);
+    void    methodWithOptionalBooleanIsFalse(optional boolean b = false);
 
 #if defined(TESTING_JS)
     // Callback interface parameters.

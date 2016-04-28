@@ -262,8 +262,8 @@ PASS Document interface: operation createDocumentFragment()
 FAIL Document interface: operation createTextNode(DOMString) assert_equals: property has wrong .length expected 1 but got 0
 FAIL Document interface: operation createComment(DOMString) assert_equals: property has wrong .length expected 1 but got 0
 FAIL Document interface: operation createProcessingInstruction(DOMString,DOMString) assert_equals: property has wrong .length expected 2 but got 0
-FAIL Document interface: operation importNode(Node,boolean) assert_equals: property has wrong .length expected 1 but got 0
-FAIL Document interface: operation adoptNode(Node) assert_equals: property has wrong .length expected 1 but got 0
+PASS Document interface: operation importNode(Node,boolean) 
+PASS Document interface: operation adoptNode(Node) 
 FAIL Document interface: operation createAttribute(DOMString) assert_equals: property has wrong .length expected 1 but got 0
 FAIL Document interface: operation createAttributeNS(DOMString,DOMString) assert_equals: property has wrong .length expected 2 but got 0
 FAIL Document interface: operation createEvent(DOMString) assert_equals: property has wrong .length expected 1 but got 0
@@ -331,13 +331,9 @@ FAIL Document interface: calling createProcessingInstruction(DOMString,DOMString
             fn.apply(obj, args);
         }" did not throw
 PASS Document interface: xmlDoc must inherit property "importNode" with the proper type (20) 
-FAIL Document interface: calling importNode(Node,boolean) on xmlDoc with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: NotSupportedError: DOM Exception 9" ("NotSupportedError") expected object "TypeError" ("TypeError")
+PASS Document interface: calling importNode(Node,boolean) on xmlDoc with too few arguments must throw TypeError 
 PASS Document interface: xmlDoc must inherit property "adoptNode" with the proper type (21) 
-FAIL Document interface: calling adoptNode(Node) on xmlDoc with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: NotSupportedError: DOM Exception 9" ("NotSupportedError") expected object "TypeError" ("TypeError")
+PASS Document interface: calling adoptNode(Node) on xmlDoc with too few arguments must throw TypeError 
 PASS Document interface: xmlDoc must inherit property "createAttribute" with the proper type (22) 
 FAIL Document interface: calling createAttribute(DOMString) on xmlDoc with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
             fn.apply(obj, args);
@@ -720,9 +716,9 @@ PASS Element interface: operation hasAttribute(DOMString)
 FAIL Element interface: operation hasAttributeNS(DOMString,DOMString) assert_equals: property has wrong .length expected 2 but got 0
 FAIL Element interface: operation getAttributeNode(DOMString) assert_equals: property has wrong .length expected 1 but got 0
 FAIL Element interface: operation getAttributeNodeNS(DOMString,DOMString) assert_equals: property has wrong .length expected 2 but got 0
-FAIL Element interface: operation setAttributeNode(Attr) assert_equals: property has wrong .length expected 1 but got 0
-FAIL Element interface: operation setAttributeNodeNS(Attr) assert_equals: property has wrong .length expected 1 but got 0
-FAIL Element interface: operation removeAttributeNode(Attr) assert_equals: property has wrong .length expected 1 but got 0
+PASS Element interface: operation setAttributeNode(Attr) 
+PASS Element interface: operation setAttributeNodeNS(Attr) 
+PASS Element interface: operation removeAttributeNode(Attr) 
 PASS Element interface: operation closest(DOMString) 
 PASS Element interface: operation matches(DOMString) 
 FAIL Element interface: operation getElementsByTagName(DOMString) assert_equals: property has wrong .length expected 1 but got 0
@@ -792,17 +788,11 @@ FAIL Element interface: calling getAttributeNodeNS(DOMString,DOMString) on eleme
             fn.apply(obj, args);
         }" did not throw
 PASS Element interface: element must inherit property "setAttributeNode" with the proper type (19) 
-FAIL Element interface: calling setAttributeNode(Attr) on element with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: TypeMismatchError: DOM Exception 17" ("TypeMismatchError") expected object "TypeError" ("TypeError")
+PASS Element interface: calling setAttributeNode(Attr) on element with too few arguments must throw TypeError 
 PASS Element interface: element must inherit property "setAttributeNodeNS" with the proper type (20) 
-FAIL Element interface: calling setAttributeNodeNS(Attr) on element with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: TypeMismatchError: DOM Exception 17" ("TypeMismatchError") expected object "TypeError" ("TypeError")
+PASS Element interface: calling setAttributeNodeNS(Attr) on element with too few arguments must throw TypeError 
 PASS Element interface: element must inherit property "removeAttributeNode" with the proper type (21) 
-FAIL Element interface: calling removeAttributeNode(Attr) on element with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "Error: TypeMismatchError: DOM Exception 17" ("TypeMismatchError") expected object "TypeError" ("TypeError")
+PASS Element interface: calling removeAttributeNode(Attr) on element with too few arguments must throw TypeError 
 PASS Element interface: element must inherit property "closest" with the proper type (22) 
 PASS Element interface: calling closest(DOMString) on element with too few arguments must throw TypeError 
 PASS Element interface: element must inherit property "matches" with the proper type (23) 
@@ -932,8 +922,8 @@ PASS NamedNodeMap interface: attribute length
 FAIL NamedNodeMap interface: operation item(unsigned long) assert_equals: property has wrong .length expected 1 but got 0
 FAIL NamedNodeMap interface: operation getNamedItem(DOMString) assert_equals: property has wrong .length expected 1 but got 0
 FAIL NamedNodeMap interface: operation getNamedItemNS(DOMString,DOMString) assert_equals: property has wrong .length expected 2 but got 0
-FAIL NamedNodeMap interface: operation setNamedItem(Attr) assert_equals: property has wrong .length expected 1 but got 0
-FAIL NamedNodeMap interface: operation setNamedItemNS(Attr) assert_equals: property has wrong .length expected 1 but got 0
+PASS NamedNodeMap interface: operation setNamedItem(Attr) 
+PASS NamedNodeMap interface: operation setNamedItemNS(Attr) 
 FAIL NamedNodeMap interface: operation removeNamedItem(DOMString) assert_equals: property has wrong .length expected 1 but got 0
 FAIL NamedNodeMap interface: operation removeNamedItemNS(DOMString,DOMString) assert_equals: property has wrong .length expected 2 but got 0
 FAIL Attr interface: existence and properties of interface object assert_equals: prototype of self's property "Attr" is not Function.prototype expected function "function () {

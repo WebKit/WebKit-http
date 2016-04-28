@@ -59,7 +59,7 @@ Ref<TextControlInnerContainer> TextControlInnerContainer::create(Document& docum
     return adoptRef(*new TextControlInnerContainer(document));
 }
     
-RenderPtr<RenderElement> TextControlInnerContainer::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> TextControlInnerContainer::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderTextControlInnerContainer>(*this, WTFMove(style));
 }
@@ -75,19 +75,19 @@ Ref<TextControlInnerElement> TextControlInnerElement::create(Document& document)
     return adoptRef(*new TextControlInnerElement(document));
 }
 
-Optional<ElementStyle> TextControlInnerElement::resolveCustomStyle(RenderStyle&, RenderStyle* shadowHostStyle)
+Optional<ElementStyle> TextControlInnerElement::resolveCustomStyle(const RenderStyle&, const RenderStyle* shadowHostStyle)
 {
-    auto innerContainerStyle = RenderStyle::create();
-    innerContainerStyle.get().inheritFrom(shadowHostStyle);
+    auto innerContainerStyle = RenderStyle::createPtr();
+    innerContainerStyle->inheritFrom(shadowHostStyle);
 
-    innerContainerStyle.get().setFlexGrow(1);
+    innerContainerStyle->setFlexGrow(1);
     // min-width: 0; is needed for correct shrinking.
-    innerContainerStyle.get().setMinWidth(Length(0, Fixed));
-    innerContainerStyle.get().setDisplay(BLOCK);
-    innerContainerStyle.get().setDirection(LTR);
+    innerContainerStyle->setMinWidth(Length(0, Fixed));
+    innerContainerStyle->setDisplay(BLOCK);
+    innerContainerStyle->setDirection(LTR);
 
     // We don't want the shadow dom to be editable, so we set this block to read-only in case the input itself is editable.
-    innerContainerStyle.get().setUserModify(READ_ONLY);
+    innerContainerStyle->setUserModify(READ_ONLY);
 
     return ElementStyle(WTFMove(innerContainerStyle));
 }
@@ -124,7 +124,7 @@ void TextControlInnerTextElement::defaultEventHandler(Event* event)
         HTMLDivElement::defaultEventHandler(event);
 }
 
-RenderPtr<RenderElement> TextControlInnerTextElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> TextControlInnerTextElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderTextControlInnerBlock>(*this, WTFMove(style));
 }
@@ -134,9 +134,10 @@ RenderTextControlInnerBlock* TextControlInnerTextElement::renderer() const
     return downcast<RenderTextControlInnerBlock>(HTMLDivElement::renderer());
 }
 
-Optional<ElementStyle> TextControlInnerTextElement::resolveCustomStyle(RenderStyle&, RenderStyle* shadowHostStyle)
+Optional<ElementStyle> TextControlInnerTextElement::resolveCustomStyle(const RenderStyle&, const RenderStyle* shadowHostStyle)
 {
-    return ElementStyle(downcast<HTMLTextFormControlElement>(*shadowHost()).createInnerTextStyle(*shadowHostStyle));
+    auto style = downcast<HTMLTextFormControlElement>(*shadowHost()).createInnerTextStyle(*shadowHostStyle);
+    return ElementStyle(std::make_unique<RenderStyle>(WTFMove(style)));
 }
 
 // ----------------------------
@@ -148,7 +149,7 @@ TextControlPlaceholderElement::TextControlPlaceholderElement(Document& document)
     setHasCustomStyleResolveCallbacks();
 }
 
-Optional<ElementStyle> TextControlPlaceholderElement::resolveCustomStyle(RenderStyle& parentStyle, RenderStyle* shadowHostStyle)
+Optional<ElementStyle> TextControlPlaceholderElement::resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle)
 {
     auto style = resolveStyle(&parentStyle);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,18 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBConnectionToServer_h
-#define IDBConnectionToServer_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBConnectionProxy.h"
 #include "IDBConnectionToServerDelegate.h"
 #include "IDBResourceIdentifier.h"
 #include "TransactionOperation.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Ref.h>
-#include <wtf/RefCounted.h>
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
 
@@ -51,11 +51,13 @@ namespace IDBClient {
 
 class TransactionOperation;
 
-class IDBConnectionToServer : public RefCounted<IDBConnectionToServer> {
+class IDBConnectionToServer : public ThreadSafeRefCounted<IDBConnectionToServer> {
 public:
     WEBCORE_EXPORT static Ref<IDBConnectionToServer> create(IDBConnectionToServerDelegate&);
 
     uint64_t identifier() const;
+
+    IDBConnectionProxy& proxy();
 
     void deleteDatabase(IDBOpenDBRequest&);
     WEBCORE_EXPORT void didDeleteDatabase(const IDBResultData&);
@@ -137,10 +139,11 @@ private:
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<TransactionOperation>> m_activeOperations;
+
+    std::unique_ptr<IDBConnectionProxy> m_proxy;
 };
 
 } // namespace IDBClient
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBConnectionToServer_h

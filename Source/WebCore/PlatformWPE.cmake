@@ -151,9 +151,12 @@ list(APPEND WebCore_SOURCES
 
     page/wpe/EventHandlerWPE.cpp
 
+    platform/glib/EventLoopGlib.cpp
+    platform/glib/FileSystemGlib.cpp
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
+    platform/glib/SharedBufferGlib.cpp
 
     platform/graphics/cairo/GraphicsContextCairo.cpp
 
@@ -164,12 +167,11 @@ list(APPEND WebCore_SOURCES
 
     platform/text/wpe/TextBreakIteratorInternalICUWPE.cpp
 
+    platform/unix/LanguageUnix.cpp
+    platform/unix/LoggingUnix.cpp
+
     platform/wpe/CursorWPE.cpp
-    platform/wpe/EventLoopWPE.cpp
     platform/wpe/ErrorsWPE.cpp
-    platform/wpe/FileSystemWPE.cpp
-    platform/wpe/LanguageWPE.cpp
-    platform/wpe/LoggingWPE.cpp
     platform/wpe/LocalizedStringsWPE.cpp
     platform/wpe/MIMETypeRegistryWPE.cpp
     platform/wpe/PasteboardWPE.cpp
@@ -179,7 +181,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/RenderThemeWPE.cpp
     platform/wpe/SSLKeyGeneratorWPE.cpp
     platform/wpe/ScrollbarThemeWPE.cpp
-    platform/wpe/SharedBufferWPE.cpp
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp

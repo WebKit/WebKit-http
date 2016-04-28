@@ -265,7 +265,7 @@ inline void Heap::ascribeOwner(JSCell* intendedOwner, void* storage)
 #endif
 }
 
-#if USE(CF)
+#if USE(FOUNDATION)
 template <typename T>
 inline void Heap::releaseSoon(RetainPtr<T>&& object)
 {

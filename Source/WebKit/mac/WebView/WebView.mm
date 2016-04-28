@@ -301,6 +301,11 @@
 #import <WebKitAdditions/WebViewIncludes.h>
 #endif
 
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#import <WebCore/WebPlaybackSessionInterfaceMac.h>
+#import <WebCore/WebPlaybackSessionModelMediaElement.h>
+#endif
+
 #if PLATFORM(MAC)
 SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 #endif
@@ -730,29 +735,6 @@ static String webKitBundleVersionString()
     reportException(execState, toJS(execState, exception));
 }
 
-static void WebKitInitializeApplicationCachePathIfNecessary()
-{
-    static BOOL initialized = NO;
-    if (initialized)
-        return;
-
-    NSString *appName = [[NSBundle mainBundle] bundleIdentifier];
-    if (!appName)
-        appName = [[NSProcessInfo processInfo] processName];
-#if PLATFORM(IOS)
-    if (WebCore::IOSApplication::isMobileSafari() || WebCore::IOSApplication::isWebApp())
-        appName = @"com.apple.WebAppCache";
-#endif
-
-    ASSERT(appName);
-
-    NSString* cacheDir = [NSString _webkit_localCacheDirectoryWithBundleIdentifier:appName];
-
-    webApplicationCacheStorage().setCacheDirectory(cacheDir);
-    
-    initialized = YES;
-}
-
 static void WebKitInitializeApplicationStatisticsStoragePathIfNecessary()
 {
     static BOOL initialized = NO;
@@ -883,6 +865,16 @@ static bool shouldAllowPictureInPictureMediaPlayback()
 #endif
 }
 
+static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol()
+{
+#if PLATFORM(IOS)
+    static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol = (IOSApplication::isEcobee() || IOSApplication::isQuora()) && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CONTENT_SECURITY_POLICY_SOURCE_STAR_PROTOCOL_RESTRICTION);
+    return shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol;
+#else
+    return false;
+#endif
+}
+
 #if ENABLE(GAMEPAD)
 static void WebKitInitializeGamepadProviderIfNecessary()
 {
@@ -962,7 +954,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         if ([standardPreferences storageTrackerEnabled])
 #endif
         WebKitInitializeStorageIfNecessary();
-        WebKitInitializeApplicationCachePathIfNecessary();
         WebKitInitializeApplicationStatisticsStoragePathIfNecessary();
 #if ENABLE(GAMEPAD)
         WebKitInitializeGamepadProviderIfNecessary();
@@ -1002,6 +993,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
+    pageConfiguration.applicationCacheStorage = &webApplicationCacheStorage();
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentProvider = &_private->group->userContentController();
@@ -1245,6 +1237,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
+    pageConfiguration.applicationCacheStorage = &webApplicationCacheStorage();
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
     pageConfiguration.storageNamespaceProvider = &_private->group->storageNamespaceProvider();
     pageConfiguration.userContentProvider = &_private->group->userContentController();
@@ -2496,6 +2489,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled([preferences webGL2Enabled]);
 #endif
 
+#if ENABLE(DOWNLOAD_ATTRIBUTE)
+    RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled([preferences downloadAttributeEnabled]);
+#endif
+
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
         settings.setIncrementalRenderingSuppressionTimeoutInSeconds(timeout);
@@ -2523,6 +2520,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(ATTACHMENT_ELEMENT)
     settings.setAttachmentElementEnabled([preferences attachmentElementEnabled]);
 #endif
+
+    settings.setAllowContentSecurityPolicySourceStarToMatchAnyProtocol(shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol());
 }
 
 static inline IMP getMethod(id o, SEL s)
@@ -6688,8 +6687,13 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 {
 }
 
-- (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock
+- (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString forSelectedRange:(NSRange)range view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock
 {
+}
+
+- (BOOL)shouldRequestCandidates
+{
+    return NO;
 }
 
 @end
@@ -6917,7 +6921,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
         return nil;
     if (!coreFrame->document())
         return nil;
-    JSC::JSValue result = coreFrame->script().executeScript(script, true).jsValue();
+    JSC::JSValue result = coreFrame->script().executeScript(script, true);
     if (!result) // FIXME: pass errors
         return 0;
     JSLockHolder lock(coreFrame->script().globalObject(mainThreadNormalWorld())->globalExec());
@@ -8535,6 +8539,50 @@ bool LayerFlushController::flushLayers()
     _private->fullscreenController = nil;
 }
 
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+- (BOOL)_hasActiveVideoForControlsInterface
+{
+    if (!_private->playbackSessionModel)
+        return false;
+
+    HTMLMediaElement* mediaElement = _private->playbackSessionModel->mediaElement();
+    if (!mediaElement)
+        return false;
+
+    return mediaElement->hasAudio() || mediaElement->hasVideo();
+}
+
+- (void)_setUpPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement
+{
+    if (_private->playbackSessionModel && _private->playbackSessionModel->mediaElement() == &mediaElement)
+        return;
+
+    if (!_private->playbackSessionModel)
+        _private->playbackSessionModel = WebPlaybackSessionModelMediaElement::create();
+    _private->playbackSessionModel->setMediaElement(&mediaElement);
+
+    if (!_private->playbackSessionInterface)
+        _private->playbackSessionInterface = WebPlaybackSessionInterfaceMac::create();
+
+    _private->playbackSessionInterface->setWebPlaybackSessionModel(_private->playbackSessionModel.get());
+    _private->playbackSessionModel->setWebPlaybackSessionInterface(_private->playbackSessionInterface.get());
+    [self updateWebViewAdditions];
+}
+
+- (void)_clearPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement
+{
+    if (!_private->playbackSessionModel || _private->playbackSessionModel->mediaElement() != &mediaElement)
+        return;
+
+    _private->playbackSessionModel->setMediaElement(nullptr);
+    _private->playbackSessionModel->setWebPlaybackSessionInterface(nullptr);
+    _private->playbackSessionInterface->setWebPlaybackSessionModel(nullptr);
+
+    _private->playbackSessionModel = nullptr;
+    _private->playbackSessionInterface = nullptr;
+    [self updateWebViewAdditions];
+}
+#endif // PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 #endif // ENABLE(VIDEO)
 
 #if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS)

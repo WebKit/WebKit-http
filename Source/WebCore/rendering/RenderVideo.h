@@ -36,7 +36,7 @@ class HTMLVideoElement;
 
 class RenderVideo final : public RenderMedia {
 public:
-    RenderVideo(HTMLVideoElement&, Ref<RenderStyle>&&);
+    RenderVideo(HTMLVideoElement&, RenderStyle&&);
     virtual ~RenderVideo();
 
     HTMLVideoElement& videoElement() const;
@@ -59,7 +59,7 @@ private:
 
     void intrinsicSizeChanged() override;
     LayoutSize calculateIntrinsicSize();
-    void updateIntrinsicSize();
+    bool updateIntrinsicSize();
 
     void imageChanged(WrappedImagePtr, const IntRect*) override;
 

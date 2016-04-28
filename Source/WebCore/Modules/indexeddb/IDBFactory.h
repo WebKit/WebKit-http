@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,33 +27,43 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "IDBConnectionToServer.h"
-#include "IDBFactory.h"
-#include "IDBOpenDBRequest.h"
+#include <wtf/Forward.h>
+#include <wtf/Ref.h>
+#include <wtf/ThreadSafeRefCounted.h>
+
+namespace JSC {
+class JSValue;
+}
 
 namespace WebCore {
 
-class IDBFactory : public RefCounted<IDBFactory> {
+class IDBOpenDBRequest;
+class ScriptExecutionContext;
+
+struct ExceptionCodeWithMessage;
+
+namespace IDBClient {
+class IDBConnectionProxy;
+}
+
+typedef int ExceptionCode;
+
+class IDBFactory : public ThreadSafeRefCounted<IDBFactory> {
 public:
-    static Ref<IDBFactory> create(IDBClient::IDBConnectionToServer&);
+    static Ref<IDBFactory> create(IDBClient::IDBConnectionProxy&);
+    ~IDBFactory();
 
-    // FIXME: getDatabaseNames is no longer a web-facing API, and should be removed from IDBFactory.
-    // The Web Inspector currently uses this to enumerate the list of databases, but is more complicated as a result.
-    // We should provide a simpler API to the Web Inspector then remove getDatabaseNames.
-    RefPtr<IDBRequest> getDatabaseNames(ScriptExecutionContext&, ExceptionCode&);
+    RefPtr<IDBOpenDBRequest> open(ScriptExecutionContext&, const String& name, Optional<unsigned long long> version, ExceptionCodeWithMessage&);
+    RefPtr<IDBOpenDBRequest> deleteDatabase(ScriptExecutionContext&, const String& name, ExceptionCodeWithMessage&);
 
-    RefPtr<IDBOpenDBRequest> open(ScriptExecutionContext&, const String& name, ExceptionCode&);
-    RefPtr<IDBOpenDBRequest> open(ScriptExecutionContext&, const String& name, unsigned long long version, ExceptionCode&);
-    RefPtr<IDBOpenDBRequest> deleteDatabase(ScriptExecutionContext&, const String& name, ExceptionCode&);
-
-    short cmp(ScriptExecutionContext&, const Deprecated::ScriptValue& first, const Deprecated::ScriptValue& second, ExceptionCodeWithMessage&);
+    short cmp(ScriptExecutionContext&, JSC::JSValue first, JSC::JSValue second, ExceptionCodeWithMessage&);
 
 private:
-    IDBFactory(IDBClient::IDBConnectionToServer&);
-    
-    RefPtr<IDBOpenDBRequest> openInternal(ScriptExecutionContext&, const String& name, unsigned long long version, ExceptionCode&);
-    
-    Ref<IDBClient::IDBConnectionToServer> m_connectionToServer;
+    explicit IDBFactory(IDBClient::IDBConnectionProxy&);
+
+    RefPtr<IDBOpenDBRequest> openInternal(ScriptExecutionContext&, const String& name, unsigned long long version, ExceptionCodeWithMessage&);
+
+    Ref<IDBClient::IDBConnectionProxy> m_connectionProxy;
 };
 
 } // namespace WebCore

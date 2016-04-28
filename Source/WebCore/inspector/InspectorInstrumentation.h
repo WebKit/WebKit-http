@@ -29,8 +29,7 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef InspectorInstrumentation_h
-#define InspectorInstrumentation_h
+#pragma once
 
 #include "CSSSelector.h"
 #include "Element.h"
@@ -41,7 +40,6 @@
 #include "MemoryPressureHandler.h"
 #include "Page.h"
 #include "ScriptExecutionContext.h"
-#include "ScriptState.h"
 #include "StorageArea.h"
 #include "WebSocketFrame.h"
 #include <runtime/ConsoleTypes.h>
@@ -253,11 +251,6 @@ public:
     static void didReceiveWebSocketFrame(Document*, unsigned long identifier, const WebSocketFrame&);
     static void didSendWebSocketFrame(Document*, unsigned long identifier, const WebSocketFrame&);
     static void didReceiveWebSocketFrameError(Document*, unsigned long identifier, const String& errorMessage);
-#endif
-
-    static Deprecated::ScriptObject wrapCanvas2DRenderingContextForInstrumentation(Document*, const Deprecated::ScriptObject&);
-#if ENABLE(WEBGL)
-    static Deprecated::ScriptObject wrapWebGLRenderingContextForInstrumentation(Document*, const Deprecated::ScriptObject&);
 #endif
 
 #if ENABLE(RESOURCE_USAGE)
@@ -1284,13 +1277,9 @@ inline InstrumentingAgents* InspectorInstrumentation::instrumentingAgentsForDocu
 inline InstrumentingAgents* InspectorInstrumentation::instrumentingAgentsForDocument(Document& document)
 {
     Page* page = document.page();
-#if ENABLE(TEMPLATE_ELEMENT)
     if (!page && document.templateDocumentHost())
         page = document.templateDocumentHost()->page();
-#endif
     return instrumentingAgentsForPage(page);
 }
 
 } // namespace WebCore
-
-#endif // !defined(InspectorInstrumentation_h)

@@ -263,6 +263,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
     RetainPtr<UIView> _customInputView;
     RetainPtr<NSArray<UITextSuggestion *>> _suggestions;
+    BOOL _accessoryViewShouldNotShow;
 }
 
 - (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject
@@ -305,6 +306,20 @@ const CGFloat minimumTapHighlightRadius = 2.0;
         [[_contentView formAccessoryView] hideAutoFillButton];
     if (UICurrentUserInterfaceIdiomIsPad())
         [_contentView reloadInputViews];
+}
+
+- (BOOL)accessoryViewShouldNotShow
+{
+    return _accessoryViewShouldNotShow;
+}
+
+- (void)setAccessoryViewShouldNotShow:(BOOL)accessoryViewShouldNotShow
+{
+    if (_accessoryViewShouldNotShow == accessoryViewShouldNotShow)
+        return;
+
+    _accessoryViewShouldNotShow = accessoryViewShouldNotShow;
+    [_contentView reloadInputViews];
 }
 
 - (UIView *)customInputView
@@ -1051,7 +1066,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         return nil;
 
     if (!_inputPeripheral)
-        _inputPeripheral = adoptNS(_assistedNodeInformation.elementType == InputType::Select ? [WKFormSelectControl createPeripheralWithView:self] : [WKFormInputControl createPeripheralWithView:self]);
+        _inputPeripheral = adoptNS(_assistedNodeInformation.elementType == InputType::Select ? [[WKFormSelectControl alloc] initWithView:self] : [[WKFormInputControl alloc] initWithView:self]);
     else
         [self _displayFormNodeInputView];
 
@@ -1123,9 +1138,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (void)_showAttachmentSheet
 {
     id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
-    
-    if ([uiDelegate respondsToSelector:@selector(_webView:showCustomSheetForElement:)])
-        [uiDelegate _webView:_webView showCustomSheetForElement:[[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]];
+    if (![uiDelegate respondsToSelector:@selector(_webView:showCustomSheetForElement:)])
+        return;
+
+    auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
+    [uiDelegate _webView:_webView showCustomSheetForElement:element.get()];
 }
 
 - (void)_showLinkSheet
@@ -1550,6 +1567,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (BOOL)requiresAccessoryView
 {
+    if ([_formInputSession accessoryViewShouldNotShow])
+        return NO;
+
     switch (_assistedNodeInformation.elementType) {
     case InputType::None:
         return NO;
@@ -3661,7 +3681,7 @@ static bool isAssistableInputType(InputType type)
     [_airPlayRoutePicker show:hasVideo fromRect:elementRect];
 }
 
-- (void)_showRunOpenPanel:(WebOpenPanelParameters*)parameters resultListener:(WebOpenPanelResultListenerProxy*)listener
+- (void)_showRunOpenPanel:(API::OpenPanelParameters*)parameters resultListener:(WebOpenPanelResultListenerProxy*)listener
 {
     ASSERT(!_fileUploadPanel);
     if (_fileUploadPanel)
@@ -3896,8 +3916,8 @@ static bool isAssistableInputType(InputType type)
         // FIXME: Should use UIKit constants.
         enum { WKUIPreviewItemTypeAttachment = 5 };
         *type = static_cast<UIPreviewItemType>(WKUIPreviewItemTypeAttachment);
-        const auto& element = [[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil];
-        NSUInteger index = [uiDelegate _webView:_webView indexIntoAttachmentListForElement:element];
+        auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
+        NSUInteger index = [uiDelegate _webView:_webView indexIntoAttachmentListForElement:element.get()];
         if (index != NSNotFound) {
             dataForPreview[@"UIPreviewDataAttachmentList"] = [uiDelegate _attachmentListForWebView:_webView];
             dataForPreview[@"UIPreviewDataAttachmentIndex"] = [NSNumber numberWithUnsignedInteger:index];
@@ -4278,25 +4298,15 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
     WKAutocorrectionContext *context = [[WKAutocorrectionContext alloc] init];
 
     if ([beforeText length])
-        context.contextBeforeSelection = [beforeText copy];
+        context.contextBeforeSelection = beforeText;
     if ([selectedText length])
-        context.selectedText = [selectedText copy];
+        context.selectedText = selectedText;
     if ([markedText length])
-        context.markedText = [markedText copy];
+        context.markedText = markedText;
     if ([afterText length])
-        context.contextAfterSelection = [afterText copy];
+        context.contextAfterSelection = afterText;
     context.rangeInMarkedText = range;
     return [context autorelease];
-}
-
-- (void)dealloc
-{
-    [self.contextBeforeSelection release];
-    [self.markedText release];
-    [self.selectedText release];
-    [self.contextAfterSelection release];
-
-    [super dealloc];
 }
 
 @end

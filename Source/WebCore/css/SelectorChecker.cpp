@@ -89,6 +89,14 @@ static inline void addStyleRelation(SelectorChecker::CheckingContext& checkingCo
     ASSERT(value == 1 || type == Style::Relation::NthChildIndex || type == Style::Relation::AffectedByEmpty);
     if (checkingContext.resolvingMode != SelectorChecker::Mode::ResolvingStyle)
         return;
+    if (type == Style::Relation::AffectsNextSibling && !checkingContext.styleRelations.isEmpty()) {
+        auto& last = checkingContext.styleRelations.last();
+        if (last.type == Style::Relation::AffectsNextSibling && last.element == element.nextElementSibling()) {
+            ++last.value;
+            last.element = &element;
+            return;
+        }
+    }
     checkingContext.styleRelations.append({ element, type, value });
 }
 
@@ -644,8 +652,10 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
     if (selector.match() == CSSSelector::Class)
         return element.hasClass() && element.classNames().contains(selector.value());
 
-    if (selector.match() == CSSSelector::Id)
-        return element.hasID() && element.idForStyleResolution() == selector.value();
+    if (selector.match() == CSSSelector::Id) {
+        ASSERT(!selector.value().isNull());
+        return element.idForStyleResolution() == selector.value();
+    }
 
     if (selector.isAttributeSelector()) {
         if (!element.hasAttributes())

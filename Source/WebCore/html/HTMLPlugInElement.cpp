@@ -294,7 +294,7 @@ NPObject* HTMLPlugInElement::getNPObject()
 
 #endif /* ENABLE(NETSCAPE_PLUGIN_API) */
 
-RenderPtr<RenderElement> HTMLPlugInElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition& insertionPosition)
+RenderPtr<RenderElement> HTMLPlugInElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
     if (m_pluginReplacement && m_pluginReplacement->willCreateRenderer())
         return m_pluginReplacement->createElementRenderer(*this, WTFMove(style), insertionPosition);
@@ -327,7 +327,7 @@ void HTMLPlugInElement::didAddUserAgentShadowRoot(ShadowRoot* root)
         return;
     
     root->setResetStyleInheritance(true);
-    if (m_pluginReplacement->installReplacement(root)) {
+    if (m_pluginReplacement->installReplacement(*root)) {
         setDisplayState(DisplayingPluginReplacement);
         setNeedsStyleRecalc(ReconstructRenderTree);
     }

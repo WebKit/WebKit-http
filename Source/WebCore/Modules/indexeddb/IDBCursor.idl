@@ -25,12 +25,13 @@
 
 [
     Conditional=INDEXED_DATABASE,
+    CustomToJSObject,
     EnabledAtRuntime=IndexedDB,
     ActiveDOMObject,
     SkipVTableValidation,
     JSCustomMarkFunction,
 ] interface IDBCursor {
-    readonly attribute IDBAny source;
+    [CustomGetter] readonly attribute any source;
     readonly attribute DOMString direction;
     readonly attribute any key;
     readonly attribute any primaryKey;

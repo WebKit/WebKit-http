@@ -1,3 +1,77 @@
+2016-04-25  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win][IndexedDB] Fix build errors.
+        https://bugs.webkit.org/show_bug.cgi?id=156713
+
+        Reviewed by Alex Christensen.
+
+        Fix compile and link errors when building with IndexedDB enabled.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+        * storage: Added.
+        * storage/WebDatabaseProvider.cpp: Added.
+        (WebDatabaseProvider::indexedDatabaseDirectoryPath):
+
+2016-04-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after 4199841.
+
+        * WebApplicationCache.cpp:
+        (WebApplicationCache::WebApplicationCache): Provide missing preference key definition.
+
+2016-04-21  Anders Carlsson  <andersca@apple.com>
+
+        Add a missing space, as noticed by Darin.
+
+        * WebApplicationCache.cpp:
+        (applicationCachePath):
+
+2016-04-21  Anders Carlsson  <andersca@apple.com>
+
+        Stop using ApplicationCacheStorage::singleton() on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=156861
+
+        Reviewed by Darin Adler.
+
+        * WebApplicationCache.cpp:
+        (applicationCachePath):
+        (WebApplicationCache::storage):
+        * WebApplicationCache.h:
+        * WebCache.cpp:
+        (WebCache::empty):
+        * WebView.cpp:
+        (WebView::initWithFrame):
+        (WebKitSetApplicationCachePathIfNecessary): Deleted.
+
+2016-04-15  Brent Fulgham  <bfulgham@apple.com>
+
+        CSP: Make dynamically-added favicons (via link rel="icon") obey Content-Security-Policy
+        https://bugs.webkit.org/show_bug.cgi?id=153151
+        <rdar://problem/24383176>
+
+        Reviewed by Darin Adler.
+
+        Remove the unused dynamic favicon code and tests.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidChangeIcons): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2016-04-15  Darin Adler  <darin@apple.com>
+
+        Reduce use of Deprecated::ScriptXXX classes
+        https://bugs.webkit.org/show_bug.cgi?id=156632
+
+        Reviewed by Alex Christensen.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::performRequest): Use JSValue.
+        * WebFrame.cpp:
+        (WebFrame::stringByEvaluatingJavaScriptInScriptWorld): Ditto.
+        * WebView.cpp:
+        (WebView::stringByEvaluatingJavaScriptFromString): Ditto.
+
 2016-04-11  Darin Adler  <darin@apple.com>
 
         Remove UsePointersEvenForNonNullableObjectArguments from HTMLSelectElement

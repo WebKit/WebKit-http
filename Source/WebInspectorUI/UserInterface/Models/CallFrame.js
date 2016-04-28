@@ -140,17 +140,24 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
     {
         console.assert(payload);
 
-        let url = payload.url;
+        let {url, scriptId} = payload;
         let nativeCode = false;
         let sourceCodeLocation = null;
         let functionName = WebInspector.CallFrame.functionNameFromPayload(payload);
         let programCode = WebInspector.CallFrame.programCodeFromPayload(payload);
 
-        if (!url || url === "[native code]") {
+        if (url === "[native code]") {
             nativeCode = true;
             url = null;
-        } else {
-            let sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
+        } else if (url || scriptId) {
+            let sourceCode = null;
+            if (scriptId) {
+                sourceCode = WebInspector.debuggerManager.scriptForIdentifier(scriptId);
+                if (sourceCode && sourceCode.resource)
+                    sourceCode = sourceCode.resource;
+            }
+            if (!sourceCode)
+                sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
             if (!sourceCode)
                 sourceCode = WebInspector.debuggerManager.scriptsForURL(url)[0];
 
@@ -158,6 +165,11 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
                 // The lineNumber is 1-based, but we expect 0-based.
                 let lineNumber = payload.lineNumber - 1;
                 sourceCodeLocation = sourceCode.createLazySourceCodeLocation(lineNumber, payload.columnNumber);
+            } else {
+                // Treat this as native code if we were unable to find a source.
+                console.assert(!url, "We should have detected source code for something with a url");
+                nativeCode = true;
+                url = null;
             }
         }
 

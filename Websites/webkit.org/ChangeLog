@@ -1,3 +1,18 @@
+2016-04-26  Timothy Hatcher  <timothy@apple.com>
+
+        Remove hard-wraps from the feature policy markdown so it renders full width on the site.
+
+        * feature-policy.md:
+
+2016-04-14  Edward O'Connor  <eoconnor@apple.com>
+
+        Publish the Web-exposed feature policy on webkit.org.
+        https://bugs.webkit.org/show_bug.cgi?id=156552
+
+        Reviewed by Timothy Hatcher.
+
+        * feature-policy.md: Added.
+
 2016-04-13  Jon Davis  <jond@apple.com>
 
         Remove database quote escapes from pushed tweets.

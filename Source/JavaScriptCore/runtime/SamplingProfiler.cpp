@@ -185,7 +185,7 @@ private:
 SamplingProfiler::SamplingProfiler(VM& vm, RefPtr<Stopwatch>&& stopwatch)
     : m_vm(vm)
     , m_stopwatch(WTFMove(stopwatch))
-    , m_timingInterval(std::chrono::microseconds(1000))
+    , m_timingInterval(std::chrono::microseconds(Options::sampleInterval()))
     , m_threadIdentifier(0)
     , m_jscExecutionThread(nullptr)
     , m_isPaused(false)
@@ -366,6 +366,11 @@ void SamplingProfiler::processUnverifiedStackTraces()
                 int endOffset;
                 codeBlock->expressionRangeForBytecodeOffset(bytecodeIndex, divot, startOffset, endOffset,
                     stackTrace.frames.last().lineNumber, stackTrace.frames.last().columnNumber);
+                stackTrace.frames.last().bytecodeIndex = bytecodeIndex;
+            }
+            if (Options::collectSamplingProfilerDataForJSCShell()) {
+                stackTrace.frames.last().codeBlockHash = codeBlock->hash();
+                stackTrace.frames.last().jitType = codeBlock->jitType();
             }
         };
 
@@ -753,6 +758,109 @@ String SamplingProfiler::stackTracesAsJSON()
     clearData(locker);
 
     return json.toString();
+}
+
+void SamplingProfiler::reportTopFunctions()
+{
+    LockHolder locker(m_lock);
+
+    {
+        HeapIterationScope heapIterationScope(m_vm.heap);
+        processUnverifiedStackTraces();
+    }
+
+
+    HashMap<String, size_t> functionCounts;
+    for (StackTrace& stackTrace : m_stackTraces) {
+        if (!stackTrace.frames.size())
+            continue;
+
+        StackFrame& frame = stackTrace.frames.first();
+        String frameDescription = makeString(frame.displayName(m_vm), ":", String::number(frame.sourceID()));
+        functionCounts.add(frameDescription, 0).iterator->value++;
+    }
+
+    auto takeMax = [&] () -> std::pair<String, size_t> {
+        String maxFrameDescription;
+        size_t maxFrameCount = 0;
+        for (auto entry : functionCounts) {
+            if (entry.value > maxFrameCount) {
+                maxFrameCount = entry.value;
+                maxFrameDescription = entry.key;
+            }
+        }
+        if (!maxFrameDescription.isEmpty())
+            functionCounts.remove(maxFrameDescription);
+        return std::make_pair(maxFrameDescription, maxFrameCount);
+    };
+
+    dataLog("\n\nSampling rate: ", m_timingInterval.count(), " microseconds\n");
+    dataLog("Hottest functions as <numSamples  'functionName:sourceID'>\n");
+    for (size_t i = 0; i < 40; i++) {
+        auto pair = takeMax();
+        if (pair.first.isEmpty())
+            break;
+        dataLogF("%6zu ", pair.second);
+        dataLog("   '", pair.first, "'\n");
+    }
+}
+
+void SamplingProfiler::reportTopBytecodes()
+{
+    LockHolder locker(m_lock);
+
+    {
+        HeapIterationScope heapIterationScope(m_vm.heap);
+        processUnverifiedStackTraces();
+    }
+
+    HashMap<String, size_t> bytecodeCounts;
+    for (StackTrace& stackTrace : m_stackTraces) {
+        if (!stackTrace.frames.size())
+            continue;
+
+        StackFrame& frame = stackTrace.frames.first();
+        String bytecodeIndex;
+        String codeBlockHash;
+        if (frame.hasBytecodeIndex())
+            bytecodeIndex = String::number(frame.bytecodeIndex);
+        else
+            bytecodeIndex = "<nil>";
+
+        if (frame.hasCodeBlockHash()) {
+            StringPrintStream stream;
+            frame.codeBlockHash.dump(stream);
+            codeBlockHash = stream.toString();
+        } else
+            codeBlockHash = "<nil>";
+
+        String frameDescription = makeString(frame.displayName(m_vm), "#", codeBlockHash, ":", JITCode::typeName(frame.jitType), ":", bytecodeIndex);
+        bytecodeCounts.add(frameDescription, 0).iterator->value++;
+    }
+
+    auto takeMax = [&] () -> std::pair<String, size_t> {
+        String maxFrameDescription;
+        size_t maxFrameCount = 0;
+        for (auto entry : bytecodeCounts) {
+            if (entry.value > maxFrameCount) {
+                maxFrameCount = entry.value;
+                maxFrameDescription = entry.key;
+            }
+        }
+        if (!maxFrameDescription.isEmpty())
+            bytecodeCounts.remove(maxFrameDescription);
+        return std::make_pair(maxFrameDescription, maxFrameCount);
+    };
+
+    dataLog("\n\nSampling rate: ", m_timingInterval.count(), " microseconds\n");
+    dataLog("Hottest bytecodes as <numSamples   'functionName#hash:JITType:bytecodeIndex'>\n");
+    for (size_t i = 0; i < 80; i++) {
+        auto pair = takeMax();
+        if (pair.first.isEmpty())
+            break;
+        dataLogF("%6zu ", pair.second);
+        dataLog("   '", pair.first, "'\n");
+    }
 }
 
 } // namespace JSC

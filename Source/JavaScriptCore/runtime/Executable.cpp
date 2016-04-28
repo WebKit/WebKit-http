@@ -103,9 +103,39 @@ void ExecutableBase::clearCode()
 
 const ClassInfo NativeExecutable::s_info = { "NativeExecutable", &ExecutableBase::s_info, 0, CREATE_METHOD_TABLE(NativeExecutable) };
 
+NativeExecutable* NativeExecutable::create(VM& vm, PassRefPtr<JITCode> callThunk, NativeFunction function, PassRefPtr<JITCode> constructThunk, NativeFunction constructor, Intrinsic intrinsic, const String& name)
+{
+    NativeExecutable* executable;
+    executable = new (NotNull, allocateCell<NativeExecutable>(vm.heap)) NativeExecutable(vm, function, constructor, intrinsic);
+    executable->finishCreation(vm, callThunk, constructThunk, name);
+    return executable;
+}
+
 void NativeExecutable::destroy(JSCell* cell)
 {
     static_cast<NativeExecutable*>(cell)->NativeExecutable::~NativeExecutable();
+}
+
+Structure* NativeExecutable::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
+{
+    return Structure::create(vm, globalObject, proto, TypeInfo(CellType, StructureFlags), info());
+}
+
+void NativeExecutable::finishCreation(VM& vm, PassRefPtr<JITCode> callThunk, PassRefPtr<JITCode> constructThunk, const String& name)
+{
+    Base::finishCreation(vm);
+    m_jitCodeForCall = callThunk;
+    m_jitCodeForConstruct = constructThunk;
+    m_jitCodeForCallWithArityCheck = m_jitCodeForCall->addressForCall(MustCheckArity);
+    m_jitCodeForConstructWithArityCheck = m_jitCodeForConstruct->addressForCall(MustCheckArity);
+    m_name = name;
+}
+
+NativeExecutable::NativeExecutable(VM& vm, NativeFunction function, NativeFunction constructor, Intrinsic intrinsic)
+    : ExecutableBase(vm, vm.nativeExecutableStructure.get(), NUM_PARAMETERS_IS_HOST, intrinsic)
+    , m_function(function)
+    , m_constructor(constructor)
+{
 }
 
 const ClassInfo ScriptExecutable::s_info = { "ScriptExecutable", &ExecutableBase::s_info, 0, CREATE_METHOD_TABLE(ScriptExecutable) };
@@ -117,6 +147,7 @@ ScriptExecutable::ScriptExecutable(Structure* structure, VM& vm, const SourceCod
     , m_hasCapturedVariables(false)
     , m_neverInline(false)
     , m_neverOptimize(false)
+    , m_neverFTLOptimize(false)
     , m_isArrowFunctionContext(isInArrowFunctionContext)
     , m_derivedContextType(static_cast<unsigned>(derivedContextType))
     , m_evalContextType(static_cast<unsigned>(evalContextType))
@@ -575,8 +606,15 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
             if (globalObject->hasProperty(exec, entry.key.get()))
                 return createSyntaxError(exec, makeString("Can't create duplicate variable that shadows a global property: '", String(entry.key.get()), "'"));
 
-            if (globalLexicalEnvironment->hasProperty(exec, entry.key.get()))
+            if (globalLexicalEnvironment->hasProperty(exec, entry.key.get())) {
+                if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isStrictMode())) {
+                    // We only allow "const" duplicate declarations under this setting.
+                    // For example, we don't "let" variables to be overridden by "const" variables.
+                    if (globalLexicalEnvironment->isConstVariable(entry.key.get()))
+                        continue;
+                }
                 return createSyntaxError(exec, makeString("Can't create duplicate variable: '", String(entry.key.get()), "'"));
+            }
         }
 
         // Check if any new "var"s will shadow any previous "let"/"const"/"class" names.
@@ -615,6 +653,10 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
         SymbolTable* symbolTable = globalLexicalEnvironment->symbolTable();
         ConcurrentJITLocker locker(symbolTable->m_lock);
         for (auto& entry : lexicalDeclarations) {
+            if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isStrictMode())) {
+                if (symbolTable->contains(locker, entry.key.get()))
+                    continue;
+            }
             ScopeOffset offset = symbolTable->takeNextScopeOffset(locker);
             SymbolTableEntry newEntry(VarOffset(offset), entry.value.isConst() ? ReadOnly : 0);
             newEntry.prepareToWatch();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -98,7 +98,7 @@
 #define DEFAULT_CANVAS_USES_ACCELERATED_DRAWING true
 #endif
 
-// macro(KeyUpper, KeyLower, TypeNameUpper, TypeName, DefaultValue)
+// macro(KeyUpper, KeyLower, TypeNameUpper, TypeName, DefaultValue, HumanReadableName, HumanReadableDescription)
 
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
     macro(JavaScriptEnabled, javaScriptEnabled, Bool, bool, true) \
@@ -231,51 +231,59 @@
     macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, false) \
     macro(FetchAPIEnabled, fetchAPIEnabled, Bool, bool, true) \
     macro(WebGL2Enabled, webGL2Enabled, Bool, bool, false) \
+    macro(DownloadAttributeEnabled, downloadAttributeEnabled, Bool, bool, false, "", "") \
     FOR_EACH_ADDITIONAL_WEBKIT_BOOL_PREFERENCE(macro) \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
-    macro(IncrementalRenderingSuppressionTimeout, incrementalRenderingSuppressionTimeout, Double, double, 5) \
-    macro(MinimumFontSize, minimumFontSize, Double, double, 0) \
-    macro(MinimumLogicalFontSize, minimumLogicalFontSize, Double, double, 9) \
-    macro(MinimumZoomFontSize, minimumZoomFontSize, Double, double, DEFAULT_MINIMUM_FONT_ZOOM_SIZE) \
-    macro(DefaultFontSize, defaultFontSize, Double, double, 16) \
-    macro(DefaultFixedFontSize, defaultFixedFontSize, Double, double, 13) \
-    macro(LayoutInterval, layoutInterval, Double, double, -1) \
-    macro(MaxParseDuration, maxParseDuration, Double, double, -1) \
-    macro(PasswordEchoDuration, passwordEchoDuration, Double, double, 2) \
+    macro(IncrementalRenderingSuppressionTimeout, incrementalRenderingSuppressionTimeout, Double, double, 5, "", "") \
+    macro(MinimumFontSize, minimumFontSize, Double, double, 0, "", "") \
+    macro(MinimumLogicalFontSize, minimumLogicalFontSize, Double, double, 9, "", "") \
+    macro(MinimumZoomFontSize, minimumZoomFontSize, Double, double, DEFAULT_MINIMUM_FONT_ZOOM_SIZE, "", "") \
+    macro(DefaultFontSize, defaultFontSize, Double, double, 16, "", "") \
+    macro(DefaultFixedFontSize, defaultFixedFontSize, Double, double, 13, "", "") \
+    macro(LayoutInterval, layoutInterval, Double, double, -1, "", "") \
+    macro(MaxParseDuration, maxParseDuration, Double, double, -1, "", "") \
+    macro(PasswordEchoDuration, passwordEchoDuration, Double, double, 2, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_UINT32_PREFERENCE(macro) \
-    macro(FontSmoothingLevel, fontSmoothingLevel, UInt32, uint32_t, FontSmoothingLevelMedium) \
-    macro(LayoutFallbackWidth, layoutFallbackWidth, UInt32, uint32_t, 980) \
-    macro(DeviceWidth, deviceWidth, UInt32, uint32_t, 0) \
-    macro(DeviceHeight, deviceHeight, UInt32, uint32_t, 0) \
-    macro(EditableLinkBehavior, editableLinkBehavior, UInt32, uint32_t, WebCore::EditableLinkNeverLive) \
-    macro(InspectorAttachedHeight, inspectorAttachedHeight, UInt32, uint32_t, 300) \
-    macro(InspectorAttachedWidth, inspectorAttachedWidth, UInt32, uint32_t, 750) \
-    macro(InspectorAttachmentSide, inspectorAttachmentSide, UInt32, uint32_t, 0) \
-    macro(StorageBlockingPolicy, storageBlockingPolicy, UInt32, uint32_t, WebCore::SecurityOrigin::BlockThirdPartyStorage) \
-    macro(JavaScriptRuntimeFlags, javaScriptRuntimeFlags, UInt32, uint32_t, 0) \
-    macro(DataDetectorTypes, dataDetectorTypes, UInt32, uint32_t, 0) \
+    macro(FontSmoothingLevel, fontSmoothingLevel, UInt32, uint32_t, FontSmoothingLevelMedium, "", "") \
+    macro(LayoutFallbackWidth, layoutFallbackWidth, UInt32, uint32_t, 980, "", "") \
+    macro(DeviceWidth, deviceWidth, UInt32, uint32_t, 0, "", "") \
+    macro(DeviceHeight, deviceHeight, UInt32, uint32_t, 0, "", "") \
+    macro(EditableLinkBehavior, editableLinkBehavior, UInt32, uint32_t, WebCore::EditableLinkNeverLive, "", "") \
+    macro(InspectorAttachedHeight, inspectorAttachedHeight, UInt32, uint32_t, 300, "", "") \
+    macro(InspectorAttachedWidth, inspectorAttachedWidth, UInt32, uint32_t, 750, "", "") \
+    macro(InspectorAttachmentSide, inspectorAttachmentSide, UInt32, uint32_t, 0, "", "") \
+    macro(StorageBlockingPolicy, storageBlockingPolicy, UInt32, uint32_t, WebCore::SecurityOrigin::BlockThirdPartyStorage, "", "") \
+    macro(JavaScriptRuntimeFlags, javaScriptRuntimeFlags, UInt32, uint32_t, 0, "", "") \
+    macro(DataDetectorTypes, dataDetectorTypes, UInt32, uint32_t, 0, "", "") \
+    macro(UserInterfaceDirection, userInterfaceDirection, UInt32, uint32_t, 0, "", "") \
+    macro(SystemLayoutDirection, systemLayoutDirection, UInt32, uint32_t, 0, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DEBUG_BOOL_PREFERENCE(macro) \
-    macro(AcceleratedDrawingEnabled, acceleratedDrawingEnabled, Bool, bool, DEFAULT_ACCELERATED_DRAWING_ENABLED) \
-    macro(DisplayListDrawingEnabled, displayListDrawingEnabled, Bool, bool, false) \
-    macro(CompositingBordersVisible, compositingBordersVisible, Bool, bool, false) \
-    macro(CompositingRepaintCountersVisible, compositingRepaintCountersVisible, Bool, bool, false) \
-    macro(TiledScrollingIndicatorVisible, tiledScrollingIndicatorVisible, Bool, bool, false) \
-    macro(SimpleLineLayoutDebugBordersEnabled, simpleLineLayoutDebugBordersEnabled, Bool, bool, false) \
-    macro(DeveloperExtrasEnabled, developerExtrasEnabled, Bool, bool, false) \
-    macro(LogsPageMessagesToSystemConsoleEnabled, logsPageMessagesToSystemConsoleEnabled, Bool, bool, false) \
-    macro(IgnoreViewportScalingConstraints, ignoreViewportScalingConstraints, Bool, bool, true) \
-    macro(ForceAlwaysUserScalable, forceAlwaysUserScalable, Bool, bool, false) \
-    macro(ResourceUsageOverlayVisible, resourceUsageOverlayVisible, Bool, bool, false) \
+    macro(AcceleratedDrawingEnabled, acceleratedDrawingEnabled, Bool, bool, DEFAULT_ACCELERATED_DRAWING_ENABLED, "", "") \
+    macro(DisplayListDrawingEnabled, displayListDrawingEnabled, Bool, bool, false, "", "") \
+    macro(CompositingBordersVisible, compositingBordersVisible, Bool, bool, false, "", "") \
+    macro(CompositingRepaintCountersVisible, compositingRepaintCountersVisible, Bool, bool, false, "", "") \
+    macro(TiledScrollingIndicatorVisible, tiledScrollingIndicatorVisible, Bool, bool, false, "", "") \
+    macro(SimpleLineLayoutDebugBordersEnabled, simpleLineLayoutDebugBordersEnabled, Bool, bool, false, "", "") \
+    macro(DeveloperExtrasEnabled, developerExtrasEnabled, Bool, bool, false, "", "") \
+    macro(LogsPageMessagesToSystemConsoleEnabled, logsPageMessagesToSystemConsoleEnabled, Bool, bool, false, "", "") \
+    macro(IgnoreViewportScalingConstraints, ignoreViewportScalingConstraints, Bool, bool, true, "", "") \
+    macro(ForceAlwaysUserScalable, forceAlwaysUserScalable, Bool, bool, false, "", "") \
+    macro(ResourceUsageOverlayVisible, resourceUsageOverlayVisible, Bool, bool, false, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DEBUG_UINT32_PREFERENCE(macro) \
-    macro(VisibleDebugOverlayRegions, visibleDebugOverlayRegions, UInt32, uint32_t, 0)
+    macro(VisibleDebugOverlayRegions, visibleDebugOverlayRegions, UInt32, uint32_t, 0, "", "")
+
+#define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
+    macro(ExperimentalShadowDOMEnabled, experimentalShadowDOMEnabled, Bool, bool, false, "Shadow DOM", "Support for the Shadow DOM feature") \
+    macro(ExperimentalWebGL2Enabled, experimentalWebGL2Enabled, Bool, bool, false, "WebGL 2.0", "Prototype WebGL 2 Support") \
+    \
 
 #if PLATFORM(COCOA)
 
@@ -289,37 +297,37 @@
 
 
 #define FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
-    macro(StandardFontFamily, standardFontFamily, String, String, "Times") \
-    macro(CursiveFontFamily, cursiveFontFamily, String, String, DEFAULT_CURSIVE_FONT_FAMILY) \
-    macro(FantasyFontFamily, fantasyFontFamily, String, String, "Papyrus") \
-    macro(FixedFontFamily, fixedFontFamily, String, String, "Courier") \
-    macro(SansSerifFontFamily, sansSerifFontFamily, String, String, "Helvetica") \
-    macro(SerifFontFamily, serifFontFamily, String, String, "Times") \
-    macro(PictographFontFamily, pictographFontFamily, String, String, "Apple Color Emoji") \
+    macro(StandardFontFamily, standardFontFamily, String, String, "Times", "", "") \
+    macro(CursiveFontFamily, cursiveFontFamily, String, String, DEFAULT_CURSIVE_FONT_FAMILY, "", "") \
+    macro(FantasyFontFamily, fantasyFontFamily, String, String, "Papyrus", "", "") \
+    macro(FixedFontFamily, fixedFontFamily, String, String, "Courier", "", "") \
+    macro(SansSerifFontFamily, sansSerifFontFamily, String, String, "Helvetica", "", "") \
+    macro(SerifFontFamily, serifFontFamily, String, String, "Times", "", "") \
+    macro(PictographFontFamily, pictographFontFamily, String, String, "Apple Color Emoji", "", "") \
     \
 
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
 
 #define FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
-    macro(StandardFontFamily, standardFontFamily, String, String, "Times") \
-    macro(CursiveFontFamily, cursiveFontFamily, String, String, "Comic Sans MS") \
-    macro(FantasyFontFamily, fantasyFontFamily, String, String, "Impact") \
-    macro(FixedFontFamily, fixedFontFamily, String, String, "Courier New") \
-    macro(SansSerifFontFamily, sansSerifFontFamily, String, String, "Helvetica") \
-    macro(SerifFontFamily, serifFontFamily, String, String, "Times") \
-    macro(PictographFontFamily, pictographFontFamily, String, String, "Times") \
+    macro(StandardFontFamily, standardFontFamily, String, String, "Times", "", "") \
+    macro(CursiveFontFamily, cursiveFontFamily, String, String, "Comic Sans MS", "", "") \
+    macro(FantasyFontFamily, fantasyFontFamily, String, String, "Impact", "", "") \
+    macro(FixedFontFamily, fixedFontFamily, String, String, "Courier New", "", "") \
+    macro(SansSerifFontFamily, sansSerifFontFamily, String, String, "Helvetica", "", "") \
+    macro(SerifFontFamily, serifFontFamily, String, String, "Times", "", "") \
+    macro(PictographFontFamily, pictographFontFamily, String, String, "Times", "", "") \
     \
 
 #endif
 
 #define FOR_EACH_WEBKIT_STRING_PREFERENCE(macro) \
     FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
-    macro(DefaultTextEncodingName, defaultTextEncodingName, String, String, defaultTextEncodingNameForSystemLanguage()) \
-    macro(FTPDirectoryTemplatePath, ftpDirectoryTemplatePath, String, String, "") \
+    macro(DefaultTextEncodingName, defaultTextEncodingName, String, String, defaultTextEncodingNameForSystemLanguage(), "", "") \
+    macro(FTPDirectoryTemplatePath, ftpDirectoryTemplatePath, String, String, "", "", "") \
     \
 
 #define FOR_EACH_WEBKIT_STRING_PREFERENCE_NOT_IN_WEBCORE(macro) \
-    macro(InspectorWindowFrame, inspectorWindowFrame, String, String, "") \
+    macro(InspectorWindowFrame, inspectorWindowFrame, String, String, "", "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DEBUG_PREFERENCE(macro) \

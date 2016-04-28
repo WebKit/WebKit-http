@@ -290,6 +290,17 @@ void JIT::emitSlow_op_instanceof_custom(Instruction* currentInstruction, Vector<
     callOperation(operationInstanceOfCustom, regT1, regT0, regT2, regT4, regT3);
     emitStoreBool(dst, returnValueGPR);
 }
+    
+void JIT::emit_op_is_empty(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int value = currentInstruction[2].u.operand;
+    
+    emitLoad(value, regT1, regT0);
+    compare32(Equal, regT1, TrustedImm32(JSValue::EmptyValueTag), regT0);
+
+    emitStoreBool(dst, regT0);
+}
 
 void JIT::emit_op_is_undefined(Instruction* currentInstruction)
 {
@@ -1298,7 +1309,7 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
         jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::NullTag)));
     else if (cachedTypeLocation->m_lastSeenType == TypeBoolean)
         jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::BooleanTag)));
-    else if (cachedTypeLocation->m_lastSeenType == TypeMachineInt)
+    else if (cachedTypeLocation->m_lastSeenType == TypeAnyInt)
         jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::Int32Tag)));
     else if (cachedTypeLocation->m_lastSeenType == TypeNumber) {
         jumpToEnd.append(branch32(Below, regT3, TrustedImm32(JSValue::LowestTag)));

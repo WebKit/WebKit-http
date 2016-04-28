@@ -68,7 +68,8 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncLastIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncPadEnd(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncPadStart(ExecState*);
-EncodedJSValue JSC_HOST_CALL stringProtoFuncReplace(ExecState*);
+EncodedJSValue JSC_HOST_CALL stringProtoFuncReplaceUsingRegExp(ExecState*);
+EncodedJSValue JSC_HOST_CALL stringProtoFuncReplaceUsingStringSearch(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSlice(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSubstr(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSubstring(ExecState*);
@@ -111,6 +112,7 @@ const ClassInfo StringPrototype::s_info = { "String", &StringObject::s_info, &st
 @begin stringPrototypeTable
     match     JSBuiltin    DontEnum|Function 1
     repeat    JSBuiltin    DontEnum|Function 1
+    replace   JSBuiltin    DontEnum|Function 2
     search    JSBuiltin    DontEnum|Function 1
     split     JSBuiltin    DontEnum|Function 1
 @end
@@ -137,17 +139,19 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("lastIndexOf", stringProtoFuncLastIndexOf, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("padEnd", stringProtoFuncPadEnd, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("padStart", stringProtoFuncPadStart, DontEnum, 1);
-    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("replace", stringProtoFuncReplace, DontEnum, 2, StringPrototypeReplaceIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->replaceUsingRegExpPrivateName, stringProtoFuncReplaceUsingRegExp, DontEnum, 2, StringPrototypeReplaceRegExpIntrinsic);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->replaceUsingStringSearchPrivateName, stringProtoFuncReplaceUsingStringSearch, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("slice", stringProtoFuncSlice, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substr", stringProtoFuncSubstr, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substring", stringProtoFuncSubstring, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toLowerCase", stringProtoFuncToLowerCase, DontEnum, 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toUpperCase", stringProtoFuncToUpperCase, DontEnum, 0);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("localeCompare", stringProtoFuncLocaleCompare, DontEnum, 1);
 #if ENABLE(INTL)
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("localeCompare", stringPrototypeLocaleCompareCodeGenerator, DontEnum);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toLocaleLowerCase", stringProtoFuncToLocaleLowerCase, DontEnum, 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toLocaleUpperCase", stringProtoFuncToLocaleUpperCase, DontEnum, 0);
 #else
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("localeCompare", stringProtoFuncLocaleCompare, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toLocaleLowerCase", stringProtoFuncToLowerCase, DontEnum, 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("toLocaleUpperCase", stringProtoFuncToUpperCase, DontEnum, 0);
 #endif
@@ -908,9 +912,26 @@ ALWAYS_INLINE EncodedJSValue replace(
     return replace(vm, exec, string, searchValue, replaceValue);
 }
 
-EncodedJSValue JSC_HOST_CALL stringProtoFuncReplace(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL stringProtoFuncReplaceUsingRegExp(ExecState* exec)
 {
-    return replace(exec->vm(), exec, exec->thisValue(), exec->argument(0), exec->argument(1));
+    JSString* string = exec->thisValue().toString(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
+    JSValue searchValue = exec->argument(0);
+    if (!searchValue.inherits(RegExpObject::info()))
+        return JSValue::encode(jsUndefined());
+
+    return replaceUsingRegExpSearch(exec->vm(), exec, string, searchValue, exec->argument(1));
+}
+
+EncodedJSValue JSC_HOST_CALL stringProtoFuncReplaceUsingStringSearch(ExecState* exec)
+{
+    JSString* string = exec->thisValue().toString(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
+    return replaceUsingStringSearch(exec->vm(), exec, string, exec->argument(0), exec->argument(1));
 }
 
 EncodedJSValue JIT_OPERATION operationStringProtoFuncReplaceGeneric(
@@ -1188,92 +1209,90 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSplitFast(ExecState* exec)
     // 9. If separator is a RegExp object (its [[Class]] is "RegExp"), let R = separator;
     //    otherwise let R = ToString(separator).
     JSValue separatorValue = exec->uncheckedArgument(0);
-    { // FIXME: Keeping this indentation here to minimize the diff. Will unindent and remove this later.
-        String separator = separatorValue.toString(exec)->value(exec);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+    String separator = separatorValue.toString(exec)->value(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
 
-        // 10. If lim == 0, return A.
-        if (!limit)
-            return JSValue::encode(result);
+    // 10. If lim == 0, return A.
+    if (!limit)
+        return JSValue::encode(result);
 
-        // 11. If separator is undefined, then
-        if (separatorValue.isUndefined()) {
-            // a.  Call the [[DefineOwnProperty]] internal method of A with arguments "0",
+    // 11. If separator is undefined, then
+    if (separatorValue.isUndefined()) {
+        // a. Call the [[DefineOwnProperty]] internal method of A with arguments "0",
+        result->putDirectIndex(exec, 0, jsStringWithReuse(exec, thisValue, input));
+        // b. Return A.
+        return JSValue::encode(result);
+    }
+
+    // 12. If s == 0, then
+    if (input.isEmpty()) {
+        // a. Let z be SplitMatch(S, 0, R) where S is input, R is separator.
+        // b. If z is not false, return A.
+        // c. Call CreateDataProperty(A, "0", S).
+        // d. Return A.
+        if (!separator.isEmpty())
             result->putDirectIndex(exec, 0, jsStringWithReuse(exec, thisValue, input));
-            // b.  Return A.
-            return JSValue::encode(result);
-        }
+        return JSValue::encode(result);
+    }
 
-        // 12. If s == 0, then
-        if (input.isEmpty()) {
-            // a. Let z be SplitMatch(S, 0, R) where S is input, R is separator.
-            // b. If z is not false, return A.
-            // c. Call CreateDataProperty(A, "0", S).
-            // d. Return A.
-            if (!separator.isEmpty())
-                result->putDirectIndex(exec, 0, jsStringWithReuse(exec, thisValue, input));
-            return JSValue::encode(result);
-        }
+    // Optimized case for splitting on the empty string.
+    if (separator.isEmpty()) {
+        limit = std::min(limit, input.length());
+        // Zero limt/input length handled in steps 9/11 respectively, above.
+        ASSERT(limit);
 
-        // Optimized case for splitting on the empty string.
-        if (separator.isEmpty()) {
-            limit = std::min(limit, input.length());
-            // Zero limt/input length handled in steps 9/11 respectively, above.
-            ASSERT(limit);
+        do {
+            result->putDirectIndex(exec, position, jsSingleCharacterString(exec, input[position]));
+        } while (++position < limit);
 
-            do {
-                result->putDirectIndex(exec, position, jsSingleCharacterString(exec, input[position]));
-            } while (++position < limit);
+        return JSValue::encode(result);
+    }
 
-            return JSValue::encode(result);
-        }
+    // 3 cases:
+    // -separator length == 1, 8 bits
+    // -separator length == 1, 16 bits
+    // -separator length > 1
+    StringImpl* stringImpl = input.impl();
+    StringImpl* separatorImpl = separator.impl();
+    size_t separatorLength = separatorImpl->length();
 
-        // 3 cases:
-        // -separator length == 1, 8 bits
-        // -separator length == 1, 16 bits
-        // -separator length > 1
-        StringImpl* stringImpl = input.impl();
-        StringImpl* separatorImpl = separator.impl();
-        size_t separatorLength = separatorImpl->length();
+    if (separatorLength == 1) {
+        UChar separatorCharacter;
+        if (separatorImpl->is8Bit())
+            separatorCharacter = separatorImpl->characters8()[0];
+        else
+            separatorCharacter = separatorImpl->characters16()[0];
 
-        if (separatorLength == 1) {
-            UChar separatorCharacter;
-            if (separatorImpl->is8Bit())
-                separatorCharacter = separatorImpl->characters8()[0];
-            else
-                separatorCharacter = separatorImpl->characters16()[0];
-
-            if (stringImpl->is8Bit()) {
-                if (splitStringByOneCharacterImpl<LChar>(exec, result, thisValue, input, stringImpl, separatorCharacter, position, resultLength, limit))
-                    return JSValue::encode(result);
-            } else {
-                if (splitStringByOneCharacterImpl<UChar>(exec, result, thisValue, input, stringImpl, separatorCharacter, position, resultLength, limit))
-                    return JSValue::encode(result);
-            }
+        if (stringImpl->is8Bit()) {
+            if (splitStringByOneCharacterImpl<LChar>(exec, result, thisValue, input, stringImpl, separatorCharacter, position, resultLength, limit))
+                return JSValue::encode(result);
         } else {
-            // 13. Let q = p.
-            size_t matchPosition;
-            // 14. Repeat, while q != s
-            //   a. let e be SplitMatch(S, q, R).
-            //   b. If e is failure, then let q = q+1.
-            //   c. Else, e is an integer index <= s.
-            while ((matchPosition = stringImpl->find(separatorImpl, position)) != notFound) {
-                // 1. Let T be a String value equal to the substring of S consisting of the characters at positions p (inclusive)
-                //    through q (exclusive).
-                // 2. Call CreateDataProperty(A, ToString(lengthA), T).
-                result->putDirectIndex(exec, resultLength, jsSubstring(exec, thisValue, input, position, matchPosition - position));
-                // 3. Increment lengthA by 1.
-                // 4. If lengthA == lim, return A.
-                if (++resultLength == limit)
-                    return JSValue::encode(result);
-
-                // 5. Let p = e.
-                // 6. Let q = p.
-                position = matchPosition + separator.length();
-            }
+            if (splitStringByOneCharacterImpl<UChar>(exec, result, thisValue, input, stringImpl, separatorCharacter, position, resultLength, limit))
+                return JSValue::encode(result);
         }
-    } // FIXME: Keeping this indentation here to minimize the diff. Will unindent and remove this later.
+    } else {
+        // 13. Let q = p.
+        size_t matchPosition;
+        // 14. Repeat, while q != s
+        //   a. let e be SplitMatch(S, q, R).
+        //   b. If e is failure, then let q = q+1.
+        //   c. Else, e is an integer index <= s.
+        while ((matchPosition = stringImpl->find(separatorImpl, position)) != notFound) {
+            // 1. Let T be a String value equal to the substring of S consisting of the characters at positions p (inclusive)
+            //    through q (exclusive).
+            // 2. Call CreateDataProperty(A, ToString(lengthA), T).
+            result->putDirectIndex(exec, resultLength, jsSubstring(exec, thisValue, input, position, matchPosition - position));
+            // 3. Increment lengthA by 1.
+            // 4. If lengthA == lim, return A.
+            if (++resultLength == limit)
+                return JSValue::encode(result);
+
+            // 5. Let p = e.
+            // 6. Let q = p.
+            position = matchPosition + separator.length();
+        }
+    }
 
     // 15. Let T be a String value equal to the substring of S consisting of the characters at positions p (inclusive)
     //     through s (exclusive).

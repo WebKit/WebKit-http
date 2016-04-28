@@ -95,7 +95,7 @@ private:
     void willEnterAcceleratedCompositingMode() override;
 
     void handleDownloadRequest(DownloadProxy*) override;
-    void didChangeContentSize(const WebCore::IntSize&) override { }
+    void didChangeContentSize(const WebCore::IntSize&) override;
     void didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider) override;
     void didFailLoadForMainFrame() override { }
 
@@ -131,6 +131,8 @@ private:
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
 #endif
 
+    void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
+
     void didChangeBackgroundColor() override;
 
     void refView() override;
@@ -141,6 +143,8 @@ private:
 #if ENABLE(VIDEO) && USE(GSTREAMER)
     bool decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
 #endif
+
+    UserInterfaceLayoutDirection userInterfaceLayoutDirection() override { return UserInterfaceLayoutDirection::LTR; }
 
     // Members of PageClientImpl class
     GtkWidget* m_viewWidget;

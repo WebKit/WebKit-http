@@ -36,7 +36,7 @@ namespace WebCore {
     
 using namespace MathMLNames;
 
-RenderMathMLSpace::RenderMathMLSpace(MathMLTextElement& element, Ref<RenderStyle>&& style)
+RenderMathMLSpace::RenderMathMLSpace(MathMLTextElement& element, RenderStyle&& style)
     : RenderMathMLBlock(element, WTFMove(style))
     , m_width(0)
     , m_height(0)
@@ -44,10 +44,13 @@ RenderMathMLSpace::RenderMathMLSpace(MathMLTextElement& element, Ref<RenderStyle
 {
 }
 
-void RenderMathMLSpace::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
+void RenderMathMLSpace::computePreferredLogicalWidths()
 {
-    minLogicalWidth = m_width;
-    maxLogicalWidth = m_width;
+    ASSERT(preferredLogicalWidthsDirty());
+
+    m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = m_width;
+
+    setPreferredLogicalWidthsDirty(false);
 }
 
 void RenderMathMLSpace::updateFromElement()
@@ -75,14 +78,17 @@ void RenderMathMLSpace::updateFromElement()
     setNeedsLayoutAndPrefWidthsRecalc();
 }
 
-void RenderMathMLSpace::updateLogicalWidth()
+void RenderMathMLSpace::layoutBlock(bool relayoutChildren, LayoutUnit)
 {
-    setLogicalWidth(m_width);
-}
+    ASSERT(needsLayout());
 
-void RenderMathMLSpace::updateLogicalHeight()
-{
+    if (!relayoutChildren && simplifiedLayout())
+        return;
+
+    setLogicalWidth(m_width);
     setLogicalHeight(m_height + m_depth);
+
+    clearNeedsLayout();
 }
 
 void RenderMathMLSpace::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)

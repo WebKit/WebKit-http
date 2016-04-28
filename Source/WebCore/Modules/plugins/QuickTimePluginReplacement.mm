@@ -75,9 +75,9 @@ void QuickTimePluginReplacement::registerPluginReplacement(PluginReplacementRegi
     registrar(ReplacementPlugin(create, supportsMimeType, supportsFileExtension, supportsURL));
 }
 
-PassRefPtr<PluginReplacement> QuickTimePluginReplacement::create(HTMLPlugInElement& plugin, const Vector<String>& paramNames, const Vector<String>& paramValues)
+Ref<PluginReplacement> QuickTimePluginReplacement::create(HTMLPlugInElement& plugin, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
-    return adoptRef(new QuickTimePluginReplacement(plugin, paramNames, paramValues));
+    return adoptRef(*new QuickTimePluginReplacement(plugin, paramNames, paramValues));
 }
 
 bool QuickTimePluginReplacement::supportsMimeType(const String& mimeType)
@@ -130,7 +130,7 @@ QuickTimePluginReplacement::~QuickTimePluginReplacement()
     m_mediaElement = nullptr;
 }
 
-RenderPtr<RenderElement> QuickTimePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, Ref<RenderStyle>&& style, const RenderTreePosition& insertionPosition)
+RenderPtr<RenderElement> QuickTimePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
     ASSERT_UNUSED(plugin, m_parentElement == &plugin);
 
@@ -171,7 +171,7 @@ bool QuickTimePluginReplacement::ensureReplacementScriptInjected()
     return true;
 }
 
-bool QuickTimePluginReplacement::installReplacement(ShadowRoot* root)
+bool QuickTimePluginReplacement::installReplacement(ShadowRoot& root)
 {
     if (!ensureReplacementScriptInjected())
         return false;
@@ -197,7 +197,7 @@ bool QuickTimePluginReplacement::installReplacement(ShadowRoot* root)
         return false;
 
     JSC::MarkedArgumentBuffer argList;
-    argList.append(toJS(exec, globalObject, root));
+    argList.append(toJS(exec, globalObject, &root));
     argList.append(toJS(exec, globalObject, m_parentElement));
     argList.append(toJS(exec, globalObject, this));
     argList.append(toJS<String>(exec, globalObject, m_names));

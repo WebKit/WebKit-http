@@ -38,7 +38,7 @@ class RenderMultiColumnSpannerPlaceholder;
 
 class RenderMultiColumnFlowThread final : public RenderFlowThread {
 public:
-    RenderMultiColumnFlowThread(Document&, Ref<RenderStyle>&&);
+    RenderMultiColumnFlowThread(Document&, RenderStyle&&);
     ~RenderMultiColumnFlowThread();
 
     RenderBlockFlow* multiColumnBlockFlow() const { return downcast<RenderBlockFlow>(parent()); }

@@ -44,6 +44,7 @@ WebInspector.LayoutTimelineDataGridNode = class LayoutTimelineDataGridNode exten
     {
         if (!this._cachedData) {
             this._cachedData = {
+                type: this._record.eventType,
                 name: this.displayName(),
                 width: this._record.width,
                 height: this._record.height,
@@ -68,10 +69,10 @@ WebInspector.LayoutTimelineDataGridNode = class LayoutTimelineDataGridNode exten
 
         case "width":
         case "height":
-            return isNaN(value) ? emDash : WebInspector.UIString("%fpx").format(value);
+            return isNaN(value) ? emDash : WebInspector.UIString("%dpx").format(value);
 
         case "area":
-            return isNaN(value) ? emDash : WebInspector.UIString("%fpx²").format(value);
+            return isNaN(value) ? emDash : WebInspector.UIString("%dpx²").format(value);
 
         case "startTime":
             return isNaN(value) ? emDash : Number.secondsToString(value - this._baseStartTime, true);
