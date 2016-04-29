@@ -121,7 +121,8 @@ LibinputServer::LibinputServer()
     g_source_attach(baseSource, g_main_context_get_thread_default());
 
 #ifdef KEY_INPUT_HANDLING_VIRTUAL
-    m_virtualkeyboard = Construct(connectorName, VirtualKeyboardCallback);
+    const char listenerName[] = "wpe";
+    m_virtualkeyboard = Construct(listenerName, connectorName, VirtualKeyboardCallback);
     if (m_virtualkeyboard == nullptr) {
       fprintf(stderr, "[LibinputServer] Initialization of virtual keyboard failed!!!\n");
     }
