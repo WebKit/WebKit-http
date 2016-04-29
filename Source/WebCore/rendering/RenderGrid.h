@@ -46,7 +46,7 @@ enum GridAxisPosition {GridAxisStart, GridAxisEnd, GridAxisCenter};
 
 class RenderGrid final : public RenderBlock {
 public:
-    RenderGrid(Element&, Ref<RenderStyle>&&);
+    RenderGrid(Element&, RenderStyle&&);
     virtual ~RenderGrid();
 
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }
@@ -61,6 +61,7 @@ public:
     const Vector<LayoutUnit>& rowPositions() const { return m_rowPositions; }
 
     LayoutUnit guttersSize(GridTrackSizingDirection, size_t span) const;
+    LayoutUnit offsetBetweenTracks(GridTrackSizingDirection) const;
 
 private:
     const char* renderName() const override;

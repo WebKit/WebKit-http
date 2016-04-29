@@ -245,7 +245,7 @@ void RenderGrid::GridSizingData::setFreeSpaceForDirection(GridTrackSizingDirecti
         freeSpaceForRows = freeSpace;
 }
 
-RenderGrid::RenderGrid(Element& element, Ref<RenderStyle>&& style)
+RenderGrid::RenderGrid(Element& element, RenderStyle&& style)
     : RenderBlock(element, WTFMove(style), 0)
     , m_orderIterator(*this)
 {
@@ -426,6 +426,11 @@ LayoutUnit RenderGrid::guttersSize(GridTrackSizingDirection direction, size_t sp
 
     const Length& trackGap = direction == ForColumns ? style().gridColumnGap() : style().gridRowGap();
     return valueForLength(trackGap, 0) * (span - 1);
+}
+
+LayoutUnit RenderGrid::offsetBetweenTracks(GridTrackSizingDirection direction) const
+{
+    return direction == ForColumns ? m_offsetBetweenColumns : m_offsetBetweenRows;
 }
 
 void RenderGrid::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
@@ -1583,7 +1588,7 @@ void RenderGrid::offsetAndBreadthForPositionedChild(const RenderBox& child, Grid
         if (endIsAuto)
             offset = LayoutUnit();
         else {
-            offset = translateRTLCoordinate(m_columnPositions[endLine]) - borderLeft();
+            offset = translateRTLCoordinate(m_columnPositions[endLine]) - borderLogicalLeft();
 
             if (endLine > firstExplicitLine && endLine < lastExplicitLine) {
                 offset += guttersSize(direction, 2);
@@ -1646,8 +1651,6 @@ void RenderGrid::populateGridPositions(GridSizingData& sizingData)
     // Since we add alignment offsets and track gutters, grid lines are not always adjacent. Hence we will have to
     // assume from now on that we just store positions of the initial grid lines of each track,
     // except the last one, which is the only one considered as a final grid line of a track.
-    // FIXME: This will affect the computed style value of grid tracks size, since we are
-    // using these positions to compute them.
 
     // The grid container's frame elements (border, padding and <content-position> offset) are sensible to the
     // inline-axis flow direction. However, column lines positions are 'direction' unaware. This simplification

@@ -51,9 +51,11 @@ public:
 
     virtual bool isScrollableOrRubberbandableBox() const { return false; }
 
+    bool shouldPlaceBlockDirectionScrollbarOnLeft() const;
+
 protected:
-    RenderLayerModelObject(Element&, Ref<RenderStyle>&&, BaseTypeFlags);
-    RenderLayerModelObject(Document&, Ref<RenderStyle>&&, BaseTypeFlags);
+    RenderLayerModelObject(Element&, RenderStyle&&, BaseTypeFlags);
+    RenderLayerModelObject(Document&, RenderStyle&&, BaseTypeFlags);
 
     void createLayer();
 

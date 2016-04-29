@@ -75,21 +75,17 @@ static FunctionMap* gFunctionMap;
  */
 
 MediaQueryEvaluator::MediaQueryEvaluator(bool mediaFeatureResult)
-    : m_frame(0)
-    , m_style(0)
-    , m_expResult(mediaFeatureResult)
+    : m_expResult(mediaFeatureResult)
 {
 }
 
 MediaQueryEvaluator::MediaQueryEvaluator(const String& acceptedMediaType, bool mediaFeatureResult)
     : m_mediaType(acceptedMediaType)
-    , m_frame(0)
-    , m_style(0)
     , m_expResult(mediaFeatureResult)
 {
 }
 
-MediaQueryEvaluator::MediaQueryEvaluator(const String& acceptedMediaType, Frame* frame, RenderStyle* style)
+MediaQueryEvaluator::MediaQueryEvaluator(const String& acceptedMediaType, Frame* frame, const RenderStyle* style)
     : m_mediaType(acceptedMediaType)
     , m_frame(frame)
     , m_style(style)
@@ -753,7 +749,7 @@ bool MediaQueryEvaluator::eval(const MediaQueryExp* expr) const
     // used
     EvalFunc func = gFunctionMap->get(expr->mediaFeature().impl());
     if (func) {
-        CSSToLengthConversionData conversionData(m_style.get(),
+        CSSToLengthConversionData conversionData(m_style,
             m_frame->document()->documentElement()->renderStyle(),
             m_frame->document()->renderView(), 1, false);
         return func(expr->value(), conversionData, m_frame, NoPrefix);

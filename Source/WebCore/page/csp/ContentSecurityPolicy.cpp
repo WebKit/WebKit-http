@@ -50,6 +50,7 @@
 #include "SchemeRegistry.h"
 #include "SecurityOrigin.h"
 #include "SecurityPolicyViolationEvent.h"
+#include "Settings.h"
 #include "TextEncoding.h"
 #include <inspector/InspectorValues.h>
 #include <inspector/ScriptCallStack.h>
@@ -91,17 +92,14 @@ ContentSecurityPolicy::ContentSecurityPolicy(ScriptExecutionContext& scriptExecu
     , m_sandboxFlags(SandboxNone)
 {
     ASSERT(scriptExecutionContext.securityOrigin());
-    auto& securityOrigin = *scriptExecutionContext.securityOrigin();
-    m_selfSourceProtocol = securityOrigin.protocol();
-    m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
+    updateSourceSelf(*scriptExecutionContext.securityOrigin());
 }
 
 ContentSecurityPolicy::ContentSecurityPolicy(const SecurityOrigin& securityOrigin, const Frame* frame)
     : m_frame(frame)
     , m_sandboxFlags(SandboxNone)
 {
-    m_selfSourceProtocol = securityOrigin.protocol();
-    m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
+    updateSourceSelf(securityOrigin);
 }
 
 ContentSecurityPolicy::~ContentSecurityPolicy()
@@ -175,9 +173,22 @@ void ContentSecurityPolicy::didReceiveHeader(const String& header, ContentSecuri
         applyPolicyToScriptExecutionContext();
 }
 
+void ContentSecurityPolicy::updateSourceSelf(const SecurityOrigin& securityOrigin)
+{
+    m_selfSourceProtocol = securityOrigin.protocol();
+    m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
+}
+
 void ContentSecurityPolicy::applyPolicyToScriptExecutionContext()
 {
     ASSERT(m_scriptExecutionContext);
+
+    // Update source self as the security origin may have changed between the time we were created and now.
+    // For instance, we may have been initially created for an about:blank iframe that later inherited the
+    // security origin of its owner document.
+    ASSERT(m_scriptExecutionContext->securityOrigin());
+    updateSourceSelf(*m_scriptExecutionContext->securityOrigin());
+
     if (!m_lastPolicyEvalDisabledErrorMessage.isNull())
         m_scriptExecutionContext->disableEval(m_lastPolicyEvalDisabledErrorMessage);
     if (m_sandboxFlags != SandboxNone && is<Document>(m_scriptExecutionContext))
@@ -192,6 +203,13 @@ void ContentSecurityPolicy::setOverrideAllowInlineStyle(bool value)
 bool ContentSecurityPolicy::urlMatchesSelf(const URL& url) const
 {
     return m_selfSource->matches(url);
+}
+
+bool ContentSecurityPolicy::allowContentSecurityPolicySourceStarToMatchAnyProtocol() const
+{
+    if (Settings* settings = is<Document>(m_scriptExecutionContext) ? downcast<Document>(*m_scriptExecutionContext).settings() : nullptr)
+        return settings->allowContentSecurityPolicySourceStarToMatchAnyProtocol();
+    return false;
 }
 
 bool ContentSecurityPolicy::protocolMatchesSelf(const URL& url) const

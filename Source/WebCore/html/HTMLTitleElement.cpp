@@ -79,11 +79,11 @@ String HTMLTitleElement::text() const
 StringWithDirection HTMLTitleElement::computedTextWithDirection()
 {
     TextDirection direction = LTR;
-    if (RenderStyle* computedStyle = this->computedStyle())
+    if (auto* computedStyle = this->computedStyle())
         direction = computedStyle->direction();
     else {
         auto style = styleResolver().styleForElement(*this, parentElement() ? parentElement()->renderStyle() : nullptr).renderStyle;
-        direction = style.get().direction();
+        direction = style->direction();
     }
     return StringWithDirection(text(), direction);
 }

@@ -43,6 +43,11 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
     // Public
 
+    get navigationItems()
+    {
+        return this._scopeBar ? [this._scopeBar] : [];
+    }
+
     get navigationSidebarTreeOutlineScopeBar()
     {
         return this._scopeBar;
@@ -85,6 +90,7 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
         this._startTime = x;
 
+        this._filterTimesDidChange();
         this.needsLayout();
     }
 
@@ -102,6 +108,7 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
         this._endTime = x;
 
+        this._filterTimesDidChange();
         this.needsLayout();
     }
 
@@ -128,8 +135,69 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
             return this._startTime - wiggleTime <= currentTime && currentTime <= this._endTime + wiggleTime;
         }
 
-        if (checkIfLayoutIsNeeded.call(this, oldCurrentTime) || checkIfLayoutIsNeeded.call(this, this._currentTime))
+        if (checkIfLayoutIsNeeded.call(this, oldCurrentTime) || checkIfLayoutIsNeeded.call(this, this._currentTime)) {
+            this._filterTimesDidChange();
             this.needsLayout();
+        }
+    }
+
+    get filterStartTime()
+    {
+        // Implemented by sub-classes if needed.
+        return this.startTime;
+    }
+
+    get filterEndTime()
+    {
+        // Implemented by sub-classes if needed.
+        return this.endTime;
+    }
+
+    setupDataGrid(dataGrid)
+    {
+        console.assert(!this._timelineDataGrid);
+
+        this._timelineDataGrid = dataGrid;
+        this._timelineDataGrid.filterDelegate = this;
+        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, () => {
+            this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
+        });
+
+        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.NodeWasFiltered, (event) => {
+            let node = event.data.node;
+            if (!(node instanceof WebInspector.TimelineDataGridNode))
+                return;
+
+            this.dispatchEventToListeners(WebInspector.TimelineView.Event.RecordWasFiltered, {record: node.record, filtered: node.hidden});
+        });
+
+        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.FilterDidChange, (event) => {
+            this.filterDidChange();
+        });
+    }
+
+    selectRecord(record)
+    {
+        if (!this._timelineDataGrid)
+            return;
+
+        let selectedDataGridNode = this._timelineDataGrid.selectedNode;
+        if (!record) {
+            if (selectedDataGridNode)
+                selectedDataGridNode.deselect();
+            return;
+        }
+
+        let dataGridNode = this._timelineDataGrid.findNode((node) => node.record === record);
+        console.assert(dataGridNode, "Timeline view has no grid node for record selected in timeline overview.", this, record);
+        if (!dataGridNode || dataGridNode.selected)
+            return;
+
+        // Don't select the record's grid node if one of it's children is already selected.
+        if (selectedDataGridNode && selectedDataGridNode.hasAncestor(dataGridNode))
+            return;
+
+        dataGridNode.revealAndSelect();
     }
 
     reset()
@@ -137,20 +205,18 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
         // Implemented by sub-classes if needed.
     }
 
-    filterDidChange()
+    updateFilter(filters)
     {
-        // Implemented by sub-classes if needed.
+        if (!this._timelineDataGrid)
+            return;
+
+        this._timelineDataGrid.filterText = filters ? filters.text : "";
     }
 
-    matchTreeElementAgainstCustomFilters(treeElement)
+    matchDataGridNodeAgainstCustomFilters(node)
     {
         // Implemented by sub-classes if needed.
         return true;
-    }
-
-    filterUpdated()
-    {
-        this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
     }
 
     needsLayout()
@@ -162,10 +228,92 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
         super.needsLayout();
     }
 
+    // DataGrid filter delegate
+
+    dataGridMatchNodeAgainstCustomFilters(node)
+    {
+        console.assert(node);
+        if (!this.matchDataGridNodeAgainstCustomFilters(node))
+            return false;
+
+        let startTime = this.filterStartTime;
+        let endTime = this.filterEndTime;
+        let currentTime = this.currentTime;
+
+        function checkTimeBounds(itemStartTime, itemEndTime)
+        {
+            itemStartTime = itemStartTime || currentTime;
+            itemEndTime = itemEndTime || currentTime;
+
+            return startTime <= itemEndTime && itemStartTime <= endTime;
+        }
+
+        if (node instanceof WebInspector.ResourceTimelineDataGridNode) {
+            let resource = node.resource;
+            return checkTimeBounds(resource.requestSentTimestamp, resource.finishedOrFailedTimestamp);
+        }
+
+        if (node instanceof WebInspector.SourceCodeTimelineTimelineDataGridNode) {
+            let sourceCodeTimeline = node.sourceCodeTimeline;
+
+            // Do a quick check of the timeline bounds before we check each record.
+            if (!checkTimeBounds(sourceCodeTimeline.startTime, sourceCodeTimeline.endTime))
+                return false;
+
+            for (let record of sourceCodeTimeline.records) {
+                if (checkTimeBounds(record.startTime, record.endTime))
+                    return true;
+            }
+
+            return false;
+        }
+
+        if (node instanceof WebInspector.ProfileNodeDataGridNode) {
+            let profileNode = node.profileNode;
+            if (checkTimeBounds(profileNode.startTime, profileNode.endTime))
+                return true;
+
+            return false;
+        }
+
+        if (node instanceof WebInspector.TimelineDataGridNode) {
+            let record = node.record;
+            return checkTimeBounds(record.startTime, record.endTime);
+        }
+
+        console.error("Unknown DataGridNode, can't filter by time.");
+        return true;
+    }
+
     // Protected
 
     userSelectedRecordFromOverview(timelineRecord)
     {
         // Implemented by sub-classes if needed.
     }
+
+    filterDidChange()
+    {
+        // Implemented by sub-classes if needed.
+    }
+
+    // Private
+
+    _filterTimesDidChange()
+    {
+        if (!this._timelineDataGrid || this._updateFilterTimeout)
+            return;
+
+        function delayedWork()
+        {
+            this._updateFilterTimeout = undefined;
+            this._timelineDataGrid.filterDidChange();
+        }
+
+        this._updateFilterTimeout = setTimeout(delayedWork.bind(this), 0);
+    }
+};
+
+WebInspector.TimelineView.Event = {
+    RecordWasFiltered: "record-was-filtered"
 };

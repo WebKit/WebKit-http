@@ -54,7 +54,7 @@ struct SameSizeAsRenderTableCell : public RenderBlockFlow {
 COMPILE_ASSERT(sizeof(RenderTableCell) == sizeof(SameSizeAsRenderTableCell), RenderTableCell_should_stay_small);
 COMPILE_ASSERT(sizeof(CollapsedBorderValue) == 12, CollapsedBorderValue_should_stay_small);
 
-RenderTableCell::RenderTableCell(Element& element, Ref<RenderStyle>&& style)
+RenderTableCell::RenderTableCell(Element& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
     , m_column(unsetColumnIndex)
     , m_cellWidthChanged(false)
@@ -70,7 +70,7 @@ RenderTableCell::RenderTableCell(Element& element, Ref<RenderStyle>&& style)
     updateColAndRowSpanFlags();
 }
 
-RenderTableCell::RenderTableCell(Document& document, Ref<RenderStyle>&& style)
+RenderTableCell::RenderTableCell(Document& document, RenderStyle&& style)
     : RenderBlockFlow(document, WTFMove(style))
     , m_column(unsetColumnIndex)
     , m_cellWidthChanged(false)
@@ -1344,7 +1344,7 @@ void RenderTableCell::scrollbarsChanged(bool horizontalScrollbarChanged, bool ve
 
 RenderTableCell* RenderTableCell::createAnonymousWithParentRenderer(const RenderObject* parent)
 {
-    auto cell = new RenderTableCell(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(&parent->style(), TABLE_CELL));
+    auto cell = new RenderTableCell(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_CELL));
     cell->initializeStyle();
     return cell;
 }

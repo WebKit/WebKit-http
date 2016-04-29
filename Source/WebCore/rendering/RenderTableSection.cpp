@@ -82,13 +82,13 @@ static inline void updateLogicalHeightForCell(RenderTableSection::RowStruct& row
     }
 }
 
-RenderTableSection::RenderTableSection(Element& element, Ref<RenderStyle>&& style)
+RenderTableSection::RenderTableSection(Element& element, RenderStyle&& style)
     : RenderBox(element, WTFMove(style), 0)
 {
     setInline(false);
 }
 
-RenderTableSection::RenderTableSection(Document& document, Ref<RenderStyle>&& style)
+RenderTableSection::RenderTableSection(Document& document, RenderStyle&& style)
     : RenderBox(document, WTFMove(style), 0)
 {
     setInline(false);
@@ -1198,7 +1198,7 @@ void RenderTableSection::paintRowGroupBorderIfRequired(const PaintInfo& paintInf
 
 }
 
-static BoxSide physicalBorderForDirection(RenderStyle* styleForCellFlow, CollapsedBorderSide side)
+static BoxSide physicalBorderForDirection(const RenderStyle* styleForCellFlow, CollapsedBorderSide side)
 {
 
     switch (side) {
@@ -1578,7 +1578,7 @@ CollapsedBorderValue RenderTableSection::cachedCollapsedBorder(const RenderTable
 
 RenderTableSection* RenderTableSection::createAnonymousWithParentRenderer(const RenderObject* parent)
 {
-    auto section = new RenderTableSection(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(&parent->style(), TABLE_ROW_GROUP));
+    auto section = new RenderTableSection(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_ROW_GROUP));
     section->initializeStyle();
     return section;
 }

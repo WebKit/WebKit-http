@@ -57,6 +57,7 @@
 #include "StyleDeprecatedFlexibleBoxData.h"
 #include "StyleFilterData.h"
 #include "StyleFlexibleBoxData.h"
+#include "StyleInheritedData.h"
 #include "StyleMarqueeData.h"
 #include "StyleMultiColData.h"
 #include "StyleRareInheritedData.h"
@@ -122,9 +123,11 @@ class TransformationMatrix;
 
 struct ScrollSnapPoints;
 
-typedef Vector<RefPtr<RenderStyle>, 4> PseudoStyleCache;
+typedef Vector<std::unique_ptr<RenderStyle>, 4> PseudoStyleCache;
 
-class RenderStyle: public RefCounted<RenderStyle> {
+class RenderStyle {
+    WTF_MAKE_FAST_ALLOCATED;
+    
     friend class CSSPropertyAnimationWrapperMap; // Used by CSS animations. We can't allow them to animate based off visited colors.
     friend class ApplyStyleCommand; // Editing has to only reveal unvisited info.
     friend class EditingStyle; // Editing has to only reveal unvisited info.
@@ -471,20 +474,35 @@ protected:
 // don't inherit
     NonInheritedFlags noninherited_flags;
 
+#if !ASSERT_DISABLED
+    bool m_deletionHasBegun { false };
+#endif
+
 // !END SYNC!
 private:
-    // used to create the default style.
-    ALWAYS_INLINE RenderStyle(bool);
-    ALWAYS_INLINE RenderStyle(const RenderStyle&);
+    enum CreateDefaultStyleTag { CreateDefaultStyle };
+    RenderStyle(CreateDefaultStyleTag);
+
+    static RenderStyle& defaultStyle();
 
 public:
-    static Ref<RenderStyle> create();
-    static Ref<RenderStyle> createDefaultStyle();
-    static Ref<RenderStyle> createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay);
-    static Ref<RenderStyle> clone(const RenderStyle*);
+    RenderStyle(RenderStyle&&) = default;
+    RenderStyle& operator=(RenderStyle&&) = default;
 
-    // Create a RenderStyle for generated content by inheriting from a pseudo style.
-    static Ref<RenderStyle> createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle);
+    // This is not a true copy constructor. It doesn't copy pseudo style caches for example.
+    enum CloneTag { Clone };
+    RenderStyle(const RenderStyle&, CloneTag);
+
+    ~RenderStyle();
+
+    static RenderStyle create();
+    static std::unique_ptr<RenderStyle> createPtr();
+
+    static RenderStyle clone(const RenderStyle&);
+    static std::unique_ptr<RenderStyle> clonePtr(const RenderStyle&);
+
+    static RenderStyle createAnonymousStyleWithDisplay(const RenderStyle& parentStyle, EDisplay);
+    static RenderStyle createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle);
 
     ContentPosition resolvedJustifyContentPosition(const StyleContentAlignmentData& normalValueBehavior) const;
     ContentDistributionType resolvedJustifyContentDistribution(const StyleContentAlignmentData& normalValueBehavior) const;
@@ -507,7 +525,7 @@ public:
     void setStyleType(PseudoId styleType) { noninherited_flags.setStyleType(styleType); }
 
     RenderStyle* getCachedPseudoStyle(PseudoId) const;
-    RenderStyle* addCachedPseudoStyle(PassRefPtr<RenderStyle>);
+    RenderStyle* addCachedPseudoStyle(std::unique_ptr<RenderStyle>);
     void removeCachedPseudoStyle(PseudoId);
 
     const PseudoStyleCache* cachedPseudoStyles() const { return m_cachedPseudoStyles.get(); }
@@ -1588,7 +1606,7 @@ public:
     void setColumnRuleWidth(unsigned short w) { SET_NESTED_VAR(rareNonInheritedData, m_multiCol, m_rule.m_width, w); }
     void resetColumnRule() { SET_NESTED_VAR(rareNonInheritedData, m_multiCol, m_rule, BorderValue()); }
     void setColumnSpan(ColumnSpan columnSpan) { SET_NESTED_VAR(rareNonInheritedData, m_multiCol, m_columnSpan, columnSpan); }
-    void inheritColumnPropertiesFrom(RenderStyle* parent) { rareNonInheritedData.access()->m_multiCol = parent->rareNonInheritedData->m_multiCol; }
+    void inheritColumnPropertiesFrom(const RenderStyle* parent) { rareNonInheritedData.access()->m_multiCol = parent->rareNonInheritedData->m_multiCol; }
     void setTransform(const TransformOperations& ops) { SET_NESTED_VAR(rareNonInheritedData, m_transform, m_operations, ops); }
     void setTransformOriginX(Length length) { SET_NESTED_VAR(rareNonInheritedData, m_transform, m_x, WTFMove(length)); }
     void setTransformOriginY(Length length) { SET_NESTED_VAR(rareNonInheritedData, m_transform, m_y, WTFMove(length)); }
@@ -2112,6 +2130,9 @@ public:
     static BlendMode initialBlendMode() { return BlendModeNormal; }
     static Isolation initialIsolation() { return IsolationAuto; }
 #endif
+
+    bool isPlaceholderStyle() const { return rareNonInheritedData->m_isPlaceholderStyle; }
+    void setIsPlaceholderStyle() { SET_VAR(rareNonInheritedData, m_isPlaceholderStyle, true); }
 
     static ptrdiff_t noninheritedFlagsMemoryOffset() { return OBJECT_OFFSETOF(RenderStyle, noninherited_flags); }
 

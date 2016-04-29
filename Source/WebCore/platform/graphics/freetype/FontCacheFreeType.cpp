@@ -30,8 +30,6 @@
 #include <cairo.h>
 #include <fontconfig/fcfreetype.h>
 #include <wtf/Assertions.h>
-#include <wtf/HashMap.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -65,27 +63,12 @@ static RefPtr<FcPattern> createFontConfigPatternForCharacters(const UChar* chara
 
 static RefPtr<FcPattern> findBestFontGivenFallbacks(const FontPlatformData& fontData, FcPattern* pattern)
 {
-    if (!fontData.m_pattern)
+    FcFontSet* fallbacks = fontData.fallbacks();
+    if (!fallbacks)
         return nullptr;
 
-    if (!fontData.m_fallbacks) {
-        FcResult fontConfigResult;
-        fontData.m_fallbacks = FcFontSort(nullptr, fontData.m_pattern.get(), FcTrue, nullptr, &fontConfigResult);
-    }
-
-    if (!fontData.m_fallbacks)
-        return nullptr;
-
-    FcFontSet* sets[] = { fontData.m_fallbacks };
     FcResult fontConfigResult;
-    return FcFontSetMatch(nullptr, sets, 1, pattern, &fontConfigResult);
-}
-
-using SystemFallbackMap = HashMap<FcChar32, RefPtr<FcPattern>>;
-static SystemFallbackMap& systemFallbackMap()
-{
-    static NeverDestroyed<HashMap<FcChar32, RefPtr<FcPattern>>> map;
-    return map;
+    return FcFontSetMatch(nullptr, &fallbacks, 1, pattern, &fontConfigResult);
 }
 
 RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* originalFontData, bool, const UChar* characters, unsigned length)
@@ -99,13 +82,8 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
         return fontForPlatformData(alternateFontData);
     }
 
-    auto addResult = systemFallbackMap().add(FcPatternHash(pattern.get()), nullptr);
-    auto& resultPattern = addResult.iterator->value;
-    if (addResult.isNewEntry) {
-        FcResult fontConfigResult;
-        resultPattern = adoptRef(FcFontMatch(nullptr, pattern.get(), &fontConfigResult));
-    }
-
+    FcResult fontConfigResult;
+    RefPtr<FcPattern> resultPattern = adoptRef(FcFontMatch(nullptr, pattern.get(), &fontConfigResult));
     if (!resultPattern)
         return nullptr;
     FontPlatformData alternateFontData(resultPattern.get(), description);
@@ -403,11 +381,6 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
         return nullptr;
 
     return platformData;
-}
-
-void FontCache::platformPurgeInactiveFontData()
-{
-    systemFallbackMap().clear();
 }
 
 }

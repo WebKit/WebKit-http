@@ -671,6 +671,8 @@ public:
 
     RenderLayer* enclosingFlowThreadAncestor() const;
 
+    bool shouldPlaceBlockDirectionScrollbarOnLeft() const final { return renderer().shouldPlaceBlockDirectionScrollbarOnLeft(); }
+
 private:
     enum CollectLayersBehavior { StopAtStackingContexts, StopAtStackingContainers };
 
@@ -924,7 +926,7 @@ private:
     void createReflection();
     void removeReflection();
 
-    Ref<RenderStyle> createReflectionStyle();
+    RenderStyle createReflectionStyle();
     bool paintingInsideReflection() const { return m_paintingInsideReflection; }
     void setPaintingInsideReflection(bool b) { m_paintingInsideReflection = b; }
 
@@ -997,7 +999,6 @@ private:
 
     RenderNamedFlowFragment* currentRenderNamedFlowFragment() const;
 
-private:
     // The bitfields are up here so they will fall into the padding from ScrollableArea on 64-bit.
 
     const bool m_isRootLayer : 1;

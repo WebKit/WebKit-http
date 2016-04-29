@@ -320,7 +320,7 @@ void CanvasRenderingContext2D::FontProxy::fontsNeedUpdate(FontSelector& selector
     update(selector);
 }
 
-inline void CanvasRenderingContext2D::FontProxy::initialize(FontSelector& fontSelector, RenderStyle& newStyle)
+inline void CanvasRenderingContext2D::FontProxy::initialize(FontSelector& fontSelector, const RenderStyle& newStyle)
 {
     // Beware! m_font.fontSelector() might not point to document.fontSelector()!
     ASSERT(newStyle.fontCascade().fontSelector() == &fontSelector);
@@ -819,25 +819,19 @@ void CanvasRenderingContext2D::setTransform(float m11, float m12, float m21, flo
     transform(m11, m12, m21, m22, dx, dy);
 }
 
-void CanvasRenderingContext2D::setStrokeColor(const String& color)
+void CanvasRenderingContext2D::setStrokeColor(const String& color, Optional<float> alpha)
 {
+    if (alpha) {
+        setStrokeStyle(CanvasStyle::createFromStringWithOverrideAlpha(color, alpha.value()));
+        return;
+    }
+
     if (color == state().unparsedStrokeColor)
         return;
+
     realizeSaves();
     setStrokeStyle(CanvasStyle::createFromString(color, &canvas()->document()));
     modifiableState().unparsedStrokeColor = color;
-}
-
-void CanvasRenderingContext2D::setStrokeColor(float grayLevel)
-{
-    if (state().strokeStyle.isValid() && state().strokeStyle.isEquivalentRGBA(grayLevel, grayLevel, grayLevel, 1.0f))
-        return;
-    setStrokeStyle(CanvasStyle(grayLevel, 1.0f));
-}
-
-void CanvasRenderingContext2D::setStrokeColor(const String& color, float alpha)
-{
-    setStrokeStyle(CanvasStyle::createFromStringWithOverrideAlpha(color, alpha));
 }
 
 void CanvasRenderingContext2D::setStrokeColor(float grayLevel, float alpha)
@@ -861,25 +855,19 @@ void CanvasRenderingContext2D::setStrokeColor(float c, float m, float y, float k
     setStrokeStyle(CanvasStyle(c, m, y, k, a));
 }
 
-void CanvasRenderingContext2D::setFillColor(const String& color)
+void CanvasRenderingContext2D::setFillColor(const String& color, Optional<float> alpha)
 {
+    if (alpha) {
+        setFillStyle(CanvasStyle::createFromStringWithOverrideAlpha(color, alpha.value()));
+        return;
+    }
+
     if (color == state().unparsedFillColor)
         return;
+
     realizeSaves();
     setFillStyle(CanvasStyle::createFromString(color, &canvas()->document()));
     modifiableState().unparsedFillColor = color;
-}
-
-void CanvasRenderingContext2D::setFillColor(float grayLevel)
-{
-    if (state().fillStyle.isValid() && state().fillStyle.isEquivalentRGBA(grayLevel, grayLevel, grayLevel, 1.0f))
-        return;
-    setFillStyle(CanvasStyle(grayLevel, 1.0f));
-}
-
-void CanvasRenderingContext2D::setFillColor(const String& color, float alpha)
-{
-    setFillStyle(CanvasStyle::createFromStringWithOverrideAlpha(color, alpha));
 }
 
 void CanvasRenderingContext2D::setFillColor(float grayLevel, float alpha)
@@ -1271,20 +1259,7 @@ void CanvasRenderingContext2D::setShadow(float width, float height, float blur)
     setShadow(FloatSize(width, height), blur, Color::transparent);
 }
 
-void CanvasRenderingContext2D::setShadow(float width, float height, float blur, const String& color)
-{
-    RGBA32 rgba;
-    if (!parseColorOrCurrentColor(rgba, color, canvas()))
-        return;
-    setShadow(FloatSize(width, height), blur, rgba);
-}
-
-void CanvasRenderingContext2D::setShadow(float width, float height, float blur, float grayLevel)
-{
-    setShadow(FloatSize(width, height), blur, makeRGBA32FromFloats(grayLevel, grayLevel, grayLevel, 1));
-}
-
-void CanvasRenderingContext2D::setShadow(float width, float height, float blur, const String& color, float alpha)
+void CanvasRenderingContext2D::setShadow(float width, float height, float blur, const String& color, Optional<float> alpha)
 {
     RGBA32 rgba;
     if (!parseColorOrCurrentColor(rgba, color, canvas()))
@@ -2216,12 +2191,12 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
 
     // Map the <canvas> font into the text style. If the font uses keywords like larger/smaller, these will work
     // relative to the canvas.
-    Ref<RenderStyle> newStyle = RenderStyle::create();
+    auto newStyle = RenderStyle::createPtr();
 
     Document& document = canvas()->document();
     document.updateStyleIfNeeded();
 
-    if (RenderStyle* computedStyle = canvas()->computedStyle())
+    if (auto* computedStyle = canvas()->computedStyle())
         newStyle->setFontDescription(computedStyle->fontDescription());
     else {
         FontCascadeDescription defaultFontDescription;
@@ -2236,7 +2211,7 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
 
     // Now map the font property longhands into the style.
     StyleResolver& styleResolver = canvas()->styleResolver();
-    styleResolver.applyPropertyToStyle(CSSPropertyFontFamily, parsedStyle->getPropertyCSSValue(CSSPropertyFontFamily).get(), &newStyle.get());
+    styleResolver.applyPropertyToStyle(CSSPropertyFontFamily, parsedStyle->getPropertyCSSValue(CSSPropertyFontFamily).get(), WTFMove(newStyle));
     styleResolver.applyPropertyToCurrentStyle(CSSPropertyFontStyle, parsedStyle->getPropertyCSSValue(CSSPropertyFontStyle).get());
     styleResolver.applyPropertyToCurrentStyle(CSSPropertyFontVariantCaps, parsedStyle->getPropertyCSSValue(CSSPropertyFontVariantCaps).get());
     styleResolver.applyPropertyToCurrentStyle(CSSPropertyFontWeight, parsedStyle->getPropertyCSSValue(CSSPropertyFontWeight).get());
@@ -2249,7 +2224,7 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
     styleResolver.updateFont();
     styleResolver.applyPropertyToCurrentStyle(CSSPropertyLineHeight, parsedStyle->getPropertyCSSValue(CSSPropertyLineHeight).get());
 
-    modifiableState().font.initialize(document.fontSelector(), newStyle);
+    modifiableState().font.initialize(document.fontSelector(), *styleResolver.style());
 }
 
 String CanvasRenderingContext2D::textAlign() const
@@ -2284,9 +2259,9 @@ void CanvasRenderingContext2D::setTextBaseline(const String& s)
     modifiableState().textBaseline = baseline;
 }
 
-inline TextDirection CanvasRenderingContext2D::toTextDirection(Direction direction, RenderStyle** computedStyle) const
+inline TextDirection CanvasRenderingContext2D::toTextDirection(Direction direction, const RenderStyle** computedStyle) const
 {
-    RenderStyle* style = (computedStyle || direction == Direction::Inherit) ? canvas()->computedStyle() : nullptr;
+    auto* style = (computedStyle || direction == Direction::Inherit) ? canvas()->computedStyle() : nullptr;
     if (computedStyle)
         *computedStyle = style;
     switch (direction) {
@@ -2327,24 +2302,14 @@ void CanvasRenderingContext2D::setDirection(const String& directionString)
     modifiableState().direction = direction;
 }
 
-void CanvasRenderingContext2D::fillText(const String& text, float x, float y)
+void CanvasRenderingContext2D::fillText(const String& text, float x, float y, Optional<float> maxWidth)
 {
-    drawTextInternal(text, x, y, true);
+    drawTextInternal(text, x, y, true, maxWidth);
 }
 
-void CanvasRenderingContext2D::fillText(const String& text, float x, float y, float maxWidth)
+void CanvasRenderingContext2D::strokeText(const String& text, float x, float y, Optional<float> maxWidth)
 {
-    drawTextInternal(text, x, y, true, maxWidth, true);
-}
-
-void CanvasRenderingContext2D::strokeText(const String& text, float x, float y)
-{
-    drawTextInternal(text, x, y, false);
-}
-
-void CanvasRenderingContext2D::strokeText(const String& text, float x, float y, float maxWidth)
-{
-    drawTextInternal(text, x, y, false, maxWidth, true);
+    drawTextInternal(text, x, y, false, maxWidth);
 }
 
 static inline bool isSpaceThatNeedsReplacing(UChar c)
@@ -2390,7 +2355,7 @@ Ref<TextMetrics> CanvasRenderingContext2D::measureText(const String& text)
     return metrics;
 }
 
-void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, float y, bool fill, float maxWidth, bool useMaxWidth)
+void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, float y, bool fill, Optional<float> maxWidth)
 {
     const auto& fontProxy = this->fontProxy();
     const FontMetrics& fontMetrics = fontProxy.fontMetrics();
@@ -2402,7 +2367,7 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
         return;
     if (!std::isfinite(x) | !std::isfinite(y))
         return;
-    if (useMaxWidth && (!std::isfinite(maxWidth) || maxWidth <= 0))
+    if (maxWidth && (!std::isfinite(maxWidth.value()) || maxWidth.value() <= 0))
         return;
 
     // If gradient size is zero, then paint nothing.
@@ -2419,7 +2384,7 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
 
     // FIXME: Need to turn off font smoothing.
 
-    RenderStyle* computedStyle;
+    const RenderStyle* computedStyle;
     TextDirection direction = toTextDirection(state().direction, &computedStyle);
     bool isRTL = direction == RTL;
     bool override = computedStyle ? isOverride(computedStyle->unicodeBidi()) : false;
@@ -2447,8 +2412,8 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
 
     float fontWidth = fontProxy.width(TextRun(normalizedText, 0, 0, AllowTrailingExpansion, direction, override));
 
-    useMaxWidth = (useMaxWidth && maxWidth < fontWidth);
-    float width = useMaxWidth ? maxWidth : fontWidth;
+    bool useMaxWidth = maxWidth && maxWidth.value() < fontWidth;
+    float width = useMaxWidth ? maxWidth.value() : fontWidth;
 
     TextAlign align = state().textAlign;
     if (align == StartTextAlign)

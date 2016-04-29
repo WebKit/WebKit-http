@@ -61,8 +61,8 @@ public:
     friend class LineLayoutState;
 
 protected:
-    RenderBlock(Element&, Ref<RenderStyle>&&, BaseTypeFlags);
-    RenderBlock(Document&, Ref<RenderStyle>&&, BaseTypeFlags);
+    RenderBlock(Element&, RenderStyle&&, BaseTypeFlags);
+    RenderBlock(Document&, RenderStyle&&, BaseTypeFlags);
     virtual ~RenderBlock();
 
 public:

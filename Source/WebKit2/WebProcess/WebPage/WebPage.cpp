@@ -401,7 +401,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageConfiguration.plugInClient = new WebPlugInClient(*this);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(*this);
-    pageConfiguration.diagnosticLoggingClient = new WebDiagnosticLoggingClient(*this);
+    pageConfiguration.diagnosticLoggingClient = std::make_unique<WebDiagnosticLoggingClient>(*this);
 
     pageConfiguration.applicationCacheStorage = &WebProcess::singleton().applicationCacheStorage();
     pageConfiguration.databaseProvider = WebDatabaseProvider::getOrCreate(m_pageGroup->pageGroupID());
@@ -823,7 +823,7 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
         auto& postLayoutData = result.postLayoutData();
         if (!selection.isNone()) {
             Node* nodeToRemove;
-            if (RenderStyle* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
+            if (auto* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
                 if (style->fontCascade().weight() >= FontWeightBold)
                     postLayoutData.typingAttributes |= AttributeBold;
                 if (style->fontCascade().italic() == FontItalicOn)
@@ -3082,6 +3082,13 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     settings.setShouldDispatchJavaScriptWindowOnErrorEvents(true);
 
+    auto userInterfaceDirectionCandidate = static_cast<WebCore::UserInterfaceDirectionPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::userInterfaceDirectionKey()));
+    if (userInterfaceDirectionCandidate == WebCore::UserInterfaceDirectionPolicy::Content || userInterfaceDirectionCandidate == WebCore::UserInterfaceDirectionPolicy::System)
+        settings.setUserInterfaceDirectionPolicy(!store.getUInt32ValueForKey(WebPreferencesKey::userInterfaceDirectionKey()) ? UserInterfaceDirectionPolicy::Content : UserInterfaceDirectionPolicy::System);
+    TextDirection systemLayoutDirectionCandidate = static_cast<TextDirection>(store.getUInt32ValueForKey(WebPreferencesKey::systemLayoutDirectionKey()));
+    if (systemLayoutDirectionCandidate == WebCore::LTR || systemLayoutDirectionCandidate == WebCore::RTL)
+        settings.setSystemLayoutDirection(systemLayoutDirectionCandidate);
+
 #if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPagePreferences.cpp>
 #endif
@@ -3205,7 +3212,7 @@ WebInspectorUI* WebPage::inspectorUI()
     return m_inspectorUI.get();
 }
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 WebPlaybackSessionManager& WebPage::playbackSessionManager()
 {
     if (!m_playbackSessionManager)

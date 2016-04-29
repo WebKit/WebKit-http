@@ -170,9 +170,9 @@ public:
 
     RefPtr<Attr> getAttributeNode(const AtomicString& name);
     RefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RefPtr<Attr> setAttributeNode(Attr*, ExceptionCode&);
-    RefPtr<Attr> setAttributeNodeNS(Attr*, ExceptionCode&);
-    RefPtr<Attr> removeAttributeNode(Attr*, ExceptionCode&);
+    RefPtr<Attr> setAttributeNode(Attr&, ExceptionCode&);
+    RefPtr<Attr> setAttributeNodeNS(Attr&, ExceptionCode&);
+    RefPtr<Attr> removeAttributeNode(Attr&, ExceptionCode&);
 
     RefPtr<Attr> attrIfExists(const QualifiedName&);
     RefPtr<Attr> attrIfExists(const AtomicString& localName, bool shouldIgnoreAttributeCase);
@@ -243,7 +243,7 @@ public:
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) { }
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&);
+    virtual RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&);
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
@@ -279,7 +279,7 @@ public:
     void setTabIndex(int);
     virtual Element* focusDelegate();
 
-    RenderStyle* computedStyle(PseudoId = NOPSEUDO) override;
+    const RenderStyle* computedStyle(PseudoId = NOPSEUDO) override;
 
     bool needsStyleInvalidation() const;
 
@@ -480,7 +480,7 @@ public:
     virtual void didAttachRenderers();
     virtual void willDetachRenderers();
     virtual void didDetachRenderers();
-    virtual Optional<ElementStyle> resolveCustomStyle(RenderStyle& parentStyle, RenderStyle* shadowHostStyle);
+    virtual Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle);
 
     LayoutRect absoluteEventHandlerBounds(bool& includesFixedPositionElements) override;
 
@@ -499,7 +499,7 @@ public:
 #endif
 
     StyleResolver& styleResolver();
-    ElementStyle resolveStyle(RenderStyle* parentStyle);
+    ElementStyle resolveStyle(const RenderStyle* parentStyle);
 
     bool hasDisplayContents() const;
     void setHasDisplayContents(bool);
@@ -592,8 +592,8 @@ private:
 
     void removeShadowRoot();
 
-    RenderStyle* existingComputedStyle();
-    RenderStyle& resolveComputedStyle();
+    const RenderStyle* existingComputedStyle();
+    const RenderStyle& resolveComputedStyle();
 
     bool rareDataStyleAffectedByEmpty() const;
     bool rareDataChildrenAffectedByHover() const;

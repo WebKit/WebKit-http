@@ -56,8 +56,8 @@ public:
     
     void clearRenderer();
 
-    bool animate(RenderElement&, RenderStyle* currentStyle, RenderStyle& targetStyle, Ref<RenderStyle>& blendedStyle);
-    PassRefPtr<RenderStyle> getAnimatedStyle() const;
+    bool animate(RenderElement&, const RenderStyle* currentStyle, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& blendedStyle);
+    std::unique_ptr<RenderStyle> getAnimatedStyle() const;
     bool computeExtentOfTransformAnimation(LayoutRect&) const;
 
     double timeToNextService() const;
@@ -88,8 +88,8 @@ public:
 private:
     CompositeAnimation(AnimationControllerPrivate&);
 
-    void updateTransitions(RenderElement*, RenderStyle* currentStyle, RenderStyle* targetStyle);
-    void updateKeyframeAnimations(RenderElement*, RenderStyle* currentStyle, RenderStyle* targetStyle);
+    void updateTransitions(RenderElement*, const RenderStyle* currentStyle, const RenderStyle* targetStyle);
+    void updateKeyframeAnimations(RenderElement*, const RenderStyle* currentStyle, const RenderStyle* targetStyle);
     
     typedef HashMap<int, RefPtr<ImplicitAnimation>> CSSPropertyTransitionsMap;
     typedef HashMap<AtomicStringImpl*, RefPtr<KeyframeAnimation>> AnimationNameMap;

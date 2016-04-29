@@ -33,6 +33,10 @@
 #include "TextureMapperLayer.h"
 #include "TextureMapperPlatformLayerBuffer.h"
 
+#if PLATFORM(WPE)
+#include <glib.h>
+#endif
+
 const double s_releaseUnusedSecondsTolerance = 1;
 const double s_releaseUnusedBuffersTimerInterval = 0.5;
 

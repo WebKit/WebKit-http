@@ -49,6 +49,7 @@
 #include "PreciseJumpTargets.h"
 #include "PutByIdFlags.h"
 #include "PutByIdStatus.h"
+#include <RegExpPrototype.h>
 #include "StackAlignment.h"
 #include "StringConstructor.h"
 #include "StructureStubInfo.h"
@@ -1744,7 +1745,7 @@ bool ByteCodeParser::handleInlining(
                     // This is pretty lame, but it will force the count to be flushed as an int. This doesn't
                     // matter very much, since our use of a SetArgument and Flushes for this local slot is
                     // mostly just a formality.
-                    countVariable->predict(SpecInt32);
+                    countVariable->predict(SpecInt32Only);
                     countVariable->mergeIsProfitableToUnbox(true);
                     Node* setArgumentCount = addToGraph(SetArgument, OpInfo(countVariable));
                     m_currentBlock->variablesAtTail.setOperand(countVariable->local(), setArgumentCount);
@@ -2257,8 +2258,60 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         if (argumentCountIncludingThis != 3)
             return false;
 
+        // Don't inline intrinsic if we exited due to "search" not being a RegExp or String object.
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        // Don't inline intrinsic if we exited due to one of the primordial RegExp checks failing.
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell))
+            return false;
+
+        JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
+        Structure* regExpStructure = globalObject->regExpStructure();
+        m_graph.registerStructure(regExpStructure);
+        ASSERT(regExpStructure->storedPrototype().isObject());
+        ASSERT(regExpStructure->storedPrototype().asCell()->classInfo() == RegExpPrototype::info());
+
+        FrozenValue* regExpPrototypeObjectValue = m_graph.freeze(regExpStructure->storedPrototype());
+        Structure* regExpPrototypeStructure = regExpPrototypeObjectValue->structure();
+
+        auto isRegExpPropertySame = [&] (JSValue primordialProperty, UniquedStringImpl* propertyUID) {
+            JSValue currentProperty;
+            if (!m_graph.getRegExpPrototypeProperty(regExpStructure->storedPrototypeObject(), regExpPrototypeStructure, propertyUID, currentProperty))
+                return false;
+
+            return currentProperty == primordialProperty;
+        };
+
+        // Check that searchRegExp.exec is still the primordial RegExp.prototype.exec
+        if (!isRegExpPropertySame(globalObject->regExpProtoExecFunction(), m_vm->propertyNames->exec.impl()))
+            return false;
+
+        // Check that searchRegExp.global is still the primordial RegExp.prototype.global
+        if (!isRegExpPropertySame(globalObject->regExpProtoGlobalGetter(), m_vm->propertyNames->global.impl()))
+            return false;
+
+        // Check that searchRegExp.unicode is still the primordial RegExp.prototype.unicode
+        if (!isRegExpPropertySame(globalObject->regExpProtoUnicodeGetter(), m_vm->propertyNames->unicode.impl()))
+            return false;
+
+        // Check that searchRegExp[Symbol.match] is still the primordial RegExp.prototype[Symbol.replace]
+        if (!isRegExpPropertySame(globalObject->regExpProtoSymbolReplaceFunction(), m_vm->propertyNames->replaceSymbol.impl()))
+            return false;
+
         insertChecks();
+
         Node* result = addToGraph(StringReplace, OpInfo(0), OpInfo(prediction), get(virtualRegisterForArgument(0, registerOffset)), get(virtualRegisterForArgument(1, registerOffset)), get(virtualRegisterForArgument(2, registerOffset)));
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+        
+    case StringPrototypeReplaceRegExpIntrinsic: {
+        if (argumentCountIncludingThis != 3)
+            return false;
+        
+        insertChecks();
+        Node* result = addToGraph(StringReplaceRegExp, OpInfo(0), OpInfo(prediction), get(virtualRegisterForArgument(0, registerOffset)), get(virtualRegisterForArgument(1, registerOffset)), get(virtualRegisterForArgument(2, registerOffset)));
         set(VirtualRegister(resultOperand), result);
         return true;
     }
@@ -2346,7 +2399,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         for (int i = 1; i < argumentCountIncludingThis; ++i) {
             Node* node = get(virtualRegisterForArgument(i, registerOffset));
             if (node->hasHeapPrediction())
-                node->setHeapPrediction(SpecInt32);
+                node->setHeapPrediction(SpecInt32Only);
         }
         set(VirtualRegister(resultOperand), addToGraph(JSConstant, OpInfo(m_constantUndefined)));
         return true;
@@ -3721,7 +3774,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(InstanceOfCustom, value, constructor, hasInstanceValue));
             NEXT_OPCODE(op_instanceof_custom);
         }
-
+        case op_is_empty: {
+            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(IsEmpty, value));
+            NEXT_OPCODE(op_is_empty);
+        }
         case op_is_undefined: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(IsUndefined, value));

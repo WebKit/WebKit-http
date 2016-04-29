@@ -539,12 +539,12 @@ bool CachedResourceLoader::shouldContinueAfterNotifyingLoadedFromMemoryCache(con
 
 static inline void logMemoryCacheResourceRequest(Frame* frame, const String& description, const String& value = String())
 {
-    if (!frame)
+    if (!frame || !frame->page())
         return;
     if (value.isNull())
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceRequestKey(), description, ShouldSample::Yes);
+        frame->page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceRequestKey(), description, ShouldSample::Yes);
     else
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceRequestKey(), description, value, ShouldSample::Yes);
+        frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceRequestKey(), description, value, ShouldSample::Yes);
 }
 
 CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(CachedResource::Type type, CachedResourceRequest& request)
@@ -719,9 +719,9 @@ static void logRevalidation(const String& reason, DiagnosticLoggingClient& logCl
 
 static void logResourceRevalidationDecision(CachedResource::RevalidationDecision reason, const Frame* frame)
 {
-    if (!frame)
+    if (!frame || !frame->page())
         return;
-    auto& logClient = frame->mainFrame().diagnosticLoggingClient();
+    auto& logClient = frame->page()->diagnosticLoggingClient();
     switch (reason) {
     case CachedResource::RevalidationDecision::No:
         break;
@@ -758,7 +758,8 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Reload;
     }
 
-    if (existingResource->encoding() != TextEncoding(cachedResourceRequest.charset()))
+    auto* textDecoder = existingResource->textResourceDecoder();
+    if (textDecoder && !textDecoder->hasEqualEncodingForCharset(cachedResourceRequest.charset()))
         return Reload;
 
     // FIXME: We should use the same cache policy for all resource types. The raw resource policy is overly strict
