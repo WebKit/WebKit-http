@@ -42,8 +42,8 @@
 
 // Initializes a plane for the graphics to be rendered to
 static gdl_ret_t setup_plane(gdl_plane_id_t plane) {
-    int alphaGlobal = 255; // [0..255], 0 for transparent, 255 for opaque.
-    gdl_boolean_t usePremultAlpha = GDL_TRUE;
+    //int alphaGlobal = 255; // [0..255], 0 for transparent, 255 for opaque.
+    //gdl_boolean_t usePremultAlpha = GDL_TRUE;
     gdl_boolean_t useScaler = GDL_FALSE;
     gdl_pixel_format_t pixelFormat = GDL_PF_ARGB_32;
     gdl_color_space_t colorSpace = GDL_COLOR_SPACE_RGB;
@@ -74,11 +74,11 @@ static gdl_ret_t setup_plane(gdl_plane_id_t plane) {
     if (GDL_SUCCESS == rc)
         rc = gdl_plane_config_begin(plane);
 
-    if (GDL_SUCCESS == rc)
-        rc = gdl_plane_set_attr(GDL_PLANE_ALPHA_GLOBAL, &alphaGlobal);
+    //if (GDL_SUCCESS == rc)
+    //    rc = gdl_plane_set_attr(GDL_PLANE_ALPHA_GLOBAL, &alphaGlobal);
 
-    if (GDL_SUCCESS == rc)
-        rc = gdl_plane_set_attr(GDL_PLANE_ALPHA_PREMULT, &usePremultAlpha);
+    //if (GDL_SUCCESS == rc)
+    //    rc = gdl_plane_set_attr(GDL_PLANE_ALPHA_PREMULT, &usePremultAlpha);
 
     if (GDL_SUCCESS == rc)
         rc = gdl_plane_set_attr(GDL_PLANE_SRC_COLOR_SPACE, &colorSpace);
