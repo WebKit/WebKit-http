@@ -37,7 +37,8 @@ WK_EXPORT WKViewRef WKViewCreate(WKPageConfigurationRef);
 WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
 
 enum {
-    kWKViewStateIsVisible = 1 << 0,
+    kWKViewStateIsInWindow = 1 << 0,
+    kWKViewStateIsVisible = 1 << 1,
 };
 typedef uint32_t WKViewState;
 

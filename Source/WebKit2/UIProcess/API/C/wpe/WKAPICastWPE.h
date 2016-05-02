@@ -45,8 +45,10 @@ inline WebCore::ViewState::Flags toViewStateFlags(WKViewState wkViewState)
 {
     unsigned viewStateFlags = 0;
 
+    if (wkViewState & kWKViewStateIsInWindow)
+        viewStateFlags |= WebCore::ViewState::IsInWindow;
     if (wkViewState & kWKViewStateIsVisible)
-        viewStateFlags |=  WebCore::ViewState::IsVisible;
+        viewStateFlags |= WebCore::ViewState::IsVisible;
 
     return static_cast<WebCore::ViewState::Flags>(viewStateFlags);
 }

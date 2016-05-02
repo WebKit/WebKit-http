@@ -100,8 +100,7 @@ void View::setSize(const WebCore::IntSize& size)
 
 void View::setViewState(WebCore::ViewState::Flags flags)
 {
-    // For now IsInWindow should always be present, i.e. is not configurable.
-    static const WebCore::ViewState::Flags defaultFlags = WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsInWindow;
+    static const WebCore::ViewState::Flags defaultFlags = WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused;
 
     WebCore::ViewState::Flags changedFlags = m_viewStateFlags ^ (defaultFlags | flags);
     m_viewStateFlags = defaultFlags | flags;
