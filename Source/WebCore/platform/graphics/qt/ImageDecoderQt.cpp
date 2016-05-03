@@ -31,6 +31,7 @@
 
 #include <QtCore/QBuffer>
 #include <QtCore/QByteArray>
+#include <QtCore/QSet>
 #include <QtGui/QImageReader>
 
 namespace WebCore {
@@ -43,6 +44,25 @@ ImageDecoderQt::ImageDecoderQt(ImageSource::AlphaOption alphaOption, ImageSource
 
 ImageDecoderQt::~ImageDecoderQt()
 {
+}
+
+static const char* s_formatWhiteList[] = {"png", "jpeg", "gif", "webp", "bmp", "svg", "ico", 0};
+
+static bool isFormatWhiteListed(const QByteArray &format)
+{
+    static QSet<QByteArray> whiteListSet;
+    if (whiteListSet.isEmpty()) {
+        QByteArray whiteListEnv = qgetenv("QTWEBKIT_IMAGEFORMAT_WHITELIST");
+        if (!whiteListEnv.isEmpty())
+            whiteListSet = QSet<QByteArray>::fromList(whiteListEnv.split(','));
+
+        const char **formatIt  = s_formatWhiteList;
+        while (*formatIt) {
+            whiteListSet.insert(QByteArray(*formatIt));
+            ++formatIt;
+        }
+    }
+    return whiteListSet.contains(format);
 }
 
 void ImageDecoderQt::setData(SharedBuffer* data, bool allDataReceived)
@@ -73,6 +93,11 @@ void ImageDecoderQt::setData(SharedBuffer* data, bool allDataReceived)
 
     // QImageReader only allows retrieving the format before reading the image
     m_format = m_reader->format();
+    if (!isFormatWhiteListed(m_format)) {
+        qWarning("Image of format '%s' blocked because it is not considered safe. If you are sure it is safe to do so, you can white-list the format by setting the environment variable QTWEBKIT_IMAGEFORMAT_WHITELIST=%s", m_format.constData(), m_format.constData());
+        setFailed();
+        m_reader = nullptr;
+    }
 }
 
 bool ImageDecoderQt::isSizeAvailable()
