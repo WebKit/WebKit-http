@@ -201,6 +201,9 @@ public:
     void setPluginReplacementEnabled(bool isEnabled) { m_isPluginReplacementEnabled = isEnabled; }
     bool pluginReplacementEnabled() const { return m_isPluginReplacementEnabled; }
 
+    void setResourceTimingEnabled(bool isEnabled) { m_isResourceTimingEnabled = isEnabled; }
+    bool resourceTimingEnabled() const { return m_isResourceTimingEnabled; }
+
 #if ENABLE(GAMEPAD)
     void setGamepadsEnabled(bool areEnabled) { m_areGamepadsEnabled = areEnabled; }
     bool gamepadsEnabled() const { return m_areGamepadsEnabled; }
@@ -241,6 +244,11 @@ public:
     bool downloadAttributeEnabled() const { return m_isDownloadAttributeEnabled; }
 #endif
 
+#if ENABLE(CSS_GRID_LAYOUT)
+    void setCSSGridLayoutEnabled(bool isEnabled) { m_cssGridLayoutEnabled = isEnabled; }
+    bool isCSSGridLayoutEnabled() const { return m_cssGridLayoutEnabled; }
+#endif
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 private:
@@ -262,6 +270,7 @@ private:
     bool m_isCSSCompositingEnabled;
     bool m_isLangAttributeAwareFormControlUIEnabled;
     bool m_isPluginReplacementEnabled;
+    bool m_isResourceTimingEnabled;
 
 #if ENABLE(INDEXED_DATABASE)
     bool m_isIndexedDBEnabled;
@@ -352,6 +361,10 @@ private:
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     bool m_isDownloadAttributeEnabled { false };
+#endif
+
+#if ENABLE(CSS_GRID_LAYOUT)
+    bool m_cssGridLayoutEnabled;
 #endif
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;

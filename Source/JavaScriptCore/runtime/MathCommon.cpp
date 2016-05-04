@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -414,22 +414,56 @@ double JIT_OPERATION operationMathPow(double x, double y)
 {
     if (std::isnan(y))
         return PNaN;
-    if (std::isinf(y) && fabs(x) == 1)
+    double absoluteBase = fabs(x);
+    if (absoluteBase == 1 && std::isinf(y))
         return PNaN;
-    int32_t yAsInt = y;
-    if (static_cast<double>(yAsInt) != y || yAsInt < 0)
-        return mathPowInternal(x, y);
 
-    // If the exponent is a positive int32 integer, we do a fast exponentiation
-    double result = 1;
-    while (yAsInt) {
-        if (yAsInt & 1)
-            result *= x;
-        x *= x;
-        yAsInt >>= 1;
+    if (y == 0.5) {
+        if (!absoluteBase)
+            return 0;
+        if (absoluteBase == std::numeric_limits<double>::infinity())
+            return std::numeric_limits<double>::infinity();
+        return sqrt(x);
     }
-    return result;
+
+    if (y == -0.5) {
+        if (!absoluteBase)
+            return std::numeric_limits<double>::infinity();
+        if (absoluteBase == std::numeric_limits<double>::infinity())
+            return 0.;
+        return 1. / sqrt(x);
+    }
+
+    int32_t yAsInt = y;
+    if (static_cast<double>(yAsInt) == y && yAsInt > 0 && yAsInt <= maxExponentForIntegerMathPow) {
+        // If the exponent is a small positive int32 integer, we do a fast exponentiation
+        double result = 1;
+        while (yAsInt) {
+            if (yAsInt & 1)
+                result *= x;
+            x *= x;
+            yAsInt >>= 1;
+        }
+        return result;
+
+    }
+    return mathPowInternal(x, y);
 }
+
+#if HAVE(ARM_IDIV_INSTRUCTIONS)
+static inline bool isStrictInt32(double value)
+{
+    int32_t valueAsInt32 = static_cast<int32_t>(value);
+    if (value != valueAsInt32)
+        return false;
+
+    if (!valueAsInt32) {
+        if (std::signbit(value))
+            return false;
+    }
+    return true;
+}
+#endif
 
 extern "C" {
 double jsRound(double value)
@@ -437,6 +471,32 @@ double jsRound(double value)
     double integer = ceil(value);
     return integer - (integer - value > 0.5);
 }
+
+#if CALLING_CONVENTION_IS_STDCALL || CPU(ARM_THUMB2)
+double jsMod(double x, double y)
+{
+#if HAVE(ARM_IDIV_INSTRUCTIONS)
+    // fmod() does not have exact results for integer on ARMv7.
+    // When DFG/FTL use IDIV, the result of op_mod can change if we use fmod().
+    //
+    // We implement here the same algorithm and conditions as the upper tier to keep
+    // a stable result when tiering up.
+    if (y) {
+        if (isStrictInt32(x) && isStrictInt32(y)) {
+            int32_t xAsInt32 = static_cast<int32_t>(x);
+            int32_t yAsInt32 = static_cast<int32_t>(y);
+            int32_t quotient = xAsInt32 / yAsInt32;
+            if (!productOverflows<int32_t>(quotient, yAsInt32)) {
+                int32_t remainder = xAsInt32 - (quotient * yAsInt32);
+                if (remainder || xAsInt32 >= 0)
+                    return remainder;
+            }
+        }
+    }
+#endif
+    return fmod(x, y);
 }
+#endif
+} // extern "C"
 
 } // namespace JSC

@@ -178,7 +178,7 @@ void ConsoleClient::printConsoleMessageWithArguments(MessageSource source, Messa
                 functionName = ASCIILiteral("(unknown)");
 
             StringBuilder callFrameBuilder;
-            callFrameBuilder.appendNumber(static_cast<unsigned long>(i));
+            callFrameBuilder.appendNumber(i);
             callFrameBuilder.appendLiteral(": ");
             callFrameBuilder.append(functionName);
             callFrameBuilder.append('(');
@@ -203,9 +203,9 @@ void ConsoleClient::logWithLevel(ExecState* exec, RefPtr<ScriptArguments>&& argu
     internalMessageWithTypeAndLevel(MessageType::Log, level, exec, WTFMove(arguments), ArgumentRequired);
 }
 
-void ConsoleClient::clear(ExecState* exec, RefPtr<ScriptArguments>&& arguments)
+void ConsoleClient::clear(ExecState* exec)
 {
-    internalMessageWithTypeAndLevel(MessageType::Clear, MessageLevel::Log, exec, WTFMove(arguments), ArgumentNotRequired);
+    internalMessageWithTypeAndLevel(MessageType::Clear, MessageLevel::Log, exec, ScriptArguments::createEmpty(exec), ArgumentNotRequired);
 }
 
 void ConsoleClient::dir(ExecState* exec, RefPtr<ScriptArguments>&& arguments)
@@ -228,11 +228,8 @@ void ConsoleClient::trace(ExecState* exec, RefPtr<ScriptArguments>&& arguments)
     internalMessageWithTypeAndLevel(MessageType::Trace, MessageLevel::Log, exec, WTFMove(arguments), ArgumentNotRequired);
 }
 
-void ConsoleClient::assertCondition(ExecState* exec, RefPtr<ScriptArguments>&& arguments, bool condition)
+void ConsoleClient::assertion(ExecState* exec, RefPtr<ScriptArguments>&& arguments)
 {
-    if (condition)
-        return;
-
     internalMessageWithTypeAndLevel(MessageType::Assert, MessageLevel::Error, exec, WTFMove(arguments), ArgumentNotRequired);
 }
 

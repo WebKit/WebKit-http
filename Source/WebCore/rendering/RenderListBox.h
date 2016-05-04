@@ -34,6 +34,8 @@
 #include "RenderBlockFlow.h"
 #include "ScrollableArea.h"
 
+#include <wtf/Optional.h>
+
 namespace WebCore {
 
 class HTMLSelectElement;
@@ -129,7 +131,6 @@ private:
     IntPoint lastKnownMousePosition() const override;
     bool isHandlingWheelEvent() const override;
     bool shouldSuspendScrollAnimations() const override;
-    bool updatesScrollLayerPositionOnMainThread() const override { return true; }
     bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const override;
 
     ScrollableArea* enclosingScrollableArea() const override;
@@ -142,13 +143,25 @@ private:
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
     void scrollTo(int newOffset);
 
+    using PaintFunction = std::function<void(PaintInfo&, const LayoutPoint&, int listItemIndex)>;
+    void paintItem(PaintInfo&, const LayoutPoint&, PaintFunction);
+
     void setHasVerticalScrollbar(bool hasScrollbar);
     PassRefPtr<Scrollbar> createScrollbar();
     void destroyScrollbar();
     
+    int maximumNumberOfItemsThatFitInPaddingBottomArea() const;
+
+    int numberOfVisibleItemsInPaddingTop() const;
+    int numberOfVisibleItemsInPaddingBottom() const;
+
+    void computeFirstIndexesVisibleInPaddingTopBottomAreas();
+
     LayoutUnit itemHeight() const;
     void valueChanged(unsigned listIndex);
-    int numVisibleItems() const;
+
+    enum class ConsiderPadding { Yes, No };
+    int numVisibleItems(ConsiderPadding = ConsiderPadding::No) const;
     int numItems() const;
     LayoutUnit listHeight() const;
     void paintScrollbar(PaintInfo&, const LayoutPoint&);
@@ -163,6 +176,9 @@ private:
     bool m_inAutoscroll;
     int m_optionsWidth;
     int m_indexOffset;
+
+    Optional<int> m_indexOfFirstVisibleItemInsidePaddingTopArea;
+    Optional<int> m_indexOfFirstVisibleItemInsidePaddingBottomArea;
 
     RefPtr<Scrollbar> m_vBar;
 };

@@ -970,7 +970,7 @@ bool FrameView::isScrollSnapInProgress() const
     // ScrollingCoordinator::isScrollSnapInProgress().
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator()) {
-            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously())
+            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously(*this))
                 return scrollingCoordinator->isScrollSnapInProgress();
         }
     }
@@ -2307,7 +2307,7 @@ bool FrameView::shouldUpdateCompositingLayersAfterScrolling() const
     if (!scrollingCoordinator->supportsFixedPositionLayers())
         return true;
 
-    if (scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously())
+    if (scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously(*this))
         return true;
 
     if (inProgrammaticScroll())
@@ -2340,7 +2340,7 @@ bool FrameView::isRubberBandInProgress() const
     // ScrollingCoordinator::isRubberBandInProgress().
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator()) {
-            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously())
+            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously(*this))
                 return scrollingCoordinator->isRubberBandInProgress();
         }
     }
@@ -2484,11 +2484,6 @@ void FrameView::adjustTiledBackingScrollability()
     bool horizontallyScrollable;
     bool verticallyScrollable;
     bool clippedByAncestorView = static_cast<bool>(m_viewExposedRect);
-
-#if PLATFORM(IOS)
-    if (Page* page = frame().page())
-        clippedByAncestorView |= page->enclosedInScrollView();
-#endif
 
     if (delegatesScrolling()) {
         IntSize documentSize = contentsSize();
@@ -3525,16 +3520,6 @@ bool FrameView::isActive() const
 {
     Page* page = frame().page();
     return page && page->focusController().isActive();
-}
-
-bool FrameView::updatesScrollLayerPositionOnMainThread() const
-{
-    if (Page* page = frame().page()) {
-        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-            return scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously();
-    }
-
-    return true;
 }
 
 bool FrameView::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const

@@ -59,6 +59,7 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
 #else
     , m_isPluginReplacementEnabled(false)
 #endif
+    , m_isResourceTimingEnabled(false)
 #if ENABLE(INDEXED_DATABASE)
     , m_isIndexedDBEnabled(false)
 #endif
@@ -112,6 +113,9 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
 #endif
 #if ENABLE(WEB_ANIMATIONS)
     , m_areWebAnimationsEnabled(false)
+#endif
+#if ENABLE(CSS_GRID_LAYOUT)
+    , m_cssGridLayoutEnabled(true)
 #endif
 {
 }

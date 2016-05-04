@@ -50,8 +50,12 @@ public:
     static RefPtr<RTCConfiguration> create(const Dictionary& configuration, ExceptionCode&);
     virtual ~RTCConfiguration() { }
 
-    const String& iceTransportPolicy() const { return m_iceTransportPolicy; }
-    const String& bundlePolicy() const { return m_bundlePolicy; }
+    enum class IceTransportPolicy { Public, Relay, All };
+    IceTransportPolicy iceTransportPolicy() const { return m_iceTransportPolicy; }
+
+    enum class BundlePolicy { Balanced, MaxCompat, MaxBundle };
+    BundlePolicy bundlePolicy() const { return m_bundlePolicy; }
+
     Vector<RefPtr<RTCIceServer>> iceServers() const { return m_iceServers; }
 
 private:
@@ -60,8 +64,8 @@ private:
     void initialize(const Dictionary& configuration, ExceptionCode&);
 
     Vector<RefPtr<RTCIceServer>> m_iceServers;
-    String m_iceTransportPolicy;
-    String m_bundlePolicy;
+    IceTransportPolicy m_iceTransportPolicy { IceTransportPolicy::All };
+    BundlePolicy m_bundlePolicy { BundlePolicy::Balanced };
 };
 
 } // namespace WebCore

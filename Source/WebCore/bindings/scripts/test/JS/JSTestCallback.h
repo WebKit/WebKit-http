@@ -18,8 +18,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef JSTestCallback_h
-#define JSTestCallback_h
+#pragma once
 
 #if ENABLE(SPEECH_SYNTHESIS)
 
@@ -47,7 +46,7 @@ public:
     virtual bool callbackWithNoParam();
     virtual bool callbackWithArrayParam(RefPtr<Float32Array> arrayParam);
     virtual bool callbackWithSerializedScriptValueParam(PassRefPtr<SerializedScriptValue> srzParam, const String& strArg);
-    COMPILE_ASSERT(false)    virtual int callbackWithNonBoolReturnType(const String& strArg);
+    virtual int callbackWithNonBoolReturnType(const String& strArg);
     virtual int customCallback(Class5* class5Param, Class6* class6Param);
     virtual bool callbackWithStringList(PassRefPtr<DOMStringList> listParam);
     virtual bool callbackWithBoolean(bool boolParam);
@@ -65,5 +64,3 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 } // namespace WebCore
 
 #endif // ENABLE(SPEECH_SYNTHESIS)
-
-#endif

@@ -2157,10 +2157,6 @@ void RenderBox::positionLineBox(InlineElementBox& box)
             if (style().hasStaticBlockPosition(box.isHorizontal()))
                 setChildNeedsLayout(MarkOnlyThis); // Just mark the positioned object as needing layout, so it will update its position properly.
         }
-
-        // Nuke the box.
-        box.removeFromParent();
-        delete &box;
         return;
     }
 
@@ -4907,7 +4903,7 @@ LayoutRect RenderBox::flippedClientBoxRect() const
     flipForWritingMode(rect);
     // Subtract space occupied by scrollbars. They are at their physical edge in this coordinate
     // system, so order is important here: first flip, then subtract scrollbars.
-    if (shouldPlaceBlockDirectionScrollbarOnLeft() && style().isLeftToRightDirection())
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         rect.move(verticalScrollbarWidth(), 0);
     rect.contract(verticalScrollbarWidth(), horizontalScrollbarHeight());
     return rect;

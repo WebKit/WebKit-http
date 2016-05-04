@@ -482,9 +482,6 @@ private:
         case DFG::Check:
             compileNoOp();
             break;
-        case CallObjectConstructor:
-            compileCallObjectConstructor();
-            break;
         case ToThis:
             compileToThis();
             break;
@@ -856,15 +853,6 @@ private:
             break;
         case IsString:
             compileIsString();
-            break;
-        case IsArrayObject:
-            compileIsArrayObject();
-            break;
-        case IsJSArray:
-            compileIsJSArray();
-            break;
-        case IsArrayConstructor:
-            compileIsArrayConstructor();
             break;
         case IsObject:
             compileIsObject();
@@ -1443,28 +1431,6 @@ private:
     {
         DFG_NODE_DO_TO_CHILDREN(m_graph, m_node, speculate);
     }
-
-    void compileCallObjectConstructor()
-    {
-        LValue value = lowJSValue(m_node->child1());
-
-        LBasicBlock isCellCase = m_out.newBlock();
-        LBasicBlock slowCase = m_out.newBlock();
-        LBasicBlock continuation = m_out.newBlock();
-
-        m_out.branch(isCell(value, provenType(m_node->child1())), usually(isCellCase), rarely(slowCase));
-
-        LBasicBlock lastNext = m_out.appendTo(isCellCase, slowCase);
-        ValueFromBlock fastResult = m_out.anchor(value);
-        m_out.branch(isObject(value), usually(continuation), rarely(slowCase));
-
-        m_out.appendTo(slowCase, continuation);
-        ValueFromBlock slowResult = m_out.anchor(vmCall(m_out.int64, m_out.operation(operationToObject), m_callFrame, value));
-        m_out.jump(continuation);
-
-        m_out.appendTo(continuation, lastNext);
-        setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
-    }
     
     void compileToThis()
     {
@@ -1893,8 +1859,19 @@ private:
             LBasicBlock integerExponentIsSmallBlock = m_out.newBlock();
             LBasicBlock integerExponentPowBlock = m_out.newBlock();
             LBasicBlock doubleExponentPowBlockEntry = m_out.newBlock();
-            LBasicBlock nanExceptionExponentIsInfinity = m_out.newBlock();
             LBasicBlock nanExceptionBaseIsOne = m_out.newBlock();
+            LBasicBlock nanExceptionExponentIsInfinity = m_out.newBlock();
+            LBasicBlock testExponentIsOneHalf = m_out.newBlock();
+            LBasicBlock handleBaseZeroExponentIsOneHalf = m_out.newBlock();
+            LBasicBlock handleInfinityForExponentIsOneHalf = m_out.newBlock();
+            LBasicBlock exponentIsOneHalfNormal = m_out.newBlock();
+            LBasicBlock exponentIsOneHalfInfinity = m_out.newBlock();
+            LBasicBlock testExponentIsNegativeOneHalf = m_out.newBlock();
+            LBasicBlock testBaseZeroExponentIsNegativeOneHalf = m_out.newBlock();
+            LBasicBlock handleBaseZeroExponentIsNegativeOneHalf = m_out.newBlock();
+            LBasicBlock handleInfinityForExponentIsNegativeOneHalf = m_out.newBlock();
+            LBasicBlock exponentIsNegativeOneHalfNormal = m_out.newBlock();
+            LBasicBlock exponentIsNegativeOneHalfInfinity = m_out.newBlock();
             LBasicBlock powBlock = m_out.newBlock();
             LBasicBlock nanExceptionResultIsNaN = m_out.newBlock();
             LBasicBlock continuation = m_out.newBlock();
@@ -1905,33 +1882,95 @@ private:
             m_out.branch(exponentIsInteger, unsure(integerExponentIsSmallBlock), unsure(doubleExponentPowBlockEntry));
 
             LBasicBlock lastNext = m_out.appendTo(integerExponentIsSmallBlock, integerExponentPowBlock);
-            LValue integerExponentBelow1000 = m_out.below(integerExponent, m_out.constInt32(1000));
-            m_out.branch(integerExponentBelow1000, usually(integerExponentPowBlock), rarely(doubleExponentPowBlockEntry));
+            LValue integerExponentBelowMax = m_out.belowOrEqual(integerExponent, m_out.constInt32(maxExponentForIntegerMathPow));
+            m_out.branch(integerExponentBelowMax, usually(integerExponentPowBlock), rarely(doubleExponentPowBlockEntry));
 
             m_out.appendTo(integerExponentPowBlock, doubleExponentPowBlockEntry);
             ValueFromBlock powDoubleIntResult = m_out.anchor(m_out.doublePowi(base, integerExponent));
             m_out.jump(continuation);
 
             // If y is NaN, the result is NaN.
-            m_out.appendTo(doubleExponentPowBlockEntry, nanExceptionExponentIsInfinity);
+            m_out.appendTo(doubleExponentPowBlockEntry, nanExceptionBaseIsOne);
             LValue exponentIsNaN;
             if (provenType(m_node->child2()) & SpecDoubleNaN)
                 exponentIsNaN = m_out.doubleNotEqualOrUnordered(exponent, exponent);
             else
                 exponentIsNaN = m_out.booleanFalse;
-            m_out.branch(exponentIsNaN, rarely(nanExceptionResultIsNaN), usually(nanExceptionExponentIsInfinity));
+            m_out.branch(exponentIsNaN, rarely(nanExceptionResultIsNaN), usually(nanExceptionBaseIsOne));
 
             // If abs(x) is 1 and y is +infinity, the result is NaN.
             // If abs(x) is 1 and y is -infinity, the result is NaN.
-            m_out.appendTo(nanExceptionExponentIsInfinity, nanExceptionBaseIsOne);
-            LValue absoluteExponent = m_out.doubleAbs(exponent);
-            LValue absoluteExponentIsInfinity = m_out.doubleEqual(absoluteExponent, m_out.constDouble(std::numeric_limits<double>::infinity()));
-            m_out.branch(absoluteExponentIsInfinity, rarely(nanExceptionBaseIsOne), usually(powBlock));
 
-            m_out.appendTo(nanExceptionBaseIsOne, powBlock);
+            //     Test if base == 1.
+            m_out.appendTo(nanExceptionBaseIsOne, nanExceptionExponentIsInfinity);
             LValue absoluteBase = m_out.doubleAbs(base);
             LValue absoluteBaseIsOne = m_out.doubleEqual(absoluteBase, m_out.constDouble(1));
-            m_out.branch(absoluteBaseIsOne, unsure(nanExceptionResultIsNaN), unsure(powBlock));
+            m_out.branch(absoluteBaseIsOne, rarely(nanExceptionExponentIsInfinity), usually(testExponentIsOneHalf));
+
+            //     Test if abs(y) == Infinity.
+            m_out.appendTo(nanExceptionExponentIsInfinity, testExponentIsOneHalf);
+            LValue absoluteExponent = m_out.doubleAbs(exponent);
+            LValue absoluteExponentIsInfinity = m_out.doubleEqual(absoluteExponent, m_out.constDouble(std::numeric_limits<double>::infinity()));
+            m_out.branch(absoluteExponentIsInfinity, rarely(nanExceptionResultIsNaN), usually(testExponentIsOneHalf));
+
+            // If y == 0.5 or y == -0.5, handle it through SQRT.
+            // We have be carefuly with -0 and -Infinity.
+
+            //     Test if y == 0.5
+            m_out.appendTo(testExponentIsOneHalf, handleBaseZeroExponentIsOneHalf);
+            LValue exponentIsOneHalf = m_out.doubleEqual(exponent, m_out.constDouble(0.5));
+            m_out.branch(exponentIsOneHalf, rarely(handleBaseZeroExponentIsOneHalf), usually(testExponentIsNegativeOneHalf));
+
+            //     Handle x == -0.
+            m_out.appendTo(handleBaseZeroExponentIsOneHalf, handleInfinityForExponentIsOneHalf);
+            LValue baseIsZeroExponentIsOneHalf = m_out.doubleEqual(base, m_out.doubleZero);
+            ValueFromBlock zeroResultExponentIsOneHalf = m_out.anchor(m_out.doubleZero);
+            m_out.branch(baseIsZeroExponentIsOneHalf, rarely(continuation), usually(handleInfinityForExponentIsOneHalf));
+
+            //     Test if abs(x) == Infinity.
+            m_out.appendTo(handleInfinityForExponentIsOneHalf, exponentIsOneHalfNormal);
+            LValue absoluteBaseIsInfinityOneHalf = m_out.doubleEqual(absoluteBase, m_out.constDouble(std::numeric_limits<double>::infinity()));
+            m_out.branch(absoluteBaseIsInfinityOneHalf, rarely(exponentIsOneHalfInfinity), usually(exponentIsOneHalfNormal));
+
+            //     The exponent is 0.5, the base is finite or NaN, we can use SQRT.
+            m_out.appendTo(exponentIsOneHalfNormal, exponentIsOneHalfInfinity);
+            ValueFromBlock sqrtResult = m_out.anchor(m_out.doubleSqrt(base));
+            m_out.jump(continuation);
+
+            //     The exponent is 0.5, the base is infinite, the result is always infinite.
+            m_out.appendTo(exponentIsOneHalfInfinity, testExponentIsNegativeOneHalf);
+            ValueFromBlock sqrtInfinityResult = m_out.anchor(m_out.constDouble(std::numeric_limits<double>::infinity()));
+            m_out.jump(continuation);
+
+            //     Test if y == -0.5
+            m_out.appendTo(testExponentIsNegativeOneHalf, testBaseZeroExponentIsNegativeOneHalf);
+            LValue exponentIsNegativeOneHalf = m_out.doubleEqual(exponent, m_out.constDouble(-0.5));
+            m_out.branch(exponentIsNegativeOneHalf, rarely(testBaseZeroExponentIsNegativeOneHalf), usually(powBlock));
+
+            //     Handle x == -0.
+            m_out.appendTo(testBaseZeroExponentIsNegativeOneHalf, handleBaseZeroExponentIsNegativeOneHalf);
+            LValue baseIsZeroExponentIsNegativeOneHalf = m_out.doubleEqual(base, m_out.doubleZero);
+            m_out.branch(baseIsZeroExponentIsNegativeOneHalf, rarely(handleBaseZeroExponentIsNegativeOneHalf), usually(handleInfinityForExponentIsNegativeOneHalf));
+
+            m_out.appendTo(handleBaseZeroExponentIsNegativeOneHalf, handleInfinityForExponentIsNegativeOneHalf);
+            ValueFromBlock oneOverSqrtZeroResult = m_out.anchor(m_out.constDouble(std::numeric_limits<double>::infinity()));
+            m_out.jump(continuation);
+
+            //     Test if abs(x) == Infinity.
+            m_out.appendTo(handleInfinityForExponentIsNegativeOneHalf, exponentIsNegativeOneHalfNormal);
+            LValue absoluteBaseIsInfinityNegativeOneHalf = m_out.doubleEqual(absoluteBase, m_out.constDouble(std::numeric_limits<double>::infinity()));
+            m_out.branch(absoluteBaseIsInfinityNegativeOneHalf, rarely(exponentIsNegativeOneHalfInfinity), usually(exponentIsNegativeOneHalfNormal));
+
+            //     The exponent is -0.5, the base is finite or NaN, we can use 1/SQRT.
+            m_out.appendTo(exponentIsNegativeOneHalfNormal, exponentIsNegativeOneHalfInfinity);
+            LValue sqrtBase = m_out.doubleSqrt(base);
+            ValueFromBlock oneOverSqrtResult = m_out.anchor(m_out.div(m_out.constDouble(1.), sqrtBase));
+            m_out.jump(continuation);
+
+            //     The exponent is -0.5, the base is infinite, the result is always zero.
+            m_out.appendTo(exponentIsNegativeOneHalfInfinity, powBlock);
+            ValueFromBlock oneOverSqrtInfinityResult = m_out.anchor(m_out.doubleZero);
+            m_out.jump(continuation);
 
             m_out.appendTo(powBlock, nanExceptionResultIsNaN);
             ValueFromBlock powResult = m_out.anchor(m_out.doublePow(base, exponent));
@@ -1942,7 +1981,7 @@ private:
             m_out.jump(continuation);
 
             m_out.appendTo(continuation, lastNext);
-            setDouble(m_out.phi(m_out.doubleType, powDoubleIntResult, powResult, pureNan));
+            setDouble(m_out.phi(m_out.doubleType, powDoubleIntResult, zeroResultExponentIsOneHalf, sqrtResult, sqrtInfinityResult, oneOverSqrtZeroResult, oneOverSqrtResult, oneOverSqrtInfinityResult, powResult, pureNan));
         }
     }
 
@@ -3869,7 +3908,7 @@ private:
         
         switch (m_node->child1().useKind()) {
         case Int32Use: {
-            Structure* structure = globalObject->typedArrayStructure(type);
+            Structure* structure = globalObject->typedArrayStructureConcurrently(type);
 
             LValue size = lowInt32(m_node->child1());
 
@@ -3930,7 +3969,7 @@ private:
 
             LValue result = vmCall(
                 m_out.intPtr, m_out.operation(operationNewTypedArrayWithOneArgumentForType(type)),
-                m_callFrame, weakPointer(globalObject->typedArrayStructure(type)), argument);
+                m_callFrame, weakPointer(globalObject->typedArrayStructureConcurrently(type)), argument);
 
             setJSValue(result);
             return;
@@ -5803,55 +5842,6 @@ private:
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
     }
 
-    void compileIsArrayObject()
-    {
-        LValue value = lowJSValue(m_node->child1());
-
-        LBasicBlock cellCase = m_out.newBlock();
-        LBasicBlock notArrayCase = m_out.newBlock();
-        LBasicBlock continuation = m_out.newBlock();
-
-        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
-        m_out.branch(isCell(value, provenType(m_node->child1())), unsure(cellCase), unsure(continuation));
-
-        LBasicBlock lastNext = m_out.appendTo(cellCase, notArrayCase);
-        ValueFromBlock arrayResult = m_out.anchor(m_out.booleanTrue);
-        m_out.branch(isArray(value, provenType(m_node->child1())), unsure(continuation), unsure(notArrayCase));
-
-        m_out.appendTo(notArrayCase, continuation);
-        ValueFromBlock notArrayResult = m_out.anchor(vmCall(m_out.boolean, m_out.operation(operationIsArrayObject), m_callFrame, value));
-        m_out.jump(continuation);
-
-        m_out.appendTo(continuation, lastNext);
-        setBoolean(m_out.phi(m_out.boolean, notCellResult, arrayResult, notArrayResult));
-    }
-
-    void compileIsJSArray()
-    {
-        LValue value = lowJSValue(m_node->child1());
-
-        LBasicBlock isCellCase = m_out.newBlock();
-        LBasicBlock continuation = m_out.newBlock();
-
-        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
-        m_out.branch(
-            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(continuation));
-
-        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
-        ValueFromBlock cellResult = m_out.anchor(isArray(value, provenType(m_node->child1())));
-        m_out.jump(continuation);
-
-        m_out.appendTo(continuation, lastNext);
-        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
-    }
-
-    void compileIsArrayConstructor()
-    {
-        LValue value = lowJSValue(m_node->child1());
-
-        setBoolean(vmCall(m_out.boolean, m_out.operation(operationIsArrayConstructor), m_callFrame, value));
-    }
-
     void compileIsObject()
     {
         LValue value = lowJSValue(m_node->child1());
@@ -6938,10 +6928,16 @@ private:
             setJSValue(result);
             return;
         }
-        
+
+        LValue search;
+        if (m_node->child2().useKind() == StringUse)
+            search = lowString(m_node->child2());
+        else
+            search = lowJSValue(m_node->child2());
+
         LValue result = vmCall(
             Int64, m_out.operation(operationStringProtoFuncReplaceGeneric), m_callFrame,
-            lowJSValue(m_node->child1()), lowJSValue(m_node->child2()),
+            lowJSValue(m_node->child1()), search,
             lowJSValue(m_node->child3()));
 
         setJSValue(result);
@@ -9963,15 +9959,6 @@ private:
             return;
         
         jsValueToStrictInt52(edge, lowJSValue(edge, ManualOperandSpeculation));
-    }
-
-    LValue isArray(LValue cell, SpeculatedType type = SpecFullTop)
-    {
-        if (LValue proven = isProvenValue(type & SpecCell, SpecArray))
-            return proven;
-        return m_out.equal(
-            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
-            m_out.constInt32(ArrayType));
     }
     
     LValue isObject(LValue cell, SpeculatedType type = SpecFullTop)

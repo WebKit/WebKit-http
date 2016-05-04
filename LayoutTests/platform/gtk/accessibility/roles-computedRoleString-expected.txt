@@ -52,7 +52,9 @@ PASS: p -> .
 PASS: pre -> group. 
 PASS: progress -> progressbar. 
 PASS: samp -> . 
-PASS: section -> region. 
+PASS: section:not([aria-label]:not([aria-labelledby]) -> group. 
+PASS: section[aria-label] -> region. 
+PASS: section[aria-labelledby] -> region. 
 PASS: select:not([multiple]) -> . 
 PASS: option -> . 
 PASS: option -> . 
@@ -61,6 +63,8 @@ PASS: option -> option.
 PASS: optgroup -> option. 
 PASS: option -> option. 
 PASS: option -> option. 
+PASS: sub -> . 
+PASS: sup -> . 
 PASS: table -> table. 
 PASS: caption -> . 
 PASS: tr -> row. 
@@ -172,6 +176,8 @@ PASS: img[role="foo  bar"] -> img.
 PASS: img[role="foo	bar"] -> img. 
 PASS: img[role="foo	
 bar"] -> img. 
+PASS: img[role="text"] -> text. 
+PASS: img[role="text img"] -> text. 
 PASS: img[role="img text"] -> img. 
 PASS: img[role="presentation"][aria-label] -> img. 
 PASS: a[role="foo bar"] -> link. 

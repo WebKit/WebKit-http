@@ -625,7 +625,7 @@ set(JavaScriptCore_SOURCES
     runtime/CompilationResult.cpp
     runtime/Completion.cpp
     runtime/ConsoleClient.cpp
-    runtime/ConsolePrototype.cpp
+    runtime/ConsoleObject.cpp
     runtime/ConstantMode.cpp
     runtime/ConstructData.cpp
     runtime/ControlFlowProfiler.cpp
@@ -690,7 +690,6 @@ set(JavaScriptCore_SOURCES
     runtime/JSCJSValue.cpp
     runtime/JSCallee.cpp
     runtime/JSCell.cpp
-    runtime/JSConsole.cpp
     runtime/JSDataView.cpp
     runtime/JSDataViewPrototype.cpp
     runtime/JSDateMath.cpp
@@ -741,6 +740,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSWeakSet.cpp
     runtime/JSWithScope.cpp
     runtime/JSWrapperObject.cpp
+    runtime/LazyClassStructure.cpp
     runtime/LiteralParser.cpp
     runtime/Lookup.cpp
     runtime/MapConstructor.cpp

@@ -128,10 +128,10 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestTypedefsConstructor::construct(Exe
     auto* castedThis = jsCast<JSTestTypedefsConstructor*>(state->callee());
     if (UNLIKELY(state->argumentCount() < 2))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    String hello = state->argument(0).toString(state)->value(state);
+    String hello = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    if (!state->argument(1).isObject())
+    if (UNLIKELY(!state->argument(1).isObject()))
         return throwArgumentMustBeFunctionError(*state, 1, "testCallback", "TestTypedefs", nullptr);
     RefPtr<TestCallback> testCallback = JSTestCallback::create(asObject(state->uncheckedArgument(1)), castedThis->globalObject());
     RefPtr<TestTypedefs> object = TestTypedefs::create(hello, *testCallback);
@@ -327,7 +327,7 @@ EncodedJSValue jsTestTypedefsStringAttrWithSetterException(ExecState* state, Enc
 EncodedJSValue jsTestTypedefsConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestTypedefsPrototype* domObject = jsDynamicCast<JSTestTypedefsPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestTypedefs::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -423,7 +423,7 @@ bool setJSTestTypedefsStringAttrWithGetterException(ExecState* state, EncodedJSV
         return throwSetterTypeError(*state, "TestTypedefs", "stringAttrWithGetterException");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    String nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
     impl.setStringAttrWithGetterException(nativeValue);
@@ -441,7 +441,7 @@ bool setJSTestTypedefsStringAttrWithSetterException(ExecState* state, EncodedJSV
     }
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
-    String nativeValue = value.toString(state)->value(state);
+    String nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
     impl.setStringAttrWithSetterException(nativeValue, ec);
@@ -489,14 +489,7 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionSetShadow(ExecState*
     float blur = state->argument(2).toFloat(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 3) {
-        impl.setShadow(width, height, blur);
-        return JSValue::encode(jsUndefined());
-    }
-
-    String color = state->argument(3).toString(state)->value(state);
+    String color = state->argument(3).isUndefined() ? String() : state->uncheckedArgument(3).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
     Optional<float> alpha = state->argument(4).isUndefined() ? Optional<float>() : state->uncheckedArgument(4).toFloat(state);
@@ -550,29 +543,12 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionFuncWithClamp(ExecSt
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    unsigned long long arg1 = 0;
-    double arg1NativeValue = state->argument(0).toNumber(state);
+    unsigned long long arg1 = toUInt64(state, state->argument(0), Clamp);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-
-    if (!std::isnan(arg1NativeValue))
-        arg1 = clampTo<unsigned long long>(arg1NativeValue);
-
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 1) {
-        impl.funcWithClamp(arg1);
-        return JSValue::encode(jsUndefined());
-    }
-
-    unsigned long long arg2 = 0;
-    double arg2NativeValue = state->argument(1).toNumber(state);
+    Optional<unsigned long long> arg2 = state->argument(1).isUndefined() ? Optional<unsigned long long>() : toUInt64(state, state->uncheckedArgument(1), Clamp);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-
-    if (!std::isnan(arg2NativeValue))
-        arg2 = clampTo<unsigned long long>(arg2NativeValue);
-
     impl.funcWithClamp(arg1, arg2);
     return JSValue::encode(jsUndefined());
 }
@@ -706,7 +682,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestTypedefs
 #if COMPILER(CLANG)
     // If this fails TestTypedefs does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestTypedefs), TestTypedefs_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestTypedefs), "TestTypedefs is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

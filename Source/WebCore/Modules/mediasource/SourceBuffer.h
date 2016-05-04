@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SourceBuffer_h
-#define SourceBuffer_h
+#pragma once
 
 #if ENABLE(MEDIA_SOURCE)
 
@@ -63,9 +62,6 @@ class SourceBuffer final : public RefCounted<SourceBuffer>, public ActiveDOMObje
 public:
     static Ref<SourceBuffer> create(Ref<SourceBufferPrivate>&&, MediaSource*);
 
-    static const AtomicString& segmentsKeyword();
-    static const AtomicString& sequenceKeyword();
-
     virtual ~SourceBuffer();
 
     // SourceBuffer.idl methods
@@ -86,8 +82,8 @@ public:
     double appendWindowEnd() const;
     void setAppendWindowEnd(double, ExceptionCode&);
 
-    void appendBuffer(PassRefPtr<ArrayBuffer> data, ExceptionCode&);
-    void appendBuffer(PassRefPtr<ArrayBufferView> data, ExceptionCode&);
+    void appendBuffer(ArrayBuffer&, ExceptionCode&);
+    void appendBuffer(ArrayBufferView&, ExceptionCode&);
     void abort(ExceptionCode&);
     void remove(double start, double end, ExceptionCode&);
     void remove(const MediaTime&, const MediaTime&, ExceptionCode&);
@@ -117,8 +113,9 @@ public:
 
     Document& document() const;
 
-    const AtomicString& mode() const { return m_mode; }
-    void setMode(const AtomicString&, ExceptionCode&);
+    enum class AppendMode { Segments, Sequence };
+    AppendMode mode() const { return m_mode; }
+    void setMode(AppendMode, ExceptionCode&);
 
     bool shouldGenerateTimestamps() const { return m_shouldGenerateTimestamps; }
     void setShouldGenerateTimestamps(bool flag) { m_shouldGenerateTimestamps = flag; }
@@ -145,7 +142,6 @@ private:
     bool canSuspendForDocumentSuspension() const override;
 
     // SourceBufferPrivateClient
-    void sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString&) override;
     void sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivate*, const InitializationSegment&) override;
     void sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, PassRefPtr<MediaSample>) override;
     bool sourceBufferPrivateHasAudio(const SourceBufferPrivate*) const override;
@@ -168,9 +164,6 @@ private:
     void textTrackRemoveCues(TextTrack*, const TextTrackCueList*) override;
     void textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue>) override;
     void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>) override;
-
-    static const WTF::AtomicString& decodeError();
-    static const WTF::AtomicString& networkError();
 
     bool isRemoved() const;
     void scheduleEvent(const AtomicString& eventName);
@@ -206,7 +199,7 @@ private:
     Ref<SourceBufferPrivate> m_private;
     MediaSource* m_source;
     GenericEventQueue m_asyncEventQueue;
-    AtomicString m_mode;
+    AppendMode m_mode { AppendMode::Segments };
 
     Vector<unsigned char> m_pendingAppendData;
     Timer m_appendBufferTimer;
@@ -234,24 +227,22 @@ private:
     AppendStateType m_appendState;
 
     double m_timeOfBufferingMonitor;
-    double m_bufferedSinceLastMonitor;
-    double m_averageBufferRate;
+    double m_bufferedSinceLastMonitor { 0 };
+    double m_averageBufferRate { 0 };
 
-    size_t m_reportedExtraMemoryCost;
+    size_t m_reportedExtraMemoryCost { 0 };
 
     MediaTime m_pendingRemoveStart;
     MediaTime m_pendingRemoveEnd;
     Timer m_removeTimer;
 
-    bool m_updating;
-    bool m_receivedFirstInitializationSegment;
-    bool m_active;
-    bool m_bufferFull;
-    bool m_shouldGenerateTimestamps;
+    bool m_updating { false };
+    bool m_receivedFirstInitializationSegment { false };
+    bool m_active { false };
+    bool m_bufferFull { false };
+    bool m_shouldGenerateTimestamps { false };
 };
 
 } // namespace WebCore
-
-#endif
 
 #endif

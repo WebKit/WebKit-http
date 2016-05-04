@@ -3861,7 +3861,7 @@ void SpeculativeJIT::compile(Node* node)
             JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
             callOperation(
                 operationNewTypedArrayWithOneArgumentForType(node->typedArrayType()),
-                resultGPR, globalObject->typedArrayStructure(node->typedArrayType()),
+                resultGPR, globalObject->typedArrayStructureConcurrently(node->typedArrayType()),
                 argumentGPR);
             m_jit.exceptionCheck();
             
@@ -3888,12 +3888,7 @@ void SpeculativeJIT::compile(Node* node)
         cellResult(result.gpr(), node);
         break;
     }
-
-    case CallObjectConstructor: {
-        compileCallObjectConstructor(node);
-        break;
-    }
-
+        
     case ToThis: {
         ASSERT(node->child1().useKind() == UntypedUse);
         JSValueOperand thisValue(this, node->child1());
@@ -4531,21 +4526,6 @@ void SpeculativeJIT::compile(Node* node)
         
         done.link(&m_jit);
         jsValueResult(result.gpr(), node, DataFormatJSBoolean);
-        break;
-    }
-
-    case IsJSArray: {
-        compileIsJSArray(node);
-        break;
-    }
-
-    case IsArrayObject: {
-        compileIsArrayObject(node);
-        break;
-    }
-
-    case IsArrayConstructor: {
-        compileIsArrayConstructor(node);
         break;
     }
 

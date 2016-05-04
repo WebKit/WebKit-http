@@ -234,8 +234,8 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    void webkitGenerateKeyRequest(const String& keySystem, RefPtr<Uint8Array>&& initData, ExceptionCode&);
-    void webkitAddKey(const String& keySystem, PassRefPtr<Uint8Array> key, PassRefPtr<Uint8Array> initData, const String& sessionId, ExceptionCode&);
+    void webkitGenerateKeyRequest(const String& keySystem, const RefPtr<Uint8Array>& initData, ExceptionCode&);
+    void webkitAddKey(const String& keySystem, Uint8Array& key, const RefPtr<Uint8Array>& initData, const String& sessionId, ExceptionCode&);
     void webkitCancelKeyRequest(const String& keySystem, const String& sessionId, ExceptionCode&);
 #endif
 
@@ -268,8 +268,6 @@ public:
 
 #if ENABLE(VIDEO_TRACK)
     PassRefPtr<TextTrack> addTextTrack(const String& kind, const String& label, const String& language, ExceptionCode&);
-    PassRefPtr<TextTrack> addTextTrack(const String& kind, const String& label, ExceptionCode& ec) { return addTextTrack(kind, label, emptyString(), ec); }
-    PassRefPtr<TextTrack> addTextTrack(const String& kind, ExceptionCode& ec) { return addTextTrack(kind, emptyString(), emptyString(), ec); }
 
     AudioTrackList* audioTracks();
     TextTrackList* textTracks();
@@ -975,6 +973,7 @@ private:
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     bool m_hasPlaybackTargetAvailabilityListeners { false };
     bool m_failedToPlayToWirelessTarget { false };
+    bool m_isPlayingToWirelessTarget { false };
 #endif
 };
 

@@ -75,11 +75,11 @@ String SecurityPolicy::generateReferrerHeader(ReferrerPolicy referrerPolicy, con
         return String();
 
     switch (referrerPolicy) {
-    case ReferrerPolicyNever:
+    case ReferrerPolicy::Never:
         return String();
-    case ReferrerPolicyAlways:
+    case ReferrerPolicy::Always:
         return referrer;
-    case ReferrerPolicyOrigin: {
+    case ReferrerPolicy::Origin: {
         String origin = SecurityOrigin::createFromString(referrer)->toString();
         if (origin == "null")
             return String();
@@ -87,7 +87,7 @@ String SecurityPolicy::generateReferrerHeader(ReferrerPolicy referrerPolicy, con
         // to turn it into a canonical URL we can use as referrer.
         return origin + "/";
     }
-    case ReferrerPolicyDefault:
+    case ReferrerPolicy::Default:
         break;
     }
 

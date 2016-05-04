@@ -783,7 +783,7 @@ static Color menuListColor(const Element* element)
     };
     info.name = "box";
     info.classList = { "horizontal", "linked" };
-    return RenderThemeBoxGadget(info, children, comboGadget.get()).child(0)->color();
+    return RenderThemeBoxGadget(info, GTK_ORIENTATION_HORIZONTAL, children, comboGadget.get()).child(0)->color();
 #else
     GRefPtr<GtkStyleContext> parentStyleContext = createStyleContext(ComboBox);
     GRefPtr<GtkStyleContext> buttonStyleContext = createStyleContext(ComboBoxButton, parentStyleContext.get());
@@ -803,7 +803,8 @@ void RenderThemeGtk::adjustMenuListStyle(StyleResolver&, RenderStyle& style, con
     // We cannot give a proper rendering when border radius is active, unfortunately.
     style.resetBorderRadius();
 
-    style.setColor(menuListColor(element));
+    if (element)
+        style.setColor(menuListColor(element));
 }
 
 void RenderThemeGtk::adjustMenuListButtonStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* e) const
@@ -835,7 +836,7 @@ LengthBox RenderThemeGtk::popupInternalPaddingBox(const RenderStyle& style) cons
     };
     info.name = "box";
     info.classList = { "horizontal", "linked" };
-    auto boxGadget = std::make_unique<RenderThemeBoxGadget>(info, children, comboGadget.get());
+    auto boxGadget = std::make_unique<RenderThemeBoxGadget>(info, GTK_ORIENTATION_HORIZONTAL, children, comboGadget.get());
     RenderThemeGadget* buttonGadget = boxGadget->child(0);
     info.classList.removeLast();
     auto buttonBoxGadget = RenderThemeGadget::create(info, buttonGadget);
@@ -866,7 +867,7 @@ bool RenderThemeGtk::paintMenuList(const RenderObject& renderObject, const Paint
     };
     info.name = "box";
     info.classList = { "horizontal", "linked" };
-    auto boxGadget = std::make_unique<RenderThemeBoxGadget>(info, children, comboGadget.get());
+    auto boxGadget = std::make_unique<RenderThemeBoxGadget>(info, GTK_ORIENTATION_HORIZONTAL, children, comboGadget.get());
     RenderThemeGadget* buttonGadget = boxGadget->child(0);
     info.classList.removeLast();
     auto buttonBoxGadget = RenderThemeGadget::create(info, buttonGadget);

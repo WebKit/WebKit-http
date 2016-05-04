@@ -1,3 +1,341 @@
+2016-05-03  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Adding a new console message shouldn't modify DOM when the console log is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=155629
+        <rdar://problem/25235470>
+
+        Reviewed by Timothy Hatcher.
+
+        Instead of rendering console messages right away, store them (in _pendingMessages)
+        and render only when the console tab or the split console is visible.
+        Also, batch rendering operations using requestAnimationFrame.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        Store console message views in _pendingMessages.
+
+        (WebInspector.JavaScriptLogViewController.prototype._appendConsoleMessageView):
+        (WebInspector.JavaScriptLogViewController.prototype.renderPendingMessages):
+        Use requestAnimationFrame batching. Run isScrolledToBottom() at most only once
+        per batch.
+
+        (WebInspector.JavaScriptLogViewController.prototype.renderPendingMessagesSoon):
+        (WebInspector.JavaScriptLogViewController.prototype._didRenderConsoleMessageView):
+        There is no need to run scrollToBottom again.
+
+        * UserInterface/Views/ConsoleCommandView.js:
+        (WebInspector.ConsoleCommandView):
+        Move all DOM operations to a new render method.
+
+        (WebInspector.ConsoleCommandView.prototype.render):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView):
+        (WebInspector.ConsoleMessageView.prototype.render):
+        (WebInspector.ConsoleMessageView.prototype.set repeatCount):
+        (WebInspector.ConsoleMessageView.prototype._renderRepeatCount):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.shown):
+        When the console tab or the split console is opened render all pending messages.
+
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+        Don't call needsLayout on every added console message. Call it only once per
+        requestAnimationFrame. Also, no need to scrollToBottom once again.
+
+        (WebInspector.LogContentView.prototype._messageAdded):
+        (WebInspector.LogContentView.prototype._previousMessageRepeatCountUpdated):
+        (WebInspector.LogContentView.prototype._scopeFromMessageLevel): Deleted.
+        (WebInspector.LogContentView.prototype._markScopeBarItemUnread): Added.
+        Rename _pulseScopeBarItemBorder. In the very first version the border was pulsing,
+        but now we use small colored circles instead.
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Give console.time/timeEnd a default label and warnings
+        https://bugs.webkit.org/show_bug.cgi?id=157325
+        <rdar://problem/26073290>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        Update the convenience signature.
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update window.console function API description strings in Console
+        https://bugs.webkit.org/show_bug.cgi?id=157298
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._functionParameterString):
+        The Console object changed how it works. Work with the new
+        structure, and the older structure for legacy backends.
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Allow format specifiers in console.assert and console.trace
+        https://bugs.webkit.org/show_bug.cgi?id=157295
+        <rdar://problem/26056039>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        Treat the first argument as a format specifier.
+
+2016-05-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200337.
+        https://bugs.webkit.org/show_bug.cgi?id=157294
+
+        Console hangs when evaluating expresisons (Requested by
+        JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Adding a new console message shouldn't modify
+        DOM when the console log is hidden"
+        https://bugs.webkit.org/show_bug.cgi?id=155629
+        http://trac.webkit.org/changeset/200337
+
+2016-05-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unexpected "Script Element #" resources in Debugger Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=157280
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addScript):
+        Don't include Script Element resources in the debugger sidebar by default.
+
+2016-05-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Prefer "Console Evaluation" to "Eval Code" if we know it was a console evaluation
+        https://bugs.webkit.org/show_bug.cgi?id=157278
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        "Console Evaluation" string.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._sourceCodeLocationFromPayload): Deleted.
+        Delete an assert that would throw when the location is noSourceID:-1:-1.
+
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame.fromDebuggerPayload):
+        (WebInspector.CallFrame.fromPayload):
+        (WebInspector.CallFrame):
+        When this is in a Console Evalution provide better values.
+
+        * UserInterface/Models/GarbageCollection.js:
+        (WebInspector.GarbageCollection):
+        Drive-by address a common assertions seen while paused.
+
+2016-05-02  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Adding a new console message shouldn't modify DOM when the console log is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=155629
+        <rdar://problem/25235470>
+
+        Reviewed by Timothy Hatcher.
+
+        Instead of rendering console messages right away, store them (in _pendingMessages)
+        and render only when the console tab or the split console is visible.
+        Also, batch rendering operations using requestAnimationFrame.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        Store console message views in _pendingMessages.
+
+        (WebInspector.JavaScriptLogViewController.prototype._appendConsoleMessageView):
+        (WebInspector.JavaScriptLogViewController.prototype.renderPendingMessages):
+        Use requestAnimationFrame batching. Run isScrolledToBottom() at most only once
+        per batch.
+
+        (WebInspector.JavaScriptLogViewController.prototype.renderPendingMessagesSoon):
+        (WebInspector.JavaScriptLogViewController.prototype._didRenderConsoleMessageView):
+        There is no need to run scrollToBottom again.
+
+        * UserInterface/Views/ConsoleCommandView.js:
+        (WebInspector.ConsoleCommandView):
+        Move all DOM operations to a new render method.
+
+        (WebInspector.ConsoleCommandView.prototype.render):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView):
+        (WebInspector.ConsoleMessageView.prototype.render):
+        (WebInspector.ConsoleMessageView.prototype.set repeatCount):
+        (WebInspector.ConsoleMessageView.prototype._renderRepeatCount):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.shown):
+        When the console tab or the split console is opened render all pending messages.
+
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+        No need to scrollToBottom once again.
+
+        (WebInspector.LogContentView.prototype._messageAdded):
+        (WebInspector.LogContentView.prototype._previousMessageRepeatCountUpdated):
+        (WebInspector.LogContentView.prototype._scopeFromMessageLevel): Deleted.
+        (WebInspector.LogContentView.prototype._markScopeBarItemUnread): Added.
+        Rename _pulseScopeBarItemBorder. In the very first version the border was pulsing,
+        but now we use small colored circles instead.
+
+2016-05-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: TypeError: null is not an object (evaluating 'sourceCodeLocation.formattedLineNumber')
+        https://bugs.webkit.org/show_bug.cgi?id=157239
+        <rdar://problem/26030791>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/IssueManager.js:
+        (WebInspector.IssueManager.issueMatchSourceCode):
+        Require a sourceCodeLocation for Script errors.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._addIssue):
+        Be safe against a missing sourceCodeLocation.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.source-code.text-editor > .CodeMirror .issue-widget.inline > .arrow):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        Adjust the style, on non-Retina the inline message arrow would sometimes
+        be detached from the warning message.
+
+2016-05-02  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Zooming of docked Web Inspector affects the webpage, but reset to 0 does not
+        https://bugs.webkit.org/show_bug.cgi?id=157234
+        rdar://problem/26027177
+
+        Always prevent default for the zoom keyboard shortcuts to avoid passing the event back to
+        Safari to handle and add explicit beeps when max/min is hit.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Removed setting implicitlyPreventsDefault on zoom keyboard shortcuts.
+        (WebInspector._increaseZoom): Add explicit beep and remove preventDefault call.
+        (WebInspector._decreaseZoom): Ditto.
+
+2016-05-01  Dan Bernstein  <mitz@apple.com>
+
+        WebInspectorUI.framework/Versions/A/Resources/Images/Legacy is empty
+        https://bugs.webkit.org/show_bug.cgi?id=157248
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/Legacy: Removed.
+
+2016-04-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Issues inspecting the inspector, pausing on breakpoints causes content to not load
+        https://bugs.webkit.org/show_bug.cgi?id=157198
+        <rdar://problem/26011049>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackendClass.prototype._sendCommandToBackendExpectingPromise):
+        While auditing, use simpler check.
+
+        * UserInterface/Proxies/FormatterWorkerProxy.js:
+        (WebInspector.FormatterWorkerProxy.canFormat): Deleted.
+        While auditing, remove dead code.
+
+2016-04-29  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Scrolling in Timelines causes flashing of the DataGrid
+        https://bugs.webkit.org/show_bug.cgi?id=157212
+        rdar://problem/25994717
+
+        Listen for mousewheel events too so we can update the visible rows sooner.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid): Call _updateScrollListeners.
+        (WebInspector.DataGrid.prototype.set inline): Use _updateScrollListeners.
+        (WebInspector.DataGrid.prototype.set variableHeightRows): Use _updateScrollListeners.
+        (WebInspector.DataGrid.prototype._updateScrollListeners): Added. Listen for mousewheel too.
+
+2016-04-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Jump to Line in auto formatted JavaScript does not work the first time
+        https://bugs.webkit.org/show_bug.cgi?id=157194
+        <rdar://problem/26008471>
+
+        Reviewed by Timothy Hatcher.
+
+        When doing asynchronous formatting we set the content of the editor
+        twice. First to prime the editors back/foward list with the original
+        content, and then again after we get the formatted content from the
+        Worker, and then display the content.
+
+        The TextEditor attempts to reveal a position when the initial string
+        has been set. Back when autoformatting was synchronous this was fine.
+        Asynchronously however, this ends up happening between the original
+        and formatted value. Also, the TextEditor has no idea that the
+        SourceCodeTextEditor is going to format / defer displaying the
+        contents. Add a "defer" property to the TextEditor that the
+        SourceCodeTextEditor can use in this circumstance.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._populateWithContent):
+        Avoid revealing a position when setting the original content. We will
+        be formatting and we will want to reveal the position afterwards.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.prototype.set deferReveal):
+        Provide another reason to defer revealing.
+
+2016-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: FormatterWorker fails to find "External/Esprima.js" in Production builds
+        https://bugs.webkit.org/show_bug.cgi?id=157162
+        <rdar://problem/25996556>
+
+        Reviewed by Timothy Hatcher.
+
+        Workers have relative include paths. FormatterWorker has an includes
+        that looks like:
+
+            importScripts(...[
+                "../../External/Esprima/esprima.js",
+                ...
+            ]);
+
+        In optimized builds (Production) the esprima resources are combined
+        and moved out of an External directory to "Esprima.js". We need to
+        update the path of this include in optimized builds.
+
+        This adds a script to do some basic rewrites of paths. It will also
+        produce a build error if there are any other External paths that
+        may have been unhandled.
+
+        * Scripts/copy-user-interface-resources.pl:
+        Run a new script to fix up the Worker imports for new pathes.
+
+        * Scripts/fix-worker-imports-for-optimized-builds.pl: Added.
+        (fixWorkerImportsInFile):
+        (fixWorkerImportsInDirectory):
+        Replace "/External/Esprima/esprima.js" with "/Esprima.js" in imports.
+        Fatal error for any unhandled "/External" lines that were not replaced.
+
+2016-04-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Missing CSS autocompletion suggestions for -webkit-user-select
+        https://bugs.webkit.org/show_bug.cgi?id=157104
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
 2016-04-26  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Clarify Heap Snapshot instance Retained Size by hiding retained size of non-dominated children

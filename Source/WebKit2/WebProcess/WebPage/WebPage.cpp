@@ -2959,6 +2959,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     settings.setHttpEquivEnabled(store.getBoolValueForKey(WebPreferencesKey::httpEquivEnabledKey()));
 
+    settings.setSelectionPaintingWithoutSelectionGapsEnabled(store.getBoolValueForKey(WebPreferencesKey::selectionPaintingWithoutSelectionGapsEnabledKey()));
+
     DatabaseManager::singleton().setIsAvailable(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
 
 #if ENABLE(FULLSCREEN_API)
@@ -3082,9 +3084,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     settings.setShouldDispatchJavaScriptWindowOnErrorEvents(true);
 
-    auto userInterfaceDirectionCandidate = static_cast<WebCore::UserInterfaceDirectionPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::userInterfaceDirectionKey()));
-    if (userInterfaceDirectionCandidate == WebCore::UserInterfaceDirectionPolicy::Content || userInterfaceDirectionCandidate == WebCore::UserInterfaceDirectionPolicy::System)
-        settings.setUserInterfaceDirectionPolicy(!store.getUInt32ValueForKey(WebPreferencesKey::userInterfaceDirectionKey()) ? UserInterfaceDirectionPolicy::Content : UserInterfaceDirectionPolicy::System);
+    auto userInterfaceDirectionPolicyCandidate = static_cast<WebCore::UserInterfaceDirectionPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::userInterfaceDirectionPolicyKey()));
+    if (userInterfaceDirectionPolicyCandidate == WebCore::UserInterfaceDirectionPolicy::Content || userInterfaceDirectionPolicyCandidate == WebCore::UserInterfaceDirectionPolicy::System)
+        settings.setUserInterfaceDirectionPolicy(userInterfaceDirectionPolicyCandidate);
     TextDirection systemLayoutDirectionCandidate = static_cast<TextDirection>(store.getUInt32ValueForKey(WebPreferencesKey::systemLayoutDirectionKey()));
     if (systemLayoutDirectionCandidate == WebCore::LTR || systemLayoutDirectionCandidate == WebCore::RTL)
         settings.setSystemLayoutDirection(systemLayoutDirectionCandidate);
@@ -3126,6 +3128,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled(store.getBoolValueForKey(WebPreferencesKey::downloadAttributeEnabledKey()));
+#endif
+
+#if ENABLE(CSS_GRID_LAYOUT)
+    RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::experimentalCSSGridLayoutEnabledKey()));
 #endif
 
     bool processSuppressionEnabled = store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey());

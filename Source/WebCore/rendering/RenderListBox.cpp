@@ -139,6 +139,8 @@ void RenderListBox::updateFromElement()
         
         setHasVerticalScrollbar(true);
 
+        computeFirstIndexesVisibleInPaddingTopBottomAreas();
+
         setNeedsLayoutAndPrefWidthsRecalc();
     }
 }
@@ -236,10 +238,14 @@ int RenderListBox::size() const
     return defaultSize;
 }
 
-int RenderListBox::numVisibleItems() const
+int RenderListBox::numVisibleItems(ConsiderPadding considerPadding) const
 {
     // Only count fully visible rows. But don't return 0 even if only part of a row shows.
-    return std::max<int>(1, (contentHeight() + paddingBottom() + rowSpacing) / itemHeight());
+    int visibleItemsExcludingPadding = std::max<int>(1, (contentHeight() + rowSpacing) / itemHeight());
+    if (considerPadding == ConsiderPadding::No)
+        return visibleItemsExcludingPadding;
+
+    return numberOfVisibleItemsInPaddingTop() + visibleItemsExcludingPadding + numberOfVisibleItemsInPaddingBottom();
 }
 
 int RenderListBox::numItems() const
@@ -271,20 +277,25 @@ LayoutRect RenderListBox::itemBoundingBoxRect(const LayoutPoint& additionalOffse
     LayoutUnit y = additionalOffset.y() + borderTop() + paddingTop() + itemHeight() * (index - m_indexOffset);
     return LayoutRect(x, y, contentWidth(), itemHeight());
 }
-    
+
+void RenderListBox::paintItem(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintFunction paintFunction)
+{
+    int listItemsSize = numItems();
+    int firstVisibleItem = m_indexOfFirstVisibleItemInsidePaddingTopArea.valueOr(m_indexOffset);
+    int endIndex = firstVisibleItem + numVisibleItems(ConsiderPadding::Yes);
+    for (int i = firstVisibleItem; i < listItemsSize && i < endIndex; ++i)
+        paintFunction(paintInfo, paintOffset, i);
+}
+
 void RenderListBox::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     if (style().visibility() != VISIBLE)
         return;
     
-    int listItemsSize = numItems();
-
     if (paintInfo.phase == PaintPhaseForeground) {
-        int index = m_indexOffset;
-        while (index < listItemsSize && index <= m_indexOffset + numVisibleItems()) {
-            paintItemForeground(paintInfo, paintOffset, index);
-            index++;
-        }
+        paintItem(paintInfo, paintOffset, [this](PaintInfo& paintInfo, const LayoutPoint& paintOffset, int listItemIndex) {
+            paintItemForeground(paintInfo, paintOffset, listItemIndex);
+        });
     }
 
     // Paint the children.
@@ -303,11 +314,9 @@ void RenderListBox::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOf
         break;
     case PaintPhaseChildBlockBackground:
     case PaintPhaseChildBlockBackgrounds: {
-        int index = m_indexOffset;
-        while (index < listItemsSize && index <= m_indexOffset + numVisibleItems()) {
-            paintItemBackground(paintInfo, paintOffset, index);
-            index++;
-        }
+        paintItem(paintInfo, paintOffset, [this](PaintInfo& paintInfo, const LayoutPoint& paintOffset, int listItemIndex) {
+            paintItemBackground(paintInfo, paintOffset, listItemIndex);
+        });
         break;
     }
     default:
@@ -587,8 +596,13 @@ bool RenderListBox::scrollToRevealElementAtListIndex(int index)
 }
 
 bool RenderListBox::listIndexIsVisible(int index)
-{    
-    return index >= m_indexOffset && index < m_indexOffset + numVisibleItems();
+{
+    int firstIndex = m_indexOfFirstVisibleItemInsidePaddingTopArea.valueOr(m_indexOffset);
+    int endIndex = m_indexOfFirstVisibleItemInsidePaddingBottomArea
+        ? m_indexOfFirstVisibleItemInsidePaddingBottomArea.value() + numberOfVisibleItemsInPaddingBottom()
+        : m_indexOffset + numVisibleItems();
+
+    return index >= firstIndex && index < endIndex;
 }
 
 bool RenderListBox::scroll(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Element**, RenderBox*, const IntPoint&)
@@ -632,12 +646,53 @@ void RenderListBox::setScrollOffset(const ScrollOffset& offset)
     scrollTo(offset.y());
 }
 
+int RenderListBox::maximumNumberOfItemsThatFitInPaddingBottomArea() const
+{
+    return paddingBottom() / itemHeight();
+}
+
+int RenderListBox::numberOfVisibleItemsInPaddingTop() const
+{
+    if (!m_indexOfFirstVisibleItemInsidePaddingTopArea)
+        return 0;
+
+    return m_indexOffset - m_indexOfFirstVisibleItemInsidePaddingTopArea.value();
+}
+
+int RenderListBox::numberOfVisibleItemsInPaddingBottom() const
+{
+    if (!m_indexOfFirstVisibleItemInsidePaddingBottomArea)
+        return 0;
+
+    return std::min(maximumNumberOfItemsThatFitInPaddingBottomArea(), numItems() - m_indexOffset - numVisibleItems());
+}
+
+void RenderListBox::computeFirstIndexesVisibleInPaddingTopBottomAreas()
+{
+    m_indexOfFirstVisibleItemInsidePaddingTopArea = Nullopt;
+    m_indexOfFirstVisibleItemInsidePaddingBottomArea = Nullopt;
+
+    int maximumNumberOfItemsThatFitInPaddingTopArea = paddingTop() / itemHeight();
+    if (maximumNumberOfItemsThatFitInPaddingTopArea) {
+        if (m_indexOffset)
+            m_indexOfFirstVisibleItemInsidePaddingTopArea = std::max(0, m_indexOffset - maximumNumberOfItemsThatFitInPaddingTopArea);
+    }
+
+    if (maximumNumberOfItemsThatFitInPaddingBottomArea()) {
+        if (numItems() > (m_indexOffset + numVisibleItems()))
+            m_indexOfFirstVisibleItemInsidePaddingBottomArea = m_indexOffset + numVisibleItems();
+    }
+}
+
 void RenderListBox::scrollTo(int newOffset)
 {
     if (newOffset == m_indexOffset)
         return;
 
     m_indexOffset = newOffset;
+
+    computeFirstIndexesVisibleInPaddingTopBottomAreas();
+
     repaint();
     document().eventQueue().enqueueOrDispatchScrollEvent(selectElement());
 }

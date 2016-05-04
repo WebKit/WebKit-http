@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2009, 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,8 +36,16 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DebuggerScope);
 
 const ClassInfo DebuggerScope::s_info = { "DebuggerScope", &Base::s_info, 0, CREATE_METHOD_TABLE(DebuggerScope) };
 
-DebuggerScope::DebuggerScope(VM& vm, JSScope* scope)
-    : JSNonFinalObject(vm, scope->globalObject()->debuggerScopeStructure())
+DebuggerScope* DebuggerScope::create(VM& vm, JSScope* scope)
+{
+    Structure* structure = scope->globalObject()->debuggerScopeStructure();
+    DebuggerScope* debuggerScope = new (NotNull, allocateCell<DebuggerScope>(vm.heap)) DebuggerScope(vm, structure, scope);
+    debuggerScope->finishCreation(vm);
+    return debuggerScope;
+}
+
+DebuggerScope::DebuggerScope(VM& vm, Structure* structure, JSScope* scope)
+    : JSNonFinalObject(vm, structure)
 {
     ASSERT(scope);
     m_scope.set(vm, this, scope);
@@ -60,7 +68,8 @@ void DebuggerScope::visitChildren(JSCell* cell, SlotVisitor& visitor)
 String DebuggerScope::className(const JSObject* object)
 {
     const DebuggerScope* scope = jsCast<const DebuggerScope*>(object);
-    ASSERT(scope->isValid());
+    // We cannot assert that scope->isValid() because the TypeProfiler may encounter an invalidated
+    // DebuggerScope in its log entries. We just need to handle it appropriately as below.
     if (!scope->isValid())
         return String();
     JSObject* thisObject = JSScope::objectAtScope(scope->jsScope());

@@ -71,6 +71,9 @@
     macro(Number) \
     macro(NumberFormat) \
     macro(Object) \
+    macro(PerformanceEntry) \
+    macro(PerformanceEntryList) \
+    macro(PerformanceResourceTiming) \
     macro(Promise) \
     macro(Proxy) \
     macro(RangeError) \
@@ -126,6 +129,7 @@
     macro(compilations) \
     macro(compile) \
     macro(configurable) \
+    macro(console) \
     macro(constructor) \
     macro(count) \
     macro(counters) \
@@ -308,11 +312,11 @@
     macro(yield)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL_NOT_IMPLEMENTED_YET(macro)\
+    macro(isConcatSpreadable) \
     macro(replace) \
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(hasInstance) \
-    macro(isConcatSpreadable) \
     macro(iterator) \
     macro(match) \
     macro(replace) \
@@ -413,12 +417,9 @@
     macro(hasInstanceBoundFunction) \
     macro(instanceOf) \
     macro(isArray) \
-    macro(isJSArray) \
     macro(isArrayConstructor) \
     macro(isConstructor) \
     macro(isRegExpObject) \
-    macro(concatMemcpy) \
-    macro(appendMemcpy) \
     macro(predictFinalLengthFromArgumunts) \
     macro(print) \
     macro(isSet) \
@@ -439,10 +440,11 @@
     macro(regExpProtoSourceGetter) \
     macro(regExpProtoStickyGetter) \
     macro(regExpProtoUnicodeGetter) \
+    macro(regExpPrototypeSymbolReplace) \
     macro(regExpReplaceFast) \
     macro(regExpSearchFast) \
     macro(regExpSplitFast) \
-    macro(regExpPrototypeSymbolReplace) \
+    macro(regExpTestFast) \
     macro(stringIncludesInternal) \
     macro(stringSplitFast) \
     macro(stringSubstrInternal) \
