@@ -95,8 +95,9 @@ public:
         RefPtr<TransactionOperation> self(this);
 
         ASSERT(performMethod);
-        m_performFunction = [self, this, performMethod, arguments...] {
-            (&m_transaction.get()->*performMethod)(*this, arguments...);
+        auto performFunctionWrapper = std::bind(performMethod, m_transaction.ptr(), std::placeholders::_1, arguments...);
+        m_performFunction = [self, performFunctionWrapper] {
+            performFunctionWrapper(*self);
         };
 
         if (completeMethod) {
@@ -113,8 +114,9 @@ public:
         RefPtr<TransactionOperation> self(this);
 
         ASSERT(performMethod);
-        m_performFunction = [self, this, performMethod, arguments...] {
-            (&m_transaction.get()->*performMethod)(*this, arguments...);
+        auto performFunctionWrapper = std::bind(performMethod, m_transaction.ptr(), std::placeholders::_1, arguments...);
+        m_performFunction = [self, performFunctionWrapper] {
+            performFunctionWrapper(*self);
         };
 
         if (completeMethod) {
