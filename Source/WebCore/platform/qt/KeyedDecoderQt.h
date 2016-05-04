@@ -27,15 +27,19 @@
 #define KeyedDecoderQt_h
 
 #include "KeyedCoding.h"
+#include <QVariantMap>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class KeyedDecoderQt final : public KeyedDecoder {
 public:
     KeyedDecoderQt(const uint8_t* data, size_t);
-    ~KeyedDecoderQt() override;
+    KeyedDecoderQt(QVariantMap&& data);
 
-private:
+    bool decodeVariant(const String& key, QVariant&);
+
+public:
     bool decodeBytes(const String& key, const uint8_t*&, size_t&) override;
     bool decodeBool(const String& key, bool&) override;
     bool decodeUInt32(const String& key, uint32_t&) override;
@@ -45,6 +49,7 @@ private:
     bool decodeDouble(const String& key, double&) override;
     bool decodeString(const String& key, String&) override;
 
+private:
     bool beginObject(const String& key) override;
     void endObject() override;
 
@@ -52,6 +57,14 @@ private:
     bool beginArrayElement() override;
     void endArrayElement() override;
     void endArray() override;
+
+    template <typename T> bool decodeSimpleValue(const String& key, T& result);
+    template <typename T, typename F> bool decodeNumber(const String& key, T& result, F&& function);
+    const QVariantMap& currentObject() { return m_objectStack.last(); }
+
+    Vector<QVariantMap, 16> m_objectStack;
+    Vector<QVariantList, 16> m_arrayStack;
+    Vector<int> m_arrayIndexStack;
 };
 
 } // namespace WebCore

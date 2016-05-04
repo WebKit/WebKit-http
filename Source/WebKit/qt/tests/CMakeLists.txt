@@ -26,6 +26,9 @@ set(QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY
 )
 
 set(QtWK1ApiTests
+    keyeddecoderqt
+    keyedencoderqt
+
     qgraphicswebview
     qobjectbridge
     qwebelement

@@ -28,16 +28,23 @@
 
 #include "KeyedCoding.h"
 
+#include <QDataStream>
+#include <QVariantHash>
+#include <QVariantList>
+#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
+
 namespace WebCore {
 
 class KeyedEncoderQt final : public KeyedEncoder {
 public:
     KeyedEncoderQt();
-    ~KeyedEncoderQt();
-
     PassRefPtr<WebCore::SharedBuffer> finishEncoding() override;
 
-private:
+    QVariantMap& toMap();
+    void encodeVariant(const String& key, const QVariant&);
+
+public:
     void encodeBytes(const String& key, const uint8_t*, size_t) override;
     void encodeBool(const String& key, bool) override;
     void encodeUInt32(const String& key, uint32_t) override;
@@ -47,6 +54,7 @@ private:
     void encodeDouble(const String& key, double) override;
     void encodeString(const String& key, const String&) override;
 
+private:
     void beginObject(const String& key) override;
     void endObject() override;
 
@@ -54,6 +62,12 @@ private:
     void beginArrayElement() override;
     void endArrayElement() override;
     void endArray() override;
+
+    QVariantMap& currentObject() { return m_objectStack.last().second; }
+    QVariantList& currentArray() { return m_arrayStack.last().second; }
+
+    Vector<std::pair<QString, QVariantMap>, 16> m_objectStack;
+    Vector<std::pair<QString, QVariantList>, 16> m_arrayStack;
 };
 
 } // namespace WebCore
