@@ -30,6 +30,9 @@
 #error "Please #include \"WKAPICast.h\" instead of this file directly."
 #endif
 
+#include "WKView.h"
+#include <WebCore/ViewState.h>
+
 namespace WKWPE {
 class View;
 }
@@ -37,6 +40,18 @@ class View;
 namespace WebKit {
 
 WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
+
+inline WebCore::ViewState::Flags toViewStateFlags(WKViewState wkViewState)
+{
+    unsigned viewStateFlags = 0;
+
+    if (wkViewState & kWKViewStateIsInWindow)
+        viewStateFlags |= WebCore::ViewState::IsInWindow;
+    if (wkViewState & kWKViewStateIsVisible)
+        viewStateFlags |= WebCore::ViewState::IsVisible;
+
+    return static_cast<WebCore::ViewState::Flags>(viewStateFlags);
+}
 
 }
 

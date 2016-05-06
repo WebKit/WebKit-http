@@ -1,3 +1,111 @@
+2016-05-02  Daniel Bates  <dabates@apple.com>
+
+        CSP: Add workaround for XtraMath
+        https://bugs.webkit.org/show_bug.cgi?id=157252
+
+        Reviewed by Andy Estes.
+
+        * WebView/WebView.mm:
+        (shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol): Allow * to match any protocol for
+        applicable versions of app XtraMath.
+
+2016-05-02  Daniel Bates  <dabates@apple.com>
+
+        DatabaseTracker::closeAllDatabases calls Database::close from the wrong thread
+        https://bugs.webkit.org/show_bug.cgi?id=147672
+        <rdar://problem/22357464>
+
+        Reviewed by Brady Eidson.
+
+        Update the background assertion expiration callback to call DatabaseTracker::closeAllDatabases()
+        with CurrentQueryBehavior::Interrupt so that we abort a long running query and close the database
+        immediately to avoid holding a locked file when the process is suspended.
+
+        * Storage/WebDatabaseManager.mm:
+        (+[WebDatabaseManager startBackgroundTask]):
+
+2016-04-29  Dean Jackson  <dino@apple.com>
+
+        RTL <select> popup menu is in the wrong location
+        https://bugs.webkit.org/show_bug.cgi?id=157159
+        <rdar://problem/25894451>
+
+        Reapply http://trac.webkit.org/changeset/200217
+        but with changes that will allow it to build on Yosemite.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+
+2016-04-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200217.
+        https://bugs.webkit.org/show_bug.cgi?id=157183
+
+        This change broke the Yosemite build. (Requested by ryanhaddad
+        on #webkit).
+
+        Reverted changeset:
+
+        "RTL <select> popup menu is in the wrong location"
+        https://bugs.webkit.org/show_bug.cgi?id=157159
+        http://trac.webkit.org/changeset/200217
+
+2016-04-28  Dean Jackson  <dino@apple.com>
+
+        RTL <select> popup menu is in the wrong location
+        https://bugs.webkit.org/show_bug.cgi?id=157159
+        <rdar://problem/25894451>
+
+        Reviewed by Simon Fraser.
+
+        Make sure both the NSPopupMenuCell and the NSPopupMenu take
+        the text direction into account, and offset the position
+        of the menu slightly if we're in RTL mode.
+
+        Unfortunately our test infrastructure is unable to exercise
+        this because it runs without a window, and the popup menu
+        is not captured in the screenshot.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+
+2016-04-28  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Add CSS Grid Layout runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=157134
+
+        Reviewed by Simon Fraser.
+
+        Add CSS Grid Layout runtime flag based on preferences,
+        enabled by default.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences isCSSGridLayoutEnabled]):
+        (-[WebPreferences setCSSGridLayoutEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-04-28  Daniel Bates  <dabates@apple.com>
+
+        Another fix for the Apple Internal OS X build
+        <rdar://problem/25989808>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebPDFView.h:
+
+2016-04-28  Daniel Bates  <dabates@apple.com>
+
+        Fix the Apple Internal OS X build
+
+        * WebView/WebPDFView.h: Import PDFKit for definition of protocol PDFViewDelegate.
+        Forward declare protocol PDFViewDelegate as appropriate. Mark WebPDFView as implementing
+        protocol PDFViewDelegate.
+        * WebView/WebPDFView.mm: Move import of PDFKit from here to the header.
+
 2016-04-27  Daniel Bates  <dabates@apple.com>
 
         CSP: Add app-specific workaround for Ecobee and Quora

@@ -394,7 +394,9 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         if (this._autoFormat) {
             console.assert(!this.formatted);
             this._autoFormat = false;
+            this.deferReveal = true;
             this.string = content;
+            this.deferReveal = false;
             this.updateFormattedState(true).then(() => {
                 this._proceedPopulateWithContent(this.string);
             });
@@ -802,6 +804,10 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
     _addIssue(issue)
     {
         var sourceCodeLocation = issue.sourceCodeLocation;
+        console.assert(sourceCodeLocation, "Expected source code location to place issue.");
+        if (!sourceCodeLocation)
+            return;
+
         var lineNumber = sourceCodeLocation.formattedLineNumber;
 
         var lineNumberIssues = this._issuesLineNumberMap.get(lineNumber);

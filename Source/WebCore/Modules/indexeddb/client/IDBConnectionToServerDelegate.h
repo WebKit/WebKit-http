@@ -42,6 +42,8 @@ class IDBResourceIdentifier;
 class IDBTransactionInfo;
 class IDBValue;
 
+struct SecurityOriginData;
+
 namespace IndexedDB {
 enum class ObjectStoreOverwriteMode;
 }
@@ -55,11 +57,11 @@ public:
     virtual ~IDBConnectionToServerDelegate() { }
 
     virtual uint64_t identifier() const = 0;
-    virtual void deleteDatabase(IDBRequestData&) = 0;
-    virtual void openDatabase(IDBRequestData&) = 0;
-    virtual void abortTransaction(IDBResourceIdentifier&) = 0;
-    virtual void commitTransaction(IDBResourceIdentifier&) = 0;
-    virtual void didFinishHandlingVersionChangeTransaction(IDBResourceIdentifier&) = 0;
+    virtual void deleteDatabase(const IDBRequestData&) = 0;
+    virtual void openDatabase(const IDBRequestData&) = 0;
+    virtual void abortTransaction(const IDBResourceIdentifier&) = 0;
+    virtual void commitTransaction(const IDBResourceIdentifier&) = 0;
+    virtual void didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier&) = 0;
     virtual void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&) = 0;
     virtual void deleteObjectStore(const IDBRequestData&, const String& objectStoreName) = 0;
     virtual void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier) = 0;
@@ -76,6 +78,8 @@ public:
     virtual void databaseConnectionClosed(uint64_t databaseConnectionIdentifier) = 0;
     virtual void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier) = 0;
     virtual void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier) = 0;
+
+    virtual void getAllDatabaseNames(const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID) = 0;
 
     virtual void ref() = 0;
     virtual void deref() = 0;

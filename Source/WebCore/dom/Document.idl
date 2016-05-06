@@ -118,10 +118,10 @@
 #else
     [NewObject] NodeIterator createNodeIterator(Node root,
         optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter);
+        optional NodeFilter? filter = null);
     [NewObject] TreeWalker createTreeWalker(Node root,
         optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter);
+        optional NodeFilter? filter = null);
 #endif
 
     // DOM Level 2 Abstract Views (DocumentView interface)
@@ -156,7 +156,7 @@
     // FIXME: Using "undefined" as default parameter value is wrong.
     boolean execCommand(optional DOMString command = "undefined",
                         optional boolean userInterface = false,
-                        optional DOMString? value);
+                        optional DOMString? value = null);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     // FIXME: remove the these two versions once optional is implemented for Objective-C.

@@ -242,9 +242,6 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     RetainPtr<UIView <WKWebViewContentProvider>> _customContentView;
     RetainPtr<UIView> _customContentFixedOverlayView;
 
-    RetainPtr<NSTimer> _enclosingScrollViewScrollTimer;
-    BOOL _didScrollSinceLastTimerFire;
-
     WebCore::Color _scrollViewBackgroundColor;
 
     // This value tracks the current adjustment added to the bottom inset due to the keyboard sliding out from the bottom
@@ -361,6 +358,7 @@ static WebCore::DataDetectorTypes fromWKDataDetectorTypes(uint64_t types)
 }
 #endif
 
+#if PLATFORM(MAC)
 static uint32_t convertUserInterfaceDirectionPolicy(WKUserInterfaceDirectionPolicy policy)
 {
     switch (policy) {
@@ -372,7 +370,6 @@ static uint32_t convertUserInterfaceDirectionPolicy(WKUserInterfaceDirectionPoli
     return static_cast<uint32_t>(WebCore::UserInterfaceDirectionPolicy::Content);
 }
 
-#if PLATFORM(MAC)
 static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection direction)
 {
     switch (direction) {
@@ -434,15 +431,15 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldConvertPositionStyleOnCopyKey(), WebKit::WebPreferencesStore::Value(!![_configuration _convertsPositionStyleOnCopy]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::httpEquivEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsMetaRefresh]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowUniversalAccessFromFileURLsKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowUniversalAccessFromFileURLs]));
-
-    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::userInterfaceDirectionKey(), WebKit::WebPreferencesStore::Value(convertUserInterfaceDirectionPolicy([_configuration userInterfaceDirectionPolicy])));
     
 #if PLATFORM(MAC)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::showsURLsInToolTipsEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _showsURLsInToolTips]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::serviceControlsEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _serviceControlsEnabled]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::imageControlsEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _imageControlsEnabled]));
+
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::userInterfaceDirectionPolicyKey(), WebKit::WebPreferencesStore::Value(convertUserInterfaceDirectionPolicy([_configuration userInterfaceDirectionPolicy])));
     // We are in the View's initialization routine, so our client hasn't had time to set our user interface direction.
-    // Therefore, according to the docs[1], "this property contains the value reported by the app’s userInterfaceLayoutDirection property."
+    // Therefore, according to the docs[1], "this property contains the value reported by the app's userInterfaceLayoutDirection property."
     // [1] http://developer.apple.com/library/mac/documentation/Cocoa/Reference/ApplicationKit/Classes/NSView_Class/index.html#//apple_ref/doc/uid/20000014-SW222
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(convertSystemLayoutDirection(self.userInterfaceLayoutDirection)));
 #endif
@@ -454,6 +451,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _inlineMediaPlaybackRequiresPlaysInlineAttribute]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback()));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::requiresUserGestureForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration requiresUserActionForMediaPlayback]));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::userInterfaceDirectionPolicyKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::UserInterfaceDirectionPolicy::Content)));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::LTR)));
 #endif
 
@@ -1046,7 +1044,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     _delayUpdateVisibleContentRects = NO;
     if (_hadDelayedUpdateVisibleContentRects) {
         _hadDelayedUpdateVisibleContentRects = NO;
-        [self _updateVisibleContentRectAfterScrollInView:_scrollView.get()];
+        [self _updateVisibleContentRects];
     }
 }
 
@@ -1790,7 +1788,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (![self usesStandardContentView])
         return;
 
-    [self _updateVisibleContentRectAfterScrollInView:_scrollView.get()];
+    [self _updateVisibleContentRects];
     [_contentView didFinishScrolling];
 }
 
@@ -1844,7 +1842,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (![self usesStandardContentView])
         [_customContentView scrollViewDidScroll:(UIScrollView *)scrollView];
 
-    [self _updateVisibleContentRectAfterScrollInView:scrollView];
+    [self _updateVisibleContentRects];
     
     if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPerfData = _page->scrollingPerformanceData())
         scrollPerfData->didScroll([self visibleRectInViewCoordinates]);
@@ -1853,13 +1851,13 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView
 {
     [self _updateScrollViewBackground];
-    [self _updateVisibleContentRectAfterScrollInView:scrollView];
+    [self _updateVisibleContentRects];
 }
 
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
 {
     ASSERT(scrollView == _scrollView);
-    [self _updateVisibleContentRectAfterScrollInView:scrollView];
+    [self _updateVisibleContentRects];
     [_contentView didZoomToScale:scale];
 }
 
@@ -1874,55 +1872,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     [_contentView didInterruptScrolling];
-    [self _updateVisibleContentRectAfterScrollInView:scrollView];
-}
-
-- (CGRect)_visibleRectInEnclosingScrollView:(UIScrollView *)enclosingScrollView
-{
-    if (!enclosingScrollView)
-        return self.bounds;
-
-    CGRect exposedRect = [enclosingScrollView convertRect:enclosingScrollView.bounds toView:self];
-    return CGRectIntersectsRect(exposedRect, self.bounds) ? CGRectIntersection(exposedRect, self.bounds) : CGRectZero;
-}
-
-- (CGRect)_visibleContentRect
-{
-    CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:self.bounds toView:_contentView.get()];
-    
-    if (UIScrollView *enclosingScroller = [self _scroller]) {
-        CGRect viewVisibleRect = [self _visibleRectInEnclosingScrollView:enclosingScroller];
-        CGRect viewVisibleContentRect = [self convertRect:viewVisibleRect toView:_contentView.get()];
-        visibleRectInContentCoordinates = CGRectIntersection(visibleRectInContentCoordinates, viewVisibleContentRect);
-    }
-
-    return visibleRectInContentCoordinates;
-}
-
-// Called when some ancestor UIScrollView scrolls.
-- (void)_didScroll
-{
-    [self _updateVisibleContentRectAfterScrollInView:[self _scroller]];
-
-    const NSTimeInterval ScrollingEndedTimerInterval = 0.032;
-    if (!_enclosingScrollViewScrollTimer) {
-        _enclosingScrollViewScrollTimer = adoptNS([[NSTimer alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:ScrollingEndedTimerInterval]
-            interval:0 target:self selector:@selector(_enclosingScrollerScrollingEnded:) userInfo:nil repeats:YES]);
-        [[NSRunLoop mainRunLoop] addTimer:_enclosingScrollViewScrollTimer.get() forMode:NSDefaultRunLoopMode];
-    }
-    _didScrollSinceLastTimerFire = YES;
-}
-
-- (void)_enclosingScrollerScrollingEnded:(NSTimer *)timer
-{
-    if (_didScrollSinceLastTimerFire) {
-        _didScrollSinceLastTimerFire = NO;
-        return;
-    }
-
     [self _updateVisibleContentRects];
-    [_enclosingScrollViewScrollTimer invalidate];
-    _enclosingScrollViewScrollTimer = nil;
 }
 
 - (void)_frameOrBoundsChanged
@@ -1935,7 +1885,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
             _page->setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(bounds.size));
         if (!_overridesMaximumUnobscuredSize)
             _page->setMaximumUnobscuredSize(WebCore::FloatSize(bounds.size));
-        if (auto drawingArea = _page->drawingArea())
+        if (WebKit::DrawingAreaProxy* drawingArea = _page->drawingArea())
             drawingArea->setSize(WebCore::IntSize(bounds.size), WebCore::IntSize(), WebCore::IntSize());
     }
 
@@ -1965,29 +1915,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)_updateVisibleContentRects
 {
-    // For visible rect updates not associated with a spefic UIScrollView, just consider our own scroller.
-    [self _updateVisibleContentRectAfterScrollInView:_scrollView.get()];
-}
-
-- (void)_updateVisibleContentRectAfterScrollInView:(UIScrollView *)scrollView
-{
-    BOOL isStableState = !([scrollView isDragging] || [scrollView isDecelerating] || [scrollView isZooming] || [scrollView _isAnimatingZoom] || [scrollView _isScrollingToTop]);
-
-    if (isStableState && scrollView == _scrollView.get())
-        isStableState = !_isChangingObscuredInsetsInteractively;
-    
-    if (isStableState && scrollView == _scrollView.get())
-        isStableState = ![self _scrollViewIsRubberBanding];
-
-    // FIXME: this can be made static after we stop supporting iOS 8.x.
-    if (isStableState && [scrollView respondsToSelector:@selector(_isInterruptingDeceleration)])
-        isStableState = ![scrollView performSelector:@selector(_isInterruptingDeceleration)];
-
-    [self _updateContentRectsWithState:isStableState];
-}
-
-- (void)_updateContentRectsWithState:(BOOL)inStableState
-{
     if (![self usesStandardContentView]) {
         [_customContentView web_computedContentInsetDidChange];
         return;
@@ -2005,7 +1932,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     CGRect fullViewRect = self.bounds;
-    CGRect visibleRectInContentCoordinates = [self _visibleContentRect];
+    CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:fullViewRect toView:_contentView.get()];
 
     UIEdgeInsets computedContentInsetUnadjustedForKeyboard = [self _computedContentInset];
     if (!_haveSetObscuredInsets)
@@ -2016,10 +1943,17 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     CGFloat scaleFactor = contentZoomScale(self);
 
+    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView _isAnimatingZoom] || [_scrollView _isScrollingToTop] || [self _scrollViewIsRubberBanding]);
+
+    // FIXME: this can be made static after we stop supporting iOS 8.x.
+    if (isStableState && [_scrollView respondsToSelector:@selector(_isInterruptingDeceleration)])
+        isStableState = ![_scrollView performSelector:@selector(_isInterruptingDeceleration)];
+
 #if ENABLE(CSS_SCROLL_SNAP) && ENABLE(ASYNC_SCROLLING)
-    if (inStableState) {
+    if (isStableState) {
         WebKit::RemoteScrollingCoordinatorProxy* coordinator = _page->scrollingCoordinatorProxy();
         if (coordinator && coordinator->hasActiveSnapPoint()) {
+            CGRect fullViewRect = self.bounds;
             CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, computedContentInsetUnadjustedForKeyboard);
             
             CGPoint currentPoint = [_scrollView contentOffset];
@@ -2040,9 +1974,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         unobscuredRectInScrollViewCoordinates:unobscuredRect
         obscuredInset:CGSizeMake(_obscuredInsets.left, _obscuredInsets.top)
         scale:scaleFactor minimumScale:[_scrollView minimumZoomScale]
-        inStableState:inStableState
-        isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively
-        enclosedInScrollView:[self _scroller] != nil];
+        inStableState:isStableState
+        isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively];
 }
 
 - (void)_didFinishLoadForMainFrame
@@ -4414,6 +4347,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 }
 
 #endif // PLATFORM(IOS)
+
+#if PLATFORM(MAC)
+- (BOOL)_hasActiveVideoForControlsManager
+{
+    return _page && _page->hasActiveVideoForControlsManager();
+}
+#endif // PLATFORM(MAC)
 
 // Execute the supplied block after the next transaction from the WebProcess.
 - (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock

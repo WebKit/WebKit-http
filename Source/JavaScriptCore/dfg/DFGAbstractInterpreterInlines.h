@@ -28,7 +28,6 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "ArrayConstructor.h"
 #include "DFGAbstractInterpreter.h"
 #include "GetByIdStatus.h"
 #include "GetterSetter.h"
@@ -141,6 +140,36 @@ template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::verifyEdges(Node* node)
 {
     DFG_NODE_DO_TO_CHILDREN(m_graph, node, verifyEdge);
+}
+
+inline bool isToThisAnIdentity(bool isStrictMode, AbstractValue& valueForNode)
+{
+    // We look at the type first since that will cover most cases and does not require iterating all the structures.
+    if (isStrictMode) {
+        if (valueForNode.m_type && !(valueForNode.m_type & SpecObjectOther))
+            return true;
+    } else {
+        if (valueForNode.m_type && !(valueForNode.m_type & (~SpecObject | SpecObjectOther)))
+            return true;
+    }
+
+    if ((isStrictMode || (valueForNode.m_type && !(valueForNode.m_type & ~SpecObject))) && valueForNode.m_structure.isFinite()) {
+        bool overridesToThis = false;
+        valueForNode.m_structure.forEach([&](Structure* structure) {
+            TypeInfo type = structure->typeInfo();
+            ASSERT(type.isObject() || type.type() == StringType || type.type() == SymbolType);
+            if (!isStrictMode)
+                ASSERT(type.isObject());
+            // We don't need to worry about strings/symbols here since either:
+            // 1) We are in strict mode and strings/symbols are not wrapped
+            // 2) The AI has proven that the type of this is a subtype of object
+            if (type.isObject() && type.overridesToThis())
+                overridesToThis = true;
+        });
+        return overridesToThis;
+    }
+
+    return false;
 }
 
 template<typename AbstractStateType>
@@ -997,9 +1026,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
 
     case IsEmpty:
-    case IsArrayObject:
-    case IsJSArray:
-    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -1012,28 +1038,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         if (child.value()) {
             bool constantWasSet = true;
             switch (node->op()) {
-            case IsArrayObject:
-                if (child.value().isObject()) {
-                    if (child.value().getObject()->type() == ArrayType) {
-                        setConstant(node, jsBoolean(true));
-                        break;
-                    }
-
-                    if (child.value().getObject()->type() == ProxyObjectType) {
-                        // We have no way of knowing what type we are proxing yet.
-                        constantWasSet = false;
-                        break;
-                    }
-                }
-
-                setConstant(node, jsBoolean(false));
-                break;
-            case IsJSArray:
-                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->type() == ArrayType));
-                break;
-            case IsArrayConstructor:
-                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->classInfo() == ArrayConstructor::info()));
-                break;
             case IsUndefined:
                 setConstant(node, jsBoolean(
                     child.value().isCell()
@@ -1102,22 +1106,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         bool constantWasSet = false;
         switch (node->op()) {
-        case IsJSArray:
-        case IsArrayObject:
-            // We don't have a SpeculatedType for Proxies yet so we can't do better at proving false.
-            if (!(child.m_type & ~SpecArray)) {
-                setConstant(node, jsBoolean(true));
-                constantWasSet = true;
-                break;
-            }
-
-            if (!(child.m_type & SpecObject)) {
-                setConstant(node, jsBoolean(false));
-                constantWasSet = true;
-                break;
-            }
-
-            break;
         case IsEmpty: {
             if (child.m_type && !(child.m_type & SpecEmpty)) {
                 setConstant(node, jsBoolean(false));
@@ -1889,21 +1877,17 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ToThis: {
         AbstractValue& source = forNode(node->child1());
         AbstractValue& destination = forNode(node);
+        bool strictMode = m_graph.executableFor(node->origin.semantic)->isStrictMode();
 
-        if (source.m_type == SpecStringObject) {
+        if (isToThisAnIdentity(strictMode, source)) {
             m_state.setFoundConstants(true);
             destination = source;
             break;
         }
 
-        if (m_graph.executableFor(node->origin.semantic)->isStrictMode()) {
-            if (!(source.m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecSymbol))) {
-                m_state.setFoundConstants(true);
-                destination = source;
-                break;
-            }
+        if (strictMode)
             destination.makeHeapTop();
-        } else {
+        else {
             destination = source;
             destination.merge(SpecObject);
         }
@@ -1920,21 +1904,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         ASSERT(node->structure());
         forNode(node).set(m_graph, node->structure());
         break;
-
-    case CallObjectConstructor: {
-        AbstractValue& source = forNode(node->child1());
-        AbstractValue& destination = forNode(node);
-
-        if (!(source.m_type & ~SpecObject)) {
-            m_state.setFoundConstants(true);
-            destination = source;
-            break;
-        }
-
-        forNode(node).setType(m_graph, SpecObject);
-        break;
-    }
-
+        
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
@@ -2427,7 +2397,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
         
-        forNode(node).set(m_graph, m_graph.m_vm.getterSetterStructure.get());
+        forNode(node).set(m_graph, m_graph.globalObjectFor(node->origin.semantic)->getterSetterStructure());
         break;
     }
         

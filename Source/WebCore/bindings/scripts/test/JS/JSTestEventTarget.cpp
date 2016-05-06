@@ -149,7 +149,7 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* s
 {
     auto* thisObject = jsCast<JSTestEventTarget*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    if (index < thisObject->wrapped().length()) {
+    if (LIKELY(index < thisObject->wrapped().length())) {
         unsigned attributes = DontDelete | ReadOnly;
         slot.setValue(thisObject, attributes, toJS(state, thisObject->globalObject(), thisObject->wrapped().item(index)));
         return true;
@@ -160,7 +160,7 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* s
 EncodedJSValue jsTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestEventTargetPrototype* domObject = jsDynamicCast<JSTestEventTargetPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestEventTarget::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -252,7 +252,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestEventTar
 #if COMPILER(CLANG)
     // If this fails TestEventTarget does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestEventTarget), TestEventTarget_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestEventTarget), "TestEventTarget is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

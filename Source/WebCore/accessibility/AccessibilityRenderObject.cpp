@@ -86,6 +86,7 @@
 #include "RenderMenuList.h"
 #include "RenderSVGRoot.h"
 #include "RenderSVGShape.h"
+#include "RenderTableCell.h"
 #include "RenderText.h"
 #include "RenderTextControl.h"
 #include "RenderTextControlSingleLine.h"
@@ -1070,6 +1071,15 @@ bool AccessibilityRenderObject::exposesTitleUIElement() const
     if (hasTextAlternative())
         return false;
     
+    // When <label> element has aria-label on it, we shouldn't expose it as the titleUIElement,
+    // otherwise its inner text will be announced by a screenreader.
+    if (is<HTMLInputElement>(*this->node()) || AccessibilityObject::isARIAInput(ariaRoleAttribute())) {
+        if (HTMLLabelElement* label = labelForElement(downcast<Element>(node()))) {
+            if (!label->fastGetAttribute(aria_labelAttr).isEmpty())
+                return false;
+        }
+    }
+    
     return true;
 }
     
@@ -1244,7 +1254,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     case DescriptionListDetailRole:
     case DetailsRole:
     case DocumentArticleRole:
-    case DocumentRegionRole:
+    case LandmarkRegionRole:
     case ListItemRole:
     case VideoRole:
         return false;
@@ -2648,7 +2658,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     // the cell should not be treated as a cell (e.g. because it is a layout table.
     // In ATK, there is a distinction between generic text block elements and other
     // generic containers; AX API does not make this distinction.
-    if (node && (node->hasTagName(tdTag) || node->hasTagName(thTag)))
+    if (is<RenderTableCell>(m_renderer))
 #if PLATFORM(GTK) || PLATFORM(EFL)
         return DivRole;
 #else
@@ -2689,8 +2699,11 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && node->hasTagName(asideTag))
         return LandmarkComplementaryRole;
 
+    // The default role attribute value for the section element, region, became a landmark in ARIA 1.1.
+    // The HTML AAM spec says it is "strongly recommended" that ATs only convey and provide navigation
+    // for section elements which have names.
     if (node && node->hasTagName(sectionTag))
-        return DocumentRegionRole;
+        return hasAttribute(aria_labelAttr) || hasAttribute(aria_labelledbyAttr) ? LandmarkRegionRole : GroupRole;
 
     if (node && node->hasTagName(addressTag))
         return LandmarkContentInfoRole;
@@ -2911,7 +2924,7 @@ void AccessibilityRenderObject::textChanged()
         if (parent->supportsARIALiveRegion())
             cache->postNotification(renderParent, AXObjectCache::AXLiveRegionChanged);
 
-        if ((parent->isARIATextControl() || parent->hasContentEditableAttributeSet()) && !parent->isNativeTextControl())
+        if (parent->isNonNativeTextControl())
             cache->postNotification(renderParent, AXObjectCache::AXValueChanged);
     }
 }

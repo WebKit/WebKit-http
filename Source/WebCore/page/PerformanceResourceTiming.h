@@ -32,7 +32,7 @@
 #ifndef PerformanceResourceTiming_h
 #define PerformanceResourceTiming_h
 
-#if ENABLE(RESOURCE_TIMING)
+#if ENABLE(WEB_TIMING)
 
 #include "PerformanceEntry.h"
 #include "ResourceLoadTiming.h"
@@ -48,7 +48,7 @@ class ResourceLoadTiming;
 class ResourceRequest;
 class ResourceResponse;
 
-class PerformanceResourceTiming : public PerformanceEntry {
+class PerformanceResourceTiming final : public PerformanceEntry {
 public:
     static Ref<PerformanceResourceTiming> create(const AtomicString& initiatorType, const ResourceRequest& request, const ResourceResponse& response, double initiationTime, double finishTime, Document* requestingDocument)
     {
@@ -68,7 +68,7 @@ public:
     double requestStart() const;
     double responseEnd() const;
 
-    virtual bool isResource() { return true; }
+    bool isResource() const override { return true; }
 
 private:
     PerformanceResourceTiming(const AtomicString& initatorType, const ResourceRequest&, const ResourceResponse&, double initiationTime, double finishTime, Document*);
@@ -85,6 +85,9 @@ private:
 
 }
 
-#endif // ENABLE(RESOURCE_TIMING)
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::PerformanceResourceTiming)
+    static bool isType(const WebCore::PerformanceEntry& entry) { return entry.isResource(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
+#endif // ENABLE(WEB_TIMING)
 #endif // !defined(PerformanceResourceTiming_h)

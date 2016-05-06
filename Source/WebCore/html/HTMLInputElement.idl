@@ -32,7 +32,7 @@
     [Reflect] attribute DOMString dirName;
     [Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
-    attribute FileList files;
+    attribute FileList? files;
     attribute DOMString formAction;
 
     // FIXME: These should not use [TreatNullAs=LegacyNullString].
@@ -92,7 +92,7 @@
     [RaisesException] void setRangeText(DOMString replacement,
                         unsigned long start,
                         unsigned long end,
-                        optional DOMString selectionMode = null);
+                        optional DOMString selectionMode);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     [Custom] void setSelectionRange(long start, long end);

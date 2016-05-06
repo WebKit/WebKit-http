@@ -1198,7 +1198,6 @@ set(WebCore_SOURCES
     bindings/js/JSPopStateEventCustom.cpp
     bindings/js/JSReadableStreamPrivateConstructors.cpp
     bindings/js/JSReadableStreamSourceCustom.cpp
-    bindings/js/JSRTCIceCandidateCustom.cpp
     bindings/js/JSRTCPeerConnectionCustom.cpp
     bindings/js/JSRTCSessionDescriptionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
@@ -2111,6 +2110,7 @@ set(WebCore_SOURCES
     platform/FileSystem.cpp
     platform/Language.cpp
     platform/Length.cpp
+    platform/LengthBox.cpp
     platform/LengthPoint.cpp
     platform/LengthSize.cpp
     platform/LinkHash.cpp
@@ -2286,6 +2286,7 @@ set(WebCore_SOURCES
     platform/graphics/transforms/RotateTransformOperation.cpp
     platform/graphics/transforms/ScaleTransformOperation.cpp
     platform/graphics/transforms/SkewTransformOperation.cpp
+    platform/graphics/transforms/TransformOperation.cpp
     platform/graphics/transforms/TransformOperations.cpp
     platform/graphics/transforms/TransformState.cpp
     platform/graphics/transforms/TransformationMatrix.cpp
@@ -3278,6 +3279,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/PruneEmptyDeclarations.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RecordConstantPrecision.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RegenerateStructNames.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RemoveDynamicIndexing.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RemovePow.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RemoveSwitchFallThrough.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RewriteDoWhile.cpp
@@ -3285,6 +3287,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ScalarizeVecAndMatConstructorArgs.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SearchSymbol.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SeparateArrayInitialization.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SeparateExpressionsReturningArrays.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SeparateDeclarations.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ShaderLang.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ShaderVars.cpp
@@ -3295,6 +3298,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/TranslatorHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Types.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuitAST.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuitToIf.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UniformHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/util.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UtilsHLSL.cpp

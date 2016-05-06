@@ -1107,6 +1107,8 @@
 #endif
 
 #if COMPILER(MSVC)
+#undef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
 #undef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #if _MSC_VER < 1900

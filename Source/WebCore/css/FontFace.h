@@ -36,10 +36,6 @@
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
-namespace Deprecated {
-class ScriptValue;
-}
-
 namespace WebCore {
 
 class CSSFontFace;
@@ -67,7 +63,9 @@ public:
     String unicodeRange() const;
     String variant() const;
     String featureSettings() const;
-    String status() const;
+
+    enum class LoadStatus { Unloaded, Loading, Loaded, Error };
+    LoadStatus status() const;
 
     typedef DOMPromise<FontFace&, DOMCoreException&> Promise;
     Promise& promise() { return m_promise; }

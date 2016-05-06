@@ -139,7 +139,7 @@ EncodedJSValue jsTestNodeName(ExecState* state, EncodedJSValue thisValue, Proper
 EncodedJSValue jsTestNodeConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestNodePrototype* domObject = jsDynamicCast<JSTestNodePrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestNode::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -165,7 +165,7 @@ bool setJSTestNodeName(ExecState* state, EncodedJSValue thisValue, EncodedJSValu
         return throwSetterTypeError(*state, "TestNode", "name");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    String nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
     impl.setName(nativeValue);

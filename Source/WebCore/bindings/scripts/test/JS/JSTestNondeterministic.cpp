@@ -326,7 +326,7 @@ EncodedJSValue jsTestNondeterministicNondeterministicSetterExceptionAttr(ExecSta
 EncodedJSValue jsTestNondeterministicConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestNondeterministicPrototype* domObject = jsDynamicCast<JSTestNondeterministicPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestNondeterministic::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -352,7 +352,7 @@ bool setJSTestNondeterministicNondeterministicWriteableAttr(ExecState* state, En
         return throwSetterTypeError(*state, "TestNondeterministic", "nondeterministicWriteableAttr");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    String nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
     impl.setNondeterministicWriteableAttr(nativeValue);
@@ -369,7 +369,7 @@ bool setJSTestNondeterministicNondeterministicExceptionAttr(ExecState* state, En
         return throwSetterTypeError(*state, "TestNondeterministic", "nondeterministicExceptionAttr");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    String nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
     impl.setNondeterministicExceptionAttr(nativeValue);
@@ -386,7 +386,7 @@ bool setJSTestNondeterministicNondeterministicGetterExceptionAttr(ExecState* sta
         return throwSetterTypeError(*state, "TestNondeterministic", "nondeterministicGetterExceptionAttr");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    String nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
     impl.setNondeterministicGetterExceptionAttr(nativeValue);
@@ -404,7 +404,7 @@ bool setJSTestNondeterministicNondeterministicSetterExceptionAttr(ExecState* sta
     }
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
-    String nativeValue = value.toString(state)->value(state);
+    String nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
     impl.setNondeterministicSetterExceptionAttr(nativeValue, ec);
@@ -495,7 +495,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestNondeter
 #if COMPILER(CLANG)
     // If this fails TestNondeterministic does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestNondeterministic), TestNondeterministic_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestNondeterministic), "TestNondeterministic is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

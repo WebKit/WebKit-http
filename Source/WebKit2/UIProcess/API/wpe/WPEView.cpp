@@ -42,6 +42,7 @@ namespace WKWPE {
 View::View(const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
     , m_size{ 800, 600 }
+    , m_viewStateFlags(WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
     , m_compositingManagerProxy(*this)
 {
     auto configuration = baseConfiguration.copy();
@@ -118,6 +119,15 @@ void View::setSize(const WebCore::IntSize& size)
     m_size = size;
     if (m_pageProxy->drawingArea())
         m_pageProxy->drawingArea()->setSize(size, WebCore::IntSize(), WebCore::IntSize());
+}
+
+void View::setViewState(WebCore::ViewState::Flags flags)
+{
+    WebCore::ViewState::Flags changedFlags = m_viewStateFlags ^ flags;
+    m_viewStateFlags = flags;
+
+    if (changedFlags)
+        m_pageProxy->viewStateDidChange(changedFlags);
 }
 
 } // namespace WKWPE

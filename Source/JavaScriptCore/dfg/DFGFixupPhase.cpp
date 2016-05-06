@@ -349,7 +349,6 @@ private:
         }
 
         case ArithPow: {
-            node->setResult(NodeResultDouble);
             if (node->child2()->shouldSpeculateInt32OrBooleanForArithmetic()) {
                 fixDoubleOrBooleanEdge(node->child1());
                 fixIntOrBooleanEdge(node->child2());
@@ -1061,18 +1060,7 @@ private:
             fixEdge<Int32Use>(node->child1());
             break;
         }
-
-        case CallObjectConstructor: {
-            if (node->child1()->shouldSpeculateObject()) {
-                fixEdge<ObjectUse>(node->child1());
-                node->convertToIdentity();
-                break;
-            }
-
-            fixEdge<UntypedUse>(node->child1());
-            break;
-        }
-
+            
         case ToThis: {
             fixupToThis(node);
             break;
@@ -1542,9 +1530,6 @@ private:
         case ProfileWillCall:
         case ProfileDidCall:
         case DeleteById:
-        case IsArrayObject:
-        case IsJSArray:
-        case IsArrayConstructor:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:
@@ -1743,6 +1728,9 @@ private:
             return;
         }
 
+        // FIXME: This should cover other use cases but we don't have use kinds for them. It's not critical,
+        // however, since we cover all the missing cases in constant folding.
+        // https://bugs.webkit.org/show_bug.cgi?id=157213
         if (node->child1()->shouldSpeculateStringObject()) {
             fixEdge<StringObjectUse>(node->child1());
             node->convertToIdentity();

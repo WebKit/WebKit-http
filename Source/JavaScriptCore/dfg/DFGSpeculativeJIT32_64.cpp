@@ -716,8 +716,8 @@ void SpeculativeJIT::emitCall(Node* node)
     }
 
     Edge calleeEdge = m_jit.graph().child(node, 0);
-    GPRReg calleeTagGPR;
-    GPRReg calleePayloadGPR;
+    GPRReg calleeTagGPR = InvalidGPRReg;
+    GPRReg calleePayloadGPR = InvalidGPRReg;
     CallFrameShuffleData shuffleData;
     
     // Gotta load the arguments somehow. Varargs is trickier.
@@ -2428,11 +2428,11 @@ void SpeculativeJIT::compile(Node* node)
             GPRReg resultTagGPR = resultTag.gpr();
             GPRReg resultPayloadGPR = resultPayload.gpr();
 
-            use(node->child1());
-            index.use();
-
             speculationCheck(OutOfBounds, JSValueRegs(), node,
                 m_jit.branch32(MacroAssembler::LessThan, indexGPR, MacroAssembler::TrustedImm32(0)));
+
+            use(node->child1());
+            index.use();
 
             m_jit.move(MacroAssembler::TrustedImm32(JSValue::UndefinedTag), resultTagGPR);
             m_jit.move(MacroAssembler::TrustedImm32(0), resultPayloadGPR);
@@ -3830,11 +3830,6 @@ void SpeculativeJIT::compile(Node* node)
         cellResult(resultPayload.gpr(), node);
         break;
     }
-
-    case CallObjectConstructor: {
-        compileCallObjectConstructor(node);
-        break;
-    }
         
     case ToThis: {
         ASSERT(node->child1().useKind() == UntypedUse);
@@ -4502,21 +4497,6 @@ void SpeculativeJIT::compile(Node* node)
         
         done.link(&m_jit);
         booleanResult(result.gpr(), node);
-        break;
-    }
-
-    case IsJSArray: {
-        compileIsJSArray(node);
-        break;
-    }
-
-    case IsArrayObject: {
-        compileIsArrayObject(node);
-        break;
-    }
-
-    case IsArrayConstructor: {
-        compileIsArrayConstructor(node);
         break;
     }
 

@@ -726,8 +726,8 @@ private:
     void computeRepaintRectsIncludingDescendants();
     void clearRepaintRects();
 
-    void clipToRect(const LayerPaintingInfo&, GraphicsContext&, const ClipRect&, BorderRadiusClippingRule = IncludeSelfForBorderRadius);
-    void restoreClip(GraphicsContext&, const LayoutRect& paintDirtyRect, const ClipRect&);
+    void clipToRect(GraphicsContext&, const LayerPaintingInfo&, const ClipRect&, BorderRadiusClippingRule = IncludeSelfForBorderRadius);
+    void restoreClip(GraphicsContext&, const LayerPaintingInfo&, const ClipRect&);
 
     bool shouldRepaintAfterLayout() const;
 
@@ -786,7 +786,7 @@ private:
 
     bool hasFilterThatIsPainting(GraphicsContext&, PaintLayerFlags) const;
     std::unique_ptr<FilterEffectRendererHelper> setupFilters(GraphicsContext&, LayerPaintingInfo&, PaintLayerFlags, const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, bool& rootRelativeBoundsComputed);
-    GraphicsContext& applyFilters(FilterEffectRendererHelper*, GraphicsContext& originalContext, LayerPaintingInfo&, LayerFragments&);
+    void applyFilters(FilterEffectRendererHelper*, GraphicsContext& originalContext, const LayerPaintingInfo&, const LayerFragments&);
 
     void paintLayer(GraphicsContext&, const LayerPaintingInfo&, PaintLayerFlags);
     void paintFixedLayersInNamedFlows(GraphicsContext&, const LayerPaintingInfo&, PaintLayerFlags);
@@ -883,7 +883,6 @@ private:
     bool shouldSuspendScrollAnimations() const override;
     IntRect scrollableAreaBoundingBox(bool* isInsideFixed = nullptr) const override;
     bool isRubberBandInProgress() const override;
-    bool updatesScrollLayerPositionOnMainThread() const override { return true; }
     bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const override;
 #if ENABLE(CSS_SCROLL_SNAP)
     bool isScrollSnapInProgress() const override;

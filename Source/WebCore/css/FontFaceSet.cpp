@@ -182,16 +182,16 @@ auto FontFaceSet::promise(JSC::ExecState& execState) -> Promise&
     return m_promise.value();
 }
     
-String FontFaceSet::status() const
+auto FontFaceSet::status() const -> LoadStatus
 {
     switch (m_backing->status()) {
     case CSSFontFaceSet::Status::Loading:
-        return ASCIILiteral("loading");
+        return LoadStatus::Loading;
     case CSSFontFaceSet::Status::Loaded:
-        return ASCIILiteral("loaded");
+        return LoadStatus::Loaded;
     }
     ASSERT_NOT_REACHED();
-    return ASCIILiteral("loaded");
+    return LoadStatus::Loaded;
 }
 
 bool FontFaceSet::canSuspendForDocumentSuspension() const
@@ -245,16 +245,6 @@ void FontFaceSet::faceFinished(CSSFontFace& face, CSSFontFace::Status newStatus)
     }
 
     m_pendingPromises.remove(iterator);
-}
-
-void FontFaceSet::load(JSC::ExecState& state, const String& font, DeferredWrapper&& promise, ExceptionCode& ec)
-{
-    load(state, font, ASCIILiteral(" "), WTFMove(promise), ec);
-}
-
-bool FontFaceSet::check(const String& font, ExceptionCode& ec)
-{
-    return check(font, ASCIILiteral(" "), ec);
 }
 
 }

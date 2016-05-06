@@ -56,9 +56,7 @@ class CrossThreadTaskImpl final : public CrossThreadTask {
 public:
     CrossThreadTaskImpl(T* callee, void (T::*method)(Arguments...), Arguments&&... arguments)
     {
-        m_taskFunction = [callee, method, arguments...] {
-            (callee->*method)(arguments...);
-        };
+        m_taskFunction = std::bind(method, callee, arguments...);
     }
 };
 
@@ -67,9 +65,7 @@ class CrossThreadTaskStaticImpl final : public CrossThreadTask {
 public:
     CrossThreadTaskStaticImpl(void (*method)(Arguments...), Arguments&&... arguments)
     {
-        m_taskFunction = [method, arguments...] {
-            method(arguments...);
-        };
+        m_taskFunction = std::bind(method, arguments...);
     }
 };
 

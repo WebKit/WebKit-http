@@ -30,6 +30,7 @@
 #include "CompositingManagerProxy.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
+#include <WebCore/ViewState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
@@ -55,6 +56,9 @@ public:
 
     const WebCore::IntSize& size() const { return m_size; }
 
+    WebCore::ViewState::Flags viewState() const { return m_viewStateFlags; }
+    void setViewState(WebCore::ViewState::Flags);
+
 private:
     View(const API::PageConfiguration&);
     virtual ~View();
@@ -64,6 +68,7 @@ private:
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
     WebCore::IntSize m_size;
+    WebCore::ViewState::Flags m_viewStateFlags;
 
     WebKit::CompositingManagerProxy m_compositingManagerProxy;
     struct wpe_view_backend* m_backend;

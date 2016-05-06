@@ -87,8 +87,6 @@ webkit.org/b/98348 accessibility/internal-link-anchors2.html [ Skip ]
 # Things specific to AX API (at least at the moment)
 webkit.org/b/98348 accessibility/radio-button-group-members.html [ Skip ]
 webkit.org/b/141074 accessibility/auto-filled-value.html [ Skip ]
-webkit.org/b/133148 accessibility/content-editable-as-textarea.html [ Skip ]
-webkit.org/b/133148 accessibility/set-selected-text-range-contenteditable.html [ Skip ]
 webkit.org/b/156045 accessibility/attachment-element.html [ Skip ]
 
 # Feature disabled, see: https://bugs.webkit.org/show_bug.cgi?id=85425
@@ -590,8 +588,6 @@ webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html [ Failure ]
 
 webkit.org/b/146718 accessibility/aria-hidden-false-works-in-subtrees.html [ Failure ]
 
-webkit.org/b/146719 accessibility/aria-roledescription.html [ Failure ]
-
 webkit.org/b/146720 media/accessiblity-describes-video.html [ Failure ]
 
 webkit.org/b/146724 fast/text/word-break-keep-all.html [ ImageOnlyFailure ]
@@ -703,6 +699,9 @@ webkit.org/b/156148 svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures.ht
 webkit.org/b/156148 svg/text/text-text-04-t.svg [ Failure ]
 webkit.org/b/156148 svg/text/text-text-06-t.svg [ Failure ]
 webkit.org/b/156148 svg/text/text-vkern.svg [ Failure ]
+
+# Some shadow-dom tests that are not under fast/shadow-dom that are passing for mac
+webkit.org/b/148695 imported/w3c/csswg-test/css-scoping-1 [ Timeout Failure ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -1639,58 +1638,60 @@ webkit.org/b/152247 fast/forms/listbox-scrollbar-hit-test.html [ Skip ]
 # Tests that regressed after WebKit2 switch
 #////////////////////////////////////////////////////////////////////////////////////////
 #
-# [GTK] Implement drag and drop support in WebKit2
-# https://bugs.webkit.org/show_bug.cgi?id=63706
+# [GTK] Drag and drop can't be tested with WebKitTestRunner
+# https://bugs.webkit.org/show_bug.cgi?id=157179
 # Implement EditingCallbacks deletegates in the WebKitTestRunner
-webkit.org/b/63706 editing/pasteboard/4947130.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/dataTransfer-setData-getData.html [ Failure Timeout ]
-webkit.org/b/63706 editing/pasteboard/drag-and-drop-image-contenteditable.html [ Failure Timeout ]
-webkit.org/b/63706 editing/pasteboard/drag-and-drop-inputimage-contenteditable.html [ Failure Timeout ]
-webkit.org/b/63706 editing/pasteboard/drag-and-drop-objectimage-contenteditable.html [ Failure Timeout ]
-webkit.org/b/63706 editing/pasteboard/drag-drop-input-textarea.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drag-drop-modifies-page.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drag-drop-url-text.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drag-image-in-about-blank-frame.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drag-selected-image-to-contenteditable.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drop-file-svg.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drop-inputtext-acquires-style.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drop-link.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drop-text-without-selection.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/get-data-text-plain-drop.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/smart-drag-drop.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/subframe-dragndrop-1.html [ Failure ]
-webkit.org/b/63706 editing/selection/4895428-1.html [ Failure ]
-webkit.org/b/63706 editing/selection/4895428-4.html [ Failure ]
-webkit.org/b/63706 editing/selection/contains-boundaries.html [ Failure ]
-webkit.org/b/63706 editing/selection/drag-text-delay.html [ Failure ]
-webkit.org/b/63706 fast/block/float/float-in-float-hit-testing.html [ Failure ]
-webkit.org/b/63706 fast/events/bogus-dropEffect-effectAllowed.html [ Failure ]
-webkit.org/b/63706 fast/events/content-changed-during-drop.html [ Failure ]
-webkit.org/b/63706 fast/events/crash-on-mutate-during-drop.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-and-drop-dataTransfer-types-nocrash.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-and-drop-fire-drag-dragover.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-and-drop.html [ Failure Timeout ]
-webkit.org/b/63706 fast/events/drag-and-drop-subframe-dataTransfer.html [ Failure Timeout ]
+webkit.org/b/157179 editing/pasteboard/4947130.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/dataTransfer-setData-getData.html [ Failure Timeout ]
+webkit.org/b/157179 editing/pasteboard/drag-and-drop-image-contenteditable.html [ Failure Timeout ]
+webkit.org/b/157179 editing/pasteboard/drag-and-drop-inputimage-contenteditable.html [ Failure Timeout ]
+webkit.org/b/157179 editing/pasteboard/drag-and-drop-objectimage-contenteditable.html [ Failure Timeout ]
+webkit.org/b/157179 editing/pasteboard/drag-drop-input-textarea.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drag-drop-modifies-page.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drag-drop-url-text.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drag-image-in-about-blank-frame.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drag-selected-image-to-contenteditable.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drop-file-svg.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drop-inputtext-acquires-style.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drop-link.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drop-text-without-selection.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/get-data-text-plain-drop.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/smart-drag-drop.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/subframe-dragndrop-1.html [ Failure ]
+webkit.org/b/157179 editing/selection/4895428-1.html [ Failure ]
+webkit.org/b/157179 editing/selection/4895428-4.html [ Failure ]
+webkit.org/b/157179 editing/selection/contains-boundaries.html [ Failure ]
+webkit.org/b/157179 editing/selection/drag-text-delay.html [ Failure ]
+webkit.org/b/157179 fast/block/float/float-in-float-hit-testing.html [ Failure ]
+webkit.org/b/157179 fast/events/bogus-dropEffect-effectAllowed.html [ Failure ]
+webkit.org/b/157179 fast/events/content-changed-during-drop.html [ Failure ]
+webkit.org/b/157179 fast/events/crash-on-mutate-during-drop.html [ Failure ]
+webkit.org/b/157179 fast/events/drag-and-drop-dataTransfer-types-nocrash.html [ Failure ]
+webkit.org/b/157179 fast/events/drag-and-drop-fire-drag-dragover.html [ Failure ]
+webkit.org/b/157179 fast/events/drag-and-drop.html [ Failure Timeout ]
+webkit.org/b/157179 fast/events/drag-and-drop-subframe-dataTransfer.html [ Failure Timeout ]
 webkit.org/b/42194 fast/events/drag-and-drop-link.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-parent-node.html [ Failure ]
-webkit.org/b/63706 fast/events/dropzone-001.html [ Failure Timeout ]
-webkit.org/b/63706 fast/events/dropzone-002.html [ Failure Timeout ]
-webkit.org/b/63706 fast/events/dropzone-003.html [ Failure Timeout ]
-webkit.org/b/63706 fast/events/ondrop-text-html.html [ Failure ]
-webkit.org/b/63706 fast/events/selectstart-by-drag.html [ Failure ]
-webkit.org/b/63706 fast/events/standalone-image-drag-to-editable.html [ Failure Timeout ]
-webkit.org/b/63706 fast/forms/drag-into-textarea.html [ Failure ]
-webkit.org/b/63706 fast/forms/drag-out-of-textarea.html [ Failure ]
-webkit.org/b/63706 fast/forms/range/slider-delete-while-dragging-thumb.html [ Failure ]
-webkit.org/b/63706 fast/lists/drag-into-marker.html [ Failure ]
-webkit.org/b/63706 http/tests/security/resources/drag-drop-allowed.html [ Skip ]
-webkit.org/b/63706 plugins/mouse-events-fixedpos.html [ Failure ]
-webkit.org/b/63706 plugins/mouse-events.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/cleanup-on-move.html [ Failure ]
-webkit.org/b/63706 editing/pasteboard/drag-list-item.html [ Failure ]
-webkit.org/b/63706 fast/events/ondragenter.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-customData.html  [ Timeout ]
+webkit.org/b/157179 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
+webkit.org/b/157179 fast/events/drag-parent-node.html [ Failure ]
+webkit.org/b/157179 fast/events/dropzone-001.html [ Failure Timeout ]
+webkit.org/b/157179 fast/events/dropzone-002.html [ Failure Timeout ]
+webkit.org/b/157179 fast/events/dropzone-003.html [ Failure Timeout ]
+webkit.org/b/157179 fast/events/ondrop-text-html.html [ Failure ]
+webkit.org/b/157179 fast/events/selectstart-by-drag.html [ Failure ]
+webkit.org/b/157179 fast/events/standalone-image-drag-to-editable.html [ Failure Timeout ]
+webkit.org/b/157179 fast/forms/drag-into-textarea.html [ Failure ]
+webkit.org/b/157179 fast/forms/drag-out-of-textarea.html [ Failure ]
+webkit.org/b/157179 fast/forms/range/slider-delete-while-dragging-thumb.html [ Failure ]
+webkit.org/b/157179 fast/lists/drag-into-marker.html [ Failure ]
+webkit.org/b/157179 http/tests/security/resources/drag-drop-allowed.html [ Skip ]
+webkit.org/b/157179 plugins/mouse-events-fixedpos.html [ Failure ]
+webkit.org/b/157179 plugins/mouse-events.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/cleanup-on-move.html [ Failure ]
+webkit.org/b/157179 editing/pasteboard/drag-list-item.html [ Failure ]
+webkit.org/b/157179 fast/events/ondragenter.html [ Failure ]
+webkit.org/b/157179 fast/events/drag-customData.html  [ Timeout ]
+webkit.org/b/157179 fast/events/drag-and-drop-autoscroll-inner-frame.html [ Timeout ]
+webkit.org/b/157179 fast/events/drag-and-drop-link-fast-multiple-times-does-not-crash.html [ Timeout ]
 
 # Need support for internals.settings.setDeviceSupportsMouse
 fast/events/touch/scroll-without-mouse-lacks-mousemove-events.html
@@ -1841,14 +1842,11 @@ webkit.org/b/73766 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFail
 # Need platform specific update to test to make it run.
 
 webkit.org/b/98357 accessibility/aria-readonly.html [ Failure ]
-webkit.org/b/98359 accessibility/aria-text-role.html [ Failure ]
 webkit.org/b/98363 accessibility/canvas-fallback-content-2.html [ Failure ]
 webkit.org/b/98372 accessibility/onclick-handlers.html [ Failure ]
 webkit.org/b/98377 accessibility/textarea-insertion-point-line-number.html [ Failure ]
 webkit.org/b/98380 accessibility/th-as-title-ui.html [ Failure ]
 webkit.org/b/98382 accessibility/visible-elements.html [ Failure ]
-
-webkit.org/b/125506 accessibility/alt-tag-on-image-with-nonimage-role.html [ Failure ]
 
 # Blur and focus events are not received for the following tests.
 Bug(GTK) fast/events/frame-tab-focus.html [ Failure ]
@@ -1941,9 +1939,7 @@ Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T4.
 Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T5.html [ Failure ]
 Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T6.html [ Failure ]
 
-# r65681 broke a couple GTK+ a11y tests
-webkit.org/b/44316 accessibility/gtk/object-attributes.html [ Failure ]
-webkit.org/b/44316 accessibility/gtk/title-and-alt.html [ Failure ]
+webkit.org/b/157187 accessibility/gtk/title-and-alt.html [ Failure ]
 
 # Expose title direction in WebKit API
 webkit.org/b/58845 fast/dom/title-directionality.html [ Failure ]
@@ -2093,8 +2089,6 @@ webkit.org/b/116153 fast/css/text-overflow-ellipsis-full-truncate-rtl.html [ Ima
 
 webkit.org/b/116806 fast/css/text-overflow-ellipsis-behind-floats.html [ ImageOnlyFailure ]
 
-webkit.org/b/117581 accessibility/text-role-with-aria-hidden-inside.html [ Failure ]
-
 webkit.org/b/117582 fast/flexbox/clear-overflow-before-scroll-update.html [ Failure ]
 
 webkit.org/b/118220 http/tests/cache/partitioned-cache.html [ Failure ]
@@ -2139,8 +2133,6 @@ webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inl
 webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-lr.html [ ImageOnlyFailure ]
 webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline-rl.html [ ImageOnlyFailure ]
 webkit.org/b/124834 fast/regions/overflow/overflow-in-variable-width-regions-inline.html [ ImageOnlyFailure ]
-
-webkit.org/b/125348 accessibility/document-attributes.html [ Failure ]
 
 webkit.org/b/125406 fast/regions/relative-in-absolute-borders-overflow.html [ ImageOnlyFailure ]
 

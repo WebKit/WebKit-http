@@ -1,3 +1,1474 @@
+2016-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r200383 and r200406.
+
+        Seems to have caused crashes on iOS / ARMv7s
+
+        Reverted changesets:
+
+        "Speed up JSGlobalObject initialization by making some
+        properties lazy"
+        https://bugs.webkit.org/show_bug.cgi?id=157045
+        http://trac.webkit.org/changeset/200383
+
+        "REGRESSION(r200383): Setting lazily initialized properties
+        across frame boundaries crashes"
+        https://bugs.webkit.org/show_bug.cgi?id=157333
+        http://trac.webkit.org/changeset/200406
+
+2016-05-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Assertion failure for super() call in direct eval in method function
+        https://bugs.webkit.org/show_bug.cgi?id=157091
+
+        Reviewed by Darin Adler.
+
+        While we ensure that direct super is under the correct context,
+        we don't check it for the eval code. This patch moves the check from the end of parsing the function
+        to the places where we found the direct super or the super bindings. This covers the direct eval that
+        contains the direct super calls.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseGeneratorFunctionSourceElements):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        (JSC::Scope::hasDirectSuper):
+        (JSC::Scope::setHasDirectSuper):
+        (JSC::Scope::needsSuperBinding):
+        (JSC::Scope::setNeedsSuperBinding):
+        (JSC::Parser::closestParentOrdinaryFunctionNonLexicalScope):
+        * tests/stress/eval-and-super.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (prototype.m):
+        (prototype.n):
+        * tests/stress/generator-and-super.js: Added.
+        (testSyntaxError):
+        (testSyntaxError.Base.prototype.hello):
+        (testSyntaxError.Base.prototype.ok):
+        (testSyntaxError.Base):
+        (Hello.prototype.gen):
+        (Hello):
+        (testSyntaxError.hello):
+
+2016-05-03  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r200383): Setting lazily initialized properties across frame boundaries crashes
+        https://bugs.webkit.org/show_bug.cgi?id=157333
+
+        Reviewed by Benjamin Poulain.
+        
+        I forgot to add logic for lazy properties in putEntry(). It turns out that it's easy to
+        add.
+
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/PropertySlot.h:
+
+2016-05-03  Filip Pizlo  <fpizlo@apple.com>
+
+        References from code to Structures should be stronger than weak
+        https://bugs.webkit.org/show_bug.cgi?id=157324
+
+        Reviewed by Mark Lam.
+        
+        If code refers to a Structure and the Structure dies, then previously we'd kill the code. 
+        This makes sense because the Structure could be the only thing left referring to some global
+        object or prototype.
+
+        But this also causes unnecessary churn. Sometimes there will be a structure that we just
+        haven't really done anything with recently and so it appears dead. The approach we use
+        elsewhere in our type inference is that the type that the code uses is general enough to
+        handle every past execution. Having the GC clear code when some Structure it uses dies means
+        that we forget that the code used that Structure. We'll either assume that the code is more
+        monomorphic than it really is (because after GC we patch in some other structure but not the
+        deleted one, so it looks like we only ever saw the new structure), or we'll assume that it's
+        crazier than it really is (because we'll remember that there had been some structure that
+        caused deletion, so we'll assume that deletions might happen in the future, so we'll use a
+        fully dynamic IC).
+
+        This change introduces a more nuanced policy: if it's cheap to mark a dead Structure then we
+        should mark it just so that all of the code that refers to it remembers that there had been
+        this exact Structure in the past. If the code often goes through different Structures then
+        we already have great mechanisms to realize that the code is nutty (namely, the
+        PolymorphicAccess size limit). But if the code just does this a handful of times then
+        remembering this old Structure is probably net good:
+
+        - It obeys the "handle all past executions" law.
+        - It preserves the history of the property access, allowing a precise measure of its past
+          polymorphism.
+        - It makes the code ready to run fast if the user decides to use that Structure again.
+          Marking the Structure means it will stay in whatever property transition tables it was in,
+          so if the program does the same thing it did in the past, it will get this old Structure.
+
+        It looks like this is a progression in gbemu and it makes gbemu perform more
+        deterministically. Also, it seems that this makes JetStream run faster.
+        
+        Over five in-browser runs of JetStream, here's what we see before and after:
+        
+        Geometric Mean:
+            Before              After
+            229.23 +- 8.2523    230.70 +- 12.888
+            232.91 +- 15.638    239.04 +- 13.766
+            234.79 +- 12.760    236.32 +- 15.562
+            236.20 +- 23.125    242.02 +- 3.3865
+            237.22 +- 2.1929    237.23 +- 17.664
+        
+        Just gbemu:
+            Before              After
+            541.0 +- 135.8      481.7 +- 143.4
+            518.9 +- 15.65      508.1 +- 136.3
+            362.5 +- 0.8884     489.7 +- 101.4
+            470.7 +- 313.3      530.7 +- 11.49
+            418.7 +- 180.6      537.2 +- 6.514
+        
+        Notice that there is plenty of noise before and after, but the noise is now far less severe.
+        After this change I did not see any runs like "470.7 +- 313.3" where the size of the 
+        confidence interval (313.3 * 2) is greater than the score (470.7). Also, notice that the
+        least noisy run before the change also got a lower score than we ever observed after the
+        change (36.5 +- 0.8884). The noise, and these occasional very low scores, are due to a
+        pathology where the GC would reset some stubs at an unfortunate time during profiling,
+        causing the optimizing compiler to make many poor decisions. That pathology doesn't exist
+        anymore.
+        
+        On the other hand, prior to this change it was possible for gbemu to sometimes run sooooper
+        fast because the GC would cause the profiler to forget gbemu's behavior on the first tick
+        and focus only on its behavior in subsequent ticks. So, in steady state, we'd optimize gbemu
+        for its later behavior rather than a combination of its early behavior and later behavior.
+        We rarely got lucky this way, so it's not fair to view this quirk as a feature.
+        
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::propagateTransitions):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::visitWeak):
+        (JSC::AccessCase::propagateTransitions):
+        (JSC::AccessCase::generateWithGuard):
+        (JSC::PolymorphicAccess::visitWeak):
+        (JSC::PolymorphicAccess::propagateTransitions):
+        (JSC::PolymorphicAccess::dump):
+        * bytecode/PolymorphicAccess.h:
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::visitWeakReferences):
+        (JSC::StructureStubInfo::propagateTransitions):
+        (JSC::StructureStubInfo::containsPC):
+        * bytecode/StructureStubInfo.h:
+        (JSC::StructureStubInfo::considerCaching):
+        * runtime/Structure.cpp:
+        (JSC::Structure::visitChildren):
+        (JSC::Structure::isCheapDuringGC):
+        (JSC::Structure::markIfCheap):
+        (JSC::Structure::prototypeChainMayInterceptStoreTo):
+        * runtime/Structure.h:
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Simplify console.clear
+        https://bugs.webkit.org/show_bug.cgi?id=157316
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/ScriptArguments.cpp:
+        (Inspector::ScriptArguments::createEmpty):
+        (Inspector::ScriptArguments::ScriptArguments):
+        * inspector/ScriptArguments.h:
+        Provide a way to create an empty list.
+
+        * runtime/ConsoleClient.cpp:
+        (JSC::ConsoleClient::clear):
+        * runtime/ConsoleClient.h:
+        Drop unnecessary parameter.
+
+        * runtime/ConsoleObject.cpp:
+        (JSC::consoleProtoFuncClear):
+        No need to parse arguments.
+
+2016-05-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Improve Symbol() to string coercion error message
+        https://bugs.webkit.org/show_bug.cgi?id=157317
+
+        Reviewed by Geoffrey Garen.
+
+        Improve error messages related to Symbols.
+
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::toStringSlowCase):
+        * runtime/Symbol.cpp:
+        (JSC::Symbol::toNumber):
+        * runtime/SymbolConstructor.cpp:
+        (JSC::symbolConstructorKeyFor):
+        * runtime/SymbolPrototype.cpp:
+        (JSC::symbolProtoFuncToString):
+        (JSC::symbolProtoFuncValueOf):
+        * tests/stress/dfg-to-primitive-pass-symbol.js:
+        * tests/stress/floating-point-div-to-mul.js:
+        (i.catch):
+        * tests/stress/string-from-code-point.js:
+        (shouldThrow):
+        (string_appeared_here.shouldThrow):
+        * tests/stress/symbol-error-messages.js: Added.
+        (shouldThrow):
+        * tests/stress/symbol-registry.js:
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Give console.time/timeEnd a default label and warnings
+        https://bugs.webkit.org/show_bug.cgi?id=157325
+        <rdar://problem/26073290>
+
+        Reviewed by Timothy Hatcher.
+
+        Provide more user friendly console.time/timeEnd. The timer name
+        is now optional, and is "default" if not provided. Also provide
+        warnings when attempting to start an already started timer,
+        or stop a timer that does not exist.
+
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::startTiming):
+        (Inspector::InspectorConsoleAgent::stopTiming):
+        Warnings for bad cases.
+
+        * runtime/ConsoleObject.cpp:
+        (JSC::defaultLabelString):
+        (JSC::consoleProtoFuncTime):
+        (JSC::consoleProtoFuncTimeEnd):
+        Optional label becomes "default".
+
+2016-05-03  Xan Lopez  <xlopez@igalia.com>
+
+        Fix the ENABLE(WEBASSEMBLY) build
+        https://bugs.webkit.org/show_bug.cgi?id=157312
+
+        Reviewed by Darin Adler.
+
+        * runtime/Executable.cpp:
+        (JSC::WebAssemblyExecutable::WebAssemblyExecutable):
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::convertValueToDouble):
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused parameter of ScriptArguments::getFirstArgumentAsString
+        https://bugs.webkit.org/show_bug.cgi?id=157301
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/ScriptArguments.cpp:
+        (Inspector::ScriptArguments::getFirstArgumentAsString):
+        * inspector/ScriptArguments.h:
+        Remove unused argument and related code.
+
+        * runtime/ConsoleClient.cpp:
+        (JSC::ConsoleClient::printConsoleMessageWithArguments):
+        Drive by remove unnecessary cast.
+
+2016-05-03  Michael Saboff  <msaboff@apple.com>
+
+        Crash: Array.prototype.slice() and .splice() can call fastSlice() after an array is truncated
+        https://bugs.webkit.org/show_bug.cgi?id=157322
+
+        Reviewed by Filip Pizlo.
+
+        Check to see if the source array has changed length before calling fastSlice().
+        If it has, take the slow path.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSlice):
+        (JSC::arrayProtoFuncSplice):
+        * tests/stress/regress-157322.js: New test.
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Eliminate PassRefPtr conversion from ConsoleObject
+        https://bugs.webkit.org/show_bug.cgi?id=157300
+
+        Reviewed by Timothy Hatcher.
+
+        * runtime/ConsoleObject.cpp:
+        (JSC::consoleLogWithLevel):
+        (JSC::consoleProtoFuncClear):
+        (JSC::consoleProtoFuncDir):
+        (JSC::consoleProtoFuncDirXML):
+        (JSC::consoleProtoFuncTable):
+        (JSC::consoleProtoFuncTrace):
+        (JSC::consoleProtoFuncAssert):
+        (JSC::consoleProtoFuncCount):
+        (JSC::consoleProtoFuncTimeStamp):
+        (JSC::consoleProtoFuncGroup):
+        (JSC::consoleProtoFuncGroupCollapsed):
+        (JSC::consoleProtoFuncGroupEnd):
+        No need to release to a PassRefPtr, we can just move into the RefPtr<>&&.
+
+2016-05-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Speed up JSGlobalObject initialization by making some properties lazy
+        https://bugs.webkit.org/show_bug.cgi?id=157045
+
+        Reviewed by Keith Miller.
+        
+        This makes about half of JSGlobalObject's state lazy. There are three categories of
+        state in JSGlobalObject:
+        
+        1) C++ fields in JSGlobalObject.
+        2) JS object properties in JSGlobalObject's JSObject superclass.
+        3) JS variables in JSGlobalObject's JSSegmentedVariableObject superclass.
+        
+        State held in JS variables cannot yet be made lazy. That's why this patch only goes
+        half-way.
+        
+        State in JS object properties can be made lazy if we move it to the static property
+        hashtable. JSGlobalObject already had one of those. This patch makes static property
+        hashtables a lot more powerful, by adding three new kinds of static properties. These
+        new kinds allow us to make almost all of JSGlobalObject's object properties lazy.
+        
+        State in C++ fields can now be made lazy thanks in part to WTF's support for stateless
+        lambdas. You can of course make anything lazy by hand, but there are many C++ fields in
+        JSGlobalObject and we are adding more all the time. We don't want to require that each
+        of these has a getter with an initialization check and a corresponding out-of-line slow
+        path that does the initialization. We want this kind of boilerplate to be handled by
+        some abstractions.
+        
+        The primary abstraction introduced in this patch is LazyProperty<Type>. Currently, this
+        only works where Type is a subclass of JSCell. Such a property holds a pointer to Type.
+        You can use it like you would a WriteBarrier<Type>. It even has set() and get() methods,
+        so it's almost a drop-in replacement.
+        
+        The key to LazyProperty<Type>'s power is that you can do this:
+        
+            class Bar {
+                ...
+                LazyProperty<Foo> m_foo;
+            };
+            ...
+            m_foo.initLater(
+                [] (const LazyProperty<Foo>::Initializer<Bar>& init) {
+                    init.set(Foo::create(init.vm, init.owner));
+                });
+        
+        This initLater() call requires that you pass a stateless lambda (see WTF changelog for
+        the definition). Miraculously, this initLater() call is guaranteed to compile to a store
+        of a pointer constant to m_foo, as in:
+        
+            movabsq 0xBLAH, %rax
+            movq %rax, &m_foo
+        
+        This magical pointer constant points to a callback that was generated by the template
+        instantiation of initLater(). That callback knows to call your stateless lambda, but
+        also does some other bookkeeping: it makes sure that you indeed initialized the property
+        inside the callback and it manages recursive initializations. It's totally legal to call
+        m_foo.get() inside the initLater() callback. If you do that before you call init.set(),
+        m_foo.get() will return null. This is an excellent escape hatch if we ever find
+        ourselves in a dependency cycle. I added this feature because I already had to create a
+        dependency cycle.
+        
+        Note that using LazyProperties from DFG threads is super awkward. It's going to be hard
+        to get this right. The DFG thread cannot initialize those fields, so it has to make sure
+        that it does conservative things. But for some nodes this could mean adding a lot of new
+        logic, like NewTypedArray, which currently is written in such a way that it assumes that
+        we always have the typed array structure. Currently we take a two-fold approach: for
+        typed arrays we don't handle the NewTypedArray intrinsic if the structure isn't
+        initialized, and for everything else we don't make the properties lazy if the DFG needs
+        them. As we optimize this further we might need to teach the DFG to handle more lazy
+        properties. I tried to do this for RegExp but found it to be very confusing. With typed
+        arrays I got lucky.
+        
+        There is also a somewhat more powerful construct called LazyClassStructure. We often
+        need to keep around the structure of some standard JS class, like Date. We also need to
+        make sure that the constructor ends up in the global object's property table. And we
+        often need to keep the original value of the constructor for ourselves. In this case, we
+        want to make sure that the creation of the structure-prototype-constructor constellation
+        is atomic. We don't want code to start looking at the structure if it points to a
+        prototype that doesn't have its "constructor" property set yet, for example.
+        LazyClassStructure solves this by abstracting that whole initialization. You provide the
+        callback that allocates everything, since we are super inconsistent about the way we
+        initialize things, but LazyClassStructure establishes the workflow and helps you not
+        mess up.
+        
+        Finally, the new static hashtable attributes allow for all of this to work with the JS
+        property table:
+        
+        PropertyCallback: if you use this attribute, the second column in the table should be
+        the name of a function to call to initialize this property. This is useful for things
+        like the Math property. The Math object turns out to be very expensive to allocate.
+        Delaying its allocation is super easy with the PropertyCallback attribute.
+        
+        CellProperty: with this attribute the second column should be a C++ field name like
+        JSGlobalObject::m_evalErrorConstructor. The static hashtable will grab the offset of
+        this property, and when it needs to be initialized, Lookup will assume you have a
+        LazyProperty<JSCell> and call its get() method. It will initialize the property to
+        whatever get() returned. Note that it's legal to cast a LazyProperty<Anything> to
+        LazyProperty<JSCell> for the purpose of calling get() because the get() method will just
+        call whatever callback function pointer is encoded in the property and it does not need
+        to know anything about what type that callback will instantiate.
+        
+        ClassStructure: with this attribute the second column should be a C++ field name. The
+        static hashtable will initialize the property by treating the field as a
+        LazyClassStructure and it will call get(). LazyClassStructure completely owns the whole
+        initialization workflow, so Lookup assumes that when LazyClassStructure::get() returns,
+        the property in question will already be set. By convention, we have LazyClassStructure
+        initialize the property with a pointer to the constructor, since that's how all of our
+        classes work: "globalObject.Date" points to the DateConstructor.
+        
+        This is a 2x speed-up in JSGlobalObject initialization time in a microbenchmark that
+        calls our C API. This is a 1% speed-up on SunSpider and JSRegress.
+
+        * API/JSCallbackFunction.cpp:
+        (JSC::JSCallbackFunction::create):
+        * API/ObjCCallbackFunction.h:
+        (JSC::ObjCCallbackFunction::impl):
+        * API/ObjCCallbackFunction.mm:
+        (JSC::ObjCCallbackFunction::ObjCCallbackFunction):
+        (JSC::ObjCCallbackFunction::create):
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * create_hash_table:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::set):
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::originalArrayStructure):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleTypedArrayConstructor):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewTypedArray):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewTypedArray):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::getOwnPropertySlot):
+        (JSC::ClonedArguments::materializeSpecials):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::visitChildren):
+        (JSC::InternalFunction::name):
+        (JSC::InternalFunction::calculatedDisplayName):
+        (JSC::InternalFunction::createSubclassStructure):
+        * runtime/InternalFunction.h:
+        * runtime/JSBoundFunction.cpp:
+        (JSC::JSBoundFunction::finishCreation):
+        (JSC::JSBoundFunction::visitChildren):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayView):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::createProxyProperty):
+        (JSC::createJSONProperty):
+        (JSC::createMathProperty):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::stringPrototypeChainIsSane):
+        (JSC::JSGlobalObject::resetPrototype):
+        (JSC::JSGlobalObject::visitChildren):
+        (JSC::JSGlobalObject::toThis):
+        (JSC::JSGlobalObject::getOwnPropertySlot):
+        (JSC::JSGlobalObject::createThrowTypeError): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::objectConstructor):
+        (JSC::JSGlobalObject::promiseConstructor):
+        (JSC::JSGlobalObject::internalPromiseConstructor):
+        (JSC::JSGlobalObject::evalErrorConstructor):
+        (JSC::JSGlobalObject::rangeErrorConstructor):
+        (JSC::JSGlobalObject::referenceErrorConstructor):
+        (JSC::JSGlobalObject::syntaxErrorConstructor):
+        (JSC::JSGlobalObject::typeErrorConstructor):
+        (JSC::JSGlobalObject::URIErrorConstructor):
+        (JSC::JSGlobalObject::nullGetterFunction):
+        (JSC::JSGlobalObject::nullSetterFunction):
+        (JSC::JSGlobalObject::callFunction):
+        (JSC::JSGlobalObject::applyFunction):
+        (JSC::JSGlobalObject::definePropertyFunction):
+        (JSC::JSGlobalObject::arrayProtoValuesFunction):
+        (JSC::JSGlobalObject::initializePromiseFunction):
+        (JSC::JSGlobalObject::newPromiseCapabilityFunction):
+        (JSC::JSGlobalObject::functionProtoHasInstanceSymbolFunction):
+        (JSC::JSGlobalObject::regExpProtoExecFunction):
+        (JSC::JSGlobalObject::regExpProtoSymbolReplaceFunction):
+        (JSC::JSGlobalObject::regExpProtoGlobalGetter):
+        (JSC::JSGlobalObject::regExpProtoUnicodeGetter):
+        (JSC::JSGlobalObject::throwTypeErrorGetterSetter):
+        (JSC::JSGlobalObject::moduleLoader):
+        (JSC::JSGlobalObject::objectPrototype):
+        (JSC::JSGlobalObject::functionPrototype):
+        (JSC::JSGlobalObject::arrayPrototype):
+        (JSC::JSGlobalObject::booleanPrototype):
+        (JSC::JSGlobalObject::stringPrototype):
+        (JSC::JSGlobalObject::symbolPrototype):
+        (JSC::JSGlobalObject::numberPrototype):
+        (JSC::JSGlobalObject::datePrototype):
+        (JSC::JSGlobalObject::regExpPrototype):
+        (JSC::JSGlobalObject::errorPrototype):
+        (JSC::JSGlobalObject::iteratorPrototype):
+        (JSC::JSGlobalObject::generatorFunctionPrototype):
+        (JSC::JSGlobalObject::generatorPrototype):
+        (JSC::JSGlobalObject::debuggerScopeStructure):
+        (JSC::JSGlobalObject::withScopeStructure):
+        (JSC::JSGlobalObject::strictEvalActivationStructure):
+        (JSC::JSGlobalObject::activationStructure):
+        (JSC::JSGlobalObject::moduleEnvironmentStructure):
+        (JSC::JSGlobalObject::directArgumentsStructure):
+        (JSC::JSGlobalObject::scopedArgumentsStructure):
+        (JSC::JSGlobalObject::clonedArgumentsStructure):
+        (JSC::JSGlobalObject::isOriginalArrayStructure):
+        (JSC::JSGlobalObject::booleanObjectStructure):
+        (JSC::JSGlobalObject::callbackConstructorStructure):
+        (JSC::JSGlobalObject::callbackFunctionStructure):
+        (JSC::JSGlobalObject::callbackObjectStructure):
+        (JSC::JSGlobalObject::propertyNameIteratorStructure):
+        (JSC::JSGlobalObject::objcCallbackFunctionStructure):
+        (JSC::JSGlobalObject::objcWrapperObjectStructure):
+        (JSC::JSGlobalObject::dateStructure):
+        (JSC::JSGlobalObject::nullPrototypeObjectStructure):
+        (JSC::JSGlobalObject::errorStructure):
+        (JSC::JSGlobalObject::calleeStructure):
+        (JSC::JSGlobalObject::functionStructure):
+        (JSC::JSGlobalObject::boundFunctionStructure):
+        (JSC::JSGlobalObject::boundSlotBaseFunctionStructure):
+        (JSC::JSGlobalObject::getterSetterStructure):
+        (JSC::JSGlobalObject::nativeStdFunctionStructure):
+        (JSC::JSGlobalObject::namedFunctionStructure):
+        (JSC::JSGlobalObject::functionNameOffset):
+        (JSC::JSGlobalObject::numberObjectStructure):
+        (JSC::JSGlobalObject::privateNameStructure):
+        (JSC::JSGlobalObject::mapStructure):
+        (JSC::JSGlobalObject::regExpStructure):
+        (JSC::JSGlobalObject::generatorFunctionStructure):
+        (JSC::JSGlobalObject::setStructure):
+        (JSC::JSGlobalObject::stringObjectStructure):
+        (JSC::JSGlobalObject::symbolObjectStructure):
+        (JSC::JSGlobalObject::iteratorResultObjectStructure):
+        (JSC::JSGlobalObject::lazyTypedArrayStructure):
+        (JSC::JSGlobalObject::typedArrayStructure):
+        (JSC::JSGlobalObject::typedArrayStructureConcurrently):
+        (JSC::JSGlobalObject::isOriginalTypedArrayStructure):
+        (JSC::JSGlobalObject::typedArrayConstructor):
+        (JSC::JSGlobalObject::actualPointerFor):
+        (JSC::JSGlobalObject::internalFunctionStructure): Deleted.
+        * runtime/JSNativeStdFunction.cpp:
+        (JSC::JSNativeStdFunction::create):
+        * runtime/JSWithScope.cpp:
+        (JSC::JSWithScope::create):
+        (JSC::JSWithScope::visitChildren):
+        (JSC::JSWithScope::createStructure):
+        (JSC::JSWithScope::JSWithScope):
+        * runtime/JSWithScope.h:
+        (JSC::JSWithScope::object):
+        (JSC::JSWithScope::create): Deleted.
+        (JSC::JSWithScope::createStructure): Deleted.
+        (JSC::JSWithScope::JSWithScope): Deleted.
+        * runtime/LazyClassStructure.cpp: Added.
+        (JSC::LazyClassStructure::Initializer::Initializer):
+        (JSC::LazyClassStructure::Initializer::setPrototype):
+        (JSC::LazyClassStructure::Initializer::setStructure):
+        (JSC::LazyClassStructure::Initializer::setConstructor):
+        (JSC::LazyClassStructure::visit):
+        (JSC::LazyClassStructure::dump):
+        * runtime/LazyClassStructure.h: Added.
+        (JSC::LazyClassStructure::LazyClassStructure):
+        (JSC::LazyClassStructure::get):
+        (JSC::LazyClassStructure::prototype):
+        (JSC::LazyClassStructure::constructor):
+        (JSC::LazyClassStructure::getConcurrently):
+        (JSC::LazyClassStructure::prototypeConcurrently):
+        (JSC::LazyClassStructure::constructorConcurrently):
+        * runtime/LazyClassStructureInlines.h: Added.
+        (JSC::LazyClassStructure::initLater):
+        * runtime/LazyProperty.h: Added.
+        (JSC::LazyProperty::Initializer::Initializer):
+        (JSC::LazyProperty::LazyProperty):
+        (JSC::LazyProperty::get):
+        (JSC::LazyProperty::getConcurrently):
+        * runtime/LazyPropertyInlines.h: Added.
+        (JSC::LazyProperty<ElementType>::Initializer<OwnerType>::set):
+        (JSC::LazyProperty<ElementType>::initLater):
+        (JSC::LazyProperty<ElementType>::setMayBeNull):
+        (JSC::LazyProperty<ElementType>::set):
+        (JSC::LazyProperty<ElementType>::visit):
+        (JSC::LazyProperty<ElementType>::dump):
+        (JSC::LazyProperty<ElementType>::callFunc):
+        * runtime/Lookup.cpp:
+        (JSC::setUpStaticFunctionSlot):
+        * runtime/Lookup.h:
+        (JSC::HashTableValue::function):
+        (JSC::HashTableValue::functionLength):
+        (JSC::HashTableValue::propertyGetter):
+        (JSC::HashTableValue::propertyPutter):
+        (JSC::HashTableValue::accessorGetter):
+        (JSC::HashTableValue::accessorSetter):
+        (JSC::HashTableValue::constantInteger):
+        (JSC::HashTableValue::lexerValue):
+        (JSC::HashTableValue::lazyCellPropertyOffset):
+        (JSC::HashTableValue::lazyClassStructureOffset):
+        (JSC::HashTableValue::lazyPropertyCallback):
+        (JSC::getStaticPropertySlot):
+        (JSC::getStaticValueSlot):
+        (JSC::reifyStaticProperty):
+        * runtime/PropertySlot.h:
+        * runtime/TypedArrayType.h:
+
+2016-05-03  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Remove Windows XP Compatibility Requirements
+        https://bugs.webkit.org/show_bug.cgi?id=152899
+
+        Reviewed by Brent Fulgham.
+
+        Windows XP is not supported anymore, we can remove workarounds.
+
+        * JavaScriptCore.vcxproj/jsc/DLLLauncherMain.cpp:
+        (enableTerminationOnHeapCorruption):
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.assert should do far less work when the assertion is true
+        https://bugs.webkit.org/show_bug.cgi?id=157297
+        <rdar://problem/26056556>
+
+        Reviewed by Timothy Hatcher.
+
+        * runtime/ConsoleClient.h:
+        * runtime/ConsoleClient.cpp:
+        (JSC::ConsoleClient::assertion):
+        (JSC::ConsoleClient::assertCondition): Deleted.
+        Rename, now that this will only get called when the assertion failed.
+
+        * runtime/ConsoleObject.cpp:
+        (JSC::consoleProtoFuncAssert):
+        Avoid doing any work if the assertion succeeded.
+
+2016-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed follow-up testapi fix after r200355.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        Revert back to non-enumerable. This matches our older behavior,
+        we can decide to make this Enumerable later if needed.
+
+2016-05-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reflect.toString() should be [object Object] not [object Reflect]
+        https://bugs.webkit.org/show_bug.cgi?id=157288
+
+        Reviewed by Darin Adler.
+
+        * runtime/ReflectObject.cpp:
+        * tests/stress/reflect.js: Added.
+
+2016-05-02  Jon Davis  <jond@apple.com>
+
+        Add Resource Timing entry to the Feature Status page.
+        https://bugs.webkit.org/show_bug.cgi?id=157285
+
+        Reviewed by Timothy Hatcher.
+
+        * features.json:
+
+2016-05-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Make console a namespace object (like Math/JSON), allowing functions to be called unbound
+        https://bugs.webkit.org/show_bug.cgi?id=157286
+        <rdar://problem/26052830>
+
+        Reviewed by Timothy Hatcher.
+
+        This changes `console` to be a global namespace object, like `Math` and `JSON`.
+        It just holds a bunch of functions, that can be used on their own, unbound.
+        For example, `[1,2,3].forEach(console.log)` and `var log = console.log; log(1)`
+        used to throw exceptions and now do not.
+
+        Previously console was an Object/Prototype pair, so functions were on
+        ConsolePrototype (console.__proto__.log) and they needed to be called
+        Console objects as the `this` value. Now, `console` is just a standard
+        object with a bunch of functions. Since there is no console prototype the
+        functions can be passed around and called as expected and they will
+        just do the right thing.
+
+        For compatability with other browsers, `console` was made enumerable
+        on the global object.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        Add new files and remove old files.
+
+        * runtime/CommonIdentifiers.h:
+        Add "console".
+
+        * runtime/ConsoleObject.cpp: Renamed from Source/JavaScriptCore/runtime/ConsolePrototype.cpp.
+        (JSC::ConsoleObject::ConsoleObject):
+        (JSC::ConsoleObject::finishCreation):
+        (JSC::valueToStringWithUndefinedOrNullCheck):
+        (JSC::consoleLogWithLevel):
+        (JSC::consoleProtoFuncDebug):
+        (JSC::consoleProtoFuncError):
+        (JSC::consoleProtoFuncLog):
+        (JSC::consoleProtoFuncInfo):
+        (JSC::consoleProtoFuncWarn):
+        (JSC::consoleProtoFuncClear):
+        (JSC::consoleProtoFuncDir):
+        (JSC::consoleProtoFuncDirXML):
+        (JSC::consoleProtoFuncTable):
+        (JSC::consoleProtoFuncTrace):
+        (JSC::consoleProtoFuncAssert):
+        (JSC::consoleProtoFuncCount):
+        (JSC::consoleProtoFuncProfile):
+        (JSC::consoleProtoFuncProfileEnd):
+        (JSC::consoleProtoFuncTakeHeapSnapshot):
+        (JSC::consoleProtoFuncTime):
+        (JSC::consoleProtoFuncTimeEnd):
+        (JSC::consoleProtoFuncTimeStamp):
+        (JSC::consoleProtoFuncGroup):
+        (JSC::consoleProtoFuncGroupCollapsed):
+        (JSC::consoleProtoFuncGroupEnd):
+        Console functions no longer need to check if the this object is
+        a Console object. They will always just work now.
+
+        * runtime/MathObject.cpp:
+        * runtime/MathObject.h:
+        * runtime/ConsoleObject.h: Renamed from Source/JavaScriptCore/runtime/ConsolePrototype.h.
+        (JSC::ConsoleObject::create):
+        (JSC::ConsoleObject::createStructure):
+        ConsoleObject is a basic object like MathObject.
+
+        * runtime/JSConsole.cpp: Removed.
+        * runtime/JSConsole.h: Removed.
+        * runtime/JSGlobalObject.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        Remove JSConsole / ConsolePrototype in favor of the single ConsoleObject.
+
+2016-05-02  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Clean up annoying compiler warnings
+        https://bugs.webkit.org/show_bug.cgi?id=149813
+
+        Reviewed by Alex Christensen.
+
+        * bytecode/PropertyCondition.cpp:
+        (JSC::PropertyCondition::isWatchableWhenValid):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::BackendDispatcher::sendPendingErrors):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileOpCall):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createWithInlineFrame):
+        * runtime/Error.cpp:
+        (JSC::addErrorInfoAndGetBytecodeOffset):
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::IntlNumberFormat::initializeNumberFormat):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::heapSnapshot):
+        (JSC::callToPrimitiveFunction):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::flagsString):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::StackFrame::functionStartColumn):
+
+2016-05-02  Keith Miller  <keith_miller@apple.com>
+
+        ToThis should be able to be eliminated in Constant Folding
+        https://bugs.webkit.org/show_bug.cgi?id=157213
+
+        Reviewed by Saam Barati.
+
+        This patch enables eliminating the ToThis value when we have abstract interpreter
+        indicates the node is not needed. Since there are Objects that override their
+        ToThis behavior we first check if we can eliminate the node by looking at its
+        speculated type. If the function is in strict mode then we can eliminate ToThis as
+        long as the speculated type is not SpecObjectOther since that contains objects
+        that may set OverridesToThis. If the function is not in strict mode then we can
+        eliminate ToThis as long is the speculated type is an object that is not SpecObjectOther.
+
+        If we can't eliminate with type information we can still eliminate the ToThis node with
+        the proven structure set. When ToThis only sees structures that do not set OverridesToThis
+        it can be eliminated. Additionally, if the function is in strict mode then we can eliminate
+        ToThis as long as all only the object structures don't set OverridesToThis.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::isToThisAnIdentity):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupToThis):
+        * tests/stress/to-this-global-object.js: Added.
+        (test):
+        (test2):
+        (get for):
+
+2016-05-01  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Class contructor and methods shouldn't have "arguments" and "caller"
+        https://bugs.webkit.org/show_bug.cgi?id=144238
+
+        Reviewed by Ryosuke Niwa.
+
+        Added TypeError that is raised in case of access to properties 'arguments' or 'caller'
+        of constructor or method of class. Actually TypeError already raised for most cases, except
+        case with undeclared constructor e. g. 
+        class A {}
+        (new A).constructor.caller 
+        (new A).constructor.arguments
+
+        * runtime/JSFunction.cpp:
+        (JSC::getThrowTypeErrorGetterSetter):
+        (JSC::JSFunction::getOwnPropertySlot):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::createThrowTypeErrorArgumentsAndCaller):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::throwTypeErrorArgumentsAndCallerGetterSetter):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncThrowTypeErrorArgumentsAndCaller):
+        * runtime/JSGlobalObjectFunctions.h:
+
+2016-05-02  Yoav Weiss  <yoav@yoav.ws>
+
+        Move ResourceTiming behind a runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=157133
+
+        Reviewed by Alex Christensen.
+
+        * runtime/CommonIdentifiers.h: Added PerformanceEntry, PerformanceEntryList and PerformanceResourceTiming as property names.
+
+2016-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Assertion failure for bound function with custom prototype and Reflect.construct
+        https://bugs.webkit.org/show_bug.cgi?id=157081
+
+        Reviewed by Saam Barati.
+
+        We ensured `newTarget != exec->callee()`. However, it does not mean `newTarget.get("prototype") != exec->callee()->get("prototype")`.
+        When the given `prototype` is the same to `baseStructure->sotredPrototype()`, it is unnecessary to create a new structure from this
+        baseStructure.
+
+        * bytecode/InternalFunctionAllocationProfile.h:
+        (JSC::InternalFunctionAllocationProfile::createAllocationStructureFromBase):
+        * tests/stress/custom-prototype-may-be-same-to-original-one.js: Added.
+        (shouldBe):
+        (boundFunction):
+
+2016-04-30  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Guard ObjC-specific code in Heap.cpp with USE(FOUNDATION)
+        https://bugs.webkit.org/show_bug.cgi?id=157236
+
+        Reviewed by Darin Adler.
+
+        This also fixes build with GCC 4.8 which does not provide
+        __has_include.
+
+        * heap/Heap.cpp:
+
+2016-04-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Assertion failure for destructuring assignment with new.target and unary operator
+        https://bugs.webkit.org/show_bug.cgi?id=157149
+
+        Reviewed by Saam Barati.
+
+        The caller of parseDefaultValueForDestructuringPattern() should propagate errors.
+        And this patch also cleans up createSavePoint and createSavePointForError; introducing SavePointWithError.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseSourceElements):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        Add propagateErorr() for parseDefaultValueForDestructuringPattern.
+
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        * parser/Parser.h:
+        (JSC::Parser::restoreLexerState):
+        (JSC::Parser::internalSaveState):
+        (JSC::Parser::createSavePointForError):
+        (JSC::Parser::createSavePoint):
+        (JSC::Parser::internalRestoreState):
+        (JSC::Parser::restoreSavePointWithError):
+        (JSC::Parser::restoreSavePoint):
+        * tests/stress/default-value-parsing-should-propagate-error.js: Added.
+        (testSyntaxError):
+        (testSyntaxError.f):
+
+2016-04-28  Darin Adler  <darin@apple.com>
+
+        First step in using "enum class" instead of "String" for enumerations in DOM
+        https://bugs.webkit.org/show_bug.cgi?id=157163
+
+        Reviewed by Chris Dumez.
+
+        * runtime/JSString.h:
+        (JSC::jsStringWithCache): Deleted unneeded overload for AtomicString.
+
+2016-04-29  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC][ARMv7S] Arithmetic module results change when tiering up to DFG
+        https://bugs.webkit.org/show_bug.cgi?id=157217
+        rdar://problem/24733432
+
+        Reviewed by Mark Lam.
+
+        ARMv7's fmod() returns less accurate results than an integer division.
+        Since we have integer div on ARMv7s, the results start changing when
+        we reach DFG.
+
+        In this patch, I change our fmod slow path to behave like the fast path
+        on ARMv7s.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithMod):
+        (JSC::DFG::fmodAsDFGOperation): Deleted.
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/MathCommon.cpp:
+        (JSC::isStrictInt32):
+        * runtime/MathCommon.h:
+
+2016-04-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Issues inspecting the inspector, pausing on breakpoints causes content to not load
+        https://bugs.webkit.org/show_bug.cgi?id=157198
+        <rdar://problem/26011049>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::BackendDispatcher::sendResponse):
+        While auditing the code, add a WTFMove.
+
+2016-04-29  Mark Lam  <mark.lam@apple.com>
+
+        Make RegExp.prototype.test spec compliant.
+        https://bugs.webkit.org/show_bug.cgi?id=155862
+
+        Reviewed by Saam Barati.
+
+        * builtins/RegExpPrototype.js:
+        (intrinsic.RegExpTestIntrinsic.test):
+
+        * create_hash_table:
+        - Delete obsoleted code.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addToGraph):
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        - We now have 2 intrinsics for RegExp.prototype.test:
+          RegExpTestIntrinsic and RegExpTestFastIntrinsic.
+
+          RegExpTestIntrinsic maps to the entry at the top of the builtin ES6
+          RegExp.prototype.test.
+          RegExpTestFastIntrinsic maps to the fast path in the builtin ES6
+          RegExp.prototype.test.
+
+          Both will end up using the RegExpTest DFG node to implement the fast path
+          of RegExp.prototype.test.  RegExpTestIntrinsic will have some additional checks
+          before the RegExpTest node.  Those checks are for speculating that it is ok for
+          us to take the fast path.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/Intrinsic.h:
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        - Added the regExpTestFast function.
+        - Also fixed the parameter length on 2 other functions that were erroneous.
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        (JSC::regExpProtoFuncTestFast):
+        (JSC::regExpProtoFuncTest): Deleted.
+        * runtime/RegExpPrototype.h:
+        * tests/es6.yaml:
+
+2016-04-29  Benjamin Poulain  <benjamin@webkit.org>
+
+        Extend math-pow-stable-results.js to get more information about the failure
+
+        * tests/stress/math-pow-stable-results.js:
+
+2016-04-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Assertion failure for exception in "prototype" property getter and Reflect.construct
+        https://bugs.webkit.org/show_bug.cgi?id=157084
+
+        Reviewed by Mark Lam.
+
+        InternalFunction::createSubclassStrucuture may throw exceptions because it performs [[Get]] to
+        look up the "prototype" object. The current assertion is invalid.
+        We also found that Object constructor is not aware of new.target. This is filed[1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=157196
+
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::createSubclassStructure):
+        * tests/stress/create-subclass-structure-may-throw-exception-when-getting-prototype.js: Added.
+        (shouldThrow):
+        (bf):
+
+2016-04-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200232.
+        https://bugs.webkit.org/show_bug.cgi?id=157189
+
+        This change broke the Mac CMake build and its LayoutTest is
+        failing and/or flaky on all platforms (Requested by ryanhaddad
+        on #webkit).
+
+        Reverted changeset:
+
+        "Move ResourceTiming behind a runtime flag"
+        https://bugs.webkit.org/show_bug.cgi?id=157133
+        http://trac.webkit.org/changeset/200232
+
+2016-04-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] RegExp.prototype.@@replace should use @isObject instead of `instanceof` for object guard
+        https://bugs.webkit.org/show_bug.cgi?id=157124
+
+        Reviewed by Keith Miller.
+
+        Use @isObject instead of `instanceof @Object`.
+        The `instanceof` check is not enough to check Object Type.
+        This fix itself is the same to r199647, and this patch is for RegExp.prototype.@@replace.
+
+        * builtins/RegExpPrototype.js:
+        (replace):
+        * tests/stress/regexp-replace-in-other-realm-should-work.js: Added.
+        (shouldBe):
+        * tests/stress/regexp-replace-should-work-with-objects-not-inheriting-object-prototype.js: Added.
+        (shouldBe):
+        (regexp.exec):
+
+2016-04-29  Yoav Weiss  <yoav@yoav.ws>
+
+        Move ResourceTiming behind a runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=157133
+
+        Reviewed by Alex Christensen.
+
+        * runtime/CommonIdentifiers.h: Added PerformanceEntry, PerformanceEntryList and PerformanceResourceTiming as property names.
+
+2016-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused bool parameter in CodeCache::getGlobalCodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=157156
+
+        Reviewed by Mark Lam.
+
+        The bool parameter appears to be isArrowFunctionContext, but the method's
+        contents just get that property from the Executable, so the parameter is
+        unnecessary and unused.
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getGlobalCodeBlock):
+        (JSC::CodeCache::getProgramCodeBlock):
+        (JSC::CodeCache::getEvalCodeBlock):
+        (JSC::CodeCache::getModuleProgramCodeBlock):
+        * runtime/CodeCache.h:
+        * runtime/Executable.cpp:
+        (JSC::EvalExecutable::create):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::createEvalCodeBlock):
+        * runtime/JSGlobalObject.h:
+
+2016-04-28  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] re-implement String#padStart and String#padEnd in JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=157146
+
+        Reviewed by Saam Barati.
+
+        * builtins/StringPrototype.js:
+        (repeatCharactersSlowPath):
+        (padStart):
+        (padEnd):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation): Deleted.
+        (JSC::repeatStringPattern): Deleted.
+        (JSC::padString): Deleted.
+        (JSC::stringProtoFuncPadEnd): Deleted.
+        (JSC::stringProtoFuncPadStart): Deleted.
+
+2016-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tweak auto attach initialization on some platforms
+        https://bugs.webkit.org/show_bug.cgi?id=157150
+        <rdar://problem/21222045>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/EventLoop.cpp:
+        (Inspector::EventLoop::cycle):
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::updateAutomaticInspectionCandidate):
+
+2016-04-28  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Unify Math.pow() accross all tiers
+        https://bugs.webkit.org/show_bug.cgi?id=157121
+
+        Reviewed by Geoffrey Garen.
+
+        My previous optimizations of DFG compile time have slowly
+        regressed Sunspider's math-partial-sums.
+
+        What is happenning is baseline used a thunk for Math.pow()
+        that has a special case for an exponent of -0.5, while
+        DFG/FTL have other special cases for other exponents.
+        The faster we get to DFG, the less time we spend in that fast
+        case for -0.5.
+
+        While looking into this, I discovered some correctness issues. Baseline
+        optimizes y=-0.5 by turning it into 1/sqrt(). DFG/FTL optimize constant
+        y=0.5 by turning it into sqrt(). The problem is sqrt() behaves differently
+        for -0 and -Infinity. With sqrt(), negative numbers are undefined,
+        and the result is NaN. With pow(), they have a result.
+
+        Something else that has bothered me for a while is that Math.pow()
+        with the same arguments give you different results in LLINT, Baseline,
+        and DFG/FTL. This seems a bit dangerous for numerical stability.
+
+        With this patch, I unify the behaviors for all tiers while keeping
+        the "special cases".
+
+        We have pow() that is super slow, but most callers don't need the
+        full power. We have:
+        -pow() with an exponent between 0 and 1000 is a fast path implemented
+         by multiplication only.
+        -pow(x, 0.5) is sqrt with special checks for negative values.
+        -pow(x, -0.5) is sqrt with special checks for negative values.
+
+        The C++ implementation handles all those optimizations too. This ensure
+        you get the same results from LLINT to FTL.
+
+        The thunk is eliminated, it was producing incorrect results and only
+        optimized Sunspider's partial-sums.
+
+        DFG gets the optimized integer, 0.5 and -0.5 cases since those are important
+        for somewhat-hot code. DFG falls back to the C++ code for any non-obvious case.
+
+        FTL gets the full C++ implementation inlined in B3. B3 knows how to eliminate
+        all the dead cases so you get the best if your code is hot enough to reach FTL.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToArithSqrt): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::compileArithPowIntegerFastPath):
+        (JSC::DFG::SpeculativeJIT::compileArithPow):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithPow):
+        * jit/ThunkGenerators.cpp:
+        (JSC::powThunkGenerator): Deleted.
+        * jit/ThunkGenerators.h:
+        * runtime/MathCommon.cpp:
+        (JSC::operationMathPow):
+        * runtime/MathCommon.h:
+        * runtime/VM.cpp:
+        (JSC::thunkGeneratorForIntrinsic): Deleted.
+        * tests/stress/math-pow-stable-results.js: Added.
+        Getting consistent results when tiering up is new.
+        This test verify that results always remains the same as LLINT.
+
+        * tests/stress/math-pow-with-constants.js:
+        (testPowUsedAsSqrt):
+        (powUsedAsOneOverSqrt):
+        (testPowUsedAsOneOverSqrt):
+        (powUsedAsSquare):
+        (testPowUsedAsSquare):
+
+2016-04-28  Mark Lam  <mark.lam@apple.com>
+
+        DebuggerScope::className() should not assert scope->isValid().
+        https://bugs.webkit.org/show_bug.cgi?id=157143
+
+        Reviewed by Keith Miller.
+
+        DebuggerScope::className() should not assert scope->isValid() because the
+        TypeProfiler logs objects it encounters, and may indirectly call
+        JSObject::calculatedClassName() on those objects later, thereby calling
+        DebuggerScope::className() on an invalidated DebuggerScope.
+
+        The existing handling in DebuggerScope::className() for an invalidated scope
+        (that returns a null string) is sufficient.
+
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::className):
+
+2016-04-28  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] implement spec changes for String#padStart and String#padEnd
+        https://bugs.webkit.org/show_bug.cgi?id=157139
+
+        Reviewed by Keith Miller.
+
+        Previously, if the fill string was the empty string, it was treated as a
+        single U+0020 SPACE character. Now, if this occurs, the original string
+        is returned instead.
+
+        Change was discussed at TC39 in March [1], and is reflected in new
+        test262 tests for the feature.
+
+        [1] https://github.com/tc39/tc39-notes/blob/master/es7/2016-03/march-29.md#stringprototypepadstartpadend
+
+        * runtime/StringPrototype.cpp:
+        (JSC::padString):
+        * tests/es6/String.prototype_methods_String.prototype.padEnd.js:
+        (TestFillerToString):
+        (TestFillerEmptyString):
+        * tests/es6/String.prototype_methods_String.prototype.padStart.js:
+        (TestFillerToString):
+        (TestFillerEmptyString):
+
+2016-04-28  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Crash for non-static super property call in derived class constructor
+        https://bugs.webkit.org/show_bug.cgi?id=157089
+
+        Reviewed by Darin Adler.
+       
+        Added tdz check of the 'this' before access to the 'super' for FunctionCallBracketNode, 
+        the same as it was done for FunctionCallDotNode.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionCallBracketNode::emitBytecode):
+
+2016-04-27  Mark Lam  <mark.lam@apple.com>
+
+        The GetterSetter structure needs a globalObject.
+        https://bugs.webkit.org/show_bug.cgi?id=157120
+
+        Reviewed by Filip Pizlo.
+
+        In r199170: <http://trac.webkit.org/r199170>, GetterSetter was promoted from
+        being a JSCell to a JSObject.  JSObject methods expect their structure to have a
+        globalObject.  For example, see JSObject::calculatedClassName().  GetterSetter
+        was previously using a singleton getterSetterStructure owned by the VM.  That
+        singleton getterSetterStructure is not associated with any globalObjects.  As a
+        result, JSObject::calculatedClassName() will run into a null globalObject when it
+        is called on a GetterSetter object.
+
+        This patch removes the VM singleton getterSetterStructure, and instead, creates
+        a getterSetterStructure for each JSGlobalObject.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run):
+        * runtime/GetterSetter.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::functionStructure):
+        (JSC::JSGlobalObject::boundFunctionStructure):
+        (JSC::JSGlobalObject::boundSlotBaseFunctionStructure):
+        (JSC::JSGlobalObject::getterSetterStructure):
+        (JSC::JSGlobalObject::nativeStdFunctionStructure):
+        (JSC::JSGlobalObject::namedFunctionStructure):
+        (JSC::JSGlobalObject::functionNameOffset):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2016-04-27  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, Revert r199397 due to PLT regressions
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/ArrayPrototype.js:
+        (concatSlowPath): Deleted.
+        (concat): Deleted.
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        (JSC::BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry): Deleted.
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleConstantInternalFunction):
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall): Deleted.
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC): Deleted.
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute): Deleted.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCurrentBlock):
+        (JSC::DFG::SpeculativeJIT::compileIsJSArray): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileIsArrayObject): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileIsArrayConstructor): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileCallObjectConstructor): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation): Deleted.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Deleted.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile): Deleted.
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallObjectConstructor): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileIsArrayObject): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileIsJSArray): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileIsArrayConstructor): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::isArray): Deleted.
+        * jit/JITOperations.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionDataLogValue): Deleted.
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::finishCreation):
+        (JSC::arrayConstructorPrivateFuncIsArrayConstructor):
+        * runtime/ArrayConstructor.h:
+        (JSC::isArrayConstructor): Deleted.
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        (JSC::arrayProtoFuncConcat):
+        (JSC::arrayProtoPrivateFuncIsJSArray): Deleted.
+        (JSC::moveElements): Deleted.
+        (JSC::arrayProtoPrivateFuncConcatMemcpy): Deleted.
+        (JSC::arrayProtoPrivateFuncAppendMemcpy): Deleted.
+        * runtime/ArrayPrototype.h:
+        * runtime/CommonIdentifiers.h:
+        * runtime/Intrinsic.h:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::fastConcatWith):
+        (JSC::JSArray::appendMemcpy): Deleted.
+        * runtime/JSArray.h:
+        (JSC::JSArray::fastConcatType):
+        (JSC::JSArray::createStructure):
+        (JSC::isJSArray):
+        * runtime/JSArrayInlines.h: Removed.
+        (JSC::JSArray::memCopyWithIndexingType): Deleted.
+        (JSC::JSArray::canFastCopy): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSType.h:
+        * runtime/ObjectConstructor.h:
+        (JSC::constructObject): Deleted.
+        * tests/es6.yaml:
+        * tests/stress/array-concat-spread-object.js: Removed.
+        (arrayEq): Deleted.
+        * tests/stress/array-concat-spread-proxy-exception-check.js: Removed.
+        (arrayEq): Deleted.
+        * tests/stress/array-concat-spread-proxy.js: Removed.
+        (arrayEq): Deleted.
+        * tests/stress/array-concat-with-slow-indexingtypes.js: Removed.
+        (arrayEq): Deleted.
+        * tests/stress/array-species-config-array-constructor.js:
+
+2016-04-27  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r200117): Crash in lowerDFGToB3::compileStringReplace()
+        https://bugs.webkit.org/show_bug.cgi?id=157099
+
+        Reviewed by Saam Barati.
+
+        Given that the DFGFixupPhase could mark the edge of child2 as StringUse,
+        we need to lower that edge appropriately.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringReplace):
+
+2016-04-27  Mark Lam  <mark.lam@apple.com>
+
+        Address feedback from https://bugs.webkit.org/show_bug.cgi?id=157048#c5.
+        https://bugs.webkit.org/show_bug.cgi?id=157096
+
+        Reviewed by Geoffrey Garen.
+
+        1. Check for USE(APPLE_INTERNAL_SDK) instead of __has_include(<mach-o/dyld_priv.h>).
+        2. Rename webkitFirstSDKVersionWithInitConstructorSupport to
+           firstSDKVersionWithInitConstructorSupport.
+
+        * API/JSWrapperMap.mm:
+        (supportsInitMethodConstructors):
+
+2016-04-27  Mark Lam  <mark.lam@apple.com>
+
+        Restrict the availability of some JSC options to local debug builds only.
+        https://bugs.webkit.org/show_bug.cgi?id=157058
+
+        Reviewed by Geoffrey Garen.
+
+        1. Each option will be given an availability flag.
+        2. The functionOverrides and useDollarVM (along with its alias, enableDollarVM)
+           will have "Restricted" availability.
+        3. All other options will have “Normal” availability.
+        4. Any options with "Restricted" availability will only be accessible if function
+           allowRestrictedOptions() returns true.
+        5. For now, allowRestrictedOptions() always returns false for release builds, and
+           true for debug builds.
+
+        If an option is "Restricted" and restricted options are not allowed, the VM will
+        behave semantically as if that option does not exist at all:
+        1. Option dumps will not show the option.
+        2. Attempts to set the option will fail as if the option does not exist.
+
+        Behind the scene, the option does exist, and is set to its default value
+        (whatever that may be) once and only once on options initialization.
+
+        * runtime/Options.cpp:
+        (JSC::allowRestrictedOptions):
+        (JSC::parse):
+        (JSC::overrideOptionWithHeuristic):
+        (JSC::Options::initialize):
+        (JSC::Options::setOptionWithoutAlias):
+        (JSC::Options::dumpOption):
+        * runtime/Options.h:
+        (JSC::Option::type):
+        (JSC::Option::availability):
+        (JSC::Option::isOverridden):
+
+2016-04-27  Gavin Barraclough  <barraclough@apple.com>
+
+        Enable separated heap by default on ios
+        https://bugs.webkit.org/show_bug.cgi?id=156720
+        <rdar://problem/25841790>
+
+        Unreviewed rollout - caused memory regression.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2016-04-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        Follow up for r200113 on 32bit
+
+        I forgot to do the 32bit counterpart of r200113.
+        The test fails on the bots.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
 2016-04-27  Alberto Garcia  <berto@igalia.com>
 
         [GTK] Fails to build randomly when generating LLIntDesiredOffsets.h

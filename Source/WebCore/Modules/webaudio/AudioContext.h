@@ -23,8 +23,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AudioContext_h
-#define AudioContext_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "AsyncAudioDecoder.h"
@@ -39,7 +38,6 @@
 #include <atomic>
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Threading.h>
@@ -48,31 +46,30 @@
 
 namespace WebCore {
 
+class AnalyserNode;
 class AudioBuffer;
 class AudioBufferCallback;
 class AudioBufferSourceNode;
-class MediaElementAudioSourceNode;
-class MediaStreamAudioDestinationNode;
-class MediaStreamAudioSourceNode;
-class HRTFDatabaseLoader;
-class HTMLMediaElement;
-class ChannelMergerNode;
-class ChannelSplitterNode;
-class GainNode;
-class GenericEventQueue;
-class PannerNode;
 class AudioListener;
 class AudioSummingJunction;
 class BiquadFilterNode;
+class ChannelMergerNode;
+class ChannelSplitterNode;
+class ConvolverNode;
 class DelayNode;
 class Document;
-class ConvolverNode;
 class DynamicsCompressorNode;
-class AnalyserNode;
-class WaveShaperNode;
-class ScriptProcessorNode;
+class GainNode;
+class GenericEventQueue;
+class HTMLMediaElement;
+class MediaElementAudioSourceNode;
+class MediaStreamAudioDestinationNode;
+class MediaStreamAudioSourceNode;
 class OscillatorNode;
+class PannerNode;
 class PeriodicWave;
+class ScriptProcessorNode;
+class WaveShaperNode;
 
 // AudioContext is the cornerstone of the web audio API and all AudioNodes are created from it.
 // For thread safety between the audio thread and the main thread, it has a rendering graph locking mechanism. 
@@ -118,7 +115,8 @@ public:
     void resume(Promise&&);
     void close(Promise&&);
 
-    const AtomicString& state() const;
+    enum class State { Suspended, Running, Interrupted, Closed };
+    State state() const;
 
     // The AudioNode create methods are called on the main thread (from JavaScript).
     Ref<AudioBufferSourceNode> createBufferSource();
@@ -141,7 +139,7 @@ public:
     RefPtr<ChannelSplitterNode> createChannelSplitter(size_t numberOfOutputs, ExceptionCode&);
     RefPtr<ChannelMergerNode> createChannelMerger(size_t numberOfInputs, ExceptionCode&);
     Ref<OscillatorNode> createOscillator();
-    RefPtr<PeriodicWave> createPeriodicWave(Float32Array* real, Float32Array* imag, ExceptionCode&);
+    RefPtr<PeriodicWave> createPeriodicWave(Float32Array& real, Float32Array& imaginary, ExceptionCode&);
 
     // When a source node has no more processing to do (has finished playing), then it tells the context to dereference it.
     void notifyNodeFinishedProcessing(AudioNode*);
@@ -239,8 +237,8 @@ public:
     ScriptExecutionContext* scriptExecutionContext() const final;
 
     // Reconcile ref/deref which are defined both in ThreadSafeRefCounted and EventTarget.
-    using ThreadSafeRefCounted<AudioContext>::ref;
-    using ThreadSafeRefCounted<AudioContext>::deref;
+    using ThreadSafeRefCounted::ref;
+    using ThreadSafeRefCounted::deref;
 
     void startRendering();
     void fireCompletionEvent();
@@ -281,7 +279,6 @@ private:
     bool userGestureRequiredForAudioStart() const { return m_restrictions & RequireUserGestureForAudioStartRestriction; }
     bool pageConsentRequiredForAudioStart() const { return m_restrictions & RequirePageConsentForAudioStartRestriction; }
 
-    enum class State { Suspended, Running, Interrupted, Closed };
     void setState(State);
 
     void clear();
@@ -394,14 +391,21 @@ private:
     State m_state { State::Suspended };
 };
 
-inline bool operator==(const AudioContext& lhs, const AudioContext& rhs) {
+// FIXME: Find out why these ==/!= functions are needed and remove them if possible.
+
+inline bool operator==(const AudioContext& lhs, const AudioContext& rhs)
+{
     return &lhs == &rhs;
 }
 
-inline bool operator!=(const AudioContext& lhs, const AudioContext& rhs) {
+inline bool operator!=(const AudioContext& lhs, const AudioContext& rhs)
+{
     return &lhs != &rhs;
 }
 
-} // WebCore
+inline AudioContext::State AudioContext::state() const
+{
+    return m_state;
+}
 
-#endif // AudioContext_h
+} // WebCore

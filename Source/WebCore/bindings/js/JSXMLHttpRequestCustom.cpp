@@ -186,27 +186,36 @@ JSValue JSXMLHttpRequest::response(ExecState& state) const
     if (m_response && wrapped().responseCacheIsValid())
         return m_response.get();
 
-    if (!wrapped().doneWithoutErrors() && wrapped().responseTypeCode() > XMLHttpRequest::ResponseTypeText)
+    auto type = wrapped().responseType();
+
+    switch (type) {
+    case XMLHttpRequest::ResponseType::EmptyString:
+    case XMLHttpRequest::ResponseType::Text:
+        return responseText(state);
+    default:
+        break;
+    }
+
+    if (!wrapped().doneWithoutErrors())
         return jsNull();
 
-    switch (wrapped().responseTypeCode()) {
-    case XMLHttpRequest::ResponseTypeDefault:
-    case XMLHttpRequest::ResponseTypeText:
-        return responseText(state);
+    switch (type) {
+    case XMLHttpRequest::ResponseType::EmptyString:
+    case XMLHttpRequest::ResponseType::Text:
+        ASSERT_NOT_REACHED();
+        break;
 
-    case XMLHttpRequest::ResponseTypeJSON:
+    case XMLHttpRequest::ResponseType::Json:
         {
             JSValue value = JSONParse(&state, wrapped().responseTextIgnoringResponseType());
             if (!value)
                 value = jsNull();
             m_response.set(state.vm(), this, value);
-
             wrapped().didCacheResponseJSON();
-
             return value;
         }
 
-    case XMLHttpRequest::ResponseTypeDocument:
+    case XMLHttpRequest::ResponseType::Document:
         {
             ExceptionCode ec = 0;
             Document* document = wrapped().responseXML(ec);
@@ -217,13 +226,14 @@ JSValue JSXMLHttpRequest::response(ExecState& state) const
             return toJS(&state, globalObject(), document);
         }
 
-    case XMLHttpRequest::ResponseTypeBlob:
+    case XMLHttpRequest::ResponseType::Blob:
         return toJS(&state, globalObject(), wrapped().responseBlob());
 
-    case XMLHttpRequest::ResponseTypeArrayBuffer:
+    case XMLHttpRequest::ResponseType::Arraybuffer:
         return toJS(&state, globalObject(), wrapped().responseArrayBuffer());
     }
 
+    ASSERT_NOT_REACHED();
     return jsUndefined();
 }
 

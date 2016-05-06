@@ -49,19 +49,12 @@ public:
     bool unique() const;
     bool multiEntry() const;
 
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext& context, ExceptionCodeWithMessage& ec) { return openCursor(context, static_cast<IDBKeyRange*>(nullptr), ec); }
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext& context, IDBKeyRange* keyRange, ExceptionCodeWithMessage& ec) { return openCursor(context, keyRange, IDBCursor::directionNext(), ec); }
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext& context, JSC::JSValue key, ExceptionCodeWithMessage& ec) { return openCursor(context, key, IDBCursor::directionNext(), ec); }
     RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
     RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
 
-    RefPtr<IDBRequest> count(ScriptExecutionContext&, ExceptionCodeWithMessage&);
     RefPtr<IDBRequest> count(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
     RefPtr<IDBRequest> count(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
 
-    RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext& context, ExceptionCodeWithMessage& ec) { return openKeyCursor(context, static_cast<IDBKeyRange*>(nullptr), ec); }
-    RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext& context, IDBKeyRange* keyRange, ExceptionCodeWithMessage& ec) { return openKeyCursor(context, keyRange, IDBCursor::directionNext(), ec); }
-    RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext& context, JSC::JSValue key, ExceptionCodeWithMessage& ec) { return openKeyCursor(context, key, IDBCursor::directionNext(), ec); }
     RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
     RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
 

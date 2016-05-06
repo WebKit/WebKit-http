@@ -77,4 +77,11 @@ String executablePathOfNetworkProcess()
     return findWebKitProcess("WPENetworkProcess");
 }
 
+#if ENABLE(DATABASE_PROCESS)
+String executablePathOfDatabaseProcess()
+{
+    return findWebKitProcess("WPEDatabaseProcess");
+}
+#endif
+
 } // namespace WebKit

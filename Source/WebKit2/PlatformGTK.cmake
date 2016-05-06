@@ -37,8 +37,7 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/cache/NetworkCacheDataSoup.cpp
     NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
 
-    NetworkProcess/gtk/NetworkProcessMainGtk.cpp
-
+    NetworkProcess/soup/NetworkProcessMainSoup.cpp
     NetworkProcess/soup/NetworkProcessSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
@@ -46,9 +45,9 @@ list(APPEND WebKit2_SOURCES
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
 
-    Platform/gtk/LoggingGtk.cpp
-    Platform/gtk/ModuleGtk.cpp
+    Platform/glib/ModuleGlib.cpp
 
+    Platform/unix/LoggingUnix.cpp
     Platform/unix/SharedMemoryUnix.cpp
 
     PluginProcess/unix/PluginControllerProxyUnix.cpp
@@ -332,7 +331,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/InjectedBundle/API/gtk/WebKitWebHitTestResult.cpp
     WebProcess/InjectedBundle/API/gtk/WebKitWebPage.cpp
 
-    WebProcess/InjectedBundle/gtk/InjectedBundleGtk.cpp
+    WebProcess/InjectedBundle/glib/InjectedBundleGlib.cpp
 
     WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
 
@@ -465,6 +464,8 @@ set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Test/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.css
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Workers/Formatter/*.js
+    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Workers/HeapSnapshot/*.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.png
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
@@ -728,9 +729,9 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
         Platform/IPC/unix/AttachmentUnix.cpp
         Platform/IPC/unix/ConnectionUnix.cpp
 
-        Platform/gtk/LoggingGtk.cpp
-        Platform/gtk/ModuleGtk.cpp
+        Platform/glib/ModuleGlib.cpp
 
+        Platform/unix/LoggingUnix.cpp
         Platform/unix/SharedMemoryUnix.cpp
 
         PluginProcess/PluginControllerProxy.cpp

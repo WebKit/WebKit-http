@@ -51,6 +51,7 @@ enum JS_EXPORT_PRIVATE Intrinsic {
     LogIntrinsic,
     RegExpExecIntrinsic,
     RegExpTestIntrinsic,
+    RegExpTestFastIntrinsic,
     StringPrototypeValueOfIntrinsic,
     StringPrototypeReplaceIntrinsic,
     StringPrototypeReplaceRegExpIntrinsic,
@@ -58,9 +59,6 @@ enum JS_EXPORT_PRIVATE Intrinsic {
     RandomIntrinsic,
     FRoundIntrinsic,
     TruncIntrinsic,
-    IsArrayIntrinsic,
-    IsArrayConstructorIntrinsic,
-    IsJSArrayIntrinsic,
     IsRegExpObjectIntrinsic,
     BoundThisNoArgsFunctionCallIntrinsic,
 

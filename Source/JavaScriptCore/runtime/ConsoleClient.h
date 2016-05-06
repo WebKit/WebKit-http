@@ -45,12 +45,12 @@ public:
     JS_EXPORT_PRIVATE static void printConsoleMessageWithArguments(MessageSource, MessageType, MessageLevel, JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&);
 
     void logWithLevel(ExecState*, RefPtr<Inspector::ScriptArguments>&&, MessageLevel);
-    void clear(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
+    void clear(ExecState*);
     void dir(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
     void dirXML(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
     void table(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
     void trace(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void assertCondition(ExecState*, RefPtr<Inspector::ScriptArguments>&&, bool condition);
+    void assertion(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
     void group(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
     void groupCollapsed(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
     void groupEnd(ExecState*, RefPtr<Inspector::ScriptArguments>&&);

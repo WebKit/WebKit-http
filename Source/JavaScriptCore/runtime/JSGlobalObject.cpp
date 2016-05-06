@@ -39,7 +39,7 @@
 #include "ClonedArguments.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
-#include "ConsolePrototype.h"
+#include "ConsoleObject.h"
 #include "DateConstructor.h"
 #include "DatePrototype.h"
 #include "Debugger.h"
@@ -70,7 +70,6 @@
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
 #include "JSCallbackObject.h"
-#include "JSConsole.h"
 #include "JSDataView.h"
 #include "JSDataViewPrototype.h"
 #include "JSDollarVM.h"
@@ -294,6 +293,7 @@ void JSGlobalObject::init(VM& vm)
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_boundSlotBaseFunctionStructure.set(vm, this, JSBoundSlotBaseFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_boundFunctionStructure.set(vm, this, JSBoundFunction::createStructure(vm, this, m_functionPrototype.get()));
+    m_getterSetterStructure.set(vm, this, GetterSetter::createStructure(vm, this, jsNull()));
     m_nativeStdFunctionStructure.set(vm, this, JSNativeStdFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_namedFunctionStructure.set(vm, this, Structure::addPropertyTransition(vm, m_functionStructure.get(), vm.propertyNames->name, DontDelete | ReadOnly | DontEnum, m_functionNameOffset));
     m_internalFunctionStructure.set(vm, this, InternalFunction::createStructure(vm, this, m_functionPrototype.get()));
@@ -497,6 +497,8 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     ReflectObject* reflectObject = ReflectObject::create(vm, this, ReflectObject::createStructure(vm, this, m_objectPrototype.get()));
     putDirectWithoutTransition(vm, vm.propertyNames->Reflect, reflectObject, DontEnum);
 
+    putDirectWithoutTransition(vm, vm.propertyNames->console, ConsoleObject::create(vm, this, ConsoleObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
+
     JSTypedArrayViewConstructor* typedArraySuperConstructor = JSTypedArrayViewConstructor::create(vm, this, JSTypedArrayViewConstructor::createStructure(vm, this, m_functionPrototype.get()), typedArrayProto, speciesGetterSetter);
     typedArrayProto->putDirectWithoutTransition(vm, vm.propertyNames->constructor, typedArraySuperConstructor, DontEnum);
 
@@ -525,8 +527,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     putDirectWithoutTransition(vm, vm.propertyNames->Uint32ArrayPrivateName, m_typedArrays[toIndex(TypeUint32)].constructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->Float32ArrayPrivateName, m_typedArrays[toIndex(TypeFloat32)].constructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->Float64ArrayPrivateName, m_typedArrays[toIndex(TypeFloat64)].constructor.get(), DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->ObjectPrivateName, objectConstructor, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->ArrayPrivateName, arrayConstructor, DontEnum | DontDelete | ReadOnly);
 
     m_moduleLoader.set(vm, this, ModuleLoaderObject::create(vm, this, ModuleLoaderObject::createStructure(vm, this, m_objectPrototype.get())));
     if (Options::exposeInternalModuleLoader())
@@ -551,11 +551,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSFunction* privateFuncInstanceOf = JSFunction::create(vm, this, 0, String(), objectPrivateFuncInstanceOf);
     JSFunction* privateFuncThisTimeValue = JSFunction::create(vm, this, 0, String(), dateProtoFuncGetTime);
     JSFunction* privateFuncThisNumberValue = JSFunction::create(vm, this, 0, String(), numberProtoFuncValueOf);
-    JSFunction* privateFuncIsArrayConstructor = JSFunction::create(vm, this, 0, String(), arrayConstructorPrivateFuncIsArrayConstructor, IsArrayConstructorIntrinsic);
-    JSFunction* privateFuncIsJSArray = JSFunction::create(vm, this, 0, String(), arrayProtoPrivateFuncIsJSArray, IsJSArrayIntrinsic);
-    JSFunction* privateFuncConcatMemcpy = JSFunction::create(vm, this, 0, String(), arrayProtoPrivateFuncConcatMemcpy);
-    JSFunction* privateFuncAppendMemcpy = JSFunction::create(vm, this, 0, String(), arrayProtoPrivateFuncAppendMemcpy);
-    JSFunction* privateFuncConcatSlowPath = JSFunction::createBuiltinFunction(vm, arrayPrototypeConcatSlowPathCodeGenerator(vm), this);
+    JSFunction* privateFuncIsArrayConstructor = JSFunction::create(vm, this, 0, String(), arrayConstructorPrivateFuncIsArrayConstructor);
 
     JSObject* regExpProtoFlagsGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->flags);
     JSObject* regExpProtoGlobalGetterObject = getGetterById(exec, m_regExpPrototype.get(), vm.propertyNames->global);
@@ -575,6 +571,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->NaN, jsNaN(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->Infinity, jsNumber(std::numeric_limits<double>::infinity()), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->undefinedKeyword, jsUndefined(), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->ObjectPrivateName, objectConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->ownEnumerablePropertyKeysPrivateName, JSFunction::create(vm, this, 0, String(), ownEnumerablePropertyKeys), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->getTemplateObjectPrivateName, privateFuncGetTemplateObject, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->enqueueJobPrivateName, JSFunction::create(vm, this, 0, String(), enqueueJob), DontEnum | DontDelete | ReadOnly),
@@ -588,6 +585,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->hasInstanceBoundFunctionPrivateName, privateFuncHasInstanceBoundFunction, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->instanceOfPrivateName, privateFuncInstanceOf, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->BuiltinLogPrivateName, builtinLog, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->ArrayPrivateName, arrayConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->NumberPrivateName, numberConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->RegExpPrivateName, m_regExpConstructor.get(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->StringPrivateName, stringConstructor, DontEnum | DontDelete | ReadOnly),
@@ -602,6 +600,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
 
         GlobalPropertyInfo(vm.propertyNames->repeatCharacterPrivateName, JSFunction::create(vm, this, 2, String(), stringProtoFuncRepeatCharacter), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().repeatSlowPathPrivateName(), JSFunction::createBuiltinFunction(vm, stringPrototypeRepeatSlowPathCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().repeatCharactersSlowPathPrivateName(), JSFunction::createBuiltinFunction(vm, stringPrototypeRepeatCharactersSlowPathCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
 
         GlobalPropertyInfo(vm.propertyNames->isSetPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncIsSet), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->SetIteratorPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncSetIterator), DontEnum | DontDelete | ReadOnly),
@@ -609,10 +608,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->isMapPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncIsMap), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isArrayPrivateName, arrayConstructor->getDirect(vm, vm.propertyNames->isArray), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->isArrayConstructorPrivateName, privateFuncIsArrayConstructor, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->isJSArrayPrivateName, privateFuncIsJSArray, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->concatMemcpyPrivateName, privateFuncConcatMemcpy, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->appendMemcpyPrivateName, privateFuncAppendMemcpy, DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().concatSlowPathPrivateName(), privateFuncConcatSlowPath, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->MapIteratorPrivateName, JSFunction::create(vm, this, 1, String(), privateFuncMapIterator), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->mapIteratorNextPrivateName, JSFunction::create(vm, this, 0, String(), privateFuncMapIteratorNext), DontEnum | DontDelete | ReadOnly),
 
@@ -658,10 +653,11 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().hasObservableSideEffectsForRegExpSplitPrivateName(), JSFunction::createBuiltinFunction(vm, regExpPrototypeHasObservableSideEffectsForRegExpSplitCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().advanceStringIndexPrivateName(), JSFunction::createBuiltinFunction(vm, regExpPrototypeAdvanceStringIndexCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().regExpExecPrivateName(), JSFunction::createBuiltinFunction(vm, regExpPrototypeRegExpExecCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->regExpMatchFastPrivateName, JSFunction::create(vm, this, 2, String(), regExpProtoFuncMatchFast), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->regExpSearchFastPrivateName, JSFunction::create(vm, this, 2, String(), regExpProtoFuncSearchFast), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->regExpMatchFastPrivateName, JSFunction::create(vm, this, 1, String(), regExpProtoFuncMatchFast), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->regExpSearchFastPrivateName, JSFunction::create(vm, this, 1, String(), regExpProtoFuncSearchFast), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->regExpSplitFastPrivateName, JSFunction::create(vm, this, 2, String(), regExpProtoFuncSplitFast), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->regExpPrototypeSymbolReplacePrivateName, m_regExpPrototype->getDirect(vm, vm.propertyNames->replaceSymbol), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->regExpTestFastPrivateName, JSFunction::create(vm, this, 1, String(), regExpProtoFuncTestFast, RegExpTestFastIntrinsic), DontEnum | DontDelete | ReadOnly),
 
         // String.prototype helpers.
         GlobalPropertyInfo(vm.propertyNames->builtinNames().hasObservableSideEffectsForStringReplacePrivateName(), JSFunction::createBuiltinFunction(vm, stringPrototypeHasObservableSideEffectsForStringReplaceCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
@@ -677,11 +673,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     m_specialPointers[Special::ArrayConstructor] = arrayConstructor;
 
     m_linkTimeConstants[static_cast<unsigned>(LinkTimeConstant::DefinePropertyFunction)] = m_definePropertyFunction.get();
-
-    ConsolePrototype* consolePrototype = ConsolePrototype::create(vm, this, ConsolePrototype::createStructure(vm, this, m_objectPrototype.get()));
-    m_consoleStructure.set(vm, this, JSConsole::createStructure(vm, this, consolePrototype));
-    JSConsole* consoleObject = JSConsole::create(vm, m_consoleStructure.get());
-    putDirectWithoutTransition(vm, Identifier::fromString(exec, "console"), consoleObject, DontEnum);
 
     if (UNLIKELY(Options::useDollarVM())) {
         JSDollarVMPrototype* dollarVMPrototype = JSDollarVMPrototype::create(vm, this, JSDollarVMPrototype::createStructure(vm, this, m_objectPrototype.get()));
@@ -898,6 +889,15 @@ void JSGlobalObject::createThrowTypeError(VM& vm)
     m_throwTypeErrorGetterSetter.set(vm, this, getterSetter);
 }
 
+void JSGlobalObject::createThrowTypeErrorArgumentsAndCaller(VM& vm)
+{
+    JSFunction* thrower = JSFunction::create(vm, this, 0, String(), globalFuncThrowTypeErrorArgumentsAndCaller);
+    GetterSetter* getterSetter = GetterSetter::create(vm, this);
+    getterSetter->setGetter(vm, this, thrower);
+    getterSetter->setSetter(vm, this, thrower);
+    m_throwTypeErrorArgumentsAndCallerGetterSetter.set(vm, this, getterSetter);
+}
+
 // Set prototype, and also insert the object prototype at the end of the chain.
 void JSGlobalObject::resetPrototype(VM& vm, JSValue prototype)
 {
@@ -947,6 +947,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_newPromiseCapabilityFunction);
     visitor.append(&thisObject->m_functionProtoHasInstanceSymbolFunction);
     visitor.append(&thisObject->m_throwTypeErrorGetterSetter);
+    visitor.append(&thisObject->m_throwTypeErrorArgumentsAndCallerGetterSetter);
     visitor.append(&thisObject->m_moduleLoader);
 
     visitor.append(&thisObject->m_objectPrototype);
@@ -984,6 +985,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_functionStructure);
     visitor.append(&thisObject->m_boundSlotBaseFunctionStructure);
     visitor.append(&thisObject->m_boundFunctionStructure);
+    visitor.append(&thisObject->m_getterSetterStructure);
     visitor.append(&thisObject->m_nativeStdFunctionStructure);
     visitor.append(&thisObject->m_namedFunctionStructure);
     visitor.append(&thisObject->m_symbolObjectStructure);
@@ -994,7 +996,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_regExpMatchesArraySlowPutStructure);
     visitor.append(&thisObject->m_moduleRecordStructure);
     visitor.append(&thisObject->m_moduleNamespaceObjectStructure);
-    visitor.append(&thisObject->m_consoleStructure);
     visitor.append(&thisObject->m_dollarVMStructure);
     visitor.append(&thisObject->m_internalFunctionStructure);
     visitor.append(&thisObject->m_proxyObjectStructure);
@@ -1096,7 +1097,7 @@ UnlinkedProgramCodeBlock* JSGlobalObject::createProgramCodeBlock(CallFrame* call
     return unlinkedCodeBlock;
 }
 
-UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable, ThisTDZMode thisTDZMode, bool isArrowFunctionContext, const VariableEnvironment* variablesUnderTDZ)
+UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable, ThisTDZMode thisTDZMode, const VariableEnvironment* variablesUnderTDZ)
 {
     ParserError error;
     JSParserStrictMode strictMode = executable->isStrictMode() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
@@ -1105,7 +1106,7 @@ UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame,
     
     ProfilerMode profilerMode = hasLegacyProfiler() ? ProfilerOn : ProfilerOff;
     UnlinkedEvalCodeBlock* unlinkedCodeBlock = vm().codeCache()->getEvalCodeBlock(
-        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, thisTDZMode, isArrowFunctionContext, debuggerMode, profilerMode, error, evalContextType, variablesUnderTDZ);
+        vm(), executable, executable->source(), JSParserBuiltinMode::NotBuiltin, strictMode, thisTDZMode, debuggerMode, profilerMode, error, evalContextType, variablesUnderTDZ);
 
     if (hasDebugger())
         debugger()->sourceParsed(callFrame, executable->source().provider(), error.line(), error.message());
