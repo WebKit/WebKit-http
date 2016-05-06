@@ -41,6 +41,9 @@ public:
     bool platformInitialize() override
     {
         SoupNetworkSession::defaultSession().setSSLPolicy(SoupNetworkSession::SSLUseSystemCAFile);
+#if PLATFORM(WPE)
+        SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
+#endif
         return true;
     }
 };
