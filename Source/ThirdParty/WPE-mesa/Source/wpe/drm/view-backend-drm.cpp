@@ -1,7 +1,9 @@
 #include "view-backend-drm.h"
 
 #include "gbm-connection.h"
+#include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <errno.h>
 #include <fcntl.h>
 #include <gbm.h>

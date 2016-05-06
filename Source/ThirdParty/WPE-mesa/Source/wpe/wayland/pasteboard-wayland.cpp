@@ -1,11 +1,15 @@
 #include "pasteboard-wayland.h"
 
 #include "display.h"
+#include <algorithm>
+#include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
 #include <list>
 #include <map>
 #include <string>
+#include <unistd.h>
 #include <wayland-client.h>
 
 namespace Wayland {

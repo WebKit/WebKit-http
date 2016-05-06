@@ -1,6 +1,7 @@
 #include "pasteboard-private.h"
 
 #include <cstdlib>
+#include <cstring>
 #include <map>
 #include <string>
 
