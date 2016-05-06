@@ -42,7 +42,7 @@ namespace WKWPE {
 View::View(const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
     , m_size{ 800, 600 }
-    , m_viewStateFlags(WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
+    , m_viewStateFlags(WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
     , m_compositingManagerProxy(*this)
 {
     auto configuration = baseConfiguration.copy();
@@ -123,8 +123,10 @@ void View::setSize(const WebCore::IntSize& size)
 
 void View::setViewState(WebCore::ViewState::Flags flags)
 {
-    WebCore::ViewState::Flags changedFlags = m_viewStateFlags ^ flags;
-    m_viewStateFlags = flags;
+    static const WebCore::ViewState::Flags defaultFlags = WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsInWindow;
+
+    WebCore::ViewState::Flags changedFlags = m_viewStateFlags ^ (defaultFlags | flags);
+    m_viewStateFlags = defaultFlags | flags;
 
     if (changedFlags)
         m_pageProxy->viewStateDidChange(changedFlags);
