@@ -33,7 +33,7 @@
 #include "CodeProfiling.h"
 #include "ExecutableAllocationFuzz.h"
 #include <errno.h>
-#if !PLATFORM(WIN)
+#if !OS(WINDOWS)
 #include <unistd.h>
 #endif
 #include <wtf/MetaAllocator.h>
