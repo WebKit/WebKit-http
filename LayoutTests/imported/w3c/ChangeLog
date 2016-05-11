@@ -1,3 +1,63 @@
+2016-05-06  Jer Noble  <jer.noble@apple.com>
+
+        Return a Promise from HTMLMediaElement.play()
+        https://bugs.webkit.org/show_bug.cgi?id=157400
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline web-platform-tests/html/dom/interfaces-expected.txt with new (failing) result.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-05-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200627.
+        https://bugs.webkit.org/show_bug.cgi?id=157531
+
+        This change has caused crashes in existing LayoutTests
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Return a Promise from HTMLMediaElement.play()"
+        https://bugs.webkit.org/show_bug.cgi?id=157400
+        http://trac.webkit.org/changeset/200627
+
+2016-05-06  Jer Noble  <jer.noble@apple.com>
+
+        Return a Promise from HTMLMediaElement.play()
+        https://bugs.webkit.org/show_bug.cgi?id=157400
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline web-platform-tests/html/dom/interfaces-expected.txt with new (failing) result.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Media elements should not be paused right away when removed from the document
+        https://bugs.webkit.org/show_bug.cgi?id=157347
+        <rdar://problem/25888758>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline now that more W3C tests are passing.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-move-to-other-document-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-move-within-document-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-remove-from-document-expected.txt:
+
+2016-05-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Improve the grammar of some error messages 'a argument list' => 'an argument list'
+        https://bugs.webkit.org/show_bug.cgi?id=157350
+        <rdar://problem/26082108>
+
+        Reviewed by Mark Lam.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
 2016-05-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         Sync web-platform-tests up to revision 4af8373

@@ -563,6 +563,7 @@ compositing/geometry/limit-layer-bounds-fixed-positioned.html [ Failure ]
 compositing/geometry/limit-layer-bounds-fixed.html [ Failure ]
 compositing/geometry/limit-layer-bounds-overflow-root.html [ Failure ]
 compositing/geometry/vertical-scroll-composited.html [ Failure ]
+compositing/iframes/become-composited-nested-iframes.html [ Failure ]
 compositing/iframes/composited-parent-iframe.html [ Failure ]
 compositing/iframes/connect-compositing-iframe-delayed.html [ Failure ]
 compositing/iframes/connect-compositing-iframe.html [ Failure ]
@@ -579,6 +580,7 @@ compositing/iframes/overlapped-iframe.html [ Failure ]
 compositing/iframes/overlapped-nested-iframes.html [ Failure ]
 compositing/iframes/page-cache-layer-tree.html [ Failure ]
 compositing/iframes/scrolling-iframe.html [ Failure ]
+compositing/images/clip-on-directly-composited-image.html [ Failure ]
 compositing/layer-creation/fixed-position-and-transform.html [ Failure ]
 compositing/layer-creation/fixed-position-change-out-of-view-in-view.html [ Failure ]
 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
@@ -791,7 +793,7 @@ svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure ]
 # LayoutTests/fast tests that fail:
 fast/block/min-max-height-percent-height-child.html [ Failure ]
 fast/borders/hidpi-border-clipping-right-after-move.html [ ImageOnlyFailure ]
-fast/css/line-height-text-autosizing.html [ Failure ]
+fast/text-autosizing/ios/line-height-text-autosizing.html [ Failure ]
 fast/css/nested-rounded-corners.html [ Failure ]
 fast/css/relative-positioned-block-crash.html [ Failure ]
 fast/css/sticky/sticky-overflowing.html [ ImageOnlyFailure ]
@@ -891,8 +893,6 @@ js/dom/deep-recursion-test.html [ Failure ]
 js/large-expressions.html [ Failure ]
 
 # iOS-specific tests that fail:
-platform/ios-simulator/ios/scrolling/scrollTo-at-page-load.html [ Failure ]
-platform/ios-simulator/ios/scrolling/overflow-div-scrolling.html [ Failure ]
 platform/ios-simulator/ios/storage/domstorage/5mb-quota.html [ Failure ]
 
 # LayoutTests/fast test that time out:
@@ -1286,7 +1286,7 @@ fast/xsl/xslt-extra-content-at-end.xml [ Failure ]
 fast/xsl/xslt-missing-namespace-in-xslt.xml [ Failure ]
 http/tests/security/video-cross-origin-accesssameorigin.html [ Failure ]
 js/dom/JSON-stringify.html [ Failure ]
-
+fast/parser/external-entities-in-xslt.xml [ Failure ]
 editing/selection/update-selection-by-style-change.html [ ImageOnlyFailure ]
 svg/repaint/buffered-rendering-dynamic-image.html [ ImageOnlyFailure ]
 
@@ -1331,6 +1331,7 @@ fast/text/international/system-language [ Skip ]
 
 # Imported Blink tests.
 imported/blink/compositing/repaint/end-of-opacity-transition.html [ ImageOnlyFailure Pass ]
+imported/blink/compositing/reorder-z-with-style.html [ Timeout ]
 imported/blink/compositing/squashing/invalidate-on-grouped-mapping-reorder.html [ ImageOnlyFailure Pass ]
 imported/blink/compositing/squashing/squash-overflow-hidden-scrolltop.html [ ImageOnlyFailure Pass ]
 imported/blink/css3/blending/mix-blend-mode-has-ancestor-clipping-layer.html [ ImageOnlyFailure Pass ]
@@ -1349,6 +1350,7 @@ imported/blink/fast/masking/mask-serializing.html [ Crash Pass ]
 imported/blink/fast/multicol/newmulticol/multicol-becomes-regular-block.html [ Crash Pass ]
 imported/blink/editing/undo/crash-redo-with-iframes.html [ Failure Pass ]
 imported/blink/fast/css-grid-layout/stale-grid-layout-2.html [ Failure Pass ]
+imported/blink/svg/filters/feColorMatrix-setAttribute-crash1.html [ Pass Failure ]
 
 webkit.org/b/155495 compositing/visible-rect/animated-from-none.html [ Failure ]
 
@@ -1359,3 +1361,17 @@ webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ 
 webkit.org/b/156069 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
 
 webkit.org/b/137572 scrollbars/scrollbar-iframe-click-does-not-blur-content.html [ Failure ]
+
+# This test relies on a settings option that we can only set with WKRT.
+js/dom/regress-157246.html
+
+fast/scrolling/ios/clipping-ancestor-with-accelerated-scrolling-ancestor.html [ Failure ]
+fast/scrolling/ios/overflow-div-scrolling.html [ Failure ]
+fast/scrolling/ios/overflow-scroll-touch.html [ Failure ]
+fast/scrolling/ios/overflow-scrolling-ancestor-clip-size.html [ Failure ]
+fast/scrolling/ios/overflow-scrolling-ancestor-clip.html [ Failure ]
+fast/scrolling/ios/scrollTo-at-page-load.html [ Failure ]
+fast/scrolling/ios/scrolling-content-clip-to-viewport.html [ Failure ]
+fast/scrolling/ios/textarea-scroll-touch.html [ Failure ]
+fast/scrolling/ios/touch-stacking.html [ Failure ]
+fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Skip ]

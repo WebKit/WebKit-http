@@ -52,6 +52,12 @@ using namespace std;
 
 namespace JSC {
 
+double totalBaselineCompileTime;
+double totalDFGCompileTime;
+double totalFTLCompileTime;
+double totalFTLDFGCompileTime;
+double totalFTLB3CompileTime;
+
 void ctiPatchCallByReturnAddress(ReturnAddressPtr returnAddress, FunctionPtr newCalleeFunction)
 {
     MacroAssembler::repatchCall(
@@ -72,6 +78,10 @@ JIT::JIT(VM* vm, CodeBlock* codeBlock)
     , m_pcToCodeOriginMapBuilder(*vm)
     , m_canBeOptimized(false)
     , m_shouldEmitProfiling(false)
+{
+}
+
+JIT::~JIT()
 {
 }
 
@@ -187,7 +197,6 @@ void JIT::privateCompileMainPass()
         unsigned bytecodeOffset = m_bytecodeOffset;
 
         switch (opcodeID) {
-        DEFINE_SLOW_OP(del_by_val)
         DEFINE_SLOW_OP(in)
         DEFINE_SLOW_OP(less)
         DEFINE_SLOW_OP(lesseq)
@@ -222,6 +231,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_resume)
         DEFINE_OP(op_debug)
         DEFINE_OP(op_del_by_id)
+        DEFINE_OP(op_del_by_val)
         DEFINE_OP(op_div)
         DEFINE_OP(op_end)
         DEFINE_OP(op_enter)
@@ -231,7 +241,9 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_try_get_by_id)
         case op_get_array_length:
         DEFINE_OP(op_get_by_id)
+        DEFINE_OP(op_get_by_id_with_this)
         DEFINE_OP(op_get_by_val)
+        DEFINE_OP(op_get_by_val_with_this)
         DEFINE_OP(op_overrides_has_instance)
         DEFINE_OP(op_instanceof)
         DEFINE_OP(op_instanceof_custom)
@@ -286,9 +298,11 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_create_lexical_environment)
         DEFINE_OP(op_get_parent_scope)
         DEFINE_OP(op_put_by_id)
+        DEFINE_OP(op_put_by_id_with_this)
         DEFINE_OP(op_put_by_index)
         case op_put_by_val_direct:
         DEFINE_OP(op_put_by_val)
+        DEFINE_OP(op_put_by_val_with_this)
         DEFINE_OP(op_put_getter_by_id)
         DEFINE_OP(op_put_setter_by_id)
         DEFINE_OP(op_put_getter_setter_by_id)
@@ -484,6 +498,10 @@ void JIT::privateCompileSlowCases()
 
 CompilationResult JIT::privateCompile(JITCompilationEffort effort)
 {
+    double before = 0;
+    if (UNLIKELY(computeCompileTimes()))
+        before = monotonicallyIncreasingTimeMS();
+
     DFG::CapabilityLevel level = m_codeBlock->capabilityLevel();
     switch (level) {
     case DFG::CannotCompile:
@@ -724,7 +742,7 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
     if (m_compilation) {
         if (Options::disassembleBaselineForProfiler())
             m_disassembler->reportToProfiler(m_compilation.get(), patchBuffer);
-        m_vm->m_perBytecodeProfiler->addCompilation(m_compilation);
+        m_vm->m_perBytecodeProfiler->addCompilation(m_codeBlock, m_compilation);
     }
 
     if (m_pcToCodeOriginMapBuilder.didBuildMapping())
@@ -741,7 +759,20 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
     m_codeBlock->shrinkToFit(CodeBlock::LateShrink);
     m_codeBlock->setJITCode(
         adoptRef(new DirectJITCode(result, withArityCheck, JITCode::BaselineJIT)));
-    
+
+    double after;
+    if (UNLIKELY(computeCompileTimes())) {
+        after = monotonicallyIncreasingTimeMS();
+
+        if (Options::reportTotalCompileTimes())
+            totalBaselineCompileTime += after - before;
+    }
+    if (UNLIKELY(reportCompileTimes())) {
+        CString codeBlockName = toCString(*m_codeBlock);
+        
+        dataLog("Optimized ", codeBlockName, " with Baseline JIT into ", patchBuffer.size(), " bytes in ", after - before, " ms.\n");
+    }
+
 #if ENABLE(JIT_VERBOSE)
     dataLogF("JIT generated code for %p at [%p, %p).\n", m_codeBlock, result.executableMemory()->start(), result.executableMemory()->end());
 #endif
@@ -799,6 +830,34 @@ unsigned JIT::frameRegisterCountFor(CodeBlock* codeBlock)
 int JIT::stackPointerOffsetFor(CodeBlock* codeBlock)
 {
     return virtualRegisterForLocal(frameRegisterCountFor(codeBlock) - 1).offset();
+}
+
+bool JIT::reportCompileTimes()
+{
+    return Options::reportCompileTimes() || Options::reportBaselineCompileTimes();
+}
+
+bool JIT::computeCompileTimes()
+{
+    return reportCompileTimes() || Options::reportTotalCompileTimes();
+}
+
+HashMap<CString, double> JIT::compileTimeStats()
+{
+    HashMap<CString, double> result;
+    if (Options::reportTotalCompileTimes()) {
+        result.add("Total Compile Time", totalBaselineCompileTime + totalDFGCompileTime + totalFTLCompileTime);
+        result.add("Baseline Compile Time", totalBaselineCompileTime);
+#if ENABLE(DFG_JIT)
+        result.add("DFG Compile Time", totalDFGCompileTime);
+#if ENABLE(FTL_JIT)
+        result.add("FTL Compile Time", totalFTLCompileTime);
+        result.add("FTL (DFG) Compile Time", totalFTLDFGCompileTime);
+        result.add("FTL (B3) Compile Time", totalFTLB3CompileTime);
+#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(DFG_JIT)
+    }
+    return result;
 }
 
 } // namespace JSC

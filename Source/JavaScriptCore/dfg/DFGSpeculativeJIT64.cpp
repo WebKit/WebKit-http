@@ -2763,6 +2763,25 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case GetByValWithThis: {
+        JSValueOperand base(this, node->child1());
+        GPRReg baseGPR = base.gpr();
+        JSValueOperand thisValue(this, node->child2());
+        GPRReg thisValueGPR = thisValue.gpr();
+        JSValueOperand subscript(this, node->child3());
+        GPRReg subscriptGPR = subscript.gpr();
+
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+
+        flushRegisters();
+        callOperation(operationGetByValWithThis, resultGPR, baseGPR, thisValueGPR, subscriptGPR);
+        m_jit.exceptionCheck();
+
+        jsValueResult(resultGPR, node);
+        break;
+    }
+
     case PutByValDirect:
     case PutByVal:
     case PutByValAlias: {
@@ -3861,7 +3880,7 @@ void SpeculativeJIT::compile(Node* node)
             JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
             callOperation(
                 operationNewTypedArrayWithOneArgumentForType(node->typedArrayType()),
-                resultGPR, globalObject->typedArrayStructure(node->typedArrayType()),
+                resultGPR, globalObject->typedArrayStructureConcurrently(node->typedArrayType()),
                 argumentGPR);
             m_jit.exceptionCheck();
             
@@ -3888,7 +3907,12 @@ void SpeculativeJIT::compile(Node* node)
         cellResult(result.gpr(), node);
         break;
     }
-        
+
+    case CallObjectConstructor: {
+        compileCallObjectConstructor(node);
+        break;
+    }
+
     case ToThis: {
         ASSERT(node->child1().useKind() == UntypedUse);
         JSValueOperand thisValue(this, node->child1());
@@ -4130,12 +4154,34 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case GetByIdWithThis: {
+        JSValueOperand base(this, node->child1());
+        GPRReg baseGPR = base.gpr();
+        JSValueOperand thisValue(this, node->child2());
+        GPRReg thisValueGPR = thisValue.gpr();
+
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+
+        flushRegisters();
+        callOperation(operationGetByIdWithThis, resultGPR, baseGPR, thisValueGPR, identifierUID(node->identifierNumber()));
+        m_jit.exceptionCheck();
+
+        jsValueResult(resultGPR, node);
+        break;
+    }
+
     case GetArrayLength:
         compileGetArrayLength(node);
         break;
 
     case DeleteById: {
         compileDeleteById(node);
+        break;
+    }
+
+    case DeleteByVal: {
+        compileDeleteByVal(node);
         break;
     }
         
@@ -4304,6 +4350,40 @@ void SpeculativeJIT::compile(Node* node)
         GPRReg scratchGPR = scratch.gpr();
         
         cachedPutById(node->origin.semantic, baseGPR, valueGPR, scratchGPR, node->identifierNumber(), NotDirect);
+
+        noResult(node);
+        break;
+    }
+
+    case PutByIdWithThis: {
+        JSValueOperand base(this, node->child1());
+        GPRReg baseGPR = base.gpr();
+        JSValueOperand thisValue(this, node->child2());
+        GPRReg thisValueGPR = thisValue.gpr();
+        JSValueOperand value(this, node->child3());
+        GPRReg valueGPR = value.gpr();
+
+        flushRegisters();
+        callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByIdWithThisStrict : operationPutByIdWithThis, NoResult, baseGPR, thisValueGPR, valueGPR, identifierUID(node->identifierNumber()));
+        m_jit.exceptionCheck();
+
+        noResult(node);
+        break;
+    }
+
+    case PutByValWithThis: {
+        JSValueOperand base(this, m_jit.graph().varArgChild(node, 0));
+        GPRReg baseGPR = base.gpr();
+        JSValueOperand thisValue(this, m_jit.graph().varArgChild(node, 1));
+        GPRReg thisValueGPR = thisValue.gpr();
+        JSValueOperand property(this, m_jit.graph().varArgChild(node, 2));
+        GPRReg propertyGPR = property.gpr();
+        JSValueOperand value(this, m_jit.graph().varArgChild(node, 3));
+        GPRReg valueGPR = value.gpr();
+
+        flushRegisters();
+        callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValWithThisStrict : operationPutByValWithThis, NoResult, baseGPR, thisValueGPR, propertyGPR, valueGPR);
+        m_jit.exceptionCheck();
 
         noResult(node);
         break;
@@ -4526,6 +4606,21 @@ void SpeculativeJIT::compile(Node* node)
         
         done.link(&m_jit);
         jsValueResult(result.gpr(), node, DataFormatJSBoolean);
+        break;
+    }
+
+    case IsJSArray: {
+        compileIsJSArray(node);
+        break;
+    }
+
+    case IsArrayObject: {
+        compileIsArrayObject(node);
+        break;
+    }
+
+    case IsArrayConstructor: {
+        compileIsArrayConstructor(node);
         break;
     }
 

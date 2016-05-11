@@ -482,6 +482,9 @@ private:
         case DFG::Check:
             compileNoOp();
             break;
+        case CallObjectConstructor:
+            compileCallObjectConstructor();
+            break;
         case ToThis:
             compileToThis();
             break;
@@ -602,6 +605,9 @@ private:
         case GetByIdFlush:
             compileGetById(AccessType::Get);
             break;
+        case GetByIdWithThis:
+            compileGetByIdWithThis();
+            break;
         case In:
             compileIn();
             break;
@@ -609,6 +615,9 @@ private:
         case PutByIdDirect:
         case PutByIdFlush:
             compilePutById();
+            break;
+        case PutByIdWithThis:
+            compilePutByIdWithThis();
             break;
         case PutGetterById:
         case PutSetterById:
@@ -646,10 +655,16 @@ private:
         case GetMyArgumentByValOutOfBounds:
             compileGetMyArgumentByVal();
             break;
+        case GetByValWithThis:
+            compileGetByValWithThis();
+            break;
         case PutByVal:
         case PutByValAlias:
         case PutByValDirect:
             compilePutByVal();
+            break;
+        case PutByValWithThis:
+            compilePutByValWithThis();
             break;
         case ArrayPush:
             compileArrayPush();
@@ -853,6 +868,15 @@ private:
             break;
         case IsString:
             compileIsString();
+            break;
+        case IsArrayObject:
+            compileIsArrayObject();
+            break;
+        case IsJSArray:
+            compileIsJSArray();
+            break;
+        case IsArrayConstructor:
+            compileIsArrayConstructor();
             break;
         case IsObject:
             compileIsObject();
@@ -1430,6 +1454,29 @@ private:
     void compileNoOp()
     {
         DFG_NODE_DO_TO_CHILDREN(m_graph, m_node, speculate);
+    }
+
+    void compileCallObjectConstructor()
+    {
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        m_out.branch(isCell(value, provenType(m_node->child1())), usually(isCellCase), rarely(slowCase));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, slowCase);
+        ValueFromBlock fastResult = m_out.anchor(value);
+        m_out.branch(isObject(value), usually(continuation), rarely(slowCase));
+
+        m_out.appendTo(slowCase, continuation);
+        ValueFromBlock slowResult = m_out.anchor(vmCall(m_out.int64, m_out.operation(operationObjectConstructor), m_callFrame, m_out.constIntPtr(globalObject), value));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
     }
     
     void compileToThis()
@@ -2448,6 +2495,45 @@ private:
             DFG_CRASH(m_graph, m_node, "Bad use kind");
             return;
         }
+    }
+
+    void compileGetByIdWithThis()
+    {
+        LValue base = lowJSValue(m_node->child1());
+        LValue thisValue = lowJSValue(m_node->child2());
+        LValue result = vmCall(m_out.int64, m_out.operation(operationGetByIdWithThis), m_callFrame, base, thisValue, m_out.constIntPtr(m_graph.identifiers()[m_node->identifierNumber()]));
+        setJSValue(result);
+    }
+
+    void compileGetByValWithThis()
+    {
+        LValue base = lowJSValue(m_node->child1());
+        LValue thisValue = lowJSValue(m_node->child2());
+        LValue subscript = lowJSValue(m_node->child3());
+
+        LValue result = vmCall(m_out.int64, m_out.operation(operationGetByValWithThis), m_callFrame, base, thisValue, subscript);
+        setJSValue(result);
+    }
+
+    void compilePutByIdWithThis()
+    {
+        LValue base = lowJSValue(m_node->child1());
+        LValue thisValue = lowJSValue(m_node->child2());
+        LValue value = lowJSValue(m_node->child3());
+
+        vmCall(m_out.voidType, m_out.operation(m_graph.isStrictModeFor(m_node->origin.semantic) ? operationPutByIdWithThisStrict : operationPutByIdWithThis),
+            m_callFrame, base, thisValue, value, m_out.constIntPtr(m_graph.identifiers()[m_node->identifierNumber()]));
+    }
+
+    void compilePutByValWithThis()
+    {
+        LValue base = lowJSValue(m_graph.varArgChild(m_node, 0));
+        LValue thisValue = lowJSValue(m_graph.varArgChild(m_node, 1));
+        LValue property = lowJSValue(m_graph.varArgChild(m_node, 2));
+        LValue value = lowJSValue(m_graph.varArgChild(m_node, 3));
+
+        vmCall(m_out.voidType, m_out.operation(m_graph.isStrictModeFor(m_node->origin.semantic) ? operationPutByValWithThisStrict : operationPutByValWithThis),
+            m_callFrame, base, thisValue, property, value);
     }
     
     void compilePutById()
@@ -3908,7 +3994,7 @@ private:
         
         switch (m_node->child1().useKind()) {
         case Int32Use: {
-            Structure* structure = globalObject->typedArrayStructure(type);
+            Structure* structure = globalObject->typedArrayStructureConcurrently(type);
 
             LValue size = lowInt32(m_node->child1());
 
@@ -3969,7 +4055,7 @@ private:
 
             LValue result = vmCall(
                 m_out.intPtr, m_out.operation(operationNewTypedArrayWithOneArgumentForType(type)),
-                m_callFrame, weakPointer(globalObject->typedArrayStructure(type)), argument);
+                m_callFrame, weakPointer(globalObject->typedArrayStructureConcurrently(type)), argument);
 
             setJSValue(result);
             return;
@@ -5840,6 +5926,55 @@ private:
         
         m_out.appendTo(continuation, lastNext);
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
+    void compileIsArrayObject()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock cellCase = m_out.newBlock();
+        LBasicBlock notArrayCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(isCell(value, provenType(m_node->child1())), unsure(cellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(cellCase, notArrayCase);
+        ValueFromBlock arrayResult = m_out.anchor(m_out.booleanTrue);
+        m_out.branch(isArray(value, provenType(m_node->child1())), unsure(continuation), unsure(notArrayCase));
+
+        m_out.appendTo(notArrayCase, continuation);
+        ValueFromBlock notArrayResult = m_out.anchor(vmCall(m_out.boolean, m_out.operation(operationIsArrayObject), m_callFrame, value));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, arrayResult, notArrayResult));
+    }
+
+    void compileIsJSArray()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(
+            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
+        ValueFromBlock cellResult = m_out.anchor(isArray(value, provenType(m_node->child1())));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
+    void compileIsArrayConstructor()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        setBoolean(vmCall(m_out.boolean, m_out.operation(operationIsArrayConstructor), m_callFrame, value));
     }
 
     void compileIsObject()
@@ -9959,6 +10094,15 @@ private:
             return;
         
         jsValueToStrictInt52(edge, lowJSValue(edge, ManualOperandSpeculation));
+    }
+
+    LValue isArray(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, SpecArray))
+            return proven;
+        return m_out.equal(
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(ArrayType));
     }
     
     LValue isObject(LValue cell, SpeculatedType type = SpecFullTop)

@@ -1,3 +1,740 @@
+2016-05-10  Sam Weinig  <sam@webkit.org>
+
+        Only expose WKDataDetectorTypes and -[WKWebViewConfiguration dataDetectorTypes] on iOS
+        for now, since we don't have it fully implemented on Mac.
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (fromWKDataDetectorTypes):
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration encodeWithCoder:]):
+        (-[WKWebViewConfiguration initWithCoder:]):
+        (-[WKWebViewConfiguration copyWithZone:]):
+
+2016-05-10  Sam Weinig  <sam@webkit.org>
+
+        Add SPI for Data Detectors to get ranges of text around an existing range.
+        <rdar://problem/26009749>
+
+        Reviewed by Enrica Casucci.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMRange.h:
+        * WebProcess/InjectedBundle/API/mac/WKDOMRange.mm:
+        (-[WKDOMRange rangeByExpandingToWordBoundaryByCharacters:inDirection:]):
+
+2016-05-10  Enrica Casucci  <enrica@apple.com>
+
+        Numerous block selection issues on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=157490
+        rdar://problem/25717977
+        rdar://problem/23042215
+
+        Reviewed by Tim Horton.
+
+        This patch fixes a number of issues with block selection on iOS.
+        We no longer eagerly choose block selection vs text selection and we
+        make sure we are capable of switching back to text selection from block
+        under every circumstance. The patch also fixes the logic used to decide
+        when to switch to block selection. It now computes the rectangle for the
+        paragraph containing the initial text selection to decide when we are
+        actually dragging outside the boundaries of the paragraph block.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (selectionChangedWithGesture):
+        (selectionChangedWithTouch):
+        (-[WKContentView changeSelectionWithTouchAt:withSelectionTouch:baseIsStart:]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::gestureCallback):
+        (WebKit::WebPageProxy::touchesCallback):
+        (WebKit::WebPageProxy::autocorrectionDataCallback):
+        (WebKit::WebPageProxy::selectWithGesture):
+        (WebKit::WebPageProxy::updateSelectionWithTouches):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::selectionBoxForRange):
+        (WebKit::canShrinkToTextSelection):
+        (WebKit::hasCustomLineHeight):
+        (WebKit::WebPage::rangeForWebSelectionAtPosition):
+        (WebKit::WebPage::contractedRangeFromHandle):
+        (WebKit::WebPage::updateBlockSelectionWithTouch):
+        (WebKit::WebPage::clearSelection):
+        (WebKit::WebPage::switchToBlockSelectionAtPoint):
+        (WebKit::WebPage::shouldSwitchToBlockModeForHandle):
+        (WebKit::WebPage::updateSelectionWithTouches):
+        (WebKit::WebPage::selectWithTwoTouches):
+
+2016-05-10  Alex Christensen  <achristensen@webkit.org>
+
+        Handle _schemeUpgraded delegate callbacks in NSURLSessionDataDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=157354
+        rdar://problem/25842107
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:_schemeUpgraded:completionHandler:]):
+        When we make a request to a http url and CFNetwork determines that that url would have redirected to an HSTS site
+        and it is going to change the request to an https request, this delegate callback is called.  We need to call the
+        redirection code to have the same behavior as the NSURLConnection-based loader.
+
+2016-05-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(VIDEO) build
+        https://bugs.webkit.org/show_bug.cgi?id=157518
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchData):
+        (WebKit::WebsiteDataStore::removeData):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2016-05-10  Anders Carlsson  <andersca@apple.com>
+
+        Fix more deprecation warnings.
+
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkServiceEntryPoint.mm:
+        (NetworkServiceInitializer):
+        * PluginProcess/EntryPoint/mac/XPCService/PluginServiceEntryPoint.mm:
+        (PluginServiceInitializer):
+        * WebProcess/EntryPoint/mac/XPCService/WebContentServiceEntryPoint.mm:
+        (WebContentServiceInitializer):
+
+2016-05-10  Chris Dumez  <cdumez@apple.com>
+
+        [SpeculativeValidation] Do not start a preload if there is already one pending
+        https://bugs.webkit.org/show_bug.cgi?id=157522
+        <rdar://problem/26156083>
+
+        Reviewed by Alex Christensen.
+
+        Do not start a preload if there is already one pending. We failed to check in
+        SpeculativeLoadManager::preloadEntry() if there was already a pending preload.
+        As a result, we would sometimes cancel an already pending preload and start
+        one from scratch which is inefficient. It would also sometimes lead to hitting
+        an assertion in the SpeculativeLoad destructor because we could destroy the
+        SpeculativeLoad without finishing or cancelling the load.
+
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        (WebKit::NetworkCache::SpeculativeLoadManager::preloadEntry):
+
+2016-05-10  Anders Carlsson  <andersca@apple.com>
+
+        Fix a deprecation warning.
+
+        * DatabaseProcess/EntryPoint/mac/XPCService/DatabaseServiceEntryPoint.mm:
+        (DatabaseServiceInitializer):
+
+2016-05-10  Tim Horton  <timothy_horton@apple.com>
+
+        Clicks do not work in Safari after pressing the Track package button in Gmail
+        https://bugs.webkit.org/show_bug.cgi?id=157508
+        <rdar://problem/22646404>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::viewDidMoveToWindow):
+        Explicitly cancel the force-click animation when we're removing the gesture
+        recognizer due to the WK*View being unparented. This works around a bug
+        where we don't get the cancellation callback in this situation, causing
+        Safari to be left in an inconsistent and unexpected state.
+
+2016-05-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [Linux] Remove seccomp filters support
+        https://bugs.webkit.org/show_bug.cgi?id=157380
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode): Deleted.
+        (WebKit::NetworkProcessCreationParameters::decode): Deleted.
+        * NetworkProcess/NetworkProcessCreationParameters.h:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode): Deleted.
+        (WebKit::WebProcessCreationParameters::decode): Deleted.
+        * Shared/WebProcessCreationParameters.h:
+        * Shared/linux/SeccompFilters/OpenSyscall.cpp: Removed.
+        * Shared/linux/SeccompFilters/OpenSyscall.h: Removed.
+        * Shared/linux/SeccompFilters/SeccompBroker.cpp: Removed.
+        * Shared/linux/SeccompFilters/SeccompBroker.h: Removed.
+        * Shared/linux/SeccompFilters/SeccompFilters.cpp: Removed.
+        * Shared/linux/SeccompFilters/SeccompFilters.h: Removed.
+        * Shared/linux/SeccompFilters/SigactionSyscall.cpp: Removed.
+        * Shared/linux/SeccompFilters/SigactionSyscall.h: Removed.
+        * Shared/linux/SeccompFilters/SigprocmaskSyscall.cpp: Removed.
+        * Shared/linux/SeccompFilters/SigprocmaskSyscall.h: Removed.
+        * Shared/linux/SeccompFilters/Syscall.cpp: Removed.
+        * Shared/linux/SeccompFilters/Syscall.h: Removed.
+        * Shared/linux/SeccompFilters/SyscallPolicy.cpp: Removed.
+        * Shared/linux/SeccompFilters/SyscallPolicy.h: Removed.
+        * Shared/linux/SeccompFilters/XDGBaseDirectory.h: Removed.
+        * Shared/linux/SeccompFilters/XDGBaseDirectoryGLib.cpp: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureNetworkProcess): Deleted.
+        (WebKit::WebProcessPool::createNewWebProcess): Deleted.
+        (WebKit::WebProcessPool::cookieStorageDirectory): Deleted.
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/efl/SeccompFiltersWebProcessEfl.cpp: Removed.
+        * WebProcess/efl/SeccompFiltersWebProcessEfl.h: Removed.
+        * WebProcess/gtk/SeccompFiltersWebProcessGtk.cpp: Removed.
+        * WebProcess/gtk/SeccompFiltersWebProcessGtk.h: Removed.
+        * WebProcess/soup/WebProcessSoup.cpp:
+        (WebKit::WebProcess::platformInitializeWebProcess): Deleted.
+
+2016-05-09  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r191922): Zoom in/Zoom Out is not working for PDFs
+        https://bugs.webkit.org/show_bug.cgi?id=157503
+        <rdar://problem/23736297>
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.h:
+        Restore a requiresUnifiedScaleFactor that was lost in r191922.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didCommitLoadForFrame):
+        (WebKit::WebPageProxy::mainFramePluginHandlesPageScaleGestureDidChange):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:        
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::didInitializePlugin):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidCommitLoad):
+        Separate mainFramePluginHandlesPageScaleGesture changes out from didCommitLoadForFrame,
+        because the PluginView doesn't exist at this point, so it can't answer
+        the handlesPageScaleGesture question correctly (or at all).
+        Instead, we'll send the message when the main-frame PluginView is initialized.
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] visibility:hidden -webkit-overflow-scrolling: touch divs can interfere with page scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=157496
+        rdar://problem/22963278
+
+        Reviewed by Tim Horton.
+
+        UIScrollViews are constructed in the UI process for visibility:hidden scrollable elements
+        with -webkit-overflow-scrolling: touch, and these intercept user events when they should not.
+
+        Fix by propagating a "contentsHidden" flag from the web process which is used to turn off
+        user interaction on these views.
+
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        (WebKit::RemoteLayerTreePropertyApplier::applyProperties):
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::LayerProperties):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::encode):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::decode):
+        (WebKit::dumpChangedLayers):
+        * UIProcess/ios/RemoteLayerTreeHostIOS.mm:
+        (-[UIView _recursiveFindDescendantScrollViewAtPoint:withEvent:]): Our custom hit
+        test needs to take view.isUserInteractionEnabled into account.
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::setHidden):
+        (WebKit::PlatformCALayerRemote::contentsHidden):
+        (WebKit::PlatformCALayerRemote::setContentsHidden):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+
+2016-05-09  Ada Chan  <adachan@apple.com>
+
+        Introduce WebVideoFullscreenInterfaceMac::isPlayingVideoInEnhancedFullscreen() and use it in WebVideoFullscreenManagerProxy::isPlayingVideoInEnhancedFullscreen()
+        https://bugs.webkit.org/show_bug.cgi?id=157493
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::isPlayingVideoInEnhancedFullscreen):
+
+2016-05-06  Ada Chan  <adachan@apple.com>
+
+        Add WKPageRef SPI to tell whether there's a video playing in enhanced fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=157434
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/C/mac/WKPagePrivateMac.h:
+        * UIProcess/API/C/mac/WKPagePrivateMac.mm:
+        (WKPageIsPlayingVideoInEnhancedFullscreen):
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.h:
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::isPlayingVideoInEnhancedFullscreen):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::isPlayingVideoInEnhancedFullscreen):
+        * UIProcess/WebPageProxy.h:
+
+2016-05-09  Anders Carlsson  <andersca@apple.com>
+
+        Add injected bundle SPI for getting favicon and touch icon URLs
+        https://bugs.webkit.org/show_bug.cgi?id=157435
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.mm:
+        (collectIcons):
+        New helper function that calls into the WebCore LinkCollector.
+
+        (-[WKWebProcessPlugInFrame appleTouchIconURLs]):
+        Call collectIcons.
+
+        (-[WKWebProcessPlugInFrame faviconURLs]):
+        Ditto.
+
+2016-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Font size increases on some pages after navigating then going back
+        https://bugs.webkit.org/show_bug.cgi?id=157441
+        rdar://problem/22873240
+
+        Reviewed by Darin Adler.
+
+        There's an ordering dependency between setting the viewport configuration and doing
+        layouts when going back to a page from the page cache that is incorrectly handled.
+
+        In FrameLoader::commitProvisionalLoad(), CachedPage::restore() triggers a layout under
+        updateContentsSize(), but this happens before dispatchDidCommitLoad() which updates
+        the viewport arguments via ViewportConfiguration::setViewportArguments().
+
+        This issue is not addressed by the current commit. But a second problem is:
+        if the inputs to text autosizing change, we need to invalidate the autosizing state.
+        The relevant input here is the fixed layout width (which is determined from the viewport
+        configuration).
+
+        The current code invalidated text autosizing when m_viewportConfiguration.minimumLayoutSize()
+        changed, but the correct behavior is to invalidate based on fixed layout size changing.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::sendViewportAttributesChanged):
+        (WebKit::WebPage::setFixedLayoutSize):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::resetTextAutosizing):
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+        (WebKit::WebPage::viewportConfigurationChanged):
+        (WebKit::WebPage::setViewportConfigurationMinimumLayoutSize): Deleted.
+        (WebKit::WebPage::resetTextAutosizingBeforeLayoutIfNeeded): Deleted.
+
+2016-05-09  Alex Christensen  <achristensen@webkit.org>
+
+        Don't use DiskCache for media resource loads
+        https://bugs.webkit.org/show_bug.cgi?id=157405
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::makeRetrieveDecision):
+        (WebKit::NetworkCache::makeStoreDecision):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStatistics.cpp:
+        (WebKit::NetworkCache::retrieveDecisionToDiagnosticKey):
+
+2016-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Migrate our Font classes entirely off of NSFont
+        https://bugs.webkit.org/show_bug.cgi?id=157464
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebCoreSupport/mac/WebPopupMenuMac.mm:
+        (WebKit::WebPopupMenu::setUpPlatformData):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::fontAtSelection):
+
+2016-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Rename HitTestRequest DisallowShadowContent to DisallowUserAgentShadowContent
+        https://bugs.webkit.org/show_bug.cgi?id=157447
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp:
+        (WebKit::WebPage::findZoomableAreaForPoint):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::hitTest):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::rangeForWebSelectionAtPosition):
+        (WebKit::WebPage::rangeForBlockAtPoint):
+        (WebKit::WebPage::getPositionInformation):
+
+2016-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable IOS_TEXT_AUTOSIZING on Mac and make it testable
+        https://bugs.webkit.org/show_bug.cgi?id=157432
+        rdar://problem/16406720
+
+        Reviewed by Dean Jackson.
+
+        Enable IOS_TEXT_AUTOSIZING on Mac so it can be tested.
+        
+        Make the setTextAutosizingEnabled() Setting work, and plumb it through WK1 and WK2
+        preferences for WTR and DRT. Make textAutosizingWindowSizeOverride() work, for layout tests.
+        These two settings are shared with TEXT_AUTOSIZING.
+
+        Add a TextAutosizing log channel, which is useful for generated -expected.html results.
+
+        Move adjustComputedFontSizesOnBlocks() and related code from RenderObject to RenderElement
+        without changes.
+
+        An implication of this set of changes is that the way clients enable text autosizing
+        has changed. Previously, they set the "MinimumZoomFontSize" preference to 0.
+        Settings::defaultMinimumZoomFontSize() used to do this in order to enable text autosizing
+        on iPhone only, not iPad.
+
+        Now the preferred technique is to leave minimumZoomFontSize alone, and to use textAutosizingEnabled()
+        instead. Settings::defaultTextAutosizingEnabled() now does the check for iPhone.
+
+        UIWebView calls WebKitGetMinimumZoomFontSize() to setup the default minimum font zoom size,
+        which will now always return 15, but had no other code that toggled this. So it's safe to just rely
+        on Settings::defaultTextAutosizingEnabled() doing the right thing for iPhone/iPad.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _textAutosizingEnabled]):
+        (-[WKPreferences _setTextAutosizingEnabled:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-05-06  Dean Jackson  <dino@apple.com>
+
+        Regions, Shapes and Tracks don't need runtime features
+        https://bugs.webkit.org/show_bug.cgi?id=157426
+        <rdar://problem/26146262>
+
+        Reviewed by Simon Fraser.
+
+        The following RuntimeEnabledFeatures can be removed since
+        we have no need to disable them (they are stable and have
+        shipped for a while):
+        - CSS Regions
+        - CSS Shapes
+        - Media tracks
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetCSSRegionsEnabled): Deleted.
+        (WKPreferencesGetCSSRegionsEnabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner): Deleted.
+        (WebKit::InjectedBundle::setCSSRegionsEnabled): Deleted.
+        (WebKit::InjectedBundle::setCSSCompositingEnabled): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Deleted.
+
+2016-05-05  Ada Chan  <adachan@apple.com>
+
+        Create a fence in WebVideoFullscreenManagerProxy::setVideoLayerFrame() to pass to the web process
+        https://bugs.webkit.org/show_bug.cgi?id=157409
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenManagerProxy::setVideoLayerFrame):
+        Create a fence by calling DrawingAreaProxy::createFence() and pass it when sending the
+        WebVideoFullscreenManager::SetVideoLayerFrameFenced message.
+
+        * UIProcess/DrawingAreaProxy.cpp:
+        (WebKit::DrawingAreaProxy::createFence):
+        Stub implementation. Assert not to be reached here since it's only implemented on Mac so far.
+        * UIProcess/DrawingAreaProxy.h:
+
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.h:
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm:
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::createFence):
+        Renamed from createFenceForGeometryUpdate() since we are using it for more than just updating geometry.
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::sendUpdateGeometry):
+        Update due to method rename.
+
+2016-05-05  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB (Workers): Get everything to the right threads.
+        https://bugs.webkit.org/show_bug.cgi?id=157398
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::putOrAdd):
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+
+2016-05-05  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Remove "region based columns" runtime feature remainings
+        https://bugs.webkit.org/show_bug.cgi?id=157393
+
+        The runtime feature was removed in r168978,
+        and the usage in WebKitSettings.cpp in r168988.
+        However it was still around in ExperimentalFeatures class.
+
+        Reviewed by Michael Catanzaro.
+
+        * UIProcess/gtk/ExperimentalFeatures.cpp: Remove runtime feature.
+        * UIProcess/gtk/ExperimentalFeatures.h: Ditto.
+
+2016-05-05  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Add CSS Grid Layout as experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=157391
+
+        Reviewed by Michael Catanzaro.
+
+        Now that we've a runtime feature again for CSS Grid Layout (r200215),
+        we can recover the old patch (r162215) that allows to enable/disable
+        CSS Grid Layout through the environment variable
+        WEBKITGTK_EXPERIMENTAL_FEATURES.
+
+        Example: WEBKITGTK_EXPERIMENTAL_FEATURES="CSS_GRID_LAYOUT=1"
+
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (webKitSettingsConstructed): Use new experimental feature to enable
+        or disable CSS Grid Layout.
+        * UIProcess/gtk/ExperimentalFeatures.cpp: Add new experimental feature.
+        * UIProcess/gtk/ExperimentalFeatures.h: Ditto.
+
+2016-05-05  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] Media controls don't update if controller is created after the interface is created
+        https://bugs.webkit.org/show_bug.cgi?id=157376
+
+        Reviewed by Beth Dakin.
+
+        Implement the new getter methods on WebPlaybackSessionModelContext by caching the values
+        passed through WebPlaybackSessionManagerProxy.
+
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.h:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.mm:
+        (WebKit::WebPlaybackSessionManagerProxy::setCurrentTime):
+        (WebKit::WebPlaybackSessionManagerProxy::setBufferedTime):
+        (WebKit::WebPlaybackSessionManagerProxy::setSeekableRangesVector):
+        (WebKit::WebPlaybackSessionManagerProxy::setCanPlayFastReverse):
+        (WebKit::WebPlaybackSessionManagerProxy::setAudioMediaSelectionOptions):
+        (WebKit::WebPlaybackSessionManagerProxy::setLegibleMediaSelectionOptions):
+        (WebKit::WebPlaybackSessionManagerProxy::setExternalPlaybackProperties):
+        (WebKit::WebPlaybackSessionManagerProxy::setWirelessVideoPlaybackDisabled):
+        (WebKit::WebPlaybackSessionManagerProxy::setDuration):
+        (WebKit::WebPlaybackSessionManagerProxy::setRate):
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.h:
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.mm:
+        (WebKit::WebVideoFullscreenModelContext::requestFullscreenMode): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::setVideoLayerFrame): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::setVideoLayerGravity): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::fullscreenModeChanged): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::isVisible): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::didSetupFullscreen): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::didEnterFullscreen): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::didExitFullscreen): Deleted.
+        (WebKit::WebVideoFullscreenModelContext::didCleanupFullscreen): Deleted.
+        (WebKit::WebVideoFullscreenManagerProxy::WebVideoFullscreenManagerProxy): Deleted.
+        (WebKit::WebVideoFullscreenManagerProxy::~WebVideoFullscreenManagerProxy): Deleted.
+
+2016-05-05  Dean Jackson  <dino@apple.com>
+
+        Shadow DOM should not be experimental
+        https://bugs.webkit.org/show_bug.cgi?id=157384
+        <rdar://problem/26123254>
+
+        Reviewed by Anders Carlsson.
+
+        Shadow DOM is not an experimental feature. We want
+        it enabled by default.
+
+        This fixes the timeout in:
+        WebKit2.InjectedBundleMakeAllShadowRootOpenTest
+
+        * Shared/WebPreferencesDefinitions.h: Move the Shadow
+        DOM preference out of Experimental.
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-05-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Revert r200390, thus putting r199259 and r200161 and back.
+
+        * Shared/VisibleContentRectUpdateInfo.cpp:
+        (WebKit::VisibleContentRectUpdateInfo::encode):
+        (WebKit::VisibleContentRectUpdateInfo::decode):
+        * Shared/VisibleContentRectUpdateInfo.h:
+        (WebKit::VisibleContentRectUpdateInfo::VisibleContentRectUpdateInfo):
+        (WebKit::VisibleContentRectUpdateInfo::enclosedInScrollableAncestorView):
+        (WebKit::operator==):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didInvokeUIScrollViewDelegateCallback]):
+        (-[WKWebView _didFinishScrolling]):
+        (-[WKWebView scrollViewDidScroll:]):
+        (-[WKWebView scrollViewDidZoom:]):
+        (-[WKWebView scrollViewDidEndZooming:withView:atScale:]):
+        (-[WKWebView _scrollViewDidInterruptDecelerating:]):
+        (-[WKWebView _visibleRectInEnclosingScrollView:]):
+        (-[WKWebView _visibleContentRect]):
+        (-[WKWebView _didScroll]):
+        (-[WKWebView _enclosingScrollerScrollingEnded:]):
+        (-[WKWebView _frameOrBoundsChanged]):
+        (-[WKWebView _updateVisibleContentRects]):
+        (-[WKWebView _updateVisibleContentRectAfterScrollInView:]):
+        (scrollViewCanScroll):
+        (-[WKWebView _updateContentRectsWithState:]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:]): Deleted.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::updateVisibleContentRects):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::indicatorLocation):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects):
+
+2016-05-02  Sam Weinig  <sam@webkit.org>
+
+        On platforms that support it, use a SecTrustRef as the basis of CertificateInfo instead of a chain of SecCertificateRefs.
+        https://bugs.webkit.org/show_bug.cgi?id=157220
+
+        Reviewed by Darin Adler.
+
+        * Shared/Authentication/mac/AuthenticationManager.mac.mm:
+        (WebKit::leafCertificate):
+        (WebKit::chain):
+        (WebKit::AuthenticationManager::tryUseCertificateInfoForChallenge):
+        When supported, get the SecCertificateRef from the SecTrustRef rather than the
+        stored certificate chain.
+
+        * Shared/cf/ArgumentCodersCF.cpp:
+        (IPC::typeFromCFTypeRef):
+        (IPC::encode):
+        (IPC::decode):
+        * Shared/cf/ArgumentCodersCF.h:
+        Add support for encoding/decoding SecTrustRef objects.
+
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<CertificateInfo>::encode):
+        (IPC::ArgumentCoder<CertificateInfo>::decode):
+        Add support for encoding/decoding CertificateInfo's that contain SecTrustRef objects.
+
+        (IPC::encodeNSError):
+        (IPC::decodeNSError):
+        Simplify error encoding/decoding by not using an addition CertificateInfo object for encoding
+        the peerCertificateChain. Also, add the peerTrust to the userInfo that get's encoded/decoded.
+
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView serverTrust]):
+        (-[WKWebView certificateChain]):
+        Add new serverTrust API and deprecate certificateChain.
+
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::willChangeCertificateInfo):
+        (WebKit::NavigationState::didChangeCertificateInfo):
+        Add support for KVO of -[WKWebView serverTrust].
+
+2016-05-05  Daniel Bates  <dabates@apple.com>
+
+        Remove workaround added in r200391 (rdar://problem/25992976)
+        https://bugs.webkit.org/show_bug.cgi?id=157378
+        <rdar://problem/26118503>
+
+        Reviewed by Anders Carlsson.
+
+        Following the fix for <rdar://problem/26075714> we can remove the workaround added in r200391 (rdar://problem/25992976).
+
+        * Shared/mac/CodeSigning.mm:
+        (WebKit::secCodeSigningIdentifier):
+
+2016-05-04  Dean Jackson  <dino@apple.com>
+
+        Experimental Features don't need an "Experimental" prefix
+        https://bugs.webkit.org/show_bug.cgi?id=157363
+        <rdar://problem/26100630>
+
+        Reviewed by Anders Carlsson.
+
+        Since we're not persisting the value of the experimental
+        features, it's unlikely there will ever be the case
+        where we move a Preference from experimental to normal
+        and use a stored value.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-05-04  Dean Jackson  <dino@apple.com>
+
+        Experimental features should toggle runtime flags
+        https://bugs.webkit.org/show_bug.cgi?id=157353
+        <rdar://problem/23621603>
+
+        Reviewed by Anders Carlsson.
+
+        Hook up the experimental WebPreferences to RuntimeEnabledFeatures.
+        In the process I removed the general preference for WebGL 2 (we
+        already had an experimental feature for it) and moved Custom
+        Elements and Shadow DOM to experimental.
+
+        I also removed the C versions of the preferences, since experimental
+        features only need the ObjC API (which is generated automatically).
+
+        * Shared/WebPreferencesDefinitions.h: Move/remove some features and
+        make the experimental section more clear.
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetWebGL2Enabled): Deleted.
+        (WKPreferencesGetWebGL2Enabled): Deleted.
+        (WKPreferencesSetShadowDOMEnabled): Deleted.
+        (WKPreferencesGetShadowDOMEnabled): Deleted.
+        (WKPreferencesSetCustomElementsEnabled): Deleted.
+        (WKPreferencesGetCustomElementsEnabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/WebPreferences.cpp:
+        (WebKit::WebPreferences::updateBoolValueForExperimentalFeatureKey): A
+        version of updateBoolValueForKey that doesn't call the platform
+        function (e.g. doesn't save to NSUserDefaults).
+        * UIProcess/WebPreferences.h:
+        * UIProcess/mac/WebPreferencesMac.mm:
+        (WebKit::WebPreferences::platformInitializeStore): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-05-04  Dean Jackson  <dino@apple.com>
+
+        TestRunner should always enable all the experimental features
+        https://bugs.webkit.org/show_bug.cgi?id=157360
+        <rdar://problem/26099748>
+
+        Reviewed by Anders Carlsson.
+
+        Experimental features are disabled by default, but it is
+        a pain to enable them in every test. Instead, have the
+        test runner turn them all on.
+
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesEnableAllExperimentalFeatures):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/WebPreferences.cpp:
+        (WebKit::WebPreferences::enableAllExperimentalFeatures):
+        * UIProcess/WebPreferences.h:
+
 2016-05-04  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
 
         Add WKPreference for SelectionPaintingWithoutSelectionGaps

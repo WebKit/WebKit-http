@@ -1439,7 +1439,7 @@ RefPtr<NodeList> Internals::nodesFromRect(Document& document, int centerX, int c
     if (ignoreClipping)
         hitType |= HitTestRequest::IgnoreClipping;
     if (!allowShadowContent)
-        hitType |= HitTestRequest::DisallowShadowContent;
+        hitType |= HitTestRequest::DisallowUserAgentShadowContent;
     if (allowChildFrameContent)
         hitType |= HitTestRequest::AllowChildFrameContent;
 
@@ -3313,6 +3313,18 @@ void Internals::setLinkPreloadSupport(bool enable)
 void Internals::setCSSGridLayoutEnabled(bool enable)
 {
     RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enable);
+}
+#endif
+
+#if ENABLE(WEBGL2)
+bool Internals::webGL2Enabled() const
+{
+    return RuntimeEnabledFeatures::sharedFeatures().webGL2Enabled();
+}
+
+void Internals::setWebGL2Enabled(bool enable)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(enable);
 }
 #endif
 

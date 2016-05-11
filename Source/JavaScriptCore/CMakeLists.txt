@@ -289,7 +289,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFlushedAt.cpp
     dfg/DFGLiveCatchVariablePreservationPhase.cpp
     dfg/DFGFrozenValue.cpp
-    dfg/DFGFunctionWhitelist.cpp
     dfg/DFGGraph.cpp
     dfg/DFGGraphSafepoint.cpp
     dfg/DFGHeapLocation.cpp
@@ -564,6 +563,7 @@ set(JavaScriptCore_SOURCES
     jit/Repatch.cpp
     jit/ScratchRegisterAllocator.cpp
     jit/SetupVarargsFrame.cpp
+    jit/TagRegistersMode.cpp
     jit/TempRegisterSet.cpp
     jit/ThunkGenerators.cpp
 
@@ -597,12 +597,14 @@ set(JavaScriptCore_SOURCES
     profiler/ProfilerCompilationKind.cpp
     profiler/ProfilerCompiledBytecode.cpp
     profiler/ProfilerDatabase.cpp
+    profiler/ProfilerEvent.cpp
     profiler/ProfilerJettisonReason.cpp
     profiler/ProfilerOSRExit.cpp
     profiler/ProfilerOSRExitSite.cpp
     profiler/ProfilerOrigin.cpp
     profiler/ProfilerOriginStack.cpp
     profiler/ProfilerProfiledBytecodes.cpp
+    profiler/ProfilerUID.cpp
 
     runtime/ArgList.cpp
     runtime/ArrayBuffer.cpp
@@ -740,6 +742,7 @@ set(JavaScriptCore_SOURCES
     runtime/JSWeakSet.cpp
     runtime/JSWithScope.cpp
     runtime/JSWrapperObject.cpp
+    runtime/LazyClassStructure.cpp
     runtime/LiteralParser.cpp
     runtime/Lookup.cpp
     runtime/MapConstructor.cpp
@@ -825,6 +828,7 @@ set(JavaScriptCore_SOURCES
     tools/CodeProfile.cpp
     tools/CodeProfiling.cpp
     tools/FunctionOverrides.cpp
+    tools/FunctionWhitelist.cpp
     tools/JSDollarVM.cpp
     tools/JSDollarVMPrototype.cpp
 

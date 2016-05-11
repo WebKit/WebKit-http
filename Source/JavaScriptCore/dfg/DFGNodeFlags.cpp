@@ -85,8 +85,11 @@ void dumpNodeFlags(PrintStream& actualOut, NodeFlags flags)
             out.print(comma, "UseAsOther");
     }
 
-    if (flags & NodeMayHaveNonIntResult)
-        out.print(comma, "MayHaveNonIntResult");
+    if (flags & NodeMayHaveDoubleResult)
+        out.print(comma, "MayHaveDoubleResult");
+
+    if (flags & NodeMayHaveNonNumberResult)
+        out.print(comma, "MayHaveNonNumberResult");
 
     if (flags & NodeMayOverflowInt52)
         out.print(comma, "MayOverflowInt52");

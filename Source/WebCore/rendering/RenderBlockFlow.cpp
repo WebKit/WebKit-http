@@ -32,6 +32,7 @@
 #include "HitTestLocation.h"
 #include "InlineTextBox.h"
 #include "LayoutRepainter.h"
+#include "Logging.h"
 #include "RenderCombineText.h"
 #include "RenderFlowThread.h"
 #include "RenderInline.h"
@@ -563,7 +564,7 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
 
         if (hasOverflowClip()) {
             // Adjust repaint rect for scroll offset
-            repaintRect.move(-scrolledContentOffset());
+            repaintRect.moveBy(-scrollPosition());
 
             // Don't allow this rect to spill out of our overflow box.
             repaintRect.intersect(LayoutRect(LayoutPoint(), size()));
@@ -3142,7 +3143,7 @@ GapRects RenderBlockFlow::inlineSelectionGaps(RenderBlock& rootBlock, const Layo
 
 void RenderBlockFlow::createRenderNamedFlowFragmentIfNeeded()
 {
-    if (!document().cssRegionsEnabled() || renderNamedFlowFragment() || isRenderNamedFlowFragment())
+    if (renderNamedFlowFragment() || isRenderNamedFlowFragment())
         return;
 
     // FIXME: Multicolumn regions not yet supported (http://dev.w3.org/csswg/css-regions/#multi-column-regions)
@@ -3738,12 +3739,12 @@ int RenderBlockFlow::lineCountForTextAutosizing()
     return count;
 }
 
-static bool isNonBlocksOrNonFixedHeightListItems(const RenderObject* render)
+static bool isNonBlocksOrNonFixedHeightListItems(const RenderObject& render)
 {
-    if (!render->isRenderBlock())
+    if (!render.isRenderBlock())
         return true;
-    if (render->isListItem())
-        return render->style().height().type() != Fixed;
+    if (render.isListItem())
+        return render.style().height().type() != Fixed;
     return false;
 }
 
@@ -3761,6 +3762,8 @@ static inline float textMultiplier(float specifiedSize)
 
 void RenderBlockFlow::adjustComputedFontSizes(float size, float visibleWidth)
 {
+    LOG(TextAutosizing, "RenderBlockFlow %p adjustComputedFontSizes, size=%f visibleWidth=%f, width()=%f. Bailing: %d", this, size, visibleWidth, width().toFloat(), visibleWidth >= width());
+
     // Don't do any work if the block is smaller than the visible area.
     if (visibleWidth >= width())
         return;
@@ -3787,7 +3790,7 @@ void RenderBlockFlow::adjustComputedFontSizes(float size, float visibleWidth)
     
     for (RenderObject* descendent = traverseNext(this, isNonBlocksOrNonFixedHeightListItems); descendent; descendent = descendent->traverseNext(this, isNonBlocksOrNonFixedHeightListItems)) {
         if (isVisibleRenderText(descendent) && resizeTextPermitted(descendent)) {
-            RenderText& text = downcast<RenderText>(*descendent);
+            auto& text = downcast<RenderText>(*descendent);
             auto& oldStyle = text.style();
             auto fontDescription = oldStyle.fontDescription();
             float specifiedSize = fontDescription.specifiedSize();

@@ -26,6 +26,8 @@
 #include "config.h"
 #include "JSInjectedScriptHost.h"
 
+#include "BuiltinNames.h"
+#include "Completion.h"
 #include "DateInstance.h"
 #include "DirectArguments.h"
 #include "Error.h"
@@ -36,6 +38,7 @@
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSFunction.h"
+#include "JSGlobalObjectFunctions.h"
 #include "JSInjectedScriptHostPrototype.h"
 #include "JSMap.h"
 #include "JSMapIterator.h"
@@ -47,6 +50,7 @@
 #include "JSTypedArrays.h"
 #include "JSWeakMap.h"
 #include "JSWeakSet.h"
+#include "JSWithScope.h"
 #include "ObjectConstructor.h"
 #include "ProxyObject.h"
 #include "RegExpObject.h"
@@ -88,6 +92,25 @@ JSValue JSInjectedScriptHost::evaluate(ExecState* exec) const
 {
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     return globalObject->evalFunction();
+}
+
+JSValue JSInjectedScriptHost::evaluateWithScopeExtension(ExecState* exec)
+{
+    JSValue scriptValue = exec->argument(0);
+    if (!scriptValue.isString())
+        return throwTypeError(exec, "InjectedScriptHost.evaluateWithScopeExtension first argument must be a string.");
+
+    String program = scriptValue.toString(exec)->value(exec);
+    if (exec->hadException())
+        return jsUndefined();
+
+    NakedPtr<Exception> exception;
+    JSObject* scopeExtension = exec->argument(1).getObject();
+    JSValue result = JSC::evaluateWithScopeExtension(exec, makeSource(program), scopeExtension, exception);
+    if (exception)
+        exec->vm().throwException(exec, exception);
+
+    return result;
 }
 
 JSValue JSInjectedScriptHost::internalConstructorName(ExecState* exec)
@@ -158,6 +181,9 @@ JSValue JSInjectedScriptHost::subtype(ExecState* exec)
         || value.inherits(JSSetIterator::info())
         || value.inherits(JSStringIterator::info())
         || value.inherits(JSPropertyNameIterator::info()))
+        return jsNontrivialString(exec, ASCIILiteral("iterator"));
+
+    if (object && object->getDirect(exec->vm(), exec->vm().propertyNames->builtinNames().arrayIteratorNextIndexPrivateName()))
         return jsNontrivialString(exec, ASCIILiteral("iterator"));
 
     if (value.inherits(JSInt8Array::info()) || value.inherits(JSInt16Array::info()) || value.inherits(JSInt32Array::info()))
@@ -267,6 +293,19 @@ JSValue JSInjectedScriptHost::getInternalProperties(ExecState* exec)
         array->putDirectIndex(exec, index++, constructInternalProperty(exec, ASCIILiteral("target"), proxy->target()));
         array->putDirectIndex(exec, index++, constructInternalProperty(exec, ASCIILiteral("handler"), proxy->handler()));
         return array;
+    }
+
+    if (JSObject* iteratorObject = jsDynamicCast<JSObject*>(value)) {
+        if (iteratorObject->getDirect(exec->vm(), exec->vm().propertyNames->builtinNames().arrayIteratorNextIndexPrivateName())) {
+            JSValue iteratedValue = iteratorObject->getDirect(exec->vm(), exec->vm().propertyNames->builtinNames().iteratedObjectPrivateName());
+            JSValue kind = iteratorObject->getDirect(exec->vm(), exec->vm().propertyNames->builtinNames().arrayIteratorKindPrivateName());
+
+            unsigned index = 0;
+            JSArray* array = constructEmptyArray(exec, nullptr, 2);
+            array->putDirectIndex(exec, index++, constructInternalProperty(exec, "array", iteratedValue));
+            array->putDirectIndex(exec, index++, constructInternalProperty(exec, "kind", kind));
+            return array;
+        }
     }
 
     if (JSArrayIterator* arrayIterator = jsDynamicCast<JSArrayIterator*>(value)) {
@@ -433,16 +472,26 @@ JSValue JSInjectedScriptHost::weakSetEntries(ExecState* exec)
     return array;
 }
 
+static JSObject* cloneArrayIteratorObject(ExecState* exec, VM& vm, JSObject* iteratorObject, JSValue nextIndex)
+{
+    ASSERT(iteratorObject->type() == FinalObjectType);
+    JSObject* clone = constructEmptyObject(exec, iteratorObject->structure());
+    clone->putDirect(vm, vm.propertyNames->builtinNames().arrayIteratorNextIndexPrivateName(), nextIndex);
+    clone->putDirect(vm, vm.propertyNames->builtinNames().iteratedObjectPrivateName(), iteratorObject->getDirect(vm, vm.propertyNames->builtinNames().iteratedObjectPrivateName()));
+    clone->putDirect(vm, vm.propertyNames->builtinNames().arrayIteratorIsDonePrivateName(), iteratorObject->getDirect(vm, vm.propertyNames->builtinNames().arrayIteratorIsDonePrivateName()));
+    clone->putDirect(vm, vm.propertyNames->builtinNames().arrayIteratorNextPrivateName(), iteratorObject->getDirect(vm, vm.propertyNames->builtinNames().arrayIteratorNextPrivateName()));
+    return clone;
+}
+
 JSValue JSInjectedScriptHost::iteratorEntries(ExecState* exec)
 {
     if (exec->argumentCount() < 1)
         return jsUndefined();
 
+    VM& vm = exec->vm();
     JSValue iterator;
     JSValue value = exec->uncheckedArgument(0);
-    if (JSArrayIterator* arrayIterator = jsDynamicCast<JSArrayIterator*>(value))
-        iterator = arrayIterator->clone(exec);
-    else if (JSMapIterator* mapIterator = jsDynamicCast<JSMapIterator*>(value))
+    if (JSMapIterator* mapIterator = jsDynamicCast<JSMapIterator*>(value))
         iterator = mapIterator->clone(exec);
     else if (JSSetIterator* setIterator = jsDynamicCast<JSSetIterator*>(value))
         iterator = setIterator->clone(exec);
@@ -452,7 +501,15 @@ JSValue JSInjectedScriptHost::iteratorEntries(ExecState* exec)
         iterator = propertyNameIterator->clone(exec);
         if (UNLIKELY(exec->hadException()))
             return JSValue();
-    } else
+    } else {
+        if (JSObject* iteratorObject = jsDynamicCast<JSObject*>(value)) {
+            // Array Iterators are created in JS for performance reasons. Thus the only way to know we have one is to
+            // look for a property that is unique to them.
+            if (JSValue nextIndex = iteratorObject->getDirect(vm, vm.propertyNames->builtinNames().arrayIteratorNextIndexPrivateName()))
+                iterator = cloneArrayIteratorObject(exec, vm, iteratorObject, nextIndex);
+        }
+    }
+    if (!iterator)
         return jsUndefined();
 
     unsigned numberToFetch = 5;

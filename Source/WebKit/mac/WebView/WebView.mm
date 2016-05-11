@@ -2313,8 +2313,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setFrameFlatteningEnabled([preferences isFrameFlatteningEnabled]);
     settings.setSpatialNavigationEnabled([preferences isSpatialNavigationEnabled]);
     settings.setPaginateDuringLayoutEnabled([preferences paginateDuringLayoutEnabled]);
-    RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled([preferences cssRegionsEnabled]);
-    RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled([preferences cssCompositingEnabled]);
 
     settings.setAsynchronousSpellCheckingEnabled([preferences asynchronousSpellCheckingEnabled]);
     settings.setHyperlinkAuditingEnabled([preferences hyperlinkAuditingEnabled]);
@@ -2402,6 +2400,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     settings.setMinimumZoomFontSize([preferences _minimumZoomFontSize]);
+    settings.setTextAutosizingEnabled([preferences _textAutosizingEnabled]);
 #endif
 #endif // PLATFORM(IOS)
 

@@ -29,7 +29,6 @@
 #include "CodeBlock.h"
 #include "Completion.h"
 #include "CopiedSpaceInlines.h"
-#include "DFGPlan.h"
 #include "Disassembler.h"
 #include "Exception.h"
 #include "ExceptionHelpers.h"
@@ -39,6 +38,7 @@
 #include "HeapStatistics.h"
 #include "InitializeThreading.h"
 #include "Interpreter.h"
+#include "JIT.h"
 #include "JSArray.h"
 #include "JSArrayBuffer.h"
 #include "JSCInlines.h"
@@ -567,6 +567,7 @@ static EncodedJSValue JSC_HOST_CALL functionGetHiddenValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionSetHiddenValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDebug(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionDataLogValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDescribeArray(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState*);
@@ -738,7 +739,8 @@ protected:
     void finishCreation(VM& vm, const Vector<String>& arguments)
     {
         Base::finishCreation(vm);
-        
+
+        addFunction(vm, "dataLogValue", functionDataLogValue, 1);
         addFunction(vm, "debug", functionDebug, 1);
         addFunction(vm, "describe", functionDescribe, 1);
         addFunction(vm, "describeArray", functionDescribeArray, 1);
@@ -842,6 +844,7 @@ protected:
         }
 
         putDirect(vm, Identifier::fromString(globalExec(), "console"), jsUndefined());
+        putDirect(vm, vm.propertyNames->printPrivateName, JSFunction::create(vm, this, 1, vm.propertyNames->printPrivateName.string(), functionPrint));
     }
 
     void addFunction(VM& vm, const char* name, NativeFunction function, unsigned arguments)
@@ -1138,6 +1141,12 @@ EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL functionDebug(ExecState* exec)
 {
     fprintf(stderr, "--> %s\n", exec->argument(0).toString(exec)->view(exec).get().utf8().data());
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL functionDataLogValue(ExecState* exec)
+{
+    dataLog("value is: ", exec->argument(0), "\n");
     return JSValue::encode(jsUndefined());
 }
 
@@ -2255,14 +2264,15 @@ static int NEVER_INLINE runJSC(VM* vm, CommandLine options)
         printf("JSC OSR EXIT FUZZ: encountered %u static checks.\n", numberOfStaticOSRExitFuzzChecks());
         printf("JSC OSR EXIT FUZZ: encountered %u dynamic checks.\n", numberOfOSRExitFuzzChecks());
     }
-#endif
-    auto compileTimeStats = DFG::Plan::compileTimeStats();
+
+    auto compileTimeStats = JIT::compileTimeStats();
     Vector<CString> compileTimeKeys;
     for (auto& entry : compileTimeStats)
         compileTimeKeys.append(entry.key);
     std::sort(compileTimeKeys.begin(), compileTimeKeys.end());
     for (CString key : compileTimeKeys)
         printf("%40s: %.3lf ms\n", key.data(), compileTimeStats.get(key));
+#endif
 
     return result;
 }

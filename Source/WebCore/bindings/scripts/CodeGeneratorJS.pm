@@ -3,7 +3,7 @@
 # Copyright (C) 2006 Anders Carlsson <andersca@mac.com>
 # Copyright (C) 2006, 2007 Samuel Weinig <sam@webkit.org>
 # Copyright (C) 2006 Alexey Proskuryakov <ap@webkit.org>
-# Copyright (C) 2006, 2007-2010, 2013-2016 Apple Inc. All rights reserved.
+# Copyright (C) 2006-2010, 2013-2016 Apple Inc. All rights reserved.
 # Copyright (C) 2009 Cameron McCormack <cam@mcc.id.au>
 # Copyright (C) Research In Motion Limited 2010. All rights reserved.
 # Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -120,20 +120,15 @@ sub new
 
 sub GenerateInterface
 {
-    my $object = shift;
-    my $interface = shift;
-    my $defines = shift;
-    my $enumerations = shift;
+    my ($object, $interface, $defines, $enumerations, $dictionaries) = @_;
 
     $codeGenerator->LinkOverloadedFunctions($interface);
-
-    # Start actual generation
     if ($interface->isCallback) {
         $object->GenerateCallbackHeader($interface);
-        $object->GenerateCallbackImplementation($interface, $enumerations);
+        $object->GenerateCallbackImplementation($interface, $enumerations, $dictionaries);
     } else {
         $object->GenerateHeader($interface);
-        $object->GenerateImplementation($interface, $enumerations);
+        $object->GenerateImplementation($interface, $enumerations, $dictionaries);
     }
 }
 
@@ -208,21 +203,6 @@ sub AddIncludesForTypeInHeader
     AddIncludesForType($type, $isCallback, \%headerIncludes);
 }
 
-my %typesWithoutHeader = (
-    "Array" => 1,
-    "DOMString" => 1,
-    "DOMTimeStamp" => 1,
-    "any" => 1
-);
-
-sub SkipIncludeHeader
-{
-    my $type = shift;
-
-    return 1 if $codeGenerator->SkipIncludeHeader($type);
-    return $typesWithoutHeader{$type};
-}
-
 sub GetExportMacroForJSClass
 {
     my $interface = shift;
@@ -237,13 +217,10 @@ sub AddIncludesForType
     my $isCallback = shift;
     my $includesRef = shift;
 
-    return if SkipIncludeHeader($type);
+    return if $codeGenerator->SkipIncludeHeader($type);
     
     # When we're finished with the one-file-per-class reorganization, we won't need these special cases.
-    if ($type eq "XPathNSResolver") {
-        $includesRef->{"JSXPathNSResolver.h"} = 1;
-        $includesRef->{"JSCustomXPathNSResolver.h"} = 1;
-    } elsif ($isCallback && $codeGenerator->IsWrapperType($type)) {
+    if ($isCallback && $codeGenerator->IsWrapperType($type)) {
         $includesRef->{"JS${type}.h"} = 1;
     } elsif ($codeGenerator->GetArrayOrSequenceType($type)) {
         my $arrayType = $codeGenerator->GetArrayType($type);
@@ -820,35 +797,33 @@ sub IsPrefixRemovable
             || IsClassNameWordBoundary($class, -$i) && substr($class, -$i) eq substr($name, 0, $i));
 }
 
-sub GetEnumerationClassName
+sub GetNestedClassName
 {
     my ($interface, $name) = @_;
 
     my $class = GetImplClassName($interface->name);
-    my $enum = $codeGenerator->WK_ucfirst($name);
+    my $member = $codeGenerator->WK_ucfirst($name);
 
     # Since the enumeration name will be nested in the class name's namespace, remove any words
     # that happen to match the start or end of the class name. If an enumeration is named TrackType or
     # TextTrackType, and the class is named TextTrack, then we will get a name like TextTrack::Type.
-    my $enumLength = length($enum);
+    my $memberLength = length($member);
     my $longestPrefixLength = 0;
-    if ($enum =~ /^[A-Z]./) {
-        for (my $i = 2; $i < $enumLength - 1; $i++) {
-            $longestPrefixLength = $i if IsPrefixRemovable($class, $enum, $i);
+    if ($member =~ /^[A-Z]./) {
+        for (my $i = 2; $i < $memberLength - 1; $i++) {
+            $longestPrefixLength = $i if IsPrefixRemovable($class, $member, $i);
         }
     }
-    $enum = substr($enum, $longestPrefixLength);
+    $member = substr($member, $longestPrefixLength);
 
-    return "${class}::$enum";
+    return "${class}::$member";
 }
 
-sub GetEnumerationClassIdentifier
+sub GetEnumerationClassName
 {
     my ($interface, $name) = @_;
 
-    my $identifier = GetEnumerationClassName($interface, $name);
-    $identifier =~ s/:://;
-    return $identifier;
+    return GetNestedClassName($interface, $name);
 }
 
 sub GetEnumerationValueName
@@ -865,15 +840,20 @@ sub GenerateEnumerationImplementationContent
 {
     my ($interface, $enumerations) = @_;
 
+    return "" unless @$enumerations;
+
     # FIXME: Could optimize this to only generate the parts of each enumeration that are actually
     # used, which would require iterating over everything in the interface.
 
     my $result = "";
+
+    $result .= "template<typename T> Optional<T> parse(ExecState&, JSValue);\n";
+    $result .= "template<typename T> const char* expectedEnumerationValues();\n\n";
+
     foreach my $enumeration (@$enumerations) {
         my $name = $enumeration->name;
 
         my $className = GetEnumerationClassName($interface, $name);
-        my $classIdentifier = GetEnumerationClassIdentifier($interface, $name);
 
         # FIXME: A little ugly to have this be a side effect instead of a return value.
         AddToImplIncludes("<runtime/JSString.h>");
@@ -881,18 +861,15 @@ sub GenerateEnumerationImplementationContent
         my $conditionalString = $codeGenerator->GenerateConditionalString($enumeration);
         $result .= "#if ${conditionalString}\n\n" if $conditionalString;
 
-        # Declare these instead of using "static" because these may be unused and we don't
-        # want to get warnings about them.
-        $result .= "JSString* jsStringWithCache(ExecState*, $className);\n";
-        $result .= "Optional<$className> parse$classIdentifier(ExecState&, JSValue);\n";
-        $result .= "extern const char expectedEnumerationValues${classIdentifier}[];\n\n";
+        # Declare this instead of using "static" because it may be unused and we don't want warnings about that.
+        $result .= "JSString* jsStringWithCache(ExecState*, $className);\n\n";
 
         # Take an ExecState* instead of an ExecState& to match the jsStringWithCache from JSString.h.
         # FIXME: Change to take VM& instead of ExecState*.
         $result .= "JSString* jsStringWithCache(ExecState* state, $className enumerationValue)\n";
         $result .= "{\n";
         # FIXME: Might be nice to make this global be "const", but NeverDestroyed does not currently support that.
-        # FIXME: Might be nice to make the entire array be NeverDestroyed instead of each value, but not sure the syntax for that.
+        # FIXME: Might be nice to make the entire array be NeverDestroyed instead of each value, but not sure what the syntax for that is.
         $result .= "    static NeverDestroyed<const String> values[] = {\n";
         foreach my $value (@{$enumeration->values}) {
             if ($value eq "") {
@@ -919,7 +896,7 @@ sub GenerateEnumerationImplementationContent
         # FIXME: Change to take VM& instead of ExecState&.
         # FIXME: Consider using toStringOrNull to make exception checking faster.
         # FIXME: Consider finding a more efficient way to match against all the strings quickly.
-        $result .= "Optional<$className> parse$classIdentifier(ExecState& state, JSValue value)\n";
+        $result .= "template<> Optional<$className> parse<$className>(ExecState& state, JSValue value)\n";
         $result .= "{\n";
         $result .= "    auto stringValue = value.toWTFString(&state);\n";
         foreach my $value (@{$enumeration->values}) {
@@ -934,7 +911,122 @@ sub GenerateEnumerationImplementationContent
         $result .= "    return Nullopt;\n";
         $result .= "}\n\n";
 
-        $result .= "const char expectedEnumerationValues${classIdentifier}[] = \"\\\"" . join ("\\\", \\\"", @{$enumeration->values}) . "\\\"\";\n\n";
+        # FIXME: A little ugly to have this be a side effect instead of a return value.
+        AddToImplIncludes("JSDOMConvert.h");
+
+        $result .= "template<> $className convert<$className>(ExecState& state, JSValue value)\n";
+        $result .= "{\n";
+        $result .= "    auto result = parse<$className>(state, value);\n";
+        $result .= "    if (UNLIKELY(!result)) {\n";
+        $result .= "        throwTypeError(&state);\n";
+        $result .= "        return { };\n";
+        $result .= "    }\n";
+        $result .= "    return result.value();\n";
+        $result .= "}\n\n";
+
+        $result .= "template<> inline const char* expectedEnumerationValues<$className>()\n";
+        $result .= "{\n";
+        $result .= "    return \"\\\"" . join ("\\\", \\\"", @{$enumeration->values}) . "\\\"\";\n";
+        $result .= "}\n\n";
+
+        $result .= "#endif\n\n" if $conditionalString;
+    }
+    return $result;
+}
+
+sub GetDictionaryClassName
+{
+    my ($interface, $name) = @_;
+
+    return GetNestedClassName($interface, $name);
+}
+
+sub GenerateDefaultValue
+{
+    my ($interface, $member) = @_;
+
+    my $value = $member->default;
+
+    if ($codeGenerator->IsEnumType($member->type)) {
+        # FIXME: Would be nice to report an error if the value does not have quote marks around it.
+        # FIXME: Would be nice to report an error if the value is not one of the enumeration values.
+        my $className = GetEnumerationClassName($interface, $member->type);
+        my $enumerationValueName = GetEnumerationValueName(substr($value, 1, -1));
+        $value = $className . "::" . $enumerationValueName;
+    }
+
+    return $value;
+}
+
+sub GenerateDefaultValueWithLeadingComma
+{
+    my ($interface, $member) = @_;
+
+    return "" unless $member->isOptional && defined $member->default;
+    return ", " . GenerateDefaultValue($interface, $member);
+}
+
+sub GenerateDictionaryImplementationContent
+{
+    my ($interface, $dictionaries) = @_;
+
+    my $result = "";
+    foreach my $dictionary (@$dictionaries) {
+        my $name = $dictionary->name;
+
+        my $conditionalString = $codeGenerator->GenerateConditionalString($dictionary);
+        $result .= "#if ${conditionalString}\n\n" if $conditionalString;
+
+        my $className = GetDictionaryClassName($interface, $name);
+
+        # FIXME: A little ugly to have this be a side effect instead of a return value.
+        AddToImplIncludes("JSDOMConvert.h");
+
+        my $defaultValues = "";
+        my $comma = "";
+        foreach my $member (@{$dictionary->members}) {
+            if (!$member->isOptional) {
+                $defaultValues = "";
+                last;
+            }
+            $defaultValues .= $comma . (defined $member->default ? GenerateDefaultValue($interface, $member) : "{ }");
+            $comma = ", ";
+        }
+
+        $result .= "template<> $className convert<$className>(ExecState& state, JSValue value)\n";
+        $result .= "{\n";
+        $result .= "    if (value.isUndefinedOrNull())\n" if $defaultValues;
+        $result .= "        return { " . $defaultValues . " };\n" if $defaultValues;
+        $result .= "    auto* object = value.getObject();\n";
+        $result .= "    if (UNLIKELY(!object || object->type() == RegExpObjectType)) {\n";
+        $result .= "        throwTypeError(&state);\n";
+        $result .= "        return { };\n";
+        $result .= "    }\n";
+
+        my $needExceptionCheck = 0;
+        foreach my $member (@{$dictionary->members}) {
+            if ($needExceptionCheck) {
+                $result .= "    if (UNLIKELY(state.hadException()))\n";
+                $result .= "        return { };\n";
+            }
+            # FIXME: Eventually we will want this to share a lot more code with JSValueToNative.
+            my $function = $member->isOptional ? "convertOptional" : "convert";
+            my $defaultValueWithLeadingComma = $member->isOptional && defined $member->default ? ", " . $member->default : "";
+            $result .= "    auto " . $member->name . " = " . $function . "<" . GetNativeTypeFromSignature($interface, $member) . ">"
+                . "(state, object->get(&state, Identifier::fromString(&state, \"" . $member->name . "\"))"
+                . GenerateDefaultValueWithLeadingComma($interface, $member) . ");\n";
+            $needExceptionCheck = 1;
+        }
+
+        my $arguments = "";
+        $comma = "";
+        foreach my $member (@{$dictionary->members}) {
+            $arguments .= $comma . "WTFMove(" . $member->name . ")";
+            $comma = ", ";
+        }
+
+        $result .= "    return { " . $arguments . " };\n";
+        $result .= "}\n\n";
 
         $result .= "#endif\n\n" if $conditionalString;
     }
@@ -1066,12 +1158,11 @@ sub GenerateHeader
 
     # JSValue to implementation type
     if (ShouldGenerateToWrapped($hasParent, $interface)) {
-        if ($interfaceName eq "NodeFilter") {
-            push(@headerContent, "    static RefPtr<NodeFilter> toWrapped(JSC::VM&, JSC::JSValue);\n");
-        } elsif ($interfaceName eq "DOMStringList") {
-            push(@headerContent, "    static RefPtr<DOMStringList> toWrapped(JSC::ExecState*, JSC::JSValue);\n");
+        my $nativeType = GetNativeType($interface, $implType);
+        if ($interface->extendedAttributes->{"JSCustomToNativeObject"}) {
+            push(@headerContent, "    static $nativeType toWrapped(JSC::ExecState&, JSC::JSValue);\n");
         } else {
-            push(@headerContent, "    static $implType* toWrapped(JSC::JSValue);\n");
+            push(@headerContent, "    static $nativeType toWrapped(JSC::JSValue);\n");
         }
     }
 
@@ -1899,7 +1990,7 @@ sub GetIndexedGetterExpression
 
 sub GenerateImplementation
 {
-    my ($object, $interface, $enumerations) = @_;
+    my ($object, $interface, $enumerations, $dictionaries) = @_;
 
     my $interfaceName = $interface->name;
     my $className = "JS$interfaceName";
@@ -1932,6 +2023,7 @@ sub GenerateImplementation
     push(@implContent, "namespace WebCore {\n\n");
 
     push(@implContent, GenerateEnumerationImplementationContent($interface, $enumerations));
+    push(@implContent, GenerateDictionaryImplementationContent($interface, $dictionaries));
 
     my @functions = @{$interface->functions};
     push(@functions, @{$interface->iterable->functions}) if $interface->iterable;
@@ -2528,14 +2620,14 @@ sub GenerateImplementation
                 push(@implContent, "    JSGlobalObject* globalObject = state->lexicalGlobalObject();\n");
                 push(@implContent, "    InputCursor& cursor = globalObject->inputCursor();\n");
 
-                my $nativeType = GetNativeType($type);
-                my $memoizedType = GetNativeTypeForMemoization($type);
+                my $nativeType = GetNativeType($interface, $type);
+                my $memoizedType = GetNativeTypeForMemoization($interface, $type);
                 my $exceptionCode = $getterExceptionsWithMessage ? "ec.code" : ($getterExceptions ? "ec" : "0");
                 push(@implContent, "    static NeverDestroyed<const AtomicString> bindingName(\"$interfaceName.$name\", AtomicString::ConstructFromLiteral);\n");
                 push(@implContent, "    if (cursor.isCapturing()) {\n");
                 push(@implContent, "        $memoizedType memoizedResult = castedThis->wrapped().$implGetterFunctionName(" . join(", ", @arguments) . ");\n");
                 push(@implContent, "        cursor.appendInput<MemoizedDOMResult<$memoizedType>>(bindingName.get().string(), memoizedResult, $exceptionCode);\n");
-                push(@implContent, "        JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "memoizedResult", "castedThis") . ";\n");
+                push(@implContent, "        JSValue result = " . NativeToJSValue($attribute->signature, 0, $interface, "memoizedResult", "castedThis") . ";\n");
                 push(@implContent, "        setDOMException(state, ec);\n") if $getterExceptions;
                 push(@implContent, "        return JSValue::encode(result);\n");
                 push(@implContent, "    }\n");
@@ -2545,7 +2637,7 @@ sub GenerateImplementation
                 push(@implContent, "        MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();\n");
                 push(@implContent, "        if (input && input->convertTo<$memoizedType>(memoizedResult)) {\n");
                 # FIXME: the generated code should report an error if an input cannot be fetched or converted.
-                push(@implContent, "            JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "memoizedResult", "castedThis") . ";\n");
+                push(@implContent, "            JSValue result = " . NativeToJSValue($attribute->signature, 0, $interface, "memoizedResult", "castedThis") . ";\n");
                 push(@implContent, "            setDOMException(state, input->exceptionCode());\n") if $getterExceptions;
                 push(@implContent, "            return JSValue::encode(result);\n");
                 push(@implContent, "        }\n");
@@ -2558,7 +2650,7 @@ sub GenerateImplementation
             } elsif ($attribute->signature->extendedAttributes->{"CheckSecurityForNode"}) {
                 $implIncludes{"JSDOMBinding.h"} = 1;
                 push(@implContent, "    auto& impl = castedThis->wrapped();\n");
-                push(@implContent, "    return JSValue::encode(shouldAllowAccessToNode(state, impl." . $attribute->signature->name . "()) ? " . NativeToJSValue($attribute->signature, 0, $interfaceName, "impl.$implGetterFunctionName()", "castedThis") . " : jsNull());\n");
+                push(@implContent, "    return JSValue::encode(shouldAllowAccessToNode(state, impl." . $attribute->signature->name . "()) ? " . NativeToJSValue($attribute->signature, 0, $interface, "impl.$implGetterFunctionName()", "castedThis") . " : jsNull());\n");
             } elsif ($type eq "EventHandler") {
                 my $getter = $attribute->signature->extendedAttributes->{"WindowEventHandler"} ? "windowEventHandlerAttribute"
                     : $attribute->signature->extendedAttributes->{"DocumentEventHandler"} ? "documentEventHandlerAttribute"
@@ -2591,13 +2683,13 @@ sub GenerateImplementation
                 my @callWithArgs = GenerateCallWith($attribute->signature->extendedAttributes->{"CallWith"}, \@implContent, "JSValue::encode(jsUndefined())");
 
                 if ($svgListPropertyType) {
-                    push(@implContent, "    JSValue result =  " . NativeToJSValue($attribute->signature, 0, $interfaceName, "castedThis->wrapped().$implGetterFunctionName(" . (join ", ", @callWithArgs) . ")", "castedThis") . ";\n");
+                    push(@implContent, "    JSValue result =  " . NativeToJSValue($attribute->signature, 0, $interface, "castedThis->wrapped().$implGetterFunctionName(" . (join ", ", @callWithArgs) . ")", "castedThis") . ";\n");
                 } elsif ($svgPropertyOrListPropertyType) {
                     push(@implContent, "    $svgPropertyOrListPropertyType& impl = castedThis->wrapped().propertyReference();\n");
                     if ($svgPropertyOrListPropertyType eq "float") { # Special case for JSSVGNumber
-                        push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "impl", "castedThis") . ";\n");
+                        push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interface, "impl", "castedThis") . ";\n");
                     } else {
-                        push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "impl.$implGetterFunctionName(" . (join ", ", @callWithArgs) . ")", "castedThis") . ";\n");
+                        push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interface, "impl.$implGetterFunctionName(" . (join ", ", @callWithArgs) . ")", "castedThis") . ";\n");
 
                     }
                 } else {
@@ -2614,7 +2706,7 @@ sub GenerateImplementation
                     }
 
                     unshift(@arguments, @callWithArgs);
-                    my $jsType = NativeToJSValue($attribute->signature, 0, $interfaceName, "${functionName}(" . join(", ", @arguments) . ")", "castedThis");
+                    my $jsType = NativeToJSValue($attribute->signature, 0, $interface, "${functionName}(" . join(", ", @arguments) . ")", "castedThis");
                     push(@implContent, "    auto& impl = castedThis->wrapped();\n") if !$attribute->isStatic;
                     if ($codeGenerator->IsSVGAnimatedType($type)) {
                         push(@implContent, "    RefPtr<$type> obj = $jsType;\n");
@@ -2632,10 +2724,10 @@ sub GenerateImplementation
 
                 if ($svgPropertyOrListPropertyType) {
                     push(@implContent, "    $svgPropertyOrListPropertyType impl(*castedThis->wrapped());\n");
-                    push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "impl.$implGetterFunctionName(" . join(", ", @arguments) . ")", "castedThis") . ";\n");
+                    push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interface, "impl.$implGetterFunctionName(" . join(", ", @arguments) . ")", "castedThis") . ";\n");
                 } else {
                     push(@implContent, "    auto& impl = castedThis->wrapped();\n");
-                    push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "impl.$implGetterFunctionName(" . join(", ", @arguments) . ")", "castedThis") . ";\n");
+                    push(@implContent, "    JSValue result = " . NativeToJSValue($attribute->signature, 0, $interface, "impl.$implGetterFunctionName(" . join(", ", @arguments) . ")", "castedThis") . ";\n");
                 }
 
                 push(@implContent, "    setDOMException(state, ec);\n");
@@ -2850,15 +2942,17 @@ sub GenerateImplementation
                     push(@implContent, "    ExceptionCode ec = 0;\n");
                 }
 
+                my $shouldPassByReference = ShouldPassWrapperByReference($attribute->signature, $interface);
+
                 # If the "StrictTypeChecking" extended attribute is present, and the attribute's type is an
                 # interface type, then if the incoming value does not implement that interface, a TypeError
                 # is thrown rather than silently passing NULL to the C++ code.
                 # Per the Web IDL and ECMAScript specifications, incoming values can always be converted to
                 # both strings and numbers, so do not throw TypeError if the attribute is of these types.
                 my ($nativeValue, $mayThrowException) = JSValueToNative($interface, $attribute->signature, "value", $attribute->signature->extendedAttributes->{"Conditional"});
-                if ($codeGenerator->IsWrapperType($type) && $attribute->signature->extendedAttributes->{"StrictTypeChecking"} && $attribute->signature->isNullable) {
+                if ($attribute->signature->extendedAttributes->{"StrictTypeChecking"} && !$shouldPassByReference && $codeGenerator->IsWrapperType($type)) {
                     $implIncludes{"<runtime/Error.h>"} = 1;
-                    push(@implContent, "    " . GetNativeTypeFromSignature($attribute->signature) . " nativeValue = nullptr;\n");
+                    push(@implContent, "    " . GetNativeTypeFromSignature($interface, $attribute->signature) . " nativeValue = nullptr;\n");
                     push(@implContent, "    if (!value.isUndefinedOrNull()) {\n");
                     push(@implContent, "        nativeValue = $nativeValue;\n");
                     if ($mayThrowException) {
@@ -2871,7 +2965,7 @@ sub GenerateImplementation
                     push(@implContent, "        }\n");
                     push(@implContent, "    }\n");
                 } else {
-                    push(@implContent, "    " . GetNativeTypeFromSignature($attribute->signature) . " nativeValue = $nativeValue;\n");
+                    push(@implContent, "    auto nativeValue = $nativeValue;\n");
                     if ($mayThrowException) {
                         push(@implContent, "    if (UNLIKELY(state->hadException()))\n");
                         push(@implContent, "        return false;\n");
@@ -2883,17 +2977,9 @@ sub GenerateImplementation
                     push (@implContent, "        return false;\n");
                 }
 
-                my $shouldPassByReference = ShouldPassWrapperByReference($attribute->signature, $interface);
                 if ($shouldPassByReference) {
                     push(@implContent, "    if (UNLIKELY(!nativeValue)) {\n");
-                    push(@implContent, "        throwVMTypeError(state);\n");
-                    push(@implContent, "        return false;\n");
-                    push(@implContent, "    }\n");
-                }
-
-                if ($type eq "double" or $type eq "float") {
-                    push(@implContent, "    if (UNLIKELY(!std::isfinite(nativeValue))) {\n");
-                    push(@implContent, "        throwVMTypeError(state);\n");
+                    push(@implContent, "        throwAttributeTypeError(*state, \"$interfaceName\", \"$name\", \"$type\");\n");
                     push(@implContent, "        return false;\n");
                     push(@implContent, "    }\n");
                 }
@@ -2934,7 +3020,7 @@ sub GenerateImplementation
                     } elsif ($codeGenerator->IsEnumType($type)) {
                         push(@arguments, "nativeValue.value()");
                     } else {
-                        push(@arguments, $shouldPassByReference ? "*nativeValue" : "nativeValue");
+                        push(@arguments, $shouldPassByReference ? "*nativeValue" : "WTFMove(nativeValue)");
                     }
                     if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                         my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
@@ -3083,7 +3169,7 @@ END
 
                     my $numParameters = @{$function->parameters};
                     my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
-                    GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interfaceName);
+                    GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interface);
                 }
             } else {
                 GenerateFunctionCastedThis($interface, $className, $function);
@@ -3137,7 +3223,7 @@ END
 
                         my $numParameters = @{$function->parameters};
                         my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
-                        GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interfaceName);
+                        GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interface);
                     }
                 }
             }
@@ -3446,7 +3532,7 @@ sub GenerateCallWith
         push(@$outputArray, "    RefPtr<Inspector::ScriptArguments> scriptArguments(Inspector::createScriptArguments(state, " . @{$function->parameters} . "));\n");
         $implIncludes{"<inspector/ScriptArguments.h>"} = 1;
         $implIncludes{"<inspector/ScriptCallStackFactory.h>"} = 1;
-        push(@callWithArgs, "scriptArguments.release()");
+        push(@callWithArgs, "WTFMove(scriptArguments)");
     }
     push(@callWithArgs, "activeDOMWindow(state)") if $codeGenerator->ExtendedAttributeContains($callWith, "ActiveWindow");
     push(@callWithArgs, "firstDOMWindow(state)") if $codeGenerator->ExtendedAttributeContains($callWith, "FirstWindow");
@@ -3553,101 +3639,90 @@ sub GenerateParametersCheck
     $implIncludes{"ExceptionCode.h"} = 1;
     $implIncludes{"JSDOMBinding.h"} = 1;
 
-    my $argsIndex = 0;
+    my $argumentIndex = 0;
     foreach my $parameter (@{$function->parameters}) {
-        my $argType = $parameter->type;
-        my $optional = $parameter->isOptional;
+        my $type = $parameter->type;
 
-        die "Optional parameters of non-nullable wrapper types are not supported" if $optional && !$parameter->isNullable && $codeGenerator->IsWrapperType($argType);
+        die "Optional parameters of non-nullable wrapper types are not supported" if $parameter->isOptional && !$parameter->isNullable && $codeGenerator->IsWrapperType($type);
 
-        if ($optional && !defined($parameter->default)) {
+        if ($parameter->isOptional && !defined($parameter->default)) {
             # As per Web IDL, optional dictionary parameters are always considered to have a default value of an empty dictionary, unless otherwise specified.
-            $parameter->default("[]") if $argType eq "Dictionary";
-            
+            $parameter->default("[]") if $type eq "Dictionary" or $codeGenerator->IsDictionaryType($type);
+
             # We use undefined as default value for optional parameters of type 'any' unless specified otherwise.
-            $parameter->default("undefined") if $argType eq "any";
+            $parameter->default("undefined") if $type eq "any";
 
             # We use the null string as default value for parameters of type DOMString unless specified otherwise.
-            $parameter->default("null") if $argType eq "DOMString";
+            $parameter->default("null") if $type eq "DOMString";
 
             # As per Web IDL, passing undefined for a nullable parameter is treated as null. Therefore, use null as
             # default value for nullable parameters unless otherwise specified.
             $parameter->default("null") if $parameter->isNullable;
 
             # For callback parameters, the generated bindings treat undefined as null, so use null as implicit default value.
-            $parameter->default("null") if $codeGenerator->IsCallbackInterface($argType);
+            $parameter->default("null") if $codeGenerator->IsCallbackInterface($type);
         }
 
         my $name = $parameter->name;
         my $value = $name;
 
-        if ($argType eq "XPathNSResolver") {
-            push(@$outputArray, "    RefPtr<XPathNSResolver> customResolver;\n");
-            push(@$outputArray, "    XPathNSResolver* resolver = JSXPathNSResolver::toWrapped(state->argument($argsIndex));\n");
-            push(@$outputArray, "    if (!resolver) {\n");
-            push(@$outputArray, "        customResolver = JSCustomXPathNSResolver::create(state, state->argument($argsIndex));\n");
-            push(@$outputArray, "        if (UNLIKELY(state->hadException()))\n");
-            push(@$outputArray, "            return JSValue::encode(jsUndefined());\n");
-            push(@$outputArray, "        resolver = customResolver.get();\n");
-            push(@$outputArray, "    }\n");
-        } elsif ($codeGenerator->IsCallbackInterface($argType)) {
-            my $callbackClassName = GetCallbackClassName($argType);
+        if ($codeGenerator->IsCallbackInterface($type)) {
+            my $callbackClassName = GetCallbackClassName($type);
             $implIncludes{"$callbackClassName.h"} = 1;
-            if ($optional) {
-                push(@$outputArray, "    RefPtr<$argType> $name;\n");
-                push(@$outputArray, "    if (!state->argument($argsIndex).isUndefinedOrNull()) {\n");
-                if ($codeGenerator->IsFunctionOnlyCallbackInterface($argType)) {
-                    push(@$outputArray, "        if (!state->uncheckedArgument($argsIndex).isFunction())\n");
+            if ($parameter->isOptional) {
+                push(@$outputArray, "    RefPtr<$type> $name;\n");
+                push(@$outputArray, "    if (!state->argument($argumentIndex).isUndefinedOrNull()) {\n");
+                if ($codeGenerator->IsFunctionOnlyCallbackInterface($type)) {
+                    push(@$outputArray, "        if (!state->uncheckedArgument($argumentIndex).isFunction())\n");
                 } else {
-                    push(@$outputArray, "        if (!state->uncheckedArgument($argsIndex).isObject())\n");
+                    push(@$outputArray, "        if (!state->uncheckedArgument($argumentIndex).isObject())\n");
                 }
-                push(@$outputArray, "            return throwArgumentMustBeFunctionError(*state, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
+                push(@$outputArray, "            return throwArgumentMustBeFunctionError(*state, $argumentIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
                 if ($function->isStatic) {
                     AddToImplIncludes("CallbackFunction.h");
-                    push(@$outputArray, "        $name = createFunctionOnlyCallback<${callbackClassName}>(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), state->uncheckedArgument($argsIndex));\n");
+                    push(@$outputArray, "        $name = createFunctionOnlyCallback<${callbackClassName}>(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), state->uncheckedArgument($argumentIndex));\n");
                 } else {
-                    push(@$outputArray, "        $name = ${callbackClassName}::create(asObject(state->uncheckedArgument($argsIndex)), castedThis->globalObject());\n");
+                    push(@$outputArray, "        $name = ${callbackClassName}::create(asObject(state->uncheckedArgument($argumentIndex)), castedThis->globalObject());\n");
                 }
                 push(@$outputArray, "    }\n");
             } else {
-                if ($codeGenerator->IsFunctionOnlyCallbackInterface($argType)) {
-                    push(@$outputArray, "    if (UNLIKELY(!state->argument($argsIndex).isFunction()))\n");
+                if ($codeGenerator->IsFunctionOnlyCallbackInterface($type)) {
+                    push(@$outputArray, "    if (UNLIKELY(!state->argument($argumentIndex).isFunction()))\n");
                 } else {
-                    push(@$outputArray, "    if (UNLIKELY(!state->argument($argsIndex).isObject()))\n");
+                    push(@$outputArray, "    if (UNLIKELY(!state->argument($argumentIndex).isObject()))\n");
                 }
-                push(@$outputArray, "        return throwArgumentMustBeFunctionError(*state, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
+                push(@$outputArray, "        return throwArgumentMustBeFunctionError(*state, $argumentIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
                 if ($function->isStatic) {
                     AddToImplIncludes("CallbackFunction.h");
-                    push(@$outputArray, "    RefPtr<$argType> $name = createFunctionOnlyCallback<${callbackClassName}>(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), state->uncheckedArgument($argsIndex));\n");
+                    push(@$outputArray, "    RefPtr<$type> $name = createFunctionOnlyCallback<${callbackClassName}>(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), state->uncheckedArgument($argumentIndex));\n");
                 } else {
-                    push(@$outputArray, "    RefPtr<$argType> $name = ${callbackClassName}::create(asObject(state->uncheckedArgument($argsIndex)), castedThis->globalObject());\n");
+                    push(@$outputArray, "    RefPtr<$type> $name = ${callbackClassName}::create(asObject(state->uncheckedArgument($argumentIndex)), castedThis->globalObject());\n");
                 }
             }
             $value = "WTFMove($name)";
         } elsif ($parameter->isVariadic) {
             my $nativeElementType;
-            if ($argType eq "DOMString") {
+            if ($type eq "DOMString") {
                 $nativeElementType = "String";
             } else {
-                $nativeElementType = GetNativeType($argType);
+                $nativeElementType = GetNativeType($interface, $type);
             }
 
-            if (!IsNativeType($argType)) {
+            if (!IsNativeType($type)) {
                 push(@$outputArray, "    Vector<$nativeElementType> $name;\n");
-                push(@$outputArray, "    for (unsigned i = $argsIndex, count = state->argumentCount(); i < count; ++i) {\n");
-                push(@$outputArray, "        if (!state->uncheckedArgument(i).inherits(JS${argType}::info()))\n");
-                push(@$outputArray, "            return throwArgumentTypeError(*state, i, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$argType\");\n");
-                push(@$outputArray, "        $name.append(JS${argType}::toWrapped(state->uncheckedArgument(i)));\n");
+                push(@$outputArray, "    for (unsigned i = $argumentIndex, count = state->argumentCount(); i < count; ++i) {\n");
+                push(@$outputArray, "        if (!state->uncheckedArgument(i).inherits(JS${type}::info()))\n");
+                push(@$outputArray, "            return throwArgumentTypeError(*state, i, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$type\");\n");
+                push(@$outputArray, "        $name.append(JS${type}::toWrapped(state->uncheckedArgument(i)));\n");
                 push(@$outputArray, "    }\n")
             } else {
-                push(@$outputArray, "    Vector<$nativeElementType> $name = toNativeArguments<$nativeElementType>(state, $argsIndex);\n");
+                push(@$outputArray, "    Vector<$nativeElementType> $name = toNativeArguments<$nativeElementType>(state, $argumentIndex);\n");
                 # Check if the type conversion succeeded.
                 push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
-        } elsif ($codeGenerator->IsEnumType($argType)) {
-            my $className = GetEnumerationClassName($interface, $argType);
-            my $classIdentifier = GetEnumerationClassIdentifier($interface, $argType);
+        } elsif ($codeGenerator->IsEnumType($type)) {
+            my $className = GetEnumerationClassName($interface, $type);
 
             $implIncludes{"<runtime/Error.h>"} = 1;
 
@@ -3662,60 +3737,56 @@ sub GenerateParametersCheck
                 $defineOptionalValue = $name;
             }
 
-            push(@$outputArray, "    auto ${name}Value = state->argument($argsIndex);\n");
+            push(@$outputArray, "    auto ${name}Value = state->argument($argumentIndex);\n");
             push(@$outputArray, "    $nativeType $name;\n");
 
             if ($parameter->isOptional) {
-                push(@$outputArray, "    if (${name}Value.isUndefined()) {\n");
-                if (defined($parameter->default)) {
-                    my $enumerationValueName = GetEnumerationValueName(substr($parameter->default, 1, -1));
-                    push(@$outputArray, "        $name = ${className}::${enumerationValueName};\n");
+                if (!defined $parameter->default) {
+                    push(@$outputArray, "    if (!${name}Value.isUndefined()) {\n");
+                } else {
+                    push(@$outputArray, "    if (${name}Value.isUndefined()) {\n");
+                    push(@$outputArray, "        $name = " . GenerateDefaultValue($interface, $parameter) . ";\n");
+                    push(@$outputArray, "    } else {\n");
                 }
-                push(@$outputArray, "    } else {\n");
                 $indent = "    ";
             }
 
-            push(@$outputArray, "$indent    $defineOptionalValue = parse$classIdentifier(*state, ${name}Value);\n");
+            push(@$outputArray, "$indent    $defineOptionalValue = parse<$className>(*state, ${name}Value);\n");
             push(@$outputArray, "$indent    if (UNLIKELY(state->hadException()))\n");
             push(@$outputArray, "$indent        return JSValue::encode(jsUndefined());\n");
             push(@$outputArray, "$indent    if (UNLIKELY(!$optionalValue))\n");
-            push(@$outputArray, "$indent        return throwArgumentMustBeEnumError(*state, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName, expectedEnumerationValues$classIdentifier);\n");
+            push(@$outputArray, "$indent        return throwArgumentMustBeEnumError(*state, $argumentIndex, \"$name\", \"$interfaceName\", $quotedFunctionName, expectedEnumerationValues<$className>());\n");
             push(@$outputArray, "$indent    $name = optionalValue.value();\n") if $optionalValue ne $name;
 
             push(@$outputArray, "    }\n") if $indent ne "";
         } else {
-            # If the "StrictTypeChecking" extended attribute is present, and the argument's type is an
-            # interface type, then if the incoming value does not implement that interface, a TypeError
-            # is thrown rather than silently passing NULL to the C++ code.
-            # Per the Web IDL and ECMAScript semantics, incoming values can always be converted to both
-            # strings and numbers, so do not throw TypeError if the argument is of these types.
-            if ($function->signature->extendedAttributes->{"StrictTypeChecking"}) {
+            my $outer;
+            my $inner;
+            my $nativeType = GetNativeTypeFromSignature($interface, $parameter);
+            my $isTearOff = $codeGenerator->IsSVGTypeNeedingTearOff($type) && $interfaceName !~ /List$/;
+            my $shouldPassByReference = $isTearOff || ShouldPassWrapperByReference($parameter, $interface);
+
+            if ($function->signature->extendedAttributes->{"StrictTypeChecking"} && !$shouldPassByReference && $codeGenerator->IsWrapperType($type)) {
                 $implIncludes{"<runtime/Error.h>"} = 1;
-
-                my $argValue = "state->argument($argsIndex)";
-                if ($codeGenerator->IsWrapperType($argType)) {
-                    push(@$outputArray, "    if (UNLIKELY(!${argValue}.isUndefinedOrNull() && !${argValue}.inherits(JS${argType}::info())))\n");
-                    push(@$outputArray, "        return throwArgumentTypeError(*state, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$argType\");\n");
+                my $checkedArgument = "state->argument($argumentIndex)";
+                my $uncheckedArgument = "state->uncheckedArgument($argumentIndex)";
+                my ($nativeValue, $mayThrowException) = JSValueToNative($interface, $parameter, $uncheckedArgument, $function->signature->extendedAttributes->{"Conditional"});
+                push(@$outputArray, "    $nativeType $name = nullptr;\n");
+                push(@$outputArray, "    if (!$checkedArgument.isUndefinedOrNull()) {\n");
+                push(@$outputArray, "        $name = $nativeValue;\n");
+                if ($mayThrowException) {
+                    push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
+                    push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
                 }
-            }
-
-            if ($parameter->extendedAttributes->{"RequiresExistingAtomicString"}) {
-                # FIXME: This could be made slightly more efficient if we added an AtomicString(RefPtr<AtomicStringImpl>&&) constructor and removed the call to get() here.
-                push(@$outputArray, "    AtomicString $name = state->argument($argsIndex).toString(state)->toExistingAtomicString(state).get();\n");
-                push(@$outputArray, "    if ($name.isNull())\n");
-                push(@$outputArray, "        return JSValue::encode(jsNull());\n");
-                push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
-                push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
+                push(@$outputArray, "        if (UNLIKELY(!$name))\n");
+                push(@$outputArray, "            return throwArgumentTypeError(*state, $argumentIndex, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$type\");\n");
+                push(@$outputArray, "    }\n");
             } else {
-                my $outer;
-                my $inner;
-                my $nativeType = GetNativeTypeFromSignature($parameter);
-
-                if ($optional && defined($parameter->default) && !WillConvertUndefinedToDefaultParameterValue($parameter->type, $parameter->default)) {
+                if ($parameter->isOptional && defined($parameter->default) && !WillConvertUndefinedToDefaultParameterValue($type, $parameter->default)) {
                     my $defaultValue = $parameter->default;
-
+    
                     # String-related optimizations.
-                    if ($parameter->type eq "DOMString") {
+                    if ($type eq "DOMString") {
                         my $useAtomicString = $parameter->extendedAttributes->{"AtomicString"};
                         if ($defaultValue eq "null") {
                             $defaultValue = $useAtomicString ? "nullAtom" : "String()";
@@ -3730,48 +3801,40 @@ sub GenerateParametersCheck
                         $defaultValue = "$nativeType()" if $defaultValue eq "[]";
                         $defaultValue = "JSValue::JSUndefined" if $defaultValue eq "undefined";
                     }
-
-                    $outer = "state->argument($argsIndex).isUndefined() ? $defaultValue : ";
-                    $inner = "state->uncheckedArgument($argsIndex)";
-                } elsif ($optional && !defined($parameter->default)) {
-                    # Use WTF::Optional<>() for optional parameters that are missing or undefined and that do not have
-                    # a default value in the IDL.
-                    my $defaultValue = "Optional<$nativeType>()";
-                    $nativeType = "Optional<$nativeType>";
-                    $outer = "state->argument($argsIndex).isUndefined() ? $defaultValue : ";
-                    $inner = "state->uncheckedArgument($argsIndex)";
+    
+                    $outer = "state->argument($argumentIndex).isUndefined() ? $defaultValue : ";
+                    $inner = "state->uncheckedArgument($argumentIndex)";
+                } elsif ($parameter->isOptional && !defined($parameter->default)) {
+                    # Use WTF::Optional<>() for optional parameters that are missing or undefined and that do not have a default value in the IDL.
+                    $outer = "state->argument($argumentIndex).isUndefined() ? Optional<$nativeType>() : ";
+                    $inner = "state->uncheckedArgument($argumentIndex)";
                 } else {
                     $outer = "";
-                    $inner = "state->argument($argsIndex)";
+                    $inner = "state->argument($argumentIndex)";
                 }
+
                 my ($nativeValue, $mayThrowException) = JSValueToNative($interface, $parameter, $inner, $function->signature->extendedAttributes->{"Conditional"});
-                push(@$outputArray, "    $nativeType $name = ${outer}${nativeValue};\n");
+                push(@$outputArray, "    auto $name = ${outer}${nativeValue};\n");
+                $value = "WTFMove($name)";
                 if ($mayThrowException) {
                     push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
                     push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
                 }
             }
 
-            my $isTearOff = $codeGenerator->IsSVGTypeNeedingTearOff($argType) && $interfaceName !~ /List$/;
-            my $shouldPassByReference = ShouldPassWrapperByReference($parameter, $interface);
-            if ($isTearOff or $shouldPassByReference) {
+            if ($shouldPassByReference) {
                 push(@$outputArray, "    if (UNLIKELY(!$name))\n");
-                push(@$outputArray, "        return throwVMTypeError(state);\n");
+                push(@$outputArray, "        return throwArgumentTypeError(*state, $argumentIndex, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$type\");\n");
                 $value = $isTearOff ? "$name->propertyReference()" : "*$name";
             }
 
-            if ($codeGenerator->IsTypedArrayType($argType) and $argType ne "ArrayBuffer") {
+            if ($codeGenerator->IsTypedArrayType($type) and $parameter->type ne "ArrayBuffer") {
                $value = $shouldPassByReference ? "$name.releaseNonNull()" : "WTFMove($name)";
-            }
-
-            if ($argType eq "double" or $argType eq "float") {
-                push(@$outputArray, "    if (UNLIKELY(!std::isfinite($name)))\n");
-                push(@$outputArray, "        return throwVMTypeError(state);\n");
             }
         }
 
         push(@arguments, $value);
-        $argsIndex++;
+        $argumentIndex++;
     }
 
     push @arguments, GenerateReturnParameters($function);
@@ -3844,9 +3907,9 @@ sub GenerateCallbackHeader
         foreach my $function (@{$interface->functions}) {
             my @arguments = ();
             foreach my $parameter (@{$function->parameters}) {
-                push(@arguments, GetNativeTypeForCallbacks($parameter->type) . " " . $parameter->name);
+                push(@arguments, GetNativeTypeForCallbacks($interface, $parameter->type) . " " . $parameter->name);
             }
-            push(@headerContent, "    virtual " . GetNativeTypeForCallbacks($function->signature->type) . " " . $function->signature->name . "(" . join(", ", @arguments) . ");\n");
+            push(@headerContent, "    virtual " . GetNativeTypeForCallbacks($interface, $function->signature->type) . " " . $function->signature->name . "(" . join(", ", @arguments) . ");\n");
         }
     }
 
@@ -3978,20 +4041,20 @@ sub GenerateCallbackImplementation
         push(@implContent, "\n// Functions\n");
         foreach my $function (@{$interface->functions}) {
             my @params = @{$function->parameters};
-            if ($function->signature->extendedAttributes->{"Custom"} || GetNativeType($function->signature->type) ne "bool") {
+            if ($function->signature->extendedAttributes->{"Custom"} || GetNativeType($interface, $function->signature->type) ne "bool") {
                 next;
             }
 
             AddIncludesForTypeInImpl($function->signature->type);
             my $functionName = $function->signature->name;
-            push(@implContent, "\n" . GetNativeTypeForCallbacks($function->signature->type) . " ${className}::${functionName}(");
+            push(@implContent, "\n" . GetNativeTypeForCallbacks($interface, $function->signature->type) . " ${className}::${functionName}(");
 
             my @args = ();
             my @argsCheck = ();
             foreach my $param (@params) {
                 my $paramName = $param->name;
                 AddIncludesForTypeInImpl($param->type, 1);
-                push(@args, GetNativeTypeForCallbacks($param->type) . " " . $paramName);
+                push(@args, GetNativeTypeForCallbacks($interface, $param->type) . " " . $paramName);
             }
             push(@implContent, join(", ", @args));
             push(@implContent, ")\n");
@@ -4007,7 +4070,7 @@ sub GenerateCallbackImplementation
 
             foreach my $param (@params) {
                 my $paramName = $param->name;
-                push(@implContent, "    args.append(" . NativeToJSValue($param, 1, $interfaceName, $paramName, "m_data") . ");\n");
+                push(@implContent, "    args.append(" . NativeToJSValue($param, 1, $interface, $paramName, "m_data") . ");\n");
             }
 
             push(@implContent, "\n    NakedPtr<Exception> returnedException;\n");
@@ -4056,11 +4119,7 @@ sub GenerateCallbackImplementation
 
 sub GenerateImplementationFunctionCall()
 {
-    my $function = shift;
-    my $functionString = shift;
-    my $indent = shift;
-    my $svgPropertyType = shift;
-    my $interfaceName = shift;
+    my ($function, $functionString, $indent, $svgPropertyType, $interface) = @_;
 
     my $nondeterministic = $function->signature->extendedAttributes->{"Nondeterministic"};
     my $raisesExceptionWithMessage = $function->signature->extendedAttributes->{"RaisesExceptionWithMessage"};
@@ -4104,9 +4163,9 @@ sub GenerateImplementationFunctionCall()
             AddToImplIncludes("<replay/InputCursor.h>", "WEB_REPLAY");
             AddToImplIncludes("<wtf/NeverDestroyed.h>", "WEB_REPLAY");
 
-            my $nativeType = GetNativeTypeFromSignature($function->signature);
-            my $memoizedType = GetNativeTypeForMemoization($function->signature->type);
-            my $bindingName = $interfaceName . "." . $function->signature->name;
+            my $nativeType = GetNativeTypeFromSignature($interface, $function->signature);
+            my $memoizedType = GetNativeTypeForMemoization($interface, $function->signature->type);
+            my $bindingName = $interface->name . "." . $function->signature->name;
             push(@implContent, $indent . "JSValue result;\n");
             push(@implContent, "#if ENABLE(WEB_REPLAY)\n");
             push(@implContent, $indent . "InputCursor& cursor = state->lexicalGlobalObject()->inputCursor();\n");
@@ -4115,24 +4174,24 @@ sub GenerateImplementationFunctionCall()
             push(@implContent, $indent . "    $nativeType memoizedResult = $functionString;\n");
             my $exceptionCode = $raisesExceptionWithMessage ? "ec.code" : ($raisesException ? "ec" : "0");
             push(@implContent, $indent . "    cursor.appendInput<MemoizedDOMResult<$memoizedType>>(bindingName.get().string(), memoizedResult, $exceptionCode);\n");
-            push(@implContent, $indent . "    result = " . NativeToJSValue($function->signature, 1, $interfaceName, "memoizedResult", $thisObject) . ";\n");
+            push(@implContent, $indent . "    result = " . NativeToJSValue($function->signature, 1, $interface, "memoizedResult", $thisObject) . ";\n");
             push(@implContent, $indent . "} else if (cursor.isReplaying()) {\n");
             push(@implContent, $indent . "    MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();\n");
             push(@implContent, $indent . "    $memoizedType memoizedResult;\n");
             # FIXME: the generated code should report an error if an input cannot be fetched or converted.
             push(@implContent, $indent . "    if (input && input->convertTo<$memoizedType>(memoizedResult)) {\n");
-            push(@implContent, $indent . "        result = " . NativeToJSValue($function->signature, 1, $interfaceName, "memoizedResult", $thisObject) . ";\n");
+            push(@implContent, $indent . "        result = " . NativeToJSValue($function->signature, 1, $interface, "memoizedResult", $thisObject) . ";\n");
             push(@implContent, $indent . "        ec.code = input->exceptionCode();\n") if $raisesExceptionWithMessage;
             push(@implContent, $indent . "        ec = input->exceptionCode();\n") if $raisesException && !$raisesExceptionWithMessage;
             push(@implContent, $indent . "    } else\n");
-            push(@implContent, $indent . "        result = " . NativeToJSValue($function->signature, 1, $interfaceName, $functionString, $thisObject) . ";\n");
+            push(@implContent, $indent . "        result = " . NativeToJSValue($function->signature, 1, $interface, $functionString, $thisObject) . ";\n");
             push(@implContent, $indent . "} else\n");
-            push(@implContent, $indent . "    result = " . NativeToJSValue($function->signature, 1, $interfaceName, $functionString, $thisObject) . ";\n");
+            push(@implContent, $indent . "    result = " . NativeToJSValue($function->signature, 1, $interface, $functionString, $thisObject) . ";\n");
             push(@implContent, "#else\n");
-            push(@implContent, $indent . "result = " . NativeToJSValue($function->signature, 1, $interfaceName, $functionString, $thisObject) . ";\n");
+            push(@implContent, $indent . "result = " . NativeToJSValue($function->signature, 1, $interface, $functionString, $thisObject) . ";\n");
             push(@implContent, "#endif\n");
         } else {
-            push(@implContent, $indent . "JSValue result = " . NativeToJSValue($function->signature, 1, $interfaceName, $functionString, $thisObject) . ";\n");
+            push(@implContent, $indent . "JSValue result = " . NativeToJSValue($function->signature, 1, $interface, $functionString, $thisObject) . ";\n");
         }
         push(@implContent, "\n" . $indent . "setDOMException(state, ec);\n") if $raisesException;
 
@@ -4148,10 +4207,6 @@ sub GenerateImplementationFunctionCall()
 sub GenerateImplementationIterableFunctions
 {
     my $interface = shift;
-
-    if (not $interface->iterable->isKeyValue) {
-        die "No support yet for set iterators";
-    }
 
     my $interfaceName = $interface->name;
     my $className = "JS$interfaceName";
@@ -4179,10 +4234,11 @@ END
             my $iterationKind = "KeyValue";
             $iterationKind = "Key" if $propertyName eq "keys";
             $iterationKind = "Value" if $propertyName eq "values";
+            $iterationKind = "Value" if $propertyName eq "[Symbol.Iterator]" and not $interface->iterable->isKeyValue;
             push(@implContent,  <<END);
 JSC::EncodedJSValue JSC_HOST_CALL ${functionName}(JSC::ExecState* state)
 {
-    return createKeyValueIterator<${className}>(*state, IterationKind::${iterationKind}, "${propertyName}");
+    return iteratorCreate<${className}>(*state, IterationKind::${iterationKind}, "${propertyName}");
 }
 
 END
@@ -4190,7 +4246,7 @@ END
             push(@implContent,  <<END);
 JSC::EncodedJSValue JSC_HOST_CALL ${functionName}(JSC::ExecState* state)
 {
-    return keyValueIteratorForEach<${className}>(*state, "${propertyName}");
+    return iteratorForEach<${className}>(*state, "${propertyName}");
 }
 
 END
@@ -4200,53 +4256,52 @@ END
 
 sub GetNativeTypeFromSignature
 {
-    my $signature = shift;
-    my $type = $signature->type;
+    my ($interface, $signature) = @_;
 
-    return GetNativeType($type);
+    return GetNativeType($interface, $signature->type);
 }
 
 my %nativeType = (
     "DOMString" => "String",
+    "DOMStringList" => "RefPtr<DOMStringList>",
     "DOMTimeStamp" => "DOMTimeStamp",
     "Date" => "double",
     "Dictionary" => "Dictionary",
-    "NodeFilter" => "RefPtr<NodeFilter>",
     "SerializedScriptValue" => "RefPtr<SerializedScriptValue>",
+    "XPathNSResolver" => "RefPtr<XPathNSResolver>",
     "any" => "JSC::JSValue",
     "boolean" => "bool",
     "byte" => "int8_t",
     "double" => "double",
     "float" => "float",
-    "long long" => "long long",
-    "long" => "int",
+    "long long" => "int64_t",
+    "long" => "int32_t",
     "octet" => "uint8_t",
     "short" => "int16_t",
     "unrestricted double" => "double",
     "unrestricted float" => "float",
-    "unsigned long long" => "unsigned long long",
-    "unsigned long" => "unsigned",
+    "unsigned long long" => "uint64_t",
+    "unsigned long" => "uint32_t",
     "unsigned short" => "uint16_t",
 );
 
 sub GetNativeType
 {
-    my $type = shift;
+    my ($interface, $type) = @_;
 
-    # FIXME: Maybe we can start using "auto" for most of these?
-
-    my $svgNativeType = $codeGenerator->GetSVGTypeNeedingTearOff($type);
-    return "${svgNativeType}*" if $svgNativeType;
-    return "RefPtr<DOMStringList>" if $type eq "DOMStringList";
-    return "RefPtr<${type}>" if $codeGenerator->IsTypedArrayType($type) and not $type eq "ArrayBuffer";
     return $nativeType{$type} if exists $nativeType{$type};
 
+    return GetEnumerationClassName($interface, $type) if $codeGenerator->IsEnumType($type);
+    return GetDictionaryClassName($interface, $type) if $codeGenerator->IsDictionaryType($type);
+
+    my $tearOffType = $codeGenerator->GetSVGTypeNeedingTearOff($type);
+    return "${tearOffType}*" if $tearOffType;
+
+    return "RefPtr<${type}>" if $codeGenerator->IsTypedArrayType($type) and $type ne "ArrayBuffer";
+
     my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($type);
-
     return "Vector<" . GetNativeVectorInnerType($arrayOrSequenceType) . ">" if $arrayOrSequenceType;
-    return "auto" if $codeGenerator->IsEnumType($type);
 
-    # For all other types, the native type is a pointer with same type name as the IDL type.
     return "${type}*";
 }
 
@@ -4255,8 +4310,7 @@ sub ShouldPassWrapperByReference
     my $parameter = shift;
     my $interface = shift;
 
-    my $nativeType = GetNativeType($parameter->type);
-
+    my $nativeType = GetNativeType($interface, $parameter->type);
     return $codeGenerator->ShouldPassWrapperByReference($parameter, $interface) && (substr($nativeType, -1) eq '*' || $nativeType =~ /^RefPtr/);
 }
 
@@ -4264,27 +4318,25 @@ sub GetNativeVectorInnerType
 {
     my $arrayOrSequenceType = shift;
 
-    return "String" if $arrayOrSequenceType eq "DOMString";
     return $nativeType{$arrayOrSequenceType} if exists $nativeType{$arrayOrSequenceType};
     return "RefPtr<${arrayOrSequenceType}>";
 }
 
 sub GetNativeTypeForCallbacks
 {
-    my $type = shift;
+    my ($interface, $type) = @_;
+
     return "PassRefPtr<SerializedScriptValue>" if $type eq "SerializedScriptValue";
     return "PassRefPtr<DOMStringList>" if $type eq "DOMStringList";
     return "const String&" if $type eq "DOMString";
-
-    return GetNativeType($type);
+    return GetNativeType($interface, $type);
 }
 
 sub GetNativeTypeForMemoization
 {
-    my $type = shift;
-    return "String" if $type eq "DOMString";
+    my ($interface, $type) = @_;
 
-    return GetNativeType($type);
+    return GetNativeType($interface, $type);
 }
 
 sub GetSVGPropertyTypes
@@ -4330,16 +4382,14 @@ sub IsNativeType
     return exists $nativeType{$type};
 }
 
-my %integerConversionFunction = (
-    "byte" => "toInt8",
-    "long long" => "toInt64",
-    "long" => "toInt32",
-    "octet" => "toUInt8",
-    "short" => "toInt16",
-    "unsigned long long" => "toUInt64",
-    "unsigned long" => "toUInt32",
-    "unsigned short" => "toUInt16",
-);
+sub GetIntegerConversionType
+{
+    my $signature = shift;
+
+    return "EnforceRange" if $signature->extendedAttributes->{"EnforceRange"};
+    return "Clamp" if $signature->extendedAttributes->{"Clamp"};
+    return "NormalConversion";
+}
 
 # Returns (convertString, mayThrowException).
 sub JSValueToNative
@@ -4348,15 +4398,16 @@ sub JSValueToNative
 
     my $type = $signature->type;
 
-    my $function = $integerConversionFunction{$type};
-    if ($function) {
-        my $conversionType = "NormalConversion";
-        $conversionType = "EnforceRange" if $signature->extendedAttributes->{"EnforceRange"};
-        $conversionType = "Clamp" if $signature->extendedAttributes->{"Clamp"};
-        return ("$function(state, $value, $conversionType)", 1);
+    if ($codeGenerator->IsIntegerType($type)) {
+        my $nativeType = GetNativeType($interface, $type);
+        my $conversionType = GetIntegerConversionType($signature);
+        AddToImplIncludes("JSDOMConvert.h");
+        return ("convert<$nativeType>(*state, $value, $conversionType)", 1);
     }
 
     if ($type eq "DOMString") {
+        return ("AtomicString($value.toString(state)->toExistingAtomicString(state))", 1) if $signature->extendedAttributes->{"RequiresExistingAtomicString"};
+
         if ($signature->extendedAttributes->{"TreatNullAs"}) {
             return ("valueToStringTreatingNullAsEmptyString(state, $value)", 1) if $signature->extendedAttributes->{"TreatNullAs"} eq "EmptyString";
             return ("valueToStringWithNullCheck(state, $value)", 1) if $signature->extendedAttributes->{"TreatNullAs"} eq "LegacyNullString";
@@ -4373,7 +4424,7 @@ sub JSValueToNative
 
     if ($type eq "Dictionary") {
         AddToImplIncludes("Dictionary.h", $conditional);
-        return ("{ state, $value }", 0);
+        return ("Dictionary(state, $value)", 0);
     }
 
     my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($type);
@@ -4388,28 +4439,32 @@ sub JSValueToNative
     return ($value, 0) if $type eq "any";
 
     return ("$value.toBoolean(state)", 1) if $type eq "boolean";
-    return ("$value.toNumber(state)", 1) if $type eq "double" or $type eq "unrestricted double";
-    return ("$value.toFloat(state)", 1) if $type eq "float" or $type eq "unrestricted float";
+
+    if ($codeGenerator->IsFloatingPointType($type)) {
+        AddToImplIncludes("JSDOMConvert.h");
+        return ("convert<double>(*state, $value, ShouldAllowNonFinite::No)", 1) if $type eq "double";
+        return ("convert<double>(*state, $value, ShouldAllowNonFinite::Yes)", 1) if $type eq "unrestricted double";
+        return ("convert<float>(*state, $value, ShouldAllowNonFinite::No)", 1) if $type eq "float";
+        return ("convert<float>(*state, $value, ShouldAllowNonFinite::Yes)", 1) if $type eq "unrestricted float";
+        die "Unhandled floating point type: " . $type;
+    }
+
     return ("valueToDate(state, $value)", 1) if $type eq "Date";
 
     return ("to$type($value)", 1) if $codeGenerator->IsTypedArrayType($type);
-    return ("parse" . GetEnumerationClassIdentifier($interface, $type) . "(*state, $value)", 1) if $codeGenerator->IsEnumType($type);
+    return ("parse<" . GetEnumerationClassName($interface, $type) . ">(*state, $value)", 1) if $codeGenerator->IsEnumType($type);
+    return ("convert<" . GetDictionaryClassName($interface, $type) . ">(*state, $value)", 1) if $codeGenerator->IsDictionaryType($type);
 
     AddToImplIncludes("JS$type.h", $conditional);
 
-    return ("toDOMStringList(state, $value)", 1) if $type eq "DOMStringList";
-    return ("JSNodeFilter::toWrapped(state->vm(), $value)", 1) if $type eq "NodeFilter";
-
+    my $extendedAttributes = $codeGenerator->getInterfaceExtendedAttributesFromName($type);
+    return ("JS${type}::toWrapped(*state, $value)", 1) if $extendedAttributes->{"JSCustomToNativeObject"};
     return ("JS${type}::toWrapped($value)", 0);
 }
 
 sub NativeToJSValue
 {
-    my $signature = shift;
-    my $inFunctionCall = shift;
-    my $interfaceName = shift;
-    my $value = shift;
-    my $thisValue = shift;
+    my ($signature, $inFunctionCall, $interface, $value, $thisValue) = @_;
 
     my $conditional = $signature->extendedAttributes->{"Conditional"};
     my $type = $signature->type;
@@ -4481,28 +4536,29 @@ sub NativeToJSValue
 
     return $value if $codeGenerator->IsSVGAnimatedType($type);
 
-    if ($codeGenerator->IsSVGAnimatedType($interfaceName) or ($interfaceName eq "SVGViewSpec" and $type eq "SVGTransformList")) {
+    if ($codeGenerator->IsSVGAnimatedType($interface->name) or ($interface->name eq "SVGViewSpec" and $type eq "SVGTransformList")) {
         # Convert from abstract RefPtr<ListProperty> to real type, so the right toJS() method can be invoked.
-        $value = "static_cast<" . GetNativeType($type) . ">($value.get())";
-    } elsif ($interfaceName eq "SVGViewSpec") {
+        $value = "static_cast<" . GetNativeType($interface, $type) . ">($value.get())";
+    } elsif ($interface->name eq "SVGViewSpec") {
         # Convert from abstract SVGProperty to real type, so the right toJS() method can be invoked.
-        $value = "static_cast<" . GetNativeType($type) . ">($value)";
-    } elsif ($codeGenerator->IsSVGTypeNeedingTearOff($type) and not $interfaceName =~ /List$/) {
+        $value = "static_cast<" . GetNativeType($interface, $type) . ">($value)";
+    } elsif ($codeGenerator->IsSVGTypeNeedingTearOff($type) and not $interface->name =~ /List$/) {
         my $tearOffType = $codeGenerator->GetSVGTypeNeedingTearOff($type);
         if ($codeGenerator->IsSVGTypeWithWritablePropertiesNeedingTearOff($type) and !$inFunctionCall and not defined $signature->extendedAttributes->{"Immutable"}) {
             my $getter = $value;
             $getter =~ s/impl\.//;
             $getter =~ s/impl->//;
             $getter =~ s/\(\)//;
-            my $updateMethod = "&${interfaceName}::update" . $codeGenerator->WK_ucfirst($getter);
+            my $updateMethod = "&" . $interface->name . "::update" . $codeGenerator->WK_ucfirst($getter);
 
-            my $selfIsTearOffType = $codeGenerator->IsSVGTypeNeedingTearOff($interfaceName);
+            my $selfIsTearOffType = $codeGenerator->IsSVGTypeNeedingTearOff($interface->name);
             if ($selfIsTearOffType) {
                 # FIXME: Why SVGMatrix specifically?
                 AddToImplIncludes("SVGMatrixTearOff.h", $conditional);
                 $value = "SVGMatrixTearOff::create(castedThis->wrapped(), $value)";
             } else {
                 AddToImplIncludes("SVGStaticPropertyTearOff.h", $conditional);
+                my $interfaceName = $interface->name;
                 $tearOffType =~ s/SVGPropertyTearOff</SVGStaticPropertyTearOff<$interfaceName, /;
                 $value = "${tearOffType}::create(impl, $value, $updateMethod)";
             }

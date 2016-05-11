@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,38 @@
 
 #include "config.h"
 #include "ValueProfile.h"
+
+#include "CCallHelpers.h"
+#include "JSCInlines.h"
+
+namespace JSC {
+
+#if ENABLE(JIT)
+void ResultProfile::emitDetectNumericness(CCallHelpers& jit, JSValueRegs regs, TagRegistersMode mode)
+{
+    CCallHelpers::Jump isInt32 = jit.branchIfInt32(regs, mode);
+    CCallHelpers::Jump notDouble = jit.branchIfNotDoubleKnownNotInt32(regs, mode);
+    // FIXME: We could be more precise here.
+    emitSetDouble(jit);
+    CCallHelpers::Jump done = jit.jump();
+    notDouble.link(&jit);
+    emitSetNonNumber(jit);
+    done.link(&jit);
+    isInt32.link(&jit);
+}
+
+void ResultProfile::emitSetDouble(CCallHelpers& jit)
+{
+    jit.or32(CCallHelpers::TrustedImm32(ResultProfile::Int32Overflow | ResultProfile::Int52Overflow | ResultProfile::NegZeroDouble | ResultProfile::NonNegZeroDouble), CCallHelpers::AbsoluteAddress(addressOfFlags()));
+}
+
+void ResultProfile::emitSetNonNumber(CCallHelpers& jit)
+{
+    jit.or32(CCallHelpers::TrustedImm32(ResultProfile::NonNumber), CCallHelpers::AbsoluteAddress(addressOfFlags()));
+}
+#endif // ENABLE(JIT)
+
+} // namespace JSC
 
 namespace WTF {
     

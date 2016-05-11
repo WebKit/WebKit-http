@@ -30,7 +30,6 @@
 #include "IDBConnectionProxy.h"
 #include "IDBConnectionToServerDelegate.h"
 #include "IDBResourceIdentifier.h"
-#include "TransactionOperation.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Ref.h>
@@ -42,14 +41,11 @@ class IDBCursorInfo;
 class IDBDatabase;
 class IDBError;
 class IDBObjectStoreInfo;
-class IDBOpenDBRequest;
 class IDBResultData;
-class IDBTransaction;
 class IDBValue;
+class SecurityOrigin;
 
 namespace IDBClient {
-
-class TransactionOperation;
 
 class IDBConnectionToServer : public ThreadSafeRefCounted<IDBConnectionToServer> {
 public:
@@ -59,51 +55,51 @@ public:
 
     IDBConnectionProxy& proxy();
 
-    void deleteDatabase(IDBOpenDBRequest&);
+    void deleteDatabase(const IDBRequestData&);
     WEBCORE_EXPORT void didDeleteDatabase(const IDBResultData&);
 
-    void openDatabase(IDBOpenDBRequest&);
+    void openDatabase(const IDBRequestData&);
     WEBCORE_EXPORT void didOpenDatabase(const IDBResultData&);
 
-    void createObjectStore(TransactionOperation&, const IDBObjectStoreInfo&);
+    void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&);
     WEBCORE_EXPORT void didCreateObjectStore(const IDBResultData&);
 
-    void deleteObjectStore(TransactionOperation&, const String& objectStoreName);
+    void deleteObjectStore(const IDBRequestData&, const String& objectStoreName);
     WEBCORE_EXPORT void didDeleteObjectStore(const IDBResultData&);
 
-    void clearObjectStore(TransactionOperation&, uint64_t objectStoreIdentifier);
+    void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier);
     WEBCORE_EXPORT void didClearObjectStore(const IDBResultData&);
 
-    void createIndex(TransactionOperation&, const IDBIndexInfo&);
+    void createIndex(const IDBRequestData&, const IDBIndexInfo&);
     WEBCORE_EXPORT void didCreateIndex(const IDBResultData&);
 
-    void deleteIndex(TransactionOperation&, uint64_t objectStoreIdentifier, const String& indexName);
+    void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName);
     WEBCORE_EXPORT void didDeleteIndex(const IDBResultData&);
 
-    void putOrAdd(TransactionOperation&, IDBKey*, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode);
+    void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode);
     WEBCORE_EXPORT void didPutOrAdd(const IDBResultData&);
 
-    void getRecord(TransactionOperation&, const IDBKeyRangeData&);
+    void getRecord(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void didGetRecord(const IDBResultData&);
 
-    void getCount(TransactionOperation&, const IDBKeyRangeData&);
+    void getCount(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void didGetCount(const IDBResultData&);
 
-    void deleteRecord(TransactionOperation&, const IDBKeyRangeData&);
+    void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void didDeleteRecord(const IDBResultData&);
 
-    void openCursor(TransactionOperation&, const IDBCursorInfo&);
+    void openCursor(const IDBRequestData&, const IDBCursorInfo&);
     WEBCORE_EXPORT void didOpenCursor(const IDBResultData&);
 
-    void iterateCursor(TransactionOperation&, const IDBKeyData&, unsigned long count);
+    void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count);
     WEBCORE_EXPORT void didIterateCursor(const IDBResultData&);
 
-    void commitTransaction(IDBTransaction&);
+    void commitTransaction(const IDBResourceIdentifier& transactionIdentifier);
     WEBCORE_EXPORT void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
 
-    void didFinishHandlingVersionChangeTransaction(IDBTransaction&);
+    void didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier&);
 
-    void abortTransaction(IDBTransaction&);
+    void abortTransaction(const IDBResourceIdentifier& transactionIdentifier);
     WEBCORE_EXPORT void didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
 
     WEBCORE_EXPORT void fireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion);
@@ -112,16 +108,13 @@ public:
     WEBCORE_EXPORT void didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
     WEBCORE_EXPORT void notifyOpenDBRequestBlocked(const IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion);
 
-    void establishTransaction(IDBTransaction&);
+    void establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo&);
 
-    void databaseConnectionClosed(IDBDatabase&);
+    void databaseConnectionClosed(uint64_t databaseConnectionIdentifier);
 
     // To be used when an IDBOpenDBRequest gets a new database connection, optionally with a
     // versionchange transaction, but the page is already torn down.
     void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier);
-    
-    void registerDatabaseConnection(IDBDatabase&);
-    void unregisterDatabaseConnection(IDBDatabase&);
 
     void getAllDatabaseNames(const SecurityOrigin& mainFrameOrigin, const SecurityOrigin& openingOrigin, std::function<void (const Vector<String>&)>);
     WEBCORE_EXPORT void didGetAllDatabaseNames(uint64_t callbackID, const Vector<String>& databaseNames);
@@ -129,19 +122,7 @@ public:
 private:
     IDBConnectionToServer(IDBConnectionToServerDelegate&);
 
-    void saveOperation(TransactionOperation&);
-    void completeOperation(const IDBResultData&);
-
-    bool hasRecordOfTransaction(const IDBTransaction&) const;
-
     Ref<IDBConnectionToServerDelegate> m_delegate;
-
-    HashMap<IDBResourceIdentifier, RefPtr<IDBOpenDBRequest>> m_openDBRequestMap;
-    HashMap<uint64_t, IDBDatabase*> m_databaseConnectionMap;
-    HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_pendingTransactions;
-    HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
-    HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
-    HashMap<IDBResourceIdentifier, RefPtr<TransactionOperation>> m_activeOperations;
 
     HashMap<uint64_t, std::function<void (const Vector<String>&)>> m_getAllDatabaseNamesCallbacks;
 

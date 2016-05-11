@@ -20,6 +20,7 @@ fast/zooming/ios [ Skip ]
 fast/viewport/ios [ Skip ]
 fast/events/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
+fast/scrolling/ios [ Skip ]
 
 fast/forms/attributed-strings.html [ Skip ]
 fast/scrolling/latching [ Skip ]
@@ -908,28 +909,15 @@ storage/indexeddb/request-leak.html [ Failure ]
 
 webkit.org/b/154619 storage/indexeddb/odd-strings.html [ Skip ]
 
-# No workers support in Modern IDB yet
-http/tests/security/cross-origin-worker-indexeddb-allowed.html
-http/tests/security/cross-origin-worker-indexeddb.html
-storage/indexeddb/basics-workers.html
-storage/indexeddb/cursor-advance-workers.html
-storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-workers.html
-storage/indexeddb/dont-commit-on-blocked-private.html
-storage/indexeddb/dont-commit-on-blocked.html
-storage/indexeddb/factory-basics-workers.html
-storage/indexeddb/index-basics-workers.html
-storage/indexeddb/objectstore-basics-workers.html
-storage/indexeddb/open-twice-workers.html
-storage/indexeddb/pending-activity-workers.html
-storage/indexeddb/pending-version-change-on-exit-private.html
-storage/indexeddb/pending-version-change-on-exit.html
-storage/indexeddb/pending-version-change-stuck-private.html
-storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html
-storage/indexeddb/pending-version-change-stuck-works-with-terminate.html
+# IDB workers test fails - The worker's attempt to open the database creates a new UniqueIDBDatabase
+# Could be a SessionID difference? Something is giving the worker a different namespace.
+storage/indexeddb/dont-commit-on-blocked-private.html [ Failure ]
+
+# IDB workers tests that timeout
 storage/indexeddb/pending-version-change-stuck.html
-storage/indexeddb/transaction-complete-workers-private.html
-storage/indexeddb/transaction-complete-workers.html
-storage/indexeddb/unprefix-workers.html
+storage/indexeddb/pending-version-change-stuck-private.html
+storage/indexeddb/pending-version-change-stuck-works-with-terminate.html
+storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html
 
 # Test's behavior specific to Legacy IDB with LevelDB backend
 # Modern IDB is spec-compliant without supporting this behavior

@@ -29,11 +29,13 @@
 
 #import "DOMTestObj.h"
 
+#import "DOMCustomXPathNSResolver.h"
 #import "DOMDictionaryInternal.h"
 #import "DOMDocumentInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMSVGDocumentInternal.h"
 #import "DOMSVGPointInternal.h"
+#import "DOMTestDictionaryInternal.h"
 #import "DOMTestEnumTypeInternal.h"
 #import "DOMTestNodeInternal.h"
 #import "DOMTestObjInternal.h"
@@ -42,7 +44,6 @@
 #import "DOMTestObjectCConstructorInternal.h"
 #import "DOMTestSubObjConstructorInternal.h"
 #import "DOManyInternal.h"
-#import "DOMboolInternal.h"
 #import "Dictionary.h"
 #import "Document.h"
 #import "EventListener.h"
@@ -54,6 +55,7 @@
 #import "SVGDocument.h"
 #import "SVGPoint.h"
 #import "SerializedScriptValue.h"
+#import "TestDictionary.h"
 #import "TestEnumType.h"
 #import "TestNode.h"
 #import "TestObj.h"
@@ -65,8 +67,7 @@
 #import "URL.h"
 #import "WebCoreObjCExtras.h"
 #import "WebScriptObjectPrivate.h"
-#import "any.h"
-#import "bool.h"
+#import "XPathNSResolver.h"
 #import <wtf/GetPtr.h>
 
 #define IMPL reinterpret_cast<WebCore::TestObj*>(_internal)
@@ -1111,6 +1112,24 @@
     IMPL->methodWithArgTreatingNullAsEmptyString(arg);
 }
 
+- (void)methodWithXPathNSResolverParameter:(id <DOMXPathNSResolver>)resolver
+{
+    WebCore::JSMainThreadNullState state;
+    if (!resolver)
+        WebCore::raiseTypeErrorException();
+    WebCore::XPathNSResolver* nativeResolver = 0;
+    RefPtr<WebCore::XPathNSResolver> customResolver;
+    if (resolver) {
+        if ([resolver isMemberOfClass:[DOMNativeXPathNSResolver class]])
+            nativeResolver = core(static_cast<DOMNativeXPathNSResolver *>(resolver));
+        else {
+            customResolver = WebCore::DOMCustomXPathNSResolver::create(resolver);
+            nativeResolver = WTF::getPtr(customResolver);
+        }
+    }
+    IMPL->methodWithXPathNSResolverParameter(*WTF::getPtr(nativeResolver));
+}
+
 - (NSString *)nullableStringMethod
 {
     WebCore::JSMainThreadNullState state;
@@ -1133,6 +1152,12 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->methodWithEnumArg(core(enumArg));
+}
+
+- (void)methodWithOptionalEnumArg:(DOMTestEnumType *)enumArg
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithOptionalEnumArg(core(enumArg));
 }
 
 - (void)methodWithOptionalEnumArgAndDefaultValue:(DOMTestEnumType *)enumArg
@@ -1444,6 +1469,22 @@
     IMPL->methodWithOptionalNullableWrapperIsNull(core(obj));
 }
 
+- (void)methodWithOptionalXPathNSResolver:(id <DOMXPathNSResolver>)resolver
+{
+    WebCore::JSMainThreadNullState state;
+    WebCore::XPathNSResolver* nativeResolver = 0;
+    RefPtr<WebCore::XPathNSResolver> customResolver;
+    if (resolver) {
+        if ([resolver isMemberOfClass:[DOMNativeXPathNSResolver class]])
+            nativeResolver = core(static_cast<DOMNativeXPathNSResolver *>(resolver));
+        else {
+            customResolver = WebCore::DOMCustomXPathNSResolver::create(resolver);
+            nativeResolver = WTF::getPtr(customResolver);
+        }
+    }
+    IMPL->methodWithOptionalXPathNSResolver(WTF::getPtr(nativeResolver));
+}
+
 
 #if ENABLE(Condition1)
 - (NSString *)conditionalMethod1
@@ -1571,11 +1612,11 @@
     IMPL->banana();
 }
 
-- (DOMbool *)strictFunction:(NSString *)str a:(float)a b:(int)b
+- (BOOL)strictFunction:(NSString *)str a:(float)a b:(int)b
 {
     WebCore::JSMainThreadNullState state;
     WebCore::ExceptionCode ec = 0;
-    DOMbool *result = kit(WTF::getPtr(IMPL->strictFunction(str, a, b, ec)));
+    BOOL result = IMPL->strictFunction(str, a, b, ec);
     WebCore::raiseOnDOMError(ec);
     return result;
 }
@@ -1604,6 +1645,12 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->any(a, b);
+}
+
+- (void)attachShadowRoot:(DOMTestDictionary *)init
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->attachShadowRoot(core(init));
 }
 
 @end

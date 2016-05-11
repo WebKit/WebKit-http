@@ -62,6 +62,7 @@
 #include "OESVertexArrayObject.h"
 #include "Page.h"
 #include "RenderBox.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "WebGL2RenderingContext.h"
 #include "WebGLActiveInfo.h"
@@ -348,7 +349,10 @@ private:
 
 std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(HTMLCanvasElement* canvas, WebGLContextAttributes* attrs, const String& type)
 {
-#if !ENABLE(WEBGL2)
+#if ENABLE(WEBGL2)
+    if (type == "webgl2" && !RuntimeEnabledFeatures::sharedFeatures().webGL2Enabled())
+        return nullptr;
+#else
     UNUSED_PARAM(type);
 #endif
 
@@ -2197,7 +2201,7 @@ WebGLGetInfo WebGLRenderingContextBase::getBufferParameter(GC3Denum target, GC3D
     return WebGLGetInfo(static_cast<unsigned int>(value));
 }
 
-PassRefPtr<WebGLContextAttributes> WebGLRenderingContextBase::getContextAttributes()
+RefPtr<WebGLContextAttributes> WebGLRenderingContextBase::getContextAttributes()
 {
     if (isContextLostOrPending())
         return nullptr;
@@ -2207,12 +2211,12 @@ PassRefPtr<WebGLContextAttributes> WebGLRenderingContextBase::getContextAttribut
     // Also, we need to enforce requested values of "false" for depth
     // and stencil, regardless of the properties of the underlying
     // GraphicsContext3D.
-    RefPtr<WebGLContextAttributes> attributes = WebGLContextAttributes::create(m_context->getContextAttributes());
+    auto attributes = WebGLContextAttributes::create(m_context->getContextAttributes());
     if (!m_attributes.depth)
         attributes->setDepth(false);
     if (!m_attributes.stencil)
         attributes->setStencil(false);
-    return attributes.release();
+    return WTFMove(attributes);
 }
 
 GC3Denum WebGLRenderingContextBase::getError()

@@ -9,6 +9,7 @@
 fast/harness/ui-side-scripts.html [ Pass ]
 fast/harness/concurrent-ui-side-scripts.html [ Pass ]
 fast/zooming/ios [ Pass ]
+fast/scrolling/ios [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -383,7 +384,6 @@ webarchive/archive-empty-frame-source.html [ Failure ]
 webarchive/doctype.html [ Failure ]
 webarchive/test-css-import.html [ Failure ]
 webarchive/test-link-href.html [ Failure ]
-webarchive/test-link-rel-icon-beforeload.html [ Failure ]
 webarchive/test-script-src.html [ Failure ]
 
 # HTTP tests that fail:
@@ -546,7 +546,7 @@ fast/css/hover-affects-child.html [ Failure ]
 fast/css/hover-display-block-inline.html [ Failure ]
 fast/css/hover-display-block-none.html [ Failure ]
 fast/css/hover-display-block.html [ Failure ]
-fast/css/line-height-text-autosizing.html [ Failure ]
+fast/text-autosizing/ios/line-height-text-autosizing.html [ Failure ]
 fast/css/nested-layers-with-hover.html [ Failure ]
 fast/dom/HTMLDocument/hasFocus.html [ Failure ]
 fast/dom/Window/Plug-ins.html [ Failure ]
@@ -1664,7 +1664,7 @@ fast/text/simple-line-layout-text-stroke-width.html [ Failure ]
 http/tests/loading/preload-img-srcset-sizes.html [ Failure ]
 http/tests/navigation/postredirect-basic.html [ Failure ]
 http/tests/navigation/postredirect-goback1.html [ Failure ]
-platform/ios-simulator-wk2/scrolling/remove-scrolling-role.html [ Failure ]
+
 platform/ios-simulator/ios/fast/text/underline-scaling.html [ Failure ]
 compositing/masks/compositing-clip-path-on-subpixel-position.html [ ImageOnlyFailure ]
 fast/borders/dashed-border-on-subpixel-position.html [ ImageOnlyFailure ]
@@ -1674,10 +1674,6 @@ fast/images/background-image-size-changes-fractional-position.html [ ImageOnlyFa
 fast/masking/clip-path-on-subpixel-position.html [ ImageOnlyFailure ]
 fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
 svg/filters/feMorphology-radius-cases.svg [ ImageOnlyFailure ]
-
-# Crashes as of 06/08/2015
-http/tests/navigation/anchor-basic.html [ Crash ]
-http/tests/navigation/timerredirect-basic.html [ Crash ]
 
 # Time outs as of 06/08/2015
 fast/images/animated-gif-iframe-webkit-transform.html
@@ -1777,7 +1773,6 @@ webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-back-navig
 perf/mouse-event.html [ Failure Pass ]
 perf/rel-list-remove.html [ Failure Pass ]
 platform/ios-simulator/ios/fast/coordinates/document-elementFromPoint.html [ Failure Pass ]
-platform/ios-simulator/ios/scrolling/scroll-event-from-scrollTo.html [ Failure Pass ]
 transitions/transition-on-element-with-content.html [ Failure Pass ]
 transitions/visited-link-color.html [ Failure Pass ]
 transitions/zero-duration-in-list.html [ Failure Pass ]
@@ -1895,3 +1890,5 @@ webkit.org/b/82762 fast/animation/request-animation-frame-during-modal.html [ Pa
 webkit.org/b/156620 fast/animation/request-animation-frame-iframe2.html [ Pass Failure ]
 
 webkit.org/b/153049 perf/array-binary-search.html [ Pass Failure Timeout ]
+
+fast/scrolling/ios/scroll-events-back-forward-after-pageshow.html [ Pass Failure ]

@@ -41,20 +41,19 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/cache/NetworkCacheDataSoup.cpp
     NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
 
+    NetworkProcess/soup/NetworkProcessMainSoup.cpp
     NetworkProcess/soup/NetworkProcessSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
-    NetworkProcess/wpe/NetworkProcessMainWPE.cpp
+    Platform/glib/ModuleGlib.cpp
 
     Platform/IPC/glib/GSocketMonitor.cpp
 
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
 
+    Platform/unix/LoggingUnix.cpp
     Platform/unix/SharedMemoryUnix.cpp
-
-    Platform/wpe/LoggingWPE.cpp
-    Platform/wpe/ModuleWPE.cpp
 
     PluginProcess/unix/PluginControllerProxyUnix.cpp
     PluginProcess/unix/PluginProcessMainUnix.cpp
@@ -142,7 +141,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/Cookies/soup/WebCookieManagerSoup.cpp
     WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp
 
-    WebProcess/InjectedBundle/wpe/InjectedBundleWPE.cpp
+    WebProcess/InjectedBundle/glib/InjectedBundleGlib.cpp
 
     WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
 

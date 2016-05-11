@@ -990,14 +990,13 @@ bool RenderBox::needsPreferredWidthsRecalculation() const
     return style().paddingStart().isPercentOrCalculated() || style().paddingEnd().isPercentOrCalculated();
 }
 
-IntSize RenderBox::scrolledContentOffset() const
+ScrollPosition RenderBox::scrollPosition() const
 {
     if (!hasOverflowClip())
-        return IntSize();
+        return { 0, 0 };
 
     ASSERT(hasLayer());
-    // FIXME: Renderer code needs scrollOffset/scrollPosition disambiguation.
-    return layer()->scrolledContentOffset();
+    return layer()->scrollPosition();
 }
 
 LayoutSize RenderBox::cachedSizeForOverflowClip() const
@@ -1010,7 +1009,7 @@ LayoutSize RenderBox::cachedSizeForOverflowClip() const
 void RenderBox::applyCachedClipAndScrollOffsetForRepaint(LayoutRect& paintRect) const
 {
     flipForWritingMode(paintRect);
-    paintRect.move(-scrolledContentOffset()); // For overflow:auto/scroll/hidden.
+    paintRect.moveBy(-scrollPosition()); // For overflow:auto/scroll/hidden.
 
     // Do not clip scroll layer contents to reduce the number of repaints while scrolling.
     if (usesCompositedScrolling()) {
@@ -1476,7 +1475,7 @@ static bool isCandidateForOpaquenessTest(const RenderBox& childBox)
             return false;
         if (childLayer->hasTransform() || childLayer->isTransparent() || childLayer->hasFilter())
             return false;
-        if (!childBox.scrolledContentOffset().isZero())
+        if (!childBox.scrollPosition().isZero())
             return false;
     }
     return true;
@@ -2108,7 +2107,7 @@ LayoutSize RenderBox::offsetFromContainer(RenderElement& renderer, const LayoutP
         offset += topLeftLocationOffset();
 
     if (is<RenderBox>(renderer))
-        offset -= downcast<RenderBox>(renderer).scrolledContentOffset();
+        offset -= toLayoutSize(downcast<RenderBox>(renderer).scrollPosition());
 
     if (style().position() == AbsolutePosition && renderer.isInFlowPositioned() && is<RenderInline>(renderer))
         offset += downcast<RenderInline>(renderer).offsetForInFlowPositionedInline(this);
@@ -3037,8 +3036,12 @@ LayoutUnit RenderBox::computeReplacedLogicalWidth(ShouldComputePreferred shouldC
 
 LayoutUnit RenderBox::computeReplacedLogicalWidthRespectingMinMaxWidth(LayoutUnit logicalWidth, ShouldComputePreferred shouldComputePreferred) const
 {
-    LayoutUnit minLogicalWidth = (shouldComputePreferred == ComputePreferred && style().logicalMinWidth().isPercentOrCalculated()) || style().logicalMinWidth().isUndefined() ? logicalWidth : computeReplacedLogicalWidthUsing(MinSize, style().logicalMinWidth());
-    LayoutUnit maxLogicalWidth = (shouldComputePreferred == ComputePreferred && style().logicalMaxWidth().isPercentOrCalculated()) || style().logicalMaxWidth().isUndefined() ? logicalWidth : computeReplacedLogicalWidthUsing(MaxSize, style().logicalMaxWidth());
+    auto& logicalMinWidth = style().logicalMinWidth();
+    auto& logicalMaxWidth = style().logicalMaxWidth();
+    bool useLogicalWidthForMinWidth = (shouldComputePreferred == ComputePreferred && logicalMinWidth.isPercentOrCalculated()) || logicalMinWidth.isUndefined();
+    bool useLogicalWidthForMaxWidth = (shouldComputePreferred == ComputePreferred && logicalMaxWidth.isPercentOrCalculated()) || logicalMaxWidth.isUndefined();
+    auto minLogicalWidth =  useLogicalWidthForMinWidth ? logicalWidth : computeReplacedLogicalWidthUsing(MinSize, logicalMinWidth);
+    auto maxLogicalWidth =  useLogicalWidthForMaxWidth ? logicalWidth : computeReplacedLogicalWidthUsing(MaxSize, logicalMaxWidth);
     return std::max(minLogicalWidth, std::min(logicalWidth, maxLogicalWidth));
 }
 
@@ -3379,28 +3382,33 @@ static void computeInlineStaticDistance(Length& logicalLeft, Length& logicalRigh
         }
         logicalLeft.setValue(Fixed, staticPosition);
     } else {
-        const RenderBox& enclosingBox = child->parent()->enclosingBox();
         LayoutUnit staticPosition = child->layer()->staticInlinePosition() + containerLogicalWidth + containerBlock.borderLogicalLeft();
+        auto& enclosingBox = child->parent()->enclosingBox();
+        if (&enclosingBox != &containerBlock && containerBlock.isDescendantOf(&enclosingBox)) {
+            logicalRight.setValue(Fixed, staticPosition);
+            return;
+        }
+
+        staticPosition -= enclosingBox.logicalWidth();
         for (const RenderElement* current = &enclosingBox; current; current = current->container()) {
-            if (is<RenderBox>(*current)) {
-                if (current != &containerBlock) {
-                    const auto& renderBox = downcast<RenderBox>(*current);
-                    staticPosition -= renderBox.logicalLeft();
-                    if (renderBox.isInFlowPositioned())
-                        staticPosition -= renderBox.isHorizontalWritingMode() ? renderBox.offsetForInFlowPosition().width() : renderBox.offsetForInFlowPosition().height();
-                }
-                if (current == &enclosingBox)
-                    staticPosition -= enclosingBox.logicalWidth();
-                if (region && is<RenderBlock>(*current)) {
-                    const RenderBlock& currentBlock = downcast<RenderBlock>(*current);
-                    region = currentBlock.clampToStartAndEndRegions(region);
-                    RenderBoxRegionInfo* boxInfo = currentBlock.renderBoxRegionInfo(region);
-                    if (boxInfo) {
-                        if (current != &containerBlock)
-                            staticPosition -= currentBlock.logicalWidth() - (boxInfo->logicalLeft() + boxInfo->logicalWidth());
-                        if (current == &enclosingBox)
-                            staticPosition += enclosingBox.logicalWidth() - boxInfo->logicalWidth();
-                    }
+            if (!is<RenderBox>(*current))
+                continue;
+
+            if (current != &containerBlock) {
+                auto& renderBox = downcast<RenderBox>(*current);
+                staticPosition -= renderBox.logicalLeft();
+                if (renderBox.isInFlowPositioned())
+                    staticPosition -= renderBox.isHorizontalWritingMode() ? renderBox.offsetForInFlowPosition().width() : renderBox.offsetForInFlowPosition().height();
+            }
+            if (region && is<RenderBlock>(*current)) {
+                auto& currentBlock = downcast<RenderBlock>(*current);
+                region = currentBlock.clampToStartAndEndRegions(region);
+                RenderBoxRegionInfo* boxInfo = currentBlock.renderBoxRegionInfo(region);
+                if (boxInfo) {
+                    if (current != &containerBlock)
+                        staticPosition -= currentBlock.logicalWidth() - (boxInfo->logicalLeft() + boxInfo->logicalWidth());
+                    if (current == &enclosingBox)
+                        staticPosition += enclosingBox.logicalWidth() - boxInfo->logicalWidth();
                 }
             }
             if (current == &containerBlock)
@@ -4929,7 +4937,7 @@ LayoutRect RenderBox::overflowRectForPaintRejection(RenderNamedFlowFragment* nam
         return overflowRect;
 
     overflowRect.unite(layoutOverflowRect());
-    overflowRect.move(-scrolledContentOffset());
+    overflowRect.moveBy(-scrollPosition());
     return overflowRect;
 }
 
