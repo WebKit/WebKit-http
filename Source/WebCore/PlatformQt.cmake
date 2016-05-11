@@ -49,8 +49,6 @@ list(APPEND WebCore_SOURCES
 
     editing/qt/EditorQt.cpp
 
-    history/qt/HistoryItemQt.cpp
-
     page/qt/DragControllerQt.cpp
     page/qt/EventHandlerQt.cpp
 
