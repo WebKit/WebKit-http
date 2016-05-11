@@ -11,6 +11,8 @@ displaylists [ Pass ]
 quicklook [ Pass ]
 http/tests/quicklook [ Pass ]
 
+fast/text-autosizing/ios [ Pass ]
+
 # <rdar://problem/22898927> Crashes in iWorkImport.framework
 quicklook/pages.html [ Pass Crash ]
 
@@ -117,7 +119,6 @@ fast/shadow-dom/touch-event-ios.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-container-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-touches.html [ Skip ]
-platform/ios-simulator/ios/fast/html/textarea-auto-sizing-disable.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone.html [ Skip ]
 
@@ -245,8 +246,6 @@ fast/scrolling/overflow-scroll-past-max.html [ Skip ]
 pageoverlay/overlay-small-frame-mouse-events.html [ Skip ]
 loader/stateobjects/pushstate-size.html [ Skip ]
 loader/stateobjects/pushstate-size-iframe.html [ Skip ]
-fast/loader/stateobjects/replacestate-frequency-with-user-gesture.html [ Skip ]
-fast/loader/stateobjects/pushstate-frequency-with-user-gesture.html [ Skip ]
 fast/scrolling/scroll-animator-basic-events.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
@@ -255,9 +254,6 @@ fast/text/text-disappear-on-deselect.html [ ImageOnlyFailure ]
 
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
-webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
-webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
-webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
 
 # No tab navigation support on iOS
 fast/shadow-dom/negative-tabindex-on-shadow-host.html [ Failure ]
@@ -278,6 +274,15 @@ webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
 fast/attachment/attachment-type-attribute.html [ Skip ]
 
 webkit.org/b/156857 http/tests/navigation/ping-attribute [ Skip ]
+
+# RTL Scrollbars are only implemented on certain versions of OS X
+fast/scrolling/rtl-scrollbars-iframe-scrolled.html [ Skip ]
+fast/scrolling/rtl-scrollbars-listbox-scroll.html [ Skip ]
+fast/scrolling/rtl-scrollbars-listbox-select-left.html [ Skip ]
+fast/scrolling/rtl-scrollbars-position-absolute.html [ Skip ]
+fast/scrolling/rtl-scrollbars-position-fixed.html [ Skip ]
+fast/scrolling/rtl-scrollbars-text-selection-scrolled.html [ Skip ]
+fast/scrolling/rtl-scrollbars-text-selection.html [ Skip ]
 
 ###
 # Known failures
@@ -303,7 +308,6 @@ webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.clear.html [ Fail
 webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.darker.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.broken.html [ Failure ]
-webkit.org/b/137530 canvas/philip/tests/2d.drawImage.image.incomplete.omitted.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
@@ -437,18 +441,9 @@ compositing/video/video-reflection.html
 compositing/visibility/visibility-simple-video-layer.html
 
 # Compositing tests that time out:
-compositing/framesets/composited-frame-alignment.html
-compositing/geometry/abs-position-inside-opacity.html
-compositing/iframes/become-composited-nested-iframes.html
-compositing/images/clip-on-directly-composited-image.html
 compositing/layer-creation/animation-overlap-with-children.html
-compositing/masks/become-tiled-mask.html
 compositing/overflow/ancestor-overflow.html
-compositing/overlap-blending/children-opacity-huge.html
-compositing/patterns/direct-pattern-compositing-add-text.html
-compositing/reflections/backface-hidden-reflection.html
 compositing/tiling/huge-layer-img.html
-compositing/video/video-border-radius.html
 
 # <rdar://problem/19191637> compositing/layer-creation/deep-tree.html fails
 compositing/layer-creation/deep-tree.html
@@ -617,17 +612,6 @@ ietestcenter/css3/multicolumn/column-width-applies-to-012.htm [ ImageOnlyFailure
 ietestcenter/css3/multicolumn/column-width-applies-to-015.htm [ ImageOnlyFailure ]
 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
 ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
-
-# html-templates tests that time-out:
-imported/w3c/html-templates/parsing-html-templates/additions-to-foster-parenting/template-is-a-foster-parent-element.html
-imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-body-insertion-mode/generating-of-implied-end-tags.html
-imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-body-insertion-mode/ignore-body-token.html
-imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-frameset-insertion-mode/end-tag-frameset.html
-imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-head-insertion-mode/generating-of-implied-end-tags.html
-imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-head-insertion-mode/template-end-tag-without-start-one.html
-imported/w3c/html-templates/parsing-html-templates/additions-to-the-in-table-insertion-mode/end-tag-table.html
-imported/w3c/html-templates/parsing-html-templates/appending-to-a-template/template-child-nodes.html
-imported/w3c/html-templates/parsing-html-templates/clearing-the-stack-back-to-a-given-context/clearing-stack-back-to-a-table-body-context.html
 
 # Scrollbar tests that fail:
 webkit.org/b/137572 scrollbars/scroll-rtl-or-bt-layer.html [ Skip ]
@@ -2227,6 +2211,8 @@ fast/table/table-row-style-not-updated.html [ Failure ]
 fast/table/table-style-not-updated.html [ Failure ]
 fast/table/wide-colspan.html [ Failure ]
 fast/table/wide-column.html [ Failure ]
+
+# Tests designed for TEXT_AUTOSIZING, not IOS_TEXT_AUTOSIZING behavior.
 fast/text-autosizing/cluster-inline-block-or-table.html [ ImageOnlyFailure ]
 fast/text-autosizing/cluster-inline-grid-flex-box.html [ ImageOnlyFailure ]
 fast/text-autosizing/cluster-list-item.html [ ImageOnlyFailure ]
@@ -2274,6 +2260,7 @@ fast/text-autosizing/wide-block.html [ ImageOnlyFailure ]
 fast/text-autosizing/wide-child.html [ ImageOnlyFailure ]
 fast/text-autosizing/wide-iframe.html [ ImageOnlyFailure ]
 fast/text-autosizing/wide-in-narrow-overflow-scroll.html [ ImageOnlyFailure ]
+
 fast/text/decorations-transformed.html [ Failure ]
 fast/text/emphasis-avoid-ruby.html [ Failure ]
 fast/text/emphasis-overlap.html [ Failure ]
@@ -2541,23 +2528,12 @@ platform/ios-simulator/ios/fixed/absolute-inside-fixed.html [ Failure ]
 platform/ios-simulator/ios/fixed/four-bars.html [ Failure ]
 platform/ios-simulator/ios/fixed/nested-fixed.html [ Failure ]
 platform/ios-simulator/ios/fixed/percentage-inside-fixed.html [ Failure ]
-platform/ios-simulator/ios/scrolling/clipping-ancestor-with-accelerated-scrolling-ancestor.html [ Failure ]
-platform/ios-simulator/ios/scrolling/overflow-scroll-touch.html [ Failure ]
-platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip-size.html [ Failure ]
-platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip.html [ Failure ]
-platform/ios-simulator/ios/scrolling/scrollbar-hiding.html [ Failure ]
-platform/ios-simulator/ios/scrolling/scrolling-content-clip-to-viewport.html [ Failure ]
-platform/ios-simulator/ios/scrolling/textarea-scroll-touch.html [ Failure ]
-platform/ios-simulator/ios/scrolling/touch-stacking.html [ Failure ]
 platform/ios-simulator/ios/touch [ Skip ]
 
 # image inputs get rounded corners on iOS
 fast/css/object-position/object-position-input-image.html [ ImageOnlyFailure ]
 # iOS snapshot is retina, results differ.
 fast/css/object-position/object-position-img.html [ ImageOnlyFailure ]
-
-webkit.org/b/152276 platform/ios-simulator/ios/scrolling/scroll-events-back-forward-after-pageshow.html [ Failure ]
-webkit.org/b/152276 platform/ios-simulator/ios/scrolling/scroll-events-back-forward.html [ Failure ]
 
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
@@ -2576,7 +2552,7 @@ webkit.org/b/104954 http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyF
 ###
 # Mark as passing specific tests in folders that were skipped temporarily above.
 ##
-webkit.org/b/138970 fast/css/line-height-text-autosizing.html [ Pass ]
+webkit.org/b/138970 fast/text-autosizing/ios/line-height-text-autosizing.html [ Pass ]
 
 # Skipped for mac as well:
 webkit.org/b/129758 js/dom/create-lots-of-workers.html [ Skip ]
@@ -2683,7 +2659,6 @@ fast/forms/plaintext-mode-1.html [ Skip ]
 
 # Latest iOS failures as of Sept 1, 2015
 accessibility/ios-simulator/table-cell-ranges.html [ Failure ]
-canvas/philip/tests/2d.imageData.put.unchanged.html [ Failure ]
 compositing/backing/form-controls-backing.html [ Failure ]
 compositing/fixed-with-fixed-layout.html [ Failure ]
 compositing/geometry/ancestor-overflow-change.html [ Failure ]
@@ -2755,7 +2730,6 @@ imported/w3c/web-platform-tests/dom/events/Event-constants.html [ Skip ]
 
 # Tests that fail as of 09/02/2015:
 editing/deleting/delete-block-merge-contents-010.html [ Failure ]
-fast/parser/external-entities-in-xslt.xml [ Failure ]
 
 # Skip tests that crash as of 09/02/2015:
 fast/dom/offset-position-writing-modes.html [ Skip ]
@@ -2804,7 +2778,6 @@ imported/blink/compositing/draws-content/canvas-simple-background.html [ ImageOn
 imported/blink/compositing/draws-content/webgl-simple-background.html [ ImageOnlyFailure Pass ]
 imported/blink/compositing/layer-creation/iframe-clip-removed.html [ Pass Timeout ]
 imported/blink/compositing/overflow/body-switch-composited-scrolling.html [ ImageOnlyFailure Pass ]
-imported/blink/compositing/reorder-z-with-style.html [ Timeout ]
 imported/blink/compositing/squashing/invalidate-on-grouped-mapping-reorder.html [ Pass Timeout ]
 imported/blink/css3/calc/transition-asan-crash.html [ Pass Timeout ]
 imported/blink/editing/execCommand/4128080-2.html [ Failure Pass ]
@@ -2828,7 +2801,6 @@ imported/blink/fast/replaced/viewport-percentage-height-with-dynamic-container-h
 imported/blink/fast/sub-pixel/nested-transparency-layer-clipping.html [ ImageOnlyFailure Pass ]
 imported/blink/fast/sub-pixel/sub-pixel-transparency-layer.html [ ImageOnlyFailure Pass ]
 imported/blink/fast/table/whitespace-between-elements-with-table-cell-display-3.html [ ImageOnlyFailure Pass ]
-imported/blink/fast/text-autosizing/print-autosizing.html [ Timeout ]
 imported/blink/fast/text/international/text-shaping-arabic.html [ ImageOnlyFailure Pass ]
 imported/blink/fast/text/soft-hyphen-simple-text.html [ ImageOnlyFailure Pass ]
 imported/blink/fast/transforms/mirror-transform-tiled-scaled-background.html [ ImageOnlyFailure Pass ]
@@ -2838,14 +2810,12 @@ imported/blink/http/tests/security/referrer-policy-attribute-img-origin-when-cro
 imported/blink/http/tests/security/referrer-policy-attribute-img-origin.html [ ImageOnlyFailure Pass ]
 imported/blink/http/tests/security/referrer-policy-attribute-img-picture.html [ ImageOnlyFailure Pass ]
 imported/blink/http/tests/security/script-crossorigin-loads-correctly-credentials.html [ Failure Pass ]
-imported/blink/paint/theme/search-field-resuts-decoration-crash.html [ Timeout ]
 imported/blink/plugins/empty-per-context-data.html [ Skip ]
 imported/blink/svg/as-background-image/overflow-auto.html [ ImageOnlyFailure Pass ]
 imported/blink/svg/as-image/overflow-auto.html [ ImageOnlyFailure Pass ]
 imported/blink/svg/custom/focus-ring-text.svg [ ImageOnlyFailure Pass ]
 imported/blink/svg/custom/marker-layout-invalidation.html [ Pass Timeout ]
 imported/blink/svg/custom/svg-font-support.html [ ImageOnlyFailure Pass ]
-imported/blink/svg/filters/feColorMatrix-setAttribute-crash1.html [ Timeout ]
 imported/blink/svg/hittest/rect-miterlimit.html [ Pass Timeout ]
 imported/blink/svg/text/selection-partial-gradient.html [ ImageOnlyFailure Pass ]
 imported/blink/svg/text/text-outline-2.html [ ImageOnlyFailure Pass ]
@@ -2909,8 +2879,6 @@ fast/viewport/ios/width-is-device-width.html [ Pass ]
 fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass ]
 
 webkit.org/b/153371 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
-
-webkit.org/b/152446 http/tests/loading/preload-no-store-frame-src.html [ Failure ]
 
 webkit.org/b/153498 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
 
@@ -2979,6 +2947,7 @@ fast/overflow/overflow-hidden-scroll-into-view.html [ ImageOnlyFailure ]
 fast/regions/layers/region-removed-during-animation.html [ ImageOnlyFailure ]
 fast/sub-pixel/table-with-subpixel-cell-size.html [ ImageOnlyFailure ]
 svg/text/tspan-multiple-outline.svg [ ImageOnlyFailure ]
+fast/animation/height-auto-transition-computed-value.html [ ImageOnlyFailure ]
 
 webkit.org/b/155174 svg/animations/animate-marker-orient-from-angle-to-autostartreverse.html [ Skip ]
 
@@ -2999,8 +2968,6 @@ fast/scrolling/rtl-scrollbars-sticky-iframe-2.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-sticky-iframe.html [ ImageOnlyFailure ]
 
 # iOS list box controls are not drawn in the standard way.
-fast/forms/listbox-padding-clip.html [ ImageOnlyFailure ]
-fast/forms/listbox-padding-clip-overlay.html [ ImageOnlyFailure ]
 fast/forms/listbox-padding-clip-selected.html [ ImageOnlyFailure ]
 fast/forms/listbox-respects-padding-bottom.html [ Failure ]
 fast/forms/listbox-top-padding-do-not-clip-items.html [ Failure ]
@@ -3017,7 +2984,7 @@ webkit.org/b/157201 fast/scrolling/rtl-drag-vertical-scroller.html [ Failure ]
 
 # Tests that are failing after bug 157170 (WPT test sync). These tests may just need rebasing.
 imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly.html [ Failure ]
-imported/w3c/web-platform-tests/html/dom/interfaces.html [ Failure ]
+[ Release ] imported/w3c/web-platform-tests/html/dom/interfaces.html [ Failure ]
 imported/w3c/web-platform-tests/dom/nodes/Document-createEvent.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/selection.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput.html [ Failure ]

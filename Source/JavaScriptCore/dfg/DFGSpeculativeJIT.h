@@ -715,6 +715,7 @@ public:
 #endif
 
     void compileDeleteById(Node*);
+    void compileDeleteByVal(Node*);
     void compileTryGetById(Node*);
     void compileIn(Node*);
     
@@ -735,8 +736,11 @@ public:
     void compileInstanceOf(Node*);
     void compileInstanceOfCustom(Node*);
 
+    void compileIsJSArray(Node*);
+    void compileIsArrayConstructor(Node*);
+    void compileIsArrayObject(Node*);
     void compileIsRegExpObject(Node*);
-
+    
     void emitCall(Node*);
     
     // Called once a node has completed code generation but prior to setting
@@ -1266,6 +1270,21 @@ public:
 
 
 #if USE(JSVALUE64)
+    JITCompiler::Call callOperation(J_JITOperation_EJJI operation, GPRReg result, GPRReg arg1, GPRReg arg2, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(uid));
+        return appendCallSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(V_JITOperation_EJJJI operation, GPRReg arg1, GPRReg arg2, GPRReg arg3, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3, TrustedImmPtr(uid));
+        return appendCall(operation);
+    }
+    JITCompiler::Call callOperation(V_JITOperation_EJJJJ operation, GPRReg arg1, GPRReg arg2, GPRReg arg3, GPRReg arg4)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3, arg4);
+        return appendCall(operation);
+    }
     JITCompiler::Call callOperation(V_JITOperation_EOJIUi operation, GPRReg arg1, GPRReg arg2, UniquedStringImpl* impl, unsigned value)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(impl), TrustedImm32(value));
@@ -1426,6 +1445,17 @@ public:
         return appendCallSetResult(operation, result);
     }
 
+    JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, JSGlobalObject* globalObject, GPRReg arg1)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(globalObject), arg1);
+        return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, JSGlobalObject* globalObject, JSValueRegs arg1)
+    {
+        return callOperation(operation, result, globalObject, arg1.gpr());
+    }
+
     JITCompiler::Call callOperation(C_JITOperation_EJ operation, GPRReg result, GPRReg arg1)
     {
         m_jit.setupArgumentsWithExecState(arg1);
@@ -1466,9 +1496,17 @@ public:
         m_jit.setupArgumentsWithExecState(arg1);
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(S_JITOperation_EJ operation, GPRReg result, JSValueRegs arg1)
+    {
+        return callOperation(operation, result, arg1.gpr());
+    }
     JITCompiler::Call callOperation(J_JITOperation_EJ operation, JSValueRegs result, JSValueRegs arg1)
     {
         return callOperation(operation, result.payloadGPR(), arg1.payloadGPR());
+    }
+    JITCompiler::Call callOperation(J_JITOperation_EJ operation, GPRReg result, JSValueRegs arg1)
+    {
+        return callOperation(operation, result, arg1.payloadGPR());
     }
     JITCompiler::Call callOperation(J_JITOperation_EJ operation, GPRReg result, GPRReg arg1)
     {
@@ -1488,6 +1526,10 @@ public:
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(S_JITOperation_EJJ operation, GPRReg result,  JSValueRegs arg1, JSValueRegs arg2)
+    {
+        return callOperation(operation, result, arg1.gpr(), arg2.gpr());
     }
     JITCompiler::Call callOperation(S_JITOperation_EGJJ operation, GPRReg result, GPRReg arg1, GPRReg arg2, GPRReg arg3)
     {
@@ -1645,22 +1687,21 @@ public:
     }
 #else // USE(JSVALUE32_64)
 
-// EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned on an even-numbered register (r0, r2 or [sp]).
-// To prevent the assembler from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
-#if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
-#define EABI_32BIT_DUMMY_ARG      TrustedImm32(0),
-#else
-#define EABI_32BIT_DUMMY_ARG
-#endif
-
-// JSVALUE32_64 is a 64-bit integer that cannot be put half in an argument register and half on stack when using SH4 architecture.
-// To avoid this, let's occupy the 4th argument register (r7) with a dummy argument when necessary. This must only be done when there
-// is no other 32-bit value argument behind this 64-bit JSValue.
-#if CPU(SH4)
-#define SH4_32BIT_DUMMY_ARG      TrustedImm32(0),
-#else
-#define SH4_32BIT_DUMMY_ARG
-#endif
+    JITCompiler::Call callOperation(J_JITOperation_EJJI operation, GPRReg resultTag, GPRReg resultPayload, GPRReg arg1Tag, GPRReg arg1Payload, GPRReg arg2Tag, GPRReg arg2Payload, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, arg2Payload, arg2Tag, TrustedImmPtr(uid));
+        return appendCallSetResult(operation, resultPayload, resultTag);
+    }
+    JITCompiler::Call callOperation(V_JITOperation_EJJJI operation, GPRReg arg1Tag, GPRReg arg1Payload, GPRReg arg2Tag, GPRReg arg2Payload, GPRReg arg3Tag, GPRReg arg3Payload, UniquedStringImpl* uid)
+    {
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, arg2Payload, arg2Tag, arg3Payload, arg3Tag, TrustedImmPtr(uid));
+        return appendCall(operation);
+    }
+    JITCompiler::Call callOperation(V_JITOperation_EJJJJ operation, GPRReg arg1Tag, GPRReg arg1Payload, GPRReg arg2Tag, GPRReg arg2Payload, GPRReg arg3Tag, GPRReg arg3Payload, GPRReg arg4Tag, GPRReg arg4Payload)
+    {
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, arg2Payload, arg2Tag, arg3Payload, arg3Tag, arg4Payload, arg4Tag);
+        return appendCall(operation);
+    }
 
     JITCompiler::Call callOperation(V_JITOperation_EOJIUi operation, GPRReg arg1, GPRReg arg2Tag, GPRReg arg2Payload, UniquedStringImpl* impl, unsigned value)
     {
@@ -1868,6 +1909,17 @@ public:
         return appendCallSetResult(operation, result);
     }
 
+    JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, JSGlobalObject* globalObject, GPRReg arg1Tag, GPRReg arg1Payload)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr(globalObject), arg1Payload, arg1Tag);
+        return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, JSGlobalObject* globalObject, JSValueRegs arg1)
+    {
+        return callOperation(operation, result, globalObject, arg1.tagGPR(), arg1.payloadGPR());
+    }
+
     JITCompiler::Call callOperation(C_JITOperation_EJ operation, GPRReg result, GPRReg arg1Tag, GPRReg arg1Payload)
     {
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag);
@@ -1892,6 +1944,11 @@ public:
         return appendCallSetResult(operation, result);
     }
 
+    JITCompiler::Call callOperation(S_JITOperation_EJ operation, GPRReg result, JSValueRegs arg1)
+    {
+        return callOperation(operation, result, arg1.tagGPR(), arg1.payloadGPR());
+    }
+
     JITCompiler::Call callOperation(S_JITOperation_EJI operation, GPRReg result, GPRReg arg1Tag, GPRReg arg1Payload, UniquedStringImpl* uid)
     {
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, TrustedImmPtr(uid));
@@ -1908,6 +1965,12 @@ public:
         m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1Payload, arg1Tag, SH4_32BIT_DUMMY_ARG arg2Payload, arg2Tag);
         return appendCallSetResult(operation, result);
     }
+
+    JITCompiler::Call callOperation(S_JITOperation_EJJ operation, GPRReg result, JSValueRegs arg1, JSValueRegs arg2)
+    {
+        return callOperation(operation, result, arg1.tagGPR(), arg1.payloadGPR(), arg2.tagGPR(), arg2.payloadGPR());
+    }
+
     JITCompiler::Call callOperation(S_JITOperation_EGJJ operation, GPRReg result, GPRReg arg1, GPRReg arg2Tag, GPRReg arg2Payload, GPRReg arg3Tag, GPRReg arg3Payload)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2Payload, arg2Tag, SH4_32BIT_DUMMY_ARG arg3Payload, arg3Tag);
@@ -2064,8 +2127,6 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(identOp2), TrustedImm32(op3), arg4, arg5);
         return appendCall(operation);
     }
-#undef EABI_32BIT_DUMMY_ARG
-#undef SH4_32BIT_DUMMY_ARG
     
     template<typename FunctionType>
     JITCompiler::Call callOperation(
@@ -2478,6 +2539,7 @@ public:
     void compileLazyJSConstant(Node*);
     void compileMaterializeNewObject(Node*);
     void compileRecordRegExpCachedResult(Node*);
+    void compileCallObjectConstructor(Node*);
     void compileResolveScope(Node*);
     void compileGetDynamicVar(Node*);
     void compilePutDynamicVar(Node*);

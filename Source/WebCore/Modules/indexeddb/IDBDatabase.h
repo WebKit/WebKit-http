@@ -43,7 +43,7 @@ class IDBResultData;
 class IDBTransaction;
 class IDBTransactionInfo;
 
-class IDBDatabase : public RefCounted<IDBDatabase>, public EventTargetWithInlineData, public ActiveDOMObject {
+class IDBDatabase : public ThreadSafeRefCounted<IDBDatabase>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static Ref<IDBDatabase> create(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBResultData&);
 
@@ -64,11 +64,11 @@ public:
     // EventTarget
     EventTargetInterface eventTargetInterface() const final { return IDBDatabaseEventTargetInterfaceType; }
     ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
-    void refEventTarget() final { RefCounted<IDBDatabase>::ref(); }
-    void derefEventTarget() final { RefCounted<IDBDatabase>::deref(); }
+    void refEventTarget() final { ThreadSafeRefCounted<IDBDatabase>::ref(); }
+    void derefEventTarget() final { ThreadSafeRefCounted<IDBDatabase>::deref(); }
 
-    using RefCounted<IDBDatabase>::ref;
-    using RefCounted<IDBDatabase>::deref;
+    using ThreadSafeRefCounted<IDBDatabase>::ref;
+    using ThreadSafeRefCounted<IDBDatabase>::deref;
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
@@ -89,9 +89,6 @@ public:
 
     IDBClient::IDBConnectionProxy& connectionProxy() { return m_connectionProxy.get(); }
 
-    // FIXME: Remove the need for this accessor.
-    IDBClient::IDBConnectionToServer& serverConnection() { return m_connectionProxy->connectionToServer(); }
-
     void didCreateIndexInfo(const IDBIndexInfo&);
     void didDeleteIndexInfo(const IDBIndexInfo&);
 
@@ -100,6 +97,8 @@ public:
     bool dispatchEvent(Event&) final;
 
     bool hasPendingActivity() const final;
+
+    ThreadIdentifier originThreadID() const { return m_originThreadID; }
 
 private:
     IDBDatabase(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBResultData&);
@@ -119,6 +118,8 @@ private:
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_activeTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
+
+    ThreadIdentifier m_originThreadID { currentThread() };
 };
 
 } // namespace WebCore

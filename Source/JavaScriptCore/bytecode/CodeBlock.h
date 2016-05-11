@@ -59,7 +59,6 @@
 #include "LazyOperandValueProfile.h"
 #include "ObjectAllocationProfile.h"
 #include "Options.h"
-#include "ProfilerCompilation.h"
 #include "ProfilerJettisonReason.h"
 #include "PutPropertySlot.h"
 #include "RegExpObject.h"
@@ -500,7 +499,7 @@ public:
     {
         ASSERT(JITCode::isBaselineCode(jitType()));
         ConcurrentJITLocker locker(m_lock);
-        return m_exitProfile.add(locker, site);
+        return m_exitProfile.add(locker, this, site);
     }
 
     bool hasExitSite(const ConcurrentJITLocker& locker, const DFG::FrequentExitSite& site) const
@@ -1403,6 +1402,9 @@ template <typename Functor> inline void ScriptExecutable::forEachCodeBlock(Funct
         RELEASE_ASSERT_NOT_REACHED();
     }
 }
+
+#define CODEBLOCK_LOG_EVENT(codeBlock, summary, details) \
+    (codeBlock->vm()->logEvent(codeBlock, summary, [&] () { return toCString details; }))
 
 } // namespace JSC
 

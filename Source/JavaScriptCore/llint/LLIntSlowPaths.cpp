@@ -34,6 +34,7 @@
 #include "ErrorHandlingScope.h"
 #include "Exception.h"
 #include "ExceptionFuzz.h"
+#include "FunctionWhitelist.h"
 #include "GetterSetter.h"
 #include "HostCallReturnValue.h"
 #include "Interpreter.h"
@@ -56,6 +57,7 @@
 #include "ShadowChicken.h"
 #include "StructureRareDataInlines.h"
 #include "VMInlines.h"
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC { namespace LLInt {
@@ -287,8 +289,23 @@ LLINT_SLOW_PATH_DECL(special_trace)
 enum EntryKind { Prologue, ArityCheck };
 
 #if ENABLE(JIT)
-inline bool shouldJIT(ExecState* exec, CodeBlock*)
+static FunctionWhitelist& ensureGlobalJITWhitelist()
 {
+    static LazyNeverDestroyed<FunctionWhitelist> baselineWhitelist;
+    static std::once_flag initializeWhitelistFlag;
+    std::call_once(initializeWhitelistFlag, [] {
+        const char* functionWhitelistFile = Options::jitWhitelist();
+        baselineWhitelist.construct(functionWhitelistFile);
+    });
+    return baselineWhitelist;
+}
+
+inline bool shouldJIT(ExecState* exec, CodeBlock* codeBlock)
+{
+    if (!Options::bytecodeRangeToJITCompile().isInRange(codeBlock->instructionCount())
+        || !ensureGlobalJITWhitelist().contains(codeBlock))
+        return false;
+
     // You can modify this to turn off JITting without rebuilding the world.
     return exec->vm().canUseJIT();
 }
@@ -302,6 +319,7 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
     codeBlock->updateAllValueProfilePredictions();
 
     if (!codeBlock->checkIfJITThresholdReached()) {
+        CODEBLOCK_LOG_EVENT(codeBlock, "delayJITCompile", ("threshold not reached, counter = ", codeBlock->llintExecuteCounter()));
         if (Options::verboseOSR())
             dataLogF("    JIT threshold should be lifted.\n");
         return false;
@@ -318,6 +336,7 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         CompilationResult result = JIT::compile(&vm, codeBlock, JITCompilationCanFail);
         switch (result) {
         case CompilationFailed:
+            CODEBLOCK_LOG_EVENT(codeBlock, "delayJITCompile", ("compilation failed"));
             if (Options::verboseOSR())
                 dataLogF("    JIT compilation failed.\n");
             codeBlock->dontJITAnytimeSoon();
@@ -354,6 +373,8 @@ static SlowPathReturnType entryOSR(ExecState* exec, Instruction*, CodeBlock* cod
     }
     if (!jitCompileAndSetHeuristics(codeBlock, exec))
         LLINT_RETURN_TWO(0, 0);
+    
+    CODEBLOCK_LOG_EVENT(codeBlock, "OSR entry", ("in prologue"));
     
     if (kind == Prologue)
         LLINT_RETURN_TWO(codeBlock->jitCode()->executableAddress(), 0);
@@ -412,6 +433,8 @@ LLINT_SLOW_PATH_DECL(loop_osr)
     if (!jitCompileAndSetHeuristics(codeBlock, exec))
         LLINT_RETURN_TWO(0, 0);
     
+    CODEBLOCK_LOG_EVENT(codeBlock, "osrEntry", ("at bc#", pc - codeBlock->instructions().begin()));
+
     ASSERT(codeBlock->jitType() == JITCode::BaselineJIT);
     
     Vector<BytecodeAndMachineOffset> map;

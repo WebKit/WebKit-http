@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "ArrayConstructor.h"
 #include "DFGAbstractInterpreter.h"
 #include "GetByIdStatus.h"
 #include "GetterSetter.h"
@@ -1026,6 +1027,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
 
     case IsEmpty:
+    case IsArrayObject:
+    case IsJSArray:
+    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -1038,6 +1042,28 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         if (child.value()) {
             bool constantWasSet = true;
             switch (node->op()) {
+            case IsArrayObject:
+                if (child.value().isObject()) {
+                    if (child.value().getObject()->type() == ArrayType) {
+                        setConstant(node, jsBoolean(true));
+                        break;
+                    }
+
+                    if (child.value().getObject()->type() == ProxyObjectType) {
+                        // We have no way of knowing what type we are proxing yet.
+                        constantWasSet = false;
+                        break;
+                    }
+                }
+
+                setConstant(node, jsBoolean(false));
+                break;
+            case IsJSArray:
+                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->type() == ArrayType));
+                break;
+            case IsArrayConstructor:
+                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->classInfo() == ArrayConstructor::info()));
+                break;
             case IsUndefined:
                 setConstant(node, jsBoolean(
                     child.value().isCell()
@@ -1106,6 +1132,22 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         bool constantWasSet = false;
         switch (node->op()) {
+        case IsJSArray:
+        case IsArrayObject:
+            // We don't have a SpeculatedType for Proxies yet so we can't do better at proving false.
+            if (!(child.m_type & ~SpecArray)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+
+            if (!(child.m_type & SpecObject)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+
+            break;
         case IsEmpty: {
             if (child.m_type && !(child.m_type & SpecEmpty)) {
                 setConstant(node, jsBoolean(false));
@@ -1866,7 +1908,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         forNode(node).set(
             m_graph,
-            m_graph.globalObjectFor(node->origin.semantic)->typedArrayStructure(
+            m_graph.globalObjectFor(node->origin.semantic)->typedArrayStructureConcurrently(
                 node->typedArrayType()));
         break;
         
@@ -1904,7 +1946,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         ASSERT(node->structure());
         forNode(node).set(m_graph, node->structure());
         break;
-        
+
+    case CallObjectConstructor: {
+        AbstractValue& source = forNode(node->child1());
+        AbstractValue& destination = forNode(node);
+
+        if (!(source.m_type & ~SpecObject)) {
+            m_state.setFoundConstants(true);
+            destination = source;
+            break;
+        }
+
+        forNode(node).setType(m_graph, SpecObject);
+        break;
+    }
+
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
@@ -2123,6 +2179,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).makeHeapTop();
         break;
     }
+
+    case GetByValWithThis:
+    case GetByIdWithThis:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).makeHeapTop();
+        break;
             
     case GetArrayLength: {
         JSArrayBufferView* view = m_graph.tryGetFoldableView(
@@ -2135,7 +2197,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case DeleteById: {
+    case DeleteById:
+    case DeleteByVal: {
         // FIXME: This could decide if the delete will be successful based on the set of structures that
         // we get from our base value. https://bugs.webkit.org/show_bug.cgi?id=156611
         clobberWorld(node->origin.semantic, clobberLimit);
@@ -2621,6 +2684,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case PutByValWithThis:
+    case PutByIdWithThis:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        break;
+
     case PutGetterById:
     case PutSetterById:
     case PutGetterSetterById:
@@ -2821,6 +2889,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case Unreachable:
+        // It may be that during a previous run of AI we proved that something was unreachable, but
+        // during this run of AI we forget that it's unreachable. AI's proofs don't have to get
+        // monotonically stronger over time. So, we don't assert that AI doesn't reach the
+        // Unreachable. We have no choice but to take our past proof at face value. Otherwise we'll
+        // crash whenever AI fails to be as powerful on run K as it was on run K-1.
+        m_state.setIsValid(false);
+        break;
+        
     case LastNodeType:
     case ArithIMul:
     case FiatInt52:

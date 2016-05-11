@@ -31,6 +31,7 @@
 @class DOMNode;
 @class DOMSVGDocument;
 @class DOMSVGPoint;
+@class DOMTestDictionary;
 @class DOMTestEnumType;
 @class DOMTestNode;
 @class DOMTestObj;
@@ -39,9 +40,9 @@
 @class DOMTestObjectCConstructor;
 @class DOMTestSubObjConstructor;
 @class DOMany;
-@class DOMbool;
 @class NSString;
 @protocol DOMEventListener;
+@protocol DOMXPathNSResolver;
 
 enum {
     DOM_CONST_VALUE_0 = 0,
@@ -149,10 +150,12 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (DOMTestObj *)objMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
 - (int)unforgeableMethod;
 - (void)methodWithArgTreatingNullAsEmptyString:(NSString *)arg;
+- (void)methodWithXPathNSResolverParameter:(id <DOMXPathNSResolver>)resolver;
 - (NSString *)nullableStringMethod;
 - (NSString *)nullableStringStaticMethod;
 - (NSString *)nullableStringSpecialMethod:(unsigned)index;
 - (void)methodWithEnumArg:(DOMTestEnumType *)enumArg;
+- (void)methodWithOptionalEnumArg:(DOMTestEnumType *)enumArg;
 - (void)methodWithOptionalEnumArgAndDefaultValue:(DOMTestEnumType *)enumArg;
 - (DOMTestObj *)methodThatRequiresAllArgsAndThrows:(NSString *)strArg objArg:(DOMTestObj *)objArg;
 - (void)serializedValue:(NSString *)serializedArg;
@@ -197,6 +200,7 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (void)methodWithOptionalAny:(DOMany *)a;
 - (void)methodWithOptionalNullableWrapper:(DOMTestObj *)obj;
 - (void)methodWithOptionalNullableWrapperIsNull:(DOMTestObj *)obj;
+- (void)methodWithOptionalXPathNSResolver:(id <DOMXPathNSResolver>)resolver;
 - (void)classMethod;
 - (int)classMethodWithOptional:(int)arg;
 - (void)classMethod2:(int)arg;
@@ -209,9 +213,10 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (DOMSVGPoint *)mutablePointFunction;
 - (DOMSVGPoint *)immutablePointFunction;
 - (void)orange;
-- (DOMbool *)strictFunction:(NSString *)str a:(float)a b:(int)b;
+- (BOOL)strictFunction:(NSString *)str a:(float)a b:(int)b;
 - (void)variadicStringMethod:(NSString *)head tail:(NSString *)tail;
 - (void)variadicDoubleMethod:(double)head tail:(double)tail;
 - (void)variadicNodeMethod:(DOMNode *)head tail:(DOMNode *)tail;
 - (void)any:(float)a b:(int)b;
+- (void)attachShadowRoot:(DOMTestDictionary *)init;
 @end

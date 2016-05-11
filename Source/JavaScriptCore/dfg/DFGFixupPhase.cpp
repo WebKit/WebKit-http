@@ -192,9 +192,7 @@ private:
         case ArithAdd:
         case ArithSub: {
             if (op == ArithSub
-                && Node::shouldSpeculateUntypedForArithmetic(node->child1().node(), node->child2().node())
-                && m_graph.hasExitSite(node->origin.semantic, BadType)) {
-
+                && Node::shouldSpeculateUntypedForArithmetic(node->child1().node(), node->child2().node())) {
                 fixEdge<UntypedUse>(node->child1());
                 fixEdge<UntypedUse>(node->child2());
                 node->setResult(NodeResultJS);
@@ -236,8 +234,7 @@ private:
         case ArithMul: {
             Edge& leftChild = node->child1();
             Edge& rightChild = node->child2();
-            if (Node::shouldSpeculateUntypedForArithmetic(leftChild.node(), rightChild.node())
-                && m_graph.hasExitSite(node->origin.semantic, BadType)) {
+            if (Node::shouldSpeculateUntypedForArithmetic(leftChild.node(), rightChild.node())) {
                 fixEdge<UntypedUse>(leftChild);
                 fixEdge<UntypedUse>(rightChild);
                 node->setResult(NodeResultJS);
@@ -1060,7 +1057,18 @@ private:
             fixEdge<Int32Use>(node->child1());
             break;
         }
-            
+
+        case CallObjectConstructor: {
+            if (node->child1()->shouldSpeculateObject()) {
+                fixEdge<ObjectUse>(node->child1());
+                node->convertToIdentity();
+                break;
+            }
+
+            fixEdge<UntypedUse>(node->child1());
+            break;
+        }
+
         case ToThis: {
             fixupToThis(node);
             break;
@@ -1136,7 +1144,7 @@ private:
                 fixEdge<CellUse>(node->child1());
             break;
         }
-            
+
         case PutById:
         case PutByIdFlush:
         case PutByIdDirect: {
@@ -1530,6 +1538,10 @@ private:
         case ProfileWillCall:
         case ProfileDidCall:
         case DeleteById:
+        case DeleteByVal:
+        case IsArrayObject:
+        case IsJSArray:
+        case IsArrayConstructor:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:
@@ -1560,6 +1572,12 @@ private:
         case ExitOK:
         case BottomValue:
         case TypeOf:
+        case GetByIdWithThis:
+        case PutByIdWithThis:
+        case PutByValWithThis:
+        case GetByValWithThis:
+            break;
+            
             break;
 #else
         default:

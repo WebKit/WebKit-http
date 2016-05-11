@@ -190,14 +190,11 @@ public:
     };
 
     RenderObject* traverseNext(const RenderObject* stayWithin) const;
-    typedef bool (*TraverseNextInclusionFunction)(const RenderObject*);
-    typedef BlockContentHeightType (*HeightTypeTraverseNextInclusionFunction)(const RenderObject*);
+    typedef bool (*TraverseNextInclusionFunction)(const RenderObject&);
+    typedef BlockContentHeightType (*HeightTypeTraverseNextInclusionFunction)(const RenderObject&);
 
     RenderObject* traverseNext(const RenderObject* stayWithin, TraverseNextInclusionFunction) const;
     RenderObject* traverseNext(const RenderObject* stayWithin, HeightTypeTraverseNextInclusionFunction, int& currentDepth,  int& newFixedDepth) const;
-
-    void adjustComputedFontSizesOnBlocks(float size, float visibleWidth);
-    WEBCORE_EXPORT void resetTextAutosizing();
 #endif
 
     WEBCORE_EXPORT RenderLayer* enclosingLayer() const;

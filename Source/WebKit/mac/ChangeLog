@@ -1,3 +1,136 @@
+2016-05-10  Shaw rich  <richshaw@126.com>
+
+        [OS X] Compatible with gnu sed grammar due to compile error with gnu sed
+        https://bugs.webkit.org/show_bug.cgi?id=157526
+
+        Reviewed by Darin Adler.
+
+        * MigrateHeaders.make:
+
+2016-05-10  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK1] text autosizing was on for all layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=157541
+
+        Reviewed by Tim Horton.
+
+        Make sure that we transfer the WK1 text autosizing preference to Settings.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-05-09  Tim Horton  <timothy_horton@apple.com>
+
+        [WebKit1] Invoking a link preview on a complex link (e.g. an image) results in an empty TextIndicator
+        https://bugs.webkit.org/show_bug.cgi?id=157497
+        <rdar://problem/25872773>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _defaultAnimationController]):
+        r198578 fixed this for WebKit2, but forgot about WebKit1.
+
+2016-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Migrate our Font classes entirely off of NSFont
+        https://bugs.webkit.org/show_bug.cgi?id=157464
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+        (PopupMenuMac::show):
+        * WebView/WebHTMLView.mm:
+        (fontNameForDescription):
+        (-[WebHTMLView _addToStyle:fontA:fontB:]):
+
+2016-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Rename HitTestRequest DisallowShadowContent to DisallowUserAgentShadowContent
+        https://bugs.webkit.org/show_bug.cgi?id=157447
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame elementAtPoint:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView elementAtPoint:allowShadowContent:]):
+
+2016-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable IOS_TEXT_AUTOSIZING on Mac and make it testable
+        https://bugs.webkit.org/show_bug.cgi?id=157432
+        rdar://problem/16406720
+
+        Reviewed by Dean Jackson.
+
+        Enable IOS_TEXT_AUTOSIZING on Mac so it can be tested.
+
+        Make the setTextAutosizingEnabled() Setting work, and plumb it through WK1 and WK2
+        preferences for WTR and DRT. Make textAutosizingWindowSizeOverride() work, for layout tests.
+        These two settings are shared with TEXT_AUTOSIZING.
+
+        Add a TextAutosizing log channel, which is useful for generated -expected.html results.
+
+        Move adjustComputedFontSizesOnBlocks() and related code from RenderObject to RenderElement
+        without changes.
+
+        An implication of this set of changes is that the way clients enable text autosizing
+        has changed. Previously, they set the "MinimumZoomFontSize" preference to 0.
+        Settings::defaultMinimumZoomFontSize() used to do this in order to enable text autosizing
+        on iPhone only, not iPad.
+
+        Now the preferred technique is to leave minimumZoomFontSize alone, and to use textAutosizingEnabled()
+        instead. Settings::defaultTextAutosizingEnabled() now does the check for iPhone.
+
+        UIWebView calls WebKitGetMinimumZoomFontSize() to setup the default minimum font zoom size,
+        which will now always return 15, but had no other code that toggled this. So it's safe to just rely
+        on Settings::defaultTextAutosizingEnabled() doing the right thing for iPhone/iPad.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences _setTextAutosizingEnabled:]):
+        (-[WebPreferences _textAutosizingEnabled]):
+        * WebView/WebPreferencesPrivate.h:
+
+2016-05-06  Dean Jackson  <dino@apple.com>
+
+        Regions, Shapes and Tracks don't need runtime features
+        https://bugs.webkit.org/show_bug.cgi?id=157426
+        <rdar://problem/26146262>
+
+        Reviewed by Simon Fraser.
+
+        The following RuntimeEnabledFeatures can be removed since
+        we have no need to disable them (they are stable and have
+        shipped for a while):
+        - CSS Regions
+        - CSS Shapes
+        - Media tracks
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Deleted.
+        (-[WebPreferences cssRegionsEnabled]): Deleted.
+        (-[WebPreferences setCSSRegionsEnabled:]): Deleted.
+        (-[WebPreferences cssCompositingEnabled]): Deleted.
+        (-[WebPreferences setCSSCompositingEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Deleted.
+
+2016-05-06  Daniel Bates  <dabates@apple.com>
+
+        Remove workaround for Apple Internal bots
+        <rdar://problem/25989808>
+
+        Reverts the workaround added in r200211 as it is no longer needed.
+
+        * WebView/WebPDFView.h:
+
 2016-05-02  Daniel Bates  <dabates@apple.com>
 
         CSP: Add workaround for XtraMath

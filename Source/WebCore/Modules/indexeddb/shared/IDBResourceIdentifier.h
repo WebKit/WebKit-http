@@ -34,7 +34,7 @@ namespace WebCore {
 class IDBRequest;
 
 namespace IDBClient {
-class IDBConnectionToServer;
+class IDBConnectionProxy;
 }
 
 namespace IDBServer {
@@ -43,8 +43,8 @@ class IDBConnectionToClient;
 
 class IDBResourceIdentifier {
 public:
-    explicit IDBResourceIdentifier(const IDBClient::IDBConnectionToServer&);
-    IDBResourceIdentifier(const IDBClient::IDBConnectionToServer&, const IDBRequest&);
+    explicit IDBResourceIdentifier(const IDBClient::IDBConnectionProxy&);
+    IDBResourceIdentifier(const IDBClient::IDBConnectionProxy&, const IDBRequest&);
     explicit IDBResourceIdentifier(const IDBServer::IDBConnectionToClient&);
 
     // FIXME: This constructor will be needed during the development of IDB-in-Workers.

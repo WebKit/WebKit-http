@@ -126,10 +126,10 @@
     macro(collation) \
     macro(column) \
     macro(compilationKind) \
+    macro(compilationUID) \
     macro(compilations) \
     macro(compile) \
     macro(configurable) \
-    macro(console) \
     macro(constructor) \
     macro(count) \
     macro(counters) \
@@ -137,13 +137,14 @@
     macro(defineProperty) \
     macro(description) \
     macro(descriptions) \
+    macro(detail) \
     macro(displayName) \
     macro(document) \
     macro(done) \
-    macro(entries) \
     macro(enumerable) \
     macro(era) \
     macro(eval) \
+    macro(events) \
     macro(exec) \
     macro(executionCount) \
     macro(exitKind) \
@@ -181,7 +182,6 @@
     macro(isWatchpoint) \
     macro(jettisonReason) \
     macro(join) \
-    macro(keys) \
     macro(lastIndex) \
     macro(length) \
     macro(line) \
@@ -230,9 +230,11 @@
     macro(stack) \
     macro(sticky) \
     macro(subarray) \
+    macro(summary) \
     macro(target) \
     macro(test) \
     macro(then) \
+    macro(time) \
     macro(timeZone) \
     macro(timeZoneName) \
     macro(toExponential) \
@@ -243,11 +245,11 @@
     macro(toPrecision) \
     macro(toString) \
     macro(top) \
+    macro(uid) \
     macro(unicode) \
     macro(usage) \
     macro(value) \
     macro(valueOf) \
-    macro(values) \
     macro(webkit) \
     macro(webkitIDBCursor) \
     macro(webkitIDBDatabase) \
@@ -312,11 +314,11 @@
     macro(yield)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL_NOT_IMPLEMENTED_YET(macro)\
-    macro(isConcatSpreadable) \
     macro(replace) \
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(hasInstance) \
+    macro(isConcatSpreadable) \
     macro(iterator) \
     macro(match) \
     macro(replace) \
@@ -333,6 +335,9 @@
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
+    macro(arrayIteratorNext) \
+    macro(arrayIteratorIsDone) \
+    macro(arrayIteratorKind) \
     macro(charCodeAt) \
     macro(iteratedString) \
     macro(stringIteratorNextIndex) \
@@ -340,7 +345,6 @@
     macro(fulfillmentHandler) \
     macro(rejectionHandler) \
     macro(index) \
-    macro(values) \
     macro(deferred) \
     macro(countdownHolder) \
     macro(Object) \
@@ -417,9 +421,12 @@
     macro(hasInstanceBoundFunction) \
     macro(instanceOf) \
     macro(isArray) \
+    macro(isJSArray) \
     macro(isArrayConstructor) \
     macro(isConstructor) \
     macro(isRegExpObject) \
+    macro(concatMemcpy) \
+    macro(appendMemcpy) \
     macro(predictFinalLengthFromArgumunts) \
     macro(print) \
     macro(isSet) \

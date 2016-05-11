@@ -815,16 +815,15 @@ void RenderLayerBacking::updateGeometry()
             renderBox.width() - renderBox.borderLeft() - renderBox.borderRight(),
             renderBox.height() - renderBox.borderTop() - renderBox.borderBottom());
 
-        IntSize scrollOffset = compAncestor->scrolledContentOffset();
+        ScrollOffset scrollOffset = compAncestor->scrollOffset();
         // FIXME: pixel snap the padding box.
-        graphicsLayerParentLocation = paddingBox.location() - scrollOffset;
+        graphicsLayerParentLocation = paddingBox.location() - toLayoutSize(scrollOffset);
     }
 #else
     if (compAncestor && compAncestor->needsCompositedScrolling()) {
         auto& renderBox = downcast<RenderBox>(compAncestor->renderer());
-        LayoutSize scrollOffset = compAncestor->scrolledContentOffset();
         LayoutPoint scrollOrigin(renderBox.borderLeft(), renderBox.borderTop());
-        graphicsLayerParentLocation = scrollOrigin - scrollOffset;
+        graphicsLayerParentLocation = scrollOrigin - toLayoutSize(compAncestor->scrollOffset());
     }
 #endif
 
@@ -1066,6 +1065,8 @@ void RenderLayerBacking::updateAfterDescendants()
     updateDrawsContent(isSimpleContainer);
 
     m_graphicsLayer->setContentsVisible(m_owningLayer.hasVisibleContent() || isPaintDestinationForDescendantLayers());
+    if (m_scrollingLayer)
+        m_scrollingLayer->setContentsVisible(renderer().style().visibility() == VISIBLE);
 }
 
 // FIXME: Avoid repaints when clip path changes.

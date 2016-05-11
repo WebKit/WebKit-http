@@ -1,3 +1,307 @@
+2016-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/aria-readonly.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=98357
+
+        Reviewed by Chris Fleizach.
+
+        Add checks to isAttributeSettable() for ATK_STATE_READ_ONLY and the 'readonly'
+        AtkObject attribute along with ATK_STATE_CHECKABLE for toggle-able elements,
+        ATK_STATE_SELECTABLE for select elements, and ATK_STATE_FOCUSABLE combined
+        with range verification for inputs which implement AtkValue. The latter two
+        additions are admittedly a heuristic workaround for platform accessibility
+        API differences. But they should be sufficient to facilitate cross-platform
+        testing of isAttributeSettable() for form elements which lack ARIA attributes.
+
+        Bump the minimum version of at-spi2-core and at-spi2-atk
+        to 2.15.4 (earliest version that supports STATE_READ_ONLY).
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::isAttributeSettable):
+        * gtk/jhbuild.modules:
+
+2016-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Another attempt to fix the build after r200668.
+
+        Unreviewed build fix.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Coding.mm:
+        (TEST):
+
+2016-05-10  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the Mac build after r200668.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+
+2016-05-10  Sam Weinig  <sam@webkit.org>
+
+        Tweak underline style for data detected links
+        https://bugs.webkit.org/show_bug.cgi?id=157546
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/Color.cpp: Added.
+        (TestWebKitAPI::TEST):
+        Add tests for the new Color::getHSV() function.
+
+2016-05-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Internal JSC profiler should have a timestamped log of events for each code block
+        https://bugs.webkit.org/show_bug.cgi?id=157538
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/display-profiler-output:
+
+2016-05-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [Linux] Remove seccomp filters support
+        https://bugs.webkit.org/show_bug.cgi?id=157380
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebKit2/SeccompFilters.cpp: Removed.
+        * efl/jhbuild.modules:
+        * gtk/jhbuild.modules:
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] visibility:hidden -webkit-overflow-scrolling: touch divs can interfere with page scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=157496
+        rdar://problem/22963278
+
+        Reviewed by Tim Horton.
+
+        Enhance UIScriptController to generate a drag, which is useful for scrolling.
+
+        * WebKitTestRunner/UIScriptContext/Bindings/UIScriptController.idl:
+        * WebKitTestRunner/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::dragFromPointToPoint):
+        * WebKitTestRunner/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (-[HIDEventGenerator dragWithStartPoint:endPoint:duration:completionBlock:]):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::dragFromPointToPoint):
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove testRunner.setTextAutosizingEnabled and migrate the one test that uses it
+        https://bugs.webkit.org/show_bug.cgi?id=157480
+
+        Reviewed by Zalan Bujtas.
+
+        Migrate the one test that used testRunner.setTextAutosizingEnabled() to window.internals.settings.setTextAutosizingEnabled()
+        and move it next to the other iOS text autosizing tests.
+        
+        Remove testRunner.setTextAutosizingEnabled(), which was only implemented in DumpRenderTree.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (setTextAutosizingEnabledCallback): Deleted.
+        (TestRunner::staticFunctions): Deleted.
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setTextAutosizingEnabled): Deleted.
+
+2016-05-07  Darin Adler  <darin@apple.com>
+
+        Next step on dictionary bindings, along with other bindings refinements
+        https://bugs.webkit.org/show_bug.cgi?id=157451
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/do-webcore-rename: Use this to rename JSDOMBuild.h to JSDOMConvert.h.
+        Also skip test expectations in a directory that this was modifying unnecessarily.
+
+2016-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable IOS_TEXT_AUTOSIZING on Mac and make it testable
+        https://bugs.webkit.org/show_bug.cgi?id=157432
+        rdar://problem/16406720
+
+        Reviewed by Dean Jackson.
+
+        Enable IOS_TEXT_AUTOSIZING on Mac so it can be tested.
+
+        Make the setTextAutosizingEnabled() Setting work, and plumb it through WK1 and WK2
+        preferences for WTR and DRT. Make textAutosizingWindowSizeOverride() work, for layout tests.
+        These two settings are shared with TEXT_AUTOSIZING.
+
+        Add a TextAutosizing log channel, which is useful for generated -expected.html results.
+
+        Move adjustComputedFontSizesOnBlocks() and related code from RenderObject to RenderElement
+        without changes.
+
+        An implication of this set of changes is that the way clients enable text autosizing
+        has changed. Previously, they set the "MinimumZoomFontSize" preference to 0.
+        Settings::defaultMinimumZoomFontSize() used to do this in order to enable text autosizing
+        on iPhone only, not iPad.
+
+        Now the preferred technique is to leave minimumZoomFontSize alone, and to use textAutosizingEnabled()
+        instead. Settings::defaultTextAutosizingEnabled() now does the check for iPhone.
+
+        UIWebView calls WebKitGetMinimumZoomFontSize() to setup the default minimum font zoom size,
+        which will now always return 15, but had no other code that toggled this. So it's safe to just rely
+        on Settings::defaultTextAutosizingEnabled() doing the right thing for iPhone/iPad.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setTextAutosizingEnabled):
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+
+2016-05-06  Dean Jackson  <dino@apple.com>
+
+        Regions, Shapes and Tracks don't need runtime features
+        https://bugs.webkit.org/show_bug.cgi?id=157426
+        <rdar://problem/26146262>
+
+        Reviewed by Simon Fraser.
+
+        The following RuntimeEnabledFeatures can be removed since
+        we have no need to disable them (they are stable and have
+        shipped for a while):
+        - CSS Regions
+        - CSS Shapes
+        - Media tracks
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues): Deleted.
+
+2016-05-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Increase delay when launching multiple ios-simulators in parallel
+        https://bugs.webkit.org/show_bug.cgi?id=157422
+
+        Reviewed by Alexey Proskuryakov.
+
+        Tests are intermittently failing when launching multiple simulators in parallel due to "You are opening
+        this application for the first time" confirmation dialogs. Increasing the delay to alleviate this issue.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_test_run):
+
+2016-05-06  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Remove WinXP support.
+        https://bugs.webkit.org/show_bug.cgi?id=157416
+
+        Reviewed by Brent Fulgham.
+
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+        (enableTerminationOnHeapCorruption):
+
+2016-05-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Unprefix CSS Grid Layout properties
+        https://bugs.webkit.org/show_bug.cgi?id=157137
+
+        Reviewed by Simon Fraser.
+
+        Remove "-webkit" prefix from all the grid layout properties,
+        including the display value.
+        Update the source code to remove the prefix where it was used too.
+
+        * TestWebKitAPI/Tests/WebCore/CSSParser.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-05-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Partially revert http://trac.webkit.org/r200504
+        Improve HTTP test names in WebKitTestRunner's crash report information
+        https://bugs.webkit.org/show_bug.cgi?id=157389
+
+        * WebKitTestRunner/cocoa/CrashReporterInfo.mm: Turns out that we can't have URLs
+        in crash reporter information.
+
+2016-05-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Improve HTTP test names in WebKitTestRunner's crash report information
+        https://bugs.webkit.org/show_bug.cgi?id=157389
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/InjectedBundle/cocoa/InjectedBundlePageCocoa.mm:
+        (WTR::InjectedBundlePage::platformDidStartProvisionalLoadForFrame): Added a FIXME.
+
+        * WebKitTestRunner/cocoa/CrashReporterInfo.mm:
+        (WTR::testDescription): Don't bail out if the port is neither 8000 nor 8443; we
+        use other port numbers too. For http tests, return the complete URL string, not
+        just the path.
+
+2016-05-04  Alex Christensen  <achristensen@webkit.org>
+
+        Blocked redirected main resource requests need descriptive errors
+        https://bugs.webkit.org/show_bug.cgi?id=156828
+        rdar://problem/25711316
+
+        Reviewed by Daniel Bates.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame):
+        Print out the error type to make sure we have the most descriptive error type.
+
+2016-05-05  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GStreamer] Bump internal jhbuild versions to 1.8.0 and patches to support MSE
+        https://bugs.webkit.org/show_bug.cgi?id=157341
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch: Added.
+        * gtk/patches/gst-plugins-good-use-the-tfdt-decode-time.patch: Added.
+
+2016-05-04  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add JSC test results in JSON format to a Buildbot log
+        https://bugs.webkit.org/show_bug.cgi?id=156920
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunJavaScriptCoreTests): Move command-line option for output file out
+        of WithProperties.
+
+2016-05-04  Dean Jackson  <dino@apple.com>
+
+        TestRunner should always enable all the experimental features
+        https://bugs.webkit.org/show_bug.cgi?id=157360
+        <rdar://problem/26099748>
+
+        Reviewed by Anders Carlsson.
+
+        Call the new SPI that enables all the experimental features.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2016-05-04  Mark Lam  <mark.lam@apple.com>
+
+        ES6 Function.name inferred from property names of literal objects can break some websites.
+        https://bugs.webkit.org/show_bug.cgi?id=157246
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::viewSupportsOptions):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::viewSupportsOptions):
+        - Add needsSiteSpecificQuirks to WKTR options that can be set. 
+
 2016-05-04  Joanmarie Diggs  <jdiggs@igalia.com>
 
         AX: ARIA 'region' role is now a landmark; HTML 'section' element should be a landmark only if named

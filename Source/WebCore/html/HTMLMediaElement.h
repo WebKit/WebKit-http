@@ -32,6 +32,7 @@
 #include "GenericEventQueue.h"
 #include "GenericTaskQueue.h"
 #include "HTMLMediaElementEnums.h"
+#include "JSDOMPromise.h"
 #include "MediaCanStartListener.h"
 #include "MediaControllerInterface.h"
 #include "MediaElementSession.h"
@@ -58,6 +59,7 @@ namespace WebCore {
 class AudioSourceProvider;
 class MediaElementAudioSourceNode;
 #endif
+class DOMError;
 class DisplaySleepDisabler;
 class Event;
 class HTMLSourceElement;
@@ -141,6 +143,11 @@ public:
 
     using HTMLMediaElementEnums::DelayedActionType;
     void scheduleDelayedAction(DelayedActionType);
+    void scheduleResolvePendingPlayPromises();
+    void rejectPendingPlayPromises(DOMError&);
+    void resolvePendingPlayPromises();
+    void scheduleNotifyAboutPlaying();
+    void notifyAboutPlaying();
     
     MediaPlayerEnums::MovieLoadType movieLoadType() const;
     
@@ -167,7 +174,7 @@ public:
     String preload() const;    
     void setPreload(const String&);
 
-    PassRefPtr<TimeRanges> buffered() const override;
+    Ref<TimeRanges> buffered() const override;
     void load();
     String canPlayType(const String& mimeType, const String& keySystem = String(), const URL& = URL()) const;
 
@@ -197,13 +204,17 @@ public:
     void updatePlaybackRate();
     bool webkitPreservesPitch() const;
     void setWebkitPreservesPitch(bool);
-    PassRefPtr<TimeRanges> played() override;
-    PassRefPtr<TimeRanges> seekable() const override;
+    Ref<TimeRanges> played() override;
+    Ref<TimeRanges> seekable() const override;
     WEBCORE_EXPORT bool ended() const;
     bool autoplay() const;
     bool isAutoplaying() const { return m_autoplaying; }
     bool loop() const;
     void setLoop(bool b);
+
+    typedef DOMPromise<std::nullptr_t, DOMError&> PlayPromise;
+    void play(PlayPromise&&);
+
     WEBCORE_EXPORT void play() override;
     WEBCORE_EXPORT void pause() override;
     void setShouldBufferData(bool) override;
@@ -267,7 +278,7 @@ public:
     double percentLoaded() const;
 
 #if ENABLE(VIDEO_TRACK)
-    PassRefPtr<TextTrack> addTextTrack(const String& kind, const String& label, const String& language, ExceptionCode&);
+    RefPtr<TextTrack> addTextTrack(const String& kind, const String& label, const String& language, ExceptionCode&);
 
     AudioTrackList* audioTracks();
     TextTrackList* textTracks();
@@ -483,6 +494,7 @@ protected:
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool mediaControlsDependOnPageScaleFactor() const { return m_mediaControlsDependOnPageScaleFactor; }
     void setMediaControlsDependOnPageScaleFactor(bool);
+    void updateMediaControlsAfterPresentationModeChange();
 #endif
 
     void scheduleEvent(const AtomicString& eventName);
@@ -495,7 +507,6 @@ private:
     // FIXME: Shadow DOM spec says we should be able to create shadow root on audio and video elements
     bool canHaveUserAgentShadowRoot() const final { return true; }
 
-    bool hasCustomFocusLogic() const override;
     bool supportsFocus() const override;
     bool isMouseFocusable() const override;
     bool rendererIsNeeded(const RenderStyle&) override;
@@ -671,7 +682,7 @@ private:
 
     // These "internal" functions do not check user gesture restrictions.
     void loadInternal();
-    void playInternal();
+    bool playInternal();
     void pauseInternal();
 
     void prepareForLoad();
@@ -772,15 +783,21 @@ private:
     void isVisibleInViewportChanged() final;
     void updateShouldAutoplay();
 
+    void pauseAfterDetachedTask();
+
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
     Timer m_scanTimer;
-    GenericTaskQueue<ScriptExecutionContext> m_seekTaskQueue;
-    GenericTaskQueue<ScriptExecutionContext> m_resizeTaskQueue;
-    GenericTaskQueue<ScriptExecutionContext> m_shadowDOMTaskQueue;
+    GenericTaskQueue<Timer> m_seekTaskQueue;
+    GenericTaskQueue<Timer> m_resizeTaskQueue;
+    GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
+    GenericTaskQueue<Timer> m_promiseTaskQueue;
+    GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
+
+    Vector<PlayPromise> m_pendingPlayPromises;
 
     double m_requestedPlaybackRate;
     double m_reportedPlaybackRate;

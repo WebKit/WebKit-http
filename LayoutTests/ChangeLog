@@ -1,3 +1,1750 @@
+2016-05-11  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Ensure DOM iterators remain done
+        https://bugs.webkit.org/show_bug.cgi?id=157453
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/nodeListIterator-expected.txt:
+        * fast/text/font-face-set-javascript-expected.txt:
+
+2016-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/aria-readonly.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=98357
+
+        Reviewed by Chris Fleizach.
+
+        As part of this change, a new AtkObject attribute and state are being exposed.
+        Update two tests accordingly. Also unskip the previously-failing test. Lastly,
+        move the Mac form-control-value-settable.html test to the shared test set,
+        with a minor tweak to check the platform for several elements' expectations.
+
+        * accessibility/form-control-value-settable.html: Moved to shared tests.
+        * accessibility/gtk/xml-roles-exposed-expected.txt: Updated.
+        * platform/gtk/TestExpectations: Unskipped previously-failing test.
+        * platform/gtk/accessibility/form-control-value-settable-expected.txt: Added.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated.
+        * platform/mac/accessibility/form-control-value-settable-expected.txt: Moved.
+
+2016-05-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r200646
+
+        Unreviewed.
+
+        * TestExpectations:
+        * fast/text/unicode-range-download.html:
+
+2016-05-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Horizontally-scrollable items with a 3d transform are rendered incorrectly in RTL when container has -webkit-overflow-scroll: touch
+        https://bugs.webkit.org/show_bug.cgi?id=157482
+        rdar://problem/26204794
+
+        Reviewed by Zalan Bujtas.
+        
+        This can't be a ref test because on iOS ref test snapshots are doing by drawing, not by snapshotting layers.
+
+        * compositing/rtl/rtl-with-transformed-descendants-expected.txt: Added.
+        * compositing/rtl/rtl-with-transformed-descendants.html: Added.
+
+2016-05-10  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed EFL Gardening on 10th May.
+
+        Rebaseline missing results.
+
+        * platform/efl/TestExpectations: Removed non existing tests.
+        * platform/efl/accessibility/content-editable-as-textarea-expected.txt: Added.
+        * platform/efl/accessibility/generated-content-with-display-table-crash-expected.txt: Added.
+        * platform/efl/accessibility/w3c-svg-content-language-attribute-expected.txt: Added.
+        * platform/efl/fast/text/hyphenate-avoid-orphaned-word-expected.txt: Added.
+        * platform/efl/mathml/presentation/menclose-notation-values-expected.txt: Added.
+
+2016-05-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS rebaseline after r200464.
+
+        * fast/shadow-dom/touch-event-ios-expected.txt:
+
+2016-05-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Backend should initiate timeline recordings on page navigations to ensure nothing is missed
+        https://bugs.webkit.org/show_bug.cgi?id=157504
+        <rdar://problem/26188642>
+
+        Reviewed by Brian Burg.
+
+        * inspector/timeline/setAutoCaptureInstruments-errors-expected.txt: Added.
+        * inspector/timeline/setAutoCaptureInstruments-errors.html: Added.
+
+2016-05-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/text/unicode-range-download.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=42154
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-05-05  Jer Noble  <jer.noble@apple.com>
+
+        Return a Promise from HTMLMediaElement.play()
+        https://bugs.webkit.org/show_bug.cgi?id=157400
+
+        Reviewed by Eric Carlson.
+
+        * media/media-play-promise-reject-error-notsupported-expected.txt: Added.
+        * media/media-play-promise-reject-error-notsupported.html: Added.
+        * media/media-play-promise-reject-load-abort-expected.txt: Added.
+        * media/media-play-promise-reject-load-abort.html: Added.
+        * media/media-play-promise-reject-pause-abort-expected.txt: Added.
+        * media/media-play-promise-reject-pause-abort.html: Added.
+        * media/media-play-promise-reject-play-notallowed-expected.txt: Added.
+        * media/media-play-promise-reject-play-notallowed.html: Added.
+        * media/media-play-promise-reject-play-notsupported-expected.txt: Added.
+        * media/media-play-promise-reject-play-notsupported.html: Added.
+        * media/media-play-promise-resolve-expected.txt: Added.
+        * media/media-play-promise-resolve-when-playing-expected.txt: Added.
+        * media/media-play-promise-resolve-when-playing.html: Added.
+        * media/media-play-promise-resolve.html: Added.
+
+2016-05-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200627.
+        https://bugs.webkit.org/show_bug.cgi?id=157531
+
+        This change has caused crashes in existing LayoutTests
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Return a Promise from HTMLMediaElement.play()"
+        https://bugs.webkit.org/show_bug.cgi?id=157400
+        http://trac.webkit.org/changeset/200627
+
+2016-05-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix scrolling tree dumping
+        https://bugs.webkit.org/show_bug.cgi?id=157529
+
+        Reviewed by Tim Horton.
+
+        * fast/scrolling/ios/remove-scrolling-role-expected.txt: Renamed from LayoutTests/platform/ios-simulator-wk2/scrolling/remove-scrolling-role-expected.txt.
+        * fast/scrolling/ios/remove-scrolling-role.html: Renamed from LayoutTests/platform/ios-simulator-wk2/scrolling/remove-scrolling-role.html.
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-05-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark fast/scrolling/ios/scroll-events-back-forward-after-pageshow.html as flakey.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Eliminate the crazy code for evaluateOnCallFrame
+        https://bugs.webkit.org/show_bug.cgi?id=157510
+        <rdar://problem/26191332>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/evaluateOnCallFrame-CommandLineAPI-expected.txt: Added.
+        * inspector/debugger/evaluateOnCallFrame-CommandLineAPI.html: Added.
+
+2016-05-05  Jer Noble  <jer.noble@apple.com>
+
+        Return a Promise from HTMLMediaElement.play()
+        https://bugs.webkit.org/show_bug.cgi?id=157400
+
+        Reviewed by Eric Carlson.
+
+        * media/media-play-promise-reject-error-notsupported-expected.txt: Added.
+        * media/media-play-promise-reject-error-notsupported.html: Added.
+        * media/media-play-promise-reject-load-abort-expected.txt: Added.
+        * media/media-play-promise-reject-load-abort.html: Added.
+        * media/media-play-promise-reject-pause-abort-expected.txt: Added.
+        * media/media-play-promise-reject-pause-abort.html: Added.
+        * media/media-play-promise-reject-play-notallowed-expected.txt: Added.
+        * media/media-play-promise-reject-play-notallowed.html: Added.
+        * media/media-play-promise-reject-play-notsupported-expected.txt: Added.
+        * media/media-play-promise-reject-play-notsupported.html: Added.
+        * media/media-play-promise-resolve-expected.txt: Added.
+        * media/media-play-promise-resolve-when-playing-expected.txt: Added.
+        * media/media-play-promise-resolve-when-playing.html: Added.
+        * media/media-play-promise-resolve.html: Added.
+
+2016-05-10  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r193610): Drop down menu doesn’t expand at allofbach.com
+        https://bugs.webkit.org/show_bug.cgi?id=157445
+
+        Reviewed by Simon Fraser.
+
+        When we don't run transitions (becasuse of to/from 'auto' values) we should also not
+        report the 'from' value and behave as if we finished the transition already.
+
+        * fast/animation/height-auto-transition-computed-value-expected.html: Added.
+        * fast/animation/height-auto-transition-computed-value.html: Added.
+        * imported/blink/transitions/transition-not-interpolable-expected.txt:
+
+2016-05-09  Dean Jackson  <dino@apple.com>
+
+        [iOS] <select> elements should render right-aligned when in RTL mode
+        https://bugs.webkit.org/show_bug.cgi?id=157501
+        <rdar://problem/26187870>
+
+        Reviewed by Antoine Quint.
+
+        Rebaseline now that iOS is doing the right thing.
+
+        * platform/ios-simulator/fast/forms/select-non-native-rendering-direction-expected.txt:
+        * platform/ios-simulator/fast/forms/listbox-bidi-align-expected.txt:
+        * platform/ios-simulator/fast/forms/select-writing-direction-natural-expected.txt:
+        * platform/ios-simulator/fast/text/international/bidi-listbox-atsui-expected.txt:
+        * platform/ios-simulator/fast/text/international/bidi-listbox-expected.txt:
+        * platform/ios-simulator/fast/text/international/bidi-menulist-expected.txt:
+        * platform/ios-simulator/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt:
+
+2016-05-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        NodeList should be iterable
+        https://bugs.webkit.org/show_bug.cgi?id=131443
+        <rdar://problem/25731519>
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/domListEnumeration-expected.txt:
+        * fast/dom/nodeListIterator-expected.txt: Added.
+        * fast/dom/nodeListIterator.html: Added.
+        * fast/dom/script-tests/domListEnumeration.js:
+        * fast/text/font-face-set-javascript-expected.txt:
+        * fast/text/font-face-set-javascript.html:
+
+2016-05-09  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Implement auto-repeat computation
+        https://bugs.webkit.org/show_bug.cgi?id=157473
+
+        Reviewed by Darin Adler.
+
+        Apart from some home made tests I'm importing 5 patches from Mozilla's test suite as they
+        perfectly test the behavior of auto-repeat with positioned items. I've commented auto-fit
+        tests as that feature isn't implemented yet.
+
+        * fast/css-grid-layout/grid-auto-fill-columns-expected.txt: Added.
+        * fast/css-grid-layout/grid-auto-fill-columns.html: Added.
+        * fast/css-grid-layout/grid-auto-fill-rows-expected.txt: Added.
+        * fast/css-grid-layout/grid-auto-fill-rows.html: Added.
+        * fast/css-grid-layout/grid-change-auto-repeat-tracks-expected.txt: Added.
+        * fast/css-grid-layout/grid-change-auto-repeat-tracks.html: Added.
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set-expected.txt:
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set.html:
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-001-expected.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-001.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-002-expected.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-002.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-003-expected.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-003.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-004-expected.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-004.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-005-expected.html: Added.
+        * fast/css-grid-layout/mozilla/grid-repeat-auto-fill-fit-005.html: Added.
+
+2016-05-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CRASH under JSC::DebuggerCallFrame::thisValue when hitting breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=157442
+        <rdar://problem/24172015>
+
+        Reviewed by Saam Barati.
+
+        * inspector/debugger/break-in-constructor-before-super-expected.txt: Added.
+        * inspector/debugger/break-in-constructor-before-super.html: Added.
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        iOS-scrolling test cleanup.
+        
+        Move iOS scrolling tests from platform/ios-simulator/fast/scrolling/ios to fast/scrolling/ios/.
+        Rebaseline those that need it. Enable some in iOS WK1 if they pass.
+        
+        Try to make fast/scrolling/ios/touch-scroll-visibility-hidden.html not flakey
+
+        * fast/scrolling/ios/clipping-ancestor-with-accelerated-scrolling-ancestor-expected.txt: Copied from LayoutTests/platform/ios-simulator/ios/scrolling/clipping-ancestor-with-accelerated-scrolling-ancestor-expected.txt.
+        * fast/scrolling/ios/clipping-ancestor-with-accelerated-scrolling-ancestor.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/clipping-ancestor-with-accelerated-scrolling-ancestor.html.
+        * fast/scrolling/ios/iframe-inside-overflow-clipping-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/iframe-inside-overflow-clipping-expected.txt.
+        * fast/scrolling/ios/iframe-inside-overflow-clipping.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/iframe-inside-overflow-clipping.html.
+        * fast/scrolling/ios/overflow-clip-with-accelerated-scrolling-ancestor-expected.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-clip-with-accelerated-scrolling-ancestor-expected.html.
+        * fast/scrolling/ios/overflow-clip-with-accelerated-scrolling-ancestor.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-clip-with-accelerated-scrolling-ancestor.html.
+        * fast/scrolling/ios/overflow-div-scrolling-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-div-scrolling-expected.txt.
+        * fast/scrolling/ios/overflow-div-scrolling.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-div-scrolling.html.
+        * fast/scrolling/ios/overflow-scroll-inherited-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scroll-inherited-expected.txt.
+        * fast/scrolling/ios/overflow-scroll-inherited.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scroll-inherited.html.
+        * fast/scrolling/ios/overflow-scroll-touch-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scroll-touch-expected.txt.
+        * fast/scrolling/ios/overflow-scroll-touch.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scroll-touch.html.
+        * fast/scrolling/ios/overflow-scrolling-ancestor-clip-expected.txt: Copied from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip-expected.txt.
+        * fast/scrolling/ios/overflow-scrolling-ancestor-clip-size-expected.txt: Copied from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip-size-expected.txt.
+        * fast/scrolling/ios/overflow-scrolling-ancestor-clip-size.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip-size.html.
+        * fast/scrolling/ios/overflow-scrolling-ancestor-clip.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip.html.
+        * fast/scrolling/ios/remove-overflow-crash-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/remove-overflow-crash-expected.txt.
+        * fast/scrolling/ios/remove-overflow-crash.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/remove-overflow-crash.html.
+        * fast/scrolling/ios/resources/jump-back.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/resources/jump-back.html.
+        * fast/scrolling/ios/script-tests/TEMPLATE.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/script-tests/TEMPLATE.html.
+        * fast/scrolling/ios/script-tests/overflow-div-scrolling.js: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/script-tests/overflow-div-scrolling.js.
+        (verifyScrollOffset):
+        * fast/scrolling/ios/scroll-event-from-scrollTo-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scroll-event-from-scrollTo-expected.txt.
+        * fast/scrolling/ios/scroll-event-from-scrollTo.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scroll-event-from-scrollTo.html.
+        * fast/scrolling/ios/scroll-events-back-forward-after-pageshow-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scroll-events-back-forward-after-pageshow-expected.txt.
+        * fast/scrolling/ios/scroll-events-back-forward-after-pageshow.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scroll-events-back-forward-after-pageshow.html.
+        * fast/scrolling/ios/scroll-events-back-forward-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scroll-events-back-forward-expected.txt.
+        * fast/scrolling/ios/scroll-events-back-forward.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scroll-events-back-forward.html.
+        * fast/scrolling/ios/scrollTo-at-page-load-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scrollTo-at-page-load-expected.txt.
+        * fast/scrolling/ios/scrollTo-at-page-load.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scrollTo-at-page-load.html.
+        * fast/scrolling/ios/scrollbar-hiding-expected.txt: Copied from LayoutTests/platform/ios-simulator/ios/scrolling/scrollbar-hiding-expected.txt.
+        * fast/scrolling/ios/scrollbar-hiding.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scrollbar-hiding.html.
+        * fast/scrolling/ios/scrolling-content-clip-to-viewport-expected.txt: Copied from LayoutTests/platform/ios-simulator/ios/scrolling/scrolling-content-clip-to-viewport-expected.txt.
+        * fast/scrolling/ios/scrolling-content-clip-to-viewport.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scrolling-content-clip-to-viewport.html.
+        * fast/scrolling/ios/table-cell-touch-scrolling-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/table-cell-touch-scrolling-expected.txt.
+        * fast/scrolling/ios/table-cell-touch-scrolling.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/table-cell-touch-scrolling.html.
+        * fast/scrolling/ios/textarea-scroll-touch-expected.txt: Copied from LayoutTests/platform/ios-simulator/ios/scrolling/textarea-scroll-touch-expected.txt.
+        * fast/scrolling/ios/textarea-scroll-touch.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/textarea-scroll-touch.html.
+        * fast/scrolling/ios/touch-scroll-back-forward-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/touch-scroll-back-forward-expected.txt.
+        * fast/scrolling/ios/touch-scroll-back-forward.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/touch-scroll-back-forward.html.
+        * fast/scrolling/ios/touch-scroll-visibility-hidden-expected.txt:
+        * fast/scrolling/ios/touch-scroll-visibility-hidden.html:
+        * fast/scrolling/ios/touch-stacking-expected.txt: Copied from LayoutTests/platform/ios-simulator/ios/scrolling/touch-stacking-expected.txt.
+        * fast/scrolling/ios/touch-stacking.html: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/touch-stacking.html.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/fast/scrolling/ios/clipping-ancestor-with-accelerated-scrolling-ancestor-expected.png: Added.
+        * platform/ios-simulator/fast/scrolling/ios/clipping-ancestor-with-accelerated-scrolling-ancestor-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/clipping-ancestor-with-accelerated-scrolling-ancestor-expected.txt.
+        * platform/ios-simulator/fast/scrolling/ios/overflow-scrolling-ancestor-clip-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip-expected.txt.
+        * platform/ios-simulator/fast/scrolling/ios/overflow-scrolling-ancestor-clip-size-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/overflow-scrolling-ancestor-clip-size-expected.txt.
+        * platform/ios-simulator/fast/scrolling/ios/scrollbar-hiding-expected.png: Added.
+        * platform/ios-simulator/fast/scrolling/ios/scrollbar-hiding-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scrollbar-hiding-expected.txt.
+        * platform/ios-simulator/fast/scrolling/ios/scrolling-content-clip-to-viewport-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/scrolling-content-clip-to-viewport-expected.txt.
+        * platform/ios-simulator/fast/scrolling/ios/textarea-scroll-touch-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/textarea-scroll-touch-expected.txt.
+        * platform/ios-simulator/fast/scrolling/ios/touch-stacking-expected.png: Added.
+        * platform/ios-simulator/fast/scrolling/ios/touch-stacking-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/scrolling/touch-stacking-expected.txt.
+
+2016-05-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Polymorphic operands in operators coerces downstream values to double.
+        https://bugs.webkit.org/show_bug.cgi?id=151793
+
+        Reviewed by Mark Lam.
+
+        * js/regress/object-int-add-array-expected.txt: Added.
+        * js/regress/object-int-add-array.html: Added.
+        * js/regress/object-int-add-expected.txt: Added.
+        * js/regress/object-int-add.html: Added.
+        * js/regress/object-int-mul-array-expected.txt: Added.
+        * js/regress/object-int-mul-array.html: Added.
+        * js/regress/object-int-sub-array-expected.txt: Added.
+        * js/regress/object-int-sub-array.html: Added.
+        * js/regress/object-int-sub-expected.txt: Added.
+        * js/regress/object-int-sub.html: Added.
+        * js/regress/script-tests/object-int-add-array.js: Added.
+        (i.o.valueOf):
+        * js/regress/script-tests/object-int-add.js: Added.
+        (i.o.valueOf):
+        * js/regress/script-tests/object-int-mul-array.js: Added.
+        (i.o.valueOf):
+        * js/regress/script-tests/object-int-sub-array.js: Added.
+        (i.o.valueOf):
+        * js/regress/script-tests/object-int-sub.js: Added.
+        (i.o.valueOf):
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Land correct result for a recently added test.
+
+        * fast/scrolling/ios/touch-scroll-visibility-hidden-expected.txt:
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] visibility:hidden -webkit-overflow-scrolling: touch divs can interfere with page scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=157496
+        rdar://problem/22963278
+
+        Reviewed by Tim Horton.
+        
+        Add a fast/scrolling/ios directory, disable it everywhere except on iOS.
+
+        * TestExpectations:
+        * fast/scrolling/ios/touch-scroll-visibility-hidden-expected.txt: Added.
+        * fast/scrolling/ios/touch-scroll-visibility-hidden.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-05-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Web Font is downloaded even when all the characters in the document are outside its unicode-range
+        https://bugs.webkit.org/show_bug.cgi?id=42154
+        <rdar://problem/17779042>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/unicode-range-download-expected.txt: Added.
+        * fast/text/unicode-range-download.html: Added.
+        * fast/text/resources/unicode-range-download-Ahem.otf: Added.
+        * fast/text/resources/unicode-range-download-Ahem.ttf: Added.
+        * fast/text/resources/unicode-range-download-Ahem.woff: Added.
+        * imported/blink/svg/custom/resources/graffiti.svg: Added.
+        imported/blink/svg/custom/svg-fonts-unloaded-segment.html requires this font.
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove testRunner.setTextAutosizingEnabled and migrate the one test that uses it
+        https://bugs.webkit.org/show_bug.cgi?id=157480
+
+        Reviewed by Zalan Bujtas.
+
+        Migrate the one test that used testRunner.setTextAutosizingEnabled() to window.internals.settings.setTextAutosizingEnabled()
+        and move it next to the other iOS text autosizing tests.
+
+        * fast/text-autosizing/ios/textarea-auto-sizing-disable-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/html/textarea-auto-sizing-disable-expected.txt.
+        * fast/text-autosizing/ios/textarea-auto-sizing-disable.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/html/textarea-auto-sizing-disable.html.
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Upstream some iOS text autosizing tests.
+
+        * fast/text-autosizing/ios/anonymous-block.html: Added.
+        * fast/text-autosizing/ios/contenteditable.html: Added.
+        * fast/text-autosizing/ios/first-letter.html: Added.
+        * fast/text-autosizing/ios/font-family-case-insensitive-expected.txt: Added.
+        * fast/text-autosizing/ios/font-family-case-insensitive.html: Added.
+        * fast/text-autosizing/ios/lists.html: Added.
+        * fast/text-autosizing/ios/overflow.html: Added.
+        * fast/text-autosizing/ios/percent-adjust-length-line-height-expected.txt: Added.
+        * fast/text-autosizing/ios/percent-adjust-length-line-height.html: Added.
+        * fast/text-autosizing/ios/percent-adjust-number-line-height-expected.txt: Added.
+        * fast/text-autosizing/ios/percent-adjust-number-line-height.html: Added.
+        * fast/text-autosizing/ios/percent-adjust-percent-line-height-expected.txt: Added.
+        * fast/text-autosizing/ios/percent-adjust-percent-line-height.html: Added.
+        * platform/ios-simulator/fast/text-autosizing/ios/anonymous-block-expected.txt: Added.
+        * platform/ios-simulator/fast/text-autosizing/ios/contenteditable-expected.txt: Added.
+        * platform/ios-simulator/fast/text-autosizing/ios/first-letter-expected.txt: Added.
+        * platform/ios-simulator/fast/text-autosizing/ios/lists-expected.txt: Added.
+        * platform/ios-simulator/fast/text-autosizing/ios/overflow-expected.txt: Added.
+        * platform/mac/fast/text-autosizing/ios/anonymous-block-expected.txt: Added.
+        * platform/mac/fast/text-autosizing/ios/contenteditable-expected.txt: Added.
+        * platform/mac/fast/text-autosizing/ios/first-letter-expected.txt: Added.
+        * platform/mac/fast/text-autosizing/ios/lists-expected.txt: Added.
+        * platform/mac/fast/text-autosizing/ios/overflow-expected.txt: Added.
+
+2016-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Font size increases on some pages after navigating then going back
+        https://bugs.webkit.org/show_bug.cgi?id=157441
+        rdar://problem/22873240
+
+        Reviewed by Darin Adler.
+
+        * fast/text-autosizing/ios/text-autosizing-after-back-expected.html: Added.
+        * fast/text-autosizing/ios/text-autosizing-after-back.html: Added.
+
+2016-05-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline failing LayoutTests after r200580
+
+        Unreviewed test gardening.
+
+        * fast/xmlhttprequest/xmlhttprequest-get-expected.txt:
+        * http/tests/workers/worker-importScriptsOnError-expected.txt:
+        * inspector/model/remote-object-get-properties-expected.txt:
+
+2016-05-09  Chris Dumez  <cdumez@apple.com>
+
+        Optimize [StrictTypeChecking] on IDL operations
+        https://bugs.webkit.org/show_bug.cgi?id=157467
+
+        Reviewed by Darin Adler.
+
+        Rebaseline existing tests now that we provide a more useful exception
+        message when passing null for a non-nullable parameter and assigning
+        null to a non-nullable attribute.
+
+        * editing/selection/extend-expected.txt:
+        * fast/dom/Document/adoptNode-null-expected.txt:
+        * fast/dom/Document/adoptNode-null.html:
+        * fast/dom/Document/importNode-null-expected.txt:
+        * fast/dom/Document/importNode-null.html:
+        * fast/dom/Element/attr-param-typechecking-expected.txt:
+        * fast/dom/MutationObserver/observe-exceptions-expected.txt:
+        * fast/dom/NamedNodeMap-setNamedItem-crash-expected.txt:
+        * fast/dom/Range/range-intersectsNode-expected.txt:
+        * fast/dom/createNodeIterator-parameters-expected.txt:
+        * fast/dom/createNodeIterator-parameters.html:
+        * fast/dom/createTreeWalker-parameters-expected.txt:
+        * fast/dom/createTreeWalker-parameters.html:
+        * fast/dom/xmlserializer-serialize-to-string-exception-expected.txt:
+        * fast/dynamic/insertAdjacentElement-expected.txt:
+        * fast/mediastream/MediaStream-add-remove-null-undefined-tracks-expected.txt:
+        * fast/speechsynthesis/speech-synthesis-crash-on-bad-utterance-expected.txt:
+        * fast/text/font-face-set-javascript-expected.txt:
+        * fast/text/text-combine-crash-expected.txt:
+        * media/encrypted-media/encrypted-media-v2-syntax-expected.txt:
+        * media/encrypted-media/encrypted-media-v2-syntax.html:
+        * webaudio/createMediaStreamSource-null-expected.txt:
+        * webaudio/createMediaStreamSource-null.html:
+        * webaudio/decode-audio-data-basic-expected.txt:
+        * webaudio/decode-audio-data-basic.html:
+        * webaudio/mediaelementaudiosourcenode-expected.txt:
+        * webaudio/mediaelementaudiosourcenode.html:
+
+2016-05-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Focusing a shadow host places the slot content after the shadow DOM content
+        https://bugs.webkit.org/show_bug.cgi?id=154770
+        <rdar://problem/24873102>
+
+        Reviewed by Antti Koivisto.
+
+        Add a regression test now that the bug has been fixed.
+
+        * fast/shadow-dom/shadow-layout-after-focus-expected.html: Added.
+        * fast/shadow-dom/shadow-layout-after-focus.html: Added.
+
+2016-05-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (198056): Unable to use edit buttons on WordPress
+        https://bugs.webkit.org/show_bug.cgi?id=157475
+
+        Reviewed by Antti Koivisto.
+
+        Updated the tests.
+
+        * fast/shadow-dom/Extensions-to-Event-Interface-expected.txt:
+        * fast/shadow-dom/Extensions-to-Event-Interface.html:
+        * fast/shadow-dom/resources/event-path-test-helpers.js:
+        (dispatchEventWithLog):
+
+2016-05-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing timeout and adding failure expectation for storage/indexeddb/intversion-open-in-upgradeneeded.html
+        https://bugs.webkit.org/show_bug.cgi?id=155050
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-05-09  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Fix static position for positioned grid items
+        https://bugs.webkit.org/show_bug.cgi?id=157417
+
+        Reviewed by Darin Adler.
+
+        Updated several tests to follow the new expected behavior.
+
+        * fast/css-grid-layout/absolute-positioning-grid-container-containing-block.html:
+        * fast/css-grid-layout/absolute-positioning-grid-container-parent.html:
+        * fast/css-grid-layout/grid-positioned-items-gaps-rtl.html:
+        * fast/css-grid-layout/grid-positioned-items-gaps.html:
+        * fast/css-grid-layout/grid-positioned-items-implicit-grid-line.html:
+        * fast/css-grid-layout/grid-positioned-items-implicit-grid.html:
+        * fast/css-grid-layout/grid-positioned-items-unknown-named-grid-line.html:
+        * fast/css-grid-layout/grid-sizing-positioned-items.html:
+
+2016-05-09  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Fix wrong gardening in r200570
+
+        Unreviewed EFL gardening.
+
+        * TestExpectations: Move selection gap tests to EFL's one.
+        * platform/efl/TestExpectations:
+
+2016-05-09  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Skip tests of selection gap because EFL port disabled to paint the selection gap
+
+        Unreviewed EFL gardening.
+
+        * TestExpectations:
+
+2016-05-08  Zalan Bujtas  <zalan@apple.com>
+
+        iOS selection: Use inflow containing block for positioned <br>.
+        https://bugs.webkit.org/show_bug.cgi?id=157115
+        <rdar://problem/25969295>
+
+        Reviewed by Ryosuke Niwa.
+
+        Similarly to RenderText, we should just use the inflow containing block for
+        selected <br> even when it is positioned out of flow. This visually matches Mac OS X
+        behaviour (selection painting does not get extended to the positioned <br>).
+
+        * fast/text/fixed-positioned-br-crash-expected.txt: Added.
+        * fast/text/fixed-positioned-br-crash.html: Added.
+
+2016-05-08  Darin Adler  <darin@apple.com>
+
+        Correct dictionary bindings handling of optional, null, and undefined
+        https://bugs.webkit.org/show_bug.cgi?id=157463
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/MutationObserver/observe-exceptions-expected.txt: Reverted that
+        change to expect a more specific TypeError just as it was a day ago before
+        my last patch. The TypeError is back to being a problem with the specifics
+        of the arguments passed rather than a problem with null and undefined
+        themselves being invalid.
+
+2016-05-07  Darin Adler  <darin@apple.com>
+
+        Change MutationObserver::observe to take an IDL dictionary, rather than WebCore::Dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=157456
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/MutationObserver/observe-exceptions-expected.txt: Updated to expect
+        the specific TypeError generated by the bindings code rather than the generic
+        TypeError we got before generated inside the C++ DOM.
+
+2016-05-07  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        REGRESSION(r196222): [AX][GTK] accessibility/gtk/caret-offsets.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=153956
+
+        Reviewed by Chris Fleizach.
+
+        Change the test to run asynchronously and update the expectations.
+
+        * accessibility/gtk/caret-offsets-expected.txt: Updated.
+        * accessibility/gtk/caret-offsets.html: Updated.
+        * platform/gtk/TestExpectations: Unskipped the previously-failing test.
+
+2016-05-06  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Skip failing INTL test.
+        https://bugs.webkit.org/show_bug.cgi?id=157418
+
+        Reviewed by Alex Christensen.
+
+        Temporarily skip string-localeCompare.js, because AppleWin currently does not have INTL enabled.
+
+        * js/script-tests/string-localeCompare.js:
+        * platform/win/TestExpectations:
+
+2016-05-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        MouseEvent's offsetX and offsetY should be based on relative target
+        https://bugs.webkit.org/show_bug.cgi?id=157444
+        <rdar://problem/24396408>
+
+        Reviewed by Darin Adler.
+
+        Add a W3C style testharness.js test for adjusting offsetX and offsetY to the adjusted target
+        since our existing behavior matches the spec as well as Chrome's behavior:
+        http://w3c.github.io/webcomponents/spec/shadow/#event-dispatch
+
+        * fast/shadow-dom/MouseEvent-prototype-offsetX-offsetY-expected.txt: Added.
+        * fast/shadow-dom/MouseEvent-prototype-offsetX-offsetY.html: Added.
+
+2016-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve console.count()
+        https://bugs.webkit.org/show_bug.cgi?id=157439
+        <rdar://problem/26152654>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/console/console-api-expected.txt:
+        * inspector/console/console-count-expected.txt: Added.
+        * inspector/console/console-count.html: Added.
+        * inspector/console/console-time.html:
+
+2016-05-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable IOS_TEXT_AUTOSIZING on Mac and make it testable
+        https://bugs.webkit.org/show_bug.cgi?id=157432
+        rdar://problem/16406720
+
+        Reviewed by Dean Jackson.
+
+        Enable fast/text-autosizing/ios/ on Mac and iOS
+
+        * fast/text-autosizing/ios/autosize-width-expected.html: Added.
+        * fast/text-autosizing/ios/autosize-width.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-05-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Console: Variables defined with let/const aren't accessible outside of console's scope
+        https://bugs.webkit.org/show_bug.cgi?id=150752
+        <rdar://problem/23343385>
+
+        Reviewed by Mark Lam.
+
+        * inspector/runtime/evaluate-CommandLineAPI-expected.txt: Added.
+        * inspector/runtime/evaluate-CommandLineAPI.html: Added.
+        New test covering the different cases of global evaluation with the
+        CommandLineAPI as a scope extension.
+
+        * http/tests/inspector/console/cross-domain-inspected-node-access-expected.txt:
+        * inspector/console/command-line-api-expected.txt:
+        * inspector/debugger/js-stacktrace-expected.txt:
+        * inspector/debugger/js-stacktrace.html:
+        * inspector/model/stack-trace-expected.txt:
+        * platform/mac/inspector/model/remote-object-expected.txt:
+        Update expectations now that global evaluations are treated as
+        program's [global code] and not evals [eval code]. Also some
+        line number changes.
+
+2016-05-06  Tim Horton  <timothy_horton@apple.com>
+
+        <attachment> element should understand UTIs
+        https://bugs.webkit.org/show_bug.cgi?id=157425
+        <rdar://problem/25585401>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/attachment/attachment-uti-expected.html: Added.
+        * fast/attachment/attachment-uti.html: Added.
+        Add a test that UTIs render the same as their corresponding MIME types.
+
+2016-05-06  Chris Dumez  <cdumez@apple.com>
+
+        Clean up converting from JSValue to float / double in the bindings generator
+        https://bugs.webkit.org/show_bug.cgi?id=157407
+
+        Reviewed by Darin Adler.
+
+        Rebaseline the tests now that we provide a more useful exception message.
+
+        * fast/canvas/canvas-2d-imageData-create-nonfinite-expected.txt:
+        * fast/canvas/canvas-getImageData-invalid-expected.txt:
+        * fast/canvas/canvas-putImageData-expected.txt:
+        * fast/canvas/canvas-putImageData.js:
+        * fast/canvas/linearGradient-infinite-values-expected.txt:
+        * fast/canvas/radialGradient-infinite-values-expected.txt:
+        * fast/canvas/resources/canvas-2d-imageData-create-nonfinite.js:
+        * fast/canvas/script-tests/canvas-getImageData-invalid.js:
+        * fast/canvas/script-tests/linearGradient-infinite-values.js:
+        * fast/canvas/script-tests/radialGradient-infinite-values.js:
+
+2016-05-06  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed IDB test gardening.
+
+        * TestExpectations:
+        * storage/indexeddb/pending-activity-workers-expected.txt: Updated expectations.
+
+2016-05-06  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed IDB test gardening.
+
+        Fix a failing test, and add better classification/comments to a different failing test.
+
+        * TestExpectations:
+        * storage/indexeddb/dont-commit-on-blocked-expected.txt:
+        * storage/indexeddb/dont-commit-on-blocked.html:
+
+2016-05-06  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed IDB test gardening.
+
+        Update the workers variant of "deletedatabase-delayed-by-open-and-versionchange" to the modern expected results.
+
+        * TestExpectations:
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-workers-expected.txt:
+
+2016-05-06  Dean Jackson  <dino@apple.com>
+
+        Regions, Shapes and Tracks don't need runtime features
+        https://bugs.webkit.org/show_bug.cgi?id=157426
+        <rdar://problem/26146262>
+
+        Reviewed by Simon Fraser.
+
+        Remove these tests since their runtime flags no longer exist.
+
+        * fast/regions/css-regions-disabled-expected.txt: Removed.
+        * fast/regions/css-regions-disabled.html: Removed.
+        * fast/shapes/css-shapes-disabled-expected.txt: Removed.
+        * fast/shapes/css-shapes-disabled.html: Removed.
+
+2016-05-06  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed IDB test gardening.
+
+        Finish removing unsupported lines from the "unprefix" test.
+
+        * storage/indexeddb/unprefix-private-expected.txt:
+
+2016-05-06  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed IDB test gardening.
+
+        Remove unsupported lines from the "unprefix" test.
+        
+        * TestExpectations:
+        * storage/indexeddb/resources/unprefix.js:
+        * storage/indexeddb/unprefix-expected.txt:
+        * storage/indexeddb/unprefix-workers-expected.txt:
+
+2016-05-06  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed IDB test gardening.
+
+        Remove the Workers variant of a test that had been removed for being irrelevant.
+
+        * TestExpectations:
+        * storage/indexeddb/factory-basics-workers-expected.txt: Removed.
+        * storage/indexeddb/factory-basics-workers.html: Removed.
+
+2016-05-06  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB (Workers): Start running a lot of the workers tests.
+        https://bugs.webkit.org/show_bug.cgi?id=157424
+
+        Reviewed by Sam Weinig.
+
+        Many tests that obviously pass need updated expectations for the details of error messages.
+
+        Others just work right out of the box.
+
+        * TestExpectations: Enable some tests, and categorize remaining failures.
+        
+        * http/tests/security/cross-origin-worker-indexeddb-allowed-expected.txt:
+        * http/tests/security/cross-origin-worker-indexeddb-allowed.html:
+        * http/tests/security/cross-origin-worker-indexeddb-expected.txt:
+        * http/tests/security/cross-origin-worker-indexeddb.html:
+        * http/tests/security/resources/cross-origin-iframe-for-worker-indexeddb.html:
+        * http/tests/security/resources/document-for-cross-origin-worker-indexeddb.html:
+        * http/tests/security/resources/worker-for-indexeddb.js:
+        * storage/indexeddb/basics-workers.html:
+        * storage/indexeddb/cursor-advance-workers-expected.txt:
+        * storage/indexeddb/cursor-advance-workers.html:
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-workers.html:
+        * storage/indexeddb/dont-commit-on-blocked-private.html:
+        * storage/indexeddb/dont-commit-on-blocked.html:
+        * storage/indexeddb/factory-basics-workers.html:
+        * storage/indexeddb/index-basics-workers-expected.txt:
+        * storage/indexeddb/index-basics-workers.html:
+        * storage/indexeddb/modern/workers-disabled.html:
+        * storage/indexeddb/objectstore-basics-workers-expected.txt:
+        * storage/indexeddb/objectstore-basics-workers.html:
+        * storage/indexeddb/open-twice-workers.html:
+        * storage/indexeddb/pending-activity-workers.html:
+        * storage/indexeddb/pending-version-change-on-exit-private.html:
+        * storage/indexeddb/pending-version-change-on-exit.html:
+        * storage/indexeddb/pending-version-change-stuck-private.html:
+        * storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html:
+        * storage/indexeddb/pending-version-change-stuck-works-with-terminate.html:
+        * storage/indexeddb/pending-version-change-stuck.html:
+        * storage/indexeddb/transaction-complete-workers-expected.txt:
+        * storage/indexeddb/transaction-complete-workers-private-expected.txt:
+        * storage/indexeddb/transaction-complete-workers-private.html:
+        * storage/indexeddb/transaction-complete-workers.html:
+        * storage/indexeddb/unprefix-workers.html:
+
+2016-05-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        FKA: No way to get focus from DOM to shadow DOM components (Was: HTML5 media controls not keyboard accessible)
+        https://bugs.webkit.org/show_bug.cgi?id=117857
+
+        Reviewed by Jer Noble.
+
+        Added a regression test for moving focus into media elements by pressing tab key.
+
+        * media/tab-focus-inside-media-elements-expected.txt: Added.
+        * media/tab-focus-inside-media-elements.html: Added.
+
+2016-05-06  Filip Pizlo  <fpizlo@apple.com>
+
+        JS Function removed after parsing
+        https://bugs.webkit.org/show_bug.cgi?id=149175
+
+        Reviewed by Mark Lam.
+        
+        This bug doesn't happen anymore, but the test case is still useful. This test will fail 1/5 of
+        the time if we regress.
+
+        * js/dom/function-removed-after-parsing-expected.txt: Added.
+        * js/dom/function-removed-after-parsing.html: Added.
+
+2016-05-06  Jer Noble  <jer.noble@apple.com>
+
+        Muted media elements should be allowed to autoplay, even if RequireUserGestureForAudioRateChange is set.
+        https://bugs.webkit.org/show_bug.cgi?id=157404
+        <rdar://problem/26016802>
+
+        Reviewed by Eric Carlson.
+
+        * media/audio-playback-restriction-play-muted-expected.txt: Added.
+        * media/audio-playback-restriction-play-muted.html: Added.
+
+2016-05-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Unprefix CSS Grid Layout properties
+        https://bugs.webkit.org/show_bug.cgi?id=157137
+
+        Reviewed by Simon Fraser.
+
+        Remove "-webkit" prefix from all the grid layout properties,
+        including the display value.
+        Update the source code to remove the prefix where it was used too.
+
+        * css3/parse-align-content.html:
+        * css3/parse-align-items.html:
+        * css3/parse-align-self.html:
+        * css3/parse-justify-content.html:
+        * fast/css-grid-layout/absolute-positioning-definite-sizes.html:
+        * fast/css-grid-layout/absolute-positioning-grid-container-containing-block.html:
+        * fast/css-grid-layout/absolute-positioning-grid-container-parent.html:
+        * fast/css-grid-layout/anonymous-grid-items-expected.html:
+        * fast/css-grid-layout/anonymous-grid-items.html:
+        * fast/css-grid-layout/auto-content-resolution-columns.html:
+        * fast/css-grid-layout/auto-content-resolution-rows.html:
+        * fast/css-grid-layout/breadth-size-resolution-grid.html:
+        * fast/css-grid-layout/calc-resolution-grid-item.html:
+        * fast/css-grid-layout/compute-intrinsic-widths-scrollbar.html:
+        * fast/css-grid-layout/display-grid-set-get-expected.txt:
+        * fast/css-grid-layout/explicit-grid-size.html:
+        * fast/css-grid-layout/flex-and-content-sized-resolution-columns-expected.txt:
+        * fast/css-grid-layout/flex-and-content-sized-resolution-columns.html:
+        * fast/css-grid-layout/flex-and-intrinsic-sizes.html:
+        * fast/css-grid-layout/flex-and-minmax-content-resolution-columns.html:
+        * fast/css-grid-layout/flex-and-minmax-content-resolution-rows.html:
+        * fast/css-grid-layout/flex-content-distribution.html:
+        * fast/css-grid-layout/flex-content-resolution-columns.html:
+        * fast/css-grid-layout/flex-content-resolution-rows.html:
+        * fast/css-grid-layout/flex-content-sized-column-use-available-width.html:
+        * fast/css-grid-layout/flex-content-sized-columns-resize.html:
+        * fast/css-grid-layout/flex-factor-sum-less-than-1.html:
+        * fast/css-grid-layout/float-not-protruding-into-next-grid-item.html:
+        * fast/css-grid-layout/floating-empty-grids.html:
+        * fast/css-grid-layout/grid-align-content-distribution-vertical-lr.html:
+        * fast/css-grid-layout/grid-align-content-distribution-vertical-rl.html:
+        * fast/css-grid-layout/grid-align-content-distribution.html:
+        * fast/css-grid-layout/grid-align-content-vertical-lr.html:
+        * fast/css-grid-layout/grid-align-content-vertical-rl.html:
+        * fast/css-grid-layout/grid-align-content.html:
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-lr.html:
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-rl.html:
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding.html:
+        * fast/css-grid-layout/grid-align-justify-overflow.html:
+        * fast/css-grid-layout/grid-align-justify-stretch.html:
+        * fast/css-grid-layout/grid-align-stretching-replaced-items.html:
+        * fast/css-grid-layout/grid-align.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-auto-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-resolution.html:
+        * fast/css-grid-layout/grid-auto-columns-rows-update.html:
+        * fast/css-grid-layout/grid-auto-flow-get-set-expected.txt:
+        * fast/css-grid-layout/grid-auto-flow-get-set.html:
+        * fast/css-grid-layout/grid-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-auto-flow-sparse.html:
+        * fast/css-grid-layout/grid-auto-flow-update.html:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-columns-expected.txt:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-columns.html:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-rows-expected.txt:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-rows.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-container-change-named-grid-lines-recompute-child.html:
+        * fast/css-grid-layout/grid-container-ignore-first-letter.html:
+        * fast/css-grid-layout/grid-content-alignment-and-self-alignment-spanning.html:
+        * fast/css-grid-layout/grid-content-alignment-and-self-alignment.html:
+        * fast/css-grid-layout/grid-content-alignment-overflow.html:
+        * fast/css-grid-layout/grid-content-alignment-stretch-only-valid-for-auto-sized-tracks.html:
+        * fast/css-grid-layout/grid-content-alignment-stretch-with-different-sized-tracks.html:
+        * fast/css-grid-layout/grid-content-alignment-with-span-vertical-lr.html:
+        * fast/css-grid-layout/grid-content-alignment-with-span-vertical-rl.html:
+        * fast/css-grid-layout/grid-content-alignment-with-span.html:
+        * fast/css-grid-layout/grid-content-sized-columns-resolution-expected.txt:
+        * fast/css-grid-layout/grid-content-sized-columns-resolution.html:
+        * fast/css-grid-layout/grid-disable.html:
+        * fast/css-grid-layout/grid-dynamic-updates-relayout.html:
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set-expected.txt:
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set.html:
+        * fast/css-grid-layout/grid-element-border-grid-item.html:
+        * fast/css-grid-layout/grid-element-border-padding-grid-item.html:
+        * fast/css-grid-layout/grid-element-change-columns-repaint.html:
+        * fast/css-grid-layout/grid-element-change-rows-repaint.html:
+        * fast/css-grid-layout/grid-element-empty-row-column.html:
+        * fast/css-grid-layout/grid-element-min-max-height.html:
+        * fast/css-grid-layout/grid-element-min-max-width.html:
+        * fast/css-grid-layout/grid-element-padding-grid-item.html:
+        * fast/css-grid-layout/grid-element-padding-margin.html:
+        * fast/css-grid-layout/grid-element-repeat-get-set-expected.txt:
+        * fast/css-grid-layout/grid-element-repeat-get-set.html:
+        * fast/css-grid-layout/grid-element-shrink-to-fit.html:
+        * fast/css-grid-layout/grid-grow-tracks-to-their-max-expected.txt:
+        * fast/css-grid-layout/grid-grow-tracks-to-their-max.html:
+        * fast/css-grid-layout/grid-gutters-and-alignment.html:
+        * fast/css-grid-layout/grid-gutters-and-flex-content.html:
+        * fast/css-grid-layout/grid-gutters-and-tracks.html:
+        * fast/css-grid-layout/grid-gutters-get-set-expected.txt:
+        * fast/css-grid-layout/grid-gutters-get-set.html:
+        * fast/css-grid-layout/grid-indefinite-calculated-height-crash-expected.txt:
+        * fast/css-grid-layout/grid-indefinite-calculated-height-crash.html:
+        * fast/css-grid-layout/grid-initialize-span-one-items-expected.txt:
+        * fast/css-grid-layout/grid-initialize-span-one-items.html:
+        * fast/css-grid-layout/grid-item-addition-auto-placement-update.html:
+        * fast/css-grid-layout/grid-item-addition-track-breadth-update.html:
+        * fast/css-grid-layout/grid-item-area-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-area-get-set.html:
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-lr.html:
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-rl.html:
+        * fast/css-grid-layout/grid-item-auto-margins-alignment.html:
+        * fast/css-grid-layout/grid-item-auto-margins-and-stretch.html:
+        * fast/css-grid-layout/grid-item-auto-margins-must-respect-specified-margins.html:
+        * fast/css-grid-layout/grid-item-auto-placement-automatic-span.html:
+        * fast/css-grid-layout/grid-item-auto-placement-definite-span.html:
+        * fast/css-grid-layout/grid-item-auto-placement-fixed-row-column.html:
+        * fast/css-grid-layout/grid-item-auto-sized-align-justify-margin-border-padding.html:
+        * fast/css-grid-layout/grid-item-bad-named-area-auto-placement.html:
+        * fast/css-grid-layout/grid-item-bad-resolution-double-span.html:
+        * fast/css-grid-layout/grid-item-change-column-repaint.html:
+        * fast/css-grid-layout/grid-item-change-row-repaint.html:
+        * fast/css-grid-layout/grid-item-column-row-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-column-row-get-set.html:
+        * fast/css-grid-layout/grid-item-display.html:
+        * fast/css-grid-layout/grid-item-end-after-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-end-after-get-set.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-horizontal-ltr.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-horizontal-rtl.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-vertical-ltr.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-vertical-rtl.html:
+        * fast/css-grid-layout/grid-item-margin-resolution.html:
+        * fast/css-grid-layout/grid-item-margins-not-collapse.html:
+        * fast/css-grid-layout/grid-item-multiple-minmax-content-resolution.html:
+        * fast/css-grid-layout/grid-item-named-grid-area-resolution.html:
+        * fast/css-grid-layout/grid-item-named-grid-line-resolution.html:
+        * fast/css-grid-layout/grid-item-negative-indexes.html:
+        * fast/css-grid-layout/grid-item-negative-integer-explicit-grid-resolution.html:
+        * fast/css-grid-layout/grid-item-negative-position-resolution.html:
+        * fast/css-grid-layout/grid-item-order-auto-flow-resolution.html:
+        * fast/css-grid-layout/grid-item-order-in-content-sized-columns-resolution.html:
+        * fast/css-grid-layout/grid-item-order-paint-order.html:
+        * fast/css-grid-layout/grid-item-position-changed-dynamic.html:
+        * fast/css-grid-layout/grid-item-removal-auto-placement-update.html:
+        * fast/css-grid-layout/grid-item-removal-track-breadth-update.html:
+        * fast/css-grid-layout/grid-item-spanning-resolution.html:
+        * fast/css-grid-layout/grid-item-start-before-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-start-before-get-set.html:
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding-vertical-lr.html:
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding-vertical-rl.html:
+        * fast/css-grid-layout/grid-item-stretch-with-margins-borders-padding.html:
+        * fast/css-grid-layout/grid-item-text-background-not-interleaved.html:
+        * fast/css-grid-layout/grid-item-unknown-named-grid-line-resolution.html:
+        * fast/css-grid-layout/grid-item-with-border-in-fr.html:
+        * fast/css-grid-layout/grid-item-with-border-in-intrinsic.html:
+        * fast/css-grid-layout/grid-item-with-percent-height-in-auto-height-grid-resolution.html:
+        * fast/css-grid-layout/grid-item-with-percent-min-max-height-dynamic.html:
+        * fast/css-grid-layout/grid-item-z-index-change-repaint-expected.html:
+        * fast/css-grid-layout/grid-item-z-index-change-repaint.html:
+        * fast/css-grid-layout/grid-item-z-index-stacking-context-expected.html:
+        * fast/css-grid-layout/grid-item-z-index-stacking-context.html:
+        * fast/css-grid-layout/grid-item-z-index-support.html:
+        * fast/css-grid-layout/grid-items-should-not-be-stretched-when-height-or-width-or-margin-change.html:
+        * fast/css-grid-layout/grid-justify-content-distribution-vertical-lr.html:
+        * fast/css-grid-layout/grid-justify-content-distribution-vertical-rl.html:
+        * fast/css-grid-layout/grid-justify-content-distribution.html:
+        * fast/css-grid-layout/grid-justify-content-vertical-lr.html:
+        * fast/css-grid-layout/grid-justify-content-vertical-rl.html:
+        * fast/css-grid-layout/grid-justify-content.html:
+        * fast/css-grid-layout/grid-percent-track-margin-border-padding.html:
+        * fast/css-grid-layout/grid-percent-track-scrollbar.html:
+        * fast/css-grid-layout/grid-positioned-children-writing-modes.html:
+        * fast/css-grid-layout/grid-positioned-items-background-rtl.html:
+        * fast/css-grid-layout/grid-positioned-items-background.html:
+        * fast/css-grid-layout/grid-positioned-items-content-alignment-rtl.html:
+        * fast/css-grid-layout/grid-positioned-items-content-alignment.html:
+        * fast/css-grid-layout/grid-positioned-items-gaps-rtl.html:
+        * fast/css-grid-layout/grid-positioned-items-gaps.html:
+        * fast/css-grid-layout/grid-positioned-items-implicit-grid-line.html:
+        * fast/css-grid-layout/grid-positioned-items-implicit-grid.html:
+        * fast/css-grid-layout/grid-positioned-items-padding.html:
+        * fast/css-grid-layout/grid-positioned-items-unknown-named-grid-line.html:
+        * fast/css-grid-layout/grid-positioned-items-within-grid-implicit-track.html:
+        * fast/css-grid-layout/grid-preferred-logical-widths.html:
+        * fast/css-grid-layout/grid-repeat-calc-expected.txt:
+        * fast/css-grid-layout/grid-repeat-calc.html:
+        * fast/css-grid-layout/grid-shorthand-computed-style-crash.html:
+        * fast/css-grid-layout/grid-shorthand-get-set-expected.txt:
+        * fast/css-grid-layout/grid-shorthand-get-set.html:
+        * fast/css-grid-layout/grid-sizing-positioned-items.html:
+        * fast/css-grid-layout/grid-strict-ordering-crash.html:
+        * fast/css-grid-layout/grid-template-areas-empty-string-crash.html:
+        * fast/css-grid-layout/grid-template-areas-get-set-expected.txt:
+        * fast/css-grid-layout/grid-template-areas-get-set.html:
+        * fast/css-grid-layout/grid-template-areas-infinite-loop.html:
+        * fast/css-grid-layout/grid-template-columns-rows-computed-style-gaps-content-alignment-expected.txt:
+        * fast/css-grid-layout/grid-template-columns-rows-computed-style-gaps-content-alignment.html:
+        * fast/css-grid-layout/grid-template-shorthand-computed-style-crash.html:
+        * fast/css-grid-layout/grid-template-shorthand-get-set-expected.txt:
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html:
+        * fast/css-grid-layout/grid-update-sizes-after-distributing-all-expected.txt:
+        * fast/css-grid-layout/grid-update-sizes-after-distributing-all.html:
+        * fast/css-grid-layout/grid-was-populated-assert.html:
+        * fast/css-grid-layout/grid-with-relative-font-length-crash.html:
+        * fast/css-grid-layout/implicit-columns-auto-resolution.html:
+        * fast/css-grid-layout/implicit-position-dynamic-change-expected.txt:
+        * fast/css-grid-layout/implicit-position-dynamic-change.html:
+        * fast/css-grid-layout/implicit-rows-auto-resolution.html:
+        * fast/css-grid-layout/implicit-tracks-before-explicit.html:
+        * fast/css-grid-layout/justify-self-cell.html:
+        * fast/css-grid-layout/mark-as-infinitely-growable-expected.txt:
+        * fast/css-grid-layout/mark-as-infinitely-growable.html:
+        * fast/css-grid-layout/maximize-tracks-definite-indefinite-height.html:
+        * fast/css-grid-layout/min-content-row-must-shrink-when-column-grows.html:
+        * fast/css-grid-layout/min-height-border-box.html:
+        * fast/css-grid-layout/min-width-height-auto-and-margins.html:
+        * fast/css-grid-layout/min-width-height-auto-overflow.html:
+        * fast/css-grid-layout/min-width-height-auto.html:
+        * fast/css-grid-layout/min-width-margin-box.html:
+        * fast/css-grid-layout/minmax-fixed-logical-height-only.html:
+        * fast/css-grid-layout/minmax-fixed-logical-width-only.html:
+        * fast/css-grid-layout/minmax-max-content-resolution-columns.html:
+        * fast/css-grid-layout/minmax-max-content-resolution-rows.html:
+        * fast/css-grid-layout/minmax-min-content-column-resolution-columns.html:
+        * fast/css-grid-layout/minmax-min-content-column-resolution-rows.html:
+        * fast/css-grid-layout/minmax-spanning-resolution-columns.html:
+        * fast/css-grid-layout/minmax-spanning-resolution-rows.html:
+        * fast/css-grid-layout/named-grid-line-get-set-expected.txt:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-computed-style-implicit-tracks-expected.txt:
+        * fast/css-grid-layout/named-grid-lines-computed-style-implicit-tracks.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-dynamic-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-get-set-expected.txt:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-get-set.html:
+        * fast/css-grid-layout/named-grid-lines-with-named-grid-areas-resolution.html:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-multiple-expected.txt:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/non-grid-element-repeat-get-set-expected.txt:
+        * fast/css-grid-layout/non-grid-element-repeat-get-set.html:
+        * fast/css-grid-layout/non-named-grid-line-get-set-expected.txt:
+        * fast/css-grid-layout/non-named-grid-line-get-set.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track-in-percent-grid.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track-update.html:
+        * fast/css-grid-layout/percent-grid-item-in-percent-grid-track.html:
+        * fast/css-grid-layout/percent-intrinsic-track-breadth.html:
+        * fast/css-grid-layout/percent-of-indefinite-track-size-in-auto.html:
+        * fast/css-grid-layout/percent-of-indefinite-track-size-in-minmax-crash.html:
+        * fast/css-grid-layout/percent-of-indefinite-track-size.html:
+        * fast/css-grid-layout/percent-padding-margin-resolution-grid-item-update.html:
+        * fast/css-grid-layout/percent-padding-margin-resolution-grid-item.html:
+        * fast/css-grid-layout/percent-resolution-grid-item.html:
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size.html:
+        * fast/css-grid-layout/place-cell-by-index.html:
+        * fast/css-grid-layout/positioned-grid-items-should-not-create-implicit-tracks.html:
+        * fast/css-grid-layout/positioned-grid-items-should-not-take-up-space.html:
+        * fast/css-grid-layout/relayout-align-items-changed.html:
+        * fast/css-grid-layout/relayout-align-self-changed.html:
+        * fast/css-grid-layout/relayout-indefinite-heights.html:
+        * fast/css-grid-layout/relayout-justify-items-changed.html:
+        * fast/css-grid-layout/relayout-justify-self-changed.html:
+        * fast/css-grid-layout/resources/display-grid-set-get.js:
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set-multiple.js:
+        (testInherit):
+        (testInitial):
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set.js:
+        (testInherit):
+        (testInitial):
+        * fast/css-grid-layout/resources/grid-definitions-parsing-utils.js:
+        (testGridTemplatesValues):
+        (checkGridTemplatesSetJSValues):
+        (testGridTemplatesSetBadJSValues):
+        (checkGridAutoFlowSetCSSValue):
+        (checkGridAutoFlowSetJSValue):
+        (testGridAutoDefinitionsValues):
+        (testGridGapDefinitionsValues):
+        * fast/css-grid-layout/resources/grid-item-column-row-parsing-utils.js:
+        (checkColumnRowValues):
+        (window.testColumnRowJSParsing):
+        (window.testColumnRowInvalidJSParsing):
+        (window.testColumnStartRowStartJSParsing):
+        (window.testColumnEndRowEndJSParsing):
+        (setupInheritTest):
+        (setupInitialTest):
+        (window.testColumnRowInheritJSParsing):
+        (window.testStartBeforeInheritJSParsing):
+        (window.testEndAfterInheritJSParsing):
+        (window.testColumnRowInitialJSParsing):
+        (window.testStartBeforeInitialJSParsing):
+        (window.testEndAfterInitialJSParsing):
+        * fast/css-grid-layout/resources/grid-shorthand-parsing-utils.js:
+        (testGridDefinitionsValues):
+        (checkGridDefinitionsSetJSValues):
+        (testGridDefinitionsSetBadJSValues):
+        * fast/css-grid-layout/resources/grid-template-shorthand-parsing-utils.js:
+        (testGridDefinitionsValues):
+        (checkGridDefinitionsSetJSValues):
+        (testGridDefinitionsSetBadJSValues):
+        * fast/css-grid-layout/resources/grid.css:
+        (.grid):
+        (.inline-grid):
+        (.firstRowFirstColumn):
+        (.onlyFirstRowOnlyFirstColumn):
+        (.firstRowSecondColumn):
+        (.onlyFirstRowOnlySecondColumn):
+        (.firstRowThirdColumn):
+        (.firstRowFourthColumn):
+        (.secondRowFirstColumn):
+        (.onlySecondRowOnlyFirstColumn):
+        (.secondRowSecondColumn):
+        (.onlySecondRowOnlySecondColumn):
+        (.endSecondRowEndSecondColumn):
+        (.secondRowThirdColumn):
+        (.secondRowFourthColumn):
+        (.thirdRowFirstColumn):
+        (.thirdRowSecondColumn):
+        (.thirdRowThirdColumn):
+        (.fourthRowFirstColumn):
+        (.fourthRowSecondColumn):
+        (.firstAutoRowSecondAutoColumn):
+        (.autoLastRowAutoLastColumn):
+        (.autoSecondRowAutoFirstColumn):
+        (.firstRowBothColumn):
+        (.secondRowBothColumn):
+        (.bothRowFirstColumn):
+        (.bothRowSecondColumn):
+        (.bothRowBothColumn):
+        (.autoRowAutoColumn):
+        (.firstRowAutoColumn):
+        (.secondRowAutoColumn):
+        (.thirdRowAutoColumn):
+        (.autoRowFirstColumn):
+        (.autoRowSecondColumn):
+        (.autoRowThirdColumn):
+        (.autoRowAutoColumnSpanning2):
+        (.autoRowSpanning2AutoColumn):
+        (.autoRowSpanning2AutoColumnSpanning3):
+        (.autoRowSpanning3AutoColumnSpanning2):
+        (.autoRowFirstColumnSpanning2):
+        (.autoRowSecondColumnSpanning2):
+        (.firstRowSpanning2AutoColumn):
+        (.secondRowSpanning2AutoColumn):
+        (.gridAutoFlowColumnSparse):
+        (.gridAutoFlowColumnDense):
+        (.gridAutoFlowRowSparse):
+        (.gridAutoFlowRowDense):
+        * fast/css-grid-layout/resources/non-grid-columns-rows-get-set-multiple.js:
+        (testInherit):
+        (testInitial):
+        * fast/css-grid-layout/resources/non-grid-columns-rows-get-set.js:
+        (testInherit):
+        (testInitial):
+        * fast/css-grid-layout/should-not-collapse-anonymous-blocks.html:
+        * fast/css-grid-layout/swap-lines-if-start-is-further-endward-than-end-line-expected.html:
+        * fast/css-grid-layout/swap-lines-if-start-is-further-endward-than-end-line.html:
+        * fast/css-grid-layout/tracks-number-greatly-exceeding-available-size-crash.html:
+        * fast/css/auto-min-size.html:
+        * fast/css/first-letter-ignores-display-property.html:
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/resources/property-names.js:
+        * fast/css/parse-justify-items.html:
+        * fast/events/key-events-in-editable-gridbox.html:
+        * fast/repaint/align-items-overflow-change.html:
+        * fast/repaint/align-self-change.html:
+        * fast/repaint/align-self-overflow-change.html:
+        * fast/repaint/justify-items-change.html:
+        * fast/repaint/justify-items-legacy-change.html:
+        * fast/repaint/justify-items-overflow-change.html:
+        * fast/repaint/justify-self-change.html:
+        * fast/repaint/justify-self-overflow-change.html:
+        * fast/text-autosizing/cluster-inline-grid-flex-box-expected.html:
+        * fast/text-autosizing/cluster-inline-grid-flex-box.html:
+        * ietestcenter/css3/grid/display-grid-001-expected.htm:
+        * ietestcenter/css3/grid/display-grid-001.htm:
+        * ietestcenter/css3/grid/display-grid-002-expected.htm:
+        * ietestcenter/css3/grid/display-grid-002.htm:
+        * ietestcenter/css3/grid/grid-column-001-expected.htm:
+        * ietestcenter/css3/grid/grid-column-001.htm:
+        * ietestcenter/css3/grid/grid-column-002-expected.htm:
+        * ietestcenter/css3/grid/grid-column-002.htm:
+        * ietestcenter/css3/grid/grid-column-003-expected.htm:
+        * ietestcenter/css3/grid/grid-column-003.htm:
+        * ietestcenter/css3/grid/grid-columns-001-expected.htm:
+        * ietestcenter/css3/grid/grid-columns-001.htm:
+        * ietestcenter/css3/grid/grid-items-001-expected.htm:
+        * ietestcenter/css3/grid/grid-items-001.htm:
+        * ietestcenter/css3/grid/grid-items-002-expected.htm:
+        * ietestcenter/css3/grid/grid-items-002.htm:
+        * ietestcenter/css3/grid/grid-items-003-expected.htm:
+        * ietestcenter/css3/grid/grid-items-003.htm:
+        * ietestcenter/css3/grid/grid-items-004-expected.htm:
+        * ietestcenter/css3/grid/grid-items-004.htm:
+        * ietestcenter/css3/grid/grid-items-005-expected.htm:
+        * ietestcenter/css3/grid/grid-items-005.htm:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2016-05-06  Nan Wang  <n_wang@apple.com>
+
+        AX: <attachment> element should have a replacement character
+        https://bugs.webkit.org/show_bug.cgi?id=157406
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/attachment-element-expected.txt:
+        * accessibility/mac/attachment-element-replacement-character-expected.txt: Added.
+        * accessibility/mac/attachment-element-replacement-character.html: Added.
+        * editing/pasteboard/drag-and-drop-attachment-contenteditable-expected.txt:
+
+2016-05-06  Nan Wang  <n_wang@apple.com>
+
+        AX: String for document range is empty if end visible position anchors to a ignored replaced node
+        https://bugs.webkit.org/show_bug.cgi?id=157403
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-string-for-document-end-replaced-node-expected.txt: Added.
+        * accessibility/mac/text-marker-string-for-document-end-replaced-node.html: Added.
+
+2016-05-05  Dean Jackson  <dino@apple.com>
+
+        4 and 8 digit color attributes should use the crazypants algorithm, not the CSS one.
+        https://bugs.webkit.org/show_bug.cgi?id=157402
+        <rdar://problem/26131142>
+
+        Reviewed by Simon Fraser.
+
+        Restore the version that was there before I added support for
+        4 and 8 digit hex colors in CSS.
+
+        * fast/dom/attribute-legacy-colors-expected.txt:
+        * fast/dom/script-tests/attribute-legacy-colors.js:
+
+2016-05-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r200422): Web Inspector: Make new Array Iterator objects play nice with Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=157361
+        <rdar://problem/26099793>
+
+        Reviewed by Timothy Hatcher.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-05-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200479.
+        https://bugs.webkit.org/show_bug.cgi?id=157397
+
+        A LayoutTest added with this change is crashing on Mac WK1
+        test runs. (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "For keyboard users, activating a fragment URL should transfer
+        focus and caret to the destination"
+        https://bugs.webkit.org/show_bug.cgi?id=116046
+        http://trac.webkit.org/changeset/200479
+
+2016-05-05  Chris Dumez  <cdumez@apple.com>
+
+        CORS check is sometimes incorrectly failing for media loads
+        https://bugs.webkit.org/show_bug.cgi?id=157370
+        <rdar://problem/26071607>
+
+        Reviewed by Alex Christensen.
+
+        Add a regression test for <rdar://problem/26071607>.
+
+        * http/tests/media/resources/reference.mov: Added.
+        * http/tests/security/resources/reference-movie-cross-origin-allow.php: Added.
+        * http/tests/security/video-cross-origin-caching-expected.txt: Added.
+        * http/tests/security/video-cross-origin-caching.html: Added.
+
+2016-05-05  Zalan Bujtas  <zalan@apple.com>
+
+        Stop traversing at the container block when computing RTL inline static distance.
+        https://bugs.webkit.org/show_bug.cgi?id=157349
+        <rdar://problem/25994087>
+
+        Reviewed by David Hyatt.
+
+        When computing the inline static distance for a child renderer, we start at its enclosing box
+        and traverse up all the way to the container block.
+        However when the enclosing box is the ancestor of the container block, we
+        should just bail out right away since there's no container to use to adjust the position.
+
+        * fast/multicol/positioned-rtl-column-crash-expected.txt: Added.
+        * fast/multicol/positioned-rtl-column-crash.html: Added.
+
+2016-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unskip 9 compositing tests on ios-simulator, mark 2 as failures on ios-simulator-wk1
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        TestExpectations gardening for ios-simulator
+
+        Unreviewed test gardening.
+
+        Remove failure expectation for passing tests, move some to more specific ports, and remove expectations
+		for tests that are no longer in the tree.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-05  Zalan Bujtas  <zalan@apple.com>
+
+        Do not attempt to compute min/max width.
+        https://bugs.webkit.org/show_bug.cgi?id=157320
+
+        Reviewed by David Hyatt.
+
+        Replaced elements with no intrinsic size (only with ratio) should not call the containing
+        block to compute the min/max width when the containing block's min/max width
+        depends on the children's intrinsic size. It could lead to infinite recursion.
+
+        * fast/replaced/before-content-intrinsic-crash-expected.txt: Added.
+        * fast/replaced/before-content-intrinsic-crash.html: Added.
+
+2016-05-05  Nan Wang  <n_wang@apple.com>
+
+        For keyboard users, activating a fragment URL should transfer focus and caret to the destination
+        https://bugs.webkit.org/show_bug.cgi?id=116046
+
+        Reviewed by Ryosuke Niwa.
+
+        Updated fast/dom/fragment-activation-focuses-target.html, now that navigating to a unfocusable
+        fragment will unset the focused element.
+
+        * fast/dom/fragment-activation-focuses-target-expected.txt:
+        * fast/dom/fragment-activation-focuses-target.html:
+        * fast/events/sequential-focus-navigation-starting-point-expected.txt: Added.
+        * fast/events/sequential-focus-navigation-starting-point.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Add more HiDPI tests failing.
+
+2016-05-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Crash if you type "debugger" in the console and continue
+        https://bugs.webkit.org/show_bug.cgi?id=156924
+        <rdar://problem/25884189>
+
+        Reviewed by Mark Lam.
+
+        * inspector/debugger/evaluateOnCallFrame-errors-expected.txt: Added.
+        * inspector/debugger/evaluateOnCallFrame-errors.html: Added.
+        * inspector/protocol/backend-dispatcher-argument-errors-expected.txt:
+
+2016-05-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Comments on wired.com are blurry
+        https://bugs.webkit.org/show_bug.cgi?id=148630
+
+        Reviewed by Tim Horton.
+
+        This testcase does not fail without the patch because of how WTR does snapshotting,
+        but some future improvement may fix that.
+
+        * compositing/contents-scale/rasterization-scale-expected.html: Added.
+        * compositing/contents-scale/rasterization-scale.html: Added.
+
+2016-05-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        event.target shouldn't be retargeted as the event bubbles into a slot
+        https://bugs.webkit.org/show_bug.cgi?id=157369
+
+        Reviewed by Antti Koivisto.
+
+        Updated test cases to expect the target to be not adjusted to a slot element when the event path
+        enters one as this didn't match the spec or the behavior of Google Chrome Canary. Both WebKit and
+        Chrome passes the test with this change.
+
+        * fast/shadow-dom/event-inside-slotted-node.html:
+
+2016-05-04  Alex Christensen  <achristensen@webkit.org>
+
+        Blocked redirected main resource requests need descriptive errors
+        https://bugs.webkit.org/show_bug.cgi?id=156828
+        rdar://problem/25711316
+
+        Reviewed by Daniel Bates.
+
+        * http/tests/contentextensions/block-everything-if-domain-expected.txt:
+        Updated because the page no longer loads because the main resource was blocked.
+        * http/tests/contentextensions/block-everything-unless-domain-expected.txt:
+        * http/tests/contentextensions/block-everything-unless-domain.html:
+        Updated test because about:blank is no longer loaded when the main resource fails to load.
+        * http/tests/contentextensions/main-resource-expected.txt:
+        Update to reflect new behavior of calling didFailProvisionalLoadWithError instead of just didFailLoadingWithError.
+        * http/tests/contentextensions/main-resource-redirect-error-expected.txt: Added.
+        * http/tests/contentextensions/main-resource-redirect-error.html: Added.
+        * http/tests/contentextensions/main-resource-redirect-error.html.json: Added.
+        * http/tests/contentextensions/main-resource.html:
+
+2016-05-04  Daniel Bates  <dabates@apple.com>
+
+        CSP: Perform case sensitive match against path portion of source expression URL that ends in '/'
+        https://bugs.webkit.org/show_bug.cgi?id=157275
+
+        Reviewed by Darin Adler.
+
+        Add test to ensure that the path portion of a request URL is case-sensitively
+        matched against the path portion of a source expression that ends in '/'.
+
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-paths-01-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-paths-01.html:
+
+2016-05-04  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: Nonfunctional controls appear before every HTML5 video when using VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=153089
+        <rdar://problem/24050668>
+
+        Reviewed by Dean Jackson.
+
+        * media/video-controls-show-on-kb-or-ax-event-expected.txt:
+        * media/video-controls-show-on-kb-or-ax-event.html:
+
+        A Layout Test to make sure showControls Button in media player is hidden by default.
+
+2016-05-04  Dean Jackson  <dino@apple.com>
+
+        Disabling WebGL2 should mean no context is created
+        https://bugs.webkit.org/show_bug.cgi?id=157352
+        <rdar://problem/26096346>
+
+        Reviewed by Eric Carlson.
+
+        Check that toggling the runtime flag enables/disables WebGL 2.0.
+
+        * fast/canvas/webgl/webgl2-runtime-flag-expected.txt: Added.
+        * fast/canvas/webgl/webgl2-runtime-flag.html: Added.
+
+2016-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Media elements should not be paused right away when removed from the document
+        https://bugs.webkit.org/show_bug.cgi?id=157347
+        <rdar://problem/25888758>
+
+        Reviewed by Alex Christensen.
+
+        * media/remove-from-document-expected.txt:
+        * media/remove-from-document.html:
+        Check asynchronously if the video has been paused after removing it from
+        the document instead of synchronously as we no longer pause the video
+        synchronously in this case.
+
+        * media/replaceChild-should-not-pause-video-expected.txt: Added.
+        * media/replaceChild-should-not-pause-video.html: Added.
+        Add test case to make sure that calling replaceChild() on with a video
+        element as newChild does not pause the video if it is already playing.
+        This is a regression test for <rdar://problem/25888758>.
+
+        * webaudio/audiocontext-state-interrupted-expected.txt:
+        * webaudio/audiocontext-state-interrupted.html:
+        Add a missing call to
+        internals.setMediaSessionRestrictions("WebAudio", "InterruptedPlaybackNotPermitted")
+        before the fourth test. The fourth test was previously passing by
+        chance, due to a bug in GenericEventQueue sometimes firing events
+        synchronously after they are scheduled.
+
+2016-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Speed up JSGlobalObject initialization by making some properties lazy
+        https://bugs.webkit.org/show_bug.cgi?id=157045
+
+        Reviewed by Mark Lam.
+
+        * js/dom/cross-window-put-math-expected.txt: Added.
+        * js/dom/cross-window-put-math.html: Added.
+
+2016-05-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Improve the grammar of some error messages 'a argument list' => 'an argument list'
+        https://bugs.webkit.org/show_bug.cgi?id=157350
+        <rdar://problem/26082108>
+
+        Reviewed by Mark Lam.
+
+        * fast/css/css-selector-text-expected.txt:
+        * inspector/runtime/parse-expected.txt:
+        * js/object-literal-computed-methods-expected.txt:
+        * js/object-literal-methods-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.5_Tokens/7.5.2_Keywords/S7.5.2_A1.12-expected.txt:
+        * sputnik/Conformance/12_Statement/12.5_The_if_Statement/S12.5_A6_T1-expected.txt:
+        * sputnik/Conformance/12_Statement/12.5_The_if_Statement/S12.5_A6_T2-expected.txt:
+
+2016-05-04  Keith Miller  <keith_miller@apple.com>
+
+        Corrections to r200422
+        https://bugs.webkit.org/show_bug.cgi?id=157351
+
+        Reviewed by Joseph Pecoraro.
+
+        Test case had some code changed that was not intended.
+
+        * js/regress/script-tests/deltablue-for-of.js:
+        (deltaBlue):
+
+2016-05-04  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, reland r200149 since the rollout had inconclusive PLT AB testing results.
+
+2016-05-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: GC Root Path sometimes does not go up to Window
+        https://bugs.webkit.org/show_bug.cgi?id=156768
+        <rdar://problem/25816131>
+
+        Reviewed by Geoffrey Garen.
+
+        * inspector/unit-tests/heap-snapshot-expected.txt:
+        * inspector/unit-tests/heap-snapshot.html:
+
+2016-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/model/remote-object.html after r200422
+
+        Unreviewed test gardening.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-05-04  Mark Lam  <mark.lam@apple.com>
+
+        ES6 Function.name inferred from property names of literal objects can break some websites.
+        https://bugs.webkit.org/show_bug.cgi?id=157246
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dom/regress-157246-expected.txt: Added.
+        * js/dom/regress-157246.html: Added.
+        * js/dom/script-tests/regress-157246.js: Added.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        - Skip js/dom/regress-157246.html for wk1 because it relies on a WKTR feature to
+          enable the needsSiteSpecificQuirks settings before running the test.
+
+2016-05-04  Keith Miller  <keith_miller@apple.com>
+
+        Speedup array iterators
+        https://bugs.webkit.org/show_bug.cgi?id=157315
+
+        Reviewed by Michael Saboff.
+
+        Add a new regression test for for-of iterators in ES6. The test is a
+        modification of the deltablue benchmark that converts all the
+        loops on Arrays into for-of loops.
+
+        * js/regress/deltablue-for-of-expected.txt: Added.
+        * js/regress/deltablue-for-of.html: Added.
+        * js/regress/script-tests/deltablue-for-of.js: Added.
+        (Object.prototype.inheritsFrom):
+        (OrderedCollection):
+        (OrderedCollection.prototype.add):
+        (OrderedCollection.prototype.at):
+        (OrderedCollection.prototype.size):
+        (OrderedCollection.prototype.removeFirst):
+        (OrderedCollection.prototype.remove):
+        (Strength):
+        (Strength.stronger):
+        (Strength.weaker):
+        (Strength.weakestOf):
+        (Strength.strongest):
+        (Strength.prototype.nextWeaker):
+        (Constraint):
+        (Constraint.prototype.addConstraint):
+        (Constraint.prototype.satisfy):
+        (Constraint.prototype.destroyConstraint):
+        (Constraint.prototype.isInput):
+        (UnaryConstraint):
+        (UnaryConstraint.prototype.addToGraph):
+        (UnaryConstraint.prototype.chooseMethod):
+        (UnaryConstraint.prototype.isSatisfied):
+        (UnaryConstraint.prototype.markInputs):
+        (UnaryConstraint.prototype.output):
+        (UnaryConstraint.prototype.recalculate):
+        (UnaryConstraint.prototype.markUnsatisfied):
+        (UnaryConstraint.prototype.inputsKnown):
+        (UnaryConstraint.prototype.removeFromGraph):
+        (StayConstraint):
+        (StayConstraint.prototype.execute):
+        (EditConstraint.prototype.isInput):
+        (EditConstraint.prototype.execute):
+        (BinaryConstraint):
+        (BinaryConstraint.prototype.chooseMethod):
+        (BinaryConstraint.prototype.addToGraph):
+        (BinaryConstraint.prototype.isSatisfied):
+        (BinaryConstraint.prototype.markInputs):
+        (BinaryConstraint.prototype.input):
+        (BinaryConstraint.prototype.output):
+        (BinaryConstraint.prototype.recalculate):
+        (BinaryConstraint.prototype.markUnsatisfied):
+        (BinaryConstraint.prototype.inputsKnown):
+        (BinaryConstraint.prototype.removeFromGraph):
+        (ScaleConstraint):
+        (ScaleConstraint.prototype.addToGraph):
+        (ScaleConstraint.prototype.removeFromGraph):
+        (ScaleConstraint.prototype.markInputs):
+        (ScaleConstraint.prototype.execute):
+        (ScaleConstraint.prototype.recalculate):
+        (EqualityConstraint):
+        (EqualityConstraint.prototype.execute):
+        (Variable):
+        (Variable.prototype.addConstraint):
+        (Variable.prototype.removeConstraint):
+        (Planner):
+        (Planner.prototype.incrementalAdd):
+        (Planner.prototype.incrementalRemove):
+        (Planner.prototype.newMark):
+        (Planner.prototype.makePlan):
+        (Planner.prototype.extractPlanFromConstraints):
+        (Planner.prototype.addPropagate):
+        (Planner.prototype.removePropagateFrom):
+        (Planner.prototype.addConstraintsConsumingTo):
+        (Plan):
+        (Plan.prototype.addConstraint):
+        (Plan.prototype.size):
+        (Plan.prototype.constraintAt):
+        (Plan.prototype.execute):
+        (chainTest):
+        (projectionTest):
+        (change):
+        (deltaBlue):
+
+2016-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/w3c/web-platform-tests/html/dom/interfaces.html as failing on ios-simulator release builds
+        https://bugs.webkit.org/show_bug.cgi?id=157344
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove failure expectation for imported/w3c/web-platform-tests/html/dom/interfaces.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=157344
+
+        Unreviewed test gardening.
+
+        This failure expectation was overriding the global skip on debug builds.
+
+        * platform/ios-simulator/TestExpectations:
+
 2016-05-04  Chris Dumez  <cdumez@apple.com>
 
         Unreviewed, rolling out r200383 and r200406.

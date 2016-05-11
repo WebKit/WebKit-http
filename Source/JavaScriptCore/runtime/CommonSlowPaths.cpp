@@ -762,7 +762,7 @@ SLOW_PATH_DECL(slow_path_push_with_scope)
 
     int scopeReg = pc[3].u.operand;
     JSScope* currentScope = exec->uncheckedR(scopeReg).Register::scope();
-    RETURN(JSWithScope::create(exec, newScope, currentScope));
+    RETURN(JSWithScope::create(vm, exec->lexicalGlobalObject(), newScope, currentScope));
 }
 
 SLOW_PATH_DECL(slow_path_resolve_scope)
@@ -814,6 +814,80 @@ SLOW_PATH_DECL(slow_path_copy_rest)
     unsigned numParamsToSkip = pc[3].u.unsignedValue;
     for (unsigned i = 0; i < arraySize; i++)
         array->putDirectIndex(exec, i, exec->uncheckedArgument(i + numParamsToSkip));
+    END();
+}
+
+SLOW_PATH_DECL(slow_path_get_by_id_with_this)
+{
+    BEGIN();
+    const Identifier& ident = exec->codeBlock()->identifier(pc[4].u.operand);
+    JSValue baseValue = OP_C(2).jsValue();
+    JSValue thisVal = OP_C(3).jsValue();
+    PropertySlot slot(thisVal, PropertySlot::PropertySlot::InternalMethodType::Get);
+    JSValue result = baseValue.get(exec, ident, slot);
+    RETURN(result);
+}
+
+SLOW_PATH_DECL(slow_path_get_by_val_with_this)
+{
+    BEGIN();
+
+    JSValue baseValue = OP_C(2).jsValue();
+    JSValue thisValue = OP_C(3).jsValue();
+    JSValue subscript = OP_C(4).jsValue();
+
+    if (LIKELY(baseValue.isCell() && subscript.isString())) {
+        VM& vm = exec->vm();
+        Structure& structure = *baseValue.asCell()->structure(vm);
+        if (JSCell::canUseFastGetOwnProperty(structure)) {
+            if (RefPtr<AtomicStringImpl> existingAtomicString = asString(subscript)->toExistingAtomicString(exec)) {
+                if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, existingAtomicString.get()))
+                    RETURN(result); 
+            }
+        }
+    }
+    
+    PropertySlot slot(thisValue, PropertySlot::PropertySlot::InternalMethodType::Get);
+    if (subscript.isUInt32()) {
+        uint32_t i = subscript.asUInt32();
+        if (isJSString(baseValue) && asString(baseValue)->canGetIndex(i))
+            RETURN(asString(baseValue)->getIndex(exec, i));
+        
+        RETURN(baseValue.get(exec, i, slot));
+    }
+
+    baseValue.requireObjectCoercible(exec);
+    CHECK_EXCEPTION();
+    auto property = subscript.toPropertyKey(exec);
+    CHECK_EXCEPTION();
+    RETURN(baseValue.get(exec, property, slot));
+}
+
+SLOW_PATH_DECL(slow_path_put_by_id_with_this)
+{
+    BEGIN();
+    CodeBlock* codeBlock = exec->codeBlock();
+    const Identifier& ident = codeBlock->identifier(pc[3].u.operand);
+    JSValue baseValue = OP_C(1).jsValue();
+    JSValue thisVal = OP_C(2).jsValue();
+    JSValue putValue = OP_C(4).jsValue();
+    PutPropertySlot slot(thisVal, codeBlock->isStrictMode(), codeBlock->putByIdContext());
+    baseValue.putInline(exec, ident, putValue, slot);
+    END();
+}
+
+SLOW_PATH_DECL(slow_path_put_by_val_with_this)
+{
+    BEGIN();
+    JSValue baseValue = OP_C(1).jsValue();
+    JSValue thisValue = OP_C(2).jsValue();
+    JSValue subscript = OP_C(3).jsValue();
+    JSValue value = OP_C(4).jsValue();
+    
+    auto property = subscript.toPropertyKey(exec);
+    CHECK_EXCEPTION();
+    PutPropertySlot slot(thisValue, exec->codeBlock()->isStrictMode());
+    baseValue.put(exec, property, value, slot);
     END();
 }
 

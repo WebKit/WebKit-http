@@ -99,8 +99,11 @@ bool doesGC(Graph& graph, Node* node)
     case TryGetById:
     case GetById:
     case GetByIdFlush:
+    case GetByIdWithThis:
     case PutById:
     case PutByIdFlush:
+    case PutByIdWithThis:
+    case PutByValWithThis:
     case PutByIdDirect:
     case PutGetterById:
     case PutSetterById:
@@ -108,6 +111,7 @@ bool doesGC(Graph& graph, Node* node)
     case PutGetterByVal:
     case PutSetterByVal:
     case DeleteById:
+    case DeleteByVal:
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
@@ -153,6 +157,9 @@ bool doesGC(Graph& graph, Node* node)
     case OverridesHasInstance:
     case InstanceOf:
     case InstanceOfCustom:
+    case IsArrayObject:
+    case IsJSArray:
+    case IsArrayConstructor:
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
@@ -199,6 +206,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetGetter:
     case GetSetter:
     case GetByVal:
+    case GetByValWithThis:
     case GetIndexedPropertyStorage:
     case GetArrayLength:
     case ArrayPush:
@@ -250,6 +258,7 @@ bool doesGC(Graph& graph, Node* node)
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:
+    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
     case AllocatePropertyStorage:

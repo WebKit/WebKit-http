@@ -815,8 +815,6 @@ void WebVideoFullscreenInterfaceAVKit::cleanupFullscreen()
             [[getUIApplicationClass() sharedApplication] _setStatusBarOrientation:[m_parentWindow interfaceOrientation]];
     }
     
-    [playerController() setDelegate:nil];
-    
     [m_playerViewController setDelegate:nil];
     [m_playerViewController setPlayerController:nil];
     
@@ -865,8 +863,8 @@ void WebVideoFullscreenInterfaceAVKit::requestHideAndExitFullscreen()
     [m_window setHidden:YES];
     [[m_playerViewController view] setHidden:YES];
 
-    if (m_videoFullscreenModel && !m_exitRequested) {
-        m_videoFullscreenModel->pause();
+    if (webPlaybackSessionModel() && m_videoFullscreenModel && !m_exitRequested) {
+        webPlaybackSessionModel()->pause();
         m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone);
     }
 }
@@ -1021,8 +1019,8 @@ bool WebVideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(WebVideoFu
         return true;
     }
 
-    if (reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::RemoteControlStopEventReceived)
-        m_videoFullscreenModel->pause();
+    if (webPlaybackSessionModel() && (reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::RemoteControlStopEventReceived))
+        webPlaybackSessionModel()->pause();
     
 
     m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone);
