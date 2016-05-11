@@ -32,7 +32,10 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_SOURCES
+    accessibility/qt/AccessibilityObjectQt.cpp
     history/qt/HistoryItemQt.cpp
+    page/qt/DragControllerQt.cpp
+    page/qt/EventHandlerQt.cpp
     platform/audio/qt/AudioBusQt.cpp
     platform/graphics/gpu/qt/DrawingBufferQt.cpp
     platform/graphics/qt/ColorQt.cpp

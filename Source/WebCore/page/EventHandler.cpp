@@ -3506,7 +3506,7 @@ bool EventHandler::isKeyboardOptionTab(KeyboardEvent* event)
 
 bool EventHandler::eventInvertsTabsToLinksClientCallResult(KeyboardEvent* event)
 {
-#if PLATFORM(COCOA) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(QT) || PLATFORM(EFL)
     return EventHandler::isKeyboardOptionTab(event);
 #else
     UNUSED_PARAM(event);
