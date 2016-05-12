@@ -78,9 +78,9 @@ struct SourceBuffer::TrackBuffer {
     MediaTime lastEnqueuedPresentationTime;
     MediaTime lastEnqueuedDecodeEndTime;
     RefPtr<TimeRanges> m_buffered;
-    bool needRandomAccessFlag;
-    bool enabled;
-    bool needsReenqueueing;
+    bool needRandomAccessFlag { true };
+    bool enabled { false };
+    bool needsReenqueueing { false };
     SampleMap samples;
     DecodeOrderSampleMap::MapType decodeQueue;
     RefPtr<MediaDescription> description;
@@ -92,18 +92,15 @@ struct SourceBuffer::TrackBuffer {
         , lastEnqueuedPresentationTime(MediaTime::invalidTime())
         , lastEnqueuedDecodeEndTime(MediaTime::invalidTime())
         , m_buffered(TimeRanges::create())
-        , needRandomAccessFlag(true)
-        , enabled(false)
-        , needsReenqueueing(false)
     {
     }
 };
 
 Ref<SourceBuffer> SourceBuffer::create(Ref<SourceBufferPrivate>&& sourceBufferPrivate, MediaSource* source)
 {
-    RefPtr<SourceBuffer> sourceBuffer(adoptRef(new SourceBuffer(WTFMove(sourceBufferPrivate), source)));
+    auto sourceBuffer = adoptRef(*new SourceBuffer(WTFMove(sourceBufferPrivate), source));
     sourceBuffer->suspendIfNeeded();
-    return sourceBuffer.releaseNonNull();
+    return sourceBuffer;
 }
 
 SourceBuffer::SourceBuffer(Ref<SourceBufferPrivate>&& sourceBufferPrivate, MediaSource* source)
@@ -118,17 +115,9 @@ SourceBuffer::SourceBuffer(Ref<SourceBufferPrivate>&& sourceBufferPrivate, Media
     , m_buffered(TimeRanges::create())
     , m_appendState(WaitingForSegment)
     , m_timeOfBufferingMonitor(monotonicallyIncreasingTime())
-    , m_bufferedSinceLastMonitor(0)
-    , m_averageBufferRate(0)
-    , m_reportedExtraMemoryCost(0)
     , m_pendingRemoveStart(MediaTime::invalidTime())
     , m_pendingRemoveEnd(MediaTime::invalidTime())
     , m_removeTimer(*this, &SourceBuffer::removeTimerFired)
-    , m_updating(false)
-    , m_receivedFirstInitializationSegment(false)
-    , m_active(false)
-    , m_bufferFull(false)
-    , m_shouldRecalculateBuffered(false)
 {
     ASSERT(m_source);
 
@@ -258,30 +247,14 @@ void SourceBuffer::setTimestampOffset(double offset, ExceptionCode& ec)
 
 }
 
-void SourceBuffer::appendBuffer(PassRefPtr<ArrayBuffer> data, ExceptionCode& ec)
+void SourceBuffer::appendBuffer(ArrayBuffer& data, ExceptionCode& ec)
 {
-    // Section 3.2 appendBuffer()
-    // https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#widl-SourceBuffer-appendBuffer-void-ArrayBufferView-data
-    // 1. If data is null then throw an INVALID_ACCESS_ERR exception and abort these steps.
-    if (!data) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    appendBufferInternal(static_cast<unsigned char*>(data->data()), data->byteLength(), ec);
+    appendBufferInternal(static_cast<unsigned char*>(data.data()), data.byteLength(), ec);
 }
 
-void SourceBuffer::appendBuffer(PassRefPtr<ArrayBufferView> data, ExceptionCode& ec)
+void SourceBuffer::appendBuffer(ArrayBufferView& data, ExceptionCode& ec)
 {
-    // Section 3.2 appendBuffer()
-    // https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#widl-SourceBuffer-appendBuffer-void-ArrayBufferView-data
-    // 1. If data is null then throw an INVALID_ACCESS_ERR exception and abort these steps.
-    if (!data) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    appendBufferInternal(static_cast<unsigned char*>(data->baseAddress()), data->byteLength(), ec);
+    appendBufferInternal(static_cast<unsigned char*>(data.baseAddress()), data.byteLength(), ec);
 }
 
 void SourceBuffer::resetParserState()
@@ -500,10 +473,10 @@ bool SourceBuffer::isRemoved() const
 
 void SourceBuffer::scheduleEvent(const AtomicString& eventName)
 {
-    RefPtr<Event> event = Event::create(eventName, false, false);
+    auto event = Event::create(eventName, false, false);
     event->setTarget(this);
 
-    m_asyncEventQueue.enqueueEvent(event.release());
+    m_asyncEventQueue.enqueueEvent(WTFMove(event));
 }
 
 void SourceBuffer::appendBufferInternal(unsigned char* data, unsigned size, ExceptionCode& ec)
@@ -685,7 +658,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveRenderingError(SourceBufferPriva
     LOG(MediaSource, "SourceBuffer::sourceBufferPrivateDidReceiveRenderingError(%p) - result = %i", this, error);
 
     if (!isRemoved())
-        m_source->streamEndedWithError(decodeError(), IgnorableExceptionCode());
+        m_source->streamEndedWithError(MediaSource::EndOfStreamError::Decode);
 }
 
 static bool decodeTimeComparator(const PresentationOrderSampleMap::MapType::value_type& a, const PresentationOrderSampleMap::MapType::value_type& b)
@@ -1007,18 +980,6 @@ size_t SourceBuffer::maximumBufferSize() const
     return maxBufferSizeText;
 }
 
-const AtomicString& SourceBuffer::decodeError()
-{
-    static NeverDestroyed<AtomicString> decode("decode", AtomicString::ConstructFromLiteral);
-    return decode;
-}
-
-const AtomicString& SourceBuffer::networkError()
-{
-    static NeverDestroyed<AtomicString> network("network", AtomicString::ConstructFromLiteral);
-    return network;
-}
-
 #if ENABLE(VIDEO_TRACK)
 VideoTrackList* SourceBuffer::videoTracks()
 {
@@ -1062,7 +1023,7 @@ void SourceBuffer::setActive(bool active)
     m_active = active;
     m_private->setActive(active);
     if (!isRemoved())
-        m_source->sourceBufferDidChangeActiveState(this, active);
+        m_source->sourceBufferDidChangeActiveState(*this, active);
 }
 
 void SourceBuffer::sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString& error)
@@ -1379,7 +1340,6 @@ public:
     }
 };
 
-#if ENABLE(VIDEO_TRACK)
 void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, PassRefPtr<MediaSample> prpSample)
 {
     if (isRemoved())
@@ -1732,7 +1692,7 @@ void SourceBuffer::textTrackModeChanged(TextTrack* track)
     // 2.4.5 Changes to selected/enabled track state
     // If a text track mode becomes "disabled" and the SourceBuffer associated with this track is not
     // associated with any other enabled or selected track, then run the following steps:
-    if (track->mode() == TextTrack::disabledKeyword()
+    if (track->mode() == TextTrack::Mode::Disabled
         && (!m_videoTracks || !m_videoTracks->isAnyTrackEnabled())
         && (!m_audioTracks || !m_audioTracks->isAnyTrackEnabled())
         && (!m_textTracks || !m_textTracks->isAnyTrackEnabled())) {

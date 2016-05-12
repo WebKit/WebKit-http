@@ -60,8 +60,10 @@ public:
     const Vector<LayoutUnit>& columnPositions() const { return m_columnPositions; }
     const Vector<LayoutUnit>& rowPositions() const { return m_rowPositions; }
 
-    LayoutUnit guttersSize(GridTrackSizingDirection, size_t span) const;
+    LayoutUnit guttersSize(GridTrackSizingDirection, unsigned span) const;
     LayoutUnit offsetBetweenTracks(GridTrackSizingDirection) const;
+
+    size_t autoRepeatCountForDirection(GridTrackSizingDirection) const;
 
 private:
     const char* renderName() const override;
@@ -79,6 +81,9 @@ private:
 
     void ensureGridSize(unsigned maximumRowSize, unsigned maximumColumnSize);
     void insertItemIntoGrid(RenderBox&, const GridArea&);
+
+    unsigned computeAutoRepeatTracksCount(GridTrackSizingDirection) const;
+
     void placeItemsOnGrid();
     void populateExplicitGridAndOrderIterator();
     std::unique_ptr<GridArea> createEmptyGridAreaAtSpecifiedPositionsOutsideGrid(const RenderBox&, GridTrackSizingDirection, const GridSpan&) const;
@@ -129,6 +134,7 @@ private:
     double computeFlexFactorUnitSize(const Vector<GridTrack>&, GridTrackSizingDirection, double flexFactorSum, LayoutUnit leftOverSpace, const Vector<unsigned, 8>& flexibleTracksIndexes, std::unique_ptr<TrackIndexSet> tracksToTreatAsInflexible = nullptr) const;
     double findFlexFactorUnitSize(const Vector<GridTrack>&, const GridSpan&, GridTrackSizingDirection, LayoutUnit spaceToFill) const;
 
+    const GridTrackSize& rawGridTrackSize(GridTrackSizingDirection, unsigned) const;
     GridTrackSize gridTrackSize(GridTrackSizingDirection, unsigned) const;
 
     bool updateOverrideContainingBlockContentLogicalWidthForChild(RenderBox&, GridSizingData&);
@@ -198,7 +204,15 @@ private:
 
     int m_smallestColumnStart;
     int m_smallestRowStart;
+
+    unsigned m_autoRepeatColumns { 0 };
+    unsigned m_autoRepeatRows { 0 };
 };
+
+size_t inline RenderGrid::autoRepeatCountForDirection(GridTrackSizingDirection direction) const
+{
+    return direction == ForColumns ? m_autoRepeatColumns : m_autoRepeatRows;
+}
 
 } // namespace WebCore
 

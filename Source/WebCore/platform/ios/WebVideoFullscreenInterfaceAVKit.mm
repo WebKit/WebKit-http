@@ -81,46 +81,6 @@ static const char* boolString(bool val)
 }
 #endif
 
-@interface WebFullScreenVideoRootViewController : UIViewController
-- (instancetype)initWithSourceWindow:(UIWindow *)sourceWindow;
-@end
-
-static Class createFullScreenVideoRootViewControllerClass()
-{
-    Class newClass = objc_allocateClassPair(getUIViewControllerClass(), "WebFullScreenVideoRootViewController", 0);
-
-    class_addIvar(newClass, "_sourceWindow", sizeof(UIWindow *), log2(alignof(UIWindow *)), @encode(UIWindow *));
-    Ivar sourceWindowIvar = class_getInstanceVariable(newClass, "_sourceWindow");
-
-    class_addMethod(newClass, @selector(initWithSourceWindow:), imp_implementationWithBlock(^(id self, UIWindow *sourceWindow){
-        self = [self init];
-        object_setIvar(self, sourceWindowIvar, [sourceWindow retain]);
-        return self;
-    }), "@@:@");
-
-    class_addMethod(newClass, @selector(dealloc), imp_implementationWithBlock(^(id self){
-        [object_getIvar(self, sourceWindowIvar) release];
-        objc_super superClass { self, getUIViewControllerClass() };
-        ((void (*)(objc_super*, SEL))objc_msgSendSuper)(&superClass, @selector(dealloc));
-    }), "v@:");
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    class_addMethod(newClass, @selector(childViewControllerForWhitePointAdaptivityStyle), imp_implementationWithBlock(^(id self){
-        UIWindow *sourceWindow = object_getIvar(self, sourceWindowIvar);
-        return sourceWindow.rootViewController;
-    }), "@@:");
-#endif
-
-    objc_registerClassPair(newClass);
-    return newClass;
-}
-
-static WebFullScreenVideoRootViewController *allocWebFullScreenVideoRootViewControllerInstance()
-{
-    static Class fullScreenVideoRootViewControllerClass = createFullScreenVideoRootViewControllerClass();
-    return [fullScreenVideoRootViewControllerClass alloc];
-}
-
 static const double DefaultWatchdogTimerInterval = 1;
 
 @class WebAVMediaSelectionOption;
@@ -682,7 +642,7 @@ void WebVideoFullscreenInterfaceAVKit::setupFullscreen(UIView& videoView, const 
             m_window = adoptNS([allocUIWindowInstance() initWithFrame:[[getUIScreenClass() mainScreen] bounds]]);
         [m_window setBackgroundColor:[getUIColorClass() clearColor]];
         if (!m_viewController)
-            m_viewController = adoptNS([allocWebFullScreenVideoRootViewControllerInstance() initWithSourceWindow:[parentView window]]);
+            m_viewController = adoptNS([allocUIViewControllerInstance() init]);
         [[m_viewController view] setFrame:[m_window bounds]];
         [m_viewController _setIgnoreAppSupportedOrientations:YES];
         [m_window setRootViewController:m_viewController.get()];
@@ -855,8 +815,6 @@ void WebVideoFullscreenInterfaceAVKit::cleanupFullscreen()
             [[getUIApplicationClass() sharedApplication] _setStatusBarOrientation:[m_parentWindow interfaceOrientation]];
     }
     
-    [playerController() setDelegate:nil];
-    
     [m_playerViewController setDelegate:nil];
     [m_playerViewController setPlayerController:nil];
     
@@ -905,8 +863,8 @@ void WebVideoFullscreenInterfaceAVKit::requestHideAndExitFullscreen()
     [m_window setHidden:YES];
     [[m_playerViewController view] setHidden:YES];
 
-    if (m_videoFullscreenModel && !m_exitRequested) {
-        m_videoFullscreenModel->pause();
+    if (webPlaybackSessionModel() && m_videoFullscreenModel && !m_exitRequested) {
+        webPlaybackSessionModel()->pause();
         m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone);
     }
 }
@@ -1061,8 +1019,8 @@ bool WebVideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(WebVideoFu
         return true;
     }
 
-    if (reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::RemoteControlStopEventReceived)
-        m_videoFullscreenModel->pause();
+    if (webPlaybackSessionModel() && (reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::RemoteControlStopEventReceived))
+        webPlaybackSessionModel()->pause();
     
 
     m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone);

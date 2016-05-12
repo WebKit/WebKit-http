@@ -85,6 +85,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         // FIXME: Cmd+L shortcut doesn't actually work.
         new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command, "L", this.showGoToLineDialog.bind(this), this.element);
         new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, "G", this.showGoToLineDialog.bind(this), this.element);
+
+        WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.Cleared, this._logCleared, this);
     }
 
     // Public
@@ -394,7 +396,9 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         if (this._autoFormat) {
             console.assert(!this.formatted);
             this._autoFormat = false;
+            this.deferReveal = true;
             this.string = content;
+            this.deferReveal = false;
             this.updateFormattedState(true).then(() => {
                 this._proceedPopulateWithContent(this.string);
             });
@@ -802,6 +806,10 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
     _addIssue(issue)
     {
         var sourceCodeLocation = issue.sourceCodeLocation;
+        console.assert(sourceCodeLocation, "Expected source code location to place issue.");
+        if (!sourceCodeLocation)
+            return;
+
         var lineNumber = sourceCodeLocation.formattedLineNumber;
 
         var lineNumberIssues = this._issuesLineNumberMap.get(lineNumber);
@@ -1791,6 +1799,17 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         }
 
         return scrollHandler.bind(this);
+    }
+
+    _logCleared(event)
+    {
+        for (let lineNumber of this._issuesLineNumberMap.keys()) {
+            this.removeStyleClassFromLine(lineNumber, WebInspector.SourceCodeTextEditor.LineErrorStyleClassName);
+            this.removeStyleClassFromLine(lineNumber, WebInspector.SourceCodeTextEditor.LineWarningStyleClassName);
+        }
+
+        this._issuesLineNumberMap.clear();
+        this._clearWidgets();
     }
 };
 

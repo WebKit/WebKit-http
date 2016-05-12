@@ -53,6 +53,7 @@ class WatchpointSet;
 
 struct ByValInfo;
 struct InlineCallFrame;
+struct ResultProfile;
 
 typedef ExecState CallFrame;
 
@@ -96,6 +97,7 @@ typedef char* UnusedPtr;
     Q: int64_t
     R: Register
     Reo: RegExpObject*
+    Rp: ResultProfile*
     S: size_t
     Sprt: SlowPathReturnType
     Ssi: StructureStubInfo*
@@ -136,6 +138,7 @@ typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJJJ)(ExecState*, EncodedJ
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJJAp)(ExecState*, EncodedJSValue, EncodedJSValue, ArrayProfile*);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJJBy)(ExecState*, EncodedJSValue, EncodedJSValue, ByValInfo*);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue);
+typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJJRp)(ExecState*, EncodedJSValue, EncodedJSValue, ResultProfile*);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJssZ)(ExecState*, JSString*, int32_t);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJssReo)(ExecState*, JSString*, RegExpObject*);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJssReoJss)(ExecState*, JSString*, RegExpObject*, JSString*);
@@ -156,6 +159,7 @@ typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EZIcfZ)(ExecState*, int32_
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EZZ)(ExecState*, int32_t, int32_t);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EZSymtabJ)(ExecState*, int32_t, SymbolTable*, EncodedJSValue);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EOIUi)(ExecState*, JSObject*, UniquedStringImpl*, uint32_t);
+typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EJJI)(ExecState*, EncodedJSValue, EncodedJSValue, UniquedStringImpl*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_E)(ExecState*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EZ)(ExecState*, int32_t);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EC)(ExecState*, JSCell*);
@@ -249,6 +253,8 @@ typedef void JIT_OPERATION (*V_JITOperation_EOZJ)(ExecState*, JSObject*, int32_t
 typedef void JIT_OPERATION (*V_JITOperation_EPc)(ExecState*, Instruction*);
 typedef void JIT_OPERATION (*V_JITOperation_EPZJ)(ExecState*, void*, int32_t, EncodedJSValue);
 typedef void JIT_OPERATION (*V_JITOperation_ESsiJJI)(ExecState*, StructureStubInfo*, EncodedJSValue, EncodedJSValue, UniquedStringImpl*);
+typedef void JIT_OPERATION (*V_JITOperation_EJJJI)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue, UniquedStringImpl*);
+typedef void JIT_OPERATION (*V_JITOperation_EJJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue, EncodedJSValue);
 typedef void JIT_OPERATION (*V_JITOperation_EWs)(ExecState*, WatchpointSet*);
 typedef void JIT_OPERATION (*V_JITOperation_EZ)(ExecState*, int32_t);
 typedef void JIT_OPERATION (*V_JITOperation_EZJ)(ExecState*, int32_t, EncodedJSValue);
@@ -373,6 +379,8 @@ EncodedJSValue JIT_OPERATION operationHasIndexedPropertyDefault(ExecState*, Enco
 EncodedJSValue JIT_OPERATION operationHasIndexedPropertyGeneric(ExecState*, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript, ByValInfo*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationDeleteByIdJSResult(ExecState*, EncodedJSValue base, UniquedStringImpl*) WTF_INTERNAL;
 size_t JIT_OPERATION operationDeleteById(ExecState*, EncodedJSValue base, UniquedStringImpl*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationDeleteByValJSResult(ExecState*, EncodedJSValue base, EncodedJSValue target) WTF_INTERNAL;
+size_t JIT_OPERATION operationDeleteByVal(ExecState*, EncodedJSValue base, EncodedJSValue target) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationGetPNames(ExecState*, JSObject*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationInstanceOf(ExecState*, EncodedJSValue, EncodedJSValue proto) WTF_INTERNAL;
 int32_t JIT_OPERATION operationSizeFrameForVarargs(ExecState*, EncodedJSValue arguments, int32_t numUsedStackSlots, int32_t firstVarArgOffset) WTF_INTERNAL;
@@ -403,6 +411,13 @@ EncodedJSValue JIT_OPERATION operationHasIndexedProperty(ExecState*, JSCell*, in
 JSCell* JIT_OPERATION operationGetPropertyEnumerator(ExecState*, JSCell*);
 EncodedJSValue JIT_OPERATION operationNextEnumeratorPname(ExecState*, JSCell*, int32_t);
 JSCell* JIT_OPERATION operationToIndexString(ExecState*, int32_t);
+
+EncodedJSValue JIT_OPERATION operationValueAdd(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueAddProfiled(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueMul(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueMulProfiled(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueSub(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueSubProfiled(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile*) WTF_INTERNAL;
 
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState*) WTF_INTERNAL;
 void JIT_OPERATION operationProcessShadowChickenLog(ExecState*) WTF_INTERNAL;

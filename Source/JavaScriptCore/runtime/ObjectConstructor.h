@@ -88,7 +88,7 @@ inline JSObject* constructEmptyObject(ExecState* exec, JSObject* prototype)
 
 inline JSObject* constructEmptyObject(ExecState* exec)
 {
-    return constructEmptyObject(exec, exec->lexicalGlobalObject()->objectPrototype());
+    return constructEmptyObject(exec, exec->lexicalGlobalObject()->objectStructureForObjectConstructor());
 }
 
 inline JSObject* constructObject(ExecState* exec, JSGlobalObject* globalObject, JSValue arg)

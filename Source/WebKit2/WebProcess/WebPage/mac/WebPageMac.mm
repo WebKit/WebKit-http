@@ -363,11 +363,11 @@ void WebPage::fontAtSelection(uint64_t callbackID)
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     
     if (!frame.selection().selection().isNone()) {
-        const Font* font = frame.editor().fontForSelection(selectionHasMultipleFonts);
-        NSFont *nsFont = font ? font->getNSFont() : nil;
-        if (nsFont) {
-            fontName = nsFont.fontName;
-            fontSize = nsFont.pointSize;
+        if (auto* font = frame.editor().fontForSelection(selectionHasMultipleFonts)) {
+            if (auto ctFont = font->getCTFont()) {
+                fontName = adoptCF(CTFontCopyPostScriptName(ctFont)).get();
+                fontSize = CTFontGetSize(ctFont);
+            }
         }
     }
     send(Messages::WebPageProxy::FontAtSelectionCallback(fontName, fontSize, selectionHasMultipleFonts, callbackID));
@@ -832,7 +832,10 @@ static void drawPDFPage(PDFDocument *pdfDocument, CFIndex pageIndex, CGContextRe
 
     [NSGraphicsContext saveGraphicsState];
     [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:NO]];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [pdfPage drawWithBox:kPDFDisplayBoxCropBox];
+#pragma clang diagnostic pop
     [NSGraphicsContext restoreGraphicsState];
 
     CGAffineTransform transform = CGContextGetCTM(context);

@@ -45,17 +45,17 @@ public:
     uint64_t messageSenderDestinationID() final { return m_identifier; }
 
     // IDBConnectionToServerDelegate
-    void deleteDatabase(WebCore::IDBRequestData&) final;
-    void openDatabase(WebCore::IDBRequestData&) final;
-    void abortTransaction(WebCore::IDBResourceIdentifier&) final;
-    void commitTransaction(WebCore::IDBResourceIdentifier&) final;
-    void didFinishHandlingVersionChangeTransaction(WebCore::IDBResourceIdentifier&) final;
+    void deleteDatabase(const WebCore::IDBRequestData&) final;
+    void openDatabase(const WebCore::IDBRequestData&) final;
+    void abortTransaction(const WebCore::IDBResourceIdentifier&) final;
+    void commitTransaction(const WebCore::IDBResourceIdentifier&) final;
+    void didFinishHandlingVersionChangeTransaction(const WebCore::IDBResourceIdentifier&) final;
     void createObjectStore(const WebCore::IDBRequestData&, const WebCore::IDBObjectStoreInfo&) final;
     void deleteObjectStore(const WebCore::IDBRequestData&, const String& objectStoreName) final;
     void clearObjectStore(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier) final;
     void createIndex(const WebCore::IDBRequestData&, const WebCore::IDBIndexInfo&) final;
     void deleteIndex(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName) final;
-    void putOrAdd(const WebCore::IDBRequestData&, WebCore::IDBKey*, const WebCore::IDBValue&, const WebCore::IndexedDB::ObjectStoreOverwriteMode) final;
+    void putOrAdd(const WebCore::IDBRequestData&, const WebCore::IDBKeyData&, const WebCore::IDBValue&, const WebCore::IndexedDB::ObjectStoreOverwriteMode) final;
     void getRecord(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&) final;
     void getCount(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&) final;
     void deleteRecord(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&) final;
@@ -65,6 +65,7 @@ public:
     void databaseConnectionClosed(uint64_t databaseConnectionIdentifier) final;
     void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const WebCore::IDBResourceIdentifier& transactionIdentifier) final;
     void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const WebCore::IDBResourceIdentifier& requestIdentifier) final;
+    void getAllDatabaseNames(const WebCore::SecurityOriginData& topOrigin, const WebCore::SecurityOriginData& openingOrigin, uint64_t callbackID) final;
 
     void ref() override { RefCounted<WebIDBConnectionToServer>::ref(); }
     void deref() override { RefCounted<WebIDBConnectionToServer>::deref(); }
@@ -89,6 +90,7 @@ public:
     void fireVersionChangeEvent(uint64_t uniqueDatabaseConnectionIdentifier, const WebCore::IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion);
     void didStartTransaction(const WebCore::IDBResourceIdentifier& transactionIdentifier, const WebCore::IDBError&);
     void notifyOpenDBRequestBlocked(const WebCore::IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion);
+    void didGetAllDatabaseNames(uint64_t callbackID, const Vector<String>& databaseNames);
 
     void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
 

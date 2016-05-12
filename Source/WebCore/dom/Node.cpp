@@ -952,6 +952,65 @@ bool Node::containsIncludingHostElements(const Node* node) const
     return false;
 }
 
+static inline Node* ancestor(Node* node, unsigned depth)
+{
+    for (unsigned i = 0; i < depth; ++i)
+        node = node->parentNode();
+    return node;
+}
+
+Node* commonAncestor(Node& thisNode, Node& otherNode)
+{
+    unsigned thisDepth = 0;
+    for (auto node = &thisNode; node; node = node->parentNode()) {
+        if (node == &otherNode)
+            return node;
+        thisDepth++;
+    }
+    unsigned otherDepth = 0;
+    for (auto node = &otherNode; node; node = node->parentNode()) {
+        if (node == &thisNode)
+            return &thisNode;
+        otherDepth++;
+    }
+
+    Node* thisAncestor = &thisNode;
+    Node* otherAncestor = &otherNode;
+    if (thisDepth > otherDepth)
+        thisAncestor = ancestor(thisAncestor, thisDepth - otherDepth);
+    else if (otherDepth > thisDepth)
+        otherAncestor = ancestor(otherAncestor, otherDepth - thisDepth);
+
+    for (; thisAncestor; thisAncestor = thisAncestor->parentNode()) {
+        if (thisAncestor == otherAncestor)
+            return thisAncestor;
+        otherAncestor = otherAncestor->parentNode();
+    }
+    ASSERT(!otherAncestor);
+    return nullptr;
+}
+
+Node* commonAncestorCrossingShadowBoundary(Node& node, Node& other)
+{
+    if (&node == &other)
+        return &node;
+
+    Element* shadowHost = node.shadowHost();
+    // FIXME: This test might be wrong for user-authored shadow trees.
+    if (shadowHost && shadowHost == other.shadowHost())
+        return shadowHost;
+
+    TreeScope* scope = commonTreeScope(&node, &other);
+    if (!scope)
+        return nullptr;
+
+    Node* parentNode = scope->ancestorInThisScope(&node);
+    ASSERT(parentNode);
+    Node* parentOther = scope->ancestorInThisScope(&other);
+    ASSERT(parentOther);
+    return commonAncestor(*parentNode, *parentOther);
+}
+
 Node* Node::pseudoAwarePreviousSibling() const
 {
     Element* parentOrHost = is<PseudoElement>(*this) ? downcast<PseudoElement>(*this).hostElement() : parentElement();
@@ -1056,6 +1115,28 @@ ShadowRoot* Node::containingShadowRoot() const
 {
     ContainerNode& root = treeScope().rootNode();
     return is<ShadowRoot>(root) ? downcast<ShadowRoot>(&root) : nullptr;
+}
+
+// http://w3c.github.io/webcomponents/spec/shadow/#dfn-unclosed-node
+bool Node::isUnclosedNode(const Node& otherNode) const
+{
+    // Use Vector instead of HashSet since we expect the number of ancestor tree scopes to be small.
+    Vector<TreeScope*, 8> ancestorScopesOfThisNode;
+
+    for (auto* scope = &treeScope(); scope; scope = scope->parentTreeScope())
+        ancestorScopesOfThisNode.append(scope);
+
+    for (auto* treeScopeThatCanAccessOtherNode = &otherNode.treeScope(); treeScopeThatCanAccessOtherNode; treeScopeThatCanAccessOtherNode = treeScopeThatCanAccessOtherNode->parentTreeScope()) {
+        for (auto* scope : ancestorScopesOfThisNode) {
+            if (scope == treeScopeThatCanAccessOtherNode)
+                return true; // treeScopeThatCanAccessOtherNode is a shadow-including inclusive ancestor of this node.
+        }
+        auto& root = treeScopeThatCanAccessOtherNode->rootNode();
+        if (is<ShadowRoot>(root) && downcast<ShadowRoot>(root).type() != ShadowRoot::Type::Open)
+            break;
+    }
+
+    return false;
 }
 
 #if ENABLE(SHADOW_DOM)

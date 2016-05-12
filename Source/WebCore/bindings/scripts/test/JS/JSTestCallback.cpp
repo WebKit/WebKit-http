@@ -24,13 +24,11 @@
 
 #include "JSTestCallback.h"
 
-#include "DOMStringList.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMStringList.h"
 #include "JSTestNode.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
-#include "TestNode.h"
 #include "URL.h"
 #include <runtime/FunctionPrototype.h>
 #include <runtime/JSLock.h>
@@ -71,9 +69,8 @@ static const HashTableValue JSTestCallbackConstructorTableValues[] =
     { "CONSTANT2", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(2) } },
 };
 
-
-COMPILE_ASSERT(1 == TestCallback::CONSTANT1, TestCallbackEnumCONSTANT1IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(2 == TestCallback::CONSTANT2, TestCallbackEnumCONSTANT2IsWrongUseDoNotCheckConstants);
+static_assert(TestCallback::CONSTANT1 == 1, "CONSTANT1 in TestCallback does not match value from IDL");
+static_assert(TestCallback::CONSTANT2 == 2, "CONSTANT2 in TestCallback does not match value from IDL");
 
 template<> JSValue JSTestCallbackConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
@@ -199,7 +196,7 @@ bool JSTestCallback::callbackWithBoolean(bool boolParam)
     return !returnedException;
 }
 
-bool JSTestCallback::callbackRequiresThisToPass(int longParam, TestNode* testNodeParam)
+bool JSTestCallback::callbackRequiresThisToPass(int32_t longParam, TestNode* testNodeParam)
 {
     if (!canInvokeCallback())
         return true;

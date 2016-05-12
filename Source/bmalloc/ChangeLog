@@ -1,3 +1,81 @@
+2016-05-10  David Kilzer  <ddkilzer@apple.com>
+
+        bmalloc should automatically disable itself when ThreadSanitizer is used
+        <https://webkit.org/b/157527>
+
+        Reviewed by Michael Catanzaro.
+
+        * bmalloc/Environment.cpp:
+        (bmalloc::isASanEnabled): Rename to isSanitizerEnabled.
+        (bmalloc::isSanitizerEnabled): Rename from isASanEnabled. Add
+        support for detecting ThreadSanitizer.
+        (bmalloc::Environment::computeIsBmallocEnabled): Switch from
+        isASanEnabled to isSanitizerEnabled.
+
+2016-05-03  Geoffrey Garen  <ggaren@apple.com>
+
+        Assertion failure in bmalloc::vmRevokePermissions(void*, unsigned long).
+        https://bugs.webkit.org/show_bug.cgi?id=157047
+
+        Reviewed by Filip Pizlo.
+
+        Renamed roundUpToMultipleOfSloppy => roundUpToMultipleOfNonPowerOfTwo.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::roundUpToMultipleOfNonPowerOfTwo):
+        (bmalloc::roundUpToMultipleOfSloppy): Deleted.
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateSmallChunk):
+
+2016-05-03  Geoffrey Garen  <ggaren@apple.com>
+
+        Assertion failure in bmalloc::vmRevokePermissions(void*, unsigned long).
+        https://bugs.webkit.org/show_bug.cgi?id=157047
+
+        Reviewed by Filip Pizlo.
+
+        The previous fix aligned the guard page sizes correctly but forgot to
+        align the guard page start address correctly.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::roundUpToMultipleOfSloppy): Use a new helper method to round
+        up when not working with a power of two, instead of writing out the
+        math by hand.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateSmallChunk): Make sure to round up the guard
+        page start address in addition to its size. Assert at the very end to
+        try to catch more bugs.
+
+2016-04-27  Geoffrey Garen  <ggaren@apple.com>
+
+        Assertion failure in bmalloc::vmRevokePermissions(void*, unsigned long).
+        https://bugs.webkit.org/show_bug.cgi?id=157047
+
+        Reviewed by Darin Adler.
+
+        * bmalloc/Chunk.h:
+        (bmalloc::Chunk::Chunk):
+        (bmalloc::Chunk::get):
+        (bmalloc::Chunk::offset):
+        (bmalloc::Chunk::address):
+        (bmalloc::Object::Object):
+        (bmalloc::Object::address):
+        (bmalloc::Object::line):
+        (bmalloc::Chunk::object): Deleted.
+        (bmalloc::Object::begin): Deleted.
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateSmallBumpRangesByObject):
+        * bmalloc/Object.h:
+        (bmalloc::Object::chunk):
+        (bmalloc::Object::offset): Renamed begin() to address() because this is
+        not an iterator.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateSmallChunk): Round up pageSize to a vmPageSize
+        multiple because pageSize might be smaller than vmPageSize, but we
+        think the VM system requires vmPageSize-aligned values.
+
 2016-04-25  Geoffrey Garen  <ggaren@apple.com>
 
         bmalloc: vm allocations should plant guard pages

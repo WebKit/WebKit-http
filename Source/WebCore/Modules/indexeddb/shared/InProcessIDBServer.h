@@ -55,17 +55,17 @@ public:
     IDBServer::IDBConnectionToClient& connectionToClient() const;
 
     // IDBConnectionToServer
-    void deleteDatabase(IDBRequestData&) final;
-    void openDatabase(IDBRequestData&) final;
-    void abortTransaction(IDBResourceIdentifier&) final;
-    void commitTransaction(IDBResourceIdentifier&) final;
-    void didFinishHandlingVersionChangeTransaction(IDBResourceIdentifier&) final;
+    void deleteDatabase(const IDBRequestData&) final;
+    void openDatabase(const IDBRequestData&) final;
+    void abortTransaction(const IDBResourceIdentifier&) final;
+    void commitTransaction(const IDBResourceIdentifier&) final;
+    void didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier&) final;
     void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&) final;
     void deleteObjectStore(const IDBRequestData&, const String& objectStoreName) final;
     void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier) final;
     void createIndex(const IDBRequestData&, const IDBIndexInfo&) final;
     void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName) final;
-    void putOrAdd(const IDBRequestData&, IDBKey*, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode) final;
+    void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode) final;
     void getRecord(const IDBRequestData&, const IDBKeyRangeData&) final;
     void getCount(const IDBRequestData&, const IDBKeyRangeData&) final;
     void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&) final;
@@ -75,6 +75,7 @@ public:
     void databaseConnectionClosed(uint64_t databaseConnectionIdentifier) final;
     void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier) final;
     void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier) final;
+    void getAllDatabaseNames(const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID) final;
 
     // IDBConnectionToClient
     uint64_t identifier() const override;
@@ -96,6 +97,7 @@ public:
     void fireVersionChangeEvent(IDBServer::UniqueIDBDatabaseConnection&, const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion) final;
     void didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&) final;
     void notifyOpenDBRequestBlocked(const IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion) final;
+    void didGetAllDatabaseNames(uint64_t callbackID, const Vector<String>& databaseNames) final;
 
     void ref() override { RefCounted<InProcessIDBServer>::ref(); }
     void deref() override { RefCounted<InProcessIDBServer>::deref(); }

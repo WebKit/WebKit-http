@@ -50,15 +50,13 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
     , m_isDeviceMotionEnabled(true)
     , m_isDeviceOrientationEnabled(true)
     , m_isLinkPreloadEnabled(false)
-    , m_isCSSShapesEnabled(true)
-    , m_isCSSRegionsEnabled(false)
-    , m_isCSSCompositingEnabled(false)
     , m_isLangAttributeAwareFormControlUIEnabled(false)
 #if PLATFORM(IOS)
     , m_isPluginReplacementEnabled(true)
 #else
     , m_isPluginReplacementEnabled(false)
 #endif
+    , m_isResourceTimingEnabled(false)
 #if ENABLE(INDEXED_DATABASE)
     , m_isIndexedDBEnabled(false)
 #endif
@@ -76,9 +74,6 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
 #endif
 #if ENABLE(JAVASCRIPT_I18N_API)
     , m_isJavaScriptI18NAPIEnabled(false)
-#endif
-#if ENABLE(VIDEO_TRACK)
-    , m_isVideoTrackEnabled(true)
 #endif
 #if ENABLE(INPUT_TYPE_DATE)
     , m_isInputTypeDateEnabled(true)
@@ -112,6 +107,9 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
 #endif
 #if ENABLE(WEB_ANIMATIONS)
     , m_areWebAnimationsEnabled(false)
+#endif
+#if ENABLE(CSS_GRID_LAYOUT)
+    , m_cssGridLayoutEnabled(true)
 #endif
 {
 }

@@ -176,8 +176,10 @@ static bool affectsRenderedSubtree(Element& element, const RenderStyle& newStyle
         return true;
     if (element.rendererIsNeeded(newStyle))
         return true;
+#if ENABLE(CSS_REGIONS)
     if (element.shouldMoveToFlowThread(newStyle))
         return true;
+#endif
     return false;
 }
 
@@ -185,21 +187,13 @@ ElementUpdate TreeResolver::resolveElement(Element& element)
 {
     auto newStyle = styleForElement(element, parent().style);
 
-    auto* renderer = element.renderer();
-
     if (!affectsRenderedSubtree(element, *newStyle))
         return { };
 
-    ElementUpdate update;
+    bool shouldReconstructRenderTree = element.styleChangeType() == ReconstructRenderTree || parent().change == Detach;
+    auto* rendererToUpdate = shouldReconstructRenderTree ? nullptr : element.renderer();
 
-    bool needsNewRenderer = !renderer || element.styleChangeType() == ReconstructRenderTree || parent().change == Detach;
-
-    std::unique_ptr<RenderStyle> animatedStyle;
-    if (!needsNewRenderer && m_document.frame()->animation().updateAnimations(*renderer, *newStyle, animatedStyle))
-        update.isSynthetic = true;
-
-    update.change = needsNewRenderer ? Detach : determineChange(renderer->style(), *newStyle);
-    update.style = animatedStyle ? WTFMove(animatedStyle) : WTFMove(newStyle);
+    auto update = createAnimatedElementUpdate(WTFMove(newStyle), rendererToUpdate, m_document);
 
     if (element.styleChangeType() == SyntheticStyleChange)
         update.isSynthetic = true;
@@ -210,7 +204,7 @@ ElementUpdate TreeResolver::resolveElement(Element& element)
 
         // If "rem" units are used anywhere in the document, and if the document element's font size changes, then force font updating
         // all the way down the tree. This is simpler than having to maintain a cache of objects (and such font size changes should be rare anyway).
-        if (m_document.authorStyleSheets().usesRemUnits() && update.change != NoChange && renderer && renderer->style().fontSize() != update.style->fontSize()) {
+        if (m_document.authorStyleSheets().usesRemUnits() && update.change != NoChange && element.renderer() && element.renderer()->style().fontSize() != update.style->fontSize()) {
             // Cached RenderStyles may depend on the rem units.
             scope().styleResolver.invalidateMatchedPropertiesCache();
             update.change = Force;
@@ -224,6 +218,27 @@ ElementUpdate TreeResolver::resolveElement(Element& element)
 
     if (update.change != Detach && (parent().change == Force || element.styleChangeType() >= FullStyleChange))
         update.change = Force;
+
+    return update;
+}
+
+ElementUpdate TreeResolver::createAnimatedElementUpdate(std::unique_ptr<RenderStyle> newStyle, RenderElement* rendererToUpdate, Document& document)
+{
+    ElementUpdate update;
+
+    std::unique_ptr<RenderStyle> animatedStyle;
+    if (rendererToUpdate && document.frame()->animation().updateAnimations(*rendererToUpdate, *newStyle, animatedStyle))
+        update.isSynthetic = true;
+
+    if (animatedStyle) {
+        update.change = determineChange(rendererToUpdate->style(), *animatedStyle);
+        // If animation forces render tree reconstruction pass the original style. The animation will be applied on renderer construction.
+        // FIXME: We should always use the animated style here.
+        update.style = update.change == Detach ? WTFMove(newStyle) : WTFMove(animatedStyle);
+    } else {
+        update.change = rendererToUpdate ? determineChange(rendererToUpdate->style(), *newStyle) : Detach;
+        update.style = WTFMove(newStyle);
+    }
 
     return update;
 }
@@ -367,6 +382,13 @@ void TreeResolver::resolveComposedTree()
         }
 
         auto& element = downcast<Element>(node);
+
+        if (it.depth() > Settings::defaultMaximumRenderTreeDepth) {
+            resetStyleForNonRenderedDescendants(element);
+            element.clearChildNeedsStyleRecalc();
+            it.traverseNextSkippingChildren();
+            continue;
+        }
 
         // FIXME: We should deal with this during style invalidation.
         bool affectedByPreviousSibling = element.styleIsAffectedByPreviousSibling() && parent.elementNeedingStyleRecalcAffectsNextSiblingElementStyle;

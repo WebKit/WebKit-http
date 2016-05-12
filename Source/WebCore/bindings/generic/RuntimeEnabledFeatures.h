@@ -72,25 +72,6 @@ public:
     bool indexedDBWorkersEnabled() const { return m_isIndexedDBWorkersEnabled; }
 #endif
 
-#if ENABLE(CSS_SHAPES)
-    void setCSSShapesEnabled(bool isEnabled) { m_isCSSShapesEnabled = isEnabled; }
-    bool cssShapesEnabled() const { return m_isCSSShapesEnabled; }
-#else
-    void setCSSShapesEnabled(bool) { }
-    bool cssShapesEnabled() const { return false; }
-#endif
-
-#if ENABLE(CSS_REGIONS)
-    void setCSSRegionsEnabled(bool isEnabled) { m_isCSSRegionsEnabled = isEnabled; }
-    bool cssRegionsEnabled() const { return m_isCSSRegionsEnabled; }
-#else
-    void setCSSRegionsEnabled(bool) { }
-    bool cssRegionsEnabled() const { return false; }
-#endif
-
-    void setCSSCompositingEnabled(bool isEnabled) { m_isCSSCompositingEnabled = isEnabled; }
-    bool cssCompositingEnabled() const { return m_isCSSCompositingEnabled; }
-
 #if ENABLE(FONT_LOAD_EVENTS)
     void setFontLoadEventsEnabled(bool isEnabled) { m_isFontLoadEventsEnabled = isEnabled; }
     bool fontLoadEventsEnabled() const { return m_isFontLoadEventsEnabled; }
@@ -154,11 +135,6 @@ public:
     bool legacyCSSVendorPrefixesEnabled() const { return m_isLegacyCSSVendorPrefixesEnabled; }
 #endif
 
-#if ENABLE(VIDEO_TRACK)
-    bool webkitVideoTrackEnabled() const { return m_isVideoTrackEnabled; }
-    void setWebkitVideoTrackEnabled(bool isEnabled) { m_isVideoTrackEnabled = isEnabled; }
-#endif
-
 #if ENABLE(INPUT_TYPE_DATE)
     bool inputTypeDateEnabled() const { return m_isInputTypeDateEnabled; }
     void setInputTypeDateEnabled(bool isEnabled) { m_isInputTypeDateEnabled = isEnabled; }
@@ -201,6 +177,9 @@ public:
     void setPluginReplacementEnabled(bool isEnabled) { m_isPluginReplacementEnabled = isEnabled; }
     bool pluginReplacementEnabled() const { return m_isPluginReplacementEnabled; }
 
+    void setResourceTimingEnabled(bool isEnabled) { m_isResourceTimingEnabled = isEnabled; }
+    bool resourceTimingEnabled() const { return m_isResourceTimingEnabled; }
+
 #if ENABLE(GAMEPAD)
     void setGamepadsEnabled(bool areEnabled) { m_areGamepadsEnabled = areEnabled; }
     bool gamepadsEnabled() const { return m_areGamepadsEnabled; }
@@ -241,6 +220,11 @@ public:
     bool downloadAttributeEnabled() const { return m_isDownloadAttributeEnabled; }
 #endif
 
+#if ENABLE(CSS_GRID_LAYOUT)
+    void setCSSGridLayoutEnabled(bool isEnabled) { m_cssGridLayoutEnabled = isEnabled; }
+    bool isCSSGridLayoutEnabled() const { return m_cssGridLayoutEnabled; }
+#endif
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 private:
@@ -257,11 +241,9 @@ private:
     bool m_isDeviceMotionEnabled;
     bool m_isDeviceOrientationEnabled;
     bool m_isLinkPreloadEnabled;
-    bool m_isCSSShapesEnabled;
-    bool m_isCSSRegionsEnabled;
-    bool m_isCSSCompositingEnabled;
     bool m_isLangAttributeAwareFormControlUIEnabled;
     bool m_isPluginReplacementEnabled;
+    bool m_isResourceTimingEnabled;
 
 #if ENABLE(INDEXED_DATABASE)
     bool m_isIndexedDBEnabled;
@@ -284,10 +266,6 @@ private:
 
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
     bool m_isLegacyCSSVendorPrefixesEnabled;
-#endif
-
-#if ENABLE(VIDEO_TRACK)
-    bool m_isVideoTrackEnabled;
 #endif
 
 #if ENABLE(INPUT_TYPE_DATE)
@@ -352,6 +330,10 @@ private:
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     bool m_isDownloadAttributeEnabled { false };
+#endif
+
+#if ENABLE(CSS_GRID_LAYOUT)
+    bool m_cssGridLayoutEnabled;
 #endif
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;

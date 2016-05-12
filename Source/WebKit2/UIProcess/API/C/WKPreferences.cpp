@@ -62,6 +62,11 @@ WKPreferencesRef WKPreferencesCreateCopy(WKPreferencesRef preferencesRef)
     return toAPI(preferences.release().leakRef());
 }
 
+void WKPreferencesEnableAllExperimentalFeatures(WKPreferencesRef preferencesRef)
+{
+    toImpl(preferencesRef)->enableAllExperimentalFeatures();
+}
+
 void WKPreferencesSetJavaScriptEnabled(WKPreferencesRef preferencesRef, bool javaScriptEnabled)
 {
     toImpl(preferencesRef)->setJavaScriptEnabled(javaScriptEnabled);
@@ -463,16 +468,6 @@ bool WKPreferencesGetWebGLEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->webGLEnabled();
 }
 
-void WKPreferencesSetWebGL2Enabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setWebGL2Enabled(flag);
-}
-
-bool WKPreferencesGetWebGL2Enabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->webGL2Enabled();
-}
-
 void WKPreferencesSetForceSoftwareWebGLRendering(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setForceSoftwareWebGLRendering(flag);
@@ -511,16 +506,6 @@ void WKPreferencesSetWebAnimationsEnabled(WKPreferencesRef preferencesRef, bool 
 bool WKPreferencesGetWebAnimationsEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->webAnimationsEnabled();
-}
-
-void WKPreferencesSetCSSRegionsEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setCSSRegionsEnabled(flag);
-}
-
-bool WKPreferencesGetCSSRegionsEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->cssRegionsEnabled();
 }
 
 void WKPreferencesSetNeedsSiteSpecificQuirks(WKPreferencesRef preferencesRef, bool flag)
@@ -1511,26 +1496,6 @@ bool WKPreferencesGetMockCaptureDevicesEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->mockCaptureDevicesEnabled();
 }
 
-void WKPreferencesSetShadowDOMEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setShadowDOMEnabled(flag);
-}
-
-bool WKPreferencesGetShadowDOMEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->shadowDOMEnabled();
-}
-
-void WKPreferencesSetCustomElementsEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setShadowDOMEnabled(flag);
-}
-
-bool WKPreferencesGetCustomElementsEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->shadowDOMEnabled();
-}
-
 void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setFetchAPIEnabled(flag);
@@ -1549,6 +1514,16 @@ void WKPreferencesSetDownloadAttributeEnabled(WKPreferencesRef preferencesRef, b
 bool WKPreferencesGetDownloadAttributeEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->downloadAttributeEnabled();
+}
+
+void WKPreferencesSetSelectionPaintingWithoutSelectionGapsEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setSelectionPaintingWithoutSelectionGapsEnabled(flag);
+}
+
+bool WKPreferencesGetSelectionPaintingWithoutSelectionGapsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->selectionPaintingWithoutSelectionGapsEnabled();
 }
 
 void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)

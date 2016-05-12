@@ -40,7 +40,6 @@
 #if ENABLE(Condition11) || ENABLE(Condition12) || ENABLE(Condition22) || ENABLE(Condition23)
 #include "JSNode.h"
 #include "JSTestObj.h"
-#include "Node.h"
 #include "URL.h"
 #include <runtime/JSString.h>
 #endif
@@ -208,18 +207,17 @@ static const HashTableValue JSTestInterfaceConstructorTableValues[] =
 #endif
 };
 
-
 #if ENABLE(Condition22) || ENABLE(Condition23)
-COMPILE_ASSERT(1 == TestInterface::IMPLEMENTSCONSTANT1, TestInterfaceEnumIMPLEMENTSCONSTANT1IsWrongUseDoNotCheckConstants);
+static_assert(TestInterface::IMPLEMENTSCONSTANT1 == 1, "IMPLEMENTSCONSTANT1 in TestInterface does not match value from IDL");
 #endif
 #if ENABLE(Condition22) || ENABLE(Condition23)
-COMPILE_ASSERT(2 == TestInterface::CONST_IMPL, TestInterfaceEnumCONST_IMPLIsWrongUseDoNotCheckConstants);
+static_assert(TestInterface::CONST_IMPL == 2, "CONST_IMPL in TestInterface does not match value from IDL");
 #endif
 #if ENABLE(Condition11) || ENABLE(Condition12)
-COMPILE_ASSERT(1 == TestSupplemental::SUPPLEMENTALCONSTANT1, TestInterfaceEnumSUPPLEMENTALCONSTANT1IsWrongUseDoNotCheckConstants);
+static_assert(TestSupplemental::SUPPLEMENTALCONSTANT1 == 1, "SUPPLEMENTALCONSTANT1 in TestSupplemental does not match value from IDL");
 #endif
 #if ENABLE(Condition11) || ENABLE(Condition12)
-COMPILE_ASSERT(2 == TestSupplemental::CONST_IMPL, TestInterfaceEnumCONST_IMPLIsWrongUseDoNotCheckConstants);
+static_assert(TestSupplemental::CONST_IMPL == 2, "CONST_IMPL in TestSupplemental does not match value from IDL");
 #endif
 
 template<> EncodedJSValue JSC_HOST_CALL JSTestInterfaceConstructor::construct(ExecState* state)
@@ -228,17 +226,17 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestInterfaceConstructor::construct(Ex
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
     ExceptionCode ec = 0;
-    String str1 = state->argument(0).toString(state)->value(state);
+    auto str1 = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    String str2 = state->argument(1).isUndefined() ? ASCIILiteral("defaultString") : state->uncheckedArgument(1).toString(state)->value(state);
+    auto str2 = state->argument(1).isUndefined() ? ASCIILiteral("defaultString") : state->uncheckedArgument(1).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
     ScriptExecutionContext* context = castedThis->scriptExecutionContext();
-    if (!context)
+    if (UNLIKELY(!context))
         return throwConstructorDocumentUnavailableError(*state, "TestInterface");
     RefPtr<TestInterface> object = TestInterface::create(*context, str1, str2, ec);
-    if (ec) {
+    if (UNLIKELY(ec)) {
         setDOMException(state, ec);
         return JSValue::encode(JSValue());
     }
@@ -589,7 +587,7 @@ EncodedJSValue jsTestInterfaceSupplementalNode(ExecState* state, EncodedJSValue 
 EncodedJSValue jsTestInterfaceConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestInterfacePrototype* domObject = jsDynamicCast<JSTestInterfacePrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestInterface::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -632,10 +630,10 @@ bool JSTestInterface::putByIndex(JSCell* cell, ExecState* state, unsigned index,
 bool setJSTestInterfaceConstructorImplementsStaticAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    TestInterface::setImplementsStaticAttr(nativeValue);
+    TestInterface::setImplementsStaticAttr(WTFMove(nativeValue));
     return true;
 }
 
@@ -651,10 +649,10 @@ bool setJSTestInterfaceImplementsStr2(ExecState* state, EncodedJSValue thisValue
         return throwSetterTypeError(*state, "TestInterface", "implementsStr2");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setImplementsStr2(nativeValue);
+    impl.setImplementsStr2(WTFMove(nativeValue));
     return true;
 }
 
@@ -685,10 +683,12 @@ bool setJSTestInterfaceImplementsNode(ExecState* state, EncodedJSValue thisValue
         return throwSetterTypeError(*state, "TestInterface", "implementsNode");
     }
     auto& impl = castedThis->wrapped();
-    Node* nativeValue = JSNode::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
+    auto nativeValue = JSNode::toWrapped(value);
+    if (UNLIKELY(!nativeValue)) {
+        throwAttributeTypeError(*state, "TestInterface", "implementsNode", "Node");
         return false;
-    impl.setImplementsNode(nativeValue);
+    }
+    impl.setImplementsNode(*nativeValue);
     return true;
 }
 
@@ -698,10 +698,10 @@ bool setJSTestInterfaceImplementsNode(ExecState* state, EncodedJSValue thisValue
 bool setJSTestInterfaceConstructorSupplementalStaticAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     JSValue value = JSValue::decode(encodedValue);
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    WebCore::TestSupplemental::setSupplementalStaticAttr(nativeValue);
+    WebCore::TestSupplemental::setSupplementalStaticAttr(WTFMove(nativeValue));
     return true;
 }
 
@@ -717,10 +717,10 @@ bool setJSTestInterfaceSupplementalStr2(ExecState* state, EncodedJSValue thisVal
         return throwSetterTypeError(*state, "TestInterface", "supplementalStr2");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    WebCore::TestSupplemental::setSupplementalStr2(impl, nativeValue);
+    WebCore::TestSupplemental::setSupplementalStr2(impl, WTFMove(nativeValue));
     return true;
 }
 
@@ -751,10 +751,12 @@ bool setJSTestInterfaceSupplementalNode(ExecState* state, EncodedJSValue thisVal
         return throwSetterTypeError(*state, "TestInterface", "supplementalNode");
     }
     auto& impl = castedThis->wrapped();
-    Node* nativeValue = JSNode::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
+    auto nativeValue = JSNode::toWrapped(value);
+    if (UNLIKELY(!nativeValue)) {
+        throwAttributeTypeError(*state, "TestInterface", "supplementalNode", "Node");
         return false;
-    WebCore::TestSupplemental::setSupplementalNode(impl, nativeValue);
+    }
+    WebCore::TestSupplemental::setSupplementalNode(impl, *nativeValue);
     return true;
 }
 
@@ -795,15 +797,13 @@ EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionImplementsMethod2(E
     auto* context = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
     if (!context)
         return JSValue::encode(jsUndefined());
-    String strArg = state->argument(0).toString(state)->value(state);
+    auto strArg = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    if (!objArg)
-        return throwVMTypeError(state);
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.implementsMethod2(*context, strArg, *objArg, ec)));
+    auto objArg = JSTestObj::toWrapped(state->argument(1));
+    if (UNLIKELY(!objArg))
+        return throwArgumentTypeError(*state, 1, "objArg", "TestInterface", "implementsMethod2", "TestObj");
+    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.implementsMethod2(*context, WTFMove(strArg), *objArg, ec)));
 
     setDOMException(state, ec);
     return JSValue::encode(result);
@@ -863,15 +863,13 @@ EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionSupplementalMethod2
     auto* context = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
     if (!context)
         return JSValue::encode(jsUndefined());
-    String strArg = state->argument(0).toString(state)->value(state);
+    auto strArg = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    if (!objArg)
-        return throwVMTypeError(state);
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(WebCore::TestSupplemental::supplementalMethod2(impl, *context, strArg, *objArg, ec)));
+    auto objArg = JSTestObj::toWrapped(state->argument(1));
+    if (UNLIKELY(!objArg))
+        return throwArgumentTypeError(*state, 1, "objArg", "TestInterface", "supplementalMethod2", "TestObj");
+    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(WebCore::TestSupplemental::supplementalMethod2(impl, *context, WTFMove(strArg), *objArg, ec)));
 
     setDOMException(state, ec);
     return JSValue::encode(result);
@@ -935,7 +933,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestInterfac
     // attribute. You should remove that attribute. If the class has subclasses
     // that may be passed through this toJS() function you should use the SkipVTableValidation
     // attribute to TestInterface.
-    COMPILE_ASSERT(!__is_polymorphic(TestInterface), TestInterface_is_polymorphic_but_idl_claims_not_to_be);
+    static_assert(!__is_polymorphic(TestInterface), "TestInterface is polymorphic but the IDL claims it is not");
 #endif
     return createNewWrapper<JSTestInterface>(globalObject, impl);
 }

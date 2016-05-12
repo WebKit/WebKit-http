@@ -30,6 +30,7 @@
 
 #include "IDBBindingUtilities.h"
 #include "IDBCursor.h"
+#include "IDBDatabase.h"
 #include "IDBDatabaseException.h"
 #include "IDBKeyRangeData.h"
 #include "IDBObjectStore.h"
@@ -46,11 +47,14 @@ IDBIndex::IDBIndex(ScriptExecutionContext& context, const IDBIndexInfo& info, ID
     , m_info(info)
     , m_objectStore(objectStore)
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+
     suspendIfNeeded();
 }
 
 IDBIndex::~IDBIndex()
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
 }
 
 const char* IDBIndex::activeDOMObjectName() const
@@ -70,32 +74,38 @@ bool IDBIndex::hasPendingActivity() const
 
 const String& IDBIndex::name() const
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
     return m_info.name();
 }
 
 RefPtr<IDBObjectStore> IDBIndex::objectStore()
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
     return &m_objectStore;
 }
 
 const IDBKeyPath& IDBIndex::keyPath() const
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
     return m_info.keyPath();
 }
 
 bool IDBIndex::unique() const
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
     return m_info.unique();
 }
 
 bool IDBIndex::multiEntry() const
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
     return m_info.multiEntry();
 }
 
 RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, IDBKeyRange* range, const String& directionString, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::openCursor");
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
 
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
@@ -128,6 +138,8 @@ RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, IDBKeyR
 RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, JSValue key, const String& direction, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::openCursor");
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+
     RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(context, key, ec.code);
     if (ec.code) {
         ec.message = ASCIILiteral("Failed to execute 'openCursor' on 'IDBIndex': The parameter is not a valid key.");
@@ -135,13 +147,6 @@ RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, JSValue
     }
 
     return openCursor(context, keyRange.get(), direction, ec);
-}
-
-RefPtr<IDBRequest> IDBIndex::count(ScriptExecutionContext& context, ExceptionCodeWithMessage& ec)
-{
-    LOG(IndexedDB, "IDBIndex::count");
-
-    return doCount(context, IDBKeyRangeData::allKeys(), ec);
 }
 
 RefPtr<IDBRequest> IDBIndex::count(ScriptExecutionContext& context, IDBKeyRange* range, ExceptionCodeWithMessage& ec)
@@ -167,6 +172,8 @@ RefPtr<IDBRequest> IDBIndex::count(ScriptExecutionContext& context, JSValue key,
 
 RefPtr<IDBRequest> IDBIndex::doCount(ScriptExecutionContext& context, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
         ec.message = ASCIILiteral("Failed to execute 'count' on 'IDBIndex': The index or its object store has been deleted.");
@@ -191,6 +198,7 @@ RefPtr<IDBRequest> IDBIndex::doCount(ScriptExecutionContext& context, const IDBK
 RefPtr<IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext& context, IDBKeyRange* range, const String& directionString, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::openKeyCursor");
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
 
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
@@ -248,6 +256,8 @@ RefPtr<IDBRequest> IDBIndex::get(ScriptExecutionContext& context, JSValue key, E
 
 RefPtr<IDBRequest> IDBIndex::doGet(ScriptExecutionContext& context, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
         ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBIndex': The index or its object store has been deleted.");
@@ -292,6 +302,8 @@ RefPtr<IDBRequest> IDBIndex::getKey(ScriptExecutionContext& context, JSValue key
 
 RefPtr<IDBRequest> IDBIndex::doGetKey(ScriptExecutionContext& context, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
         ec.message = ASCIILiteral("Failed to execute 'getKey' on 'IDBIndex': The index or its object store has been deleted.");
@@ -315,6 +327,8 @@ RefPtr<IDBRequest> IDBIndex::doGetKey(ScriptExecutionContext& context, const IDB
 
 void IDBIndex::markAsDeleted()
 {
+    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+
     ASSERT(!m_deleted);
     m_deleted = true;
 }

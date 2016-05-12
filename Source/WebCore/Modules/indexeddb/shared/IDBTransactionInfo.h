@@ -36,7 +36,7 @@
 namespace WebCore {
 
 namespace IDBClient {
-class IDBConnectionToServer;
+class IDBConnectionProxy;
 }
 
 namespace IDBServer {
@@ -45,10 +45,13 @@ class IDBConnectionToClient;
 
 class IDBTransactionInfo {
 public:
-    static IDBTransactionInfo clientTransaction(const IDBClient::IDBConnectionToServer&, const Vector<String>& objectStores, IndexedDB::TransactionMode);
+    static IDBTransactionInfo clientTransaction(const IDBClient::IDBConnectionProxy&, const Vector<String>& objectStores, IndexedDB::TransactionMode);
     static IDBTransactionInfo versionChange(const IDBServer::IDBConnectionToClient&, const IDBDatabaseInfo& originalDatabaseInfo, uint64_t newVersion);
 
     IDBTransactionInfo(const IDBTransactionInfo&);
+
+    enum IsolatedCopyTag { IsolatedCopy };
+    IDBTransactionInfo(const IDBTransactionInfo&, IsolatedCopyTag);
 
     IDBTransactionInfo isolatedCopy() const;
 
@@ -71,6 +74,8 @@ public:
 
 private:
     IDBTransactionInfo(const IDBResourceIdentifier&);
+
+    static void isolatedCopy(const IDBTransactionInfo& source, IDBTransactionInfo& destination);
 
     IDBResourceIdentifier m_identifier;
 

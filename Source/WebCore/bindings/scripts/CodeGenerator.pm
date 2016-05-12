@@ -44,33 +44,70 @@ my $codeGenerator = 0;
 
 my $verbose = 0;
 
-my %numericTypeHash = ("int" => 1, "short" => 1, "long" => 1, "long long" => 1,
-                       "unsigned int" => 1, "unsigned short" => 1,
-                       "unsigned long" => 1, "unsigned long long" => 1,
-                       "float" => 1, "double" => 1, 
-                       "unrestricted float" => 1, "unrestricted double" => 1,
-                       "byte" => 1, "octet" => 1);
+my %integerTypeHash = (
+    "byte" => 1,
+    "long long" => 1,
+    "long" => 1,
+    "octet" => 1,
+    "short" => 1,
+    "unsigned long long" => 1,
+    "unsigned long" => 1,
+    "unsigned short" => 1,
+);
 
-my %primitiveTypeHash = ( "boolean" => 1, "void" => 1, "Date" => 1);
+my %floatingPointTypeHash = (
+    "float" => 1,
+    "unrestricted float" => 1,
+    "double" => 1,
+    "unrestricted double" => 1,
+);
 
-my %stringTypeHash = ("DOMString" => 1);
+my %primitiveTypeHash = ( "boolean" => 1, "void" => 1, "Date" => 1 );
 
 # WebCore types used directly in IDL files.
 my %webCoreTypeHash = (
+    "Dictionary" => 1,
     "SerializedScriptValue" => 1,
-    "Dictionary" => 1
 );
 
 my %enumTypeHash = ();
+my %dictionaryTypes = ();
 
-my %nonPointerTypeHash = ("DOMTimeStamp" => 1);
+my %typedArrayTypes = (
+    "ArrayBuffer" => 1,
+    "ArrayBufferView" => 1,
+    "DataView" => 1,
+    "Float32Array" => 1,
+    "Float64Array" => 1,
+    "Int16Array" => 1,
+    "Int32Array" => 1,
+    "Int8Array" => 1,
+    "Uint16Array" => 1,
+    "Uint32Array" => 1,
+    "Uint8Array" => 1,
+    "Uint8ClampedArray" => 1,
+);
 
-my %svgAttributesInHTMLHash = ("class" => 1, "id" => 1, "onabort" => 1, "onclick" => 1,
-                               "onerror" => 1, "onload" => 1, "onmousedown" => 1,
-                               "onmouseenter" => 1, "onmouseleave" => 1,
-                               "onmousemove" => 1, "onmouseout" => 1, "onmouseover" => 1,
-                               "onmouseup" => 1, "onresize" => 1, "onscroll" => 1,
-                               "onunload" => 1);
+my %nonPointerTypeHash = ( "DOMTimeStamp" => 1 );
+
+my %svgAttributesInHTMLHash = (
+    "class" => 1,
+    "id" => 1,
+    "onabort" => 1,
+    "onclick" => 1,
+    "onerror" => 1,
+    "onload" => 1,
+    "onmousedown" => 1,
+    "onmouseenter" => 1,
+    "onmouseleave" => 1,
+    "onmousemove" => 1,
+    "onmouseout" => 1,
+    "onmouseover" => 1,
+    "onmouseup" => 1,
+    "onresize" => 1,
+    "onscroll" => 1,
+    "onunload" => 1,
+);
 
 my %svgTypeNeedingTearOff = (
     "SVGAngle" => "SVGPropertyTearOff<SVGAngle>",
@@ -127,6 +164,7 @@ sub ProcessDocument
     require $ifaceName . ".pm";
 
     %enumTypeHash = map { $_->name => $_->values } @{$useDocument->enumerations};
+    %dictionaryTypes = map { $_->name => 1 } @{$useDocument->dictionaries};
 
     # Dynamically load external code generation perl module
     $codeGenerator = $ifaceName->new($object, $writeDependencies, $verbose, $targetIdlFilePath);
@@ -141,7 +179,9 @@ sub ProcessDocument
     my $interfaces = $useDocument->interfaces;
     foreach my $interface (@$interfaces) {
         print "Generating $useGenerator bindings code for IDL interface \"" . $interface->name . "\"...\n" if $verbose;
-        $codeGenerator->GenerateInterface($interface, $defines);
+        # FIXME: Repeating each enumeration and dictionaries for every interface would not work if we actually were using
+        # multiple interfaces per file, but we aren't, so this is fine for now.
+        $codeGenerator->GenerateInterface($interface, $defines, $useDocument->enumerations, $useDocument->dictionaries);
         $codeGenerator->WriteData($interface, $useOutputDir, $useOutputHeadersDir);
     }
 }
@@ -164,7 +204,7 @@ sub UpdateFile
     my $fileName = shift;
     my $contents = shift;
 
-    open FH, "> $fileName" or die "Couldn't open $fileName: $!\n";
+    open FH, ">", $fileName or die "Couldn't open $fileName: $!\n";
     print FH $contents;
     close FH;
 }
@@ -287,14 +327,16 @@ sub SkipIncludeHeader
     my $object = shift;
     my $type = shift;
 
-    return 1 if $object->IsPrimitiveType($type);
+    # FIXME: This is a lot like !IsRefPtrType. Maybe they could share code?
 
-    # Special case: SVGNumber.h does not exist.
-    return 1 if $type eq "SVGNumber";
-    
-    # Typed arrays already included by JSDOMBinding.h.
+    return 1 if $object->IsPrimitiveType($type);
     return 1 if $object->IsTypedArrayType($type);
-    
+    return 1 if $type eq "Array";
+    return 1 if $type eq "DOMString";
+    return 1 if $type eq "DOMTimeStamp";
+    return 1 if $type eq "SVGNumber";
+    return 1 if $type eq "any";
+
     return 0;
 }
 
@@ -309,30 +351,46 @@ sub IsConstructorTemplate
 
 sub IsNumericType
 {
-    my $object = shift;
-    my $type = shift;
+    my ($object, $type) = @_;
 
-    return 1 if $numericTypeHash{$type};
+    return 1 if $integerTypeHash{$type};
+    return 1 if $floatingPointTypeHash{$type};
+    return 0;
+}
+
+sub IsIntegerType
+{
+    my ($object, $type) = @_;
+
+    return 1 if $integerTypeHash{$type};
+    return 0;
+}
+
+sub IsFloatingPointType
+{
+    my ($object, $type) = @_;
+
+    return 1 if $floatingPointTypeHash{$type};
     return 0;
 }
 
 sub IsPrimitiveType
 {
-    my $object = shift;
-    my $type = shift;
+    my ($object, $type) = @_;
 
     return 1 if $primitiveTypeHash{$type};
-    return 1 if $numericTypeHash{$type};
+    return 1 if $object->IsNumericType($type);
     return 0;
 }
 
+# Deprecated: Just check for "DOMString" instead.
+# Currently used outside WebKit in an internal Apple project; can be removed soon.
 sub IsStringType
 {
     my $object = shift;
     my $type = shift;
 
-    return 1 if $stringTypeHash{$type};
-    return 0;
+    return $type eq "DOMString";
 }
 
 sub IsEnumType
@@ -352,12 +410,19 @@ sub ValidEnumValues
     return @{$enumTypeHash{$type}};
 }
 
+sub IsDictionaryType
+{
+    my ($object, $type) = @_;
+
+    return $dictionaryTypes{$type} || 0;
+}
+
 sub IsNonPointerType
 {
-    my $object = shift;
-    my $type = shift;
+    my ($object, $type) = @_;
 
-    return 1 if $nonPointerTypeHash{$type} or $primitiveTypeHash{$type} or $numericTypeHash{$type};
+    return 1 if $nonPointerTypeHash{$type};
+    return 1 if $object->IsPrimitiveType($type);
     return 0;
 }
 
@@ -383,10 +448,8 @@ sub IsTypedArrayType
 {
     my $object = shift;
     my $type = shift;
-    return 1 if (($type eq "ArrayBuffer") or ($type eq "ArrayBufferView"));
-    return 1 if (($type eq "Uint8Array") or ($type eq "Uint8ClampedArray") or ($type eq "Uint16Array") or ($type eq "Uint32Array"));
-    return 1 if (($type eq "Int8Array") or ($type eq "Int16Array") or ($type eq "Int32Array"));
-    return 1 if (($type eq "Float32Array") or ($type eq "Float64Array") or ($type eq "DataView"));
+
+    return 1 if $typedArrayTypes{$type};
     return 0;
 }
 
@@ -396,10 +459,11 @@ sub IsRefPtrType
     my $type = shift;
 
     return 0 if $object->IsPrimitiveType($type);
-    return 0 if $object->GetArrayType($type);
-    return 0 if $object->GetSequenceType($type);
-    return 0 if $type eq "DOMString";
+    return 0 if $object->IsDictionaryType($type);
     return 0 if $object->IsEnumType($type);
+    return 0 if $object->GetArrayOrSequenceType($type);
+    return 0 if $type eq "DOMString";
+    return 0 if $type eq "any";
 
     return 1;
 }
@@ -645,27 +709,24 @@ sub IsWrapperType
     my $object = shift;
     my $type = shift;
 
-    return 0 if $object->IsPrimitiveType($type);
-    return 0 if $object->GetArrayType($type);
-    return 0 if $object->GetSequenceType($type);
-    return 0 if $object->IsEnumType($type);
-    return 0 if $object->IsStringType($type);
+    return 0 if !$object->IsRefPtrType($type);
     return 0 if $object->IsTypedArrayType($type);
     return 0 if $webCoreTypeHash{$type};
-    return 0 if $type eq "any";
 
     return 1;
 }
 
 sub getInterfaceExtendedAttributesFromName
 {
+    # FIXME: It's bad to have a function like this that opens another IDL file to answer a question.
+    # Overusing this kind of function can make things really slow. Lets avoid these if we can.
+
     my $object = shift;
     my $interfaceName = shift;
 
-    my $idlFile = $object->IDLFileForInterface($interfaceName)
-      or die("Could NOT find IDL file for interface \"$interfaceName\"!\n");
+    my $idlFile = $object->IDLFileForInterface($interfaceName) or die("Could NOT find IDL file for interface \"$interfaceName\"!\n");
 
-    open FILE, "<", $idlFile;
+    open FILE, "<", $idlFile or die;
     my @lines = <FILE>;
     close FILE;
 
@@ -688,17 +749,16 @@ sub getInterfaceExtendedAttributesFromName
     return $extendedAttributes;
 }
 
-sub IsCallbackInterface
+sub ComputeIsCallbackInterface
 {
   my $object = shift;
   my $type = shift;
 
   return 0 unless $object->IsWrapperType($type);
 
-  my $idlFile = $object->IDLFileForInterface($type)
-      or die("Could NOT find IDL file for interface \"$type\"!\n");
+  my $idlFile = $object->IDLFileForInterface($type) or die("Could NOT find IDL file for interface \"$type\"!\n");
 
-  open FILE, "<", $idlFile;
+  open FILE, "<", $idlFile or die;
   my @lines = <FILE>;
   close FILE;
 
@@ -706,20 +766,35 @@ sub IsCallbackInterface
   return ($fileContents =~ /callback\s+interface\s+(\w+)/gs);
 }
 
+my %isCallbackInterface = ();
+
+sub IsCallbackInterface
+{
+    # FIXME: It's bad to have a function like this that opens another IDL file to answer a question.
+    # Overusing this kind of function can make things really slow. Lets avoid these if we can.
+    # To mitigate that, lets cache what we learn in a hash so we don't open the same file over and over.
+
+    my ($object, $type) = @_;
+
+    return $isCallbackInterface{$type} if exists $isCallbackInterface{$type};
+    my $result = ComputeIsCallbackInterface($object, $type);
+    $isCallbackInterface{$type} = $result;
+    return $result;
+}
+
 # Callback interface with [Callback=FunctionOnly].
 # FIXME: This should be a callback function:
 # https://heycam.github.io/webidl/#idl-callback-functions
-sub IsFunctionOnlyCallbackInterface
+sub ComputeIsFunctionOnlyCallbackInterface
 {
   my $object = shift;
   my $type = shift;
 
   return 0 unless $object->IsCallbackInterface($type);
 
-  my $idlFile = $object->IDLFileForInterface($type)
-      or die("Could NOT find IDL file for interface \"$type\"!\n");
+  my $idlFile = $object->IDLFileForInterface($type) or die("Could NOT find IDL file for interface \"$type\"!\n");
 
-  open FILE, "<", $idlFile;
+  open FILE, "<", $idlFile or die;
   my @lines = <FILE>;
   close FILE;
 
@@ -738,6 +813,22 @@ sub IsFunctionOnlyCallbackInterface
   }
 
   return 0;
+}
+
+my %isFunctionOnlyCallbackInterface = ();
+
+sub IsFunctionOnlyCallbackInterface
+{
+    # FIXME: It's bad to have a function like this that opens another IDL file to answer a question.
+    # Overusing this kind of function can make things really slow. Lets avoid these if we can.
+    # To mitigate that, lets cache what we learn in a hash so we don't open the same file over and over.
+
+    my ($object, $type) = @_;
+
+    return $isFunctionOnlyCallbackInterface{$type} if exists $isFunctionOnlyCallbackInterface{$type};
+    my $result = ComputeIsFunctionOnlyCallbackInterface($object, $type);
+    $isFunctionOnlyCallbackInterface{$type} = $result;
+    return $result;
 }
 
 sub GenerateConditionalString
@@ -796,34 +887,20 @@ sub GenerateConditionalStringFromAttributeValue
 sub GenerateCompileTimeCheckForEnumsIfNeeded
 {
     my ($generator, $interface) = @_;
-    my $interfaceName = $interface->name;
+
+    return () if $interface->extendedAttributes->{"DoNotCheckConstants"} || !@{$interface->constants};
+
     my @checks = ();
-    # If necessary, check that all constants are available as enums with the same value.
-    if (!$interface->extendedAttributes->{"DoNotCheckConstants"} && @{$interface->constants}) {
-        push(@checks, "\n");
-        foreach my $constant (@{$interface->constants}) {
-            my $reflect = $constant->extendedAttributes->{"Reflect"};
-            my $name = $reflect ? $reflect : $constant->name;
-            my $value = $constant->value;
-            my $conditional = $constant->extendedAttributes->{"Conditional"};
-
-            if ($conditional) {
-                my $conditionalString = $generator->GenerateConditionalStringFromAttributeValue($conditional);
-                push(@checks, "#if ${conditionalString}\n");
-            }
-
-            if ($constant->extendedAttributes->{"ImplementedBy"}) {
-                push(@checks, "COMPILE_ASSERT($value == " . $constant->extendedAttributes->{"ImplementedBy"} . "::$name, ${interfaceName}Enum${name}IsWrongUseDoNotCheckConstants);\n");
-            } else {
-                push(@checks, "COMPILE_ASSERT($value == ${interfaceName}::$name, ${interfaceName}Enum${name}IsWrongUseDoNotCheckConstants);\n");
-            }
-
-            if ($conditional) {
-                push(@checks, "#endif\n");
-            }
-        }
-        push(@checks, "\n");
+    foreach my $constant (@{$interface->constants}) {
+        my $className = $constant->extendedAttributes->{"ImplementedBy"} || $interface->name;
+        my $name = $constant->extendedAttributes->{"Reflect"} || $constant->name;
+        my $value = $constant->value;
+        my $conditional = $constant->extendedAttributes->{"Conditional"};
+        push(@checks, "#if " . $generator->GenerateConditionalStringFromAttributeValue($conditional) . "\n") if $conditional;
+        push(@checks, "static_assert(${className}::$name == $value, \"$name in $className does not match value from IDL\");\n");
+        push(@checks, "#endif\n") if $conditional;
     }
+    push(@checks, "\n");
     return @checks;
 }
 
@@ -896,7 +973,7 @@ sub ShouldPassWrapperByReference
     return 0 if $parameter->isNullable;
     return 0 if !$object->IsWrapperType($parameter->type) && !$object->IsTypedArrayType($parameter->type);
     return 0 if $object->IsSVGTypeNeedingTearOff($parameter->type);
-    return 0 if $interface->extendedAttributes->{"UsePointersEvenForNonNullableObjectArguments"};
+
     return 1;
 }
 

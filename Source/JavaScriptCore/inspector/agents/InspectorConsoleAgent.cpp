@@ -128,24 +128,32 @@ void InspectorConsoleAgent::addMessageToConsole(std::unique_ptr<ConsoleMessage> 
 
 void InspectorConsoleAgent::startTiming(const String& title)
 {
-    // Follow Firebug's behavior of requiring a title that is not null or
-    // undefined for timing functions
+    ASSERT(!title.isNull());
     if (title.isNull())
         return;
 
-    m_times.add(title, monotonicallyIncreasingTime());
+    auto result = m_times.add(title, monotonicallyIncreasingTime());
+
+    if (!result.isNewEntry) {
+        // FIXME: Send an enum to the frontend for localization?
+        String warning = makeString("Timer \"", title, "\" already exists");
+        addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Timing, MessageLevel::Warning, warning));
+    }
 }
 
 void InspectorConsoleAgent::stopTiming(const String& title, PassRefPtr<ScriptCallStack> callStack)
 {
-    // Follow Firebug's behavior of requiring a title that is not null or
-    // undefined for timing functions
+    ASSERT(!title.isNull());
     if (title.isNull())
         return;
 
-    HashMap<String, double>::iterator it = m_times.find(title);
-    if (it == m_times.end())
+    auto it = m_times.find(title);
+    if (it == m_times.end()) {
+        // FIXME: Send an enum to the frontend for localization?
+        String warning = makeString("Timer \"", title, "\" does not exist");
+        addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Timing, MessageLevel::Warning, warning));
         return;
+    }
 
     double startTime = it->value;
     m_times.remove(it);
@@ -171,30 +179,26 @@ void InspectorConsoleAgent::takeHeapSnapshot(const String& title)
 void InspectorConsoleAgent::count(JSC::ExecState* state, PassRefPtr<ScriptArguments> arguments)
 {
     RefPtr<ScriptCallStack> callStack(createScriptCallStackForConsole(state, ScriptCallStack::maxCallStackSizeToCapture));
-    const ScriptCallFrame& lastCaller = callStack->at(0);
-    // Follow Firebug's behavior of counting with null and undefined title in
-    // the same bucket as no argument
-    String title;
-    arguments->getFirstArgumentAsString(title);
-    String identifier = title + '@' + lastCaller.sourceURL() + ':' + String::number(lastCaller.lineNumber());
 
-    HashMap<String, unsigned>::iterator it = m_counts.find(identifier);
-    int count;
-    if (it == m_counts.end())
-        count = 1;
-    else {
-        count = it->value + 1;
-        m_counts.remove(it);
+    String title;
+    String identifier;
+    if (!arguments->argumentCount()) {
+        // '@' prefix for engine generated labels.
+        title = ASCIILiteral("Global");
+        identifier = makeString('@', title);
+    } else {
+        // '#' prefix for user labels.
+        arguments->getFirstArgumentAsString(title);
+        identifier = makeString('#', title);
     }
 
-    m_counts.add(identifier, count);
+    auto result = m_counts.add(identifier, 1);
+    if (!result.isNewEntry)
+        result.iterator->value += 1;
 
-    String message;
-    if (title.isEmpty())
-        message = "<no label>: " + String::number(count);
-    else
-        message = title + ": " + String::number(count);
+    // FIXME: Web Inspector should have a better UI for counters, but for now we just log an updated counter value.
 
+    String message = makeString(title, ": ", String::number(result.iterator->value));
     addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Debug, message, callStack));
 }
 

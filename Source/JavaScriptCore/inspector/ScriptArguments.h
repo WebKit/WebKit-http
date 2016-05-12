@@ -52,6 +52,7 @@ namespace Inspector {
 class JS_EXPORT_PRIVATE ScriptArguments : public RefCounted<ScriptArguments> {
 public:
     static Ref<ScriptArguments> create(JSC::ExecState*, Vector<Deprecated::ScriptValue>& arguments);
+    static Ref<ScriptArguments> createEmpty(JSC::ExecState*);
     ~ScriptArguments();
 
     const Deprecated::ScriptValue& argumentAt(size_t) const;
@@ -59,10 +60,11 @@ public:
 
     JSC::ExecState* globalState() const;
 
-    bool getFirstArgumentAsString(String& result, bool checkForNullOrUndefined = false);
+    bool getFirstArgumentAsString(String& result);
     bool isEqual(ScriptArguments*) const;
 
 private:
+    ScriptArguments(JSC::ExecState*);
     ScriptArguments(JSC::ExecState*, Vector<Deprecated::ScriptValue>& arguments);
 
     JSC::Strong<JSC::JSGlobalObject> m_globalObject;

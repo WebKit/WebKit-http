@@ -970,7 +970,7 @@ bool FrameView::isScrollSnapInProgress() const
     // ScrollingCoordinator::isScrollSnapInProgress().
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator()) {
-            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously())
+            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously(*this))
                 return scrollingCoordinator->isScrollSnapInProgress();
         }
     }
@@ -1402,11 +1402,17 @@ void FrameView::layout(bool allowSubtree)
         ASSERT(m_layoutPhase == InRenderTreeLayout);
 
         root->layout();
+
 #if ENABLE(IOS_TEXT_AUTOSIZING)
-        if (Page* page = frame().page()) {
+        if (frame().settings().textAutosizingEnabled() && !root->view().printing()) {
             float minimumZoomFontSize = frame().settings().minimumZoomFontSize();
-            float textAutosizingWidth = page->textAutosizingWidth();
-            if (minimumZoomFontSize && textAutosizingWidth && !root->view().printing()) {
+            float textAutosizingWidth = frame().page() ? frame().page()->textAutosizingWidth() : 0;
+            if (int overrideWidth = frame().settings().textAutosizingWindowSizeOverride().width())
+                textAutosizingWidth = overrideWidth;
+
+            LOG(TextAutosizing, "Text Autosizing: minimumZoomFontSize=%.2f textAutosizingWidth=%.2f", minimumZoomFontSize, textAutosizingWidth);
+            
+            if (minimumZoomFontSize && textAutosizingWidth) {
                 root->adjustComputedFontSizesOnBlocks(minimumZoomFontSize, textAutosizingWidth);
                 if (root->needsLayout())
                     root->layout();
@@ -2307,7 +2313,7 @@ bool FrameView::shouldUpdateCompositingLayersAfterScrolling() const
     if (!scrollingCoordinator->supportsFixedPositionLayers())
         return true;
 
-    if (scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously())
+    if (scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously(*this))
         return true;
 
     if (inProgrammaticScroll())
@@ -2340,7 +2346,7 @@ bool FrameView::isRubberBandInProgress() const
     // ScrollingCoordinator::isRubberBandInProgress().
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator()) {
-            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously())
+            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously(*this))
                 return scrollingCoordinator->isRubberBandInProgress();
         }
     }
@@ -2487,7 +2493,7 @@ void FrameView::adjustTiledBackingScrollability()
 
 #if PLATFORM(IOS)
     if (Page* page = frame().page())
-        clippedByAncestorView |= page->enclosedInScrollView();
+        clippedByAncestorView |= page->enclosedInScrollableAncestorView();
 #endif
 
     if (delegatesScrolling()) {
@@ -3525,16 +3531,6 @@ bool FrameView::isActive() const
 {
     Page* page = frame().page();
     return page && page->focusController().isActive();
-}
-
-bool FrameView::updatesScrollLayerPositionOnMainThread() const
-{
-    if (Page* page = frame().page()) {
-        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-            return scrollingCoordinator->shouldUpdateScrollLayerPositionSynchronously();
-    }
-
-    return true;
 }
 
 bool FrameView::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const

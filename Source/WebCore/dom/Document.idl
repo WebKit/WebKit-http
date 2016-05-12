@@ -118,10 +118,10 @@
 #else
     [NewObject] NodeIterator createNodeIterator(Node root,
         optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter);
+        optional NodeFilter? filter = null);
     [NewObject] TreeWalker createTreeWalker(Node root,
         optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter);
+        optional NodeFilter? filter = null);
 #endif
 
     // DOM Level 2 Abstract Views (DocumentView interface)
@@ -141,22 +141,21 @@
 
     // DOM Level 3 XPath (XPathEvaluator interface)
     // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters, RaisesException] XPathExpression createExpression(optional DOMString expression = "undefined",
-                                                    optional XPathNSResolver? resolver = null);
-    XPathNSResolver    createNSResolver(Node? nodeResolver);
+    [ObjCLegacyUnnamedParameters, RaisesException] XPathExpression createExpression(optional DOMString expression = "undefined", optional XPathNSResolver? resolver);
+    XPathNSResolver createNSResolver(Node? nodeResolver);
 
     // FIXME: Using "undefined" as default parameter value is wrong.
     [ObjCLegacyUnnamedParameters, RaisesException] XPathResult evaluate(optional DOMString expression = "undefined",
-                                                  optional Node? contextNode = null,
-                                                  optional XPathNSResolver? resolver = null,
+                                                  optional Node? contextNode,
+                                                  optional XPathNSResolver? resolver,
                                                   optional unsigned short type = 0,
-                                                  optional XPathResult? inResult = null);
+                                                  optional XPathResult? inResult);
 
     // Common extensions
     // FIXME: Using "undefined" as default parameter value is wrong.
     boolean execCommand(optional DOMString command = "undefined",
                         optional boolean userInterface = false,
-                        optional DOMString? value);
+                        optional DOMString? value = null);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     // FIXME: remove the these two versions once optional is implemented for Objective-C.

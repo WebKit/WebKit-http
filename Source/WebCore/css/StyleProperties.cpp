@@ -166,16 +166,16 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
     case CSSPropertyFlexFlow:
         return getShorthandValue(flexFlowShorthand());
 #if ENABLE(CSS_GRID_LAYOUT)
-    case CSSPropertyWebkitGridArea:
-        return getShorthandValue(webkitGridAreaShorthand());
-    case CSSPropertyWebkitGridTemplate:
-        return getShorthandValue(webkitGridTemplateShorthand());
-    case CSSPropertyWebkitGrid:
-        return getShorthandValue(webkitGridShorthand());
-    case CSSPropertyWebkitGridColumn:
-        return getShorthandValue(webkitGridColumnShorthand());
-    case CSSPropertyWebkitGridRow:
-        return getShorthandValue(webkitGridRowShorthand());
+    case CSSPropertyGridArea:
+        return getShorthandValue(gridAreaShorthand());
+    case CSSPropertyGridTemplate:
+        return getShorthandValue(gridTemplateShorthand());
+    case CSSPropertyGrid:
+        return getShorthandValue(gridShorthand());
+    case CSSPropertyGridColumn:
+        return getShorthandValue(gridColumnShorthand());
+    case CSSPropertyGridRow:
+        return getShorthandValue(gridRowShorthand());
 #endif
     case CSSPropertyFont:
         return fontValue();
@@ -382,14 +382,18 @@ String StyleProperties::getLayeredShorthandValue(const StylePropertyShorthand& s
 
     for (unsigned i = 0; i < size; ++i) {
         values[i] = getPropertyCSSValueInternal(shorthand.properties()[i]);
-        if (values[i]) {
-            if (values[i]->isVariableDependentValue())
-                return values[i]->cssText();
-            if (values[i]->isBaseValueList())
-                numLayers = std::max(downcast<CSSValueList>(*values[i]).length(), numLayers);
-            else
-                numLayers = std::max<size_t>(1U, numLayers);
+        if (!values[i]) {
+            // We don't have all longhand properties defined as required for the shorthand
+            // property and thus should not serialize to a shorthand value. See spec at
+            // http://www.w3.org/TR/cssom-1/#serialize-a-css-declaration-block.
+            return String();
         }
+        if (values[i]->isVariableDependentValue())
+            return values[i]->cssText();
+        if (values[i]->isBaseValueList())
+            numLayers = std::max(downcast<CSSValueList>(*values[i]).length(), numLayers);
+        else
+            numLayers = std::max<size_t>(1U, numLayers);
     }
 
     String commonValue;

@@ -288,7 +288,6 @@ public:
     Strong<Structure> stringStructure;
     Strong<Structure> propertyNameIteratorStructure;
     Strong<Structure> propertyNameEnumeratorStructure;
-    Strong<Structure> getterSetterStructure;
     Strong<Structure> customGetterSetterStructure;
     Strong<Structure> scopedArgumentsTableStructure;
     Strong<Structure> apiWrapperStructure;
@@ -613,6 +612,9 @@ public:
     BytecodeIntrinsicRegistry& bytecodeIntrinsicRegistry() { return *m_bytecodeIntrinsicRegistry; }
     
     ShadowChicken& shadowChicken() { return *m_shadowChicken; }
+    
+    template<typename Func>
+    void logEvent(CodeBlock*, const char* summary, const Func& func);
 
 private:
     friend class LLIntOffsetsExtractor;

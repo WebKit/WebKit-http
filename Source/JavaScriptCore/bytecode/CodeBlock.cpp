@@ -63,6 +63,7 @@
 #include "TypeLocationCache.h"
 #include "TypeProfiler.h"
 #include "UnlinkedInstructionStream.h"
+#include "VMInlines.h"
 #include <wtf/BagToHashMap.h>
 #include <wtf/CommaPrinter.h>
 #include <wtf/StringExtras.h>
@@ -1117,9 +1118,45 @@ void CodeBlock::dumpBytecode(
             dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
+        case op_get_by_id_with_this: {
+            printLocationAndOp(out, exec, location, it, "get_by_id_with_this");
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int id0 = (++it)->u.operand;
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), idName(id0, identifier(id0)).data());
+            break;
+        }
+        case op_get_by_val_with_this: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "get_by_val_with_this");
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data());
+            break;
+        }
         case op_put_by_id: {
             printPutByIdOp(out, exec, location, it, "put_by_id");
             printPutByIdCacheStatus(out, location, stubInfos);
+            break;
+        }
+        case op_put_by_id_with_this: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int id0 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "put_by_id_with_this");
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), idName(id0, identifier(id0)).data(), registerName(r2).data());
+            break;
+        }
+        case op_put_by_val_with_this: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "put_by_val_with_this");
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data());
             break;
         }
         case op_put_getter_by_id: {
@@ -2616,32 +2653,16 @@ void CodeBlock::propagateTransitions(SlotVisitor& visitor)
 
 #if ENABLE(JIT)
     if (JITCode::isJIT(jitType())) {
-        for (Bag<StructureStubInfo>::iterator iter = m_stubInfos.begin(); !!iter; ++iter) {
-            StructureStubInfo& stubInfo = **iter;
-            if (stubInfo.cacheType != CacheType::Stub)
-                continue;
-            PolymorphicAccess* list = stubInfo.u.stub;
-            JSCell* origin = stubInfo.codeOrigin.codeOriginOwner();
-            if (origin && !Heap::isMarked(origin)) {
-                allAreMarkedSoFar = false;
-                continue;
-            }
-            for (unsigned j = list->size(); j--;) {
-                const AccessCase& access = list->at(j);
-                if (access.type() != AccessCase::Transition)
-                    continue;
-                if (Heap::isMarked(access.structure()))
-                    visitor.appendUnbarrieredReadOnlyPointer(access.newStructure());
-                else
-                    allAreMarkedSoFar = false;
-            }
-        }
+        for (Bag<StructureStubInfo>::iterator iter = m_stubInfos.begin(); !!iter; ++iter)
+            allAreMarkedSoFar &= (*iter)->propagateTransitions(visitor);
     }
 #endif // ENABLE(JIT)
     
 #if ENABLE(DFG_JIT)
     if (JITCode::isOptimizingJIT(jitType())) {
         DFG::CommonData* dfgCommon = m_jitCode->dfgCommon();
+        for (auto& weakReference : dfgCommon->weakStructureReferences)
+            allAreMarkedSoFar &= weakReference->markIfCheap(visitor);
         
         for (unsigned i = 0; i < dfgCommon->transitions.size(); ++i) {
             if (shouldMarkTransition(dfgCommon->transitions[i])) {
@@ -3290,6 +3311,8 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     UNUSED_PARAM(mode);
     UNUSED_PARAM(detail);
 #endif
+    
+    CODEBLOCK_LOG_EVENT(this, "jettison", ("due to ", reason, ", counting = ", mode == CountReoptimization, ", detail = ", pointerDump(detail)));
 
     RELEASE_ASSERT(reason != Profiler::NotJettisoned);
     

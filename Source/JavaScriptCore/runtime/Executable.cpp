@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2010, 2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@
 #include "Parser.h"
 #include "ProfilerDatabase.h"
 #include "TypeProfiler.h"
+#include "VMInlines.h"
 #include "WASMFunctionParser.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/Vector.h>
@@ -175,6 +176,8 @@ void ScriptExecutable::installCode(CodeBlock* codeBlock)
 void ScriptExecutable::installCode(VM& vm, CodeBlock* genericCodeBlock, CodeType codeType, CodeSpecializationKind kind)
 {
     ASSERT(vm.heap.isDeferred());
+    
+    CODEBLOCK_LOG_EVENT(genericCodeBlock, "installCode", ());
     
     CodeBlock* oldCodeBlock = nullptr;
     
@@ -437,7 +440,7 @@ EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source
     EvalExecutable* executable = new (NotNull, allocateCell<EvalExecutable>(*exec->heap())) EvalExecutable(exec, source, isInStrictContext, derivedContextType, isArrowFunctionContext, evalContextType);
     executable->finishCreation(exec->vm());
 
-    UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable, thisTDZMode, isArrowFunctionContext, variablesUnderTDZ);
+    UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable, thisTDZMode, variablesUnderTDZ);
     if (!unlinkedEvalCode)
         return 0;
 
@@ -734,7 +737,7 @@ FunctionExecutable* FunctionExecutable::fromGlobalCode(
 const ClassInfo WebAssemblyExecutable::s_info = { "WebAssemblyExecutable", &ExecutableBase::s_info, 0, CREATE_METHOD_TABLE(WebAssemblyExecutable) };
 
 WebAssemblyExecutable::WebAssemblyExecutable(VM& vm, const SourceCode& source, JSWASMModule* module, unsigned functionIndex)
-    : ExecutableBase(vm, vm.webAssemblyExecutableStructure.get(), NUM_PARAMETERS_NOT_COMPILED)
+    : ExecutableBase(vm, vm.webAssemblyExecutableStructure.get(), NUM_PARAMETERS_NOT_COMPILED, NoIntrinsic)
     , m_source(source)
     , m_module(vm, this, module)
     , m_functionIndex(functionIndex)

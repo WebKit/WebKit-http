@@ -1,3 +1,326 @@
+2016-05-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Internal JSC profiler should have a timestamped log of events for each code block
+        https://bugs.webkit.org/show_bug.cgi?id=157538
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/PrintStream.h:
+        (WTF::PrintStream::print):
+
+2016-05-10  Chris Dumez  <cdumez@apple.com>
+
+        Get rid of a lot of calls to RefPtr::release()
+        https://bugs.webkit.org/show_bug.cgi?id=157505
+
+        Reviewed by Alex Christensen.
+
+        Get rid of a lot of calls to RefPtr::release() and use WTFMove() instead.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::HashAndUTF8CharactersTranslator::translate):
+        * wtf/text/CString.cpp:
+        (WTF::CString::copyBufferIfNeeded):
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::allocateBuffer):
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        (WTF::StringBuilder::shrinkToFit):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::append):
+        (WTF::String::insert):
+        (WTF::String::removeInternal):
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+        (WTF::String::operator=):
+        (WTF::String::releaseImpl):
+        (WTF::String::isNull): Deleted.
+
+2016-05-08  Chris Dumez  <cdumez@apple.com>
+
+        [COCOA] Disable HAVE_DTRACE at build time
+        https://bugs.webkit.org/show_bug.cgi?id=157433
+        <rdar://problem/26148841>
+
+        Reviewed by Mark Lam.
+
+        Disable HAVE_DTRACE on COCOA since it is mostly unused and has a performance
+        impact, at least on iOS.
+
+        * wtf/Platform.h:
+
+2016-05-08  Chris Dumez  <cdumez@apple.com>
+
+        [Bindings] Simplify [RequiresExistingAtomicString] IDL extended attribute handling
+        https://bugs.webkit.org/show_bug.cgi?id=157465
+
+        Reviewed by Darin Adler.
+
+        Add an AtomicString(RefPtr<AtomicStringImpl>&&) constructor that is now
+        used by the bindings when [RequiresExistingAtomicString] is used. This
+        is more efficient than using AtomicString(AtomicStringImpl*) as the
+        caller has a RefPtr<AtomicStringImpl> and is consistent with the
+        pre-existing String(RefPtr<AtomicStringImpl>&&) constructor.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+
+2016-05-08  Darin Adler  <darin@apple.com>
+
+        * wtf/text/WTFString.h: Remove pragma once. Not working for some reason.
+
+2016-05-08  Darin Adler  <darin@apple.com>
+
+        Follow-up to that last patch (missed review comments).
+
+        * wtf/text/WTFString.h: Use nullptr instead of 0 as needed. Also use pragma once.
+
+2016-05-08  Darin Adler  <darin@apple.com>
+
+        Change EventSource constructor to take an IDL dictionary instead of a WebCore::Dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=157459
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/WTFString.h: Export a symbol now used in WebCore.
+
+2016-05-02  Sam Weinig  <sam@webkit.org>
+
+        On platforms that support it, use a SecTrustRef as the basis of CertificateInfo instead of a chain of SecCertificateRefs.
+        https://bugs.webkit.org/show_bug.cgi?id=157220
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+        Add support for HAVE(SEC_TRUST_SERIALIZATION).
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Add SPI access to SecTrustSerialize and SecTrustDeserialize.
+
+2016-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Add HLE locks and synchronic TTAS locks to the ToyLocks benchmark suite
+        https://bugs.webkit.org/show_bug.cgi?id=157367
+
+        Rubber stamped by Benjamin Poulain.
+        
+        Turns out they are both a lot slower than WTF::Lock. The HLE lock is written according to Intel's
+        documentation. The synchronic lock follows the algorithm of the "ttas_lock" in the synchronic
+        test.hpp.
+
+        * benchmarks/ToyLocks.h:
+
+2016-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Add a few more WTF locking benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=157365
+
+        Rubber stamped by Benjamin Poulain.
+        
+        Factors out our toy locks into ToyLocks.h and adds a new test (LockFairnessTest) that measures
+        the fairness of locks.
+        
+        The result: WTF::Lock is pretty fair enough.
+
+        * benchmarks/LockFairnessTest.cpp: Added.
+        (main):
+        * benchmarks/LockSpeedTest.cpp:
+        (main):
+        * benchmarks/ToyLocks.h: Added.
+
+2016-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Speed up JSGlobalObject initialization by making some properties lazy
+        https://bugs.webkit.org/show_bug.cgi?id=157045
+
+        Reviewed by Keith Miller.
+        
+        This WTF change is at the heart of a large JSC change. In JSC I found myself wanting to
+        do this a lot:
+        
+            static void callback(Foo& foo) { ... }
+        
+            foo.setCallback(callback);
+        
+        But that's not very nice to write if many different setCallback() calls are inside of the
+        same very large function: you'll have to have a lot of static function definitions in
+        one part of the file, and then a bunch of setCallback() calls in another part. It's hard
+        to reason about what's going on with such code.
+        
+        So what if you wrote this instead:
+        
+            foo.setCallback([] (Foo& foo) { ... });
+        
+        Much nicer! There is a standard way to do this: lambdas that are stateless are
+        convertible to function pointers. This change also offers another approach that is a bit
+        more general.
+        
+        These additions to WTF help you do it:
+        
+        isStatelessLambda<Func>(): tells you if Func is a stateless lambda. This uses is_empty to
+        test if the lambda is stateless. This turns out to be a stronger property than
+        convertibility to function pointers. For example, a function pointer is convertible to a
+        function pointer, but it is definitely stateful: you cannot successfully call it if you
+        only has its type. On the other hand, a stateless lambda is really stateless in the sense
+        that you only need its type to call it.
+        
+        callStatelessLambda<ResultType, Func>(Arguments&&...): calls the given stateless lambda.
+        
+        JSC uses these to build up some sophisticated lazy-initialization APIs. The use of
+        statelessness allows JSC to combine a lambda with other logic into a single function
+        pointer.
+
+        * wtf/StdLibExtras.h:
+        (WTF::isStatelessLambda):
+        (WTF::callStatelessLambda):
+
+2016-05-04  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Use NeverDestroyed template.
+        https://bugs.webkit.org/show_bug.cgi?id=157345
+
+        Reviewed by Darin Adler.
+
+        * wtf/ThreadingWin.cpp:
+        (WTF::threadMapMutex):
+        (WTF::threadMap):
+
+2016-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r200383 and r200406.
+
+        Seems to have caused crashes on iOS / ARMv7s
+
+        Reverted changesets:
+
+        "Speed up JSGlobalObject initialization by making some
+        properties lazy"
+        https://bugs.webkit.org/show_bug.cgi?id=157045
+        http://trac.webkit.org/changeset/200383
+
+        "REGRESSION(r200383): Setting lazily initialized properties
+        across frame boundaries crashes"
+        https://bugs.webkit.org/show_bug.cgi?id=157333
+        http://trac.webkit.org/changeset/200406
+
+2016-05-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Speed up JSGlobalObject initialization by making some properties lazy
+        https://bugs.webkit.org/show_bug.cgi?id=157045
+
+        Reviewed by Keith Miller.
+        
+        This WTF change is at the heart of a large JSC change. In JSC I found myself wanting to
+        do this a lot:
+        
+            static void callback(Foo& foo) { ... }
+        
+            foo.setCallback(callback);
+        
+        But that's not very nice to write if many different setCallback() calls are inside of the
+        same very large function: you'll have to have a lot of static function definitions in
+        one part of the file, and then a bunch of setCallback() calls in another part. It's hard
+        to reason about what's going on with such code.
+        
+        So what if you wrote this instead:
+        
+            foo.setCallback([] (Foo& foo) { ... });
+        
+        Much nicer! There is a standard way to do this: lambdas that are stateless are
+        convertible to function pointers. This change also offers another approach that is a bit
+        more general.
+        
+        These additions to WTF help you do it:
+        
+        isStatelessLambda<Func>(): tells you if Func is a stateless lambda. This uses is_empty to
+        test if the lambda is stateless. This turns out to be a stronger property than
+        convertibility to function pointers. For example, a function pointer is convertible to a
+        function pointer, but it is definitely stateful: you cannot successfully call it if you
+        only has its type. On the other hand, a stateless lambda is really stateless in the sense
+        that you only need its type to call it.
+        
+        callStatelessLambda<ResultType, Func>(Arguments&&...): calls the given stateless lambda.
+        
+        JSC uses these to build up some sophisticated lazy-initialization APIs. The use of
+        statelessness allows JSC to combine a lambda with other logic into a single function
+        pointer.
+
+        * wtf/StdLibExtras.h:
+        (WTF::isStatelessLambda):
+        (WTF::callStatelessLambda):
+
+2016-05-03  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Remove Windows XP Compatibility Requirements
+        https://bugs.webkit.org/show_bug.cgi?id=152899
+
+        Reviewed by Brent Fulgham.
+
+        Windows XP is not supported anymore, we can remove workarounds.
+
+        * wtf/Assertions.cpp:
+
+2016-05-03  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Warning fix.
+        https://bugs.webkit.org/show_bug.cgi?id=157309
+
+        Reviewed by Darin Adler.
+
+        MSVC gives a warning when converting from signed to unsigned.
+
+        * wtf/SmallPtrSet.h:
+        (WTF::SmallPtrSet::begin):
+
+2016-05-02  Brady Eidson  <beidson@apple.com>
+
+        Add the ability to accumulate logs for specific logging channels to help diagnose test timeouts.
+        https://bugs.webkit.org/show_bug.cgi?id=157274
+
+        Reviewed by Alex Christensen.
+
+        This patch changes WTFLog to add the logging string to the logging accumulator if the logging channel says so.
+        It also adds support for using this new accumulation mechanism.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+        * wtf/Assertions.cpp:
+        (WTF::resetAccumulatedLogs):
+        (WTF::getAndResetAccumulatedLogs):
+        * wtf/Assertions.h:
+
+        * wtf/LoggingAccumulator.h: Added. Expose functions to get accumulated logs and to reset the accumulation.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::format): Update to handle %@ on CF (Well, really ObjC) platforms.
+
+2016-05-02  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Enable IndexedDB.
+        https://bugs.webkit.org/show_bug.cgi?id=157192
+
+        Reviewed by Brent Fulgham.
+
+        Fix compile errors when format specifiers like PRIu64 is used, by defining
+        __STDC_FORMAT_MACROS before inttypes.h is included.
+
+        * wtf/Platform.h: 
+
+2016-04-27  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Implement native IDBFactory.getAllDatabaseNames for WebInspector.
+        https://bugs.webkit.org/show_bug.cgi?id=157072
+
+        Reviewed by Alex Christensen.
+
+        Moved these Hex Digit utilities from WebCore URL code (???), 
+        and add a checked version of getting the hex digit value.
+        
+        * wtf/HexNumber.h:
+        (WTF::isHexDigit):
+        (WTF::uncheckedHexDigit):
+        (WTF::hexDigitValue):
+        (WTF::uncheckedHexDigitValue):
+
 2016-04-25  Ryosuke Niwa  <rniwa@webkit.org>
 
         Remove the build flag for template elements

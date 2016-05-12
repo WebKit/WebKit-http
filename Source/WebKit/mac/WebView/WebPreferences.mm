@@ -490,8 +490,6 @@ public:
         [NSNumber numberWithBool:NO],   WebKitJavaScriptCanAccessClipboardPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitXSSAuditorEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAcceleratedCompositingEnabledPreferenceKey,
-        [NSNumber numberWithBool:YES], WebKitCSSRegionsEnabledPreferenceKey,
-        [NSNumber numberWithBool:YES], WebKitCSSCompositingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitDisplayListDrawingEnabledPreferenceKey,
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
         [NSNumber numberWithBool:YES],  WebKitAcceleratedDrawingEnabledPreferenceKey,
@@ -581,6 +579,7 @@ public:
 #endif
 #if ENABLE(IOS_TEXT_AUTOSIZING)
         [NSNumber numberWithFloat:Settings::defaultMinimumZoomFontSize()], WebKitMinimumZoomFontSizePreferenceKey,
+        [NSNumber numberWithBool:Settings::defaultTextAutosizingEnabled()], WebKitTextAutosizingEnabledPreferenceKey,
 #endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
@@ -618,6 +617,9 @@ public:
 #endif
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
         [NSNumber numberWithBool:NO], WebKitDownloadAttributeEnabledPreferenceKey,
+#endif
+#if ENABLE(CSS_GRID_LAYOUT)
+        [NSNumber numberWithBool:YES], WebKitCSSGridLayoutEnabledPreferenceKey,
 #endif
         nil];
 
@@ -1474,6 +1476,16 @@ public:
 {
     return [self _floatValueForKey:WebKitMinimumZoomFontSizePreferenceKey];
 }
+
+- (void)_setTextAutosizingEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitTextAutosizingEnabledPreferenceKey];
+}
+
+- (BOOL)_textAutosizingEnabled
+{
+    return [self _boolValueForKey:WebKitTextAutosizingEnabledPreferenceKey];
+}
 #endif
 
 #if PLATFORM(IOS)
@@ -1875,26 +1887,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setAcceleratedCompositingEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitAcceleratedCompositingEnabledPreferenceKey];
-}
-
-- (BOOL)cssRegionsEnabled
-{
-    return [self _boolValueForKey:WebKitCSSRegionsEnabledPreferenceKey];
-}
-
-- (void)setCSSRegionsEnabled:(BOOL)enabled
-{
-    [self _setBoolValue:enabled forKey:WebKitCSSRegionsEnabledPreferenceKey];
-}
-
-- (BOOL)cssCompositingEnabled
-{
-    return [self _boolValueForKey:WebKitCSSCompositingEnabledPreferenceKey];
-}
-
-- (void)setCSSCompositingEnabled:(BOOL)enabled
-{
-    [self _setBoolValue:enabled forKey:WebKitCSSCompositingEnabledPreferenceKey];
 }
 
 - (BOOL)showDebugBorders
@@ -2737,6 +2729,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setDownloadAttributeEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitDownloadAttributeEnabledPreferenceKey];
+}
+
+- (BOOL)isCSSGridLayoutEnabled
+{
+    return [self _boolValueForKey:WebKitCSSGridLayoutEnabledPreferenceKey];
+}
+
+- (void)setCSSGridLayoutEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCSSGridLayoutEnabledPreferenceKey];
 }
 
 @end

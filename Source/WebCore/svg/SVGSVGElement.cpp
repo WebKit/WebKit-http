@@ -64,7 +64,7 @@ inline SVGSVGElement::SVGSVGElement(const QualifiedName& tagName, Document& docu
     , m_y(LengthModeHeight)
     , m_width(LengthModeWidth, ASCIILiteral("100%"))
     , m_height(LengthModeHeight, ASCIILiteral("100%"))
-    , m_timeContainer(RefPtr<SMILTimeContainer>(SMILTimeContainer::create(this)).releaseNonNull())
+    , m_timeContainer(SMILTimeContainer::create(this))
 {
     ASSERT(hasTagName(SVGNames::svgTag));
     registerAnimatedPropertiesForSVGSVGElement();
@@ -672,6 +672,9 @@ void SVGSVGElement::resumeFromDocumentSuspension()
 // See http://www.w3.org/TR/SVG11/struct.html#InterfaceSVGSVGElement
 Element* SVGSVGElement::getElementById(const AtomicString& id)
 {
+    if (id.isNull())
+        return nullptr;
+
     Element* element = treeScope().getElementById(id);
     if (element && element->isDescendantOf(this))
         return element;

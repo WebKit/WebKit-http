@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,11 +34,14 @@
 #include "JSArray.h"
 #include "SpeculatedType.h"
 #include "Structure.h"
+#include "TagRegistersMode.h"
 #include "WriteBarrier.h"
 #include <wtf/PrintStream.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
+
+class CCallHelpers;
 
 template<unsigned numberOfBucketsArgument>
 struct ValueProfileBase {
@@ -244,6 +247,29 @@ public:
 
     void* addressOfFlags() { return &m_bytecodeOffsetAndFlags; }
     void* addressOfSpecialFastPathCount() { return &m_specialFastPathCount; }
+    
+    void detectNumericness(JSValue value)
+    {
+        if (value.isInt32())
+            return;
+        if (value.isNumber()) {
+            m_bytecodeOffsetAndFlags |= Int32Overflow | Int52Overflow | NonNegZeroDouble | NegZeroDouble;
+            return;
+        }
+        m_bytecodeOffsetAndFlags |= NonNumber;
+    }
+
+#if ENABLE(JIT)    
+    // Sets (Int32Overflow | Int52Overflow | NonNegZeroDouble | NegZeroDouble) if it sees a
+    // double. Sets NonNumber if it sees a non-number.
+    void emitDetectNumericness(CCallHelpers&, JSValueRegs, TagRegistersMode = HaveTagRegisters);
+    
+    // Sets (Int32Overflow | Int52Overflow | NonNegZeroDouble | NegZeroDouble).
+    void emitSetDouble(CCallHelpers&);
+    
+    // Sets NonNumber.
+    void emitSetNonNumber(CCallHelpers&);
+#endif // ENABLE(JIT)
 
 private:
     bool hasBits(int mask) const { return m_bytecodeOffsetAndFlags & mask; }

@@ -488,7 +488,7 @@ long AccessibleBase::state() const
     if (!m_object->isEnabled())
         state |= STATE_SYSTEM_UNAVAILABLE;
 
-    if (m_object->isReadOnly())
+    if (!m_object->canSetValueAttribute())
         state |= STATE_SYSTEM_READONLY;
 
     if (m_object->isOffScreen())
@@ -967,7 +967,6 @@ static long MSAARole(AccessibilityRole role)
         case WebCore::DocumentRole:
         case WebCore::DocumentArticleRole:
         case WebCore::DocumentNoteRole:
-        case WebCore::DocumentRegionRole:
             return ROLE_SYSTEM_GROUPING;
         case WebCore::DocumentMathRole:
         case WebCore::MathElementRole:
@@ -980,6 +979,7 @@ static long MSAARole(AccessibilityRole role)
         case WebCore::LandmarkContentInfoRole:
         case WebCore::LandmarkMainRole:
         case WebCore::LandmarkNavigationRole:
+        case WebCore::LandmarkRegionRole:
         case WebCore::LandmarkSearchRole:
         case WebCore::LegendRole:
             return ROLE_SYSTEM_GROUPING;

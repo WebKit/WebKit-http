@@ -161,7 +161,7 @@ bool JSTestCustomNamedGetter::getOwnPropertySlotByIndex(JSObject* object, ExecSt
 EncodedJSValue jsTestCustomNamedGetterConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestCustomNamedGetterPrototype* domObject = jsDynamicCast<JSTestCustomNamedGetterPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestCustomNamedGetter::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -193,10 +193,10 @@ EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnotherFunc
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    String str = state->argument(0).toString(state)->value(state);
+    auto str = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.anotherFunction(str);
+    impl.anotherFunction(WTFMove(str));
     return JSValue::encode(jsUndefined());
 }
 
@@ -246,7 +246,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestCustomNa
 #if COMPILER(CLANG)
     // If this fails TestCustomNamedGetter does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestCustomNamedGetter), TestCustomNamedGetter_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestCustomNamedGetter), "TestCustomNamedGetter is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

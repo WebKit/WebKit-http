@@ -212,12 +212,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)acceleratedCompositingEnabled;
 - (void)setAcceleratedCompositingEnabled:(BOOL)enabled;
 
-- (BOOL)cssRegionsEnabled;
-- (void)setCSSRegionsEnabled:(BOOL)enabled;
-
-- (BOOL)cssCompositingEnabled;
-- (void)setCSSCompositingEnabled:(BOOL)enabled;
-
 - (BOOL)showDebugBorders;
 - (void)setShowDebugBorders:(BOOL)show;
 
@@ -319,6 +313,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setMediaPlaybackAllowsAirPlay:(BOOL)flag;
 - (BOOL)mediaPlaybackAllowsAirPlay;
 #endif
+
+- (void)_setTextAutosizingEnabled:(BOOL)enabled;
+- (BOOL)_textAutosizingEnabled;
 
 - (BOOL)isInheritURIQueryComponentEnabled;
 - (void)setEnableInheritURIQueryComponent:(BOOL)flag;
@@ -489,6 +486,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setDownloadAttributeEnabled:(BOOL)flag;
 - (BOOL)downloadAttributeEnabled;
+
+- (void)setCSSGridLayoutEnabled:(BOOL)flag;
+- (BOOL)isCSSGridLayoutEnabled;
 
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 @property (nonatomic) BOOL mediaDataLoadsAutomatically;

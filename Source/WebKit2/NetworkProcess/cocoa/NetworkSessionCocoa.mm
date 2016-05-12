@@ -121,10 +121,21 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
             completionHandlerCopy(request.nsURLRequest(WebCore::UpdateHTTPBody));
             Block_release(completionHandlerCopy);
         });
-    } else {
-        ASSERT_NOT_REACHED();
+    } else
         completionHandler(nil);
-    }
+}
+
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask*)task _schemeUpgraded:(NSURLRequest*)request completionHandler:(void (^)(NSURLRequest*))completionHandler
+{
+    auto storedCredentials = _withCredentials ? WebCore::StoredCredentials::AllowStoredCredentials : WebCore::StoredCredentials::DoNotAllowStoredCredentials;
+    if (auto* networkDataTask = _session->dataTaskForIdentifier(task.taskIdentifier, storedCredentials)) {
+        auto completionHandlerCopy = Block_copy(completionHandler);
+        networkDataTask->willPerformHTTPRedirection(WebCore::synthesizeRedirectResponseIfNecessary([task currentRequest], request, nil), request, [completionHandlerCopy](const WebCore::ResourceRequest& request) {
+            completionHandlerCopy(request.nsURLRequest(WebCore::UpdateHTTPBody));
+            Block_release(completionHandlerCopy);
+        });
+    } else
+        completionHandler(nil);
 }
 
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask willCacheResponse:(NSCachedURLResponse *)proposedResponse completionHandler:(void (^)(NSCachedURLResponse * _Nullable cachedResponse))completionHandler
@@ -150,7 +161,7 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
             UNUSED_PARAM(sessionID);
             UNUSED_PARAM(authenticationChallenge);
 #else
-            if (credential.persistence() == WebCore::CredentialPersistenceForSession && authenticationChallenge.protectionSpace().authenticationScheme() != WebCore::ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested) {
+            if (credential.persistence() == WebCore::CredentialPersistenceForSession && authenticationChallenge.protectionSpace().isPasswordBased()) {
 
                 WebCore::Credential nonPersistentCredential(credential.user(), credential.password(), WebCore::CredentialPersistenceNone);
                 WebCore::URL urlToStore;
@@ -168,10 +179,8 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
             Block_release(completionHandlerCopy);
         };
         networkDataTask->didReceiveChallenge(challenge, challengeCompletionHandler);
-    } else {
-        ASSERT_NOT_REACHED();
-        completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
-    }
+    } else
+        completionHandler(NSURLSessionAuthChallengeCancelAuthenticationChallenge, nil);
 }
 
 - (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error

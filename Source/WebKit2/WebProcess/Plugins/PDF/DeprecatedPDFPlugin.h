@@ -150,6 +150,7 @@ private:
     bool handleEditingCommand(const String& commandName, const String& argument) override;
     bool isEditingCommandEnabled(const String&) override;
     bool handlesPageScaleFactor() const override;
+    bool requiresUnifiedScaleFactor() const override { return true; }
     void setFocus(bool) override { }
     NPObject* pluginScriptableNPObject() override { return 0; }
     void windowFocusChanged(bool) override { }
@@ -213,7 +214,6 @@ private:
     WebCore::IntRect convertFromContainingViewToScrollbar(const WebCore::Scrollbar&, const WebCore::IntRect& parentRect) const override;
     WebCore::IntPoint convertFromScrollbarToContainingView(const WebCore::Scrollbar&, const WebCore::IntPoint& scrollbarPoint) const override;
     WebCore::IntPoint convertFromContainingViewToScrollbar(const WebCore::Scrollbar&, const WebCore::IntPoint& parentPoint) const override;
-    bool updatesScrollLayerPositionOnMainThread() const override { return true; }
     bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const override;
 
     // PDFPlugin functions.

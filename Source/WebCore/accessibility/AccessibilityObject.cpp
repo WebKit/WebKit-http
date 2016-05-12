@@ -310,7 +310,7 @@ bool AccessibilityObject::accessibleNameDerivesFromContent() const
     case DocumentArticleRole:
     case DocumentMathRole:
     case DocumentNoteRole:
-    case DocumentRegionRole:
+    case LandmarkRegionRole:
     case FormRole:
     case GridRole:
     case GroupRole:
@@ -392,6 +392,11 @@ bool AccessibilityObject::isARIATextControl() const
     return ariaRoleAttribute() == TextAreaRole || ariaRoleAttribute() == TextFieldRole || ariaRoleAttribute() == SearchFieldRole;
 }
 
+bool AccessibilityObject::isNonNativeTextControl() const
+{
+    return (isARIATextControl() || hasContentEditableAttributeSet()) && !isNativeTextControl();
+}
+
 bool AccessibilityObject::isLandmark() const
 {
     AccessibilityRole role = roleValue();
@@ -401,6 +406,7 @@ bool AccessibilityObject::isLandmark() const
         || role == LandmarkContentInfoRole
         || role == LandmarkMainRole
         || role == LandmarkNavigationRole
+        || role == LandmarkRegionRole
         || role == LandmarkSearchRole;
 }
 
@@ -1555,6 +1561,37 @@ bool AccessibilityObject::hasContentEditableAttributeSet() const
     return contentEditableAttributeIsEnabled(element());
 }
 
+bool AccessibilityObject::supportsARIAReadOnly() const
+{
+    AccessibilityRole role = roleValue();
+
+    return role == CheckBoxRole
+        || role == ColumnHeaderRole
+        || role == ComboBoxRole
+        || role == GridRole
+        || role == GridCellRole
+        || role == ListBoxRole
+        || role == MenuItemCheckboxRole
+        || role == MenuItemRadioRole
+        || role == RadioGroupRole
+        || role == RowHeaderRole
+        || role == SearchFieldRole
+        || role == SliderRole
+        || role == SpinButtonRole
+        || role == SwitchRole
+        || role == TextFieldRole
+        || role == TreeGridRole
+        || isPasswordField();
+}
+
+String AccessibilityObject::ariaReadOnlyValue() const
+{
+    if (!hasAttribute(aria_readonlyAttr))
+        return ariaRoleAttribute() != UnknownRole && supportsARIAReadOnly() ? "false" : String();
+
+    return String(getAttribute(aria_readonlyAttr)).convertToASCIILowercase();
+}
+
 bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
 {
     if (!element)
@@ -2071,7 +2108,7 @@ static void initializeRoleMap()
         { "progressbar", ProgressIndicatorRole },
         { "radio", RadioButtonRole },
         { "radiogroup", RadioGroupRole },
-        { "region", DocumentRegionRole },
+        { "region", LandmarkRegionRole },
         { "row", RowRole },
         { "rowgroup", RowGroupRole },
         { "scrollbar", ScrollBarRole },
@@ -3024,7 +3061,20 @@ bool AccessibilityObject::isStyleFormatGroup() const
     return node->hasTagName(kbdTag) || node->hasTagName(codeTag)
     || node->hasTagName(preTag) || node->hasTagName(sampTag)
     || node->hasTagName(varTag) || node->hasTagName(citeTag)
-    || node->hasTagName(insTag) || node->hasTagName(delTag);
+    || node->hasTagName(insTag) || node->hasTagName(delTag)
+    || node->hasTagName(supTag) || node->hasTagName(subTag);
+}
+
+bool AccessibilityObject::isSubscriptStyleGroup() const
+{
+    Node* node = this->node();
+    return node && node->hasTagName(subTag);
+}
+
+bool AccessibilityObject::isSuperscriptStyleGroup() const
+{
+    Node* node = this->node();
+    return node && node->hasTagName(supTag);
 }
     
 bool AccessibilityObject::isContainedByPasswordField() const

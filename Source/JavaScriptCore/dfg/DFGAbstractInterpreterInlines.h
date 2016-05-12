@@ -143,6 +143,36 @@ void AbstractInterpreter<AbstractStateType>::verifyEdges(Node* node)
     DFG_NODE_DO_TO_CHILDREN(m_graph, node, verifyEdge);
 }
 
+inline bool isToThisAnIdentity(bool isStrictMode, AbstractValue& valueForNode)
+{
+    // We look at the type first since that will cover most cases and does not require iterating all the structures.
+    if (isStrictMode) {
+        if (valueForNode.m_type && !(valueForNode.m_type & SpecObjectOther))
+            return true;
+    } else {
+        if (valueForNode.m_type && !(valueForNode.m_type & (~SpecObject | SpecObjectOther)))
+            return true;
+    }
+
+    if ((isStrictMode || (valueForNode.m_type && !(valueForNode.m_type & ~SpecObject))) && valueForNode.m_structure.isFinite()) {
+        bool overridesToThis = false;
+        valueForNode.m_structure.forEach([&](Structure* structure) {
+            TypeInfo type = structure->typeInfo();
+            ASSERT(type.isObject() || type.type() == StringType || type.type() == SymbolType);
+            if (!isStrictMode)
+                ASSERT(type.isObject());
+            // We don't need to worry about strings/symbols here since either:
+            // 1) We are in strict mode and strings/symbols are not wrapped
+            // 2) The AI has proven that the type of this is a subtype of object
+            if (type.isObject() && type.overridesToThis())
+                overridesToThis = true;
+        });
+        return overridesToThis;
+    }
+
+    return false;
+}
+
 template<typename AbstractStateType>
 bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimit, Node* node)
 {
@@ -1878,7 +1908,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         forNode(node).set(
             m_graph,
-            m_graph.globalObjectFor(node->origin.semantic)->typedArrayStructure(
+            m_graph.globalObjectFor(node->origin.semantic)->typedArrayStructureConcurrently(
                 node->typedArrayType()));
         break;
         
@@ -1889,21 +1919,17 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ToThis: {
         AbstractValue& source = forNode(node->child1());
         AbstractValue& destination = forNode(node);
+        bool strictMode = m_graph.executableFor(node->origin.semantic)->isStrictMode();
 
-        if (source.m_type == SpecStringObject) {
+        if (isToThisAnIdentity(strictMode, source)) {
             m_state.setFoundConstants(true);
             destination = source;
             break;
         }
 
-        if (m_graph.executableFor(node->origin.semantic)->isStrictMode()) {
-            if (!(source.m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecSymbol))) {
-                m_state.setFoundConstants(true);
-                destination = source;
-                break;
-            }
+        if (strictMode)
             destination.makeHeapTop();
-        } else {
+        else {
             destination = source;
             destination.merge(SpecObject);
         }
@@ -2153,6 +2179,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).makeHeapTop();
         break;
     }
+
+    case GetByValWithThis:
+    case GetByIdWithThis:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).makeHeapTop();
+        break;
             
     case GetArrayLength: {
         JSArrayBufferView* view = m_graph.tryGetFoldableView(
@@ -2165,7 +2197,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case DeleteById: {
+    case DeleteById:
+    case DeleteByVal: {
         // FIXME: This could decide if the delete will be successful based on the set of structures that
         // we get from our base value. https://bugs.webkit.org/show_bug.cgi?id=156611
         clobberWorld(node->origin.semantic, clobberLimit);
@@ -2427,7 +2460,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
         
-        forNode(node).set(m_graph, m_graph.m_vm.getterSetterStructure.get());
+        forNode(node).set(m_graph, m_graph.globalObjectFor(node->origin.semantic)->getterSetterStructure());
         break;
     }
         
@@ -2651,6 +2684,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case PutByValWithThis:
+    case PutByIdWithThis:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        break;
+
     case PutGetterById:
     case PutSetterById:
     case PutGetterSetterById:
@@ -2851,6 +2889,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case Unreachable:
+        // It may be that during a previous run of AI we proved that something was unreachable, but
+        // during this run of AI we forget that it's unreachable. AI's proofs don't have to get
+        // monotonically stronger over time. So, we don't assert that AI doesn't reach the
+        // Unreachable. We have no choice but to take our past proof at face value. Otherwise we'll
+        // crash whenever AI fails to be as powerful on run K as it was on run K-1.
+        m_state.setIsValid(false);
+        break;
+        
     case LastNodeType:
     case ArithIMul:
     case FiatInt52:

@@ -741,10 +741,10 @@ static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool s
 // CSS requires text-decoration to be reset at each DOM element for tables, 
 // inline blocks, inline tables, shadow DOM crossings, floating elements,
 // and absolute or relatively positioned elements.
-static bool doesNotInheritTextDecoration(const RenderStyle& style, const Element& element)
+static bool doesNotInheritTextDecoration(const RenderStyle& style, const Element* element)
 {
     return style.display() == TABLE || style.display() == INLINE_TABLE
-        || style.display() == INLINE_BLOCK || style.display() == INLINE_BOX || isAtShadowBoundary(element)
+        || style.display() == INLINE_BLOCK || style.display() == INLINE_BOX || (element && isAtShadowBoundary(*element))
         || style.isFloating() || style.hasOutOfFlowPosition();
 }
 
@@ -912,7 +912,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         }
     }
 
-    if (element && doesNotInheritTextDecoration(style, *element))
+    if (doesNotInheritTextDecoration(style, element))
         style.setTextDecorationsInEffect(style.textDecoration());
     else
         style.addToTextDecorationsInEffect(style.textDecoration());
@@ -1679,12 +1679,12 @@ PassRefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValu
     return nullptr;
 }
 
-PassRefPtr<StyleImage> StyleResolver::cachedOrPendingFromValue(CSSPropertyID property, CSSImageValue& value)
+RefPtr<StyleImage> StyleResolver::cachedOrPendingFromValue(CSSPropertyID property, CSSImageValue& value)
 {
     RefPtr<StyleImage> image = value.cachedOrPendingImage();
     if (image && image->isPendingImage())
         m_state.pendingImageProperties().set(property, &value);
-    return image.release();
+    return image;
 }
 
 PassRefPtr<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID property, CSSImageGeneratorValue& value)
@@ -1702,21 +1702,21 @@ PassRefPtr<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID 
 }
 
 #if ENABLE(CSS_IMAGE_SET)
-PassRefPtr<StyleImage> StyleResolver::setOrPendingFromValue(CSSPropertyID property, CSSImageSetValue& value)
+RefPtr<StyleImage> StyleResolver::setOrPendingFromValue(CSSPropertyID property, CSSImageSetValue& value)
 {
     RefPtr<StyleImage> image = value.cachedOrPendingImageSet(document());
     if (image && image->isPendingImage())
         m_state.pendingImageProperties().set(property, &value);
-    return image.release();
+    return image;
 }
 #endif
 
-PassRefPtr<StyleImage> StyleResolver::cursorOrPendingFromValue(CSSPropertyID property, CSSCursorImageValue& value)
+RefPtr<StyleImage> StyleResolver::cursorOrPendingFromValue(CSSPropertyID property, CSSCursorImageValue& value)
 {
     RefPtr<StyleImage> image = value.cachedOrPendingImage(document());
     if (image && image->isPendingImage())
         m_state.pendingImageProperties().set(property, &value);
-    return image.release();
+    return image;
 }
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)

@@ -56,7 +56,13 @@
 #include "ValueProfile.h"
 #include <wtf/ListDump.h>
 
-namespace JSC { namespace DFG {
+namespace JSC {
+
+namespace Profiler {
+class ExecutionCounter;
+}
+
+namespace DFG {
 
 class Graph;
 class PromotedLocationDescriptor;
@@ -633,13 +639,6 @@ struct Node {
         m_op = ToString;
     }
 
-    void convertToArithSqrt()
-    {
-        ASSERT(m_op == ArithPow);
-        child2() = Edge();
-        m_op = ArithSqrt;
-    }
-
     void convertToArithNegate()
     {
         ASSERT(m_op == ArithAbs && child1().useKind() == Int32Use);
@@ -869,9 +868,11 @@ struct Node {
         case TryGetById:
         case GetById:
         case GetByIdFlush:
+        case GetByIdWithThis:
         case PutById:
         case PutByIdFlush:
         case PutByIdDirect:
+        case PutByIdWithThis:
         case PutGetterById:
         case PutSetterById:
         case PutGetterSetterById:
@@ -960,6 +961,16 @@ struct Node {
     bool mayHaveNonIntResult()
     {
         return m_flags & NodeMayHaveNonIntResult;
+    }
+    
+    bool mayHaveDoubleResult()
+    {
+        return m_flags & NodeMayHaveDoubleResult;
+    }
+    
+    bool mayHaveNonNumberResult()
+    {
+        return m_flags & NodeMayHaveNonNumberResult;
     }
 
     bool hasConstantBuffer()

@@ -53,8 +53,6 @@
 #import <WebKitAdditions/DataDetectorsAdditions.h>
 #endif
 
-const char* dataDetectorsLinkStyle = "-webkit-text-decoration-color:rgb(199, 199, 204); color:initial;";
-
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -635,9 +633,28 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
             Ref<HTMLAnchorElement> anchorElement = HTMLAnchorElement::create(document);
             anchorElement->setHref(correspondingURL);
             anchorElement->setDir("ltr");
-            if (shouldUseLightLinks)
-                anchorElement->setAttribute(styleAttr, dataDetectorsLinkStyle);
-            else if (is<StyledElement>(*parentNode)) {
+            if (shouldUseLightLinks) {
+                document.updateStyleIfNeeded();
+                auto* renderStyle = parentNode->computedStyle();
+                if (renderStyle) {
+                    auto textColor = renderStyle->visitedDependentColor(CSSPropertyColor);
+                    if (textColor.isValid()) {
+                        double h = 0;
+                        double s = 0;
+                        double v = 0;
+                        textColor.getHSV(h, s, v);
+
+                        // Set the alpha of the underline to 46% if the text color is white-ish (defined
+                        // as having a saturation of less than 2% and a value/brightness or greater than
+                        // 98%). Otherwise, set the alpha of the underline to 26%.
+                        double overrideAlpha = (s < 0.02 && v > 0.98) ? 0.46 : 0.26;
+                        auto underlineColor = Color(colorWithOverrideAlpha(textColor.rgb(), overrideAlpha));
+
+                        anchorElement->setInlineStyleProperty(CSSPropertyColor, textColor.cssText());
+                        anchorElement->setInlineStyleProperty(CSSPropertyWebkitTextDecorationColor, underlineColor.cssText());
+                    }
+                }
+            } else if (is<StyledElement>(*parentNode)) {
                 if (auto* style = downcast<StyledElement>(*parentNode).presentationAttributeStyle()) {
                     String color = style->getPropertyValue(CSSPropertyColor);
                     if (!color.isEmpty())

@@ -73,10 +73,19 @@ JSJavaScriptCallFrame::~JSJavaScriptCallFrame()
     releaseImpl();
 }
 
-JSValue JSJavaScriptCallFrame::evaluate(ExecState* exec)
+JSValue JSJavaScriptCallFrame::evaluateWithScopeExtension(ExecState* exec)
 {
+    JSValue scriptValue = exec->argument(0);
+    if (!scriptValue.isString())
+        return throwTypeError(exec, "JSJavaScriptCallFrame.evaluateWithScopeExtension first argument must be a string.");
+
+    String script = scriptValue.toString(exec)->value(exec);
+    if (exec->hadException())
+        return jsUndefined();
+
     NakedPtr<Exception> exception;
-    JSValue result = impl().evaluate(exec->argument(0).toString(exec)->value(exec), exception);
+    JSObject* scopeExtension = exec->argument(1).getObject();
+    JSValue result = impl().evaluateWithScopeExtension(script, scopeExtension, exception);
     if (exception)
         exec->vm().throwException(exec, exception);
 

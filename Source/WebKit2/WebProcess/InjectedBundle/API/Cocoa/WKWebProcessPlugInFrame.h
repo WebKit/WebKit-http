@@ -45,6 +45,11 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
 
 @property (nonatomic, readonly) _WKFrameHandle *handle;
 
+// Returns URLs ordered by resolution in descending order.
+// FIXME: These should be tagged nonnull.
+@property (nonatomic, readonly) WK_ARRAY(NSURL *) *appleTouchIconURLs WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+@property (nonatomic, readonly) WK_ARRAY(NSURL *) *faviconURLs WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+
 - (JSContext *)jsContextForWorld:(WKWebProcessPlugInScriptWorld *)world;
 - (WKWebProcessPlugInHitTestResult *)hitTest:(CGPoint)point;
 - (JSValue *)jsNodeForNodeHandle:(WKWebProcessPlugInNodeHandle *)nodeHandle inWorld:(WKWebProcessPlugInScriptWorld *)world;

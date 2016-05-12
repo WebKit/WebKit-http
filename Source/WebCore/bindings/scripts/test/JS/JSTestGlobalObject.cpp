@@ -24,6 +24,7 @@
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvert.h"
 #include "RuntimeEnabledFeatures.h"
 #include "URL.h"
 #include <runtime/Error.h>
@@ -188,7 +189,7 @@ EncodedJSValue jsTestGlobalObjectEnabledAtRuntimeAttribute(ExecState* state, Enc
 EncodedJSValue jsTestGlobalObjectConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestGlobalObjectPrototype* domObject = jsDynamicCast<JSTestGlobalObjectPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestGlobalObject::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -214,10 +215,10 @@ bool setJSTestGlobalObjectRegularAttribute(ExecState* state, EncodedJSValue this
         return throwSetterTypeError(*state, "TestGlobalObject", "regularAttribute");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setRegularAttribute(nativeValue);
+    impl.setRegularAttribute(WTFMove(nativeValue));
     return true;
 }
 
@@ -232,10 +233,10 @@ bool setJSTestGlobalObjectEnabledAtRuntimeAttribute(ExecState* state, EncodedJSV
         return throwSetterTypeError(*state, "TestGlobalObject", "enabledAtRuntimeAttribute");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setEnabledAtRuntimeAttribute(nativeValue);
+    impl.setEnabledAtRuntimeAttribute(WTFMove(nativeValue));
     return true;
 }
 
@@ -256,10 +257,10 @@ EncodedJSValue JSC_HOST_CALL jsTestGlobalObjectInstanceFunctionRegularOperation(
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    String testParam = state->argument(0).toString(state)->value(state);
+    auto testParam = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.regularOperation(testParam);
+    impl.regularOperation(WTFMove(testParam));
     return JSValue::encode(jsUndefined());
 }
 
@@ -274,10 +275,10 @@ static inline EncodedJSValue jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeO
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    String testParam = state->argument(0).toString(state)->value(state);
+    auto testParam = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.enabledAtRuntimeOperation(testParam);
+    impl.enabledAtRuntimeOperation(WTFMove(testParam));
     return JSValue::encode(jsUndefined());
 }
 
@@ -294,10 +295,10 @@ static inline EncodedJSValue jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeO
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    int testParam = toInt32(state, state->argument(0), NormalConversion);
+    auto testParam = convert<int32_t>(*state, state->argument(0), NormalConversion);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.enabledAtRuntimeOperation(testParam);
+    impl.enabledAtRuntimeOperation(WTFMove(testParam));
     return JSValue::encode(jsUndefined());
 }
 
@@ -316,7 +317,7 @@ EncodedJSValue JSC_HOST_CALL jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeO
         return jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeOperation2(state);
 #endif
 
-    if (argsCount < 1)
+    if (UNLIKELY(argsCount < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
     return throwVMTypeError(state);
 }
@@ -367,7 +368,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestGlobalOb
 #if COMPILER(CLANG)
     // If this fails TestGlobalObject does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestGlobalObject), TestGlobalObject_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestGlobalObject), "TestGlobalObject is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

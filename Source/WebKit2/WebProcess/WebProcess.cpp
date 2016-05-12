@@ -297,8 +297,10 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     m_applicationCacheStorage->setDefaultOriginQuota(25ULL * 1024 * 1024);
 #endif
 
+#if ENABLE(VIDEO)
     if (!parameters.mediaCacheDirectory.isEmpty())
         WebCore::HTMLMediaElement::setMediaCacheDirectory(parameters.mediaCacheDirectory);
+#endif
 
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
@@ -1249,7 +1251,7 @@ void WebProcess::processWillSuspendImminently(bool& handled)
     }
 
     WEBPROCESS_LOG_ALWAYS("%p - WebProcess::processWillSuspendImminently()", this);
-    DatabaseTracker::tracker().closeAllDatabases();
+    DatabaseTracker::tracker().closeAllDatabases(CurrentQueryBehavior::Interrupt);
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     handled = true;
 }

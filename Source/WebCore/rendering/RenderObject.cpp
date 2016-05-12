@@ -325,7 +325,7 @@ RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, HeightT
 
     // Check for suitable children.
     for (RenderObject* child = firstChildSlow(); child; child = child->nextSibling()) {
-        overflowType = inclusionFunction(child);
+        overflowType = inclusionFunction(*child);
         if (overflowType != FixedHeight) {
             currentDepth++;
             if (overflowType == OverflowHeight)
@@ -349,7 +349,7 @@ RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, HeightT
         if (!n)
             return nullptr;
         for (RenderObject* sibling = n->nextSibling(); sibling; sibling = sibling->nextSibling()) {
-            overflowType = inclusionFunction(sibling);
+            overflowType = inclusionFunction(*sibling);
             if (overflowType != FixedHeight) {
                 if (overflowType == OverflowHeight)
                     newFixedDepth = currentDepth;
@@ -369,7 +369,7 @@ RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, HeightT
 RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, TraverseNextInclusionFunction inclusionFunction) const
 {
     for (RenderObject* child = firstChildSlow(); child; child = child->nextSibling()) {
-        if (inclusionFunction(child)) {
+        if (inclusionFunction(*child)) {
             ASSERT(!stayWithin || child->isDescendantOf(stayWithin));
             return child;
         }
@@ -379,7 +379,7 @@ RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, Travers
         return nullptr;
 
     for (RenderObject* sibling = nextSibling(); sibling; sibling = sibling->nextSibling()) {
-        if (inclusionFunction(sibling)) {
+        if (inclusionFunction(*sibling)) {
             ASSERT(!stayWithin || sibling->isDescendantOf(stayWithin));
             return sibling;
         }
@@ -391,7 +391,7 @@ RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, Travers
             n = n->parent();
         if (n) {
             for (RenderObject* sibling = n->nextSibling(); sibling; sibling = sibling->nextSibling()) {
-                if (inclusionFunction(sibling)) {
+                if (inclusionFunction(*sibling)) {
                     ASSERT(!stayWithin || !n->nextSibling() || n->nextSibling()->isDescendantOf(stayWithin));
                     return sibling;
                 }
@@ -403,78 +403,6 @@ RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, Travers
         }
     }
     return nullptr;
-}
-
-static RenderObject::BlockContentHeightType includeNonFixedHeight(const RenderObject* renderer)
-{
-    const RenderStyle& style = renderer->style();
-    if (style.height().type() == Fixed) {
-        if (is<RenderBlock>(*renderer)) {
-            // For fixed height styles, if the overflow size of the element spills out of the specified
-            // height, assume we can apply text auto-sizing.
-            if (style.overflowY() == OVISIBLE
-                && style.height().value() < downcast<RenderBlock>(renderer)->layoutOverflowRect().maxY())
-                return RenderObject::OverflowHeight;
-        }
-        return RenderObject::FixedHeight;
-    }
-    return RenderObject::FlexibleHeight;
-}
-
-
-void RenderObject::adjustComputedFontSizesOnBlocks(float size, float visibleWidth)
-{
-    Document* document = view().frameView().frame().document();
-    if (!document)
-        return;
-
-    Vector<int> depthStack;
-    int currentDepth = 0;
-    int newFixedDepth = 0;
-
-    // We don't apply autosizing to nodes with fixed height normally.
-    // But we apply it to nodes which are located deep enough
-    // (nesting depth is greater than some const) inside of a parent block
-    // which has fixed height but its content overflows intentionally.
-    for (RenderObject* descendent = traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth); descendent; descendent = descendent->traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth)) {
-        while (depthStack.size() > 0 && currentDepth <= depthStack[depthStack.size() - 1])
-            depthStack.remove(depthStack.size() - 1);
-        if (newFixedDepth)
-            depthStack.append(newFixedDepth);
-
-        int stackSize = depthStack.size();
-        if (is<RenderBlockFlow>(*descendent) && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
-            downcast<RenderBlockFlow>(*descendent).adjustComputedFontSizes(size, visibleWidth);
-        newFixedDepth = 0;
-    }
-
-    // Remove style from auto-sizing table that are no longer valid.
-    document->validateAutoSizingNodes();
-}
-
-void RenderObject::resetTextAutosizing()
-{
-    Document* document = view().frameView().frame().document();
-    if (!document)
-        return;
-
-    document->resetAutoSizingNodes();
-
-    Vector<int> depthStack;
-    int currentDepth = 0;
-    int newFixedDepth = 0;
-
-    for (RenderObject* descendent = traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth); descendent; descendent = descendent->traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth)) {
-        while (depthStack.size() > 0 && currentDepth <= depthStack[depthStack.size() - 1])
-            depthStack.remove(depthStack.size() - 1);
-        if (newFixedDepth)
-            depthStack.append(newFixedDepth);
-
-        int stackSize = depthStack.size();
-        if (is<RenderBlockFlow>(*descendent) && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
-            downcast<RenderBlockFlow>(*descendent).resetComputedFontSize();
-        newFixedDepth = 0;
-    }
 }
 #endif // ENABLE(IOS_TEXT_AUTOSIZING)
 
@@ -1320,7 +1248,7 @@ void RenderObject::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     }
 
     if (is<RenderBox>(*parent))
-        transformState.move(-downcast<RenderBox>(*parent).scrolledContentOffset());
+        transformState.move(-toLayoutSize(downcast<RenderBox>(*parent).scrollPosition()));
 
     parent->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
@@ -1336,7 +1264,7 @@ const RenderObject* RenderObject::pushMappingToContainer(const RenderLayerModelO
     // FIXME: this should call offsetFromContainer to share code, but I'm not sure it's ever called.
     LayoutSize offset;
     if (is<RenderBox>(*container))
-        offset = -downcast<RenderBox>(*container).scrolledContentOffset();
+        offset = -toLayoutSize(downcast<RenderBox>(*container).scrollPosition());
 
     geometryMap.push(this, offset, false);
     
@@ -1348,7 +1276,7 @@ void RenderObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, TransformSt
     if (auto* parent = this->parent()) {
         parent->mapAbsoluteToLocalPoint(mode, transformState);
         if (is<RenderBox>(*parent))
-            transformState.move(downcast<RenderBox>(*parent).scrolledContentOffset());
+            transformState.move(toLayoutSize(downcast<RenderBox>(*parent).scrollPosition()));
     }
 }
 
@@ -1414,7 +1342,7 @@ LayoutSize RenderObject::offsetFromContainer(RenderElement& container, const Lay
 
     LayoutSize offset;
     if (is<RenderBox>(container))
-        offset -= downcast<RenderBox>(container).scrolledContentOffset();
+        offset -= toLayoutSize(downcast<RenderBox>(container).scrollPosition());
 
     if (offsetDependsOnPoint)
         *offsetDependsOnPoint = is<RenderFlowThread>(container);

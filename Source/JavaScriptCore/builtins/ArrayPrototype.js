@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,6 +23,51 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+@constructor
+function createArrayIterator(iteratedObject, kind, iterationFunction)
+{
+    this.@iteratedObject = iteratedObject;
+    this.@arrayIteratorKind = kind;
+    this.@arrayIteratorNextIndex = 0;
+    this.@arrayIteratorNext = iterationFunction;
+    this.@arrayIteratorIsDone = false;
+}
+
+function values()
+{
+    "use strict";
+    if (this == null) {
+        if (this === null)
+            throw new @TypeError("Array.prototype.values requires that |this| not be null");
+        throw new @TypeError("Array.prototype.values requires that |this| not be undefined");
+    }
+    return new @createArrayIterator(@Object(this), "value", @arrayIteratorValueNext);
+}
+
+function keys()
+{
+    "use strict";
+    if (this == null) {
+        if (this === null)
+            throw new @TypeError("Array.prototype.keys requires that |this| not be null");
+        throw new @TypeError("Array.prototype.keys requires that |this| not be undefined");
+    }
+
+    return new @createArrayIterator(@Object(this), "key", @arrayIteratorKeyNext);
+}
+
+function entries()
+{
+    "use strict";
+    if (this == null) {
+        if (this === null)
+            throw new @TypeError("Array.prototype.entries requires that |this| not be null");
+        throw new @TypeError("Array.prototype.entries requires that |this| not be undefined");
+    }
+
+    return new @createArrayIterator(@Object(this), "key+value", @arrayIteratorKeyValueNext);
+}
 
 function reduce(callback /*, initialValue */)
 {

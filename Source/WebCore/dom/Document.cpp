@@ -521,7 +521,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #endif
     , m_loadEventDelayCount(0)
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
-    , m_referrerPolicy(ReferrerPolicyDefault)
+    , m_referrerPolicy(ReferrerPolicy::Default)
     , m_writeRecursionIsTooDeep(false)
     , m_writeRecursionDepth(0)
     , m_lastHandledUserGestureTimestamp(0)
@@ -1128,28 +1128,23 @@ Ref<Element> Document::createElement(const QualifiedName& name, bool createdByPa
     return element.releaseNonNull();
 }
 
-bool Document::cssRegionsEnabled() const
+#if ENABLE(CSS_GRID_LAYOUT)
+bool Document::isCSSGridLayoutEnabled() const
 {
-    return RuntimeEnabledFeatures::sharedFeatures().cssRegionsEnabled(); 
+    return RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
 }
-
-bool Document::cssCompositingEnabled() const
-{
-    return RuntimeEnabledFeatures::sharedFeatures().cssCompositingEnabled();
-}
+#endif
 
 #if ENABLE(CSS_REGIONS)
-
 RefPtr<DOMNamedFlowCollection> Document::webkitGetNamedFlows()
 {
-    if (!cssRegionsEnabled() || !renderView())
+    if (!renderView())
         return nullptr;
 
     updateStyleIfNeeded();
 
     return namedFlows().createCSSOMSnapshot();
 }
-
 #endif
 
 NamedFlowCollection& Document::namedFlows()
@@ -3353,16 +3348,16 @@ void Document::processReferrerPolicy(const String& policy)
     // Note that we're supporting both the standard and legacy keywords for referrer
     // policies, as defined by http://www.w3.org/TR/referrer-policy/#referrer-policy-delivery-meta
     if (equalLettersIgnoringASCIICase(policy, "no-referrer") || equalLettersIgnoringASCIICase(policy, "never"))
-        setReferrerPolicy(ReferrerPolicyNever);
+        setReferrerPolicy(ReferrerPolicy::Never);
     else if (equalLettersIgnoringASCIICase(policy, "unsafe-url") || equalLettersIgnoringASCIICase(policy, "always"))
-        setReferrerPolicy(ReferrerPolicyAlways);
+        setReferrerPolicy(ReferrerPolicy::Always);
     else if (equalLettersIgnoringASCIICase(policy, "origin"))
-        setReferrerPolicy(ReferrerPolicyOrigin);
+        setReferrerPolicy(ReferrerPolicy::Origin);
     else if (equalLettersIgnoringASCIICase(policy, "no-referrer-when-downgrade") || equalLettersIgnoringASCIICase(policy, "default"))
-        setReferrerPolicy(ReferrerPolicyDefault);
+        setReferrerPolicy(ReferrerPolicy::Default);
     else {
         addConsoleMessage(MessageSource::Rendering, MessageLevel::Error, "Failed to set referrer policy: The value '" + policy + "' is not one of 'no-referrer', 'origin', 'no-referrer-when-downgrade', or 'unsafe-url'. Defaulting to 'no-referrer'.");
-        setReferrerPolicy(ReferrerPolicyNever);
+        setReferrerPolicy(ReferrerPolicy::Never);
     }
 }
 
@@ -3757,7 +3752,7 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction)
         return false;
 
     bool focusChangeBlocked = false;
-    RefPtr<Element> oldFocusedElement = m_focusedElement.release();
+    RefPtr<Element> oldFocusedElement = WTFMove(m_focusedElement);
 
     // Remove focus from the existing focus node (if any)
     if (oldFocusedElement) {
@@ -3957,7 +3952,7 @@ void Document::moveNodeIteratorsToNewDocument(Node* node, Document* newDocument)
     Vector<NodeIterator*> nodeIterators;
     copyToVector(m_nodeIterators, nodeIterators);
     for (auto* it : nodeIterators) {
-        if (it->root() == node) {
+        if (&it->root() == node) {
             detachNodeIterator(it);
             newDocument->attachNodeIterator(it);
         }
@@ -4073,7 +4068,7 @@ void Document::takeDOMWindowFrom(Document* document)
     // A valid DOMWindow is needed by CachedFrame for its documents.
     ASSERT(!document->inPageCache());
 
-    m_domWindow = document->m_domWindow.release();
+    m_domWindow = WTFMove(document->m_domWindow);
     m_domWindow->didSecureTransitionTo(this);
 
     ASSERT(m_domWindow->document() == this);
@@ -5086,13 +5081,11 @@ bool Document::isTelephoneNumberParsingAllowed() const
 }
 #endif
 
-RefPtr<XPathExpression> Document::createExpression(const String& expression,
-                                                       XPathNSResolver* resolver,
-                                                       ExceptionCode& ec)
+RefPtr<XPathExpression> Document::createExpression(const String& expression, RefPtr<XPathNSResolver>&& resolver, ExceptionCode& ec)
 {
     if (!m_xpathEvaluator)
         m_xpathEvaluator = XPathEvaluator::create();
-    return m_xpathEvaluator->createExpression(expression, resolver, ec);
+    return m_xpathEvaluator->createExpression(expression, WTFMove(resolver), ec);
 }
 
 RefPtr<XPathNSResolver> Document::createNSResolver(Node* nodeResolver)
@@ -5102,11 +5095,11 @@ RefPtr<XPathNSResolver> Document::createNSResolver(Node* nodeResolver)
     return m_xpathEvaluator->createNSResolver(nodeResolver);
 }
 
-RefPtr<XPathResult> Document::evaluate(const String& expression, Node* contextNode, XPathNSResolver* resolver, unsigned short type, XPathResult* result, ExceptionCode& ec)
+RefPtr<XPathResult> Document::evaluate(const String& expression, Node* contextNode, RefPtr<XPathNSResolver>&& resolver, unsigned short type, XPathResult* result, ExceptionCode& ec)
 {
     if (!m_xpathEvaluator)
         m_xpathEvaluator = XPathEvaluator::create();
-    return m_xpathEvaluator->evaluate(expression, contextNode, resolver, type, result, ec);
+    return m_xpathEvaluator->evaluate(expression, contextNode, WTFMove(resolver), type, result, ec);
 }
 
 void Document::initSecurityContext()
@@ -5285,8 +5278,11 @@ HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
 }
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
+
 void Document::addAutoSizingNode(Node* node, float candidateSize)
 {
+    LOG(TextAutosizing, " addAutoSizingNode %p candidateSize=%f", node, candidateSize);
+
     TextAutoSizingKey key(&node->renderer()->style());
     auto addResult = m_textAutoSizedNodes.ensure(WTFMove(key), [] {
         return TextAutoSizingValue::create();
@@ -6577,7 +6573,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
     // at the time the mouse went down.
     bool mustBeInActiveChain = request.active() && request.move();
 
-    RefPtr<Element> oldHoveredElement = m_hoveredElement.release();
+    RefPtr<Element> oldHoveredElement = WTFMove(m_hoveredElement);
 
     // A touch release does not set a new hover target; clearing the element we're working with
     // will clear the chain of hovered elements all the way to the top of the tree.
@@ -6930,7 +6926,7 @@ void Document::applyContentDispositionAttachmentSandbox()
 {
     ASSERT(shouldEnforceContentDispositionAttachmentSandbox());
 
-    setReferrerPolicy(ReferrerPolicyNever);
+    setReferrerPolicy(ReferrerPolicy::Never);
     if (!isMediaDocument())
         enforceSandboxFlags(SandboxAll);
     else

@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SourceBuffer_h
-#define SourceBuffer_h
+#pragma once
 
 #if ENABLE(MEDIA_SOURCE)
 
@@ -78,8 +77,15 @@ public:
     const RefPtr<TimeRanges>& buffered() const;
     double timestampOffset() const;
     void setTimestampOffset(double, ExceptionCode&);
-    void appendBuffer(PassRefPtr<ArrayBuffer> data, ExceptionCode&);
-    void appendBuffer(PassRefPtr<ArrayBufferView> data, ExceptionCode&);
+
+#if ENABLE(VIDEO_TRACK)
+    VideoTrackList* videoTracks();
+    AudioTrackList* audioTracks();
+    TextTrackList* textTracks();
+#endif
+
+    void appendBuffer(ArrayBuffer&, ExceptionCode&);
+    void appendBuffer(ArrayBufferView&, ExceptionCode&);
     void abort(ExceptionCode&);
     void remove(double start, double end, ExceptionCode&, bool sync = false);
     void remove(const MediaTime&, const MediaTime&, ExceptionCode&, bool sync = false);
@@ -90,12 +96,6 @@ public:
     const MediaTime& highestPresentationEndTimestamp() const { return m_highestPresentationEndTimestamp; }
 #endif
     void seekToTime(const MediaTime&);
-
-#if ENABLE(VIDEO_TRACK)
-    VideoTrackList* videoTracks();
-    AudioTrackList* audioTracks();
-    TextTrackList* textTracks();
-#endif
 
     bool hasCurrentTime() const;
     bool hasFutureTime() const;
@@ -142,7 +142,6 @@ private:
     bool canSuspendForDocumentSuspension() const override;
 
     // SourceBufferPrivateClient
-    void sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString&) override;
     void sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivate*, const InitializationSegment&) override;
     void sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, PassRefPtr<MediaSample>) override;
     bool sourceBufferPrivateHasAudio(const SourceBufferPrivate*) const override;
@@ -167,9 +166,6 @@ private:
     void textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue>) override;
     void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>) override;
 #endif
-
-    static const WTF::AtomicString& decodeError();
-    static const WTF::AtomicString& networkError();
 
     bool isRemoved() const;
     void scheduleEvent(const AtomicString& eventName);
@@ -237,20 +233,20 @@ private:
     AppendStateType m_appendState;
 
     double m_timeOfBufferingMonitor;
-    double m_bufferedSinceLastMonitor;
-    double m_averageBufferRate;
+    double m_bufferedSinceLastMonitor { 0 };
+    double m_averageBufferRate { 0 };
 
-    size_t m_reportedExtraMemoryCost;
+    size_t m_reportedExtraMemoryCost { 0 };
 
     MediaTime m_pendingRemoveStart;
     MediaTime m_pendingRemoveEnd;
     Timer m_removeTimer;
 
-    bool m_updating;
-    bool m_receivedFirstInitializationSegment;
-    bool m_active;
-    bool m_bufferFull;
-    bool m_shouldGenerateTimestamps;
+    bool m_updating { false };
+    bool m_receivedFirstInitializationSegment { false };
+    bool m_active { false };
+    bool m_bufferFull { false };
+    bool m_shouldGenerateTimestamps { false };
     mutable bool m_shouldRecalculateBuffered;
 
     static size_t maxBufferSizeVideo;
@@ -259,7 +255,5 @@ private:
 };
 
 } // namespace WebCore
-
-#endif
 
 #endif

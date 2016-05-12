@@ -158,16 +158,16 @@ EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(ExecState* sta
     InputCursor& cursor = globalObject->inputCursor();
     static NeverDestroyed<const AtomicString> bindingName("TestNondeterministic.nondeterministicReadonlyAttr", AtomicString::ConstructFromLiteral);
     if (cursor.isCapturing()) {
-        int memoizedResult = castedThis->wrapped().nondeterministicReadonlyAttr();
-        cursor.appendInput<MemoizedDOMResult<int>>(bindingName.get().string(), memoizedResult, 0);
+        int32_t memoizedResult = castedThis->wrapped().nondeterministicReadonlyAttr();
+        cursor.appendInput<MemoizedDOMResult<int32_t>>(bindingName.get().string(), memoizedResult, 0);
         JSValue result = jsNumber(memoizedResult);
         return JSValue::encode(result);
     }
 
     if (cursor.isReplaying()) {
-        int memoizedResult;
+        int32_t memoizedResult;
         MemoizedDOMResultBase* input = cursor.fetchInput<MemoizedDOMResultBase>();
-        if (input && input->convertTo<int>(memoizedResult)) {
+        if (input && input->convertTo<int32_t>(memoizedResult)) {
             JSValue result = jsNumber(memoizedResult);
             return JSValue::encode(result);
         }
@@ -326,7 +326,7 @@ EncodedJSValue jsTestNondeterministicNondeterministicSetterExceptionAttr(ExecSta
 EncodedJSValue jsTestNondeterministicConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestNondeterministicPrototype* domObject = jsDynamicCast<JSTestNondeterministicPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestNondeterministic::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -352,10 +352,10 @@ bool setJSTestNondeterministicNondeterministicWriteableAttr(ExecState* state, En
         return throwSetterTypeError(*state, "TestNondeterministic", "nondeterministicWriteableAttr");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setNondeterministicWriteableAttr(nativeValue);
+    impl.setNondeterministicWriteableAttr(WTFMove(nativeValue));
     return true;
 }
 
@@ -369,10 +369,10 @@ bool setJSTestNondeterministicNondeterministicExceptionAttr(ExecState* state, En
         return throwSetterTypeError(*state, "TestNondeterministic", "nondeterministicExceptionAttr");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setNondeterministicExceptionAttr(nativeValue);
+    impl.setNondeterministicExceptionAttr(WTFMove(nativeValue));
     return true;
 }
 
@@ -386,10 +386,10 @@ bool setJSTestNondeterministicNondeterministicGetterExceptionAttr(ExecState* sta
         return throwSetterTypeError(*state, "TestNondeterministic", "nondeterministicGetterExceptionAttr");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setNondeterministicGetterExceptionAttr(nativeValue);
+    impl.setNondeterministicGetterExceptionAttr(WTFMove(nativeValue));
     return true;
 }
 
@@ -404,10 +404,10 @@ bool setJSTestNondeterministicNondeterministicSetterExceptionAttr(ExecState* sta
     }
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
-    String nativeValue = value.toString(state)->value(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setNondeterministicSetterExceptionAttr(nativeValue, ec);
+    impl.setNondeterministicSetterExceptionAttr(WTFMove(nativeValue), ec);
     setDOMException(state, ec);
     return true;
 }
@@ -495,7 +495,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestNondeter
 #if COMPILER(CLANG)
     // If this fails TestNondeterministic does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestNondeterministic), TestNondeterministic_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestNondeterministic), "TestNondeterministic is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

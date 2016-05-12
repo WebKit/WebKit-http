@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -76,7 +76,7 @@ IDBFactory::~IDBFactory()
 {
 }
 
-RefPtr<IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext& context, const String& name, Optional<unsigned long long> version, ExceptionCodeWithMessage& ec)
+RefPtr<IDBOpenDBRequest> IDBFactory::open(ScriptExecutionContext& context, const String& name, Optional<uint64_t> version, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBFactory::open");
     
@@ -157,6 +157,11 @@ short IDBFactory::cmp(ScriptExecutionContext& context, JSValue firstValue, JSVal
     }
 
     return first->compare(second.get());
+}
+
+void IDBFactory::getAllDatabaseNames(const SecurityOrigin& mainFrameOrigin, const SecurityOrigin& openingOrigin, std::function<void (const Vector<String>&)> callback)
+{
+    m_connectionProxy->getAllDatabaseNames(mainFrameOrigin, openingOrigin, callback);
 }
 
 } // namespace WebCore

@@ -30,7 +30,6 @@
 #include "ClipboardAccessPolicy.h"
 #include "EditingBehaviorTypes.h"
 #include "IntSize.h"
-#include "RuntimeApplicationChecks.h"
 #include "SecurityOrigin.h"
 #include "SettingsMacros.h"
 #include "TextFlags.h"
@@ -110,16 +109,12 @@ public:
     WEBCORE_EXPORT const AtomicString& pictographFontFamily(UScriptCode = USCRIPT_COMMON) const;
 
 #if ENABLE(TEXT_AUTOSIZING)
-    void setTextAutosizingEnabled(bool);
-    bool textAutosizingEnabled() const { return m_textAutosizingEnabled; }
-
     void setTextAutosizingFontScaleFactor(float);
     float textAutosizingFontScaleFactor() const { return m_textAutosizingFontScaleFactor; }
-
-    // Only set by Layout Tests, and only used if textAutosizingEnabled() returns true.
-    void setTextAutosizingWindowSizeOverride(const IntSize&);
-    const IntSize& textAutosizingWindowSizeOverride() const { return m_textAutosizingWindowSizeOverride; }
 #endif
+
+    WEBCORE_EXPORT static bool defaultTextAutosizingEnabled();
+    WEBCORE_EXPORT static float defaultMinimumZoomFontSize();
 
     // Only set by Layout Tests.
     WEBCORE_EXPORT void setMediaTypeOverride(const String&);
@@ -190,16 +185,7 @@ public:
     static bool shouldUseHighResolutionTimers() { return gShouldUseHighResolutionTimers; }
 #endif
 
-    static bool globalConstRedeclarationShouldThrow()
-    { 
-#if PLATFORM(MAC)
-        return !MacApplication::isIBooks();
-#elif PLATFORM(IOS)
-        return !IOSApplication::isIBooks();
-#else
-        return true;
-#endif
-    }
+    static bool globalConstRedeclarationShouldThrow();
 
     WEBCORE_EXPORT void setBackgroundShouldExtendBeyondPage(bool);
     bool backgroundShouldExtendBeyondPage() const { return m_backgroundShouldExtendBeyondPage; }
@@ -222,6 +208,7 @@ public:
 #endif
 
     static const unsigned defaultMaximumHTMLParserDOMTreeDepth = 512;
+    static const unsigned defaultMaximumRenderTreeDepth = 512;
 
     WEBCORE_EXPORT static void setMockScrollbarsEnabled(bool flag);
     WEBCORE_EXPORT static bool mockScrollbarsEnabled();
@@ -299,10 +286,6 @@ public:
     WEBCORE_EXPORT void setForcePendingWebGLPolicy(bool);
     bool isForcePendingWebGLPolicy() const { return m_forcePendingWebGLPolicy; }
     
-#if PLATFORM(IOS)
-    WEBCORE_EXPORT static float defaultMinimumZoomFontSize();
-#endif
-
 #if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/SettingsGettersAndSetters.h>
 #endif
@@ -323,8 +306,6 @@ private:
 
 #if ENABLE(TEXT_AUTOSIZING)
     float m_textAutosizingFontScaleFactor;
-    IntSize m_textAutosizingWindowSizeOverride;
-    bool m_textAutosizingEnabled : 1;
 #endif
 
     SETTINGS_MEMBER_VARIABLES

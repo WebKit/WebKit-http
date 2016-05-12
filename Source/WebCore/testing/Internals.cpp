@@ -563,23 +563,25 @@ bool Internals::isStyleSheetLoadingSubresources(HTMLLinkElement& link)
     return link.sheet() && link.sheet()->contents().isLoadingSubresources();
 }
 
-static ResourceRequestCachePolicy stringToResourceRequestCachePolicy(const String& policy)
+static ResourceRequestCachePolicy toResourceRequestCachePolicy(Internals::CachePolicy policy)
 {
-    if (policy == "UseProtocolCachePolicy")
+    switch (policy) {
+    case Internals::CachePolicy::UseProtocolCachePolicy:
         return UseProtocolCachePolicy;
-    if (policy == "ReloadIgnoringCacheData")
+    case Internals::CachePolicy::ReloadIgnoringCacheData:
         return ReloadIgnoringCacheData;
-    if (policy == "ReturnCacheDataElseLoad")
+    case Internals::CachePolicy::ReturnCacheDataElseLoad:
         return ReturnCacheDataElseLoad;
-    if (policy == "ReturnCacheDataDontLoad")
+    case Internals::CachePolicy::ReturnCacheDataDontLoad:
         return ReturnCacheDataDontLoad;
+    }
     ASSERT_NOT_REACHED();
     return UseProtocolCachePolicy;
 }
 
-void Internals::setOverrideCachePolicy(const String& policy)
+void Internals::setOverrideCachePolicy(CachePolicy policy)
 {
-    frame()->loader().setOverrideCachePolicyForTesting(stringToResourceRequestCachePolicy(policy));
+    frame()->loader().setOverrideCachePolicyForTesting(toResourceRequestCachePolicy(policy));
 }
 
 void Internals::setCanShowModalDialogOverride(bool allow, ExceptionCode& ec)
@@ -592,25 +594,27 @@ void Internals::setCanShowModalDialogOverride(bool allow, ExceptionCode& ec)
     contextDocument()->domWindow()->setCanShowModalDialogOverride(allow);
 }
 
-static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
+static ResourceLoadPriority toResourceLoadPriority(Internals::ResourceLoadPriority priority)
 {
-    if (policy == "ResourceLoadPriorityVeryLow")
+    switch (priority) {
+    case Internals::ResourceLoadPriority::ResourceLoadPriorityVeryLow:
         return ResourceLoadPriority::VeryLow;
-    if (policy == "ResourceLoadPriorityLow")
+    case Internals::ResourceLoadPriority::ResourceLoadPriorityLow:
         return ResourceLoadPriority::Low;
-    if (policy == "ResourceLoadPriorityMedium")
+    case Internals::ResourceLoadPriority::ResourceLoadPriorityMedium:
         return ResourceLoadPriority::Medium;
-    if (policy == "ResourceLoadPriorityHigh")
+    case Internals::ResourceLoadPriority::ResourceLoadPriorityHigh:
         return ResourceLoadPriority::High;
-    if (policy == "ResourceLoadPriorityVeryHigh")
+    case Internals::ResourceLoadPriority::ResourceLoadPriorityVeryHigh:
         return ResourceLoadPriority::VeryHigh;
+    }
     ASSERT_NOT_REACHED();
     return ResourceLoadPriority::Low;
 }
 
-void Internals::setOverrideResourceLoadPriority(const String& priority)
+void Internals::setOverrideResourceLoadPriority(ResourceLoadPriority priority)
 {
-    frame()->loader().setOverrideResourceLoadPriorityForTesting(stringToResourceLoadPriority(priority));
+    frame()->loader().setOverrideResourceLoadPriorityForTesting(toResourceLoadPriority(priority));
 }
 
 void Internals::setStrictRawResourceValidationPolicyDisabled(bool disabled)
@@ -1214,23 +1218,24 @@ void Internals::setAutofilled(HTMLInputElement& element, bool enabled)
     element.setAutoFilled(enabled);
 }
 
-static AutoFillButtonType stringToAutoFillButtonType(const String& autoFillButtonType)
+static AutoFillButtonType toAutoFillButtonType(Internals::AutoFillButtonType type)
 {
-    if (autoFillButtonType == "AutoFillButtonTypeNone")
+    switch (type) {
+    case Internals::AutoFillButtonType::AutoFillButtonTypeNone:
         return AutoFillButtonType::None;
-    if (autoFillButtonType == "AutoFillButtonTypeCredentials")
+    case Internals::AutoFillButtonType::AutoFillButtonTypeCredentials:
         return AutoFillButtonType::Credentials;
-    if (autoFillButtonType == "AutoFillButtonTypeContacts")
+    case Internals::AutoFillButtonType::AutoFillButtonTypeContacts:
         return AutoFillButtonType::Contacts;
+    }
     ASSERT_NOT_REACHED();
     return AutoFillButtonType::None;
 }
 
-void Internals::setShowAutoFillButton(HTMLInputElement& element, const String& autoFillButtonType)
+void Internals::setShowAutoFillButton(HTMLInputElement& element, AutoFillButtonType type)
 {
-    element.setShowAutoFillButton(stringToAutoFillButtonType(autoFillButtonType));
+    element.setShowAutoFillButton(toAutoFillButtonType(type));
 }
-
 
 void Internals::scrollElementToRect(Element& element, int x, int y, int w, int h, ExceptionCode& ec)
 {
@@ -1434,7 +1439,7 @@ RefPtr<NodeList> Internals::nodesFromRect(Document& document, int centerX, int c
     if (ignoreClipping)
         hitType |= HitTestRequest::IgnoreClipping;
     if (!allowShadowContent)
-        hitType |= HitTestRequest::DisallowShadowContent;
+        hitType |= HitTestRequest::DisallowUserAgentShadowContent;
     if (allowChildFrameContent)
         hitType |= HitTestRequest::AllowChildFrameContent;
 
@@ -2384,11 +2389,6 @@ unsigned Internals::compositingUpdateCount(ExceptionCode& ec)
     return document->renderView()->compositor().compositingUpdateCount();
 }
 
-void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode& ec)
-{
-    updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(nullptr, ec);
-}
-
 void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node* node, ExceptionCode& ec)
 {
     Document* document;
@@ -2687,15 +2687,14 @@ void Internals::setCaptionDisplayMode(const String& mode, ExceptionCode& ec)
 }
 
 #if ENABLE(VIDEO)
-Ref<TimeRanges> Internals::createTimeRanges(Float32Array* startTimes, Float32Array* endTimes)
+Ref<TimeRanges> Internals::createTimeRanges(Float32Array& startTimes, Float32Array& endTimes)
 {
-    ASSERT(startTimes && endTimes);
-    ASSERT(startTimes->length() == endTimes->length());
+    ASSERT(startTimes.length() == endTimes.length());
     Ref<TimeRanges> ranges = TimeRanges::create();
 
-    unsigned count = std::min(startTimes->length(), endTimes->length());
+    unsigned count = std::min(startTimes.length(), endTimes.length());
     for (unsigned i = 0; i < count; ++i)
-        ranges->add(startTimes->item(i), endTimes->item(i));
+        ranges->add(startTimes.item(i), endTimes.item(i));
     return ranges;
 }
 
@@ -2917,26 +2916,14 @@ bool Internals::elementIsBlockingDisplaySleep(HTMLMediaElement& element) const
 
 #if ENABLE(MEDIA_SESSION)
 
-static MediaSessionInterruptingCategory interruptingCategoryFromString(const String& interruptingCategoryString)
+void Internals::sendMediaSessionStartOfInterruptionNotification(MediaSessionInterruptingCategory category)
 {
-    if (interruptingCategoryString == "content")
-        return MediaSessionInterruptingCategory::Content;
-    if (interruptingCategoryString == "transient")
-        return MediaSessionInterruptingCategory::Transient;
-    if (interruptingCategoryString == "transient-solo")
-        return MediaSessionInterruptingCategory::TransientSolo;
-    ASSERT_NOT_REACHED();
-    return MediaSessionInterruptingCategory::Content;
+    MediaSessionManager::singleton().didReceiveStartOfInterruptionNotification(category);
 }
 
-void Internals::sendMediaSessionStartOfInterruptionNotification(const String& interruptingCategoryString)
+void Internals::sendMediaSessionEndOfInterruptionNotification(MediaSessionInterruptingCategory category)
 {
-    MediaSessionManager::singleton().didReceiveStartOfInterruptionNotification(interruptingCategoryFromString(interruptingCategoryString));
-}
-
-void Internals::sendMediaSessionEndOfInterruptionNotification(const String& interruptingCategoryString)
-{
-    MediaSessionManager::singleton().didReceiveEndOfInterruptionNotification(interruptingCategoryFromString(interruptingCategoryString));
+    MediaSessionManager::singleton().didReceiveEndOfInterruptionNotification(category);
 }
 
 String Internals::mediaSessionCurrentState(MediaSession* session) const
@@ -2957,16 +2944,20 @@ double Internals::mediaElementPlayerVolume(HTMLMediaElement* element) const
     return element->playerVolume();
 }
 
-void Internals::sendMediaControlEvent(const String& event)
+void Internals::sendMediaControlEvent(MediaControlEvent event)
 {
-    if (event == "play-pause")
+    // FIXME: No good reason to use a single function with an argument instead of three functions.
+    switch (event) {
+    case MediControlEvent::PlayPause:
         MediaSessionManager::singleton().togglePlayback();
-    else if (event == "next-track")
+        break;
+    case MediControlEvent::NextTrack:
         MediaSessionManager::singleton().skipToNextTrack();
-    else if (event == "previous-track")
+        break;
+    case MediControlEvent::PreviousTrack:
         MediaSessionManager::singleton().skipToPreviousTrack();
-    else
-        ASSERT_NOT_REACHED();
+        break;
+    }
 }
 
 #endif // ENABLE(MEDIA_SESSION)
@@ -3042,7 +3033,7 @@ void Internals::setMockMediaPlaybackTargetPickerState(const String& deviceName, 
 
 #endif
 
-RefPtr<MockPageOverlay> Internals::installMockPageOverlay(const String& overlayType, ExceptionCode& ec)
+RefPtr<MockPageOverlay> Internals::installMockPageOverlay(PageOverlayType type, ExceptionCode& ec)
 {
     Document* document = contextDocument();
     if (!document || !document->frame()) {
@@ -3050,7 +3041,7 @@ RefPtr<MockPageOverlay> Internals::installMockPageOverlay(const String& overlayT
         return nullptr;
     }
 
-    return MockPageOverlayClient::singleton().installOverlay(document->frame()->mainFrame(), overlayType == "view" ? PageOverlay::OverlayType::View : PageOverlay::OverlayType::Document);
+    return MockPageOverlayClient::singleton().installOverlay(document->frame()->mainFrame(), type == PageOverlayType::View ? PageOverlay::OverlayType::View : PageOverlay::OverlayType::Document);
 }
 
 String Internals::pageOverlayLayerTreeAsText(ExceptionCode& ec) const
@@ -3316,6 +3307,30 @@ void Internals::setViewportForceAlwaysUserScalable(bool scalable)
 void Internals::setLinkPreloadSupport(bool enable)
 {
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(enable);
+}
+
+#if ENABLE(CSS_GRID_LAYOUT)
+void Internals::setCSSGridLayoutEnabled(bool enable)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enable);
+}
+#endif
+
+#if ENABLE(WEBGL2)
+bool Internals::webGL2Enabled() const
+{
+    return RuntimeEnabledFeatures::sharedFeatures().webGL2Enabled();
+}
+
+void Internals::setWebGL2Enabled(bool enable)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(enable);
+}
+#endif
+
+void Internals::setResourceTimingSupport(bool enable)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(enable);
 }
 
 }

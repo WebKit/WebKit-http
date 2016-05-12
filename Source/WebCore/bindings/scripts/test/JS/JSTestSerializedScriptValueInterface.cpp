@@ -27,7 +27,6 @@
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSMessagePort.h"
-#include "MessagePort.h"
 #include "SerializedScriptValue.h"
 #include <runtime/FunctionPrototype.h>
 #include <runtime/JSArray.h>
@@ -218,7 +217,7 @@ EncodedJSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState
 EncodedJSValue jsTestSerializedScriptValueInterfaceConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestSerializedScriptValueInterfacePrototype* domObject = jsDynamicCast<JSTestSerializedScriptValueInterfacePrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestSerializedScriptValueInterface::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -244,10 +243,10 @@ bool setJSTestSerializedScriptValueInterfaceValue(ExecState* state, EncodedJSVal
         return throwSetterTypeError(*state, "TestSerializedScriptValueInterface", "value");
     }
     auto& impl = castedThis->wrapped();
-    RefPtr<SerializedScriptValue> nativeValue = SerializedScriptValue::create(state, value, 0, 0);
+    auto nativeValue = SerializedScriptValue::create(state, value, 0, 0);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setValue(nativeValue);
+    impl.setValue(WTFMove(nativeValue));
     return true;
 }
 
@@ -261,10 +260,10 @@ bool setJSTestSerializedScriptValueInterfaceCachedValue(ExecState* state, Encode
         return throwSetterTypeError(*state, "TestSerializedScriptValueInterface", "cachedValue");
     }
     auto& impl = castedThis->wrapped();
-    RefPtr<SerializedScriptValue> nativeValue = SerializedScriptValue::create(state, value, 0, 0);
+    auto nativeValue = SerializedScriptValue::create(state, value, 0, 0);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setCachedValue(nativeValue);
+    impl.setCachedValue(WTFMove(nativeValue));
     return true;
 }
 
@@ -329,7 +328,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestSerializ
 #if COMPILER(CLANG)
     // If this fails TestSerializedScriptValueInterface does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestSerializedScriptValueInterface), TestSerializedScriptValueInterface_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestSerializedScriptValueInterface), "TestSerializedScriptValueInterface is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

@@ -554,6 +554,27 @@ bool AccessCase::visitWeak(VM& vm) const
     return true;
 }
 
+bool AccessCase::propagateTransitions(SlotVisitor& visitor) const
+{
+    bool result = true;
+    
+    if (m_structure)
+        result &= m_structure->markIfCheap(visitor);
+    
+    switch (m_type) {
+    case Transition:
+        if (Heap::isMarked(m_structure->previousID()))
+            visitor.appendUnbarrieredReadOnlyPointer(m_structure.get());
+        else
+            result = false;
+        break;
+    default:
+        break;
+    }
+    
+    return result;
+}
+
 void AccessCase::generateWithGuard(
     AccessGenerationState& state, CCallHelpers::JumpList& fallThrough)
 {
@@ -1125,8 +1146,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             if (verbose)
                 dataLog("Have type: ", type->descriptor(), "\n");
             state.failAndRepatch.append(
-                jit.branchIfNotType(
-                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::HaveTagRegisters));
+                jit.branchIfNotType(valueRegs, scratchGPR, type->descriptor()));
         } else if (verbose)
             dataLog("Don't have type.\n");
         
@@ -1156,8 +1176,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             if (verbose)
                 dataLog("Have type: ", type->descriptor(), "\n");
             state.failAndRepatch.append(
-                jit.branchIfNotType(
-                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::HaveTagRegisters));
+                jit.branchIfNotType(valueRegs, scratchGPR, type->descriptor()));
         } else if (verbose)
             dataLog("Don't have type.\n");
         
@@ -1485,6 +1504,14 @@ bool PolymorphicAccess::visitWeak(VM& vm) const
         }
     }
     return true;
+}
+
+bool PolymorphicAccess::propagateTransitions(SlotVisitor& visitor) const
+{
+    bool result = true;
+    for (unsigned i = 0; i < size(); ++i)
+        result &= at(i).propagateTransitions(visitor);
+    return result;
 }
 
 void PolymorphicAccess::dump(PrintStream& out) const

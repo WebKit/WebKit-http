@@ -27,9 +27,11 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include <functional>
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
 #include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/Vector.h>
 
 namespace JSC {
 class JSValue;
@@ -39,6 +41,7 @@ namespace WebCore {
 
 class IDBOpenDBRequest;
 class ScriptExecutionContext;
+class SecurityOrigin;
 
 struct ExceptionCodeWithMessage;
 
@@ -53,10 +56,12 @@ public:
     static Ref<IDBFactory> create(IDBClient::IDBConnectionProxy&);
     ~IDBFactory();
 
-    RefPtr<IDBOpenDBRequest> open(ScriptExecutionContext&, const String& name, Optional<unsigned long long> version, ExceptionCodeWithMessage&);
+    RefPtr<IDBOpenDBRequest> open(ScriptExecutionContext&, const String& name, Optional<uint64_t> version, ExceptionCodeWithMessage&);
     RefPtr<IDBOpenDBRequest> deleteDatabase(ScriptExecutionContext&, const String& name, ExceptionCodeWithMessage&);
 
     short cmp(ScriptExecutionContext&, JSC::JSValue first, JSC::JSValue second, ExceptionCodeWithMessage&);
+
+    WEBCORE_EXPORT void getAllDatabaseNames(const SecurityOrigin& mainFrameOrigin, const SecurityOrigin& openingOrigin, std::function<void (const Vector<String>&)>);
 
 private:
     explicit IDBFactory(IDBClient::IDBConnectionProxy&);

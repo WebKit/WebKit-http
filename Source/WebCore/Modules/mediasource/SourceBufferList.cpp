@@ -49,15 +49,15 @@ SourceBufferList::~SourceBufferList()
     ASSERT(m_list.isEmpty());
 }
 
-void SourceBufferList::add(PassRefPtr<SourceBuffer> buffer)
+void SourceBufferList::add(Ref<SourceBuffer>&& buffer)
 {
-    m_list.append(buffer);
+    m_list.append(WTFMove(buffer));
     scheduleEvent(eventNames().addsourcebufferEvent);
 }
 
-void SourceBufferList::remove(SourceBuffer* buffer)
+void SourceBufferList::remove(SourceBuffer& buffer)
 {
-    size_t index = m_list.find(buffer);
+    size_t index = m_list.find(&buffer);
     if (index == notFound)
         return;
     m_list.remove(index);
@@ -90,10 +90,10 @@ void SourceBufferList::swap(Vector<RefPtr<SourceBuffer>>& other)
 
 void SourceBufferList::scheduleEvent(const AtomicString& eventName)
 {
-    RefPtr<Event> event = Event::create(eventName, false, false);
+    auto event = Event::create(eventName, false, false);
     event->setTarget(this);
 
-    m_asyncEventQueue.enqueueEvent(event.release());
+    m_asyncEventQueue.enqueueEvent(WTFMove(event));
 }
 
 

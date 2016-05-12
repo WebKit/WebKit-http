@@ -37,6 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class WKWebsiteDataStore;
 
 #if TARGET_OS_IPHONE
+
 /*! @enum WKSelectionGranularity
  @abstract The granularity with which a selection can be created and modified interactively.
  @constant WKSelectionGranularityDynamic    Selection granularity varies automatically based on the selection.
@@ -49,7 +50,6 @@ typedef NS_ENUM(NSInteger, WKSelectionGranularity) {
     WKSelectionGranularityDynamic,
     WKSelectionGranularityCharacter,
 } WK_ENUM_AVAILABLE_IOS(8_0);
-#endif
 
 /*! @enum WKDataDetectorTypes
  @abstract The type of data detected.
@@ -71,21 +71,27 @@ typedef NS_OPTIONS(NSUInteger, WKDataDetectorTypes) {
     WKDataDetectorTypeFlightNumber = 1 << 5,
     WKDataDetectorTypeSpotlightSuggestion = 1 << 6,
     WKDataDetectorTypeAll = NSUIntegerMax
-} WK_ENUM_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+} WK_ENUM_AVAILABLE(NA, WK_IOS_TBA);
 
+#else
 
 /*! @enum WKUserInterfaceDirectionPolicy
- @abstract The mechanism by which vertical scrollbars obey an RTL environment
- @constant WKUserInterfaceDirectionPolicyContent Scrollbar placement obeys CSS / HTML / XHTML specifications.
- @constant WKUserInterfaceDirectionPolicySystem Scrollbar placement obeys system platform specifications.
- @discussion When WKUserInterfaceDirectionPolicyContent is specified, the placement of vertical scrollbars is
- affected by the "dir" element or the "direction" CSS property. When WKUserInterfaceDirectionPolicySystem is
- specified, the placement of vertical scrollbars is affected by the direction of the view.
+ @abstract The policy used to determine the directionality of user interface elements inside a web view.
+ @constant WKUserInterfaceDirectionPolicyContent User interface directionality follows CSS / HTML / XHTML
+ specifications.
+ @constant WKUserInterfaceDirectionPolicySystem User interface directionality follows the view's
+ userInterfaceLayoutDirection property
+ @discussion When WKUserInterfaceDirectionPolicyContent is specified, the directionality of user interface
+ elements is affected by the "dir" attribute or the "direction" CSS property. When
+ WKUserInterfaceDirectionPolicySystem is specified, the directionaltiy of user interface elements is
+ affected by the direction of the view.
 */
 typedef NS_ENUM(NSInteger, WKUserInterfaceDirectionPolicy) {
-    WKUserInterfaceDirectionPolicyContent = 0,
-    WKUserInterfaceDirectionPolicySystem = 1,
+    WKUserInterfaceDirectionPolicyContent,
+    WKUserInterfaceDirectionPolicySystem,
 } WK_ENUM_AVAILABLE(WK_MAC_TBA, NA);
+
+#endif
 
 /*! A WKWebViewConfiguration object is a collection of properties with
  which to initialize a web view.
@@ -129,21 +135,6 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  */
 @property (nonatomic) BOOL allowsAirPlayForMediaPlayback WK_AVAILABLE(10_11, 9_0);
 
-/*! @abstract An enum value indicating the type of data detection desired.
- @discussion The default value is WKDataDetectorTypeNone.
- An example of how this property may affect the content loaded in the WKWebView is that content like
- 'Visit apple.com on July 4th or call 1 800 555-5545' will be transformed to add links around 'apple.com', 'July 4th' and '1 800 555-5545'
- if the dataDetectorTypes property is set to WKDataDetectorTypePhoneNumber | WKDataDetectorTypeLink | WKDataDetectorTypeCalendarEvent.
-
- */
-@property (nonatomic) WKDataDetectorTypes dataDetectorTypes WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
-
-/*! @abstract The placement behavior of vertical scrollbars.
- @discussion Possible values are described in WKUserInterfaceDirectionPolicy.
- The default value is WKUserInterfaceDirectionPolicyContent.
- */
-@property (nonatomic) WKUserInterfaceDirectionPolicy userInterfaceDirectionPolicy WK_AVAILABLE(WK_MAC_TBA, NA);
-
 #if TARGET_OS_IPHONE
 /*! @abstract A Boolean value indicating whether HTML5 videos play inline
  (YES) or use the native full-screen controller (NO).
@@ -169,6 +160,23 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  @discussion The default value is YES.
  */
 @property (nonatomic) BOOL allowsPictureInPictureMediaPlayback WK_AVAILABLE(NA, 9_0);
+
+/*! @abstract An enum value indicating the type of data detection desired.
+ @discussion The default value is WKDataDetectorTypeNone.
+ An example of how this property may affect the content loaded in the WKWebView is that content like
+ 'Visit apple.com on July 4th or call 1 800 555-5545' will be transformed to add links around 'apple.com', 'July 4th' and '1 800 555-5545'
+ if the dataDetectorTypes property is set to WKDataDetectorTypePhoneNumber | WKDataDetectorTypeLink | WKDataDetectorTypeCalendarEvent.
+
+ */
+@property (nonatomic) WKDataDetectorTypes dataDetectorTypes WK_AVAILABLE(NA, WK_IOS_TBA);
+
+#else
+
+/*! @abstract The directionality of user interface elements.
+ @discussion Possible values are described in WKUserInterfaceDirectionPolicy.
+ The default value is WKUserInterfaceDirectionPolicyContent.
+ */
+@property (nonatomic) WKUserInterfaceDirectionPolicy userInterfaceDirectionPolicy WK_AVAILABLE(WK_MAC_TBA, NA);
 
 #endif
 

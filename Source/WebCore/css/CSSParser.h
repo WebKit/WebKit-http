@@ -208,6 +208,7 @@ public:
     bool parseColumnsShorthand(bool important);
 
 #if ENABLE(CSS_GRID_LAYOUT)
+    bool isCSSGridLayoutEnabled() const;
     RefPtr<CSSValue> parseGridPosition();
     bool parseGridItemPositionShorthand(CSSPropertyID, bool important);
     RefPtr<CSSValue> parseGridTemplateColumns();
@@ -347,8 +348,6 @@ public:
     bool parseFontFeatureTag(CSSValueList&);
     bool parseFontFeatureSettings(bool important);
 
-    bool cssRegionsEnabled() const;
-    bool cssCompositingEnabled() const;
     bool parseFlowThread(CSSPropertyID, bool important);
     bool parseRegionThread(CSSPropertyID, bool important);
 
@@ -451,7 +450,7 @@ public:
     void markPropertyEnd(bool isImportantFound, bool isPropertyParsed);
     void processAndAddNewRuleToSourceTreeIfNeeded();
     void addNewRuleToSourceTree(PassRefPtr<CSSRuleSourceData>);
-    PassRefPtr<CSSRuleSourceData> popRuleData();
+    RefPtr<CSSRuleSourceData> popRuleData();
     void resetPropertyRange() { m_propertyRange.start = m_propertyRange.end = UINT_MAX; }
     bool isExtractingSourceData() const { return !!m_currentRuleDataStack; }
     void syntaxError(const Location&, SyntaxErrorType = GeneralSyntaxError);
@@ -463,7 +462,7 @@ public:
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     void markViewportRuleBodyStart() { m_inViewport = true; }
     void markViewportRuleBodyEnd() { m_inViewport = false; }
-    PassRefPtr<StyleRuleBase> createViewportRule();
+    Ref<StyleRuleBase> createViewportRule();
 #endif
 
     Ref<CSSPrimitiveValue> createPrimitiveNumericValue(ValueWithCalculation&);

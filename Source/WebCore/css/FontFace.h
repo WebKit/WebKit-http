@@ -23,33 +23,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FontFace_h
-#define FontFace_h
+#pragma once
 
 #include "CSSFontFace.h"
 #include "CSSPropertyNames.h"
-#include "DOMCoreException.h"
-#include "ExceptionCode.h"
 #include "JSDOMPromise.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/WeakPtr.h>
-#include <wtf/text/WTFString.h>
-
-namespace Deprecated {
-class ScriptValue;
-}
 
 namespace WebCore {
 
-class CSSFontFace;
-class CSSValue;
-class Dictionary;
-
-class FontFace final : public RefCounted<FontFace>, public CSSFontFace::Client {
+class FontFace final : public RefCounted<FontFace>, private CSSFontFace::Client {
 public:
-    static RefPtr<FontFace> create(JSC::ExecState&, ScriptExecutionContext&, const String& family, JSC::JSValue source, const Dictionary& descriptors, ExceptionCode&);
-    static Ref<FontFace> create(JSC::ExecState&, CSSFontFace&);
+    struct Descriptors {
+        String style;
+        String weight;
+        String stretch;
+        String unicodeRange;
+        String variant;
+        String featureSettings;
+    };
+    static RefPtr<FontFace> create(JSC::ExecState&, Document&, const String& family, JSC::JSValue source, const Descriptors&, ExceptionCode&);
+    static Ref<FontFace> create(CSSFontFace&);
     virtual ~FontFace();
 
     void setFamily(const String&, ExceptionCode&);
@@ -67,10 +61,12 @@ public:
     String unicodeRange() const;
     String variant() const;
     String featureSettings() const;
-    String status() const;
 
-    typedef DOMPromise<FontFace&, DOMCoreException&> Promise;
-    Promise& promise() { return m_promise; }
+    enum class LoadStatus { Unloaded, Loading, Loaded, Error };
+    LoadStatus status() const;
+
+    typedef DOMPromise<FontFace&, ExceptionCode> Promise;
+    void registerLoaded(Promise&&);
 
     void load();
 
@@ -78,26 +74,20 @@ public:
 
     static RefPtr<CSSValue> parseString(const String&, CSSPropertyID);
 
-    void fontStateChanged(CSSFontFace&, CSSFontFace::Status oldState, CSSFontFace::Status newState) override;
+    void fontStateChanged(CSSFontFace&, CSSFontFace::Status oldState, CSSFontFace::Status newState) final;
 
     WeakPtr<FontFace> createWeakPtr() const;
 
-    // CSSFontFace::Client needs to be able to be held in a RefPtr.
-    void ref() override { RefCounted<FontFace>::ref(); }
-    void deref() override { RefCounted<FontFace>::deref(); }
+    void ref() final { RefCounted::ref(); }
+    void deref() final { RefCounted::deref(); }
 
 private:
-    FontFace(JSC::ExecState&, CSSFontSelector&);
-    FontFace(JSC::ExecState&, CSSFontFace&);
-
-    void fulfillPromise();
-    void rejectPromise(ExceptionCode);
+    explicit FontFace(CSSFontSelector&);
+    explicit FontFace(CSSFontFace&);
 
     WeakPtrFactory<FontFace> m_weakPtrFactory;
     Ref<CSSFontFace> m_backing;
-    Promise m_promise;
+    Optional<Promise> m_promise;
 };
 
 }
-
-#endif

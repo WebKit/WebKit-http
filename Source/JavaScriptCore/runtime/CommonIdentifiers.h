@@ -71,6 +71,9 @@
     macro(Number) \
     macro(NumberFormat) \
     macro(Object) \
+    macro(PerformanceEntry) \
+    macro(PerformanceEntryList) \
+    macro(PerformanceResourceTiming) \
     macro(Promise) \
     macro(Proxy) \
     macro(RangeError) \
@@ -123,6 +126,7 @@
     macro(collation) \
     macro(column) \
     macro(compilationKind) \
+    macro(compilationUID) \
     macro(compilations) \
     macro(compile) \
     macro(configurable) \
@@ -133,13 +137,14 @@
     macro(defineProperty) \
     macro(description) \
     macro(descriptions) \
+    macro(detail) \
     macro(displayName) \
     macro(document) \
     macro(done) \
-    macro(entries) \
     macro(enumerable) \
     macro(era) \
     macro(eval) \
+    macro(events) \
     macro(exec) \
     macro(executionCount) \
     macro(exitKind) \
@@ -177,7 +182,6 @@
     macro(isWatchpoint) \
     macro(jettisonReason) \
     macro(join) \
-    macro(keys) \
     macro(lastIndex) \
     macro(length) \
     macro(line) \
@@ -226,9 +230,11 @@
     macro(stack) \
     macro(sticky) \
     macro(subarray) \
+    macro(summary) \
     macro(target) \
     macro(test) \
     macro(then) \
+    macro(time) \
     macro(timeZone) \
     macro(timeZoneName) \
     macro(toExponential) \
@@ -239,11 +245,11 @@
     macro(toPrecision) \
     macro(toString) \
     macro(top) \
+    macro(uid) \
     macro(unicode) \
     macro(usage) \
     macro(value) \
     macro(valueOf) \
-    macro(values) \
     macro(webkit) \
     macro(webkitIDBCursor) \
     macro(webkitIDBDatabase) \
@@ -329,6 +335,9 @@
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
+    macro(arrayIteratorNext) \
+    macro(arrayIteratorIsDone) \
+    macro(arrayIteratorKind) \
     macro(charCodeAt) \
     macro(iteratedString) \
     macro(stringIteratorNextIndex) \
@@ -336,7 +345,6 @@
     macro(fulfillmentHandler) \
     macro(rejectionHandler) \
     macro(index) \
-    macro(values) \
     macro(deferred) \
     macro(countdownHolder) \
     macro(Object) \
@@ -439,10 +447,11 @@
     macro(regExpProtoSourceGetter) \
     macro(regExpProtoStickyGetter) \
     macro(regExpProtoUnicodeGetter) \
+    macro(regExpPrototypeSymbolReplace) \
     macro(regExpReplaceFast) \
     macro(regExpSearchFast) \
     macro(regExpSplitFast) \
-    macro(regExpPrototypeSymbolReplace) \
+    macro(regExpTestFast) \
     macro(stringIncludesInternal) \
     macro(stringSplitFast) \
     macro(stringSubstrInternal) \

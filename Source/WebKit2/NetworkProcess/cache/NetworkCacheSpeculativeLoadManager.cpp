@@ -358,8 +358,9 @@ bool SpeculativeLoadManager::retrieve(const GlobalFrameID& frameID, const Key& s
 void SpeculativeLoadManager::registerLoad(const GlobalFrameID& frameID, const ResourceRequest& request, const Key& resourceKey)
 {
     ASSERT(RunLoop::isMain());
+    ASSERT(request.url().protocolIsInHTTPFamily());
 
-    if (!request.url().protocolIsInHTTPFamily() || request.httpMethod() != "GET")
+    if (request.httpMethod() != "GET")
         return;
 
     auto isMainResource = request.requester() == ResourceRequest::Requester::Main;
@@ -488,11 +489,16 @@ void SpeculativeLoadManager::revalidateEntry(std::unique_ptr<Entry> entry, const
 
 void SpeculativeLoadManager::preloadEntry(const Key& key, const SubresourceInfo& subResourceInfo, const GlobalFrameID& frameID)
 {
+    if (m_pendingPreloads.contains(key))
+        return;
+
     m_pendingPreloads.add(key, nullptr);
     auto* subResourceInfoPtr = new SubresourceInfo(subResourceInfo);
     retrieveEntryFromStorage(key, [this, key, subResourceInfoPtr, frameID](std::unique_ptr<Entry> entry) {
         auto subResourceInfo = std::unique_ptr<SubresourceInfo>(subResourceInfoPtr);
-        m_pendingPreloads.remove(key);
+        ASSERT(!m_pendingPreloads.get(key));
+        bool removed = m_pendingPreloads.remove(key);
+        ASSERT_UNUSED(removed, removed);
 
         if (satisfyPendingRequests(key, entry.get())) {
             if (entry)

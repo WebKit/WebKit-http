@@ -172,15 +172,11 @@ public:
     String description() const;
 #endif
 
-#if USE(APPKIT)
-    NSFont* getNSFont() const { return m_platformData.nsFont(); }
-#endif
-
 #if PLATFORM(IOS)
-    CTFontRef getCTFont() const { return m_platformData.font(); }
     bool shouldNotBeUsedForArabic() const { return m_shouldNotBeUsedForArabic; };
 #endif
 #if PLATFORM(COCOA)
+    CTFontRef getCTFont() const { return m_platformData.font(); }
     CFDictionaryRef getCFStringAttributes(bool enableKerning, FontOrientation) const;
     const BitVector& glyphsSupportedBySmallCaps() const;
     const BitVector& glyphsSupportedByAllSmallCaps() const;
@@ -248,16 +244,16 @@ private:
 
     Glyph m_zeroWidthSpaceGlyph { 0 };
 
-    struct DerivedFontData {
+    struct DerivedFonts {
 #if !COMPILER(MSVC)
         WTF_MAKE_FAST_ALLOCATED;
 #endif
     public:
-        explicit DerivedFontData(bool custom)
+        explicit DerivedFonts(bool custom)
             : forCustomFont(custom)
         {
         }
-        ~DerivedFontData();
+        ~DerivedFonts();
 
         bool forCustomFont;
         RefPtr<Font> smallCaps;
@@ -269,14 +265,15 @@ private:
         RefPtr<Font> nonSyntheticItalic;
     };
 
-    mutable std::unique_ptr<DerivedFontData> m_derivedFontData;
+    mutable std::unique_ptr<DerivedFonts> m_derivedFontData;
 
 #if USE(CG) || USE(CAIRO)
     float m_syntheticBoldOffset;
 #endif
 
 #if PLATFORM(COCOA)
-    mutable HashMap<unsigned, RetainPtr<CFDictionaryRef>> m_CFStringAttributes;
+    mutable RetainPtr<CFDictionaryRef> m_nonKernedCFStringAttributes;
+    mutable RetainPtr<CFDictionaryRef> m_kernedCFStringAttributes;
     mutable Optional<BitVector> m_glyphsSupportedBySmallCaps;
     mutable Optional<BitVector> m_glyphsSupportedByAllSmallCaps;
     mutable Optional<BitVector> m_glyphsSupportedByPetiteCaps;

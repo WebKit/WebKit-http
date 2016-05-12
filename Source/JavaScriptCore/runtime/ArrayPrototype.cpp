@@ -61,8 +61,6 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncUnShift(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState*);
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncKeys(ExecState*);
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncEntries(ExecState*);
 
 // ------------------------------ ArrayPrototype ----------------------------
 
@@ -88,7 +86,7 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     ASSERT(inherits(info()));
     vm.prototypeMap.addPrototype(this);
 
-    putDirectWithoutTransition(vm, vm.propertyNames->values, globalObject->arrayProtoValuesFunction(), DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().valuesPublicName(), globalObject->arrayProtoValuesFunction(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->iteratorSymbol, globalObject->arrayProtoValuesFunction(), DontEnum);
     
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->toString, arrayProtoFuncToString, DontEnum, 0);
@@ -115,8 +113,8 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("reduce", arrayPrototypeReduceCodeGenerator, DontEnum);
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("reduceRight", arrayPrototypeReduceRightCodeGenerator, DontEnum);
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("map", arrayPrototypeMapCodeGenerator, DontEnum);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->entries, arrayProtoFuncEntries, DontEnum, 0);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->keys, arrayProtoFuncKeys, DontEnum, 0);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().entriesPublicName(), arrayPrototypeEntriesCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().keysPublicName(), arrayPrototypeKeysCodeGenerator, DontEnum);
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("find", arrayPrototypeFindCodeGenerator, DontEnum);
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("findIndex", arrayPrototypeFindIndexCodeGenerator, DontEnum);
     JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("includes", arrayPrototypeIncludesCodeGenerator, DontEnum);
@@ -782,7 +780,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState* exec)
     if (UNLIKELY(speciesResult.first == SpeciesConstructResult::Exception))
         return JSValue::encode(jsUndefined());
 
-    if (LIKELY(speciesResult.first == SpeciesConstructResult::FastPath && isJSArray(thisObj))) {
+    if (LIKELY(speciesResult.first == SpeciesConstructResult::FastPath && isJSArray(thisObj) && length == getLength(exec, thisObj))) {
         if (JSArray* result = asArray(thisObj)->fastSlice(*exec, begin, end - begin))
             return JSValue::encode(result);
     }
@@ -851,7 +849,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
         return JSValue::encode(jsUndefined());
 
     JSObject* result = nullptr;
-    if (speciesResult.first == SpeciesConstructResult::FastPath && isJSArray(thisObj))
+    if (speciesResult.first == SpeciesConstructResult::FastPath && isJSArray(thisObj) && length == getLength(exec, thisObj))
         result = asArray(thisObj)->fastSlice(*exec, begin, deleteCount);
 
     if (!result) {
@@ -988,30 +986,6 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState* exec)
     } while (index--);
 
     return JSValue::encode(jsNumber(-1));
-}
-
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncValues(ExecState* exec)
-{
-    JSObject* thisObj = exec->thisValue().toThis(exec, StrictMode).toObject(exec);
-    if (!thisObj)
-        return JSValue::encode(JSValue());
-    return JSValue::encode(JSArrayIterator::create(exec, exec->callee()->globalObject()->arrayIteratorStructure(), ArrayIterateValue, thisObj));
-}
-
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncEntries(ExecState* exec)
-{
-    JSObject* thisObj = exec->thisValue().toThis(exec, StrictMode).toObject(exec);
-    if (!thisObj)
-        return JSValue::encode(JSValue());
-    return JSValue::encode(JSArrayIterator::create(exec, exec->callee()->globalObject()->arrayIteratorStructure(), ArrayIterateKeyValue, thisObj));
-}
-    
-EncodedJSValue JSC_HOST_CALL arrayProtoFuncKeys(ExecState* exec)
-{
-    JSObject* thisObj = exec->thisValue().toThis(exec, StrictMode).toObject(exec);
-    if (!thisObj)
-        return JSValue::encode(JSValue());
-    return JSValue::encode(JSArrayIterator::create(exec, exec->callee()->globalObject()->arrayIteratorStructure(), ArrayIterateKey, thisObj));
 }
 
 EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncIsJSArray(ExecState* exec)
