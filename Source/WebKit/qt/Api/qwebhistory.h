@@ -28,8 +28,6 @@
 
 #include "qwebkitglobal.h"
 
-#define SAVE_AND_RESTORE_IS_BROKEN 1
-
 class QWebPage;
 
 namespace WebCore {
@@ -56,6 +54,9 @@ public:
     void setUserData(const QVariant& userData);
 
     bool isValid() const;
+
+    QVariantMap toMap() const;
+    void loadFromMap(const QVariantMap &map);
 
 private:
     QWebHistoryItem(QWebHistoryItemPrivate *priv);
@@ -97,6 +98,9 @@ public:
 
     int maximumItemCount() const;
     void setMaximumItemCount(int count);
+
+    QVariantMap toMap() const;
+    void loadFromMap(const QVariantMap &map);
 
 private:
     QWebHistory();

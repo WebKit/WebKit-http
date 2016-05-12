@@ -23,20 +23,24 @@
 
 #include "BackForwardList.h"
 #include "Frame.h"
+#include "HistorySerialization.h"
 #include "IconDatabaseBase.h"
 #include "Image.h"
 #include "IntSize.h"
-#include "URL.h"
+#include "KeyedDecoderQt.h"
+#include "KeyedEncoderQt.h"
 #include "Page.h"
 #include "PageGroup.h"
+#include "URL.h"
 #include "VisitedLinkStoreQt.h"
 #include <QWebPageAdapter.h>
 #include <wtf/text/WTFString.h>
 
 #include <QSharedData>
 #include <QDebug>
+#include <QJsonObject>
 
-static const int HistoryStreamVersion = 2;
+static const int HistoryStreamVersion = 3;
 
 /*!
   \class QWebHistoryItem
@@ -206,6 +210,24 @@ QWebHistoryItem::QWebHistoryItem(QWebHistoryItemPrivate *priv)
 bool QWebHistoryItem::isValid() const
 {
     return d->item;
+}
+
+QVariantMap QWebHistoryItem::toMap() const
+{
+    if (!isValid())
+        return QVariantMap();
+
+    WebCore::KeyedEncoderQt encoder;
+    WebCore::encodeBackForwardTree(encoder, *d->item);
+    return encoder.toMap();
+}
+
+void QWebHistoryItem::loadFromMap(const QVariantMap& map)
+{
+    WebCore::KeyedDecoderQt decoder { QVariantMap(map) };
+    auto item = WebCore::HistoryItem::create();
+    if (WebCore::decodeBackForwardTree(decoder, item))
+        d = new QWebHistoryItemPrivate(item);
 }
 
 /*!
@@ -477,6 +499,50 @@ void QWebHistory::setMaximumItemCount(int count)
     d->lst->setCapacity(count);
 }
 
+QVariantMap QWebHistory::toMap() const
+{
+    WebCore::KeyedEncoderQt encoder;
+    encoder.encodeUInt32("currentItemIndex", currentItemIndex());
+
+    const WebCore::HistoryItemVector &items = d->lst->entries();
+    encoder.encodeObjects("history", items.begin(), items.end(), [&encoder](WebCore::KeyedEncoder&, const WebCore::HistoryItem& item) {
+        WebCore::encodeBackForwardTree(encoder, item);
+    });
+
+    return encoder.toMap();
+}
+
+void QWebHistory::loadFromMap(const QVariantMap& map)
+{
+    clear();
+
+    // after clear() is new clear HistoryItem (at the end we had to remove it)
+    WebCore::HistoryItem* nullItem = d->lst->currentItem();
+
+    WebCore::KeyedDecoderQt decoder { QVariantMap(map) };
+
+    int currentIndex;
+    if (!decoder.decodeInt32("currentItemIndex", currentIndex))
+        return;
+
+    auto* lst = d->lst;
+    Vector<int> ignore;
+    bool result = decoder.decodeObjects("history", ignore, [&lst, &decoder](WebCore::KeyedDecoder&, int&) -> bool {
+        auto item = WebCore::HistoryItem::create();
+        if (!WebCore::decodeBackForwardTree(decoder, item))
+            return false;
+        lst->addItem(WTFMove(item));
+        return true;
+    });
+
+    if (result && !d->lst->entries().isEmpty()) {
+        d->lst->removeItem(nullItem);
+        goToItem(itemAt(currentIndex));
+    }
+
+    d->page()->updateNavigationActions();
+}
+
 /*!
   \since 4.6
   \fn QDataStream& operator<<(QDataStream& stream, const QWebHistory& history)
@@ -489,17 +555,8 @@ void QWebHistory::setMaximumItemCount(int count)
 
 QDataStream& operator<<(QDataStream& target, const QWebHistory& history)
 {
-    QWebHistoryPrivate* d = history.d;
-
-    int version = HistoryStreamVersion;
-
-    target << version;
-    target << history.count() << history.currentItemIndex();
-
-    const WebCore::HistoryItemVector &items = d->lst->entries();
-    for (unsigned i = 0; i < items.size(); i++)
-        items[i].get().saveState(target, version);
-
+    target << HistoryStreamVersion;
+    target << history.toMap();
     return target;
 }
 
@@ -515,7 +572,6 @@ QDataStream& operator<<(QDataStream& target, const QWebHistory& history)
 
 QDataStream& operator>>(QDataStream& source, QWebHistory& history)
 {
-    QWebHistoryPrivate* d = history.d;
     // Clear first, to have the same behavior if our version doesn't match and if the HistoryItem's version doesn't.
     history.clear();
 
@@ -532,29 +588,9 @@ QDataStream& operator>>(QDataStream& source, QWebHistory& history)
         return source;
     }
 
-    int count;
-    int currentIndex;
-    source >> count >> currentIndex;
-
-    // only if there are elements
-    if (count) {
-        // after clear() is new clear HistoryItem (at the end we had to remove it)
-        WebCore::HistoryItem* nullItem = d->lst->currentItem();
-        for (int i = 0; i < count; i++) {
-            WTF::RefPtr<WebCore::HistoryItem> item = WebCore::HistoryItem::restoreState(source, version);
-            if (!item) {
-                // The HistoryItem internal version might have changed, do the same as when our own version change.
-                history.clear();
-                source.setStatus(QDataStream::ReadCorruptData);
-                return source;
-            }
-            d->lst->addItem(item.releaseNonNull());
-        }
-        d->lst->removeItem(nullItem);
-        history.goToItem(history.itemAt(currentIndex));
-    }
-
-    d->page()->updateNavigationActions();
+    QVariantMap map;
+    source >> map;
+    history.loadFromMap(map);
 
     return source;
 }

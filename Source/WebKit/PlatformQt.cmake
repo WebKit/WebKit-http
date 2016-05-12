@@ -182,6 +182,7 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/EditorClientQt.cpp
     qt/WebCoreSupport/FrameLoaderClientQt.cpp
     qt/WebCoreSupport/FrameNetworkingContextQt.cpp
+    qt/WebCoreSupport/HistorySerialization.cpp
     qt/WebCoreSupport/IconDatabaseClientQt.cpp
     qt/WebCoreSupport/InitWebCoreQt.cpp
     qt/WebCoreSupport/InspectorClientQt.cpp
