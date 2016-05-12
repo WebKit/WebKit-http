@@ -35,7 +35,12 @@ using namespace WebKit;
 
 WKViewRef WKViewCreate(WKPageConfigurationRef configuration)
 {
-    return toAPI(WKWPE::View::create(*toImpl(configuration)));
+    return toAPI(WKWPE::View::create(nullptr, *toImpl(configuration)));
+}
+
+WKViewRef WKViewCreateWithViewBackend(struct wpe_view_backend* backend, WKPageConfigurationRef configuration)
+{
+    return toAPI(WKWPE::View::create(backend, *toImpl(configuration)));
 }
 
 WKPageRef WKViewGetPage(WKViewRef view)

@@ -45,9 +45,9 @@ namespace WKWPE {
 
 class View : public API::ObjectImpl<API::Object::Type::View> {
 public:
-    static View* create(const API::PageConfiguration& configuration)
+    static View* create(struct wpe_view_backend* backend, const API::PageConfiguration& configuration)
     {
-        return new View(configuration);
+        return new View(backend, configuration);
     }
 
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
@@ -60,7 +60,7 @@ public:
     void setViewState(WebCore::ViewState::Flags);
 
 private:
-    View(const API::PageConfiguration&);
+    View(struct wpe_view_backend*, const API::PageConfiguration&);
     virtual ~View();
 
     void setSize(const WebCore::IntSize& size);

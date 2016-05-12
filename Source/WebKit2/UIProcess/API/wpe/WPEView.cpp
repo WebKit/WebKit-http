@@ -39,7 +39,7 @@ using namespace WebKit;
 
 namespace WKWPE {
 
-View::View(const API::PageConfiguration& baseConfiguration)
+View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
     , m_size{ 800, 600 }
     , m_viewStateFlags(WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
@@ -63,7 +63,9 @@ View::View(const API::PageConfiguration& baseConfiguration)
     auto* pool = configuration->processPool();
     m_pageProxy = pool->createWebPage(*m_pageClient, WTFMove(configuration));
 
-    m_backend = wpe_view_backend_create();
+    m_backend = backend;
+    if (!m_backend)
+        m_backend = wpe_view_backend_create();
     m_compositingManagerProxy.initialize();
 
     static struct wpe_view_backend_client s_backendClient = {
