@@ -165,23 +165,6 @@ static inline Qt::DropAction dragOpToDropAction(unsigned actions)
     return result;
 }
 
-static inline WebCore::PageVisibilityState webPageVisibilityStateToWebCoreVisibilityState(QWebPageAdapter::VisibilityState state)
-{
-    switch (state) {
-    case QWebPageAdapter::VisibilityStatePrerender:
-        return WebCore::PageVisibilityStatePrerender;
-    case QWebPageAdapter::VisibilityStateVisible:
-        return WebCore::PageVisibilityStateVisible;
-    case QWebPageAdapter::VisibilityStateHidden:
-        return WebCore::PageVisibilityStateHidden;
-    case QWebPageAdapter::VisibilityStateUnloaded:
-        // FIXME: Decide what to do with removed VisibilityStateUnloaded
-    default:
-        ASSERT(false);
-        return WebCore::PageVisibilityStateHidden;
-    }
-}
-
 static inline QWebPageAdapter::VisibilityState webCoreVisibilityStateToWebPageVisibilityState(WebCore::PageVisibilityState state)
 {
     switch (state) {
@@ -348,22 +331,16 @@ void QWebPageAdapter::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
 
 void QWebPageAdapter::setVisibilityState(VisibilityState state)
 {
-#if ENABLE(PAGE_VISIBILITY_API)
     if (!page)
         return;
-    page->setVisibilityState(webPageVisibilityStateToWebCoreVisibilityState(state), false);
-#else
-    Q_UNUSED(state);
-#endif
+    page->setIsVisible(state == VisibilityStateVisible);
+    if (state == VisibilityStatePrerender)
+        page->setIsPrerender();
 }
 
 QWebPageAdapter::VisibilityState QWebPageAdapter::visibilityState() const
 {
-#if ENABLE(PAGE_VISIBILITY_API)
     return webCoreVisibilityStateToWebPageVisibilityState(page->visibilityState());
-#else
-    return QWebPageAdapter::VisibilityStateVisible;
-#endif
 }
 
 void QWebPageAdapter::setNetworkAccessManager(QNetworkAccessManager *manager)

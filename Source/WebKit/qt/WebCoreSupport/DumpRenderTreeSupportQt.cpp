@@ -894,12 +894,7 @@ void DumpRenderTreeSupportQt::clearNotificationPermissions()
 
 void DumpRenderTreeSupportQt::resetPageVisibility(QWebPageAdapter* adapter)
 {
-#if ENABLE(PAGE_VISIBILITY_API)
-    // Set visibility without emitting an event.
-    adapter->page->setVisibilityState(PageVisibilityStateVisible, true);
-#else
-    UNUSED_PARAM(adapter);
-#endif
+    adapter->page->setIsVisible(true);
 }
 
 void DumpRenderTreeSupportQt::getJSWindowObject(QWebFrameAdapter* adapter, JSContextRef* context, JSObjectRef* object)
