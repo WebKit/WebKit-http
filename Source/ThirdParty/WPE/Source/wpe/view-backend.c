@@ -8,11 +8,18 @@
 struct wpe_view_backend*
 wpe_view_backend_create()
 {
+    struct wpe_view_backend_interface* backend_interface = wpe_load_object("_wpe_view_backend_interface");
+    return wpe_view_backend_create_with_backend_interface(backend_interface);
+}
+
+struct wpe_view_backend*
+wpe_view_backend_create_with_backend_interface(struct wpe_view_backend_interface* backend_interface)
+{
     struct wpe_view_backend* backend = malloc(sizeof(struct wpe_view_backend));
     if (!backend)
         return 0;
 
-    backend->interface = wpe_load_object("_wpe_view_backend_interface");
+    backend->interface = backend_interface;
     backend->interface_data = backend->interface->create(backend);
 
     return backend;

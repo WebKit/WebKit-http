@@ -29,6 +29,9 @@ struct wpe_view_backend_interface {
 struct wpe_view_backend*
 wpe_view_backend_create();
 
+struct wpe_view_backend*
+wpe_view_backend_create_with_backend_interface(struct wpe_view_backend_interface*);
+
 void
 wpe_view_backend_destroy(struct wpe_view_backend*);
 
