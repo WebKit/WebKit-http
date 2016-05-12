@@ -602,7 +602,7 @@ void SourceBuffer::sourceBufferPrivateAppendComplete(SourceBufferPrivate*, Appen
     // then run the end of stream algorithm with the error parameter set to "decode" and abort this algorithm.
     if (result == ParsingFailed) {
         LOG(MediaSource, "SourceBuffer::sourceBufferPrivateAppendComplete(%p) - result = ParsingFailed", this);
-        m_source->streamEndedWithError(decodeError(), IgnorableExceptionCode());
+        m_source->streamEndedWithError(MediaSource::EndOfStreamError::Decode);
         return;
     }
 
@@ -1026,14 +1026,6 @@ void SourceBuffer::setActive(bool active)
         m_source->sourceBufferDidChangeActiveState(*this, active);
 }
 
-void SourceBuffer::sourceBufferPrivateDidEndStream(SourceBufferPrivate*, const WTF::AtomicString& error)
-{
-    LOG(MediaSource, "SourceBuffer::sourceBufferPrivateDidEndStream(%p) - result = %s", this, String(error).utf8().data());
-
-    if (!isRemoved())
-        m_source->streamEndedWithError(error, IgnorableExceptionCode());
-}
-
 #if ENABLE(VIDEO_TRACK)
 void SourceBuffer::sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivate*, const InitializationSegment& segment)
 {
@@ -1057,14 +1049,14 @@ void SourceBuffer::sourceBufferPrivateDidReceiveInitializationSegment(SourceBuff
     // 2. If the initialization segment has no audio, video, or text tracks, then run the append error algorithm
     // with the decode error parameter set to true and abort these steps.
     if (segment.audioTracks.isEmpty() && segment.videoTracks.isEmpty() && segment.textTracks.isEmpty()) {
-        m_source->streamEndedWithError(decodeError(), IgnorableExceptionCode());
+        m_source->streamEndedWithError(MediaSource::EndOfStreamError::Decode);
         return;
     }
 
     // 3. If the first initialization segment flag is true, then run the following steps:
     if (m_receivedFirstInitializationSegment) {
         if (!validateInitializationSegment(segment)) {
-            m_source->streamEndedWithError(decodeError(), IgnorableExceptionCode());
+            m_source->streamEndedWithError(MediaSource::EndOfStreamError::Decode);
             return;
         }
         // 3.2 Add the appropriate track descriptions from this initialization segment to each of the track buffers.
@@ -1384,7 +1376,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
 #if !LOG_DISABLED
                 LOG(MediaSource, "SourceBuffer::sourceBufferPrivateDidReceiveSample(%p) - failing because %s", this, presentationTimestamp < presentationStartTime ? "presentationTimestamp < presentationStartTime" : "decodeTimestamp < presentationStartTime");
 #endif
-                m_source->streamEndedWithError(decodeError(), IgnorableExceptionCode());
+                m_source->streamEndedWithError(MediaSource::EndOfStreamError::Decode);
                 return;
             }
         }
@@ -1752,7 +1744,6 @@ void SourceBuffer::sourceBufferPrivateDidBecomeReadyForMoreSamples(SourceBufferP
     if (!trackBuffer.needsReenqueueing && !m_source->isSeeking())
         provideMediaData(trackBuffer, trackID);
 }
-#endif
 
 void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, AtomicString trackID)
 {
