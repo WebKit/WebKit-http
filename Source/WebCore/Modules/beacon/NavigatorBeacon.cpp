@@ -88,7 +88,7 @@ bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& c
     return impl.beaconResult(context, allowed, bytes);
 }
 
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, JSC::ArrayBufferView* data, ExceptionCode& ec)
+bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, const RefPtr<JSC::ArrayBufferView>& data, ExceptionCode& ec)
 {
     NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
 
@@ -98,7 +98,7 @@ bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& c
 
     int allowance = impl.maxAllowance();
     int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data, bytes);
+    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data.get(), bytes);
 
     return impl.beaconResult(context, allowed, bytes);
 }

@@ -26,7 +26,7 @@ public:
     static NavigatorBeacon& from(Navigator&);
 
     static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, Blob*, ExceptionCode&);
-    static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, JSC::ArrayBufferView*, ExceptionCode&);
+    static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, const RefPtr<JSC::ArrayBufferView>&, ExceptionCode&);
     static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, DOMFormData*, ExceptionCode&);
     static bool sendBeacon(Navigator&, ScriptExecutionContext&, const String&, const String&, ExceptionCode&);
 
