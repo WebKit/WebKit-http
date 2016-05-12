@@ -458,16 +458,14 @@ void MediaSource::streamEndedWithError(Optional<EndOfStreamError> error)
 
         // 2. Notify the media element that it now has all of the media data.
         m_private->markEndOfStream(MediaSourcePrivate::EosNoError);
-    }
 
-    // NOTE: Do steps 1 & 2 after step 3 (with an empty error) to avoid the MediaSource's readyState being re-opened by a
-    // remove() operation resulting from a duration change.
-    // FIXME: Re-number or update this section once <https://www.w3.org/Bugs/Public/show_bug.cgi?id=26316> is resolved.
-    // 1. Change the readyState attribute value to "ended".
-    // 2. Queue a task to fire a simple event named sourceended at the MediaSource.
-    setReadyState(endedKeyword());
-
-    if (error == EndOfStreamError::Network) {
+        // NOTE: Do steps 1 & 2 after step 3 (with an empty error) to avoid the MediaSource's readyState being re-opened by a
+        // remove() operation resulting from a duration change.
+        // FIXME: Re-number or update this section once <https://www.w3.org/Bugs/Public/show_bug.cgi?id=26316> is resolved.
+        // 1. Change the readyState attribute value to "ended".
+        // 2. Queue a task to fire a simple event named sourceended at the MediaSource.
+        setReadyState(endedKeyword());
+    } else if (error == EndOfStreamError::Network) {
         // ↳ If error is set to "network"
         ASSERT(m_mediaElement);
         if (m_mediaElement->readyState() == HTMLMediaElement::HAVE_NOTHING) {
