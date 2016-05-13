@@ -48,6 +48,7 @@ bool DisplayRefreshMonitor::requestRefreshCallback()
     setIsScheduled(true);
 
     if (isPreviousFrameDone() && m_compositor) {
+        m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
         if (!m_compositor->m_compositingRunLoop->isActive())
             m_compositor->m_compositingRunLoop->scheduleUpdate();
     }
@@ -74,7 +75,6 @@ void DisplayRefreshMonitor::invalidate()
 void DisplayRefreshMonitor::displayRefreshCallback()
 {
     bool shouldHandleDisplayRefreshNotification = false;
-    bool wasRescheduled = false;
     {
         LockHolder locker(mutex());
         shouldHandleDisplayRefreshNotification = isScheduled() && isPreviousFrameDone();
@@ -86,17 +86,14 @@ void DisplayRefreshMonitor::displayRefreshCallback()
 
     if (shouldHandleDisplayRefreshNotification)
         DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
-    {
-        LockHolder holder(mutex());
-        wasRescheduled = isScheduled();
-    }
 
     if (m_compositor) {
         if (m_compositor->m_clientRendersNextFrame.compareExchangeStrong(true, false))
             m_compositor->m_scene->renderNextFrame();
         if (m_compositor->m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
             m_compositor->m_compositingRunLoop->updateCompleted();
-        if (wasRescheduled) {
+        if (isScheduled()) {
+            m_compositor->m_coordinateUpdateCompletionWithClient.store(true);
             if (!m_compositor->m_compositingRunLoop->isActive())
                 m_compositor->m_compositingRunLoop->scheduleUpdate();
         }
