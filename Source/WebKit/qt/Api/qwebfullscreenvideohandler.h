@@ -26,10 +26,12 @@
  *  and may be changed from version to version or even be completely removed.
  */
 
+#include "qwebkitglobal.h"
+
 #include <QMediaPlayer>
 #include <QObject>
 
-class QWebFullScreenVideoHandler : public QObject {
+class QWEBKIT_EXPORT QWebFullScreenVideoHandler : public QObject {
     Q_OBJECT
 public:
     QWebFullScreenVideoHandler() {}

@@ -106,7 +106,7 @@ void QGraphicsWebViewPrivate::_q_pageDestroyed()
 
 void QGraphicsWebViewPrivate::updateResizesToContentsForPage()
 {
-    ASSERT(page);
+    Q_ASSERT(page);
     pageClient()->viewResizesToContents = resizesToContents;
     if (resizesToContents) {
         // resizes to contents mode requires preferred contents size to be set

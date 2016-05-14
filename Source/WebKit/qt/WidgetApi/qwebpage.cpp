@@ -462,7 +462,7 @@ static QWebPage::WebAction webActionForAdapterMenuAction(QWebPageAdapter::MenuAc
         FOR_EACH_MAPPED_MENU_ACTION(MAP_WEB_ACTION_FROM_ADAPTER_EQUIVALENT, SEMICOLON_SEPARATOR);
     case QWebPageAdapter::InspectElement: return QWebPage::InspectElement;
     default:
-        ASSERT_NOT_REACHED();
+        Q_UNREACHABLE();
         break;
     }
     return QWebPage::NoWebAction;
@@ -477,7 +477,7 @@ static QWebPageAdapter::MenuAction adapterMenuActionForWebAction(QWebPage::WebAc
         FOR_EACH_MAPPED_MENU_ACTION(MAP_ADAPTER_ACTION_FROM_WEBACTION_EQUIVALENT, SEMICOLON_SEPARATOR);
     case QWebPage::InspectElement: return QWebPageAdapter::InspectElement;
     default:
-        ASSERT_NOT_REACHED();
+        Q_UNREACHABLE();
         break;
     }
     return QWebPageAdapter::NoAction;

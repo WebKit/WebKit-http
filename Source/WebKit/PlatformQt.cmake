@@ -204,6 +204,10 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/WebEventConversion.cpp
 )
 
+qt_wrap_cpp(WebKit WebKit_SOURCES
+    qt/Api/qwebkitplatformplugin.h
+)
+
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Gui_INCLUDE_DIRS}
@@ -228,6 +232,9 @@ if (ENABLE_GEOLOCATION)
 endif ()
 
 if (USE_QT_MULTIMEDIA)
+    qt_wrap_cpp(WebKit WebKit_SOURCES
+        qt/Api/qwebfullscreenvideohandler.h
+    )
     list(APPEND WebKit_SOURCES
         qt/WebCoreSupport/FullScreenVideoQt.cpp
     )
@@ -291,10 +298,17 @@ install(
 set(WebKit_LIBRARY_TYPE SHARED)
 set(WebKit_OUTPUT_NAME Qt5WebKit)
 
+############   WebKitTestSupport   ############
+
+
+add_library(WebKitTestSupport STATIC qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp)
+target_link_libraries(WebKitTestSupport WebCoreTestSupport WebKit)
+WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebKitTestSupport)
+
+
 ############     WebKitWidgets     ############
 
 set(WebKitWidgets_INCLUDE_DIRECTORIES
-    ${WebKit_INCLUDE_DIRECTORIES}
     "${WEBKIT_DIR}/qt/WidgetApi"
     "${WEBKIT_DIR}/qt/WidgetSupport"
 )
@@ -318,17 +332,13 @@ set(WebKitWidgets_SOURCES
     qt/WidgetSupport/QtWebComboBox.cpp
 )
 
-qt_wrap_cpp(WebKitWidgets WebKitWidgets_SOURCES
-    qt/Api/qwebkitplatformplugin.h
-)
-
 set(WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
-    ${WebKit_SYSTEM_INCLUDE_DIRECTORIES}
+    ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Network_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
 )
 
 set(WebKitWidgets_LIBRARIES
-    ${WebKit_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
     WebKit
 )
@@ -337,9 +347,6 @@ if (USE_QT_MULTIMEDIA)
     list(APPEND WebKitWidgets_SOURCES
         qt/WidgetSupport/DefaultFullScreenVideoHandler.cpp
         qt/WidgetSupport/FullScreenVideoWidget.cpp
-    )
-    qt_wrap_cpp(WebKitWidgets WebKitWidgets_SOURCES
-        qt/Api/qwebfullscreenvideohandler.h
     )
     list(APPEND WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
         ${Qt5MultimediaWidgets_INCLUDE_DIRS}
