@@ -260,6 +260,13 @@ bool FontCascade::canReturnFallbackFontsForComplexText()
     return false;
 }
 
+float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun&, int, int, GlyphBuffer&, ForTextEmphasisOrNot) const
+{
+    // FIXME
+    notImplemented();
+    return 0.f;
+}
+
 void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
 {
     notImplemented();
