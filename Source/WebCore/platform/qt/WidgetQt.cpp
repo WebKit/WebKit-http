@@ -108,7 +108,7 @@ void Widget::hide()
         client->setWidgetVisible(this, false);
 }
 
-void Widget::paint(GraphicsContext*, const IntRect&)
+void Widget::paint(GraphicsContext&, const IntRect&)
 {
 }
 

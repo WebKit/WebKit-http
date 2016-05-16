@@ -341,7 +341,8 @@ void GraphicsContext::platformInit(PlatformGraphicsContext* painter)
 {
     m_data = new GraphicsContextPlatformPrivate(painter, fillColor());
 
-    setPaintingDisabled(!painter);
+    // FIXME: Check paintingDisabled() instead
+    //setPaintingDisabled(!painter);
 
     if (!painter)
         return;
@@ -397,7 +398,7 @@ void GraphicsContext::restorePlatformState()
 // Draws a filled rectangle with a stroked border.
 // This is only used to draw borders (real fill is done via fillRect), and
 // thus it must not cast any shadow.
-void GraphicsContext::drawRect(const IntRect& rect)
+void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
 {
     if (paintingDisabled())
         return;
@@ -408,6 +409,7 @@ void GraphicsContext::drawRect(const IntRect& rect)
     const bool antiAlias = p->testRenderHint(QPainter::Antialiasing);
     p->setRenderHint(QPainter::Antialiasing, m_data->antiAliasingForRectsAndLines);
 
+    // FIXME: use borderThickness
     p->drawRect(rect);
 
     p->setRenderHint(QPainter::Antialiasing, antiAlias);
@@ -415,7 +417,7 @@ void GraphicsContext::drawRect(const IntRect& rect)
 
 // This is only used to draw borders.
 // Must not cast any shadow.
-void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
+void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point2)
 {
     if (paintingDisabled())
         return;
@@ -596,13 +598,17 @@ void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
 }
 
 // This method is only used to draw the little circles used in lists.
-void GraphicsContext::drawEllipse(const IntRect& rect)
+void GraphicsContext::drawEllipse(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
 
     m_data->p()->drawEllipse(rect);
 }
+
+/*
+ FIXME: Removed in https://bugs.webkit.org/show_bug.cgi?id=153174
+ Find out if we need to adjust anything
 
 void GraphicsContext::drawConvexPolygon(size_t npoints, const FloatPoint* points, bool shouldAntialias)
 {
@@ -652,6 +658,7 @@ void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* poin
     if (painterWasAntialiased != antialiased)
         p->setRenderHint(QPainter::Antialiasing, painterWasAntialiased);
 }
+*/
 
 void GraphicsContext::fillPath(const Path& path)
 {
@@ -666,7 +673,7 @@ void GraphicsContext::fillPath(const Path& path)
         if (mustUseShadowBlur() || m_state.fillPattern || m_state.fillGradient)
         {
             ShadowBlur shadow(m_state);
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(this, platformPath.controlPointRect());
+            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, platformPath.controlPointRect());
             if (shadowContext) {
                 QPainter* shadowPainter = shadowContext->platformContext();
                 if (m_state.fillPattern) {
@@ -678,7 +685,7 @@ void GraphicsContext::fillPath(const Path& path)
                 } else {
                     shadowPainter->fillPath(platformPath, p->brush());
                 }
-                shadow.endShadowLayer(this);
+                shadow.endShadowLayer(*this);
             }
         } else {
             QPointF offset(m_state.shadowOffset.width(), m_state.shadowOffset.height());
@@ -727,7 +734,7 @@ void GraphicsContext::strokePath(const Path& path)
             ShadowBlur shadow(m_state);
             FloatRect boundingRect = platformPath.controlPointRect();
             boundingRect.inflate(pen.miterLimit() + pen.widthF());
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(this, boundingRect);
+            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, boundingRect);
             if (shadowContext) {
                 QPainter* shadowPainter = shadowContext->platformContext();
                 if (m_state.strokeGradient) {
@@ -736,7 +743,7 @@ void GraphicsContext::strokePath(const Path& path)
                     fillPathStroke(shadowPainter, pathStroker, platformPath, brush);
                 } else
                     fillPathStroke(shadowPainter, pathStroker, platformPath, pen.brush());
-                shadow.endShadowLayer(this);
+                shadow.endShadowLayer(*this);
             }
         } else {
             QPointF offset(m_state.shadowOffset.width(), m_state.shadowOffset.height());
@@ -818,11 +825,11 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (m_state.fillPattern) {
         if (hasShadow()) {
             ShadowBlur shadow(m_state);
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(this, normalizedRect);
+            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
             if (shadowContext) {
                 QPainter* shadowPainter = shadowContext->platformContext();
                 drawRepeatPattern(shadowPainter, m_state.fillPattern, normalizedRect);
-                shadow.endShadowLayer(this);
+                shadow.endShadowLayer(*this);
             }
         }
         drawRepeatPattern(p, m_state.fillPattern, normalizedRect);
@@ -831,11 +838,11 @@ void GraphicsContext::fillRect(const FloatRect& rect)
         brush.setTransform(m_state.fillGradient->gradientSpaceTransform());
         if (hasShadow()) {
             ShadowBlur shadow(m_state);
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(this, normalizedRect);
+            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
             if (shadowContext) {
                 QPainter* shadowPainter = shadowContext->platformContext();
                 shadowPainter->fillRect(normalizedRect, brush);
-                shadow.endShadowLayer(this);
+                shadow.endShadowLayer(*this);
             }
         }
         p->fillRect(normalizedRect, brush);
@@ -846,14 +853,14 @@ void GraphicsContext::fillRect(const FloatRect& rect)
                 // drawRectShadowWithTiling does not work with rotations, and the fallback of
                 // drawing though clipToImageBuffer() produces scaling artifacts for us.
                 if (!getCTM().preservesAxisAlignment()) {
-                    GraphicsContext* shadowContext = shadow.beginShadowLayer(this, normalizedRect);
+                    GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
                     if (shadowContext) {
                         QPainter* shadowPainter = shadowContext->platformContext();
                         shadowPainter->fillRect(normalizedRect, p->brush());
-                        shadow.endShadowLayer(this);
+                        shadow.endShadowLayer(*this);
                     }
                 } else
-                    shadow.drawRectShadow(this, rect, RoundedRect::Radii());
+                    shadow.drawRectShadow(*this, FloatRoundedRect(rect));
             } else {
                 // Solid rectangle fill with no blur shadow or transformations applied can be done
                 // faster without using the shadow layer at all.
@@ -868,7 +875,7 @@ void GraphicsContext::fillRect(const FloatRect& rect)
 }
 
 
-void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
 {
     if (paintingDisabled() || !color.isValid())
         return;
@@ -878,7 +885,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     if (hasShadow()) {
         if (mustUseShadowBlur()) {
             ShadowBlur shadow(m_state);
-            shadow.drawRectShadow(this, platformRect, RoundedRect::Radii());
+            shadow.drawRectShadow(*this, FloatRoundedRect(platformRect));
         } else {
             QColor shadowColor = m_state.shadowColor;
             shadowColor.setAlphaF(shadowColor.alphaF() * p->brush().color().alphaF());
@@ -888,18 +895,18 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     p->fillRect(platformRect, QColor(color));
 }
 
-void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLeft, const IntSize& topRight, const IntSize& bottomLeft, const IntSize& bottomRight, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRoundedRect(const FloatRoundedRect& rect, const Color& color, BlendMode)
 {
     if (paintingDisabled() || !color.isValid())
         return;
 
     Path path;
-    path.addRoundedRect(rect, topLeft, topRight, bottomLeft, bottomRight);
+    path.addRoundedRect(rect);
     QPainter* p = m_data->p();
     if (hasShadow()) {
         if (mustUseShadowBlur()) {
             ShadowBlur shadow(m_state);
-            shadow.drawRectShadow(this, rect, RoundedRect::Radii(topLeft, topRight, bottomLeft, bottomRight));
+            shadow.drawRectShadow(*this, rect);
         } else {
             const QPointF shadowOffset(m_state.shadowOffset.width(), m_state.shadowOffset.height());
             p->translate(shadowOffset);
@@ -910,7 +917,7 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLef
     p->fillPath(path.platformPath(), QColor(color));
 }
 
-void GraphicsContext::fillRectWithRoundedHole(const IntRect& rect, const RoundedRect& roundedHoleRect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const FloatRoundedRect& roundedHoleRect, const Color& color)
 {
     if (paintingDisabled() || !color.isValid())
         return;
@@ -929,7 +936,7 @@ void GraphicsContext::fillRectWithRoundedHole(const IntRect& rect, const Rounded
     if (hasShadow()) {
         if (mustUseShadowBlur()) {
             ShadowBlur shadow(m_state);
-            shadow.drawInsetShadow(this, rect, roundedHoleRect.rect(), roundedHoleRect.radii());
+            shadow.drawInsetShadow(*this, rect, roundedHoleRect);
         } else {
             const QPointF shadowOffset(m_state.shadowOffset.width(), m_state.shadowOffset.height());
             p->translate(shadowOffset);
@@ -1005,7 +1012,7 @@ void drawFocusRingForPath(QPainter* p, const QPainterPath& path, const Color& co
     p->setRenderHint(QPainter::Antialiasing, antiAlias);
 }
 
-void GraphicsContext::drawFocusRing(const Path& path, int /* width */, int offset, const Color& color)
+void GraphicsContext::drawFocusRing(const Path& path, float /* width */, float offset, const Color& color)
 {
     // FIXME: Use 'offset' for something? http://webkit.org/b/49909
 
@@ -1020,7 +1027,7 @@ void GraphicsContext::drawFocusRing(const Path& path, int /* width */, int offse
  * RenderTheme handles drawing focus on widgets which 
  * need it. It is still handled here for links.
  */
-void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int width, int offset, const Color& color)
+void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, float width, float offset, const Color& color)
 {
     if (paintingDisabled() || !color.isValid())
         return;
@@ -1043,7 +1050,7 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int width, int
     drawFocusRingForPath(m_data->p(), path, color, m_data->antiAliasingForRectsAndLines);
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool)
+void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing, bool doubleLines)
 {
     if (paintingDisabled())
         return;
@@ -1202,7 +1209,7 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& frect, RoundingM
     return FloatRect(roundedOrigin, roundedLowerRight - roundedOrigin);
 }
 
-void GraphicsContext::setPlatformShadow(const FloatSize& size, float blur, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformShadow(const FloatSize& size, float blur, const Color& color)
 {
     // Qt doesn't support shadows natively, they are drawn manually in the draw*
     // functions
@@ -1457,7 +1464,7 @@ void GraphicsContext::scale(const FloatSize& s)
     m_data->p()->scale(s.width(), s.height());
 }
 
-void GraphicsContext::clipOut(const IntRect& rect)
+void GraphicsContext::clipOut(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
@@ -1467,10 +1474,10 @@ void GraphicsContext::clipOut(const IntRect& rect)
     newClip.setFillRule(Qt::OddEvenFill);
     if (p->hasClipping()) {
         newClip.addRect(m_data->clipBoundingRect());
-        newClip.addRect(QRect(rect));
+        newClip.addRect(QRectF(rect));
         p->setClipPath(newClip, Qt::IntersectClip);
     } else {
-        QRect clipOutRect(rect);
+        QRectF clipOutRect(rect);
         QRect window = p->transform().inverted().mapRect(p->window());
         clipOutRect &= window;
         newClip.addRect(window);
@@ -1526,7 +1533,7 @@ void GraphicsContext::setURLForRect(const URL&, const IntRect&)
     notImplemented();
 }
 
-void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformStrokeColor(const Color& color)
 {
     if (paintingDisabled() || !color.isValid())
         return;
@@ -1558,7 +1565,7 @@ void GraphicsContext::setPlatformStrokeThickness(float thickness)
     p->setPen(newPen);
 }
 
-void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace colorSpace)
+void GraphicsContext::setPlatformFillColor(const Color& color)
 {
     if (paintingDisabled() || !color.isValid())
         return;
@@ -1660,8 +1667,9 @@ void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, boo
 }
 #endif
 
-void GraphicsContext::setImageInterpolationQuality(InterpolationQuality quality)
+void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality quality)
 {
+    // FIXME
     m_data->imageInterpolationQuality = quality;
 
     switch (quality) {

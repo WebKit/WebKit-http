@@ -51,9 +51,9 @@ namespace WebCore {
         virtual void destroyDecodedData(bool destroyAll = true) { Q_UNUSED(destroyAll); }
         virtual unsigned decodedSize() const { return 0; }
 
-        virtual IntSize size() const;
+        virtual FloatSize size() const;
         virtual PassNativeImagePtr nativeImageForCurrentFrame();
-        virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode);
+        virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription);
 
     private:
         StillImage(const QPixmap&);

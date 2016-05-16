@@ -39,6 +39,7 @@
 #include "ImageObserver.h"
 #include "ShadowBlur.h"
 #include "StillImageQt.h"
+#include "Timer.h"
 #include <wtf/text/WTFString.h>
 
 #include <QCoreApplication>
@@ -132,8 +133,8 @@ void Image::setPlatformResource(const char* name, const QPixmap& pixmap)
         h->insert(name, pixmap);
 }
 
-void Image::drawPattern(GraphicsContext* ctxt, const FloatRect& tileRect, const AffineTransform& patternTransform,
-    const FloatPoint& phase, ColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
+void Image::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, const AffineTransform& patternTransform,
+    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode)
 {
     QPixmap* framePixmap = nativeImageForCurrentFrame();
     if (!framePixmap) // If it's too early we won't have an image yet.
@@ -155,11 +156,11 @@ void Image::drawPattern(GraphicsContext* ctxt, const FloatRect& tileRect, const 
     if (tr.x() || tr.y() || tr.width() != pixmap.width() || tr.height() != pixmap.height())
         pixmap = pixmap.copy(tr);
 
-    CompositeOperator previousOperator = ctxt->compositeOperation();
+    CompositeOperator previousOperator = ctxt.compositeOperation();
 
-    ctxt->setCompositeOperation(!pixmap.hasAlpha() && op == CompositeSourceOver ? CompositeCopy : op);
+    ctxt.setCompositeOperation(!pixmap.hasAlpha() && op == CompositeSourceOver ? CompositeCopy : op);
 
-    QPainter* p = ctxt->platformContext();
+    QPainter* p = ctxt.platformContext();
     QTransform transform(patternTransform);
 
     // If this would draw more than one scaled tile, we scale the pixmap first and then use the result to draw.
@@ -191,7 +192,7 @@ void Image::drawPattern(GraphicsContext* ctxt, const FloatRect& tileRect, const 
     b.setTransform(transform);
     p->fillRect(dr, b);
 
-    ctxt->setCompositeOperation(previousOperator);
+    ctxt.setCompositeOperation(previousOperator);
 
     if (imageObserver())
         imageObserver()->didDraw(this);
@@ -201,7 +202,6 @@ BitmapImage::BitmapImage(QPixmap* pixmap, ImageObserver* observer)
     : Image(observer)
     , m_currentFrame(0)
     , m_frames(0)
-    , m_frameTimer(0)
     , m_repetitionCount(cAnimationNone)
     , m_repetitionCountStatus(Unknown)
     , m_repetitionsComplete(0)
@@ -275,8 +275,8 @@ QPixmap* prescaleImageIfRequired(QPainter* painter, QPixmap* image, QPixmap* buf
 }
 
 // Drawing Routines
-void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
-    const FloatRect& src, ColorSpace styleColorSpace, CompositeOperator op, BlendMode blendMode)
+void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
+    const FloatRect& src, CompositeOperator op, BlendMode blendMode, ImageOrientationDescription)
 {
     QRectF normalizedDst = dst.normalized();
     QRectF normalizedSrc = src.normalized();
@@ -291,7 +291,7 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
         return;
 
     if (mayFillWithSolidColor()) {
-        fillWithSolidColor(ctxt, normalizedDst, solidColor(), styleColorSpace, op);
+        fillWithSolidColor(ctxt, normalizedDst, solidColor(), op);
         return;
     }
 
@@ -300,14 +300,14 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
 #endif
 
     QPixmap prescaledBuffer;
-    image = prescaleImageIfRequired(ctxt->platformContext(), image, &prescaledBuffer, normalizedDst, &normalizedSrc);
+    image = prescaleImageIfRequired(ctxt.platformContext(), image, &prescaledBuffer, normalizedDst, &normalizedSrc);
 
-    CompositeOperator previousOperator = ctxt->compositeOperation();
-    BlendMode previousBlendMode = ctxt->blendModeOperation();
-    ctxt->setCompositeOperation(!image->hasAlpha() && op == CompositeSourceOver && blendMode == BlendModeNormal ? CompositeCopy : op, blendMode);
+    CompositeOperator previousOperator = ctxt.compositeOperation();
+    BlendMode previousBlendMode = ctxt.blendModeOperation();
+    ctxt.setCompositeOperation(!image->hasAlpha() && op == CompositeSourceOver && blendMode == BlendModeNormal ? CompositeCopy : op, blendMode);
 
-    if (ctxt->hasShadow()) {
-        ShadowBlur shadow(ctxt->state());
+    if (ctxt.hasShadow()) {
+        ShadowBlur shadow(ctxt.state());
         GraphicsContext* shadowContext = shadow.beginShadowLayer(ctxt, normalizedDst);
         if (shadowContext) {
             QPainter* shadowPainter = shadowContext->platformContext();
@@ -316,9 +316,9 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
         }
     }
 
-    ctxt->platformContext()->drawPixmap(normalizedDst, *image, normalizedSrc);
+    ctxt.platformContext()->drawPixmap(normalizedDst, *image, normalizedSrc);
 
-    ctxt->setCompositeOperation(previousOperator, previousBlendMode);
+    ctxt.setCompositeOperation(previousOperator, previousBlendMode);
 
     if (imageObserver())
         imageObserver()->didDraw(this);
