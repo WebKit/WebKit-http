@@ -1,5 +1,7 @@
 set(WPE_MESA_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa")
 
+option(WPE_MESA_DRM_TEGRA_SUPPORT "Whether to enable support for the Tegra-specific quirks in the DRM WPE backend" OFF)
+
 find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
 find_package(LibDRM REQUIRED)
 find_package(LibGBM REQUIRED)
@@ -8,7 +10,7 @@ add_definitions(-DWPE_BACKEND_DRM=1)
 add_definitions(-DWPE_BACKEND_WAYLAND=1)
 add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
 
-if (USE_WPE_BACKEND_DRM_TEGRA)
+if (WPE_MESA_DRM_TEGRA_SUPPORT)
     add_definitions(-DWPE_BACKEND_DRM_TEGRA=1)
 endif ()
 
