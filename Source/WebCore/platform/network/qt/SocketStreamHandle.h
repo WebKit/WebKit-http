@@ -50,12 +50,13 @@ namespace WebCore {
 
     class AuthenticationChallenge;
     class Credential;
+    class NetworkingContext;
     class SocketStreamHandleClient;
     class SocketStreamHandlePrivate;
 
     class SocketStreamHandle : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
     public:
-        static PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(url, client)); }
+        static PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext&) { return adoptRef(new SocketStreamHandle(url, client)); }
         static PassRefPtr<SocketStreamHandle> create(QTcpSocket* socket, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(socket, client)); }
 
         virtual ~SocketStreamHandle();

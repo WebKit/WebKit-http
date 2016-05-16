@@ -37,7 +37,7 @@ public:
     {
     }
 
-    ResourceError(const String& domain, int errorCode, const String& failingURL, const String& localizedDescription)
+    ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription)
         : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription)
     {
     }

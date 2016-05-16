@@ -63,10 +63,10 @@ void prefetchDNS(const String& hostname)
     DNSResolveQueue::singleton().add(hostname);
 }
 
-bool DNSResolveQueue::platformProxyIsEnabledInSystemPreferences()
+void DNSResolveQueue::updateIsUsingProxy()
 {
     // Qt expects the system or a proxy to cache the result, but other platforms disable WebCore DNS prefetching when proxies are enabled.
-    return false;
+    m_isUsingProxy = false;
 }
 
 // This is called by the platform-independent DNSResolveQueue.

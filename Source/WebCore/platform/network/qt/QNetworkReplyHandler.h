@@ -110,7 +110,7 @@ private:
     QString m_advertisedMIMEType;
 
     QString m_sniffedMIMEType;
-    OwnPtr<QtMIMETypeSniffer> m_sniffer;
+    std::unique_ptr<QtMIMETypeSniffer> m_sniffer;
     bool m_sniffMIMETypes;
 };
 
@@ -149,10 +149,10 @@ private:
     QNetworkReply* sendNetworkRequest(QNetworkAccessManager*, const ResourceRequest&);
     FormDataIODevice* getIODevice(const ResourceRequest&);
     void clearContentHeaders();
-    virtual void timerEvent(QTimerEvent*) OVERRIDE;
+    void timerEvent(QTimerEvent*) override;
     void timeout();
 
-    OwnPtr<QNetworkReplyWrapper> m_replyWrapper;
+    std::unique_ptr<QNetworkReplyWrapper> m_replyWrapper;
     ResourceHandle* m_resourceHandle;
     LoadType m_loadType;
     QNetworkAccessManager::Operation m_method;

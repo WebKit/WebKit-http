@@ -265,8 +265,10 @@ private:
     bool start();
     static void platformLoadResourceSynchronously(NetworkingContext*, const ResourceRequest&, StoredCredentials, ResourceError&, ResourceResponse&, Vector<char>& data);
 
+#if !PLATFORM(QT)
     virtual void refAuthenticationClient() override { ref(); }
     virtual void derefAuthenticationClient() override { deref(); }
+#endif
 
 #if PLATFORM(COCOA) || USE(CFNETWORK)
     enum class SchedulingBehavior { Asynchronous, Synchronous };

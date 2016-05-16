@@ -59,7 +59,7 @@ public:
 
     virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&);
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) { m_response = response; }
-    virtual void didReceiveData(ResourceHandle*, const char* data, int length, int) { m_data.append(data, length); }
+    virtual void didReceiveData(ResourceHandle*, const char* data, unsigned length, int) { m_data.append(data, length); }
     virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/) {}
     virtual void didFail(ResourceHandle*, const ResourceError& error) { m_error = error; }
 private:
@@ -116,11 +116,6 @@ void ResourceHandle::cancel()
         d->m_job->abort();
         d->m_job = 0;
     }
-}
-
-bool ResourceHandle::loadsBlocked()
-{
-    return false;
 }
 
 void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
