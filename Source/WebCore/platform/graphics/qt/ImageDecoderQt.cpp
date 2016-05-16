@@ -179,7 +179,7 @@ void ImageDecoderQt::internalReadImage(size_t frameIndex)
       setFailed();
 
     // Attempt to return some memory
-    for (int i = 0; i < m_frameBufferCache.size(); ++i) {
+    for (size_t i = 0; i < m_frameBufferCache.size(); ++i) {
         if (m_frameBufferCache[i].status() != ImageFrame::FrameComplete)
             return;
     }
