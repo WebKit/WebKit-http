@@ -358,7 +358,7 @@ FloatPoint Path::currentPoint() const
     return m_path.currentPosition();
 }
 
-void Path::apply(void* info, PathApplierFunction function) const
+void Path::apply(const PathApplierFunction& function) const
 {
     PathElement pelement;
     FloatPoint points[3];
@@ -370,12 +370,12 @@ void Path::apply(void* info, PathApplierFunction function) const
             case QPainterPath::MoveToElement:
                 pelement.type = PathElementMoveToPoint;
                 pelement.points[0] = QPointF(cur);
-                function(info, &pelement);
+                function(pelement);
                 break;
             case QPainterPath::LineToElement:
                 pelement.type = PathElementAddLineToPoint;
                 pelement.points[0] = QPointF(cur);
-                function(info, &pelement);
+                function(pelement);
                 break;
             case QPainterPath::CurveToElement:
             {
@@ -389,7 +389,7 @@ void Path::apply(void* info, PathApplierFunction function) const
                 pelement.points[0] = QPointF(cur);
                 pelement.points[1] = QPointF(c1);
                 pelement.points[2] = QPointF(c2);
-                function(info, &pelement);
+                function(pelement);
 
                 i += 2;
                 break;
