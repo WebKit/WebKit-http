@@ -22,9 +22,7 @@
 #ifndef FontCustomPlatformData_h
 #define FontCustomPlatformData_h
 
-#include "FontOrientation.h"
-#include "FontRenderingMode.h"
-#include "FontWidthVariant.h"
+#include "TextFlags.h"
 #include <QRawFont>
 #include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>
@@ -41,7 +39,7 @@ public:
     FontCustomPlatformData() { }
 
     FontPlatformData fontPlatformData(int size, bool bold, bool italic, FontOrientation = Horizontal,
-                                      FontWidthVariant = RegularWidth, FontRenderingMode = NormalRenderingMode);
+                                      FontWidthVariant = RegularWidth, FontRenderingMode = FontRenderingMode::Normal);
 
     static bool supportsFormat(const String&);
 

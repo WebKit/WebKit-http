@@ -25,7 +25,7 @@
 #define FontPlatformData_h
 
 #include "FontDescription.h"
-#include "FontOrientation.h"
+#include "TextFlags.h"
 #include <QFont>
 #include <QHash>
 #include <QRawFont>

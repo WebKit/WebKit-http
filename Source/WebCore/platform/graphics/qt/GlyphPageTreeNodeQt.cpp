@@ -21,29 +21,29 @@
     pages from the web. It has a memory cache for these objects.
 */
 #include "config.h"
-#include "GlyphPageTreeNode.h"
+#include "GlyphPage.h"
 
-#include "SimpleFontData.h"
+#include "Font.h"
 #include <QFontMetricsF>
 #include <QTextLayout>
 
 namespace WebCore {
 
-bool GlyphPage::fill(unsigned offset, unsigned length, UChar* buffer, unsigned bufferLength, const SimpleFontData* fontData)
+bool GlyphPage::fill(UChar* buffer, unsigned bufferLength)
 {
-    QRawFont rawFont = fontData->platformData().rawFont();
+    QRawFont rawFont = font().platformData().rawFont();
     QString qstring = QString::fromRawData(reinterpret_cast<const QChar*>(buffer), static_cast<int>(bufferLength));
     QVector<quint32> indexes = rawFont.glyphIndexesForString(qstring);
 
     bool haveGlyphs = false;
 
-    for (unsigned i = 0; i < length; ++i) {
+    for (unsigned i = 0; i < GlyphPage::size; ++i) {
         Glyph glyph = (i < indexes.size()) ? indexes.at(i) : 0;
         if (!glyph)
-            setGlyphDataForIndex(offset + i, 0, 0);
+            setGlyphForIndex(i, 0);
         else {
             haveGlyphs = true;
-            setGlyphDataForIndex(offset + i, glyph, fontData);
+            setGlyphForIndex(i, glyph);
         }
     }
     return haveGlyphs;

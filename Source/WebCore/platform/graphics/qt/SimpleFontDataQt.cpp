@@ -22,31 +22,19 @@
 */
 
 #include "config.h"
-#include "SimpleFontData.h"
+#include "Font.h"
 
 #include "NotImplemented.h"
 
 namespace WebCore {
 
-void SimpleFontData::determinePitch()
+void Font::determinePitch()
 {
     notImplemented();
     m_treatAsFixedPitch = false;
 }
 
-bool SimpleFontData::containsCharacters(const UChar* characters, int length) const
-{
-    QRawFont rawFont(m_platformData.rawFont());
-
-    for (int i = 0; i < length; ++i) {
-        if (!rawFont.supportsCharacter(static_cast<QChar>(characters[i])))
-            return false;
-    }
-
-    return true;
-}
-
-float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
+float Font::platformWidthForGlyph(Glyph glyph) const
 {
     if (!glyph || !platformData().size())
         return 0;
@@ -58,18 +46,18 @@ float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
     return advances.at(0).x();
 }
 
-PassRefPtr<SimpleFontData> SimpleFontData::platformCreateScaledFontData(const FontDescription& fontDescription, float scaleFactor) const
+RefPtr<Font> Font::platformCreateScaledFont(const FontDescription& fontDescription, float scaleFactor) const
 {
     const float scaledSize = lroundf(fontDescription.computedSize() * scaleFactor);
-    return SimpleFontData::create(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false);
+    return Font::create(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false);
 }
 
-FloatRect SimpleFontData::platformBoundsForGlyph(Glyph glyph) const
+FloatRect Font::platformBoundsForGlyph(Glyph glyph) const
 {
     return m_platformData.rawFont().boundingRect(glyph);
 }
 
-void SimpleFontData::platformInit()
+void Font::platformInit()
 {
     if (!m_platformData.size()) {
          m_fontMetrics.reset();
@@ -112,7 +100,7 @@ void SimpleFontData::platformInit()
     m_spaceWidth = spaceWidth;
 }
 
-void SimpleFontData::platformCharWidthInit()
+void Font::platformCharWidthInit()
 {
     if (!m_platformData.size())
         return;
@@ -121,7 +109,7 @@ void SimpleFontData::platformCharWidthInit()
     m_maxCharWidth = rawFont.maxCharWidth();
 }
 
-void SimpleFontData::platformDestroy()
+void Font::platformDestroy()
 {
 }
 

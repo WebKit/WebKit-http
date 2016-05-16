@@ -20,11 +20,12 @@
 */
 
 #include "config.h"
+#include "FontCascade.h"
+
 #include "Font.h"
 
 #include "AffineTransform.h"
 #include "FontDescription.h"
-#include "FontGlyphs.h"
 #include "FontSelector.h"
 #include "GlyphBuffer.h"
 #include "Gradient.h"
@@ -54,7 +55,10 @@ static const QString fromRawDataWithoutRef(const String& string, int start = 0, 
 
     // We don't detach. This assumes the WebCore string data will stay valid for the
     // lifetime of the QString we pass back, since we don't ref the WebCore string.
-    return QString::fromRawData(reinterpret_cast<const QChar*>(string.characters() + start), len);
+
+    // FIXME: Find a replacement of deprected characters(), e.g. StringView(string).upconvertedCharacters()
+    Q_ASSERT(!string.is8Bit());
+    return QString::fromRawData(reinterpret_cast<const QChar*>(string.characters16() + start), len);
 }
 
 static QTextLine setupLayout(QTextLayout* layout, const TextRun& style)
@@ -72,35 +76,35 @@ static QTextLine setupLayout(QTextLayout* layout, const TextRun& style)
     return line;
 }
 
-static QPen fillPenForContext(GraphicsContext* ctx)
+static QPen fillPenForContext(GraphicsContext& ctx)
 {
-    if (ctx->fillGradient()) {
-        QBrush brush(*ctx->fillGradient()->platformGradient());
-        brush.setTransform(ctx->fillGradient()->gradientSpaceTransform());
+    if (ctx.fillGradient()) {
+        QBrush brush(*ctx.fillGradient()->platformGradient());
+        brush.setTransform(ctx.fillGradient()->gradientSpaceTransform());
         return QPen(brush, 0);
     }
 
-    if (ctx->fillPattern()) {
-        return QPen(QBrush(ctx->fillPattern()->createPlatformPattern()), 0);
+    if (ctx.fillPattern()) {
+        return QPen(QBrush(ctx.fillPattern()->createPlatformPattern()), 0);
     }
 
-    return QPen(QColor(ctx->fillColor()), 0);
+    return QPen(QColor(ctx.fillColor()), 0);
 }
 
-static QPen strokePenForContext(GraphicsContext* ctx)
+static QPen strokePenForContext(GraphicsContext& ctx)
 {
-    if (ctx->strokeGradient()) {
-        QBrush brush(*ctx->strokeGradient()->platformGradient());
-        brush.setTransform(ctx->strokeGradient()->gradientSpaceTransform());
-        return QPen(brush, ctx->strokeThickness());
+    if (ctx.strokeGradient()) {
+        QBrush brush(*ctx.strokeGradient()->platformGradient());
+        brush.setTransform(ctx.strokeGradient()->gradientSpaceTransform());
+        return QPen(brush, ctx.strokeThickness());
     }
 
-    if (ctx->strokePattern()) {
-        QBrush brush(ctx->strokePattern()->createPlatformPattern());
-        return QPen(brush, ctx->strokeThickness());
+    if (ctx.strokePattern()) {
+        QBrush brush(ctx.strokePattern()->createPlatformPattern());
+        return QPen(brush, ctx.strokeThickness());
     }
 
-    return QPen(QColor(ctx->strokeColor()), ctx->strokeThickness());
+    return QPen(QColor(ctx.strokeColor()), ctx.strokeThickness());
 }
 
 static QPainterPath pathForGlyphs(const QGlyphRun& glyphRun, const QPointF& offset)
@@ -117,17 +121,17 @@ static QPainterPath pathForGlyphs(const QGlyphRun& glyphRun, const QPointF& offs
     return path;
 }
 
-static void drawQtGlyphRun(GraphicsContext* context, const QGlyphRun& qtGlyphRun, const QPointF& point, int baseLineOffset)
+static void drawQtGlyphRun(GraphicsContext& context, const QGlyphRun& qtGlyphRun, const QPointF& point, int baseLineOffset)
 {
-    QPainter* painter = context->platformContext();
+    QPainter* painter = context.platformContext();
 
     QPainterPath textStrokePath;
-    if (context->textDrawingMode() & TextModeStroke)
+    if (context.textDrawingMode() & TextModeStroke)
         textStrokePath = pathForGlyphs(qtGlyphRun, point);
 
-    if (context->hasShadow()) {
-        const GraphicsContextState& state = context->state();
-        if (context->mustUseShadowBlur()) {
+    if (context.hasShadow()) {
+        const GraphicsContextState& state = context.state();
+        if (context.mustUseShadowBlur()) {
             ShadowBlur shadow(state);
             const int width = qtGlyphRun.boundingRect().width();
             const QRawFont& font = qtGlyphRun.rawFont();
@@ -148,19 +152,19 @@ static void drawQtGlyphRun(GraphicsContext* context, const QGlyphRun& qtGlyphRun
             painter->setPen(state.shadowColor);
             const QPointF shadowOffset(state.shadowOffset.width(), state.shadowOffset.height());
             painter->translate(shadowOffset);
-            if (context->textDrawingMode() & TextModeFill)
+            if (context.textDrawingMode() & TextModeFill)
                 painter->drawGlyphRun(point, qtGlyphRun);
-            else if (context->textDrawingMode() & TextModeStroke)
+            else if (context.textDrawingMode() & TextModeStroke)
                 painter->strokePath(textStrokePath, painter->pen());
             painter->translate(-shadowOffset);
             painter->setPen(previousPen);
         }
     }
 
-    if (context->textDrawingMode() & TextModeStroke)
+    if (context.textDrawingMode() & TextModeStroke)
         painter->strokePath(textStrokePath, strokePenForContext(context));
 
-    if (context->textDrawingMode() & TextModeFill) {
+    if (context.textDrawingMode() & TextModeFill) {
         QPen previousPen = painter->pen();
         painter->setPen(fillPenForContext(context));
         painter->drawGlyphRun(point, qtGlyphRun);
@@ -168,32 +172,17 @@ static void drawQtGlyphRun(GraphicsContext* context, const QGlyphRun& qtGlyphRun
     }
 }
 
-void Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const FloatPoint& point, int from, int to) const
+float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Font*>*, GlyphOverflow*) const
 {
-    String sanitized = Font::normalizeSpaces(run.characters16(), run.length());
-    const QString string = fromRawDataWithoutRef(sanitized);
-    QTextLayout layout(string);
-    layout.setRawFont(rawFont());
-    initFormatForTextLayout(&layout, run);
-    QTextLine line = setupLayout(&layout, run);
-    const QPointF adjustedPoint(point.x(), point.y() - line.ascent());
-
-    QList<QGlyphRun> runs = line.glyphRuns(from, to - from);
-    Q_FOREACH(QGlyphRun glyphRun, runs)
-        drawQtGlyphRun(ctx, glyphRun, adjustedPoint, line.ascent());
-}
-
-float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>*, GlyphOverflow*) const
-{
-    if (!primaryFont()->platformData().size())
+    if (!primaryFont().platformData().size())
         return 0;
 
     if (!run.length())
         return 0;
 
     if (run.length() == 1 && treatAsSpace(run[0]))
-        return primaryFont()->spaceWidth() + run.expansion();
-    String sanitized = Font::normalizeSpaces(run.characters16(), run.length());
+        return primaryFont().spaceWidth() + run.expansion();
+    String sanitized = FontCascade::normalizeSpaces(run.characters16(), run.length());
     QString string = fromRawDataWithoutRef(sanitized);
 
     QTextLayout layout(string);
@@ -207,9 +196,11 @@ float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFon
     return width + run.expansion();
 }
 
-int Font::offsetForPositionForComplexText(const TextRun& run, float position, bool) const
+int FontCascade::offsetForPositionForComplexText(const TextRun& run, float position, bool) const
 {
-    String sanitized = Font::normalizeSpaces(run.characters16(), run.length());
+    // FIXME: check run.is8Bit(), convert to QString properly
+    Q_ASSERT(!run.is8Bit());
+    String sanitized = FontCascade::normalizeSpaces(run.characters16(), run.length());
     QString string = fromRawDataWithoutRef(sanitized);
 
     QTextLayout layout(string);
@@ -219,9 +210,11 @@ int Font::offsetForPositionForComplexText(const TextRun& run, float position, bo
     return line.xToCursor(position);
 }
 
-FloatRect Font::selectionRectForComplexText(const TextRun& run, const FloatPoint& pt, int h, int from, int to) const
+void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRect& selectionRect, int from, int to) const
 {
-    String sanitized = Font::normalizeSpaces(run.characters16(), run.length());
+    // FIXME: check run.is8Bit(), convert to QString properly
+    Q_ASSERT(!run.is8Bit());
+    String sanitized = FontCascade::normalizeSpaces(run.characters16(), run.length());
     QString string = fromRawDataWithoutRef(sanitized);
 
     QTextLayout layout(string);
@@ -234,10 +227,11 @@ FloatRect Font::selectionRectForComplexText(const TextRun& run, const FloatPoint
     if (x2 < x1)
         qSwap(x1, x2);
 
-    return FloatRect(pt.x() + x1, pt.y(), x2 - x1, h);
+    selectionRect.move(x1, 0);
+    selectionRect.setWidth(x2 - x1);
 }
 
-void Font::initFormatForTextLayout(QTextLayout* layout, const TextRun& run) const
+void FontCascade::initFormatForTextLayout(QTextLayout* layout, const TextRun& run) const
 {
     QTextLayout::FormatRange range;
     // WebCore expects word-spacing to be ignored on leading spaces contrary to what Qt does.
@@ -252,7 +246,7 @@ void Font::initFormatForTextLayout(QTextLayout* layout, const TextRun& run) cons
         range.format.setFontWordSpacing(m_wordSpacing);
     if (m_letterSpacing)
         range.format.setFontLetterSpacing(m_letterSpacing);
-    if (typesettingFeatures() & Kerning)
+    if (enableKerning())
         range.format.setFontKerning(true);
     if (isSmallCaps())
         range.format.setFontCapitalization(QFont::SmallCaps);
@@ -261,26 +255,26 @@ void Font::initFormatForTextLayout(QTextLayout* layout, const TextRun& run) cons
         layout->setAdditionalFormats(QList<QTextLayout::FormatRange>() << range);
 }
 
-bool Font::canReturnFallbackFontsForComplexText()
+bool FontCascade::canReturnFallbackFontsForComplexText()
 {
     return false;
 }
 
-void Font::drawEmphasisMarksForComplexText(GraphicsContext* /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
+void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
 {
     notImplemented();
 }
 
-void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* fontData, const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
+void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point, FontSmoothingMode)
 {
-    if (!fontData->platformData().size())
+    if (!font.platformData().size())
         return;
 
-    if (context->paintingDisabled())
+    if (context.paintingDisabled())
         return;
 
-    bool shouldFill = context->textDrawingMode() & TextModeFill;
-    bool shouldStroke = context->textDrawingMode() & TextModeStroke;
+    bool shouldFill = context.textDrawingMode() & TextModeFill;
+    bool shouldStroke = context.textDrawingMode() & TextModeStroke;
 
     if (!shouldFill && !shouldStroke)
         return;
@@ -290,7 +284,7 @@ void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* fontData, 
 
     glyphIndexes.reserve(numGlyphs);
     positions.reserve(numGlyphs);
-    const QRawFont& font(fontData->getQtRawFont());
+    const QRawFont& rawFont = font.getQtRawFont();
 
     float width = 0;
 
@@ -307,20 +301,20 @@ void Font::drawGlyphs(GraphicsContext* context, const SimpleFontData* fontData, 
     QGlyphRun qtGlyphs;
     qtGlyphs.setGlyphIndexes(glyphIndexes);
     qtGlyphs.setPositions(positions);
-    qtGlyphs.setRawFont(font);
+    qtGlyphs.setRawFont(rawFont);
 
     drawQtGlyphRun(context, qtGlyphs, point, /* baselineOffset = */0);
 }
 
 
-bool Font::canExpandAroundIdeographsInComplexText()
+bool FontCascade::canExpandAroundIdeographsInComplexText()
 {
     return false;
 }
 
-QFont Font::syntheticFont() const
+QFont FontCascade::syntheticFont() const
 {
-    QRawFont rawFont(primaryFont()->getQtRawFont());
+    QRawFont rawFont(primaryFont().getQtRawFont());
     QFont f(rawFont.familyName());
     if (rawFont.pixelSize())
         f.setPixelSize(rawFont.pixelSize());
@@ -334,9 +328,9 @@ QFont Font::syntheticFont() const
 }
 
 
-QRawFont Font::rawFont() const
+QRawFont FontCascade::rawFont() const
 {
-    return primaryFont()->getQtRawFont();
+    return primaryFont().getQtRawFont();
 }
 
 }
