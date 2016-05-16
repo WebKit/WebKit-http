@@ -46,8 +46,8 @@ public:
 private:
     friend class ResourceResponseBase;
 
-    PassOwnPtr<CrossThreadResourceResponseData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceResponseData> data) const { return data; }
-    void doPlatformAdopt(PassOwnPtr<CrossThreadResourceResponseData>) { }
+    std::unique_ptr<CrossThreadResourceResponseData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceResponseData> data) const { return data; }
+    void doPlatformAdopt(std::unique_ptr<CrossThreadResourceResponseData>) { }
 };
 
 struct CrossThreadResourceResponseData : public CrossThreadResourceResponseDataBase {

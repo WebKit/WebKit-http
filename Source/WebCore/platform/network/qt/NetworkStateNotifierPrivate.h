@@ -21,7 +21,6 @@
 #define NetworkStateNotifierPrivate_h
 
 #include <QObject>
-#include <wtf/OwnPtr.h>
 
 QT_BEGIN_NAMESPACE
 class QNetworkConfigurationManager;
@@ -47,7 +46,7 @@ private Q_SLOTS:
     void initialize();
 
 public:
-    OwnPtr<QNetworkConfigurationManager> m_configurationManager;
+    std::unique_ptr<QNetworkConfigurationManager> m_configurationManager;
     bool m_online;
     bool m_networkAccessAllowed;
     NetworkStateNotifier* m_notifier;

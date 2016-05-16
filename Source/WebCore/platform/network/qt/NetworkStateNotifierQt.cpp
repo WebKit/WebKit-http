@@ -25,7 +25,6 @@
 #include "NetworkStateNotifierPrivate.h"
 #include <QNetworkConfigurationManager>
 #include <QTimer>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
@@ -64,7 +63,7 @@ void NetworkStateNotifierPrivate::setOnlineState(bool isOnline)
 
 void NetworkStateNotifierPrivate::initialize()
 {
-    m_configurationManager = adoptPtr(new QNetworkConfigurationManager());
+    m_configurationManager = std::make_unique<QNetworkConfigurationManager>();
     setOnlineState(m_configurationManager->isOnline());
     connect(m_configurationManager.get(), SIGNAL(onlineStateChanged(bool)), this, SLOT(setOnlineState(bool)));
 }

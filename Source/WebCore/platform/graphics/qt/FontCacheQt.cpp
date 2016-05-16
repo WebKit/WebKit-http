@@ -86,12 +86,12 @@ Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString&)
     return result;
 }
 
-PassOwnPtr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName)
+std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName)
 {
     QFontDatabase db;
     if (!db.hasFamily(familyName))
         return nullptr;
-    return adoptPtr(new FontPlatformData(fontDescription, familyName));
+    return std::make_unique<FontPlatformData>(fontDescription, familyName);
 }
 
 } // namespace WebCore

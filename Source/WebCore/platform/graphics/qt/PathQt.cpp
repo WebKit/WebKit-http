@@ -41,7 +41,6 @@
 #include <QString>
 #include <QTransform>
 #include <wtf/MathExtras.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {

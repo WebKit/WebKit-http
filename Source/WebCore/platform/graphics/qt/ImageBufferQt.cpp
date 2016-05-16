@@ -55,8 +55,7 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 
     m_pixmap.fill(QColor(Qt::transparent));
 
-    QPainter* painter = new QPainter;
-    m_painter = adoptPtr(painter);
+    m_painter = std::make_unique<QPainter>();
 
     if (!painter->begin(&m_pixmap))
         return;
@@ -103,7 +102,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, Color
     if (!success)
         return;
 
-    m_context = adoptPtr(new GraphicsContext(m_data.m_painter.get()));
+    m_data.m_context = std::make_unique<GraphicsContext>(m_data.m_painter.get());
 }
 
 ImageBuffer::~ImageBuffer()

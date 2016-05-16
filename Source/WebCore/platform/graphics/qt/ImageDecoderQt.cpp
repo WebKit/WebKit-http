@@ -63,10 +63,10 @@ void ImageDecoderQt::setData(SharedBuffer* data, bool allDataReceived)
 
     // Attempt to load the data
     QByteArray imageData = QByteArray::fromRawData(m_data->data(), m_data->size());
-    m_buffer = adoptPtr(new QBuffer);
+    m_buffer = std::make_unique<QBuffer>();
     m_buffer->setData(imageData);
     m_buffer->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-    m_reader = adoptPtr(new QImageReader(m_buffer.get(), m_format));
+    m_reader = std::make_unique<QImageReader>(m_buffer.get(), m_format);
 
     // This will force the JPEG decoder to use JDCT_IFAST
     m_reader->setQuality(49);
@@ -260,8 +260,8 @@ void ImageDecoderQt::forceLoadEverything()
 
 void ImageDecoderQt::clearPointers()
 {
-    m_reader.clear();
-    m_buffer.clear();
+    m_reader = nullptr;
+    m_buffer = nullptr;
 }
 
 PassNativeImagePtr ImageFrame::asNewNativeImage() const
