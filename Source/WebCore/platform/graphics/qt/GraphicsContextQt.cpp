@@ -948,19 +948,6 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     p->fillPath(platformPath, QColor(color));
 }
 
-bool GraphicsContext::isInTransparencyLayer() const
-{
-    return m_data->layerCount;
-}
-
-void GraphicsContext::clip(const IntRect& rect)
-{
-    if (paintingDisabled())
-        return;
-
-    m_data->p()->setClipRect(rect, Qt::IntersectClip);
-}
-
 void GraphicsContext::clip(const FloatRect& rect)
 {
     if (paintingDisabled())
@@ -968,6 +955,7 @@ void GraphicsContext::clip(const FloatRect& rect)
 
     m_data->p()->setClipRect(rect, Qt::IntersectClip);
 }
+
 IntRect GraphicsContext::clipBounds() const
 {
     QPainter* p = m_data->p();
@@ -1403,7 +1391,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
         m_data->p()->setCompositionMode(toQtCompositionMode(op));
 }
 
-void GraphicsContext::clip(const Path& path, WindRule windRule)
+void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
 {
     if (paintingDisabled())
         return;
@@ -1411,11 +1399,6 @@ void GraphicsContext::clip(const Path& path, WindRule windRule)
     QPainterPath clipPath = path.platformPath();
     clipPath.setFillRule(toQtFillRule(windRule));
     m_data->p()->setClipPath(clipPath, Qt::IntersectClip);
-}
-
-void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
-{
-    clip(path, windRule);
 }
 
 void GraphicsContext::clipOut(const Path& path)
@@ -1690,11 +1673,6 @@ void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality 
         m_data->p()->setRenderHint(QPainter::SmoothPixmapTransform, m_data->initialSmoothPixmapTransformHint);
         break;
     };
-}
-
-InterpolationQuality GraphicsContext::imageInterpolationQuality() const
-{
-    return m_data->imageInterpolationQuality;
 }
 
 void GraphicsContext::takeOwnershipOfPlatformContext()
