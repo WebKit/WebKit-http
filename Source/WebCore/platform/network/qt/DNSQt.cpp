@@ -38,7 +38,7 @@ public Q_SLOTS:
     void lookup(QString hostname)
     {
         if (hostname.isEmpty()) {
-            DNSResolveQueue::shared().decrementRequestCount();
+            DNSResolveQueue::singleton().decrementRequestCount();
             return; // this actually happens
         }
 
@@ -51,7 +51,7 @@ public Q_SLOTS:
         // we currently rely on the OS to cache the results. If it does not do that
         // then at least the ISP nameserver did it.
         // Since Qt 4.6.3, Qt also has a small DNS cache.
-        DNSResolveQueue::shared().decrementRequestCount();
+        DNSResolveQueue::singleton().decrementRequestCount();
     }
 };
 
@@ -60,7 +60,7 @@ void prefetchDNS(const String& hostname)
 {
     if (hostname.isEmpty())
         return;
-    DNSResolveQueue::shared().add(hostname);
+    DNSResolveQueue::singleton().add(hostname);
 }
 
 bool DNSResolveQueue::platformProxyIsEnabledInSystemPreferences()
