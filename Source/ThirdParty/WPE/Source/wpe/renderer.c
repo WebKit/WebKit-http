@@ -1,3 +1,8 @@
+// FIXME: re-evaluate.
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+
 #include <wpe/renderer.h>
 
 #include "loader-private.h"
