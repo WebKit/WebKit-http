@@ -6,6 +6,8 @@ set(WPE_INCLUDE_DIRECTORIES
     "${WPE_SOURCE_DIR}/Headers"
     "${WPE_SOURCE_DIR}/Source/wpe"
     "${WPE_SOURCE_DIR}/Source/wpe/external"
+    ${EGL_INCLUDE_DIRS}
+    ${BCM_HOST_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
 )
 
