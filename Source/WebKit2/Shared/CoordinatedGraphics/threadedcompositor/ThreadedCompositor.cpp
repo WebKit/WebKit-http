@@ -60,22 +60,15 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     : m_client(client)
     , m_deviceScaleFactor(1)
     , m_threadIdentifier(0)
-#if PLATFORM(WPE)
-    , m_compositingManager(std::make_unique<CompositingManager>(*this))
-#endif
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(adoptRef(new WebKit::DisplayRefreshMonitor(*this)))
 #endif
 {
     m_clientRendersNextFrame.store(false);
     m_coordinateUpdateCompletionWithClient.store(false);
-    createCompositingThread();
 
-#if PLATFORM(WPE)
-    m_compositingManager->establishConnection(webPage, m_compositingRunLoop->runLoop());
-    Vector<uint8_t> authenticationData = m_compositingManager->authenticate();
-    PlatformDisplayWPE::initialize({ authenticationData.data(), authenticationData.size() });
-#endif
+    m_compositingManager.establishConnection(webPage);
+    createCompositingThread();
 }
 
 ThreadedCompositor::~ThreadedCompositor()
@@ -197,14 +190,8 @@ GLContext* ThreadedCompositor::glContext()
         return m_context.get();
 
 #if PLATFORM(WPE)
-    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
-
-    IntSize size(viewportController()->visibleContentsRect().size());
-    uint32_t targetHandle = m_compositingManager->constructRenderingTarget(std::max(0, size.width()), std::max(0, size.height()));
-    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createSurface(size, targetHandle, *m_compositingManager);
-    if (!m_surface)
-        return nullptr;
-
+    ASSERT(m_surface);
+    m_surface->initialize(IntSize(viewportController()->visibleContentsRect().size()));
     setNativeSurfaceHandleForCompositing(0);
     m_context = m_surface->createGLContext();
 #endif
@@ -249,8 +236,7 @@ void ThreadedCompositor::renderLayerTree()
     glContext()->swapBuffers();
 
 #if PLATFORM(WPE)
-    auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager->commitBuffer(bufferExport);
+    m_surface->frameRendered();
 #endif
 }
 
@@ -304,6 +290,11 @@ void ThreadedCompositor::runCompositingThread()
         m_scene = adoptRef(new CoordinatedGraphicsScene(this));
         m_viewportController = std::make_unique<SimpleViewportController>(this);
 
+#if PLATFORM(WPE)
+        RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
+        m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createSurface(*this, m_compositingManager.releaseConnectionFd());
+#endif
+
         m_initializeRunLoopCondition.notifyOne();
     }
 
@@ -351,12 +342,6 @@ static void debugThreadedCompositorFPS()
         lastTime = ct;
         frameCount = 0;
     }
-}
-
-void ThreadedCompositor::releaseBuffer(uint32_t handle)
-{
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-    m_surface->releaseBuffer(handle);
 }
 
 void ThreadedCompositor::frameComplete()

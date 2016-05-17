@@ -47,6 +47,11 @@
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
 
+#if PLATFORM(WPE)
+#include "CompositingManager.h"
+#include <WebCore/PlatformDisplayWPE.h>
+#endif
+
 namespace WebCore {
 struct CoordinatedGraphicsState;
 class GLContext;
@@ -62,7 +67,7 @@ class WebPage;
 
 class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient
 #if PLATFORM(WPE)
-    , public CompositingManager::Client
+    , public WebCore::PlatformDisplayWPE::Surface::Client
 #endif
     {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
@@ -106,8 +111,7 @@ private:
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
 #if PLATFORM(WPE)
-    // CompositingManager::Client
-    virtual void releaseBuffer(uint32_t) override;
+    // WebCore::PlatformDisplayWPE::Surface::Client
     virtual void frameComplete() override;
 #endif
 
@@ -130,6 +134,7 @@ private:
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
 #if PLATFORM(WPE)
+    CompositingManager m_compositingManager;
     std::unique_ptr<WebCore::PlatformDisplayWPE::Surface> m_surface;
 #endif
     std::unique_ptr<WebCore::GLContext> m_context;
@@ -143,10 +148,6 @@ private:
     Lock m_initializeRunLoopConditionLock;
     Condition m_terminateRunLoopCondition;
     Lock m_terminateRunLoopConditionLock;
-
-#if PLATFORM(WPE)
-    std::unique_ptr<CompositingManager> m_compositingManager;
-#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     friend class DisplayRefreshMonitor;

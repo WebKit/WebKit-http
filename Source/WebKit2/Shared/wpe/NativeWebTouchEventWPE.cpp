@@ -30,8 +30,8 @@
 
 namespace WebKit {
 
-NativeWebTouchEvent::NativeWebTouchEvent(WPE::Input::TouchEvent&& event)
-    : WebTouchEvent(WebEventFactory::createWebTouchEvent(WTFMove(event)))
+NativeWebTouchEvent::NativeWebTouchEvent(struct wpe_input_touch_event* event)
+    : WebTouchEvent(WebEventFactory::createWebTouchEvent(event))
 {
 }
 

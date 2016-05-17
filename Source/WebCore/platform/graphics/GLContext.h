@@ -30,7 +30,8 @@
 #include "eglplatform.h"
 #else
 #if PLATFORM(WPE)
-#include <WPE/WPE.h>
+// FIXME: Find some way to deduce this.
+#define __GBM__ 1
 #endif
 #include <EGL/eglplatform.h>
 #endif

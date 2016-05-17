@@ -30,30 +30,15 @@
 
 #include "GLContextEGL.h"
 #include "IntSize.h"
+#include <wpe/renderer.h>
 
 namespace WebCore {
 
-static std::pair<const uint8_t*, size_t>* s_initializationData = nullptr;
-
-void PlatformDisplayWPE::initialize(std::pair<const uint8_t*, size_t> data)
-{
-    auto initializationData = std::make_unique<std::pair<const uint8_t*, size_t>>(data);
-    s_initializationData = initializationData.get();
-
-    // This will construct the PlatformDisplayWPE object using the initialization data.
-    PlatformDisplayWPE::sharedDisplay();
-
-    s_initializationData = nullptr;
-}
-
 PlatformDisplayWPE::PlatformDisplayWPE()
 {
-    std::pair<const uint8_t*, size_t> initializationData = { nullptr, 0 };
-    if (s_initializationData)
-        initializationData = *s_initializationData;
-    m_backend = WPE::Graphics::RenderingBackend::create(initializationData.first, initializationData.second);
+    m_backend = wpe_renderer_backend_egl_create();
 
-    m_eglDisplay = eglGetDisplay(m_backend->nativeDisplay());
+    m_eglDisplay = eglGetDisplay(wpe_renderer_backend_egl_get_native_display(m_backend));
     if (m_eglDisplay == EGL_NO_DISPLAY) {
         fprintf(stderr, "PlatformDisplayWPE: could not create the EGL display.\n");
         return;
@@ -62,52 +47,77 @@ PlatformDisplayWPE::PlatformDisplayWPE()
     PlatformDisplay::initializeEGLDisplay();
 }
 
-PlatformDisplayWPE::~PlatformDisplayWPE() = default;
-
-std::unique_ptr<PlatformDisplayWPE::Surface> PlatformDisplayWPE::createSurface(const IntSize& size, uint32_t targetHandle, PlatformDisplayWPE::Surface::Client& client)
+PlatformDisplayWPE::~PlatformDisplayWPE()
 {
-    return std::make_unique<Surface>(*this, size, targetHandle, client);
+    wpe_renderer_backend_egl_destroy(m_backend);
+}
+
+std::unique_ptr<PlatformDisplayWPE::Surface> PlatformDisplayWPE::createSurface(Surface::Client& client, int hostFd)
+{
+    return std::make_unique<Surface>(*this, client, hostFd);
 }
 
 std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLContext* sharingContext)
 {
     struct OffscreenContextData final : public GLContext::Data {
     public:
-        virtual ~OffscreenContextData() = default;
+        virtual ~OffscreenContextData()
+        {
+            wpe_renderer_backend_egl_offscreen_target_destroy(surface);
+        }
 
-        std::unique_ptr<WPE::Graphics::RenderingBackend::OffscreenSurface> surface;
+         wpe_renderer_backend_egl_offscreen_target* surface;
     };
 
     auto contextData = std::make_unique<OffscreenContextData>();
-    contextData->surface = m_backend->createOffscreenSurface();
+    contextData->surface = wpe_renderer_backend_egl_offscreen_target_create();
+    wpe_renderer_backend_egl_offscreen_target_initialize(contextData->surface, m_backend);
 
-    EGLNativeWindowType nativeWindow = contextData->surface->nativeWindow();
+    EGLNativeWindowType nativeWindow = wpe_renderer_backend_egl_offscreen_target_get_native_window(contextData->surface);
     return GLContextEGL::createContext(nativeWindow, sharingContext, WTFMove(contextData));
 }
 
-PlatformDisplayWPE::Surface::Surface(const PlatformDisplayWPE& display, const IntSize& size, uint32_t targetHandle, Client& client)
+PlatformDisplayWPE::Surface::Surface(const PlatformDisplayWPE& display, PlatformDisplayWPE::Surface::Client& client, int hostFd)
+    : m_display(display)
+    , m_client(client)
 {
-    m_backend = display.m_backend->createSurface(std::max(0, size.width()), std::max(0, size.height()), targetHandle, client);
+    m_backend = wpe_renderer_backend_egl_target_create(hostFd);
+
+    static struct wpe_renderer_backend_egl_target_client s_client = {
+        // frame_complete
+        [](void* data)
+        {
+            auto& surface = *reinterpret_cast<PlatformDisplayWPE::Surface*>(data);
+            surface.m_client.frameComplete();
+        },
+    };
+    wpe_renderer_backend_egl_target_set_client(m_backend, &s_client, this);
 }
 
-void PlatformDisplayWPE::Surface::resize(const IntSize& size)
+PlatformDisplayWPE::Surface::~Surface()
 {
-    m_backend->resize(std::max(0, size.width()), std::max(0, size.height()));
+    wpe_renderer_backend_egl_target_destroy(m_backend);
+}
+
+void PlatformDisplayWPE::Surface::initialize(const IntSize& size)
+{
+    wpe_renderer_backend_egl_target_initialize(m_backend, m_display.m_backend,
+        std::max(0, size.width()), std::max(0, size.height()));
 }
 
 std::unique_ptr<GLContextEGL> PlatformDisplayWPE::Surface::createGLContext() const
 {
-    return GLContextEGL::createWindowContext(m_backend->nativeWindow(), GLContext::sharingContext());
+    return GLContextEGL::createWindowContext(wpe_renderer_backend_egl_target_get_native_window(m_backend), GLContext::sharingContext());
 }
 
-PlatformDisplayWPE::BufferExport PlatformDisplayWPE::Surface::lockFrontBuffer()
+void PlatformDisplayWPE::Surface::resize(const IntSize& size)
 {
-    return m_backend->lockFrontBuffer();
+    wpe_renderer_backend_egl_target_resize(m_backend, std::max(0, size.width()), std::max(0, size.height()));
 }
 
-void PlatformDisplayWPE::Surface::releaseBuffer(uint32_t handle)
+void PlatformDisplayWPE::Surface::frameRendered()
 {
-    m_backend->releaseBuffer(handle);
+    wpe_renderer_backend_egl_target_frame_rendered(m_backend);
 }
 
 } // namespace WebCore

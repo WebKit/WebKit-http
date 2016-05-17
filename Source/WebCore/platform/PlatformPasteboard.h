@@ -40,11 +40,7 @@ OBJC_CLASS UIPasteboard;
 #endif
 
 #if PLATFORM(WPE)
-namespace WPE {
-namespace Pasteboard {
-class Pasteboard;
-}
-}
+struct wpe_pasteboard;
 #endif
 
 namespace WebCore {
@@ -97,7 +93,7 @@ private:
     RetainPtr<UIPasteboard> m_pasteboard;
 #endif
 #if PLATFORM(WPE)
-    std::shared_ptr<WPE::Pasteboard::Pasteboard> m_pasteboard;
+    struct wpe_pasteboard* m_pasteboard;
 #endif
 };
 

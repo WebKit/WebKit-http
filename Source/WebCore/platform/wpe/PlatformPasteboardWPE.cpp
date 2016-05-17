@@ -27,7 +27,7 @@
 
 #include "Pasteboard.h"
 #include "PlatformPasteboard.h"
-#include <WPE/Pasteboard/Pasteboard.h>
+#include <wpe/pasteboard.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Assertions.h>
 
@@ -36,40 +36,80 @@
 namespace WebCore {
 
 PlatformPasteboard::PlatformPasteboard(const String&)
-    : m_pasteboard(WPE::Pasteboard::Pasteboard::singleton())
+    : m_pasteboard(wpe_pasteboard_get_singleton())
 {
     ASSERT(m_pasteboard);
 }
 
 PlatformPasteboard::PlatformPasteboard()
-    : m_pasteboard(WPE::Pasteboard::Pasteboard::singleton())
+    : m_pasteboard(wpe_pasteboard_get_singleton())
 {
     ASSERT(m_pasteboard);
 }
 
 void PlatformPasteboard::getTypes(Vector<String>& types)
 {
-    auto pasteboardTypes = m_pasteboard->getTypes();
-    for (auto type: pasteboardTypes)
-        types.append(type.c_str());
+    struct wpe_pasteboard_string_vector pasteboardTypes = { nullptr, 0 };
+    wpe_pasteboard_get_types(m_pasteboard, &pasteboardTypes);
+
+    for (unsigned i = 0; i < pasteboardTypes.length; ++i) {
+        auto& typeString = pasteboardTypes.strings[i];
+        types.append(String(typeString.data, typeString.length));
+    }
+
+    wpe_pasteboard_string_vector_free(&pasteboardTypes);
 }
 
-String PlatformPasteboard::readString(int, const String& pasteboardType)
+String PlatformPasteboard::readString(int, const String& type)
 {
-    return String(m_pasteboard->getString(pasteboardType.utf8().data()).c_str());
+    struct wpe_pasteboard_string string;
+    wpe_pasteboard_get_string(m_pasteboard, type.utf8().data(), &string);
+
+    String returnValue(string.data, string.length);
+
+    wpe_pasteboard_string_free(&string);
+    return returnValue;
 }
 
 void PlatformPasteboard::write(const PasteboardWebContent& content)
 {
-    std::map<std::string, std::string> contentMap;
-    contentMap["text/plain;charset=utf-8"] = std::string(content.text.utf8().data());
-    contentMap["text/html;charset=utf-8"] = std::string(content.markup.utf8().data());
-    m_pasteboard->write(std::move(contentMap));
+    static const char plainText[] = "text/plain;charset=utf-8";
+    static const char htmlText[] = "text/html;charset=utf-8";
+
+    CString textString = content.text.utf8();
+    CString markupString = content.markup.utf8();
+
+    struct wpe_pasteboard_string_pair pairs[] = {
+        { { nullptr, 0 }, { nullptr, 0 } },
+        { { nullptr, 0 }, { nullptr, 0 } },
+    };
+    wpe_pasteboard_string_initialize(&pairs[0].type, plainText, strlen(plainText));
+    wpe_pasteboard_string_initialize(&pairs[0].string, textString.data(), textString.length());
+    wpe_pasteboard_string_initialize(&pairs[1].type, htmlText, strlen(htmlText));
+    wpe_pasteboard_string_initialize(&pairs[1].string, markupString.data(), markupString.length());
+    struct wpe_pasteboard_string_map map = { pairs, 2 };
+
+    wpe_pasteboard_write(m_pasteboard, &map);
+
+    wpe_pasteboard_string_free(&pairs[0].type);
+    wpe_pasteboard_string_free(&pairs[0].string);
+    wpe_pasteboard_string_free(&pairs[1].type);
+    wpe_pasteboard_string_free(&pairs[1].string);
 }
 
-void PlatformPasteboard::write(const String& pasteboardType, const String& stringToWrite)
+void PlatformPasteboard::write(const String& type, const String& string)
 {
-    m_pasteboard->write(pasteboardType.utf8().data(), stringToWrite.utf8().data());
+    struct wpe_pasteboard_string_pair pairs[] = {
+        { { nullptr, 0 }, { nullptr, 0 } },
+    };
+    wpe_pasteboard_string_initialize(&pairs[0].type, type.utf8().data(), type.utf8().length());
+    wpe_pasteboard_string_initialize(&pairs[0].string, string.utf8().data(), string.utf8().length());
+    struct wpe_pasteboard_string_map map = { pairs, 1 };
+
+    wpe_pasteboard_write(m_pasteboard, &map);
+
+    wpe_pasteboard_string_free(&pairs[0].type);
+    wpe_pasteboard_string_free(&pairs[0].string);
 }
 
 } // namespace WebCore

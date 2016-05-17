@@ -44,7 +44,7 @@ typedef union _GdkEvent GdkEvent;
 #endif
 
 #if PLATFORM(WPE)
-#include <WPE/Input/Events.h>
+struct wpe_input_axis_event;
 #endif
 
 namespace WebKit {
@@ -59,7 +59,7 @@ public:
 #elif PLATFORM(EFL)
     NativeWebWheelEvent(const Evas_Event_Mouse_Wheel*, const WebCore::AffineTransform& toWebContent, const WebCore::AffineTransform& toDeviceScreen);
 #elif PLATFORM(WPE)
-    NativeWebWheelEvent(WPE::Input::AxisEvent&&);
+    NativeWebWheelEvent(struct wpe_input_axis_event*);
 #endif
 
 #if USE(APPKIT)

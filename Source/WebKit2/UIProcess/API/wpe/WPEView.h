@@ -27,30 +27,30 @@
 #define WPEView_h
 
 #include "APIObject.h"
+#include "CompositingManagerProxy.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
 #include "WPEViewClient.h"
-#include <WPE/Input/Handling.h>
-#include <WPE/ViewBackend/ViewBackend.h>
 #include <WebCore/ViewState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
+struct wpe_view_backend;
+
 typedef struct WKViewClientBase WKViewClientBase;
 
 namespace WebKit {
-class CompositingManagerProxy;
 class WebPageGroup;
 class WebProcessPool;
 }
 
 namespace WKWPE {
 
-class View : public API::ObjectImpl<API::Object::Type::View>, public WPE::Input::Client {
+class View : public API::ObjectImpl<API::Object::Type::View> {
 public:
-    static View* create(const API::PageConfiguration& configuration)
+    static View* create(struct wpe_view_backend* backend, const API::PageConfiguration& configuration)
     {
-        return new View(configuration);
+        return new View(backend, configuration);
     }
 
     // Client methods
@@ -59,33 +59,28 @@ public:
 
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
-    WPE::ViewBackend::ViewBackend& viewBackend() { return *m_viewBackend; }
+    struct wpe_view_backend* backend() { return m_backend; }
 
     const WebCore::IntSize& size() const { return m_size; }
-    void setSize(const WebCore::IntSize& size);
 
     WebCore::ViewState::Flags viewState() const { return m_viewStateFlags; }
     void setViewState(WebCore::ViewState::Flags);
 
-    // WPE::Input::Client
-    void handleKeyboardEvent(WPE::Input::KeyboardEvent&&) override;
-    void handlePointerEvent(WPE::Input::PointerEvent&&) override;
-    void handleAxisEvent(WPE::Input::AxisEvent&&) override;
-    void handleTouchEvent(WPE::Input::TouchEvent&&) override;
-
 private:
-    View(const API::PageConfiguration&);
+    View(struct wpe_view_backend*, const API::PageConfiguration&);
     virtual ~View();
+
+    void setSize(const WebCore::IntSize& size);
 
     ViewClient m_client;
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
-    std::unique_ptr<WPE::ViewBackend::ViewBackend> m_viewBackend;
-    std::unique_ptr<WebKit::CompositingManagerProxy> m_compositingManagerProxy;
-
     WebCore::IntSize m_size;
     WebCore::ViewState::Flags m_viewStateFlags;
+
+    WebKit::CompositingManagerProxy m_compositingManagerProxy;
+    struct wpe_view_backend* m_backend;
 };
 
 } // namespace WKWPE
