@@ -49,7 +49,7 @@ public:
 
     bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color& backgroundColor) const override;
 
-    int popupInternalPaddingBottom(const RenderStyle&) const override;
+    LengthBox popupInternalPaddingBox(const RenderStyle& style) const override;
 
     bool delegatesMenuListRendering() const override { return true; }
 

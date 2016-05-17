@@ -658,9 +658,9 @@ bool RenderThemeQtMobile::isControlStyled(const RenderStyle& style, const Border
     }
 }
 
-int RenderThemeQtMobile::popupInternalPaddingBottom(const RenderStyle& style) const
+LengthBox RenderThemeQtMobile::popupInternalPaddingBox(const RenderStyle& style) const
 {
-    return 1;
+    return { 0, 0, 1, 0 };
 }
 
 void RenderThemeQtMobile::computeSizeBasedOnStyle(RenderStyle& renderStyle) const
