@@ -3,6 +3,7 @@
 #include "WindowsKeyboardCodes.h"
 #include <xkbcommon/xkbcommon-keysyms.h>
 
+__attribute__((visibility("default")))
 const char*
 wpe_input_identifier_for_key_event(struct wpe_input_keyboard_event* event)
 {
@@ -108,6 +109,7 @@ wpe_input_identifier_for_key_event(struct wpe_input_keyboard_event* event)
     }
 }
 
+__attribute__((visibility("default")))
 int
 wpe_input_windows_key_code_for_key_event(struct wpe_input_keyboard_event* event)
 {
@@ -480,6 +482,7 @@ wpe_input_windows_key_code_for_key_event(struct wpe_input_keyboard_event* event)
     }
 }
 
+__attribute__((visibility("default")))
 const char*
 wpe_input_single_character_for_key_event(struct wpe_input_keyboard_event* event)
 {
