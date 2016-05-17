@@ -67,10 +67,6 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
     m_pageProxy->setDrawsBackground(false);
 #endif
 
-    // Construct the CompositingManagerProxy before initializing the WebPageProxy.
-    m_compositingManagerProxy = std::make_unique<CompositingManagerProxy>(*this);
-    m_viewBackend->setClient(m_compositingManagerProxy.get());
-    m_viewBackend->setInputClient(this);
     m_backend = backend;
     if (!m_backend)
         m_backend = wpe_view_backend_create();
