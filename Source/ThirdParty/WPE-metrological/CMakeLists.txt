@@ -24,6 +24,10 @@ set(WPE_METROLOGICAL_SOURCES
     src/metrological.cpp
 )
 
+if (USE_WPE_BACKEND_BCM_RPI)
+    include(src/rpi/CMakeLists.txt)
+endif ()
+
 add_library(WPE-metrological SHARED ${WPE_METROLOGICAL_SOURCES})
 target_include_directories(WPE-metrological PRIVATE ${WPE_METROLOGICAL_INCLUDE_DIRECTORIES})
 target_link_libraries(WPE-metrological ${WPE_METROLOGICAL_LIBRARIES})
