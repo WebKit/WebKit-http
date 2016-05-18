@@ -1,7 +1,7 @@
 #ifndef wpe_renderer_gbm_h
 #define wpe_renderer_gbm_h
 
-#include <wpe/renderer.h>
+#include <wpe/renderer-backend.h>
 
 #ifdef __cplusplus
 extern "C" {

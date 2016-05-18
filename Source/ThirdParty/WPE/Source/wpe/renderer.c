@@ -3,7 +3,7 @@
 #define _GNU_SOURCE 1
 #endif
 
-#include <wpe/renderer.h>
+#include <wpe/renderer-backend.h>
 
 #include "loader-private.h"
 #include "renderer-private.h"
