@@ -47,9 +47,9 @@
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-#if GST_CHECK_VERSION(1, 3, 0)
+#if GST_CHECK_VERSION(1, 8, 1)
 #define GST_USE_UNSTABLE_API
-#include <gst/gl/egl/gsteglimagememory.h>
+#include <gst/gl/egl/gstglmemoryegl.h>
 #include <gst/gl/gstglutils.h>
 #undef GST_USE_UNSTABLE_API
 #endif
@@ -59,7 +59,7 @@ using namespace WebCore;
 
 // CAIRO_FORMAT_RGB24 used to render the video buffers is little/big endian dependant.
 #if G_BYTE_ORDER == G_LITTLE_ENDIAN
-#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
+#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 8, 1)
 #define GST_CAPS_FORMAT "{ RGBA }"
 #else
 #define GST_CAPS_FORMAT "{ BGRx, BGRA }"
@@ -70,8 +70,8 @@ using namespace WebCore;
 
 #if GST_CHECK_VERSION(1, 1, 0)
 #define GST_FEATURED_CAPS_GL GST_VIDEO_CAPS_MAKE_WITH_FEATURES(GST_CAPS_FEATURE_META_GST_VIDEO_GL_TEXTURE_UPLOAD_META, GST_CAPS_FORMAT) ";"
-#if GST_CHECK_VERSION(1, 3, 0)
-#define GST_FEATURED_CAPS GST_FEATURED_CAPS_GL GST_VIDEO_CAPS_MAKE_WITH_FEATURES(GST_CAPS_FEATURE_MEMORY_EGL_IMAGE, GST_CAPS_FORMAT) ";"
+#if GST_CHECK_VERSION(1, 8, 1)
+#define GST_FEATURED_CAPS GST_FEATURED_CAPS_GL GST_VIDEO_CAPS_MAKE_WITH_FEATURES(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, GST_CAPS_FORMAT) ";"
 #else
 #define GST_FEATURED_CAPS GST_FEATURED_CAPS_GL
 #endif
@@ -473,7 +473,7 @@ static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery
 
     GstAllocationParams params;
     gst_allocation_params_init(&params);
-    GstAllocator* allocator = gst_allocator_find(GST_EGL_IMAGE_MEMORY_TYPE);
+    GstAllocator* allocator = gst_allocator_find(GST_GL_MEMORY_EGL_ALLOCATOR_NAME);
     gst_query_add_allocation_param(query, allocator, &params);
     gst_object_unref(allocator);
 #else
