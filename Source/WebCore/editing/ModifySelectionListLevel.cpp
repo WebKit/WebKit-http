@@ -29,7 +29,8 @@
 #include "Document.h"
 #include "Frame.h"
 #include "FrameSelection.h"
-#include "HTMLElement.h"
+#include "HTMLOListElement.h"
+#include "HTMLUListElement.h"
 #include "RenderObject.h"
 #include "htmlediting.h"
 
@@ -79,7 +80,7 @@ static bool getStartEndListChildren(const VisibleSelection& selection, Node*& st
     // if the selection ends on a list item with a sublist, include the entire sublist
     if (endListChild->renderer()->isListItem()) {
         RenderObject* r = endListChild->renderer()->nextSibling();
-        if (r && isListElement(r->node()))
+        if (r && isListHTMLElement(r->node()))
             endListChild = r->node();
     }
 
@@ -176,7 +177,7 @@ void IncreaseSelectionListLevelCommand::doApply()
         return;
 
     Node* previousItem = startListChild->renderer()->previousSibling()->node();
-    if (isListElement(previousItem)) {
+    if (isListHTMLElement(previousItem)) {
         // move nodes up into preceding list
         appendSiblingNodeRange(startListChild, endListChild, downcast<Element>(previousItem));
         m_listElement = previousItem;
@@ -190,10 +191,10 @@ void IncreaseSelectionListLevelCommand::doApply()
                     newParent = newParent->cloneElementWithoutChildren(document());
                 break;
             case OrderedList:
-                newParent = createOrderedListElement(document());
+                newParent = HTMLOListElement::create(document());
                 break;
             case UnorderedList:
-                newParent = createUnorderedListElement(document());
+                newParent = HTMLUListElement::create(document());
                 break;
         }
         insertNodeBefore(newParent, startListChild);
@@ -243,11 +244,11 @@ static bool canDecreaseListLevel(const VisibleSelection& selection, Node*& start
 {
     if (!getStartEndListChildren(selection, start, end))
         return false;
-    
+
     // there must be a destination list to move the items to
-    if (!isListElement(start->parentNode()->parentNode()))
+    if (!isListHTMLElement(start->parentNode()->parentNode()))
         return false;
-        
+
     return true;
 }
 

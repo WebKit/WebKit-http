@@ -787,7 +787,7 @@ void JIT::emit_op_neq_null(Instruction* currentInstruction)
 void JIT::emit_op_throw(Instruction* currentInstruction)
 {
     ASSERT(regT0 == returnValueGPR);
-    copyCalleeSavesToVMCalleeSavesBuffer();
+    copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
     emitLoad(currentInstruction[1].u.operand, regT1, regT0);
     callOperationNoExceptionCheck(operationThrow, regT1, regT0);
     jumpToExceptionHandler();
@@ -847,7 +847,7 @@ void JIT::emitSlow_op_to_string(Instruction* currentInstruction, Vector<SlowCase
 
 void JIT::emit_op_catch(Instruction* currentInstruction)
 {
-    restoreCalleeSavesFromVMCalleeSavesBuffer();
+    restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer();
 
     move(TrustedImmPtr(m_vm), regT3);
     // operationThrow returns the callFrame for the handler.
@@ -1352,6 +1352,36 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
     callOperation(operationProcessTypeProfilerLog);
 
     jumpToEnd.link(this);
+}
+
+void JIT::emit_op_log_shadow_chicken_prologue(Instruction* currentInstruction)
+{
+    updateTopCallFrame();
+    static_assert(nonArgGPR0 != regT0 && nonArgGPR0 != regT2, "we will have problems if this is true.");
+    GPRReg shadowPacketReg = regT0;
+    GPRReg scratch1Reg = nonArgGPR0; // This must be a non-argument register.
+    GPRReg scratch2Reg = regT2;
+    ensureShadowChickenPacket(shadowPacketReg, scratch1Reg, scratch2Reg);
+
+    scratch1Reg = regT4;
+    emitLoadPayload(currentInstruction[1].u.operand, regT3);
+    logShadowChickenProloguePacket(shadowPacketReg, scratch1Reg, regT3);
+}
+
+void JIT::emit_op_log_shadow_chicken_tail(Instruction* currentInstruction)
+{
+    updateTopCallFrame();
+    static_assert(nonArgGPR0 != regT0 && nonArgGPR0 != regT2, "we will have problems if this is true.");
+    GPRReg shadowPacketReg = regT0;
+    GPRReg scratch1Reg = nonArgGPR0; // This must be a non-argument register.
+    GPRReg scratch2Reg = regT2;
+    ensureShadowChickenPacket(shadowPacketReg, scratch1Reg, scratch2Reg);
+
+    emitLoadPayload(currentInstruction[1].u.operand, regT2);
+    emitLoadTag(currentInstruction[1].u.operand, regT1);
+    JSValueRegs thisRegs(regT1, regT2);
+    emitLoadPayload(currentInstruction[2].u.operand, regT3);
+    logShadowChickenTailPacket(shadowPacketReg, thisRegs, regT3, m_codeBlock, CallSiteIndex(currentInstruction));
 }
 
 } // namespace JSC

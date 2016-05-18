@@ -28,7 +28,6 @@
 
 #import "AuthenticationChallenge.h"
 #import "AuthenticationMac.h"
-#import "BlockExceptions.h"
 #import "CFNetworkSPI.h"
 #import "CookieStorage.h"
 #import "CredentialStorage.h"
@@ -53,6 +52,7 @@
 #import "SynchronousLoaderClient.h"
 #import "WebCoreSystemInterface.h"
 #import "WebCoreURLResponse.h"
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/Ref.h>
 #import <wtf/SchedulePair.h>
 #import <wtf/text/Base64.h>
@@ -491,7 +491,7 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
     if (d->m_usesAsyncCallbacks) {
         client()->willSendRequestAsync(this, request, redirectResponse);
     } else {
-        Ref<ResourceHandle> protect(*this);
+        Ref<ResourceHandle> protectedThis(*this);
         client()->willSendRequest(this, request, redirectResponse);
 
         // Client call may not preserve the session, especially if the request is sent over IPC.

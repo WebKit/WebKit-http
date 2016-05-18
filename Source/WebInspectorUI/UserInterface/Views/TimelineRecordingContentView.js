@@ -275,6 +275,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         this._timelineOverview.viewMode = newViewMode;
         this._updateTimelineOverviewHeight();
         this._updateProgressView();
+        this._updateFilterBar();
 
         if (timelineView) {
             this._updateTimelineViewTimes(timelineView);
@@ -316,6 +317,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
     {
         if (event.target !== this._timelineContentBrowser.currentContentView)
             return;
+
+        this._updateFilterBar();
 
         this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
 
@@ -372,12 +375,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         if (this._startTimeNeedsReset && !isNaN(startTime)) {
             this._timelineOverview.startTime = startTime;
             this._overviewTimelineView.zeroTime = startTime;
-            for (var timelineView of this._timelineViewMap.values()) {
-                if (timelineView.representedObject.type === WebInspector.TimelineRecord.Type.RenderingFrame)
-                    continue;
-
+            for (let timelineView of this._timelineViewMap.values())
                 timelineView.zeroTime = startTime;
-            }
 
             this._startTimeNeedsReset = false;
         }
@@ -612,8 +611,13 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
             selectedPathComponent = this._entireRecordingPathComponent;
         else {
             let timelineRange = this._timelineSelectionPathComponent.representedObject;
-            timelineRange.startValue = this.currentTimelineView.startTime - this.currentTimelineView.zeroTime;
-            timelineRange.endValue = this.currentTimelineView.endTime - this.currentTimelineView.zeroTime;
+            timelineRange.startValue = this.currentTimelineView.startTime;
+            timelineRange.endValue = this.currentTimelineView.endTime;
+
+            if (!(this.currentTimelineView instanceof WebInspector.RenderingFrameTimelineView)) {
+                timelineRange.startValue -= this.currentTimelineView.zeroTime;
+                timelineRange.endValue -= this.currentTimelineView.zeroTime;
+            }
 
             this._updateTimeRangePathComponents();
             selectedPathComponent = this._timelineSelectionPathComponent;
@@ -627,12 +631,13 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     _recordSelected(event)
     {
-        let timelineView = this._timelineViewMap.get(event.data.timeline);
-        console.assert(timelineView === this.currentTimelineView, timelineView);
-        if (timelineView !== this.currentTimelineView)
-            return;
+        let {record, timeline} = event.data;
+        let timelineView = this._timelineViewMap.get(timeline);
 
-        timelineView.selectRecord(event.data.record);
+        if (record && timelineView !== this.currentTimelineView)
+            this.showTimelineViewForTimeline(timeline);
+
+        timelineView.selectRecord(record);
     }
 
     _timelineSelected()
@@ -738,5 +743,10 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
     {
         let isCapturing = WebInspector.timelineManager.isCapturing();
         this._progressView.visible = isCapturing && this.currentTimelineView && !this.currentTimelineView.showsLiveRecordingData;
+    }
+
+    _updateFilterBar()
+    {
+        this._filterBarNavigationItem.hidden = !this.currentTimelineView || !this.currentTimelineView.showsFilterBar;
     }
 };

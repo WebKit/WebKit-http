@@ -47,6 +47,7 @@
 #include "MainFrame.h"
 #include "Page.h"
 #include "PseudoElement.h"
+#include "RenderChildIterator.h"
 #include "RenderCounter.h"
 #include "RenderFlowThread.h"
 #include "RenderGeometryMap.h"
@@ -168,12 +169,15 @@ void RenderObject::setFlowThreadStateIncludingDescendants(FlowThreadState state)
 {
     setFlowThreadState(state);
 
-    for (RenderObject* child = firstChildSlow(); child; child = child->nextSibling()) {
+    if (!is<RenderElement>(*this))
+        return;
+
+    for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this))) {
         // If the child is a fragmentation context it already updated the descendants flag accordingly.
-        if (child->isRenderFlowThread())
+        if (child.isRenderFlowThread())
             continue;
-        ASSERT(state != child->flowThreadState());
-        child->setFlowThreadStateIncludingDescendants(state);
+        ASSERT(state != child.flowThreadState());
+        child.setFlowThreadStateIncludingDescendants(state);
     }
 }
 
@@ -622,22 +626,64 @@ void RenderObject::setLayerNeedsFullRepaintForPositionedMovementLayout()
 
 RenderBlock* RenderObject::containingBlock() const
 {
-    auto parent = this->parent();
-    if (!parent && is<RenderScrollbarPart>(*this))
-        parent = downcast<RenderScrollbarPart>(*this).rendererOwningScrollbar();
+    auto containingBlockForRenderer = [](const RenderObject& renderer)
+    {
+        auto& style = renderer.style();
+        if (style.position() == AbsolutePosition)
+            return renderer.containingBlockForAbsolutePosition();
+        if (style.position() == FixedPosition)
+            return renderer.containingBlockForFixedPosition();
+        return renderer.containingBlockForObjectInFlow();
+    };
 
-    const RenderStyle& style = this->style();
-    if (!is<RenderText>(*this) && style.position() == FixedPosition)
-        parent = containingBlockForFixedPosition(parent);
-    else if (!is<RenderText>(*this) && style.position() == AbsolutePosition)
-        parent = containingBlockForAbsolutePosition(parent);
-    else
-        parent = containingBlockForObjectInFlow(parent);
+    if (is<RenderText>(*this))
+        return containingBlockForObjectInFlow();
 
-    // This can still happen in case of an detached tree
-    if (!parent)
+    if (!parent() && is<RenderScrollbarPart>(*this)) {
+        if (auto* renderer = downcast<RenderScrollbarPart>(*this).rendererOwningScrollbar())
+            return containingBlockForRenderer(*renderer);
         return nullptr;
-    return downcast<RenderBlock>(parent);
+    }
+    return containingBlockForRenderer(*this);
+}
+
+RenderBlock* RenderObject::containingBlockForFixedPosition() const
+{
+    auto* renderer = parent();
+    while (renderer && !renderer->canContainFixedPositionObjects())
+        renderer = renderer->parent();
+
+    ASSERT(!renderer || !renderer->isAnonymousBlock());
+    return downcast<RenderBlock>(renderer);
+}
+
+RenderBlock* RenderObject::containingBlockForAbsolutePosition() const
+{
+    // RenderInlines forward their absolute positioned descendants to the containing block, so
+    // we need to start searching from 'this' and not from 'parent()'.
+    auto* renderer = isRenderInline() ? const_cast<RenderElement*>(downcast<RenderElement>(this)) : parent();
+    while (renderer && !renderer->canContainAbsolutelyPositionedObjects())
+        renderer = renderer->parent();
+
+    // For a relatively positioned inline, return its nearest non-anonymous containing block,
+    // not the inline itself, to avoid having a positioned objects list in all RenderInlines
+    // and use RenderBlock* as RenderElement::containingBlock's return type.
+    // Use RenderBlock::container() to obtain the inline.
+    if (renderer && !is<RenderBlock>(*renderer))
+        renderer = renderer->containingBlock();
+
+    while (renderer && renderer->isAnonymousBlock())
+        renderer = renderer->containingBlock();
+
+    return downcast<RenderBlock>(renderer);
+}
+
+RenderBlock* RenderObject::containingBlockForObjectInFlow() const
+{
+    auto* renderer = parent();
+    while (renderer && ((renderer->isInline() && !renderer->isReplaced()) || !renderer->isRenderBlock()))
+        renderer = renderer->parent();
+    return downcast<RenderBlock>(renderer);
 }
 
 void RenderObject::addPDFURLRect(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -758,8 +804,12 @@ void RenderObject::addAbsoluteRectForLayer(LayoutRect& result)
 {
     if (hasLayer())
         result.unite(absoluteBoundingBoxRectIgnoringTransforms());
-    for (RenderObject* current = firstChildSlow(); current; current = current->nextSibling())
-        current->addAbsoluteRectForLayer(result);
+
+    if (!is<RenderElement>(*this))
+        return;
+
+    for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
+        child.addAbsoluteRectForLayer(result);
 }
 
 // FIXME: change this to use the subtreePaint terminology
@@ -767,8 +817,10 @@ LayoutRect RenderObject::paintingRootRect(LayoutRect& topLevelRect)
 {
     LayoutRect result = absoluteBoundingBoxRectIgnoringTransforms();
     topLevelRect = result;
-    for (RenderObject* current = firstChildSlow(); current; current = current->nextSibling())
-        current->addAbsoluteRectForLayer(result);
+    if (is<RenderElement>(*this)) {
+        for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
+            child.addAbsoluteRectForLayer(result);
+    }
     return result;
 }
 
@@ -1546,8 +1598,10 @@ void RenderObject::removeFromRenderFlowThreadIncludingDescendants(bool shouldUpd
     if (isRenderFlowThread())
         shouldUpdateState = false;
 
-    for (RenderObject* child = firstChildSlow(); child; child = child->nextSibling())
-        child->removeFromRenderFlowThreadIncludingDescendants(shouldUpdateState);
+    if (is<RenderElement>(*this)) {
+        for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
+            child.removeFromRenderFlowThreadIncludingDescendants(shouldUpdateState);
+    }
 
     // We have to ask for our containing flow thread as it may be above the removed sub-tree.
     RenderFlowThread* flowThreadContainingBlock = this->flowThreadContainingBlock();
@@ -1585,8 +1639,11 @@ void RenderObject::invalidateFlowThreadContainingBlockIncludingDescendants(Rende
     if (flowThread)
         flowThread->removeFlowChildInfo(this);
 
-    for (RenderObject* child = firstChildSlow(); child; child = child->nextSibling())
-        child->invalidateFlowThreadContainingBlockIncludingDescendants(flowThread);
+    if (!is<RenderElement>(*this))
+        return;
+
+    for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
+        child.invalidateFlowThreadContainingBlockIncludingDescendants(flowThread);
 }
 
 static void collapseAnonymousTableRowsIfNeeded(const RenderObject& rendererToBeDestroyed)
@@ -1681,8 +1738,12 @@ void RenderObject::updateDragState(bool dragOn)
     setIsDragging(dragOn);
     if (valueChanged && node() && (style().affectedByDrag() || (is<Element>(*node()) && downcast<Element>(*node()).childrenAffectedByDrag())))
         node()->setNeedsStyleRecalc();
-    for (RenderObject* curr = firstChildSlow(); curr; curr = curr->nextSibling())
-        curr->updateDragState(dragOn);
+
+    if (!is<RenderElement>(*this))
+        return;
+
+    for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
+        child.updateDragState(dragOn);
 }
 
 bool RenderObject::isComposited() const

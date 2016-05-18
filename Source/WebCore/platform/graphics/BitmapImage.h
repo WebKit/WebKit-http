@@ -60,6 +60,11 @@ namespace WebCore {
 
 class Timer;
 
+namespace NativeImage {
+    IntSize size(const NativeImagePtr&);
+    bool hasAlpha(const NativeImagePtr&);
+}
+
 // ================================================
 // FrameData Class
 // ================================================
@@ -67,13 +72,9 @@ class Timer;
 struct FrameData {
 public:
     FrameData()
-        : m_orientation(DefaultImageOrientation)
-        , m_subsamplingLevel(0)
-        , m_duration(0)
-        , m_haveMetadata(false)
+        : m_haveMetadata(false)
         , m_isComplete(false)
         , m_hasAlpha(true)
-        , m_frameBytes(0)
     {
     }
 
@@ -85,15 +86,17 @@ public:
     // Clear the cached image data on the frame, and (optionally) the metadata.
     // Returns whether there was cached image data to clear.
     bool clear(bool clearMetadata);
+    
+    unsigned usedFrameBytes() const { return m_image ? m_frameBytes : 0; }
 
     NativeImagePtr m_image;
-    ImageOrientation m_orientation;
-    SubsamplingLevel m_subsamplingLevel;
-    float m_duration;
+    ImageOrientation m_orientation { DefaultImageOrientation };
+    SubsamplingLevel m_subsamplingLevel { 0 };
+    float m_duration { 0 };
     bool m_haveMetadata : 1;
     bool m_isComplete : 1;
     bool m_hasAlpha : 1;
-    unsigned m_frameBytes;
+    unsigned m_frameBytes { 0 };
 };
 
 // =================================================
@@ -284,8 +287,6 @@ protected:
 #endif
 
 private:
-    template<typename T> BitmapImage(ImageObserver*, T fromNativeImage);
-
     void clearTimer();
     void startTimer(double delay);
 
@@ -330,28 +331,11 @@ private:
     bool m_allDataReceived : 1; // Whether or not we've received all our data.
     mutable bool m_haveSize : 1; // Whether or not our |m_size| member variable has the final overall image size yet.
     bool m_sizeAvailable : 1; // Whether or not we can obtain the size of the first image frame yet from ImageIO.
-    mutable bool m_hasUniformFrameSize : 1;
     mutable bool m_haveFrameCount : 1;
     bool m_animationFinishedWhenCatchingUp : 1;
 
     RefPtr<Image> m_cachedImage;
 };
-
-template<typename T>
-inline BitmapImage::BitmapImage(ImageObserver* observer, T fromNativeImage)
-    : Image(observer)
-    , m_frameCount(fromNativeImage ? 1 : 0)
-    , m_isSolidColor(false)
-    , m_checkedForSolidColor(false)
-    , m_animationFinished(fromNativeImage)
-    , m_allDataReceived(fromNativeImage)
-    , m_haveSize(fromNativeImage)
-    , m_sizeAvailable(fromNativeImage)
-    , m_hasUniformFrameSize(true)
-    , m_haveFrameCount(fromNativeImage)
-    , m_animationFinishedWhenCatchingUp(false)
-{
-}
 
 } // namespace WebCore
 

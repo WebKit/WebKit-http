@@ -178,6 +178,11 @@ void TestRunner::notifyDone()
     m_waitToDump = false;
 }
 
+unsigned TestRunner::imageCountInGeneralPasteboard() const
+{
+    return InjectedBundle::singleton().imageCountInGeneralPasteboard();
+}
+
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
 {
     WKRetainPtr<WKStringRef> sourceWK = toWK(source);
@@ -247,6 +252,11 @@ bool TestRunner::findString(JSStringRef target, JSValueRef optionsArrayAsValue)
 void TestRunner::clearAllDatabases()
 {
     WKBundleClearAllDatabases(InjectedBundle::singleton().bundle());
+
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("DeleteAllIndexedDatabases"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(true));
+
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
 }
 
 void TestRunner::setDatabaseQuota(uint64_t quota)
@@ -678,7 +688,7 @@ void TestRunner::setAlwaysAcceptCookies(bool accept)
 
     WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(accept));
 
-    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), 0);
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
 }
 
 double TestRunner::preciseTime()

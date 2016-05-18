@@ -386,7 +386,7 @@ public:
     void setHasVisibleContent();
     void dirtyVisibleContentStatus();
 
-    bool hasBoxDecorationsOrBackground() const;
+    bool hasVisibleBoxDecorationsOrBackground() const;
     bool hasVisibleBoxDecorations() const;
     // Returns true if this layer has visible content (ignoring any child layers).
     bool isVisuallyNonEmpty() const;
@@ -538,7 +538,8 @@ public:
     LayoutRect calculateLayerBounds(const RenderLayer* ancestorLayer, const LayoutSize& offsetFromRoot, CalculateLayerBoundsFlags = DefaultCalculateLayerBoundsFlags) const;
     
     // Return a cached repaint rect, computed relative to the layer renderer's containerForRepaint.
-    LayoutRect repaintRect() const { return m_repaintRect; }
+    bool hasComputedRepaintRect() const { return m_hasComputedRepaintRect; }
+    LayoutRect repaintRect() const { ASSERT(hasComputedRepaintRect()); return m_repaintRect; }
     LayoutRect repaintRectIncludingNonCompositingDescendants() const;
 
     void setRepaintStatus(RepaintStatus status) { m_repaintStatus = status; }
@@ -1068,6 +1069,8 @@ private:
 #endif
 
     bool m_hasFilterInfo : 1;
+    
+    bool m_hasComputedRepaintRect : 1;
 
 #if ENABLE(CSS_COMPOSITING)
     unsigned m_blendMode : 5;
@@ -1099,7 +1102,7 @@ private:
     ScrollPosition m_scrollPosition;
 
     // The width/height of our scrolled area.
-    LayoutSize m_scrollSize;
+    IntSize m_scrollSize;
 
     // For layers with overflow, we have a pair of scrollbars.
     RefPtr<Scrollbar> m_hBar;
@@ -1148,6 +1151,7 @@ private:
 inline void RenderLayer::clearZOrderLists()
 {
     ASSERT(!isStackingContainer());
+    ASSERT(m_layerListMutationAllowed);
 
     m_posZOrderList = nullptr;
     m_negZOrderList = nullptr;

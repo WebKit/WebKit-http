@@ -154,17 +154,13 @@ void JSreadonlyOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
     uncacheWrapper(world, &jsreadonly->wrapped(), jsreadonly);
 }
 
-JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, readonly* impl)
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, Ref<readonly>&& impl)
 {
-    if (!impl)
-        return jsNull();
-    return createNewWrapper<JSreadonly>(globalObject, impl);
+    return createNewWrapper<JSreadonly>(globalObject, WTFMove(impl));
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, readonly* impl)
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, readonly& impl)
 {
-    if (!impl)
-        return jsNull();
     if (JSValue result = getExistingWrapper<JSreadonly>(globalObject, impl))
         return result;
 #if COMPILER(CLANG)
@@ -174,7 +170,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, readonly* im
     // attribute to readonly.
     static_assert(!__is_polymorphic(readonly), "readonly is polymorphic but the IDL claims it is not");
 #endif
-    return createNewWrapper<JSreadonly>(globalObject, impl);
+    return createNewWrapper<JSreadonly, readonly>(globalObject, impl);
 }
 
 readonly* JSreadonly::toWrapped(JSC::JSValue value)

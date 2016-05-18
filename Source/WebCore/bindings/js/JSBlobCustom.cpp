@@ -48,15 +48,12 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, Blob* blob)
+JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, Blob& blob)
 {
-    if (!blob)
-        return jsNull();
+    if (is<File>(blob))
+        return wrap<JSFile>(globalObject, downcast<File>(blob));
 
-    if (is<File>(*blob))
-        return wrap<JSFile>(globalObject, downcast<File>(*blob));
-
-    return wrap<JSBlob>(globalObject, *blob);
+    return wrap<JSBlob>(globalObject, blob);
 }
 
 EncodedJSValue JSC_HOST_CALL constructJSBlob(ExecState* exec)
@@ -67,8 +64,7 @@ EncodedJSValue JSC_HOST_CALL constructJSBlob(ExecState* exec)
         return throwVMError(exec, createReferenceError(exec, "Blob constructor associated document is unavailable"));
 
     if (!exec->argumentCount()) {
-        RefPtr<Blob> blob = Blob::create();
-        return JSValue::encode(CREATE_DOM_WRAPPER(jsConstructor->globalObject(), Blob, blob.get()));
+        return JSValue::encode(CREATE_DOM_WRAPPER(jsConstructor->globalObject(), Blob, Blob::create()));
     }
 
     unsigned blobPartsLength = 0;
@@ -131,9 +127,8 @@ EncodedJSValue JSC_HOST_CALL constructJSBlob(ExecState* exec)
         }
     }
 
-    RefPtr<Blob> blob = Blob::create(blobBuilder.finalize(), Blob::normalizedContentType(type));
-
-    return JSValue::encode(CREATE_DOM_WRAPPER(jsConstructor->globalObject(), Blob, blob.get()));
+    auto blob = Blob::create(blobBuilder.finalize(), Blob::normalizedContentType(type));
+    return JSValue::encode(CREATE_DOM_WRAPPER(jsConstructor->globalObject(), Blob, WTFMove(blob)));
 }
 
 } // namespace WebCore

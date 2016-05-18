@@ -59,15 +59,12 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, SVGPathSeg* object)
+JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, SVGPathSeg& object)
 {
-    if (!object)
-        return jsNull();
-
-    if (JSObject* wrapper = getCachedWrapper(globalObject->world(), object))
+    if (auto* wrapper = getCachedWrapper(globalObject->world(), object))
         return wrapper;
 
-    switch (object->pathSegType()) {
+    switch (object.pathSegType()) {
     case SVGPathSeg::PATHSEG_CLOSEPATH:
         return CREATE_DOM_WRAPPER(globalObject, SVGPathSegClosePath, object);
     case SVGPathSeg::PATHSEG_MOVETO_ABS:

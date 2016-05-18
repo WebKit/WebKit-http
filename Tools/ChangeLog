@@ -1,3 +1,294 @@
+2016-05-18  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r200534) Command-+ no longer zooms pages 
+        https://bugs.webkit.org/show_bug.cgi?id=157826
+        rdar://problem/26334636
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues): Remove ENABLE() #ifdefs that do nothing (see http://webkit.org/b/157828).
+
+2016-05-18  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/meter-element.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=115633
+
+        Reviewed by Chris Fleizach.
+
+        Implement AccessibilityUIElement::valueDescription() and add mapping
+        from ATK_ROLE_LEVEL_BAR to AXProgressIndicator.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::valueDescription):
+
+2016-05-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Make TestRunner.clearAllDatabases also delete IndexedDB databases (once doing so is supported).
+        https://bugs.webkit.org/show_bug.cgi?id=157823
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::clearAllDatabases):
+        
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::clearAllDatabases):
+        
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2016-05-18  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Use WebCore Accessibility's AccessibilityText for AtkObject name and description
+        https://bugs.webkit.org/show_bug.cgi?id=157822
+
+        Reviewed by Chris Fleizach.
+
+        Fix AccessibilityUIElement::helpText() so that it returns an empty string rather than
+        nullptr upon failure.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::helpText):
+
+2016-05-17  Beth Dakin  <bdakin@apple.com>
+
+        Make handleAcceptedCandidate a public function
+        https://bugs.webkit.org/show_bug.cgi?id=157763
+        -and corresponding-
+        rdar://problem/26206397
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/autofocused-text-input.html: Added.
+        * TestWebKitAPI/Tests/mac/ViewWithEditableAreaLeak.mm: Added.
+        (-[DoNotLeakWebView dealloc]):
+        (-[DoNotLeakWebView showCandidates:forString:inRect:forSelectedRange:view:completionHandler:]):
+        (-[DoNotLeakFrameLoadDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+
+2016-05-17  Keith Miller  <keith_miller@apple.com>
+
+        Add test262 harness support code
+        https://bugs.webkit.org/show_bug.cgi?id=157797
+
+        Reviewed by Filip Pizlo.
+
+        The import-test262-tests script is used to generate the yaml file used to run test262. It
+        takes a path to the local copy of the Test262 repository as well as an optional path to file
+        containing a list of failures. This script currently just creates the yaml file used to run
+        the script. It does not relocate the test files into our tests directory. In the future I
+        plan to add that feature but it didn't seem essential for the first iteration. Since many
+        test262 tests need to be run in both strict and non-strict mode, import-test262-tests
+        creates two separate runs for those tests. This enables us to distinguish between failures
+        in only one of the two modes.
+
+        This patch also updates the run-jsc-stress-tests Script to run tests from Test262. In order
+        to do so two new run commands were needed runTest262 and prepareTest262Fixture. runTest262
+        takes an actual test file along with the metadata associated with it. prepareTest262Fixture
+        takes a fixture file (used by module tests for importing) and makes sure that file is
+        properly relocated to the test runner directory.
+
+        The proccess I used to import the tests was to first run import-test262-tests to create a
+        yaml for all the tests (import-test262-tests assumes all tests pass if to failures file is
+        passed). Then I ran the generated yaml file with "run-jsc-stress-tests -v -c 1" piping the
+        output to a file and collected all the lines with "FAIL" in it. Finally, I reran
+        import-test262-tests with the new failure file to create the final yaml.
+
+        * Scripts/import-test262-tests: Added.
+        * Scripts/run-jsc-stress-tests:
+
+2016-05-16  Enrica Casucci  <enrica@apple.com>
+
+        build fix after r200968 and r200969
+
+        Unreviewed.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (-[EventSendingController keyDown:withModifiers:withLocation:]):
+
+2016-05-16  Jer Noble  <jer.noble@apple.com>
+
+        API test WebKit2.MSEIsPlayingAudio timing out after r200951
+        https://bugs.webkit.org/show_bug.cgi?id=157748
+
+        Reviewed by Eric Carlson.
+
+        The file-with-mse.html testcase only calls play() once it's own XHR loading is complete; the
+        "user gesture" check fails at that point.  Call play() up front; playback will begin as soon
+        as enough data is loaded.
+
+        * TestWebKitAPI/Tests/WebKit2/file-with-mse.html:
+
+2016-05-16  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused initializer for WebEvent on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=157689
+
+        Reviewed by Anders Carlsson.
+
+        Adopting different initializer for WebEvent to fix the build.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (-[EventSendingController keyDown:withModifiers:withLocation:]):
+
+2016-05-16  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add machine-readable results for JSC API tests to the Buildbot json log
+        https://bugs.webkit.org/show_bug.cgi?id=157642
+
+        Reviewed by Geoffrey Garen.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunJavaScriptCoreTests): Use --no-fail-fast option on run-javascriptcore-tests
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Abstracted out writing JSON to file (new function below)
+        (writeJsonDataIfApplicable): Added
+
+2016-04-06  Jer Noble  <jer.noble@apple.com>
+
+        [WK2] Add API to WKWebViewConfiguration to control autoplay policy.
+        https://bugs.webkit.org/show_bug.cgi?id=156312
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RequiresUserActionForPlayback.mm:
+        (TEST_F):
+
+2016-05-16  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r192098): Content missing after copy and paste to Notes App on retina displays
+        https://bugs.webkit.org/show_bug.cgi?id=157630
+        <rdar://problem/25277577>
+
+        Reviewed by Simon Fraser.
+
+        Update test infrastructure to support checking the number of images in the pasteboard.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (imageCountInGeneralPasteboardCallback): Added.
+        (TestRunner::staticFunctions):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::imageCountInGeneralPasteboard): Added.
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::imageCountInGeneralPasteboard): Added stub method.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::imageCountInGeneralPasteboard): Added.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::imageCountInGeneralPasteboard): Added.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::imageCountInGeneralPasteboard): Added stub implementation.
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle): Handle copy message.
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::imageCountInGeneralPasteboard): Added.
+
+2016-05-13  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix JSBench which causes math domain error in run-benchmark script.
+        https://bugs.webkit.org/show_bug.cgi?id=157697
+        <rdar://problem/26279292>
+
+        Reviewed by Ryosuke Niwa.
+
+        Some tests of JSBench give time usage to be 0 ms which will causes error while calculating geometric mean.
+        Also fix a round-off error while calculating stdev.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_results.py:
+        (BenchmarkResults._format_values):
+        * Scripts/webkitpy/benchmark_runner/data/patches/JSBench.patch:
+
+2016-05-13  Brady Eidson  <beidson@apple.com>
+
+        Extend protector naming code style guideline to cover operator= assignment.
+        https://bugs.webkit.org/show_bug.cgi?id=157693
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_identifier_name_in_declaration):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_names):
+
+2016-05-13  Aakash Jain  <aakash_jain@apple.com>
+
+        Dashboard code restructuring
+        https://bugs.webkit.org/show_bug.cgi?id=157680
+        <rdar://problem/14736888>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueView.js:
+        (BubbleQueueView.prototype.addLinkToRow): Moved to base class.
+        (BubbleQueueView.prototype.addTextToRow): Moved to base class.
+        (BubbleQueueView.prototype._addDividerToPopover): Moved to base class.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotBuilderQueueView.js:
+        (BuildbotBuilderQueueView.prototype.update): Passing additional argument to _appendPendingRevisionCount.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Passing additional argument to _appendPendingRevisionCount.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.update): Passing additional argument to _appendPendingRevisionCount.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._appendPendingRevisionCount): Moved to base class and modified to take
+        additional argument.
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Moved to base class.
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Moved to base class.
+        (BuildbotQueueView.prototype._addDividerToPopover): Moved to base class.
+        (BuildbotQueueView.prototype._formatRevisionForDisplay): Moved to base class.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady): Display any customView if available.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/QueueView.js:
+        (QueueView.prototype.addLinkToRow): Moved from child class, no changes.
+        (QueueView.prototype.addTextToRow): Moved from child class, no changes.
+        (QueueView.prototype._addDividerToPopover): Moved from child class, no changes.
+        (QueueView.prototype._appendPendingRevisionCount): Moved from child class, made it more generic
+        by taking latestIterationGetter method as an argument.
+        (QueueView.prototype._popoverLinesForCommitRange): Moved from child class, no changes.
+        (QueueView.prototype._presentPopoverForPendingCommits): Moved from child class, no changes.
+        (QueueView.prototype._formatRevisionForDisplay): Moved from child class, no changes.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (a:hover:link): Underline only when there is a link.
+
+2016-05-13  Yoav Weiss  <yoav@yoav.ws>
+
+        Turn on WEB_TIMING for all ports
+        https://bugs.webkit.org/show_bug.cgi?id=157673
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitperl/FeatureList.pm: Make sure that WEB_TIMING is on by default.
+
+2016-05-13  Brady Eidson  <beidson@apple.com>
+
+        Protector Ref/RefPtrs should have a specified naming style.
+        https://bugs.webkit.org/show_bug.cgi?id=157591
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_identifier_name_in_declaration):
+        (CppChecker):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_names):
+
+2016-05-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(ES6_ARROWFUNCTION_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=157564
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
 2016-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
 
         [GTK] accessibility/aria-readonly.html is failing

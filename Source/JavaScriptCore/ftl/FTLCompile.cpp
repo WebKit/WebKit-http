@@ -103,9 +103,11 @@ void compile(State& state, Safepoint::Result& safepointResult)
                 inlineCallFrame->calleeRecovery.withLocalsOffset(localsOffset);
         }
 
-        if (graph.hasDebuggerEnabled())
-            codeBlock->setScopeRegister(codeBlock->scopeRegister() + localsOffset);
     }
+
+    if (graph.hasDebuggerEnabled())
+        codeBlock->setScopeRegister(codeBlock->scopeRegister() + localsOffset);
+
     for (OSRExitDescriptor& descriptor : state.jitCode->osrExitDescriptors) {
         for (unsigned i = descriptor.m_values.size(); i--;)
             descriptor.m_values[i] = descriptor.m_values[i].withLocalsOffset(localsOffset);
@@ -121,7 +123,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
 
     // Emit the exception handler.
     *state.exceptionHandler = jit.label();
-    jit.copyCalleeSavesToVMCalleeSavesBuffer();
+    jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
     jit.move(MacroAssembler::TrustedImmPtr(jit.vm()), GPRInfo::argumentGPR0);
     jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
     CCallHelpers::Call call = jit.call();
