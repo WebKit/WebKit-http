@@ -11,6 +11,6 @@ list(APPEND WPE_METROLOGICAL_LIBRARIES
 )
 
 list(APPEND WPE_METROLOGICAL_SOURCES
-    src/rpi/renderer-backend.cpp
-    src/rpi/view-backend.cpp
+    src/bcm-rpi/renderer-backend.cpp
+    src/bcm-rpi/view-backend.cpp
 )

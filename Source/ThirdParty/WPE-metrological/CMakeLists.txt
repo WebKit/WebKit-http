@@ -25,7 +25,7 @@ set(WPE_METROLOGICAL_SOURCES
 )
 
 if (USE_WPE_BACKEND_BCM_RPI)
-    include(src/rpi/CMakeLists.txt)
+    include(src/bcm-rpi/CMakeLists.txt)
 endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)
