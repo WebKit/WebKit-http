@@ -5,12 +5,12 @@ set(WPE_METROLOGICAL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-metro
 option(USE_WPE_BACKEND_BCM_NEXUS "Whether to enable support for the BCM_NEXUS WPE backend" OFF)
 option(USE_WPE_BACKEND_BCM_RPI "Whether to enable support for the BCM_RPi WPE backend" OFF)
 option(USE_WPE_BACKEND_INTEL_CE "Whether to enable support for the Intel CE WPE backend" OFF)
+option(USE_WPE_BACKEND_WESTEROS "Whether to enable support for the Westeros WPE backend" OFF)
 
 # TODO
 option(USE_WPE_BACKEND_DRM "Whether to enable support for the DRM WPE backend" OFF)
 option(USE_WPE_BACKEND_DRM_TEGRA "Whether to enable support for the Tegra-specific quirks in the DRM WPE backend" OFF)
 option(USE_WPE_BACKEND_WAYLAND "Whether to enable support for the Wayland WPE backend" OFF)
-option(USE_WPE_BACKEND_WESTEROS "Whether to enable support for the Westeros WPE backend" OFF)
 
 
 set(WPE_METROLOGICAL_INCLUDE_DIRECTORIES
@@ -34,6 +34,10 @@ endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)
     include(src/intelce/CMakeLists.txt)
+endif ()
+
+if (USE_WPE_BACKEND_WESTEROS)
+    include(src/westeros/CMakeLists.txt)
 endif ()
 
 add_library(WPE-metrological SHARED ${WPE_METROLOGICAL_SOURCES})
