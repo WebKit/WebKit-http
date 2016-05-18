@@ -2,7 +2,7 @@
 
 extern "C" {
 
-struct wpe_renderer_backend_egl_interface rpi_renderer_backend_egl_interface = {
+struct wpe_renderer_backend_egl_interface bcm_rpi_renderer_backend_egl_interface = {
     // create
     []() -> void*
     {
@@ -18,7 +18,7 @@ struct wpe_renderer_backend_egl_interface rpi_renderer_backend_egl_interface = {
     },
 };
 
-struct wpe_renderer_backend_egl_target_interface rpi_renderer_backend_egl_target_interface = {
+struct wpe_renderer_backend_egl_target_interface bcm_rpi_renderer_backend_egl_target_interface = {
     // create
     [](struct wpe_renderer_backend_egl_target* target, int host_fd) -> void*
     {
@@ -46,7 +46,7 @@ struct wpe_renderer_backend_egl_target_interface rpi_renderer_backend_egl_target
     },
 };
 
-struct wpe_renderer_backend_egl_offscreen_target_interface rpi_renderer_backend_egl_offscreen_target_interface = {
+struct wpe_renderer_backend_egl_offscreen_target_interface bcm_rpi_renderer_backend_egl_offscreen_target_interface = {
     // create
     []() -> void*
     {

@@ -4,7 +4,7 @@
 #include <cstring>
 
 #ifdef BACKEND_BCM_RPI
-#include "rpi/interfaces.h"
+#include "bcm-rpi/interfaces.h"
 #endif
 
 #ifdef BACKEND_INTELCE
@@ -19,14 +19,14 @@ struct wpe_loader_interface _wpe_loader_interface = {
 
 #ifdef BACKEND_BCM_RPI
         if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_interface"))
-            return &rpi_renderer_backend_egl_interface;
+            return &bcm_rpi_renderer_backend_egl_interface;
         if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_target_interface"))
-            return &rpi_renderer_backend_egl_target_interface;
+            return &bcm_rpi_renderer_backend_egl_target_interface;
         if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_offscreen_target_interface"))
-            return &rpi_renderer_backend_egl_offscreen_target_interface;
+            return &bcm_rpi_renderer_backend_egl_offscreen_target_interface;
 
         if (!std::strcmp(object_name, "_wpe_view_backend_interface"))
-            return &rpi_view_backend_interface;
+            return &bcm_rpi_view_backend_interface;
 #endif
 
 #ifdef BACKEND_INTELCE

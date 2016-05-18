@@ -1,5 +1,5 @@
-#ifndef rpi_interfaces_h
-#define rpi_interfaces_h
+#ifndef bcm_rpi_interfaces_h
+#define bcm_rpi_interfaces_h
 
 #include <wpe/renderer.h>
 #include <wpe/view-backend.h>
@@ -8,14 +8,14 @@
 extern "C" {
 #endif
 
-extern struct wpe_renderer_backend_egl_interface rpi_renderer_backend_egl_interface;
-extern struct wpe_renderer_backend_egl_target_interface rpi_renderer_backend_egl_target_interface;
-extern struct wpe_renderer_backend_egl_offscreen_target_interface rpi_renderer_backend_egl_offscreen_target_interface;
+extern struct wpe_renderer_backend_egl_interface bcm_rpi_renderer_backend_egl_interface;
+extern struct wpe_renderer_backend_egl_target_interface bcm_rpi_renderer_backend_egl_target_interface;
+extern struct wpe_renderer_backend_egl_offscreen_target_interface bcm_rpi_renderer_backend_egl_offscreen_target_interface;
 
-extern struct wpe_view_backend_interface rpi_view_backend_interface;
+extern struct wpe_view_backend_interface bcm_rpi_view_backend_interface;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // rpi_interfaces_h
+#endif // bcm_rpi_interfaces_h
