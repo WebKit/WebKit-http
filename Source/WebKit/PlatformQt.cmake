@@ -1,9 +1,5 @@
 include(ECMGenerateHeaders)
 
-if (NOT MSVC)
-    add_definitions("-include WebKitPrefix.h")
-endif ()
-
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${DERIVED_SOURCES_DIR}"

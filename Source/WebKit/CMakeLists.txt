@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
 
+# TODO: Unify usage of prefix headers and PCH with WebCore and WebKit2
+macro(ADD_WEBKIT_PREFIX_HEADER _target _header)
+    get_target_property(OLD_COMPILE_FLAGS ${_target} COMPILE_FLAGS)
+    if (${OLD_COMPILE_FLAGS} STREQUAL "OLD_COMPILE_FLAGS-NOTFOUND")
+        set(OLD_COMPILE_FLAGS "")
+    endif ()
+    set_target_properties(${_target} PROPERTIES COMPILE_FLAGS "${OLD_COMPILE_FLAGS} -include ${_header}")
+endmacro()
+
 set(WebKit_SOURCES
     Storage/StorageAreaImpl.cpp
     Storage/StorageAreaSync.cpp
@@ -58,4 +67,8 @@ install(TARGETS WebKit DESTINATION "${LIB_INSTALL_DIR}")
 add_dependencies(WebKit WebCore)
 if (WIN32)
     add_dependencies(WebKit WebKitGUID)
+endif ()
+
+if (NOT MSVC AND ${PORT} STREQUAL "Qt")
+    ADD_WEBKIT_PREFIX_HEADER(WebKit "${WEBKIT_DIR}/qt/WebKitPrefix.h")
 endif ()
