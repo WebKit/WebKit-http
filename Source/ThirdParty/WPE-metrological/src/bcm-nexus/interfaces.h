@@ -1,7 +1,7 @@
 #ifndef bcm_nexus_interfaces_h
 #define bcm_nexus_interfaces_h
 
-#include <wpe/renderer.h>
+#include <wpe/renderer-backend.h>
 #include <wpe/view-backend.h>
 
 #ifdef __cplusplus

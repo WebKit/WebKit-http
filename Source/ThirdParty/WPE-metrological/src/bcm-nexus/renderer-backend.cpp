@@ -1,4 +1,4 @@
-#include <wpe/renderer.h>
+#include <wpe/renderer-backend.h>
 
 extern "C" {
 
