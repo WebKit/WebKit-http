@@ -1,4 +1,3 @@
-
 add_definitions(-DBACKEND_INTELCE=1)
 
 list(APPEND WPE_METROLOGICAL_SOURCES
