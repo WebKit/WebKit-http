@@ -27,6 +27,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "CrossThreadTask.h"
 #include "IDBBackingStore.h"
 #include "IDBBindingUtilities.h"
 #include "IDBDatabaseIdentifier.h"
@@ -41,6 +42,7 @@
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
+#include <wtf/MessageQueue.h>
 #include <wtf/Ref.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -96,10 +98,11 @@ public:
     void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count, GetResultCallback);
     void commitTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
     void abortTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
-    void didFinishHandlingVersionChange(UniqueIDBDatabaseTransaction&);
+    void didFinishHandlingVersionChange(UniqueIDBDatabaseConnection&, const IDBResourceIdentifier& transactionIdentifier);
     void transactionDestroyed(UniqueIDBDatabaseTransaction&);
     void connectionClosedFromClient(UniqueIDBDatabaseConnection&);
     void didFireVersionChangeEvent(UniqueIDBDatabaseConnection&, const IDBResourceIdentifier& requestIdentifier);
+    void openDBRequestCancelled(const IDBResourceIdentifier& requestIdentifier);
 
     void enqueueTransaction(Ref<UniqueIDBDatabaseTransaction>&&);
 
@@ -174,6 +177,8 @@ private:
     void performGetResultCallback(uint64_t callbackIdentifier, const IDBError&, const IDBGetResult&);
     void performCountCallback(uint64_t callbackIdentifier, const IDBError&, uint64_t);
 
+    void forgetErrorCallback(uint64_t callbackIdentifier);
+
     bool hasAnyPendingCallbacks() const;
     bool isCurrentlyInUse() const;
     bool hasUnfinishedTransactions() const;
@@ -184,10 +189,15 @@ private:
 
     bool prepareToFinishTransaction(UniqueIDBDatabaseTransaction&);
 
+    void postDatabaseTask(std::unique_ptr<CrossThreadTask>&&);
+    void postDatabaseTaskReply(std::unique_ptr<CrossThreadTask>&&);
+    void executeNextDatabaseTask();
+    void executeNextDatabaseTaskReply();
+
     IDBServer& m_server;
     IDBDatabaseIdentifier m_identifier;
     
-    Deque<Ref<ServerOpenDBRequest>> m_pendingOpenDBRequests;
+    ListHashSet<RefPtr<ServerOpenDBRequest>> m_pendingOpenDBRequests;
     RefPtr<ServerOpenDBRequest> m_currentOpenDBRequest;
 
     ListHashSet<RefPtr<UniqueIDBDatabaseConnection>> m_openDatabaseConnections;
@@ -222,6 +232,9 @@ private:
     HashSet<uint64_t> m_objectStoreWriteTransactions;
 
     bool m_deleteBackingStoreInProgress { false };
+
+    MessageQueue<CrossThreadTask> m_databaseQueue;
+    MessageQueue<CrossThreadTask> m_databaseReplyQueue;
 };
 
 } // namespace IDBServer

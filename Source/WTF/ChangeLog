@@ -1,3 +1,184 @@
+2016-05-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r192855): Math.random() always produces the same first 7 decimal points the first two invocations
+        https://bugs.webkit.org/show_bug.cgi?id=157805
+        <rdar://problem/26327851>
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/WeakRandom.h:
+        (WTF::WeakRandom::setSeed):
+        Advance once to randomize the 32bit seed across the 128bit state
+        and avoid re-using 64bits of state in the second advance.
+
+2016-05-17  Dean Jackson  <dino@apple.com>
+
+        Remove ES6_GENERATORS flag
+        https://bugs.webkit.org/show_bug.cgi?id=157815
+        <rdar://problem/26332894>
+
+        Reviewed by Geoffrey Garen.
+
+        This flag isn't needed. Generators are enabled everywhere and
+        part of a stable specification.
+
+        * wtf/FeatureDefines.h:
+
+2016-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should know about Language
+        https://bugs.webkit.org/show_bug.cgi?id=157756
+
+        Reviewed by Geoffrey Garen.
+
+        This contains two changes:
+
+        - Move everything that WebCore's logic for getting the platform user preferred language
+          depended on into WTF. This means CFBundleSPI.h and BlockObjCExceptions.h|cpp.
+
+        - Move WebCore::platformUserPreferredLanguages() to WTF::platformUserPreferredLanguages().
+          This is needed by https://bugs.webkit.org/show_bug.cgi?id=157755, which will make JSC
+          use this to detect the platform user preferred language when running standalone.
+
+        Moving the dependencies accounts for a huge chunk of this change, since we have to rewire
+        all of the references to those headers in all of WebKit.
+
+        Moving platformUserPreferredLanguages() is mostly easy except for the weird callback.
+        That function would call languageDidChange(), which needs to stay in WebCore. So, this
+        gives WebCore the ability to register a languageDidChange callback. Other than this new
+        logic, the code being added to WTF is just being lifted out of WebCore.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BlockObjCExceptions.h: Added.
+        * wtf/BlockObjCExceptions.mm: Added.
+        (ReportBlockedObjCException):
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformUserPreferredLanguages.h: Added.
+        * wtf/PlatformUserPreferredLanguagesMac.mm: Added.
+        (WTF::setPlatformUserPreferredLanguagesChangedCallback):
+        (WTF::preferredLanguages):
+        (+[WTFLanguageChangeObserver languagePreferencesDidChange:]):
+        (WTF::httpStyleLanguageCode):
+        (WTF::isValidICUCountryCode):
+        (WTF::platformUserPreferredLanguages):
+        * wtf/PlatformUserPreferredLanguagesUnix.cpp: Added.
+        (WTF::setPlatformUserPreferredLanguagesChangedCallback):
+        (WTF::platformLanguage):
+        (WTF::platformUserPreferredLanguages):
+        * wtf/PlatformUserPreferredLanguagesWin.cpp: Added.
+        (WTF::setPlatformUserPreferredLanguagesChangedCallback):
+        (WTF::localeInfo):
+        (WTF::platformLanguage):
+        (WTF::platformUserPreferredLanguages):
+        * wtf/PlatformWin.cmake:
+        * wtf/spi/cf: Added.
+        * wtf/spi/cf/CFBundleSPI.h: Added.
+
+2016-05-17  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        DOMPromise should only restrict the resolution type
+        https://bugs.webkit.org/show_bug.cgi?id=157307
+
+        Reviewed by Darin Adler.
+
+        * wtf/Ref.h: Adding static constexpr to ease detection of Ref for templates.
+        * wtf/RefPtr.h: Ditto.
+
+2016-05-16  Michael Saboff  <msaboff@apple.com>
+
+        ARMV7K: Crash at JavaScriptCore: WTF::ScopedLambdaFunctor<bool
+        https://bugs.webkit.org/show_bug.cgi?id=157781
+
+        Reviewed by Filip Pizlo.
+
+        Replaced use of ScopedLambda in locking code with std::function much as it was
+        before change set 199760 to work around what appears to be a clang compiler issue.
+
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionallyImpl):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkAll):
+        (WTF::ParkingLot::forEach):
+        (WTF::ParkingLot::unparkOneImpl): Deleted.
+        (WTF::ParkingLot::forEachImpl): Deleted.
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne): Deleted.
+        (WTF::ParkingLot::forEach): Deleted.
+
+2016-05-15  Chris Dumez  <cdumez@apple.com>
+
+        Use more references in JS wrappers related code
+        https://bugs.webkit.org/show_bug.cgi?id=157721
+
+        Reviewed by Darin Adler.
+
+        Add new static_reference_cast() overload that takes a Ref<U>&& in
+        in order to downcast Ref<> types without causing ref-counting
+        churn.
+
+        * wtf/Ref.h:
+        (WTF::static_reference_cast):
+
+2016-05-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r200837.
+
+        Seems to have regressed Speedometer and JetStream on iOS
+
+        Reverted changeset:
+
+        "DOMPromise should only restrict the resolution type"
+        https://bugs.webkit.org/show_bug.cgi?id=157307
+        http://trac.webkit.org/changeset/200837
+
+2016-05-13  Beth Dakin  <bdakin@apple.com>
+
+        Add dyldSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=157401
+        -and corresponding-
+        rdar://problem/26253396
+
+        Reviewed by Darin Adler.
+
+        New header for dyld spi.
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/spi/darwin/dyldSPI.h: Added.
+
+2016-05-13  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        DOMPromise should only restrict the resolution type
+        https://bugs.webkit.org/show_bug.cgi?id=157307
+
+        Reviewed by Darin Adler.
+
+        * wtf/Ref.h: Adding static constexpr to ease detection of Ref for templates.
+        * wtf/RefPtr.h: Ditto.
+
+2016-05-12  Daniel Bates  <dabates@apple.com>
+
+        Use SecTask SPI to retrieve code signing identifier for user directory suffix
+        https://bugs.webkit.org/show_bug.cgi?id=157570
+
+        Reviewed by Darin Adler.
+        <rdar://problem/25706517>
+
+        Forward declare SPI SecTaskCopySigningIdentifier().
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+
+2016-05-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(ES6_ARROWFUNCTION_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=157564
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
 2016-05-10  Filip Pizlo  <fpizlo@apple.com>
 
         Internal JSC profiler should have a timestamped log of events for each code block

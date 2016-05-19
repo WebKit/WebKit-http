@@ -145,6 +145,9 @@ webkit.org/b/142208 inspector/timeline/exception-in-injected-script-while-record
 
 webkit.org/b/137130 inspector/replay [ Skip ]
 
+# This test is fast enough in release but quite slow in debug builds.
+[ Debug ] inspector/debugger/debugger-stack-overflow.html [ Skip ]
+
 # Doesn't work yet, relies on network replay functionality (webkit.org/b/130728, webkit.org/b/129391)
 webkit.org/b/131318 http/tests/inspector/replay/document-last-modified-fallback-value.html [ Skip ]
 
@@ -877,13 +880,6 @@ webkit.org/b/94458 http/tests/security/MessagePort/event-listener-context.html [
 # Our IDL parser test harness is not what this test expects
 imported/w3c/web-platform-tests/IndexedDB/interfaces.html [ Skip ]
 
-# W3C IDB tests where the test is wrong (the spec, other browsers, and WebKit all agree)
-# Covered by https://github.com/w3c/web-platform-tests/issues/2456
-imported/w3c/web-platform-tests/IndexedDB/idbindex_get7.htm [ Failure ]
-imported/w3c/web-platform-tests/IndexedDB/idbindex_getKey7.htm [ Failure ]
-imported/w3c/web-platform-tests/IndexedDB/idbindex_openCursor2.htm [ Failure ]
-imported/w3c/web-platform-tests/IndexedDB/idbindex_openKeyCursor3.htm [ Failure ]
-
 # Times out for unexplored reasons                                                             
 storage/indexeddb/database-quota.html [ Skip ]
 storage/indexeddb/database-quota-private.html [ Skip ]
@@ -912,12 +908,6 @@ webkit.org/b/154619 storage/indexeddb/odd-strings.html [ Skip ]
 # IDB workers test fails - The worker's attempt to open the database creates a new UniqueIDBDatabase
 # Could be a SessionID difference? Something is giving the worker a different namespace.
 storage/indexeddb/dont-commit-on-blocked-private.html [ Failure ]
-
-# IDB workers tests that timeout
-storage/indexeddb/pending-version-change-stuck.html
-storage/indexeddb/pending-version-change-stuck-private.html
-storage/indexeddb/pending-version-change-stuck-works-with-terminate.html
-storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html
 
 # Test's behavior specific to Legacy IDB with LevelDB backend
 # Modern IDB is spec-compliant without supporting this behavior
@@ -953,7 +943,7 @@ webkit.org/b/155019 mathml/presentation/menclose-notation-attribute-change-value
 ### END OF IndexedDB failures
 ########################################
 
-# RTL Scrollbars are only implemented on certain versions of OS X
+# RTL Scrollbars are only implemented for GTK+ and certain versions of OS X
 fast/scrolling/rtl-scrollbars.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-simple.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-overflow-contents.html [ ImageOnlyFailure ]
@@ -986,3 +976,5 @@ webkit.org/b/156099 http/tests/security/anchor-download-allow-blob.html [ Failur
 webkit.org/b/156100 http/tests/security/anchor-download-block-crossorigin.html [ Failure ]
 
 webkit.org/b/156631 fast/text/font-face-javascript.html [ Pass Crash Failure ]
+
+webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ Pass Timeout ]

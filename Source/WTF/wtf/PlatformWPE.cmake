@@ -1,5 +1,8 @@
 list(APPEND WTF_SOURCES
+    PlatformUserPreferredLanguagesUnix.cpp
+
     generic/WorkQueueGeneric.cpp
+
     glib/GRefPtr.cpp
     glib/GLibUtilities.cpp
     glib/MainThreadGLib.cpp

@@ -1,3 +1,1256 @@
+2016-05-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Update platform/mac/fast/text/sticky-typesetting-features.html
+        https://bugs.webkit.org/show_bug.cgi?id=157851
+
+        Reviewed by Simon Fraser.
+
+        Kerning and ligatures are enabled by default now.
+
+        * platform/mac/fast/text/sticky-typesetting-features-expected.png:
+        * platform/mac/fast/text/sticky-typesetting-features-expected.txt:
+        * platform/mac/fast/text/sticky-typesetting-features.html:
+
+2016-05-18  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r200534) Command-+ no longer zooms pages 
+        https://bugs.webkit.org/show_bug.cgi?id=157826
+        rdar://problem/26334636
+
+        Reviewed by Dean Jackson.
+
+        Need to call internals.settings.setTextAutosizingEnabled(true) earlier in some tests.
+
+        * fast/text-autosizing/ios/line-height-text-autosizing.html:
+        * fast/text-autosizing/ios/percent-adjust-length-line-height.html:
+        * fast/text-autosizing/ios/percent-adjust-number-line-height.html:
+        * fast/text-autosizing/ios/percent-adjust-percent-line-height.html:
+        * fast/text-autosizing/mac/text-size-adjust-text-zoom-expected.html: Added.
+        * fast/text-autosizing/mac/text-size-adjust-text-zoom.html: Added.
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-05-18  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/meter-element.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=115633
+
+        Reviewed by Chris Fleizach.
+
+        Seven new test cases were added to meter-element.html for additional
+        coverage. Also updated the ATK expectations for spinbutton-value.html
+        to reflect that we are now exposing the value of aria-valuetext.
+
+        * accessibility/meter-element.html: New test cases added.
+        * platform/gtk/TestExpectations: Unskip the previously-failing test.
+        * platform/gtk/accessibility/meter-element-expected.txt: Updated.
+        * platform/gtk/accessibility/spinbutton-value-expected.txt: Updated.
+        * platform/mac/accessibility/meter-element-expected.txt: Updated.
+
+2016-05-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/debugger/command-line-api-exception.html after r201080
+
+        Unreviewed test gardening.
+
+        * inspector/debugger/command-line-api-exception-expected.txt:
+
+2016-05-18  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Sync DOM exception types with WebIDL and update promise rejections
+        https://bugs.webkit.org/show_bug.cgi?id=157792
+
+        Reviewed by Eric Carlson.
+
+        * fast/dom/insertAdjacentHTML-DocumentFragment-crash-expected.txt:
+        * fast/inspector-support/uncaught-dom1-exception-expected.txt:
+        * fast/inspector-support/uncaught-dom3-exception-expected.txt:
+        * fast/inspector-support/uncaught-dom8-exception-expected.txt:
+        * fast/mediastream/MediaDevices-getUserMedia-expected.txt:
+        * fast/mediastream/MediaDevices-getUserMedia.html:
+        * fast/mediastream/delayed-permission-denied-expected.txt:
+        * fast/mediastream/delayed-permission-denied.html:
+        * fast/mediastream/error-expected.txt:
+        * fast/mediastream/error.html:
+        * fast/mediastream/getusermedia-expected.txt:
+        * fast/mediastream/mock-media-source-expected.txt:
+        * fast/regions/selection/crash-deselect-expected.txt:
+        * http/tests/media/media-stream/disconnected-frame-permission-denied-expected.txt:
+        * http/tests/media/media-stream/disconnected-frame-permission-denied.html:
+        * inspector/debugger/regress-133182-expected.txt:
+        * inspector/debugger/setPauseOnExceptions-all-expected.txt:
+        * inspector/debugger/setPauseOnExceptions-none-expected.txt:
+        * inspector/debugger/setPauseOnExceptions-uncaught-expected.txt:
+        * platform/efl/fast/dynamic/015-expected.txt:
+        * platform/gtk/fast/dynamic/015-expected.txt:
+        * platform/ios-simulator/fast/dynamic/015-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-ltr-2-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-ltr-2-left-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-ltr-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-ltr-right-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-rtl-2-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-rtl-2-left-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-rtl-expected.txt:
+        * platform/ios-simulator-wk2/editing/selection/caret-rtl-right-expected.txt:
+        * platform/mac/fast/dynamic/015-expected.txt:
+        * platform/win/fast/dynamic/015-expected.txt:
+
+2016-05-18  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Use WebCore Accessibility's AccessibilityText for AtkObject name and description
+        https://bugs.webkit.org/show_bug.cgi?id=157822
+
+        Reviewed by Chris Fleizach.
+
+        Now that the exposure is correct, the Layout Tests needed to be adjusted accordingly because asking
+        for the "AXDescription" gives you the AXDescription on the Mac and the AtkObject description in
+        GNU/Linux. But what the Mac calls a "description" is what ATK calls a "name." What ATK calls a
+        "description" is what the Mac calls "help."
+
+        Ultimately our Layout Tests and/or our platform TestRunner API should be modified to deal with
+        with these differences more gracefully. (Bug https://bugs.webkit.org/show_bug.cgi?id=157187 has
+        been opened for that task.) In the meantime, the existing tests have been given platform checks
+        to ask for the right property on each platform. This was done in such a way as to not require
+        other (non-ATK) platforms change their current expectations files.
+
+        In addition to the above, three previously-failing tests were corrected and are now passing.
+
+        * accessibility/alt-tag-on-image-with-nonimage-role.html:
+        * accessibility/aria-help.html:
+        * accessibility/aria-label.html:
+        * accessibility/aria-labeled-with-hidden-node.html:
+        * accessibility/aria-labelledby-on-input.html:
+        * accessibility/aria-labelledby-overrides-aria-labeledby.html:
+        * accessibility/aria-labelledby-overrides-label.html:
+        * accessibility/aria-labelledby-stay-within.html:
+        * accessibility/aria-labelledby-with-descendants.html:
+        * accessibility/aria-namefrom-author.html:
+        * accessibility/aria-option-role.html:
+        * accessibility/canvas-description-and-role.html:
+        * accessibility/empty-image-with-title.html:
+        * accessibility/fieldset-element.html:
+        * accessibility/focusable-div.html:
+        * accessibility/gtk/no-notification-for-unrendered-iframe-children-expected.txt:
+        * accessibility/gtk/no-notification-for-unrendered-iframe-children.html:
+        * accessibility/gtk/title-and-alt-expected.txt:
+        * accessibility/gtk/title-and-alt.html:
+        * accessibility/help-text.html:
+        * accessibility/img-alt-tag-only-whitespace-expected.txt:
+        * accessibility/img-alt-tag-only-whitespace.html:
+        * accessibility/img-aria-button-alt-tag.html:
+        * accessibility/img-fallsback-to-title.html:
+        * accessibility/input-image-alt.html:
+        * accessibility/loading-iframe-sends-notification.html:
+        * accessibility/media-element.html:
+        * accessibility/radio-button-title-label.html:
+        * accessibility/self-referencing-aria-labelledby.html:
+        * accessibility/svg-bounds.html:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/alt-tag-on-image-with-nonimage-role-expected.txt: Added.
+        * platform/gtk/accessibility/aria-help-expected.txt:
+        * platform/gtk/accessibility/aria-hidden-negates-no-visibility-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labeled-with-hidden-node-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labelledby-on-input-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labelledby-overrides-aria-label-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labelledby-overrides-aria-labeledby-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labelledby-overrides-label-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labelledby-with-descendants-expected.txt: Added.
+        * platform/gtk/accessibility/aria-namefrom-author-expected.txt: Added.
+        * platform/gtk/accessibility/aria-option-role-expected.txt: Added.
+        * platform/gtk/accessibility/aria-switch-text-expected.txt:
+        * platform/gtk/accessibility/canvas-description-and-role-expected.txt: Added.
+        * platform/gtk/accessibility/empty-image-with-title-expected.txt: Added.
+        * platform/gtk/accessibility/fieldset-element-expected.txt: Added.
+        * platform/gtk/accessibility/focusable-div-expected.txt: Added.
+        * platform/gtk/accessibility/help-text-expected.txt: Added.
+        * platform/gtk/accessibility/image-link-expected.txt:
+        * platform/gtk/accessibility/image-map1-expected.txt:
+        * platform/gtk/accessibility/image-map2-expected.txt:
+        * platform/gtk/accessibility/image-with-alt-and-map-expected.txt:
+        * platform/gtk/accessibility/img-alt-tag-only-whitespace-expected.txt: Added.
+        * platform/gtk/accessibility/img-aria-button-alt-tag-expected.txt: Added.
+        * platform/gtk/accessibility/img-fallsback-to-title-expected.txt:
+        * platform/gtk/accessibility/input-image-alt-expected.txt: Added.
+        * platform/gtk/accessibility/media-element-expected.txt:
+        * platform/gtk/accessibility/radio-button-title-label-expected.txt:
+        * platform/gtk/accessibility/self-referencing-aria-labelledby-expected.txt: Added.
+        * platform/gtk/accessibility/svg-bounds-expected.txt: Added.
+
+2016-05-17  Saam barati  <sbarati@apple.com>
+
+        LayoutTest inspector/debugger/tail-recursion.html failing on WK2 debug
+        https://bugs.webkit.org/show_bug.cgi?id=157801
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * inspector/debugger/tail-recursion.html:
+
+2016-05-17  Nan Wang  <n_wang@apple.com>
+
+        AX: Adding children incorrectly when there are nested inline continuations
+        https://bugs.webkit.org/show_bug.cgi?id=157818
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/nested-inline-elements-children-expected.txt: Added.
+        * accessibility/mac/nested-inline-elements-children.html: Added.
+
+2016-05-17  Dean Jackson  <dino@apple.com>
+
+        Add media query support for wide gamut displays on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=157824
+        <rdar://problem/26333137>
+
+        Reviewed by Simon Fraser.
+
+        Remove the check for sRGB, since it is confusingly false
+        on browsers that don't implement this query, and is likely
+        to be dropped from the specification.
+
+        Also, make the text readable.
+
+        * fast/media/mq-color-gamut-expected.html:
+        * fast/media/mq-color-gamut.html:
+
+2016-05-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r192855): Math.random() always produces the same first 7 decimal points the first two invocations
+        https://bugs.webkit.org/show_bug.cgi?id=157805
+        <rdar://problem/26327851>
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dom/math-random-initial-values-expected.txt: Added.
+        * js/dom/math-random-initial-values.html: Added.
+        * js/resources/math-random-initial-values-iframe.html: Added.
+        Test that less then 5% of the time, early Math.random invocations
+        produce very similiar values. Before this change we were failing
+        100%, but after we see similiar values mostly around 0-3%.
+
+2016-05-17  Keith Miller  <keith_miller@apple.com>
+
+        Rollout r200426 since it causes PLT regressions.
+        https://bugs.webkit.org/show_bug.cgi?id=157812
+
+        Unreviewed rollout of r200426 since the bots see a ~.6% PLT regression from the patch.
+
+2016-05-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Filtering huge data grids should yield occasionally so the UI remains responsive
+        https://bugs.webkit.org/show_bug.cgi?id=157702
+        <rdar://problem/26282898>
+
+        Based on a patch by Matt Baker <mattbaker@apple.com> on 2016-05-16
+        Reviewed by Timothy Hatcher.
+
+        Add tests for new Inspector utility class YieldableTask.
+
+        * inspector/unit-tests/yieldable-task-expected.txt: Added.
+        * inspector/unit-tests/yieldable-task.html: Added.
+
+2016-05-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        console namespace breaks putting properties on console.__proto__
+        https://bugs.webkit.org/show_bug.cgi?id=157782
+        <rdar://problem/26250526>
+
+        Reviewed by Geoffrey Garen.
+
+        * js/console-expected.txt:
+        * js/console.html:
+
+2016-05-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201017.
+        https://bugs.webkit.org/show_bug.cgi?id=157799
+
+        Rebaselining the test was not the right solution. (Requested
+        by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Rebaseline inspector/debugger/tail-recursion.html"
+        http://trac.webkit.org/changeset/201017
+
+2016-05-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/debugger/tail-recursion.html
+
+        Unreviewed test gardening.
+
+        * inspector/debugger/tail-recursion-expected.txt:
+
+2016-05-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r54729): Line breaking in complex mixed-direction text is inconsistent across page refreshes
+        https://bugs.webkit.org/show_bug.cgi?id=157783
+        <rdar://problem/22908924>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/complex-mixed-direction-line-breaking-expected.html: Added.
+        * fast/text/complex-mixed-direction-line-breaking.html: Added.
+        * fast/text/resources/Gulf-regular.ttf: Added.
+
+2016-05-16  Saam barati  <sbarati@apple.com>
+
+        ShadowChicken crashes when reading a scope from the frame during a stack overflow exception
+        https://bugs.webkit.org/show_bug.cgi?id=157770
+
+        Reviewed by Filip Pizlo.
+
+        * inspector/debugger/debugger-stack-overflow-expected.txt: Added.
+        * inspector/debugger/debugger-stack-overflow.html: Added.
+        * inspector/debugger/resources/stack-overflow.js: Added.
+        (foo):
+        (start):
+
+2016-05-16  Brent Fulgham  <bfulgham@apple.com>
+
+        heap use-after-free at WebCore::TimerBase::heapPopMin()
+        https://bugs.webkit.org/show_bug.cgi?id=157742
+        <rdar://problem/26236778>
+
+        Reviewed by Simon Fraser.
+
+        * fast/frames/crash-during-iframe-load-stop-expected.txt: Added.
+        * fast/frames/crash-during-iframe-load-stop.html: Added.
+        * fast/frames/resources/crash-during-iframe-load-stop-inner.html: Added.
+        * fast/frames/resources/crash-during-iframe-load-stop.html: Added.
+
+2016-05-16  Saam barati  <sbarati@apple.com>
+
+        Hook up ShadowChicken to the debugger to show tail deleted frames
+        https://bugs.webkit.org/show_bug.cgi?id=156685
+        <rdar://problem/25770521>
+
+        Reviewed by Filip Pizlo and Mark Lam and Joseph Pecoraro.
+
+        * inspector/debugger/resources/tail-deleted-frames-this-value.js: Added.
+        (a):
+        (b):
+        * inspector/debugger/resources/tail-deleted-frames.js: Added.
+        (a):
+        (b):
+        (c):
+        (startABC):
+        * inspector/debugger/resources/tail-recursion.js: Added.
+        (recurse):
+        (startRecurse):
+        * inspector/debugger/tail-deleted-frames-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames-this-value-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames-this-value.html: Added.
+        * inspector/debugger/tail-deleted-frames.html: Added.
+        * inspector/debugger/tail-recursion-expected.txt: Added.
+        * inspector/debugger/tail-recursion.html: Added.
+
+2016-05-16  Aaron Chu  <aaron_chu@apple.com>
+
+        REGRESSION (r200441): Yahoo sports, finance and news pages automatically scroll
+        https://bugs.webkit.org/show_bug.cgi?id=157692
+        <rdar://problem/26231897>
+
+        Reviewed by Eric Carlson.
+
+        Added Layout test to make sure that the page does not scroll automatically because
+        of the focus() on showControlsButton in the video shadow DOM.
+
+        * media/video-controls-to-not-scroll-page-on-load-expected.txt: Added.
+        * media/video-controls-to-not-scroll-page-on-load.html: Added.
+
+2016-05-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rollout r200924. Caused js/regress/string-replace-generic.html to fail.
+
+        * fast/profiler/anonymous-event-handler-expected.txt: Added.
+        * fast/profiler/anonymous-event-handler.html: Added.
+        * fast/profiler/anonymous-function-called-from-different-contexts-expected.txt: Added.
+        * fast/profiler/anonymous-function-called-from-different-contexts.html: Added.
+        * fast/profiler/anonymous-function-calls-built-in-functions-expected.txt: Added.
+        * fast/profiler/anonymous-function-calls-built-in-functions.html: Added.
+        * fast/profiler/anonymous-function-calls-eval-expected.txt: Added.
+        * fast/profiler/anonymous-function-calls-eval.html: Added.
+        * fast/profiler/anonymous-functions-with-display-names-expected.txt: Added.
+        * fast/profiler/anonymous-functions-with-display-names.html: Added.
+        * fast/profiler/apply-expected.txt: Added.
+        * fast/profiler/apply.html: Added.
+        * fast/profiler/built-in-function-calls-anonymous-expected.txt: Added.
+        * fast/profiler/built-in-function-calls-anonymous.html: Added.
+        * fast/profiler/built-in-function-calls-user-defined-function-expected.txt: Added.
+        * fast/profiler/built-in-function-calls-user-defined-function.html: Added.
+        * fast/profiler/call-expected.txt: Added.
+        * fast/profiler/call-register-leak-expected.txt: Added.
+        * fast/profiler/call-register-leak.html: Added.
+        * fast/profiler/call.html: Added.
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope-expected.txt: Added.
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope.html: Added.
+        * fast/profiler/compare-multiple-profiles-expected.txt: Added.
+        * fast/profiler/compare-multiple-profiles.html: Added.
+        * fast/profiler/constructor-expected.txt: Added.
+        * fast/profiler/constructor.html: Added.
+        * fast/profiler/dead-time-expected.txt: Added.
+        * fast/profiler/dead-time.html: Added.
+        * fast/profiler/document-dot-write-expected.txt: Added.
+        * fast/profiler/document-dot-write.html: Added.
+        * fast/profiler/event-handler-expected.txt: Added.
+        * fast/profiler/event-handler.html: Added.
+        * fast/profiler/execution-context-and-eval-on-same-line-expected.txt: Added.
+        * fast/profiler/execution-context-and-eval-on-same-line.html: Added.
+        * fast/profiler/inline-event-handler-expected.txt: Added.
+        * fast/profiler/inline-event-handler.html: Added.
+        * fast/profiler/many-calls-in-the-same-scope-expected.txt: Added.
+        * fast/profiler/many-calls-in-the-same-scope.html: Added.
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls-expected.txt: Added.
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls.html: Added.
+        * fast/profiler/multiple-and-different-scoped-function-calls-expected.txt: Added.
+        * fast/profiler/multiple-and-different-scoped-function-calls.html: Added.
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function-expected.txt: Added.
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function.html: Added.
+        * fast/profiler/multiple-frames-expected.txt: Added.
+        * fast/profiler/multiple-frames.html: Added.
+        * fast/profiler/named-functions-with-display-names-expected.txt: Added.
+        * fast/profiler/named-functions-with-display-names.html: Added.
+        * fast/profiler/nested-anonymous-functon-expected.txt: Added.
+        * fast/profiler/nested-anonymous-functon.html: Added.
+        * fast/profiler/nested-start-and-stop-profiler-expected.txt: Added.
+        * fast/profiler/nested-start-and-stop-profiler.html: Added.
+        * fast/profiler/no-execution-context-expected.txt: Added.
+        * fast/profiler/no-execution-context.html: Added.
+        * fast/profiler/one-execution-context-expected.txt: Added.
+        * fast/profiler/one-execution-context.html: Added.
+        * fast/profiler/profile-calls-in-included-file-expected.txt: Added.
+        * fast/profiler/profile-calls-in-included-file.html: Added.
+        * fast/profiler/profile-with-no-title-expected.txt: Added.
+        * fast/profiler/profile-with-no-title.html: Added.
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting-expected.txt: Added.
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting.html: Added.
+        * fast/profiler/profiling-from-a-nested-location-expected.txt: Added.
+        * fast/profiler/profiling-from-a-nested-location.html: Added.
+        * fast/profiler/resources/other-frame.html: Added.
+        * fast/profiler/resources/other-window.html: Added.
+        * fast/profiler/resources/profiler-test-JS-resources.js: Added.
+        (endTest):
+        (insertGivenText):
+        (insertNewText):
+        (arrayOperatorFunction):
+        (anonymousFunction):
+        (anotherAnonymousFunction):
+        (intermediaryFunction):
+        (isEqualToFive):
+        (startProfile):
+        (printHeavyProfilesDataWithoutTime):
+        (printProfilesDataWithoutTime):
+        (printProfileNodeWithoutTime):
+        * fast/profiler/simple-event-call-expected.txt: Added.
+        * fast/profiler/simple-event-call.html: Added.
+        * fast/profiler/simple-no-level-change-expected.txt: Added.
+        * fast/profiler/simple-no-level-change.html: Added.
+        * fast/profiler/start-and-stop-profiler-multiple-times-expected.txt: Added.
+        * fast/profiler/start-and-stop-profiler-multiple-times.html: Added.
+        * fast/profiler/start-and-stop-profiling-in-the-same-function-expected.txt: Added.
+        * fast/profiler/start-and-stop-profiling-in-the-same-function.html: Added.
+        * fast/profiler/start-but-dont-stop-profiling-expected.txt: Added.
+        * fast/profiler/start-but-dont-stop-profiling.html: Added.
+        * fast/profiler/stop-profiling-after-setTimeout-expected.txt: Added.
+        * fast/profiler/stop-profiling-after-setTimeout.html: Added.
+        * fast/profiler/stop-then-function-call-expected.txt: Added.
+        * fast/profiler/stop-then-function-call.html: Added.
+        * fast/profiler/throw-exception-from-eval-expected.txt: Added.
+        * fast/profiler/throw-exception-from-eval.html-disabled: Added.
+        * fast/profiler/two-execution-contexts-expected.txt: Added.
+        * fast/profiler/two-execution-contexts.html: Added.
+        * fast/profiler/user-defined-function-calls-built-in-functions-expected.txt: Added.
+        * fast/profiler/user-defined-function-calls-built-in-functions.html: Added.
+        * fast/profiler/window-dot-eval-expected.txt: Added.
+        * fast/profiler/window-dot-eval.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Focus ordering should respect slot elements
+        https://bugs.webkit.org/show_bug.cgi?id=151379
+
+        Reviewed by Antti Koivisto.
+
+        Added regression tests for moving focus by tab and shift+tab across
+        user-defined shadow trees with slots and details element.
+
+        * fast/shadow-dom/focus-across-details-element-expected.txt: Added.
+        * fast/shadow-dom/focus-across-details-element.html: Added.
+        * fast/shadow-dom/focus-navigation-across-slots-expected.txt: Added.
+        * fast/shadow-dom/focus-navigation-across-slots.html: Added.
+
+2016-05-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests for ios-simulator
+
+        Unreviewed test gardening.
+
+        * fast/events/touch/document-create-touch-list-ios-expected.txt:
+        * platform/ios-simulator/ios/touch/construct-TouchList-expected.txt:
+
+2016-05-16  Filip Pizlo  <fpizlo@apple.com>
+
+        FixupPhase should be more eager to demote bit math to untyped
+        https://bugs.webkit.org/show_bug.cgi?id=157746
+
+        Reviewed by Mark Lam.
+
+        * js/regress/object-and-expected.txt: Added.
+        * js/regress/object-and.html: Added.
+        * js/regress/object-int-and-array-expected.txt: Added.
+        * js/regress/object-int-and-array.html: Added.
+        * js/regress/object-lshift-expected.txt: Added.
+        * js/regress/object-lshift.html: Added.
+        * js/regress/object-or-expected.txt: Added.
+        * js/regress/object-or.html: Added.
+        * js/regress/object-rshift-expected.txt: Added.
+        * js/regress/object-rshift.html: Added.
+        * js/regress/object-urshift-expected.txt: Added.
+        * js/regress/object-urshift.html: Added.
+        * js/regress/object-xor-expected.txt: Added.
+        * js/regress/object-xor.html: Added.
+        * js/regress/script-tests/object-and.js: Added.
+        (o.valueOf):
+        * js/regress/script-tests/object-int-and-array.js: Added.
+        (i.o.valueOf):
+        * js/regress/script-tests/object-lshift.js: Added.
+        (o.valueOf):
+        * js/regress/script-tests/object-or.js: Added.
+        (o.valueOf):
+        * js/regress/script-tests/object-rshift.js: Added.
+        (o.valueOf):
+        * js/regress/script-tests/object-urshift.js: Added.
+        (o.valueOf):
+        * js/regress/script-tests/object-xor.js: Added.
+        (o.valueOf):
+
+2016-05-16  Michael Saboff  <msaboff@apple.com>
+
+        RegExp /y flag incorrect handling of mixed-length alternation
+        https://bugs.webkit.org/show_bug.cgi?id=157723
+
+        Reviewed by Filip Pizlo.
+
+        Added tests for alternatives with shorter to longer lengths.
+
+        * js/regexp-sticky-expected.txt:
+        * js/script-tests/regexp-sticky.js:
+
+2016-05-16  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r192098): Content missing after copy and paste to Notes App on retina displays
+        https://bugs.webkit.org/show_bug.cgi?id=157630
+        <rdar://problem/25277577>
+
+        Reviewed by Simon Fraser.
+
+        * http/tests/images/hidpi-srcset-copy-expected.txt: Added.
+        * http/tests/images/hidpi-srcset-copy.html: Added.
+        * http/tests/resources/img-srcset: Added.
+        * http/tests/resources/img-srcset/image1-620x442.jpg: Added.
+        * http/tests/resources/img-srcset/image2-1024x731.jpg: Added.
+        * http/tests/resources/img-srcset/image2-1400x1000.jpg: Added.
+        * http/tests/resources/img-srcset/image2-300x214.jpg: Added.
+        * http/tests/resources/img-srcset/image2-620x442.jpg: Added.
+        * http/tests/resources/img-srcset/image2-840x600.jpg: Added.
+        * http/tests/resources/img-srcset/image3-250x178.jpg: Added.
+        * http/tests/resources/img-srcset/image3-615x438.jpg: Added.
+        * http/tests/resources/img-srcset/image3-620x440.jpg: Added.
+        * http/tests/resources/img-srcset/image3-700x498.jpg: Added.
+        * http/tests/resources/img-srcset/image3-840x598.jpg: Added.
+        * http/tests/resources/img-srcset/image3.jpg: Added.
+        * http/tests/resources/img-srcset/image4-1024x612.jpg: Added.
+        * http/tests/resources/img-srcset/image4-300x179.jpg: Added.
+        * http/tests/resources/img-srcset/image4-620x370.jpg: Added.
+        * http/tests/resources/img-srcset/image4-768x459.jpg: Added.
+        * http/tests/resources/img-srcset/image4-840x502.jpg: Added.
+        * http/tests/resources/img-srcset/image4-940x560.jpg: Added.
+        * platform/efl/TestExpectations: No pasteboard implementation. Skip.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+
+2016-05-16  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] Unreviewed gardening
+
+        Re-mark a failing test as failing. Update the expectations file so
+        that it fails rather than passes unexpectedly.
+
+        * accessibility/gtk/title-and-alt-expected.txt:
+        * platform/gtk/TestExpectations:
+
+2016-05-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r199821): Large animated GIFs with slow network do not animate till the last frame
+        https://bugs.webkit.org/show_bug.cgi?id=157500
+        
+        Reviewed by Darin Adler.
+
+        Ensure the large animated gif will get the correct frameCount even if it
+        is loaded through a slow network.
+
+        * http/tests/misc/resources/large-animated.gif: Added.
+        This is a large animated GIF with 48 frames. The frameCount keeps changing
+        every time a new data block is decoded. Each frame except the last one lasts
+        for 20 ms. The last one lasts for 10 seconds which is similar to setting no-
+        loop to true. I created all the images myself. All the images except the last
+        one are rectangles filled with gradient color so their sizes can be large and
+        get the bug to repro.
+        
+        * http/tests/misc/resources/slow-image-load.pl: Added.
+        * http/tests/misc/resources/slow-png-load.pl: Removed.
+        I wanted to use the slow-png-load.pl but only changing the image mimetype.
+        So I changed its name and I added a new query paramater called 'mimetype'.
+        
+        * http/tests/misc/slow-loading-animated-image-expected.html: Added.
+        * http/tests/misc/slow-loading-animated-image.html: Added.
+        This test loads the animated image in 1 second. It waits for another 1 second
+        to ensure that all the frames are displayed. All we need is to capture the
+        last frame which is distinctly filled with solid green color.
+        
+        * http/tests/misc/slow-loading-image-in-pattern.html:
+        * http/tests/misc/slow-loading-mask.html:
+        Use slow-image-load.pl and pass the image mime type.
+
+2016-05-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Fix some bogus expectations broken by the previous commit
+
+        * platform/gtk/TestExpectations:
+
+2016-05-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] More unreviewed test expectations gardening
+
+        * platform/gtk/TestExpectations:
+
+2016-05-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] More Unreviewed test expectations gardening
+
+        * platform/gtk/TestExpectations:
+
+2016-05-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed test expectations gardening
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2016-05-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove LegacyProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=153565
+
+        Reviewed by Mark Lam.
+
+        * fast/profiler/anonymous-event-handler-expected.txt: Removed.
+        * fast/profiler/anonymous-event-handler.html: Removed.
+        * fast/profiler/anonymous-function-called-from-different-contexts-expected.txt: Removed.
+        * fast/profiler/anonymous-function-called-from-different-contexts.html: Removed.
+        * fast/profiler/anonymous-function-calls-built-in-functions-expected.txt: Removed.
+        * fast/profiler/anonymous-function-calls-built-in-functions.html: Removed.
+        * fast/profiler/anonymous-function-calls-eval-expected.txt: Removed.
+        * fast/profiler/anonymous-function-calls-eval.html: Removed.
+        * fast/profiler/anonymous-functions-with-display-names-expected.txt: Removed.
+        * fast/profiler/anonymous-functions-with-display-names.html: Removed.
+        * fast/profiler/apply-expected.txt: Removed.
+        * fast/profiler/apply.html: Removed.
+        * fast/profiler/built-in-function-calls-anonymous-expected.txt: Removed.
+        * fast/profiler/built-in-function-calls-anonymous.html: Removed.
+        * fast/profiler/built-in-function-calls-user-defined-function-expected.txt: Removed.
+        * fast/profiler/built-in-function-calls-user-defined-function.html: Removed.
+        * fast/profiler/call-expected.txt: Removed.
+        * fast/profiler/call-register-leak-expected.txt: Removed.
+        * fast/profiler/call-register-leak.html: Removed.
+        * fast/profiler/call.html: Removed.
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope-expected.txt: Removed.
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope.html: Removed.
+        * fast/profiler/compare-multiple-profiles-expected.txt: Removed.
+        * fast/profiler/compare-multiple-profiles.html: Removed.
+        * fast/profiler/constructor-expected.txt: Removed.
+        * fast/profiler/constructor.html: Removed.
+        * fast/profiler/dead-time-expected.txt: Removed.
+        * fast/profiler/dead-time.html: Removed.
+        * fast/profiler/document-dot-write-expected.txt: Removed.
+        * fast/profiler/document-dot-write.html: Removed.
+        * fast/profiler/event-handler-expected.txt: Removed.
+        * fast/profiler/event-handler.html: Removed.
+        * fast/profiler/execution-context-and-eval-on-same-line-expected.txt: Removed.
+        * fast/profiler/execution-context-and-eval-on-same-line.html: Removed.
+        * fast/profiler/inline-event-handler-expected.txt: Removed.
+        * fast/profiler/inline-event-handler.html: Removed.
+        * fast/profiler/many-calls-in-the-same-scope-expected.txt: Removed.
+        * fast/profiler/many-calls-in-the-same-scope.html: Removed.
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls-expected.txt: Removed.
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls.html: Removed.
+        * fast/profiler/multiple-and-different-scoped-function-calls-expected.txt: Removed.
+        * fast/profiler/multiple-and-different-scoped-function-calls.html: Removed.
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function-expected.txt: Removed.
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function.html: Removed.
+        * fast/profiler/multiple-frames-expected.txt: Removed.
+        * fast/profiler/multiple-frames.html: Removed.
+        * fast/profiler/named-functions-with-display-names-expected.txt: Removed.
+        * fast/profiler/named-functions-with-display-names.html: Removed.
+        * fast/profiler/nested-anonymous-functon-expected.txt: Removed.
+        * fast/profiler/nested-anonymous-functon.html: Removed.
+        * fast/profiler/nested-start-and-stop-profiler-expected.txt: Removed.
+        * fast/profiler/nested-start-and-stop-profiler.html: Removed.
+        * fast/profiler/no-execution-context-expected.txt: Removed.
+        * fast/profiler/no-execution-context.html: Removed.
+        * fast/profiler/one-execution-context-expected.txt: Removed.
+        * fast/profiler/one-execution-context.html: Removed.
+        * fast/profiler/profile-calls-in-included-file-expected.txt: Removed.
+        * fast/profiler/profile-calls-in-included-file.html: Removed.
+        * fast/profiler/profile-with-no-title-expected.txt: Removed.
+        * fast/profiler/profile-with-no-title.html: Removed.
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting-expected.txt: Removed.
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting.html: Removed.
+        * fast/profiler/profiling-from-a-nested-location-expected.txt: Removed.
+        * fast/profiler/profiling-from-a-nested-location.html: Removed.
+        * fast/profiler/resources/other-frame.html: Removed.
+        * fast/profiler/resources/other-window.html: Removed.
+        * fast/profiler/resources/profiler-test-JS-resources.js: Removed.
+        * fast/profiler/simple-event-call-expected.txt: Removed.
+        * fast/profiler/simple-event-call.html: Removed.
+        * fast/profiler/simple-no-level-change-expected.txt: Removed.
+        * fast/profiler/simple-no-level-change.html: Removed.
+        * fast/profiler/start-and-stop-profiler-multiple-times-expected.txt: Removed.
+        * fast/profiler/start-and-stop-profiler-multiple-times.html: Removed.
+        * fast/profiler/start-and-stop-profiling-in-the-same-function-expected.txt: Removed.
+        * fast/profiler/start-and-stop-profiling-in-the-same-function.html: Removed.
+        * fast/profiler/start-but-dont-stop-profiling-expected.txt: Removed.
+        * fast/profiler/start-but-dont-stop-profiling.html: Removed.
+        * fast/profiler/stop-profiling-after-setTimeout-expected.txt: Removed.
+        * fast/profiler/stop-profiling-after-setTimeout.html: Removed.
+        * fast/profiler/stop-then-function-call-expected.txt: Removed.
+        * fast/profiler/stop-then-function-call.html: Removed.
+        * fast/profiler/throw-exception-from-eval-expected.txt: Removed.
+        * fast/profiler/throw-exception-from-eval.html-disabled: Removed.
+        * fast/profiler/two-execution-contexts-expected.txt: Removed.
+        * fast/profiler/two-execution-contexts.html: Removed.
+        * fast/profiler/user-defined-function-calls-built-in-functions-expected.txt: Removed.
+        * fast/profiler/user-defined-function-calls-built-in-functions.html: Removed.
+        * fast/profiler/window-dot-eval-expected.txt: Removed.
+        * fast/profiler/window-dot-eval.html: Removed.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ToT WebKit doesn't show tooltip on perf dashboard's summary page
+        https://bugs.webkit.org/show_bug.cgi?id=157705
+
+        Reviewed by Darin Adler.
+
+        Added a regression test for finding a tooltip across shadow boundaries.
+
+        * fast/shadow-dom/tooltip-on-composed-tree-expected.txt: Added.
+        * fast/shadow-dom/tooltip-on-composed-tree.html: Added.
+
+2016-05-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Support ArrayBufferViews in the CSS Font Loading API
+        https://bugs.webkit.org/show_bug.cgi?id=157694
+        <rdar://problem/25554267>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/css-font-loading-arraybuffer-expected.txt: Added.
+        * fast/text/css-font-loading-arraybuffer.html: Added.
+
+2016-05-13  Zalan Bujtas  <zalan@apple.com>
+
+        All scrolling height/width values should be integral rounded.
+        https://bugs.webkit.org/show_bug.cgi?id=157687
+
+        Reviewed by Simon Fraser.
+
+        Both clientHeight(Width) and scrollHeight(width) need to be explicitly integral
+        rounded in order to ensure that scrollable content is computed properly.
+        This will evolve into subpixel snapping once we apply subpixel arithmetics on scrolling.
+
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-center-expected.txt:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-justify-expected.txt:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-left-expected.txt:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-right-expected.txt:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-center-expected.txt:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-justify-expected.txt:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-left-expected.txt:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-right-expected.txt:
+
+2016-05-13  Sam Weinig  <sam@webkit.org>
+
+        ScriptController::processingUserGesture should propagate across postMessage boundaries
+        <rdar://problem/26273173>
+        https://bugs.webkit.org/show_bug.cgi?id=157686
+
+        Reviewed by Anders Carlsson.
+
+        * fast/dom/Window/post-message-user-action-expected.txt: Added.
+        * fast/dom/Window/post-message-user-action.html: Added.
+
+2016-05-13  Chris Dumez  <cdumez@apple.com>
+
+        Align window.scroll() / scrollTo() / scrollBy() with the CSSOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=157666
+
+        Reviewed by Darin Adler.
+
+        Update / improve testing coverage for the API.
+
+        * fast/dom/Window/window-scroll-arguments-expected.txt:
+        * fast/dom/Window/window-scroll-arguments.html:
+        * fast/dom/non-numeric-values-numeric-parameters-expected.txt:
+        * fast/dom/script-tests/non-numeric-values-numeric-parameters.js:
+
+2016-05-13  Simon Fraser  <simon.fraser@apple.com>
+
+        cross-fade() rendering doesn't match expectation
+        https://bugs.webkit.org/show_bug.cgi?id=157665
+        rdar://problem/17917708
+
+        Reviewed by Dean Jackson.
+
+        Make css3/images/cross-fade-blending.html a ref test.
+
+        * css3/images/cross-fade-blending-expected.html: Added.
+        * css3/images/cross-fade-blending-expected.png: Removed.
+        * css3/images/cross-fade-blending-expected.txt: Removed.
+        * css3/images/cross-fade-blending.html:
+        * platform/mac/css3/images/cross-fade-blending-expected.png: Removed.
+
+2016-05-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Unprefix -webkit-cross-fade()
+        https://bugs.webkit.org/show_bug.cgi?id=157632
+
+        Reviewed by Darin Adler.
+        
+        * animations/cross-fade-background-image-expected.html:
+        * animations/cross-fade-background-image.html:
+        * animations/cross-fade-border-image-source.html:
+        * animations/cross-fade-list-style-image.html:
+        * animations/cross-fade-webkit-mask-box-image.html:
+        * animations/cross-fade-webkit-mask-image.html:
+        * animations/resources/animation-test-helpers.js:
+        (parseCSSImage):
+        (parseCrossFade):
+        (compareCSSImages):
+        * fast/css/getComputedStyle/computed-style-cross-fade-expected.txt:
+        * fast/css/getComputedStyle/computed-style-cross-fade.html:
+        * transitions/resources/transition-test-helpers.js:
+        (parseCrossFade):
+
+2016-05-13  Yoav Weiss  <yoav@yoav.ws>
+
+        ResourceTiming entries for cached resources and XHR
+        https://bugs.webkit.org/show_bug.cgi?id=157669
+
+        Reviewed by Alex Christensen.
+
+        These tests make sure that cacheable resources as well as XHR based resources
+        have ResourceTiming entries.
+
+        * http/tests/performance/performance-resource-timing-cached-entries-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-cached-entries.html: Added.
+
+2016-05-13  Mark Lam  <mark.lam@apple.com>
+
+        We should have one calleeSaveRegistersBuffer per VMEntryFrame, not one per VM.
+        https://bugs.webkit.org/show_bug.cgi?id=157537
+        <rdar://problem/24794845>
+
+        Reviewed by Michael Saboff.
+
+        * inspector/debugger/regress-133182-expected.txt:
+        - Rebased test results to update line numbers.
+        * platform/mac/TestExpectations:
+        - Unskip the test.
+
+2016-05-13  Doug Russell  <d_russell@apple.com>
+
+        AX: Regressions in undo/redo accessibility from Bug 153361
+        https://bugs.webkit.org/show_bug.cgi?id=157652
+
+        Reviewed by Darin Adler.
+        
+        Use indexForVisiblePosition & visiblePositionForIndex to store selection data
+        so that AccessibilityUndoReplacedText can build valid selection ranges and
+        retrieve strings for AT notifications.
+
+        * accessibility/mac/value-change/value-change-user-info-contenteditable-expected.txt:
+        * accessibility/mac/value-change/value-change-user-info-contenteditable.html:
+        * accessibility/mac/value-change/value-change-user-info-textarea-expected.txt:
+        * accessibility/mac/value-change/value-change-user-info-textarea.html:
+        * accessibility/mac/value-change/value-change-user-info-textfield-expected.txt:
+        * accessibility/mac/value-change/value-change-user-info-textfield.html:
+
+2016-05-13  Nan Wang  <n_wang@apple.com>
+
+        AX: Wrong CharacterOffset from an upstream VisiblePosition
+        https://bugs.webkit.org/show_bug.cgi?id=157644
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/character-offset-from-upstream-position-expected.txt: Added.
+        * accessibility/mac/character-offset-from-upstream-position.html: Added.
+
+2016-05-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/text-autosizing/ios/text-autosizing-after-back.html as a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=157589
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-05-13  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Assertion failure for super() call in arrow function default parameters
+        https://bugs.webkit.org/show_bug.cgi?id=157079
+
+        Reviewed by Saam Barati.
+
+        * js/arrowfunction-lexical-bind-arguments-non-strict-expected.txt:
+        * js/arrowfunction-lexical-bind-this-expected.txt:
+        * js/arrowfunction-supercall-expected.txt:
+        * js/arrowfunction-superproperty-expected.txt:
+        * js/script-tests/arrowfunction-lexical-bind-arguments-non-strict.js:
+        * js/script-tests/arrowfunction-lexical-bind-this.js:
+        * js/script-tests/arrowfunction-supercall.js:
+        * js/script-tests/arrowfunction-superproperty.js:
+
+2016-05-12  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Show auto-repeat line names in ComputedStyle
+        https://bugs.webkit.org/show_bug.cgi?id=157622
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set-expected.txt:
+
+2016-05-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Text shadow sometimes clipped unexpectedly
+        https://bugs.webkit.org/show_bug.cgi?id=108929
+
+        Reviewed by Dean Jackson.
+
+        Add a font which draws dramatically far outside of its layout rect.
+
+        * fast/text/multiple-text-shadow-overflow-layout-rect-expected.html: Added.
+        * fast/text/multiple-text-shadow-overflow-layout-rect.html: Added.
+        * fast/text/resources/font-overflow-layout-rect.svg: Added.
+
+2016-05-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/debugger/command-line-api-exception-nested-catch.html as a flaky timeout on mac
+        https://bugs.webkit.org/show_bug.cgi?id=152487
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-05-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r200601): Crash when using local() and unicode-range in @font-face blocks
+        https://bugs.webkit.org/show_bug.cgi?id=157646
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/text/isLoading-crash-failed-font-expected.txt: Added.
+        * fast/text/isLoading-crash-failed-font.html: Added.
+
+2016-05-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        REGRESSION (r199313): ICBC app: text field In the webview is not tappable
+        https://bugs.webkit.org/show_bug.cgi?id=157396
+        <rdar://problem/25931513>
+
+        Reviewed by David Kilzer.
+
+        The previous test is actually bogus, and therefore modify it to do the
+        real task.
+
+        * fast/loader/iframe-src-invalid-url-expected.txt:
+        * fast/loader/iframe-src-invalid-url.html:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-05-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        indexForVisiblePosition should use the root editable element as the scope
+        https://bugs.webkit.org/show_bug.cgi?id=157611
+
+        Reviewed by Darin Adler.
+
+        Rebaselined tests with progressions.
+
+        * editing/execCommand/crash-indenting-list-item-expected.txt: Now preseves the selection at the beginning of
+        the editable region instead of moving it to the end.
+        * editing/execCommand/format-block-multiple-paragraphs-in-pre-expected.txt: Now preserves selection in more test
+        cases. This test is the one that required the workaround in ApplyBlockElementCommand::doApply. One of the test
+        cases would regress and clear the selection without it.
+        * editing/execCommand/indent-pre-list-expected.txt: Now preserves the selection instead of clearing it.
+
+2016-05-12  Eric Carlson  <eric.carlson@apple.com>
+
+        Adjust "main content" video heuristic
+        https://bugs.webkit.org/show_bug.cgi?id=157532
+
+        Reviewed by Darin Adler.
+
+        * media/video-main-content-allow.html:
+        * media/video-main-content-autoplay-expected.txt: Added.
+        * media/video-main-content-autoplay.html: Added.
+        * media/video-main-content-deny-too-small.html:
+
+2016-05-12  Antoine Quint  <graouts@apple.com>
+
+        Correctly handle prefixed and unprefixed variants in CSSStyleDeclaration
+        https://bugs.webkit.org/show_bug.cgi?id=157569
+        <rdar://problem/26223115>
+
+        Reviewed by Dean Jackson.
+
+        * animations/fill-mode-forwards-zero-duration.html:
+        * animations/play-state-start-paused.html:
+        These two tests incorrectly expected a shorthand property not to reset
+        longhand properties that it covers to their initial values even if left
+        out of the shorthand.
+
+        * animations/unprefixed-properties-expected.txt:
+        * animations/unprefixed-properties.html:
+        This test incorrectly expected that setting an unprefixed property only would
+        lead to reading the prefixed property through the CSSOM return the empty string,
+        rather than the value set on the unprefixed property.
+
+        * fast/css/prefixed-unprefixed-variant-style-declaration-expected.txt: Added.
+        * fast/css/prefixed-unprefixed-variant-style-declaration.html: Added.
+        New test checking that setting one of two of a property's unprefixed and prefixed
+        variants correctly allows to read the style through the CSS OM for both variants,
+        while only serializing the property that was set through cssText.
+
+        * fast/css/shorthand-omitted-initial-value-overrides-shorthand-expected.txt: Added.
+        * fast/css/shorthand-omitted-initial-value-overrides-shorthand.html: Added.
+        New test checking that setting a longhand property and then the shorthand for that
+        longhand correctly resets the initial values, even if they were omitted in the shorthand.
+
+2016-05-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Incorrect parsing when using just 'span" as grid-line value
+        https://bugs.webkit.org/show_bug.cgi?id=157615
+
+        Reviewed by Sergio Villar Senin.
+
+        Add new test case in grid-item-column-row-get-set.html.
+
+        Updated other tests that were using "span" alone, with 2 approaches:
+        - In some of them changing "span" by "span 1" making it valid.
+        - In other changing the expected result to "auto", as it's invalid now.
+
+        * fast/css-grid-layout/grid-item-area-get-set.html:
+        * fast/css-grid-layout/grid-item-bad-named-area-auto-placement.html:
+        * fast/css-grid-layout/grid-item-column-row-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-column-row-get-set.html:
+        * fast/css-grid-layout/grid-item-end-after-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-end-after-get-set.html:
+        * fast/css-grid-layout/grid-item-negative-position-resolution.html:
+        * fast/css-grid-layout/grid-item-start-before-get-set-expected.txt:
+        * fast/css-grid-layout/grid-item-start-before-get-set.html:
+
+2016-05-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CRASH getting internal properties of function with no bound arguments causes
+        https://bugs.webkit.org/show_bug.cgi?id=157613
+        <rdar://problem/26238754>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/runtime/getProperties-expected.txt:
+        * inspector/runtime/getProperties.html:
+        Include coverage for a bound function with no bound arguments.
+
+2016-05-11  Zalan Bujtas  <zalan@apple.com>
+
+        Absolute positioned element is not placed properly when parent becomes the containing block.
+        https://bugs.webkit.org/show_bug.cgi?id=157455
+        <rdar://problem/26212568>
+
+        Reviewed by Simon Fraser.
+
+        When a container becomes a containing block, we need to check if there are any positioned boxes in its subtree
+        in order to "re-parent" them. It basically means that we remove them from RenderBlock::positionedDescendants map
+        and they'll get re-inserted during the next layout correctly.
+        This patch fixes the case when a container becomes the containing block by setting the transform property and its positioned
+        child gets misplaced.  
+
+        * fast/block/containing-block-changes-expected.html: Added.
+        * fast/block/containing-block-changes.html: Added.
+
+2016-05-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a failing expectation on iOS for the test added in r200712
+        since there is no support for eventSender on iOS.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Moving focus by tab could erroneously focus a non-focusable shadow host
+        https://bugs.webkit.org/show_bug.cgi?id=157585
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test for moving focus across iframes.
+
+        Also expanded negative-tabindex-on-shadow-host.html to cover reverse traversal.
+
+        * fast/shadow-dom/focus-on-iframe-expected.txt: Added.
+        * fast/shadow-dom/focus-on-iframe.html: Added.
+        * fast/shadow-dom/negative-tabindex-on-shadow-host-expected.txt:
+        * fast/shadow-dom/negative-tabindex-on-shadow-host.html:
+
+2016-05-11  Darin Adler  <darin@apple.com>
+
+        Change IDBObjectStore.createIndex to take an IDL dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=157520
+
+        Reviewed by Chris Dumez.
+
+        * storage/indexeddb/deleteIndex-bug110792-expected.txt: Updated result.
+        Test is still marked as flaky, but this is the proper expectation now.
+        Discovered this when I accidentally reset results for the whole directory.
+        * storage/indexeddb/deleteIndex-bug110792-private-expected.txt: Ditto.
+
+        * storage/indexeddb/index-basics-expected.txt: Updated to expect the simpler
+        type error that is generated by the bindings code as opposed to the hand written
+        binding. If we want to make this fancier like this for all bindings we can do
+        that the future in the bindings script.
+        * storage/indexeddb/index-basics-private-expected.txt: Ditto.
+        * storage/indexeddb/index-basics-workers-expected.txt: Ditto.
+
+        * storage/indexeddb/keypath-basics-expected.txt: Updated for the change that
+        expects null and undefined the be legal key paths. See below.
+        * storage/indexeddb/keypath-basics-private-expected.txt: Ditto.
+
+        * storage/indexeddb/modern/create-index-failures-expected.txt: Removed
+        expected results that require that we forbid null for the name and key path.
+        See below.
+        * storage/indexeddb/modern/create-index-failures-private-expected.txt: Ditto.
+
+        * storage/indexeddb/modern/resources/create-index-failures.js: Removed the test
+        that expects failure when null is passed for the name and key path. In both
+        cases, the Web IDL and IDB specifications call for the null value to be converted
+        to the string "null", not an exception.
+
+        * storage/indexeddb/resources/keypath-basics.js:
+        (prepareDatabase): Added tests for both undefined and null. Both are legal values for
+        the key path argument to createIndex. The Web IDL and IDB specifications call for
+        them to be converted to the strings "undefined" and "null", not to trigger exceptions.
+        (testInvalidKeyPaths): Removed tests that expect exceptions when calling createIndex
+        with undefined and null.
+
+2016-05-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/dom/getAccessibilityPropertiesForNode.html after r200677
+
+        Unreviewed test gardening.
+
+        * inspector/dom/getAccessibilityPropertiesForNode-expected.txt:
+
+2016-05-11  Chris Dumez  <cdumez@apple.com>
+
+        Update Node::appendChild() / replaceChild() / removeChild() / insertBefore() to take references instead of pointers
+        https://bugs.webkit.org/show_bug.cgi?id=157556
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several tests now that the Node API provides more useful
+        exception messages.
+
+        * fast/dom/Document/replaceChild-null-oldChild-expected.txt:
+        * fast/dom/Document/script-tests/replaceChild-null-oldChild.js:
+        * fast/dom/incompatible-operations-expected.txt:
+        * fast/dom/incompatible-operations.html:
+        * fast/dom/processing-instruction-appendChild-exceptions-expected.txt:
+        * fast/dom/processing-instruction-appendChild-exceptions.xhtml:
+        * fast/dom/timer-clear-interval-in-handler-and-generate-error-expected.txt:
+        * js/dom/dot-node-base-exception-expected.txt:
+        * js/dom/script-tests/dot-node-base-exception.js:
+
+2016-05-11  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: IDBOpenDBRequests that are stop()'ed don't notify the IDBServer of that fact.
+        https://bugs.webkit.org/show_bug.cgi?id=157448
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * storage/indexeddb/pending-version-change-stuck-private-expected.txt:
+        * storage/indexeddb/pending-version-change-stuck-works-with-terminate-expected.txt:
+        * storage/indexeddb/pending-version-change-stuck-works-with-terminate-private-expected.txt:
+
+2016-05-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Improve error messages for accessing arguments.callee and similar getters in strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=157545
+
+        Reviewed by Mark Lam.
+
+        * js/basic-strict-mode-expected.txt:
+        * js/caller-property-expected.txt:
+        * js/script-tests/caller-property.js:
+
+2016-05-11  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r200686.
+
+        Caused a lot of layout test failures
+
+        Reverted changeset:
+
+        "Sites served over insecure connections should not be allowed
+        to use geolocation."
+        https://bugs.webkit.org/show_bug.cgi?id=157423
+        http://trac.webkit.org/changeset/200686
+
+2016-05-11  Jer Noble  <jer.noble@apple.com>
+
+        Videos allowed to play through the Main Content restriction should not pause when scrolled off-screen.
+        https://bugs.webkit.org/show_bug.cgi?id=157555
+
+        Reviewed by Eric Carlson.
+
+        * media/video-main-content-allow-then-scroll-expected.txt: Added.
+        * media/video-main-content-allow-then-scroll.html: Added.
+
+2016-05-11  Pranjal Jumde  <pjumde@apple.com>
+
+        Sites served over insecure connections should not be allowed to use geolocation.
+        https://bugs.webkit.org/show_bug.cgi?id=157423
+        <rdar://problem/23751632>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/geolocation-over-insecure-content.html: Added.
+        * http/tests/security/geolocation-over-mixed-content-block.html: Added.
+        * http/tests/security/geolocation-over-mixed-content.html: Added.
+        * http/tests/security/insecure-geolocation-expected.txt: Added.
+        * http/tests/security/insecure-geolocation.html: Added.
+        * http/tests/security/mixedcontent-geolocation-block-insecure-content-expected.txt: Added.
+        * http/tests/security/mixedcontent-geolocation-block-insecure-content.html: Added.
+        * http/tests/security/mixedcontent-geolocation-expected.txt: Added.
+        * http/tests/security/mixedcontent-geolocation.html: Added.
+
 2016-05-11  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         Ensure DOM iterators remain done

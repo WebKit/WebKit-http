@@ -66,7 +66,7 @@ FloatRect screenAvailableRect(Widget*)
     return FloatRect(0, 0, 1024, 640);
 }
 
-bool screenSupportsExtendedColor()
+bool screenSupportsExtendedColor(Widget*)
 {
     return false;
 }

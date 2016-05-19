@@ -1,3 +1,207 @@
+2016-05-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Make TestRunner.clearAllDatabases also delete IndexedDB databases (once doing so is supported).
+        https://bugs.webkit.org/show_bug.cgi?id=157823
+
+        Reviewed by Alex Christensen.
+
+        * Storage/WebDatabaseManager.mm:
+        (-[WebDatabaseManager deleteAllIndexedDatabases]):
+        * Storage/WebDatabaseManagerPrivate.h:
+
+2016-05-17  Beth Dakin  <bdakin@apple.com>
+
+        Make handleAcceptedCandidate a public function
+        https://bugs.webkit.org/show_bug.cgi?id=157763
+        -and corresponding-
+        rdar://problem/26206397
+
+        Reviewed by Tim Horton.
+
+        This patch re-names handleAcceptedCandidate to 
+        handleAcceptedCandidateWithSoftSpaces. The function now takes a 
+        WebCore::TextCheckingResult instead of an NSTextCheckingResult and it can be 
+        called from outside of WebEditorClient.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::handleRequestedCandidates):
+        (WebEditorClient::handleAcceptedCandidateWithSoftSpaces):
+        (textCheckingResultFromNSTextCheckingResult): Deleted.
+        (WebEditorClient::handleAcceptedCandidate): Deleted.
+
+        Move showCandidates to WebViewPrivate so that it can be overridden by a test.
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2016-05-17  Dean Jackson  <dino@apple.com>
+
+        Remove ES6_GENERATORS flag
+        https://bugs.webkit.org/show_bug.cgi?id=157815
+        <rdar://problem/26332894>
+
+        Reviewed by Geoffrey Garen.
+
+        This flag isn't needed. Generators are enabled everywhere and
+        part of a stable specification.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should know about Language
+        https://bugs.webkit.org/show_bug.cgi?id=157756
+
+        Reviewed by Geoffrey Garen.
+
+        Rewires a bunch of includes/imports.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        * WebCoreSupport/WebChromeClient.mm:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebGeolocationClient.mm:
+        * WebCoreSupport/WebNotificationClient.mm:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        * WebCoreSupport/WebUserMediaClient.mm:
+        * WebCoreSupport/WebVisitedLinkStore.mm:
+        * WebView/WebHTMLView.mm:
+
+2016-05-13  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused initializer for WebEvent on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=157689
+
+        Reviewed by Anders Carlsson.
+
+        Removing use of characterSet property.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _handleEditingKeyEvent:]):
+
+
+2016-05-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200894.
+        https://bugs.webkit.org/show_bug.cgi?id=157695
+
+        This change broke the iOS build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Remove unused initializer for WebEvent on iOS."
+        https://bugs.webkit.org/show_bug.cgi?id=157689
+        http://trac.webkit.org/changeset/200894
+
+2016-05-13  Enrica Casucci  <enrica@apple.com>
+
+        Remove unused initializer for WebEvent on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=157689
+
+        Reviewed by Anders Carlsson.
+
+        Removing use of characterSet property.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _handleEditingKeyEvent:]):
+
+2016-05-13  Beth Dakin  <bdakin@apple.com>
+
+        Build fix.
+
+        * WebView/WebView.mm:
+
+2016-05-13  Beth Dakin  <bdakin@apple.com>
+
+        Add dyldSPI.h for linked on or after checks, and add one for link preview
+        https://bugs.webkit.org/show_bug.cgi?id=157401
+        -and corresponding-
+        rdar://problem/26253396
+
+        Reviewed by Darin Adler.
+
+        This patch removes DynamicLinkerSPI.h and replaces it with 
+        wtf/spi/darwin/dyldSPI.h
+
+        * WebView/WebView.mm:
+
+2016-05-13  Tina Liu  <iting_liu@apple.com>
+
+        Revert r199691.
+        https://bugs.webkit.org/show_bug.cgi?id=157645
+        <rdar://problem/26235373>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::setPrivateBrowsingPluginLoadClientPolicy): Deleted.
+
+2016-05-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed build fix for r200799.
+
+        * WebView/WebView.mm:
+
+2016-05-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        REGRESSION (r199313): ICBC app: text field In the webview is not tappable
+        https://bugs.webkit.org/show_bug.cgi?id=157396
+        <rdar://problem/25931513>
+
+        Reviewed by David Kilzer.
+
+        Add a quirk for WebKit1 apps.
+
+        * WebView/WebView.mm:
+        (shouldConvertInvalidURLsToBlank):
+        (-[WebView _preferencesChanged:]):
+
+2016-05-12  Beth Dakin  <bdakin@apple.com>
+
+        WebKitAdditions needs to be notified before the WebView is dealloc'd
+        https://bugs.webkit.org/show_bug.cgi?id=157633
+        -and corresponding-
+        rdar://problem/26134539
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebView.mm:
+        (-[WebView dealloc]):
+        * WebView/WebViewInternal.h:
+
+2016-05-12  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Use reference instead of pointer in FrameLoaderClient::saveViewStateToItem.
+        https://bugs.webkit.org/show_bug.cgi?id=157624
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::saveViewStateToItem):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _saveViewState]):
+
+2016-05-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ENABLE(ES6_ARROWFUNCTION_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=157564
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-05-11  Chris Dumez  <cdumez@apple.com>
+
+        Update Node::appendChild() / replaceChild() / removeChild() / insertBefore() to take references instead of pointers
+        https://bugs.webkit.org/show_bug.cgi?id=157556
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _documentFragmentWithNodesAsParagraphs:]):
+
 2016-05-10  Shaw rich  <richshaw@126.com>
 
         [OS X] Compatible with gnu sed grammar due to compile error with gnu sed

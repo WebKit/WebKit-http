@@ -25,6 +25,7 @@
 
 #include "ContentData.h"
 #include "CSSCustomPropertyValue.h"
+#include "CSSParser.h"
 #include "CSSPropertyNames.h"
 #include "CSSVariableDependentValue.h"
 #include "CursorList.h"
@@ -1070,6 +1071,12 @@ void RenderStyle::setContentAltText(const String& string)
 const String& RenderStyle::contentAltText() const
 {
     return rareNonInheritedData->m_altText;
+}
+
+void RenderStyle::setHasAttrContent()
+{
+    setUnique();
+    SET_VAR(rareNonInheritedData, m_hasAttrContent, true);
 }
 
 // FIXME: use affectedByTransformOrigin().

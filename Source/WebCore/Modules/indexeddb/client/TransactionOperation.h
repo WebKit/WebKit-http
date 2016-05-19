@@ -114,16 +114,16 @@ public:
     TransactionOperationImpl(IDBTransaction& transaction, void (IDBTransaction::*completeMethod)(const IDBResultData&), void (IDBTransaction::*performMethod)(TransactionOperation&, Arguments...), Arguments&&... arguments)
         : TransactionOperation(transaction)
     {
-        RefPtr<TransactionOperation> self(this);
+        RefPtr<TransactionOperation> protectedThis(this);
 
         ASSERT(performMethod);
         auto performFunctionWrapper = std::bind(performMethod, m_transaction.ptr(), std::placeholders::_1, arguments...);
-        m_performFunction = [self, performFunctionWrapper] {
-            performFunctionWrapper(*self);
+        m_performFunction = [protectedThis, performFunctionWrapper] {
+            performFunctionWrapper(*protectedThis);
         };
 
         if (completeMethod) {
-            m_completeFunction = [self, this, completeMethod](const IDBResultData& resultData) {
+            m_completeFunction = [protectedThis, this, completeMethod](const IDBResultData& resultData) {
                 if (completeMethod)
                     (&m_transaction.get()->*completeMethod)(resultData);
             };
@@ -133,17 +133,17 @@ public:
     TransactionOperationImpl(IDBTransaction& transaction, IDBRequest& request, void (IDBTransaction::*completeMethod)(IDBRequest&, const IDBResultData&), void (IDBTransaction::*performMethod)(TransactionOperation&, Arguments...), Arguments&&... arguments)
         : TransactionOperation(transaction, request)
     {
-        RefPtr<TransactionOperation> self(this);
+        RefPtr<TransactionOperation> protectedThis(this);
 
         ASSERT(performMethod);
         auto performFunctionWrapper = std::bind(performMethod, m_transaction.ptr(), std::placeholders::_1, arguments...);
-        m_performFunction = [self, performFunctionWrapper] {
-            performFunctionWrapper(*self);
+        m_performFunction = [protectedThis, performFunctionWrapper] {
+            performFunctionWrapper(*protectedThis);
         };
 
         if (completeMethod) {
             RefPtr<IDBRequest> refRequest(&request);
-            m_completeFunction = [self, this, refRequest, completeMethod](const IDBResultData& resultData) {
+            m_completeFunction = [protectedThis, this, refRequest, completeMethod](const IDBResultData& resultData) {
                 if (completeMethod)
                     (&m_transaction.get()->*completeMethod)(*refRequest, resultData);
             };

@@ -56,10 +56,12 @@
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED true
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED true
 #define DEFAULT_PDFPLUGIN_ENABLED true
+#define DEFAULT_REQUIRES_USER_GESTURE_FOR_AUDIO_PLAYBACK true
 #else
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED false
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED false
 #define DEFAULT_PDFPLUGIN_ENABLED false
+#define DEFAULT_REQUIRES_USER_GESTURE_FOR_AUDIO_PLAYBACK false
 #endif
 
 #if PLATFORM(IOS)
@@ -74,7 +76,6 @@
 #define DEFAULT_INLINE_MEDIA_PLAYBACK_REQUIRES_PLAYS_INLINE_ATTRIBUTE true
 #define DEFAULT_INVISIBLE_AUTOPLAY_NOT_PERMITTED true
 #define DEFAULT_MEDIA_DATA_LOADS_AUTOMATICALLY false
-#define DEFAULT_REQUIRES_USER_GESTURE_FOR_MEDIA_PLAYBACK true
 #define DEFAULT_MEDIA_CONTROLS_SCALE_WITH_PAGE_ZOOM false
 #define DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED false
 #else
@@ -89,7 +90,6 @@
 #define DEFAULT_INLINE_MEDIA_PLAYBACK_REQUIRES_PLAYS_INLINE_ATTRIBUTE false
 #define DEFAULT_INVISIBLE_AUTOPLAY_NOT_PERMITTED false
 #define DEFAULT_MEDIA_DATA_LOADS_AUTOMATICALLY true
-#define DEFAULT_REQUIRES_USER_GESTURE_FOR_MEDIA_PLAYBACK false
 #define DEFAULT_MEDIA_CONTROLS_SCALE_WITH_PAGE_ZOOM true
 #define DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED true
 #endif
@@ -150,9 +150,9 @@
     macro(AllowFileAccessFromFileURLs, allowFileAccessFromFileURLs, Bool, bool, false, "", "") \
     macro(AVFoundationEnabled, isAVFoundationEnabled, Bool, bool, true, "", "") \
     macro(AVFoundationNSURLSessionEnabled, isAVFoundationNSURLSessionEnabled, Bool, bool, true, "", "") \
-    macro(RequiresUserGestureForMediaPlayback, requiresUserGestureForMediaPlayback, Bool, bool, DEFAULT_REQUIRES_USER_GESTURE_FOR_MEDIA_PLAYBACK, "", "") \
+    macro(RequiresUserGestureForMediaPlayback, requiresUserGestureForMediaPlayback, Bool, bool, false, "", "") \
     macro(RequiresUserGestureForVideoPlayback, requiresUserGestureForVideoPlayback, Bool, bool, false, "", "") \
-    macro(RequiresUserGestureForAudioPlayback, requiresUserGestureForAudioPlayback, Bool, bool, false, "", "") \
+    macro(RequiresUserGestureForAudioPlayback, requiresUserGestureForAudioPlayback, Bool, bool, DEFAULT_REQUIRES_USER_GESTURE_FOR_AUDIO_PLAYBACK, "", "") \
     macro(MainContentUserGestureOverrideEnabled, mainContentUserGestureOverrideEnabled, Bool, bool, false, "", "") \
     macro(AllowsInlineMediaPlayback, allowsInlineMediaPlayback, Bool, bool, DEFAULT_ALLOWS_INLINE_MEDIA_PLAYBACK, "", "") \
     macro(InlineMediaPlaybackRequiresPlaysInlineAttribute, inlineMediaPlaybackRequiresPlaysInlineAttribute, Bool, bool, DEFAULT_INLINE_MEDIA_PLAYBACK_REQUIRES_PLAYS_INLINE_ATTRIBUTE, "", "") \
@@ -286,12 +286,12 @@
 // - You must provide the last two parameters for all experimental features. They
 //   are the text exposed to the user from the WebKit client.
 // - They should be alphabetically ordered by the human readable text.
-// - They should be false by default. The client is responsible for enabling them.
+// - They should be false by default, although they are currently set to true while we develop client UI.
 
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
-    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, false, "CSS Grid", "CSS Grid Layout Module support") \
-    macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, false, "Custom Elements", "HTML Custom Elements prototype") \
-    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, false, "WebGL 2.0", "WebGL 2 prototype") \
+    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, true, "CSS Grid", "CSS Grid Layout Module support") \
+    macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, true, "Custom Elements", "HTML Custom Elements prototype") \
+    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, true, "WebGL 2.0", "WebGL 2 prototype") \
     \
 
 #if PLATFORM(COCOA)

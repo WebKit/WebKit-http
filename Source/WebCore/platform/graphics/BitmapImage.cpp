@@ -32,6 +32,7 @@
 #include "ImageBuffer.h"
 #include "ImageObserver.h"
 #include "IntRect.h"
+#include "Logging.h"
 #include "MIMETypeRegistry.h"
 #include "TextStream.h"
 #include "Timer.h"
@@ -46,8 +47,42 @@
 namespace WebCore {
 
 BitmapImage::BitmapImage(ImageObserver* observer)
-    : BitmapImage(observer, std::false_type())
+    : Image(observer)
+    , m_isSolidColor(false)
+    , m_checkedForSolidColor(false)
+    , m_animationFinished(false)
+    , m_allDataReceived(false)
+    , m_haveSize(false)
+    , m_sizeAvailable(false)
+    , m_haveFrameCount(false)
+    , m_animationFinishedWhenCatchingUp(false)
 {
+}
+
+BitmapImage::BitmapImage(NativeImagePtr&& image, ImageObserver* observer)
+    : Image(observer)
+    , m_source(image)
+    , m_frameCount(1)
+    , m_isSolidColor(false)
+    , m_checkedForSolidColor(false)
+    , m_animationFinished(true)
+    , m_allDataReceived(true)
+    , m_haveSize(true)
+    , m_sizeAvailable(true)
+    , m_haveFrameCount(true)
+    , m_animationFinishedWhenCatchingUp(false)
+{
+    // Since we don't have a decoder, we can't figure out the image orientation.
+    // Set m_sizeRespectingOrientation to be the same as m_size so it's not 0x0.
+    m_sizeRespectingOrientation = m_size = NativeImage::size(image);
+    m_decodedSize = m_size.area() * 4;
+    
+    m_frames.grow(1);
+    m_frames[0].m_hasAlpha = NativeImage::hasAlpha(image);
+    m_frames[0].m_haveMetadata = true;
+    m_frames[0].m_image = WTFMove(image);
+    
+    checkForSolidColor();
 }
 
 BitmapImage::~BitmapImage()
@@ -122,10 +157,12 @@ void BitmapImage::destroyDecodedDataIfNecessary(bool destroyAll)
 
     unsigned allFrameBytes = 0;
     for (size_t i = 0; i < m_frames.size(); ++i)
-        allFrameBytes += m_frames[i].m_frameBytes;
+        allFrameBytes += m_frames[i].usedFrameBytes();
 
-    if (allFrameBytes > largeAnimationCutoff)
+    if (allFrameBytes > largeAnimationCutoff) {
+        LOG(Images, "BitmapImage %p destroyDecodedDataIfNecessary destroyingData: allFrameBytes=%u cutoff=%u", this, allFrameBytes, largeAnimationCutoff);
         destroyDecodedData(destroyAll);
+    }
 }
 
 void BitmapImage::destroyMetadataAndNotify(unsigned frameBytesCleared, ClearedSource clearedSource)
@@ -172,9 +209,7 @@ void BitmapImage::cacheFrame(size_t index, SubsamplingLevel subsamplingLevel, Im
     m_frames[index].m_hasAlpha = m_source.frameHasAlphaAtIndex(index);
     m_frames[index].m_frameBytes = m_source.frameBytesAtIndex(index, subsamplingLevel);
 
-    const IntSize frameSize(index ? m_source.frameSizeAtIndex(index, subsamplingLevel) : m_size);
-    if (!subsamplingLevel && frameSize != m_size)
-        m_hasUniformFrameSize = false;
+    LOG(Images, "BitmapImage %p cacheFrame %lu (%s%u bytes, complete %d)", this, index, frameCaching == CacheMetadataOnly ? "metadata only, " : "", m_frames[index].m_frameBytes, m_frames[index].m_isComplete);
 
     if (m_frames[index].m_image) {
         int deltaBytes = safeCast<int>(m_frames[index].m_frameBytes);
@@ -307,7 +342,7 @@ bool BitmapImage::dataChanged(bool allDataReceived)
 #endif
 
     m_haveFrameCount = false;
-    m_hasUniformFrameSize = true;
+    m_source.setNeedsUpdateMetadata();
     return isSizeAvailable();
 }
 
@@ -519,6 +554,11 @@ void BitmapImage::startAnimation(CatchUpAnimation catchUpIfNecessary)
     // See if we've also passed the time for frames after that to start, in
     // case we need to skip some frames entirely. Remember not to advance
     // to an incomplete frame.
+
+#if !LOG_DISABLED
+    size_t startCatchupFrameIndex = nextFrame;
+#endif
+    
     for (size_t frameAfterNext = (nextFrame + 1) % frameCount(); frameIsCompleteAtIndex(frameAfterNext); frameAfterNext = (nextFrame + 1) % frameCount()) {
         // Should we skip the next frame?
         double frameAfterNextStartTime = m_desiredFrameStartTime + frameDurationAtIndex(nextFrame);
@@ -530,11 +570,14 @@ void BitmapImage::startAnimation(CatchUpAnimation catchUpIfNecessary)
         if (!internalAdvanceAnimation(SkippingFramesToCatchUp)) {
             m_animationFinishedWhenCatchingUp = true;
             startTimer(0);
+            LOG(Images, "BitmapImage %p startAnimation catching up from frame %lu, ended", this, startCatchupFrameIndex);
             return;
         }
         m_desiredFrameStartTime = frameAfterNextStartTime;
         nextFrame = frameAfterNext;
     }
+
+    LOG(Images, "BitmapImage %p startAnimation catching up jumped from from frame %lu to %d", this, startCatchupFrameIndex, (int)nextFrame - 1);
 
     // Draw the next frame as soon as possible. Note that m_desiredFrameStartTime
     // may be in the past, meaning the next time through this function we'll

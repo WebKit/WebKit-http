@@ -35,17 +35,12 @@ void JSStyleSheet::visitAdditionalChildren(JSC::SlotVisitor& visitor)
     visitor.addOpaqueRoot(root(&wrapped()));
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, StyleSheet* styleSheet)
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, StyleSheet& styleSheet)
 {
-    if (!styleSheet)
-        return JSC::jsNull();
-
-    if (JSC::JSObject* wrapper = getCachedWrapper(globalObject->world(), styleSheet))
+    if (auto* wrapper = getCachedWrapper(globalObject->world(), styleSheet))
         return wrapper;
-
-    if (styleSheet->isCSSStyleSheet())
+    if (styleSheet.isCSSStyleSheet())
         return CREATE_DOM_WRAPPER(globalObject, CSSStyleSheet, styleSheet);
-
     return CREATE_DOM_WRAPPER(globalObject, StyleSheet, styleSheet);
 }
 

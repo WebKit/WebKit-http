@@ -550,7 +550,7 @@ void Editor::replaceSelectionWithFragment(PassRefPtr<DocumentFragment> fragment,
     if (AXObjectCache::accessibilityEnabled() && editingAction == EditActionPaste) {
         String text = AccessibilityObject::stringForVisiblePositionRange(command->visibleSelectionForInsertedText());
         replacedText.postTextStateChangeNotification(document().existingAXObjectCache(), AXTextEditTypePaste, text, m_frame.selection().selection());
-        command->composition()->setTextInsertedByUnapplyRange(replacedText.replacedRange());
+        command->composition()->setRangeDeletedByUnapply(replacedText.replacedRange());
     }
 
     if (!isContinuousSpellCheckingEnabled())
@@ -593,7 +593,7 @@ void Editor::confirmMarkedText()
         confirmComposition();
 }
 
-void Editor::setTextAsChildOfElement(const String& text, Element* elem)
+void Editor::setTextAsChildOfElement(const String& text, Element& element)
 {
     // Clear the composition
     clear();
@@ -604,7 +604,7 @@ void Editor::setTextAsChildOfElement(const String& text, Element* elem)
     
     // If the element is empty already and we're not adding text, we can early return and avoid clearing/setting
     // a selection at [0, 0] and the expense involved in creation VisiblePositions.
-    if (!elem->firstChild() && text.isEmpty())
+    if (!element.firstChild() && text.isEmpty())
         return;
     
     // As a side effect this function sets a caret selection after the inserted content.  Much of what 
@@ -612,7 +612,7 @@ void Editor::setTextAsChildOfElement(const String& text, Element* elem)
     m_frame.selection().clear();
     
     // clear out all current children of element
-    elem->removeChildren();
+    element.removeChildren();
 
     if (text.length()) {
         // insert new text
@@ -621,29 +621,28 @@ void Editor::setTextAsChildOfElement(const String& text, Element* elem)
         // (even if it is only temporary).  ReplaceSelectionCommand doesn't bother doing this when it inserts
         // content, why should we here?
         ExceptionCode ec;
-        RefPtr<Node> parent = elem->parentNode();
-        RefPtr<Node> siblingAfter = elem->nextSibling();
+        RefPtr<Node> parent = element.parentNode();
+        RefPtr<Node> siblingAfter = element.nextSibling();
         if (parent)
-            elem->remove(ec);    
+            element.remove(ec);
             
-        RefPtr<Range> context = document().createRange();
-        context->selectNodeContents(*elem, ec);
-        Ref<DocumentFragment> fragment = createFragmentFromText(*context.get(), text);
-        elem->appendChild(WTFMove(fragment), ec);
+        auto context = document().createRange();
+        context->selectNodeContents(element, ec);
+        element.appendChild(createFragmentFromText(context, text), ec);
     
         // restore element to document
         if (parent) {
             if (siblingAfter)
-                parent->insertBefore(elem, siblingAfter.get(), ec);
+                parent->insertBefore(element, siblingAfter.get(), ec);
             else
-                parent->appendChild(elem, ec);
+                parent->appendChild(element, ec);
         }
     }
 
     // set the selection to the end
     VisibleSelection selection;
 
-    Position pos = createLegacyEditingPosition(elem, elem->countChildNodes());
+    Position pos = createLegacyEditingPosition(&element, element.countChildNodes());
 
     VisiblePosition visiblePos(pos, VP_DEFAULT_AFFINITY);
     if (visiblePos.isNull())
@@ -1956,10 +1955,10 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
     }
     
     // topNode defines the whole range we want to operate on 
-    Node* topNode = highestEditableRoot(position);
+    auto* topNode = highestEditableRoot(position);
     // FIXME: lastOffsetForEditing() is wrong here if editingIgnoresContent(highestEditableRoot()) returns true (e.g. a <table>)
     if (topNode)
-        spellingSearchRange->setEnd(*topNode, lastOffsetForEditing(topNode), IGNORE_EXCEPTION);
+        spellingSearchRange->setEnd(*topNode, lastOffsetForEditing(*topNode), IGNORE_EXCEPTION);
 
     // If spellingSearchRange starts in the middle of a word, advance to the next word so we start checking
     // at a word boundary. Going back by one char and then forward by a word does the trick.

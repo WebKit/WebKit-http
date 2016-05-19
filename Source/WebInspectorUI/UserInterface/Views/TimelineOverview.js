@@ -634,16 +634,19 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         console.assert(instrument instanceof WebInspector.Instrument, instrument);
 
         let timeline = this._recording.timelineForInstrument(instrument);
-        console.assert(this._overviewGraphsByTypeMap.has(timeline.type), timeline);
+        let overviewGraph = this._overviewGraphsByTypeMap.get(timeline.type);
+        console.assert(overviewGraph, "Missing overview graph for timeline type", timeline.type);
 
-        let overviewGraph = this._overviewGraphsByTypeMap.take(timeline.type);
-        overviewGraph.removeEventListener(WebInspector.TimelineOverviewGraph.Event.RecordSelected, this._recordSelected, this);
-        this._graphsContainerView.removeSubview(overviewGraph);
-
-        let treeElement = this._treeElementsByTypeMap.take(timeline.type);
+        let treeElement = this._treeElementsByTypeMap.get(timeline.type);
         let shouldSuppressOnDeselect = false;
         let shouldSuppressSelectSibling = true;
         this._timelinesTreeOutline.removeChild(treeElement, shouldSuppressOnDeselect, shouldSuppressSelectSibling);
+
+        overviewGraph.removeEventListener(WebInspector.TimelineOverviewGraph.Event.RecordSelected, this._recordSelected, this);
+        this._graphsContainerView.removeSubview(overviewGraph);
+
+        this._overviewGraphsByTypeMap.delete(timeline.type);
+        this._treeElementsByTypeMap.delete(timeline.type);
     }
 
     _markerAdded(event)
@@ -789,15 +792,28 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         return this._viewMode === WebInspector.TimelineOverview.ViewMode.Timelines ? this._timelinesViewModeSettings : this._renderingFramesViewModeSettings;
     }
 
-    _timelinesTreeSelectionDidChange()
+    _timelinesTreeSelectionDidChange(event)
     {
-        let treeElement = this._timelinesTreeOutline.selectedTreeElement;
+        function updateGraphSelectedState(timeline, selected)
+        {
+            let overviewGraph = this._overviewGraphsByTypeMap.get(timeline.type);
+            console.assert(overviewGraph, "Missing overview graph for timeline", timeline);
+            overviewGraph.selected = selected;
+        }
+
+        let selectedTreeElement = event.data.selectedElement;
+        let deselectedTreeElement = event.data.deselectedElement;
         let timeline = null;
-        if (treeElement) {
-            timeline = treeElement.representedObject;
+        if (selectedTreeElement) {
+            timeline = selectedTreeElement.representedObject;
             console.assert(timeline instanceof WebInspector.Timeline, timeline);
             console.assert(this._recording.timelines.get(timeline.type) === timeline, timeline);
+
+            updateGraphSelectedState.call(this, timeline, true);
         }
+
+        if (deselectedTreeElement)
+            updateGraphSelectedState.call(this, deselectedTreeElement.representedObject, false);
 
         this._selectedTimeline = timeline;
         this.dispatchEventToListeners(WebInspector.TimelineOverview.Event.TimelineSelected);

@@ -1,3 +1,109 @@
+2016-05-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a subtitle under platform name in the summary page
+        https://bugs.webkit.org/show_bug.cgi?id=157809
+
+        Reviewed by Chris Dumez.
+
+        Add a description beneath the platform names.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPage.prototype._constructTable): Add a br and a span if subtitle is present.
+        (SummaryPage.cssTemplate): Added CSS rules for .subtitle.
+
+2016-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        v3 UI shows full git hash instead of the first 8 characters for a blame range
+        https://bugs.webkit.org/show_bug.cgi?id=157691
+
+        Reviewed by Stephanie Lewis.
+
+        Fixed the bug that v3 UI shows the full 40 character git hash instead of the first 8 character as done in v2 UI.
+
+        * public/v3/models/commit-log.js:
+        (CommitLog.prototype.diff): Fixed the bug.
+        * tools/run-tests.py:
+        (main): Add the support for running a subset of tests as mocha does.
+        * unit-tests/commit-log-tests.js: Added.
+
+2016-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed. Added the missing executable bits.
+
+        * tools/bundle-v3-scripts.py: Added property svn:executable.
+        * tools/detect-changes.js: Added property svn:executable.
+        * tools/process-maintenance-backlog.py: Added property svn:executable.
+
+2016-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Summary page doesn't report some missing platforms
+        https://bugs.webkit.org/show_bug.cgi?id=157670
+
+        Reviewed by Darin Adler.
+
+        This patch improves the warning text for missing platforms and fixes the bug that platforms that don't have
+        any data reported for a given test would not be reported as missing.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPage.prototype.render): Added instrumentations.
+        (SummaryPage.prototype._constructRatioGraph): Always create both the ratio bar graph and the spinner icon.
+        (SummaryPage.prototype._renderCell): Extracted from _constructRatioGraph. Toggle the displayed-ness of the
+        spinner and the ratio bar graph in the cell by CSS for better performance.
+        (SummaryPage.prototype._warningTextForGroup): Extracted from _constructRatioGraph. Rephrased warning text
+        for clarity and adopted new API of SummaryPageConfigurationGroup.
+        (SummaryPage.prototype._warningTextForGroup.mapAndSortByName): Added.
+        (SummaryPage.prototype._warningTextForGroup.pluralizeIfNeeded): Added.
+        (SummaryPage.cssTemplate): Added rules to toggle the visibility of spinner icons and bar graphs.
+        (SummaryPageConfigurationGroup): Replaced this._warnings by more explicitly named this._missingPlatforms
+        and this._platformsWithoutBaseline. Also add a platform to this._missingPlatforms if it didn't appear in
+        any metrics. Note that adding a platform whenever it doesn't in any one metric would be incorrect since
+        some tests uses a different test name on different platforms: e.g. PLT-Mac and PLT-iPhone.
+        (SummaryPageConfigurationGroup.prototype.missingPlatforms): Added.
+        (SummaryPageConfigurationGroup.prototype.platformsWithoutBaseline): Added.
+        (SummaryPageConfigurationGroup.prototype._fetchAndComputeRatio):
+
+2016-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Always use v3 UI for dashboards and analysis task pages
+        https://bugs.webkit.org/show_bug.cgi?id=157647
+
+        Reviewed by Darin Adler.
+
+        Redirect dashboard pages from v1 and v2 to v3's summary page. Also redirect v1 UI's charts page and v2 UI's
+        analysis task pages to the corresponding v3 pages.
+
+        Keep v2's charts page accessible since some features such as segmentation is still only available on v2 UI.
+
+        * public/index.html:
+        (init.showCharts): Redirect to v3 UI once the chart list has been parsed.
+        (init.redirectChartsToV3): Added.
+        * public/v2/index.html:
+
+2016-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Show a spinner while fetching data on summary page
+        https://bugs.webkit.org/show_bug.cgi?id=157658
+
+        Reviewed by Darin Adler.
+
+        Show a spinner while fetching JSON files on the summary page.
+
+        * public/v3/components/base.js:
+        (ComponentBase.prototype.renderReplace): Added a new implementation that simply calls the static version.
+        (ComponentBase.renderReplace): Made this static.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPage.prototype._constructRatioGraph): Show a spinner icon when SummaryPageConfigurationGroup's
+        isFetching returns true.
+        (SummaryPage.cssTemplate): Force the height of each cell to be 2.5rem so that the height of cell doesn't
+        change when a spinner is replaced by a ratio bar graph.
+
+        (SummaryPageConfigurationGroup): Added this._isFetching as an instance variable.
+        (SummaryPageConfigurationGroup.prototype.isFetching): Added.
+        (SummaryPageConfigurationGroup.prototype.fetchAndComputeSummary): Set this._isFetching while waiting for
+        the promises to resolve after 50ms. We don't immediately set this._isFetching to avoid FOC when all JSON
+        files have been cached.
+
 2016-05-07  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add horizontal between categories of tests

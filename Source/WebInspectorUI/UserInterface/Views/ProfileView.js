@@ -76,6 +76,7 @@ WebInspector.ProfileView = class ProfileView extends WebInspector.ContentView
     get callingContextTree() { return this._callingContextTree; }
     get startTime() { return this._startTime; }
     get endTime() { return this._endTime; }
+    get dataGrid() { return this._dataGrid; }
 
     setStartAndEndTime(startTime, endTime)
     {
@@ -104,6 +105,11 @@ WebInspector.ProfileView = class ProfileView extends WebInspector.ContentView
         if (!this._profileDataGridTree)
             return;
         this._profileDataGridTree.clearFocusNodes();
+    }
+
+    get scrollableElements()
+    {
+        return [this._dataGrid.scrollContainer];
     }
 
     // Protected
@@ -141,7 +147,7 @@ WebInspector.ProfileView = class ProfileView extends WebInspector.ContentView
             this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
     }
 
-    _repopulateDataGridFromTree(skipRefresh)
+    _repopulateDataGridFromTree()
     {
         this._dataGrid.removeChildren();
         for (let child of this._profileDataGridTree.children)

@@ -144,7 +144,7 @@ void ScriptExecutionContext::dispatchMessagePortEvents()
 {
     checkConsistency();
 
-    Ref<ScriptExecutionContext> protect(*this);
+    Ref<ScriptExecutionContext> protectedThis(*this);
 
     // Make a frozen copy of the ports so we can iterate while new ones might be added or destroyed.
     Vector<MessagePort*> possibleMessagePorts;
@@ -224,6 +224,8 @@ void ScriptExecutionContext::suspendActiveDOMObjects(ActiveDOMObject::ReasonForS
         return;
     }
 
+    m_activeDOMObjectsAreSuspended = true;
+
     m_activeDOMObjectAdditionForbidden = true;
 #if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     m_activeDOMObjectRemovalForbidden = true;
@@ -242,7 +244,6 @@ void ScriptExecutionContext::suspendActiveDOMObjects(ActiveDOMObject::ReasonForS
     m_activeDOMObjectRemovalForbidden = false;
 #endif
 
-    m_activeDOMObjectsAreSuspended = true;
     m_reasonForSuspendingActiveDOMObjects = why;
 }
 

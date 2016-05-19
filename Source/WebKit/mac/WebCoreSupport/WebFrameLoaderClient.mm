@@ -76,7 +76,6 @@
 #import <WebCore/AuthenticationMac.h>
 #import <WebCore/BackForwardController.h>
 #import <WebCore/BackForwardList.h>
-#import <WebCore/BlockExceptions.h>
 #import <WebCore/CachedFrame.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/DNS.h>
@@ -123,6 +122,7 @@
 #import <WebKitLegacy/DOMHTMLFormElement.h>
 #import <WebKitSystemInterface.h>
 #import <runtime/InitializeThreading.h>
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/MainThread.h>
 #import <wtf/PassRefPtr.h>
 #import <wtf/RunLoop.h>
@@ -1224,17 +1224,14 @@ void WebFrameLoaderClient::frameLoadCompleted()
         [[m_webFrame->_private->webFrameView _scrollView] setDrawsBackground:YES];
 }
 
-void WebFrameLoaderClient::saveViewStateToItem(HistoryItem* item)
+void WebFrameLoaderClient::saveViewStateToItem(HistoryItem& item)
 {
-    if (!item)
-        return;
-
 #if PLATFORM(IOS)
     // Let UIKit handle the scroll point for the main frame.
     WebFrame *webFrame = m_webFrame.get();
     WebView *webView = getWebView(webFrame);   
     if (webFrame == [webView mainFrame]) {
-        [[webView _UIKitDelegateForwarder] webView:webView saveStateToHistoryItem:kit(item) forFrame:webFrame];
+        [[webView _UIKitDelegateForwarder] webView:webView saveStateToHistoryItem:kit(&item) forFrame:webFrame];
         return;
     }
 #endif                    
@@ -1244,7 +1241,7 @@ void WebFrameLoaderClient::saveViewStateToItem(HistoryItem* item)
     // we might already be detached when this is called from detachFromParent, in which
     // case we don't want to override real data earlier gathered with (0,0)
     if ([docView superview] && [docView conformsToProtocol:@protocol(_WebDocumentViewState)])
-        item->setViewState([(id <_WebDocumentViewState>)docView viewState]);
+        item.setViewState([(id <_WebDocumentViewState>)docView viewState]);
 }
 
 void WebFrameLoaderClient::restoreViewState()

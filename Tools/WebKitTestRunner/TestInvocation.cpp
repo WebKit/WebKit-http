@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,7 @@
 #include <WebKit/WKInspector.h>
 #include <WebKit/WKPagePrivate.h>
 #include <WebKit/WKRetainPtr.h>
+#include <WebKit/WKWebsiteDataStoreRef.h>
 #include <climits>
 #include <cstdio>
 #include <wtf/StdLibExtras.h>
@@ -705,6 +706,17 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         WKHTTPCookieAcceptPolicy policy = WKBooleanGetValue(accept) ? kWKHTTPCookieAcceptPolicyAlways : kWKHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
         // FIXME: This updates the policy in WebProcess and in NetworkProcess asynchronously, which might break some tests' expectations.
         WKCookieManagerSetHTTPCookieAcceptPolicy(WKContextGetCookieManager(TestController::singleton().context()), policy);
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "ImageCountInGeneralPasteboard")) {
+        unsigned count = TestController::singleton().imageCountInGeneralPasteboard();
+        WKRetainPtr<WKUInt64Ref> result(AdoptWK, WKUInt64Create(count));
+        return result;
+    }
+    
+    if (WKStringIsEqualToUTF8CString(messageName, "DeleteAllIndexedDatabases")) {
+        WKWebsiteDataStoreRemoveAllIndexedDatabases(WKContextGetWebsiteDataStore(TestController::singleton().context()));
         return nullptr;
     }
 

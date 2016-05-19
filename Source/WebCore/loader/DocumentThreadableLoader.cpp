@@ -155,7 +155,7 @@ DocumentThreadableLoader::~DocumentThreadableLoader()
 
 void DocumentThreadableLoader::cancel()
 {
-    Ref<DocumentThreadableLoader> protect(*this);
+    Ref<DocumentThreadableLoader> protectedThis(*this);
 
     // Cancel can re-enter and m_resource might be null here as a result.
     if (m_client && m_resource) {
@@ -191,7 +191,7 @@ void DocumentThreadableLoader::redirectReceived(CachedResource* resource, Resour
     ASSERT(m_client);
     ASSERT_UNUSED(resource, resource == m_resource);
 
-    Ref<DocumentThreadableLoader> protect(*this);
+    Ref<DocumentThreadableLoader> protectedThis(*this);
     if (!isAllowedByContentSecurityPolicy(request.url(), !redirectResponse.isNull())) {
         m_client->didFailRedirectCheck();
         request = ResourceRequest();
@@ -325,6 +325,11 @@ void DocumentThreadableLoader::notifyFinished(CachedResource* resource)
 
 void DocumentThreadableLoader::didFinishLoading(unsigned long identifier, double finishTime)
 {
+#if ENABLE(WEB_TIMING)
+    if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
+        m_resourceTimingInfo.addResourceTiming(m_resource.get(), &m_document);
+#endif
+
     if (m_actualRequest) {
         InspectorInstrumentation::didFinishLoading(m_document.frame(), m_document.frame()->loader().documentLoader(), identifier, finishTime);
 
@@ -390,8 +395,14 @@ void DocumentThreadableLoader::loadRequest(const ResourceRequest& request, Secur
             newRequest.setInitiator(m_options.initiator);
         ASSERT(!m_resource);
         m_resource = m_document.cachedResourceLoader().requestRawResource(newRequest);
-        if (m_resource)
+        if (m_resource) {
             m_resource->addClient(this);
+
+#if ENABLE(WEB_TIMING)
+            if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
+                m_resourceTimingInfo.storeResourceTimingInitiatorInformation(m_resource, newRequest, m_document.frame());
+#endif
+        }
 
         return;
     }
