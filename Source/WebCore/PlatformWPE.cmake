@@ -165,7 +165,6 @@ list(APPEND WebCore_SOURCES
 
     platform/text/wpe/TextBreakIteratorInternalICUWPE.cpp
 
-    platform/unix/LanguageUnix.cpp
     platform/unix/LoggingUnix.cpp
 
     platform/wpe/CursorWPE.cpp
