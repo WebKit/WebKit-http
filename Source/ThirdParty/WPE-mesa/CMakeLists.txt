@@ -17,10 +17,10 @@ endif ()
 set(WPE_MESA_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
     "${WPE_MESA_SOURCE_DIR}/Source/wpe"
-    "${WPE_MESA_SOURCE_DIR}/Source/wpe/drm"
-    "${WPE_MESA_SOURCE_DIR}/Source/wpe/gbm"
-    "${WPE_MESA_SOURCE_DIR}/Source/wpe/wayland"
-    "${WPE_MESA_SOURCE_DIR}/Source/wpe/wayland/protocols"
+    "${WPE_MESA_SOURCE_DIR}/src/drm"
+    "${WPE_MESA_SOURCE_DIR}/src/gbm"
+    "${WPE_MESA_SOURCE_DIR}/src/wayland"
+    "${WPE_MESA_SOURCE_DIR}/src/wayland/protocols"
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBDRM_INCLUDE_DIRS}
@@ -37,20 +37,20 @@ set(WPE_MESA_LIBRARIES
 )
 
 set(WPE_MESA_SOURCES
-    Source/wpe/mesa.cpp
+    src/mesa.cpp
 
-    Source/wpe/drm/view-backend-drm.cpp
+    src/drm/view-backend-drm.cpp
 
-    Source/wpe/gbm/renderer-gbm.cpp
-    Source/wpe/gbm/gbm-connection.cpp
+    src/gbm/renderer-gbm.cpp
+    src/gbm/gbm-connection.cpp
 
-    Source/wpe/wayland/display.cpp
-    Source/wpe/wayland/pasteboard-wayland.cpp
-    Source/wpe/wayland/view-backend-wayland.cpp
+    src/wayland/display.cpp
+    src/wayland/pasteboard-wayland.cpp
+    src/wayland/view-backend-wayland.cpp
 
-    Source/wpe/wayland/protocols/ivi-application-protocol.c
-    Source/wpe/wayland/protocols/wayland-drm-protocol.c
-    Source/wpe/wayland/protocols/xdg-shell-protocol.c
+    src/wayland/protocols/ivi-application-protocol.c
+    src/wayland/protocols/wayland-drm-protocol.c
+    src/wayland/protocols/xdg-shell-protocol.c
 )
 
 add_library(WPE-mesa SHARED ${WPE_MESA_SOURCES})
