@@ -12,6 +12,7 @@ extern "C" {
 
 static bool under_wayland = !!std::getenv("WAYLAND_DISPLAY");
 
+__attribute__((visibility("default")))
 struct wpe_loader_interface _wpe_loader_interface = {
     [](const char* object_name) -> void* {
         if (!std::strcmp(object_name, "_wpe_view_backend_interface")) {
