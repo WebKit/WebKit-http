@@ -10,6 +10,11 @@ static struct wpe_loader_interface* s_impl_loader = 0;
 void
 load_impl_library()
 {
+    // FIXME:
+    // 1. should use a more generic name, usable via a symbolic link to the
+    //    platform-specific libraries,
+    // 2. should support an environment variable,
+    // 3. should support a hard-coded library name specified at compile-time.
     static const char library_name[] = "libWPE-mesa.so";
 
     s_impl_library = dlopen(library_name, RTLD_NOW);
