@@ -10,7 +10,7 @@ static struct wpe_loader_interface* s_impl_loader = 0;
 void
 load_impl_library()
 {
-    static const char library_name[] = "libWPE-platform.so";
+    static const char library_name[] = "libWPE-mesa.so";
 
     s_impl_library = dlopen(library_name, RTLD_NOW);
     if (!s_impl_library) {

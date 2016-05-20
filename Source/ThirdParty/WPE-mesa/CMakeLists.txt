@@ -14,7 +14,7 @@ if (WPE_MESA_DRM_TEGRA_SUPPORT)
     add_definitions(-DWPE_BACKEND_DRM_TEGRA=1)
 endif ()
 
-set(WPE_PLATFORM_INCLUDE_DIRECTORIES
+set(WPE_MESA_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/Headers"
     "${WPE_MESA_SOURCE_DIR}/Source/wpe"
     "${WPE_MESA_SOURCE_DIR}/Source/wpe/drm"
@@ -28,7 +28,7 @@ set(WPE_PLATFORM_INCLUDE_DIRECTORIES
     ${WAYLAND_INCLUDE_DIRS}
 )
 
-set(WPE_PLATFORM_LIBRARIES
+set(WPE_MESA_LIBRARIES
     ${GIO_UNIX_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBDRM_LIBRARIES}
@@ -36,7 +36,7 @@ set(WPE_PLATFORM_LIBRARIES
     ${WAYLAND_LIBRARIES}
 )
 
-set(WPE_PLATFORM_SOURCES
+set(WPE_MESA_SOURCES
     Source/wpe/mesa.cpp
 
     Source/wpe/drm/view-backend-drm.cpp
@@ -53,7 +53,7 @@ set(WPE_PLATFORM_SOURCES
     Source/wpe/wayland/protocols/xdg-shell-protocol.c
 )
 
-add_library(WPE-platform SHARED ${WPE_PLATFORM_SOURCES})
-target_include_directories(WPE-platform PRIVATE ${WPE_PLATFORM_INCLUDE_DIRECTORIES})
-target_link_libraries(WPE-platform ${WPE_PLATFORM_LIBRARIES})
-install(TARGETS WPE-platform DESTINATION "${LIB_INSTALL_DIR}")
+add_library(WPE-mesa SHARED ${WPE_MESA_SOURCES})
+target_include_directories(WPE-mesa PRIVATE ${WPE_MESA_INCLUDE_DIRECTORIES})
+target_link_libraries(WPE-mesa ${WPE_MESA_LIBRARIES})
+install(TARGETS WPE-mesa DESTINATION "${LIB_INSTALL_DIR}")
