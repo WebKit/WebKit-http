@@ -36,6 +36,7 @@
 #include <wtf/Forward.h>
 #include <wtf/RunLoop.h>
 
+typedef struct _GstBaseSink GstBaseSink;
 typedef struct _GstMessage GstMessage;
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
@@ -98,11 +99,6 @@ public:
     void setSize(const IntSize&) override;
     void setPosition(const IntPoint&) override;
     void sizeChanged();
-
-    void triggerDrain();
-
-    void triggerRepaint(GstSample*);
-    void repaint();
 
     void paint(GraphicsContext&, const FloatRect&) override;
 
@@ -180,6 +176,10 @@ protected:
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
     virtual GstElement* createVideoSink();
+
+#if USE(GSTREAMER_GL)
+    GstElement* createVideoSinkGL();
+#endif
 #endif
 
     void setStreamVolumeElement(GstStreamVolume*);
@@ -190,6 +190,19 @@ protected:
     void clearSamples();
 
     virtual bool handleSyncMessage(GstMessage*);
+
+    void triggerRepaint(GstSample*);
+    void repaint();
+    void triggerDrain();
+
+#if !USE(HOLE_PUNCH_GSTREAMER)
+    static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
+    static void drainCallback(MediaPlayerPrivateGStreamerBase*);
+#endif
+
+#if USE(GSTREAMER_GL)
+    static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstBuffer*, GstPad*, GstBaseSink*);
+#endif
 
     void notifyPlayerOfVolumeChange();
     void notifyPlayerOfMute();
