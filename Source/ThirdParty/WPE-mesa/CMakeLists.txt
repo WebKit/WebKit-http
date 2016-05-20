@@ -15,7 +15,7 @@ if (WPE_MESA_DRM_TEGRA_SUPPORT)
 endif ()
 
 set(WPE_MESA_INCLUDE_DIRECTORIES
-    "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/Headers"
+    "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
     "${WPE_MESA_SOURCE_DIR}/Source/wpe"
     "${WPE_MESA_SOURCE_DIR}/Source/wpe/drm"
     "${WPE_MESA_SOURCE_DIR}/Source/wpe/gbm"
