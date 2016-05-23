@@ -16,6 +16,7 @@ endif ()
 
 set(WPE_MESA_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
+    "${WPE_MESA_SOURCE_DIR}/include"
     "${WPE_MESA_SOURCE_DIR}/src/drm"
     "${WPE_MESA_SOURCE_DIR}/src/gbm"
     "${WPE_MESA_SOURCE_DIR}/src/wayland"
@@ -39,6 +40,8 @@ set(WPE_MESA_SOURCES
     src/mesa.cpp
 
     src/drm/view-backend-drm.cpp
+
+    src/exportable/view-backend-exportable.cpp
 
     src/gbm/renderer-gbm.cpp
     src/gbm/gbm-connection.cpp
