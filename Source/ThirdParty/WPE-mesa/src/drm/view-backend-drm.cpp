@@ -314,7 +314,7 @@ extern "C" {
 
 struct wpe_view_backend_interface drm_view_backend_interface = {
     // create
-    [](struct wpe_view_backend* backend) -> void*
+    [](void*, struct wpe_view_backend* backend) -> void*
     {
         fprintf(stderr, "drm_view_backend_interface::create()\n");
 

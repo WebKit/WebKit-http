@@ -18,7 +18,7 @@ struct wpe_view_backend_client;
 struct wpe_view_backend_input_client;
 
 struct wpe_view_backend_interface {
-    void* (*create)(struct wpe_view_backend*);
+    void* (*create)(void*, struct wpe_view_backend*);
     void (*destroy)(void*);
 
     void (*initialize)(void*);
@@ -30,7 +30,7 @@ struct wpe_view_backend*
 wpe_view_backend_create();
 
 struct wpe_view_backend*
-wpe_view_backend_create_with_backend_interface(struct wpe_view_backend_interface*);
+wpe_view_backend_create_with_backend_interface(struct wpe_view_backend_interface*, void*);
 
 void
 wpe_view_backend_destroy(struct wpe_view_backend*);
