@@ -35,6 +35,9 @@ namespace WPE {
 
 namespace Input {
 class Client;
+struct KeyboardEvent;
+struct PointerEvent;
+struct AxisEvent;
 }
 
 namespace ViewBackend {
@@ -56,6 +59,10 @@ public:
     virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
     virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
     virtual void destroyBuffer(uint32_t) = 0;
+
+    virtual void handleKeyboardEvent(const Input::KeyboardEvent& event);
+    virtual void handlePointerEvent(const Input::PointerEvent& event);
+    virtual void handleAxisEvent(const Input::AxisEvent& event);
 
     virtual void setInputClient(Input::Client*);
 };
