@@ -29,6 +29,11 @@
 
 #include <array>
 
+namespace IPC {
+    class ArgumentDecoder;
+    class ArgumentEncoder;
+}
+
 namespace WPE {
 
 namespace Input {
@@ -52,6 +57,19 @@ struct KeyboardEvent {
     uint32_t unicode;
     bool pressed;
     uint8_t modifiers;
+
+    KeyboardEvent(){}
+    KeyboardEvent(uint32_t in_time, uint32_t in_keyCode, uint32_t in_unicode, bool in_pressed, uint8_t in_modifiers)
+    : time(in_time)
+    , keyCode(in_keyCode)
+    , unicode(in_unicode)
+    , pressed(in_pressed)
+    , modifiers(in_modifiers)
+    {
+    }
+
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, KeyboardEvent&);
 };
 
 struct PointerEvent {
@@ -70,12 +88,25 @@ struct PointerEvent {
         uint32_t state;
     };
 
-    Type type;
+    uint32_t type;
     uint32_t time;
     int x;
     int y;
     uint32_t button;
     uint32_t state;
+    PointerEvent() {}
+    PointerEvent(uint32_t in_type, uint32_t in_time, int in_x, int in_y, uint32_t in_button, uint32_t in_state)
+    : type(in_type)
+    , time(in_time)
+    , x(in_x)
+    , y(in_y)
+    , button(in_button)
+    , state(in_state)
+    {
+    }
+
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, PointerEvent&);
 };
 
 struct AxisEvent {
@@ -91,12 +122,24 @@ struct AxisEvent {
         int32_t value;
     };
 
-    Type type;
+    uint32_t type;
     uint32_t time;
     int x;
     int y;
     uint32_t axis;
     int32_t value;
+    AxisEvent() {}
+    AxisEvent(uint32_t in_type, uint32_t in_time, int in_x, int in_y, uint32_t in_axis, int32_t in_value)
+    : type(in_type)
+    , time(in_time)
+    , x(in_x)
+    , y(in_y)
+    , axis(in_axis)
+    , value(in_value)
+    {
+    }
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, AxisEvent&);
 };
 
 struct TouchEvent {
