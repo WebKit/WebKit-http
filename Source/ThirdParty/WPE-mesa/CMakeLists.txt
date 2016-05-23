@@ -16,7 +16,6 @@ endif ()
 
 set(WPE_MESA_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
-    "${WPE_MESA_SOURCE_DIR}/Source/wpe"
     "${WPE_MESA_SOURCE_DIR}/src/drm"
     "${WPE_MESA_SOURCE_DIR}/src/gbm"
     "${WPE_MESA_SOURCE_DIR}/src/wayland"
