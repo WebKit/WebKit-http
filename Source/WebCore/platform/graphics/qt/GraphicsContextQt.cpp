@@ -1139,7 +1139,7 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     FloatPoint startPoint = origin;
     FloatPoint endPoint = origin + FloatSize(width, 0);
 
-    drawLine(roundedIntPoint(startPoint), roundedIntPoint(endPoint));
+    drawLine(startPoint, endPoint);
 }
 
 // NOTE: this code is based on GraphicsContextCG implementation
