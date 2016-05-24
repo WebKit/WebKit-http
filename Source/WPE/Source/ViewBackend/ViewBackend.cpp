@@ -102,18 +102,6 @@ void ViewBackend::setInputClient(Input::Client*)
 {
 }
 
-void ViewBackend::handleKeyboardEvent(const Input::KeyboardEvent& event)
-{
-}
-
-void ViewBackend::handlePointerEvent(const Input::PointerEvent& event)
-{
-}
-
-void ViewBackend::handleAxisEvent(const Input::AxisEvent& event)
-{
-}
-
 } // namespace ViewBackend
 
 } // namespace WPE
