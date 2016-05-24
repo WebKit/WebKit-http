@@ -60,10 +60,6 @@ public:
     virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
     virtual void destroyBuffer(uint32_t) = 0;
 
-    virtual void handleKeyboardEvent(const Input::KeyboardEvent& event);
-    virtual void handlePointerEvent(const Input::PointerEvent& event);
-    virtual void handleAxisEvent(const Input::AxisEvent& event);
-
     virtual void setInputClient(Input::Client*);
 };
 
