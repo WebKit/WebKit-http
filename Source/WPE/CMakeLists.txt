@@ -195,7 +195,6 @@ if (USE_WPE_BACKEND_STM)
      )
      list(APPEND WPE_SOURCES
         Source/Graphics/STM/RenderingBackendSTM.cpp
-        Source/Graphics/RenderingBackend.cpp
         Source/ViewBackend/STM/ViewBackendSTM.cpp
      )
 endif ()
