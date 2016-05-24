@@ -29,11 +29,6 @@
 
 #include <array>
 
-namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
-}
-
 namespace WPE {
 
 namespace Input {
@@ -68,8 +63,6 @@ struct KeyboardEvent {
     {
     }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, KeyboardEvent&);
 };
 
 struct PointerEvent {
@@ -105,8 +98,6 @@ struct PointerEvent {
     {
     }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, PointerEvent&);
 };
 
 struct AxisEvent {
@@ -138,8 +129,6 @@ struct AxisEvent {
     , value(in_value)
     {
     }
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, AxisEvent&);
 };
 
 struct TouchEvent {
