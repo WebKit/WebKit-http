@@ -41,24 +41,6 @@ void ViewBackendSTM::setInputClient(Input::Client* client)
     m_input_client = client;
 }
 
-void ViewBackendSTM::handleKeyboardEvent(const Input::KeyboardEvent& event)
-{
-    if(m_input_client)
-        m_input_client->handleKeyboardEvent({event.time, event.keyCode, event.unicode, event.pressed, event.modifiers});
-}
-
-void ViewBackendSTM::handlePointerEvent(const Input::PointerEvent& event)
-{
-    if(m_input_client)
-        m_input_client->handlePointerEvent({event.type, event.time, event.x, event.y, event.button, event.state});
-}
-
-void ViewBackendSTM::handleAxisEvent(const Input::AxisEvent& event)
-{
-    if(m_input_client)
-        m_input_client->handleAxisEvent({event.type, event.time, event.x, event.y, event.axis, event.value});
-}
-
 } // namespace ViewBackend
 
 } // namespace WPE
