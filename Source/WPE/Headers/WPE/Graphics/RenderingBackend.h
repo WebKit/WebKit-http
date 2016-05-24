@@ -35,12 +35,6 @@
 
 namespace WPE {
 
-namespace Input {
-	struct KeyboardEvent;
-	struct PointerEvent;
-	struct AxisEvent;
-}
-
 namespace Graphics {
 
 class RenderingBackend {
@@ -52,10 +46,6 @@ public:
         class Client {
         public:
             virtual void destroyBuffer(uint32_t) = 0;
-/* FIXME Input handling
-        virtual void handleKeyboardEvent(Input::KeyboardEvent& event) = 0;
-            virtual void handlePointerEvent(Input::PointerEvent& event) = 0;
-            virtual void handleAxisEvent(Input::AxisEvent& event) = 0;*/
         };
 
         virtual ~Surface();
