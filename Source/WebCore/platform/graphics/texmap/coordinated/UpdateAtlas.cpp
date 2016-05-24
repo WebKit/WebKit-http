@@ -77,7 +77,6 @@ void UpdateAtlas::buildLayoutIfNeeded()
 {
     if (!m_areaAllocator) {
         m_areaAllocator = std::make_unique<GeneralAreaAllocator>(size());
-        m_areaAllocator->setMinimumAllocation(IntSize(32, 32));
     }
 }
 
@@ -90,16 +89,22 @@ void UpdateAtlas::didSwapBuffers()
 bool UpdateAtlas::paintOnAvailableBuffer(const IntSize& size, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client* client)
 {
     m_inactivityInSeconds = 0;
+    buildLayoutIfNeeded();
+    IntRect rect = m_areaAllocator->allocate(size);
+
+    // No available buffer was found.
+    if (rect.isEmpty())
+        return false;
 
     if (!m_surface)
         return false;
 
     atlasID = m_ID;
 
-    offset = IntPoint(0, 0);
+    offset = rect.location();
 
     UpdateAtlasSurfaceClient surfaceClient(client, size, supportsAlpha());
-    m_surface->paintToSurface(IntRect(offset, size), &surfaceClient);
+    m_surface->paintToSurface(rect, &surfaceClient);
 
     return true;
 }

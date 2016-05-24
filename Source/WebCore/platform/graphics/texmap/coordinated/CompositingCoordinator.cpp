@@ -38,6 +38,7 @@
 #include "Settings.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/TemporaryChange.h>
+#include "Extensions3DCache.h"
 
 // FIXME: Having this in the platform directory is a layering violation. This does not belong here.
 
@@ -388,7 +389,22 @@ void CompositingCoordinator::purgeBackingStores()
 
 bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurface::Flags flags, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client* client)
 {
-    m_updateAtlases.append(std::make_unique<UpdateAtlas>(this, size, flags));
+    if (Extensions3DCache::singleton().GL_EXT_unpack_subimage()) {
+        for (auto& updateAtlas : m_updateAtlases) {
+            UpdateAtlas* atlas = updateAtlas.get();
+            if (atlas->supportsAlpha() == (flags & CoordinatedSurface::SupportsAlpha)) {
+                // This will be false if there is no available buffer space.
+                if (atlas->paintOnAvailableBuffer(size, atlasID, offset, client))
+                    return true;
+            }
+        }
+
+        static const int ScratchBufferDimension = 1024; // Must be a power of two.
+        m_updateAtlases.append(std::make_unique<UpdateAtlas>(this, IntSize(ScratchBufferDimension, ScratchBufferDimension), flags));
+    } else {
+        m_updateAtlases.append(std::make_unique<UpdateAtlas>(this, size, flags));
+    }
+
     scheduleReleaseInactiveAtlases();
     return m_updateAtlases.last()->paintOnAvailableBuffer(size, atlasID, offset, client);
 }
