@@ -17,10 +17,6 @@ public:
     void commitBuffer(int, const uint8_t*, size_t) override;
     void destroyBuffer(uint32_t) override;
 
-    void handleKeyboardEvent(const Input::KeyboardEvent& event) override;
-    void handlePointerEvent(const Input::PointerEvent& event) override;
-    void handleAxisEvent(const Input::AxisEvent& event) override;
-
     void setInputClient(Input::Client*) override;
 
 private:
