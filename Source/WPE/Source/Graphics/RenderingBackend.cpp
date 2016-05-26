@@ -29,6 +29,7 @@
 #include "RenderingBackendBCMNexus.h"
 #include "RenderingBackendBCMRPi.h"
 #include "RenderingBackendIntelCE.h"
+#include "RenderingBackendSTM.h"
 #include <cstdio>
 
 #if WPE_BUFFER_MANAGEMENT(GBM)
@@ -45,6 +46,10 @@
 
 #if WPE_BACKEND(WESTEROS)
 #include "RenderingBackendWesteros.h"
+#endif
+
+#if WPE_BACKEND(STM)
+#include "RenderingBackendSTM.h"
 #endif
 
 namespace WPE {
@@ -82,6 +87,10 @@ std::unique_ptr<RenderingBackend> RenderingBackend::create(const uint8_t* data, 
 
 #if WPE_BACKEND(WESTEROS)
     return std::unique_ptr<RenderingBackendWesteros>(new RenderingBackendWesteros);
+#endif
+
+#if WPE_BACKEND(STM)
+    return std::unique_ptr<RenderingBackendSTM>(new RenderingBackendSTM);
 #endif
 
     fprintf(stderr, "RenderingBackend: no usable backend found, will crash.\n");

@@ -35,6 +35,9 @@ namespace WPE {
 
 namespace Input {
 class Client;
+struct KeyboardEvent;
+struct PointerEvent;
+struct AxisEvent;
 }
 
 namespace ViewBackend {
