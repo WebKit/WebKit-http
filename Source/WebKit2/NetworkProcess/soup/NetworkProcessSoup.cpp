@@ -129,8 +129,7 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
     if (networkCache.isEnabled())
         networkCache.setCapacity(urlCacheDiskCapacity);
 #else
-    if (urlCacheDiskCapacity > soup_cache_get_max_size(cache))
-        soup_cache_set_max_size(cache, urlCacheDiskCapacity);
+    soup_cache_set_max_size(cache, urlCacheDiskCapacity);
 #endif
 }
 

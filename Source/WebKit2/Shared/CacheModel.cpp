@@ -25,6 +25,8 @@
 
 #include "config.h"
 #include "CacheModel.h"
+#include <cstdlib>
+#include <wtf/text/WTFString.h>
 
 #include <algorithm>
 
@@ -34,6 +36,8 @@ void calculateCacheSizes(CacheModel cacheModel, uint64_t memorySize, uint64_t di
     unsigned& cacheTotalCapacity, unsigned& cacheMinDeadCapacity, unsigned& cacheMaxDeadCapacity, std::chrono::seconds& deadDecodedDataDeletionInterval,
     unsigned& pageCacheCapacity, unsigned long& urlCacheMemoryCapacity, unsigned long& urlCacheDiskCapacity)
 {
+    // Note: urlCacheDiskCapacity can be overridden by the WPE_DISK_CACHE_SIZE environment variable (see below).
+
     switch (cacheModel) {
     case CacheModelDocumentViewer: {
         // Page cache capacity (in pages)
@@ -172,6 +176,22 @@ void calculateCacheSizes(CacheModel cacheModel, uint64_t memorySize, uint64_t di
     default:
         ASSERT_NOT_REACHED();
     };
+
+    String s(std::getenv("WPE_DISK_CACHE_SIZE"));
+    if (!s.isEmpty()) {
+        String value = s.stripWhiteSpace().convertToLowercaseWithoutLocale();
+        size_t units = 1;
+        if (value.endsWith('k'))
+            units = 1024;
+        else if (value.endsWith('m'))
+            units = 1024 * 1024;
+        if (units != 1)
+            value = value.substring(0, value.length()-1);
+        bool ok = false;
+        size_t size = size_t(value.toUInt64(&ok) * units);
+        if (ok)
+            urlCacheDiskCapacity = (unsigned long)(size);
+    }
 }
 
 } // namespace WebKit
