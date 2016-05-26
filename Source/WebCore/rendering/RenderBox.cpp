@@ -35,12 +35,15 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#include "HTMLAnchorElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLButtonElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLHtmlElement.h"
 #include "HTMLInputElement.h"
+#include "HTMLLegendElement.h"
 #include "HTMLNames.h"
+#include "HTMLSelectElement.h"
 #include "HTMLTextAreaElement.h"
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
@@ -513,17 +516,19 @@ void RenderBox::updateFromStyle()
                 boxHasOverflowClip = false;
             }
         }
-        
         // Check for overflow clip.
         // It's sufficient to just check one direction, since it's illegal to have visible on only one overflow value.
         if (boxHasOverflowClip) {
-            if (!s_hadOverflowClip)
-                // Erase the overflow
-                repaint();
+            if (!s_hadOverflowClip && hasRenderOverflow()) {
+                // Erase the overflow.
+                // Overflow changes have to result in immediate repaints of the entire layout overflow area because
+                // repaints issued by removal of descendants get clipped using the updated style when they shouldn't.
+                repaintRectangle(visualOverflowRect());
+                repaintRectangle(layoutOverflowRect());
+            }
             setHasOverflowClip();
         }
     }
-
     setHasTransformRelatedProperty(styleToUse.hasTransformRelatedProperty());
     setHasReflection(styleToUse.boxReflect());
 }
@@ -2004,7 +2009,7 @@ void RenderBox::mapLocalToContainer(const RenderLayerModelObject* repaintContain
     }
 
     bool containerSkipped;
-    RenderElement* container = this->container(repaintContainer, &containerSkipped);
+    RenderElement* container = this->container(repaintContainer, containerSkipped);
     if (!container)
         return;
 
@@ -2052,7 +2057,7 @@ const RenderObject* RenderBox::pushMappingToContainer(const RenderLayerModelObje
     ASSERT(ancestorToStopAt != this);
 
     bool ancestorSkipped;
-    RenderElement* container = this->container(ancestorToStopAt, &ancestorSkipped);
+    RenderElement* container = this->container(ancestorToStopAt, ancestorSkipped);
     if (!container)
         return nullptr;
 
@@ -2241,7 +2246,7 @@ LayoutRect RenderBox::computeRectForRepaint(const LayoutRect& rect, const Render
     }
 
     bool containerSkipped;
-    auto* renderer = container(repaintContainer, &containerSkipped);
+    auto* renderer = container(repaintContainer, containerSkipped);
     if (!renderer)
         return adjustedRect;
     

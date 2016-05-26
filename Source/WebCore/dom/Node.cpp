@@ -42,6 +42,7 @@
 #include "EventDispatcher.h"
 #include "EventHandler.h"
 #include "FrameView.h"
+#include "HTMLBodyElement.h"
 #include "HTMLCollection.h"
 #include "HTMLElement.h"
 #include "HTMLImageElement.h"
@@ -936,65 +937,6 @@ bool Node::containsIncludingHostElements(const Node* node) const
     return false;
 }
 
-static inline Node* ancestor(Node* node, unsigned depth)
-{
-    for (unsigned i = 0; i < depth; ++i)
-        node = node->parentNode();
-    return node;
-}
-
-Node* commonAncestor(Node& thisNode, Node& otherNode)
-{
-    unsigned thisDepth = 0;
-    for (auto node = &thisNode; node; node = node->parentNode()) {
-        if (node == &otherNode)
-            return node;
-        thisDepth++;
-    }
-    unsigned otherDepth = 0;
-    for (auto node = &otherNode; node; node = node->parentNode()) {
-        if (node == &thisNode)
-            return &thisNode;
-        otherDepth++;
-    }
-
-    Node* thisAncestor = &thisNode;
-    Node* otherAncestor = &otherNode;
-    if (thisDepth > otherDepth)
-        thisAncestor = ancestor(thisAncestor, thisDepth - otherDepth);
-    else if (otherDepth > thisDepth)
-        otherAncestor = ancestor(otherAncestor, otherDepth - thisDepth);
-
-    for (; thisAncestor; thisAncestor = thisAncestor->parentNode()) {
-        if (thisAncestor == otherAncestor)
-            return thisAncestor;
-        otherAncestor = otherAncestor->parentNode();
-    }
-    ASSERT(!otherAncestor);
-    return nullptr;
-}
-
-Node* commonAncestorCrossingShadowBoundary(Node& node, Node& other)
-{
-    if (&node == &other)
-        return &node;
-
-    Element* shadowHost = node.shadowHost();
-    // FIXME: This test might be wrong for user-authored shadow trees.
-    if (shadowHost && shadowHost == other.shadowHost())
-        return shadowHost;
-
-    TreeScope* scope = commonTreeScope(&node, &other);
-    if (!scope)
-        return nullptr;
-
-    Node* parentNode = scope->ancestorInThisScope(&node);
-    ASSERT(parentNode);
-    Node* parentOther = scope->ancestorInThisScope(&other);
-    ASSERT(parentOther);
-    return commonAncestor(*parentNode, *parentOther);
-}
-
 Node* Node::pseudoAwarePreviousSibling() const
 {
     Element* parentOrHost = is<PseudoElement>(*this) ? downcast<PseudoElement>(*this).hostElement() : parentElement();
@@ -1220,6 +1162,9 @@ Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPo
         setFlag(InDocumentFlag);
     if (parentOrShadowHostNode()->isInShadowTree())
         setFlag(IsInShadowTreeFlag);
+
+    setNeedsStyleRecalc(ReconstructRenderTree);
+
     return InsertionDone;
 }
 
@@ -1960,7 +1905,7 @@ void Node::didMoveToNewDocument(Document* oldDocument)
     }
 }
 
-static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, Ref<EventListener>&& listener, bool useCapture)
 {
     if (!targetNode->EventTarget::addEventListener(eventType, listener.copyRef(), useCapture))
         return false;
@@ -1996,12 +1941,12 @@ static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eve
     return true;
 }
 
-bool Node::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+bool Node::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, bool useCapture)
 {
     return tryAddEventListener(this, eventType, WTFMove(listener), useCapture);
 }
 
-static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& eventType, EventListener* listener, bool useCapture)
+static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& eventType, EventListener& listener, bool useCapture)
 {
     if (!targetNode->EventTarget::removeEventListener(eventType, listener, useCapture))
         return false;
@@ -2037,7 +1982,7 @@ static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& 
     return true;
 }
 
-bool Node::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+bool Node::removeEventListener(const AtomicString& eventType, EventListener& listener, bool useCapture)
 {
     return tryRemoveEventListener(this, eventType, listener, useCapture);
 }
@@ -2062,7 +2007,7 @@ EventTargetData& Node::ensureEventTargetData()
         return *eventTargetDataMap().get(this);
 
     setHasEventTargetData(true);
-    return *eventTargetDataMap().set(this, std::make_unique<EventTargetData>()).iterator->value;
+    return *eventTargetDataMap().add(this, std::make_unique<EventTargetData>()).iterator->value;
 }
 
 void Node::clearEventTargetData()
@@ -2144,7 +2089,7 @@ void Node::unregisterMutationObserver(MutationObserverRegistration* registration
     if (!registry)
         return;
 
-    registry->removeFirstMatching([registration] (const std::unique_ptr<MutationObserverRegistration>& current) {
+    registry->removeFirstMatching([registration](auto& current) {
         return current.get() == registration;
     });
 }

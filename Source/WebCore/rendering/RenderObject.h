@@ -189,11 +189,7 @@ public:
         OverflowHeight
     };
 
-    RenderObject* traverseNext(const RenderObject* stayWithin) const;
-    typedef bool (*TraverseNextInclusionFunction)(const RenderObject&);
     typedef BlockContentHeightType (*HeightTypeTraverseNextInclusionFunction)(const RenderObject&);
-
-    RenderObject* traverseNext(const RenderObject* stayWithin, TraverseNextInclusionFunction) const;
     RenderObject* traverseNext(const RenderObject* stayWithin, HeightTypeTraverseNextInclusionFunction, int& currentDepth,  int& newFixedDepth) const;
 #endif
 
@@ -575,7 +571,8 @@ public:
     // Returns the object containing this one. Can be different from parent for positioned elements.
     // If repaintContainer and repaintContainerSkipped are not null, on return *repaintContainerSkipped
     // is true if the renderer returned is an ancestor of repaintContainer.
-    RenderElement* container(const RenderLayerModelObject* repaintContainer = nullptr, bool* repaintContainerSkipped = nullptr) const;
+    RenderElement* container() const;
+    RenderElement* container(const RenderLayerModelObject* repaintContainer, bool& repaintContainerSkipped) const;
 
     RenderBoxModelObject* offsetParent() const;
 

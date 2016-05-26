@@ -203,6 +203,8 @@ fast/events/drag-outside-window.html
 fast/events/drag-parent-node.html
 fast/events/drag-selects-image.html
 fast/events/drag-to-navigate.html
+fast/events/draggable-div-nodata.html
+fast/events/draggable-div-customdata.html
 fast/events/drop-handler-should-not-stop-navigate.html
 fast/events/drop-with-file-paths.html
 fast/events/dropzone-001.html
@@ -1652,7 +1654,6 @@ fast/events/shadow-event-path.html [ Failure ]
 fast/events/show-modal-dialog-onblur-onfocus.html [ Failure ]
 fast/events/tab-focus-link-in-canvas.html [ Failure ]
 fast/events/tabindex-focus-blur-all.html [ Failure ]
-fast/events/click-over-descendant-elements.html [ Failure ]
 
 # Ref-test imported from W3C that is failing because type=image input elements have rounded corners on iOS.
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/image01.html [ ImageOnlyFailure ]
@@ -1894,7 +1895,6 @@ fast/parser/nested-fragment-parser-crash.html [ Failure ]
 fast/preloader/document-write-2.html [ Failure ]
 fast/preloader/document-write.html [ Failure ]
 fast/preloader/image-srcset.html [ Failure ]
-fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting.html [ Failure ]
 fast/regions/absolute-in-relative-overflow.html [ ImageOnlyFailure ]
 fast/regions/absolute-pos-elem-in-region.html [ ImageOnlyFailure ]
 fast/regions/animation-element-in-region-flowed-to-other-thread.html [ ImageOnlyFailure ]
@@ -2936,6 +2936,7 @@ fast/table/collapsed-border-with-odd-pixel-width.html [ ImageOnlyFailure ]
 # Uncategorized reftest failures, uncovered once we made reftests work. Needs triage.
 css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+css3/font-variant-synthesis-jdaggett.html [ ImageOnlyFailure ]
 fast/backgrounds/background-image-large-float-intrinsic-ratio.html [ ImageOnlyFailure ]
 fast/block/positioning/fixed-container-with-relative-parent.html [ ImageOnlyFailure ]
 fast/borders/border-image-fill-inline-no-border.html [ ImageOnlyFailure ]
@@ -2979,8 +2980,6 @@ fast/forms/listbox-top-padding-do-not-clip-items.html [ Failure ]
 fast/images/image-map-outline-in-positioned-container.html [ Pass ImageOnlyFailure ]
 fast/images/image-map-outline-with-paint-root-offset.html [ Pass ImageOnlyFailure ]
 fast/images/image-map-outline-with-scale-transform.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/156812 compositing/webgl/webgl-reflection.html [ Failure ]
 
 # iOS does not allow you to scroll by dragging the scrollbar thumb.
 webkit.org/b/157201 fast/scrolling/rtl-drag-vertical-scroller.html [ Failure ]

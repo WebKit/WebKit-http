@@ -1,3 +1,273 @@
+2016-05-25  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WTF/Functional.h
+        https://bugs.webkit.org/show_bug.cgi?id=158081
+
+        Reviewed by Chris Dumez.
+
+        This is no longer used, and removing it will free up the name for a new Functional.h implementation.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Functional.h: Removed.
+        (WTF::RefAndDeref::ref): Deleted.
+        (WTF::RefAndDeref::deref): Deleted.
+        (WTF::ParamStorageTraits::wrap): Deleted.
+        (WTF::ParamStorageTraits::unwrap): Deleted.
+        (WTF::ParamStorageTraits<PassRefPtr<T>>::wrap): Deleted.
+        (WTF::ParamStorageTraits<PassRefPtr<T>>::unwrap): Deleted.
+        (WTF::ParamStorageTraits<RefPtr<T>>::wrap): Deleted.
+        (WTF::ParamStorageTraits<RefPtr<T>>::unwrap): Deleted.
+        (WTF::ParamStorageTraits<RetainPtr<T>>::wrap): Deleted.
+        (WTF::ParamStorageTraits<RetainPtr<T>>::unwrap): Deleted.
+        (WTF::FunctionImplBase::~FunctionImplBase): Deleted.
+        (WTF::FunctionBase::isNull): Deleted.
+        (WTF::FunctionBase::FunctionBase): Deleted.
+        (WTF::FunctionBase::impl): Deleted.
+        (WTF::bind): Deleted.
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+
+2016-05-24  Keith Miller  <keith_miller@apple.com>
+
+        LLInt should be able to cache prototype loads for values in GetById
+        https://bugs.webkit.org/show_bug.cgi?id=158032
+
+        Reviewed by Filip Pizlo.
+
+        Add move constructors/initializers to Bags.
+
+        * wtf/Bag.h:
+        (WTF::Bag::Bag):
+        (WTF::Bag::operator=):
+
+2016-05-24  Chris Dumez  <cdumez@apple.com>
+
+        Use auto for some of our lambda function parameters
+        https://bugs.webkit.org/show_bug.cgi?id=158001
+
+        Reviewed by Darin Adler.
+
+        Use auto for some of our lambda function parameters now that we build with c++14.
+
+        * wtf/BubbleSort.h:
+        (WTF::bubbleSort):
+
+2016-05-23  Chris Dumez  <cdumez@apple.com>
+
+        Speed up move of vectors of POD types that have an inline buffer
+        https://bugs.webkit.org/show_bug.cgi?id=158003
+
+        Reviewed by Benjamin Poulain.
+
+        When moving a vector of POD types that have an inline buffer, we would
+        call std::swap() on the inline buffers. This unnecessarily slow because:
+        1. It does not consider the vector size, and therefore may end up doing
+           more work than necessary when the inline buffer is not full.
+        2. In the "move" case, the destination buffer is completely empty so
+           we don't really want a swap. We merely want the move the content of
+           the source's inline buffer into the destination's one.
+
+        Instead of calling std::swap(), we now call swapInlineBuffers() which
+        was already used for non-POD types. swapInlineBuffers() will do just
+        what we want in the "move" case because swapBound is going to be 0.
+        As a result, we will only move the content of the source buffer into
+        the destination one. Also swapInlineBuffers() is aware of the source
+        vector's size so it will only move what's strictly needed.
+
+        This seems to be a 2% progression on Dromaeo DOM attributes test.
+
+        * wtf/Vector.h:
+        (WTF::VectorBuffer::swapInlineBuffer):
+
+2016-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Added NSEventMaskMouseMoved to AppKitCompatibilityDeclarations.h.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
+2016-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Another attempt to fix the GTK build after my previous changes.
+
+        * wtf/StdLibExtras.h:
+
+2016-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the GTK build after r201257.
+
+        * wtf/StdLibExtras.h:
+
+2016-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Additional fixes for non-C++14 Apple projects that use WTF.
+
+        * wtf/StdLibExtras.h:
+        (std::exchange):
+
+2016-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Additional fixes for non-C++14 Apple projects that use WTF.
+
+        * wtf/StdLibExtras.h:
+        (std::make_unique):
+        (std::move):
+
+2016-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Correct the previous build fix attempt.
+
+        * wtf/StdLibExtras.h:
+
+2016-05-22  Dan Bernstein  <mitz@apple.com>
+
+        Build fix for non-C++14 Apple projects that use WTF.
+
+        Rubber-stamped by Anders.
+
+        * wtf/StdLibExtras.h:
+
+2016-05-22  Brady Eidson  <beidson@apple.com>
+
+        Move to C++14.
+        https://bugs.webkit.org/show_bug.cgi?id=157948
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/Base.xcconfig:
+        
+        Delete a lot of "stl additions until we can adopt C++14" code:
+        * wtf/StdLibExtras.h:
+        (std::make_unique): Deleted.
+        (std::index_sequence::size): Deleted.
+        (std::exchange): Deleted.
+        (std::literals::chrono_literals::operator _s): Deleted.
+        (std::literals::chrono_literals::operator _ms): Deleted.
+
+2016-05-20  Rawinder Singh  <rawinder.singh-webkit@cisra.canon.com.au>
+
+        Implement operator== for WeakPtr
+        https://bugs.webkit.org/show_bug.cgi?id=157883
+
+        Reviewed by Chris Dumez.
+
+        Implement operator== and operator!= for WeakPtr and update code to use the operators.
+
+        * wtf/WeakPtr.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+
+2016-05-19  Chris Dumez  <cdumez@apple.com>
+
+        Improve compile-time assertions in is<>() / downcast<>()
+        https://bugs.webkit.org/show_bug.cgi?id=157817
+
+        Reviewed by Darin Adler.
+
+        * wtf/Ref.h:
+        (WTF::is):
+        Add is<>() overloads taking a Ref<>() so that is<>() keeps working when
+        passing a Ref<>(), despite the new static assertions on the input type.
+        Some call sites were already leveraging this as it was working by
+        implicitly converting the Ref<T> into a T&.
+
+        * wtf/TypeCasts.h:
+        (WTF::is):
+        (WTF::downcast):
+        Make static assertions stricter in is<>() / downcast<>() to catch more
+        cases where those are either unnecessary or incorrect.
+
+2016-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix all of the builds. I failed a second time.
+
+        * wtf/BackwardsGraph.h:
+        (WTF::BackwardsGraph::rootName):
+
+2016-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix all of the builds. I had made an additional change that I did not mean to
+        commit. This fixes it.
+
+        * wtf/BackwardsGraph.h:
+        (WTF::BackwardsGraph::rootName):
+        (WTF::BackwardsGraph::Set::dump):
+        (WTF::BackwardsGraph::dump):
+
+2016-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::LICMPhase shouldn't hoist type checks unless it knows that the check will succeed at the loop pre-header
+        https://bugs.webkit.org/show_bug.cgi?id=144527
+
+        Reviewed by Saam Barati.
+        
+        This adds an adaptor for graphs called BackwardsGraph. The WTF graph framework is based on
+        passing around a Graph template argument that follows the protocol shared by DFG::CFG,
+        B3::CFG, and Air::CFG. These graphs always have a single root node but may have many leaf
+        nodes. This new BackwardsGraph adaptor reverses the graph by creating a synthetic return
+        node that it uses as the root in the inverted graph. This currently may resort to some
+        heuristics in programs that have an infinite loop, but other than that, it'll work well in
+        the general case.
+        
+        This allows us to say Dominators<BackwardsGraph<some graph type>> as a way of computing
+        backwards dominators, which then allows us to easily answer control flow equivalence
+        queries.
+
+        * CMakeLists.txt:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BackwardsGraph.h: Added.
+        (WTF::BackwardsGraph::Node::Node):
+        (WTF::BackwardsGraph::Node::root):
+        (WTF::BackwardsGraph::Node::operator==):
+        (WTF::BackwardsGraph::Node::operator!=):
+        (WTF::BackwardsGraph::Node::operator bool):
+        (WTF::BackwardsGraph::Node::isRoot):
+        (WTF::BackwardsGraph::Node::node):
+        (WTF::BackwardsGraph::Set::Set):
+        (WTF::BackwardsGraph::Set::add):
+        (WTF::BackwardsGraph::Set::remove):
+        (WTF::BackwardsGraph::Set::contains):
+        (WTF::BackwardsGraph::Set::dump):
+        (WTF::BackwardsGraph::Map::Map):
+        (WTF::BackwardsGraph::Map::clear):
+        (WTF::BackwardsGraph::Map::size):
+        (WTF::BackwardsGraph::Map::operator[]):
+        (WTF::BackwardsGraph::BackwardsGraph):
+        (WTF::BackwardsGraph::root):
+        (WTF::BackwardsGraph::newMap):
+        (WTF::BackwardsGraph::successors):
+        (WTF::BackwardsGraph::predecessors):
+        (WTF::BackwardsGraph::index):
+        (WTF::BackwardsGraph::node):
+        (WTF::BackwardsGraph::numNodes):
+        (WTF::BackwardsGraph::dump):
+        * wtf/Dominators.h:
+        (WTF::Dominators::Dominators):
+        (WTF::Dominators::dump):
+        (WTF::Dominators::LengauerTarjan::computeDepthFirstPreNumbering):
+        * wtf/GraphNodeWorklist.h:
+        (WTF::GraphNodeWith::GraphNodeWith):
+        (WTF::GraphNodeWith::operator bool):
+        * wtf/StdLibExtras.h:
+        (WTF::callStatelessLambda):
+        (WTF::checkAndSet):
+
+2016-05-18  Saam barati  <sbarati@apple.com>
+
+        StringBuilder::appendQuotedJSONString doesn't properly protect against the math it's doing. Make the math fit the assertion.
+        https://bugs.webkit.org/show_bug.cgi?id=157868
+
+        Reviewed by Benjamin Poulain.
+
+        appendQuotedJSONString was rounding up to the next power of two when resizing
+        its buffer. Lets call the allocation size X. If X > 2^31, then
+        roundUpToPowerOfTwo(X) == 0. This patch fixes this by making the
+        assertion reflect what the code is doing. We now allocate to a size
+        of X = std::max(maximumCapacityRequired , roundUpToPowerOfTwo(maximumCapacityRequired))
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendQuotedJSONString):
+
 2016-05-17  Joseph Pecoraro  <pecoraro@apple.com>
 
         REGRESSION(r192855): Math.random() always produces the same first 7 decimal points the first two invocations

@@ -92,7 +92,6 @@ class JSBoundSlotBaseFunction;
 class JSGlobalObject;
 class JSObject;
 class LLIntOffsetsExtractor;
-class LegacyProfiler;
 class NativeExecutable;
 class RegExpCache;
 class RegisterAtOffsetList;
@@ -355,11 +354,6 @@ public:
         return m_inDefineOwnProperty;
     }
 
-    LegacyProfiler* enabledProfiler() { return m_enabledProfiler; }
-    void setEnabledProfiler(LegacyProfiler*);
-
-    void* enabledProfilerAddress() { return &m_enabledProfiler; }
-
 #if ENABLE(JIT)
     bool canUseJIT() { return m_canUseJIT; }
 #else
@@ -444,11 +438,6 @@ public:
 
     size_t reservedZoneSize() const { return m_reservedZoneSize; }
     size_t updateReservedZoneSize(size_t reservedZoneSize);
-
-#if ENABLE(FTL_JIT)
-    void updateFTLLargestStackSize(size_t);
-    void** addressOfFTLStackLimit() { return &m_ftlStackLimit; }
-#endif
 
 #if !ENABLE(JIT)
     void* jsStackLimit() { return m_jsStackLimit; }
@@ -644,10 +633,6 @@ private:
         void* m_stackLimit;
         void* m_jsStackLimit;
     };
-#if ENABLE(FTL_JIT)
-    void* m_ftlStackLimit;
-    size_t m_largestFTLStackSize;
-#endif
 #endif
     void* m_lastStackTop;
     Exception* m_exception { nullptr };
@@ -657,7 +642,6 @@ private:
     bool m_globalConstRedeclarationShouldThrow { true };
     bool m_shouldBuildPCToCodeOriginMapping { false };
     std::unique_ptr<CodeCache> m_codeCache;
-    LegacyProfiler* m_enabledProfiler;
     std::unique_ptr<BuiltinExecutables> m_builtinExecutables;
     HashMap<String, RefPtr<WatchpointSet>> m_impurePropertyWatchpointSets;
     std::unique_ptr<TypeProfiler> m_typeProfiler;

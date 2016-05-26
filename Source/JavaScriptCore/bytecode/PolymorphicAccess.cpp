@@ -48,14 +48,6 @@ namespace JSC {
 
 static const bool verbose = false;
 
-// EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned on an even-numbered register (r0, r2 or [sp]).
-// To prevent the assembler from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
-#if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
-#define EABI_32BIT_DUMMY_ARG      CCallHelpers::TrustedImm32(0),
-#else
-#define EABI_32BIT_DUMMY_ARG
-#endif
-
 void AccessGenerationResult::dump(PrintStream& out) const
 {
     out.print(m_kind);
@@ -1092,15 +1084,18 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             // to make some space here.
             jit.makeSpaceOnStackForCCall();
 
-            // getter: EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName);
+            // getter: EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName, JSObject* slotBase);
             // setter: void (*PutValueFunc)(ExecState*, EncodedJSValue thisObject, EncodedJSValue value);
             // Custom values are passed the slotBase (the property holder), custom accessors are passed the thisVaule (reciever).
+            // FIXME: Remove this differences in custom values and custom accessors.
+            // https://bugs.webkit.org/show_bug.cgi?id=158014
             GPRReg baseForCustomValue = m_type == CustomValueGetter || m_type == CustomValueSetter ? baseForAccessGPR : baseForGetGPR;
 #if USE(JSVALUE64)
             if (m_type == CustomValueGetter || m_type == CustomAccessorGetter) {
                 jit.setupArgumentsWithExecState(
                     baseForCustomValue,
-                    CCallHelpers::TrustedImmPtr(ident.impl()));
+                    CCallHelpers::TrustedImmPtr(ident.impl()),
+                    baseForAccessGPR);
             } else
                 jit.setupArgumentsWithExecState(baseForCustomValue, valueRegs.gpr());
 #else
@@ -1108,7 +1103,8 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 jit.setupArgumentsWithExecState(
                     EABI_32BIT_DUMMY_ARG baseForCustomValue,
                     CCallHelpers::TrustedImm32(JSValue::CellTag),
-                    CCallHelpers::TrustedImmPtr(ident.impl()));
+                    CCallHelpers::TrustedImmPtr(ident.impl()),
+                    baseForAccessGPR);
             } else {
                 jit.setupArgumentsWithExecState(
                     EABI_32BIT_DUMMY_ARG baseForCustomValue,

@@ -43,12 +43,14 @@ raise unless SCRIPT_PATH.dirname.basename.to_s == "Scripts"
 raise unless SCRIPT_PATH.dirname.dirname.basename.to_s == "Tools"
 
 OPENSOURCE_PATH = SCRIPT_PATH.dirname.dirname.dirname
+PERFORMANCETESTS_PATH = OPENSOURCE_PATH + "PerformanceTests"
 
-SUNSPIDER_PATH = OPENSOURCE_PATH + "PerformanceTests" + "SunSpider" + "tests" + "sunspider-1.0"
-LONGSPIDER_PATH = OPENSOURCE_PATH + "PerformanceTests" + "LongSpider"
-V8_PATH = OPENSOURCE_PATH + "PerformanceTests" + "SunSpider" + "tests" + "v8-v6"
+SUNSPIDER_PATH = PERFORMANCETESTS_PATH + "SunSpider" + "tests" + "sunspider-1.0"
+LONGSPIDER_PATH = PERFORMANCETESTS_PATH + "LongSpider"
+V8_PATH = PERFORMANCETESTS_PATH + "SunSpider" + "tests" + "v8-v6"
 JSREGRESS_PATH = OPENSOURCE_PATH + "LayoutTests" + "js" + "regress" + "script-tests"
-OCTANE_WRAPPER_PATH = OPENSOURCE_PATH + "PerformanceTests" + "Octane" + "wrappers"
+OCTANE_WRAPPER_PATH = PERFORMANCETESTS_PATH + "Octane" + "wrappers"
+JSBENCH_PATH = PERFORMANCETESTS_PATH + "JSBench"
 
 TEMP_PATH = OPENSOURCE_PATH + "BenchmarkTemp"
 
@@ -233,6 +235,7 @@ $alsoLocal=false
 $sshOptions=[]
 $vms = []
 $environment = {}
+$dependencies = []
 $needToCopyVMs = false
 $dontCopyVMs = false
 $allDRT = true
@@ -348,6 +351,7 @@ def usage
   puts "                     be used for particular VMs and benchmarks."
   puts "--config <path>      Specify the path of the configuration file. Defaults to"
   puts "                     ~/.run-jsc-benchmarks"
+  puts "--dependencies       Additional dependent library paths."
   puts "--help or -h         Display this message."
   puts
   puts "Example:"
@@ -1292,6 +1296,10 @@ class VM
       @libPath, @relativeBinPath = [$~.pre_match+"/Release"], "./#{$1}"
     elsif @path =~ /\/Debug\/([a-zA-Z]+)$/
       @libPath, @relativeBinPath = [$~.pre_match+"/Debug"], "./#{$1}"
+    elsif @path =~ /\/Release\/bin\/([a-zA-Z]+)$/
+      @libPath, @relativeBinPath = [$~.pre_match+"/Release/lib"], "./#{$1}"
+    elsif @path =~ /\/Debug\/bin\/([a-zA-Z]+)$/
+      @libPath, @relativeBinPath = [$~.pre_match+"/Debug/lib"], "./#{$1}"
     elsif @path =~ /\/Contents\/Resources\/([a-zA-Z]+)$/
       @libPath = [$~.pre_match + "/Contents/Resources", $~.pre_match + "/Contents/Frameworks"]
     elsif @path =~ /\/JavaScriptCore.framework\/Resources\/([a-zA-Z]+)$/
@@ -1299,6 +1307,7 @@ class VM
     elsif @path =~ /(DumpRenderTree|webkitTestRunner|jsc)$/
       @libPath, @relativeBinPath = [$~.pre_match+"/"], "./#{$1}"
     end
+    @libPath += $dependencies
   end
   
   def canCopyIntoBenchPath
@@ -1388,6 +1397,14 @@ class VM
     }
     $script.puts "export DYLD_LIBRARY_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
     $script.puts "export DYLD_FRAMEWORK_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
+    $script.puts "export LD_LIBRARY_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
+
+    unless myLibPath.empty?
+        primaryLibPath = myLibPath.first
+        $script.puts "export TEST_RUNNER_TEST_PLUGIN_PATH=#{Shellwords.shellescape(Pathname.new(primaryLibPath).join('plugins').to_s)}"
+        $script.puts "export TEST_RUNNER_INJECTED_BUNDLE_FILENAME=#{Shellwords.shellescape(Pathname.new(primaryLibPath).join('libTestRunnerInjectedBundle.so').to_s)}"
+    end
+
     @extraEnv.each_pair {
       | key, val |
       $script.puts "export #{Shellwords.shellescape(key)}=#{Shellwords.shellescape(val)}"
@@ -2671,6 +2688,7 @@ begin
                  ['--vms', GetoptLong::REQUIRED_ARGUMENT],
                  ['--output-name', GetoptLong::REQUIRED_ARGUMENT],
                  ['--environment', GetoptLong::REQUIRED_ARGUMENT],
+                 ['--dependencies', GetoptLong::REQUIRED_ARGUMENT],
                  ['--config', GetoptLong::REQUIRED_ARGUMENT],
                  ['--help', '-h', GetoptLong::NO_ARGUMENT]).each {
     | opt, arg |
@@ -2804,6 +2822,8 @@ begin
       }
     when '--environment'
       $environment = JSON::parse(IO::read(arg))
+    when '--dependencies'
+      $dependencies.push(Pathname.new(arg).realpath)
     when '--config'
       $configPath = Pathname.new(arg)
     when '--help'
@@ -2842,7 +2862,6 @@ begin
   DSPJS_JSLINUX_PATH = pathname_if_exist(config["DSPJSLinuxPath"])
   DSPJS_AMMOJS_ASMJS_PATH = pathname_if_exist(config["DSPJSAmmoJSAsmJSPath"])
   DSPJS_AMMOJS_REGULAR_PATH = pathname_if_exist(config["DSPJSAmmoJSRegularPath"])
-  JSBENCH_PATH = pathname_if_exist(config["JSBenchPath"])
   KRAKEN_PATH = pathname_if_exist(config["KrakenPath"])
   
   # If the --dont-copy-vms option was passed, it overrides the --force-vm-copy option.
@@ -2955,8 +2974,16 @@ begin
   }
   
   JSBENCH = BenchmarkSuite.new("JSBench", :arithmeticMean, 0)
-  [["amazon", "urm"], ["facebook", "urem"], ["google", "urem"], ["twitter", "urem"],
-   ["yahoo", "urem"]].each {
+  [["amazon-chrome", "urem"], ["amazon-chrome-win", "urem"], ["amazon-firefox", "urm"],
+   ["amazon-firefox-win", "urm"], ["amazon-safari", "urem"], ["facebook-chrome", "urem"],
+   ["facebook-chrome-win", "urem"], ["facebook-firefox", "urem"],
+   ["facebook-firefox-win", "urem"], ["facebook-safari", "urem"],
+   ["google-chrome", "urem"], ["google-chrome-win", "urem"], ["google-firefox", "uem"],
+   ["google-firefox-win", "urem"], ["google-safari", "urem"], ["twitter-chrome", "urem"],
+   ["twitter-chrome-win", "rem"], ["twitter-firefox", "urem"],
+   ["twitter-firefox-win", "urem"], ["twitter-safari", "urem"], ["yahoo-chrome", "urem"],
+   ["yahoo-chrome-win", "urem"], ["yahoo-firefox", "urem"], ["yahoo-firefox-win", "urem"],
+   ["yahoo-safari", "urem"]].each {
     | nameAndMode |
     JSBENCH.add JSBenchBenchmark.new(*nameAndMode)
   }

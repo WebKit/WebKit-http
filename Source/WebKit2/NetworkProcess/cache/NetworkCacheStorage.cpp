@@ -526,7 +526,7 @@ Data Storage::encodeRecord(const Record& record, Optional<BlobStorage::Blob> blo
 void Storage::removeFromPendingWriteOperations(const Key& key)
 {
     while (true) {
-        auto found = m_pendingWriteOperations.findIf([&key](const std::unique_ptr<WriteOperation>& operation) {
+        auto found = m_pendingWriteOperations.findIf([&key](auto& operation) {
             return operation->record.key == key;
         });
 
@@ -572,7 +572,7 @@ void Storage::dispatchReadOperation(std::unique_ptr<ReadOperation> readOperation
     m_activeReadOperations.add(WTFMove(readOperationPtr));
 
     // I/O pressure may make disk operations slow. If they start taking very long time we rather go to network.
-    const auto readTimeout = 1500_ms;
+    const auto readTimeout = 1500ms;
     m_readOperationTimeoutTimer.startOneShot(readTimeout);
 
     bool shouldGetBodyBlob = mayContainBlob(readOperation.key);
@@ -795,7 +795,7 @@ void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler)
 
     // Delay the start of writes a bit to avoid affecting early page load.
     // Completing writes will dispatch more writes without delay.
-    static const auto initialWriteDelay = 1_s;
+    static const auto initialWriteDelay = 1s;
     m_writeOperationDispatchTimer.startOneShot(initialWriteDelay);
 }
 
@@ -898,10 +898,8 @@ void Storage::clear(const String& type, std::chrono::system_clock::time_point mo
         m_blobFilter->clear();
     m_approximateRecordsSize = 0;
 
-    // Avoid non-thread safe std::function copies.
-    auto* completionHandlerPtr = completionHandler ? new std::function<void ()>(WTFMove(completionHandler)) : nullptr;
     StringCapture typeCapture(type);
-    ioQueue().dispatch([this, modifiedSinceTime, completionHandlerPtr, typeCapture] {
+    ioQueue().dispatch([this, modifiedSinceTime, completionHandler = WTFMove(completionHandler), typeCapture] () mutable {
         auto recordsPath = this->recordsPath();
         traverseRecordsFiles(recordsPath, typeCapture.string(), [modifiedSinceTime](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
             auto filePath = WebCore::pathByAppendingComponent(recordDirectoryPath, fileName);
@@ -918,10 +916,9 @@ void Storage::clear(const String& type, std::chrono::system_clock::time_point mo
         // This cleans unreferenced blobs.
         m_blobStorage.synchronize();
 
-        if (completionHandlerPtr) {
-            RunLoop::main().dispatch([completionHandlerPtr] {
-                (*completionHandlerPtr)();
-                delete completionHandlerPtr;
+        if (completionHandler) {
+            RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
+                completionHandler();
             });
         }
     });
@@ -935,7 +932,7 @@ static double computeRecordWorth(FileTimes times)
     auto accessAge = times.modification - times.creation;
 
     // For sanity.
-    if (age <= 0_s || accessAge < 0_s || accessAge > age)
+    if (age <= 0s || accessAge < 0s || accessAge > age)
         return 0;
 
     // We like old entries that have been accessed recently.

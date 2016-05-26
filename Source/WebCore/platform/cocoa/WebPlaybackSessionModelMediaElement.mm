@@ -33,6 +33,7 @@
 #import "MediaControlsHost.h"
 #import "WebVideoFullscreenInterface.h"
 #import <QuartzCore/CoreAnimation.h>
+#import <WebCore/AudioTrackList.h>
 #import <WebCore/DOMEventListener.h>
 #import <WebCore/Event.h>
 #import <WebCore/EventListener.h>
@@ -89,7 +90,7 @@ void WebPlaybackSessionModelMediaElement::setMediaElement(HTMLMediaElement* medi
 
     if (m_mediaElement && m_isListening) {
         for (auto& eventName : observedEventNames())
-            m_mediaElement->removeEventListener(eventName, this, false);
+            m_mediaElement->removeEventListener(eventName, *this, false);
     }
     m_isListening = false;
 
@@ -99,7 +100,7 @@ void WebPlaybackSessionModelMediaElement::setMediaElement(HTMLMediaElement* medi
         return;
 
     for (auto& eventName : observedEventNames())
-        m_mediaElement->addEventListener(eventName, this, false);
+        m_mediaElement->addEventListener(eventName, *this, false);
     m_isListening = true;
 
     updateForEventName(eventNameAll());
@@ -228,6 +229,9 @@ void WebPlaybackSessionModelMediaElement::endScanning()
 
 void WebPlaybackSessionModelMediaElement::selectAudioMediaOption(uint64_t selectedAudioIndex)
 {
+    if (!m_mediaElement)
+        return;
+
     ASSERT(selectedAudioIndex < std::numeric_limits<size_t>::max());
     AudioTrack* selectedAudioTrack = nullptr;
 
@@ -243,6 +247,9 @@ void WebPlaybackSessionModelMediaElement::selectAudioMediaOption(uint64_t select
 
 void WebPlaybackSessionModelMediaElement::selectLegibleMediaOption(uint64_t index)
 {
+    if (!m_mediaElement)
+        return;
+
     ASSERT(index < std::numeric_limits<size_t>::max());
     TextTrack* textTrack = nullptr;
 
@@ -263,8 +270,17 @@ void WebPlaybackSessionModelMediaElement::updateLegibleOptions()
         return;
 
     auto& captionPreferences = m_mediaElement->document().page()->group().captionPreferences();
-    m_legibleTracksForMenu = captionPreferences.sortedTrackListForMenu(&m_mediaElement->textTracks());
-    m_audioTracksForMenu = captionPreferences.sortedTrackListForMenu(&m_mediaElement->audioTracks());
+    auto& textTracks = m_mediaElement->textTracks();
+    if (textTracks.length())
+        m_legibleTracksForMenu = captionPreferences.sortedTrackListForMenu(&textTracks);
+    else
+        m_legibleTracksForMenu.clear();
+
+    auto& audioTracks = m_mediaElement->audioTracks();
+    if (audioTracks.length() > 1)
+        m_audioTracksForMenu = captionPreferences.sortedTrackListForMenu(&audioTracks);
+    else
+        m_audioTracksForMenu.clear();
 
     m_playbackSessionInterface->setAudioMediaSelectionOptions(audioMediaSelectionOptions(), audioMediaSelectedIndex());
     m_playbackSessionInterface->setLegibleMediaSelectionOptions(legibleMediaSelectionOptions(), legibleMediaSelectedIndex());

@@ -54,7 +54,6 @@ set(JavaScriptCore_SOURCES
     API/JSClassRef.cpp
     API/JSContextRef.cpp
     API/JSObjectRef.cpp
-    API/JSProfilerPrivate.cpp
     API/JSTypedArray.cpp
     API/JSScriptRef.cpp
     API/JSStringRef.cpp
@@ -203,6 +202,7 @@ set(JavaScriptCore_SOURCES
     bytecode/InlineCallFrame.cpp
     bytecode/InlineCallFrameSet.cpp
     bytecode/JumpTable.cpp
+    bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp
     bytecode/LazyOperandValueProfile.cpp
     bytecode/MethodOfGettingAValueProfile.cpp
     bytecode/ObjectPropertyCondition.cpp
@@ -586,10 +586,6 @@ set(JavaScriptCore_SOURCES
     parser/SourceProviderCache.cpp
     parser/VariableEnvironment.cpp
 
-    profiler/LegacyProfiler.cpp
-    profiler/Profile.cpp
-    profiler/ProfileGenerator.cpp
-    profiler/ProfileNode.cpp
     profiler/ProfilerBytecode.cpp
     profiler/ProfilerBytecodeSequence.cpp
     profiler/ProfilerBytecodes.cpp
@@ -1273,7 +1269,7 @@ add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
     MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/inspector/InjectedScriptSource.js
     DEPENDS ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py
-    COMMAND ${CMAKE_COMMAND} -E echo "//# sourceURL=__WebInspectorInjectedScript__" > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
+    COMMAND ${CMAKE_COMMAND} -E echo "//# sourceURL=__InjectedScript_InjectedScriptSource.js" > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py < ${JAVASCRIPTCORE_DIR}/inspector/InjectedScriptSource.js >> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
     COMMAND ${PERL_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl InjectedScriptSource_js ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.h
     VERBATIM)

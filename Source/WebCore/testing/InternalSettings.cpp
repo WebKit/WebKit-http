@@ -103,6 +103,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_allowsAirPlayForMediaPlayback(settings.allowsAirPlayForMediaPlayback())
 #endif
     , m_allowsInlineMediaPlayback(settings.allowsInlineMediaPlayback())
+    , m_allowsInlineMediaPlaybackAfterFullscreen(settings.allowsInlineMediaPlaybackAfterFullscreen())
     , m_inlineMediaPlaybackRequiresPlaysInlineAttribute(settings.inlineMediaPlaybackRequiresPlaysInlineAttribute())
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
@@ -175,6 +176,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setTouchEventEmulationEnabled(m_touchEventEmulationEnabled);
 #endif
     settings.setAllowsInlineMediaPlayback(m_allowsInlineMediaPlayback);
+    settings.setAllowsInlineMediaPlaybackAfterFullscreen(m_allowsInlineMediaPlaybackAfterFullscreen);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(m_inlineMediaPlaybackRequiresPlaysInlineAttribute);
     RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
@@ -182,6 +184,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #endif
     settings.setUserInterfaceDirectionPolicy(m_userInterfaceDirectionPolicy);
     settings.setSystemLayoutDirection(m_systemLayoutDirection);
+    Settings::setAllowsAnySSLCertificate(false);
 }
 
 class InternalSettingsWrapper : public Supplement<Page> {
@@ -541,6 +544,12 @@ void InternalSettings::setAllowsInlineMediaPlayback(bool allows, ExceptionCode& 
     settings()->setAllowsInlineMediaPlayback(allows);
 }
 
+void InternalSettings::setAllowsInlineMediaPlaybackAfterFullscreen(bool allows, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setAllowsInlineMediaPlaybackAfterFullscreen(allows);
+}
+
 void InternalSettings::setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool requires, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
@@ -608,6 +617,11 @@ void InternalSettings::setSystemLayoutDirection(const String& direction, Excepti
         return;
     }
     ec = INVALID_ACCESS_ERR;
+}
+
+void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
+{
+    Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
 }
 
 // If you add to this list, make sure that you update the Backup class for test reproducability!

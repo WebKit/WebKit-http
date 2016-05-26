@@ -33,6 +33,7 @@
 #include "GeometryUtilities.h"
 #include "GraphicsContext.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTMLFrameSetElement.h"
 #include "HTMLNames.h"
 #include "ImageBuffer.h"
 #include "ImageQualityController.h"
@@ -1050,7 +1051,7 @@ static inline LayoutUnit getSpace(LayoutUnit areaSize, LayoutUnit tileSize)
 
 static LayoutUnit resolveEdgeRelativeLength(const Length& length, Edge edge, LayoutUnit availableSpace, const LayoutSize& areaSize, const LayoutSize& tileSize)
 {
-    LayoutUnit result = minimumValueForLength(length, availableSpace, false);
+    LayoutUnit result = minimumValueForLength(length, availableSpace);
 
     if (edge == Edge::Right)
         return areaSize.width() - tileSize.width() - result;
@@ -1191,7 +1192,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
         LayoutUnit space = getSpace(positioningAreaSize.width(), tileSize.width());
         if (space >= 0) {
             LayoutUnit actualWidth = tileSize.width() + space;
-            computedXPosition = minimumValueForLength(Length(), availableWidth, false);
+            computedXPosition = minimumValueForLength(Length(), availableWidth);
             spaceSize.setWidth(space);
             spaceSize.setHeight(0);
             phase.setWidth(actualWidth ? actualWidth - fmodf((computedXPosition + left), actualWidth) : 0);
@@ -1217,7 +1218,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
 
         if (space >= 0) {
             LayoutUnit actualHeight = tileSize.height() + space;
-            computedYPosition = minimumValueForLength(Length(), availableHeight, false);
+            computedYPosition = minimumValueForLength(Length(), availableHeight);
             spaceSize.setHeight(space);
             phase.setHeight(actualHeight ? actualHeight - fmodf((computedYPosition + top), actualHeight) : 0);
         } else
