@@ -1601,6 +1601,8 @@ void MediaPlayerPrivateGStreamer::updateStates()
             } else {
                 m_readyState = MediaPlayer::HaveFutureData;
                 m_networkState = MediaPlayer::Loading;
+                if (!m_fillTimer.isActive() && (state == GST_STATE_PAUSED))
+                    m_networkState = MediaPlayer::Idle;
             }
 
             break;
