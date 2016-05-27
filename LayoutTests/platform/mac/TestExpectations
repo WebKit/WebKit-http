@@ -10,6 +10,7 @@ accessibility/mac [ Pass ]
 displaylists [ Pass ]
 editing/mac [ Pass ]
 fast/scrolling/latching [ Pass ]
+media/mac [ Pass ]
 
 fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
 fast/forms/search/search-results-hidden-crash.html [ Pass ]
@@ -737,8 +738,6 @@ webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-i
 
 webkit.org/b/124321 animations/resume-after-page-cache.html [ Pass Failure ]
 
-webkit.org/b/147254 media/restore-from-page-cache.html [ Pass Failure ]
-
 # These fast/forms/select tests open a pop-up menu (visible on screen even when using run-webkit-tests), and get stuck in its nested event loop.
 webkit.org/b/87748 fast/forms/select/optgroup-clicking.html [ Skip ]
 webkit.org/b/73304 fast/forms/select/menulist-popup-crash.html [ Skip ]
@@ -1217,9 +1216,11 @@ webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Failure ]
 webkit.org/b/155607 inspector/unit-tests/heap-snapshot.html [ Pass Timeout ]
+webkit.org/b/157999 inspector/unit-tests/heap-snapshot-collection-event.html [ Pass Timeout ]
 webkit.org/b/155607 inspector/heap/snapshot.html [ Pass Timeout ]
 webkit.org/b/143719 inspector/console/console-api.html [ Pass Timeout ]
 webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
+webkit.org/b/158006 inspector/console/console-time.html [ Pass Timeout ]
 webkit.org/b/156634 inspector/formatting/formatting-javascript.html [ Pass Timeout ]
 
 webkit.org/b/152029 inspector/debugger/command-line-api-exception.html [ Pass Timeout ]
@@ -1283,6 +1284,7 @@ webkit.org/b/152009 [ Debug ElCapitan ] fast/canvas/canvas-too-large-to-draw.htm
 [ Yosemite ElCapitan ] css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 [ Yosemite ElCapitan ] css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 [ Yosemite ElCapitan ] fast/text/all-small-caps-whitespace.html [ ImageOnlyFailure ]
+[ Yosemite ElCapitan ] css3/font-variant-synthesis-jdaggett.html [ ImageOnlyFailure ]
 
 # Temporarily disable font feature synthesis tests.
 [ Yosemite ElCapitan ] css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
@@ -1339,3 +1341,7 @@ webkit.org/b/156983 media/video-fullscreen-restriction-removed.html [ Pass Failu
 webkit.org/b/156320 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
 
 webkit.org/b/155196 media/video-with-file-url-allowed-by-csp-media-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html [ Skip ]
+
+webkit.org/b/157990 [ Release ] mathml/wbr-in-mroot-crash.html [ Timeout ]
+
+webkit.org/b/158101 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Pass Timeout ]

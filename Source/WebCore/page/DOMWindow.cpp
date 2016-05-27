@@ -101,7 +101,6 @@
 #include "WebKitPoint.h"
 #include "WindowFeatures.h"
 #include "WindowFocusAllowedIndicator.h"
-#include <JavaScriptCore/Profile.h>
 #include <algorithm>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
@@ -1724,7 +1723,7 @@ bool DOMWindow::isSameSecurityOriginAsMainFrame() const
     return false;
 }
 
-bool DOMWindow::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, bool useCapture)
 {
     if (!EventTarget::addEventListener(eventType, WTFMove(listener), useCapture))
         return false;
@@ -1827,7 +1826,7 @@ void DOMWindow::resetAllGeolocationPermission()
 #endif
 }
 
-bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener& listener, bool useCapture)
 {
     if (!EventTarget::removeEventListener(eventType, listener, useCapture))
         return false;

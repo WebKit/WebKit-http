@@ -51,7 +51,7 @@ static String serializePositionOffset(const Pair& offset, const Pair& other)
     return offset.cssText();
 }
 
-static Ref<CSSPrimitiveValue> buildSerializablePositionOffset(PassRefPtr<CSSPrimitiveValue> offset, CSSValueID defaultSide)
+static Ref<CSSPrimitiveValue> buildSerializablePositionOffset(CSSPrimitiveValue* offset, CSSValueID defaultSide)
 {
     CSSValueID side = defaultSide;
     RefPtr<CSSPrimitiveValue> amount;
@@ -110,8 +110,8 @@ static String buildCircleString(const String& radius, const String& centerX, con
 
 String CSSBasicShapeCircle::cssText() const
 {
-    Ref<CSSPrimitiveValue> normalizedCX = buildSerializablePositionOffset(m_centerX, CSSValueLeft);
-    Ref<CSSPrimitiveValue> normalizedCY = buildSerializablePositionOffset(m_centerY, CSSValueTop);
+    Ref<CSSPrimitiveValue> normalizedCX = buildSerializablePositionOffset(m_centerX.get(), CSSValueLeft);
+    Ref<CSSPrimitiveValue> normalizedCY = buildSerializablePositionOffset(m_centerY.get(), CSSValueTop);
 
     String radius;
     if (m_radius && m_radius->getValueID() != CSSValueClosestSide)
@@ -167,8 +167,8 @@ static String buildEllipseString(const String& radiusX, const String& radiusY, c
 
 String CSSBasicShapeEllipse::cssText() const
 {
-    Ref<CSSPrimitiveValue> normalizedCX = buildSerializablePositionOffset(m_centerX, CSSValueLeft);
-    Ref<CSSPrimitiveValue> normalizedCY = buildSerializablePositionOffset(m_centerY, CSSValueTop);
+    Ref<CSSPrimitiveValue> normalizedCX = buildSerializablePositionOffset(m_centerX.get(), CSSValueLeft);
+    Ref<CSSPrimitiveValue> normalizedCY = buildSerializablePositionOffset(m_centerY.get(), CSSValueTop);
 
     String radiusX;
     String radiusY;
@@ -286,8 +286,8 @@ String CSSBasicShapePolygon::cssText() const
     Vector<String> points;
     points.reserveInitialCapacity(m_values.size());
 
-    for (size_t i = 0; i < m_values.size(); ++i)
-        points.append(m_values.at(i)->cssText());
+    for (auto& shapeValue : m_values)
+        points.uncheckedAppend(shapeValue->cssText());
 
     return buildPolygonString(m_windRule, points);
 }
@@ -297,8 +297,7 @@ bool CSSBasicShapePolygon::equals(const CSSBasicShape& shape) const
     if (!is<CSSBasicShapePolygon>(shape))
         return false;
 
-    const CSSBasicShapePolygon& rhs = downcast<CSSBasicShapePolygon>(shape);
-    return compareCSSValueVector<CSSPrimitiveValue>(m_values, rhs.m_values);
+    return compareCSSValueVector<CSSPrimitiveValue>(m_values, downcast<CSSBasicShapePolygon>(shape).m_values);
 }
 
 static bool buildInsetRadii(Vector<String>& radii, const String& topLeftRadius, const String& topRightRadius, const String& bottomRightRadius, const String& bottomLeftRadius)

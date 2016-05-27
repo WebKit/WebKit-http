@@ -39,7 +39,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnothe
 
 // Attributes
 
-JSC::EncodedJSValue jsTestCustomNamedGetterConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestCustomNamedGetterConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName, JSC::JSObject*);
 bool setJSTestCustomNamedGetterConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestCustomNamedGetterPrototype : public JSC::JSNonFinalObject {
@@ -158,7 +158,7 @@ bool JSTestCustomNamedGetter::getOwnPropertySlotByIndex(JSObject* object, ExecSt
     return Base::getOwnPropertySlotByIndex(thisObject, state, index, slot);
 }
 
-EncodedJSValue jsTestCustomNamedGetterConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestCustomNamedGetterConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName, JSObject*)
 {
     JSTestCustomNamedGetterPrototype* domObject = jsDynamicCast<JSTestCustomNamedGetterPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
@@ -225,16 +225,9 @@ extern "C" { extern void* _ZTVN7WebCore21TestCustomNamedGetterE[]; }
 
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, Ref<TestCustomNamedGetter>&& impl)
 {
-    return createNewWrapper<JSTestCustomNamedGetter>(globalObject, WTFMove(impl));
-}
-
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestCustomNamedGetter& impl)
-{
-    if (JSValue result = getExistingWrapper<JSTestCustomNamedGetter>(globalObject, impl))
-        return result;
 
 #if ENABLE(BINDING_INTEGRITY)
-    void* actualVTablePointer = *(reinterpret_cast<void**>(&impl));
+    void* actualVTablePointer = *(reinterpret_cast<void**>(impl.ptr()));
 #if PLATFORM(WIN)
     void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestCustomNamedGetter@WebCore@@6B@"));
 #else
@@ -251,7 +244,12 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestCustomNa
     // by adding the SkipVTableValidation attribute to the interface IDL definition
     RELEASE_ASSERT(actualVTablePointer == expectedVTablePointer);
 #endif
-    return createNewWrapper<JSTestCustomNamedGetter, TestCustomNamedGetter>(globalObject, impl);
+    return createWrapper<JSTestCustomNamedGetter, TestCustomNamedGetter>(globalObject, WTFMove(impl));
+}
+
+JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestCustomNamedGetter& impl)
+{
+    return wrap(state, globalObject, impl);
 }
 
 TestCustomNamedGetter* JSTestCustomNamedGetter::toWrapped(JSC::JSValue value)

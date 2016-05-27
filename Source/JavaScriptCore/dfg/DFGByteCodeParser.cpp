@@ -3761,16 +3761,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_debug);
         }
 
-        case op_profile_will_call: {
-            addToGraph(ProfileWillCall);
-            NEXT_OPCODE(op_profile_will_call);
-        }
-
-        case op_profile_did_call: {
-            addToGraph(ProfileDidCall);
-            NEXT_OPCODE(op_profile_did_call);
-        }
-
         case op_mov: {
             Node* op = get(VirtualRegister(currentInstruction[2].u.operand));
             set(VirtualRegister(currentInstruction[1].u.operand), op);
@@ -4091,6 +4081,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_get_by_id:
+        case op_get_by_id_proto_load:
         case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
             

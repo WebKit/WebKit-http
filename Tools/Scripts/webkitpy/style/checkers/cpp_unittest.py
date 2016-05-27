@@ -1769,6 +1769,10 @@ class CppStyleTest(CppStyleTestBase):
             '}\n',
             '')
         self.assert_multi_line_lint(
+            '[]() {\n'
+            '}\n',
+            '')
+        self.assert_multi_line_lint(
             'if (condition\n'
             '    && condition2\n'
             '    && condition3) {\n'
@@ -5171,6 +5175,9 @@ class WebKitStyleTest(CppStyleTestBase):
 
         # const_iterator is allowed as well.
         self.assert_lint('typedef VectorType::const_iterator const_iterator;', '')
+
+        # chrono_literals is allowed as well.
+        self.assert_lint('using namespace std::literals::chrono_literals;', '')
 
         # vm_throw is allowed as well.
         self.assert_lint('int vm_throw;', '')

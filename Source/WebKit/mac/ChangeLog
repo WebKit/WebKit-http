@@ -1,3 +1,74 @@
+2016-05-24  Beth Dakin  <bdakin@apple.com>
+
+        Candidates should work with input methods
+        https://bugs.webkit.org/show_bug.cgi?id=158042
+        -and corresponding-
+        rdar://problem/26205228
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebHTMLView.mm:
+        * WebView/WebView.mm:
+        (-[WebView candidateList]):
+        * WebView/WebViewInternal.h:
+
+2016-05-22  Brady Eidson  <beidson@apple.com>
+
+        Move to C++14.
+        https://bugs.webkit.org/show_bug.cgi?id=157948
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/Base.xcconfig:
+
+2016-05-20  Enrica Casucci  <enrica@apple.com>
+
+        Drag cannot start if no drag data or custom data is available in the Pasteboard.
+        https://bugs.webkit.org/show_bug.cgi?id=157911
+        rdar://problem/24577706
+
+        Reviewed by Tim Horton.
+
+        We need to make sure there is always one item in common between source and target
+        of the drag and drop operation.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView dragImage:at:offset:event:pasteboard:source:slideBack:]):
+
+2016-05-19  Enrica Casucci  <enrica@apple.com>
+
+        Drag cannot start if no drag data is available in the Pasteboard.
+        https://bugs.webkit.org/show_bug.cgi?id=157911
+        rdar://problem/24577706
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebHTMLView.mm:
+        (+[WebHTMLView _dummyPasteboardType]):
+        (-[WebHTMLView dragImage:at:offset:event:pasteboard:source:slideBack:]):
+        * WebView/WebHTMLViewPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _registerDraggedTypes]):
+
+2016-05-19  Jer Noble  <jer.noble@apple.com>
+
+        [IOS] Add setting to allow playback to continue inline after exiting fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=157912
+
+        Reviewed by Eric Carlson.
+
+        Add a preference to control whether media should be allowed to continue playing inline when
+        exiting fullscreen.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences allowsInlineMediaPlaybackAfterFullscreen]):
+        (-[WebPreferences setAllowsInlineMediaPlaybackAfterFullscreen:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2016-05-18  Brady Eidson  <beidson@apple.com>
 
         Modern IDB: Make TestRunner.clearAllDatabases also delete IndexedDB databases (once doing so is supported).

@@ -60,8 +60,6 @@ void computeUsesForBytecodeOffset(
     case op_get_scope:
     case op_to_this:
     case op_check_tdz:
-    case op_profile_will_call:
-    case op_profile_did_call:
     case op_profile_type:
     case op_throw:
     case op_end:
@@ -160,6 +158,7 @@ void computeUsesForBytecodeOffset(
     case op_to_primitive:
     case op_try_get_by_id:
     case op_get_by_id:
+    case op_get_by_id_proto_load:
     case op_get_array_length:
     case op_typeof:
     case op_is_empty:
@@ -312,8 +311,6 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_copy_rest:
     case op_put_to_scope:
     case op_end:
-    case op_profile_will_call:
-    case op_profile_did_call:
     case op_throw:
     case op_throw_static_error:
     case op_save:
@@ -396,6 +393,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_construct:
     case op_try_get_by_id:
     case op_get_by_id:
+    case op_get_by_id_proto_load:
     case op_get_by_id_with_this:
     case op_get_by_val_with_this:
     case op_get_array_length:

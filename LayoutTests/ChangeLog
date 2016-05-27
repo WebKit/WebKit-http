@@ -1,3 +1,1021 @@
+2016-05-26  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: RTCSessionDescription: Make attributes readonly (and remove custom binding)
+        https://bugs.webkit.org/show_bug.cgi?id=157858
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCSessionDescription-expected.txt:
+        * fast/mediastream/RTCSessionDescription.html:
+        Add tests for mandatory constructor dictionary argument and required 'type' member (also
+        check its value). Verify that attributes are read-only.
+
+2016-05-25  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix ResourceTiming multiple entries per resource and test initiator
+        https://bugs.webkit.org/show_bug.cgi?id=158094
+
+        Reviewed by Alex Christensen.
+
+        Make sure that CachedResource that was needed by two different elements only adds one entry, with the right (first) initiatorType.
+
+        * http/tests/performance/performance-resource-timing-initiator-css.html: Added. Makes sure css has the right initiator type.
+        * http/tests/performance/performance-resource-timing-initiator-css-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-initiator-no-override.html: Added. Makes sure that only one entry is added and
+        that its initiator info doesn't get overriden.
+        * http/tests/performance/performance-resource-timing-initiator-no-override-expected.txt: Added.
+
+2016-05-25  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix ResourceTiming XHR flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=158019
+
+        Reviewed by Alex Christensen.
+
+        Test fixes and additions that make sure XHR tests are not run as part of XHR's onload event, as ResourceTiming entries are added
+        after it.
+
+        * TestExpectations:
+        * http/tests/performance/performance-resource-timing-cached-entries.html: Avoid running the tests as part of the XHR's load event.
+        * http/tests/performance/performance-resource-timing-xhr-single-entry-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-xhr-single-entry.html: Test that XHR fetch adds a single entry with correct initiatorType.
+
+2016-05-25  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] RegExp with deeply nested subexpressions overflow the stack in Yarr
+        https://bugs.webkit.org/show_bug.cgi?id=158011
+        rdar://problem/25946592
+
+        Reviewed by Saam Barati.
+
+        * js/script-tests/stack-overflow-arrity-catch.js:
+        With the new failure, this test can fail on allocating
+        the RegExp for a valid reason.
+
+        The new expression should not have this issue.
+        * js/script-tests/stack-overflow-regexp.js: Added.
+        (shouldThrow.recursiveCall):
+        (shouldThrow):
+        (recursiveCall):
+        * js/stack-overflow-regexp-expected.txt: Added.
+        * js/stack-overflow-regexp.html: Added.
+
+2016-05-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/blink/http/tests/plugins/get-url-notify-on-removal.html as a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=158101
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-05-25  Zalan Bujtas  <zalan@apple.com>
+
+        Setting overflow:hidden does not always repaint clipped content.
+        https://bugs.webkit.org/show_bug.cgi?id=116994
+        rdar://problem/26476697
+
+        Issue repaint for both layout and visual overflow rects when the container starts
+        clipping overflow content.
+
+        Reviewed by David Hyatt.
+
+        * fast/repaint/overflow-hidden-repaint-expected.html: Added.
+        * fast/repaint/overflow-hidden-repaint.html: Added.
+
+2016-05-25  Daniel Bates  <dabates@apple.com> and Brent Fulgham  <bfulgham@apple.com>
+
+        [WebSockets] No infrastructure for testing secure web sockets (wss)
+        https://bugs.webkit.org/show_bug.cgi?id=157884
+        <rdar://problem/26477197>
+
+        Reviewed by Andy Estes.
+
+        * http/tests/websocket/tests/hybi/simple-wss-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/simple-wss.html: Added.
+
+2016-05-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/css/shared-stylesheet-mutation.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=158085
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-05-25  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Update <fixed-size> syntax
+        https://bugs.webkit.org/show_bug.cgi?id=158063
+
+        Reviewed by Darin Adler.
+
+        Updated test to check the new expected behavior.
+
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set-expected.txt:
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set.html:
+
+2016-05-25  Zalan Bujtas  <zalan@apple.com>
+
+        Swap search field's cancel and result button for RTL content.
+        https://bugs.webkit.org/show_bug.cgi?id=158007
+
+        Reviewed by Dean Jackson.
+
+        * fast/forms/resources/common.js:
+        (searchCancelButtonPositionRTL):
+        (searchCancelButtonPosition):
+        * fast/forms/search-input-rtl.html: Added.
+        * fast/forms/search-rtl.html:
+        * platform/ios-simulator-wk2/fast/forms/search-rtl-expected.txt:
+        * platform/ios-simulator/fast/css/text-overflow-input-expected.txt:
+        * platform/ios-simulator/fast/forms/search-input-rtl-expected.txt: Added.
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/search-input-rtl-expected.png: Added.
+        * platform/mac/fast/forms/search-input-rtl-expected.txt: Added.
+        * platform/mac/fast/forms/search-rtl-expected.txt:
+
+2016-05-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] ASSERT if calling FontFace.loaded twice with a garbage collection between them
+        https://bugs.webkit.org/show_bug.cgi?id=158015
+
+        Reviewed by Darin Adler.
+
+        * fast/text/font-face-crash-2-expected.txt: Added.
+        * fast/text/font-face-crash-2.html: Added.
+
+2016-05-25  Antti Koivisto  <antti@apple.com>
+
+        Shadow DOM: RenderTreePosition should determine if element has display:contents from new style
+        https://bugs.webkit.org/show_bug.cgi?id=158072
+
+        Reviewed by Darin Adler.
+
+        * fast/shadow-dom/slot-crash.html: Added.
+
+2016-05-25  Chris Dumez  <cdumez@apple.com>
+
+        Update dom/Window/messageevent-source-postmessage-reified.html after r201315
+        https://bugs.webkit.org/show_bug.cgi?id=158048
+
+        Reviewed by Darin Adler.
+
+        We need to delete a property that is part of the Window's static table
+        now in order to force the reification.
+
+        * fast/dom/Window/messageevent-source-postmessage-reified.html:
+
+2016-05-25  Antoine Quint  <graouts@apple.com>
+
+        Elements with backdrop-filter cannot be clipped with clip-path or mask
+        https://bugs.webkit.org/show_bug.cgi?id=142662
+        <rdar://problem/20150192>
+
+        Reviewed by Dean Jackson.
+
+        New test that checks that applying a backdrop-filter and a clip-path on a single
+        element has the same effect as applying a clip-path on a parent of a child with
+        a backdrop-filter.
+
+        * css3/filters/backdrop/backdrop-filter-with-clip-path-expected.txt: Added.
+        * css3/filters/backdrop/backdrop-filter-with-clip-path.html: Added.
+        * platform/ios-simulator/css3/filters/backdrop/backdrop-filter-with-clip-path-expected.html: Added.
+        * platform/mac/css3/filters/backdrop/backdrop-filter-with-clip-path-expected.png: Added.
+
+2016-05-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Crash during font download failure after garbage collection
+        https://bugs.webkit.org/show_bug.cgi?id=158013
+        <rdar://problem/25148032>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/font-face-crash-expected.txt: Added.
+        * fast/text/font-face-crash.html: Added.
+
+201-05-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r201349.
+
+        This change caused compositing tests to assert on iOS
+        simulator
+
+        Reverted changeset:
+
+        "Elements with backdrop-filter cannot be clipped with clip-
+        path or mask"
+        https://bugs.webkit.org/show_bug.cgi?id=142662
+        http://trac.webkit.org/changeset/201349
+
+2016-05-24  Ada Chan  <adachan@apple.com>
+
+        Only set overflow:hidden on -webkit-media-controls when the placeholder is showing.
+        https://bugs.webkit.org/show_bug.cgi?id=157975
+
+        Reviewed by Eric Carlson.
+
+        This is a Mac only test. The media controls panel should still be visible
+        even if the media element's height is very short.
+
+        * TestExpectations:
+        * media/mac/controls-panel-not-clipped-out-expected.html: Added.
+        * media/mac/controls-panel-not-clipped-out.html: Added.
+        * platform/mac/TestExpectations:
+
+        * platform/mac/media/media-document-audio-repaint-expected.txt:
+        * platform/mac/media/video-zoom-controls-expected.txt:
+        Rebaseline tests.
+
+2016-05-24  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: RTCIceCandidate: Make attributes readonly (and update constructor arg)
+        https://bugs.webkit.org/show_bug.cgi?id=157859
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCIceCandidate-expected.txt:
+        Small unrelated fix: s/a argument/an argument/ (test was previously broken).
+        * fast/mediastream/RTCIceCandidate.html:
+        Test without constructor arguments and writing to the read-only attributes.
+
+2016-05-24  Antoine Quint  <graouts@apple.com>
+
+        Elements with backdrop-filter cannot be clipped with clip-path or mask
+        https://bugs.webkit.org/show_bug.cgi?id=142662
+        <rdar://problem/20150192>
+
+        Reviewed by Dean Jackson.
+
+        New test that checks that applying a backdrop-filter and a clip-path on a single
+        element has the same effect as applying a clip-path on a parent of a child with
+        a backdrop-filter.
+
+        * css3/filters/backdrop/backdrop-filter-with-clip-path-expected.txt: Added.
+        * css3/filters/backdrop/backdrop-filter-with-clip-path.html: Added.
+        * platform/ios-simulator/css3/filters/backdrop/backdrop-filter-with-clip-path-expected.html: Added.
+        * platform/mac/css3/filters/backdrop/backdrop-filter-with-clip-path-expected.png: Added.
+
+2016-05-24  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update failing RTCPeerConnection and RTCRtpSender tests
+        https://bugs.webkit.org/show_bug.cgi?id=158023
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt:
+        Update results with more specific TypeError.
+        * fast/mediastream/RTCRtpSender-replaceTrack-expected.txt:
+        Update test to match Promise rejections introduce in r201080.
+
+2016-05-24  Zalan Bujtas  <zalan@apple.com>
+
+        fast/table/neighboring-cells-when-collapsed-border-changes.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=158009
+
+        Reviewed by David Hyatt.
+
+        RenderTable::invalidateCollapsedBorders() early returns on m_collapsedEmptyBorderIsPresent
+        which prevents us from marking neighboring cells dirty when style changes.
+        Decouple the "invalidate the collapsed borders" and the "mark the neighboring cells dirty" logic.
+
+        * fast/table/border-collapsing/cached-change-cell-border-width-expected.txt: Progression. FF agrees.
+        * fast/table/neighboring-cells-when-collapsed-border-changes.html:
+        * platform/ios-simulator-wk1/fast/table/border-collapsing/cached-change-cell-border-width-expected.txt:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/fast/table/border-collapsing/cached-change-cell-border-width-expected.txt:
+
+2016-05-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking mathml/wbr-in-mroot-crash.html as flaky on ios-simulator-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=157990
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-05-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r201323.
+
+        One of the LayoutTests added with this change fails on all
+        platforms. Rolling out until ResourceTiming flakiness fix is
+        landed
+
+        Reverted changeset:
+
+        "Add a few initiator tests to resource timing."
+        https://bugs.webkit.org/show_bug.cgi?id=157986
+        http://trac.webkit.org/changeset/201323
+
+2016-05-24  Alex Christensen  <achristensen@webkit.org>
+
+        Unskip passing test after r201336
+        https://bugs.webkit.org/show_bug.cgi?id=156812
+
+        * platform/ios-simulator/TestExpectations:
+        compositing/webgl/webgl-reflection.html passes now.
+
+2016-05-24  Filip Pizlo  <fpizlo@apple.com>
+
+        LLInt64 should have typed array fast paths for get_by_val
+        https://bugs.webkit.org/show_bug.cgi?id=157931
+
+        Reviewed by Keith Miller.
+
+        * js/regress/get_by_val-Int32Array-expected.txt: Added.
+        * js/regress/get_by_val-Int32Array.html: Added.
+        * js/regress/script-tests/get_by_val-Int32Array.js: Added.
+
+2016-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several tests after r200116.
+
+        We are now correctly positioning RTL scrollbars.
+
+        * platform/gtk/fast/block/float/026-expected.png:
+        * platform/gtk/fast/block/float/026-expected.txt:
+        * platform/gtk/fast/block/float/028-expected.png:
+        * platform/gtk/fast/block/float/028-expected.txt:
+        * platform/gtk/fast/overflow/unreachable-overflow-rtl-bug-expected.png:
+        * platform/gtk/fast/overflow/unreachable-overflow-rtl-bug-expected.txt:
+
+2016-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Fix wrong expectations of fast/harness/sample-fail-mismatch-reftest.html.
+
+        The test is flaky, but in this case  Pass means it failed and ImageOnlyFailure that it passed.
+
+        * platform/gtk/TestExpectations:
+
+2016-05-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Fix behavior of flexible track breadths
+        https://bugs.webkit.org/show_bug.cgi?id=157834
+
+        Reviewed by Sergio Villar Senin.
+
+        This patch is fixing 2 issues that are interrelated:
+        1) Flex sizes are invalid as min track sizing function.
+        2) Flex sizes outside minmax() behave as auto minimum.
+
+        The patch includes new test cases checking specifically these 2 issues.
+        In addition several tests results have been updated to reflect
+        the new behavior. Also, some cases that are now invalid and
+        were not testing anything new have been removed.
+
+        * fast/css-grid-layout/flex-and-content-sized-resolution-columns-expected.txt:
+        * fast/css-grid-layout/flex-and-content-sized-resolution-columns.html:
+        * fast/css-grid-layout/flex-content-resolution-columns-expected.txt:
+        * fast/css-grid-layout/flex-content-resolution-columns.html:
+        * fast/css-grid-layout/flex-content-resolution-rows-expected.txt:
+        * fast/css-grid-layout/flex-content-resolution-rows.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-gutters-and-flex-content-expected.txt:
+        * fast/css-grid-layout/grid-gutters-and-flex-content.html:
+        * fast/css-grid-layout/grid-preferred-logical-widths.html:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set.js:
+        * fast/css-grid-layout/resources/non-grid-columns-rows-get-set.js:
+
+2016-05-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Implement Fetch redirect mode
+        https://bugs.webkit.org/show_bug.cgi?id=157837
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/fetch/caching-with-different-options-expected.txt: Added.
+        * http/tests/fetch/caching-with-different-options.html: Added.
+        * http/tests/fetch/resources/redirect-with-cache.php: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method-expected.txt:
+
+2016-05-23  Yoav Weiss  <yoav@yoav.ws>
+
+        Add a few initiator tests to resource timing.
+        https://bugs.webkit.org/show_bug.cgi?id=157986
+
+        Reviewed by Darin Adler.
+
+        Adds tests that make sure that when a resource is requested multiple times by different
+        elements, its initiator type remain the first one that triggered the fetch.
+
+        * http/tests/performance/performance-resource-timing-initiator-css-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-initiator-css.html: Added.
+        * http/tests/performance/performance-resource-timing-initiator-no-override-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-initiator-no-override.html: Added.
+
+2016-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Skip fast/table/neighboring-cells-when-collapsed-border-changes on WK1 for now.
+
+        Unreviewed.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Changing border color and size simultaneously fails to repaint.
+        https://bugs.webkit.org/show_bug.cgi?id=157967
+        <rdar://problem/26423918>
+
+        Reviewed by David Hyatt.
+
+        This patch ensures that the neighboring tables cells are dirtied when collapsed border change requires layout.
+
+        * fast/table/neighboring-cells-when-collapsed-border-changes-expected.html: Added.
+        * fast/table/neighboring-cells-when-collapsed-border-changes.html: Added.
+
+2016-05-23  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Null popstate event fired when navigating back to a cached page with a stateless history entry
+        https://bugs.webkit.org/show_bug.cgi?id=157963
+        <rdar://problem/23414840>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/loader/stateobjects/no-popstate-when-back-to-stateless-entry-expected.txt: Added.
+        * fast/loader/stateobjects/no-popstate-when-back-to-stateless-entry-with-page-cache-expected.txt: Added.
+        * fast/loader/stateobjects/no-popstate-when-back-to-stateless-entry-with-page-cache.html: Added.
+        * fast/loader/stateobjects/no-popstate-when-back-to-stateless-entry.html: Added.
+        * fast/loader/stateobjects/resources/no-popstate-when-back-to-stateless-entry-1.html: Added.
+        * fast/loader/stateobjects/resources/no-popstate-when-back-to-stateless-entry-2.html: Added.
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/console/console-time.html as a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=158006
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking mathml/wbr-in-mroot-crash.html as a timeout on mac release
+        https://bugs.webkit.org/show_bug.cgi?id=157990
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-05-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201296.
+        https://bugs.webkit.org/show_bug.cgi?id=158002
+
+        The LayoutTest added with this change is failing on mac-wk1
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Changing border color and size simultaneously fails to
+        repaint."
+        https://bugs.webkit.org/show_bug.cgi?id=157967
+        http://trac.webkit.org/changeset/201296
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/unit-tests/heap-snapshot-collection-event.html as a flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=157999
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Changing border color and size simultaneously fails to repaint.
+        https://bugs.webkit.org/show_bug.cgi?id=157967
+        <rdar://problem/26423918>
+
+        Reviewed by David Hyatt.
+
+        This patch ensures that the neighboring tables cells are dirtied when collapsed border change requires layout.
+
+        * fast/table/neighboring-cells-when-collapsed-border-changes-expected.html: Added.
+        * fast/table/neighboring-cells-when-collapsed-border-changes.html: Added.
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r200414.
+
+        This change appears to have broken the 'write a reply' field
+        on Nextdoor.com
+
+        Reverted changeset:
+
+        "Clicks inside button elements are sometimes discarded when
+        the mouse moves"
+        https://bugs.webkit.org/show_bug.cgi?id=39620
+        http://trac.webkit.org/changeset/200414
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/text-autosizing/ios/text-autosizing-after-back.html as a flaky timeout on Mac and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=157589
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/frames/crash-during-iframe-load-stop.html as a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=157849
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-05-22  Saam barati  <sbarati@apple.com>
+
+        REGRESSION(r199075): String.prototype.replace fails after being used many times with different replace values
+        https://bugs.webkit.org/show_bug.cgi?id=157968
+        <rdar://problem/26404735>
+
+        Reviewed by Ryosuke Niwa and Filip Pizlo.
+
+        * TestExpectations:
+
+2016-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed test gardening after r201237 exposed an issue.
+
+        * TestExpectations:
+
+2016-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove LegacyProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=153565
+
+        Reviewed by Saam Barati.
+
+        * fast/profiler/anonymous-event-handler-expected.txt: Removed.
+        * fast/profiler/anonymous-event-handler.html: Removed.
+        * fast/profiler/anonymous-function-called-from-different-contexts-expected.txt: Removed.
+        * fast/profiler/anonymous-function-called-from-different-contexts.html: Removed.
+        * fast/profiler/anonymous-function-calls-built-in-functions-expected.txt: Removed.
+        * fast/profiler/anonymous-function-calls-built-in-functions.html: Removed.
+        * fast/profiler/anonymous-function-calls-eval-expected.txt: Removed.
+        * fast/profiler/anonymous-function-calls-eval.html: Removed.
+        * fast/profiler/anonymous-functions-with-display-names-expected.txt: Removed.
+        * fast/profiler/anonymous-functions-with-display-names.html: Removed.
+        * fast/profiler/apply-expected.txt: Removed.
+        * fast/profiler/apply.html: Removed.
+        * fast/profiler/built-in-function-calls-anonymous-expected.txt: Removed.
+        * fast/profiler/built-in-function-calls-anonymous.html: Removed.
+        * fast/profiler/built-in-function-calls-user-defined-function-expected.txt: Removed.
+        * fast/profiler/built-in-function-calls-user-defined-function.html: Removed.
+        * fast/profiler/call-expected.txt: Removed.
+        * fast/profiler/call-register-leak-expected.txt: Removed.
+        * fast/profiler/call-register-leak.html: Removed.
+        * fast/profiler/call.html: Removed.
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope-expected.txt: Removed.
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope.html: Removed.
+        * fast/profiler/compare-multiple-profiles-expected.txt: Removed.
+        * fast/profiler/compare-multiple-profiles.html: Removed.
+        * fast/profiler/constructor-expected.txt: Removed.
+        * fast/profiler/constructor.html: Removed.
+        * fast/profiler/dead-time-expected.txt: Removed.
+        * fast/profiler/dead-time.html: Removed.
+        * fast/profiler/document-dot-write-expected.txt: Removed.
+        * fast/profiler/document-dot-write.html: Removed.
+        * fast/profiler/event-handler-expected.txt: Removed.
+        * fast/profiler/event-handler.html: Removed.
+        * fast/profiler/execution-context-and-eval-on-same-line-expected.txt: Removed.
+        * fast/profiler/execution-context-and-eval-on-same-line.html: Removed.
+        * fast/profiler/inline-event-handler-expected.txt: Removed.
+        * fast/profiler/inline-event-handler.html: Removed.
+        * fast/profiler/many-calls-in-the-same-scope-expected.txt: Removed.
+        * fast/profiler/many-calls-in-the-same-scope.html: Removed.
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls-expected.txt: Removed.
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls.html: Removed.
+        * fast/profiler/multiple-and-different-scoped-function-calls-expected.txt: Removed.
+        * fast/profiler/multiple-and-different-scoped-function-calls.html: Removed.
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function-expected.txt: Removed.
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function.html: Removed.
+        * fast/profiler/multiple-frames-expected.txt: Removed.
+        * fast/profiler/multiple-frames.html: Removed.
+        * fast/profiler/named-functions-with-display-names-expected.txt: Removed.
+        * fast/profiler/named-functions-with-display-names.html: Removed.
+        * fast/profiler/nested-anonymous-functon-expected.txt: Removed.
+        * fast/profiler/nested-anonymous-functon.html: Removed.
+        * fast/profiler/nested-start-and-stop-profiler-expected.txt: Removed.
+        * fast/profiler/nested-start-and-stop-profiler.html: Removed.
+        * fast/profiler/no-execution-context-expected.txt: Removed.
+        * fast/profiler/no-execution-context.html: Removed.
+        * fast/profiler/one-execution-context-expected.txt: Removed.
+        * fast/profiler/one-execution-context.html: Removed.
+        * fast/profiler/profile-calls-in-included-file-expected.txt: Removed.
+        * fast/profiler/profile-calls-in-included-file.html: Removed.
+        * fast/profiler/profile-with-no-title-expected.txt: Removed.
+        * fast/profiler/profile-with-no-title.html: Removed.
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting-expected.txt: Removed.
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting.html: Removed.
+        * fast/profiler/profiling-from-a-nested-location-expected.txt: Removed.
+        * fast/profiler/profiling-from-a-nested-location.html: Removed.
+        * fast/profiler/resources/other-frame.html: Removed.
+        * fast/profiler/resources/other-window.html: Removed.
+        * fast/profiler/resources/profiler-test-JS-resources.js: Removed.
+        * fast/profiler/simple-event-call-expected.txt: Removed.
+        * fast/profiler/simple-event-call.html: Removed.
+        * fast/profiler/simple-no-level-change-expected.txt: Removed.
+        * fast/profiler/simple-no-level-change.html: Removed.
+        * fast/profiler/start-and-stop-profiler-multiple-times-expected.txt: Removed.
+        * fast/profiler/start-and-stop-profiler-multiple-times.html: Removed.
+        * fast/profiler/start-and-stop-profiling-in-the-same-function-expected.txt: Removed.
+        * fast/profiler/start-and-stop-profiling-in-the-same-function.html: Removed.
+        * fast/profiler/start-but-dont-stop-profiling-expected.txt: Removed.
+        * fast/profiler/start-but-dont-stop-profiling.html: Removed.
+        * fast/profiler/stop-profiling-after-setTimeout-expected.txt: Removed.
+        * fast/profiler/stop-profiling-after-setTimeout.html: Removed.
+        * fast/profiler/stop-then-function-call-expected.txt: Removed.
+        * fast/profiler/stop-then-function-call.html: Removed.
+        * fast/profiler/throw-exception-from-eval-expected.txt: Removed.
+        * fast/profiler/throw-exception-from-eval.html-disabled: Removed.
+        * fast/profiler/two-execution-contexts-expected.txt: Removed.
+        * fast/profiler/two-execution-contexts.html: Removed.
+        * fast/profiler/user-defined-function-calls-built-in-functions-expected.txt: Removed.
+        * fast/profiler/user-defined-function-calls-built-in-functions.html: Removed.
+        * fast/profiler/window-dot-eval-expected.txt: Removed.
+        * fast/profiler/window-dot-eval.html: Removed.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-20  Zalan Bujtas  <zalan@apple.com>
+
+        `width: 1%` on nested table cell causes its table to hog horizontal space
+        https://bugs.webkit.org/show_bug.cgi?id=144696
+        <rdar://problem/20839572>
+
+        Reviewed by David Hyatt and Tim Horton.
+        
+        This patch is based on https://chromium.googlesource.com/chromium/src/+/9428cfb16993a2329e87c65da096ca295132ef0f
+
+        * fast/table/inner-percent-width-affects-outer-floated-div-expected.html: Added.
+        * fast/table/inner-percent-width-affects-outer-floated-div.html: Added.
+        * fast/table/inner-percent-width-doesnt-affect-ancestor-columns-expected.html: Added.
+        * fast/table/inner-percent-width-doesnt-affect-ancestor-columns.html: Added.
+        * platform/mac/fast/table/border-collapsing/cached-change-row-border-width-expected.txt:
+        * platform/mac/fast/table/border-collapsing/cached-change-tbody-border-width-expected.txt:
+        * platform/mac/fast/table/max-width-integer-overflow-expected.txt:
+
+2016-05-20  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Properly handle blobs in Workers.
+        https://bugs.webkit.org/show_bug.cgi?id=157947
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/blob-simple-workers-expected.txt: Added.
+        * storage/indexeddb/modern/blob-simple-workers.html: Added.
+        * storage/indexeddb/modern/resources/blob-simple-workers.js: Added.
+        
+2016-05-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] REGRESSION(r184899): Ascent adjustments are applied to web fonts
+        https://bugs.webkit.org/show_bug.cgi?id=157954
+        <rdar://problem/24204349>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/ascent-adjustment-webfont-expected-mismatch.html: Added.
+        * fast/text/ascent-adjustment-webfont.html: Added.
+        * fast/text/resources/Helvetica-light.svg: Added.
+
+2016-05-20  Enrica Casucci  <enrica@apple.com>
+
+        Drag cannot start if no drag data or custom data is available in the Pasteboard.
+        https://bugs.webkit.org/show_bug.cgi?id=157911
+        rdar://problem/24577706
+
+        Reviewed by Tim Horton.
+
+        * fast/events/draggable-div-customdata-expected.txt: Added.
+        * fast/events/draggable-div-customdata.html: Added.
+        * platform/ios-simulator/TestExpectations
+        * platform/mac-wk2/TestExpectations
+
+2016-05-20  Alex Christensen  <achristensen@webkit.org>
+
+        Fix null dereferencing in CSSAnimationTriggerScrollValue::equals
+        https://bugs.webkit.org/show_bug.cgi?id=157930
+
+        Reviewed by Dean Jackson.
+
+        * fast/css/compare-animation-trigger-expected.txt: Added.
+        * fast/css/compare-animation-trigger.html: Added.
+
+2016-05-20  Dave Hyatt  <hyatt@apple.com>
+
+        Scrolling broken in iTunes connect pages
+        https://bugs.webkit.org/show_bug.cgi?id=157678
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/flexbox/nested-column-intrinsic-min-disabled-expected.html: Added.
+        * fast/flexbox/nested-column-intrinsic-min-disabled.html: Added.
+
+2016-05-20  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Layout tests related to text alternative computation need to be done differently
+        https://bugs.webkit.org/show_bug.cgi?id=157187
+
+        Create several utility methods to facilitate retrieval of platform-independent
+        attribute values from platform-specific attributes:
+
+        - platformValueForW3CName() and platformValueForW3CDescription() to retrieve a
+          specific piece of text alternative information, stripping off the platform
+          attribute name by default. These methods should make it possible to share tests
+          and expectations files because the text alternative calculation defined by the
+          W3C accessibility specifications should be the same for all platforms. (The
+          differences are the result of the unique platform mappings.)
+
+        - platformTextAlternatives() to dump out all the text alternative attributes and
+          values, preserving the platform-specific attribute name. This, along with the
+          use of the platformValue* methods with attribute name enabled, should make it
+          possible to have shared tests with platform-specific expectations without the
+          need to check the platform in the test itself.
+
+        - platformRoleForComboBox() and platformRoleForStaticText() to eliminate the
+          need for platform-specific expectations files simply because such an element
+          happens to be included in the test file and verifying that element's role is
+          desired.
+
+        Begin using these methods in the tests related to text alternative computation
+        which had platform-specific checks, update the expectations files when needed,
+        and remove now-obsolete platform-specific expectations files.
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/alt-tag-on-image-with-nonimage-role-expected.txt: Updated.
+        * accessibility/alt-tag-on-image-with-nonimage-role.html: Updated.
+        * accessibility/aria-help-expected.txt: Added.
+        * accessibility/aria-help.html: Updated.
+        * accessibility/aria-label-expected.txt: Updated.
+        * accessibility/aria-label.html: Updated.
+        * accessibility/aria-labeled-with-hidden-node-expected.txt: Updated.
+        * accessibility/aria-labeled-with-hidden-node.html: Updated.
+        * accessibility/aria-labelledby-on-input-expected.txt: Updated.
+        * accessibility/aria-labelledby-on-input.html: Updated.
+        * accessibility/aria-labelledby-overrides-aria-labeledby-expected.txt: Updated.
+        * accessibility/aria-labelledby-overrides-aria-labeledby.html: Updated.
+        * accessibility/aria-labelledby-overrides-label-expected.txt: Updated.
+        * accessibility/aria-labelledby-overrides-label.html: Updated.
+        * accessibility/aria-labelledby-stay-within-expected.txt: Updated.
+        * accessibility/aria-labelledby-stay-within.html: Updated.
+        * accessibility/aria-labelledby-with-descendants-expected.txt: Updated.
+        * accessibility/aria-labelledby-with-descendants.html: Updated.
+        * accessibility/aria-namefrom-author-expected.txt: Updated.
+        * accessibility/aria-namefrom-author.html: Updated.
+        * accessibility/aria-text-role-expected.txt: Updated.
+        * accessibility/aria-text-role.html: Updated.
+        * accessibility/canvas-description-and-role-expected.txt: Updated.
+        * accessibility/canvas-description-and-role.html: Updated.
+        * accessibility/canvas-fallback-content.html: Updated.
+        * accessibility/empty-image-with-title-expected.txt: Updated.
+        * accessibility/empty-image-with-title.html: Updated.
+        * accessibility/fieldset-element-expected.txt: Updated.
+        * accessibility/fieldset-element.html: Updated.
+        * accessibility/focusable-div-expected.txt: Updated.
+        * accessibility/focusable-div.html: Updated.
+        * accessibility/help-text.html: Updated.
+        * accessibility/img-alt-tag-only-whitespace-expected.txt: Updated.
+        * accessibility/img-alt-tag-only-whitespace.html: Updated.
+        * accessibility/img-aria-button-alt-tag-expected.txt: Updated.
+        * accessibility/img-aria-button-alt-tag.html: Updated.
+        * accessibility/img-fallsback-to-title.html: Updated.
+        * accessibility/input-image-alt-expected.txt: Updated.
+        * accessibility/input-image-alt.html: Updated.
+        * accessibility/loading-iframe-sends-notification.html: Updated.
+        * accessibility/self-referencing-aria-labelledby-expected.txt: Updated.
+        * accessibility/self-referencing-aria-labelledby.html: Updated.
+        * accessibility/svg-bounds.html: Updated.
+        * accessibility/svg-group-element-with-title-expected.txt: Updated.
+        * accessibility/svg-group-element-with-title.html: Updated.
+        * accessibility/svg-image-expected.txt: Updated.
+        * accessibility/svg-image.html: Updated.
+        * accessibility/svg-labelledby-expected.txt: Updated.
+        * accessibility/svg-labelledby.html: Updated.
+        * accessibility/svg-remote-element.html: Updated.
+        * accessibility/w3c-svg-description-calculation.html: Updated.
+        * accessibility/w3c-svg-name-calculation.html: Updated.
+        * platform/gtk/accessibility/alt-tag-on-image-with-nonimage-role-expected.txt: Removed.
+        * platform/gtk/accessibility/aria-labeled-with-hidden-node-expected.txt: Removed.
+        * platform/gtk/accessibility/aria-labelledby-on-input-expected.txt: Removed.
+        * platform/gtk/accessibility/aria-labelledby-overrides-aria-labeledby-expected.txt: Removed.
+        * platform/gtk/accessibility/aria-labelledby-overrides-label-expected.txt: Updated.
+        * platform/gtk/accessibility/aria-labelledby-with-descendants-expected.txt: Removed.
+        * platform/gtk/accessibility/aria-namefrom-author-expected.txt: Removed.
+        * platform/gtk/accessibility/aria-text-role-expected.txt: Removed.
+        * platform/gtk/accessibility/canvas-description-and-role-expected.txt: Updated.
+        * platform/gtk/accessibility/empty-image-with-title-expected.txt: Updated.
+        * platform/gtk/accessibility/fieldset-element-expected.txt: Removed.
+        * platform/gtk/accessibility/focusable-div-expected.txt: Removed.
+        * platform/gtk/accessibility/img-alt-tag-only-whitespace-expected.txt: Removed.
+        * platform/gtk/accessibility/img-aria-button-alt-tag-expected.txt: Removed.
+        * platform/gtk/accessibility/img-fallsback-to-title-expected.txt: Updated.
+        * platform/gtk/accessibility/input-image-alt-expected.txt: Removed.
+        * platform/gtk/accessibility/self-referencing-aria-labelledby-expected.txt: Removed.
+        * platform/gtk/accessibility/svg-group-element-with-title-expected.txt: Removed.
+        * platform/gtk/accessibility/svg-image-expected.txt: Removed.
+        * platform/gtk/accessibility/svg-labelledby-expected.txt: Removed.
+        * platform/mac/accessibility/aria-help-expected.txt: Removed.
+        * platform/mac/accessibility/aria-labelledby-overrides-label-expected.txt: Removed.
+        * platform/mac/accessibility/canvas-description-and-role-expected.txt: Updated.
+        * platform/mac/accessibility/fieldset-element-expected.txt: Removed.
+        * platform/mac/accessibility/img-fallsback-to-title-expected.txt: Updated.
+        * platform/win/accessibility/canvas-description-and-role-expected.txt: Updated.
+        * resources/accessibility-helper.js:
+        (platformValueForW3CName): Added.
+        (platformValueForW3CDescription): Added.
+        (platformTextAlternatives): Added.
+        (platformRoleForComboBox): Added.
+        (platformRoleForStaticText): Added.
+
+2016-05-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r201203
+
+        Unreviewed.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-05-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add John Daggett's font variant synthesis test
+        https://bugs.webkit.org/show_bug.cgi?id=157935
+        <rdar://problem/24133521>
+
+        Reviewed by Dean Jackson.
+
+        Make sure that we continue to synthesize correctly.
+
+        * css3/font-variant-synthesis-jdaggett-expected.html: Added.
+        * css3/font-variant-synthesis-jdaggett.html: Added.
+        * css3/resources/gsubtest-lookup3.otf: Added.
+        * platform/mac/TestExpectations:
+
+2016-05-19  Brady Eidson  <beidson@apple.com>
+
+        Finishing off: Modern IDB: Website data store management.
+        https://bugs.webkit.org/show_bug.cgi?id=157626
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/new-database-after-user-delete-expected.txt: Added.
+        * storage/indexeddb/modern/new-database-after-user-delete.html: Added.
+        * storage/indexeddb/modern/resources/new-database-after-user-delete.js: Added.
+        
+2016-05-19  Enrica Casucci  <enrica@apple.com>
+
+        Drag cannot start if no drag data is available in the Pasteboard.
+        https://bugs.webkit.org/show_bug.cgi?id=157911
+        rdar://problem/24577706
+
+        Reviewed by Tim Horton.
+
+        * fast/events/draggable-div-nodata-expected.txt: Added.
+        * fast/events/draggable-div-nodata.html: Added.
+        * platform/ios-simulator/TestExpectations
+        * platform/mac-wk2/TestExpectations
+
+2016-05-19  Jer Noble  <jer.noble@apple.com>
+
+        [IOS] Add setting to allow playback to continue inline after exiting fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=157912
+
+        Reviewed by Eric Carlson.
+
+        * media/media-fullscreen-return-to-inline-expected.txt: Added.
+        * media/media-fullscreen-return-to-inline.html: Added.
+        * media/video-test.js:
+        (runWithKeyDown.eventName.window.testRunner.eventSender.keyDown.string_appeared_here.string_appeared_here.thunk):
+        (runWithKeyDown):
+
+2016-05-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: HeapSnapshot Instances view should remove dead objects
+        https://bugs.webkit.org/show_bug.cgi?id=157920
+        <rdar://problem/26375866>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/heap-snapshot-collection-event-expected.txt: Added.
+        * inspector/unit-tests/heap-snapshot-collection-event.html: Added.
+
+2016-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::LICMPhase shouldn't hoist type checks unless it knows that the check will succeed at the loop pre-header
+        https://bugs.webkit.org/show_bug.cgi?id=144527
+
+        Reviewed by Saam Barati.
+        
+        Add tests for LICM hoisting things that would only exit if hoisted.
+
+        * js/regress/licm-dragons-expected.txt: Added.
+        * js/regress/licm-dragons-out-of-bounds-expected.txt: Added.
+        * js/regress/licm-dragons-out-of-bounds.html: Added.
+        * js/regress/licm-dragons-overflow-expected.txt: Added.
+        * js/regress/licm-dragons-overflow.html: Added.
+        * js/regress/licm-dragons.html: Added.
+        * js/regress/script-tests/licm-dragons-out-of-bounds.js: Added.
+        (foo):
+        * js/regress/script-tests/licm-dragons-overflow.js: Added.
+        (foo):
+        * js/regress/script-tests/licm-dragons.js: Added.
+        (foo):
+
+2016-05-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: use a consistent prefix for injected scripts
+        https://bugs.webkit.org/show_bug.cgi?id=157715
+        <rdar://problem/26287188>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Follow-up fix to an affected test.
+
+        * inspector/debugger/scriptParsed.html:
+        Check whether the script is for CommandLineAPIModuleSource before
+        checking whether it is an InjectedScript. With the new naming scheme,
+        the latter is a subset of the former, so do the more specific check first.
+
+2016-05-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: use a consistent prefix for injected scripts
+        https://bugs.webkit.org/show_bug.cgi?id=157715
+        <rdar://problem/26287188>
+
+        Reviewed by Timothy Hatcher.
+
+        Update how inspector tests check sourceURLs for internal scripts.
+
+        * inspector/debugger/scriptParsed.html:
+        * inspector/debugger/sourceURLs.html:
+
+2016-05-18  Antti Koivisto  <antti@apple.com>
+
+        Style resolution for explicitly inherited properties is inefficient
+        https://bugs.webkit.org/show_bug.cgi?id=157860
+
+        Reviewed by Andreas Kling.
+
+        * platform/ios-simulator/fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element-expected.txt:
+        * platform/mac/fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element-expected.txt:
+
+        This is a progression.
+
+2016-05-19  Yoav Weiss  <yoav@yoav.ws>
+
+        REGRESSION (r200887): LayoutTest http/tests/performance/performance-resource-timing-cached-entries.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=157816
+
+        Reviewed by Alexey Proskuryakov.
+
+        Mark the test as flaky, and add console logs to try to figure out the cause for flakiness.
+
+        * TestExpectations: Mark the test as flaky.
+        * http/tests/performance/performance-resource-timing-cached-entries.html: Add prints to better identify the flakiness root cause.
+
+2016-05-18  Jer Noble  <jer.noble@apple.com>
+
+        webkitEnterFullscreen() does not require a user gesture when RequireUserGestureForAudioRateChange is set.
+        https://bugs.webkit.org/show_bug.cgi?id=157803
+
+        Reviewed by Eric Carlson.
+
+        * media/video-play-audio-require-user-gesture-expected.txt: Added.
+        * media/video-play-audio-require-user-gesture.html: Added.
+
+2016-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r186569): media/restore-from-page-cache.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=147254
+
+        Unreviewed. Removing the flaky test expectation since the test is almost always passing now.
+
+        * platform/mac/TestExpectations:
+
+2016-05-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Add support for server side closing of open database connections.
+        https://bugs.webkit.org/show_bug.cgi?id=157843
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/handle-user-delete-expected.txt: Added.
+        * storage/indexeddb/modern/handle-user-delete.html: Added.
+        * storage/indexeddb/modern/resources/handle-user-delete.js: Added.
+
 2016-05-18  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [OS X] Update platform/mac/fast/text/sticky-typesetting-features.html
@@ -2647,7 +3665,7 @@
         Unreviewed test gardening.
 
         Remove failure expectation for passing tests, move some to more specific ports, and remove expectations
-		for tests that are no longer in the tree.
+        for tests that are no longer in the tree.
 
         * platform/ios-simulator-wk1/TestExpectations:
         * platform/ios-simulator-wk2/TestExpectations:
@@ -4185,9 +5203,9 @@
 
         Unreviewed test gardening.
 
-		I evaluated all of the unexpected passes from ios-simulator-wk2 and removed failure
-		expectations where appropriate. Some of the tests only pass on wk2, so some expectations
-		were moved to the ios-simulator-wk1 file.
+        I evaluated all of the unexpected passes from ios-simulator-wk2 and removed failure
+        expectations where appropriate. Some of the tests only pass on wk2, so some expectations
+        were moved to the ios-simulator-wk1 file.
 
         * platform/ios-simulator-wk1/TestExpectations:
         * platform/ios-simulator-wk2/TestExpectations:

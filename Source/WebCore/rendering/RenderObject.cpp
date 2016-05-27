@@ -298,29 +298,6 @@ RenderObject* RenderObject::lastLeafChild() const
 }
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
-// Inspired by Node::traverseNextNode.
-RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin) const
-{
-    RenderObject* child = firstChildSlow();
-    if (child) {
-        ASSERT(!stayWithin || child->isDescendantOf(stayWithin));
-        return child;
-    }
-    if (this == stayWithin)
-        return nullptr;
-    if (nextSibling()) {
-        ASSERT(!stayWithin || nextSibling()->isDescendantOf(stayWithin));
-        return nextSibling();
-    }
-    const RenderObject* n = this;
-    while (n && !n->nextSibling() && (!stayWithin || n->parent() != stayWithin))
-        n = n->parent();
-    if (n) {
-        ASSERT(!stayWithin || !n->nextSibling() || n->nextSibling()->isDescendantOf(stayWithin));
-        return n->nextSibling();
-    }
-    return nullptr;
-}
 
 // Non-recursive version of the DFS search.
 RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, HeightTypeTraverseNextInclusionFunction inclusionFunction, int& currentDepth, int& newFixedDepth) const
@@ -370,44 +347,6 @@ RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, HeightT
     return nullptr;
 }
 
-RenderObject* RenderObject::traverseNext(const RenderObject* stayWithin, TraverseNextInclusionFunction inclusionFunction) const
-{
-    for (RenderObject* child = firstChildSlow(); child; child = child->nextSibling()) {
-        if (inclusionFunction(*child)) {
-            ASSERT(!stayWithin || child->isDescendantOf(stayWithin));
-            return child;
-        }
-    }
-
-    if (this == stayWithin)
-        return nullptr;
-
-    for (RenderObject* sibling = nextSibling(); sibling; sibling = sibling->nextSibling()) {
-        if (inclusionFunction(*sibling)) {
-            ASSERT(!stayWithin || sibling->isDescendantOf(stayWithin));
-            return sibling;
-        }
-    }
-
-    const RenderObject* n = this;
-    while (n) {
-        while (n && !n->nextSibling() && (!stayWithin || n->parent() != stayWithin))
-            n = n->parent();
-        if (n) {
-            for (RenderObject* sibling = n->nextSibling(); sibling; sibling = sibling->nextSibling()) {
-                if (inclusionFunction(*sibling)) {
-                    ASSERT(!stayWithin || !n->nextSibling() || n->nextSibling()->isDescendantOf(stayWithin));
-                    return sibling;
-                }
-            }
-            if ((!stayWithin || n->parent() != stayWithin))
-                n = n->parent();
-            else
-                return nullptr;
-        }
-    }
-    return nullptr;
-}
 #endif // ENABLE(IOS_TEXT_AUTOSIZING)
 
 RenderLayer* RenderObject::enclosingLayer() const
@@ -1457,69 +1396,34 @@ bool RenderObject::hasEntirelyFixedBackground() const
     return style().hasEntirelyFixedBackground();
 }
 
-RenderElement* RenderObject::container(const RenderLayerModelObject* repaintContainer, bool* repaintContainerSkipped) const
+static inline RenderElement* containerForElement(const RenderObject& renderer, const RenderLayerModelObject* repaintContainer, bool* repaintContainerSkipped)
 {
-    if (repaintContainerSkipped)
-        *repaintContainerSkipped = false;
-
     // This method is extremely similar to containingBlock(), but with a few notable
     // exceptions.
-    // (1) It can be used on orphaned subtrees, i.e., it can be called safely even when
-    // the object is not part of the primary document subtree yet.
-    // (2) For normal flow elements, it just returns the parent.
-    // (3) For absolute positioned elements, it will return a relative positioned inline.
-    // containingBlock() simply skips relpositioned inlines and lets an enclosing block handle
-    // the layout of the positioned object.  This does mean that computePositionedLogicalWidth and
-    // computePositionedLogicalHeight have to use container().
-    auto o = parent();
-
-    if (isText())
-        return o;
-
-    EPosition pos = style().position();
-    if (pos == FixedPosition) {
-        // container() can be called on an object that is not in the
-        // tree yet.  We don't call view() since it will assert if it
-        // can't get back to the canvas.  Instead we just walk as high up
-        // as we can.  If we're in the tree, we'll get the root.  If we
-        // aren't we'll get the root of our little subtree (most likely
-        // we'll just return nullptr).
-        // FIXME: The definition of view() has changed to not crawl up the render tree.  It might
-        // be safe now to use it.
-        // FIXME: share code with containingBlockForFixedPosition().
-        while (o && o->parent() && !(o->hasTransform() && o->isRenderBlock())) {
-            // foreignObject is the containing block for its contents.
-            if (o->isSVGForeignObject())
-                break;
-
-            // The render flow thread is the top most containing block
-            // for the fixed positioned elements.
-            if (o->isOutOfFlowRenderFlowThread())
-                break;
-
-            if (repaintContainerSkipped && o == repaintContainer)
-                *repaintContainerSkipped = true;
-
-            o = o->parent();
-        }
-    } else if (pos == AbsolutePosition) {
-        // Same goes here.  We technically just want our containing block, but
-        // we may not have one if we're part of an uninstalled subtree.  We'll
-        // climb as high as we can though.
-        // FIXME: share code with isContainingBlockCandidateForAbsolutelyPositionedObject().
-        // FIXME: hasTransformRelatedProperty() includes preserves3D() check, but this may need to change: https://www.w3.org/Bugs/Public/show_bug.cgi?id=27566
-        while (o && o->style().position() == StaticPosition && !o->isRenderView() && !(o->hasTransformRelatedProperty() && o->isRenderBlock())) {
-            if (o->isSVGForeignObject()) // foreignObject is the containing block for contents inside it
-                break;
-
-            if (repaintContainerSkipped && o == repaintContainer)
-                *repaintContainerSkipped = true;
-
-            o = o->parent();
-        }
+    // (1) For normal flow elements, it just returns the parent.
+    // (2) For absolute positioned elements, it will return a relative positioned inline, while
+    // containingBlock() skips to the non-anonymous containing block.
+    // This does mean that computePositionedLogicalWidth and computePositionedLogicalHeight have to use container().
+    EPosition pos = renderer.style().position();
+    auto* parent = renderer.parent();
+    if (is<RenderText>(renderer) || (pos != FixedPosition && pos != AbsolutePosition))
+        return parent;
+    for (; parent && (pos == AbsolutePosition ? !parent->canContainAbsolutelyPositionedObjects() : !parent->canContainFixedPositionObjects()); parent = parent->parent()) {
+        if (repaintContainerSkipped && repaintContainer == parent)
+            *repaintContainerSkipped = true;
     }
+    return parent;
+}
 
-    return o;
+RenderElement* RenderObject::container() const
+{
+    return containerForElement(*this, nullptr, nullptr);
+}
+
+RenderElement* RenderObject::container(const RenderLayerModelObject* repaintContainer, bool& repaintContainerSkipped) const
+{
+    repaintContainerSkipped = false;
+    return containerForElement(*this, repaintContainer, &repaintContainerSkipped);
 }
 
 bool RenderObject::isSelectionBorder() const

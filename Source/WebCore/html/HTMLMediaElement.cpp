@@ -442,29 +442,23 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #if PLATFORM(IOS)
     m_sendProgressEvents = false;
 #endif
-    if (!settings || settings->videoPlaybackRequiresUserGesture()) {
-        // Allow autoplay in a MediaDocument that is not in an iframe.
-        if (document.ownerElement() || !document.isMediaDocument()) {
-            m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForVideoRateChange);
-            m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForLoad);
-        }
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
-        m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToShowPlaybackTargetPicker);
-#endif
-    }
-#if PLATFORM(IOS)
-    else {
-        // Relax RequireUserGestureForFullscreen when videoPlaybackRequiresUserGesture is not set:
-        m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequireUserGestureForFullscreen);
-    }
-#endif
 
     if (settings && settings->invisibleAutoplayNotPermitted())
         m_mediaSession->addBehaviorRestriction(MediaElementSession::InvisibleAutoplayNotPermitted);
 
     if (document.ownerElement() || !document.isMediaDocument()) {
+        if (settings && settings->videoPlaybackRequiresUserGesture()) {
+            m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForVideoRateChange);
+            m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForLoad);
+        }
+
         if (settings && settings->audioPlaybackRequiresUserGesture())
             m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForAudioRateChange);
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+        if (settings && (settings->videoPlaybackRequiresUserGesture() || settings->audioPlaybackRequiresUserGesture()))
+            m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToShowPlaybackTargetPicker);
+#endif
 
         if (!settings || !settings->mediaDataLoadsAutomatically())
             m_mediaSession->addBehaviorRestriction(MediaElementSession::AutoPreloadingNotPermitted);
@@ -472,6 +466,13 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
         if (settings && settings->mainContentUserGestureOverrideEnabled())
             m_mediaSession->addBehaviorRestriction(MediaElementSession::OverrideUserGestureRequirementForMainContent);
     }
+
+#if PLATFORM(IOS)
+    if (settings && !settings->videoPlaybackRequiresUserGesture() && !settings->audioPlaybackRequiresUserGesture()) {
+        // Relax RequireUserGestureForFullscreen when videoPlaybackRequiresUserGesture and audioPlaybackRequiresUserGesture is not set:
+        m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequireUserGestureForFullscreen);
+    }
+#endif
 
 #if ENABLE(VIDEO_TRACK)
     if (document.page())
@@ -498,9 +499,6 @@ HTMLMediaElement::~HTMLMediaElement()
 
     setShouldDelayLoadEvent(false);
     unregisterWithDocument(document());
-
-    if (document().page())
-        document().page()->chrome().client().clearPlaybackControlsManager(*this);
 
 #if ENABLE(VIDEO_TRACK)
     if (m_audioTracks) {
@@ -561,6 +559,9 @@ HTMLMediaElement::~HTMLMediaElement()
     m_pauseAfterDetachedTaskQueue.close();
 
     m_completelyLoaded = true;
+
+    m_player = nullptr;
+    updatePlaybackControlsManager();
 }
 
 void HTMLMediaElement::registerWithDocument(Document& document)
@@ -3352,6 +3353,8 @@ void HTMLMediaElement::setMuted(bool muted)
 #endif
     }
 #endif
+
+    updatePlaybackControlsManager();
 }
 
 void HTMLMediaElement::togglePlayState()
@@ -4834,8 +4837,7 @@ void HTMLMediaElement::updatePlayState()
     LOG(Media, "HTMLMediaElement::updatePlayState(%p) - shouldBePlaying = %s, playerPaused = %s", this, boolString(shouldBePlaying), boolString(playerPaused));
 
     if (shouldBePlaying) {
-        if (document().page() && m_mediaSession->canControlControlsManager(*this))
-            document().page()->chrome().client().setUpPlaybackControlsManager(*this);
+        updatePlaybackControlsManager();
 
         setDisplayMode(Video);
         invalidateCachedTime();
@@ -4869,8 +4871,7 @@ void HTMLMediaElement::updatePlayState()
         startPlaybackProgressTimer();
         setPlaying(true);
     } else {
-        if (endedPlayback() && document().page())
-            document().page()->chrome().client().clearPlaybackControlsManager(*this);
+        updatePlaybackControlsManager();
 
         if (!playerPaused)
             m_player->pause();
@@ -5008,6 +5009,7 @@ void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
     }
 
     m_player = nullptr;
+    updatePlaybackControlsManager();
 
     stopPeriodicTimers();
     m_pendingActionTimer.stop();
@@ -5043,9 +5045,7 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
     if (m_videoFullscreenMode != VideoFullscreenModeNone)
         exitFullscreen();
 
-    if (document().page())
-        document().page()->chrome().client().clearPlaybackControlsManager(*this);
-
+    updatePlaybackControlsManager();
     m_inActiveDocument = false;
 
     // Stop the playback without generating events
@@ -5216,7 +5216,7 @@ bool HTMLMediaElement::dispatchEvent(Event& event)
     return HTMLElement::dispatchEvent(event);
 }
 
-bool HTMLMediaElement::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+bool HTMLMediaElement::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, bool useCapture)
 {
     if (eventType != eventNames().webkitplaybacktargetavailabilitychangedEvent)
         return Node::addEventListener(eventType, WTFMove(listener), useCapture);
@@ -5236,7 +5236,7 @@ bool HTMLMediaElement::addEventListener(const AtomicString& eventType, RefPtr<Ev
     return true;
 }
 
-bool HTMLMediaElement::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+bool HTMLMediaElement::removeEventListener(const AtomicString& eventType, EventListener& listener, bool useCapture)
 {
     if (eventType != eventNames().webkitplaybacktargetavailabilitychangedEvent)
         return Node::removeEventListener(eventType, listener, useCapture);
@@ -5408,7 +5408,7 @@ void HTMLMediaElement::exitFullscreen()
     if (hasMediaControls())
         mediaControls()->exitedFullscreen();
     if (document().page() && is<HTMLVideoElement>(*this)) {
-        if (m_mediaSession->requiresFullscreenForVideoPlayback(*this))
+        if (m_mediaSession->requiresFullscreenForVideoPlayback(*this) && (!document().settings() || !document().settings()->allowsInlineMediaPlaybackAfterFullscreen()))
             pauseInternal();
 
         if (document().page()->chrome().client().supportsVideoFullscreen(oldVideoFullscreenMode)) {
@@ -5887,6 +5887,7 @@ void HTMLMediaElement::createMediaPlayer()
     forgetResourceSpecificTracks();
 #endif
     m_player = std::make_unique<MediaPlayer>(static_cast<MediaPlayerClient&>(*this));
+    updatePlaybackControlsManager();
 
 #if ENABLE(WEB_AUDIO)
     if (m_audioSourceNode) {
@@ -7009,6 +7010,18 @@ void HTMLMediaElement::updateShouldPlay()
         pauseInternal();
     else if (canTransitionFromAutoplayToPlay())
         play();
+}
+
+void HTMLMediaElement::updatePlaybackControlsManager()
+{
+    Page* page = document().page();
+    if (!page)
+        return;
+
+    if (m_mediaSession->canControlControlsManager(*this))
+        page->chrome().client().setUpPlaybackControlsManager(*this);
+    else
+        page->chrome().client().clearPlaybackControlsManager(*this);
 }
 
 }

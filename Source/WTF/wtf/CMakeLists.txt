@@ -2,6 +2,7 @@ set(WTF_HEADERS
     ASCIICType.h
     Assertions.h
     Atomics.h
+    BackwardsGraph.h
     Bag.h
     BagToHashMap.h
     BitVector.h
@@ -29,7 +30,6 @@ set(WTF_HEADERS
     FlipBytes.h
     Forward.h
     FunctionDispatcher.h
-    Functional.h
     GetPtr.h
     GraphNodeWorklist.h
     GregorianDateTime.h

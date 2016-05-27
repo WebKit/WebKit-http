@@ -1,3 +1,347 @@
+2016-05-25  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WTF/Functional.h
+        https://bugs.webkit.org/show_bug.cgi?id=158081
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Functional.cpp: Removed.
+        (TestWebKitAPI::returnFortyTwo): Deleted.
+        (TestWebKitAPI::TEST): Deleted.
+        (TestWebKitAPI::multiplyByTwo): Deleted.
+        (TestWebKitAPI::multiplyByOneAndAHalf): Deleted.
+        (TestWebKitAPI::multiply): Deleted.
+        (TestWebKitAPI::subtract): Deleted.
+        (TestWebKitAPI::A::A): Deleted.
+        (TestWebKitAPI::A::f): Deleted.
+        (TestWebKitAPI::A::addF): Deleted.
+        (TestWebKitAPI::B::B): Deleted.
+        (TestWebKitAPI::B::~B): Deleted.
+        (TestWebKitAPI::B::ref): Deleted.
+        (TestWebKitAPI::B::deref): Deleted.
+        (TestWebKitAPI::B::f): Deleted.
+        (TestWebKitAPI::B::g): Deleted.
+        (TestWebKitAPI::Number::create): Deleted.
+        (TestWebKitAPI::Number::~Number): Deleted.
+        (TestWebKitAPI::Number::value): Deleted.
+        (TestWebKitAPI::Number::Number): Deleted.
+        (TestWebKitAPI::multiplyNumberByTwo): Deleted.
+
+2016-05-25  Daniel Bates  <dabates@apple.com> and Brent Fulgham  <bfulgham@apple.com>
+
+        [WebSockets] No infrastructure for testing secure web sockets (wss)
+        https://bugs.webkit.org/show_bug.cgi?id=157884
+        <rdar://problem/26477197>
+
+        Reviewed by Andy Estes.
+
+        Add support to webkitpy to start and stop a secure Web Socket server running on port 9323
+        using the certificate, private-key from file LayoutTests/http/conf/webkit-httpd.pem. Also
+        teaches run-webkit-httpd to start and stop the Web Socket servers.
+
+        Modify DumpRenderTree and WebKitTestRunner to understand a new testRunner method,
+        'setAllowsAnySSLCertificate', which allows us to use the same self-signed test certificate
+        we do for our HTTPS tests.
+        
+        * DumpRenderTree/TestRunner.cpp:
+        (setAllowsAnySSLCertificateCallback):
+        (TestRunner::setAllowsAnySSLCertificate):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting): Make sure we turn off the new flag between tests.
+        * Scripts/run-webkit-httpd:
+        (main): Start the websocket server at launch.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.__init__): Remove dead code.
+        * Scripts/webkitpy/layout_tests/servers/websocket_server.py:
+        (PyWebSocket.__init__): Cleanup code.
+        (PyWebSocket): Pass '--tls-client-ca' to start command.
+        (PyWebSocket._prepare_config): Cleanups.
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.start_http_server):
+        (Port.to):
+        (Port.to._extract_certificate_from_pem): Added.
+        (Port.to._extract_private_key_from_pem): Added.
+        (Port.to.start_websocket_server): Start secure socket server.
+        (Port.to.stop_websocket_server): Stop secure socket server.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl: Add new API.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::setAllowsAnySSLCertificate): Added.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setAllowsAnySSLCertificate): Added.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-05-25  Keith Miller  <keith_miller@apple.com>
+
+        run-jsc-benchmarks should use the new JSBench rather than look for it in the config file.
+        https://bugs.webkit.org/show_bug.cgi?id=158077
+
+        Reviewed by Mark Lam.
+
+        Since we didn't have JSBench in the tree before we needed to lookup the path to it from
+        benchmark config file. That's no longer the case so we should just fix it in the script.
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-05-24  Aakash Jain  <aakash_jain@apple.com>
+
+        Reorganize dashboard code: move code from _timeIntervalString to base class
+        https://bugs.webkit.org/show_bug.cgi?id=158047
+        rdar://problem/26457274
+
+        Reviewed by Alexey Proskuryakov and Dean Johnson.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueView.js:
+        (BubbleQueueView.prototype._timeIntervalString): Moved core logic to base class so as to make it re-usable.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/QueueView.js:
+        (QueueView.prototype._readableTimeString): Same.
+
+2016-05-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK][EFL] Allow run-jsc-benchmark to use WebKitTestRunner in EFL / GTK ports
+        https://bugs.webkit.org/show_bug.cgi?id=158016
+
+        Reviewed by Darin Adler.
+
+        This patch easily allows run-jsc-benchmark to run WebKitTestRunner-based tests in GTK / EFL ports.
+        This change encourages us to run tests with the browser-heap in nix environments.
+        Two things are modified.
+
+        1. Add a fall-back to look up the library path in GTK / EFL / JSCOnly environment.
+
+            In GTK / EFL / JSCOnly ports, the hierarchy of the build directory is slightly different from Apple port.
+            For example, the jsc bin locate at "WebKitBuild/XXX/Release/bin/jsc" and the lib path is "WebKitBuild/XXX/Release/lib"
+            while the one of Apple port is "WebKitBuild/XXX/Release/jsc" and "WebKitBuild/XXX/Release/lib".
+            And based on this library path, we configure the required environment variables to run WebKitTestRunner in GTK / EFL ports.
+
+        2. Add --dependencies option to add dependent library paths.
+
+            While Apple ports does not require any additional dependent library path, GTK and EFL ports require this path,
+            typically WebKitBuild/DependenciesGTK and WebKitBuild/DependenciesEFL respectively. So we need to add such paths to LD_LIBRARY_PATH.
+            Instead of adding platform options like --gtk / --efl, we add --dependencies option to add the additional dependent library paths.
+            The platform options still require the build path to look up the dependent library directory. So we pass it directly through --dependencies.
+            Multiple additional dependent library paths can be added by using --dependencies multiple times.
+
+        By using these change, we can run benchmarks that require WebKitTestRunner in GTK / EFL ports (If you would like to run them in a headless manner, you can use xvbuf.).
+        Example:
+            `Tools/Scripts/run-jsc-benchmarks baseline:WebKitBuild/baseline/Release/bin/WebKitTestRunner patched:WebKitBuild/patched/Release/bin/WebKitTestRunner --dependencies WebKitBuild/DependenciesGTK/Root/lib --js-bench`
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-05-20  Keith Miller  <keith_miller@apple.com>
+        We should have JSBench in PerformanceTests
+        https://bugs.webkit.org/show_bug.cgi?id=157952
+
+        Rubber-stamped by Saam Barati.
+
+        This changes the runner to use the layout of the newest version of JSBench.
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-05-24  Chris Dumez  <cdumez@apple.com>
+
+        Use auto for some of our lambda function parameters
+        https://bugs.webkit.org/show_bug.cgi?id=158001
+
+        Reviewed by Darin Adler.
+
+        Use auto for some of our lambda function parameters now that we build with c++14.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::willDestroyPage):
+
+2016-05-23  Brady Eidson  <beidson@apple.com>
+
+        check-webkit-style gets flags std::literals::chrono_literals as bad naming.
+        https://bugs.webkit.org/show_bug.cgi?id=157969
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_identifier_name_in_declaration):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_names):
+
+2016-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        RELEASE_ASSERT(TestController::singleton().isCurrentInvocation(testInvocation)) is sometimes hit when running tests
+        https://bugs.webkit.org/show_bug.cgi?id=157977
+        rdar://problem/20874156
+
+        Reviewed by David Kilzer.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke): Be more certain to launch a new process when there was
+        a timeout detected. If we don't, there is a chance that the process is not quite frozen,
+        and will still send a response that we no longer expect.
+        (WTR::TestInvocation::dumpWebProcessUnresponsiveness): Print timeout details to stderr
+        too, as stdout is not available, at least not in the case that I was observing.
+
+2016-05-22  Brady Eidson  <beidson@apple.com>
+
+        Move to C++14.
+        https://bugs.webkit.org/show_bug.cgi?id=157948
+
+        Reviewed by Michael Catanzaro.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2016-05-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Simulator launch fails intermittently due to failure in checking simulator boot status
+        https://bugs.webkit.org/show_bug.cgi?id=157965
+        rdar://problem/26402404
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator.wait_until_device_is_booted): Ignore CalledProcessError exception while checking
+        whether simulator has finished booting.
+
+2016-05-21  Dan Bernstein  <mitz@apple.com>
+
+        Silence warnings from svn propget when using newer versions of Subversion.
+        https://bugs.webkit.org/show_bug.cgi?id=157879
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/prepare-ChangeLog:
+        (attributeCommand): Redirect svn propget stderr to /dev/null.
+        * Scripts/svn-create-patch:
+        (findMimeType): Ditto.
+
+2016-05-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-benchmark's results should contain Animometer's debug output
+        https://bugs.webkit.org/show_bug.cgi?id=157941
+
+        Reviewed by Stephanie Lewis.
+
+        Modified the Animometer patch to store debug output and made benchmark_runner extract them together as a single array.
+        The result can be dragged and dropped into Animometer's developer.html page.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner._run_one_test): Parse JSON here instead of doing it in multiple call sites.
+        (BenchmarkRunner._run_benchmark): Strip debugOutput from individual test result, and merge them together separately.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Animometer.patch:
+        Modified the patch to store the debug output.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server/twisted_http_server.py:
+        (ServerControl.render_POST): Fixed a bug that POST to /report results in 500 because getvalue is not defined
+        when the request body is larger than a certain size on twisted.
+
+2016-05-20  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Use clearer names for JSON output of javascriptcore test results
+        https://bugs.webkit.org/show_bug.cgi?id=157921
+
+        Reviewed by Alexey Proskuryakov.
+
+        "failures" and "apiTestResult" were somewhat ambiguous names. 
+        
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): "failures" -> "stressFailures", "apiTestResult" -> "allApiTestsPassed".
+
+2016-05-20  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix API test introduced in r201213.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-05-20  Rawinder Singh  <rawinder.singh-webkit@cisra.canon.com.au>
+
+        Implement operator== for WeakPtr
+        https://bugs.webkit.org/show_bug.cgi?id=157883
+
+        Reviewed by Chris Dumez.
+
+        Implement operator== and operator!= for WeakPtr and update code to use the operators.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-05-19  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add JSON results to 32-bit and CLoop JSC tests
+        https://bugs.webkit.org/show_bug.cgi?id=157929
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunLLINTCLoopTests): Change command-line parameters to run-javascriptcore-tests in order to get JSON output.
+        (Run32bitJSCTests): Change command-line parameters to run-javascriptcore-tests in order to get JSON output.
+
+2016-05-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Typo fix in import-test262-tests
+        https://bugs.webkit.org/show_bug.cgi?id=157902
+
+        Reviewed by Keith Miller.
+
+        * Scripts/import-test262-tests:
+
+2016-05-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix the gst-libav build on ARM Thumb2 after r199649
+        https://bugs.webkit.org/show_bug.cgi?id=157893
+
+        Reviewed by Antonio Gomes.
+
+        * efl/patches/gst-libav.patch:
+
+2016-05-19  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(r200951): VideoControlsManager API tests time out
+        https://bugs.webkit.org/show_bug.cgi?id=157896
+        <rdar://problem/26326293>
+
+        Reviewed by Eric Carlson.
+
+        Explicitly disable user gesture requirements for playback.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (TestWebKitAPI::TEST):
+
+2016-05-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Slow JSC stress tests times out in 32 bit debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=154964
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Pass through the --debug option.
+        * Scripts/run-jsc-stress-tests: Increase the timeout for debug builds.
+
+2016-05-18  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove underline from Status Bubbles on dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=157870
+        rdar://problem/26332321
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css: Reverted style 
+        change made in http://trac.webkit.org/r200880
+
+2016-05-18  Michael Saboff  <msaboff@apple.com>
+
+        r199812 broke test262
+        https://bugs.webkit.org/show_bug.cgi?id=157595
+
+        Reviewed by Filip Pizlo.
+
+        Added a new run type, runOneLargeHeap, for tests that use a large amount of memory.
+        This run type will not run with the --memory-limited option.  Without that option,
+        we'll only the default test variant.
+
+        * Scripts/run-jsc-stress-tests:
+
 2016-05-18  Simon Fraser  <simon.fraser@apple.com>
 
         REGRESSION (r200534) Command-+ no longer zooms pages 

@@ -108,6 +108,7 @@ private:
     BOOL _alwaysRunsAtForegroundPriority;
     BOOL _allowsInlineMediaPlayback;
     BOOL _inlineMediaPlaybackRequiresPlaysInlineAttribute;
+    BOOL _allowsInlineMediaPlaybackAfterFullscreen;
 #endif
 
     BOOL _invisibleAutoplayNotPermitted;
@@ -119,6 +120,7 @@ private:
     BOOL _showsURLsInToolTips;
     BOOL _serviceControlsEnabled;
     BOOL _imageControlsEnabled;
+    BOOL _requiresUserActionForEditingControlsManager;
 #endif
 
 #if USE(APPLE_INTERNAL_SDK)
@@ -135,15 +137,17 @@ private:
     _allowsPictureInPictureMediaPlayback = YES;
     _allowsInlineMediaPlayback = WebCore::deviceClass() == MGDeviceClassiPad;
     _inlineMediaPlaybackRequiresPlaysInlineAttribute = !_allowsInlineMediaPlayback;
+    _allowsInlineMediaPlaybackAfterFullscreen = !_allowsInlineMediaPlayback;
     _mediaDataLoadsAutomatically = NO;
-#else
-    _mediaDataLoadsAutomatically = YES;
-    _userInterfaceDirectionPolicy = WKUserInterfaceDirectionPolicyContent;
-#endif
     if (linkedOnOrAfter(WebKit::LibraryVersion::FirstWithMediaTypesRequiringUserActionForPlayback))
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAudio;
     else
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAll;
+#else
+    _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
+    _mediaDataLoadsAutomatically = YES;
+    _userInterfaceDirectionPolicy = WKUserInterfaceDirectionPolicyContent;
+#endif
     _mainContentUserGestureOverrideEnabled = NO;
     _invisibleAutoplayNotPermitted = NO;
 
@@ -165,6 +169,7 @@ private:
     _showsURLsInToolTips = NO;
     _serviceControlsEnabled = NO;
     _imageControlsEnabled = NO;
+    _requiresUserActionForEditingControlsManager = NO;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -202,6 +207,7 @@ private:
 #if PLATFORM(IOS)
     [coder encodeInteger:self.dataDetectorTypes forKey:@"dataDetectorTypes"];
     [coder encodeBool:self.allowsInlineMediaPlayback forKey:@"allowsInlineMediaPlayback"];
+    [coder encodeBool:self._allowsInlineMediaPlaybackAfterFullscreen forKey:@"allowsInlineMediaPlaybackAfterFullscreen"];
     [coder encodeBool:self.mediaTypesRequiringUserActionForPlayback forKey:@"mediaTypesRequiringUserActionForPlayback"];
     [coder encodeInteger:self.selectionGranularity forKey:@"selectionGranularity"];
     [coder encodeBool:self.allowsPictureInPictureMediaPlayback forKey:@"allowsPictureInPictureMediaPlayback"];
@@ -227,6 +233,7 @@ private:
 #if PLATFORM(IOS)
     self.dataDetectorTypes = [coder decodeIntegerForKey:@"dataDetectorTypes"];
     self.allowsInlineMediaPlayback = [coder decodeBoolForKey:@"allowsInlineMediaPlayback"];
+    self._allowsInlineMediaPlaybackAfterFullscreen = [coder decodeBoolForKey:@"allowsInlineMediaPlaybackAfterFullscreen"];
     self.mediaTypesRequiringUserActionForPlayback = [coder decodeBoolForKey:@"mediaTypesRequiringUserActionForPlayback"];
     self.selectionGranularity = static_cast<WKSelectionGranularity>([coder decodeIntegerForKey:@"selectionGranularity"]);
     self.allowsPictureInPictureMediaPlayback = [coder decodeBoolForKey:@"allowsPictureInPictureMediaPlayback"];
@@ -274,6 +281,7 @@ private:
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
+    configuration->_allowsInlineMediaPlaybackAfterFullscreen = self->_allowsInlineMediaPlaybackAfterFullscreen;
     configuration->_inlineMediaPlaybackRequiresPlaysInlineAttribute = self->_inlineMediaPlaybackRequiresPlaysInlineAttribute;
     configuration->_allowsPictureInPictureMediaPlayback = self->_allowsPictureInPictureMediaPlayback;
     configuration->_alwaysRunsAtForegroundPriority = _alwaysRunsAtForegroundPriority;
@@ -284,6 +292,7 @@ private:
     configuration->_showsURLsInToolTips = self->_showsURLsInToolTips;
     configuration->_serviceControlsEnabled = self->_serviceControlsEnabled;
     configuration->_imageControlsEnabled = self->_imageControlsEnabled;
+    configuration->_requiresUserActionForEditingControlsManager = self->_requiresUserActionForEditingControlsManager;
 #endif
 #if ENABLE(DATA_DETECTION) && PLATFORM(IOS)
     configuration->_dataDetectorTypes = self->_dataDetectorTypes;
@@ -562,6 +571,16 @@ static NSString *defaultApplicationNameForUserAgent()
 {
     _inlineMediaPlaybackRequiresPlaysInlineAttribute = requires;
 }
+
+- (BOOL)_allowsInlineMediaPlaybackAfterFullscreen
+{
+    return _allowsInlineMediaPlaybackAfterFullscreen;
+}
+
+- (void)_setAllowsInlineMediaPlaybackAfterFullscreen:(BOOL)allows
+{
+    _allowsInlineMediaPlaybackAfterFullscreen = allows;
+}
 #endif // PLATFORM(IOS)
 
 - (BOOL)_invisibleAutoplayNotPermitted
@@ -660,6 +679,17 @@ static NSString *defaultApplicationNameForUserAgent()
 {
     _imageControlsEnabled = imageControlsEnabled;
 }
+
+- (BOOL)_requiresUserActionForEditingControlsManager
+{
+    return _requiresUserActionForEditingControlsManager;
+}
+
+- (void)_setRequiresUserActionForEditingControlsManager:(BOOL)requiresUserAction
+{
+    _requiresUserActionForEditingControlsManager = requiresUserAction;
+}
+
 #endif // PLATFORM(MAC)
 
 #if USE(APPLE_INTERNAL_SDK)

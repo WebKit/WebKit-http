@@ -1,3 +1,142 @@
+2016-05-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix after r201307.
+
+        * public/v3/pages/page-router.js:
+        (PageRouter.prototype._deserializeHashQueryValue):
+        (PageRouter.prototype._countOccurrences): Moved from _deserializeHashQueryValue.
+
+2016-05-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r201307.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype.serializeState):
+
+2016-05-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Some applications truncates the last closing parenthesis in perf dashboard URL
+        https://bugs.webkit.org/show_bug.cgi?id=157976
+
+        Reviewed by Tim Horton.
+
+        Unfortunately, different applications use different heuristics to determine the end of each URL. Two trailing
+        parentheses, for example, is just fine in Radar as well as Apple Mail if the URL is short enough. Using other
+        characters such as ] and } wouldn't work either because they would be %-escaped. At that point, we might as well
+        as %-escape everything.
+
+        Work around the bug by parsing the URL as if it had one extra ')' if the parsing had failed. Also shorten the charts
+        page's URL by avoid emitting "-null" for each pane when the pane doesn't have a currently selected point or selection.
+        This improves the odds of the entire URL being recognized by various applications.
+
+        We could, in theory, implement some sort of a URL shorter but that can wait until when we support real user accounts.
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype.serializeState): Don't serialize the selection or the current point if nothing is selected.
+        * public/v3/pages/page-router.js:
+        (PageRouter.prototype._deserializeHashQueryValue): Try parsing the value again with one extra ] at the end if
+        the JSON parsing had failed.
+
+2016-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard "Add pane" should list first by test, then by machine
+        https://bugs.webkit.org/show_bug.cgi?id=157880
+
+        Reviewed by Stephanie Lewis.
+
+        Reversed the order which tests and platforms are selected. Also split .pane-selector-container into #tests and
+        #platform for the ease of DOM node manipulations.
+
+        * public/v3/components/pane-selector.js:
+        (PaneSelector):
+        (PaneSelector.prototype._renderPlatformList): Renamed from _renderPlatformLists since there is a single list
+        for platforms. This list now disappears while a non-metric item is selected in the collection of test lists.
+        e.g. "Speedometer" instead of its "Score" metric. Remember the last metric we rendered to avoid churning.
+        (PaneSelector.prototype._renderTestLists): Render the top level tests once. The index of lists have been
+        decreased by one since test lists are now inside #tests instead of appearing after the platform list.
+        (PaneSelector.prototype._buildTestList): Don't filter tests since platform is chosen after tests now.
+        (PaneSelector.prototype._replaceList):
+        (PaneSelector.prototype._selectedItem): Don't reset the test path (specifies which subtest or metric is picked)
+        when a platform is selected since it happens after a test metric is chosen now.
+        (PaneSelector.prototype._clickedItem): Add a pane when a platform is clicked, not when a metric is clicked.
+        (PaneSelector.cssTemplate):
+
+2016-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Analysis task should look for a git commit based on abridged hashes
+        https://bugs.webkit.org/show_bug.cgi?id=157877
+        <rdar://problem/26254374>
+
+        Reviewed by Chris Dumez.
+
+        Made /privileged-api/associate-commit look for commits using LIKE instead of an exact match.
+        Associate the commit when there is exactly one match.
+
+        * public/include/commit-log-fetcher.php:
+        (CommitLogFetcher::fetch_between):
+        * public/include/db.php:
+        (Database::escape_for_like): Extracted from CommitLogFetcher::fetch_between.
+        * public/privileged-api/associate-commit.php:
+        (main): Look for the commits using LIKE. Reject whenever there are multiple commits. We limit the number of
+        matches to two for performance when the user specifies something that almost thousands of commits: e.g. "1".
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype._associateCommit): Added human friendly error messages for mismatching commits.
+
+2016-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fix. Use --date-order so that every child commit appears after its parent.
+        Otherwise we'll hit a FailedToFindParentCommit error while submitting a commit that appears before its parent.
+
+        * tools/sync-commits.py:
+        (GitRepository._fetch_all_hashes):
+
+2016-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Removed the erroneously committed debug code.
+
+        * tools/sync-commits.py:
+        (GitRepository.fetch_commit):
+
+2016-05-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should have a script to sync git commits
+        https://bugs.webkit.org/show_bug.cgi?id=157867
+
+        Reviewed by Chris Dumez.
+
+        Added the support to pull from a Git repo to pull-svn.py and renamed it to sync-commits.py.
+
+        Added two classes SVNRepository and GitRepository which inherits from an abstract class, Repository.
+        The code that fetches commit and format revision number / git hash is specialized in each.
+
+        * Install.md:
+        * tools/pull-svn.py: Removed.
+        * tools/sync-commits.py: Renamed from Websites/perf.webkit.org/tools/pull-svn.py.
+        (main): Renamed --svn-config-json to --repository-config-json. Also made it robust against exceptions
+        inside fetch_commits_and_submit of each Repository class.
+        (load_repository): A factory function for SVNRepository and GitRepository.
+        (Repository): Added.
+        (Repository.__init__): Added.
+        (Repository.fetch_commits_and_submit): Extracted from standalone fetch_commits_and_submit.
+        (Repository.fetch_commit): Added. Implemented by a subclass.
+        (Repository.format_revision): Ditto.
+        (Repository.determine_last_reported_revision): Extracted from alonealone
+        determine_first_revision_to_fetch. The fallback to use "oldest" has been moved to SVNRepository's
+        fetch_commit since it doesn't work in Git.
+        (Repository.fetch_revision_from_dasbhoard): Extracted from fetch_revision_from_dasbhoard.
+        (SVNRepository): Added.
+        (SVNRepository.__init__): Added.
+        (SVNRepository.fetch_commit): Extracted from standalone fetch_commit_and_resolve_author and fetch_commit.
+        (SVNRepository._resolve_author_name): Renamed from resolve_author_name_from_account.
+        (SVNRepository.format_revision): Added.
+        (GitRepository): Added.
+        (GitRepository.__init__):
+        (GitRepository.fetch_commit): Added. Fetches the list of all git hashes if needed, and finds the next hash.
+        (GitRepository._find_next_hash): Added. Finds the first commit that appears after the specified hash.
+        (GitRepository._fetch_all_hashes): Added. Gets the list of all git hashs chronologically (old to new).
+        (GitRepository._run_git_command): Added.
+        (GitRepository.format_revision): Added. Use the first 8 characters of the hash.
+
 2016-05-17  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add a subtitle under platform name in the summary page

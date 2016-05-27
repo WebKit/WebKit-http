@@ -101,7 +101,7 @@ bool JSTestCallbackFunction::callbackWithArrayParam(RefPtr<Float32Array> arrayPa
     return !returnedException;
 }
 
-bool JSTestCallbackFunction::callbackWithSerializedScriptValueParam(PassRefPtr<SerializedScriptValue> srzParam, const String& strArg)
+bool JSTestCallbackFunction::callbackWithSerializedScriptValueParam(RefPtr<SerializedScriptValue>&& srzParam, const String& strArg)
 {
     if (!canInvokeCallback())
         return true;
@@ -112,7 +112,7 @@ bool JSTestCallbackFunction::callbackWithSerializedScriptValueParam(PassRefPtr<S
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(srzParam ? srzParam->deserialize(state, castedThis->globalObject(), 0) : jsNull());
+    args.append(srzParam ? srzParam->deserialize(state, m_data->globalObject(), 0) : jsNull());
     args.append(jsStringWithCache(state, strArg));
 
     NakedPtr<Exception> returnedException;
@@ -123,7 +123,7 @@ bool JSTestCallbackFunction::callbackWithSerializedScriptValueParam(PassRefPtr<S
     return !returnedException;
 }
 
-bool JSTestCallbackFunction::callbackWithStringList(PassRefPtr<DOMStringList> listParam)
+bool JSTestCallbackFunction::callbackWithStringList(RefPtr<PassRefPtr<DOMStringList>>&& listParam)
 {
     if (!canInvokeCallback())
         return true;
