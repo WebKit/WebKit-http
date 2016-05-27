@@ -14,6 +14,8 @@ namespace ViewBackend {
 class WesterosViewbackendInput;
 class WesterosViewbackendOutput;
 
+void compositorDestroyedCallback(WstCompositor *, void *);
+
 class ViewBackendWesteros final : public ViewBackend {
 public:
     ViewBackendWesteros();

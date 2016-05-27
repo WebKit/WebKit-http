@@ -29,6 +29,7 @@ ViewBackendWesteros::ViewBackendWesteros()
         WstCompositorSetIsNested(m_compositor, true);
         WstCompositorSetIsRepeater( m_compositor, true);
         WstCompositorSetNestedDisplayName( m_compositor, nestedTargetDisplay);
+        WstCompositorSetTerminatedCallback( m_compositor, &WPE::ViewBackend::compositorDestroyedCallback, this);
         //Register for all the necessary callback before starting the compositor
         m_input_handler->initializeNestedInputHandler(m_compositor, this);
         m_output_handler->initializeNestedOutputHandler(m_compositor, this);
@@ -95,6 +96,11 @@ void ViewBackendWesteros::setInputClient(Input::Client* client)
 {
     if(m_input_handler)
         m_input_handler->registerInputClient(client);
+}
+
+void compositorDestroyedCallback(WstCompositor *compositor, void *userData)
+{
+    exit(1);
 }
 
 } // namespace ViewBackend
