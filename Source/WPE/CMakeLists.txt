@@ -147,7 +147,6 @@ if (USE_WPE_BACKEND_BCM_RPI)
 
         Source/ViewBackend/BCMRPi/ViewBackendBCMRPi.cpp
     )
-    list(APPEND WPE_LIBRARIES nxclient)
 endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)

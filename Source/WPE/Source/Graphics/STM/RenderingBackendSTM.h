@@ -1,6 +1,8 @@
 #ifndef WPE_Graphics_RenderingBackendSTM_h
 #define WPE_Graphics_RenderingBackendSTM_h
 
+#if WPE_BACKEND(STM)
+
 #include <WPE/Graphics/RenderingBackend.h>
 #include <wayland-egl.h>
 #include <wayland-client.h>
@@ -129,4 +131,6 @@ private:
 } // namespace Graphics
 
 } // namespace WPE
+
+#endif
 #endif
