@@ -10,7 +10,7 @@ struct wpe_view_backend*
 wpe_view_backend_create()
 {
     struct wpe_view_backend_interface* backend_interface = wpe_load_object("_wpe_view_backend_interface");
-    return wpe_view_backend_create_with_backend_interface(0, backend_interface);
+    return wpe_view_backend_create_with_backend_interface(backend_interface, 0);
 }
 
 __attribute__((visibility("default")))
