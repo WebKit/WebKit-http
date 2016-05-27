@@ -138,8 +138,18 @@ find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(Sqlite REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(ICU REQUIRED)
 find_package(Threads REQUIRED)
+
+if (NOT APPLE)
+    find_package(ICU REQUIRED)
+else ()
+    set(ICU_INCLUDE_DIRS
+        "${WEBCORE_DIR}/icu"
+        "${JAVASCRIPTCORE_DIR}/icu"
+        "${WTF_DIR}/icu"
+    )
+    set(ICU_LIBRARIES libicucore.dylib)
+endif ()
 
 if (ENABLE_XSLT)
     find_package(LibXslt 1.1.7 REQUIRED)
