@@ -39,7 +39,7 @@
 #include "IntRect.h"
 #include "NotImplemented.h"
 #include "QWebPageClient.h"
-#include "ScrollView.h"
+#include "FrameView.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -77,7 +77,7 @@ void Widget::setFocus(bool focused)
 void Widget::setCursor(const Cursor& cursor)
 {
 #ifndef QT_NO_CURSOR
-    ScrollView* view = root();
+    FrameView* view = root();
     if (!view)
         return;
     view->hostWindow()->setCursor(cursor);
