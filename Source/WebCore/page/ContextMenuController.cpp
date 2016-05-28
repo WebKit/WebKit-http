@@ -833,7 +833,7 @@ void ContextMenuController::populate()
                 appendItem(DownloadFileItem, m_contextMenu.get());
             }
 #if PLATFORM(QT)
-            if (m_hitTestResult.isSelected()) 
+            if (m_context.hitTestResult().isSelected())
                 appendItem(CopyItem, m_contextMenu.get());
 #endif
             appendItem(CopyLinkItem, m_contextMenu.get());
