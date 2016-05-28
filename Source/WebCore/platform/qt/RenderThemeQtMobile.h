@@ -45,50 +45,50 @@ private:
 public:
     static PassRefPtr<RenderTheme> create(Page*);
 
-    virtual void adjustSliderThumbSize(RenderStyle*, Element*) const;
+    void adjustSliderThumbSize(RenderStyle&, Element*) const override;
 
-    virtual bool isControlStyled(const RenderStyle*, const BorderData&, const FillLayer&, const Color& backgroundColor) const;
+    bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color& backgroundColor) const override;
 
-    virtual int popupInternalPaddingBottom(RenderStyle*) const;
+    int popupInternalPaddingBottom(const RenderStyle&) const override;
 
-    virtual bool delegatesMenuListRendering() const { return true; }
+    bool delegatesMenuListRendering() const override { return true; }
 
     // We don't want the focus ring to be drawn by the graphics context so we
     // always claim to support it in the theme.
     // FIXME: This could be a usability problem in the case of contenteditable divs.
-    virtual bool supportsFocusRing(const RenderStyle*) const { return true; }
+    bool supportsFocusRing(const RenderStyle&) const override { return true; }
 
 protected:
 
-    virtual void adjustButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintButton(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual bool paintTextField(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void adjustTextFieldStyle(StyleResolver*, RenderStyle*, Element*) const;
+    bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-    virtual bool paintMenuList(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const;
+    bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-    virtual bool paintMenuListButton(RenderObject*, const PaintInfo&, const IntRect&);
+    virtual bool paintMenuListButton(RenderObject&, const PaintInfo&, const IntRect&);
 
 #if ENABLE(PROGRESS_ELEMENT)
     // Returns the duration of the animation for the progress bar.
     virtual double animationDurationForProgressBar(RenderProgress*) const;
-    virtual bool paintProgressBar(RenderObject*, const PaintInfo&, const IntRect&);
+    bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
 #endif
 
-    virtual bool paintSliderTrack(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
+    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual void computeSizeBasedOnStyle(RenderStyle*) const;
-    virtual QSharedPointer<StylePainter> getStylePainter(const PaintInfo&);
+    void computeSizeBasedOnStyle(RenderStyle&) const override;
+    QSharedPointer<StylePainter> getStylePainter(const PaintInfo&) override;
 
-    virtual QPalette colorPalette() const;
+    QPalette colorPalette() const override;
 
 private:
-    bool checkMultiple(RenderObject*) const;
-    void setButtonPadding(RenderStyle*) const;
-    void setPopupPadding(RenderStyle*) const;
+    bool checkMultiple(const RenderObject&) const;
+    void setButtonPadding(RenderStyle&) const;
+    void setPopupPadding(RenderStyle&) const override;
 };
 
 struct KeyIdentifier {
@@ -135,11 +135,12 @@ public:
     explicit StylePainterMobile(RenderThemeQtMobile*, const PaintInfo&);
     ~StylePainterMobile();
 
-    void drawLineEdit(const QRect&, bool focused, bool enabled = true);
+    void drawLineEdit(const QRectF&, bool focused, bool enabled = true);
     void drawCheckBox(const QRect&, bool checked, bool enabled = true);
     void drawRadioButton(const QRect&, bool checked, bool enabled = true);
     void drawPushButton(const QRect&, bool sunken, bool enabled = true);
     void drawComboBox(const QRect&, bool multiple, bool enabled = true);
+    void drawComboBox(const QRectF&, bool multiple, bool enabled = true);
     void drawProgress(const QRect&, double progress, bool leftToRight = true, bool animated = false, bool vertical = false) const;
     void drawSliderThumb(const QRect&, bool pressed) const;
 
@@ -157,9 +158,12 @@ private:
     QPixmap findComboButton(const QSize&, bool multiple, bool enabled) const;
 
     QPixmap findLineEdit(const QSize&, bool focused) const;
+    QPixmap findLineEdit(const QSizeF&, bool focused) const;
     QPixmap findPushButton(const QSize&, bool sunken, bool enabled) const;
+    QPixmap findPushButton(const QSizeF&, bool sunken, bool enabled) const;
 
     QSize sizeForPainterScale(const QRect&) const;
+    QSizeF sizeForPainterScale(const QRectF&) const;
 
     static bool findCachedControl(const KeyIdentifier&, QPixmap*);
     static void insertIntoCache(const KeyIdentifier&, const QPixmap&);

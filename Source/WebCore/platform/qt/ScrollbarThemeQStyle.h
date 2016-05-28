@@ -39,26 +39,26 @@ public:
     ScrollbarThemeQStyle();
     virtual ~ScrollbarThemeQStyle();
 
-    virtual bool paint(ScrollbarThemeClient*, GraphicsContext*, const IntRect& dirtyRect);
-    virtual void paintScrollCorner(ScrollView*, GraphicsContext*, const IntRect& cornerRect);
+    virtual bool paint(Scrollbar&, GraphicsContext&, const IntRect& dirtyRect);
+    virtual void paintScrollCorner(ScrollView*, GraphicsContext&, const IntRect& cornerRect);
 
-    virtual ScrollbarPart hitTest(ScrollbarThemeClient*, const IntPoint&);
+    virtual ScrollbarPart hitTest(Scrollbar&, const IntPoint&);
 
-    virtual bool shouldCenterOnThumb(ScrollbarThemeClient*, const PlatformMouseEvent&);
+    virtual bool shouldCenterOnThumb(Scrollbar&, const PlatformMouseEvent&);
 
-    virtual void invalidatePart(ScrollbarThemeClient*, ScrollbarPart);
+    virtual void invalidatePart(Scrollbar&, ScrollbarPart);
 
-    virtual int thumbPosition(ScrollbarThemeClient*);
-    virtual int thumbLength(ScrollbarThemeClient*);
-    virtual int trackPosition(ScrollbarThemeClient*);
-    virtual int trackLength(ScrollbarThemeClient*);
+    virtual int thumbPosition(Scrollbar&);
+    virtual int thumbLength(Scrollbar&);
+    virtual int trackPosition(Scrollbar&);
+    virtual int trackLength(Scrollbar&);
 
     virtual int scrollbarThickness(ScrollbarControlSize = RegularScrollbar);
 
     QStyleFacade* qStyle() { return m_qStyle.get(); }
 
 private:
-    OwnPtr<QStyleFacade> m_qStyle;
+    std::unique_ptr<QStyleFacade> m_qStyle;
 };
 
 }

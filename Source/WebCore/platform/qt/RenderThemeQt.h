@@ -53,125 +53,127 @@ public:
     static void setCustomTheme(QtThemeFactoryFunction, ScrollbarTheme* customScrollbarTheme);
     static ScrollbarTheme* customScrollbarTheme();
 
-    String extraDefaultStyleSheet();
+    String extraDefaultStyleSheet() override;
 
-    virtual bool supportsHover(const RenderStyle*) const;
-    virtual bool supportsFocusRing(const RenderStyle*) const;
+    bool supportsHover(const RenderStyle&) const override;
+    bool supportsFocusRing(const RenderStyle&) const override;
 
-    virtual int baselinePosition(const RenderObject*) const;
+    int baselinePosition(const RenderBox&) const override;
 
     // A method asking if the control changes its tint when the window has focus or not.
-    virtual bool controlSupportsTints(const RenderObject*) const;
+    bool controlSupportsTints(const RenderObject&) const override;
 
     // A general method asking if any control tinting is supported at all.
-    virtual bool supportsControlTints() const;
+    bool supportsControlTints() const override;
 
-    virtual void adjustRepaintRect(const RenderObject*, IntRect&);
+    void adjustRepaintRect(const RenderObject&, FloatRect&) override;
 
     // The platform selection color.
-    virtual Color platformActiveSelectionBackgroundColor() const;
-    virtual Color platformInactiveSelectionBackgroundColor() const;
-    virtual Color platformActiveSelectionForegroundColor() const;
-    virtual Color platformInactiveSelectionForegroundColor() const;
+    Color platformActiveSelectionBackgroundColor() const override;
+    Color platformInactiveSelectionBackgroundColor() const override;
+    Color platformActiveSelectionForegroundColor() const override;
+    Color platformInactiveSelectionForegroundColor() const override;
 
-    virtual Color platformFocusRingColor() const;
+    Color platformFocusRingColor() const override;
 
-    virtual void systemFont(CSSValueID, FontDescription&) const;
-    virtual Color systemColor(CSSValueID) const;
+    Color systemColor(CSSValueID) const override;
 
-    virtual int minimumMenuListSize(RenderStyle*) const;
+    int minimumMenuListSize(const RenderStyle&) const override;
 
-    virtual void adjustSliderThumbSize(RenderStyle*, Element*) const;
+    void adjustSliderThumbSize(RenderStyle&, Element*) const override;
 
 #if ENABLE(DATALIST_ELEMENT)
-    virtual IntSize sliderTickSize() const OVERRIDE;
-    virtual int sliderTickOffsetFromTrackCenter() const OVERRIDE;
+    IntSize sliderTickSize() const override;
+    int sliderTickOffsetFromTrackCenter() const override;
 #endif
 
-    virtual double caretBlinkInterval() const;
+    double caretBlinkInterval() const override;
 
-    virtual bool isControlStyled(const RenderStyle*, const BorderData&, const FillLayer&, const Color&) const;
+    bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color&) const override;
 
 #if ENABLE(VIDEO)
     virtual String extraMediaControlsStyleSheet();
 #endif
 
 protected:
-    virtual bool paintCheckbox(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void setCheckboxSize(RenderStyle*) const;
+    void updateCachedSystemFontDescription(CSSValueID systemFontID, FontCascadeDescription&) const override;
 
-    virtual bool paintRadio(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void setRadioSize(RenderStyle*) const;
+    bool paintCheckbox(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void setCheckboxSize(RenderStyle&) const override;
 
-    virtual void setButtonSize(RenderStyle*) const;
+    bool paintRadio(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void setRadioSize(RenderStyle&) const override;
 
-    virtual void adjustTextFieldStyle(StyleResolver*, RenderStyle*, Element*) const;
+    void setButtonSize(RenderStyle&) const override;
 
-    virtual bool paintTextArea(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void adjustTextAreaStyle(StyleResolver*, RenderStyle*, Element*) const;
+    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-    virtual void adjustMenuListStyle(StyleResolver*, RenderStyle*, Element*) const;
+    bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-    virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
+    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element*) const override;
+
+    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
 #if ENABLE(PROGRESS_ELEMENT)
-    virtual void adjustProgressBarStyle(StyleResolver*, RenderStyle*, Element*) const;
+    void adjustProgressBarStyle(StyleResolver&, RenderStyle&, Element*) const override;
     // Returns the repeat interval of the animation for the progress bar.
-    virtual double animationRepeatIntervalForProgressBar(RenderProgress*) const;
+    double animationRepeatIntervalForProgressBar(RenderProgress*) const override;
 #endif
 
-    virtual void adjustSliderTrackStyle(StyleResolver*, RenderStyle*, Element*) const;
+    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-    virtual void adjustSliderThumbStyle(StyleResolver*, RenderStyle*, Element*) const;
+    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-    virtual bool paintSearchField(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual void adjustSearchFieldStyle(StyleResolver*, RenderStyle*, Element*) const;
+    bool paintSearchField(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustSearchFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-    virtual void adjustSearchFieldCancelButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintSearchFieldCancelButton(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintSearchFieldCancelButton(const RenderBox&, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustSearchFieldDecorationStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintSearchFieldDecoration(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintSearchFieldDecorationPart(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustSearchFieldResultsDecorationStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual bool paintSearchFieldResultsDecoration(RenderObject*, const PaintInfo&, const IntRect&);
+    void adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintSearchFieldResultsDecorationPart(const RenderBox&, const PaintInfo&, const IntRect&) override;
 
 #ifndef QT_NO_SPINBOX
-    virtual void adjustInnerSpinButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
+    void adjustInnerSpinButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 #endif
 
 #if ENABLE(VIDEO)
-    virtual bool paintMediaFullscreenButton(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaPlayButton(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaMuteButton(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaSeekBackButton(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaSeekForwardButton(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaSliderTrack(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaCurrentTime(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaVolumeSliderTrack(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual bool paintMediaVolumeSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
-    virtual String formatMediaControlsCurrentTime(float currentTime, float duration) const;
-    virtual String formatMediaControlsRemainingTime(float currentTime, float duration) const;
+    virtual bool paintMediaFullscreenButton(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaPlayButton(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaMuteButton(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaSeekBackButton(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaSeekForwardButton(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaCurrentTime(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaVolumeSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual bool paintMediaVolumeSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&);
+    virtual String formatMediaControlsCurrentTime(float currentTime, float duration) const override;
+    virtual String formatMediaControlsRemainingTime(float currentTime, float duration) const override;
     virtual bool hasOwnDisabledStateHandlingFor(ControlPart) const { return true; }
 
     void paintMediaBackground(QPainter*, const IntRect&) const;
     double mediaControlsBaselineOpacity() const;
-    QColor getMediaControlForegroundColor(RenderObject* = 0) const;
+    QColor getMediaControlForegroundColor(const RenderObject& = 0) const;
 #endif
-    virtual void computeSizeBasedOnStyle(RenderStyle*) const = 0;
+    virtual void computeSizeBasedOnStyle(RenderStyle&) const = 0;
 
-    virtual String fileListNameForWidth(const FileList*, const Font&, int width, bool multipleFilesAllowed) const OVERRIDE;
+    String fileListNameForWidth(const FileList*, const FontCascade&, int width, bool multipleFilesAllowed) const override;
 
     virtual QRect inflateButtonRect(const QRect& originalRect) const;
+    virtual QRectF inflateButtonRect(const QRectF& originalRect) const;
 
-    virtual void setPopupPadding(RenderStyle*) const = 0;
+    virtual void setPopupPadding(RenderStyle&) const = 0;
 
     virtual QSharedPointer<StylePainter> getStylePainter(const PaintInfo&) = 0;
 
     bool supportsFocus(ControlPart) const;
 
-    IntRect convertToPaintingRect(RenderObject* inputRenderer, const RenderObject* partRenderer, IntRect partRect, const IntRect& localOffset) const;
+//    IntRect convertToPaintingRect(const RenderObject& inputRenderer, const RenderObject& partRenderer, IntRect partRect, const IntRect& localOffset) const;
 
     virtual QPalette colorPalette() const;
 
@@ -190,7 +192,7 @@ public:
     QPainter* painter;
 
 protected:
-    StylePainter(GraphicsContext*);
+    StylePainter(GraphicsContext&);
 
 private:
     QBrush m_previousBrush;

@@ -32,15 +32,15 @@
 
 namespace WebCore {
 
-ScrollbarTheme* ScrollbarTheme::nativeTheme()
+ScrollbarTheme& ScrollbarTheme::nativeTheme()
 {
     static ScrollbarTheme* theme = 0;
     if (theme)
-        return theme;
+        return *theme;
     theme = RenderThemeQt::customScrollbarTheme();
     if (!theme)
         theme = new ScrollbarTheme();
-    return theme;
+    return *theme;
 }
 
 }

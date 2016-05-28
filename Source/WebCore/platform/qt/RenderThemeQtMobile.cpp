@@ -209,7 +209,7 @@ QPalette RenderThemeQtMobile::colorPalette() const
 }
 
 StylePainterMobile::StylePainterMobile(RenderThemeQtMobile* theme, const PaintInfo& paintInfo)
-    : StylePainter(paintInfo.context)
+    : StylePainter(paintInfo.context())
 {
     m_previousSmoothPixmapTransform = painter->testRenderHint(QPainter::SmoothPixmapTransform);
     if (!m_previousSmoothPixmapTransform)
@@ -261,6 +261,14 @@ void StylePainterMobile::drawCheckableBackground(QPainter* painter, const QRect&
 }
 
 QSize StylePainterMobile::sizeForPainterScale(const QRect& rect) const
+{
+    qreal scale = painterScale(painter);
+    QTransform scaleTransform = QTransform::fromScale(scale, scale);
+
+    return scaleTransform.mapRect(rect).size();
+}
+
+QSizeF StylePainterMobile::sizeForPainterScale(const QRectF& rect) const
 {
     qreal scale = painterScale(painter);
     QTransform scaleTransform = QTransform::fromScale(scale, scale);
@@ -411,13 +419,13 @@ QPixmap StylePainterMobile::findComboButton(const QSize& size, bool multiple, bo
     return result;
 }
 
-void StylePainterMobile::drawLineEdit(const QRect& rect, bool focused, bool enabled)
+void StylePainterMobile::drawLineEdit(const QRectF& rect, bool focused, bool enabled)
 {
     Q_UNUSED(enabled);
     QPixmap lineEdit = findLineEdit(sizeForPainterScale(rect), focused);
     if (lineEdit.isNull())
         return;
-    painter->drawPixmap(rect, lineEdit);
+    painter->drawPixmap(rect, lineEdit, lineEdit.rect());
 }
 
 QPixmap StylePainterMobile::findLineEdit(const QSize & size, bool focused) const
@@ -444,6 +452,11 @@ QPixmap StylePainterMobile::findLineEdit(const QSize & size, bool focused) const
         insertIntoCache(id, result);
     }
     return result;
+}
+
+QPixmap StylePainterMobile::findLineEdit(const QSizeF & size, bool focused) const
+{
+    return findLineEdit(size.toSize(), focused);
 }
 
 void StylePainterMobile::drawCheckBox(const QRect& rect, bool checked, bool enabled)
@@ -513,12 +526,22 @@ QPixmap StylePainterMobile::findPushButton(const QSize& size, bool sunken, bool 
     return result;
 }
 
+QPixmap StylePainterMobile::findPushButton(const QSizeF& size, bool sunken, bool enabled) const
+{
+    return findPushButton(size.toSize(), sunken, enabled);
+}
+
 void StylePainterMobile::drawComboBox(const QRect& rect, bool multiple, bool enabled)
+{
+    drawComboBox(QRectF(rect), multiple, enabled);
+}
+
+void StylePainterMobile::drawComboBox(const QRectF& rect, bool multiple, bool enabled)
 {
     QPixmap pushButton = findPushButton(sizeForPainterScale(rect), /*sunken = */false, enabled);
     if (pushButton.isNull())
         return;
-    painter->drawPixmap(rect, pushButton);
+    painter->drawPixmap(rect, pushButton, rect);
     QRectF targetRect(QPointF(0, 0), getButtonImageSize(rect.height() - 1, multiple));
     const QPointF buttonCenter(rect.right() - arrowBoxWidth / 2, rect.top() + (rect.height() - 1) / 2);
     targetRect.moveCenter(buttonCenter);
@@ -624,9 +647,9 @@ RenderThemeQtMobile::~RenderThemeQtMobile()
 {
 }
 
-bool RenderThemeQtMobile::isControlStyled(const RenderStyle* style, const BorderData& border, const FillLayer& fill, const Color& backgroundColor) const
+bool RenderThemeQtMobile::isControlStyled(const RenderStyle& style, const BorderData& border, const FillLayer& fill, const Color& backgroundColor) const
 {
-    switch (style->appearance()) {
+    switch (style.appearance()) {
     case CheckboxPart:
     case RadioPart:
         return false;
@@ -635,41 +658,41 @@ bool RenderThemeQtMobile::isControlStyled(const RenderStyle* style, const Border
     }
 }
 
-int RenderThemeQtMobile::popupInternalPaddingBottom(RenderStyle* style) const
+int RenderThemeQtMobile::popupInternalPaddingBottom(const RenderStyle& style) const
 {
     return 1;
 }
 
-void RenderThemeQtMobile::computeSizeBasedOnStyle(RenderStyle* renderStyle) const
+void RenderThemeQtMobile::computeSizeBasedOnStyle(RenderStyle& renderStyle) const
 {
     QSize size(0, 0);
 
-    switch (renderStyle->appearance()) {
+    switch (renderStyle.appearance()) {
     case TextAreaPart:
     case SearchFieldPart:
     case TextFieldPart: {
         int padding = frameWidth;
-        renderStyle->setPaddingLeft(Length(padding, Fixed));
-        renderStyle->setPaddingRight(Length(padding, Fixed));
-        renderStyle->setPaddingTop(Length(padding, Fixed));
-        renderStyle->setPaddingBottom(Length(padding, Fixed));
+        renderStyle.setPaddingLeft(Length(padding, Fixed));
+        renderStyle.setPaddingRight(Length(padding, Fixed));
+        renderStyle.setPaddingTop(Length(padding, Fixed));
+        renderStyle.setPaddingBottom(Length(padding, Fixed));
         break;
     }
     default:
         break;
     }
     // If the width and height are both specified, then we have nothing to do.
-    if (!renderStyle->width().isIntrinsicOrAuto() && !renderStyle->height().isAuto())
+    if (!renderStyle.width().isIntrinsicOrAuto() && !renderStyle.height().isAuto())
         return;
 
-    switch (renderStyle->appearance()) {
+    switch (renderStyle.appearance()) {
     case CheckboxPart: {
-        const int w = checkBoxWidth * renderStyle->effectiveZoom();
+        const int w = checkBoxWidth * renderStyle.effectiveZoom();
         size = QSize(w, w);
         break;
     }
     case RadioPart: {
-        const int w = radioWidth * renderStyle->effectiveZoom();
+        const int w = radioWidth * renderStyle.effectiveZoom();
         size = QSize(w, w);
         break;
     }
@@ -678,8 +701,8 @@ void RenderThemeQtMobile::computeSizeBasedOnStyle(RenderStyle* renderStyle) cons
     case DefaultButtonPart:
     case ButtonPart:
     case MenulistPart: {
-        const int height = renderStyle->fontMetrics().height() * buttonHeightRatio * renderStyle->effectiveZoom();
-        size = QSize(renderStyle->width().value(), height);
+        const int height = renderStyle.fontMetrics().height() * buttonHeightRatio * renderStyle.effectiveZoom();
+        size = QSize(renderStyle.width().value(), height);
         break;
     }
     default:
@@ -687,45 +710,43 @@ void RenderThemeQtMobile::computeSizeBasedOnStyle(RenderStyle* renderStyle) cons
     }
 
     // FIXME: Check is flawed, since it doesn't take min-width/max-width into account.
-    if (renderStyle->width().isIntrinsicOrAuto() && size.width() > 0)
-        renderStyle->setMinWidth(Length(size.width(), Fixed));
-    if (renderStyle->height().isAuto() && size.height() > 0)
-        renderStyle->setMinHeight(Length(size.height(), Fixed));
+    if (renderStyle.width().isIntrinsicOrAuto() && size.width() > 0)
+        renderStyle.setMinWidth(Length(size.width(), Fixed));
+    if (renderStyle.height().isAuto() && size.height() > 0)
+        renderStyle.setMinHeight(Length(size.height(), Fixed));
 }
 
-void RenderThemeQtMobile::adjustButtonStyle(StyleResolver*, RenderStyle* style, Element*) const
+void RenderThemeQtMobile::adjustButtonStyle(StyleResolver&, RenderStyle& style, Element*) const
 {
     // Ditch the border.
-    style->resetBorder();
+    style.resetBorder();
 
-    FontDescription fontDescription = style->fontDescription();
+    FontCascadeDescription fontDescription = style.fontDescription();
     fontDescription.setIsAbsoluteSize(true);
 
-    fontDescription.setSpecifiedSize(style->fontSize());
-    fontDescription.setComputedSize(style->fontSize());
+    fontDescription.setSpecifiedSize(style.fontSize());
+    fontDescription.setComputedSize(style.fontSize());
 
-    style->setLineHeight(RenderStyle::initialLineHeight());
+    style.setLineHeight(RenderStyle::initialLineHeight());
     setButtonSize(style);
     setButtonPadding(style);
 }
 
-void RenderThemeQtMobile::setButtonPadding(RenderStyle* style) const
+void RenderThemeQtMobile::setButtonPadding(RenderStyle& style) const
 {
-    if (!style)
-        return;
-    style->setPaddingLeft(Length(buttonPaddingLeft, Fixed));
-    style->setPaddingRight(Length(buttonPaddingRight, Fixed));
-    style->setPaddingTop(Length(buttonPaddingTop, Fixed));
-    style->setPaddingBottom(Length(buttonPaddingBottom, Fixed));
+    style.setPaddingLeft(Length(buttonPaddingLeft, Fixed));
+    style.setPaddingRight(Length(buttonPaddingRight, Fixed));
+    style.setPaddingTop(Length(buttonPaddingTop, Fixed));
+    style.setPaddingBottom(Length(buttonPaddingBottom, Fixed));
 }
 
-bool RenderThemeQtMobile::paintButton(RenderObject* o, const PaintInfo& i, const IntRect& r)
+bool RenderThemeQtMobile::paintButton(const RenderObject& o, const PaintInfo& i, const IntRect& r)
 {
     StylePainterMobile p(this, i);
     if (!p.isValid())
        return true;
 
-    ControlPart appearance = o->style()->appearance();
+    ControlPart appearance = o.style().appearance();
     if (appearance == PushButtonPart || appearance == ButtonPart) {
         p.drawPushButton(r, isPressed(o), isEnabled(o));
     } else if (appearance == RadioPart)
@@ -736,32 +757,32 @@ bool RenderThemeQtMobile::paintButton(RenderObject* o, const PaintInfo& i, const
     return false;
 }
 
-void RenderThemeQtMobile::adjustTextFieldStyle(StyleResolver*, RenderStyle* style, Element*) const
+void RenderThemeQtMobile::adjustTextFieldStyle(StyleResolver&, RenderStyle& style, Element*) const
 {
     // Resetting the style like this leads to differences like:
     // - RenderTextControl {INPUT} at (2,2) size 168x25 [bgcolor=#FFFFFF] border: (2px inset #000000)]
     // + RenderTextControl {INPUT} at (2,2) size 166x26
     // in layout tests when a CSS style is applied that doesn't affect background color, border or
     // padding. Just worth keeping in mind!
-    style->setBackgroundColor(Color::transparent);
-    style->resetBorder();
-    style->setBorderTopWidth(frameWidth);
-    style->setBorderRightWidth(frameWidth);
-    style->setBorderBottomWidth(frameWidth);
-    style->setBorderLeftWidth(frameWidth);
-    style->resetPadding();
+    style.setBackgroundColor(Color::transparent);
+    style.resetBorder();
+    style.setBorderTopWidth(frameWidth);
+    style.setBorderRightWidth(frameWidth);
+    style.setBorderBottomWidth(frameWidth);
+    style.setBorderLeftWidth(frameWidth);
+    style.resetPadding();
     computeSizeBasedOnStyle(style);
-    style->setPaddingLeft(Length(textFieldPadding, Fixed));
-    style->setPaddingRight(Length(textFieldPadding, Fixed));
+    style.setPaddingLeft(Length(textFieldPadding, Fixed));
+    style.setPaddingRight(Length(textFieldPadding, Fixed));
 }
 
-bool RenderThemeQtMobile::paintTextField(RenderObject* o, const PaintInfo& i, const IntRect& r)
+bool RenderThemeQtMobile::paintTextField(const RenderObject& o, const PaintInfo& i, const FloatRect& r)
 {
     StylePainterMobile p(this, i);
     if (!p.isValid())
         return true;
 
-    ControlPart appearance = o->style()->appearance();
+    ControlPart appearance = o.style().appearance();
     if (appearance != TextFieldPart
         && appearance != SearchFieldPart
         && appearance != TextAreaPart)
@@ -788,25 +809,25 @@ bool RenderThemeQtMobile::paintTextField(RenderObject* o, const PaintInfo& i, co
     return false;
 }
 
-void RenderThemeQtMobile::adjustMenuListStyle(StyleResolver* styleResolver, RenderStyle* style, Element* e) const
+void RenderThemeQtMobile::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, Element* e) const
 {
     RenderThemeQt::adjustMenuListStyle(styleResolver, style, e);
-    style->setPaddingLeft(Length(menuListPadding, Fixed));
+    style.setPaddingLeft(Length(menuListPadding, Fixed));
 }
 
-void RenderThemeQtMobile::setPopupPadding(RenderStyle* style) const
+void RenderThemeQtMobile::setPopupPadding(RenderStyle& style) const
 {
     const int paddingLeft = 4;
-    const int paddingRight = style->width().isFixed() || style->width().isPercent() ? 5 : 8;
+    const int paddingRight = style.width().isFixed() || style.width().isPercent() ? 5 : 8;
 
-    style->setPaddingLeft(Length(paddingLeft, Fixed));
-    style->setPaddingRight(Length(paddingRight + arrowBoxWidth, Fixed));
+    style.setPaddingLeft(Length(paddingLeft, Fixed));
+    style.setPaddingRight(Length(paddingRight + arrowBoxWidth, Fixed));
 
-    style->setPaddingTop(Length(2, Fixed));
-    style->setPaddingBottom(Length(2, Fixed));
+    style.setPaddingTop(Length(2, Fixed));
+    style.setPaddingBottom(Length(2, Fixed));
 }
 
-bool RenderThemeQtMobile::paintMenuList(RenderObject* o, const PaintInfo& i, const IntRect& r)
+bool RenderThemeQtMobile::paintMenuList(const RenderObject& o, const PaintInfo& i, const FloatRect& r)
 {
     StylePainterMobile p(this, i);
     if (!p.isValid())
@@ -816,7 +837,7 @@ bool RenderThemeQtMobile::paintMenuList(RenderObject* o, const PaintInfo& i, con
     return false;
 }
 
-bool RenderThemeQtMobile::paintMenuListButton(RenderObject* o, const PaintInfo& i,
+bool RenderThemeQtMobile::paintMenuListButton(RenderObject& o, const PaintInfo& i,
                                         const IntRect& r)
 {
     StylePainterMobile p(this, i);
@@ -838,42 +859,42 @@ double RenderThemeQtMobile::animationDurationForProgressBar(RenderProgress* rend
     return (2 * progressAnimationGranularity +1) / progressBarChunkPercentage * animationRepeatIntervalForProgressBar(renderProgress);
 }
 
-bool RenderThemeQtMobile::paintProgressBar(RenderObject* o, const PaintInfo& pi, const IntRect& r)
+bool RenderThemeQtMobile::paintProgressBar(RenderObject& o, const PaintInfo& pi, const IntRect& r)
 {
-    if (!o->isProgress())
+    if (!o.isProgress())
         return true;
 
     StylePainterMobile p(this, pi);
     if (!p.isValid())
         return true;
 
-    RenderProgress* renderProgress = toRenderProgress(o);
-    const bool isRTL = (renderProgress->style()->direction() == RTL);
+    RenderProgress& renderProgress = downcast<RenderProgress>(o);
+    const bool isRTL = (renderProgress.style().direction() == RTL);
 
     if (renderProgress->isDeterminate())
-        p.drawProgress(r, renderProgress->position(), !isRTL);
+        p.drawProgress(r, renderProgress.position(), !isRTL);
     else
-        p.drawProgress(r, renderProgress->animationProgress(), !isRTL, true);
+        p.drawProgress(r, renderProgress.animationProgress(), !isRTL, true);
 
     return false;
 }
 #endif
 
-bool RenderThemeQtMobile::paintSliderTrack(RenderObject* o, const PaintInfo& pi,
+bool RenderThemeQtMobile::paintSliderTrack(const RenderObject& o, const PaintInfo& pi,
                                      const IntRect& r)
 {
     StylePainterMobile p(this, pi);
     if (!p.isValid())
         return true;
 
-    HTMLInputElement* slider = toHTMLInputElement(o->node());
+    const HTMLInputElement* slider = downcast<HTMLInputElement>(o.node());
 
     const double min = slider->minimum();
     const double max = slider->maximum();
     const double progress = (max - min > 0) ? (slider->valueAsNumber() - min) / (max - min) : 0;
 
     QRect rect(r);
-    const bool vertical = (o->style()->appearance() == SliderVerticalPart);
+    const bool vertical = (o.style().appearance() == SliderVerticalPart);
     const int groovePadding = vertical ? r.width() * sliderGrooveBorderRatio : r.height() * sliderGrooveBorderRatio;
     if (vertical) {
         rect.adjust(groovePadding, 0, -groovePadding, 0);
@@ -881,13 +902,13 @@ bool RenderThemeQtMobile::paintSliderTrack(RenderObject* o, const PaintInfo& pi,
         p.drawProgress(rect, progress, true, /*animated = */ false, vertical);
     } else {
         rect.adjust(0, groovePadding, 0, -groovePadding);
-        p.drawProgress(rect, progress, o->style()->isLeftToRightDirection(), /*animated = */ false, vertical);
+        p.drawProgress(rect, progress, o.style().isLeftToRightDirection(), /*animated = */ false, vertical);
     }
 
     return false;
 }
 
-bool RenderThemeQtMobile::paintSliderThumb(RenderObject* o, const PaintInfo& pi,
+bool RenderThemeQtMobile::paintSliderThumb(const RenderObject& o, const PaintInfo& pi,
                                      const IntRect& r)
 {
     StylePainterMobile p(this, pi);
@@ -899,19 +920,20 @@ bool RenderThemeQtMobile::paintSliderThumb(RenderObject* o, const PaintInfo& pi,
     return false;
 }
 
-bool RenderThemeQtMobile::checkMultiple(RenderObject* o) const
+bool RenderThemeQtMobile::checkMultiple(const RenderObject& o) const
 {
-    HTMLSelectElement* select = o ? toHTMLSelectElement(o->node()) : 0;
+    // FIXME: looks too generic
+    const HTMLSelectElement* select = downcast<HTMLSelectElement>(o.node());
     return select ? select->multiple() : false;
 }
 
-void RenderThemeQtMobile::adjustSliderThumbSize(RenderStyle* style, Element* element) const
+void RenderThemeQtMobile::adjustSliderThumbSize(RenderStyle& style, Element* element) const
 {
-    const ControlPart part = style->appearance();
+    const ControlPart part = style.appearance();
     if (part == SliderThumbHorizontalPart || part == SliderThumbVerticalPart) {
-        const int size = sliderSize * style->effectiveZoom();
-        style->setWidth(Length(size, Fixed));
-        style->setHeight(Length(size, Fixed));
+        const int size = sliderSize * style.effectiveZoom();
+        style.setWidth(Length(size, Fixed));
+        style.setHeight(Length(size, Fixed));
     } else
         RenderThemeQt::adjustSliderThumbSize(style, element);
 }
