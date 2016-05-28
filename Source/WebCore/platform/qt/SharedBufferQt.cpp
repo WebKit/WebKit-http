@@ -30,14 +30,14 @@
 
 namespace WebCore {
 
-PassRefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& fileName)
+RefPtr<SharedBuffer> SharedBuffer::createFromReadingFile(const String& fileName)
 {
     if (fileName.isEmpty())
-        return 0;
+        return nullptr;
 
     QFile file(fileName);
     if (!file.exists() || !file.open(QFile::ReadOnly))
-        return 0;
+        return nullptr;
 
     Vector<char> buffer(file.size());
     file.read(buffer.data(), buffer.size());
