@@ -351,6 +351,11 @@ void NotificationPresenterClientQt::requestPermission(ScriptExecutionContext* co
 }
 #endif
 
+bool NotificationPresenterClientQt::hasPendingPermissionRequests(ScriptExecutionContext* context) const
+{
+    return m_pendingPermissionRequests.contains(context);
+}
+
 NotificationClient::Permission NotificationPresenterClientQt::checkPermission(ScriptExecutionContext* context)
 {
     return m_cachedPermissions.value(context, NotificationClient::PermissionNotAllowed);
