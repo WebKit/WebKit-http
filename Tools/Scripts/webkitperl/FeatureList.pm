@@ -225,7 +225,7 @@ my @features = (
       define => "ENABLE_CSS_IMAGE_RESOLUTION", default => isGtk(), value => \$cssImageResolutionSupport },
 
     { option => "css-image-set", desc => "Toggle CSS image-set support",
-      define => "ENABLE_CSS_IMAGE_SET", default => (isEfl() || isGtk()), value => \$cssImageSetSupport },
+      define => "ENABLE_CSS_IMAGE_SET", default => (isEfl() || isGtk() || isQt()), value => \$cssImageSetSupport },
 
     { option => "css-regions", desc => "Toggle CSS Regions support",
       define => "ENABLE_CSS_REGIONS", default => 1, value => \$cssRegionsSupport },
@@ -264,7 +264,7 @@ my @features = (
       define => "ENABLE_FONT_LOAD_EVENTS", default => 0, value => \$fontLoadEventsSupport },
 
     { option => "ftpdir", desc => "Toggle FTP Directory support",
-      define => "ENABLE_FTPDIR", default => 1, value => \$ftpDirSupport },
+      define => "ENABLE_FTPDIR", default => !isQt(), value => \$ftpDirSupport },
 
     { option => "fullscreen-api", desc => "Toggle Fullscreen API support",
       define => "ENABLE_FULLSCREEN_API", default => (isAppleMacWebKit() || isEfl() || isGtk()), value => \$fullscreenAPISupport },
@@ -273,7 +273,7 @@ my @features = (
       define => "ENABLE_GAMEPAD", default => 0, value => \$gamepadSupport },
 
     { option => "geolocation", desc => "Toggle Geolocation support",
-      define => "ENABLE_GEOLOCATION", default => (isAppleWebKit() || isIOSWebKit() || isGtk() || isEfl()), value => \$geolocationSupport },
+      define => "ENABLE_GEOLOCATION", default => (isAppleWebKit() || isIOSWebKit() || isGtk() || isEfl() || isQt()), value => \$geolocationSupport },
 
     { option => "high-dpi-canvas", desc => "Toggle High DPI Canvas support",
       define => "ENABLE_HIGH_DPI_CANVAS", default => (isAppleWebKit()), value => \$highDPICanvasSupport },
@@ -288,7 +288,7 @@ my @features = (
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
 
     { option => "input-type-color", desc => "Toggle Input Type Color support",
-      define => "ENABLE_INPUT_TYPE_COLOR", default => (isEfl() || isGtk()), value => \$inputTypeColorSupport },
+      define => "ENABLE_INPUT_TYPE_COLOR", default => (isEfl() || isGtk() || isQt()), value => \$inputTypeColorSupport },
 
     { option => "input-type-date", desc => "Toggle Input Type Date support",
       define => "ENABLE_INPUT_TYPE_DATE", default => 0, value => \$inputTypeDateSupport },
@@ -318,7 +318,7 @@ my @features = (
       define => "ENABLE_LEGACY_VENDOR_PREFIXES", default => 1, value => \$legacyVendorPrefixSupport },
 
     { option => "legacy-web-audio", desc => "Toggle Legacy Web Audio support",
-      define => "ENABLE_LEGACY_WEB_AUDIO", default => 1, value => \$legacyWebAudioSupport },
+      define => "ENABLE_LEGACY_WEB_AUDIO", default => !isQt(), value => \$legacyWebAudioSupport },
 
     { option => "link-prefetch", desc => "Toggle Link Prefetch support",
       define => "ENABLE_LINK_PREFETCH", default => (isGtk() || isEfl()), value => \$linkPrefetchSupport },
@@ -345,7 +345,7 @@ my @features = (
       define => "ENABLE_METER_ELEMENT", default => !isAppleWinWebKit(), value => \$meterElementSupport },
 
     { option => "mhtml", desc => "Toggle MHTML support",
-      define => "ENABLE_MHTML", default => (isGtk() || isEfl()), value => \$mhtmlSupport },
+      define => "ENABLE_MHTML", default => (isGtk() || isEfl() || isQt()), value => \$mhtmlSupport },
 
     { option => "mouse-cursor-scale", desc => "Toggle Scaled mouse cursor support",
       define => "ENABLE_MOUSE_CURSOR_SCALE", default => isEfl(), value => \$mouseCursorScaleSupport },
@@ -363,7 +363,7 @@ my @features = (
       define => "ENABLE_NOSNIFF", default => isEfl(), value => \$nosniffSupport },
 
     { option => "notifications", desc => "Toggle Notifications support",
-      define => "ENABLE_NOTIFICATIONS", default => isGtk(), value => \$notificationsSupport },
+      define => "ENABLE_NOTIFICATIONS", default => (isGtk() || isQt()), value => \$notificationsSupport },
 
     { option => "orientation-events", desc => "Toggle Orientation Events support",
       define => "ENABLE_ORIENTATION_EVENTS", default => isIOSWebKit(), value => \$orientationEventsSupport },
@@ -423,7 +423,7 @@ my @features = (
       define => "ENABLE_TEXT_AUTOSIZING", default => 0, value => \$textAutosizingSupport },
 
     { option => "touch-events", desc => "Toggle Touch Events support",
-      define => "ENABLE_TOUCH_EVENTS", default => (isIOSWebKit() || isEfl() || isGtk()), value => \$touchEventsSupport },
+      define => "ENABLE_TOUCH_EVENTS", default => (isIOSWebKit() || isEfl() || isGtk() || isQt()), value => \$touchEventsSupport },
 
     { option => "touch-slider", desc => "Toggle Touch Slider support",
       define => "ENABLE_TOUCH_SLIDER", default => isEfl(), value => \$touchSliderSupport },
@@ -462,13 +462,13 @@ my @features = (
       define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },
 
     { option => "web-timing", desc => "Toggle Web Timing support",
-      define => "ENABLE_WEB_TIMING", default => (isGtk() || isEfl()), value => \$webTimingSupport },
+      define => "ENABLE_WEB_TIMING", default => (isGtk() || isEfl() || isQt()), value => \$webTimingSupport },
 
     { option => "xslt", desc => "Toggle XSLT support",
       define => "ENABLE_XSLT", default => 1, value => \$xsltSupport },
 
     { option => "ftl-jit", desc => "Toggle FTLJIT support",
-      define => "ENABLE_FTL_JIT", default => (isX86_64() && (isGtk() || isEfl())) , value => \$ftlJITSupport },
+      define => "ENABLE_FTL_JIT", default => (isX86_64() && (isGtk() || isEfl()) || isQt()) , value => \$ftlJITSupport },
 );
 
 sub getFeatureOptionList()
