@@ -44,8 +44,8 @@ static const char failedToStartServiceErrorMessage[] = "Failed to start Geolocat
 
 GeolocationClientQt::GeolocationClientQt(const QWebPageAdapter* page)
     : m_webPage(page)
-    , m_lastPosition(0)
-    , m_location(0)
+    , m_lastPosition(nullptr)
+    , m_location(nullptr)
 {
 }
 

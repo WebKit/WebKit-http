@@ -42,22 +42,22 @@ class QWebPageAdapter;
 namespace WebCore {
 
 // This class provides an implementation of a GeolocationClient for QtWebkit.
-class GeolocationClientQt : public QObject, public GeolocationClient {
+class GeolocationClientQt final : public QObject, public GeolocationClient {
     Q_OBJECT
 
 public:
     GeolocationClientQt(const QWebPageAdapter*);
-    virtual ~GeolocationClientQt();
+    ~GeolocationClientQt() override;
 
-    virtual void geolocationDestroyed();
-    virtual void startUpdating();
-    virtual void stopUpdating();
+    void geolocationDestroyed() override;
+    void startUpdating() override;
+    void stopUpdating() override;
 
-    void setEnableHighAccuracy(bool);
-    virtual GeolocationPosition* lastPosition() { return m_lastPosition.get(); }
+    void setEnableHighAccuracy(bool) override;
+    GeolocationPosition* lastPosition() override { return m_lastPosition.get(); }
 
-    virtual void requestPermission(Geolocation*);
-    virtual void cancelPermissionRequest(Geolocation*);
+    void requestPermission(Geolocation*) override;
+    void cancelPermissionRequest(Geolocation*) override;
 
 private Q_SLOTS:
     void positionUpdated(const QGeoPositionInfo&);

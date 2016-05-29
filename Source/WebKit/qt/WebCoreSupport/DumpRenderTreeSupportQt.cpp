@@ -103,10 +103,10 @@ using namespace WebCore;
 QMap<int, QWebScriptWorld*> m_worldMap;
 
 #if ENABLE(GEOLOCATION)
-GeolocationClientMock* toGeolocationClientMock(GeolocationClient* client)
+GeolocationClientMock& toGeolocationClientMock(GeolocationClient& client)
 {
     ASSERT(QWebPageAdapter::drtRun);
-    return static_cast<GeolocationClientMock*>(client);
+    return static_cast<GeolocationClientMock&>(client);
 }
 #endif
 
@@ -526,8 +526,8 @@ void DumpRenderTreeSupportQt::resetGeolocationMock(QWebPageAdapter* adapter)
 {
 #if ENABLE(GEOLOCATION)
     Page* corePage = adapter->page;
-    GeolocationClientMock* mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
-    mockClient->reset();
+    auto& mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
+    mockClient.reset();
 #endif
 }
 
@@ -535,8 +535,8 @@ void DumpRenderTreeSupportQt::setMockGeolocationPermission(QWebPageAdapter* adap
 {
 #if ENABLE(GEOLOCATION)
     Page* corePage = adapter->page;
-    GeolocationClientMock* mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
-    mockClient->setPermission(allowed);
+    auto& mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
+    mockClient.setPermission(allowed);
 #endif
 }
 
@@ -544,8 +544,8 @@ void DumpRenderTreeSupportQt::setMockGeolocationPosition(QWebPageAdapter* adapte
 {
 #if ENABLE(GEOLOCATION)
     Page* corePage = adapter->page;
-    GeolocationClientMock* mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
-    mockClient->setPosition(GeolocationPosition::create(currentTime(), latitude, longitude, accuracy));
+    auto& mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
+    mockClient.setPosition(GeolocationPosition::create(currentTime(), latitude, longitude, accuracy));
 #endif
 }
 
@@ -553,8 +553,8 @@ void DumpRenderTreeSupportQt::setMockGeolocationPositionUnavailableError(QWebPag
 {
 #if ENABLE(GEOLOCATION)
     Page* corePage = adapter->page;
-    GeolocationClientMock* mockClient = static_cast<GeolocationClientMock*>(GeolocationController::from(corePage)->client());
-    mockClient->setPositionUnavailableError(message);
+    auto& mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
+    mockClient.setPositionUnavailableError(message);
 #endif
 }
 
@@ -562,8 +562,8 @@ int DumpRenderTreeSupportQt::numberOfPendingGeolocationPermissionRequests(QWebPa
 {
 #if ENABLE(GEOLOCATION)
     Page* corePage = adapter->page;
-    GeolocationClientMock* mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
-    return mockClient->numberOfPendingPermissionRequests();
+    auto& mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
+    return mockClient.numberOfPendingPermissionRequests();
 #else
     return -1;
 #endif

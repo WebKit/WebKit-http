@@ -208,6 +208,7 @@ qt_wrap_cpp(WebKit WebKit_SOURCES
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Network_INCLUDE_DIRS}
+    ${Qt5Positioning_INCLUDE_DIRS}
 )
 # Build the include path with duplicates removed
 list(REMOVE_DUPLICATES WebKit_SYSTEM_INCLUDE_DIRECTORIES)
@@ -218,6 +219,7 @@ list(APPEND WebKit_LIBRARIES
     ${Qt5Core_LIBRARIES}
     ${Qt5Gui_LIBRARIES}
     ${Qt5Network_LIBRARIES}
+    ${Qt5Positioning_LIBRARIES}
 )
 
 if (ENABLE_GEOLOCATION)

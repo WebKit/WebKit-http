@@ -123,6 +123,11 @@ find_package(Qt5OpenGL ${REQUIRED_QT_VERSION})
 find_package(Qt5Test ${REQUIRED_QT_VERSION} REQUIRED)
 find_package(Qt5Widgets ${REQUIRED_QT_VERSION} REQUIRED)
 
+if (ENABLE_GEOLOCATION)
+    find_package(Qt5Positioning ${REQUIRED_QT_VERSION} REQUIRED)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_QTPOSITIONING 1)
+endif ()
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
