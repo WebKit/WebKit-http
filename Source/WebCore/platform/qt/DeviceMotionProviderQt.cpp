@@ -70,14 +70,16 @@ bool DeviceMotionProviderQt::filter(QAccelerometerReading* reading)
             /* y available */ true, reading->y(),
             /* z available */ true, reading->z());
 
+    auto accelIncludingGravity = accel;
+
     RefPtr<DeviceMotionData::RotationRate> rotation = DeviceMotionData::RotationRate::create(
             m_deviceOrientation->hasAlpha(), m_deviceOrientation->lastOrientation()->alpha(),
             /* beta available */ true, m_deviceOrientation->lastOrientation()->beta(),
             /* gamma available */ true, m_deviceOrientation->lastOrientation()->gamma());
 
-    m_motion = DeviceMotionData::create(accel,
-            accel, /* FIXME: Needs to provide acceleration include gravity. */
-            rotation,
+    m_motion = DeviceMotionData::create(WTFMove(accel),
+            WTFMove(accelIncludingGravity), /* FIXME: Needs to provide acceleration include gravity. */
+            WTFMove(rotation),
             false, 0 /* The interval is treated internally by Qt mobility (QtSensors in Qt5) */);
 
     m_controller->didChangeDeviceMotion(m_motion.get());

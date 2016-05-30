@@ -25,8 +25,6 @@
 
 #include "DeviceOrientationController.h"
 #include "DeviceOrientationProviderQt.h"
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
@@ -41,7 +39,7 @@ public:
     virtual void deviceOrientationControllerDestroyed();
 
 private:
-    OwnPtr<DeviceOrientationProviderQt> m_provider;
+    std::unique_ptr<DeviceOrientationProviderQt> m_provider;
 };
 
 } // namespace WebCore

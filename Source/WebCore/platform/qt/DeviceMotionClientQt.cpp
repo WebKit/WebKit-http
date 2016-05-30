@@ -23,8 +23,6 @@
 
 #include "DeviceMotionProviderQt.h"
 
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -42,7 +40,7 @@ void DeviceMotionClientQt::setController(DeviceMotionController* controller)
 {
     // Initialize lazily.
     if (!m_provider)
-        m_provider = adoptPtr(new DeviceMotionProviderQt);
+        m_provider.reset(new DeviceMotionProviderQt);
 
     m_provider->setController(controller);
 }

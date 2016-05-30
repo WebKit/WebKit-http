@@ -37,7 +37,7 @@ public:
 
     void setController(DeviceMotionController*);
 
-    bool filter(QAccelerometerReading*);
+    bool filter(QAccelerometerReading*) override;
 
     void start();
     void stop();

@@ -33,7 +33,7 @@ void DeviceOrientationClientQt::setController(DeviceOrientationController* contr
 {
     // Initialize lazily.
     if (!m_provider)
-        m_provider = adoptPtr(new DeviceOrientationProviderQt);
+        m_provider.reset(new DeviceOrientationProviderQt);
 
     m_provider->setController(controller);
 }

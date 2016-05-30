@@ -25,7 +25,6 @@
 #include "DeviceMotionData.h"
 
 #include "DeviceMotionProviderQt.h"
-#include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
@@ -47,7 +46,7 @@ private:
 
     virtual void setController(DeviceMotionController*);
 
-    OwnPtr<DeviceMotionProviderQt> m_provider;
+    std::unique_ptr<DeviceMotionProviderQt> m_provider;
 };
 
 } // namespece WebCore
