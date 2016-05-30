@@ -262,6 +262,24 @@ list(APPEND WebKit2_LIBRARIES
     WPE
 )
 
+if (ENABLE_BREAKPAD)
+    list(APPEND WebProcess_INCLUDE_DIRECTORIES
+        ${BREAKPAD_INCLUDE_DIRS}
+    )
+
+    list(APPEND WebProcess_LIBRARIES
+        ${BREAKPAD_LIBRARIES}
+    )
+
+    list(APPEND NetworkProcess_INCLUDE_DIRECTORIES
+        ${BREAKPAD_INCLUDE_DIRS}
+    )
+
+    list(APPEND NetworkProcess_LIBRARIES
+        ${BREAKPAD_LIBRARIES}
+    )
+endif ()
+
 set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html

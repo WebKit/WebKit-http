@@ -849,6 +849,7 @@ endif ()
 
 add_executable(WebProcess ${WebProcess_SOURCES})
 add_webkit2_prefix_header(WebProcess)
+target_include_directories(WebProcess PUBLIC ${WebProcess_INCLUDE_DIRECTORIES})
 target_link_libraries(WebProcess ${WebProcess_LIBRARIES})
 
 if (WebKit2_WebProcess_OUTPUT_NAME)
@@ -857,6 +858,7 @@ endif ()
 
 add_executable(NetworkProcess ${NetworkProcess_SOURCES})
 add_webkit2_prefix_header(NetworkProcess)
+target_include_directories(NetworkProcess PUBLIC ${NetworkProcess_INCLUDE_DIRECTORIES})
 target_link_libraries(NetworkProcess ${NetworkProcess_LIBRARIES})
 
 if (WebKit2_NetworkProcess_OUTPUT_NAME)

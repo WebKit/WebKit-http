@@ -149,6 +149,11 @@ if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
     find_package(LibGcrypt REQUIRED)
 endif ()
 
+if (ENABLE_BREAKPAD)
+    find_package(Breakpad REQUIRED)
+    add_definitions(-DUSE_BREAKPAD=1)
+endif ()
+
 add_definitions(-DBUILDING_WPE__=1)
 add_definitions(-DDATA_DIR="${CMAKE_INSTALL_DATADIR}")
 
