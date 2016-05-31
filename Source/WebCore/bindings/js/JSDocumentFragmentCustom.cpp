@@ -52,29 +52,18 @@ JSValue JSDocumentFragment::append(ExecState& state)
     return jsUndefined();
 }
 
-static inline JSValue createNewDocumentFragmentWrapper(JSDOMGlobalObject& globalObject, DocumentFragment& impl)
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<DocumentFragment>&& impl)
 {
 #if ENABLE(SHADOW_DOM)
-    if (impl.isShadowRoot())
-        return createNewWrapper<JSShadowRoot>(&globalObject, &static_cast<ShadowRoot&>(impl));
+    if (impl->isShadowRoot())
+        return CREATE_DOM_WRAPPER(globalObject, ShadowRoot, WTFMove(impl));
 #endif
-    return createNewWrapper<JSDocumentFragment>(&globalObject, &impl);
+    return createWrapper<JSDocumentFragment>(globalObject, WTFMove(impl));
 }
 
-JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, DocumentFragment* impl)
+JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, DocumentFragment& impl)
 {
-    return impl ? createNewDocumentFragmentWrapper(*globalObject, *impl) : jsNull();
-}
-
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, DocumentFragment* impl)
-{
-    if (!impl)
-        return jsNull();
-
-    if (JSValue result = getExistingWrapper<JSDocumentFragment>(globalObject, impl))
-        return result;
-
-    return createNewDocumentFragmentWrapper(*globalObject, *impl);
+    return wrap(state, globalObject, impl);
 }
 
 } // namespace WebCore

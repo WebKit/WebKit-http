@@ -2,7 +2,7 @@ include(GNUInstallDirs)
 
 set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 0)
-set(PROJECT_VERSION_PATCH 20160512)
+set(PROJECT_VERSION_PATCH 20160526)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 set(WPE_API_VERSION 0.1)
 
@@ -90,6 +90,11 @@ if (USE_WPE_BACKEND_BCM_RPI)
     find_package(BCMHost REQUIRED)
 endif ()
 
+if (USE_WPE_BACKEND_STM)
+    find_package(Wayland REQUIRED)
+    find_package(WaylandEGL REQUIRED)
+endif(USE_WPE_BACKEND_STM)
+
 if (USE_WPE_BACKEND_WESTEROS)
     find_package(Wayland REQUIRED)
     find_package(WaylandEGL REQUIRED)
@@ -132,6 +137,11 @@ endif ()
 
 if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
     find_package(LibGcrypt REQUIRED)
+endif ()
+
+if (ENABLE_BREAKPAD)
+    find_package(Breakpad REQUIRED)
+    add_definitions(-DUSE_BREAKPAD=1)
 endif ()
 
 add_definitions(-DBUILDING_WPE__=1)

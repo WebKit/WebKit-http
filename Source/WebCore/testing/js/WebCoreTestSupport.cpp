@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2015 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +37,6 @@
 #include "WheelEventTestTrigger.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSValueRef.h>
-#include <JavaScriptCore/Profile.h>
 #include <interpreter/CallFrame.h>
 #include <runtime/IdentifierInlines.h>
 
@@ -112,6 +112,11 @@ void initializeLoggingChannelsIfNecessary()
 #if !LOG_DISABLED
     WebCore::initializeLoggingChannelsIfNecessary();
 #endif
+}
+
+void setAllowsAnySSLCertificate(bool allowAnySSLCertificate)
+{
+    InternalSettings::setAllowsAnySSLCertificate(allowAnySSLCertificate);
 }
 
 }

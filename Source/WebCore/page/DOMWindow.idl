@@ -102,9 +102,16 @@
     readonly attribute long pageXOffset;
     readonly attribute long pageYOffset;
 
-    void scrollBy(optional long x = 0, optional long y = 0);
-    void scrollTo(optional long x = 0, optional long y = 0);
-    void scroll(optional long x = 0, optional long y = 0);
+    void scrollBy(unrestricted double x, unrestricted double y);
+    void scrollTo(unrestricted double x, unrestricted double y);
+    [ImplementedAs=scrollTo] void scroll(unrestricted double x, unrestricted double y);
+
+#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+    void scrollBy(optional ScrollToOptions option);
+    void scrollTo(optional ScrollToOptions options);
+    [ImplementedAs=scrollTo] void scroll(optional ScrollToOptions options);
+#endif
+
     void moveBy(optional unrestricted float x = NaN, optional unrestricted float y = NaN); // FIXME: this should take longs not floats.
     void moveTo(optional unrestricted float x = NaN, optional unrestricted float y = NaN); // FIXME: this should take longs not floats.
     void resizeBy(optional unrestricted float x = NaN, optional unrestricted float y = NaN); // FIXME: this should take longs not floats.
@@ -190,9 +197,6 @@
     [CustomGetter, CustomConstructor] attribute HTMLImageElementNamedConstructor Image; // Usable with new operator
     attribute DOMTokenListConstructor DOMSettableTokenList; // Map DOMSettableTokenList to DOMTokenList for backward compatibility.
 
-    [Conditional=IOS_TOUCH_EVENTS, CustomGetter] attribute TouchConstructor Touch; // Usable with the new operator
-    [Conditional=IOS_TOUCH_EVENTS, CustomGetter] attribute TouchListConstructor TouchList; // Usable with the new operator
-
     attribute DOMURLConstructor webkitURL; // FIXME: deprecate this.
     attribute MutationObserverConstructor WebKitMutationObserver; // FIXME: Add metrics to determine when we can remove this.
 #endif // defined(LANGUAGE_JAVASCRIPT)
@@ -218,6 +222,12 @@
     [NotEnumerable, Conditional=DEVICE_ORIENTATION] attribute EventHandler ondevicemotion;
     [NotEnumerable, Conditional=DEVICE_ORIENTATION] attribute EventHandler ondeviceorientation;
     [NotEnumerable, Conditional=PROXIMITY_EVENTS] attribute EventHandler onwebkitdeviceproximity;
+};
+
+// FIXME: Support ScrollBehavior.
+dictionary ScrollToOptions {
+    unrestricted double left;
+    unrestricted double top;
 };
 
 DOMWindow implements GlobalEventHandlers;

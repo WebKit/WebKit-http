@@ -127,6 +127,11 @@ void WebIDBConnectionToClient::didPutOrAdd(const WebCore::IDBResultData& resultD
 
 void WebIDBConnectionToClient::didGetRecord(const WebCore::IDBResultData& resultData)
 {
+    if (resultData.type() == IDBResultType::Error) {
+        send(Messages::WebIDBConnectionToServer::DidGetRecord(resultData));
+        return;
+    }
+
     auto& blobFilePaths = resultData.getResult().value().blobFilePaths();
     if (blobFilePaths.isEmpty()) {
         send(Messages::WebIDBConnectionToServer::DidGetRecord(resultData));
@@ -169,6 +174,11 @@ void WebIDBConnectionToClient::didStartTransaction(const WebCore::IDBResourceIde
     send(Messages::WebIDBConnectionToServer::DidStartTransaction(transactionIdentifier, error));
 }
 
+void WebIDBConnectionToClient::didCloseFromServer(WebCore::IDBServer::UniqueIDBDatabaseConnection& connection, const WebCore::IDBError& error)
+{
+    send(Messages::WebIDBConnectionToServer::DidCloseFromServer(connection.identifier(), error));
+}
+
 void WebIDBConnectionToClient::notifyOpenDBRequestBlocked(const WebCore::IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion)
 {
     send(Messages::WebIDBConnectionToServer::NotifyOpenDBRequestBlocked(requestIdentifier, oldVersion, newVersion));
@@ -199,9 +209,9 @@ void WebIDBConnectionToClient::commitTransaction(const IDBResourceIdentifier& tr
     DatabaseProcess::singleton().idbServer().commitTransaction(transactionIdentifier);
 }
 
-void WebIDBConnectionToClient::didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier& transactionIdentifier)
+void WebIDBConnectionToClient::didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
 {
-    DatabaseProcess::singleton().idbServer().didFinishHandlingVersionChangeTransaction(transactionIdentifier);
+    DatabaseProcess::singleton().idbServer().didFinishHandlingVersionChangeTransaction(databaseConnectionIdentifier, transactionIdentifier);
 }
 
 void WebIDBConnectionToClient::createObjectStore(const IDBRequestData& request, const IDBObjectStoreInfo& info)
@@ -287,6 +297,16 @@ void WebIDBConnectionToClient::abortOpenAndUpgradeNeeded(uint64_t databaseConnec
 void WebIDBConnectionToClient::didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
 {
     DatabaseProcess::singleton().idbServer().didFireVersionChangeEvent(databaseConnectionIdentifier, transactionIdentifier);
+}
+
+void WebIDBConnectionToClient::openDBRequestCancelled(const IDBRequestData& requestData)
+{
+    DatabaseProcess::singleton().idbServer().openDBRequestCancelled(requestData);
+}
+
+void WebIDBConnectionToClient::confirmDidCloseFromServer(uint64_t databaseConnectionIdentifier)
+{
+    DatabaseProcess::singleton().idbServer().confirmDidCloseFromServer(databaseConnectionIdentifier);
 }
 
 void WebIDBConnectionToClient::getAllDatabaseNames(uint64_t serverConnectionIdentifier, const WebCore::SecurityOriginData& topOrigin, const WebCore::SecurityOriginData& openingOrigin, uint64_t callbackID)

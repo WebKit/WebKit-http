@@ -69,7 +69,10 @@ void PDFPluginChoiceAnnotation::commit()
 PassRefPtr<Element> PDFPluginChoiceAnnotation::createAnnotationElement()
 {
     Document& document = parent()->document();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     PDFAnnotationChoiceWidget *choiceAnnotation = this->choiceAnnotation();
+#pragma clang diagnostic pop
 
     RefPtr<Element> element = document.createElement(selectTag, false);
 
@@ -83,14 +86,14 @@ PassRefPtr<Element> PDFPluginChoiceAnnotation::createAnnotationElement()
     NSString *selectedChoice = choiceAnnotation.stringValue;
 
     for (NSString *choice in choices) {
-        Ref<Element> choiceOption = document.createElement(optionTag, false);
+        auto choiceOption = document.createElement(optionTag, false);
         choiceOption->setAttribute(valueAttr, choice);
         choiceOption->setTextContent(choice, ASSERT_NO_EXCEPTION);
 
         if (choice == selectedChoice)
             choiceOption->setAttribute(selectedAttr, "selected");
 
-        styledElement->appendChild(WTFMove(choiceOption));
+        styledElement->appendChild(choiceOption);
     }
 
     return element;

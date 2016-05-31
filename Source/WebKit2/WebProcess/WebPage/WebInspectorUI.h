@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,6 +57,7 @@ public:
 
     void showConsole();
     void showResources();
+    void showTimelines();
 
     void showMainResourceForFrame(const String& frameIdentifier);
 
@@ -72,6 +73,8 @@ public:
 
     void setDockSide(DockSide);
     void setDockingUnavailable(bool);
+
+    void setIsVisible(bool);
 
     void didSave(const String& url);
     void didAppend(const String& url);
@@ -125,6 +128,7 @@ private:
     uint64_t m_inspectedPageIdentifier { 0 };
     bool m_underTest { false };
     bool m_dockingUnavailable { false };
+    bool m_isVisible { false };
     DockSide m_dockSide { DockSide::Undocked };
     unsigned m_inspectionLevel { 1 };
 

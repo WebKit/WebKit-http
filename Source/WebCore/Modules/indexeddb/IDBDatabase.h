@@ -30,6 +30,7 @@
 #include "Dictionary.h"
 #include "EventTarget.h"
 #include "ExceptionCode.h"
+#include "IDBActiveDOMObject.h"
 #include "IDBConnectionProxy.h"
 #include "IDBConnectionToServer.h"
 #include "IDBDatabaseInfo.h"
@@ -43,7 +44,7 @@ class IDBResultData;
 class IDBTransaction;
 class IDBTransactionInfo;
 
-class IDBDatabase : public ThreadSafeRefCounted<IDBDatabase>, public EventTargetWithInlineData, public ActiveDOMObject {
+class IDBDatabase : public ThreadSafeRefCounted<IDBDatabase>, public EventTargetWithInlineData, public IDBActiveDOMObject {
 public:
     static Ref<IDBDatabase> create(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBResultData&);
 
@@ -86,6 +87,7 @@ public:
     void didAbortTransaction(IDBTransaction&);
 
     void fireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion);
+    void didCloseFromServer(const IDBError&);
 
     IDBClient::IDBConnectionProxy& connectionProxy() { return m_connectionProxy.get(); }
 
@@ -97,8 +99,6 @@ public:
     bool dispatchEvent(Event&) final;
 
     bool hasPendingActivity() const final;
-
-    ThreadIdentifier originThreadID() const { return m_originThreadID; }
 
 private:
     IDBDatabase(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBResultData&);
@@ -118,8 +118,6 @@ private:
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_activeTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
-
-    ThreadIdentifier m_originThreadID { currentThread() };
 };
 
 } // namespace WebCore

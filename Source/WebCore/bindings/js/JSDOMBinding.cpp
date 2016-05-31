@@ -146,7 +146,7 @@ double valueToDate(ExecState* exec, JSValue value)
     return static_cast<DateInstance*>(value.toObject(exec))->internalNumber();
 }
 
-JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, PassRefPtr<DOMStringList> stringList)
+JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, DOMStringList* stringList)
 {
     JSC::MarkedArgumentBuffer list;
     if (stringList) {
@@ -280,7 +280,7 @@ static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const Strin
     return errorObject;
 }
 
-static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String& message)
+JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String& message)
 {
     return createDOMException(exec, ec, &message);
 }

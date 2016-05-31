@@ -430,8 +430,10 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
         priv->client = nullptr;
     }
 
-    if (!priv->keepAlive)
+    if (!priv->keepAlive) {
         priv->loader = nullptr;
+        priv->resource = nullptr;
+    }
 
     if (priv->buffer) {
         unmapGstBuffer(priv->buffer.get());

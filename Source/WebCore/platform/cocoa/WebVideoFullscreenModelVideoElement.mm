@@ -67,6 +67,7 @@ void WebVideoFullscreenModelVideoElement::setWebVideoFullscreenInterface(WebVide
         return;
 
     m_videoFullscreenInterface = interface;
+    m_playbackSessionModel->setWebPlaybackSessionInterface(interface);
 
     if (m_videoFullscreenInterface && m_videoElement)
         m_videoFullscreenInterface->setVideoDimensions(true, m_videoElement->videoWidth(), m_videoElement->videoHeight());
@@ -82,17 +83,18 @@ void WebVideoFullscreenModelVideoElement::setVideoElement(HTMLVideoElement* vide
 
     if (m_videoElement && m_isListening) {
         for (auto& eventName : observedEventNames())
-            m_videoElement->removeEventListener(eventName, this, false);
+            m_videoElement->removeEventListener(eventName, *this, false);
     }
     m_isListening = false;
 
     m_videoElement = videoElement;
+    m_playbackSessionModel->setMediaElement(videoElement);
 
     if (!m_videoElement)
         return;
 
     for (auto& eventName : observedEventNames())
-        m_videoElement->addEventListener(eventName, this, false);
+        m_videoElement->addEventListener(eventName, *this, false);
     m_isListening = true;
 
     updateForEventName(eventNameAll());

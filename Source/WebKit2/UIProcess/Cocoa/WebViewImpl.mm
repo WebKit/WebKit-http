@@ -90,6 +90,7 @@
 #import <WebCore/WebCoreNSStringExtras.h>
 #import <WebKitSystemInterface.h>
 #import <sys/stat.h>
+#import <wtf/NeverDestroyed.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WebViewImplIncludes.h>
@@ -2917,6 +2918,7 @@ void WebViewImpl::registerDraggedTypes()
 {
     auto types = adoptNS([[NSMutableSet alloc] initWithArray:PasteboardTypes::forEditing()]);
     [types addObjectsFromArray:PasteboardTypes::forURL()];
+    [types addObject:PasteboardTypes::WebDummyPboardType];
     [m_view registerForDraggedTypes:[types allObjects]];
 }
 #endif // ENABLE(DRAG_SUPPORT)
@@ -2932,14 +2934,15 @@ void WebViewImpl::dragImageForView(NSView *view, NSImage *image, CGPoint clientP
 {
     // The call below could release the view.
     RetainPtr<NSView> protector(m_view);
-
+    NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:NSDragPboard];
+    [pasteboard setString:@"" forType:PasteboardTypes::WebDummyPboardType];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [view dragImage:image
                  at:NSPointFromCGPoint(clientPoint)
              offset:NSZeroSize
               event:linkDrag ? [NSApp currentEvent] : m_lastMouseDownEvent.get()
-         pasteboard:[NSPasteboard pasteboardWithName:NSDragPboard]
+         pasteboard:pasteboard
              source:m_view
           slideBack:YES];
 #pragma clang diagnostic pop

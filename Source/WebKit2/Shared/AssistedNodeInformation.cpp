@@ -71,6 +71,7 @@ void AssistedNodeInformation::encode(IPC::ArgumentEncoder& encoder) const
     encoder << hasNextNode;
     encoder << hasPreviousNode;
     encoder << isAutocorrect;
+    encoder << isRTL;
     encoder.encodeEnum(autocapitalizeType);
     encoder.encodeEnum(elementType);
     encoder << formAction;
@@ -79,6 +80,7 @@ void AssistedNodeInformation::encode(IPC::ArgumentEncoder& encoder) const
     encoder << isMultiSelect;
     encoder << isReadOnly;
     encoder << allowsUserScaling;
+    encoder << allowsUserScalingIgnoringForceAlwaysScaling;
     encoder << insideFixedPosition;
     encoder << value;
     encoder << valueAsNumber;
@@ -112,6 +114,9 @@ bool AssistedNodeInformation::decode(IPC::ArgumentDecoder& decoder, AssistedNode
     if (!decoder.decode(result.isAutocorrect))
         return false;
 
+    if (!decoder.decode(result.isRTL))
+        return false;
+
     if (!decoder.decodeEnum(result.autocapitalizeType))
         return false;
 
@@ -134,6 +139,9 @@ bool AssistedNodeInformation::decode(IPC::ArgumentDecoder& decoder, AssistedNode
         return false;
 
     if (!decoder.decode(result.allowsUserScaling))
+        return false;
+    
+    if (!decoder.decode(result.allowsUserScalingIgnoringForceAlwaysScaling))
         return false;
 
     if (!decoder.decode(result.insideFixedPosition))

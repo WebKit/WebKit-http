@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -95,6 +95,9 @@ void WebInspectorUI::frontendLoaded()
     // cleared due to a reload, the dock state won't be resent from UIProcess.
     setDockingUnavailable(m_dockingUnavailable);
     setDockSide(m_dockSide);
+    setIsVisible(m_isVisible);
+
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::FrontendLoaded(), m_inspectedPageIdentifier);
 
     bringToFront();
 }
@@ -127,6 +130,9 @@ void WebInspectorUI::closeWindow()
     if (m_frontendController)
         m_frontendController->setInspectorFrontendClient(nullptr);
     m_frontendController = nullptr;
+
+    if (m_frontendHost)
+        m_frontendHost->disconnectClient();
 
     m_inspectedPageIdentifier = 0;
     m_underTest = false;
@@ -173,8 +179,16 @@ void WebInspectorUI::setDockSide(DockSide side)
 
 void WebInspectorUI::setDockingUnavailable(bool unavailable)
 {
-    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setDockingUnavailable"), unavailable);
     m_dockingUnavailable = unavailable;
+
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setDockingUnavailable"), unavailable);
+}
+
+void WebInspectorUI::setIsVisible(bool visible)
+{
+    m_isVisible = visible;
+
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setIsVisible"), visible);
 }
 
 void WebInspectorUI::changeAttachedWindowHeight(unsigned height)
@@ -216,6 +230,11 @@ void WebInspectorUI::showConsole()
 void WebInspectorUI::showResources()
 {
     m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showResources"));
+}
+
+void WebInspectorUI::showTimelines()
+{
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showTimelines"));
 }
 
 void WebInspectorUI::showMainResourceForFrame(const String& frameIdentifier)

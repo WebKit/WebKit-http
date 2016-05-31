@@ -58,6 +58,11 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
         return this._contentView;
     }
 
+    get displayName()
+    {
+        return this._displayName;
+    }
+
     get visible()
     {
         return this.selected && this.parentSidebar && !this.parentSidebar.collapsed;
@@ -111,14 +116,6 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
         this.parentSidebar.selectedSidebarPanel = null;
     }
 
-    toggle()
-    {
-        if (this.visible)
-            this.hide();
-        else
-            this.show();
-    }
-
     added()
     {
         console.assert(this.parentSidebar);
@@ -133,14 +130,12 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
         // Implemented by subclasses.
     }
 
-    willRemove()
-    {
-        // Implemented by subclasses.
-    }
-
     shown()
     {
         this._contentView.element.scrollTop = this._savedScrollPosition;
+
+        // FIXME: remove once <https://webkit.org/b/150741> is fixed.
+        this.updateLayout();
 
         // Implemented by subclasses.
     }
@@ -152,17 +147,19 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
         // Implemented by subclasses.
     }
 
-    widthDidChange()
+    visibilityDidChange()
+    {
+        // Implemented by subclasses.
+    }
+
+    // Protected
+
+    sizeDidChange()
     {
         let width = this.element.realOffsetWidth;
         if (width && width !== this._widthSetting.value)
             this._widthSetting.value = width;
 
-        // Implemented by subclasses.
-    }
-
-    visibilityDidChange()
-    {
         // Implemented by subclasses.
     }
 };

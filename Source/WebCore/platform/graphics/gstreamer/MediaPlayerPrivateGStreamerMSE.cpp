@@ -573,6 +573,12 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState state
         m_readyState = state;
         LOG_MEDIA_MESSAGE("m_readyState: %s -> %s", dumpReadyState(oldReadyState), dumpReadyState(m_readyState));
 
+        if (oldReadyState < MediaPlayer::HaveCurrentData && m_readyState >= MediaPlayer::HaveCurrentData) {
+            LOG_MEDIA_MESSAGE("[Seek] Reporting load state changed to trigger seek continuation");
+            loadStateChanged();
+        }
+        m_player->readyStateChanged();
+
         GstState state;
         GstStateChangeReturn getStateResult = gst_element_get_state(m_pipeline.get(), &state, NULL, 250 * GST_NSECOND);
         bool isPlaying = (getStateResult == GST_STATE_CHANGE_SUCCESS && state == GST_STATE_PLAYING);
@@ -582,11 +588,8 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState state
             bool ok = changePipelineState(GST_STATE_PAUSED);
             LOG_MEDIA_MESSAGE("Changing pipeline to PAUSED: %s", (ok)?"OK":"ERROR");
         }
-        if (oldReadyState < MediaPlayer::HaveCurrentData && m_readyState >= MediaPlayer::HaveCurrentData) {
-            LOG_MEDIA_MESSAGE("[Seek] Reporting load state changed to trigger seek continuation");
-            loadStateChanged();
-        }
-        m_player->readyStateChanged();
+
+        m_buffering = (m_readyState == MediaPlayer::HaveMetadata);
     }
 }
 
@@ -693,29 +696,11 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
             if (seeking()) {
                 m_readyState = MediaPlayer::HaveMetadata;
                 // TODO: NetworkState?
-                LOG_MEDIA_MESSAGE("m_readyState=%s", dumpReadyState(m_readyState));
-            } else if (m_buffering) {
-                if (m_bufferingPercentage == 100) {
-                    LOG_MEDIA_MESSAGE("[Buffering] Complete.");
-                    m_buffering = false;
-                    m_readyState = MediaPlayer::HaveEnoughData;
-                    LOG_MEDIA_MESSAGE("m_readyState=%s", dumpReadyState(m_readyState));
-                    m_networkState = m_downloadFinished ? MediaPlayer::Idle : MediaPlayer::Loading;
-                } else {
-                    m_readyState = MediaPlayer::HaveCurrentData;
-                    LOG_MEDIA_MESSAGE("m_readyState=%s", dumpReadyState(m_readyState));
-                    m_networkState = MediaPlayer::Loading;
-                }
-            } else if (m_downloadFinished) {
-                m_readyState = MediaPlayer::HaveEnoughData;
-                LOG_MEDIA_MESSAGE("m_readyState=%s", dumpReadyState(m_readyState));
-                m_networkState = MediaPlayer::Loaded;
-            } else {
-                m_readyState = MediaPlayer::HaveFutureData;
-                LOG_MEDIA_MESSAGE("m_readyState=%s", dumpReadyState(m_readyState));
+            } else if (m_mediaSource) {
+                m_mediaSource->monitorSourceBuffers();
                 m_networkState = MediaPlayer::Loading;
             }
-
+            LOG_MEDIA_MESSAGE("m_readyState=%s", dumpReadyState(m_readyState));
             break;
         default:
             ASSERT_NOT_REACHED();

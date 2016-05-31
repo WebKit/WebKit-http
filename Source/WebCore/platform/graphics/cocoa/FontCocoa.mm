@@ -27,7 +27,6 @@
 #import "config.h"
 #import "Font.h"
 
-#import "BlockExceptions.h"
 #import "Color.h"
 #import "CoreGraphicsSPI.h"
 #import "CoreTextSPI.h"
@@ -40,6 +39,7 @@
 #import <float.h>
 #import <unicode/uchar.h>
 #import <wtf/Assertions.h>
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/StdLibExtras.h>
@@ -134,7 +134,7 @@ void Font::platformInit()
     // incorrectly added to line spacing, so we use a 15% adjustment instead
     // and add it to the ascent.
     RetainPtr<CFStringRef> familyName = adoptCF(CTFontCopyFamilyName(m_platformData.font()));
-    if (familyName && (CFStringCompare(familyName.get(), CFSTR("Times"), kCFCompareCaseInsensitive) == kCFCompareEqualTo
+    if (!m_isCustomFont && familyName && (CFStringCompare(familyName.get(), CFSTR("Times"), kCFCompareCaseInsensitive) == kCFCompareEqualTo
         || CFStringCompare(familyName.get(), CFSTR("Helvetica"), kCFCompareCaseInsensitive) == kCFCompareEqualTo
         || CFStringCompare(familyName.get(), CFSTR("Courier"), kCFCompareCaseInsensitive) == kCFCompareEqualTo))
         ascent += floorf(((ascent + descent) * 0.15f) + 0.5f);

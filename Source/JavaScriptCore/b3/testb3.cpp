@@ -150,6 +150,7 @@ Vector<Operand<FloatType>> floatingPointOperands()
 static Vector<Int64Operand> int64Operands()
 {
     Vector<Int64Operand> operands;
+    operands.append({ "0", 0 });
     operands.append({ "1", 1 });
     operands.append({ "-1", -1 });
     operands.append({ "42", 42 });
@@ -4753,6 +4754,201 @@ void testFroundMem(double value)
     root->appendNew<ControlValue>(proc, Return, Origin(), asDouble);
 
     CHECK(isIdentical(compileAndRun<double>(proc, &value), static_cast<double>(static_cast<float>(value))));
+}
+
+void testIToD64Arg()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* srcAsDouble = root->appendNew<Value>(proc, IToD, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsDouble);
+
+    auto code = compile(proc);
+    for (auto testValue : int64Operands())
+        CHECK(isIdentical(invoke<double>(*code, testValue.value), static_cast<double>(testValue.value)));
+}
+
+void testIToF64Arg()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* srcAsFloat = root->appendNew<Value>(proc, IToF, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloat);
+
+    auto code = compile(proc);
+    for (auto testValue : int64Operands())
+        CHECK(isIdentical(invoke<float>(*code, testValue.value), static_cast<float>(testValue.value)));
+}
+
+void testIToD32Arg()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* srcAsDouble = root->appendNew<Value>(proc, IToD, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsDouble);
+
+    auto code = compile(proc);
+    for (auto testValue : int32Operands())
+        CHECK(isIdentical(invoke<double>(*code, testValue.value), static_cast<double>(testValue.value)));
+}
+
+void testIToF32Arg()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* srcAsFloat = root->appendNew<Value>(proc, IToF, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloat);
+
+    auto code = compile(proc);
+    for (auto testValue : int32Operands())
+        CHECK(isIdentical(invoke<float>(*code, testValue.value), static_cast<float>(testValue.value)));
+}
+
+void testIToD64Mem()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* address = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    MemoryValue* loadedSrc = root->appendNew<MemoryValue>(proc, Load, Int64, Origin(), address);
+    Value* srcAsDouble = root->appendNew<Value>(proc, IToD, Origin(), loadedSrc);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsDouble);
+
+    auto code = compile(proc);
+    int64_t inMemoryValue;
+    for (auto testValue : int64Operands()) {
+        inMemoryValue = testValue.value;
+        CHECK(isIdentical(invoke<double>(*code, &inMemoryValue), static_cast<double>(testValue.value)));
+        CHECK(inMemoryValue == testValue.value);
+    }
+}
+
+void testIToF64Mem()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* address = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    MemoryValue* loadedSrc = root->appendNew<MemoryValue>(proc, Load, Int64, Origin(), address);
+    Value* srcAsFloat = root->appendNew<Value>(proc, IToF, Origin(), loadedSrc);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloat);
+
+    auto code = compile(proc);
+    int64_t inMemoryValue;
+    for (auto testValue : int64Operands()) {
+        inMemoryValue = testValue.value;
+        CHECK(isIdentical(invoke<float>(*code, &inMemoryValue), static_cast<float>(testValue.value)));
+        CHECK(inMemoryValue == testValue.value);
+    }
+}
+
+void testIToD32Mem()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* address = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    MemoryValue* loadedSrc = root->appendNew<MemoryValue>(proc, Load, Int32, Origin(), address);
+    Value* srcAsDouble = root->appendNew<Value>(proc, IToD, Origin(), loadedSrc);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsDouble);
+
+    auto code = compile(proc);
+    int32_t inMemoryValue;
+    for (auto testValue : int32Operands()) {
+        inMemoryValue = testValue.value;
+        CHECK(isIdentical(invoke<double>(*code, &inMemoryValue), static_cast<double>(testValue.value)));
+        CHECK(inMemoryValue == testValue.value);
+    }
+}
+
+void testIToF32Mem()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* address = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    MemoryValue* loadedSrc = root->appendNew<MemoryValue>(proc, Load, Int32, Origin(), address);
+    Value* srcAsFloat = root->appendNew<Value>(proc, IToF, Origin(), loadedSrc);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloat);
+
+    auto code = compile(proc);
+    int32_t inMemoryValue;
+    for (auto testValue : int32Operands()) {
+        inMemoryValue = testValue.value;
+        CHECK(isIdentical(invoke<float>(*code, &inMemoryValue), static_cast<float>(testValue.value)));
+        CHECK(inMemoryValue == testValue.value);
+    }
+}
+
+void testIToD64Imm(int64_t value)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<Const64Value>(proc, Origin(), value);
+    Value* srcAsFloatingPoint = root->appendNew<Value>(proc, IToD, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloatingPoint);
+    CHECK(isIdentical(compileAndRun<double>(proc), static_cast<double>(value)));
+}
+
+void testIToF64Imm(int64_t value)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<Const64Value>(proc, Origin(), value);
+    Value* srcAsFloatingPoint = root->appendNew<Value>(proc, IToF, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloatingPoint);
+    CHECK(isIdentical(compileAndRun<float>(proc), static_cast<float>(value)));
+}
+
+void testIToD32Imm(int32_t value)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<Const32Value>(proc, Origin(), value);
+    Value* srcAsFloatingPoint = root->appendNew<Value>(proc, IToD, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloatingPoint);
+    CHECK(isIdentical(compileAndRun<double>(proc), static_cast<double>(value)));
+}
+
+void testIToF32Imm(int32_t value)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<Const32Value>(proc, Origin(), value);
+    Value* srcAsFloatingPoint = root->appendNew<Value>(proc, IToF, Origin(), src);
+    root->appendNew<ControlValue>(proc, Return, Origin(), srcAsFloatingPoint);
+    CHECK(isIdentical(compileAndRun<float>(proc), static_cast<float>(value)));
+}
+
+void testIToDReducedToIToF64Arg()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* srcAsDouble = root->appendNew<Value>(proc, IToD, Origin(), src);
+    Value* floatResult = root->appendNew<Value>(proc, DoubleToFloat, Origin(), srcAsDouble);
+    root->appendNew<ControlValue>(proc, Return, Origin(), floatResult);
+
+    auto code = compile(proc);
+    for (auto testValue : int64Operands())
+        CHECK(isIdentical(invoke<float>(*code, testValue.value), static_cast<float>(testValue.value)));
+}
+
+void testIToDReducedToIToF32Arg()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* src = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* srcAsDouble = root->appendNew<Value>(proc, IToD, Origin(), src);
+    Value* floatResult = root->appendNew<Value>(proc, DoubleToFloat, Origin(), srcAsDouble);
+    root->appendNew<ControlValue>(proc, Return, Origin(), floatResult);
+
+    auto code = compile(proc);
+    for (auto testValue : int32Operands())
+        CHECK(isIdentical(invoke<float>(*code, testValue.value), static_cast<float>(testValue.value)));
 }
 
 void testStore32(int value)
@@ -11777,6 +11973,83 @@ void testSpillUseLargerThanDef()
 
 }
 
+void testLateRegister()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+
+    // This works by making all but 1 register be input to the first patchpoint as LateRegister.
+    // The other 1 register is just a regular Register input. We assert our result is the regular
+    // register input. There would be no other way for the register allocator to arrange things
+    // because LateRegister interferes with the result.
+    // Then, the second patchpoint takes the result of the first as an argument and asks for
+    // it in a register that was a LateRegister. This is to incentivize the register allocator
+    // to use that LateRegister as the result for the first patchpoint. But of course it can not do that.
+    // So it must issue a mov after the first patchpoint from the first's result into the second's input.
+
+    RegisterSet regs = RegisterSet::allGPRs();
+    regs.exclude(RegisterSet::stackRegisters());
+    regs.exclude(RegisterSet::reservedHardwareRegisters());
+    Vector<Value*> lateUseArgs;
+    unsigned result = 0;
+    for (GPRReg reg = CCallHelpers::firstRegister(); reg <= CCallHelpers::lastRegister(); reg = CCallHelpers::nextRegister(reg)) {
+        if (!regs.get(reg))
+            continue;
+        result++;
+        if (reg == GPRInfo::regT0)
+            continue;
+        Value* value = root->appendNew<Const64Value>(proc, Origin(), 1);
+        lateUseArgs.append(value);
+    }
+    Value* regularUse = root->appendNew<Const64Value>(proc, Origin(), 1);
+    PatchpointValue* firstPatchpoint = root->appendNew<PatchpointValue>(proc, Int64, Origin());
+    {
+        unsigned i = 0;
+        for (GPRReg reg = CCallHelpers::firstRegister(); reg <= CCallHelpers::lastRegister(); reg = CCallHelpers::nextRegister(reg)) {
+            if (!regs.get(reg))
+                continue;
+            if (reg == GPRInfo::regT0)
+                continue;
+            Value* value = lateUseArgs[i++];
+            firstPatchpoint->append(value, ValueRep::lateReg(reg));
+        }
+        firstPatchpoint->append(regularUse, ValueRep::reg(GPRInfo::regT0));
+    }
+
+    firstPatchpoint->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+            CHECK(params[0].gpr() == GPRInfo::regT0);
+            // Note that regT0 should also start off as 1, so we're implicitly starting our add with 1, which is also an argument.
+            unsigned skipped = 0;
+            for (unsigned i = 1; i < params.size(); i++) {
+                if (params[i].gpr() == params[0].gpr()) {
+                    skipped = i;
+                    continue;
+                }
+                jit.add64(params[i].gpr(), params[0].gpr());
+            }
+            CHECK(!!skipped);
+        });
+
+    PatchpointValue* secondPatchpoint = root->appendNew<PatchpointValue>(proc, Int64, Origin());
+    secondPatchpoint->append(firstPatchpoint, ValueRep::reg(GPRInfo::regT1));
+    secondPatchpoint->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+            CHECK(params[1].gpr() == GPRInfo::regT1);
+            jit.nop();
+            jit.nop();
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.nop();
+            jit.nop();
+        });
+    root->appendNew<ControlValue>(proc, Return, Origin(), secondPatchpoint);
+    
+    auto code = compile(proc);
+    CHECK(invoke<uint64_t>(*code) == result);
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -12462,6 +12735,21 @@ void run(const char* filter)
     RUN_UNARY(testLoadFloatConvertDoubleConvertFloatStoreFloat, floatingPointOperands<float>());
     RUN_UNARY(testFroundArg, floatingPointOperands<double>());
     RUN_UNARY(testFroundMem, floatingPointOperands<double>());
+
+    RUN(testIToD64Arg());
+    RUN(testIToF64Arg());
+    RUN(testIToD32Arg());
+    RUN(testIToF32Arg());
+    RUN(testIToD64Mem());
+    RUN(testIToF64Mem());
+    RUN(testIToD32Mem());
+    RUN(testIToF32Mem());
+    RUN_UNARY(testIToD64Imm, int64Operands());
+    RUN_UNARY(testIToF64Imm, int64Operands());
+    RUN_UNARY(testIToD32Imm, int32Operands());
+    RUN_UNARY(testIToF32Imm, int32Operands());
+    RUN(testIToDReducedToIToF64Arg());
+    RUN(testIToDReducedToIToF32Arg());
 
     RUN(testStore32(44));
     RUN(testStoreConstant(49));
@@ -13164,6 +13452,8 @@ void run(const char* filter)
 
     RUN(testSpillDefSmallerThanUse());
     RUN(testSpillUseLargerThanDef());
+
+    RUN(testLateRegister());
 
     if (tasks.isEmpty())
         usage();

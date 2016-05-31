@@ -79,6 +79,7 @@
 #include <runtime/TypedArrays.h>
 #include <wtf/HashTraits.h>
 #include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
 #include <wtf/Vector.h>
 
 using namespace JSC;
@@ -2800,8 +2801,8 @@ void SerializedScriptValue::writeBlobsToDiskForIndexedDB(std::function<void (con
     ASSERT(isMainThread());
     ASSERT(hasBlobURLs());
 
-    RefPtr<SerializedScriptValue> protector(this);
-    blobRegistry().writeBlobsToTemporaryFiles(m_blobURLs, [completionHandler, this, protector](const Vector<String>& blobFilePaths) {
+    RefPtr<SerializedScriptValue> protectedThis(this);
+    blobRegistry().writeBlobsToTemporaryFiles(m_blobURLs, [completionHandler = WTFMove(completionHandler), this, protectedThis = WTFMove(protectedThis)](auto& blobFilePaths) {
         ASSERT(isMainThread());
 
         if (blobFilePaths.isEmpty()) {
@@ -2816,6 +2817,33 @@ void SerializedScriptValue::writeBlobsToDiskForIndexedDB(std::function<void (con
         completionHandler({ *this, m_blobURLs, blobFilePaths });
     });
 }
+
+IDBValue SerializedScriptValue::writeBlobsToDiskForIndexedDBSynchronously()
+{
+    ASSERT(!isMainThread());
+
+    IDBValue value;
+    IDBValue* valuePtr = &value;
+
+    Lock lock;
+    Condition condition;
+    Condition* conditionPtr = &condition;
+    lock.lock();
+
+    RunLoop::main().dispatch([this, conditionPtr, valuePtr] {
+        writeBlobsToDiskForIndexedDB([conditionPtr, valuePtr](const IDBValue& result) {
+            ASSERT(isMainThread());
+            valuePtr->setAsIsolatedCopy(result);
+
+            conditionPtr->notifyAll();
+        });
+    });
+
+    condition.wait(lock);
+
+    return value;
+}
+
 #endif // ENABLE(INDEXED_DATABASE)
 
 } // namespace WebCore

@@ -78,7 +78,7 @@ Ref<PDFPluginTextAnnotation> PDFPluginTextAnnotation::create(PDFAnnotation *anno
 
 PDFPluginTextAnnotation::~PDFPluginTextAnnotation()
 {
-    element()->removeEventListener(eventNames().keydownEvent, eventListener(), false);
+    element()->removeEventListener(eventNames().keydownEvent, *eventListener(), false);
 }
 
 PassRefPtr<Element> PDFPluginTextAnnotation::createAnnotationElement()
@@ -86,7 +86,10 @@ PassRefPtr<Element> PDFPluginTextAnnotation::createAnnotationElement()
     RefPtr<Element> element;
 
     Document& document = parent()->document();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     PDFAnnotationTextWidget *textAnnotation = this->textAnnotation();
+#pragma clang diagnostic pop
     bool isMultiline = textAnnotation.isMultiline;
 
     if (isMultiline)
@@ -94,7 +97,7 @@ PassRefPtr<Element> PDFPluginTextAnnotation::createAnnotationElement()
     else
         element = document.createElement(inputTag, false);
 
-    element->addEventListener(eventNames().keydownEvent, eventListener(), false);
+    element->addEventListener(eventNames().keydownEvent, *eventListener(), false);
 
     StyledElement* styledElement = static_cast<StyledElement*>(element.get());
 

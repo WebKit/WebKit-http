@@ -589,7 +589,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState* exec)
 
     JSGlobalObject* calleeGlobalObject = exec->callee()->globalObject();
     VariableEnvironment emptyTDZVariables; // Indirect eval does not have access to the lexical scope.
-    EvalExecutable* eval = EvalExecutable::create(exec, makeSource(s), false, ThisTDZMode::CheckIfNeeded, DerivedContextType::None, false, EvalContextType::None, &emptyTDZVariables);
+    EvalExecutable* eval = EvalExecutable::create(exec, makeSource(s), false, DerivedContextType::None, false, EvalContextType::None, &emptyTDZVariables);
     if (!eval)
         return JSValue::encode(jsUndefined());
 
@@ -781,8 +781,18 @@ EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeError(ExecState* exec)
 {
     return throwVMTypeError(exec);
 }
-    
-EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorArgumentsAndCaller(ExecState* exec)
+
+EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorCalleeAndCaller(ExecState* exec)
+{
+    return throwVMTypeError(exec, "'callee' and 'caller' cannot be accessed in strict mode.");
+}
+
+EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorArgumentsAndCallerInStrictMode(ExecState* exec)
+{
+    return throwVMTypeError(exec, "'caller' and 'arguments' cannot be accessed in strict mode.");
+}
+
+EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorArgumentsAndCallerInClassContext(ExecState* exec)
 {
     return throwVMTypeError(exec, "'caller' and 'arguments' cannot be accessed in class context.");
 }

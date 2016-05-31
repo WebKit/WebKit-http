@@ -53,15 +53,14 @@ namespace WebCore {
         static const JSC::GlobalObjectMethodTable s_globalObjectMethodTable;
 
         static bool allowsAccessFrom(const JSC::JSGlobalObject*, JSC::ExecState*);
-        static bool supportsLegacyProfiling(const JSC::JSGlobalObject*);
         static bool supportsRichSourceInfo(const JSC::JSGlobalObject*);
         static bool shouldInterruptScript(const JSC::JSGlobalObject*);
         static bool shouldInterruptScriptBeforeTimeout(const JSC::JSGlobalObject*);
         static JSC::RuntimeFlags javaScriptRuntimeFlags(const JSC::JSGlobalObject*);
-        static void queueTaskToEventLoop(const JSC::JSGlobalObject*, PassRefPtr<JSC::Microtask>);
+        static void queueTaskToEventLoop(const JSC::JSGlobalObject*, Ref<JSC::Microtask>&&);
 
     protected:
-        JSWorkerGlobalScopeBase(JSC::VM&, JSC::Structure*, PassRefPtr<WorkerGlobalScope>);
+        JSWorkerGlobalScopeBase(JSC::VM&, JSC::Structure*, RefPtr<WorkerGlobalScope>&&);
         void finishCreation(JSC::VM&);
 
     private:
@@ -70,8 +69,10 @@ namespace WebCore {
 
     // Returns a JSWorkerGlobalScope or jsNull()
     // Always ignores the execState and passed globalObject, WorkerGlobalScope is itself a globalObject and will always use its own prototype chain.
-    JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, WorkerGlobalScope*);
-    JSC::JSValue toJS(JSC::ExecState*, WorkerGlobalScope*);
+    JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, WorkerGlobalScope&);
+    inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, WorkerGlobalScope* scope) { return scope ? toJS(exec, globalObject, *scope) : JSC::jsNull(); }
+    JSC::JSValue toJS(JSC::ExecState*, WorkerGlobalScope&);
+    inline JSC::JSValue toJS(JSC::ExecState* exec, WorkerGlobalScope* scope) { return scope ? toJS(exec, *scope) : JSC::jsNull(); }
 
     JSDedicatedWorkerGlobalScope* toJSDedicatedWorkerGlobalScope(JSC::JSValue);
     JSWorkerGlobalScope* toJSWorkerGlobalScope(JSC::JSValue);

@@ -299,6 +299,15 @@ ResultType callStatelessLambda(ArgumentTypes&&... arguments)
     return (*bitwise_cast<Func*>(data))(std::forward<ArgumentTypes>(arguments)...);
 }
 
+template<typename T, typename U>
+bool checkAndSet(T& left, U right)
+{
+    if (left == right)
+        return false;
+    left = right;
+    return true;
+}
+
 } // namespace WTF
 
 // This version of placement new omits a 0 check.
@@ -311,8 +320,7 @@ inline void* operator new(size_t, NotNullTag, void* location)
 
 // This adds various C++14 features for versions of the STL that may not yet have them.
 namespace std {
-// MSVC 2013 supports std::make_unique already.
-#if !defined(_MSC_VER) || _MSC_VER < 1800
+#if COMPILER(CLANG) && __cplusplus < 201400L
 template<class T> struct _Unique_if {
     typedef unique_ptr<T> _Single_object;
 };
@@ -340,28 +348,6 @@ make_unique(size_t n)
 
 template<class T, class... Args> typename _Unique_if<T>::_Known_bound
 make_unique(Args&&...) = delete;
-#endif
-
-// MSVC 2015 supports these functions.
-#if !COMPILER(MSVC) || _MSC_VER < 1900
-// Compile-time integer sequences
-// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3658.html
-// (Note that we only implement index_sequence, and not the more generic integer_sequence).
-template<size_t... indexes> struct index_sequence {
-    static size_t size() { return sizeof...(indexes); }
-};
-
-template<size_t currentIndex, size_t...indexes> struct make_index_sequence_helper;
-
-template<size_t...indexes> struct make_index_sequence_helper<0, indexes...> {
-    typedef std::index_sequence<indexes...> type;
-};
-
-template<size_t currentIndex, size_t...indexes> struct make_index_sequence_helper {
-    typedef typename make_index_sequence_helper<currentIndex - 1, currentIndex - 1, indexes...>::type type;
-};
-
-template<size_t length> struct make_index_sequence : public make_index_sequence_helper<length>::type { };
 
 // std::exchange
 template<class T, class U = T>
@@ -371,24 +357,6 @@ T exchange(T& t, U&& newValue)
     t = std::forward<U>(newValue);
 
     return oldValue;
-}
-#endif
-
-#if COMPILER_SUPPORTS(CXX_USER_LITERALS)
-// These literals are available in C++14, so once we require C++14 compilers we can get rid of them here.
-// (User-literals need to have a leading underscore so we add it here - the "real" literals don't have underscores).
-namespace literals {
-namespace chrono_literals {
-    constexpr inline chrono::seconds operator"" _s(unsigned long long s)
-    {
-        return chrono::seconds(static_cast<chrono::seconds::rep>(s));
-    }
-
-    constexpr chrono::milliseconds operator"" _ms(unsigned long long ms)
-    {
-        return chrono::milliseconds(static_cast<chrono::milliseconds::rep>(ms));
-    }
-}
 }
 #endif
 
@@ -409,19 +377,20 @@ ALWAYS_INLINE constexpr typename remove_reference<T>::type&& move(T&& value)
 
 using WTF::KB;
 using WTF::MB;
-using WTF::isCompilationThread;
-using WTF::insertIntoBoundedVector;
-using WTF::isPointerAligned;
-using WTF::is8ByteAligned;
-using WTF::binarySearch;
-using WTF::tryBinarySearch;
 using WTF::approximateBinarySearch;
+using WTF::binarySearch;
 using WTF::bitwise_cast;
-using WTF::safeCast;
-using WTF::isStatelessLambda;
 using WTF::callStatelessLambda;
+using WTF::checkAndSet;
+using WTF::insertIntoBoundedVector;
+using WTF::isCompilationThread;
+using WTF::isPointerAligned;
+using WTF::isStatelessLambda;
+using WTF::is8ByteAligned;
+using WTF::safeCast;
+using WTF::tryBinarySearch;
 
-#if COMPILER_SUPPORTS(CXX_USER_LITERALS)
+#if !COMPILER(CLANG) || __cplusplus >= 201400L
 // We normally don't want to bring in entire std namespaces, but literals are an exception.
 using namespace std::literals::chrono_literals;
 #endif

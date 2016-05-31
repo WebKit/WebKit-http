@@ -25,6 +25,7 @@
 
 #include "ContentData.h"
 #include "CSSCustomPropertyValue.h"
+#include "CSSParser.h"
 #include "CSSPropertyNames.h"
 #include "CSSVariableDependentValue.h"
 #include "CursorList.h"
@@ -1072,6 +1073,12 @@ const String& RenderStyle::contentAltText() const
     return rareNonInheritedData->m_altText;
 }
 
+void RenderStyle::setHasAttrContent()
+{
+    setUnique();
+    SET_VAR(rareNonInheritedData, m_hasAttrContent, true);
+}
+
 // FIXME: use affectedByTransformOrigin().
 static inline bool requireTransformOrigin(const Vector<RefPtr<TransformOperation>>& transformOperations, RenderStyle::ApplyTransformOrigin applyOrigin)
 {
@@ -2025,28 +2032,23 @@ void RenderStyle::checkVariablesInCustomProperties()
     
     // Now insert invalid values.
     if (!invalidProperties.isEmpty()) {
-        RefPtr<CSSValue> invalidValue = CSSCustomPropertyValue::createInvalid();
+        auto invalidValue = CSSCustomPropertyValue::createInvalid();
         for (auto& property : invalidProperties)
-            customProperties.set(property, invalidValue);
+            customProperties.set(property, invalidValue.copyRef());
     }
 
     // Now that all of the properties have been tested for validity and replaced with
     // invalid values if they failed, we can perform variable substitution on the valid values.
-    Vector<RefPtr<CSSCustomPropertyValue>> resolvedValues;
+    Vector<Ref<CSSCustomPropertyValue>> resolvedValues;
     for (auto entry : customProperties) {
         if (!entry.value->isVariableDependentValue())
             continue;
         
         CSSParserValueList parserList;
-        RefPtr<CSSCustomPropertyValue> result;
-        if (!downcast<CSSVariableDependentValue>(*entry.value).valueList()->buildParserValueListSubstitutingVariables(&parserList, customProperties)) {
-            RefPtr<CSSValue> invalidResult = CSSCustomPropertyValue::createInvalid();
-            result = CSSCustomPropertyValue::create(entry.key, invalidResult);
-        } else {
-            RefPtr<CSSValue> newValueList = CSSValueList::createFromParserValueList(parserList);
-            result = CSSCustomPropertyValue::create(entry.key, newValueList);
-        }
-        resolvedValues.append(result);
+        if (!downcast<CSSVariableDependentValue>(*entry.value).valueList().buildParserValueListSubstitutingVariables(&parserList, customProperties))
+            resolvedValues.append(CSSCustomPropertyValue::create(entry.key, CSSCustomPropertyValue::createInvalid()));
+        else
+            resolvedValues.append(CSSCustomPropertyValue::create(entry.key, CSSValueList::createFromParserValueList(parserList)));
     }
     
     // With all results computed, we can now mutate our table to eliminate the variables and

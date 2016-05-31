@@ -34,7 +34,6 @@
 #include "Page.h"
 #include "PageConsoleClient.h"
 #include "SecurityOrigin.h"
-#include <profiler/Profile.h>
 #include <runtime/JSLock.h>
 #include <wtf/Ref.h>
 
@@ -87,7 +86,7 @@ String JSCustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
         function = m_customResolver.get();
     }
 
-    Ref<JSCustomXPathNSResolver> selfProtector(*this);
+    Ref<JSCustomXPathNSResolver> protectedThis(*this);
 
     MarkedArgumentBuffer args;
     args.append(jsStringWithCache(exec, prefix));

@@ -51,6 +51,10 @@ void WebAutomationSession::sendSynthesizedEventsToPage(WebPageProxy& page, NSArr
     NSWindow *window = page.platformWindow();
 
     for (NSEvent *event in eventsToSend) {
+        // Take focus back in case the Inspector became focused while the prior command or
+        // NSEvent was delivered to the window.
+        [window makeKeyAndOrderFront:nil];
+
         markEventAsSynthesizedForAutomation(event);
         [window sendEvent:event];
     }
@@ -176,7 +180,7 @@ void WebAutomationSession::platformSimulateKeyStroke(WebPageProxy& page, Inspect
     // The likely keyCode for the virtual key as defined in <HIToolbox/Events.h>.
     int keyCode = 0;
     // Typical characters produced by the virtual key, if any.
-    NSString *characters;
+    NSString *characters = @"";
 
     // FIXME: this function and the Automation protocol enum should probably adopt key names
     // from W3C UIEvents standard. For more details: https://w3c.github.io/uievents-code/

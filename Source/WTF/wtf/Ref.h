@@ -30,6 +30,7 @@
 #include <wtf/GetPtr.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/TypeCasts.h>
 
 #if ASAN_ENABLED
 extern "C" void __asan_poison_memory_region(void const volatile *addr, size_t size);
@@ -46,6 +47,8 @@ template<typename T> Ref<T> adoptRef(T&);
 
 template<typename T> class Ref {
 public:
+    static constexpr bool isRef = true;
+
     ~Ref()
     {
 #if ASAN_ENABLED
@@ -167,6 +170,11 @@ template<typename T, typename U> inline Ref<T> static_reference_cast(Ref<U>& ref
     return Ref<T>(static_cast<T&>(reference.get()));
 }
 
+template<typename T, typename U> inline Ref<T> static_reference_cast(Ref<U>&& reference)
+{
+    return adoptRef(static_cast<T&>(reference.leakRef()));
+}
+
 template<typename T, typename U> inline Ref<T> static_reference_cast(const Ref<U>& reference)
 {
     return Ref<T>(static_cast<T&>(reference.copyRef().get()));
@@ -184,6 +192,16 @@ inline Ref<T> adoptRef(T& reference)
     adopted(&reference);
     return Ref<T>(reference, Ref<T>::Adopt);
 
+}
+
+template<typename ExpectedType, typename ArgType> inline bool is(Ref<ArgType>& source)
+{
+    return is<ExpectedType>(source.get());
+}
+
+template<typename ExpectedType, typename ArgType> inline bool is(const Ref<ArgType>& source)
+{
+    return is<ExpectedType>(source.get());
 }
 
 } // namespace WTF

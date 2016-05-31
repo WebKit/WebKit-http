@@ -194,11 +194,8 @@ void WebInspectorClient::didSetSearchingForNode(bool enabled)
 
 void WebInspectorClient::elementSelectionChanged(bool active)
 {
-    m_page->inspector()->elementSelectionChanged(active);
-}
-
-void WebInspectorClient::pageOverlayDestroyed(PageOverlay&)
-{
+    if (m_page->inspector())
+        m_page->inspector()->elementSelectionChanged(active);
 }
 
 void WebInspectorClient::willMoveToPage(PageOverlay&, Page* page)

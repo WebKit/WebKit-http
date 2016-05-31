@@ -65,7 +65,7 @@ public:
     PerformanceTiming* timing() const;
     double now() const;
 
-    PassRefPtr<MemoryInfo> memory() const;
+    RefPtr<MemoryInfo> memory() const;
 
     RefPtr<PerformanceEntryList> getEntries() const;
     RefPtr<PerformanceEntryList> getEntriesByType(const String& entryType);

@@ -848,8 +848,8 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
     while (currentVisiblePosition.isNotNull()) {
         WebVisiblePosition *currentWebVisiblePosition = [WebVisiblePosition _wrapVisiblePosition:currentVisiblePosition];
         
-        Node *currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
-        int lastOffset = lastOffsetForEditing(currentNode);
+        auto* currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
+        int lastOffset = lastOffsetForEditing(*currentNode);
         ASSERT(lastOffset >= 0);
         if (lastOffset < 0)
             return currentWebVisiblePosition;
@@ -904,8 +904,8 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
     while (currentVisiblePosition.isNotNull()) {
         WebVisiblePosition *currentWebVisiblePosition = [WebVisiblePosition _wrapVisiblePosition:currentVisiblePosition];
         
-        Node *currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
-        int lastOffset = lastOffsetForEditing(currentNode);
+        auto* currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
+        int lastOffset = lastOffsetForEditing(*currentNode);
         ASSERT(lastOffset >= 0);
         if (lastOffset < 0)
             return currentWebVisiblePosition;

@@ -4034,7 +4034,7 @@ void WebPageProxy::didEndColorPicker()
 #endif
 
 // Inspector
-WebInspectorProxy* WebPageProxy::inspector()
+WebInspectorProxy* WebPageProxy::inspector() const
 {
     if (isClosed() || !isValid())
         return 0;
@@ -4075,6 +4075,11 @@ void WebPageProxy::setAllowsMediaDocumentInlinePlayback(bool allows)
     m_process->send(Messages::WebPage::SetAllowsMediaDocumentInlinePlayback(allows), m_pageID);
 }
 #endif
+
+void WebPageProxy::setHasHadSelectionChangesFromUserInteraction(bool hasHadUserSelectionChanges)
+{
+    m_hasHadSelectionChangesFromUserInteraction = hasHadUserSelectionChanges;
+}
 
 // BackForwardList
 

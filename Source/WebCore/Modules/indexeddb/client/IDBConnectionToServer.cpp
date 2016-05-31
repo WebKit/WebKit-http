@@ -268,12 +268,12 @@ void IDBConnectionToServer::didCommitTransaction(const IDBResourceIdentifier& tr
     m_proxy->didCommitTransaction(transactionIdentifier, error);
 }
 
-void IDBConnectionToServer::didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier& transactionIdentifier)
+void IDBConnectionToServer::didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
 {
     LOG(IndexedDB, "IDBConnectionToServer::didFinishHandlingVersionChangeTransaction");
     ASSERT(isMainThread());
 
-    m_delegate->didFinishHandlingVersionChangeTransaction(transactionIdentifier);
+    m_delegate->didFinishHandlingVersionChangeTransaction(databaseConnectionIdentifier, transactionIdentifier);
 }
 
 void IDBConnectionToServer::abortTransaction(const IDBResourceIdentifier& transactionIdentifier)
@@ -316,12 +316,36 @@ void IDBConnectionToServer::didStartTransaction(const IDBResourceIdentifier& tra
     m_proxy->didStartTransaction(transactionIdentifier, error);
 }
 
+void IDBConnectionToServer::didCloseFromServer(uint64_t databaseConnectionIdentifier, const IDBError& error)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didCloseFromServer");
+    ASSERT(isMainThread());
+
+    m_proxy->didCloseFromServer(databaseConnectionIdentifier, error);
+}
+
+void IDBConnectionToServer::confirmDidCloseFromServer(uint64_t databaseConnectionIdentifier)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::confirmDidCloseFromServer");
+    ASSERT(isMainThread());
+
+    m_delegate->confirmDidCloseFromServer(databaseConnectionIdentifier);
+}
+
 void IDBConnectionToServer::notifyOpenDBRequestBlocked(const IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion)
 {
     LOG(IndexedDB, "IDBConnectionToServer::didStartTransaction");
     ASSERT(isMainThread());
 
     m_proxy->notifyOpenDBRequestBlocked(requestIdentifier, oldVersion, newVersion);
+}
+
+void IDBConnectionToServer::openDBRequestCancelled(const IDBRequestData& requestData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::openDBRequestCancelled");
+    ASSERT(isMainThread());
+
+    m_delegate->openDBRequestCancelled(requestData);
 }
 
 void IDBConnectionToServer::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)

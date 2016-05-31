@@ -28,7 +28,6 @@
 #if PLATFORM(IOS)
 
 #import "AnimationController.h"
-#import "BlockExceptions.h"
 #import "DOMCSSStyleDeclarationInternal.h"
 #import "DOMCore.h"
 #import "DOMInternal.h"
@@ -70,6 +69,7 @@
 #import "WAKWindow.h"
 #import "WebCoreSystemInterface.h"
 #import <runtime/JSLock.h>
+#import <wtf/BlockObjCExceptions.h>
 
 using namespace WebCore::HTMLNames;
 using namespace WTF::Unicode;
@@ -89,14 +89,14 @@ void Frame::initWithSimpleHTMLDocument(const String& style, const URL& url)
     setDocument(document);
 
     ExceptionCode ec;
-    RefPtr<Element> rootElement = document->createElementNS(xhtmlNamespaceURI, ASCIILiteral("html"), ec);
+    auto rootElement = document->createElementNS(xhtmlNamespaceURI, ASCIILiteral("html"), ec);
 
-    RefPtr<Element> body = document->createElementNS(xhtmlNamespaceURI, ASCIILiteral("body"), ec);
+    auto body = document->createElementNS(xhtmlNamespaceURI, ASCIILiteral("body"), ec);
     if (!style.isEmpty())
         body->setAttribute(HTMLNames::styleAttr, style);
 
-    rootElement->appendChild(body.releaseNonNull(), ec);
-    document->appendChild(rootElement.releaseNonNull(), ec);
+    rootElement->appendChild(*body, ec);
+    document->appendChild(*rootElement, ec);
 }
 
 const ViewportArguments& Frame::viewportArguments() const

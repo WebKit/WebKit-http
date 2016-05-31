@@ -85,14 +85,9 @@ CrossThreadCopierBase<false, false, ThreadSafeDataBuffer>::Type CrossThreadCopie
     return ThreadSafeDataBuffer(buffer);
 }
 
-CrossThreadCopierBase<false, false, Vector<String>>::Type CrossThreadCopierBase<false, false, Vector<String>>::copy(const Vector<String>& strings)
+CrossThreadCopierBase<false, false, std::chrono::system_clock::time_point>::Type CrossThreadCopierBase<false, false, std::chrono::system_clock::time_point>::copy(const std::chrono::system_clock::time_point& timePoint)
 {
-    Vector<String> result;
-    result.reserveInitialCapacity(strings.size());
-    for (auto& string : strings)
-        result.uncheckedAppend(string.isolatedCopy());
-
-    return result;
+    return timePoint;
 }
 
 // Test CrossThreadCopier using COMPILE_ASSERT.

@@ -478,8 +478,14 @@ public:
 
     bool windowIsFrontWindowUnderMouse(NSEvent *);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
+    void setRequiresUserActionForEditingControlsManager(bool requiresUserActionForEditingControlsManager) { m_requiresUserActionForEditingControlsManager = requiresUserActionForEditingControlsManager; }
+    bool requiresUserActionForEditingControlsManager() const { return m_requiresUserActionForEditingControlsManager; }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 
+    void handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidate);
+#if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WebViewImplAdditions.h>
+#endif
 #endif
 
 private:
@@ -514,7 +520,6 @@ private:
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
-    void handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidate);
 #endif
 
     NSView <WebViewImplDelegate> *m_view;
@@ -633,6 +638,7 @@ private:
 #endif
     NSRange m_softSpaceRange { NSNotFound, 0 };
     bool m_isHandlingAcceptedCandidate { false };
+    bool m_requiresUserActionForEditingControlsManager { false };
 };
     
 } // namespace WebKit

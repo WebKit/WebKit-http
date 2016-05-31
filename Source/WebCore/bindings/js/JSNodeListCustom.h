@@ -31,15 +31,13 @@
 
 namespace WebCore {
 
-WEBCORE_EXPORT JSC::JSValue createWrapper(JSDOMGlobalObject&, NodeList&);
+WEBCORE_EXPORT JSC::JSValue createWrapper(JSDOMGlobalObject&, Ref<NodeList>&&);
 
-ALWAYS_INLINE JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, NodeList* nodeList)
+ALWAYS_INLINE JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, NodeList& nodeList)
 {
-    if (!nodeList)
-        return JSC::jsNull();
-    if (JSC::JSValue existingWrapper = getExistingWrapper<JSNodeList>(globalObject, nodeList))
-        return existingWrapper;
-    return createWrapper(*globalObject, *nodeList);
+    if (auto wrapper = getCachedWrapper(globalObject->world(), nodeList))
+        return wrapper;
+    return createWrapper(*globalObject, nodeList);
 }
 
 } // namespace WebCore

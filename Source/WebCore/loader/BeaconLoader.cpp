@@ -1,7 +1,6 @@
 #include "config.h"
 #include "BeaconLoader.h"
 
-#include "wtf/Functional.h"
 #include "Document.h"
 #include "File.h"
 #include "runtime/ArrayBufferView.h"
@@ -48,7 +47,7 @@ public:
     }
 
 private:
-    const typename WTF::ParamStorageTraits<Payload>::StorageType m_data;
+    const Payload& m_data;
 };
 
 } // namespace

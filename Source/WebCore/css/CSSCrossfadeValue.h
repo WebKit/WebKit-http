@@ -43,9 +43,9 @@ class Document;
 class CSSCrossfadeValue : public CSSImageGeneratorValue {
     friend class CrossfadeSubimageObserverProxy;
 public:
-    static Ref<CSSCrossfadeValue> create(PassRefPtr<CSSValue> fromValue, PassRefPtr<CSSValue> toValue)
+    static Ref<CSSCrossfadeValue> create(Ref<CSSValue>&& fromValue, Ref<CSSValue>&& toValue, Ref<CSSPrimitiveValue>&& percentageValue, bool prefixed = false)
     {
-        return adoptRef(*new CSSCrossfadeValue(fromValue, toValue));
+        return adoptRef(*new CSSCrossfadeValue(WTFMove(fromValue), WTFMove(toValue), WTFMove(percentageValue), prefixed));
     }
 
     ~CSSCrossfadeValue();
@@ -56,12 +56,11 @@ public:
     bool isFixedSize() const { return true; }
     FloatSize fixedSize(const RenderElement*);
 
-    bool isPending() const;
+    bool isPrefixed() const { return m_isPrefixed; }
+    bool isPending();
     bool knownToBeOpaque(const RenderElement*) const;
 
     void loadSubimages(CachedResourceLoader&, const ResourceLoaderOptions&);
-
-    void setPercentage(PassRefPtr<CSSPrimitiveValue> percentageValue) { m_percentageValue = percentageValue; }
 
     bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
 
@@ -72,11 +71,13 @@ public:
     bool equalInputImages(const CSSCrossfadeValue&) const;
 
 private:
-    CSSCrossfadeValue(PassRefPtr<CSSValue> fromValue, PassRefPtr<CSSValue> toValue)
+    CSSCrossfadeValue(Ref<CSSValue>&& fromValue, Ref<CSSValue>&& toValue, Ref<CSSPrimitiveValue>&& percentageValue, bool prefixed)
         : CSSImageGeneratorValue(CrossfadeClass)
-        , m_fromValue(fromValue)
-        , m_toValue(toValue)
+        , m_fromValue(WTFMove(fromValue))
+        , m_toValue(WTFMove(toValue))
+        , m_percentageValue(WTFMove(percentageValue))
         , m_crossfadeSubimageObserver(this)
+        , m_isPrefixed(prefixed)
     {
     }
 
@@ -98,9 +99,9 @@ private:
 
     void crossfadeChanged(const IntRect&);
 
-    RefPtr<CSSValue> m_fromValue;
-    RefPtr<CSSValue> m_toValue;
-    RefPtr<CSSPrimitiveValue> m_percentageValue;
+    Ref<CSSValue> m_fromValue;
+    Ref<CSSValue> m_toValue;
+    Ref<CSSPrimitiveValue> m_percentageValue;
 
     CachedResourceHandle<CachedImage> m_cachedFromImage;
     CachedResourceHandle<CachedImage> m_cachedToImage;
@@ -108,6 +109,7 @@ private:
     RefPtr<Image> m_generatedImage;
 
     CrossfadeSubimageObserverProxy m_crossfadeSubimageObserver;
+    bool m_isPrefixed { false };
 };
 
 } // namespace WebCore
