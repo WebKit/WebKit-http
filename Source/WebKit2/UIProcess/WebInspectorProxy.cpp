@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014, 2016 Apple Inc. All rights reserved.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@
 #include "WKArray.h"
 #include "WKContextMenuItem.h"
 #include "WKMutableArray.h"
+#include "WebAutomationSession.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebFrameProxy.h"
 #include "WebInspectorMessages.h"
@@ -206,6 +207,16 @@ void WebInspectorProxy::showResources()
     eagerlyCreateInspectorPage();
 
     m_inspectedPage->process().send(Messages::WebInspector::ShowResources(), m_inspectedPage->pageID());
+}
+
+void WebInspectorProxy::showTimelines()
+{
+    if (!m_inspectedPage)
+        return;
+
+    eagerlyCreateInspectorPage();
+
+    m_inspectedPage->process().send(Messages::WebInspector::ShowTimelines(), m_inspectedPage->pageID());
 }
 
 void WebInspectorProxy::showMainResourceForFrame(WebFrameProxy* frame)
@@ -570,6 +581,7 @@ void WebInspectorProxy::open()
         return;
 
     m_isVisible = true;
+    m_inspectorPage->process().send(Messages::WebInspectorUI::SetIsVisible(m_isVisible), m_inspectorPage->pageID());
 
     platformOpen();
 }
@@ -579,12 +591,13 @@ void WebInspectorProxy::didClose()
     if (!m_inspectorPage)
         return;
 
-    m_inspectorPage->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID());
-
     m_isVisible = false;
     m_isProfilingPage = false;
     m_showMessageSent = false;
     m_ignoreFirstBringToFront = false;
+
+    m_inspectorPage->process().send(Messages::WebInspectorUI::SetIsVisible(m_isVisible), m_inspectorPage->pageID());
+    m_inspectorPage->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID());
 
     if (m_isAttached)
         platformDetach();
@@ -599,6 +612,12 @@ void WebInspectorProxy::didClose()
     m_connectionIdentifier = IPC::Attachment();
 
     platformDidClose();
+}
+
+void WebInspectorProxy::frontendLoaded()
+{
+    if (auto* automationSession = m_inspectedPage->process().processPool().automationSession())
+        automationSession->inspectorFrontendLoaded(*m_inspectedPage);
 }
 
 void WebInspectorProxy::bringToFront()

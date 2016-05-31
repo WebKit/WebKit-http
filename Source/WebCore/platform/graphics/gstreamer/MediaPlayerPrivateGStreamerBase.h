@@ -176,10 +176,10 @@ protected:
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
     virtual GstElement* createVideoSink();
+#endif
 
 #if USE(GSTREAMER_GL)
     GstElement* createVideoSinkGL();
-#endif
 #endif
 
     void setStreamVolumeElement(GstStreamVolume*);

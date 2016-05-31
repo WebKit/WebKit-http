@@ -271,12 +271,6 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (!listItemElement)
             return;
 
-        if (document.body.offsetWidth <= 0) {
-            // The stylesheet hasn't loaded yet or the window is closed,
-            // so we can't calculate what is need. Return early.
-            return;
-        }
-
         if (!this.selectionElement) {
             this.selectionElement = document.createElement("div");
             this.selectionElement.className = "selection selected";
@@ -392,10 +386,6 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 existingChildTreeElements.set(currentNode, currentChildTreeElement);
                 continue;
             }
-
-            var selectedTreeElement = this.treeOutline.selectedTreeElement;
-            if (selectedTreeElement && (selectedTreeElement === currentChildTreeElement || selectedTreeElement.hasAncestor(currentChildTreeElement)))
-                this.select();
 
             this.removeChildAtIndex(i);
         }

@@ -361,7 +361,6 @@
 #include "JSNavigatorGeolocation.cpp"
 #include "JSNavigatorMediaDevices.cpp"
 #include "JSNavigatorUserMedia.cpp"
-#include "JSNavigatorUserMediaError.cpp"
 #include "JSNavigatorVibration.cpp"
 #include "JSNode.cpp"
 #include "JSNodeFilter.cpp"
@@ -422,8 +421,6 @@
 #include "JSRTCTrackEvent.cpp"
 #include "JSScreen.cpp"
 #include "JSScriptProcessorNode.cpp"
-#include "JSScriptProfile.cpp"
-#include "JSScriptProfileNode.cpp"
 #if ENABLE(CSP_NEXT)
 #include "JSSecurityPolicyViolationEvent.cpp"
 #endif

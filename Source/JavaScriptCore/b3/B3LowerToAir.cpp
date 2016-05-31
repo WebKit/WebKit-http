@@ -1005,6 +1005,7 @@ private:
             case ValueRep::SomeRegister:
                 arg = tmp(value.value());
                 break;
+            case ValueRep::LateRegister:
             case ValueRep::Register:
                 stackmap->earlyClobbered().clear(value.rep().reg());
                 arg = Tmp(value.rep().reg());
@@ -2146,6 +2147,11 @@ private:
 
         case IToD: {
             appendUnOp<ConvertInt32ToDouble, ConvertInt64ToDouble>(m_value->child(0));
+            return;
+        }
+
+        case IToF: {
+            appendUnOp<ConvertInt32ToFloat, ConvertInt64ToFloat>(m_value->child(0));
             return;
         }
 

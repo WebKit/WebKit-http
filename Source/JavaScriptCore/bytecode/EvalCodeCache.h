@@ -34,6 +34,7 @@
 #include "JSScope.h"
 #include "Options.h"
 #include "SourceCode.h"
+#include "SourceCodeKey.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/StringHash.h>
@@ -44,11 +45,12 @@ namespace JSC {
 
     class EvalCodeCache {
     public:
+        // Specialized cache key (compared with SourceCodeKey) for eval code cache.
         class CacheKey {
         public:
-            CacheKey(const String& source, bool isArrowFunctionContext)
+            CacheKey(const String& source, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext)
                 : m_source(source.impl())
-                , m_isArrowFunctionContext(isArrowFunctionContext)
+                , m_flags(SourceCodeType::EvalType, JSParserBuiltinMode::NotBuiltin, JSParserStrictMode::NotStrict, derivedContextType, evalContextType, isArrowFunctionContext)
             {
             }
 
@@ -65,7 +67,7 @@ namespace JSC {
 
             bool operator==(const CacheKey& other) const
             {
-                return m_source == other.m_source && m_isArrowFunctionContext == other.m_isArrowFunctionContext;
+                return m_source == other.m_source && m_flags == other.m_flags;
             }
 
             bool isHashTableDeletedValue() const { return m_source.isHashTableDeletedValue(); }
@@ -77,7 +79,7 @@ namespace JSC {
                 }
                 static bool equal(const CacheKey& lhs, const CacheKey& rhs)
                 {
-                    return StringHash::equal(lhs.m_source, rhs.m_source) && lhs.m_isArrowFunctionContext == rhs.m_isArrowFunctionContext;
+                    return StringHash::equal(lhs.m_source, rhs.m_source) && lhs.m_flags == rhs.m_flags;
                 }
                 static const bool safeToCompareToEmptyOrDeleted = false;
             };
@@ -86,31 +88,29 @@ namespace JSC {
 
         private:
             RefPtr<StringImpl> m_source;
-            bool m_isArrowFunctionContext { false };
+            SourceCodeFlags m_flags;
         };
 
-        EvalExecutable* tryGet(bool inStrictContext, const String& evalSource, bool isArrowFunctionContext, JSScope* scope)
+        EvalExecutable* tryGet(bool inStrictContext, const String& evalSource, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext, JSScope* scope)
         {
             if (isCacheable(inStrictContext, evalSource, scope)) {
                 ASSERT(!inStrictContext);
-                return m_cacheMap.fastGet(CacheKey(evalSource, isArrowFunctionContext)).get();
+                return m_cacheMap.fastGet(CacheKey(evalSource, derivedContextType, evalContextType, isArrowFunctionContext)).get();
             }
             return nullptr;
         }
         
-        EvalExecutable* getSlow(ExecState* exec, JSCell* owner, bool inStrictContext, ThisTDZMode thisTDZMode, DerivedContextType derivedContextType, bool isArrowFunctionContext, EvalContextType evalContextType, const String& evalSource, JSScope* scope)
+        EvalExecutable* getSlow(ExecState* exec, JSCell* owner, bool inStrictContext, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext, const String& evalSource, JSScope* scope)
         {
             VariableEnvironment variablesUnderTDZ;
             JSScope::collectVariablesUnderTDZ(scope, variablesUnderTDZ);
-            EvalExecutable* evalExecutable = EvalExecutable::create(exec, makeSource(evalSource), inStrictContext, thisTDZMode, derivedContextType, isArrowFunctionContext, evalContextType, &variablesUnderTDZ);
+            EvalExecutable* evalExecutable = EvalExecutable::create(exec, makeSource(evalSource), inStrictContext, derivedContextType, isArrowFunctionContext, evalContextType, &variablesUnderTDZ);
             if (!evalExecutable)
                 return nullptr;
 
             if (isCacheable(inStrictContext, evalSource, scope) && m_cacheMap.size() < maxCacheEntries) {
                 ASSERT(!inStrictContext);
-                ASSERT_WITH_MESSAGE(thisTDZMode == ThisTDZMode::CheckIfNeeded, "Always CheckIfNeeded because the caching is enabled only in the sloppy mode.");
-                ASSERT_WITH_MESSAGE(derivedContextType == DerivedContextType::None, "derivedContextType is always None because class methods and class constructors are always evaluated as the strict code.");
-                m_cacheMap.set(CacheKey(evalSource, isArrowFunctionContext), WriteBarrier<EvalExecutable>(exec->vm(), owner, evalExecutable));
+                m_cacheMap.set(CacheKey(evalSource, derivedContextType, evalContextType, isArrowFunctionContext), WriteBarrier<EvalExecutable>(exec->vm(), owner, evalExecutable));
             }
             
             return evalExecutable;

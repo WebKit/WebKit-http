@@ -32,6 +32,7 @@
 #include "CSSAspectRatioValue.h"
 #include "CSSBasicShapes.h"
 #include "CSSBorderImage.h"
+#include "CSSBorderImageSliceValue.h"
 #include "CSSCustomPropertyValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
@@ -64,6 +65,7 @@
 #include "StyleInheritedData.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
+#include "StylePropertyShorthandFunctions.h"
 #include "StyleResolver.h"
 #include "WebKitCSSFilterValue.h"
 #include "WebKitCSSTransformValue.h"
@@ -538,10 +540,10 @@ static Ref<CSSBorderImageSliceValue> valueForNinePieceImageSlice(const NinePiece
     }
 
     auto quad = Quad::create();
-    quad->setTop(top.release());
-    quad->setRight(right.release());
-    quad->setBottom(bottom.release());
-    quad->setLeft(left.release());
+    quad->setTop(WTFMove(top));
+    quad->setRight(WTFMove(right));
+    quad->setBottom(WTFMove(bottom));
+    quad->setLeft(WTFMove(left));
 
     return CSSBorderImageSliceValue::create(CSSValuePool::singleton().createValue(WTFMove(quad)), image.fill());
 }
@@ -591,10 +593,10 @@ static Ref<CSSPrimitiveValue> valueForNinePieceImageQuad(const LengthBox& box)
     }
 
     auto quad = Quad::create();
-    quad->setTop(top);
-    quad->setRight(right);
-    quad->setBottom(bottom);
-    quad->setLeft(left);
+    quad->setTop(WTFMove(top));
+    quad->setRight(WTFMove(right));
+    quad->setBottom(WTFMove(bottom));
+    quad->setLeft(WTFMove(left));
 
     return cssValuePool.createValue(WTFMove(quad));
 }
@@ -634,7 +636,7 @@ static Ref<CSSValue> valueForNinePieceImage(const NinePieceImage& image)
     // Create the repeat rules.
     RefPtr<CSSValue> repeat = valueForNinePieceImageRepeat(image);
 
-    return createBorderImageValue(imageValue.release(), imageSlices.release(), borderSlices.release(), outset.release(), repeat.release());
+    return createBorderImageValue(WTFMove(imageValue), WTFMove(imageSlices), WTFMove(borderSlices), WTFMove(outset), WTFMove(repeat));
 }
 
 inline static Ref<CSSPrimitiveValue> zoomAdjustedPixelValue(double value, const RenderStyle& style)
@@ -681,7 +683,7 @@ static Ref<CSSValue> valueForReflection(const StyleReflection* reflection, const
         break;
     }
 
-    return CSSReflectValue::create(direction.release(), offset.release(), valueForNinePieceImage(reflection->mask()));
+    return CSSReflectValue::create(direction.releaseNonNull(), offset.releaseNonNull(), valueForNinePieceImage(reflection->mask()));
 }
 
 static Ref<CSSValueList> createPositionListForLayer(CSSPropertyID propertyID, const FillLayer* layer, const RenderStyle& style)
@@ -905,13 +907,13 @@ Ref<CSSValue> ComputedStyleExtractor::valueForShadow(const ShadowData* shadow, C
 
     auto list = CSSValueList::createCommaSeparated();
     for (const ShadowData* currShadowData = shadow; currShadowData; currShadowData = currShadowData->next()) {
-        RefPtr<CSSPrimitiveValue> x = adjustLengthForZoom(currShadowData->x(), style, adjust);
-        RefPtr<CSSPrimitiveValue> y = adjustLengthForZoom(currShadowData->y(), style, adjust);
-        RefPtr<CSSPrimitiveValue> blur = adjustLengthForZoom(currShadowData->radius(), style, adjust);
-        RefPtr<CSSPrimitiveValue> spread = propertyID == CSSPropertyTextShadow ? PassRefPtr<CSSPrimitiveValue>() : adjustLengthForZoom(currShadowData->spread(), style, adjust);
-        RefPtr<CSSPrimitiveValue> style = propertyID == CSSPropertyTextShadow || currShadowData->style() == Normal ? PassRefPtr<CSSPrimitiveValue>() : cssValuePool.createIdentifierValue(CSSValueInset);
-        RefPtr<CSSPrimitiveValue> color = cssValuePool.createColorValue(currShadowData->color().rgb());
-        list.get().prepend(CSSShadowValue::create(x.release(), y.release(), blur.release(), spread.release(), style.release(), color.release()));
+        auto x = adjustLengthForZoom(currShadowData->x(), style, adjust);
+        auto y = adjustLengthForZoom(currShadowData->y(), style, adjust);
+        auto blur = adjustLengthForZoom(currShadowData->radius(), style, adjust);
+        auto spread = propertyID == CSSPropertyTextShadow ? RefPtr<CSSPrimitiveValue>() : adjustLengthForZoom(currShadowData->spread(), style, adjust);
+        auto style = propertyID == CSSPropertyTextShadow || currShadowData->style() == Normal ? RefPtr<CSSPrimitiveValue>() : cssValuePool.createIdentifierValue(CSSValueInset);
+        auto color = cssValuePool.createColorValue(currShadowData->color().rgb());
+        list->prepend(CSSShadowValue::create(WTFMove(x), WTFMove(y), WTFMove(blur), WTFMove(spread), WTFMove(style), WTFMove(color)));
     }
     return WTFMove(list);
 }
@@ -1027,24 +1029,89 @@ static Ref<CSSValue> specifiedValueForGridTrackSize(const GridTrackSize& trackSi
         return specifiedValueForGridTrackBreadth(trackSize.length(), style);
     default:
         ASSERT(trackSize.type() == MinMaxTrackSizing);
-        RefPtr<CSSValueList> minMaxTrackBreadths = CSSValueList::createCommaSeparated();
+        auto minMaxTrackBreadths = CSSValueList::createCommaSeparated();
         minMaxTrackBreadths->append(specifiedValueForGridTrackBreadth(trackSize.minTrackBreadth(), style));
         minMaxTrackBreadths->append(specifiedValueForGridTrackBreadth(trackSize.maxTrackBreadth(), style));
-        return CSSFunctionValue::create("minmax(", minMaxTrackBreadths);
+        return CSSFunctionValue::create("minmax(", WTFMove(minMaxTrackBreadths));
     }
 }
 
-static void addValuesForNamedGridLinesAtIndex(const OrderedNamedGridLinesMap& orderedNamedGridLines, size_t i, CSSValueList& list)
+class OrderedNamedLinesCollector {
+    WTF_MAKE_NONCOPYABLE(OrderedNamedLinesCollector);
+public:
+    OrderedNamedLinesCollector(const RenderStyle& style, bool isRowAxis, unsigned repetitions)
+        : m_orderedNamedGridLines(isRowAxis ? style.orderedNamedGridColumnLines() : style.orderedNamedGridRowLines())
+        , m_orderedNamedAutoRepeatGridLines(isRowAxis ? style.autoRepeatOrderedNamedGridColumnLines() : style.autoRepeatOrderedNamedGridRowLines())
+        , m_insertionPoint(isRowAxis ? style.gridAutoRepeatColumnsInsertionPoint() : style.gridAutoRepeatRowsInsertionPoint())
+        , m_repetitions(repetitions)
+    {
+    }
+
+    bool isEmpty() const { return m_orderedNamedGridLines.isEmpty() && m_orderedNamedAutoRepeatGridLines.isEmpty(); }
+    void collectLineNamesForIndex(CSSGridLineNamesValue&, unsigned index) const;
+
+private:
+
+    enum NamedLinesType { NamedLines, AutoRepeatNamedLines };
+    void appendLines(CSSGridLineNamesValue&, unsigned index, NamedLinesType) const;
+
+    const OrderedNamedGridLinesMap& m_orderedNamedGridLines;
+    const OrderedNamedGridLinesMap& m_orderedNamedAutoRepeatGridLines;
+    unsigned m_insertionPoint;
+    unsigned m_repetitions;
+};
+
+void OrderedNamedLinesCollector::appendLines(CSSGridLineNamesValue& lineNamesValue, unsigned index, NamedLinesType type) const
 {
-    const Vector<String>& namedGridLines = orderedNamedGridLines.get(i);
-    if (namedGridLines.isEmpty())
+    auto iter = type == NamedLines ? m_orderedNamedGridLines.find(index) : m_orderedNamedAutoRepeatGridLines.find(index);
+    auto endIter = type == NamedLines ? m_orderedNamedGridLines.end() : m_orderedNamedAutoRepeatGridLines.end();
+    if (iter == endIter)
         return;
 
     auto& cssValuePool = CSSValuePool::singleton();
-    RefPtr<CSSGridLineNamesValue> lineNames = CSSGridLineNamesValue::create();
-    for (auto& name : namedGridLines)
-        lineNames->append(cssValuePool.createValue(name, CSSPrimitiveValue::CSS_STRING));
-    list.append(lineNames.releaseNonNull());
+    for (auto lineName : iter->value)
+        lineNamesValue.append(cssValuePool.createValue(lineName, CSSPrimitiveValue::CSS_STRING));
+}
+
+void OrderedNamedLinesCollector::collectLineNamesForIndex(CSSGridLineNamesValue& lineNamesValue, unsigned i) const
+{
+    ASSERT(!isEmpty());
+    if (m_orderedNamedAutoRepeatGridLines.isEmpty() || i < m_insertionPoint) {
+        appendLines(lineNamesValue, i, NamedLines);
+        return;
+    }
+
+    ASSERT(m_repetitions);
+    if (i > m_insertionPoint + m_repetitions) {
+        appendLines(lineNamesValue, i - (m_repetitions - 1), NamedLines);
+        return;
+    }
+
+    if (i == m_insertionPoint) {
+        appendLines(lineNamesValue, i, NamedLines);
+        appendLines(lineNamesValue, 0, AutoRepeatNamedLines);
+        return;
+    }
+
+    if (i == m_insertionPoint + m_repetitions) {
+        appendLines(lineNamesValue, 1, AutoRepeatNamedLines);
+        appendLines(lineNamesValue, m_insertionPoint + 1, NamedLines);
+        return;
+    }
+
+    appendLines(lineNamesValue, 1, AutoRepeatNamedLines);
+    appendLines(lineNamesValue, 0, AutoRepeatNamedLines);
+}
+
+static void addValuesForNamedGridLinesAtIndex(OrderedNamedLinesCollector& collector, unsigned i, CSSValueList& list)
+{
+    if (collector.isEmpty())
+        return;
+
+    auto lineNames = CSSGridLineNamesValue::create();
+    collector.collectLineNamesForIndex(lineNames.get(), i);
+    if (lineNames->length())
+        list.append(WTFMove(lineNames));
 }
 
 static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, RenderObject* renderer, const RenderStyle& style)
@@ -1053,7 +1120,6 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
     bool isRenderGrid = is<RenderGrid>(renderer);
     auto& trackSizes = isRowAxis ? style.gridColumns() : style.gridRows();
     auto& autoRepeatTrackSizes = isRowAxis ? style.gridAutoRepeatColumns() : style.gridAutoRepeatRows();
-    auto& orderedNamedGridLines = isRowAxis ? style.orderedNamedGridColumnLines() : style.orderedNamedGridRowLines();
 
     // Handle the 'none' case.
     bool trackListIsEmpty = trackSizes.isEmpty() && autoRepeatTrackSizes.isEmpty();
@@ -1064,11 +1130,11 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
         trackListIsEmpty = !downcast<RenderBlock>(*renderer).firstChild();
     }
 
-    if (trackListIsEmpty) {
-        ASSERT(orderedNamedGridLines.isEmpty());
+    if (trackListIsEmpty)
         return CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
-    }
 
+    unsigned repetitions = isRenderGrid ? downcast<RenderGrid>(renderer)->autoRepeatCountForDirection(direction) : 0;
+    OrderedNamedLinesCollector collector(style, isRowAxis, repetitions);
     auto list = CSSValueList::createSpaceSeparated();
     unsigned insertionIndex;
     if (isRenderGrid) {
@@ -1082,23 +1148,23 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
         LayoutUnit gutterSize = grid.guttersSize(direction, 2);
         LayoutUnit offsetBetweenTracks = grid.offsetBetweenTracks(direction);
         for (; i < trackPositions.size() - 2; ++i) {
-            addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, list.get());
+            addValuesForNamedGridLinesAtIndex(collector, i, list.get());
             list.get().append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i] - gutterSize - offsetBetweenTracks, style));
         }
         // Last track line does not have any gutter or distribution offset.
-        addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, list.get());
+        addValuesForNamedGridLinesAtIndex(collector, i, list.get());
         list.get().append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i], style));
         insertionIndex = trackPositions.size() - 1;
     } else {
         for (unsigned i = 0; i < trackSizes.size(); ++i) {
-            addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, list.get());
+            addValuesForNamedGridLinesAtIndex(collector, i, list.get());
             list.get().append(specifiedValueForGridTrackSize(trackSizes[i], style));
         }
         insertionIndex = trackSizes.size();
     }
 
     // Those are the trailing <ident>* allowed in the syntax.
-    addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, insertionIndex, list.get());
+    addValuesForNamedGridLinesAtIndex(collector, insertionIndex, list.get());
     return WTFMove(list);
 }
 

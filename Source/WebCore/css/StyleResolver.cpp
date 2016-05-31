@@ -77,10 +77,12 @@
 #include "HTMLDocument.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLInputElement.h"
+#include "HTMLMarqueeElement.h"
 #include "HTMLNames.h"
 #include "HTMLOptGroupElement.h"
 #include "HTMLOptionElement.h"
 #include "HTMLProgressElement.h"
+#include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTableElement.h"
 #include "HTMLTextAreaElement.h"
@@ -197,14 +199,19 @@ inline void StyleResolver::State::clear()
     m_cssToLengthConversionData = CSSToLengthConversionData();
 }
 
-void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& properties, StyleRule* rule, unsigned linkMatchType, PropertyWhitelistType propertyWhitelistType)
+void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& properties, StyleRule* rule, unsigned linkMatchType, PropertyWhitelistType propertyWhitelistType, unsigned treeContextOrdinal)
 {
     m_matchedProperties.grow(m_matchedProperties.size() + 1);
     StyleResolver::MatchedProperties& newProperties = m_matchedProperties.last();
     newProperties.properties = const_cast<StyleProperties*>(&properties);
     newProperties.linkMatchType = linkMatchType;
     newProperties.whitelistType = propertyWhitelistType;
+    newProperties.treeContextOrdinal = treeContextOrdinal;
     matchedRules.append(rule);
+
+    // Ordinal is relative to the currently matched element
+    if (treeContextOrdinal)
+        isCacheable = false;
 
     if (isCacheable) {
         for (unsigned i = 0, count = properties.propertyCount(); i < count; ++i) {
@@ -298,10 +305,10 @@ void StyleResolver::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>&
 }
 
 // This is a simplified style setting function for keyframe styles
-void StyleResolver::addKeyframeStyle(PassRefPtr<StyleRuleKeyframes> rule)
+void StyleResolver::addKeyframeStyle(Ref<StyleRuleKeyframes>&& rule)
 {
     AtomicString s(rule->name());
-    m_keyframesRuleMap.set(s.impl(), rule);
+    m_keyframesRuleMap.set(s.impl(), WTFMove(rule));
 }
 
 StyleResolver::~StyleResolver()
@@ -463,7 +470,7 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* 
     // We don't need to bother with !important. Since there is only ever one
     // decl, there's nothing to override. So just add the first properties.
     CascadedProperties cascade(direction, writingMode);
-    cascade.addMatches(result, false, 0, result.matchedProperties().size() - 1);
+    cascade.addNormalMatches(result, 0, result.matchedProperties().size() - 1);
     
     // Resolve custom properties first.
     applyCascadedProperties(cascade, CSSPropertyCustom, CSSPropertyCustom, &result);
@@ -516,17 +523,14 @@ void StyleResolver::keyframeStylesForAnimation(const Element& element, const Ren
     const StyleRuleKeyframes* keyframesRule = it->value.get();
 
     // Construct and populate the style for each keyframe
-    const Vector<RefPtr<StyleKeyframe>>& keyframes = keyframesRule->keyframes();
-    for (unsigned i = 0; i < keyframes.size(); ++i) {
+    for (auto& keyframe : keyframesRule->keyframes()) {
         // Apply the declaration to the style. This is a simplified version of the logic in styleForElement
         m_state = State(element, nullptr);
-
-        const StyleKeyframe* keyframe = keyframes[i].get();
 
         // Add this keyframe style to all the indicated key times
         for (auto& key : keyframe->keys()) {
             KeyframeValue keyframeValue(0, nullptr);
-            keyframeValue.setStyle(styleForKeyframe(elementStyle, keyframe, keyframeValue));
+            keyframeValue.setStyle(styleForKeyframe(elementStyle, keyframe.ptr(), keyframeValue));
             keyframeValue.setKey(key);
             list.insert(WTFMove(keyframeValue));
         }
@@ -631,7 +635,7 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     extractDirectionAndWritingMode(*m_state.style(), result, direction, writingMode);
 
     CascadedProperties cascade(direction, writingMode);
-    cascade.addMatches(result, false, 0, result.matchedProperties().size() - 1);
+    cascade.addNormalMatches(result, 0, result.matchedProperties().size() - 1);
 
     // Resolve custom properties first.
     applyCascadedProperties(cascade, CSSPropertyCustom, CSSPropertyCustom, &result);
@@ -1240,7 +1244,8 @@ static bool isCacheableInMatchedPropertiesCache(const Element& element, const Re
     // Document::setWritingMode/DirectionSetOnDocumentElement. We can't skip the applying by caching.
     if (&element == element.document().documentElement())
         return false;
-    if (style->unique() || (style->styleType() != NOPSEUDO && parentStyle->unique()))
+    // content:attr() value depends on the element it is being applied to.
+    if (style->hasAttrContent() || (style->styleType() != NOPSEUDO && parentStyle->hasAttrContent()))
         return false;
     if (style->hasAppearance())
         return false;
@@ -1249,7 +1254,7 @@ static bool isCacheableInMatchedPropertiesCache(const Element& element, const Re
     if (style->writingMode() != RenderStyle::initialWritingMode() || style->direction() != RenderStyle::initialDirection())
         return false;
     // The cache assumes static knowledge about which properties are inherited.
-    if (parentStyle->hasExplicitlyInheritedProperties())
+    if (style->hasExplicitlyInheritedProperties())
         return false;
     return true;
 }
@@ -1324,8 +1329,8 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         // If so, we cache the border and background styles so that RenderTheme::adjustStyle()
         // can look at them later to figure out if this is a styled form control or not.
         CascadedProperties cascade(direction, writingMode);
-        cascade.addMatches(matchResult, false, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
-        cascade.addMatches(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
+        cascade.addNormalMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
+        cascade.addImportantMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
 
         applyCascadedProperties(cascade, CSSPropertyWebkitRubyPosition, CSSPropertyWebkitRubyPosition, &matchResult);
         adjustStyleForInterCharacterRuby();
@@ -1343,10 +1348,10 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
     }
 
     CascadedProperties cascade(direction, writingMode);
-    cascade.addMatches(matchResult, false, 0, matchResult.matchedProperties().size() - 1, applyInheritedOnly);
-    cascade.addMatches(matchResult, true, matchResult.ranges.firstAuthorRule, matchResult.ranges.lastAuthorRule, applyInheritedOnly);
-    cascade.addMatches(matchResult, true, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, applyInheritedOnly);
-    cascade.addMatches(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
+    cascade.addNormalMatches(matchResult, 0, matchResult.matchedProperties().size() - 1, applyInheritedOnly);
+    cascade.addImportantMatches(matchResult, matchResult.ranges.firstAuthorRule, matchResult.ranges.lastAuthorRule, applyInheritedOnly);
+    cascade.addImportantMatches(matchResult, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, applyInheritedOnly);
+    cascade.addImportantMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
     
     // Resolve custom properties first.
     applyCascadedProperties(cascade, CSSPropertyCustom, CSSPropertyCustom, &matchResult);
@@ -1522,10 +1527,10 @@ StyleResolver::CascadedProperties* StyleResolver::cascadedPropertiesForRollback(
         auto newAuthorRollback(std::make_unique<CascadedProperties>(direction, writingMode));
         
         // This special rollback cascade contains UA rules and user rules but no author rules.
-        newAuthorRollback->addMatches(matchResult, false, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
-        newAuthorRollback->addMatches(matchResult, false, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, false);
-        newAuthorRollback->addMatches(matchResult, true, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, false);
-        newAuthorRollback->addMatches(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
+        newAuthorRollback->addNormalMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
+        newAuthorRollback->addNormalMatches(matchResult, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, false);
+        newAuthorRollback->addImportantMatches(matchResult, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, false);
+        newAuthorRollback->addImportantMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
     
         state().setAuthorRollback(newAuthorRollback);
         return state().authorRollback();
@@ -1539,8 +1544,8 @@ StyleResolver::CascadedProperties* StyleResolver::cascadedPropertiesForRollback(
         auto newUserRollback(std::make_unique<CascadedProperties>(direction, writingMode));
         
         // This special rollback cascade contains only UA rules.
-        newUserRollback->addMatches(matchResult, false, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
-        newUserRollback->addMatches(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
+        newUserRollback->addNormalMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
+        newUserRollback->addImportantMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, false);
     
         state().setUserRollback(newUserRollback);
         return state().userRollback();
@@ -1630,8 +1635,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, SelectorChe
         return;
     }
 
-    if (isInherit && !state.parentStyle()->hasExplicitlyInheritedProperties() && !CSSProperty::isInheritedProperty(id))
-        const_cast<RenderStyle*>(state.parentStyle())->setHasExplicitlyInheritedProperties();
+    if (isInherit && !CSSProperty::isInheritedProperty(id))
+        state.style()->setHasExplicitlyInheritedProperties();
     
     if (id == CSSPropertyCustom) {
         CSSCustomPropertyValue* customProperty = &downcast<CSSCustomPropertyValue>(*valueToApply);
@@ -1657,7 +1662,7 @@ RefPtr<CSSValue> StyleResolver::resolvedVariableValue(CSSPropertyID propID, cons
     return parser.parseVariableDependentValue(propID, value, m_state.style()->customProperties());
 }
 
-PassRefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValue& value)
+RefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValue& value)
 {
     if (is<CSSImageValue>(value))
         return cachedOrPendingFromValue(property, downcast<CSSImageValue>(value));
@@ -1679,15 +1684,15 @@ PassRefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValu
     return nullptr;
 }
 
-RefPtr<StyleImage> StyleResolver::cachedOrPendingFromValue(CSSPropertyID property, CSSImageValue& value)
+Ref<StyleImage> StyleResolver::cachedOrPendingFromValue(CSSPropertyID property, CSSImageValue& value)
 {
-    RefPtr<StyleImage> image = value.cachedOrPendingImage();
-    if (image && image->isPendingImage())
+    Ref<StyleImage> image = value.cachedOrPendingImage();
+    if (image->isPendingImage())
         m_state.pendingImageProperties().set(property, &value);
     return image;
 }
 
-PassRefPtr<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID property, CSSImageGeneratorValue& value)
+Ref<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID property, CSSImageGeneratorValue& value)
 {
     if (is<CSSFilterImageValue>(value)) {
         // FilterImage needs to calculate FilterOperations.
@@ -2077,7 +2082,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
     return true;
 }
 
-PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage, const ResourceLoaderOptions& options)
+RefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage, const ResourceLoaderOptions& options)
 {
     if (auto imageValue = pendingImage.cssImageValue())
         return imageValue->cachedImage(m_state.document().cachedResourceLoader(), options);
@@ -2098,7 +2103,7 @@ PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& 
     return nullptr;
 }
 
-PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage)
+RefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage)
 {
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
     options.setContentSecurityPolicyImposition(m_state.element() && m_state.element()->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
@@ -2380,16 +2385,70 @@ static CascadeLevel cascadeLevelForIndex(const StyleResolver::MatchResult& match
     return AuthorLevel;
 }
 
-void StyleResolver::CascadedProperties::addMatches(const MatchResult& matchResult, bool important, int startIndex, int endIndex, bool inheritedOnly)
+void StyleResolver::CascadedProperties::addMatch(const MatchResult& matchResult, unsigned index, bool isImportant, bool inheritedOnly)
+{
+    const MatchedProperties& matchedProperties = matchResult.matchedProperties()[index];
+
+    auto propertyWhitelistType = static_cast<PropertyWhitelistType>(matchedProperties.whitelistType);
+    auto cascadeLevel = cascadeLevelForIndex(matchResult, index);
+
+    addStyleProperties(*matchedProperties.properties, *matchResult.matchedRules[index], isImportant, inheritedOnly, propertyWhitelistType, matchedProperties.linkMatchType, cascadeLevel);
+}
+
+void StyleResolver::CascadedProperties::addNormalMatches(const MatchResult& matchResult, int startIndex, int endIndex, bool inheritedOnly)
 {
     if (startIndex == -1)
         return;
 
+    for (int i = startIndex; i <= endIndex; ++i)
+        addMatch(matchResult, i, false, inheritedOnly);
+}
+
+static bool hasImportantProperties(const StyleProperties& properties)
+{
+    for (unsigned i = 0, count = properties.propertyCount(); i < count; ++i) {
+        if (properties.propertyAt(i).isImportant())
+            return true;
+    }
+    return false;
+}
+
+void StyleResolver::CascadedProperties::addImportantMatches(const MatchResult& matchResult, int startIndex, int endIndex, bool inheritedOnly)
+{
+    if (startIndex == -1)
+        return;
+
+    struct IndexAndOrdinal {
+        int index;
+        unsigned ordinal;
+    };
+    Vector<IndexAndOrdinal> shadowTreeMatches;
+
     for (int i = startIndex; i <= endIndex; ++i) {
         const MatchedProperties& matchedProperties = matchResult.matchedProperties()[i];
-        addStyleProperties(*matchedProperties.properties, *matchResult.matchedRules[i], important, inheritedOnly, static_cast<PropertyWhitelistType>(matchedProperties.whitelistType), matchedProperties.linkMatchType,
-            cascadeLevelForIndex(matchResult, i));
+
+        if (!hasImportantProperties(*matchedProperties.properties))
+            continue;
+
+        if (matchedProperties.treeContextOrdinal) {
+            shadowTreeMatches.append({ i, matchedProperties.treeContextOrdinal });
+            continue;
+        }
+
+        addMatch(matchResult, i, true, inheritedOnly);
     }
+
+    if (shadowTreeMatches.isEmpty())
+        return;
+
+    // For !important properties a later shadow tree wins.
+    // Match results are sorted in reverse tree context order so this is not needed for normal properties.
+    std::stable_sort(shadowTreeMatches.begin(), shadowTreeMatches.end(), [] (const IndexAndOrdinal& a, const IndexAndOrdinal& b) {
+        return a.ordinal < b.ordinal;
+    });
+
+    for (auto& match : shadowTreeMatches)
+        addMatch(matchResult, match.index, true, inheritedOnly);
 }
 
 void StyleResolver::CascadedProperties::applyDeferredProperties(StyleResolver& resolver, const MatchResult* matchResult)

@@ -747,6 +747,11 @@ GridTrackSize RenderGrid::gridTrackSize(GridTrackSizingDirection direction, unsi
         }
     }
 
+    // Flex sizes are invalid as a min sizing function. However we still can have a flexible |minTrackBreadth|
+    // if the track size is just a flex size (e.g. "1fr"), the spec says that in this case it implies an automatic minimum.
+    if (minTrackBreadth.isFlex())
+        minTrackBreadth = Length(Auto);
+
     return GridTrackSize(minTrackBreadth, maxTrackBreadth);
 }
 
@@ -1222,7 +1227,7 @@ unsigned RenderGrid::computeAutoRepeatTracksCount(GridTrackSizingDirection direc
     ASSERT(autoRepeatTracks.size() == 1);
     auto autoTrackSize = autoRepeatTracks.at(0);
     ASSERT(autoTrackSize.minTrackBreadth().isLength());
-    ASSERT(!autoTrackSize.minTrackBreadth().isContentSized());
+    ASSERT(!autoTrackSize.minTrackBreadth().isFlex());
 
     Optional<LayoutUnit> availableSize = isRowAxis ? availableLogicalWidth() : computeContentLogicalHeight(MainOrPreferredSize, style().logicalHeight(), Nullopt);
     if (!isRowAxis || containingBlock()) {
@@ -1544,7 +1549,8 @@ void RenderGrid::applyStretchAlignmentToTracksIfNeeded(GridTrackSizingDirection 
 
 void RenderGrid::layoutGridItems(GridSizingData& sizingData)
 {
-    populateGridPositions(sizingData);
+    populateGridPositionsForDirection(sizingData, ForColumns);
+    populateGridPositionsForDirection(sizingData, ForRows);
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (child->isOutOfFlowPositioned()) {
@@ -1746,7 +1752,7 @@ LayoutUnit RenderGrid::gridAreaBreadthForChildIncludingAlignmentOffsets(const Re
     return finalTrackPosition - initialTrackPosition + tracks[span.endLine() - 1].baseSize();
 }
 
-void RenderGrid::populateGridPositions(GridSizingData& sizingData)
+void RenderGrid::populateGridPositionsForDirection(GridSizingData& sizingData, GridTrackSizingDirection direction)
 {
     // Since we add alignment offsets and track gutters, grid lines are not always adjacent. Hence we will have to
     // assume from now on that we just store positions of the initial grid lines of each track,
@@ -1755,31 +1761,23 @@ void RenderGrid::populateGridPositions(GridSizingData& sizingData)
     // The grid container's frame elements (border, padding and <content-position> offset) are sensible to the
     // inline-axis flow direction. However, column lines positions are 'direction' unaware. This simplification
     // allows us to use the same indexes to identify the columns independently on the inline-axis direction.
-    unsigned numberOfTracks = sizingData.columnTracks.size();
+    bool isRowAxis = direction == ForColumns;
+    auto& tracks = isRowAxis ? sizingData.columnTracks : sizingData.rowTracks;
+    unsigned numberOfTracks = tracks.size();
     unsigned numberOfLines = numberOfTracks + 1;
     unsigned lastLine = numberOfLines - 1;
     unsigned nextToLastLine = numberOfLines - 2;
-    ContentAlignmentData offset = computeContentPositionAndDistributionOffset(ForColumns, sizingData.freeSpaceForDirection(ForColumns).value(), numberOfTracks);
-    LayoutUnit trackGap = guttersSize(ForColumns, 2);
-    m_columnPositions.resize(numberOfLines);
-    m_columnPositions[0] = borderAndPaddingLogicalLeft() + offset.positionOffset;
+    ContentAlignmentData offset = computeContentPositionAndDistributionOffset(direction, sizingData.freeSpaceForDirection(direction).value(), numberOfTracks);
+    LayoutUnit trackGap = guttersSize(direction, 2);
+    auto& positions = isRowAxis ? m_columnPositions : m_rowPositions;
+    positions.resize(numberOfLines);
+    auto borderAndPadding = isRowAxis ? borderAndPaddingLogicalLeft() : borderAndPaddingBefore();
+    positions[0] = borderAndPadding + offset.positionOffset;
     for (unsigned i = 0; i < nextToLastLine; ++i)
-        m_columnPositions[i + 1] = m_columnPositions[i] + offset.distributionOffset + sizingData.columnTracks[i].baseSize() + trackGap;
-    m_columnPositions[lastLine] = m_columnPositions[nextToLastLine] + sizingData.columnTracks[nextToLastLine].baseSize();
-    m_offsetBetweenColumns = offset.distributionOffset;
-
-    numberOfTracks = sizingData.rowTracks.size();
-    numberOfLines = numberOfTracks + 1;
-    lastLine = numberOfLines - 1;
-    nextToLastLine = numberOfLines - 2;
-    offset = computeContentPositionAndDistributionOffset(ForRows, sizingData.freeSpaceForDirection(ForRows).value(), numberOfTracks);
-    trackGap = guttersSize(ForRows, 2);
-    m_rowPositions.resize(numberOfLines);
-    m_rowPositions[0] = borderAndPaddingBefore() + offset.positionOffset;
-    for (unsigned i = 0; i < nextToLastLine; ++i)
-        m_rowPositions[i + 1] = m_rowPositions[i] + offset.distributionOffset + sizingData.rowTracks[i].baseSize() + trackGap;
-    m_rowPositions[lastLine] = m_rowPositions[nextToLastLine] + sizingData.rowTracks[nextToLastLine].baseSize();
-    m_offsetBetweenRows = offset.distributionOffset;
+        positions[i + 1] = positions[i] + offset.distributionOffset + tracks[i].baseSize() + trackGap;
+    positions[lastLine] = positions[nextToLastLine] + tracks[nextToLastLine].baseSize();
+    auto& offsetBetweenTracks = isRowAxis ? m_offsetBetweenColumns : m_offsetBetweenRows;
+    offsetBetweenTracks = offset.distributionOffset;
 }
 
 static inline LayoutUnit computeOverflowAlignmentOffset(OverflowAlignment overflow, LayoutUnit trackBreadth, LayoutUnit childBreadth)

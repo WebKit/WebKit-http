@@ -80,6 +80,7 @@ public:
     void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier);
 
     void notifyOpenDBRequestBlocked(const IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion);
+    void openDBRequestCancelled(const IDBRequestData&);
 
     void establishTransaction(IDBTransaction&);
     void commitTransaction(IDBTransaction&);
@@ -89,8 +90,11 @@ public:
     void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
     void didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
 
-    void didFinishHandlingVersionChangeTransaction(IDBTransaction&);
+    void didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, IDBTransaction&);
     void databaseConnectionClosed(IDBDatabase&);
+
+    void didCloseFromServer(uint64_t databaseConnectionIdentifier, const IDBError&);
+    void confirmDidCloseFromServer(IDBDatabase&);
 
     void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier);
 
@@ -106,7 +110,8 @@ public:
     void registerDatabaseConnection(IDBDatabase&);
     void unregisterDatabaseConnection(IDBDatabase&);
 
-    RefPtr<IDBOpenDBRequest> takeIDBOpenDBRequest(IDBOpenDBRequest&);
+    void forgetActiveOperations(const Vector<RefPtr<TransactionOperation>>&);
+    void forgetActivityForCurrentThread();
 
 private:
     void completeOpenDBRequest(const IDBResultData&);

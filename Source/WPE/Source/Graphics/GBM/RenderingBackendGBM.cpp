@@ -153,6 +153,7 @@ void RenderingBackendGBM::Surface::releaseBuffer(uint32_t handle)
     struct gbm_bo* bo = it->second;
     if (bo)
         gbm_surface_release_buffer(m_surface, bo);
+    m_lockedBuffers.erase(it);
 }
 
 RenderingBackendGBM::OffscreenSurface::OffscreenSurface(const RenderingBackendGBM& renderingBackend)

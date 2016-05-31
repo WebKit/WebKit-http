@@ -31,15 +31,10 @@
 #include "config.h"
 #include "ReplaceNodeWithSpanCommand.h"
 
+#include "HTMLSpanElement.h"
 #include "htmlediting.h"
-#include "HTMLElement.h"
-#include "HTMLNames.h"
-
-#include <wtf/Assertions.h>
 
 namespace WebCore {
-
-using namespace HTMLNames;
 
 ReplaceNodeWithSpanCommand::ReplaceNodeWithSpanCommand(PassRefPtr<HTMLElement> element)
     : SimpleEditCommand(element->document())
@@ -58,7 +53,7 @@ static void swapInNodePreservingAttributesAndChildren(HTMLElement& newNode, HTML
     NodeVector children;
     getChildNodes(nodeToReplace, children);
     for (auto& child : children)
-        newNode.appendChild(WTFMove(child), ASSERT_NO_EXCEPTION);
+        newNode.appendChild(child, ASSERT_NO_EXCEPTION);
 
     parentNode->insertBefore(newNode, &nodeToReplace, ASSERT_NO_EXCEPTION);
     parentNode->removeChild(nodeToReplace, ASSERT_NO_EXCEPTION);
@@ -69,7 +64,7 @@ void ReplaceNodeWithSpanCommand::doApply()
     if (!m_elementToReplace->inDocument())
         return;
     if (!m_spanElement)
-        m_spanElement = createHTMLElement(m_elementToReplace->document(), spanTag);
+        m_spanElement = HTMLSpanElement::create(m_elementToReplace->document());
     swapInNodePreservingAttributesAndChildren(*m_spanElement, *m_elementToReplace);
 }
 

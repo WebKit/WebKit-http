@@ -415,11 +415,8 @@ WebInspector.TimelineRuler = class TimelineRuler extends WebInspector.View
 
     // Protected
 
-    layout(layoutReason)
+    layout()
     {
-        if (layoutReason === WebInspector.View.LayoutReason.Resize)
-            this._cachedClientWidth = this.element.clientWidth;
-
         let visibleWidth = this._recalculate();
         if (visibleWidth <= 0)
             return;
@@ -532,6 +529,11 @@ WebInspector.TimelineRuler = class TimelineRuler extends WebInspector.View
         this._updateSelection(visibleWidth, duration);
     }
 
+    sizeDidChange()
+    {
+        this._cachedClientWidth = this.element.clientWidth;
+    }
+
     // Private
 
     _needsMarkerLayout()
@@ -602,11 +604,11 @@ WebInspector.TimelineRuler = class TimelineRuler extends WebInspector.View
         property = property || "left";
 
         newPosition *= this._endTimePinned ? 100 : visibleWidth;
-        newPosition = newPosition.toFixed(2);
 
-        var currentPosition = parseFloat(element.style[property]).toFixed(2);
-        if (currentPosition !== newPosition)
-            element.style[property] = newPosition + (this._endTimePinned ? "%" : "px");
+        let newPositionAprox = Math.round(newPosition * 100);
+        let currentPositionAprox = Math.round(parseFloat(element.style[property]) * 100);
+        if (currentPositionAprox !== newPositionAprox)
+            element.style[property] = (newPositionAprox / 100) + (this._endTimePinned ? "%" : "px");
     }
 
     _updateMarkers(visibleWidth, duration)

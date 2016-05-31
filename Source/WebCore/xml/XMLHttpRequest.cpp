@@ -764,7 +764,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
 void XMLHttpRequest::abort()
 {
     // internalAbort() calls dropProtection(), which may release the last reference.
-    Ref<XMLHttpRequest> protect(*this);
+    Ref<XMLHttpRequest> protectedThis(*this);
 
     if (!internalAbort())
         return;
@@ -1209,7 +1209,7 @@ void XMLHttpRequest::dispatchErrorEvents(const AtomicString& type)
 void XMLHttpRequest::didReachTimeout()
 {
     // internalAbort() calls dropProtection(), which may release the last reference.
-    Ref<XMLHttpRequest> protect(*this);
+    Ref<XMLHttpRequest> protectedThis(*this);
     if (!internalAbort())
         return;
 

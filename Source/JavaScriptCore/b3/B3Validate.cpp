@@ -252,6 +252,11 @@ public:
                 VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
                 VALIDATE(value->type() == Double, ("At ", *value));
                 break;
+            case IToF:
+                VALIDATE(value->numChildren() == 1, ("At ", *value));
+                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->type() == Float, ("At ", *value));
+                break;
             case FloatToDouble:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->child(0)->type() == Float, ("At ", *value));
@@ -411,6 +416,7 @@ private:
         case ValueRep::StackArgument:
             break;
         case ValueRep::Register:
+        case ValueRep::LateRegister:
             if (value.rep().reg().isGPR())
                 VALIDATE(isInt(value.value()->type()), ("At ", *context, ": ", value));
             else

@@ -27,7 +27,6 @@
 #include "EventHandler.h"
 
 #include "AXObjectCache.h"
-#include "BlockExceptions.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "DataTransfer.h"
@@ -39,7 +38,10 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
+#include "HTMLBodyElement.h"
 #include "HTMLDocument.h"
+#include "HTMLFrameSetElement.h"
+#include "HTMLHtmlElement.h"
 #include "HTMLIFrameElement.h"
 #include "KeyboardEvent.h"
 #include "MainFrame.h"
@@ -61,6 +63,7 @@
 #include "ShadowRoot.h"
 #include "WebCoreSystemInterface.h"
 #include "WheelEventTestTrigger.h"
+#include <wtf/BlockObjCExceptions.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ObjcRuntimeExtras.h>
@@ -1046,7 +1049,7 @@ bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& wheelEve
         m_isHandlingWheelEvent = false;
 
         // WebKit2 code path
-        if (!frameHasPlatformWidget(m_frame) && !latchingState->startedGestureAtScrollLimit() && scrollableContainer == latchingState->scrollableContainer() && scrollableArea && view != scrollableArea.get()) {
+        if (!frameHasPlatformWidget(m_frame) && !latchingState->startedGestureAtScrollLimit() && scrollableContainer == latchingState->scrollableContainer() && scrollableArea && view != scrollableArea) {
             // If we did not start at the scroll limit, do not pass the event on to be handled by enclosing scrollable regions.
             return true;
         }
@@ -1064,7 +1067,7 @@ bool EventHandler::platformCompleteWheelEvent(const PlatformWheelEvent& wheelEve
         }
 
         // If the platform widget is handling the event, we always want to return false.
-        if (scrollableArea.get() == view && view->platformWidget())
+        if (scrollableArea == view && view->platformWidget())
             didHandleWheelEvent = false;
         
         return didHandleWheelEvent;

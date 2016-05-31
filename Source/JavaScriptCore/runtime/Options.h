@@ -131,13 +131,12 @@ typedef const char* optionString;
     v(bool, dumpBytecodeLivenessResults, false, Normal, nullptr) \
     v(bool, validateBytecode, false, Normal, nullptr) \
     v(bool, forceDebuggerBytecodeGeneration, false, Normal, nullptr) \
-    v(bool, forceProfilerBytecodeGeneration, false, Normal, nullptr) \
     \
     v(bool, useFunctionDotArguments, true, Normal, nullptr) \
     v(bool, useTailCalls, true, Normal, nullptr) \
     v(bool, alwaysUseShadowChicken, false, Normal, nullptr) \
     v(unsigned, shadowChickenLogSize, 1000, Normal, nullptr) \
-    v(unsigned, shadowChickenStackSizeLimit, 100000, Normal, nullptr) \
+    v(unsigned, shadowChickenMaxTailDeletedFramesSize, 128, Normal, nullptr) \
     \
     /* dumpDisassembly implies dumpDFGDisassembly. */ \
     v(bool, dumpDisassembly, false, Normal, "dumps disassembly of all JIT compiled code upon compilation") \
@@ -211,6 +210,7 @@ typedef const char* optionString;
     v(bool, useMovHintRemoval, true, Normal, nullptr) \
     v(bool, usePutStackSinking, true, Normal, nullptr) \
     v(bool, useObjectAllocationSinking, true, Normal, nullptr) \
+    v(bool, logExecutableAllocation, false, Normal, nullptr) \
     \
     v(bool, useConcurrentJIT, true, Normal, "allows the DFG / FTL compilation in threads other than the executing JS thread") \
     v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1, Normal, nullptr) \
@@ -328,6 +328,7 @@ typedef const char* optionString;
     v(bool, useSamplingProfiler, false, Normal, nullptr) \
     v(unsigned, sampleInterval, 1000, Normal, "Time between stack traces in microseconds.") \
     v(bool, collectSamplingProfilerDataForJSCShell, false, Normal, "This corresponds to the JSC shell's --sample option.") \
+    v(optionString, samplingProfilerPath, nullptr, Normal, "The path to the directory to write sampiling profiler output to. This probably will not work with WK2 unless the path is in the whitelist.") \
     \
     v(bool, alwaysGeneratePCToCodeOriginMap, false, Normal, "This will make sure we always generate a PCToCodeOriginMap for JITed code.") \
     \
@@ -361,6 +362,8 @@ typedef const char* optionString;
     v(unsigned, watchdog, 0, Normal, "watchdog timeout (0 = Disabled, N = a timeout period of N milliseconds)") \
     \
     v(bool, useICStats, false, Normal, nullptr) \
+    \
+    v(unsigned, prototypeHitCountForLLIntCaching, 2, Normal, "Number of prototype property hits before caching a prototype in the LLInt. A count of 0 means never cache.") \
     \
     v(bool, dumpModuleRecord, false, Normal, nullptr) \
     v(bool, dumpModuleLoadingState, false, Normal, nullptr) \

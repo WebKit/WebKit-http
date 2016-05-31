@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014, 2016 Apple Inc. All rights reserved.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -117,6 +117,7 @@ public:
 
     void showConsole();
     void showResources();
+    void showTimelines();
     void showMainResourceForFrame(WebFrameProxy*);
 
     AttachmentSide attachmentSide() const { return m_attachmentSide; }
@@ -190,6 +191,7 @@ private:
 
     // Called by WebInspectorProxy messages
     void createInspectorPage(IPC::Attachment, bool canAttach, bool underTest);
+    void frontendLoaded();
     void didClose();
     void bringToFront();
     void attachAvailabilityChanged(bool);

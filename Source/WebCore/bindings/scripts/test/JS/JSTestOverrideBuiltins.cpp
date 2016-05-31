@@ -41,7 +41,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestOverrideBuiltinsPrototypeFunctionNamedIt
 
 // Attributes
 
-JSC::EncodedJSValue jsTestOverrideBuiltinsConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestOverrideBuiltinsConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName, JSC::JSObject*);
 bool setJSTestOverrideBuiltinsConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestOverrideBuiltinsPrototype : public JSC::JSNonFinalObject {
@@ -156,7 +156,7 @@ bool JSTestOverrideBuiltins::getOwnPropertySlotByIndex(JSObject* object, ExecSta
     return Base::getOwnPropertySlotByIndex(thisObject, state, index, slot);
 }
 
-EncodedJSValue jsTestOverrideBuiltinsConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestOverrideBuiltinsConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName, JSObject*)
 {
     JSTestOverrideBuiltinsPrototype* domObject = jsDynamicCast<JSTestOverrideBuiltinsPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
@@ -203,7 +203,7 @@ EncodedJSValue JSC_HOST_CALL jsTestOverrideBuiltinsPrototypeFunctionNamedItem(Ex
     auto name = state->argument(0).isUndefined() ? ASCIILiteral("test") : state->uncheckedArgument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.namedItem(WTFMove(name))));
+    JSValue result = toJS(state, castedThis->globalObject(), impl.namedItem(WTFMove(name)));
     return JSValue::encode(result);
 }
 
@@ -230,22 +230,11 @@ extern "C" { extern void* _ZTVN7WebCore20TestOverrideBuiltinsE[]; }
 #endif
 #endif
 
-JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestOverrideBuiltins* impl)
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, Ref<TestOverrideBuiltins>&& impl)
 {
-    if (!impl)
-        return jsNull();
-    return createNewWrapper<JSTestOverrideBuiltins>(globalObject, impl);
-}
-
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestOverrideBuiltins* impl)
-{
-    if (!impl)
-        return jsNull();
-    if (JSValue result = getExistingWrapper<JSTestOverrideBuiltins>(globalObject, impl))
-        return result;
 
 #if ENABLE(BINDING_INTEGRITY)
-    void* actualVTablePointer = *(reinterpret_cast<void**>(impl));
+    void* actualVTablePointer = *(reinterpret_cast<void**>(impl.ptr()));
 #if PLATFORM(WIN)
     void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestOverrideBuiltins@WebCore@@6B@"));
 #else
@@ -262,7 +251,12 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestOverride
     // by adding the SkipVTableValidation attribute to the interface IDL definition
     RELEASE_ASSERT(actualVTablePointer == expectedVTablePointer);
 #endif
-    return createNewWrapper<JSTestOverrideBuiltins>(globalObject, impl);
+    return createWrapper<JSTestOverrideBuiltins, TestOverrideBuiltins>(globalObject, WTFMove(impl));
+}
+
+JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOverrideBuiltins& impl)
+{
+    return wrap(state, globalObject, impl);
 }
 
 TestOverrideBuiltins* JSTestOverrideBuiltins::toWrapped(JSC::JSValue value)

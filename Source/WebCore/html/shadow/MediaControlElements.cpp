@@ -734,8 +734,7 @@ void MediaControlClosedCaptionsTrackListElement::updateDisplay()
     if (!mediaElement)
         return;
 
-    TextTrackList* trackList = mediaElement->textTracks();
-    if (!trackList || !trackList->length())
+    if (!mediaElement->textTracks().length())
         return;
 
     rebuildTrackListMenu();
@@ -796,29 +795,29 @@ void MediaControlClosedCaptionsTrackListElement::rebuildTrackListMenu()
     if (!mediaElement)
         return;
 
-    TextTrackList* trackList = mediaElement->textTracks();
-    if (!trackList || !trackList->length())
+    TextTrackList& trackList = mediaElement->textTracks();
+    if (!trackList.length())
         return;
 
     if (!document().page())
         return;
     auto& captionPreferences = document().page()->group().captionPreferences();
-    Vector<RefPtr<TextTrack>> tracksForMenu = captionPreferences.sortedTrackListForMenu(trackList);
+    Vector<RefPtr<TextTrack>> tracksForMenu = captionPreferences.sortedTrackListForMenu(&trackList);
 
-    Ref<Element> captionsHeader = document().createElement(h3Tag, ASSERT_NO_EXCEPTION);
+    auto captionsHeader = document().createElement(h3Tag, ASSERT_NO_EXCEPTION);
     captionsHeader->appendChild(document().createTextNode(textTrackSubtitlesText()));
-    appendChild(WTFMove(captionsHeader));
-    Ref<Element> captionsMenuList = document().createElement(ulTag, ASSERT_NO_EXCEPTION);
+    appendChild(captionsHeader);
+    auto captionsMenuList = document().createElement(ulTag, ASSERT_NO_EXCEPTION);
 
     for (auto& textTrack : tracksForMenu) {
-        Ref<Element> menuItem = document().createElement(liTag, ASSERT_NO_EXCEPTION);
+        auto menuItem = document().createElement(liTag, ASSERT_NO_EXCEPTION);
         menuItem->appendChild(document().createTextNode(captionPreferences.displayNameForTrack(textTrack.get())));
-        captionsMenuList->appendChild(menuItem.copyRef());
+        captionsMenuList->appendChild(menuItem);
         m_menuItems.append(menuItem.ptr());
         m_menuToTrackMap.add(menuItem.ptr(), textTrack);
     }
 
-    appendChild(WTFMove(captionsMenuList));
+    appendChild(captionsMenuList);
 #endif
 }
 

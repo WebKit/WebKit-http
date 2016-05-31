@@ -250,7 +250,7 @@ HRESULT DOMNode::insertBefore(_In_opt_ IDOMNode* newChild, _In_opt_ IDOMNode* re
     COMPtr<DOMNode> refChildNode(Query, refChild);
 
     ExceptionCode ec;
-    if (!m_node->insertBefore(newChildNode->node(), refChildNode ? refChildNode->node() : 0, ec))
+    if (!m_node->insertBefore(*newChildNode->node(), refChildNode ? refChildNode->node() : nullptr, ec))
         return E_FAIL;
 
     *result = newChild;
@@ -282,7 +282,7 @@ HRESULT DOMNode::removeChild(_In_opt_ IDOMNode* oldChild, _COM_Outptr_opt_ IDOMN
         return E_FAIL;
 
     ExceptionCode ec;
-    if (!m_node->removeChild(oldChildNode->node(), ec))
+    if (!m_node->removeChild(*oldChildNode->node(), ec))
         return E_FAIL;
 
     *result = oldChild;
@@ -412,8 +412,8 @@ HRESULT DOMNode::setTextContent(_In_ BSTR /*text*/)
 
 HRESULT DOMNode::addEventListener(_In_ BSTR type, _In_opt_ IDOMEventListener* listener, BOOL useCapture)
 {
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_node->addEventListener(type, webListener, useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_node->addEventListener(type, WTFMove(webListener), useCapture);
 
     return S_OK;
 }
@@ -424,8 +424,8 @@ HRESULT DOMNode::removeEventListener(_In_ BSTR type, _In_opt_ IDOMEventListener*
         return E_POINTER;
     if (!m_node)
         return E_FAIL;
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_node->removeEventListener(type, webListener.get(), useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_node->removeEventListener(type, webListener, useCapture);
     return S_OK;
 }
 
@@ -910,8 +910,8 @@ HRESULT DOMWindow::addEventListener(_In_ BSTR type, _In_opt_ IDOMEventListener* 
         return E_POINTER;
     if (!m_window)
         return E_FAIL;
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_window->addEventListener(type, webListener, useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_window->addEventListener(type, WTFMove(webListener), useCapture);
     return S_OK;
 }
 
@@ -921,8 +921,8 @@ HRESULT DOMWindow::removeEventListener(_In_ BSTR type, _In_opt_ IDOMEventListene
         return E_POINTER;
     if (!m_window)
         return E_FAIL;
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_window->removeEventListener(type, webListener.get(), useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_window->removeEventListener(type, webListener, useCapture);
     return S_OK;
 }
 

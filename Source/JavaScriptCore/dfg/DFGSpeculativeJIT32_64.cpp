@@ -3966,11 +3966,6 @@ void SpeculativeJIT::compile(Node* node)
         cellResult(resultPayload.gpr(), node);
         break;
     }
-
-    case CallObjectConstructor: {
-        compileCallObjectConstructor(node);
-        break;
-    }
         
     case ToThis: {
         ASSERT(node->child1().useKind() == UntypedUse);
@@ -4688,21 +4683,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case IsJSArray: {
-        compileIsJSArray(node);
-        break;
-    }
-
-    case IsArrayObject: {
-        compileIsArrayObject(node);
-        break;
-    }
-
-    case IsArrayConstructor: {
-        compileIsArrayConstructor(node);
-        break;
-    }
-
     case IsObject: {
         JSValueOperand value(this, node->child1());
         GPRTemporary result(this, Reuse, value, TagWord);
@@ -5194,7 +5174,20 @@ void SpeculativeJIT::compile(Node* node)
         flushRegisters();
         prepareForExternalCall();
         m_jit.emitStoreCodeOrigin(node->origin.semantic);
-        m_jit.logShadowChickenProloguePacket();
+
+        GPRTemporary scratch1(this, GPRInfo::nonArgGPR0); // This must be a non-argument GPR.
+        GPRReg scratch1Reg = scratch1.gpr();
+        GPRTemporary shadowPacket(this);
+        GPRReg shadowPacketReg = shadowPacket.gpr();
+        GPRTemporary scratch2(this);
+        GPRReg scratch2Reg = scratch2.gpr();
+
+        m_jit.ensureShadowChickenPacket(shadowPacketReg, scratch1Reg, scratch2Reg);
+
+        SpeculateCellOperand scope(this, node->child1());
+        GPRReg scopeReg = scope.gpr();
+
+        m_jit.logShadowChickenProloguePacket(shadowPacketReg, scratch1Reg, scopeReg);
         noResult(node);
         break;
     }
@@ -5202,8 +5195,23 @@ void SpeculativeJIT::compile(Node* node)
     case LogShadowChickenTail: {
         flushRegisters();
         prepareForExternalCall();
-        m_jit.emitStoreCodeOrigin(node->origin.semantic);
-        m_jit.logShadowChickenTailPacket();
+        CallSiteIndex callSiteIndex = m_jit.emitStoreCodeOrigin(node->origin.semantic);
+
+        GPRTemporary scratch1(this, GPRInfo::nonArgGPR0); // This must be a non-argument GPR.
+        GPRReg scratch1Reg = scratch1.gpr();
+        GPRTemporary shadowPacket(this);
+        GPRReg shadowPacketReg = shadowPacket.gpr();
+        GPRTemporary scratch2(this);
+        GPRReg scratch2Reg = scratch2.gpr();
+
+        m_jit.ensureShadowChickenPacket(shadowPacketReg, scratch1Reg, scratch2Reg);
+
+        JSValueOperand thisValue(this, node->child1());
+        JSValueRegs thisRegs = thisValue.jsValueRegs();
+        SpeculateCellOperand scope(this, node->child2());
+        GPRReg scopeReg = scope.gpr();
+
+        m_jit.logShadowChickenTailPacket(shadowPacketReg, thisRegs, scopeReg, m_jit.codeBlock(), callSiteIndex);
         noResult(node);
         break;
     }
@@ -5239,8 +5247,6 @@ void SpeculativeJIT::compile(Node* node)
         noResult(node);
         break;
 
-    case ProfileWillCall:
-    case ProfileDidCall:
     case PhantomLocal:
     case LoopHint:
         // This is a no-op.

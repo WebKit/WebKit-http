@@ -327,9 +327,7 @@ private:
     bool processMessage();
 
     Vector<uint8_t> m_readBuffer;
-    size_t m_readBufferSize;
     Vector<int> m_fileDescriptors;
-    size_t m_fileDescriptorsSize;
     int m_socketDescriptor;
 #if PLATFORM(GTK) || PLATFORM(WPE)
     GSocketMonitor m_socketMonitor;

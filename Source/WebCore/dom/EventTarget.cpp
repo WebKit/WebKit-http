@@ -75,12 +75,28 @@ bool EventTarget::isMessagePort() const
     return false;
 }
 
-bool EventTarget::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+bool EventTarget::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, bool useCapture)
 {
     return ensureEventTargetData().eventListenerMap.add(eventType, WTFMove(listener), useCapture);
 }
 
-bool EventTarget::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+void EventTarget::addEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+{
+    // FIXME: listener is not supposed to be nullable.
+    if (!listener)
+        return;
+    addEventListener(eventType, listener.releaseNonNull(), useCapture);
+}
+
+void EventTarget::removeEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+{
+    // FIXME: listener is not supposed to be nullable.
+    if (!listener)
+        return;
+    removeEventListener(eventType, *listener, useCapture);
+}
+
+bool EventTarget::removeEventListener(const AtomicString& eventType, EventListener& listener, bool useCapture)
 {
     EventTargetData* d = eventTargetData();
     if (!d)
@@ -110,12 +126,12 @@ bool EventTarget::removeEventListener(const AtomicString& eventType, EventListen
     return true;
 }
 
-bool EventTarget::setAttributeEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener)
+bool EventTarget::setAttributeEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener)
 {
     clearAttributeEventListener(eventType);
     if (!listener)
         return false;
-    return addEventListener(eventType, listener, false);
+    return addEventListener(eventType, listener.releaseNonNull(), false);
 }
 
 EventListener* EventTarget::getAttributeEventListener(const AtomicString& eventType)
@@ -132,7 +148,7 @@ bool EventTarget::clearAttributeEventListener(const AtomicString& eventType)
     EventListener* listener = getAttributeEventListener(eventType);
     if (!listener)
         return false;
-    return removeEventListener(eventType, listener, false);
+    return removeEventListener(eventType, *listener, false);
 }
 
 bool EventTarget::dispatchEventForBindings(Event* event, ExceptionCode& ec)
@@ -222,7 +238,7 @@ bool EventTarget::fireEventListeners(Event& event)
         
 void EventTarget::fireEventListeners(Event& event, EventTargetData* d, EventListenerVector& entry)
 {
-    Ref<EventTarget> protect(*this);
+    Ref<EventTarget> protectedThis(*this);
 
     // Fire all listeners registered for this event. Don't fire listeners removed during event dispatch.
     // Also, don't fire event listeners added during event dispatch. Conveniently, all new event listeners will be added

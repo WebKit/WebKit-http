@@ -882,7 +882,6 @@ void MediaPlayerPrivateGStreamerBase::updateVideoRectangle()
 void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext& context, const FloatRect& rect)
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    ASSERT_NOT_REACHED();
     return;
 #elif USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     if (client())
@@ -1009,7 +1008,6 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamerBase::movieLoadType() cons
     return MediaPlayer::Download;
 }
 
-#if !USE(HOLE_PUNCH_GSTREAMER)
 #if USE(GSTREAMER_GL)
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 {
@@ -1058,6 +1056,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 }
 #endif
 
+#if !USE(HOLE_PUNCH_GSTREAMER)
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
 #if USE(GSTREAMER_GL)

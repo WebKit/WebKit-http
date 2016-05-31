@@ -554,7 +554,8 @@ public:
     bool hasMargin() const { return !surround->margin.isZero(); }
     bool hasBorder() const { return surround->border.hasBorder(); }
     bool hasBorderFill() const { return surround->border.hasFill(); }
-    bool hasBorderDecoration() const { return hasBorder() || hasBorderFill(); }
+    bool hasVisibleBorderDecoration() const { return hasVisibleBorder() || hasBorderFill(); }
+    bool hasVisibleBorder() const { return surround->border.hasVisibleBorder(); }
     bool hasPadding() const { return !surround->padding.isZero(); }
     bool hasOffset() const { return !surround->offset.isZero(); }
     bool hasMarginBeforeQuirk() const { return marginBefore().hasQuirk(); }
@@ -1833,6 +1834,8 @@ public:
     void setContent(QuoteType, bool add = false);
     void setContentAltText(const String&);
     const String& contentAltText() const;
+    bool hasAttrContent() const { return rareNonInheritedData->m_hasAttrContent; }
+    void setHasAttrContent();
 
     const CounterDirectiveMap* counterDirectives() const;
     CounterDirectiveMap& accessCounterDirectives();

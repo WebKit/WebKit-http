@@ -89,7 +89,7 @@ WebInspector.Sidebar = class Sidebar extends WebInspector.View
         if (!sidebarPanel)
             return null;
 
-        sidebarPanel.willRemove();
+        sidebarPanel.selected = false;
 
         if (sidebarPanel.visible) {
             sidebarPanel.hidden();
@@ -273,7 +273,7 @@ WebInspector.Sidebar = class Sidebar extends WebInspector.View
             this._navigationBar.needsLayout();
 
         if (!this.collapsed && this._selectedSidebarPanel)
-            this._selectedSidebarPanel.widthDidChange();
+            this._selectedSidebarPanel.updateLayout(WebInspector.View.LayoutReason.Resize);
 
         this.dispatchEventToListeners(WebInspector.Sidebar.Event.WidthDidChange);
     }

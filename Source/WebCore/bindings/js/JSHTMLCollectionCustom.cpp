@@ -49,32 +49,29 @@ bool JSHTMLCollection::nameGetter(ExecState* exec, PropertyName propertyName, JS
     if (!item)
         return false;
 
-    value = toJS(exec, globalObject(), item);
+    value = toJS(exec, globalObject(), *item);
     return true;
 }
 
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, HTMLCollection* collection)
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<HTMLCollection>&& collection)
 {
-    if (!collection)
-        return jsNull();
-
-    JSObject* wrapper = getCachedWrapper(globalObject->world(), collection);
-
-    if (wrapper)
-        return wrapper;
-
     switch (collection->type()) {
     case FormControls:
-        return CREATE_DOM_WRAPPER(globalObject, HTMLFormControlsCollection, collection);
+        return CREATE_DOM_WRAPPER(globalObject, HTMLFormControlsCollection, WTFMove(collection));
     case SelectOptions:
-        return CREATE_DOM_WRAPPER(globalObject, HTMLOptionsCollection, collection);
+        return CREATE_DOM_WRAPPER(globalObject, HTMLOptionsCollection, WTFMove(collection));
     case DocAll:
-        return CREATE_DOM_WRAPPER(globalObject, HTMLAllCollection, collection);
+        return CREATE_DOM_WRAPPER(globalObject, HTMLAllCollection, WTFMove(collection));
     default:
         break;
     }
 
-    return CREATE_DOM_WRAPPER(globalObject, HTMLCollection, collection);
+    return CREATE_DOM_WRAPPER(globalObject, HTMLCollection, WTFMove(collection));
+}
+
+JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, HTMLCollection& collection)
+{
+    return wrap(state, globalObject, collection);
 }
 
 } // namespace WebCore

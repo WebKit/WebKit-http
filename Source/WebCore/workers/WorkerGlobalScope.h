@@ -76,6 +76,7 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
+    void stopIndexedDatabase();
 #endif
 
     bool shouldBypassMainWorldContentSecurityPolicy() const final { return m_shouldBypassMainWorldContentSecurityPolicy; }
@@ -90,13 +91,13 @@ public:
     void postTask(Task) override; // Executes the task on context's thread asynchronously.
 
     // WorkerGlobalScope
-    WorkerGlobalScope* self() { return this; }
-    WorkerLocation* location() const;
+    WorkerGlobalScope& self() { return *this; }
+    WorkerLocation& location() const;
     void close();
 
     // WorkerUtils
     virtual void importScripts(const Vector<String>& urls, ExceptionCode&);
-    WorkerNavigator* navigator() const;
+    WorkerNavigator& navigator() const;
 
     // Timers
     int setTimeout(std::unique_ptr<ScheduledAction>, int timeout);

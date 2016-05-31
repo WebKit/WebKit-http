@@ -112,7 +112,7 @@ public:
 
     virtual ~OpenDatabaseCallback() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }
@@ -169,19 +169,19 @@ static RefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
 {
     RefPtr<KeyPath> keyPath;
     switch (idbKeyPath.type()) {
-    case IndexedDB::KeyPathType::Null:
+    case IDBKeyPath::Type::Null:
         keyPath = KeyPath::create()
             .setType(KeyPath::Type::Null)
             .release();
         break;
-    case IndexedDB::KeyPathType::String:
+    case IDBKeyPath::Type::String:
         keyPath = KeyPath::create()
             .setType(KeyPath::Type::String)
             .release();
         keyPath->setString(idbKeyPath.string());
 
         break;
-    case IndexedDB::KeyPathType::Array: {
+    case IDBKeyPath::Type::Array: {
         auto array = Inspector::Protocol::Array<String>::create();
         for (auto& string : idbKeyPath.array())
             array->addItem(string);
@@ -371,7 +371,7 @@ public:
 
     virtual ~OpenCursorCallback() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }
@@ -600,7 +600,7 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, con
         return;
 
     RefPtr<RequestDatabaseNamesCallback> callback = WTFMove(requestCallback);
-    idbFactory->getAllDatabaseNames(*topOrigin, *openingOrigin, [callback](const Vector<String>& databaseNames) {
+    idbFactory->getAllDatabaseNames(*topOrigin, *openingOrigin, [callback](auto& databaseNames) {
         if (!callback->isActive())
             return;
 
@@ -660,7 +660,7 @@ public:
 
     virtual ~ClearObjectStoreListener() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }

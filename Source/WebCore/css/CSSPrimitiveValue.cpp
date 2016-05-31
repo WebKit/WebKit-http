@@ -940,12 +940,11 @@ LengthRepeat* CSSPrimitiveValue::getLengthRepeatValue(ExceptionCode& ec) const
 }
 #endif
 
-PassRefPtr<RGBColor> CSSPrimitiveValue::getRGBColorValue(ExceptionCode& ec) const
+RefPtr<RGBColor> CSSPrimitiveValue::getRGBColorValue(ExceptionCode& ec) const
 {
-    ec = 0;
     if (m_primitiveUnitType != CSS_RGBCOLOR) {
         ec = INVALID_ACCESS_ERR;
-        return 0;
+        return nullptr;
     }
 
     // FIMXE: This should not return a new object for each invocation.
@@ -1190,7 +1189,7 @@ void CSSPrimitiveValue::addSubresourceStyleURLs(ListHashSet<URL>& urls, const St
         addSubresourceURL(urls, styleSheet->completeURL(m_value.string));
 }
 
-RefPtr<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
+Ref<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
 {
     RefPtr<CSSPrimitiveValue> result;
 
@@ -1287,10 +1286,9 @@ RefPtr<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
         ASSERT_NOT_REACHED();
         break;
     }
-    if (result)
-        result->setCSSOMSafe();
 
-    return result;
+    result->setCSSOMSafe();
+    return result.releaseNonNull();
 }
 
 bool CSSPrimitiveValue::equals(const CSSPrimitiveValue& other) const

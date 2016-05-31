@@ -166,7 +166,7 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
 {
     // Store the previous URL because the call to ResourceLoader::willSendRequest will modify it.
     URL previousURL = request().url();
-    Ref<SubresourceLoader> protect(*this);
+    Ref<SubresourceLoader> protectedThis(*this);
 
     if (!newRequest.url().isValid()) {
         cancel(cannotShowURLError());
@@ -175,6 +175,17 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
 
     ASSERT(!newRequest.isNull());
     if (!redirectResponse.isNull()) {
+        if (options().fetchOptions().redirect != FetchOptions::Redirect::Follow) {
+            if (options().fetchOptions().redirect == FetchOptions::Redirect::Error) {
+                cancel();
+                return;
+            }
+            m_resource->setOpaqueRedirect();
+            m_resource->responseReceived({ });
+            didFinishLoading(currentTime());
+            return;
+        }
+
         // CachedResources are keyed off their original request URL.
         // Requesting the same original URL a second time can redirect to a unique second resource.
         // Therefore, if a redirect to a different destination URL occurs, we should no longer consider this a revalidation of the first resource.
@@ -216,7 +227,7 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
 void SubresourceLoader::didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
 {
     ASSERT(m_state == Initialized);
-    Ref<SubresourceLoader> protect(*this);
+    Ref<SubresourceLoader> protectedThis(*this);
     m_resource->didSendData(bytesSent, totalBytesToBeSent);
 }
 
@@ -227,7 +238,7 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 
     // Reference the object in this method since the additional processing can do
     // anything including removing the last reference to this object; one example of this is 3266216.
-    Ref<SubresourceLoader> protect(*this);
+    Ref<SubresourceLoader> protectedThis(*this);
 
     if (shouldIncludeCertificateInfo())
         response.includeCertificateInfo();
@@ -312,7 +323,7 @@ void SubresourceLoader::didReceiveDataOrBuffer(const char* data, int length, Pas
     ASSERT(m_state == Initialized);
     // Reference the object in this method since the additional processing can do
     // anything including removing the last reference to this object; one example of this is 3266216.
-    Ref<SubresourceLoader> protect(*this);
+    Ref<SubresourceLoader> protectedThis(*this);
     RefPtr<SharedBuffer> buffer = prpBuffer;
     
     ResourceLoader::didReceiveDataOrBuffer(data, length, buffer, encodedDataLength, dataPayloadType);
@@ -421,7 +432,7 @@ void SubresourceLoader::didFinishLoading(double finishTime)
     LOG(ResourceLoading, "Received '%s'.", m_resource->url().string().latin1().data());
     logResourceLoaded(m_frame.get(), m_resource->type());
 
-    Ref<SubresourceLoader> protect(*this);
+    Ref<SubresourceLoader> protectedThis(*this);
     CachedResourceHandle<CachedResource> protectResource(m_resource);
 
     m_state = Finishing;
@@ -446,7 +457,7 @@ void SubresourceLoader::didFail(const ResourceError& error)
     ASSERT(!reachedTerminalState());
     LOG(ResourceLoading, "Failed to load '%s'.\n", m_resource->url().string().latin1().data());
 
-    Ref<SubresourceLoader> protect(*this);
+    Ref<SubresourceLoader> protectedThis(*this);
     CachedResourceHandle<CachedResource> protectResource(m_resource);
     m_state = Finishing;
     if (m_resource->resourceToRevalidate())
@@ -476,7 +487,7 @@ void SubresourceLoader::willCancel(const ResourceError& error)
     ASSERT(!reachedTerminalState());
     LOG(ResourceLoading, "Cancelled load of '%s'.\n", m_resource->url().string().latin1().data());
 
-    Ref<SubresourceLoader> protect(*this);
+    Ref<SubresourceLoader> protectedThis(*this);
 #if PLATFORM(IOS)
     m_state = m_state == Uninitialized ? CancelledWhileInitializing : Finishing;
 #else

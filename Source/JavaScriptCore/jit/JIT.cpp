@@ -96,7 +96,7 @@ void JIT::emitEnterOptimizationCheck()
     skipOptimize.append(branchAdd32(Signed, TrustedImm32(Options::executionCounterIncrementForEntry()), AbsoluteAddress(m_codeBlock->addressOfJITExecuteCounter())));
     ASSERT(!m_bytecodeOffset);
 
-    copyCalleeSavesFromFrameOrRegisterToVMCalleeSavesBuffer();
+    copyCalleeSavesFromFrameOrRegisterToVMEntryFrameCalleeSavesBuffer();
 
     callOperation(operationOptimize, m_bytecodeOffset);
     skipOptimize.append(branchTestPtr(Zero, returnValueGPR));
@@ -240,6 +240,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_eq_null)
         DEFINE_OP(op_try_get_by_id)
         case op_get_array_length:
+        case op_get_by_id_proto_load:
         DEFINE_OP(op_get_by_id)
         DEFINE_OP(op_get_by_id_with_this)
         DEFINE_OP(op_get_by_val)
@@ -290,8 +291,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_nstricteq)
         DEFINE_OP(op_dec)
         DEFINE_OP(op_inc)
-        DEFINE_OP(op_profile_did_call)
-        DEFINE_OP(op_profile_will_call)
         DEFINE_OP(op_profile_type)
         DEFINE_OP(op_profile_control_flow)
         DEFINE_OP(op_push_with_scope)
@@ -424,6 +423,7 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_eq)
         DEFINE_SLOWCASE_OP(op_try_get_by_id)
         case op_get_array_length:
+        case op_get_by_id_proto_load:
         DEFINE_SLOWCASE_OP(op_get_by_id)
         DEFINE_SLOWCASE_OP(op_get_by_val)
         DEFINE_SLOWCASE_OP(op_instanceof)
@@ -785,7 +785,7 @@ void JIT::privateCompileExceptionHandlers()
     if (!m_exceptionChecksWithCallFrameRollback.empty()) {
         m_exceptionChecksWithCallFrameRollback.link(this);
 
-        copyCalleeSavesToVMCalleeSavesBuffer();
+        copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
 
         // lookupExceptionHandlerFromCallerFrame is passed two arguments, the VM and the exec (the CallFrame*).
 
@@ -804,7 +804,7 @@ void JIT::privateCompileExceptionHandlers()
     if (!m_exceptionChecks.empty()) {
         m_exceptionChecks.link(this);
 
-        copyCalleeSavesToVMCalleeSavesBuffer();
+        copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
 
         // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
         move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);

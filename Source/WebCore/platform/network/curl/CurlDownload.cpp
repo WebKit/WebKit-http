@@ -402,17 +402,11 @@ void CurlDownload::didReceiveHeader(const String& header)
         CURLcode err = curl_easy_getinfo(m_curlHandle, CURLINFO_RESPONSE_CODE, &httpCode);
 
         if (httpCode >= 200 && httpCode < 300) {
-            const char* url = 0;
-            err = curl_easy_getinfo(m_curlHandle, CURLINFO_EFFECTIVE_URL, &url);
+            URLCapture capturedUrl(getCurlEffectiveURL(m_curlHandle));
+            RefPtr<CurlDownload> protectedThis(this);
 
-            String strUrl(url);
-            StringCapture capturedUrl(strUrl);
-
-            RefPtr<CurlDownload> protectedDownload(this);
-
-            callOnMainThread([this, capturedUrl, protectedDownload] {
-                m_response.setURL(URL(ParsedURLString, capturedUrl.string()));
-
+            callOnMainThread([this, capturedUrl, protectedThis] {
+                m_response.setURL(capturedUrl.url());
                 m_response.setMimeType(extractMIMETypeFromMediaType(m_response.httpHeaderField(HTTPHeaderName::ContentType)));
                 m_response.setTextEncodingName(extractCharsetFromMediaType(m_response.httpHeaderField(HTTPHeaderName::ContentType)));
 
@@ -422,9 +416,9 @@ void CurlDownload::didReceiveHeader(const String& header)
     } else {
         StringCapture capturedHeader(header);
 
-        RefPtr<CurlDownload> protectedDownload(this);
+        RefPtr<CurlDownload> protectedThis(this);
 
-        callOnMainThread([this, capturedHeader, protectedDownload] {
+        callOnMainThread([this, capturedHeader, protectedThis] {
             int splitPos = capturedHeader.string().find(":");
             if (splitPos != -1)
                 m_response.setHTTPHeaderField(capturedHeader.string().left(splitPos), capturedHeader.string().substring(splitPos + 1).stripWhiteSpace());
@@ -436,9 +430,9 @@ void CurlDownload::didReceiveData(void* data, int size)
 {
     LockHolder locker(m_mutex);
 
-    RefPtr<CurlDownload> protectedDownload(this);
+    RefPtr<CurlDownload> protectedThis(this);
 
-    callOnMainThread([this, size, protectedDownload] {
+    callOnMainThread([this, size, protectedThis] {
         didReceiveDataOfLength(size);
     });
 

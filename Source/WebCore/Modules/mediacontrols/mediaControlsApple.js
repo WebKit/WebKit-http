@@ -115,6 +115,7 @@ Controller.prototype = {
         down: 'down',
         out: 'out',
         pictureInPictureButton: 'picture-in-picture-button',
+        placeholderShowing: 'placeholder-showing',
     },
     KeyCodes: {
         enter: 13,
@@ -493,6 +494,8 @@ Controller.prototype = {
         var inlinePlaybackPlaceholder = this.controls.inlinePlaybackPlaceholder = document.createElement('div');
         inlinePlaybackPlaceholder.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-status');
         inlinePlaybackPlaceholder.setAttribute('aria-label', this.UIString('Video Playback Placeholder'));
+        this.listenFor(inlinePlaybackPlaceholder, 'click', this.handlePlaceholderClick);
+        this.listenFor(inlinePlaybackPlaceholder, 'dblclick', this.handlePlaceholderClick);
         if (!Controller.gSimulatePictureInPictureAvailable)
             inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
 
@@ -870,6 +873,11 @@ Controller.prototype = {
                 break;
         }
 
+        if (this.controls.inlinePlaybackPlaceholder.classList.contains(this.ClassNames.hidden))
+            this.base.classList.remove(this.ClassNames.placeholderShowing);
+        else
+            this.base.classList.add(this.ClassNames.placeholderShowing);
+
         this.updateControls();
         this.updateCaptionContainer();
         this.resetHideControlsTimer();
@@ -971,6 +979,12 @@ Controller.prototype = {
     handlePanelDragStart: function(event)
     {
         // Prevent drags in the panel from triggering a drag event on the <video> element.
+        event.preventDefault();
+    },
+
+    handlePlaceholderClick: function(event)
+    {
+        // Prevent clicks in the placeholder from playing or pausing the video in a MediaDocument.
         event.preventDefault();
     },
 
@@ -1522,7 +1536,7 @@ Controller.prototype = {
 
     showShowControlsButton: function (shouldShow) {
         this.showControlsButton.hidden = !shouldShow;
-        if (shouldShow) 
+        if (shouldShow && this.shouldHaveControls())
             this.showControlsButton.focus();
     },
 

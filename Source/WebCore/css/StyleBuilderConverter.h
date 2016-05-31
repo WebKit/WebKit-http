@@ -503,7 +503,7 @@ inline RefPtr<ClipPathOperation> StyleBuilderConverter::convertClipPath(StyleRes
         auto& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
         if (primitiveValue.isShape()) {
             ASSERT(!operation);
-            operation = ShapeClipPathOperation::create(basicShapeForValue(styleResolver.state().cssToLengthConversionData(), primitiveValue.getShapeValue()));
+            operation = ShapeClipPathOperation::create(basicShapeForValue(styleResolver.state().cssToLengthConversionData(), *primitiveValue.getShapeValue()));
         } else {
             ASSERT(primitiveValue.getValueID() == CSSValueContentBox
                    || primitiveValue.getValueID() == CSSValueBorderBox
@@ -626,10 +626,8 @@ inline RefPtr<StyleReflection> StyleBuilderConverter::convertReflection(StyleRes
     auto& reflectValue = downcast<CSSReflectValue>(value);
 
     auto reflection = StyleReflection::create();
-    reflection->setDirection(*reflectValue.direction());
-
-    if (reflectValue.offset())
-        reflection->setOffset(reflectValue.offset()->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(styleResolver.state().cssToLengthConversionData()));
+    reflection->setDirection(reflectValue.direction());
+    reflection->setOffset(reflectValue.offset().convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(styleResolver.state().cssToLengthConversionData()));
 
     NinePieceImage mask;
     mask.setMaskDefaults();
@@ -751,7 +749,7 @@ inline PassRefPtr<ShapeValue> StyleBuilderConverter::convertShapeValue(StyleReso
     for (auto& currentValue : downcast<CSSValueList>(value)) {
         CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
         if (primitiveValue.isShape())
-            shape = basicShapeForValue(styleResolver.state().cssToLengthConversionData(), primitiveValue.getShapeValue());
+            shape = basicShapeForValue(styleResolver.state().cssToLengthConversionData(), *primitiveValue.getShapeValue());
         else if (primitiveValue.getValueID() == CSSValueContentBox
             || primitiveValue.getValueID() == CSSValueBorderBox
             || primitiveValue.getValueID() == CSSValuePaddingBox

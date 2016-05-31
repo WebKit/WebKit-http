@@ -303,16 +303,9 @@ namespace JSC { namespace DFG {
     macro(MaterializeCreateActivation, NodeResultJS | NodeHasVarArgs) \
     \
     /* Nodes for misc operations. */\
-    macro(ProfileWillCall, NodeMustGenerate) \
-    macro(ProfileDidCall, NodeMustGenerate) \
     macro(OverridesHasInstance, NodeMustGenerate | NodeResultBoolean) \
     macro(InstanceOf, NodeResultBoolean) \
     macro(InstanceOfCustom, NodeMustGenerate | NodeResultBoolean) \
-    \
-    /* I'd like to call this IsArray but then we get namespace problems with the indexing type name. Also, it is marked must generate because it can throw. */ \
-    macro(IsArrayObject, NodeMustGenerate | NodeResultBoolean) \
-    macro(IsJSArray, NodeResultBoolean) \
-    macro(IsArrayConstructor, NodeResultBoolean) \
     macro(IsEmpty, NodeResultBoolean) \
     macro(IsUndefined, NodeResultBoolean) \
     macro(IsBoolean, NodeResultBoolean) \
@@ -326,7 +319,6 @@ namespace JSC { namespace DFG {
     macro(LogicalNot, NodeResultBoolean) \
     macro(ToPrimitive, NodeResultJS | NodeMustGenerate) \
     macro(ToString, NodeResultJS | NodeMustGenerate) \
-    macro(CallObjectConstructor, NodeResultJS) \
     macro(CallStringConstructor, NodeResultJS | NodeMustGenerate) \
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \

@@ -86,11 +86,10 @@ WEBCORE_EXPORT @interface WebEvent : NSObject {
     NSString *_charactersIgnoringModifiers;
     WebEventFlags _modifierFlags;
     BOOL _keyRepeating;
-    BOOL _popupVariant; // FIXME: to be removed
     NSUInteger _keyboardFlags;
+    NSString *_inputManagerHint;
     uint16_t _keyCode;
     BOOL _tabKey;
-    WebEventCharacterSet _characterSet;
     
     float _deltaX;
     float _deltaY;
@@ -127,14 +126,14 @@ WEBCORE_EXPORT @interface WebEvent : NSObject {
                         gestureScale:(float)gestureScale
                      gestureRotation:(float)gestureRotation;
 
-// FIXME: this is deprecated. It will be removed when UIKit adopts the new one below.
+// FIXME: this needs to be removed when UIKit adopts the other initializer.
 - (WebEvent *)initWithKeyEventType:(WebEventType)type
                          timeStamp:(CFTimeInterval)timeStamp
                         characters:(NSString *)characters
        charactersIgnoringModifiers:(NSString *)charactersIgnoringModifiers
                          modifiers:(WebEventFlags)modifiers
                        isRepeating:(BOOL)repeating
-                    isPopupVariant:(BOOL)popupVariant
+                         withFlags:(NSUInteger)flags
                            keyCode:(uint16_t)keyCode
                           isTabKey:(BOOL)tabKey
                       characterSet:(WebEventCharacterSet)characterSet;
@@ -146,9 +145,9 @@ WEBCORE_EXPORT @interface WebEvent : NSObject {
                          modifiers:(WebEventFlags)modifiers
                        isRepeating:(BOOL)repeating
                          withFlags:(NSUInteger)flags
+              withInputManagerHint:(NSString *)hint
                            keyCode:(uint16_t)keyCode
-                          isTabKey:(BOOL)tabKey
-                      characterSet:(WebEventCharacterSet)characterSet;
+                          isTabKey:(BOOL)tabKey;
 
 @property(nonatomic, readonly) WebEventType type;
 @property(nonatomic, readonly) CFTimeInterval timestamp;
@@ -161,13 +160,11 @@ WEBCORE_EXPORT @interface WebEvent : NSObject {
 @property(nonatomic, readonly, retain) NSString *charactersIgnoringModifiers;
 @property(nonatomic, readonly) WebEventFlags modifierFlags;
 @property(nonatomic, readonly, getter = isKeyRepeating) BOOL keyRepeating;
+@property(nonatomic, readonly, retain) NSString *inputManagerHint;
 
-// FIXME: this is deprecated. It will be removed when UIKit adopts the new initWithKeyEventType.
-@property(nonatomic, readonly, getter = isPopupVariant) BOOL popupVariant;
 @property(nonatomic, readonly) NSUInteger keyboardFlags;
 @property(nonatomic, readonly) uint16_t keyCode;
 @property(nonatomic, readonly, getter = isTabKey) BOOL tabKey;
-@property(nonatomic, readonly) WebEventCharacterSet characterSet;
 
 // Scroll Wheel
 @property(nonatomic, readonly) float deltaX;

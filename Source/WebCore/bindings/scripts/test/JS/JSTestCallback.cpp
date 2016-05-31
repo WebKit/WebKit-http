@@ -101,7 +101,7 @@ bool JSTestCallback::callbackWithNoParam()
     if (!canInvokeCallback())
         return true;
 
-    Ref<JSTestCallback> protect(*this);
+    Ref<JSTestCallback> protectedThis(*this);
 
     JSLockHolder lock(m_data->globalObject()->vm());
 
@@ -120,13 +120,13 @@ bool JSTestCallback::callbackWithArrayParam(RefPtr<Float32Array> arrayParam)
     if (!canInvokeCallback())
         return true;
 
-    Ref<JSTestCallback> protect(*this);
+    Ref<JSTestCallback> protectedThis(*this);
 
     JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(state, m_data->globalObject(), WTF::getPtr(arrayParam)));
+    args.append(toJS(state, m_data->globalObject(), arrayParam));
 
     NakedPtr<Exception> returnedException;
     m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(state, "callbackWithArrayParam"), returnedException);
@@ -135,18 +135,18 @@ bool JSTestCallback::callbackWithArrayParam(RefPtr<Float32Array> arrayParam)
     return !returnedException;
 }
 
-bool JSTestCallback::callbackWithSerializedScriptValueParam(PassRefPtr<SerializedScriptValue> srzParam, const String& strArg)
+bool JSTestCallback::callbackWithSerializedScriptValueParam(RefPtr<SerializedScriptValue>&& srzParam, const String& strArg)
 {
     if (!canInvokeCallback())
         return true;
 
-    Ref<JSTestCallback> protect(*this);
+    Ref<JSTestCallback> protectedThis(*this);
 
     JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(srzParam ? srzParam->deserialize(state, castedThis->globalObject(), 0) : jsNull());
+    args.append(srzParam ? srzParam->deserialize(state, m_data->globalObject(), 0) : jsNull());
     args.append(jsStringWithCache(state, strArg));
 
     NakedPtr<Exception> returnedException;
@@ -156,18 +156,18 @@ bool JSTestCallback::callbackWithSerializedScriptValueParam(PassRefPtr<Serialize
     return !returnedException;
 }
 
-bool JSTestCallback::callbackWithStringList(PassRefPtr<DOMStringList> listParam)
+bool JSTestCallback::callbackWithStringList(RefPtr<PassRefPtr<DOMStringList>>&& listParam)
 {
     if (!canInvokeCallback())
         return true;
 
-    Ref<JSTestCallback> protect(*this);
+    Ref<JSTestCallback> protectedThis(*this);
 
     JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(state, m_data->globalObject(), WTF::getPtr(listParam)));
+    args.append(toJS(state, m_data->globalObject(), listParam));
 
     NakedPtr<Exception> returnedException;
     m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(state, "callbackWithStringList"), returnedException);
@@ -181,7 +181,7 @@ bool JSTestCallback::callbackWithBoolean(bool boolParam)
     if (!canInvokeCallback())
         return true;
 
-    Ref<JSTestCallback> protect(*this);
+    Ref<JSTestCallback> protectedThis(*this);
 
     JSLockHolder lock(m_data->globalObject()->vm());
 
@@ -201,14 +201,14 @@ bool JSTestCallback::callbackRequiresThisToPass(int32_t longParam, TestNode* tes
     if (!canInvokeCallback())
         return true;
 
-    Ref<JSTestCallback> protect(*this);
+    Ref<JSTestCallback> protectedThis(*this);
 
     JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
     args.append(jsNumber(longParam));
-    args.append(toJS(state, m_data->globalObject(), WTF::getPtr(testNodeParam)));
+    args.append(toJS(state, m_data->globalObject(), testNodeParam));
 
     NakedPtr<Exception> returnedException;
     m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(state, "callbackRequiresThisToPass"), returnedException);
@@ -217,12 +217,12 @@ bool JSTestCallback::callbackRequiresThisToPass(int32_t longParam, TestNode* tes
     return !returnedException;
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestCallback* impl)
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestCallback& impl)
 {
-    if (!impl || !static_cast<JSTestCallback&>(*impl).callbackData())
+    if (!static_cast<JSTestCallback&>(impl).callbackData())
         return jsNull();
 
-    return static_cast<JSTestCallback&>(*impl).callbackData()->callback();
+    return static_cast<JSTestCallback&>(impl).callbackData()->callback();
 
 }
 

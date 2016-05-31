@@ -60,11 +60,10 @@ enum JSType : uint8_t {
     PureForwardingProxyType,
     ImpureProxyType,
     WithScopeType,
-    ArrayType,
     DirectArgumentsType,
     ScopedArgumentsType,
 
-    Int8ArrayType,
+    Int8ArrayType = 100,
     Int16ArrayType,
     Int32ArrayType,
     Uint8ArrayType,

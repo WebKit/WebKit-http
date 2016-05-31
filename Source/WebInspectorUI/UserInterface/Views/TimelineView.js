@@ -43,7 +43,20 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
     // Public
 
+    get scrollableElements()
+    {
+        if (!this._timelineDataGrid)
+            return [];
+        return [this._timelineDataGrid.scrollContainer];
+    }
+
     get showsLiveRecordingData()
+    {
+        // Implemented by sub-classes if needed.
+        return true;
+    }
+
+    get showsFilterBar()
     {
         // Implemented by sub-classes if needed.
         return true;
@@ -52,11 +65,6 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
     get navigationItems()
     {
         return this._scopeBar ? [this._scopeBar] : [];
-    }
-
-    get navigationSidebarTreeOutlineScopeBar()
-    {
-        return this._scopeBar;
     }
 
     get selectionPathComponents()
@@ -79,7 +87,7 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
         this._zeroTime = x;
 
-        this.needsLayout();
+        this._timesDidChange();
     }
 
     get startTime()
@@ -96,8 +104,7 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
         this._startTime = x;
 
-        this._filterTimesDidChange();
-        this.needsLayout();
+        this._timesDidChange();
     }
 
     get endTime()
@@ -114,8 +121,7 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
         this._endTime = x;
 
-        this._filterTimesDidChange();
-        this.needsLayout();
+        this._timesDidChange();
     }
 
     get currentTime()
@@ -141,10 +147,8 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
             return this._startTime - wiggleTime <= currentTime && currentTime <= this._endTime + wiggleTime;
         }
 
-        if (checkIfLayoutIsNeeded.call(this, oldCurrentTime) || checkIfLayoutIsNeeded.call(this, this._currentTime)) {
-            this._filterTimesDidChange();
-            this.needsLayout();
-        }
+        if (checkIfLayoutIsNeeded.call(this, oldCurrentTime) || checkIfLayoutIsNeeded.call(this, this._currentTime))
+            this._timesDidChange();
     }
 
     get filterStartTime()
@@ -161,25 +165,18 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
     setupDataGrid(dataGrid)
     {
-        console.assert(!this._timelineDataGrid);
+        if (this._timelineDataGrid) {
+            this._timelineDataGrid.filterDelegate = null;
+            this._timelineDataGrid.removeEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._timelineDataGridSelectedNodeChanged, this);
+            this._timelineDataGrid.removeEventListener(WebInspector.DataGrid.Event.NodeWasFiltered, this._timelineDataGridNodeWasFiltered, this);
+            this._timelineDataGrid.removeEventListener(WebInspector.DataGrid.Event.FilterDidChange, this.filterDidChange, this);
+        }
 
         this._timelineDataGrid = dataGrid;
         this._timelineDataGrid.filterDelegate = this;
-        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, () => {
-            this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
-        });
-
-        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.NodeWasFiltered, (event) => {
-            let node = event.data.node;
-            if (!(node instanceof WebInspector.TimelineDataGridNode))
-                return;
-
-            this.dispatchEventToListeners(WebInspector.TimelineView.Event.RecordWasFiltered, {record: node.record, filtered: node.hidden});
-        });
-
-        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.FilterDidChange, (event) => {
-            this.filterDidChange();
-        });
+        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._timelineDataGridSelectedNodeChanged, this);
+        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.NodeWasFiltered, this._timelineDataGridNodeWasFiltered, this);
+        this._timelineDataGrid.addEventListener(WebInspector.DataGrid.Event.FilterDidChange, this.filterDidChange, this);
     }
 
     selectRecord(record)
@@ -287,6 +284,9 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
             return checkTimeBounds(record.startTime, record.endTime);
         }
 
+        if (node instanceof WebInspector.ProfileDataGridNode)
+            return node.callingContextTreeNode.hasStackTraceInTimeRange(startTime, endTime);
+
         console.error("Unknown DataGridNode, can't filter by time.");
         return true;
     }
@@ -305,18 +305,32 @@ WebInspector.TimelineView = class TimelineView extends WebInspector.ContentView
 
     // Private
 
-    _filterTimesDidChange()
+    _timelineDataGridSelectedNodeChanged(event)
     {
+        this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
+    }
+
+    _timelineDataGridNodeWasFiltered(event)
+    {
+        let node = event.data.node;
+        if (!(node instanceof WebInspector.TimelineDataGridNode))
+            return;
+
+        this.dispatchEventToListeners(WebInspector.TimelineView.Event.RecordWasFiltered, {record: node.record, filtered: node.hidden});
+    }
+
+    _timesDidChange()
+    {
+        if (!WebInspector.timelineManager.isCapturing() || this.showsLiveRecordingData)
+            this.needsLayout();
+
         if (!this._timelineDataGrid || this._updateFilterTimeout)
             return;
 
-        function delayedWork()
-        {
+        this._updateFilterTimeout = setTimeout(() => {
             this._updateFilterTimeout = undefined;
             this._timelineDataGrid.filterDidChange();
-        }
-
-        this._updateFilterTimeout = setTimeout(delayedWork.bind(this), 0);
+        }, 0);
     }
 };
 
