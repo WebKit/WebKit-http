@@ -219,7 +219,7 @@ double Performance::now() const
     return 1000.0 * floor(nowSeconds / resolutionSeconds) * resolutionSeconds;
 }
 
-PassRefPtr<MemoryInfo> Performance::memory() const
+RefPtr<MemoryInfo> Performance::memory() const
 {
     return MemoryInfo::create(m_frame);
 }
