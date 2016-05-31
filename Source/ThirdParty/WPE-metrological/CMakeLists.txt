@@ -5,6 +5,7 @@ set(WPE_METROLOGICAL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-metro
 option(USE_WPE_BACKEND_BCM_NEXUS "Whether to enable support for the BCM_NEXUS WPE backend" OFF)
 option(USE_WPE_BACKEND_BCM_RPI "Whether to enable support for the BCM_RPi WPE backend" OFF)
 option(USE_WPE_BACKEND_INTEL_CE "Whether to enable support for the Intel CE WPE backend" OFF)
+option(USE_WPE_BACKEND_STM "Whether to enable support for the STM WPE backend" OFF)
 option(USE_WPE_BACKEND_WESTEROS "Whether to enable support for the Westeros WPE backend" OFF)
 
 # TODO
@@ -34,6 +35,10 @@ endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)
     include(src/intelce/CMakeLists.txt)
+endif ()
+
+if (USE_WPE_BACKEND_STM)
+    include(src/stm/CMakeLists.txt)
 endif ()
 
 if (USE_WPE_BACKEND_WESTEROS)
