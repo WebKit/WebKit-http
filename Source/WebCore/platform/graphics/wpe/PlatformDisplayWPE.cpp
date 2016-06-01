@@ -30,7 +30,7 @@
 
 #include "GLContextEGL.h"
 #include "IntSize.h"
-#include <wpe/renderer-backend.h>
+#include <wpe/renderer-backend-egl.h>
 
 namespace WebCore {
 
