@@ -52,9 +52,9 @@ PlatformDisplayWPE::~PlatformDisplayWPE()
     wpe_renderer_backend_egl_destroy(m_backend);
 }
 
-std::unique_ptr<PlatformDisplayWPE::Surface> PlatformDisplayWPE::createSurface(Surface::Client& client, int hostFd)
+std::unique_ptr<PlatformDisplayWPE::EGLTarget> PlatformDisplayWPE::createEGLTarget(EGLTarget::Client& client, int hostFd)
 {
-    return std::make_unique<Surface>(*this, client, hostFd);
+    return std::make_unique<EGLTarget>(*this, client, hostFd);
 }
 
 std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLContext* sharingContext)
@@ -77,7 +77,7 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLConte
     return GLContextEGL::createContext(nativeWindow, sharingContext, WTFMove(contextData));
 }
 
-PlatformDisplayWPE::Surface::Surface(const PlatformDisplayWPE& display, PlatformDisplayWPE::Surface::Client& client, int hostFd)
+PlatformDisplayWPE::EGLTarget::EGLTarget(const PlatformDisplayWPE& display, PlatformDisplayWPE::EGLTarget::Client& client, int hostFd)
     : m_display(display)
     , m_client(client)
 {
@@ -87,35 +87,35 @@ PlatformDisplayWPE::Surface::Surface(const PlatformDisplayWPE& display, Platform
         // frame_complete
         [](void* data)
         {
-            auto& surface = *reinterpret_cast<PlatformDisplayWPE::Surface*>(data);
+            auto& surface = *reinterpret_cast<EGLTarget*>(data);
             surface.m_client.frameComplete();
         },
     };
     wpe_renderer_backend_egl_target_set_client(m_backend, &s_client, this);
 }
 
-PlatformDisplayWPE::Surface::~Surface()
+PlatformDisplayWPE::EGLTarget::~EGLTarget()
 {
     wpe_renderer_backend_egl_target_destroy(m_backend);
 }
 
-void PlatformDisplayWPE::Surface::initialize(const IntSize& size)
+void PlatformDisplayWPE::EGLTarget::initialize(const IntSize& size)
 {
     wpe_renderer_backend_egl_target_initialize(m_backend, m_display.m_backend,
         std::max(0, size.width()), std::max(0, size.height()));
 }
 
-std::unique_ptr<GLContextEGL> PlatformDisplayWPE::Surface::createGLContext() const
+std::unique_ptr<GLContextEGL> PlatformDisplayWPE::EGLTarget::createGLContext() const
 {
     return GLContextEGL::createWindowContext(wpe_renderer_backend_egl_target_get_native_window(m_backend), GLContext::sharingContext());
 }
 
-void PlatformDisplayWPE::Surface::resize(const IntSize& size)
+void PlatformDisplayWPE::EGLTarget::resize(const IntSize& size)
 {
     wpe_renderer_backend_egl_target_resize(m_backend, std::max(0, size.width()), std::max(0, size.height()));
 }
 
-void PlatformDisplayWPE::Surface::frameRendered()
+void PlatformDisplayWPE::EGLTarget::frameRendered()
 {
     wpe_renderer_backend_egl_target_frame_rendered(m_backend);
 }
