@@ -21,18 +21,12 @@
 #ifndef PageClientQt_h
 #define PageClientQt_h
 
-#include "FrameView.h"
-#include "GraphicsContext.h"
-#include "IntRect.h"
 #include "QWebPageClient.h"
-#include "TextureMapperLayerClientQt.h"
-//#include "TiledBackingStore.h" FIXME
 #include "qgraphicswebview.h"
 #include "qwebframe.h"
 #include "qwebframe_p.h"
 #include "qwebpage.h"
 #include "qwebpage_p.h"
-#include <Settings.h>
 #include <qgraphicsscene.h>
 #include <qgraphicsview.h>
 #include <qgraphicswidget.h>

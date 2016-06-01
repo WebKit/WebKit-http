@@ -21,6 +21,8 @@
 #include "config.h"
 #include "PageClientQt.h"
 
+#include "Widget.h"
+
 #include <QGraphicsScene>
 #include <QGraphicsView>
 
@@ -31,9 +33,6 @@
 #ifdef QT_OPENGL_LIB
 #include <QGLWidget>
 #endif
-
-#include "TextureMapper.h"
-#include "texmap/TextureMapperLayer.h"
 
 QWindow* QWebPageClient::ownerWindow() const
 {
