@@ -198,3 +198,4 @@ void QWebInspectorPrivate::adjustFrontendSize(const QSize& size)
         frontend->resize(size);
 }
 
+#include "moc_qwebinspector.cpp"

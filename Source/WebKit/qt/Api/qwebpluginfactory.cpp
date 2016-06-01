@@ -262,3 +262,5 @@ bool QWebPluginFactory::supportsExtension(Extension extension) const
     Q_UNUSED(extension)
     return false;
 }
+
+#include "moc_qwebpluginfactory.cpp"
