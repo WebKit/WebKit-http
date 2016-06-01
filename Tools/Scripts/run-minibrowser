@@ -52,6 +52,14 @@ if (isGtk() || isEfl()) {
     @jhbuildWrapper = wrapperPrefixIfNeeded();
     print "Starting MiniBrowser.\n";
     exec @jhbuildWrapper, $launcherPath, @ARGV or die;
+} elsif (isQt()) {
+    # Check to see that all the frameworks are built.
+    checkFrameworks();
+
+    $launcherPath = catdir(productDir(), "bin", "QtTestBrowser");
+    die "Can't find $launcherPath" unless -x $launcherPath;
+    print "Starting QtTestBrowser.\n";
+    exec $launcherPath, @ARGV or die;
 } elsif (isAppleMacWebKit()) {
     printHelpAndExitForRunAndDebugWebKitAppIfNeeded();
     exit exitStatus(runMiniBrowser());

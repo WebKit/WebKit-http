@@ -913,6 +913,49 @@ sub builtDylibPathForName
     my $libraryName = shift;
     determineConfigurationProductDir();
 
+    if (isQt()) {
+        my $isSearchingForWebCore = $libraryName =~ "WebCore";
+        if (isDarwin()) {
+            $libraryName = "QtWebKitWidgets";
+        } else {
+            $libraryName = "Qt5WebKitWidgets";
+        }
+        my $result;
+        if (isDarwin() and -d "$configurationProductDir/lib/$libraryName.framework") {
+            $result = "$configurationProductDir/lib/$libraryName.framework/$libraryName";
+        } elsif (isDarwin() and -d "$configurationProductDir/lib") {
+            $result = "$configurationProductDir/lib/lib$libraryName.dylib";
+        } elsif (isWindows()) {
+            if (configuration() eq "Debug") {
+                # On Windows, there is a "d" suffix to the library name. See <http://trac.webkit.org/changeset/53924/>.
+                $libraryName .= "d";
+            }
+
+            my $qmakebin = "qmake"; # FIXME
+            chomp(my $mkspec = `$qmakebin -query QT_HOST_DATA`);
+            $mkspec .= "/mkspecs";
+            my $qtMajorVersion = retrieveQMakespecVar("$mkspec/qconfig.pri", "QT_MAJOR_VERSION");
+            if (not $qtMajorVersion) {
+                $qtMajorVersion = "";
+            }
+
+            $result = "$configurationProductDir/lib/$libraryName$qtMajorVersion.dll";
+        } else {
+            $result = "$configurationProductDir/lib/lib$libraryName.so";
+        }
+
+        if ($isSearchingForWebCore) {
+            # With CONFIG+=force_static_libs_as_shared we have a shared library for each subdir.
+            # For feature detection to work it is necessary to return the path of the WebCore library here.
+            my $replacedWithWebCore = $result;
+            $replacedWithWebCore =~ s/$libraryName/WebCore/g;
+            if (-e $replacedWithWebCore) {
+                return $replacedWithWebCore;
+            }
+        }
+
+        return $result;
+    }
     if (isGtk()) {
         my $extension = isDarwin() ? ".dylib" : ".so";
         return "$configurationProductDir/lib/libwebkit2gtk-4.0" . $extension;
