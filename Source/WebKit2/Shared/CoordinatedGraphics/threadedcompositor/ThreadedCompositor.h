@@ -93,7 +93,7 @@ public:
     void scrollBy(const WebCore::IntSize&);
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
+    RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID);
 #endif
 
 private:
