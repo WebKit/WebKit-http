@@ -914,7 +914,7 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
     if (!currentNode->isTextNode() && !canShrinkToTextSelection(currentNode) && hasCustomLineHeight(*currentNode)) {
         auto* renderer = currentNode->renderer();
         if (is<RenderBlockFlow>(renderer)) {
-            auto *renderText = downcast<RenderBlockFlow>(renderer)->findClosestTextAtAbsolutePoint(point);
+            auto* renderText = downcast<RenderBlockFlow>(*renderer).findClosestTextAtAbsolutePoint(point);
             if (renderText && renderText->textNode())
                 currentNode = renderText->textNode();
         }
@@ -1875,13 +1875,13 @@ void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, u
         m_blockSelectionDesiredSize.setWidth(blockSelectionStartWidth);
         m_blockSelectionDesiredSize.setHeight(blockSelectionStartHeight);
         m_currentBlockSelection = nullptr;
-        auto* renderer = range->startContainer().renderer();
-        if (renderer->style().preserveNewline())
+        auto* renderer = range ? range->startContainer().renderer() : nullptr;
+        if (renderer && renderer->style().preserveNewline())
             m_blockRectForTextSelection = renderer->absoluteBoundingBoxRect(true);
         else {
-            auto* paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithAssistedNode), ParagraphGranularity, DirectionForward).get();
+            auto paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithAssistedNode), ParagraphGranularity, DirectionForward);
             if (paragraphRange && !paragraphRange->collapsed())
-                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange);
+                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange.get());
         }
         
         if (rectIsTooBigForSelection(m_blockRectForTextSelection, frame))
@@ -2973,12 +2973,14 @@ void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidEnterBackgroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": [NSNumber numberWithBool:isSuspendedUnderLock]}];
 
+    m_isSuspendedUnderLock = isSuspendedUnderLock;
     setLayerTreeStateIsFrozen(true);
     markLayersVolatile();
 }
 
 void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
 {
+    m_isSuspendedUnderLock = false;
     cancelMarkLayersVolatile();
     setLayerTreeStateIsFrozen(false);
 

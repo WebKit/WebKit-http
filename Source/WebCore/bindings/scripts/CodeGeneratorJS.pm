@@ -735,6 +735,12 @@ sub InstanceNeedsVisitChildren
         || IsJSBuiltinConstructor($interface)
 }
 
+sub InstanceNeedsEstimatedSize
+{
+    my $interface = shift;
+    return $interface->extendedAttributes->{"ReportExtraMemoryCost"};
+}
+
 sub GetImplClassName
 {
     my $name = shift;
@@ -1316,6 +1322,10 @@ sub GenerateHeader
         push(@headerContent, "    static void visitChildren(JSCell*, JSC::SlotVisitor&);\n");
         push(@headerContent, "    void visitAdditionalChildren(JSC::SlotVisitor&);\n") if $interface->extendedAttributes->{"JSCustomMarkFunction"};
         push(@headerContent, "\n");
+    }
+
+    if (InstanceNeedsEstimatedSize($interface)) {
+        push(@headerContent, "    static size_t estimatedSize(JSCell*);\n");
     }
 
     if ($numCustomAttributes > 0) {
@@ -2910,8 +2920,12 @@ sub GenerateImplementation
                 push(@implContent, "    // Shadowing a built-in constructor.\n");
                 push(@implContent, "    return castedThis->putDirect(state->vm(), Identifier::fromString(state, \"$name\"), value);\n");
             } elsif ($attribute->signature->extendedAttributes->{"Replaceable"}) {
-                push(@implContent, "    // Shadowing a built-in object.\n");
-                push(@implContent, "    return castedThis->putDirect(state->vm(), Identifier::fromString(state, \"$name\"), value);\n");
+                push(@implContent, "    // Shadowing a built-in property.\n");
+                if (AttributeShouldBeOnInstance($interface, $attribute)) {
+                    push(@implContent, "    return replaceStaticPropertySlot(state->vm(), castedThis, Identifier::fromString(state, \"$name\"), value);\n");
+                } else {
+                    push(@implContent, "    return castedThis->putDirect(state->vm(), Identifier::fromString(state, \"$name\"), value);\n");
+                }
             } else {
                 if (!$attribute->isStatic) {
                     my $putForwards = $attribute->signature->extendedAttributes->{"PutForwards"};
@@ -3254,6 +3268,14 @@ END
                 }
             }
         }
+        push(@implContent, "}\n\n");
+    }
+
+    if (InstanceNeedsEstimatedSize($interface)) {
+        push(@implContent, "size_t ${className}::estimatedSize(JSCell* cell)\n");
+        push(@implContent, "{\n");
+        push(@implContent, "    auto* thisObject = jsCast<${className}*>(cell);\n");
+        push(@implContent, "    return Base::estimatedSize(thisObject) + thisObject->wrapped().memoryCost();\n");
         push(@implContent, "}\n\n");
     }
 

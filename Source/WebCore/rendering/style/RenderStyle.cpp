@@ -190,40 +190,46 @@ RenderStyle::~RenderStyle()
 #endif
 }
 
-static inline StyleSelfAlignmentData resolveAlignmentData(const RenderStyle& parentStyle, const RenderStyle& childStyle, ItemPosition resolvedAutoPositionForRenderer)
+static StyleSelfAlignmentData resolvedSelfAlignment(const StyleSelfAlignmentData& value, ItemPosition normalValueBehavior)
 {
-    // The auto keyword computes to the parent's align-items computed value, or to "stretch", if not set or "auto".
-    if (childStyle.alignSelfPosition() == ItemPositionAuto)
-        return (parentStyle.alignItemsPosition() == ItemPositionAuto) ? StyleSelfAlignmentData(resolvedAutoPositionForRenderer, OverflowAlignmentDefault) : parentStyle.alignItems();
-    return childStyle.alignSelf();
+    ASSERT(value.position() != ItemPositionAuto);
+    if (value.position() == ItemPositionNormal)
+        return { normalValueBehavior, OverflowAlignmentDefault };
+    return value;
 }
 
-static inline StyleSelfAlignmentData resolveJustificationData(const RenderStyle& parentStyle, const RenderStyle& childStyle, ItemPosition resolvedAutoPositionForRenderer)
+StyleSelfAlignmentData RenderStyle::resolvedAlignItems(ItemPosition normalValueBehaviour) const
 {
-    // The auto keyword computes to the parent's justify-items computed value, or to "stretch", if not set or "auto".
-    if (childStyle.justifySelfPosition() == ItemPositionAuto)
-        return (parentStyle.justifyItemsPosition() == ItemPositionAuto) ? StyleSelfAlignmentData(resolvedAutoPositionForRenderer, OverflowAlignmentDefault) : parentStyle.justifyItems();
-    return childStyle.justifySelf();
+    return resolvedSelfAlignment(alignItems(), normalValueBehaviour);
 }
 
-ItemPosition RenderStyle::resolveAlignment(const RenderStyle& parentStyle, const RenderStyle& childStyle, ItemPosition resolvedAutoPositionForRenderer)
+StyleSelfAlignmentData RenderStyle::resolvedAlignSelf(const RenderStyle& parentStyle, ItemPosition normalValueBehaviour) const
 {
-    return resolveAlignmentData(parentStyle, childStyle, resolvedAutoPositionForRenderer).position();
+    // The auto keyword computes to the parent's align-items computed value.
+    // We will return the behaviour of 'normal' value if needed, which is specific of each layout model.
+    if (alignSelfPosition() == ItemPositionAuto)
+        return parentStyle.resolvedAlignItems(normalValueBehaviour);
+    return resolvedSelfAlignment(alignSelf(), normalValueBehaviour);
 }
 
-OverflowAlignment RenderStyle::resolveAlignmentOverflow(const RenderStyle& parentStyle, const RenderStyle& childStyle)
+StyleSelfAlignmentData RenderStyle::resolvedJustifyItems(ItemPosition normalValueBehaviour) const
 {
-    return resolveAlignmentData(parentStyle, childStyle, ItemPositionStretch).overflow();
+    // FIXME: justify-items 'auto' value is allowed only to provide the 'legacy' keyword's behavior, which it's still not implemented for layout.
+    // "If the inherited value of justify-items includes the legacy keyword, auto computes to the inherited value."
+    // https://drafts.csswg.org/css-align/#justify-items-property
+    if (justifyItemsPosition() == ItemPositionAuto)
+        return { normalValueBehaviour, OverflowAlignmentDefault };
+
+    return resolvedSelfAlignment(justifyItems(), normalValueBehaviour);
 }
 
-ItemPosition RenderStyle::resolveJustification(const RenderStyle& parentStyle, const RenderStyle& childStyle, ItemPosition resolvedAutoPositionForRenderer)
+StyleSelfAlignmentData RenderStyle::resolvedJustifySelf(const RenderStyle& parentStyle, ItemPosition normalValueBehaviour) const
 {
-    return resolveJustificationData(parentStyle, childStyle, resolvedAutoPositionForRenderer).position();
-}
-
-OverflowAlignment RenderStyle::resolveJustificationOverflow(const RenderStyle& parentStyle, const RenderStyle& childStyle)
-{
-    return resolveJustificationData(parentStyle, childStyle, ItemPositionStretch).overflow();
+    // The auto keyword computes to the parent's justify-items computed value.
+    // We will return the behaviour of 'normal' value if needed, which is specific of each layout model.
+    if (justifySelfPosition() == ItemPositionAuto)
+        return parentStyle.resolvedJustifyItems(normalValueBehaviour);
+    return resolvedSelfAlignment(justifySelf(), normalValueBehaviour);
 }
 
 static inline ContentPosition resolvedContentAlignmentPosition(const StyleContentAlignmentData& value, const StyleContentAlignmentData& normalValueBehavior)
@@ -405,26 +411,26 @@ unsigned RenderStyle::hashForTextAutosizing() const
     return hash;
 }
 
-bool RenderStyle::equalForTextAutosizing(const RenderStyle* other) const
+bool RenderStyle::equalForTextAutosizing(const RenderStyle& other) const
 {
-    return rareNonInheritedData->m_appearance == other->rareNonInheritedData->m_appearance
-        && rareNonInheritedData->marginBeforeCollapse == other->rareNonInheritedData->marginBeforeCollapse
-        && rareNonInheritedData->marginAfterCollapse == other->rareNonInheritedData->marginAfterCollapse
-        && rareNonInheritedData->lineClamp == other->rareNonInheritedData->lineClamp
-        && rareInheritedData->textSizeAdjust == other->rareInheritedData->textSizeAdjust
-        && rareInheritedData->overflowWrap == other->rareInheritedData->overflowWrap
-        && rareInheritedData->nbspMode == other->rareInheritedData->nbspMode
-        && rareInheritedData->lineBreak == other->rareInheritedData->lineBreak
-        && rareInheritedData->textSecurity == other->rareInheritedData->textSecurity
-        && inherited->specifiedLineHeight == other->inherited->specifiedLineHeight
-        && inherited->fontCascade.equalForTextAutoSizing(other->inherited->fontCascade)
-        && inherited->horizontal_border_spacing == other->inherited->horizontal_border_spacing
-        && inherited->vertical_border_spacing == other->inherited->vertical_border_spacing
-        && inherited_flags._box_direction == other->inherited_flags._box_direction
-        && inherited_flags.m_rtlOrdering == other->inherited_flags.m_rtlOrdering
-        && noninherited_flags.position() == other->noninherited_flags.position()
-        && noninherited_flags.floating() == other->noninherited_flags.floating()
-        && rareNonInheritedData->textOverflow == other->rareNonInheritedData->textOverflow;
+    return rareNonInheritedData->m_appearance == other.rareNonInheritedData->m_appearance
+        && rareNonInheritedData->marginBeforeCollapse == other.rareNonInheritedData->marginBeforeCollapse
+        && rareNonInheritedData->marginAfterCollapse == other.rareNonInheritedData->marginAfterCollapse
+        && rareNonInheritedData->lineClamp == other.rareNonInheritedData->lineClamp
+        && rareInheritedData->textSizeAdjust == other.rareInheritedData->textSizeAdjust
+        && rareInheritedData->overflowWrap == other.rareInheritedData->overflowWrap
+        && rareInheritedData->nbspMode == other.rareInheritedData->nbspMode
+        && rareInheritedData->lineBreak == other.rareInheritedData->lineBreak
+        && rareInheritedData->textSecurity == other.rareInheritedData->textSecurity
+        && inherited->specifiedLineHeight == other.inherited->specifiedLineHeight
+        && inherited->fontCascade.equalForTextAutoSizing(other.inherited->fontCascade)
+        && inherited->horizontal_border_spacing == other.inherited->horizontal_border_spacing
+        && inherited->vertical_border_spacing == other.inherited->vertical_border_spacing
+        && inherited_flags._box_direction == other.inherited_flags._box_direction
+        && inherited_flags.m_rtlOrdering == other.inherited_flags.m_rtlOrdering
+        && noninherited_flags.position() == other.noninherited_flags.position()
+        && noninherited_flags.floating() == other.noninherited_flags.floating()
+        && rareNonInheritedData->textOverflow == other.rareNonInheritedData->textOverflow;
 }
 
 #endif // ENABLE(IOS_TEXT_AUTOSIZING)

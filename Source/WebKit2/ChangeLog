@@ -1,3 +1,532 @@
+2016-06-01  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Notify client immediately if network session doesn't exist for a synchronous XHR load.
+        https://bugs.webkit.org/show_bug.cgi?id=158239
+        <rdar://problem/26344251>
+
+        Reviewed by Brady Eidson.
+
+        For a synchronous XHR load, if the network session doesn't exist, we should notify NetworkLoadClient.
+        Otherwise the Web process could hang when waiting for the synchronous load to finish.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::NetworkLoad):
+
+2016-05-31  Brian Burg  <bburg@apple.com>
+  
+        REGRESSION(r191907): Can't enter combining diacritic marks in Web Inspector fields
+        https://bugs.webkit.org/show_bug.cgi?id=158227
+        <rdar://problem/26232464>
+
+        Reviewed by Darin Adler and Alexey Proskuryakov.
+
+        Web Inspector uses a WKWebView subclass for the inspector frontend interface.
+        Since r191907, WKWebView does not have an inner WKView, and instead shares
+        a WebViewImpl to implement the same methods as WKView. So, WKView is no longer
+        involved at all when delivering keystrokes to the Web Inspector interface.
+
+        This caused a subtle regression where some keystrokes were not being interpreted
+        in the same way by AppKit because WKWebView does not conform to NSTextInputClient
+        but WKView does. AppKit won't automatically create a NSTextInputContext for a NSView
+        unless the subclass is declared as conforming to NSTextInputClient. Thus, the keystroke
+        never goes through NSTextInputContext machinery which converts the keystroke into
+        a combining diacritic character.
+
+        This regression is covered by a new API test.
+
+        * UIProcess/API/Cocoa/WKWebView.mm: mark WKWebView as conforming to NSTextInputClient.
+
+2016-06-01  Dan Bernstein  <mitz@apple.com>
+
+        Try to fix ENABLE(IOS_TOUCH_EVENTS) builds.
+
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::touchEvent):
+
+2016-05-31  Darin Adler  <darin@apple.com>
+
+        Audit RenderObject casts and fix problems and style issues found
+        https://bugs.webkit.org/show_bug.cgi?id=158221
+
+        Reviewed by Chris Dumez.
+
+        * Shared/WebRenderObject.cpp:
+        (WebKit::WebRenderObject::WebRenderObject): Tightened up the code that
+        builds the tree of objects; fewer local variables.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::invalidateRect): Cast to RenderEmbeddedObject since
+        that is the class used for plug-ins.
+        (WebKit::PluginView::pluginProcessCrashed): Ditto.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::createPlugin): Ditto.
+        (WebKit::WebPage::plugInIsPrimarySize): Check the renderer for null here.
+        Did not change this to RenderEmbeddedObject, though, because I wasn't
+        absolute certain this is only called with that type of renderer.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::rangeForWebSelectionAtPosition): Tweaked.
+
+2016-06-01  Brady Eidson  <beidson@apple.com>
+
+        Modernize lambda usage for all callers of RunLoop::dispatch() (take 2).
+        https://bugs.webkit.org/show_bug.cgi?id=158277
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::deleteDumpFile):
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::addWorkQueueMessageReceiver):
+        (IPC::Connection::removeWorkQueueMessageReceiver):
+        (IPC::Connection::invalidate):
+        (IPC::Connection::sendMessage):
+        (IPC::Connection::processIncomingMessage):
+        (IPC::Connection::postConnectionDidCloseOnConnectionWorkQueue):
+
+        * UIProcess/Storage/LocalStorageDatabaseTracker.cpp:
+        (WebKit::LocalStorageDatabaseTracker::LocalStorageDatabaseTracker):
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::createSessionStorageNamespace):
+        (WebKit::StorageManager::destroySessionStorageNamespace):
+        (WebKit::StorageManager::setAllowedSessionStorageNamespaceConnection):
+        (WebKit::StorageManager::cloneSessionStorageNamespace):
+        (WebKit::StorageManager::processDidCloseConnection):
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded):
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchData):
+        (WebKit::WebsiteDataStore::removeData):
+
+2016-06-01  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Regression(r200972): Crash under WebKit::WebPage::selectTextWithGranularityAtPoint()
+        https://bugs.webkit.org/show_bug.cgi?id=158284
+        <rdar://problem/26573954>
+
+        Reviewed by Ryosuke Niwa.
+
+        range can be null but r200972 started dereferencing it without null
+        check. This patch adds a null check for range and uses the pre-r200972
+        code path if range is null.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::selectTextWithGranularityAtPoint):
+
+2016-06-01  Brady Eidson  <beidson@apple.com>
+
+        Modernize lambda usage for all callers of RunLoop::dispatch().
+        https://bugs.webkit.org/show_bug.cgi?id=158265
+
+        Reviewed by Chris Dumez.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::fetchWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteDataForOrigins):
+        
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::fetchDiskCacheEntries):
+        (WebKit::NetworkProcess::fetchWebsiteData):
+        
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::remove):
+        (WebKit::NetworkCache::retrieveFromMemory):
+        
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::SyncMessageState::processIncomingMessage):
+        (IPC::Connection::processIncomingMessage):
+        (IPC::Connection::connectionDidClose):
+        (IPC::Connection::enqueueIncomingMessage):
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::receiveSourceEventHandler):
+        
+        * Shared/mac/CookieStorageShim.mm:
+        (-[WKNSURLSessionLocal _getCookieHeadersForTask:completionHandler:]):
+        * UIProcess/API/APIUserContentExtensionStore.cpp:
+        (API::UserContentExtensionStore::lookupContentExtension):
+        (API::UserContentExtensionStore::compileContentExtension):
+        (API::UserContentExtensionStore::removeContentExtension):
+        
+        * UIProcess/Launcher/ProcessLauncher.cpp:
+        (WebKit::ProcessLauncher::ProcessLauncher):
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::connectToService):
+        
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::getSessionStorageOrigins):
+        (WebKit::StorageManager::deleteSessionStorageOrigins):
+        (WebKit::StorageManager::deleteSessionStorageEntriesForOrigins):
+        (WebKit::StorageManager::getLocalStorageOrigins):
+        (WebKit::StorageManager::getLocalStorageOriginDetails):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigin):
+        (WebKit::StorageManager::deleteLocalStorageOriginsModifiedSince):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigins):
+        
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::isWebProcessResponsive):
+        
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::isResponsive):
+        
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchData):
+        
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        (WebKit::NetscapePlugin::pluginThreadAsyncCall):
+        
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::unprotectPluginFromDestruction):
+        
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::wheelEvent):
+        (WebKit::EventDispatcher::gestureEvent):
+        (WebKit::EventDispatcher::touchEvent):
+        
+        * WebProcess/WebPage/ViewUpdateDispatcher.cpp:
+        (WebKit::ViewUpdateDispatcher::visibleContentRectUpdate):
+
+2016-05-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, roll out r201481, r201523: 0.3% regression in Octane code-load
+        https://bugs.webkit.org/show_bug.cgi?id=158249
+
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2016-05-31  Beth Dakin  <bdakin@apple.com>
+
+        Add two optional items to WebViewImplDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=158242
+        -and corresponding-
+        rdar://problem/26473095
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+
+2016-05-31  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r201405): trailers.apple.com HUD is missing in fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=158156
+        <rdar://problem/26519589>
+
+        Reviewed by Darin Adler.
+
+        Only increase the frame of the webView (to account for top content inset) in one dimension.
+
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController enterFullScreen:]):
+
+2016-05-31  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Better deal with WebProcess suspension due to screen locking
+        https://bugs.webkit.org/show_bug.cgi?id=158229
+        <rdar://problem/17665473>
+        <rdar://problem/26554699>
+
+        Reviewed by Tim Horton.
+
+        When locking the screen while MobileSafari is front-most, we would try keep
+        trying to mark IOSurfaces as volatile until the 30 seconds timeout was
+        reached. This patch deals more cleanly with this situation by only trying
+        to mark IOSurfaces as volatile once if the suspension is due to screen
+        locking. In such case, it is apparently expected that some IOSurfaces cannot
+        be marked as volatile so it is enough to try once and let ourselves get
+        suspended.
+
+        This patch also reduces the timeout from 30 seconds to ~3 seconds in the
+        other suspension cases (e.g. homing out of MobileSafari). If we fail to mark
+        them as purgeable for 3 seconds for a reason or another, it is no use in
+        retrying, it is simply not going to happen and there is no reason to delay
+        process suspension any further.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::callVolatilityCompletionHandlers):
+        (WebKit::WebPage::layerVolatilityTimerFired):
+        (WebKit::WebPage::markLayersVolatileImmediatelyIfPossible):
+        (WebKit::WebPage::markLayersVolatile):
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::markLayersVolatile):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::applicationDidEnterBackground):
+        (WebKit::WebPage::applicationWillEnterForeground):
+
+2016-05-31  Brady Eidson  <beidson@apple.com>
+
+        Make createCrossThreadTask() functions return on the stack instead of the heap.
+        https://bugs.webkit.org/show_bug.cgi?id=158215
+
+        Reviewed by Darin Adler.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::postDatabaseTask):
+        (WebKit::DatabaseProcess::performNextDatabaseTask):
+        (WebKit::DatabaseProcess::fetchWebsiteData):
+        * DatabaseProcess/DatabaseProcess.h:
+
+2016-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.13.1 release.
+
+        * gtk/NEWS: Add release notes for 2.13.1.
+
+2016-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ clean build after r201504.
+
+        * DatabaseProcess/DatabaseProcess.cpp: Add missing include.
+
+2016-05-30  Brady Eidson  <beidson@apple.com>
+
+        Move CrossThreadCopier/CrossThreadTask to WTF.
+        https://bugs.webkit.org/show_bug.cgi?id=158207
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        * DatabaseProcess/DatabaseProcess.h:
+
+        * Shared/WebCrossThreadCopier.cpp: Removed.
+        * Shared/WebCrossThreadCopier.h: Removed.
+
+2016-05-28  Chris Dumez  <cdumez@apple.com>
+
+        Templatize NoncopyableFunction class similarly to std::function
+        https://bugs.webkit.org/show_bug.cgi?id=158185
+
+        Reviewed by Darin Adler.
+
+        Templatize NoncopyableFunction class similarly to std::function, so
+        that it can be used as a std::function replacement in more places.
+
+        Previously, NoncopyableFunction could only support "void()" lambdas.
+
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::runTaskInQueue):
+
+2016-05-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix the build with newer clang and other custom configuration options
+        https://bugs.webkit.org/show_bug.cgi?id=158161
+
+        Reviewed by Dan Bernstein.
+
+        * NetworkProcess/ios/NetworkProcessIOS.mm: -setAllowsSpecificHTTPSCertificate:forHost:
+        is now in CFNetworkSPI.h
+        * NetworkProcess/mac/NetworkProcessMac.mm: Ditto.
+        * Shared/mac/CookieStorageShimLibrary.cpp:
+        (WebKit::WebKitCookieStorageShimInitialize): Use more portable std::call_once.
+
+2016-05-28  Chris Dumez  <cdumez@apple.com>
+
+        Modernize lambda captures in the network disk cache implementation
+        https://bugs.webkit.org/show_bug.cgi?id=158179
+
+        Reviewed by Darin Adler.
+
+        Modernize lambda captures in the network disk cache implementation.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::retrieve):
+        (WebKit::NetworkCache::Cache::store):
+        (WebKit::NetworkCache::Cache::traverse):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::inputStreamReadReadyCallback):
+        (WebKit::NetworkCache::outputStreamWriteReadyCallback):
+        * NetworkProcess/cache/NetworkCacheStatistics.cpp:
+        (WebKit::NetworkCache::Statistics::initialize):
+        (WebKit::NetworkCache::Statistics::shrinkIfNeeded):
+        (WebKit::NetworkCache::Statistics::queryWasEverRequested):
+        * NetworkProcess/cache/NetworkCacheStatistics.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::updateFileModificationTime):
+        (WebKit::NetworkCache::Storage::clear):
+
+2016-05-27  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] implement async functions proposal
+        https://bugs.webkit.org/show_bug.cgi?id=156147
+
+        Reviewed by Yusuke Suzuki.
+
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2016-05-27  Chris Dumez  <cdumez@apple.com>
+
+        Improve lambda capture in NetworkCache::Storage::synchronize()
+        https://bugs.webkit.org/show_bug.cgi?id=158176
+
+        Reviewed by Brady Eidson.
+
+        Improve lambda capture in NetworkCache::Storage::synchronize(). We can
+        now capture the std::unique_ptr<> variables directly thanks to:
+        1. C++14's support for initializer's in lambda captures
+        2. RunLoop::dispatch() now takes a NoncopyableFunction in instead of
+           a std::function, allowing us to capture non-copyable variables.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::synchronize):
+
+2016-05-27  Jeremy Jones  <jeremyj@apple.com>
+
+        Decrease flicker when changing video presentation mode.
+        https://bugs.webkit.org/show_bug.cgi?id=158148
+        rdar://problem/24476949
+
+        Reviewed by Tim Horton.
+
+        Prevent flicker by using setVideoFullscreenLayer with a completion handler to delay 
+        enter fullscreen and cleanup fullscreen until the video layer has completely been
+        installed or removed.
+
+        * WebProcess/cocoa/WebVideoFullscreenManager.mm:
+        (WebKit::WebVideoFullscreenManager::didSetupFullscreen):
+        (WebKit::WebVideoFullscreenManager::didExitFullscreen):
+
+2016-05-27  Chris Dumez  <cdumez@apple.com>
+
+        WorkQueue::dispatch() / RunLoop::dispatch() should not copy captured lambda variables
+        https://bugs.webkit.org/show_bug.cgi?id=158111
+
+        Reviewed by Darin Adler.
+
+        WorkQueue::dispatch() / RunLoop::dispatch() should not copy captured lambda variables.
+        These are often used cross-thread and copying the captured lambda variables can be
+        dangerous (e.g. we do not want to copy a String after calling isolatedCopy() upon
+        capture).
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::clearDiskCacheEntries):
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::clear):
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::runTaskInQueue):
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::processIncomingMessage):
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::getSessionStorageOrigins):
+        (WebKit::StorageManager::deleteSessionStorageOrigins):
+        (WebKit::StorageManager::deleteSessionStorageEntriesForOrigins):
+        (WebKit::StorageManager::getLocalStorageOrigins):
+        (WebKit::StorageManager::getLocalStorageOriginDetails):
+        (WebKit::StorageManager::deleteLocalStorageOriginsModifiedSince):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigins):
+        * UIProcess/Storage/StorageManager.h:
+
+2016-05-27  Alex Christensen  <achristensen@webkit.org>
+
+        Expose content extension failure error codes in SPI
+        https://bugs.webkit.org/show_bug.cgi?id=158095
+        rdar://problem/26475651
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/APIUserContentExtensionStore.cpp:
+        (API::UserContentExtensionStore::synchronousRemoveAllContentExtensions):
+        (API::UserContentExtensionStore::invalidateContentExtensionVersion):
+        Added for testing.
+        (API::userContentExtensionStoreErrorCategory):
+        * UIProcess/API/APIUserContentExtensionStore.h:
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.h:
+        Added the new enum, _WKUserContentExtensionStoreErrorCode.
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.mm:
+        (-[_WKUserContentExtensionStore compileContentExtensionForIdentifier:encodedContentExtension:completionHandler:]):
+        Sometimes the error code returned by UserContentExtensionStore::compileContentExtension has the error code from compileRuleList.
+        When this happens, we want to get the message from the internal compiler error, but we want the NSError's code to always be CompileFailed.
+        (-[_WKUserContentExtensionStore lookupContentExtensionForIdentifier:completionHandler:]):
+        (-[_WKUserContentExtensionStore removeContentExtensionForIdentifier:completionHandler:]):
+        (-[_WKUserContentExtensionStore _removeAllContentExtensions]):
+        (-[_WKUserContentExtensionStore _invalidateContentExtensionVersionForIdentifier:]):
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStorePrivate.h:
+        Added new invalidator for testing.
+
+2016-05-27  Zalan Bujtas  <zalan@apple.com>
+
+        Regression(r200972): Webcore::Range::collectSelectionsRects() asserts in startContainer() while selecting text.
+        https://bugs.webkit.org/show_bug.cgi?id=158155
+        <rdar://problem/26502712>
+
+        Reviewed by Chris Dumez.
+
+        This patch ensures that we still have a valid paragraphRange after returning from enclosingTextUnitOfGranularity().
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::selectTextWithGranularityAtPoint):
+
+2016-05-26  Brady Eidson  <beidson@apple.com>
+
+        Certain NetworkResourceLoader callbacks can deref a null m_networkLoad.
+        https://bugs.webkit.org/show_bug.cgi?id=158134
+
+        Reviewed by Alex Christensen.
+
+        It's legit for m_networkLoad to be null in these callbacks.
+        
+        We need null checks, just like we have in many other callbacks in this class.
+        
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::continueWillSendRequest):
+        (WebKit::NetworkResourceLoader::continueCanAuthenticateAgainstProtectionSpace):
+
+2016-05-26  Darin Adler  <darin@apple.com>
+
+        Media queries and platform screen modernization and streamlining
+        https://bugs.webkit.org/show_bug.cgi?id=158067
+
+        Reviewed by Alex Christensen.
+
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::screenForWindow): Deleted.
+        (WebKit::flipScreenPoint): Deleted.
+        (WebKit::globalPoint): Deleted.
+        (WebKit::globalPointForEvent): Use globalPoint function from WebCore so we don't need
+        copies of everything in here.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::windowDidChangeScreen): Removed unneeded type cast.
+        (WebKit::WebViewImpl::draggedImage): Added type cast since globalPoint now returns an
+        NSPoint rather than an IntPoint.
+
+        * UIProcess/WebPageProxy.h: Use pragma once. Add a WebCore prefix to a use of
+        PlatformDisplayID, since that is now inside the WebCore namespace.
+        * WebProcess/WebCoreSupport/WebChromeClient.h: Ditto.
+        * WebProcess/WebPage/Cocoa/RemoteLayerTreeDisplayRefreshMonitor.h: Ditto.
+        * WebProcess/WebPage/DrawingArea.h: Ditto.
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h: Ditto.
+
+2016-05-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Purge PassRefPtr in Modules/battery
+        https://bugs.webkit.org/show_bug.cgi?id=157062
+
+        Reviewed by Darin Adler.
+
+        Use RefPtr<>& to reduce uses of PassRefPtr in WebKit.
+
+        * WebProcess/Battery/WebBatteryManager.cpp:
+        (WebKit::WebBatteryManager::didChangeBatteryStatus):
+        (WebKit::WebBatteryManager::updateBatteryStatus):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_shouldDispatchFakeMouseMoveEvents):
+
+2016-05-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Build fix
+
+        Rubber stamped by Lucas Forschler.
+
+        * Configurations/DebugRelease.xcconfig:
+
 2016-05-25  Jer Noble  <jer.noble@apple.com>
 
         Flashiness and jumpiness when entering fullscreen

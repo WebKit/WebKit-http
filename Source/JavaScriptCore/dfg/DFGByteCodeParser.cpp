@@ -4081,7 +4081,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_get_by_id:
-        case op_get_by_id_proto_load:
         case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
             
@@ -4937,21 +4936,14 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_new_func_exp:
-        case op_new_generator_func_exp:
-        case op_new_arrow_func_exp: {
+        case op_new_generator_func_exp: {
             FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(expr);
             NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction : NewFunction;
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
             
-            if (opcodeID == op_new_func_exp || opcodeID == op_new_generator_func_exp) {
-                // Curly braces are necessary
-                static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
-                NEXT_OPCODE(op_new_func_exp);
-            } else {
-                // Curly braces are necessary
-                NEXT_OPCODE(op_new_arrow_func_exp);
-            }
+            static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
+            NEXT_OPCODE(op_new_func_exp);
         }
 
         case op_set_function_name: {
