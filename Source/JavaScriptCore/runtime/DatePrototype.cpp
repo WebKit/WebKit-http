@@ -504,11 +504,6 @@ void DatePrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     // The constructor will be added later, after DateConstructor has been built.
 }
 
-bool DatePrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticFunctionSlot<JSObject>(exec, dateTable, jsCast<DatePrototype*>(object), propertyName, slot);
-}
-
 // Functions
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToString(ExecState* exec)
@@ -923,8 +918,9 @@ static EncodedJSValue setNewValueFromTimeArgs(ExecState* exec, int numArgsToUse,
         thisDateObj->setInternalValue(vm, result);
         return JSValue::encode(result);
     } 
-    
-    JSValue result = jsNumber(gregorianDateTimeToMS(vm, gregorianDateTime, ms, inputTimeType));
+
+    double newUTCDate = gregorianDateTimeToMS(vm, gregorianDateTime, ms, inputTimeType);
+    JSValue result = jsNumber(timeClip(newUTCDate));
     thisDateObj->setInternalValue(vm, result);
     return JSValue::encode(result);
 }
@@ -964,8 +960,9 @@ static EncodedJSValue setNewValueFromDateArgs(ExecState* exec, int numArgsToUse,
         thisDateObj->setInternalValue(vm, result);
         return JSValue::encode(result);
     } 
-           
-    JSValue result = jsNumber(gregorianDateTimeToMS(vm, gregorianDateTime, ms, inputTimeType));
+
+    double newUTCDate = gregorianDateTimeToMS(vm, gregorianDateTime, ms, inputTimeType);
+    JSValue result = jsNumber(timeClip(newUTCDate));
     thisDateObj->setInternalValue(vm, result);
     return JSValue::encode(result);
 }

@@ -223,10 +223,6 @@
 #include "GestureEvent.h"
 #endif
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-#include "TextAutoSizing.h"
-#endif
-
 #if ENABLE(MATHML)
 #include "MathMLElement.h"
 #include "MathMLElementFactory.h"
@@ -424,18 +420,6 @@ static void printNavigationErrorMessage(Frame* frame, const URL& activeURL, cons
 }
 
 uint64_t Document::s_globalTreeVersion = 0;
-
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-void TextAutoSizingTraits::constructDeletedValue(TextAutoSizingKey& slot)
-{
-    new (&slot) TextAutoSizingKey(TextAutoSizingKey::Deleted);
-}
-
-bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
-{
-    return value.isDeleted();
-}
-#endif
 
 HashSet<Document*>& Document::allDocuments()
 {
@@ -802,7 +786,7 @@ void Document::clearSelectorQueryCache()
 MediaQueryMatcher& Document::mediaQueryMatcher()
 {
     if (!m_mediaQueryMatcher)
-        m_mediaQueryMatcher = MediaQueryMatcher::create(this);
+        m_mediaQueryMatcher = MediaQueryMatcher::create(*this);
     return *m_mediaQueryMatcher;
 }
 
@@ -3700,7 +3684,7 @@ void Document::removeFocusedNodeOfSubtree(Node* node, bool amongChildrenOnly)
         nodeInSubtree = (focusedElement == node) || focusedElement->isDescendantOf(node);
     
     if (nodeInSubtree)
-        setFocusedElement(nullptr);
+        setFocusedElement(nullptr, FocusDirectionNone, FocusRemovalEventsMode::DoNotDispatch);
 }
 
 void Document::hoveredElementDidDetach(Element* element)
@@ -3738,7 +3722,7 @@ void Document::setAnnotatedRegions(const Vector<AnnotatedRegionValue>& regions)
 }
 #endif
 
-bool Document::setFocusedElement(Element* element, FocusDirection direction)
+bool Document::setFocusedElement(Element* element, FocusDirection direction, FocusRemovalEventsMode eventsMode)
 {
     RefPtr<Element> newFocusedElement = element;
     // Make sure newFocusedElement is actually in this document
@@ -3761,33 +3745,36 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction)
 
         oldFocusedElement->setFocus(false);
 
-        // Dispatch a change event for form control elements that have been edited.
-        if (is<HTMLFormControlElement>(*oldFocusedElement)) {
-            HTMLFormControlElement& formControlElement = downcast<HTMLFormControlElement>(*oldFocusedElement);
-            if (formControlElement.wasChangedSinceLastFormControlChangeEvent())
-                formControlElement.dispatchFormControlChangeEvent();
-        }
+        if (eventsMode == FocusRemovalEventsMode::Dispatch) {
+            // Dispatch a change event for form control elements that have been edited.
+            if (is<HTMLFormControlElement>(*oldFocusedElement)) {
+                HTMLFormControlElement& formControlElement = downcast<HTMLFormControlElement>(*oldFocusedElement);
+                if (formControlElement.wasChangedSinceLastFormControlChangeEvent())
+                    formControlElement.dispatchFormControlChangeEvent();
+            }
 
-        // Dispatch the blur event and let the node do any other blur related activities (important for text fields)
-        oldFocusedElement->dispatchBlurEvent(newFocusedElement.copyRef());
+            // Dispatch the blur event and let the node do any other blur related activities (important for text fields)
+            oldFocusedElement->dispatchBlurEvent(newFocusedElement.copyRef());
 
-        if (m_focusedElement) {
-            // handler shifted focus
-            focusChangeBlocked = true;
-            newFocusedElement = nullptr;
-        }
-        
-        oldFocusedElement->dispatchFocusOutEvent(eventNames().focusoutEvent, newFocusedElement.copyRef()); // DOM level 3 name for the bubbling blur event.
-        // FIXME: We should remove firing DOMFocusOutEvent event when we are sure no content depends
-        // on it, probably when <rdar://problem/8503958> is resolved.
-        oldFocusedElement->dispatchFocusOutEvent(eventNames().DOMFocusOutEvent, newFocusedElement.copyRef()); // DOM level 2 name for compatibility.
+            if (m_focusedElement) {
+                // handler shifted focus
+                focusChangeBlocked = true;
+                newFocusedElement = nullptr;
+            }
 
-        if (m_focusedElement) {
-            // handler shifted focus
-            focusChangeBlocked = true;
-            newFocusedElement = nullptr;
-        }
-            
+            oldFocusedElement->dispatchFocusOutEvent(eventNames().focusoutEvent, newFocusedElement.copyRef()); // DOM level 3 name for the bubbling blur event.
+            // FIXME: We should remove firing DOMFocusOutEvent event when we are sure no content depends
+            // on it, probably when <rdar://problem/8503958> is resolved.
+            oldFocusedElement->dispatchFocusOutEvent(eventNames().DOMFocusOutEvent, newFocusedElement.copyRef()); // DOM level 2 name for compatibility.
+
+            if (m_focusedElement) {
+                // handler shifted focus
+                focusChangeBlocked = true;
+                newFocusedElement = nullptr;
+            }
+        } else
+            ASSERT(!m_focusedElement);
+
         if (oldFocusedElement->isRootEditableElement())
             frame()->editor().didEndEditing();
 
@@ -3967,6 +3954,14 @@ void Document::updateRangesAfterChildrenChanged(ContainerNode& container)
 
 void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 {
+    NoEventDispatchAssertion assertNoEventDispatch;
+
+    removeFocusedNodeOfSubtree(&container, true /* amongChildrenOnly */);
+
+#if ENABLE(FULLSCREEN_API)
+    removeFullScreenElementOfSubtree(&container, true /* amongChildrenOnly */);
+#endif
+
     for (auto* range : m_ranges)
         range->nodeChildrenWillBeRemoved(container);
 
@@ -3991,6 +3986,14 @@ void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 
 void Document::nodeWillBeRemoved(Node& n)
 {
+    NoEventDispatchAssertion assertNoEventDispatch;
+
+    removeFocusedNodeOfSubtree(&n);
+
+#if ENABLE(FULLSCREEN_API)
+    removeFullScreenElementOfSubtree(&n);
+#endif
+
     for (auto* it : m_nodeIterators)
         it->nodeWillBeRemoved(n);
 
@@ -5279,35 +5282,24 @@ HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 
-void Document::addAutoSizingNode(Text& node, float candidateSize)
+void Document::addAutoSizedNode(Text& node, float candidateSize)
 {
-    LOG(TextAutosizing, " addAutoSizingNode %p candidateSize=%f", &node, candidateSize);
-
-    TextAutoSizingKey key(&node.renderer()->style());
-    auto addResult = m_textAutoSizedNodes.ensure(WTFMove(key), [] {
-        return TextAutoSizingValue::create();
-    });
-    addResult.iterator->value->addNode(node, candidateSize);
+    LOG(TextAutosizing, " addAutoSizedNode %p candidateSize=%f", &node, candidateSize);
+    auto addResult = m_textAutoSizedNodes.add<TextAutoSizingHashTranslator>(node.renderer()->style(), nullptr);
+    if (addResult.isNewEntry)
+        addResult.iterator->value = std::make_unique<TextAutoSizingValue>();
+    addResult.iterator->value->addTextNode(node, candidateSize);
 }
 
-void Document::validateAutoSizingNodes()
+void Document::updateAutoSizedNodes()
 {
-    Vector<TextAutoSizingKey> nodesForRemoval;
-    for (auto& keyValuePair : m_textAutoSizedNodes) {
-        TextAutoSizingValue* value = keyValuePair.value.get();
-        // Update all the nodes in the collection to reflect the new
-        // candidate size.
-        value->adjustNodeSizes();
-    }
     m_textAutoSizedNodes.removeIf([](auto& keyAndValue) {
-        return !keyAndValue.value->numNodes();
+        return keyAndValue.value->adjustTextNodeSizes() == TextAutoSizingValue::StillHasNodes::No;
     });
 }
     
-void Document::resetAutoSizingNodes()
+void Document::clearAutoSizedNodes()
 {
-    for (auto& value : m_textAutoSizedNodes.values())
-        value->reset();
     m_textAutoSizedNodes.clear();
 }
 
@@ -5341,7 +5333,7 @@ void Document::parseDNSPrefetchControlHeader(const String& dnsPrefetchControl)
 void Document::addConsoleMessage(MessageSource source, MessageLevel level, const String& message, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
-        postTask(AddConsoleMessageTask(source, level, StringCapture(message)));
+        postTask(AddConsoleMessageTask(source, level, message));
         return;
     }
 
@@ -5352,7 +5344,7 @@ void Document::addConsoleMessage(MessageSource source, MessageLevel level, const
 void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&& callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
-        postTask(AddConsoleMessageTask(source, level, StringCapture(message)));
+        postTask(AddConsoleMessageTask(source, level, message));
         return;
     }
 
@@ -5365,14 +5357,10 @@ SecurityOrigin* Document::topOrigin() const
     return topDocument().securityOrigin();
 }
 
-void Document::postTask(Task task)
+void Document::postTask(Task&& task)
 {
-    Task* taskPtr = std::make_unique<Task>(WTFMove(task)).release();
-    WeakPtr<Document> documentReference(m_weakFactory.createWeakPtr());
-
-    callOnMainThread([=] {
+    callOnMainThread([documentReference = m_weakFactory.createWeakPtr(), task = WTFMove(task)]() mutable {
         ASSERT(isMainThread());
-        std::unique_ptr<Task> task(taskPtr);
 
         Document* document = documentReference.get();
         if (!document)
@@ -5380,9 +5368,9 @@ void Document::postTask(Task task)
 
         Page* page = document->page();
         if ((page && page->defersLoading() && document->activeDOMObjectsAreSuspended()) || !document->m_pendingTasks.isEmpty())
-            document->m_pendingTasks.append(WTFMove(*task.release()));
+            document->m_pendingTasks.append(WTFMove(task));
         else
-            task->performTask(*document);
+            task.performTask(*document);
     });
 }
 

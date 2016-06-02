@@ -1674,6 +1674,17 @@ bool JSObject::getPrimitiveNumber(ExecState* exec, double& number, JSValue& resu
     return !result.isString();
 }
 
+bool JSObject::getOwnStaticPropertySlot(VM& vm, PropertyName propertyName, PropertySlot& slot)
+{
+    for (auto* info = classInfo(); info; info = info->parentClass) {
+        if (auto* table = info->staticPropHashTable) {
+            if (getStaticPropertySlotFromTable(vm, *table, this, propertyName, slot))
+                return true;
+        }
+    }
+    return false;
+}
+
 const HashTableValue* JSObject::findPropertyHashEntry(PropertyName propertyName) const
 {
     for (const ClassInfo* info = classInfo(); info; info = info->parentClass) {
@@ -1990,10 +2001,13 @@ bool JSObject::removeDirect(VM& vm, PropertyName propertyName)
 
 NEVER_INLINE void JSObject::fillGetterPropertySlot(PropertySlot& slot, JSValue getterSetter, unsigned attributes, PropertyOffset offset)
 {
-    if (structure()->isDictionary()) {
+    if (structure()->isUncacheableDictionary()) {
         slot.setGetterSlot(this, attributes, jsCast<GetterSetter*>(getterSetter));
         return;
     }
+
+    // This access is cacheable because Structure requires an attributeChangedTransition
+    // if this property stops being an accessor.
     slot.setCacheableGetterSlot(this, attributes, jsCast<GetterSetter*>(getterSetter), offset);
 }
 
