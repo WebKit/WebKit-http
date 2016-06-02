@@ -4,5 +4,5 @@ python: "2.7"
 sudo: false
 git:
   depth: 3
-script: Tools/Scripts/check-webkit-style -g qtwebkit-1..
+script: Tools/Scripts/check-webkit-style -g qtwebkit-stable..
 install: true
