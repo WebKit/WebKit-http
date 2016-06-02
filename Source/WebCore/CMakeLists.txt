@@ -239,6 +239,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCPeerConnection.idl
     Modules/mediastream/RTCRtpReceiver.idl
     Modules/mediastream/RTCRtpSender.idl
+    Modules/mediastream/RTCRtpTransceiver.idl
     Modules/mediastream/RTCSessionDescription.idl
     Modules/mediastream/RTCStatsReport.idl
     Modules/mediastream/RTCStatsResponse.idl
@@ -938,6 +939,7 @@ set(WebCore_SOURCES
     Modules/mediastream/RTCPeerConnection.cpp
     Modules/mediastream/RTCRtpReceiver.cpp
     Modules/mediastream/RTCRtpSender.cpp
+    Modules/mediastream/RTCRtpTransceiver.cpp
     Modules/mediastream/RTCSessionDescription.cpp
     Modules/mediastream/RTCStatsReport.cpp
     Modules/mediastream/RTCStatsResponse.cpp
@@ -2107,7 +2109,6 @@ set(WebCore_SOURCES
     platform/ContentType.cpp
     platform/ContextMenu.cpp
     platform/ContextMenuItem.cpp
-    platform/CrossThreadCopier.cpp
     platform/Cursor.cpp
     platform/DateComponents.cpp
     platform/Decimal.cpp
@@ -2152,6 +2153,7 @@ set(WebCore_SOURCES
     platform/URL.cpp
     platform/UUID.cpp
     platform/UserActivity.cpp
+    platform/WebCoreCrossThreadCopier.cpp
     platform/Widget.cpp
 
     platform/animation/Animation.cpp
@@ -3420,6 +3422,7 @@ set(WebCoreTestSupport_IDL_INCLUDES
 )
 
 set(WebCoreTestSupport_IDL_FILES
+    testing/GCObservation.idl
     testing/InternalSettings.idl
     testing/Internals.idl
     testing/MallocStatistics.idl
@@ -3438,6 +3441,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     platform/mock/mediasource/MockSourceBufferPrivate.cpp
     platform/mock/mediasource/MockTracks.cpp
 
+    testing/GCObservation.cpp
     testing/InternalSettings.cpp
     testing/Internals.cpp
     testing/MockPageOverlay.cpp

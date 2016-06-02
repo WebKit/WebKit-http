@@ -1,3 +1,482 @@
+2016-06-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Some setters for components of Date do not timeClip() their result
+        https://bugs.webkit.org/show_bug.cgi?id=158278
+        rdar://problem/25131426
+
+        Reviewed by Geoffrey Garen.
+
+        New test coverage for large values.
+
+        Note that some of those tests are still failing with this patch.
+
+        The reason is our code handling month and years is unable to deal
+        with values outside int32.
+        Changing that is a bit more complicated due to the number of users
+        of DateMath. I leave that for the future.
+
+        * js/date-timeClip-large-values-expected.txt: Added.
+        * js/date-timeClip-large-values.html: Added.
+        * js/script-tests/date-timeClip-large-values.js: Added.
+
+2016-06-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS: VoiceOver can't access attachments in mail messages
+        https://bugs.webkit.org/show_bug.cgi?id=158198
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/ios-simulator/attributed-string-for-range.html: Added.
+
+2016-06-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201488.
+        https://bugs.webkit.org/show_bug.cgi?id=158268
+
+        Caused 23% regression on JetStream's crypto-md5 (Requested by
+        rniwa on #webkit).
+
+        Reverted changeset:
+
+        "[ESNext] Support trailing commas in function param lists"
+        https://bugs.webkit.org/show_bug.cgi?id=158020
+        http://trac.webkit.org/changeset/201488
+
+2016-06-01  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        POST request on a blob resource should return a "network error" instead of HTTP 500 response
+        https://bugs.webkit.org/show_bug.cgi?id=158022
+
+        Reviewed by Alex Christensen.
+
+        Make sure response to XHR request on blob is correct.
+
+        * fast/files/xhr-blob-request-expected.txt: Added.
+        * fast/files/xhr-blob-request.html: Added.
+
+2016-06-01  Javier Fernandez  <jfernandez@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several tests after r201397.
+
+        We correctly render search field's cancel and result button for RTL content.
+
+        * fast/forms/search-input-rtl-expected.txt: Added.
+        * platform/gtk/fast/css/text-overflow-input-expected.txt:
+        * platform/gtk/fast/forms/placeholder-position-expected.txt:
+        * platform/gtk/fast/forms/search-rtl-expected.txt:
+
+2016-06-01  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Add RTCRtpTransceiver interface and RTCPeerConnection.addTransceiver()
+        https://bugs.webkit.org/show_bug.cgi?id=158189
+
+        Reviewed by Darin Adler.
+
+        Added test for RTCPeerConnection.addTransceiver().
+
+        * fast/mediastream/RTCPeerConnection-addTransceiver-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-addTransceiver.html: Added.
+        Test creating several RTCRtpTransceivers with various configurations and inspect the result.
+        * platform/mac/TestExpectations:
+        Skip the new test since the Mac port currently doesn't build with WebRTC support.
+
+2016-06-01  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Positioned items can be placed on the implicit grid
+        https://bugs.webkit.org/show_bug.cgi?id=158197
+
+        Reviewed by Sergio Villar Senin.
+
+        Updated the test to follow the expected behavior.
+
+        * fast/css-grid-layout/grid-positioned-items-within-grid-implicit-track-expected.txt:
+        * fast/css-grid-layout/grid-positioned-items-within-grid-implicit-track.html:
+
+2016-05-31  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION(r201040): Repainting of moving overflow:hidden objects is broken.
+        https://bugs.webkit.org/show_bug.cgi?id=158079
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/repaint/overflow-hidden-movement-expected.txt: Added.
+        * fast/repaint/overflow-hidden-movement.html: Added.
+
+2016-05-31  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] AirPlay route is sometimes reset when changing video.src
+        https://bugs.webkit.org/show_bug.cgi?id=158226
+        <rdar://problem/24197592>
+
+        Reviewed by Jer Noble.
+
+        * media/airplay-autoplay-expected.txt: Added.
+        * media/airplay-autoplay.html: Added.
+
+2016-05-31  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION (r189567): Elements with aspect ratios not handled correctly inside flexbox.
+        https://bugs.webkit.org/show_bug.cgi?id=158040
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/flexbox/aspect-ratio-intrinsic-adjust-expected.html: Added.
+        * fast/flexbox/aspect-ratio-intrinsic-adjust.html: Added.
+        * fast/flexbox/resources/subjects_sm.png: Added.
+
+2016-05-25  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Empty grid without explicit tracks shouldn't have any size
+        https://bugs.webkit.org/show_bug.cgi?id=155197
+
+        Reviewed by Darin Adler.
+
+        Make sure that empty grids (and grids with one empty axis) are properly handled. Do also
+        verify that removing all the items from a grid also generates an correct empty grid.
+
+        * fast/css-grid-layout/empty-grid-expected.txt: Added.
+        * fast/css-grid-layout/empty-grid.html: Added.
+
+2016-05-30  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening.
+        
+        After the crash fix in r201500, update the test expectations for 
+        http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html.
+
+        * platform/win/TestExpectations:
+
+2016-05-30  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Box Alignment] New CSS Value 'normal' for Self Alignment
+        https://bugs.webkit.org/show_bug.cgi?id=156254
+
+        Reviewed by Darin Adler.
+
+        Changes in the already defined tests for the alignment properties to
+        consider the new CSS value 'normal', which is the default for align-items
+        and the value to resolve 'auto' when there is no parent.
+
+        Added a new test to verify the Self-Alignment properties work as expected
+        with root elements.
+
+        * css3/flexbox/css-properties-expected.txt:
+        * css3/flexbox/css-properties.html:
+        * css3/parse-align-items-expected.txt:
+        * css3/parse-align-items.html:
+        * css3/parse-align-self-expected.txt:
+        * css3/parse-align-self.html:
+        * css3/parse-alignment-of-root-elements-expected.txt: Added.
+        * css3/parse-alignment-of-root-elements.html: Added.
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/parse-justify-items-expected.txt:
+        * fast/css/parse-justify-items.html:
+        * fast/css/parse-justify-self-expected.txt:
+        * fast/css/parse-justify-self.html:
+        * fast/css/resources/alignment-parsing-utils.js:
+        * svg/css/getComputedStyle-basic-expected.txt:
+        (checkBadValues):
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2016-05-25  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ESNext] Support trailing commas in function param lists
+        https://bugs.webkit.org/show_bug.cgi?id=158020
+
+        Reviewed by Keith Miller.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+        * sputnik/Conformance/13_Function_Definition/S13_A5.html:
+
+2016-05-27  Zalan Bujtas  <zalan@apple.com>
+
+        EventHandler finds incorrect scrollable container.
+        https://bugs.webkit.org/show_bug.cgi?id=158132
+        <rdar://problem/26423126>
+
+        Reviewed by Brent Fulgham.
+
+        Fix the logic that checks whether we are at the beginning or at the end of the container (horizontally).
+        While scrolling to the right, deltaX has negative values. So in case of deltaX < 0, we need to check if
+        the container is not scrolled all the way to the right.
+
+        * fast/scrolling/scroll-container-horizontally-expected.txt: Added.
+        * fast/scrolling/scroll-container-horizontally.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2016-05-27  Saam barati  <sbarati@apple.com>
+
+        DebuggerCallFrame crashes when updated with the globalExec because neither ShadowChicken's algorithm nor StackVisitor's algorithm reasons about the globalExec
+        https://bugs.webkit.org/show_bug.cgi?id=158104
+
+        Reviewed by Filip Pizlo.
+
+        * inspector/debugger/breakpoint-syntax-error-top-level-expected.txt: Added.
+        * inspector/debugger/breakpoint-syntax-error-top-level.html: Added.
+        * inspector/debugger/resources/file-with-syntax-error.js: Added.
+
+2016-05-27  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix after r201468.
+
+        Correct output handling to reduce flakiness on test bots.
+
+        * http/tests/security/contentSecurityPolicy/frame-src-cross-origin-load.html:
+
+2016-05-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash in TreeScope::focusedElement
+        https://bugs.webkit.org/show_bug.cgi?id=158108
+
+        Reviewed by Enrica Casucci.
+
+        Added a regression test for accessing shadowRoot.activeElement after re-focusing an element
+        inside DOMNodeRemovedFromDocument event and unload events.
+
+        This patch also restores the expected result of fast/events/onblur-remove.html to that of when
+        the test was in r15720 and updated in r19014. The expected result was changed in r85495 as it was
+        converted to a eventSender test.
+
+        * fast/dom/Range/range-created-during-remove-children-expected.txt:
+        * fast/dom/Range/range-created-during-remove-children.html: Update the test to use unload event
+        of an iframe since we no longer fire blur event when removing a focused element.
+        * fast/dom/adopt-node-prevented-expected.txt:
+        * fast/dom/adopt-node-prevented.html: Ditto.
+        * fast/dom/remove-body-during-body-replacement2.html: Ditto. Use DOMNodeRemoved instead.
+        * fast/events/nested-event-remove-node-crash.html: Ditto. Use DOMNodeRemovedFromDocument instead.
+        * fast/events/onblur-remove-expected.txt:
+        * fast/events/onblur-remove.html: See above.
+        * fast/shadow-dom/shadow-root-active-element-crash-expected.txt: Added.
+        * fast/shadow-dom/shadow-root-active-element-crash.html: Added.
+
+2016-05-27  Brent Fulgham  <bfulgham@apple.com>
+
+        CSP: Fire 'load' events even when blocking loads via 'frame-src'.
+        https://bugs.webkit.org/show_bug.cgi?id=153150
+        <rdar://problem/24383162>
+
+        Reviewed by Daniel Bates.
+
+        * TestExpectations: Unskip the cross-origin load test.
+        * http/tests/security/contentSecurityPolicy/frame-src-cross-origin-load-expected.txt: Update to match
+        our message format.
+
+2016-05-27  Saam barati  <sbarati@apple.com>
+
+        ShadowChicken/DebuggerCallFrame don't properly handle when the entry stack frame is a tail deleted frame
+        https://bugs.webkit.org/show_bug.cgi?id=158131
+
+        Reviewed by Yusuke Suzuki.
+
+        * inspector/debugger/resources/tail-deleted-frames-from-vm-entry.js: Added.
+        (timeout):
+        (bar):
+        * inspector/debugger/tail-deleted-frames-from-vm-entry-expected.txt: Added.
+        * inspector/debugger/tail-deleted-frames-from-vm-entry.html: Added.
+
+2016-05-27  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] accessibility/gtk/no-notification-for-unrendered-iframe-children.html began failing after r201416
+        https://bugs.webkit.org/show_bug.cgi?id=158152
+
+        Reviewed by Chris Fleizach.
+
+        The failure is actually a bug fix because only one child is being added, but two
+        notifications were being emitted. Now there is only one notification. To verify
+        this was the case, we really should examine the child reportedly being added. That
+        child is the ATK event's any_data, so pass along that child to the listener.
+
+        The failing test and associated expectations were modified to remove the duplicate
+        notification and include the title of the added child for the notification we get.
+
+        * accessibility/gtk/no-notification-for-unrendered-iframe-children.html: Updated.
+        * accessibility/gtk/no-notification-for-unrendered-iframe-children-expected.txt: Updated.
+
+2016-05-27  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update RTCPeerConnection overloaded legacy operations to return a Promise
+        https://bugs.webkit.org/show_bug.cgi?id=158114
+
+        Reviewed by Eric Carlson.
+
+        Updated existing tests (see below).
+
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-expected.txt:
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-params-expected.txt:
+        * fast/mediastream/RTCPeerConnection-overloaded-operations-params.html:
+        Test various combinations of good and bad arguments and verify that no errors are thrown.
+        * fast/mediastream/RTCPeerConnection-overloaded-operations.html:
+        Test that all overloaded versions return a promise.
+        * fast/mediastream/resources/promise-utils.js: Added.
+        Shared utils to make it easier to test async promise APIs.
+        (ensurePromise):
+        (promiseShouldReject):
+        (promiseShouldNotRejectWithTypeError.):
+
+2016-05-27  Antoine Quint  <graouts@apple.com>
+
+        Video play glyph not visible if initially invisible when contained in a "-webkit-overflow-scrolling: touch" container
+        https://bugs.webkit.org/show_bug.cgi?id=158146
+        <rdar://problem/25816307>
+
+        Reviewed by Dean Jackson.
+
+        Testing that on iOS the play glyph for <video> controls when play button would be initially invisible when contained
+        in a scrollable container is indeed composited.
+
+        * platform/ios-simulator/media/video-play-glyph-composited-outside-overflow-scrolling-touch-container-expected.txt: Added.
+        * platform/ios-simulator/media/video-play-glyph-composited-outside-overflow-scrolling-touch-container.html: Added.
+
+2016-05-26  Yoav Weiss  <yoav@yoav.ws>
+
+        Preload single download tests.
+        https://bugs.webkit.org/show_bug.cgi?id=157988
+
+        Reviewed by Alex Christensen.
+
+        Make sure preload is only downloading a single resource, which is properly reused.
+
+        * http/tests/preload/resources/single_download_preload.html: Added.
+        * http/tests/preload/single_download_preload_runner-expected.txt: Added.
+        * http/tests/preload/single_download_preload_runner.html: Added.
+
+2016-05-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening.
+        Release some passing tests which have been marked to Crash, Failure.
+
+        * platform/efl/TestExpectations:
+
+2016-05-26  Nan Wang  <n_wang@apple.com>
+
+        AX: Wrong CharacterOffset from VisiblePosition with composed characters
+        https://bugs.webkit.org/show_bug.cgi?id=158138
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/character-offset-visible-position-conversion-with-emoji-expected.txt: Added.
+        * accessibility/mac/character-offset-visible-position-conversion-with-emoji.html: Added.
+
+2016-05-26  Brent Fulgham  <bfulgham@apple.com>
+
+        DOM mutation methods fail to re-check validity of node insertion after removing nodes from old parent
+        https://bugs.webkit.org/show_bug.cgi?id=81991
+        <rdar://problem/11120506>
+
+        Reviewed by Chris Dumez.
+
+        Add a test case for an old DOM mutation bug that was fixed long ago.
+
+        * fast/dom/circular-dom-tree-crash-expected.txt: Added.
+        * fast/dom/circular-dom-tree-crash.html: Added.
+
+2016-05-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/function-apply.html as a flaky timeout on mac debug wk2
+        https://bugs.webkit.org/show_bug.cgi?id=158133
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-05-25  Geoffrey Garen  <ggaren@apple.com>
+
+        replaceable own properties seem to ignore replacement after property caching
+        https://bugs.webkit.org/show_bug.cgi?id=158091
+
+        Reviewed by Darin Adler.
+
+        * js/cached-window-properties.html: Augmneted this test to enter cacheable
+        dictionary mode in order to demonstrate a bug that is not visible otherwise.
+
+        Factored out a helper test function.
+
+2016-05-26  Pranjal Jumde  <pjumde@apple.com>
+
+        Sites served over insecure connections should not be allowed to use geolocation.
+        https://bugs.webkit.org/show_bug.cgi?id=157423
+        <rdar://problem/23751632>
+
+        Reviewed by Brent Fulgham.
+
+        Add missing test content from r201423.
+
+        * http/tests/security/resources/geolocation-over-insecure-content.html: Added.
+        * http/tests/security/resources/geolocation-over-mixed-content-block.html: Added.
+        * http/tests/security/resources/geolocation-over-mixed-content.html: Added.
+
+2016-05-26  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update test expectation for imported blink test.
+        https://bugs.webkit.org/show_bug.cgi?id=158122
+
+        Reviewed by Alex Christensen.
+
+        The crash on imported/blink/compositing/perspective-origin-overflow-hidden.html
+        was fixed in https://trac.webkit.org/changeset/192166.
+
+        * platform/win/TestExpectations:
+
+2016-05-26  Brady Eidson  <beidson@apple.com>
+
+        Release JSC test test-observegc.js.layout failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158126
+
+        Unreviewed.
+
+        Move this test to a directory that is less... "special"
+        
+        * fast/misc/resources/test-observegc.js: Renamed from LayoutTests/js/script-tests/test-observegc.js.
+        * fast/misc/test-observegc-expected.txt: Renamed from LayoutTests/js/test-observegc-expected.txt.
+        * fast/misc/test-observegc.html: Added.
+        * js/test-observegc.html: Removed.
+
+2016-05-26  Pranjal Jumde  <pjumde@apple.com>
+
+        Sites served over insecure connections should not be allowed to use geolocation.
+        https://bugs.webkit.org/show_bug.cgi?id=157423
+        <rdar://problem/23751632>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/geolocation-over-insecure-content.html: Added.
+        * http/tests/security/geolocation-over-mixed-content-block.html: Added.
+        * http/tests/security/geolocation-over-mixed-content.html: Added.
+        * http/tests/security/insecure-geolocation-expected.txt: Added.
+        * http/tests/security/insecure-geolocation.html: Added.
+        * http/tests/security/mixedcontent-geolocation-block-insecure-content-expected.txt: Added.
+        * http/tests/security/mixedcontent-geolocation-block-insecure-content.html: Added.
+        * http/tests/security/mixedcontent-geolocation-expected.txt: Added.
+        * http/tests/security/mixedcontent-geolocation.html: Added.
+        * http/tests/security/sandboxed-iframe-geolocation-watchPosition.html:
+          iframe is loaded over secure connection to avoid geolocation failures
+        * http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition.html: 
+          iframe is loaded over secure connection to avoid geolocation failures
+
+2016-05-26  Brady Eidson  <beidson@apple.com>
+
+        Implement internals.observeGC to get called back when a Javascript object is GC'ed.
+        https://bugs.webkit.org/show_bug.cgi?id=158093
+
+        Reviewed by Geoffrey Garen.
+
+        * js/script-tests/test-observegc.js: Added.
+        * js/test-observegc-expected.txt: Added.
+        * js/test-observegc.html: Added.
+
+2016-05-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Allow empty strings in FontFace constructor
+        https://bugs.webkit.org/show_bug.cgi?id=158112
+
+        Reviewed by Darin Adler.
+
+        * fast/text/font-face-empty-string-expected.txt: Added.
+        * fast/text/font-face-empty-string.html: Added.
+
 2016-05-26  Adam Bergkvist  <adam.bergkvist@ericsson.com>
 
         WebRTC: RTCSessionDescription: Make attributes readonly (and remove custom binding)

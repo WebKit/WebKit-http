@@ -2,12 +2,12 @@ set(WPE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE")
 
 find_package(Libxkbcommon 0.4.0 REQUIRED)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+
 set(WPE_INCLUDE_DIRECTORIES
-    "${WPE_SOURCE_DIR}/Headers"
-    "${WPE_SOURCE_DIR}/Source/wpe"
-    "${WPE_SOURCE_DIR}/Source/wpe/external"
-    ${EGL_INCLUDE_DIRS}
-    ${BCM_HOST_INCLUDE_DIRS}
+    "${WPE_SOURCE_DIR}/include"
+    "${WPE_SOURCE_DIR}/src"
+    "${WPE_SOURCE_DIR}/src/external"
     ${LIBXKBCOMMON_INCLUDE_DIRS}
 )
 
@@ -16,14 +16,13 @@ set(WPE_LIBRARIES
 )
 
 set(WPE_SOURCES
-    Source/wpe/pasteboard.c
-    Source/wpe/pasteboard-generic.cpp
-    Source/wpe/pasteboard-noop.cpp
-
-    Source/wpe/input.c
-    Source/wpe/loader.c
-    Source/wpe/renderer.c
-    Source/wpe/view-backend.c
+    src/input.c
+    src/loader.c
+    src/pasteboard.c
+    src/pasteboard-generic.cpp
+    src/pasteboard-noop.cpp
+    src/renderer.c
+    src/view-backend.c
 )
 
 add_library(WPE SHARED ${WPE_SOURCES})

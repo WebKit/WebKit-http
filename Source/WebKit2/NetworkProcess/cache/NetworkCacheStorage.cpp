@@ -278,12 +278,7 @@ void Storage::synchronize()
             ++count;
         });
 
-        auto* recordFilterPtr = recordFilter.release();
-        auto* blobFilterPtr = blobFilter.release();
-        RunLoop::main().dispatch([this, recordFilterPtr, blobFilterPtr, recordsSize] {
-            auto recordFilter = std::unique_ptr<ContentsFilter>(recordFilterPtr);
-            auto blobFilter = std::unique_ptr<ContentsFilter>(blobFilterPtr);
-
+        RunLoop::main().dispatch([this, recordFilter = WTFMove(recordFilter), blobFilter = WTFMove(blobFilter), recordsSize]() mutable {
             for (auto& recordFilterKey : m_recordFilterHashesAddedDuringSynchronization)
                 recordFilter->add(recordFilterKey);
             m_recordFilterHashesAddedDuringSynchronization.clear();
@@ -558,9 +553,8 @@ void Storage::remove(const Key& key)
 
 void Storage::updateFileModificationTime(const String& path)
 {
-    StringCapture filePathCapture(path);
-    serialBackgroundIOQueue().dispatch([filePathCapture] {
-        updateFileModificationTimeIfNeeded(filePathCapture.string());
+    serialBackgroundIOQueue().dispatch([path = path.isolatedCopy()] {
+        updateFileModificationTimeIfNeeded(path);
     });
 }
 
@@ -668,8 +662,7 @@ template <class T> bool retrieveFromMemory(const T& operations, const Key& key, 
     for (auto& operation : operations) {
         if (operation->record.key == key) {
             LOG(NetworkCacheStorage, "(NetworkProcess) found write operation in progress");
-            auto record = operation->record;
-            RunLoop::main().dispatch([record, completionHandler] {
+            RunLoop::main().dispatch([record = operation->record, completionHandler = WTFMove(completionHandler)] {
                 completionHandler(std::make_unique<Storage::Record>(record));
             });
             return true;
@@ -898,10 +891,9 @@ void Storage::clear(const String& type, std::chrono::system_clock::time_point mo
         m_blobFilter->clear();
     m_approximateRecordsSize = 0;
 
-    StringCapture typeCapture(type);
-    ioQueue().dispatch([this, modifiedSinceTime, completionHandler = WTFMove(completionHandler), typeCapture] () mutable {
+    ioQueue().dispatch([this, modifiedSinceTime, completionHandler = WTFMove(completionHandler), type = type.isolatedCopy()] () mutable {
         auto recordsPath = this->recordsPath();
-        traverseRecordsFiles(recordsPath, typeCapture.string(), [modifiedSinceTime](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
+        traverseRecordsFiles(recordsPath, type, [modifiedSinceTime](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
             auto filePath = WebCore::pathByAppendingComponent(recordDirectoryPath, fileName);
             if (modifiedSinceTime > std::chrono::system_clock::time_point::min()) {
                 auto times = fileTimes(filePath);

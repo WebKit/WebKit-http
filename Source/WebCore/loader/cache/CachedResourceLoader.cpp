@@ -619,9 +619,9 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         logMemoryCacheResourceRequest(frame(), DiagnosticLoggingKeys::inMemoryCacheKey(), DiagnosticLoggingKeys::usedKey());
         memoryCache.resourceAccessed(*resource);
 #if ENABLE(WEB_TIMING)
-        if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled()) {
+        if (document() && RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled()) {
             m_resourceTimingInfo.storeResourceTimingInitiatorInformation(resource, request, frame());
-            m_resourceTimingInfo.addResourceTiming(resource.get(), document());
+            m_resourceTimingInfo.addResourceTiming(resource.get(), *document());
         }
 #endif
         break;
@@ -687,7 +687,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(co
 CachedResourceHandle<CachedResource> CachedResourceLoader::loadResource(CachedResource::Type type, CachedResourceRequest& request)
 {
     auto& memoryCache = MemoryCache::singleton();
-    ASSERT(!memoryCache.resourceForRequest(request.resourceRequest(), sessionID()));
+    ASSERT(!request.allowsCaching() || !memoryCache.resourceForRequest(request.resourceRequest(), sessionID()));
 
     LOG(ResourceLoading, "Loading CachedResource for '%s'.", request.resourceRequest().url().stringCenterEllipsizedToLength().latin1().data());
 
@@ -967,8 +967,8 @@ void CachedResourceLoader::loadDone(CachedResource* resource, bool shouldPerform
     RefPtr<Document> protectDocument(m_document);
 
 #if ENABLE(WEB_TIMING)
-    if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
-        m_resourceTimingInfo.addResourceTiming(resource, document());
+    if (document() && RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
+        m_resourceTimingInfo.addResourceTiming(resource, *document());
 #else
     UNUSED_PARAM(resource);
 #endif
