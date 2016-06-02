@@ -1,3 +1,18 @@
+2016-06-02  Oliver Hunt  <oliver@apple.com>
+
+        JS parser incorrectly handles invalid utf8 in error messages.
+        https://bugs.webkit.org/show_bug.cgi?id=158128
+
+        Reviewed by Saam Barati.
+
+        Add a new toStringWithLatin1Fallback that simply uses
+        String::fromUTF8WithLatin1Fallback, so we can avoid the
+        standard String::fromUTF8 null return.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::toStringWithLatin1Fallback):
+        * wtf/StringPrintStream.h:
+
 2017-07-12  Adrian Perez de Castro  <aperez@igalia.com>
 
         [WTF] Failure to build when the compiler specifically targets ARMv8-A / defines __ARM_ARCH_8A__
