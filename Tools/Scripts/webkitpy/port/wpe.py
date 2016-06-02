@@ -55,7 +55,6 @@ class WPEPort(Port):
         environment['GSETTINGS_BACKEND'] = 'memory'
         environment['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('lib', 'libTestRunnerInjectedBundle.so')
         environment['TEST_RUNNER_TEST_PLUGIN_PATH'] = self._build_path('lib', 'plugins')
-        environment['WPE_TEST_SHELL'] = self._build_path('lib', 'libWebKitTestRunner.so')
         environment['WEBKIT_EXEC_PATH'] = self._build_path('bin')
         return environment
 
