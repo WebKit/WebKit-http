@@ -37,8 +37,9 @@ class WPEPort(Port):
     def __init__(self, *args, **kwargs):
         super(WPEPort, self).__init__(*args, **kwargs)
 
-        self._jhbuild_wrapper = [self.path_from_webkit_base('Tools', 'jhbuild', 'jhbuild-wrapper'), '--wpe', 'run']
-        self.set_option_default('wrapper', ' '.join(self._jhbuild_wrapper))
+        if self._should_use_jhbuild():
+            self._jhbuild_wrapper = [self.path_from_webkit_base('Tools', 'jhbuild', 'jhbuild-wrapper'), '--wpe', 'run']
+            self.set_option_default('wrapper', ' '.join(self._jhbuild_wrapper))
 
     def _built_executables_path(self, *path):
         return self._build_path(*(('bin',) + path))
