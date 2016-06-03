@@ -1,3 +1,5 @@
+include(FeatureSummary)
+
 set(PROJECT_VERSION_MAJOR 5)
 set(PROJECT_VERSION_MINOR 602)
 set(PROJECT_VERSION_MICRO 0)
@@ -249,7 +251,7 @@ if (USE_GSTREAMER AND (ENABLE_VIDEO OR ENABLE_WEB_AUDIO))
 endif ()
 
 if (USE_LIBHYPHEN)
-    find_package(Hyphen)
+    find_package(Hyphen REQUIRED)
     if (NOT HYPHEN_FOUND)
        message(FATAL_ERROR "libhyphen is needed for USE_LIBHYPHEN.")
     endif ()
@@ -352,3 +354,16 @@ if (MSVC)
     set(JavaScriptCore_LIBRARY_TYPE SHARED)
     set(WTF_LIBRARY_TYPE SHARED)
 endif ()
+
+if (RUBY_EXECUTABLE AND NOT RUBY_VERSION VERSION_LESS 1.9)
+    get_property(_packages_found GLOBAL PROPERTY PACKAGES_FOUND)
+    list(APPEND _packages_found Ruby)
+    set_property(GLOBAL PROPERTY PACKAGES_FOUND ${_packages_found})
+
+    get_property(_packages_not_found GLOBAL PROPERTY PACKAGES_NOT_FOUND)
+    list(REMOVE_ITEM _packages_not_found Ruby)
+    set_property(GLOBAL PROPERTY PACKAGES_NOT_FOUND ${_packages_not_found})
+endif ()
+
+set_package_properties(Ruby PROPERTIES TYPE REQUIRED)
+feature_summary(WHAT ALL)
