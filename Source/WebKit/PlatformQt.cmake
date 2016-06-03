@@ -151,15 +151,6 @@ list(REMOVE_ITEM WebKit_SOURCES
 )
 
 list(APPEND WebKit_SOURCES
-    Storage/StorageAreaImpl.cpp
-    Storage/StorageAreaSync.cpp
-    Storage/StorageNamespaceImpl.cpp
-    Storage/StorageSyncManager.cpp
-    Storage/StorageThread.cpp
-    Storage/StorageTracker.cpp
-    Storage/WebDatabaseProvider.cpp
-    Storage/WebStorageNamespaceProvider.cpp
-
     qt/Api/qhttpheader.cpp
     qt/Api/qwebdatabase.cpp
     qt/Api/qwebelement.cpp
