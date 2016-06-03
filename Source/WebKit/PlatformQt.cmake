@@ -316,6 +316,7 @@ set(WebKitWidgets_SOURCES
     qt/WidgetApi/qwebframe.cpp
     qt/WidgetApi/qwebinspector.cpp
     qt/WidgetApi/qwebpage.cpp
+    qt/WidgetApi/qwebpage_p.cpp
     qt/WidgetApi/qwebview.cpp
     qt/WidgetApi/qwebviewaccessible.cpp
 
@@ -436,8 +437,28 @@ set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
 
 WEBKIT_FRAMEWORK(WebKitWidgets)
 add_dependencies(WebKitWidgets WebKit)
-
 set_target_properties(WebKitWidgets PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 install(TARGETS WebKitWidgets DESTINATION "${LIB_INSTALL_DIR}")
+
+if (COMPILER_IS_GCC_OR_CLANG)
+    set_source_files_properties(
+        qt/Api/qwebdatabase.cpp
+        qt/Api/qwebelement.cpp
+        qt/Api/qwebhistory.cpp
+        qt/Api/qwebhistoryinterface.cpp
+        qt/Api/qwebpluginfactory.cpp
+        qt/Api/qwebscriptworld.cpp
+        qt/Api/qwebsecurityorigin.cpp
+        qt/Api/qwebsettings.cpp
+
+        qt/WidgetApi/qgraphicswebview.cpp
+        qt/WidgetApi/qwebframe.cpp
+        qt/WidgetApi/qwebinspector.cpp
+        qt/WidgetApi/qwebpage.cpp
+        qt/WidgetApi/qwebview.cpp
+    PROPERTIES
+        COMPILE_FLAGS -frtti
+    )
+endif ()
 
 add_subdirectory(qt/tests)

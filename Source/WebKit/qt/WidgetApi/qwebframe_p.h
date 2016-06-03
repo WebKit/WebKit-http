@@ -42,6 +42,8 @@ public:
         : q(0)
         , page(0)
     { }
+    ~QWebFramePrivate() override;
+
     void setPage(QWebPage*);
 
     inline QWebFrame *parentFrame() { return qobject_cast<QWebFrame*>(q->parent()); }

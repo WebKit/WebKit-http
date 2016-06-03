@@ -123,3 +123,5 @@ QWebHistoryInterface::~QWebHistoryInterface()
 
   Called by WebKit to add another \a url to the list of visited pages.
 */
+
+#include "moc_qwebhistoryinterface.cpp"

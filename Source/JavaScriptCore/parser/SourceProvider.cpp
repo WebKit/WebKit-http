@@ -55,5 +55,7 @@ void SourceProvider::getID()
     }
 }
 
+StringSourceProvider::~StringSourceProvider() = default;
+
 } // namespace JSC
 
