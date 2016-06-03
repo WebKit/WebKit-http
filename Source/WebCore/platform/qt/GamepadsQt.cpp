@@ -39,7 +39,7 @@ extern "C" {
 
 #include <unistd.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassOwnPtr.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 
@@ -48,14 +48,14 @@ namespace WebCore {
 class GamepadDeviceLinuxQt : public QObject, public GamepadDeviceLinux {
     Q_OBJECT
 public:
-    static PassOwnPtr<GamepadDeviceLinuxQt> create(const String& deviceFile)
+    static std::unique_ptr<GamepadDeviceLinuxQt> create(const String& deviceFile)
     {
-        return adoptPtr(new GamepadDeviceLinuxQt(deviceFile));
+        return std::make_unique<GamepadDeviceLinuxQt>(deviceFile);
     }
+    GamepadDeviceLinuxQt(const String&);
     ~GamepadDeviceLinuxQt();
 
 private:
-    GamepadDeviceLinuxQt(const String&);
     QSocketNotifier* m_notifier;
 
 private Q_SLOTS:
@@ -104,7 +104,7 @@ private:
     ~GamepadsQt();
     bool isGamepadDevice(struct udev_device*);
 
-    Vector<OwnPtr<GamepadDeviceLinuxQt> > m_slots;
+    Vector<std::unique_ptr<GamepadDeviceLinuxQt> > m_slots;
     HashMap<String, GamepadDeviceLinuxQt*> m_deviceMap;
 
     struct udev* m_udev;
@@ -186,10 +186,13 @@ void GamepadsQt::unregisterDevice(const String& deviceFile)
 {
     ASSERT(m_deviceMap.contains(deviceFile));
 
-    GamepadDeviceLinuxQt* gamepadDevice = m_deviceMap.take(deviceFile);
-    unsigned index = m_slots.find(gamepadDevice);
-
-    m_slots[index].clear();
+    auto* deviceForFile = m_deviceMap.take(deviceFile);
+    for (auto& device : m_slots) {
+        if (device.get() == deviceForFile) {
+            device = nullptr;
+            break;
+        }
+    }
 }
 
 void GamepadsQt::updateGamepadList(GamepadList* into)
@@ -217,8 +220,8 @@ void GamepadsQt::updateGamepadList(GamepadList* into)
 
 void sampleGamepads(GamepadList* into)
 {
-    DEFINE_STATIC_LOCAL(GamepadsQt, gamepadsQt, (into->length()));
-    gamepadsQt.updateGamepadList(into);
+    static NeverDestroyed<GamepadsQt> gamepadsQt(into->length());
+    gamepadsQt.get().updateGamepadList(into);
 }
 
 #include "GamepadsQt.moc"

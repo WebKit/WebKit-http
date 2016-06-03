@@ -24,6 +24,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/yarr"
     "${THIRDPARTY_DIR}/ANGLE/"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+    "${WEBCORE_DIR}/Modules/gamepad"
     "${WEBCORE_DIR}/bridge/qt"
     "${WEBCORE_DIR}/history/qt"
     "${WEBCORE_DIR}/platform/qt"
@@ -152,7 +153,7 @@ if (ENABLE_DEVICE_ORIENTATION)
     )
 endif ()
 
-if (ENABLE_GAMEPAD)
+if (ENABLE_GAMEPAD_DEPRECATED)
     list(APPEND WebCore_SOURCES
         platform/qt/GamepadsQt.cpp
     )
