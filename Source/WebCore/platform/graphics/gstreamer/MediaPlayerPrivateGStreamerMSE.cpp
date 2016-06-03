@@ -350,6 +350,18 @@ void MediaPlayerPrivateGStreamerMSE::seek(float time)
     LOG_MEDIA_MESSAGE("m_seeking=%s, m_seekTime=%f", m_seeking?"true":"false", m_seekTime);
 }
 
+void MediaPlayerPrivateGStreamerMSE::configurePlaySink()
+{
+    MediaPlayerPrivateGStreamer::configurePlaySink();
+
+    GRefPtr<GstElement> playsink = adoptGRef(gst_bin_get_by_name(GST_BIN(m_pipeline.get()), "playsink"));
+    if (playsink) {
+        // The default value (0) means "send events to all the sinks", instead
+        // of "only to the first that returns true". This is needed for MSE seek.
+        g_object_set(G_OBJECT(playsink.get()), "send-event-mode", 0, NULL);
+    }
+}
+
 bool MediaPlayerPrivateGStreamerMSE::changePipelineState(GstState newState)
 {
     if (seeking()) {

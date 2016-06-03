@@ -2149,16 +2149,6 @@ GstElement* MediaPlayerPrivateGStreamer::audioSink() const
     return sink;
 }
 
-void MediaPlayerPrivateGStreamer::configurePlaySink()
-{
-    GRefPtr<GstElement> playsink = adoptGRef(gst_bin_get_by_name(GST_BIN(m_pipeline.get()), "playsink"));
-    if (playsink) {
-        // The default value (0) means "send events to all the sinks", instead
-        // of "only to the first that returns true". This is needed for MSE seek.
-        g_object_set(G_OBJECT(playsink.get()), "send-event-mode", 0, NULL);
-    }
-}
-
 void MediaPlayerPrivateGStreamer::createGSTPlayBin()
 {
     ASSERT(!m_pipeline);
