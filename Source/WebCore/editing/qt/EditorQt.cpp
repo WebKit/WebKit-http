@@ -28,20 +28,24 @@
 #include "Editor.h"
 
 #include "DocumentFragment.h"
-#include "NotImplemented.h"
 #include "Pasteboard.h"
+
 #include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
-void Editor::writeSelectionToPasteboard(Pasteboard&)
+void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 {
-    notImplemented();
+    RefPtr<Range> range = selectedRange();
+    if (!range)
+        return;
+
+    pasteboard.writeSelection(*range, canSmartCopyOrDelete(), m_frame, IncludeImageAltTextForDataTransfer);
 }
 
-void Editor::writeImageToPasteboard(Pasteboard&, Element&, const URL&, const String&)
+void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& element, const URL& url, const String& title)
 {
-    notImplemented();
+    pasteboard.writeImage(element, url, title);
 }
 
 void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, MailBlockquoteHandling mailBlockquoteHandling)
