@@ -217,6 +217,7 @@ void LauncherWindow::applyPrefs()
     settings->setAttribute(QWebSettings::FrameFlatteningEnabled, m_windowOptions.useFrameFlattening);
     settings->setAttribute(QWebSettings::WebGLEnabled, m_windowOptions.useWebGL);
     m_windowOptions.useWebAudio = settings->testAttribute(QWebSettings::WebAudioEnabled);
+    m_windowOptions.useMediaSource = settings->testAttribute(QWebSettings::MediaSourceEnabled);
 
     if (!isGraphicsBased())
         return;
@@ -322,6 +323,13 @@ void LauncherWindow::createChrome()
     toggleWebAudio->setChecked(m_windowOptions.useWebAudio);
 #else
     toggleWebAudio->setEnabled(false);
+#endif
+
+    QAction* toggleMediaSource = toolsMenu->addAction("Toggle MediaSource", this, SLOT(toggleMediaSource(bool)));
+    toggleMediaSource->setCheckable(true);
+    toggleWebGL->setChecked(settings->testAttribute(QWebSettings::MediaSourceEnabled));
+#if !ENABLE(MEDIA_SOURCE)
+    toggleMediaSource->setEnabled(false);
 #endif
 
     QAction* spatialNavigationAction = toolsMenu->addAction("Toggle Spatial Navigation", this, SLOT(toggleSpatialNavigation(bool)));
@@ -892,6 +900,12 @@ void LauncherWindow::toggleWebAudio(bool toggle)
 {
     m_windowOptions.useWebAudio = toggle;
     page()->settings()->setAttribute(QWebSettings::WebAudioEnabled, toggle);
+}
+
+void LauncherWindow::toggleMediaSource(bool toggle)
+{
+    m_windowOptions.useMediaSource = toggle;
+    page()->settings()->setAttribute(QWebSettings::MediaSourceEnabled, toggle);
 }
 
 void LauncherWindow::animatedFlip()

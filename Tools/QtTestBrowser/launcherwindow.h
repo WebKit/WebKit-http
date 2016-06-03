@@ -70,6 +70,7 @@ public:
     bool useTiledBackingStore { false };
     bool useWebGL { false };
     bool useWebAudio { false };
+    bool useMediaSource { false };
     bool useFrameFlattening { false };
     bool cacheWebView { false };
     bool showFrameRate { false };
@@ -131,6 +132,7 @@ protected Q_SLOTS:
     void toggleResizesToContents(bool toggle);
     void toggleWebGL(bool toggle);
     void toggleWebAudio(bool toggle);
+    void toggleMediaSource(bool toggle);
     void toggleSpatialNavigation(bool enable);
     void toggleFullScreenMode(bool enable);
     void toggleFrameFlattening(bool toggle);

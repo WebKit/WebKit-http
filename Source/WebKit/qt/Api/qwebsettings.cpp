@@ -172,6 +172,10 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::WebAudioEnabled, global->attributes.value(QWebSettings::WebAudioEnabled));
         settings->setWebAudioEnabled(value);
 #endif
+#if ENABLE(MEDIA_SOURCE)
+        value = attributes.value(QWebSettings::MediaSourceEnabled, global->attributes.value(QWebSettings::MediaSourceEnabled));
+        settings->setMediaSourceEnabled(value);
+#endif
 
         value = attributes.value(QWebSettings::CSSRegionsEnabled,
                                  global->attributes.value(QWebSettings::CSSRegionsEnabled));
@@ -547,9 +551,10 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::LocalStorageEnabled, false);
     d->attributes.insert(QWebSettings::LocalContentCanAccessRemoteUrls, false);
     d->attributes.insert(QWebSettings::LocalContentCanAccessFileUrls, true);
-    d->attributes.insert(QWebSettings::AcceleratedCompositingEnabled, true);
+    d->attributes.insert(QWebSettings::AcceleratedCompositingEnabled, false);
     d->attributes.insert(QWebSettings::WebGLEnabled, true);
     d->attributes.insert(QWebSettings::WebAudioEnabled, false);
+    d->attributes.insert(QWebSettings::MediaSourceEnabled, false);
     d->attributes.insert(QWebSettings::CSSRegionsEnabled, true);
     d->attributes.insert(QWebSettings::CSSCompositingEnabled, true);
     d->attributes.insert(QWebSettings::CSSGridLayoutEnabled, false);
