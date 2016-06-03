@@ -240,7 +240,7 @@ my @features = (
       define => "ENABLE_CUSTOM_SCHEME_HANDLER", default => isEfl(), value => \$customSchemeHandlerSupport },
 
     { option => "datalist-element", desc => "Toggle Datalist Element support",
-      define => "ENABLE_DATALIST_ELEMENT", default => isEfl(), value => \$datalistElementSupport },
+      define => "ENABLE_DATALIST_ELEMENT", default => (isEfl() || isQt()), value => \$datalistElementSupport },
 
     { option => "data-transfer-items", desc => "Toggle Data Transfer Items support",
       define => "ENABLE_DATA_TRANSFER_ITEMS", default => 0, value => \$dataTransferItemsSupport },
