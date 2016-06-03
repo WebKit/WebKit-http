@@ -450,6 +450,15 @@ static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, Gs
         GST_OBJECT_UNLOCK(src);
         result = TRUE;
         break;
+#if USE(FUSION_SINK)
+    case GST_QUERY_CUSTOM: {
+        const GstStructure* structure = gst_query_get_structure(query);
+        if (gst_structure_has_name(structure, "stream-is-seekable")) {
+            result = TRUE;
+            break;
+        }
+    }
+#endif
     default:{
         GRefPtr<GstPad> target = adoptGRef(gst_ghost_pad_get_target(GST_GHOST_PAD_CAST(pad)));
         // Forward the query to the proxy target pad.
