@@ -323,7 +323,7 @@ my @features = (
       define => "ENABLE_LEGACY_WEB_AUDIO", default => (!isQt() || isQtGstreamer()) , value => \$legacyWebAudioSupport },
 
     { option => "link-prefetch", desc => "Toggle Link Prefetch support",
-      define => "ENABLE_LINK_PREFETCH", default => (isGtk() || isEfl()), value => \$linkPrefetchSupport },
+      define => "ENABLE_LINK_PREFETCH", default => (isGtk() || isEfl() || isQt()), value => \$linkPrefetchSupport },
 
     { option => "jit", desc => "Enable just-in-time JavaScript support",
       define => "ENABLE_JIT", default => 1, value => \$jitSupport },
