@@ -188,6 +188,7 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/TextureMapperLayerClientQt.cpp
     qt/WebCoreSupport/UndoStepQt.cpp
     qt/WebCoreSupport/VisitedLinkStoreQt.cpp
+    qt/WebCoreSupport/WebDatabaseProviderQt.cpp
     qt/WebCoreSupport/WebEventConversion.cpp
 )
 
