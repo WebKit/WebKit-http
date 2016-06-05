@@ -392,6 +392,11 @@ bool AccessibilityObject::isARIATextControl() const
     return ariaRoleAttribute() == TextAreaRole || ariaRoleAttribute() == TextFieldRole || ariaRoleAttribute() == SearchFieldRole;
 }
 
+bool AccessibilityObject::isNonNativeTextControl() const
+{
+    return (isARIATextControl() || hasContentEditableAttributeSet()) && !isNativeTextControl();
+}
+
 bool AccessibilityObject::isLandmark() const
 {
     AccessibilityRole role = roleValue();
@@ -1531,6 +1536,37 @@ AccessibilityObject* AccessibilityObject::accessibilityObjectForPosition(const V
 bool AccessibilityObject::hasContentEditableAttributeSet() const
 {
     return contentEditableAttributeIsEnabled(element());
+}
+
+bool AccessibilityObject::supportsARIAReadOnly() const
+{
+    AccessibilityRole role = roleValue();
+
+    return role == CheckBoxRole
+        || role == ColumnHeaderRole
+        || role == ComboBoxRole
+        || role == GridRole
+        || role == GridCellRole
+        || role == ListBoxRole
+        || role == MenuItemCheckboxRole
+        || role == MenuItemRadioRole
+        || role == RadioGroupRole
+        || role == RowHeaderRole
+        || role == SearchFieldRole
+        || role == SliderRole
+        || role == SpinButtonRole
+        || role == SwitchRole
+        || role == TextFieldRole
+        || role == TreeGridRole
+        || isPasswordField();
+}
+
+String AccessibilityObject::ariaReadOnlyValue() const
+{
+    if (!hasAttribute(aria_readonlyAttr))
+        return ariaRoleAttribute() != UnknownRole && supportsARIAReadOnly() ? "false" : String();
+
+    return String(getAttribute(aria_readonlyAttr)).convertToASCIILowercase();
 }
 
 bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)

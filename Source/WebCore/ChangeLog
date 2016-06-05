@@ -1,3 +1,317 @@
+2016-03-17  Brent Fulgham  <bfulgham@apple.com>
+
+        Some media tests are flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=155614
+
+        Reviewed by Eric Carlson.
+
+        * html/track/TextTrack.cpp:
+        (WebCore::TextTrack::~TextTrack):
+
+2016-03-09  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Fixed All-in-One build.
+        https://bugs.webkit.org/show_bug.cgi?id=155241
+
+        Reviewed by Csaba Osztrogonác.
+
+        No new tests needed.
+
+        * bindings/js/JSBindingsAllInOne.cpp: Should not include generated
+        file.
+
+2016-05-19  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] unrelated codecs required to play videos
+        https://bugs.webkit.org/show_bug.cgi?id=135972
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of hard-coding the list of supported mime-types, check the
+        decoder and demuxer GStreamer elements available and dynamically
+        build the list of mime-types accordingly. This patch also removes
+        support for under-used and exotic mime-types.
+
+        Based on a patch by Mario Sanchez Prada.
+
+        No new tests, existing media tests cover this change.
+
+        * platform/graphics/gstreamer/GStreamerUtilities.cpp:
+        (WebCore::gstRegistryHasElementForMediaType): New function
+        checking the elements registered in the factories have a sink pad
+        matching the caps specified as second argument of the function.
+        * platform/graphics/gstreamer/GStreamerUtilities.h:
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::mimeTypeSet): Hard-coded list of mime-types replaced by
+        runtime-built list of mime-types that can be supported by the
+        GStreamer decoders and demuxers available on the host machine.
+        (WebCore::MediaPlayerPrivateGStreamer::getSupportedTypes):
+        mimeTypeCache renamed to mimeTypeSet.
+        (WebCore::MediaPlayerPrivateGStreamer::supportsType): Ditto.
+
+2016-05-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] webaudio crash on ARM platforms
+        https://bugs.webkit.org/show_bug.cgi?id=157838
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp:
+        (webKitWebAudioSrcConstructed): Explicitely cast the integer value
+        of the max-bytes property to guint64 which is the expected type of
+        this property. The compiler can't guess this on its own.
+
+2016-05-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] webaudio playback improvements
+        https://bugs.webkit.org/show_bug.cgi?id=155228
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/audio/gstreamer/AudioDestinationGStreamer.cpp:
+        (WebCore::autoAudioSinkChildAddedCallback): Fix sink buffer-time
+        to 100ms to reduce playback latency.
+        (WebCore::AudioDestinationGStreamer::AudioDestinationGStreamer):
+        Connect to child-added signal of autoaudiosink to be notified when
+        a real sink is added into the bin.
+        * platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp:
+        (webKitWebAudioSrcConstructed): Fine-tune blocksize of appsrc
+        according to the buffer size already configured on the src element.
+
+2016-05-17  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r177786): GlyphMetricsMap<T>::locatePageSlowCase() fills existing pages with unknown metrics
+        https://bugs.webkit.org/show_bug.cgi?id=157749
+
+        Reviewed by Antti Koivisto.
+
+        After r177786, GlyphMetricsMap<T>::locatePageSlowCase() would unconditionally fill
+        pages with unknown metrics. This patch updates the code to do so only if the page
+        is new, thus restoring the pre-r177786 behavior.
+
+        * platform/graphics/GlyphMetricsMap.h:
+        (WebCore::GlyphMetricsMap::metricsForGlyph):
+        (WebCore::GlyphMetricsMap::setMetricsForGlyph):
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::GlyphMetricsPage):
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::fill):
+        (WebCore::GlyphMetricsMap::locatePage):
+        (WebCore::GlyphMetricsMap<T>::locatePageSlowCase):
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::metricsForGlyph): Deleted.
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::setMetricsForGlyph): Deleted.
+        (WebCore::GlyphMetricsMap::GlyphMetricsPage::setMetricsForIndex): Deleted.
+        (WebCore::GlyphMetricsMap<float>::unknownMetrics): Deleted.
+        (WebCore::GlyphMetricsMap<FloatRect>::unknownMetrics): Deleted.
+
+2016-05-16  Brent Fulgham  <bfulgham@apple.com>
+
+        heap use-after-free at WebCore::TimerBase::heapPopMin()
+        https://bugs.webkit.org/show_bug.cgi?id=157742
+        <rdar://problem/26236778>
+
+        Reviewed by David Kilzer.
+
+        Tested by fast/frames/resources/crash-during-iframe-load-stop.html.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::stopForUserCancel): Protect m_frame from destruction while it is still
+        being used by the current stack frame.
+        (WebCore::FrameLoader::frameDetached): Ditto.
+        (WebCore::FrameLoader::continueFragmentScrollAfterNavigationPolicy): Ditto.
+
+2016-05-16  Zalan Bujtas  <zalan@apple.com>
+
+        RenderLayer::hitTestList could mutate the list of candidate layers.
+        https://bugs.webkit.org/show_bug.cgi?id=157718
+        <rdar://problem/22556046>
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that we always start hittesting a clean render tree at EventHandler::hitTestResultAtPoint.
+
+        Speculative fix.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::hitTestResultAtPoint):
+
+2016-05-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] GraphicsContext3D::ImageExtractor should use the correct size for copying non-image surfaces
+        https://bugs.webkit.org/show_bug.cgi?id=157580
+
+        Reviewed by Darin Adler.
+
+        GraphicsContext3D::ImageExtractor::extractImage() shouldn't use m_imageWidth
+        and m_imageHeight members when copying the non-image-backed Cairo surface into
+        the image-based replacement simply because these two are not initialized until
+        later in this method.
+
+        Instead, the size of the to-be-copied image should be queried via the
+        cairoSurfaceSize() utility function which properly handles Cairo surfaces of
+        different types.
+
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+
+2016-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ToT WebKit doesn't show tooltip on perf dashboard's summary page
+        https://bugs.webkit.org/show_bug.cgi?id=157705
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by WebKit doesn't look for the title attribute across shadow boundaries.
+        Fixed it by using a newly added Node::parentNodeInComposedTree in HitTestResult::title.
+
+        Test: fast/shadow-dom/tooltip-on-composed-tree.html
+
+        * dom/Node.cpp:
+        (WebCore::Node::parentInComposedTree): Added.
+        * dom/Node.h:
+        * rendering/HitTestResult.cpp:
+        (WebCore::HitTestResult::title): Fixed the bug.
+        (WebCore::HitTestResult::innerTextIfTruncated): Fixed a related bug when ShowsToolTipOverTruncatedText
+        is enabled. Unfortunately, there is no machinery to test this feature yet.
+
+2016-05-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        VideoSinkGStreamer: plug a GstBuffer leak in webkitVideoSinkRequestRender()
+        https://bugs.webkit.org/show_bug.cgi?id=157617
+
+        Reviewed by Darin Adler.
+
+        Unref the newly-created GstBuffer object after creating the new GstSample
+        that's based on it. gst_sample_new() doesn't take the ownership of it.
+
+        Also, don't unref the GstBuffer object that's passed in to the
+        webkitVideoSinkRequestRender() function in case the allocation of the
+        replacement buffer fails. We don't have any ownership over that buffer
+        and it's not unreffed anywhere else in this function.
+
+        * platform/graphics/gstreamer/VideoSinkGStreamer.cpp:
+        (webkitVideoSinkRequestRender):
+
+2016-05-11  Zalan Bujtas  <zalan@apple.com>
+
+        Absolute positioned element is not placed properly when parent becomes the containing block.
+        https://bugs.webkit.org/show_bug.cgi?id=157455
+        <rdar://problem/26212568>
+
+        Reviewed by Simon Fraser.
+
+        When a container becomes a containing block, we need to check if there are any positioned boxes in its subtree
+        in order to "re-parent" them. It basically means that we remove them from RenderBlock::positionedDescendants map
+        and they'll get re-inserted during the next layout correctly.
+        This patch fixes the case when a container becomes the containing block by setting the transform property and its positioned
+        child gets misplaced.  
+
+        Test: fast/block/containing-block-changes.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::removePositionedObjectsIfNeeded):
+        (WebCore::RenderBlock::styleWillChange):
+        * rendering/RenderBlock.h:
+
+2016-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/aria-readonly.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=98357
+
+        Reviewed by Chris Fleizach.
+
+        Add support for ATK_STATE_READ_ONLY and expose the value of aria-readonly
+        as an AtkObject attribute. In order to eliminate duplicate checks, remove
+        isReadOnly() and just use canSetAttributeValue(), moving all the logic into
+        AccessibilityNodeObject. Add AccessibilityObject::supportsARIAReadOnly() so
+        that we can explicitly expose the implicit value for aria-readonly on roles
+        which support this property. Also add support for ATK_STATE_CHECKABLE, both
+        because this state was missing and because it serves a similar function to
+        ATK_STATE_EDITABLE for the purpose of verifying exposure of toggle-able
+        elements that are not read-only.
+
+        Test: accessibility/form-control-value-settable.html
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::canSetValueAttribute):
+        (WebCore::AccessibilityNodeObject::isRequired): Deleted.
+        (WebCore::AccessibilityNodeObject::supportsRequiredAttribute): Deleted.
+        * accessibility/AccessibilityNodeObject.h:
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::supportsARIAReadOnly):
+        (WebCore::AccessibilityObject::ariaReadOnlyValue):
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::isUnvisited): Deleted.
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::clickPoint):
+        (WebCore::AccessibilityRenderObject::isOffScreen): Deleted.
+        (WebCore::AccessibilityRenderObject::anchorElement): Deleted.
+        (WebCore::AccessibilityRenderObject::internalLinkElement): Deleted.
+        (WebCore::AccessibilityRenderObject::textChanged): Deleted.
+        (WebCore::AccessibilityRenderObject::clearChildren): Deleted.
+        (WebCore::AccessibilityRenderObject::addImageMapChildren): Deleted.
+        * accessibility/AccessibilityRenderObject.h:
+        * accessibility/atk/WebKitAccessibleInterfaceText.cpp:
+        (getAttributeSetForAccessibilityObject):
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (webkitAccessibleGetAttributes):
+        (setAtkStateSetFromCoreObject):
+        (getInterfaceMaskFromObject):
+        * inspector/InspectorDOMAgent.cpp:
+        (WebCore::InspectorDOMAgent::buildObjectForAccessibilityProperties):
+
+2016-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] accessibility/content-editable-as-textarea.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=155353
+
+        Reviewed by Darin Adler.
+
+        The test was timing out because it expected an AXValueChanged notification.
+        In ATK, AXValueChanged notifications are made for widgets which implement
+        the AtkValue interface (sliders, progress bars, etc.). We should be listening
+        for AXTextChanged instead.
+
+        In addition, for contenteditable elements, we should emit the notification on
+        the element itself. Because we were handling the notification in the same way
+        as native text controls (where the notification we receive from WebCore is for
+        StaticTextRole children), we were attempting to emit the notification from
+        the parent of the contenteditable.
+
+        Lastly, ATK's AccessibilityUIElement support had a number of unimplemented
+        methods that are being used as part of the previously-failing test. Those
+        methods are now implemented so that the ATK results are much more similar
+        to those on the Mac.
+
+        No new tests needed. The previously-failing test now passes.
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::childrenChanged):
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::isNonNativeTextControl):
+        * accessibility/AccessibilityObject.h:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::textChanged):
+        * accessibility/atk/AXObjectCacheAtk.cpp:
+        (WebCore::AXObjectCache::nodeTextChangePlatformNotification):
+
+2016-05-10  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r193610): Drop down menu doesn’t expand at allofbach.com
+        https://bugs.webkit.org/show_bug.cgi?id=157445
+
+        Reviewed by Simon Fraser.
+
+        When we don't run transitions (becasuse of to/from 'auto' values) we should also not
+        report the 'from' value and behave as if we finished the transition already.
+
+        Test: fast/animation/height-auto-transition-computed-value.html
+
+        * page/animation/KeyframeAnimation.cpp:
+        (WebCore::KeyframeAnimation::fetchIntervalEndpointsForProperty): This is a revert of
+        looping the 'to' value back to the first keyframe when reverse animation is at the start value (last keyframe).
+
+        * platform/Length.cpp:
+        (WebCore::blend):
+
 2016-04-25  Per Arne Vollan  <peavo@outlook.com>
 
         [Win][IndexedDB] Fix build errors.

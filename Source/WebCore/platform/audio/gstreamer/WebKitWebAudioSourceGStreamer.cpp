@@ -229,7 +229,8 @@ static void webKitWebAudioSrcConstructed(GObject* object)
         GRefPtr<GstCaps> caps = adoptGRef(gst_audio_info_to_caps(&info));
 
         // Configure the appsrc for minimal latency.
-        g_object_set(appsrc, "max-bytes", 2 * priv->bufferSize, "block", TRUE,
+        g_object_set(appsrc, "max-bytes", static_cast<guint64>(2 * priv->bufferSize), "block", TRUE,
+            "blocksize", priv->bufferSize,
             "format", GST_FORMAT_TIME, "caps", caps.get(), nullptr);
 
         priv->sources = g_slist_prepend(priv->sources, gst_object_ref(appsrc));
