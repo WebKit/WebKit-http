@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "DOMWindow.h"
 #include "ExceptionCode.h"
 #include <wtf/NeverDestroyed.h>
 
