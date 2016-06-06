@@ -96,13 +96,9 @@ const struct wl_buffer_listener g_bufferListener = {
             return;
 
         if (bufferData.ipcHost) {
-            struct ipc_gbm_message message = { 0, };
-            message.message_code = 16;
-
-            auto* releaseBuffer = reinterpret_cast<struct release_buffer*>(std::addressof(message.data));
-            releaseBuffer->handle = it->first;
-
-            bufferData.ipcHost->send(reinterpret_cast<char*>(&message), sizeof(message));
+            IPC::GBM::Message message;
+            IPC::GBM::ReleaseBuffer::construct(message, it->first);
+            bufferData.ipcHost->send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
         }
     },
 };
@@ -113,11 +109,10 @@ const struct wl_callback_listener g_callbackListener = {
     {
         auto& callbackData = *static_cast<ViewBackend::CallbackListenerData*>(data);
 
-        {
-            struct ipc_gbm_message message = { 0, };
-            message.message_code = 23;
-            if (callbackData.ipcHost)
-                callbackData.ipcHost->send(reinterpret_cast<char*>(&message), sizeof(message));
+        if (callbackData.ipcHost) {
+            IPC::GBM::Message message;
+            IPC::GBM::FrameComplete::construct(message);
+            callbackData.ipcHost->send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
         }
 
         callbackData.frameCallback = nullptr;
@@ -196,39 +191,38 @@ void ViewBackend::handleFd(int fd)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != MESSAGE_SIZE)
+    if (size != IPC::GBM::messageSize)
         return;
 
-    auto* message = reinterpret_cast<struct ipc_gbm_message*>(data);
-    uint64_t messageCode = message->message_code;
-    if (messageCode != 42)
+    auto& message = IPC::GBM::asMessage(data);
+    if (message.messageCode != IPC::GBM::BufferCommit::code)
         return;
 
-    auto* commit = reinterpret_cast<struct buffer_commit*>(std::addressof(message->data));
+    auto& bufferCommit = IPC::GBM::BufferCommit::cast(message);
 
     struct wl_buffer* buffer = nullptr;
     auto& bufferMap = m_bufferData.map;
-    auto it = bufferMap.find(commit->handle);
+    auto it = bufferMap.find(bufferCommit.handle);
 
     if (m_renderer.pendingBufferFd >= 0) {
         int fd = m_renderer.pendingBufferFd;
         m_renderer.pendingBufferFd = -1;
 
-        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, commit->width, commit->height, WL_DRM_FORMAT_ARGB8888, 0, commit->stride, 0, 0, 0, 0);
+        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, bufferCommit.width, bufferCommit.height, WL_DRM_FORMAT_ARGB8888, 0, bufferCommit.stride, 0, 0, 0, 0);
         wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
 
         if (it != bufferMap.end()) {
             wl_buffer_destroy(it->second);
             it->second = buffer;
         } else
-            bufferMap.insert({ commit->handle, buffer });
+            bufferMap.insert({ bufferCommit.handle, buffer });
     } else {
         assert(it != bufferMap.end());
         buffer = it->second;
     }
 
     if (!buffer) {
-        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", commit->handle);
+        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", bufferCommit.handle);
         return;
     }
 

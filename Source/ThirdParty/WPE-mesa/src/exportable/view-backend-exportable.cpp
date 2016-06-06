@@ -72,18 +72,18 @@ void ViewBackend::handleFd(int fd)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != MESSAGE_SIZE)
+
+    if (size != IPC::GBM::messageSize)
         return;
 
-    auto* message = reinterpret_cast<struct ipc_gbm_message*>(data);
-    uint64_t messageCode = message->message_code;
-    if (messageCode != 42)
+    auto& message = IPC::GBM::asMessage(data);
+    if (message.messageCode != IPC::GBM::BufferCommit::code)
         return;
 
-    auto* commit = reinterpret_cast<struct buffer_commit*>(std::addressof(message->data));
+    auto& bufferCommit = IPC::GBM::BufferCommit::cast(message);
 
     m_clientBundle->client->export_dma_buf(m_clientBundle->data, m_renderer.pendingBufferFd,
-        commit->handle, commit->width, commit->height, commit->stride, commit->format);
+        bufferCommit.handle, bufferCommit.width, bufferCommit.height, bufferCommit.stride, bufferCommit.format);
 
     m_renderer.pendingBufferFd = -1;
 }
@@ -158,22 +158,18 @@ __attribute__((visibility("default")))
 void
 wpe_mesa_view_backend_exportable_dispatch_frame_complete(struct wpe_mesa_view_backend_exportable* exportable)
 {
-    struct ipc_gbm_message message = { 0, };
-    message.message_code = 23;
-    exportable->clientBundle->viewBackend->ipcHost().send(reinterpret_cast<char*>(&message), sizeof(message));
+    IPC::GBM::Message message;
+    IPC::GBM::FrameComplete::construct(message);
+    exportable->clientBundle->viewBackend->ipcHost().send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
 }
 
 __attribute__((visibility("default")))
 void
 wpe_mesa_view_backend_exportable_dispatch_release_buffer(struct wpe_mesa_view_backend_exportable* exportable, uint32_t handle)
 {
-    struct ipc_gbm_message message = { 0, };
-    message.message_code = 16;
-
-    auto* releaseBuffer = reinterpret_cast<struct release_buffer*>(std::addressof(message.data));
-    releaseBuffer->handle = handle;
-
-    exportable->clientBundle->viewBackend->ipcHost().send(reinterpret_cast<char*>(&message), sizeof(message));
+    IPC::GBM::Message message;
+    IPC::GBM::ReleaseBuffer::construct(message, handle);
+    exportable->clientBundle->viewBackend->ipcHost().send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
 }
 
 }

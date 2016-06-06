@@ -64,38 +64,31 @@ struct EGLTarget : public IPC::Client::Handler {
     // IPC::Client::Handler
     void handleMessage(char* data, size_t size) override
     {
-        if (size != MESSAGE_SIZE)
+        if (size != IPC::GBM::messageSize)
             return;
 
-        auto* message = reinterpret_cast<struct ipc_gbm_message*>(data);
-        uint64_t messageCode = message->message_code;
-
-        switch (messageCode) {
-        case 23:
+        auto& message = IPC::GBM::asMessage(data);
+        switch (message.messageCode) {
+        case IPC::GBM::FrameComplete::code:
         {
             wpe_renderer_backend_egl_target_dispatch_frame_complete(target);
             break;
         }
-        case 16:
+        case IPC::GBM::ReleaseBuffer::code:
         {
-            uint32_t handle = reinterpret_cast<struct release_buffer*>(std::addressof(message->data))->handle;
-            releaseBuffer(handle);
+            auto& releaseBuffer = IPC::GBM::ReleaseBuffer::cast(message);
+            auto it = lockedBuffers.find(releaseBuffer.handle);
+            assert(it != lockedBuffers.end());
+
+            struct gbm_bo* bo = it->second;
+            if (bo)
+                gbm_surface_release_buffer(surface, bo);
             break;
         }
         default:
             fprintf(stderr, "renderer-gbm: invalid message\n");
             break;
         };
-    }
-
-    void releaseBuffer(uint32_t handle)
-    {
-        auto it = lockedBuffers.find(handle);
-        assert(it != lockedBuffers.end());
-
-        struct gbm_bo* bo = it->second;
-        if (bo)
-            gbm_surface_release_buffer(surface, bo);
     }
 
     struct wpe_renderer_backend_egl_target* target;
@@ -120,7 +113,7 @@ struct EGLOffscreenTarget {
 static void destroyBOData(struct gbm_bo*, void* data)
 {
     if (data) {
-        auto* boData = static_cast<struct buffer_commit*>(data);
+        auto* boData = static_cast<IPC::GBM::BufferCommit*>(data);
         delete boData;
     }
 }
@@ -199,22 +192,18 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
             target->lockedBuffers.insert({ handle, bo });
         assert(result.second);
 
-        struct ipc_gbm_message messageData = { };
-        messageData.message_code = 42;
-
-        auto* commitData = reinterpret_cast<struct buffer_commit*>(std::addressof(messageData.data));
-
-        auto* boData = static_cast<struct buffer_commit*>(gbm_bo_get_user_data(bo));
+        auto* boData = static_cast<IPC::GBM::BufferCommit*>(gbm_bo_get_user_data(bo));
         if (!boData) {
             target->ipcClient.sendFd(gbm_bo_get_fd(bo));
 
-            boData = new struct buffer_commit;
-            *boData = { handle, target->width, target->height, gbm_bo_get_stride(bo), gbm_bo_get_format(bo), 0 };
+            boData = new IPC::GBM::BufferCommit{ handle, target->width, target->height, gbm_bo_get_stride(bo), gbm_bo_get_format(bo), 0 };
             gbm_bo_set_user_data(bo, boData, &GBM::destroyBOData);
         }
 
-        memcpy(commitData, boData, sizeof(struct buffer_commit));
-        target->ipcClient.sendMessage(reinterpret_cast<char*>(&messageData), sizeof(messageData));
+        IPC::GBM::Message message;
+        IPC::GBM::BufferCommit::construct(message, boData->handle, boData->width, boData->height, boData->stride, boData->format);
+
+        target->ipcClient.sendMessage(IPC::GBM::messageData(message), IPC::GBM::messageSize);
     },
 };
 

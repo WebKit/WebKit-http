@@ -123,9 +123,9 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
         return;
 
     {
-        struct ipc_gbm_message message = { 0, };
-        message.message_code = 23;
-        handlerData.backend->m_renderer.ipcHost.send(reinterpret_cast<char*>(&message), sizeof(message));
+        IPC::GBM::Message message;
+        IPC::GBM::FrameComplete::construct(message);
+        handlerData.backend->m_renderer.ipcHost.send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
     }
 
     auto bufferToRelease = handlerData.lockedFB;
@@ -133,13 +133,9 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     handlerData.nextFB = { false, 0 };
 
     if (bufferToRelease.first) {
-        struct ipc_gbm_message message = { 0, };
-        message.message_code = 16;
-
-        auto* releaseBuffer = reinterpret_cast<struct release_buffer*>(std::addressof(message.data));
-        releaseBuffer->handle = bufferToRelease.second;
-
-        handlerData.backend->m_renderer.ipcHost.send(reinterpret_cast<char*>(&message), sizeof(message));
+        IPC::GBM::Message message;
+        IPC::GBM::ReleaseBuffer::construct(message, bufferToRelease.second);
+        handlerData.backend->m_renderer.ipcHost.send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
     }
 }
 
@@ -287,24 +283,23 @@ void ViewBackend::handleFd(int fd)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != MESSAGE_SIZE)
+    if (size != IPC::GBM::messageSize)
         return;
 
-    auto* message = reinterpret_cast<struct ipc_gbm_message*>(data);
-    uint64_t messageCode = message->message_code;
-    if (messageCode != 42)
+    auto& message = IPC::GBM::asMessage(data);
+    if (message.messageCode != IPC::GBM::BufferCommit::code)
         return;
 
-    auto* commit = reinterpret_cast<struct buffer_commit*>(std::addressof(message->data));
+    auto& bufferCommit = IPC::GBM::BufferCommit::cast(message);
     uint32_t fbID = 0;
 
     if (m_renderer.pendingBufferFd >= 0) {
         int fd = m_renderer.pendingBufferFd;
         m_renderer.pendingBufferFd = -1;
 
-        assert(m_display.fbMap.find(commit->handle) == m_display.fbMap.end());
+        assert(m_display.fbMap.find(bufferCommit.handle) == m_display.fbMap.end());
 
-        struct gbm_import_fd_data fdData = { fd, commit->width, commit->height, commit->stride, commit->format };
+        struct gbm_import_fd_data fdData = { fd, bufferCommit.width, bufferCommit.height, bufferCommit.stride, bufferCommit.format };
         struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT);
         uint32_t primeHandle = gbm_bo_get_handle(bo).u32;
 
@@ -315,14 +310,14 @@ void ViewBackend::handleMessage(char* data, size_t size)
             return;
         }
 
-        m_display.fbMap.insert({ commit->handle, { bo, fbID } });
-        m_display.pageFlipData.nextFB = { true, commit->handle };
+        m_display.fbMap.insert({ bufferCommit.handle, { bo, fbID } });
+        m_display.pageFlipData.nextFB = { true, bufferCommit.handle };
     } else {
-        auto it = m_display.fbMap.find(commit->handle);
+        auto it = m_display.fbMap.find(bufferCommit.handle);
         assert(it != m_fbMap.end());
 
         fbID = it->second.second;
-        m_display.pageFlipData.nextFB = { true, commit->handle };
+        m_display.pageFlipData.nextFB = { true, bufferCommit.handle };
     }
 
     int ret = drmModePageFlip(m_drm.fd, m_drm.crtcId, fbID, DRM_MODE_PAGE_FLIP_EVENT, &m_display.pageFlipData);
