@@ -45,7 +45,6 @@ set(WPE_MESA_SOURCES
     src/exportable/view-backend-exportable.cpp
 
     src/gbm/renderer-gbm.cpp
-    src/gbm/gbm-connection.cpp
 
     src/util/ipc.cpp
 
