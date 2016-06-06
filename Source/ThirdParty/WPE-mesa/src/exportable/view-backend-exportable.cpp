@@ -1,7 +1,9 @@
 #include <wpe-mesa/view-backend-exportable.h>
 
-#include "gbm-connection.h"
+#include "ipc.h"
+#include "ipc-gbm.h"
 #include <cstdio>
+#include <memory>
 
 namespace Exportable {
 
@@ -14,25 +16,25 @@ public:
     ViewBackend* viewBackend;
 };
 
-class ViewBackend : public GBM::Host::Client {
+class ViewBackend : public IPC::Host::Handler {
 public:
     ViewBackend(ClientBundle*, struct wpe_view_backend* backend);
     virtual ~ViewBackend();
 
     void initialize();
 
-    GBM::Host& gbmHost() { return m_renderer.gbmHost; }
+    IPC::Host& ipcHost() { return m_renderer.ipcHost; }
 
 private:
-    // GBM::Host::Client
-    void importBufferFd(int) override;
-    void commitBuffer(struct buffer_commit*) override;
+    // IPC::Host::Handler
+    void handleFd(int) override;
+    void handleMessage(char*, size_t) override;
 
     ClientBundle* m_clientBundle;
     struct wpe_view_backend* m_backend;
 
     struct {
-        GBM::Host gbmHost;
+        IPC::Host ipcHost;
         int pendingBufferFd { -1 };
     } m_renderer;
 };
@@ -42,14 +44,14 @@ ViewBackend::ViewBackend(ClientBundle* clientBundle, struct wpe_view_backend* ba
     , m_backend(backend)
 {
     m_clientBundle->viewBackend = this;
-    m_renderer.gbmHost.initialize(*this);
+    m_renderer.ipcHost.initialize(*this);
 }
 
 ViewBackend::~ViewBackend()
 {
     m_backend = nullptr;
 
-    m_renderer.gbmHost.deinitialize();
+    m_renderer.ipcHost.deinitialize();
 
     if (m_renderer.pendingBufferFd != -1)
         close(m_renderer.pendingBufferFd);
@@ -61,15 +63,25 @@ void ViewBackend::initialize()
     wpe_view_backend_dispatch_set_size(m_backend, 800, 600);
 }
 
-void ViewBackend::importBufferFd(int fd)
+void ViewBackend::handleFd(int fd)
 {
     if (m_renderer.pendingBufferFd != -1)
         close(m_renderer.pendingBufferFd);
     m_renderer.pendingBufferFd = fd;
 }
 
-void ViewBackend::commitBuffer(struct buffer_commit* commit)
+void ViewBackend::handleMessage(char* data, size_t size)
 {
+    if (size != MESSAGE_SIZE)
+        return;
+
+    auto* message = reinterpret_cast<struct ipc_gbm_message*>(data);
+    uint64_t messageCode = message->message_code;
+    if (messageCode != 42)
+        return;
+
+    auto* commit = reinterpret_cast<struct buffer_commit*>(std::addressof(message->data));
+
     m_clientBundle->client->export_dma_buf(m_clientBundle->data, m_renderer.pendingBufferFd,
         commit->handle, commit->width, commit->height, commit->stride, commit->format);
 
@@ -108,7 +120,7 @@ struct wpe_view_backend_interface exportable_view_backend_interface = {
     [](void* data) -> int
     {
         auto& backend = *static_cast<Exportable::ViewBackend*>(data);
-        return backend.gbmHost().releaseClientFD();
+        return backend.ipcHost().releaseClientFD();
     },
 };
 
@@ -146,15 +158,22 @@ __attribute__((visibility("default")))
 void
 wpe_mesa_view_backend_exportable_dispatch_frame_complete(struct wpe_mesa_view_backend_exportable* exportable)
 {
-    exportable->clientBundle->viewBackend->gbmHost().frameComplete();
+    struct ipc_gbm_message message = { 0, };
+    message.message_code = 23;
+    exportable->clientBundle->viewBackend->ipcHost().send(reinterpret_cast<char*>(&message), sizeof(message));
 }
 
 __attribute__((visibility("default")))
 void
 wpe_mesa_view_backend_exportable_dispatch_release_buffer(struct wpe_mesa_view_backend_exportable* exportable, uint32_t handle)
 {
-    exportable->clientBundle->viewBackend->gbmHost().releaseBuffer(handle);
-}
+    struct ipc_gbm_message message = { 0, };
+    message.message_code = 16;
 
+    auto* releaseBuffer = reinterpret_cast<struct release_buffer*>(std::addressof(message.data));
+    releaseBuffer->handle = handle;
+
+    exportable->clientBundle->viewBackend->ipcHost().send(reinterpret_cast<char*>(&message), sizeof(message));
+}
 
 }
