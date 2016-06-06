@@ -19,6 +19,7 @@ set(WPE_MESA_INCLUDE_DIRECTORIES
     "${WPE_MESA_SOURCE_DIR}/include"
     "${WPE_MESA_SOURCE_DIR}/src/drm"
     "${WPE_MESA_SOURCE_DIR}/src/gbm"
+    "${WPE_MESA_SOURCE_DIR}/src/util"
     "${WPE_MESA_SOURCE_DIR}/src/wayland"
     "${WPE_MESA_SOURCE_DIR}/src/wayland/protocols"
     ${GIO_UNIX_INCLUDE_DIRS}
@@ -45,6 +46,8 @@ set(WPE_MESA_SOURCES
 
     src/gbm/renderer-gbm.cpp
     src/gbm/gbm-connection.cpp
+
+    src/util/ipc.cpp
 
     src/wayland/display.cpp
     src/wayland/pasteboard-wayland.cpp
