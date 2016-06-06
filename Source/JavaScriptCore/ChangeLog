@@ -1,5 +1,20 @@
 2016-06-06  Guillaume Emont  <guijemont@igalia.com>
 
+        [jsc][mips] Implement absDouble()
+        https://bugs.webkit.org/show_bug.cgi?id=158206
+
+        Reviewed by Mark Lam.
+
+        Implement absDouble() for MIPS. This is needed because Math.pow() uses
+        it since r200208.
+
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::absd):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::absDouble):
+
+2016-06-06  Guillaume Emont  <guijemont@igalia.com>
+
         [jsc][mips] fix JIT::emit_op_log_shadow_chicken_prologue/_tail
         https://bugs.webkit.org/show_bug.cgi?id=158209
 
