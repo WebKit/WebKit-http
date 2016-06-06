@@ -1,39 +1,100 @@
-#ifndef wpe_ipc_gbm_h
-#define wpe_ipc_gbm_h
+#ifndef wpe_mesa_ipc_gbm_h
+#define wpe_mesa_ipc_gbm_h
 
 #define MESSAGE_SIZE 32
 
 #define DATA_OFFSET sizeof(uint64_t)
 #define DATA_SIZE 24
 
+#include <memory>
 #include <stdint.h>
 
-struct ipc_gbm_message {
-    uint64_t message_code;
-    char data[DATA_SIZE];
-};
-static_assert(sizeof(struct ipc_gbm_message) == MESSAGE_SIZE, "ipc_gbm_message is of correct size");
+namespace IPC {
 
-struct buffer_commit {
+namespace GBM {
+
+static const size_t messageSize = 32;
+static const size_t messageDataSize = 24;
+
+struct Message {
+    uint64_t messageCode { 0 };
+    uint8_t data[messageDataSize] { 0, };
+};
+static_assert(sizeof(Message) == messageSize, "Message is of correct size");
+
+static char* messageData(Message& message)
+{
+    return reinterpret_cast<char*>(std::addressof(message));
+}
+
+static Message& asMessage(char* data)
+{
+    return *reinterpret_cast<Message*>(data);
+}
+
+struct BufferCommit {
     uint32_t handle;
     uint32_t width;
     uint32_t height;
     uint32_t stride;
     uint32_t format;
-    uint32_t padding;
-};
-static_assert(sizeof(struct buffer_commit) == DATA_SIZE, "buffer_commit is of correct size");
+    uint8_t padding[4];
 
-struct frame_complete {
-    char data[24];
-};
-static_assert(sizeof(struct frame_complete) == DATA_SIZE, "frame_complete is of correct size");
+    static const uint64_t code = 42;
+    static BufferCommit& construct(Message& message, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format)
+    {
+        message.messageCode = code;
 
-struct release_buffer {
+        auto& messageData = *reinterpret_cast<BufferCommit*>(std::addressof(message.data));
+        messageData.handle = handle;
+        messageData.width = width;
+        messageData.height = height;
+        messageData.stride = stride;
+        messageData.format = format;
+
+        return messageData;
+    }
+    static BufferCommit& cast(Message& message)
+    {
+        return *reinterpret_cast<BufferCommit*>(message.data);
+    }
+};
+static_assert(sizeof(BufferCommit) == messageDataSize, "BufferCommit is of correct size");
+
+struct FrameComplete {
+    uint8_t data[24];
+
+    static const uint64_t code = 23;
+    static FrameComplete& construct(Message& message)
+    {
+        message.messageCode = code;
+        return *reinterpret_cast<FrameComplete*>(std::addressof(message.data));
+    }
+};
+static_assert(sizeof(FrameComplete) == messageDataSize, "FrameComplete is of correct size");
+
+struct ReleaseBuffer {
     uint32_t handle;
-    char data[20];
+    uint8_t data[20];
+
+    static const uint64_t code = 16;
+    static ReleaseBuffer& construct(Message& message, uint32_t handle)
+    {
+        message.messageCode = code;
+
+        auto& messageData = *reinterpret_cast<ReleaseBuffer*>(std::addressof(message.data));
+        messageData.handle = handle;
+        return messageData;
+    }
+    static ReleaseBuffer& cast(Message& message)
+    {
+        return *reinterpret_cast<ReleaseBuffer*>(message.data);
+    }
 };
-static_assert(sizeof(struct release_buffer) == DATA_SIZE, "release_buffer is of correct size");
+static_assert(sizeof(ReleaseBuffer) == messageDataSize, "ReleaseBuffer is of correct size");
 
+} // namespace GBM
 
-#endif // wpe_ipc_gbm_h
+} // namespace IPC
+
+#endif // wpe_mesa_ipc_gbm_h
