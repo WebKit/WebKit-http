@@ -32,6 +32,7 @@
 #include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
+#include "nsc-client-protocol.h"
 #include <WPE/Input/Handling.h>
 #include <cassert>
 #include <cstring>
@@ -97,7 +98,7 @@ GSourceFuncs EventSource::sourceFuncs = {
 
 const struct wl_registry_listener g_registryListener = {
     // global
-    [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t)
+    [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version)
     {
         auto& interfaces = *static_cast<WaylandDisplay::Interfaces*>(data);
 
@@ -118,6 +119,9 @@ const struct wl_registry_listener g_registryListener = {
 
         if (!std::strcmp(interface, "ivi_application"))
             interfaces.ivi_application = static_cast<struct ivi_application*>(wl_registry_bind(registry, name, &ivi_application_interface, 1));
+
+        if (!std::strcmp(interface, "wl_nsc"))
+            interfaces.nsc = static_cast<struct wl_nsc*>(wl_registry_bind(registry, name, &wl_nsc_interface, version));
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
@@ -510,7 +514,9 @@ WaylandDisplay::~WaylandDisplay()
         xdg_shell_destroy(m_interfaces.xdg);
     if (m_interfaces.ivi_application)
         ivi_application_destroy(m_interfaces.ivi_application);
-    m_interfaces = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+    if (m_interfaces.nsc)
+        wl_nsc_destroy(m_interfaces.nsc);
+    m_interfaces = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
     if (m_registry)
         wl_registry_destroy(m_registry);

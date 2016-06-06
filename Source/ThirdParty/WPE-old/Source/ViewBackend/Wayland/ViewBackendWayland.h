@@ -30,6 +30,8 @@
 #if WPE_BACKEND(WAYLAND)
 
 #include <WPE/ViewBackend/ViewBackend.h>
+
+#include "BufferFactory.h"
 #include <unordered_map>
 
 struct ivi_surface;
@@ -55,6 +57,7 @@ public:
     virtual ~ViewBackendWayland();
 
     void setClient(Client* client) override;
+    std::pair<const uint8_t*, size_t> authenticate() override;
     uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
     void commitBuffer(int, const uint8_t* data, size_t size) override;
     void destroyBuffer(uint32_t handle) override;
@@ -87,6 +90,8 @@ private:
     BufferListenerData m_bufferData { nullptr, decltype(m_bufferData.map){ } };
     CallbackListenerData m_callbackData { nullptr, nullptr };
     ResizingData m_resizingData { nullptr, 0, 0 };
+
+    std::unique_ptr<Graphics::BufferFactory> m_bufferFactory;
 };
 
 } // namespace ViewBackend

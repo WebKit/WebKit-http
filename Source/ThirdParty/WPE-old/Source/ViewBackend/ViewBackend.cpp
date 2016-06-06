@@ -27,16 +27,21 @@
 #include "Config.h"
 #include <WPE/ViewBackend/ViewBackend.h>
 
+#include "ViewBackendBCMNexus.h"
+#include "ViewBackendBCMRPi.h"
+#include "ViewBackendIntelCE.h"
+#include "ViewBackendWesteros.h"
+#include "ViewBackendSTM.h"
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+
 #if WPE_BACKEND(DRM)
 #include "ViewBackendDRM.h"
 #endif
 #if WPE_BACKEND(WAYLAND)
 #include "ViewBackendWayland.h"
 #endif
-
-#include <cstring>
-#include <cstdio>
-#include <cstdlib>
 
 namespace WPE {
 
@@ -54,6 +59,31 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
 #if WPE_BACKEND(DRM)
     if (backendEnv && !std::strcmp(backendEnv, "drm"))
         return std::unique_ptr<ViewBackendDRM>(new ViewBackendDRM);
+#endif
+
+#if WPE_BACKEND(BCM_RPI)
+    if (!backendEnv || !std::strcmp(backendEnv, "rpi"))
+        return std::unique_ptr<ViewBackendBCMRPi>(new ViewBackendBCMRPi);
+#endif
+
+#if WPE_BACKEND(BCM_NEXUS)
+    if (!backendEnv || !std::strcmp(backendEnv, "nexus"))
+        return std::unique_ptr<ViewBackendBCMNexus>(new ViewBackendBCMNexus);
+#endif
+
+#if WPE_BACKEND(INTEL_CE)
+    if (!backendEnv || !std::strcmp(backendEnv, "intelce"))
+        return std::unique_ptr<ViewBackendIntelCE>(new ViewBackendIntelCE);
+#endif
+
+#if WPE_BACKEND(WESTEROS)
+    if (!backendEnv || !std::strcmp(backendEnv, "westeros"))
+        return std::unique_ptr<ViewBackendWesteros>(new ViewBackendWesteros);
+#endif
+
+#if WPE_BACKEND(STM)
+    if (!backendEnv || !std::strcmp(backendEnv, "stm"))
+        return std::unique_ptr<ViewBackendSTM>(new ViewBackendSTM);
 #endif
 
     fprintf(stderr, "ViewBackend: no usable backend found, will crash.\n");

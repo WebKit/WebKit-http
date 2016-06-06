@@ -508,14 +508,20 @@ int windowsKeyCodeForKeyEvent(const KeyboardEvent& event)
 // VK_VOLUME_MUTE (0xAD) // Windows 2000/XP: Volume Mute key
 // VK_VOLUME_DOWN (0xAE) // Windows 2000/XP: Volume Down key
 // VK_VOLUME_UP (0xAF) // Windows 2000/XP: Volume Up key
-// VK_MEDIA_NEXT_TRACK (0xB0) // Windows 2000/XP: Next Track key
-// VK_MEDIA_PREV_TRACK (0xB1) // Windows 2000/XP: Previous Track key
-// VK_MEDIA_STOP (0xB2) // Windows 2000/XP: Stop Media key
-// VK_MEDIA_PLAY_PAUSE (0xB3) // Windows 2000/XP: Play/Pause Media key
+        case KEY_FORWARD:
+            return VK_MEDIA_NEXT_TRACK;
+        case KEY_REWIND:
+            return VK_MEDIA_PREV_TRACK;
+        case KEY_STOP:
+            return VK_MEDIA_STOP;
+        case KEY_PLAYPAUSE:
+            return VK_MEDIA_PLAY_PAUSE;
 // VK_MEDIA_LAUNCH_MAIL (0xB4) // Windows 2000/XP: Start Mail key
 // VK_MEDIA_LAUNCH_MEDIA_SELECT (0xB5) // Windows 2000/XP: Select Media key
-// VK_MEDIA_LAUNCH_APP1 (0xB6) // VK_LAUNCH_APP1 (B6) Windows 2000/XP: Start Application 1 key
-// VK_MEDIA_LAUNCH_APP2 (0xB7) // VK_LAUNCH_APP2 (B7) Windows 2000/XP: Start Application 2 key
+//        case KEY_EPG:
+//            return VK_MEDIA_LAUNCH_APP1;
+//        case KEY_APPSELECT:
+//            return VK_MEDIA_LAUNCH_APP2;
         case KEY_SEMICOLON:
             return VK_OEM_1;      // (0xBA) Used for miscellaneous characters; it can vary by keyboard. Windows 2000/XP: For the US standard keyboard, the ';:' key
         case KEY_EQUAL:

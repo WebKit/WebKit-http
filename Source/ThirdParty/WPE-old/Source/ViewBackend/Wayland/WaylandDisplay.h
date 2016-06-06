@@ -48,6 +48,7 @@ struct wl_seat;
 struct wl_surface;
 struct wl_touch;
 struct xdg_shell;
+struct wl_nsc;
 
 typedef struct _GSource GSource;
 
@@ -74,6 +75,7 @@ public:
         struct wl_seat* seat;
         struct xdg_shell* xdg;
         struct ivi_application* ivi_application;
+        struct wl_nsc* nsc;
     };
     const Interfaces& interfaces() const { return m_interfaces; }
 
