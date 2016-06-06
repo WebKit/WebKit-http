@@ -15,7 +15,7 @@ option(USE_WPE_BACKEND_WAYLAND "Whether to enable support for the Wayland WPE ba
 
 
 set(WPE_METROLOGICAL_INCLUDE_DIRECTORIES
-    "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/Headers"
+    "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
 )
 
 set(WPE_METROLOGICAL_LIBRARIES

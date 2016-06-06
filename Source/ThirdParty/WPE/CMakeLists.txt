@@ -8,6 +8,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${WPE_SOURCE_DIR}/include"
     "${WPE_SOURCE_DIR}/src"
     "${WPE_SOURCE_DIR}/src/external"
+    ${BCM_HOST_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
 )
 

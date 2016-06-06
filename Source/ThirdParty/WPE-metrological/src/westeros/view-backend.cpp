@@ -4,7 +4,7 @@ extern "C" {
 
 struct wpe_view_backend_interface westeros_view_backend_interface = {
     // create
-    [](struct wpe_view_backend* backend) -> void*
+    [](void*, struct wpe_view_backend* backend) -> void*
     {
         return nullptr;
     },

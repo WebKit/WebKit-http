@@ -1,7 +1,7 @@
 #ifndef stm_interfaces_h
 #define stm_interfaces_h
 
-#include <wpe/renderer-backend.h>
+#include <wpe/renderer-backend-egl.h>
 #include <wpe/view-backend.h>
 
 #ifdef __cplusplus
