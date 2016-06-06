@@ -1,6 +1,7 @@
 #include "view-backend-drm.h"
 
-#include "gbm-connection.h"
+#include "ipc.h"
+#include "ipc-gbm.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -79,13 +80,14 @@ struct PageFlipHandlerData {
     std::pair<bool, uint32_t> lockedFB;
 };
 
-class ViewBackend : public GBM::Host::Client {
+class ViewBackend : public IPC::Host::Handler {
 public:
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
 
-    void importBufferFd(int) override;
-    void commitBuffer(struct buffer_commit*) override;
+    // IPC::Host::Handler
+    void handleFd(int) override;
+    void handleMessage(char*, size_t) override;
 
     struct wpe_view_backend* backend;
 
@@ -109,7 +111,7 @@ public:
     } m_display;
 
     struct {
-        GBM::Host gbmHost;
+        IPC::Host ipcHost;
         int pendingBufferFd { -1 };
     } m_renderer;
 };
@@ -120,14 +122,25 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     if (!handlerData.backend)
         return;
 
-    handlerData.backend->m_renderer.gbmHost.frameComplete();
+    {
+        struct ipc_gbm_message message = { 0, };
+        message.message_code = 23;
+        handlerData.backend->m_renderer.ipcHost.send(reinterpret_cast<char*>(&message), sizeof(message));
+    }
 
     auto bufferToRelease = handlerData.lockedFB;
     handlerData.lockedFB = handlerData.nextFB;
     handlerData.nextFB = { false, 0 };
 
-    if (bufferToRelease.first)
-        handlerData.backend->m_renderer.gbmHost.releaseBuffer(bufferToRelease.second);
+    if (bufferToRelease.first) {
+        struct ipc_gbm_message message = { 0, };
+        message.message_code = 16;
+
+        auto* releaseBuffer = reinterpret_cast<struct release_buffer*>(std::addressof(message.data));
+        releaseBuffer->handle = bufferToRelease.second;
+
+        handlerData.backend->m_renderer.ipcHost.send(reinterpret_cast<char*>(&message), sizeof(message));
+    }
 }
 
 ViewBackend::ViewBackend(struct wpe_view_backend* backend)
@@ -241,12 +254,12 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
 
     m_display.pageFlipData.backend = this;
 
-    m_renderer.gbmHost.initialize(*this);
+    m_renderer.ipcHost.initialize(*this);
 }
 
 ViewBackend::~ViewBackend()
 {
-    m_renderer.gbmHost.deinitialize();
+    m_renderer.ipcHost.deinitialize();
 
     m_display.fbMap = { };
     if (m_display.source)
@@ -265,15 +278,24 @@ ViewBackend::~ViewBackend()
     m_drm = { };
 }
 
-void ViewBackend::importBufferFd(int fd)
+void ViewBackend::handleFd(int fd)
 {
     if (m_renderer.pendingBufferFd != -1)
         close(m_renderer.pendingBufferFd);
     m_renderer.pendingBufferFd = fd;
 }
 
-void ViewBackend::commitBuffer(struct buffer_commit* commit)
+void ViewBackend::handleMessage(char* data, size_t size)
 {
+    if (size != MESSAGE_SIZE)
+        return;
+
+    auto* message = reinterpret_cast<struct ipc_gbm_message*>(data);
+    uint64_t messageCode = message->message_code;
+    if (messageCode != 42)
+        return;
+
+    auto* commit = reinterpret_cast<struct buffer_commit*>(std::addressof(message->data));
     uint32_t fbID = 0;
 
     if (m_renderer.pendingBufferFd >= 0) {
@@ -343,7 +365,7 @@ struct wpe_view_backend_interface drm_view_backend_interface = {
         fprintf(stderr, "drm_view_backend_interface::get_renderer_host_fd()\n");
 
         auto* backend = static_cast<DRM::ViewBackend*>(data);
-        return backend->m_renderer.gbmHost.releaseClientFD();
+        return backend->m_renderer.ipcHost.releaseClientFD();
     },
 };
 
