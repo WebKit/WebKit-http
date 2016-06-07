@@ -1,5 +1,80 @@
 #include <wpe/renderer-backend-egl.h>
 
+#include "ipc.h"
+#include "ipc-rpi.h"
+#include <EGL/egl.h>
+
+#include <cstdio>
+
+namespace BCMRPi {
+
+struct EGLTarget : public IPC::Client::Handler {
+    EGLTarget(struct wpe_renderer_backend_egl_target*, int);
+    virtual ~EGLTarget();
+
+    // IPC::Client::Handler
+    void handleMessage(char* data, size_t size) override;
+
+    void constructTarget(uint32_t, uint32_t, uint32_t);
+
+    struct wpe_renderer_backend_egl_target* target;
+    IPC::Client ipcClient;
+
+    EGL_DISPMANX_WINDOW_T nativeWindow { 0, };
+    uint32_t width { 0 };
+    uint32_t height { 0 };
+};
+
+EGLTarget::EGLTarget(struct wpe_renderer_backend_egl_target* target, int hostFd)
+    : target(target)
+{
+    ipcClient.initialize(*this, hostFd);
+
+    // Wait for the TargetConstruction message from wpe_view_backend.
+    while (!nativeWindow.element)
+        ipcClient.readSynchronously();
+}
+
+EGLTarget::~EGLTarget()
+{
+    ipcClient.deinitialize();
+}
+
+void EGLTarget::handleMessage(char* data, size_t size)
+{
+    if (size != IPC::BCMRPi::messageSize)
+        return;
+
+    auto& message = IPC::BCMRPi::asMessage(data);
+    switch (message.messageCode) {
+    case IPC::BCMRPi::TargetConstruction::code:
+    {
+        auto& targetConstruction = IPC::BCMRPi::TargetConstruction::cast(message);
+        constructTarget(targetConstruction.handle, targetConstruction.width, targetConstruction.height);
+        break;
+    }
+    case IPC::BCMRPi::FrameComplete::code:
+    {
+        wpe_renderer_backend_egl_target_dispatch_frame_complete(target);
+        break;
+    }
+    default:
+        fprintf(stderr, "EGLTarget: unhandled message\n");
+    };
+}
+
+void EGLTarget::constructTarget(uint32_t handle, uint32_t width, uint32_t height)
+{
+    if (nativeWindow.element)
+        return;
+
+    nativeWindow.element = handle;
+    nativeWindow.width = width;
+    nativeWindow.height = height;
+}
+
+} // namespace BCMRPi
+
 extern "C" {
 
 struct wpe_renderer_backend_egl_interface bcm_rpi_renderer_backend_egl_interface = {
@@ -15,6 +90,7 @@ struct wpe_renderer_backend_egl_interface bcm_rpi_renderer_backend_egl_interface
     // get_native_display
     [](void* data) -> EGLNativeDisplayType
     {
+        return EGL_DEFAULT_DISPLAY;
     },
 };
 
@@ -22,11 +98,13 @@ struct wpe_renderer_backend_egl_target_interface bcm_rpi_renderer_backend_egl_ta
     // create
     [](struct wpe_renderer_backend_egl_target* target, int host_fd) -> void*
     {
-        return nullptr;
+        return new BCMRPi::EGLTarget(target, host_fd);
     },
     // destroy
     [](void* data)
     {
+        auto* target = static_cast<BCMRPi::EGLTarget*>(data);
+        delete target;
     },
     // initialize
     [](void* data, void* backend_data, uint32_t width, uint32_t height)
@@ -35,6 +113,8 @@ struct wpe_renderer_backend_egl_target_interface bcm_rpi_renderer_backend_egl_ta
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
+        auto& target = *static_cast<BCMRPi::EGLTarget*>(data);
+        return &target.nativeWindow;
     },
     // resize
     [](void* data, uint32_t width, uint32_t height)
@@ -43,6 +123,12 @@ struct wpe_renderer_backend_egl_target_interface bcm_rpi_renderer_backend_egl_ta
     // frame_rendered
     [](void* data)
     {
+        auto& target = *static_cast<BCMRPi::EGLTarget*>(data);
+
+        IPC::BCMRPi::Message message;
+        IPC::BCMRPi::BufferCommit::construct(message, target.nativeWindow.element,
+            target.nativeWindow.width, target.nativeWindow.height);
+        target.ipcClient.sendMessage(IPC::BCMRPi::messageData(message), IPC::BCMRPi::messageSize);
     },
 };
 
