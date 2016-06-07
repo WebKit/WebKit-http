@@ -321,6 +321,13 @@ float FontCascade::drawText(GraphicsContext& context, const TextRun& run, const 
     if (codePathToUse != Complex && (enableKerning() || requiresShaping()) && (from || static_cast<unsigned>(to) != run.length()) && !isDrawnWithSVGFont(run))
         codePathToUse = Complex;
 
+#if PLATFORM(QT)
+    if (codePathToUse == Complex) {
+        drawComplexText(context, run, point, from, to);
+        return 0;
+    }
+#endif
+
     GlyphBuffer glyphBuffer;
     float startX = point.x() + glyphBufferForTextRun(codePathToUse, run, from, to, glyphBuffer);
     // We couldn't generate any glyphs for the run. Give up.

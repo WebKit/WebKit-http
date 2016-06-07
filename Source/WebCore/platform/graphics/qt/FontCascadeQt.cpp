@@ -177,6 +177,21 @@ static void drawQtGlyphRun(GraphicsContext& context, const QGlyphRun& qtGlyphRun
     }
 }
 
+void FontCascade::drawComplexText(GraphicsContext& ctx, const TextRun& run, const FloatPoint& point, int from, int to) const
+{
+    QString string = toNormalizedQString(run);
+
+    QTextLayout layout(string);
+    layout.setRawFont(rawFont());
+    initFormatForTextLayout(&layout, run);
+    QTextLine line = setupLayout(&layout, run);
+    const QPointF adjustedPoint(point.x(), point.y() - line.ascent());
+
+    QList<QGlyphRun> runs = line.glyphRuns(from, to - from);
+    Q_FOREACH(QGlyphRun glyphRun, runs)
+        drawQtGlyphRun(ctx, glyphRun, adjustedPoint, line.ascent());
+}
+
 float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Font*>*, GlyphOverflow*) const
 {
     if (!primaryFont().platformData().size())
