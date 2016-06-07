@@ -83,6 +83,8 @@ ViewBackend::~ViewBackend()
 {
     ipcHost.deinitialize();
 
+    WPE::LibinputServer::singleton().setBackend(nullptr);
+
     if (updateSource)
         g_source_destroy(updateSource);
     if (updateFd != -1)
