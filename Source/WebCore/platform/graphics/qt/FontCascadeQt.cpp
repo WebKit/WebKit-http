@@ -126,7 +126,7 @@ static QPainterPath pathForGlyphs(const QGlyphRun& glyphRun, const QPointF& offs
     return path;
 }
 
-static void drawQtGlyphRun(GraphicsContext& context, const QGlyphRun& qtGlyphRun, const QPointF& point, int baseLineOffset)
+static void drawQtGlyphRun(GraphicsContext& context, const QGlyphRun& qtGlyphRun, const QPointF& point, qreal baseLineOffset)
 {
     QPainter* painter = context.platformContext();
 
@@ -138,9 +138,9 @@ static void drawQtGlyphRun(GraphicsContext& context, const QGlyphRun& qtGlyphRun
         const GraphicsContextState& state = context.state();
         if (context.mustUseShadowBlur()) {
             ShadowBlur shadow(state);
-            const int width = qtGlyphRun.boundingRect().width();
+            const qreal width = qtGlyphRun.boundingRect().width();
             const QRawFont& font = qtGlyphRun.rawFont();
-            const int height = font.ascent() + font.descent();
+            const qreal height = font.ascent() + font.descent();
             const QRectF boundingRect(point.x(), point.y() - font.ascent() + baseLineOffset, width, height);
             GraphicsContext* shadowContext = shadow.beginShadowLayer(context, boundingRect);
             if (shadowContext) {
