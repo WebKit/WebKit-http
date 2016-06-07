@@ -90,6 +90,7 @@ struct FrameComplete {
         return *reinterpret_cast<FrameComplete*>(message.data);
     }
 };
+static_assert(sizeof(FrameComplete) == messageDataSize, "FrameComplete is of correct size");
 
 } // namespace BCMRPi
 
