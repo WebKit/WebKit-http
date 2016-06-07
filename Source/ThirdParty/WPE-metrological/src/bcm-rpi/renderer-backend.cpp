@@ -21,8 +21,6 @@ struct EGLTarget : public IPC::Client::Handler {
     IPC::Client ipcClient;
 
     EGL_DISPMANX_WINDOW_T nativeWindow { 0, };
-    uint32_t width { 0 };
-    uint32_t height { 0 };
 };
 
 EGLTarget::EGLTarget(struct wpe_renderer_backend_egl_target* target, int hostFd)
