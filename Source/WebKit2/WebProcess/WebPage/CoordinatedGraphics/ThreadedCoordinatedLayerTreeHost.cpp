@@ -75,11 +75,11 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage& webP
     m_layerFlushTimer.setPriority(G_PRIORITY_HIGH + 30);
 
     m_coordinator = std::make_unique<CompositingCoordinator>(m_webPage.corePage(), this);
-    m_coordinator->createRootLayer(m_webPage->size());
+    m_coordinator->createRootLayer(m_webPage.size());
 
     CoordinatedSurface::setFactory(createCoordinatedSurface);
 
-    m_compositor = ThreadedCompositor::create(this, *webPage);
+    m_compositor = ThreadedCompositor::create(this, m_webPage);
     scheduleLayerFlush();
 }
 
