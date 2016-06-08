@@ -120,6 +120,8 @@ void ViewBackend::initialize()
     gdl_init(0);
     setup_plane(plane);
 
+    wpe_view_backend_dispatch_set_size(backend, width, height);
+
     WPE::LibinputServer::singleton().setBackend(backend);
 }
 
