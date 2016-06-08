@@ -55,24 +55,6 @@ static WKPageNavigationClientV0 createPageNavigationClient()
     return navigationClient;
 }
 
-#if 0
-    auto context = adoptWK(WKContextCreate());
-    auto pageGroupIdentifier = adoptWK(WKStringCreateWithUTF8CString("WPEPageGroup"));
-    auto pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
-    auto pageConfiguration = adoptWK(WKPageConfigurationCreate());
-    WKPageConfigurationSetContext(pageConfiguration.get(), context.get());
-    WKPageConfigurationSetPageGroup(pageConfiguration.get(), pageGroup.get());
-
-    auto view = adoptWK(createView(pageConfiguration.get()));
-
-    const char* url = "http://www.webkit.org/blog-files/3d-transforms/poster-circle.html";
-    if (argc > 1)
-        url = argv[1];
-
-    auto shellURL = adoptWK(WKURLCreateWithUTF8CString(url));
-    WKPageLoadURL(WKViewGetPage(view.get()), shellURL.get());
-#endif
-
 struct Embedder {
     struct wl_display* display;
     struct wl_registry* registry;
@@ -226,16 +208,7 @@ void Embedder::createTexture(Embedder& e)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    char* pixels = static_cast<char*>(malloc(800 * 600 * 4));
-    for (unsigned i = 0; i < 800 * 600; ++i) {
-        pixels[i * 4 + 0] = 255;
-        pixels[i * 4 + 1] =   0;
-        pixels[i * 4 + 2] =   0;
-        pixels[i * 4 + 3] = 255;
-    }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 800, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    free(pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 800, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 }
 
 void Embedder::render(Embedder& e, EGLImageKHR image)
