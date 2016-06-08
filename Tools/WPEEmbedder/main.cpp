@@ -11,14 +11,15 @@
 #include <wpe-mesa/view-backend-exportable.h>
 
 #include "xdg-shell-client-protocol.h"
-#include <wayland-client.h>
+#include <cassert>
 #include <cstring>
+#include <unordered_map>
+#include <wayland-client.h>
 #include <wayland-egl.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-#include <libdrm/drm_fourcc.h>
 
 static WKPageNavigationClientV0 createPageNavigationClient()
 {
@@ -89,16 +90,14 @@ struct Embedder {
 
     static void createProgram(Embedder& e);
     static void createTexture(Embedder& e);
-    static void render(Embedder&, EGLImageKHR);
+    static void render(Embedder&);
 
     static const char* vertexShaderSource;
     static const char* fragmentShaderSource;
 
-    static const unsigned importsNum = 3;
-    struct Import {
-        uint32_t handle { 0 };
-        int fd { -1 };
-    } imports[3], nextImport, lockedImport;
+    std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> imageMap;
+    std::pair<uint32_t, EGLImageKHR> pendingImage { 0, nullptr };
+    std::pair<uint32_t, EGLImageKHR> lockedImage { 0, nullptr };
 
     GSource* displaySource;
 
@@ -146,17 +145,14 @@ const struct wl_callback_listener Embedder::frameListener = {
 
         auto& e = *static_cast<Embedder*>(data);
 
-        wpe_mesa_view_backend_exportable_dispatch_frame_complete(e.exportableBackend);
+        if (e.pendingImage.first)
+            wpe_mesa_view_backend_exportable_dispatch_frame_complete(e.exportableBackend);
+        if (e.lockedImage.first) {
+            wpe_mesa_view_backend_exportable_dispatch_release_buffer(e.exportableBackend, e.lockedImage.first);
+            e.lockedImage = { 0, nullptr };
+        }
 
-        fprintf(stderr, "Embedder::frameListener::frame() locked(%d, %u)\n",
-            e.lockedImport.fd, e.lockedImport.handle);
-
-        auto previousImport = e.lockedImport;
-        e.lockedImport = e.nextImport;
-        e.nextImport = { };
-
-        if (previousImport.fd != -1)
-            wpe_mesa_view_backend_exportable_dispatch_release_buffer(e.exportableBackend, previousImport.handle);
+        Embedder::render(e);
     },
 };
 
@@ -191,13 +187,11 @@ void Embedder::createProgram(Embedder& e)
 
     GLint status;
     glGetProgramiv(e.program, GL_LINK_STATUS, &status);
-    fprintf(stderr, "Embedder::createProgram(): status %d\n", status);
 
     glBindAttribLocation(e.program, 0, "pos");
     glBindAttribLocation(e.program, 1, "texture");
     e.rotation = glGetUniformLocation(e.program, "rotation");
     e.textureUniform = glGetUniformLocation(e.program, "u_texture");
-    fprintf(stderr, "\te.rotation %d e.textureUniform %d\n", e.rotation, e.textureUniform);
 }
 
 void Embedder::createTexture(Embedder& e)
@@ -211,10 +205,9 @@ void Embedder::createTexture(Embedder& e)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 800, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 }
 
-void Embedder::render(Embedder& e, EGLImageKHR image)
+void Embedder::render(Embedder& e)
 {
     eglMakeCurrent(e.eglDisplay, e.eglSurface, e.eglSurface, e.eglContext);
-    fprintf(stderr, "Embedder::render()\n");
 
     glClearColor(0.125, 0.125, 0.125, 1);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -247,14 +240,15 @@ void Embedder::render(Embedder& e, EGLImageKHR image)
 
     glUniformMatrix4fv(e.rotation, 1, GL_FALSE, reinterpret_cast<GLfloat*>(rotation));
 
-    if (image) {
-        fprintf(stderr, "Embedder::render() image %p\n", image);
+    if (e.pendingImage.first) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, e.texture);
-        e.imageTargetTexture2DOES(GL_TEXTURE_2D, image);
+        e.imageTargetTexture2DOES(GL_TEXTURE_2D, e.pendingImage.second);
         glUniform1i(e.textureUniform, 0);
+
+        e.lockedImage = e.pendingImage;
+        e.pendingImage = { 0, nullptr };
     }
-    fprintf(stderr, "err %p || %p\n", glGetError(), eglGetError());
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertices);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, texturePos);
@@ -339,52 +333,38 @@ GSourceFuncs EventSource::sourceFuncs = {
 
 struct wpe_mesa_view_backend_exportable_client Embedder::exportableClient = {
     // export_dma_buf
-    [](void* data, int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format)
+    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
     {
-        fprintf(stderr, "Embedder::exportableClient::export_dma_buf() fd %d handle %u (%u,%u) stride %u, format %u\n",
-            fd, handle, width, height, stride, format);
         auto& e = *static_cast<Embedder*>(data);
 
-        if (fd == -1) {
-            for (unsigned i = 0; i < Embedder::importsNum; ++i) {
-                if (e.imports[i].handle == handle) {
-                    e.nextImport = e.imports[i];
-                    break;
-                }
-            }
-            fprintf(stderr, "\te.nextImport (%d, %u)\n", e.nextImport.fd, e.nextImport.handle);
-        } else {
-            unsigned i = 0;
-            for (; i < Embedder::importsNum; ++i) {
-                if (e.imports[i].fd == -1)
-                    break;
-            }
-            if (i == Embedder::importsNum)
-                return;
+        auto it = e.imageMap.end();
+        if (imageData->fd >= 0) {
+            assert(e.imageMap.find(imageData->handle) == e.imageMap.end());
 
-            e.imports[i].handle = handle;
-            e.imports[i].fd = fd;
-            e.nextImport = e.imports[i];
-            fprintf(stderr, "\te.imports[%u] (%d, %u)\n", i, e.imports[i].fd, e.imports[i].handle);
+            it = e.imageMap.insert({ imageData->handle, { imageData->fd, nullptr }}).first;
+        } else {
+            assert(e.imageMap.find(imageData->handle) != e.imageMap.end());
+            it = e.imageMap.find(imageData->handle);
         }
+
+        assert(it != e.imageMap.end());
+        uint32_t handle = it->first;
+        int32_t fd = it->second.first;
 
         eglMakeCurrent(e.eglDisplay, e.eglSurface, e.eglSurface, e.eglContext);
 
         EGLint attributes[] = {
-            EGL_WIDTH, 800,
-            EGL_HEIGHT, 600,
-            EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLint>(format),
-            EGL_DMA_BUF_PLANE0_FD_EXT, e.nextImport.fd,
+            EGL_WIDTH, static_cast<EGLint>(imageData->width),
+            EGL_HEIGHT, static_cast<EGLint>(imageData->height),
+            EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLint>(imageData->format),
+            EGL_DMA_BUF_PLANE0_FD_EXT, fd,
             EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-            EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(stride),
+            EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(imageData->stride),
             EGL_NONE,
         };
         EGLImageKHR image = e.createImage(e.eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
-        fprintf(stderr, "\timage %p err %p\n", image, eglGetError());
 
-        Embedder::render(e, image);
-
-        e.destroyImage(e.eglDisplay, image);
+        e.pendingImage = { handle, image };
     }
 };
 
@@ -419,11 +399,6 @@ int main(int argc, char* argv[])
     Embedder::createProgram(e);
     Embedder::createTexture(e);
 
-    struct wl_callback* callback = wl_surface_frame(e.surface);
-    wl_callback_add_listener(callback, &Embedder::frameListener, &e);
-
-    eglSwapBuffers(e.eglDisplay, e.eglSurface);
-
     GMainLoop* loop = g_main_loop_new(nullptr, FALSE);
 
     e.displaySource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
@@ -435,7 +410,6 @@ int main(int argc, char* argv[])
     source.pfd.revents = 0;
     g_source_add_poll(e.displaySource, &source.pfd);
 
-    g_source_set_priority(e.displaySource, G_PRIORITY_HIGH + 30);
     g_source_set_can_recurse(e.displaySource, TRUE);
     g_source_attach(e.displaySource, nullptr);
 
@@ -461,6 +435,13 @@ int main(int argc, char* argv[])
         auto shellURL = adoptWK(WKURLCreateWithUTF8CString(url));
         WKPageLoadURL(WKViewGetPage(e.view), shellURL.get());
     }
+
+    g_idle_add(
+        [](gpointer data) {
+            auto& e = *static_cast<Embedder*>(data);
+            Embedder::render(e);
+            return FALSE;
+        }, &e);
 
     g_main_loop_run(loop);
 
