@@ -29,6 +29,8 @@
 
 #include "JSDeviceMotionEvent.h"
 
+#include "JSDOMBinding.h"
+
 #include "DeviceMotionData.h"
 #include "DeviceMotionEvent.h"
 #include <runtime/IdentifierInlines.h>

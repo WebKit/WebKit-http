@@ -88,7 +88,7 @@ namespace JSC {
             return adoptRef(*new StringSourceProvider(source, url, startPosition));
         }
 
-        ~StringSourceProvider() override;
+        JS_EXPORT_PRIVATE ~StringSourceProvider() override;
 
         unsigned hash() const override
         {
