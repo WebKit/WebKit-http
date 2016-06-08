@@ -149,6 +149,8 @@ else ()
         "${WTF_DIR}/icu"
     )
     set(ICU_LIBRARIES libicucore.dylib)
+
+    find_library(COREFOUNDATION_LIBRARY CoreFoundation)
 endif ()
 
 if (ENABLE_XSLT)
