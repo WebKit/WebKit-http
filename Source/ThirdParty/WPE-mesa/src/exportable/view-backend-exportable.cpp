@@ -82,8 +82,12 @@ void ViewBackend::handleMessage(char* data, size_t size)
 
     auto& bufferCommit = IPC::GBM::BufferCommit::cast(message);
 
-    m_clientBundle->client->export_dma_buf(m_clientBundle->data, m_renderer.pendingBufferFd,
-        bufferCommit.handle, bufferCommit.width, bufferCommit.height, bufferCommit.stride, bufferCommit.format);
+    struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data imageData{
+        m_renderer.pendingBufferFd, bufferCommit.handle,
+        bufferCommit.width, bufferCommit.height,
+        bufferCommit.stride, bufferCommit.format
+    };
+    m_clientBundle->client->export_dma_buf_egl_image(m_clientBundle->data, &imageData);
 
     m_renderer.pendingBufferFd = -1;
 }
