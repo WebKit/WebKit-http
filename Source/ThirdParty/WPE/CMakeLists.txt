@@ -1,18 +1,13 @@
 set(WPE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE")
 
-find_package(Libxkbcommon 0.4.0 REQUIRED)
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 set(WPE_INCLUDE_DIRECTORIES
     "${WPE_SOURCE_DIR}/include"
     "${WPE_SOURCE_DIR}/src"
-    "${WPE_SOURCE_DIR}/src/external"
-    ${LIBXKBCOMMON_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
-    ${LIBXKBCOMMON_LIBRARIES}
 )
 
 set(WPE_SOURCES

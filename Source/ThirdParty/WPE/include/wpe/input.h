@@ -79,14 +79,25 @@ struct wpe_input_touch_event {
 };
 
 
+struct wpe_input_key_mapper;
+
+struct wpe_input_key_mapper_interface {
+    const char* (*identifier_for_key_event)(struct wpe_input_keyboard_event*);
+    int (*windows_key_code_for_key_event)(struct wpe_input_keyboard_event*);
+    const char* (*single_character_for_key_event)(struct wpe_input_keyboard_event*);
+};
+
+struct wpe_input_key_mapper*
+wpe_input_key_mapper_get_singleton();
+
 const char*
-wpe_input_identifier_for_key_event(struct wpe_input_keyboard_event*);
+wpe_input_identifier_for_key_event(struct wpe_input_key_mapper*, struct wpe_input_keyboard_event*);
 
 int
-wpe_input_windows_key_code_for_key_event(struct wpe_input_keyboard_event*);
+wpe_input_windows_key_code_for_key_event(struct wpe_input_key_mapper*, struct wpe_input_keyboard_event*);
 
 const char*
-wpe_input_single_character_for_key_event(struct wpe_input_keyboard_event*);
+wpe_input_single_character_for_key_event(struct wpe_input_key_mapper*, struct wpe_input_keyboard_event*);
 
 #ifdef __cplusplus
 }
