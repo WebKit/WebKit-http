@@ -1181,6 +1181,8 @@
 		5370B4F61BF26205005C40FC /* AdaptiveInferredPropertyValueWatchpointBase.h in Headers */ = {isa = PBXBuildFile; fileRef = 5370B4F41BF25EA2005C40FC /* AdaptiveInferredPropertyValueWatchpointBase.h */; };
 		53917E7B1B7906FA000EBD33 /* JSGenericTypedArrayViewPrototypeFunctions.h in Headers */ = {isa = PBXBuildFile; fileRef = 53917E7A1B7906E4000EBD33 /* JSGenericTypedArrayViewPrototypeFunctions.h */; };
 		53F6BF6D1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h in Headers */ = {isa = PBXBuildFile; fileRef = 53F6BF6C1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		53FA2AE11CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h in Headers */ = {isa = PBXBuildFile; fileRef = 53FA2AE01CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		53FA2AE31CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 53FA2AE21CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp */; };
 		5D5D8AD10E0D0EBE00F9C692 /* libedit.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D5D8AD00E0D0EBE00F9C692 /* libedit.dylib */; };
 		5DBB151B131D0B310056AD36 /* testapi.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 14D857740A4696C80032146C /* testapi.js */; };
 		5DBB1525131D0BD70056AD36 /* minidom.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 1412110D0A48788700480255 /* minidom.js */; };
@@ -1981,6 +1983,8 @@
 		DC17E81A1C9C91E9008A6AB3 /* CCallHelpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC17E8161C9C802B008A6AB3 /* CCallHelpers.cpp */; };
 		DC2143071CA32E55000A8869 /* ICStats.h in Headers */ = {isa = PBXBuildFile; fileRef = DC2143061CA32E52000A8869 /* ICStats.h */; };
 		DC2143081CA32E58000A8869 /* ICStats.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC2143051CA32E52000A8869 /* ICStats.cpp */; };
+		DC454B8C1D00E822004C18AF /* AirDumpAsJS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC454B8A1D00E81F004C18AF /* AirDumpAsJS.cpp */; };
+		DC454B8D1D00E824004C18AF /* AirDumpAsJS.h in Headers */ = {isa = PBXBuildFile; fileRef = DC454B8B1D00E81F004C18AF /* AirDumpAsJS.h */; };
 		DC605B5D1CE26EA000593718 /* ProfilerEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC605B591CE26E9800593718 /* ProfilerEvent.cpp */; };
 		DC605B5E1CE26EA200593718 /* ProfilerEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = DC605B5A1CE26E9800593718 /* ProfilerEvent.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		DC605B5F1CE26EA500593718 /* ProfilerUID.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC605B5B1CE26E9800593718 /* ProfilerUID.cpp */; };
@@ -3322,6 +3326,8 @@
 		53917E831B791CB8000EBD33 /* TypedArrayPrototype.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; name = TypedArrayPrototype.js; path = builtins/TypedArrayPrototype.js; sourceTree = SOURCE_ROOT; };
 		53F256E11B87E28000B4B768 /* JSTypedArrayViewPrototype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSTypedArrayViewPrototype.cpp; sourceTree = "<group>"; };
 		53F6BF6C1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InternalFunctionAllocationProfile.h; sourceTree = "<group>"; };
+		53FA2AE01CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LLIntPrototypeLoadAdaptiveStructureWatchpoint.h; sourceTree = "<group>"; };
+		53FA2AE21CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp; sourceTree = "<group>"; };
 		593D43CCA0BBE06D89C59707 /* MapDataInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MapDataInlines.h; sourceTree = "<group>"; };
 		5D5D8AD00E0D0EBE00F9C692 /* libedit.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libedit.dylib; path = /usr/lib/libedit.dylib; sourceTree = "<absolute>"; };
 		5DAFD6CB146B686300FBEFB4 /* JSC.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = JSC.xcconfig; sourceTree = "<group>"; };
@@ -4193,6 +4199,8 @@
 		DC17E8161C9C802B008A6AB3 /* CCallHelpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CCallHelpers.cpp; sourceTree = "<group>"; };
 		DC2143051CA32E52000A8869 /* ICStats.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ICStats.cpp; sourceTree = "<group>"; };
 		DC2143061CA32E52000A8869 /* ICStats.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ICStats.h; sourceTree = "<group>"; };
+		DC454B8A1D00E81F004C18AF /* AirDumpAsJS.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AirDumpAsJS.cpp; path = b3/air/AirDumpAsJS.cpp; sourceTree = "<group>"; };
+		DC454B8B1D00E81F004C18AF /* AirDumpAsJS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AirDumpAsJS.h; path = b3/air/AirDumpAsJS.h; sourceTree = "<group>"; };
 		DC605B591CE26E9800593718 /* ProfilerEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ProfilerEvent.cpp; path = profiler/ProfilerEvent.cpp; sourceTree = "<group>"; };
 		DC605B5A1CE26E9800593718 /* ProfilerEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ProfilerEvent.h; path = profiler/ProfilerEvent.h; sourceTree = "<group>"; };
 		DC605B5B1CE26E9800593718 /* ProfilerUID.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ProfilerUID.cpp; path = profiler/ProfilerUID.cpp; sourceTree = "<group>"; };
@@ -4817,6 +4825,8 @@
 				0FEC85511BDACDC70080FF74 /* AirCode.h */,
 				0F6183221C45BF070072450B /* AirCustom.cpp */,
 				0F10F1A21C420BF0001C07D2 /* AirCustom.h */,
+				DC454B8A1D00E81F004C18AF /* AirDumpAsJS.cpp */,
+				DC454B8B1D00E81F004C18AF /* AirDumpAsJS.h */,
 				0F4570361BE44C910062A629 /* AirEliminateDeadCode.cpp */,
 				0F4570371BE44C910062A629 /* AirEliminateDeadCode.h */,
 				0F6183231C45BF070072450B /* AirEmitShuffle.cpp */,
@@ -6578,6 +6588,8 @@
 				0FB5467814F5C468002C2989 /* LazyOperandValueProfile.cpp */,
 				0FB5467614F59AD1002C2989 /* LazyOperandValueProfile.h */,
 				0F0FC45814BD15F100B81154 /* LLIntCallLinkInfo.h */,
+				53FA2AE21CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp */,
+				53FA2AE01CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h */,
 				0FB5467C14F5CFD3002C2989 /* MethodOfGettingAValueProfile.cpp */,
 				0FB5467A14F5C7D4002C2989 /* MethodOfGettingAValueProfile.h */,
 				14CA958C16AB50FA00938A06 /* ObjectAllocationProfile.h */,
@@ -7016,6 +7028,7 @@
 				0FEC85061BDACDAC0080FF74 /* B3CheckSpecial.h in Headers */,
 				0FEC85081BDACDAC0080FF74 /* B3CheckValue.h in Headers */,
 				0FEC850A1BDACDAC0080FF74 /* B3Common.h in Headers */,
+				DC454B8D1D00E824004C18AF /* AirDumpAsJS.h in Headers */,
 				0FEC850C1BDACDAC0080FF74 /* B3Commutativity.h in Headers */,
 				0FEC850E1BDACDAC0080FF74 /* B3Const32Value.h in Headers */,
 				0FEC85101BDACDAC0080FF74 /* B3Const64Value.h in Headers */,
@@ -7913,6 +7926,7 @@
 				0FF7168C15A3B235008F5DAA /* PropertyOffset.h in Headers */,
 				BC18C4550E16F5CD00B34460 /* PropertySlot.h in Headers */,
 				0FB7F39C15ED8E4600F167B2 /* PropertyStorage.h in Headers */,
+				53FA2AE11CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h in Headers */,
 				BC18C4560E16F5CD00B34460 /* Protect.h in Headers */,
 				1474C33B16AA2D950062F01D /* PrototypeMap.h in Headers */,
 				0F5780A218FE1E98001E72D9 /* PureNaN.h in Headers */,
@@ -8638,6 +8652,7 @@
 				65C02850171795E200351E35 /* ARMv7Disassembler.cpp in Sources */,
 				65C0285C1717966800351E35 /* ARMv7DOpcode.cpp in Sources */,
 				0F8335B71639C1E6001443B5 /* ArrayAllocationProfile.cpp in Sources */,
+				53FA2AE31CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp in Sources */,
 				A7A8AF3417ADB5F3005AB174 /* ArrayBuffer.cpp in Sources */,
 				0FFC99D4184EE318009C10AB /* ArrayBufferNeuteringWatchpoint.cpp in Sources */,
 				A7A8AF3617ADB5F3005AB174 /* ArrayBufferView.cpp in Sources */,
@@ -9098,6 +9113,7 @@
 				140566D6107EC271005DBC8D /* JSFunction.cpp in Sources */,
 				0F4A38F91C8E13DF00190318 /* SuperSampler.cpp in Sources */,
 				797E07A91B8FCFB9008400BA /* JSGlobalLexicalEnvironment.cpp in Sources */,
+				DC454B8C1D00E822004C18AF /* AirDumpAsJS.cpp in Sources */,
 				147F39D2107EC37600427A48 /* JSGlobalObject.cpp in Sources */,
 				A5FD0085189B1B7E00633231 /* JSGlobalObjectConsoleAgent.cpp in Sources */,
 				A5C3A1A518C0490200C9593A /* JSGlobalObjectConsoleClient.cpp in Sources */,

@@ -1,3 +1,276 @@
+2016-06-08  Lucas Forschler  <lforschler@apple.com>
+
+        Reverted changeset 201814.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Shadow DOM tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158524
+
+        Reviewed by Brent Fulgham.
+
+        Enable Shadow DOM when running tests.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2016-06-08  Lucas Forschler  <lforschler@apple.com>
+
+        Teach cmake about libWebKitSystemInterfaceOSX10.12
+        This patch also removes duplicated logic inside DumpRenderTree/PlatformMac.cmake
+
+        Rubber-stamped by Alex Christensen.
+ 
+        * DumpRenderTree/PlatformMac.cmake:
+        * WebKitTestRunner/PlatformMac.cmake:
+
+2016-06-07  Lucas Forschler  <lforschler@apple.com>
+
+        <rdar://problem/26685782>
+        Teach the copy-webkitlibraries-to-product-directory script about WebKitSystemInterfaceOSX10.12
+
+        Rubber-stamped by Jessie Berlin.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-06-08  Aakash Jain  <aakash_jain@apple.com>
+
+        Don't try to cleanup non-existing ios Simulators
+        https://bugs.webkit.org/show_bug.cgi?id=158510
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.clean_up_test_run): 
+        Check if simulator exists before trying to clean it up.
+
+2016-06-08  Brady Eidson  <beidson@apple.com>
+
+        Try to fix the Windows build.
+
+        Unreviewed.
+
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp:
+        (TestWebKitAPI::LifetimeLogger::log):
+        (TestWebKitAPI::LifetimeLogger::takeLogStr):
+        (TestWebKitAPI::testFunction):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::log): Deleted. (VS was seeing it as a dupe symbol)
+        (TestWebKitAPI::takeLogStr): Deleted. (VS was seeing it as a dupe symbol)
+
+2016-06-08  Brady Eidson  <beidson@apple.com>
+
+        Make CrossThreadCopier more efficient (fewer copies!).
+        https://bugs.webkit.org/show_bug.cgi?id=158456
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-06-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Add result validation to JSAir
+        https://bugs.webkit.org/show_bug.cgi?id=158493
+
+        Reviewed by Saam Barati.
+        
+        Run JSAir.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-06-08  Brady Eidson  <beidson@apple.com>
+
+        Add an API test that confirms object constructor/destructor calls during creation of a CrossThreadTask.
+        https://bugs.webkit.org/show_bug.cgi?id=158528
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp: Added.
+        (TestWebKitAPI::log):
+        (TestWebKitAPI::takeLogStr):
+        (TestWebKitAPI::LifetimeLogger::LifetimeLogger):
+        (TestWebKitAPI::LifetimeLogger::~LifetimeLogger):
+        (TestWebKitAPI::LifetimeLogger::isolatedCopy):
+        (TestWebKitAPI::testFunction):
+        (TestWebKitAPI::TEST):
+
+2016-06-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        TestWebKitAPI: Removed redunandant check PLATFORM(GTK) && !defined(BUILDING_WEBKIT2__)
+        https://bugs.webkit.org/show_bug.cgi?id=158521
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/config.h:
+
+2016-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use a longer timeout for glib unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=158476
+
+        Reviewed by Darin Adler.
+
+        The timeout is supposed to be per test case, but in the case of GLib tests it affects all the tests cases of the
+        same test program. Some test programs like TestLoaderClient, that have a lot of test cases, often time out in
+        the bots because the timeout is not enough to run all the tests cases. So, we should use a longer timeout for
+        GLib tests.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner._run_test_glib):
+
+2016-06-07  Keith Rollin  <krollin@apple.com>
+
+        Remove all uses of PassRefPtr in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=157596
+        <rdar://problem/26234391>
+
+        Reviewed by Chris Dumez.
+
+        Update calls to interfaces that no longer take or return PassRefPtrs.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::stringFromUTF8):
+        (TestWebKitAPI::TEST):
+
+2016-06-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Imported markup insertion test is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158477
+
+        Reviewed by Darin Adler.
+
+        Make sure the empty synchronous request is loaded after each test.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+
+2016-06-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r201449) [GTK] ARMv7 build fails with libicudata.so.55: cannot open shared object file on gtkdoc-scangobj step.
+        https://bugs.webkit.org/show_bug.cgi?id=158417
+
+        Reviewed by Michael Catanzaro.
+
+        The toolchain on armhf (ARMv7) seems unable to properly handle
+        a shared library that doesn't link with anything.
+
+        And libicudata is built by default in this way because it only
+        contains static data.
+
+        That makes icu unusable on armhf because the linker will be
+        unable to resolve the libicudata dependencies.
+
+        Most (if not all) distributions workaround this by linking
+        libicudata with libc6, which is already a needed dependency for
+        any of the other icu shared libraries.
+
+        So import here the Debian patch fixing this issue. For further
+        details check https://bugs.debian.org/653457
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/icudata-stdlibs.patch: Added.
+
+2016-06-06  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION (r104174): 500+ tests failing on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=75965
+
+        Reviewed by Michael Catanzaro.
+
+        Reset WebView scale factors before running next test.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebViewToConsistentStateBeforeTesting):
+
+2016-06-04  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r201263): Some tests have become flaky timeouts.
+        https://bugs.webkit.org/show_bug.cgi?id=157990
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/TestInvocation.cpp: (WTR::TestInvocation::invoke):
+        It is somewhat legitimate for WebContent to not respond to messages after the test
+        is done; it can be e.g. re-doing a costly repaint. So, we should restart is silently,
+        without making the current test fail.
+
+2016-06-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [GTK] Update YouCompleteMe script to make all include paths absolute
+        https://bugs.webkit.org/show_bug.cgi?id=158301
+
+        Reviewed by Michael Catanzaro.
+
+        Before this patch, some include paths were not made absolute.
+        This could make YouCompleteMe plugin to fail extracting information or validating cpp files.
+
+        * gtk/ycm_extra_conf.py:
+
+2016-06-03  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        Unreviewed: add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-06-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fetch API tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158296
+
+        Reviewed by Alex Christensen.
+
+        Enable Fetch API when running tests.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2016-06-02  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Really display failing JSC stress tests in buildbot dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=158324
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Correctly check for string membership in array.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData): Correctly check for string membership in array.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._popoverContentForJavaScriptCoreTestRegressions): Correctly check for string
+        membership in array.
+        (BuildbotQueueView.prototype._presentPopoverForJavaScriptCoreTestRegressions): Ensure that the correct URL is
+        generated after the first time.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.appendBuilderQueueStatus): Correctly check for string membership in array.
+
+2016-06-02  Michael Saboff  <msaboff@apple.com>
+
+        [iOS]: Some JSC stress tests fail running out of executable memory when the LLInt is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=158317
+
+        Reviewed by Saam Barati.
+
+        Added defaultNoNoLLIntRun variant to run the default tests with the exception of the no-llint
+        variant.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-06-02  Aakash Jain  <aakash_jain@apple.com>
+
+        LayoutTests time out intermittently due to alert about reopening Simulator after it unexpectedly quit
+        https://bugs.webkit.org/show_bug.cgi?id=158305
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.clean_up_test_run): Delete simulator's savedState directories during cleanup.
+
 2016-06-01  Brian Burg  <bburg@apple.com>
 
         REGRESSION(r191907): Can't enter combining diacritic marks in Web Inspector fields

@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BlobRegistryImpl_h
-#define BlobRegistryImpl_h
+#pragma once
 
 #include "BlobData.h"
 #include "BlobRegistry.h"
@@ -53,7 +52,7 @@ public:
 
     BlobData* getBlobDataFromURL(const URL&) const;
 
-    RefPtr<ResourceHandle> createResourceHandle(const ResourceRequest&, ResourceHandleClient*);
+    Ref<ResourceHandle> createResourceHandle(const ResourceRequest&, ResourceHandleClient*);
 
 private:
     void appendStorageItems(BlobData*, const BlobDataItemList&, long long offset, long long length);
@@ -68,11 +67,9 @@ private:
 
     unsigned long long blobSize(const URL&) override;
 
-    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, std::function<void (const Vector<String>& filePaths)> completionHandler) override;
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, NoncopyableFunction<void (const Vector<String>& filePaths)>&& completionHandler) override;
 
     HashMap<String, RefPtr<BlobData>> m_blobs;
 };
 
 } // namespace WebCore
-
-#endif // BlobRegistryImpl_h

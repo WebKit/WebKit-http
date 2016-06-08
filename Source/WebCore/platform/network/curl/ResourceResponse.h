@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceResponse_h
-#define ResourceResponse_h
+#pragma once
 
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
@@ -54,13 +53,9 @@ public:
     // Needed for compatibility.
     CFURLResponseRef cfURLResponse() const { return 0; }
 
-    bool platformResponseIsUpToDate() const { return false; }
-
 private:
     friend class ResourceResponseBase;
 
-    std::unique_ptr<CrossThreadResourceResponseData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceResponseData> data) const { return data; }
-    void doPlatformAdopt(std::unique_ptr<CrossThreadResourceResponseData>) { }
     String platformSuggestedFilename() const
     {
         return filenameFromHTTPContentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition));
@@ -69,9 +64,4 @@ private:
     bool m_responseFired;
 };
 
-struct CrossThreadResourceResponseData : public CrossThreadResourceResponseDataBase {
-};
-
 } // namespace WebCore
-
-#endif // ResourceResponse_h
