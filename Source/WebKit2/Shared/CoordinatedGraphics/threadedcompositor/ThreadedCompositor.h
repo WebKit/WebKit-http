@@ -67,7 +67,7 @@ class WebPage;
 
 class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient
 #if PLATFORM(WPE)
-    , public WebCore::PlatformDisplayWPE::Surface::Client
+    , public WebCore::PlatformDisplayWPE::EGLTarget::Client
 #endif
     {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
@@ -98,7 +98,7 @@ public:
     void scrollBy(const WebCore::IntSize&);
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
+    RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID);
 #endif
 
 private:
@@ -135,7 +135,7 @@ private:
 
 #if PLATFORM(WPE)
     CompositingManager m_compositingManager;
-    std::unique_ptr<WebCore::PlatformDisplayWPE::Surface> m_surface;
+    std::unique_ptr<WebCore::PlatformDisplayWPE::EGLTarget> m_target;
 #endif
     std::unique_ptr<WebCore::GLContext> m_context;
 

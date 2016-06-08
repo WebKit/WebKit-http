@@ -44,15 +44,15 @@ public:
     PlatformDisplayWPE();
     virtual ~PlatformDisplayWPE();
 
-    class Surface {
+    class EGLTarget {
     public:
         class Client {
         public:
             virtual void frameComplete() = 0;
         };
 
-        Surface(const PlatformDisplayWPE&, Client&, int);
-        ~Surface();
+        EGLTarget(const PlatformDisplayWPE&, Client&, int);
+        ~EGLTarget();
 
         void initialize(const IntSize&);
         std::unique_ptr<GLContextEGL> createGLContext() const;
@@ -67,7 +67,7 @@ public:
         struct wpe_renderer_backend_egl_target* m_backend;
     };
 
-    std::unique_ptr<Surface> createSurface(Surface::Client&, int);
+    std::unique_ptr<EGLTarget> createEGLTarget(EGLTarget::Client&, int);
 
     std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 

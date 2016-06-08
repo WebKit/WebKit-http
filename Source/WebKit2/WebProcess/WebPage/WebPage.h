@@ -583,7 +583,7 @@ public:
 #endif
 
     void setLayerTreeStateIsFrozen(bool);
-    void markLayersVolatile(std::function<void()> completionHandler = {});
+    void markLayersVolatile(std::function<void ()> completionHandler = { });
     void cancelMarkLayersVolatile();
 
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
@@ -993,6 +993,7 @@ private:
 
     bool markLayersVolatileImmediatelyIfPossible();
     void layerVolatilityTimerFired();
+    void callVolatilityCompletionHandlers();
 
     String sourceForFrame(WebFrame*);
 
@@ -1427,7 +1428,8 @@ private:
 #endif
 
     WebCore::Timer m_layerVolatilityTimer;
-    Vector<std::function<void()>> m_markLayersAsVolatileCompletionHandlers;
+    Vector<std::function<void ()>> m_markLayersAsVolatileCompletionHandlers;
+    bool m_isSuspendedUnderLock { false };
 
     HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;
     WebCore::Color m_backgroundColor;

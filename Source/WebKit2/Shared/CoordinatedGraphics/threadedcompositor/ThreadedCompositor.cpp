@@ -107,8 +107,8 @@ void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([protector, size] {
 #if PLATFORM(WPE)
-        if (protector->m_surface)
-            protector->m_surface->resize(size);
+        if (protector->m_target)
+            protector->m_target->resize(size);
 #endif
         protector->viewportController()->didChangeViewportSize(size);
     });
@@ -190,10 +190,10 @@ GLContext* ThreadedCompositor::glContext()
         return m_context.get();
 
 #if PLATFORM(WPE)
-    ASSERT(m_surface);
-    m_surface->initialize(IntSize(viewportController()->visibleContentsRect().size()));
+    ASSERT(m_target);
+    m_target->initialize(IntSize(viewportController()->visibleContentsRect().size()));
     setNativeSurfaceHandleForCompositing(0);
-    m_context = m_surface->createGLContext();
+    m_context = m_target->createGLContext();
 #endif
 
     return m_context.get();
@@ -236,7 +236,7 @@ void ThreadedCompositor::renderLayerTree()
     glContext()->swapBuffers();
 
 #if PLATFORM(WPE)
-    m_surface->frameRendered();
+    m_target->frameRendered();
 #endif
 }
 
@@ -292,7 +292,7 @@ void ThreadedCompositor::runCompositingThread()
 
 #if PLATFORM(WPE)
         RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
-        m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createSurface(*this, m_compositingManager.releaseConnectionFd());
+        m_target = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createEGLTarget(*this, m_compositingManager.releaseConnectionFd());
 #endif
 
         m_initializeRunLoopCondition.notifyOne();
@@ -307,7 +307,7 @@ void ThreadedCompositor::runCompositingThread()
         LockHolder locker(m_terminateRunLoopConditionLock);
         m_context = nullptr;
 #if PLATFORM(WPE)
-        m_surface = nullptr;
+        m_target = nullptr;
 #endif
         m_scene = nullptr;
         m_viewportController = nullptr;

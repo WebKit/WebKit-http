@@ -936,9 +936,19 @@ IntRect RenderObject::pixelSnappedAbsoluteClippedOverflowRect() const
     return snappedIntRect(absoluteClippedOverflowRect());
 }
 
+bool RenderObject::hasSelfPaintingLayer() const
+{
+    if (!hasLayer())
+        return false;
+    auto* layer = downcast<RenderLayerModelObject>(*this).layer();
+    if (!layer)
+        return false;
+    return layer->isSelfPaintingLayer();
+}
+    
 bool RenderObject::checkForRepaintDuringLayout() const
 {
-    return !document().view()->needsFullRepaint() && !hasLayer() && everHadLayout();
+    return !document().view()->needsFullRepaint() && everHadLayout() && !hasSelfPaintingLayer();
 }
 
 LayoutRect RenderObject::rectWithOutlineForRepaint(const RenderLayerModelObject* repaintContainer, LayoutUnit outlineWidth) const
@@ -1134,8 +1144,11 @@ void RenderObject::showRenderObject(bool mark, int depth) const
         fprintf(stderr, "%s", name.utf8().data());
 
     if (is<RenderBox>(*this)) {
-        const auto& box = downcast<RenderBox>(*this);
-        fprintf(stderr, "  (%.2f, %.2f) (%.2f, %.2f)", box.x().toFloat(), box.y().toFloat(), box.width().toFloat(), box.height().toFloat());
+        FloatRect boxRect = downcast<RenderBox>(*this).frameRect();
+        fprintf(stderr, "  (%.2f, %.2f) (%.2f, %.2f)", boxRect.x(), boxRect.y(), boxRect.width(), boxRect.height());
+    } else if (is<RenderInline>(*this) && isInFlowPositioned()) {
+        FloatSize inlineOffset = downcast<RenderInline>(*this).offsetForInFlowPosition();
+        fprintf(stderr, "  (%.2f, %.2f)", inlineOffset.width(), inlineOffset.height());
     }
 
     fprintf(stderr, " renderer->(%p)", this);

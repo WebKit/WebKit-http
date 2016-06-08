@@ -1,11 +1,11 @@
 #include <wpe/view-backend.h>
 
 #include "display.h"
-#include "gbm-connection.h"
-
+#include "ipc.h"
+#include "ipc-gbm.h"
 #include "ivi-application-client-protocol.h"
-#include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
+#include "xdg-shell-client-protocol.h"
 
 #include <algorithm>
 #include <cassert>
@@ -15,26 +15,27 @@
 
 namespace Wayland {
 
-class ViewBackend : public GBM::Host::Client {
+class ViewBackend : public IPC::Host::Handler {
 public:
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
 
     void initialize();
 
-    void importBufferFd(int) override;
-    void commitBuffer(struct buffer_commit*) override;
+    // IPC::Host::Handler
+    void handleFd(int) override;
+    void handleMessage(char*, size_t) override;
 
     struct wpe_view_backend* backend() { return m_backend; }
-    GBM::Host& gbmHost() { return m_renderer.gbmHost; }
+    IPC::Host& ipcHost() { return m_renderer.ipcHost; }
 
     struct BufferListenerData {
-        GBM::Host* gbmHost;
+        IPC::Host* ipcHost;
         std::unordered_map<uint32_t, struct wl_buffer*> map;
     };
 
     struct CallbackListenerData {
-        GBM::Host* gbmHost;
+        IPC::Host* ipcHost;
         struct wl_callback* frameCallback;
     };
 
@@ -57,7 +58,7 @@ private:
     ResizingData m_resizingData { nullptr, 0, 0 };
 
     struct {
-        GBM::Host gbmHost;
+        IPC::Host ipcHost;
         int pendingBufferFd { -1 };
     } m_renderer;
 };
@@ -94,8 +95,11 @@ const struct wl_buffer_listener g_bufferListener = {
         if (it == bufferMap.end())
             return;
 
-        if (bufferData.gbmHost)
-            bufferData.gbmHost->releaseBuffer(it->first);
+        if (bufferData.ipcHost) {
+            IPC::GBM::Message message;
+            IPC::GBM::ReleaseBuffer::construct(message, it->first);
+            bufferData.ipcHost->send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+        }
     },
 };
 
@@ -104,8 +108,13 @@ const struct wl_callback_listener g_callbackListener = {
     [](void* data, struct wl_callback* callback, uint32_t)
     {
         auto& callbackData = *static_cast<ViewBackend::CallbackListenerData*>(data);
-        if (callbackData.gbmHost)
-            callbackData.gbmHost->frameComplete();
+
+        if (callbackData.ipcHost) {
+            IPC::GBM::Message message;
+            IPC::GBM::FrameComplete::construct(message);
+            callbackData.ipcHost->send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+        }
+
         callbackData.frameCallback = nullptr;
         wl_callback_destroy(callback);
     },
@@ -115,7 +124,7 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     : m_display(Display::singleton())
     , m_backend(backend)
 {
-    m_renderer.gbmHost.initialize(*this);
+    m_renderer.ipcHost.initialize(*this);
 
     m_surface = wl_compositor_create_surface(m_display.interfaces().compositor);
 
@@ -136,8 +145,8 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     // FIXME:
     // Pasteboard::Pasteboard::singleton();
 
-    m_bufferData.gbmHost = &m_renderer.gbmHost;
-    m_callbackData.gbmHost = &m_renderer.gbmHost;
+    m_bufferData.ipcHost = &m_renderer.ipcHost;
+    m_callbackData.ipcHost = &m_renderer.ipcHost;
     m_resizingData.backend = m_backend;
 }
 
@@ -145,7 +154,7 @@ ViewBackend::~ViewBackend()
 {
     m_backend = nullptr;
 
-    m_renderer.gbmHost.deinitialize();
+    m_renderer.ipcHost.deinitialize();
 
     m_display.unregisterInputClient(m_surface);
 
@@ -173,38 +182,47 @@ void ViewBackend::initialize()
     m_display.registerInputClient(m_surface, m_backend);
 }
 
-void ViewBackend::importBufferFd(int fd)
+void ViewBackend::handleFd(int fd)
 {
     if (m_renderer.pendingBufferFd != -1)
         close(m_renderer.pendingBufferFd);
     m_renderer.pendingBufferFd = fd;
 }
 
-void ViewBackend::commitBuffer(struct buffer_commit* commit)
+void ViewBackend::handleMessage(char* data, size_t size)
 {
+    if (size != IPC::GBM::messageSize)
+        return;
+
+    auto& message = IPC::GBM::asMessage(data);
+    if (message.messageCode != IPC::GBM::BufferCommit::code)
+        return;
+
+    auto& bufferCommit = IPC::GBM::BufferCommit::cast(message);
+
     struct wl_buffer* buffer = nullptr;
     auto& bufferMap = m_bufferData.map;
-    auto it = bufferMap.find(commit->handle);
+    auto it = bufferMap.find(bufferCommit.handle);
 
     if (m_renderer.pendingBufferFd >= 0) {
         int fd = m_renderer.pendingBufferFd;
         m_renderer.pendingBufferFd = -1;
 
-        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, commit->width, commit->height, WL_DRM_FORMAT_ARGB8888, 0, commit->stride, 0, 0, 0, 0);
+        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, bufferCommit.width, bufferCommit.height, WL_DRM_FORMAT_ARGB8888, 0, bufferCommit.stride, 0, 0, 0, 0);
         wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
 
         if (it != bufferMap.end()) {
             wl_buffer_destroy(it->second);
             it->second = buffer;
         } else
-            bufferMap.insert({ commit->handle, buffer });
+            bufferMap.insert({ bufferCommit.handle, buffer });
     } else {
         assert(it != bufferMap.end());
         buffer = it->second;
     }
 
     if (!buffer) {
-        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", commit->handle);
+        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", bufferCommit.handle);
         return;
     }
 
@@ -242,7 +260,7 @@ struct wpe_view_backend_interface wayland_view_backend_interface = {
     [](void* data) -> int
     {
         auto* backend = static_cast<Wayland::ViewBackend*>(data);
-        return backend->gbmHost().releaseClientFD();
+        return backend->ipcHost().releaseClientFD();
     },
 };
 

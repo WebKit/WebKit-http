@@ -1529,19 +1529,20 @@ Vector<CSSParser::SourceSize> CSSParser::parseSizesAttribute(StringView string)
 
 // FIXME(141289): The following two constructors are only needed because of a bug in MSVC 2013 (and prior).
 // We should remove this code as soon as a Visual Studio update that fixes this problem is released.
+
 CSSParser::SourceSize::SourceSize(CSSParser::SourceSize&& original)
     : expression(WTFMove(original.expression))
-    , length(original.length)
+    , length(WTFMove(original.length))
 {
 }
 
-CSSParser::SourceSize::SourceSize(std::unique_ptr<MediaQueryExp>&& origExp, RefPtr<CSSValue>&& value)
-    : expression(WTFMove(origExp))
+CSSParser::SourceSize::SourceSize(MediaQueryExpression&& expression, Ref<CSSValue>&& value)
+    : expression(WTFMove(expression))
     , length(WTFMove(value))
 {
 }
 
-CSSParser::SourceSize CSSParser::sourceSize(std::unique_ptr<MediaQueryExp>&& expression, CSSParserValue& parserValue)
+CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
 {
     RefPtr<CSSValue> value;
     if (isCalculation(parserValue)) {
@@ -1554,7 +1555,7 @@ CSSParser::SourceSize CSSParser::sourceSize(std::unique_ptr<MediaQueryExp>&& exp
     destroy(parserValue);
     // FIXME: Calling the constructor explicitly here to work around an MSVC bug.
     // For other compilers, we did not need to define the constructors and we could use aggregate initialization syntax.
-    return SourceSize(WTFMove(expression), WTFMove(value));
+    return SourceSize(WTFMove(expression), value.releaseNonNull());
 }
 
 static inline void filterProperties(bool important, const ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties, HashSet<AtomicString>& seenCustomProperties)
@@ -1608,7 +1609,7 @@ void CSSParser::addProperty(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool
         return;
     }
 
-    Vector<StylePropertyShorthand> shorthands = matchingShorthandsForLonghand(propId);
+    auto shorthands = matchingShorthandsForLonghand(propId);
     if (shorthands.size() == 1)
         m_parsedProperties.append(CSSProperty(propId, WTFMove(value), important, true, CSSPropertyInvalid, m_implicitShorthand || implicit));
     else
@@ -3422,16 +3423,19 @@ RefPtr<CSSContentDistributionValue> CSSParser::parseContentDistributionOverflowP
 
 bool CSSParser::parseItemPositionOverflowPosition(CSSPropertyID propId, bool important)
 {
-    // auto | stretch | <baseline-position> | [<item-position> && <overflow-position>? ]
+    // auto | normal | stretch | <baseline-position> | [<item-position> && <overflow-position>? ]
     // <baseline-position> = baseline | last-baseline;
     // <item-position> = center | start | end | self-start | self-end | flex-start | flex-end | left | right;
-    // <overflow-position> = true | safe
+    // <overflow-position> = unsafe | safe
 
     CSSParserValue* value = m_valueList->current();
     if (!value)
         return false;
 
-    if (value->id == CSSValueAuto || value->id == CSSValueStretch || isBaselinePositionKeyword(value->id)) {
+    if (value->id == CSSValueAuto || value->id == CSSValueNormal || value->id == CSSValueStretch || isBaselinePositionKeyword(value->id)) {
+        // align-items property does not allow the 'auto' value.
+        if (value->id == CSSValueAuto && propId == CSSPropertyAlignItems)
+            return false;
         if (m_valueList->next())
             return false;
 
