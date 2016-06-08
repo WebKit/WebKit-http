@@ -9,8 +9,17 @@ extern "C" {
 
 struct wpe_mesa_view_backend_exportable;
 
+struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data {
+    int32_t fd;
+    uint32_t handle;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride;
+    uint32_t format;
+};
+
 struct wpe_mesa_view_backend_exportable_client {
-    void (*export_dma_buf)(void*, int32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    void (*export_dma_buf_egl_image)(void*, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data*);
 };
 
 struct wpe_mesa_view_backend_exportable*
