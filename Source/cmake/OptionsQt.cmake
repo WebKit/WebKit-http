@@ -35,6 +35,7 @@ WEBKIT_OPTION_DEFINE(USE_GSTREAMER "Use GStreamer implementation of MediaPlayer"
 WEBKIT_OPTION_DEFINE(USE_LIBHYPHEN "Use automatic hyphenation with LibHyphen" PUBLIC ${USE_LIBHYPHEN_DEFAULT})
 WEBKIT_OPTION_DEFINE(USE_QT_MULTIMEDIA "Use Qt Multimedia implementation of MediaPlayer" PUBLIC ${USE_QT_MULTIMEDIA_DEFAULT})
 WEBKIT_OPTION_DEFINE(ENABLE_INSPECTOR_UI "Include Inspector UI into resources" PUBLIC ON)
+WEBKIT_OPTION_DEFINE(ENABLE_PRINT_SUPPORT "Enable support for printing web pages" PUBLIC ON)
 
 # Public options shared with other WebKit ports. There must be strong reason
 # to support changing the value of the option.
@@ -175,6 +176,11 @@ endif ()
 if (ENABLE_DEVICE_ORIENTATION)
     find_package(Qt5Sensors ${REQUIRED_QT_VERSION} REQUIRED)
     SET_AND_EXPOSE_TO_BUILD(HAVE_QTSENSORS 1)
+endif ()
+
+if (ENABLE_PRINT_SUPPORT)
+    find_package(Qt5PrintSupport ${REQUIRED_QT_VERSION} REQUIRED)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_QTPRINTSUPPORT 1)
 endif ()
 
 # Find includes in corresponding build directories
@@ -371,4 +377,5 @@ if (NOT RUBY_FOUND AND RUBY_EXECUTABLE AND NOT RUBY_VERSION VERSION_LESS 1.9)
 endif ()
 
 set_package_properties(Ruby PROPERTIES TYPE REQUIRED)
-feature_summary(WHAT ALL)
+set_package_properties(Qt5PrintSupport PROPERTIES PURPOSE "Required for ENABLE_PRINT_SUPPORT=ON")
+feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)

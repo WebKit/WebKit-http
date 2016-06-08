@@ -331,6 +331,7 @@ set(WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
 
 set(WebKitWidgets_LIBRARIES
     ${Qt5Widgets_LIBRARIES}
+    ${Qt5PrintSupport_LIBRARIES}
     WebKit
 )
 
