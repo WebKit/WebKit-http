@@ -32,6 +32,7 @@ endif ()
 
 set(WPE_METROLOGICAL_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
+    "${WPE_METROLOGICAL_SOURCE_DIR}/src/external"
     "${WPE_METROLOGICAL_SOURCE_DIR}/src/input"
     "${WPE_METROLOGICAL_SOURCE_DIR}/src/util"
     ${GIO_UNIX_INCLUDE_DIRS}
@@ -53,8 +54,10 @@ set(WPE_METROLOGICAL_SOURCES
     src/input/LibinputServer.cpp
 
     src/input/LinuxInput/KeyboardEventHandlerLinuxInput.cpp
+    src/input/LinuxInput/input-linuxinput.cpp
 
     src/input/XKB/KeyboardEventHandlerXKB.cpp
+    src/input/XKB/input-libxkbcommon.cpp
 
     src/util/ipc.cpp
 )
