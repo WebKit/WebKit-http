@@ -46,6 +46,7 @@ class Document;
 class Element;
 class File;
 class Frame;
+class GCObservation;
 class HTMLImageElement;
 class HTMLInputElement;
 class HTMLLinkElement;
@@ -223,6 +224,7 @@ public:
     void toggleOverwriteModeEnabled(ExceptionCode&);
 
     unsigned countMatchesForText(const String&, unsigned findOptions, const String& markMatches, ExceptionCode&);
+    unsigned countFindMatches(const String&, unsigned findOptions, ExceptionCode&);
 
     unsigned numberOfScrollableAreas(ExceptionCode&);
 
@@ -481,6 +483,8 @@ public:
 #endif
 
     bool isProcessingUserGesture();
+
+    RefPtr<GCObservation> observeGC(JSC::JSValue);
 
 private:
     explicit Internals(Document&);

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ResourceResponse_h
-#define ResourceResponse_h
+#pragma once
 
 #include "ResourceResponseBase.h"
 #include <wtf/RetainPtr.h>
@@ -41,14 +40,12 @@ class ResourceResponse : public ResourceResponseBase {
 public:
     ResourceResponse()
         : m_initLevel(AllFields)
-        , m_platformResponseIsUpToDate(true)
     {
     }
 
 #if USE(CFNETWORK)
     ResourceResponse(CFURLResponseRef cfResponse)
         : m_initLevel(Uninitialized)
-        , m_platformResponseIsUpToDate(true)
         , m_cfResponse(cfResponse)
     {
         m_isNull = !cfResponse;
@@ -59,7 +56,6 @@ public:
 #else
     ResourceResponse(NSURLResponse *nsResponse)
         : m_initLevel(Uninitialized)
-        , m_platformResponseIsUpToDate(true)
         , m_nsResponse(nsResponse)
     {
         m_isNull = !nsResponse;
@@ -69,7 +65,6 @@ public:
     ResourceResponse(const URL& url, const String& mimeType, long long expectedLength, const String& textEncodingName)
         : ResourceResponseBase(url, mimeType, expectedLength, textEncodingName)
         , m_initLevel(AllFields)
-        , m_platformResponseIsUpToDate(false)
     {
     }
 
@@ -92,8 +87,6 @@ public:
     WEBCORE_EXPORT NSURLResponse *nsURLResponse() const;
 #endif
 
-    bool platformResponseIsUpToDate() const { return m_platformResponseIsUpToDate; }
-
 private:
     friend class ResourceResponseBase;
 
@@ -101,8 +94,8 @@ private:
     String platformSuggestedFilename() const;
     CertificateInfo platformCertificateInfo() const;
 
-    std::unique_ptr<CrossThreadResourceResponseData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceResponseData> data) const { return data; }
-    void doPlatformAdopt(std::unique_ptr<CrossThreadResourceResponseData>) { }
+    void doPlatformSetAsIsolatedCopy(const ResourceResponse&) const;
+
 #if PLATFORM(COCOA)
     void initNSURLResponse() const;
 #endif
@@ -110,7 +103,6 @@ private:
     static bool platformCompare(const ResourceResponse& a, const ResourceResponse& b);
 
     unsigned m_initLevel : 3;
-    bool m_platformResponseIsUpToDate : 1;
 
 #if USE(CFNETWORK)
     mutable RetainPtr<CFURLResponseRef> m_cfResponse;
@@ -120,9 +112,4 @@ private:
 #endif
 };
 
-struct CrossThreadResourceResponseData : public CrossThreadResourceResponseDataBase {
-};
-
 } // namespace WebCore
-
-#endif // ResourceResponse_h

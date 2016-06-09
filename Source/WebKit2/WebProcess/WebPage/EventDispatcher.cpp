@@ -138,18 +138,16 @@ void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEven
     UNUSED_PARAM(canRubberBandAtBottom);
 #endif
 
-    RefPtr<EventDispatcher> eventDispatcher = this;
-    RunLoop::main().dispatch([eventDispatcher, pageID, wheelEvent] {
-        eventDispatcher->dispatchWheelEvent(pageID, wheelEvent);
+    RunLoop::main().dispatch([protectedThis = Ref<EventDispatcher>(*this), pageID, wheelEvent]() mutable {
+        protectedThis->dispatchWheelEvent(pageID, wheelEvent);
     }); 
 }
 
 #if ENABLE(MAC_GESTURE_EVENTS)
 void EventDispatcher::gestureEvent(uint64_t pageID, const WebKit::WebGestureEvent& gestureEvent)
 {
-    RefPtr<EventDispatcher> eventDispatcher = this;
-    RunLoop::main().dispatch([eventDispatcher, pageID, gestureEvent] {
-        eventDispatcher->dispatchGestureEvent(pageID, gestureEvent);
+    RunLoop::main().dispatch([protectedThis = Ref<EventDispatcher>(*this), pageID, gestureEvent]() mutable {
+        protectedThis->dispatchGestureEvent(pageID, gestureEvent);
     });
 }
 #endif
@@ -191,9 +189,8 @@ void EventDispatcher::touchEvent(uint64_t pageID, const WebKit::WebTouchEvent& t
     }
 
     if (updateListWasEmpty) {
-        RefPtr<EventDispatcher> eventDispatcher = this;
-        RunLoop::main().dispatch([eventDispatcher] {
-            eventDispatcher->dispatchTouchEvents();
+        RunLoop::main().dispatch([protectedThis = Ref<EventDispatcher>(*this)]() mutable {
+            protectedThis->dispatchTouchEvents();
         });
     }
 }

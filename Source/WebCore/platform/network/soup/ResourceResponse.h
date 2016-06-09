@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceResponse_h
-#define ResourceResponse_h
+#pragma once
 
 #include "ResourceResponseBase.h"
 
@@ -74,8 +73,6 @@ public:
     GTlsCertificateFlags soupMessageTLSErrors() const { return m_tlsErrors; }
     void setSoupMessageTLSErrors(GTlsCertificateFlags tlsErrors) { m_tlsErrors = tlsErrors; }
 
-    bool platformResponseIsUpToDate() const { return false; }
-
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, ResourceResponse&);
 
@@ -90,9 +87,6 @@ private:
     void doUpdateResourceResponse() { }
     String platformSuggestedFilename() const;
     CertificateInfo platformCertificateInfo() const;
-
-    std::unique_ptr<CrossThreadResourceResponseData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceResponseData> data) const { return data; }
-    void doPlatformAdopt(std::unique_ptr<CrossThreadResourceResponseData>) { }
 };
 
 template<class Encoder>
@@ -112,9 +106,4 @@ bool ResourceResponse::decode(Decoder& decoder, ResourceResponse& response)
     return true;
 }
 
-struct CrossThreadResourceResponseData : public CrossThreadResourceResponseDataBase {
-};
-
 } // namespace WebCore
-
-#endif // ResourceResponse_h

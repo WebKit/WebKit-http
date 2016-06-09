@@ -141,18 +141,33 @@ typedef enum {
 @property BOOL inheritsSecurity;
 @end
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101100
+@interface CASpringAnimation : CABasicAnimation 
+@property CGFloat mass;
+@property CGFloat stiffness;
+@property CGFloat damping;
+@property CGFloat velocity;
+@property CGFloat initialVelocity;
+@end
+#else
+@interface CASpringAnimation (Private)
+@property CGFloat velocity;
+@end
+#endif
+
 #endif // __OBJC__
 
 #endif
 
+// FIXME: Declare these functions even when USE(APPLE_INTERNAL_SDK) is true once we can fix <rdar://problem/26584828> in a better way.
+#if !USE(APPLE_INTERNAL_SDK)
 EXTERN_C void CARenderServerCaptureLayerWithTransform(mach_port_t serverPort, uint32_t clientId, uint64_t layerId,
                                                       uint32_t slotId, int32_t ox, int32_t oy, const CATransform3D *);
-
 #if USE(IOSURFACE)
 EXTERN_C void CARenderServerRenderLayerWithTransform(mach_port_t server_port, uint32_t client_id, uint64_t layer_id, IOSurfaceRef iosurface, int32_t ox, int32_t oy, const CATransform3D *matrix);
 EXTERN_C void CARenderServerRenderDisplayLayerWithTransformAndTimeOffset(mach_port_t server_port, CFStringRef display_name, uint32_t client_id, uint64_t layer_id, IOSurfaceRef iosurface, int32_t ox, int32_t oy, const CATransform3D *matrix, CFTimeInterval offset);
 #endif
-
+#endif
 
 // FIXME: Move this into the APPLE_INTERNAL_SDK block once it's in an SDK.
 @interface CAContext (AdditionalDetails)
@@ -193,10 +208,10 @@ extern NSString * const kCAContextIgnoresHitTest;
 extern NSString * const kCAContentsFormatRGBA10XR;
 #endif
 
-#if (PLATFORM(APPLETV) && __TV_OS_VERSION_MIN_REQUIRED < 100000) \
-    || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MIN_REQUIRED < 30000) \
-    || (PLATFORM(IOS) && TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000) \
-    || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
+#if (PLATFORM(APPLETV) && __TV_OS_VERSION_MAX_ALLOWED < 100000) \
+    || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED < 30000) \
+    || (PLATFORM(IOS) && TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000) \
+    || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 @protocol CALayerDelegate <NSObject>
 @end
 

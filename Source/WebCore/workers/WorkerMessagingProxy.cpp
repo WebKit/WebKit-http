@@ -88,30 +88,28 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     thread->start();
 }
 
-void WorkerMessagingProxy::postMessageToWorkerObject(PassRefPtr<SerializedScriptValue> message, std::unique_ptr<MessagePortChannelArray> channels)
+void WorkerMessagingProxy::postMessageToWorkerObject(RefPtr<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
 {
-    MessagePortChannelArray* channelsPtr = channels.release();
-    m_scriptExecutionContext->postTask([this, channelsPtr, message] (ScriptExecutionContext& context) {
+    m_scriptExecutionContext->postTask([this, channels = WTFMove(channels), message = WTFMove(message)] (ScriptExecutionContext& context) mutable {
         Worker* workerObject = this->workerObject();
         if (!workerObject || askedToTerminate())
             return;
 
-        std::unique_ptr<MessagePortArray> ports = MessagePort::entanglePorts(context, std::unique_ptr<MessagePortChannelArray>(channelsPtr));
-        workerObject->dispatchEvent(MessageEvent::create(WTFMove(ports), message));
+        auto ports = MessagePort::entanglePorts(context, WTFMove(channels));
+        workerObject->dispatchEvent(MessageEvent::create(WTFMove(ports), WTFMove(message)));
     });
 }
 
-void WorkerMessagingProxy::postMessageToWorkerGlobalScope(PassRefPtr<SerializedScriptValue> message, std::unique_ptr<MessagePortChannelArray> channels)
+void WorkerMessagingProxy::postMessageToWorkerGlobalScope(RefPtr<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
 {
     if (m_askedToTerminate)
         return;
 
-    MessagePortChannelArray* channelsPtr = channels.release();
-    ScriptExecutionContext::Task task([channelsPtr, message] (ScriptExecutionContext& scriptContext) {
+    ScriptExecutionContext::Task task([channels = WTFMove(channels), message = WTFMove(message)] (ScriptExecutionContext& scriptContext) mutable {
         ASSERT_WITH_SECURITY_IMPLICATION(scriptContext.isWorkerGlobalScope());
-        DedicatedWorkerGlobalScope& context = static_cast<DedicatedWorkerGlobalScope&>(scriptContext);
-        std::unique_ptr<MessagePortArray> ports = MessagePort::entanglePorts(scriptContext, std::unique_ptr<MessagePortChannelArray>(channelsPtr));
-        context.dispatchEvent(MessageEvent::create(WTFMove(ports), message));
+        auto& context = static_cast<DedicatedWorkerGlobalScope&>(scriptContext);
+        auto ports = MessagePort::entanglePorts(scriptContext, WTFMove(channels));
+        context.dispatchEvent(MessageEvent::create(WTFMove(ports), WTFMove(message)));
         context.thread().workerObjectProxy().confirmMessageFromWorkerObject(context.hasPendingActivity());
     });
 
@@ -141,9 +139,7 @@ bool WorkerMessagingProxy::postTaskForModeToWorkerGlobalScope(ScriptExecutionCon
 
 void WorkerMessagingProxy::postExceptionToWorkerObject(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL)
 {
-    StringCapture capturedErrorMessage(errorMessage);
-    StringCapture capturedSourceURL(sourceURL);
-    m_scriptExecutionContext->postTask([this, capturedErrorMessage, capturedSourceURL, lineNumber, columnNumber] (ScriptExecutionContext& context) {
+    m_scriptExecutionContext->postTask([this, errorMessage = errorMessage.isolatedCopy(), sourceURL = sourceURL.isolatedCopy(), lineNumber, columnNumber] (ScriptExecutionContext& context) {
         Worker* workerObject = this->workerObject();
         if (!workerObject)
             return;
@@ -151,20 +147,18 @@ void WorkerMessagingProxy::postExceptionToWorkerObject(const String& errorMessag
         // We don't bother checking the askedToTerminate() flag here, because exceptions should *always* be reported even if the thread is terminated.
         // This is intentionally different than the behavior in MessageWorkerTask, because terminated workers no longer deliver messages (section 4.6 of the WebWorker spec), but they do report exceptions.
 
-        bool errorHandled = !workerObject->dispatchEvent(ErrorEvent::create(capturedErrorMessage.string(), capturedSourceURL.string(), lineNumber, columnNumber));
+        bool errorHandled = !workerObject->dispatchEvent(ErrorEvent::create(errorMessage, sourceURL, lineNumber, columnNumber));
         if (!errorHandled)
-            context.reportException(capturedErrorMessage.string(), lineNumber, columnNumber, capturedSourceURL.string(), 0);
+            context.reportException(errorMessage, lineNumber, columnNumber, sourceURL, 0);
     });
 }
 
 void WorkerMessagingProxy::postConsoleMessageToWorkerObject(MessageSource source, MessageLevel level, const String& message, int lineNumber, int columnNumber, const String& sourceURL)
 {
-    StringCapture capturedMessage(message);
-    StringCapture capturedSourceURL(sourceURL);
-    m_scriptExecutionContext->postTask([this, source, level, capturedMessage, capturedSourceURL, lineNumber, columnNumber] (ScriptExecutionContext& context) {
+    m_scriptExecutionContext->postTask([this, source, level, message = message.isolatedCopy(), sourceURL = sourceURL.isolatedCopy(), lineNumber, columnNumber] (ScriptExecutionContext& context) {
         if (askedToTerminate())
             return;
-        context.addConsoleMessage(source, level, capturedMessage.string(), capturedSourceURL.string(), lineNumber, columnNumber);
+        context.addConsoleMessage(source, level, message, sourceURL, lineNumber, columnNumber);
     });
 }
 

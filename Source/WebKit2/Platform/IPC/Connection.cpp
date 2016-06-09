@@ -168,9 +168,8 @@ bool Connection::SyncMessageState::processIncomingMessage(Connection& connection
         std::lock_guard<Lock> lock(m_mutex);
         
         if (m_didScheduleDispatchMessagesWorkSet.add(&connection).isNewEntry) {
-            RefPtr<Connection> protectedConnection(&connection);
-            m_runLoop.dispatch([this, protectedConnection] {
-                dispatchMessageAndResetDidScheduleDispatchMessagesForConnection(*protectedConnection);
+            m_runLoop.dispatch([this, protectedConnection = Ref<Connection>(connection)]() mutable {
+                dispatchMessageAndResetDidScheduleDispatchMessagesForConnection(protectedConnection);
             });
         }
 
@@ -288,11 +287,10 @@ void Connection::addWorkQueueMessageReceiver(StringReference messageReceiverName
 {
     ASSERT(&RunLoop::current() == &m_clientRunLoop);
 
-    RefPtr<Connection> connection(this);
-    m_connectionQueue->dispatch([connection, messageReceiverName, workQueue, workQueueMessageReceiver] {
-        ASSERT(!connection->m_workQueueMessageReceivers.contains(messageReceiverName));
+    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this), messageReceiverName = WTFMove(messageReceiverName), workQueue, workQueueMessageReceiver]() mutable {
+        ASSERT(!protectedThis->m_workQueueMessageReceivers.contains(messageReceiverName));
 
-        connection->m_workQueueMessageReceivers.add(messageReceiverName, std::make_pair(workQueue, workQueueMessageReceiver));
+        protectedThis->m_workQueueMessageReceivers.add(messageReceiverName, std::make_pair(workQueue, workQueueMessageReceiver));
     });
 }
 
@@ -300,10 +298,9 @@ void Connection::removeWorkQueueMessageReceiver(StringReference messageReceiverN
 {
     ASSERT(&RunLoop::current() == &m_clientRunLoop);
 
-    RefPtr<Connection> connection(this);
-    m_connectionQueue->dispatch([connection, messageReceiverName] {
-        ASSERT(connection->m_workQueueMessageReceivers.contains(messageReceiverName));
-        connection->m_workQueueMessageReceivers.remove(messageReceiverName);
+    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this), messageReceiverName = WTFMove(messageReceiverName)]() mutable {
+        ASSERT(protectedThis->m_workQueueMessageReceivers.contains(messageReceiverName));
+        protectedThis->m_workQueueMessageReceivers.remove(messageReceiverName);
     });
 }
 
@@ -354,8 +351,7 @@ void Connection::invalidate()
     
     m_client = nullptr;
 
-    RefPtr<Connection> protectedThis(this);
-    m_connectionQueue->dispatch([protectedThis] {
+    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
         protectedThis->platformInvalidate();
     });
 }
@@ -412,8 +408,7 @@ bool Connection::sendMessage(std::unique_ptr<MessageEncoder> encoder, unsigned m
     }
     
     // FIXME: We should add a boolean flag so we don't call this when work has already been scheduled.
-    RefPtr<Connection> protectedThis(this);
-    m_connectionQueue->dispatch([protectedThis] {
+    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
         protectedThis->sendOutgoingMessages();
     });
     return true;
@@ -681,24 +676,20 @@ void Connection::processIncomingMessage(std::unique_ptr<MessageDecoder> message)
 
     if (!m_workQueueMessageReceivers.isValidKey(message->messageReceiverName())) {
         RefPtr<Connection> protectedThis(this);
-        StringReference messageReceiverName = message->messageReceiverName();
-        StringCapture capturedMessageReceiverName(messageReceiverName.isEmpty() ? "<unknown message receiver>" : String(messageReceiverName.data(), messageReceiverName.size()));
-        StringReference messageName = message->messageName();
-        StringCapture capturedMessageName(messageName.isEmpty() ? "<unknown message>" : String(messageName.data(), messageName.size()));
+        StringReference messageReceiverNameReference = message->messageReceiverName();
+        String messageReceiverName(messageReceiverNameReference.isEmpty() ? "<unknown message receiver>" : String(messageReceiverNameReference.data(), messageReceiverNameReference.size()));
+        StringReference messageNameReference = message->messageName();
+        String messageName(messageNameReference.isEmpty() ? "<unknown message>" : String(messageNameReference.data(), messageNameReference.size()));
 
-        m_clientRunLoop.dispatch([protectedThis, capturedMessageReceiverName, capturedMessageName] {
-            protectedThis->dispatchDidReceiveInvalidMessage(capturedMessageReceiverName.string().utf8(), capturedMessageName.string().utf8());
+        m_clientRunLoop.dispatch([protectedThis = Ref<Connection>(*this), messageReceiverName = WTFMove(messageReceiverName), messageName = WTFMove(messageName)]() mutable {
+            protectedThis->dispatchDidReceiveInvalidMessage(messageReceiverName.utf8(), messageName.utf8());
         });
         return;
     }
 
     auto it = m_workQueueMessageReceivers.find(message->messageReceiverName());
     if (it != m_workQueueMessageReceivers.end()) {
-        RefPtr<Connection> protectedThis(this);
-        RefPtr<WorkQueueMessageReceiver>& workQueueMessageReceiver = it->value.second;
-        MessageDecoder* decoderPtr = message.release();
-        it->value.first->dispatch([protectedThis, workQueueMessageReceiver, decoderPtr] {
-            std::unique_ptr<MessageDecoder> decoder(decoderPtr);
+        it->value.first->dispatch([protectedThis = Ref<Connection>(*this), workQueueMessageReceiver = it->value.second, decoder = WTFMove(message)]() mutable {
             protectedThis->dispatchWorkQueueMessageReceiverMessage(*workQueueMessageReceiver, *decoder);
         });
         return;
@@ -715,7 +706,7 @@ void Connection::processIncomingMessage(std::unique_ptr<MessageDecoder> message)
         std::lock_guard<Lock> lock(m_incomingSyncMessageCallbackMutex);
 
         for (auto& callback : m_incomingSyncMessageCallbacks.values())
-            m_incomingSyncMessageCallbackQueue->dispatch(callback);
+            m_incomingSyncMessageCallbackQueue->dispatch(WTFMove(callback));
 
         m_incomingSyncMessageCallbacks.clear();
     }
@@ -782,9 +773,8 @@ bool Connection::hasIncomingSyncMessage()
 
 void Connection::postConnectionDidCloseOnConnectionWorkQueue()
 {
-    RefPtr<Connection> connection(this);
-    m_connectionQueue->dispatch([connection] {
-        connection->connectionDidClose();
+    m_connectionQueue->dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
+        protectedThis->connectionDidClose();
     });
 }
 
@@ -816,20 +806,19 @@ void Connection::connectionDidClose()
     if (m_didCloseOnConnectionWorkQueueCallback)
         m_didCloseOnConnectionWorkQueueCallback(this);
 
-    RefPtr<Connection> connection(this);
-    m_clientRunLoop.dispatch([connection] {
+    m_clientRunLoop.dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
         // If the connection has been explicitly invalidated before dispatchConnectionDidClose was called,
         // then the client will be null here.
-        if (!connection->m_client)
+        if (!protectedThis->m_client)
             return;
 
         // Because we define a connection as being "valid" based on wheter it has a null client, we null out
         // the client before calling didClose here. Otherwise, sendSync will try to send a message to the connection and
         // will then wait indefinitely for a reply.
-        Client* client = connection->m_client;
-        connection->m_client = nullptr;
+        Client* client = protectedThis->m_client;
+        protectedThis->m_client = nullptr;
 
-        client->didClose(*connection);
+        client->didClose(protectedThis.get());
     });
 }
 
@@ -922,8 +911,7 @@ void Connection::enqueueIncomingMessage(std::unique_ptr<MessageDecoder> incoming
         m_incomingMessages.append(WTFMove(incomingMessage));
     }
 
-    RefPtr<Connection> protectedThis(this);
-    m_clientRunLoop.dispatch([protectedThis] {
+    m_clientRunLoop.dispatch([protectedThis = Ref<Connection>(*this)]() mutable {
         protectedThis->dispatchOneMessage();
     });
 }

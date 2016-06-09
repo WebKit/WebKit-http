@@ -1006,7 +1006,7 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
     FunctionExecutable* function = m_codeBlock->functionExpr(currentInstruction[3].u.operand);
     OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
 
-    if (opcodeID == op_new_func_exp || opcodeID == op_new_arrow_func_exp)
+    if (opcodeID == op_new_func_exp)
         callOperation(operationNewFunction, dst, regT0, function);
     else {
         ASSERT(opcodeID == op_new_generator_func_exp);
@@ -1026,11 +1026,6 @@ void JIT::emit_op_new_generator_func_exp(Instruction* currentInstruction)
     emitNewFuncExprCommon(currentInstruction);
 }
 
-void JIT::emit_op_new_arrow_func_exp(Instruction* currentInstruction)
-{
-    emitNewFuncExprCommon(currentInstruction);
-}
-    
 void JIT::emit_op_new_array(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -1422,6 +1417,16 @@ void JIT::emit_op_create_cloned_arguments(Instruction* currentInstruction)
 {
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_create_cloned_arguments);
     slowPathCall.call();
+}
+
+void JIT::emit_op_argument_count(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    load32(payloadFor(JSStack::ArgumentCount), regT0);
+    sub32(TrustedImm32(1), regT0);
+    JSValueRegs result = JSValueRegs::withTwoAvailableRegs(regT0, regT1);
+    boxInt32(regT0, result);
+    emitPutVirtualRegister(dst, result);
 }
 
 void JIT::emit_op_copy_rest(Instruction* currentInstruction)

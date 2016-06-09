@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,11 @@
 
 #ifndef MatchResult_h
 #define MatchResult_h
+
+#include <wtf/PrintStream.h>
+#include <wtf/Vector.h> // for notFound
+
+namespace JSC {
 
 typedef uint64_t EncodedMatchResult;
 
@@ -69,9 +74,13 @@ struct MatchResult {
     {
         return start == end;
     }
+    
+    void dump(PrintStream&) const;
 
     size_t start;
     size_t end;
 };
+
+} // namespace JSC
 
 #endif

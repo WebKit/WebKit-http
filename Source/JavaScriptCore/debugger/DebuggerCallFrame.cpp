@@ -62,6 +62,12 @@ private:
 
 Ref<DebuggerCallFrame> DebuggerCallFrame::create(CallFrame* callFrame)
 {
+    if (UNLIKELY(callFrame == callFrame->lexicalGlobalObject()->globalExec())) {
+        ShadowChicken::Frame emptyFrame;
+        RELEASE_ASSERT(!emptyFrame.isTailDeleted);
+        return adoptRef(*new DebuggerCallFrame(callFrame, emptyFrame));
+    }
+
     Vector<ShadowChicken::Frame> frames;
     callFrame->vm().shadowChicken().iterate(callFrame->vm(), callFrame, [&] (const ShadowChicken::Frame& frame) -> bool {
         frames.append(frame);
@@ -69,16 +75,15 @@ Ref<DebuggerCallFrame> DebuggerCallFrame::create(CallFrame* callFrame)
     });
 
     RELEASE_ASSERT(frames.size());
-    RELEASE_ASSERT(!frames[0].isTailDeleted); // The top frame should never be tail deleted.
-    RELEASE_ASSERT(!frames[frames.size() - 1].isTailDeleted); // The first frame should never be tail deleted.
+    ASSERT(!frames[0].isTailDeleted); // The top frame should never be tail deleted.
 
     RefPtr<DebuggerCallFrame> currentParent = nullptr;
-    ExecState* exec = nullptr;
+    ExecState* exec = callFrame->lexicalGlobalObject()->globalExec();
+    // This walks the stack from the entry stack frame to the top of the stack.
     for (unsigned i = frames.size(); i--; ) {
         const ShadowChicken::Frame& frame = frames[i];
         if (!frame.isTailDeleted)
             exec = frame.frame;
-        ASSERT(exec);
         Ref<DebuggerCallFrame> currentFrame = adoptRef(*new DebuggerCallFrame(exec, frame));
         currentFrame->m_caller = currentParent;
         currentParent = WTFMove(currentFrame);
@@ -133,7 +138,7 @@ String DebuggerCallFrame::functionName() const
 
     if (isTailDeleted()) {
         if (JSFunction* func = jsDynamicCast<JSFunction*>(m_shadowChickenFrame.callee))
-            return func->calculatedDisplayName(m_validMachineFrame);
+            return func->calculatedDisplayName(m_validMachineFrame->vm());
         return m_shadowChickenFrame.codeBlock->inferredName().data();
     }
 

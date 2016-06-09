@@ -71,6 +71,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
         this._updating = false;
         this._currentTime = NaN;
+        this._discontinuityStartTime = NaN;
         this._lastUpdateTimestamp = NaN;
         this._startTimeNeedsReset = true;
         this._renderingFrameTimeline = null;
@@ -470,9 +471,18 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
     {
         this._updateProgressView();
 
+        let startTime = event.data.startTime;
         if (!this._updating)
-            this._startUpdatingCurrentTime(event.data.startTime);
+            this._startUpdatingCurrentTime(startTime);
         this._clearTimelineNavigationItem.enabled = !this._recording.readonly;
+
+        // A discontinuity occurs when the recording is stopped and resumed at
+        // a future time. Capturing started signals the end of the current
+        // discontinuity, if one exists.
+        if (!isNaN(this._discontinuityStartTime)) {
+            this._recording.addDiscontinuity(this._discontinuityStartTime, startTime);
+            this._discontinuityStartTime = NaN;
+        }
     }
 
     _capturingStopped(event)
@@ -484,6 +494,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
         if (this.currentTimelineView)
             this._updateTimelineViewTimes(this.currentTimelineView);
+
+        this._discontinuityStartTime = event.data.endTime || this._currentTime;
     }
 
     _debuggerPaused(event)
@@ -603,6 +615,7 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
     _recordingReset(event)
     {
         this._currentTime = NaN;
+        this._discontinuityStartTime = NaN;
 
         if (!this._updating) {
             // Force the time ruler and views to reset to 0.
@@ -727,12 +740,15 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         let endTime = this._timelineOverview.selectionStartTime + this._timelineOverview.selectionDuration;
 
         if (entireRangeSelected) {
-            // Clamp selection to the end of the recording (with padding), so that OverviewTimelineView
-            // displays an autosized graph without a lot of horizontal white space or tiny graph bars.
-            if (isNaN(this._recording.endTime))
-                endTime = this._currentTime;
-            else
-                endTime = Math.min(endTime, this._recording.endTime + timelineRuler.minimumSelectionDuration);
+            if (timelineView instanceof WebInspector.RenderingFrameTimelineView) {
+                endTime = this._renderingFrameTimeline.records.length;
+            } else {
+                // Clamp selection to the end of the recording (with padding),
+                // so graph views will show an auto-sized graph without a lot of
+                // empty space at the end.
+                endTime = isNaN(this._recording.endTime) ? this._recording.currentTime : this._recording.endTime;
+                endTime += timelineRuler.minimumSelectionDuration;
+            }
         }
 
         timelineView.startTime = this._timelineOverview.selectionStartTime;

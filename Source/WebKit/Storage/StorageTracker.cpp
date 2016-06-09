@@ -293,9 +293,8 @@ void StorageTracker::syncFileSystemAndTrackerDatabase()
         if (foundOrigins.contains(originIdentifier))
             continue;
 
-        String originIdentifierCopy = originIdentifier.isolatedCopy();
-        callOnMainThread([this, originIdentifierCopy] {
-            deleteOriginWithIdentifier(originIdentifierCopy);
+        callOnMainThread([this, originIdentifier = originIdentifier.isolatedCopy()] {
+            deleteOriginWithIdentifier(originIdentifier);
         });
     }
 }
@@ -314,19 +313,17 @@ void StorageTracker::setOriginDetails(const String& originIdentifier, const Stri
         m_originSet.add(originIdentifier);
     }
 
-    String originIdentifierCopy = originIdentifier.isolatedCopy();
-    String databaseFileCopy = databaseFile.isolatedCopy();
-    auto function = [this, originIdentifierCopy, databaseFileCopy] {
-        syncSetOriginDetails(originIdentifierCopy, databaseFileCopy);
+    auto function = [this, originIdentifier = originIdentifier.isolatedCopy(), databaseFile = databaseFile.isolatedCopy()] {
+        syncSetOriginDetails(originIdentifier, databaseFile);
     };
 
     if (isMainThread()) {
         ASSERT(m_thread);
-        m_thread->dispatch(function);
+        m_thread->dispatch(WTFMove(function));
     } else {
         // FIXME: This weird ping-ponging was done to fix a deadlock. We should figure out a cleaner way to avoid it instead.
-        callOnMainThread([this, function] {
-            m_thread->dispatch(function);
+        callOnMainThread([this, function = WTFMove(function)]() mutable {
+            m_thread->dispatch(WTFMove(function));
         });
     }
 }
@@ -504,9 +501,8 @@ void StorageTracker::deleteOrigin(SecurityOrigin* origin)
         m_originSet.remove(originId);
     }
 
-    String originIdCopy = originId.isolatedCopy();
-    m_thread->dispatch([this, originIdCopy] {
-        syncDeleteOrigin(originIdCopy);
+    m_thread->dispatch([this, originId = originId.isolatedCopy()] {
+        syncDeleteOrigin(originId);
     });
 }
 

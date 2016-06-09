@@ -1,3 +1,643 @@
+2016-06-08  Lucas Forschler  <lforschler@apple.com>
+
+        Reverted changeset 201814.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Shadow DOM tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158524
+
+        Reviewed by Brent Fulgham.
+
+        Enable Shadow DOM when running tests.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2016-06-08  Lucas Forschler  <lforschler@apple.com>
+
+        Teach cmake about libWebKitSystemInterfaceOSX10.12
+        This patch also removes duplicated logic inside DumpRenderTree/PlatformMac.cmake
+
+        Rubber-stamped by Alex Christensen.
+ 
+        * DumpRenderTree/PlatformMac.cmake:
+        * WebKitTestRunner/PlatformMac.cmake:
+
+2016-06-07  Lucas Forschler  <lforschler@apple.com>
+
+        <rdar://problem/26685782>
+        Teach the copy-webkitlibraries-to-product-directory script about WebKitSystemInterfaceOSX10.12
+
+        Rubber-stamped by Jessie Berlin.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-06-08  Aakash Jain  <aakash_jain@apple.com>
+
+        Don't try to cleanup non-existing ios Simulators
+        https://bugs.webkit.org/show_bug.cgi?id=158510
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.clean_up_test_run): 
+        Check if simulator exists before trying to clean it up.
+
+2016-06-08  Brady Eidson  <beidson@apple.com>
+
+        Try to fix the Windows build.
+
+        Unreviewed.
+
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp:
+        (TestWebKitAPI::LifetimeLogger::log):
+        (TestWebKitAPI::LifetimeLogger::takeLogStr):
+        (TestWebKitAPI::testFunction):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::log): Deleted. (VS was seeing it as a dupe symbol)
+        (TestWebKitAPI::takeLogStr): Deleted. (VS was seeing it as a dupe symbol)
+
+2016-06-08  Brady Eidson  <beidson@apple.com>
+
+        Make CrossThreadCopier more efficient (fewer copies!).
+        https://bugs.webkit.org/show_bug.cgi?id=158456
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-06-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Add result validation to JSAir
+        https://bugs.webkit.org/show_bug.cgi?id=158493
+
+        Reviewed by Saam Barati.
+        
+        Run JSAir.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-06-08  Brady Eidson  <beidson@apple.com>
+
+        Add an API test that confirms object constructor/destructor calls during creation of a CrossThreadTask.
+        https://bugs.webkit.org/show_bug.cgi?id=158528
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp: Added.
+        (TestWebKitAPI::log):
+        (TestWebKitAPI::takeLogStr):
+        (TestWebKitAPI::LifetimeLogger::LifetimeLogger):
+        (TestWebKitAPI::LifetimeLogger::~LifetimeLogger):
+        (TestWebKitAPI::LifetimeLogger::isolatedCopy):
+        (TestWebKitAPI::testFunction):
+        (TestWebKitAPI::TEST):
+
+2016-06-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        TestWebKitAPI: Removed redunandant check PLATFORM(GTK) && !defined(BUILDING_WEBKIT2__)
+        https://bugs.webkit.org/show_bug.cgi?id=158521
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/config.h:
+
+2016-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use a longer timeout for glib unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=158476
+
+        Reviewed by Darin Adler.
+
+        The timeout is supposed to be per test case, but in the case of GLib tests it affects all the tests cases of the
+        same test program. Some test programs like TestLoaderClient, that have a lot of test cases, often time out in
+        the bots because the timeout is not enough to run all the tests cases. So, we should use a longer timeout for
+        GLib tests.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner._run_test_glib):
+
+2016-06-07  Keith Rollin  <krollin@apple.com>
+
+        Remove all uses of PassRefPtr in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=157596
+        <rdar://problem/26234391>
+
+        Reviewed by Chris Dumez.
+
+        Update calls to interfaces that no longer take or return PassRefPtrs.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::stringFromUTF8):
+        (TestWebKitAPI::TEST):
+
+2016-06-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Imported markup insertion test is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158477
+
+        Reviewed by Darin Adler.
+
+        Make sure the empty synchronous request is loaded after each test.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+
+2016-06-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r201449) [GTK] ARMv7 build fails with libicudata.so.55: cannot open shared object file on gtkdoc-scangobj step.
+        https://bugs.webkit.org/show_bug.cgi?id=158417
+
+        Reviewed by Michael Catanzaro.
+
+        The toolchain on armhf (ARMv7) seems unable to properly handle
+        a shared library that doesn't link with anything.
+
+        And libicudata is built by default in this way because it only
+        contains static data.
+
+        That makes icu unusable on armhf because the linker will be
+        unable to resolve the libicudata dependencies.
+
+        Most (if not all) distributions workaround this by linking
+        libicudata with libc6, which is already a needed dependency for
+        any of the other icu shared libraries.
+
+        So import here the Debian patch fixing this issue. For further
+        details check https://bugs.debian.org/653457
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/icudata-stdlibs.patch: Added.
+
+2016-06-06  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION (r104174): 500+ tests failing on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=75965
+
+        Reviewed by Michael Catanzaro.
+
+        Reset WebView scale factors before running next test.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebViewToConsistentStateBeforeTesting):
+
+2016-06-04  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r201263): Some tests have become flaky timeouts.
+        https://bugs.webkit.org/show_bug.cgi?id=157990
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/TestInvocation.cpp: (WTR::TestInvocation::invoke):
+        It is somewhat legitimate for WebContent to not respond to messages after the test
+        is done; it can be e.g. re-doing a costly repaint. So, we should restart is silently,
+        without making the current test fail.
+
+2016-06-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [GTK] Update YouCompleteMe script to make all include paths absolute
+        https://bugs.webkit.org/show_bug.cgi?id=158301
+
+        Reviewed by Michael Catanzaro.
+
+        Before this patch, some include paths were not made absolute.
+        This could make YouCompleteMe plugin to fail extracting information or validating cpp files.
+
+        * gtk/ycm_extra_conf.py:
+
+2016-06-03  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        Unreviewed: add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-06-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fetch API tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158296
+
+        Reviewed by Alex Christensen.
+
+        Enable Fetch API when running tests.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2016-06-02  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Really display failing JSC stress tests in buildbot dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=158324
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Correctly check for string membership in array.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData): Correctly check for string membership in array.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._popoverContentForJavaScriptCoreTestRegressions): Correctly check for string
+        membership in array.
+        (BuildbotQueueView.prototype._presentPopoverForJavaScriptCoreTestRegressions): Ensure that the correct URL is
+        generated after the first time.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.appendBuilderQueueStatus): Correctly check for string membership in array.
+
+2016-06-02  Michael Saboff  <msaboff@apple.com>
+
+        [iOS]: Some JSC stress tests fail running out of executable memory when the LLInt is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=158317
+
+        Reviewed by Saam Barati.
+
+        Added defaultNoNoLLIntRun variant to run the default tests with the exception of the no-llint
+        variant.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-06-02  Aakash Jain  <aakash_jain@apple.com>
+
+        LayoutTests time out intermittently due to alert about reopening Simulator after it unexpectedly quit
+        https://bugs.webkit.org/show_bug.cgi?id=158305
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.clean_up_test_run): Delete simulator's savedState directories during cleanup.
+
+2016-06-01  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r191907): Can't enter combining diacritic marks in Web Inspector fields
+        https://bugs.webkit.org/show_bug.cgi?id=158227
+        <rdar://problem/26232464>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a regression test that runs on Mac only.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewTextInput.mm: Added.
+        (-[DummyNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/editable-body.html: Added.
+
+2016-06-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS: VoiceOver can't access attachments in mail messages
+        https://bugs.webkit.org/show_bug.cgi?id=158198
+
+        Reviewed by Joanmarie Diggs.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::stringForRange):
+        (AccessibilityUIElement::attributedStringForRange):
+        (AccessibilityUIElement::attributedStringRangeIsMisspelled):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::attributedStringForRange):
+        (WTR::AccessibilityUIElement::attributedStringRangeIsMisspelled):
+
+2016-06-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Mark GTK+ test /webkit2/WebKitWebInspectorServer/test-open-debugging-session as slow.
+
+        It's timing out in the bots, but it seems to pass when running run-gtk-tests with no timeout. For GLib tests the
+        timeout is applied per tester program not per test case, so we need to mark the whole test
+        WebKit2Gtk/TestInspectorServer as slow.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+        (TestRunner._run_test_glib):
+
+2016-06-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Skip media permission request GTK+ unit tests.
+
+        They are timing out in the bots.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2016-05-31  Jer Noble  <jer.noble@apple.com>
+
+        Yet another unreviewed build fix; move the closing brace of the namespace declaration inside
+        the #if check.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenTopContentInset.mm:
+
+2016-05-31  Jer Noble  <jer.noble@apple.com>
+
+        Further unreviewed build fix; only run FullscreenTopContentInset test on Mac.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenTopContentInset.mm:
+
+2016-05-31  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix; only run FullscreetTopContentInset test on platforms
+        where WK_API_ENABLED is set.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenTopContentInset.mm:
+
+2016-05-31  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r201405): trailers.apple.com HUD is missing in fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=158156
+        <rdar://problem/26519589>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenTopContentInset.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenTopContentInset.mm: Added.
+        (-[FullscreenChangeMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::TEST):
+
+2016-05-31  Jon Lee  <jonlee@apple.com>
+
+        Unreviewed: add myself to the reviewers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-05-31  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Provide alternative mirror for the ICU tarball.
+        https://bugs.webkit.org/show_bug.cgi?id=154530
+
+        Unreviewed.
+
+        * gtk/jhbuild.modules: After r201449 the GTK+ ARM buildbot is having
+        a hard time trying to download the ICU tarball from download.icu-project.org
+        (which redirects to sourceforge and gives problems with something related to
+        SSL). Provide this alternative mirror to make things working back.
+
+2016-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test /webkit2/WebKitWebView/geolocation-permission-requests is failing since r201423
+        https://bugs.webkit.org/show_bug.cgi?id=158200
+
+        Reviewed by Philippe Normand.
+
+        This is because geolocation is no longer allowed for non secure sites, like HTTP. In that case
+        POSITION_UNAVAILABLE is returned without asking the API layer.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        (testWebViewGeolocationPermissionRequests): Keep the HTTP case to check that it indeed returns
+        POSITION_UNAVAILABLE and use HTTPS URLs to check permission requests are allowed or denied. Also stop using the
+        document title, and use user script messages that are more reliable instead.
+
+2016-05-28  Aakash Jain  <aakash_jain@apple.com>
+
+        tests fail if display sleeps while run-webkit-tests is running
+        https://bugs.webkit.org/show_bug.cgi?id=153919
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (addDisplaySleepAssertion): Use PreventUserIdleSystemSleep flag, same as set by caffeinate tool.
+
+2016-05-27  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Display failing JSC stress tests in buildbot dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=156595
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype.javaScriptCoreTestFailuresURLForIteration):
+        (Buildbot.prototype.javaScriptCoreTestStdioUrlForIteration):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration):
+        (BuildbotIteration.prototype._parseData):
+        (BuildbotIteration.prototype.loadLayoutTestResults):
+        (BuildbotIteration.prototype.):
+        (BuildbotIteration.prototype.loadJavaScriptCoreTestResults):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._createLoadingIndicator):
+        (BuildbotQueueView.prototype.):
+        (BuildbotQueueView.prototype._onPopoverCopy):
+        (BuildbotQueueView.prototype._popoverContentForJavaScriptCoreTestRegressions):
+        (BuildbotQueueView.prototype._presentPopoverForJavaScriptCoreTestRegressions):
+        (BuildbotQueueView.prototype._addIterationHeadingToPopover):
+        (BuildbotQueueView.prototype._testStepFailureDescription):
+        (BuildbotQueueView.prototype._testStepFailureDescriptionWithCount):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTestResults.js:
+        (BuildbotTestResults.prototype.addJavaScriptCoreTestFailures):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.appendBuilderQueueStatus):
+        (BuildbotTesterQueueView.prototype.update):
+        (BuildbotTesterQueueView.prototype._popoverContentForLayoutTestRegressions):
+        (BuildbotTesterQueueView.prototype._presentPopoverForLayoutTestRegressions):
+        (BuildbotTesterQueueView.prototype._testStepFailureDescription): Deleted.
+        (BuildbotTesterQueueView.prototype._testStepFailureDescriptionWithCount): Deleted.
+        (BuildbotTesterQueueView.prototype.): Deleted.
+        (BuildbotTesterQueueView.prototype.content.oncopy): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/index.html:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbot.js: Copied from Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotQueue.js.
+        (MockBuildbot):
+        (MockBuildbot.prototype.buildPageURLForIteration):
+        (MockBuildbot.prototype.javaScriptCoreTestFailuresURLForIteration):
+        (MockBuildbot.prototype.javaScriptCoreTestStdioUrlForIteration):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotQueue.js:
+        (MockBuildbotQueue):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotTestResults.js: Copied from Tools/BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotQueue.js.
+        (MockBuildbotTestResults):
+        (MockBuildbotTestResults.prototype.addJavaScriptCoreTestFailures):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/test-jsc-results.json: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/tests.js:
+
+2016-05-27  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Display failing JSC stress tests in buildbot dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=156595
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype.javaScriptCoreTestFailuresURLForIteration): Generate the URL for raw JSON output of
+        JSC tests.
+        (Buildbot.prototype.javaScriptCoreTestStdioURLForIteration): Generate the URL for human-readable stdio output
+        of JSC tests.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Display JSC test results in popover.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration): Add javaScriptCoreTestResults variable.
+        (BuildbotIteration.prototype.): Check for javascriptcore tests step.
+        (BuildbotIteration.prototype.loadLayoutTestResults): Add comma at closing brace.
+        (BuildbotIteration.prototype.loadJavaScriptCoreTestResults): Fetch JSON from Buildbot server.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._createLoadingIndicator): Reusable function.
+        (BuildbotQueueView.prototype._onPopoverCopy): Reusable copy event handler to allow accurate copying of text
+        from popovers.
+        (BuildbotQueueView.prototype._popoverContentForJavaScriptCoreTestRegressions): Generates the popover bubble's
+        inner HTML from the JSC failure data.
+        (BuildbotQueueView.prototype._presentPopoverForJavaScriptCoreTestRegressions): Generate the popover bubble
+        for JSC results and handle request failures.
+        (BuildbotQueueView.prototype._testStepFailureDescription): Moved from subclass.
+        (BuildbotQueueView.prototype._testStepFailureDescriptionWithCount): Moved from subclass.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTestResults.js:
+        (BuildbotTestResults.prototype.addJavaScriptCoreTestFailures): Parse JSON into a list of failing tests.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.appendBuilderQueueStatus): Instantiate PopoverTrackers for builds whose 
+        only failures are JSC tests.
+        (BuildbotTesterQueueView.prototype._popoverContentForLayoutTestRegressions): Use _onPopoverCopy.
+        (BuildbotTesterQueueView.prototype._presentPopoverForLayoutTestRegressions): Use _createLoadingIndicator.
+        (BuildbotTesterQueueView.prototype._testStepFailureDescription): Deleted. Moved to superclass.
+        (BuildbotTesterQueueView.prototype._testStepFailureDescriptionWithCount): Deleted. Moved to superclass.
+        (BuildbotTesterQueueView.prototype.content.oncopy): Deleted. Using superclass's reusable function as copy handler instead.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/index.html: Add new script files.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbot.js: Added.
+        (MockBuildbot): Mocked version of Buildbot, only containing URL methods.
+        (MockBuildbot.prototype.buildPageURLForIteration): Same as real Buildbot.js
+        (MockBuildbot.prototype.javaScriptCoreTestFailuresURLForIteration): Points to local file containing JSON for test.
+        (MockBuildbot.prototype.javaScriptCoreTestStdioURLForIteration): Same as real Buildbot.js
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotQueue.js:
+        (MockBuildbotQueue): Use a MockBuildbot() instead of a string.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbotTestResults.js: Added.
+        (MockBuildbotTestResults): Mocked version of BuildbotTestResults.
+        (MockBuildbotTestResults.prototype.addJavaScriptCoreTestFailures): Sets the 'regressions' variable.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/test-jsc-results.json: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/tests.js: Add four groups of tests.
+
+2016-05-27  Chris Dumez  <cdumez@apple.com>
+
+        WorkQueue::dispatch() / RunLoop::dispatch() should not copy captured lambda variables
+        https://bugs.webkit.org/show_bug.cgi?id=158111
+
+        Reviewed by Darin Adler.
+
+        WorkQueue::dispatch() / RunLoop::dispatch() should not copy captured lambda variables.
+        These are often used cross-thread and copying the captured lambda variables can be
+        dangerous (e.g. we do not want to copy a String after calling isolatedCopy() upon
+        capture).
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::decidePolicyForNavigationAction):
+
+2016-05-27  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: After closing a Netflix video, trying to watch it again fails.
+        <rdar://problem/25092473> and https://bugs.webkit.org/show_bug.cgi?id=158160
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebProcessKillIDBCleanup-1.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebProcessKillIDBCleanup-2.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebProcessKillIDBCleanup.mm: Added.
+
+2016-05-27  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] accessibility/gtk/no-notification-for-unrendered-iframe-children.html began failing after r201416
+        https://bugs.webkit.org/show_bug.cgi?id=158152
+
+        Reviewed by Chris Fleizach.
+
+        The failure is actually a bug fix because only one child is being added, but two
+        notifications were being emitted. Now there is only one notification. To verify
+        this was the case, we really should examine the child reportedly being added. That
+        child is the ATK event's any_data, so pass along that child to the listener.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+
+2016-05-26  Alex Christensen  <achristensen@webkit.org>
+
+        Expose content extension failure error codes in SPI
+        https://bugs.webkit.org/show_bug.cgi?id=158095
+        rdar://problem/26475651
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentExtensionStore.mm:
+        (checkDomain):
+        (TEST_F):
+        Add tests that use the new enum.
+
+2016-05-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        New intl-numberformat.js test fails on many Linux platforms
+        https://bugs.webkit.org/show_bug.cgi?id=154530
+
+        Reviewed by Darin Adler.
+
+        The test is actually failing because of a bug in the icu version installed in the bots, using a newer version of
+        icu makes the tests pass and explains why it worked for some people. So, let's add icu 55.1 to the internal
+        jhbuild to ensure JSC tests pass in the bots no matter what the icu version installed is.
+
+        * gtk/jhbuild.modules:
+
+2016-05-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Allow JSBench to use precise time
+        https://bugs.webkit.org/show_bug.cgi?id=158050
+
+        Reviewed by Geoffrey Garen.
+
+        JSBench use `new Date().getTime()` without options and there is no way to use precise time.
+        This patch modifies the JSBench code to inject the code taking the precise time.
+        `currentTimeInMS` is given by the benchmerk harness and JSBench uses it.
+        run-jsc-benchmark switches this function's implementation between `Date.now()` and
+        testRunner's precise time one.
+
+        While this patch modifies the code of JSBench, the last release of JSBench is Jan 2013 and
+        the contents are not changed for a long time. As described in the original paper[1], the
+        tests can be generated by using JSBench's record & replay system, but in that case, we can
+        adopt this modification by changing the tool side.
+
+        We also add currentTimeInMS implementation in harness.js and u?rem.js directly.
+        u?rem.js implementation is required when it is executed in u?rem.html without harness.
+        And harness.js implementation is required when it is executed in the JSBench's harness.
+        In these implementation, we follow the JetStream's time measuring function: performance.now(),
+        preciseTime(), or Date.now().
+
+        [1]: http://dl.acm.org/citation.cfm?id=2048119
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-05-26  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix after r201427.
+        https://bugs.webkit.org/show_bug.cgi?id=157423
+        <rdar://problem/23751632>
+
+        A debug assertion was firing during some test runs due to the Geolocation permission
+        being turned off during the test. The timer logic was originally written to assert
+        if the timer fired when permissions were disabled. But this is no longer valid,
+        because we expect the Geolocation system to be active and become deactivated if the
+        browsing context violates one of the security criteria.
+
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate timerFired]): Remove invalid assertion.
+
+2016-05-26  Filip Pizlo  <fpizlo@apple.com>
+
+        ScopedLambda should have a lifetime story that makes sense to the compiler
+        https://bugs.webkit.org/show_bug.cgi?id=158118
+
+        Reviewed by Mark Lam.
+        
+        Added a test case. This test crashes before the fix and now it passes.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/ScopedLambda.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2016-05-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Build fix
+
+        Rubber stamped by Lucas Forschler.
+
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
 2016-05-25  Anders Carlsson  <andersca@apple.com>
 
         Get rid of WTF/Functional.h

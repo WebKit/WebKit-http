@@ -24,58 +24,61 @@
 #include "CSSParser.h"
 #include "CSSToLengthConversionData.h"
 #include "MediaList.h"
-#include "MediaQuery.h"
 #include "MediaQueryEvaluator.h"
-#include "MediaQueryExp.h"
 #include "RenderStyle.h"
 #include "RenderView.h"
 
 namespace WebCore {
 
-static bool match(std::unique_ptr<MediaQueryExp>&& expression, const RenderStyle& style, Frame* frame)
+static bool match(const MediaQueryExpression& expression, const RenderStyle& style, Document& document)
 {
-    if (expression->mediaFeature().isEmpty())
-        return true;
-
-    auto expList = std::make_unique<Vector<std::unique_ptr<MediaQueryExp>>>();
-    expList->append(WTFMove(expression));
-
-    RefPtr<MediaQuerySet> mediaQuerySet = MediaQuerySet::create();
-    mediaQuerySet->addMediaQuery(std::make_unique<MediaQuery>(MediaQuery::None, "all", WTFMove(expList)));
-
-    MediaQueryEvaluator mediaQueryEvaluator("screen", frame, &style);
-    return mediaQueryEvaluator.eval(mediaQuerySet.get());
+    return expression.mediaFeature().isEmpty() || MediaQueryEvaluator { "screen", document, &style }.evaluate(expression);
 }
 
-static float defaultLength(const RenderStyle& style, RenderView* view)
+static float defaultLength(const RenderStyle& style, RenderView& renderer)
 {
-    return clampTo<float>(CSSPrimitiveValue::computeNonCalcLengthDouble(CSSToLengthConversionData(&style, &style, view), CSSPrimitiveValue::CSS_VW, 100.0));
+    return clampTo<float>(CSSPrimitiveValue::computeNonCalcLengthDouble({ &style, &style, &renderer }, CSSPrimitiveValue::CSS_VW, 100.0));
 }
 
-static float computeLength(CSSValue* value, const RenderStyle& style, RenderView* view)
+static float computeLength(CSSValue& value, const RenderStyle& style, RenderView& renderer)
 {
-    CSSToLengthConversionData conversionData(&style, &style, view);
+    CSSToLengthConversionData conversionData(&style, &style, &renderer);
     if (is<CSSPrimitiveValue>(value)) {
-        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
+        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(value);
         if (!primitiveValue.isLength())
-            return defaultLength(style, view);
+            return defaultLength(style, renderer);
+
+        // Because we evaluate "sizes" at parse time (before style has been resolved), the font metrics used for these specific units
+        // are not available. The font selector's internal consistency isn't guaranteed just yet, so we can just temporarily clear
+        // the pointer to it for the duration of the unit evaluation. This is acceptible because the style always comes from the
+        // RenderView, which has its font information hardcoded in resolveForDocument() to be -webkit-standard, whose operations
+        // don't require a font selector.
+        if (!primitiveValue.isCalculated() && (primitiveValue.primitiveType() == CSSPrimitiveValue::CSS_EXS || primitiveValue.primitiveType() == CSSPrimitiveValue::CSS_CHS)) {
+            RefPtr<FontSelector> fontSelector = style.fontCascade().fontSelector();
+            style.fontCascade().update(nullptr);
+            float result = primitiveValue.computeLength<float>(conversionData);
+            style.fontCascade().update(fontSelector.get());
+            return result;
+        }
+
         return primitiveValue.computeLength<float>(conversionData);
     }
     if (is<CSSCalcValue>(value))
-        return downcast<CSSCalcValue>(*value).computeLengthPx(conversionData);
-    return defaultLength(style, view);
+        return downcast<CSSCalcValue>(value).computeLengthPx(conversionData);
+    return defaultLength(style, renderer);
 }
 
-float parseSizesAttribute(StringView sizesAttribute, RenderView* view, Frame* frame)
+float parseSizesAttribute(Document& document, StringView sizesAttribute)
 {
-    if (!view)
+    auto* renderer = document.renderView();
+    if (!renderer)
         return 0;
-    auto& style = view->style();
+    auto& style = renderer->style();
     for (auto& sourceSize : CSSParser(CSSStrictMode).parseSizesAttribute(sizesAttribute)) {
-        if (match(WTFMove(sourceSize.expression), style, frame))
-            return computeLength(sourceSize.length.get(), style, view);
+        if (match(sourceSize.expression, style, document))
+            return computeLength(sourceSize.length.get(), style, *renderer);
     }
-    return defaultLength(style, view);
+    return defaultLength(style, *renderer);
 }
 
 } // namespace WebCore

@@ -160,7 +160,7 @@ void PluginView::Stream::start()
     Frame* frame = m_pluginView->m_pluginElement->document().frame();
     ASSERT(frame);
 
-    m_loader = WebProcess::singleton().webLoaderStrategy().schedulePluginStreamLoad(frame, this, m_request);
+    m_loader = WebProcess::singleton().webLoaderStrategy().schedulePluginStreamLoad(*frame, *this, m_request);
 }
 
 void PluginView::Stream::cancel()
@@ -1363,12 +1363,13 @@ void PluginView::invalidateRect(const IntRect& dirtyRect)
     if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting)
         return;
 
-    RenderBoxModelObject* renderer = downcast<RenderBoxModelObject>(m_pluginElement->renderer());
-    if (!renderer)
+    auto* renderer = m_pluginElement->renderer();
+    if (!is<RenderEmbeddedObject>(renderer))
         return;
+    auto& object = downcast<RenderEmbeddedObject>(*renderer);
 
     IntRect contentRect(dirtyRect);
-    contentRect.move(renderer->borderLeft() + renderer->paddingLeft(), renderer->borderTop() + renderer->paddingTop());
+    contentRect.move(object.borderLeft() + object.paddingLeft(), object.borderTop() + object.paddingTop());
     renderer->repaintRectangle(contentRect);
 }
 
@@ -1564,13 +1565,14 @@ void PluginView::pluginProcessCrashed()
 {
     m_pluginProcessHasCrashed = true;
 
-    if (!is<RenderEmbeddedObject>(m_pluginElement->renderer()))
+    auto* renderer = m_pluginElement->renderer();
+    if (!is<RenderEmbeddedObject>(renderer))
         return;
 
     m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
 
-    downcast<RenderEmbeddedObject>(*m_pluginElement->renderer()).setPluginUnavailabilityReason(RenderEmbeddedObject::PluginCrashed);
-    
+    downcast<RenderEmbeddedObject>(*renderer).setPluginUnavailabilityReason(RenderEmbeddedObject::PluginCrashed);
+
     Widget::invalidate();
 }
 
@@ -1679,8 +1681,7 @@ void PluginView::unprotectPluginFromDestruction()
     // the destroyed object higher on the stack. To prevent this, if the plug-in has
     // only one remaining reference, call deref() asynchronously.
     if (hasOneRef()) {
-        RunLoop::main().dispatch([this] {
-            deref();
+        RunLoop::main().dispatch([lastRef = adoptRef(*this)] {
         });
         return;
     }

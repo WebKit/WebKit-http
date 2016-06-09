@@ -122,6 +122,7 @@ public:
     virtual void destroyDecodedData(bool destroyAll = true) = 0;
 
     SharedBuffer* data() { return m_encodedImageData.get(); }
+    const SharedBuffer* data() const { return m_encodedImageData.get(); }
 
     // Animation begins whenever someone draws the image, so startAnimation() is not normally called.
     // It will automatically pause once all observers no longer want to render the image anywhere.
@@ -194,8 +195,7 @@ protected:
     void drawTiled(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const FloatSize& tileScaleFactor, TileRule hRule, TileRule vRule, CompositeOperator);
 
     // Supporting tiled drawing
-    virtual bool mayFillWithSolidColor() { return false; }
-    virtual Color solidColor() const { return Color(); }
+    virtual Color singlePixelSolidColor() { return Color(); }
     
 private:
     RefPtr<SharedBuffer> m_encodedImageData;

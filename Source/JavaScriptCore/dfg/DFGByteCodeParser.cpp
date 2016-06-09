@@ -196,6 +196,7 @@ private:
     Terminality handleVarargsCall(Instruction* pc, NodeType op, CallMode);
     void emitFunctionChecks(CallVariant, Node* callTarget, VirtualRegister thisArgumnt);
     void emitArgumentPhantoms(int registerOffset, int argumentCountIncludingThis);
+    Node* getArgumentCount();
     unsigned inliningCost(CallVariant, int argumentCountIncludingThis, CallMode); // Return UINT_MAX if it's not an inlining candidate. By convention, intrinsics have a cost of 1.
     // Handle inlining. Return true if it succeeded, false if we need to plant a call.
     bool handleInlining(Node* callTargetNode, int resultOperand, const CallLinkStatus&, int registerOffset, VirtualRegister thisArgument, VirtualRegister argumentsArgument, unsigned argumentsOffset, int argumentCountIncludingThis, unsigned nextOffset, NodeType callOp, InlineCallFrame::Kind, SpeculatedType prediction);
@@ -1320,6 +1321,19 @@ void ByteCodeParser::emitFunctionChecks(CallVariant callee, Node* callTarget, Vi
     
     ASSERT(calleeCell);
     addToGraph(CheckCell, OpInfo(m_graph.freeze(calleeCell)), callTargetForCheck, thisArgument);
+}
+
+Node* ByteCodeParser::getArgumentCount()
+{
+    Node* argumentCount;
+    if (m_inlineStackTop->m_inlineCallFrame) {
+        if (m_inlineStackTop->m_inlineCallFrame->isVarargs())
+            argumentCount = get(VirtualRegister(JSStack::ArgumentCount));
+        else
+            argumentCount = jsConstant(m_graph.freeze(jsNumber(m_inlineStackTop->m_inlineCallFrame->arguments.size()))->value());
+    } else
+        argumentCount = addToGraph(GetArgumentCountIncludingThis, OpInfo(0), OpInfo(SpecInt32Only));
+    return argumentCount;
 }
 
 void ByteCodeParser::emitArgumentPhantoms(int registerOffset, int argumentCountIncludingThis)
@@ -4082,6 +4096,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
         case op_get_by_id:
         case op_get_by_id_proto_load:
+        case op_get_by_id_unset:
         case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
             
@@ -4885,7 +4900,14 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand), result);
             NEXT_OPCODE(op_get_scope);
         }
-            
+
+        case op_argument_count: {
+            Node* sub = addToGraph(ArithSub, OpInfo(Arith::Unchecked), OpInfo(SpecInt32Only), getArgumentCount(), addToGraph(JSConstant, OpInfo(m_constantOne)));
+
+            set(VirtualRegister(currentInstruction[1].u.operand), sub);
+            NEXT_OPCODE(op_argument_count);
+        }
+
         case op_create_direct_arguments: {
             noticeArgumentsUse();
             Node* createArguments = addToGraph(CreateDirectArguments);
@@ -4937,21 +4959,14 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_new_func_exp:
-        case op_new_generator_func_exp:
-        case op_new_arrow_func_exp: {
+        case op_new_generator_func_exp: {
             FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(expr);
             NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction : NewFunction;
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
             
-            if (opcodeID == op_new_func_exp || opcodeID == op_new_generator_func_exp) {
-                // Curly braces are necessary
-                static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
-                NEXT_OPCODE(op_new_func_exp);
-            } else {
-                // Curly braces are necessary
-                NEXT_OPCODE(op_new_arrow_func_exp);
-            }
+            static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
+            NEXT_OPCODE(op_new_func_exp);
         }
 
         case op_set_function_name: {

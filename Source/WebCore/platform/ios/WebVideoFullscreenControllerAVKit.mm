@@ -41,7 +41,7 @@
 #import <QuartzCore/CoreAnimation.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLVideoElement.h>
-#import <WebCore/RenderElement.h>
+#import <WebCore/RenderVideo.h>
 #import <WebCore/WebCoreThreadRun.h>
 
 SOFT_LINK_FRAMEWORK(UIKit)
@@ -81,10 +81,13 @@ using namespace WebCore;
 
 static IntRect elementRectInWindow(HTMLVideoElement* videoElement)
 {
-    if (!videoElement || !videoElement->renderer() || !videoElement->document().view())
-        return IntRect();
-    
-    return videoElement->document().view()->convertToContainingWindow(videoElement->renderer()->absoluteBoundingBoxRect());
+    if (!videoElement)
+        return { };
+    auto* renderer = videoElement->renderer();
+    auto* view = videoElement->document().view();
+    if (!renderer || !view)
+        return { };
+    return view->convertToContainingWindow(renderer->absoluteBoundingBoxRect());
 }
 
 class WebVideoFullscreenControllerContext;
@@ -247,9 +250,10 @@ void WebVideoFullscreenControllerContext::didSetupFullscreen()
     RetainPtr<CALayer> videoFullscreenLayer = [m_videoFullscreenView layer];
     WebThreadRun([protectedThis, this, videoFullscreenLayer] {
         [videoFullscreenLayer setBackgroundColor:cachedCGColor(WebCore::Color::transparent)];
-        m_model->setVideoFullscreenLayer(videoFullscreenLayer.get());
-        dispatch_async(dispatch_get_main_queue(), [protectedThis, this] {
-            m_interface->enterFullscreen();
+        m_model->setVideoFullscreenLayer(videoFullscreenLayer.get(), [protectedThis, this] {
+            dispatch_async(dispatch_get_main_queue(), [protectedThis, this] {
+                m_interface->enterFullscreen();
+            });
         });
     });
 }
@@ -259,9 +263,10 @@ void WebVideoFullscreenControllerContext::didExitFullscreen()
     ASSERT(isUIThread());
     RefPtr<WebVideoFullscreenControllerContext> protectedThis(this);
     WebThreadRun([protectedThis, this] {
-        m_model->setVideoFullscreenLayer(nil);
-        dispatch_async(dispatch_get_main_queue(), [protectedThis, this] {
-            m_interface->cleanupFullscreen();
+        m_model->setVideoFullscreenLayer(nil, [protectedThis, this] {
+            dispatch_async(dispatch_get_main_queue(), [protectedThis, this] {
+                m_interface->cleanupFullscreen();
+            });
         });
     });
 }
@@ -429,11 +434,9 @@ void WebVideoFullscreenControllerContext::setLegibleMediaSelectionOptions(const 
 void WebVideoFullscreenControllerContext::setExternalPlayback(bool enabled, ExternalPlaybackTargetType type, String localizedDeviceName)
 {
     ASSERT(WebThreadIsCurrent());
-    RefPtr<WebVideoFullscreenControllerContext> protectedThis(this);
-    StringCapture capturedLocalizedDeviceName(localizedDeviceName);
-    dispatch_async(dispatch_get_main_queue(), [protectedThis, this, enabled, type, capturedLocalizedDeviceName] {
+    callOnMainThread([protectedThis = Ref<WebVideoFullscreenControllerContext>(*this), this, enabled, type, localizedDeviceName = localizedDeviceName.isolatedCopy()] {
         if (m_interface)
-            m_interface->setExternalPlayback(enabled, type, capturedLocalizedDeviceName.string());
+            m_interface->setExternalPlayback(enabled, type, localizedDeviceName);
     });
 }
 

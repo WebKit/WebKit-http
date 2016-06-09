@@ -76,6 +76,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirCCallingConvention.cpp
     b3/air/AirCode.cpp
     b3/air/AirCustom.cpp
+    b3/air/AirDumpAsJS.cpp
     b3/air/AirEliminateDeadCode.cpp
     b3/air/AirEmitShuffle.cpp
     b3/air/AirFixObviousSpills.cpp
@@ -744,6 +745,7 @@ set(JavaScriptCore_SOURCES
     runtime/MapConstructor.cpp
     runtime/MapIteratorPrototype.cpp
     runtime/MapPrototype.cpp
+    runtime/MatchResult.cpp
     runtime/MathCommon.cpp
     runtime/MathObject.cpp
     runtime/MemoryStatistics.cpp
@@ -840,6 +842,9 @@ set(JavaScriptCore_SOURCES
     yarr/YarrPattern.cpp
     yarr/YarrSyntaxChecker.cpp
 )
+
+# Extra flags for compile sources can go here.
+set_source_files_properties(runtime/ProxyObject.cpp PROPERTIES COMPILE_FLAGS -fno-optimize-sibling-calls)
 
 set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/ArrayConstructor.cpp

@@ -89,13 +89,13 @@ void reportMemoryForDocumentIfFrameless(ExecState& state, Document& document)
     if (document.frame())
         return;
 
-    size_t nodeCount = 0;
+    size_t memoryCost = 0;
     for (Node* node = &document; node; node = NodeTraversal::next(*node))
-        ++nodeCount;
+        memoryCost += node->approximateMemoryCost();
 
     // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
     // https://bugs.webkit.org/show_bug.cgi?id=142595
-    state.heap()->deprecatedReportExtraMemory(nodeCount * sizeof(Node));
+    state.heap()->deprecatedReportExtraMemory(memoryCost);
 }
 
 JSValue toJSNewlyCreated(ExecState* state, JSDOMGlobalObject* globalObject, Ref<Document>&& document)
@@ -133,10 +133,14 @@ JSValue JSDocument::createTouchList(ExecState& state)
 {
     auto touchList = TouchList::create();
 
-    for (size_t i = 0; i < state.argumentCount(); i++)
-        touchList->append(JSTouch::toWrapped(state.argument(i)));
+    for (size_t i = 0; i < state.argumentCount(); ++i) {
+        auto* item = JSTouch::toWrapped(state.uncheckedArgument(i));
+        if (!item)
+            return JSValue::decode(throwArgumentTypeError(state, i, "touches", "Document", "createTouchList", "Touch"));
 
-    return toJS(&state, globalObject(), touchList);
+        touchList->append(*item);
+    }
+    return toJSNewlyCreated(&state, globalObject(), WTFMove(touchList));
 }
 #endif
 
@@ -158,14 +162,14 @@ JSValue JSDocument::defineElement(ExecState& state)
         return jsUndefined();
     }
 
-    switch (CustomElementDefinitions::checkName(tagName)) {
-    case CustomElementDefinitions::NameStatus::Valid:
+    switch (Document::validateCustomElementName(tagName)) {
+    case CustomElementNameValidationStatus::Valid:
         break;
-    case CustomElementDefinitions::NameStatus::ConflictsWithBuiltinNames:
+    case CustomElementNameValidationStatus::ConflictsWithBuiltinNames:
         return throwSyntaxError(&state, "Custom element name cannot be same as one of the builtin elements");
-    case CustomElementDefinitions::NameStatus::NoHyphen:
+    case CustomElementNameValidationStatus::NoHyphen:
         return throwSyntaxError(&state, "Custom element name must contain a hyphen");
-    case CustomElementDefinitions::NameStatus::ContainsUpperCase:
+    case CustomElementNameValidationStatus::ContainsUpperCase:
         return throwSyntaxError(&state, "Custom element name cannot contain an upper case letter");
     }
 

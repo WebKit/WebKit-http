@@ -59,6 +59,7 @@
 #include "FormController.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
+#include "GCObservation.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
@@ -1732,6 +1733,15 @@ unsigned Internals::countMatchesForText(const String& text, unsigned findOptions
     return document->frame()->editor().countMatchesForText(text, nullptr, findOptions, 1000, mark, nullptr);
 }
 
+unsigned Internals::countFindMatches(const String& text, unsigned findOptions, ExceptionCode&)
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return 0;
+
+    return document->page()->countFindMatches(text, findOptions, 1000);
+}
+
 unsigned Internals::numberOfLiveNodes() const
 {
     unsigned nodeCount = 0;
@@ -3321,4 +3331,12 @@ bool Internals::isProcessingUserGesture()
     return UserGestureIndicator::processingUserGesture();
 }
 
+RefPtr<GCObservation> Internals::observeGC(JSC::JSValue value)
+{
+    if (!value || value.isNull() || value.isUndefined() || !value.getObject())
+        return nullptr;
+
+    return GCObservation::create(value.getObject());
 }
+
+} // namespace WebCore

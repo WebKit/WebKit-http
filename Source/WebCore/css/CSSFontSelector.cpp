@@ -71,10 +71,6 @@ CSSFontSelector::CSSFontSelector(Document& document)
     , m_uniqueId(++fontSelectorId)
     , m_version(0)
 {
-    // FIXME: An old comment used to say there was no need to hold a reference to m_document
-    // because "we are guaranteed to be destroyed before the document". But there does not
-    // seem to be any such guarantee.
-
     ASSERT(m_document);
     FontCache::singleton().addClient(*this);
     m_cssFontFaceSet->addClient(*this);
@@ -102,8 +98,33 @@ bool CSSFontSelector::isEmpty() const
     return !m_cssFontFaceSet->faceCount();
 }
 
+void CSSFontSelector::buildStarted()
+{
+    m_buildIsUnderway = true;
+    ++m_version;
+}
+
+void CSSFontSelector::buildCompleted()
+{
+    if (!m_buildIsUnderway)
+        return;
+
+    m_buildIsUnderway = false;
+
+    m_cssFontFaceSet->clear();
+
+    for (auto& item : m_stagingArea)
+        addFontFaceRule(item.styleRuleFontFace, item.isInitiatingElementInUserAgentShadowTree);
+    m_stagingArea.clear();
+}
+
 void CSSFontSelector::addFontFaceRule(StyleRuleFontFace& fontFaceRule, bool isInitiatingElementInUserAgentShadowTree)
 {
+    if (m_buildIsUnderway) {
+        m_stagingArea.append({fontFaceRule, isInitiatingElementInUserAgentShadowTree});
+        return;
+    }
+
     const StyleProperties& style = fontFaceRule.properties();
     RefPtr<CSSValue> fontFamily = style.getPropertyCSSValue(CSSPropertyFontFamily);
     RefPtr<CSSValue> fontStyle = style.getPropertyCSSValue(CSSPropertyFontStyle);
@@ -235,6 +256,8 @@ static const AtomicString& resolveGenericFamily(Document* document, const FontDe
 
 FontRanges CSSFontSelector::fontRangesForFamily(const FontDescription& fontDescription, const AtomicString& familyName)
 {
+    ASSERT(!m_buildIsUnderway); // If this ASSERT() fires, it usually means you forgot a document.updateStyleIfNeeded() somewhere.
+
     // FIXME: The spec (and Firefox) says user specified generic families (sans-serif etc.) should be resolved before the @font-face lookup too.
     bool resolveGenericFamilyFirst = familyName == standardFamily;
 
@@ -262,23 +285,22 @@ void CSSFontSelector::clearDocument()
     CachedResourceLoader& cachedResourceLoader = m_document->cachedResourceLoader();
     for (auto& fontHandle : m_fontsToBeginLoading) {
         // Balances incrementRequestCount() in beginLoadingFontSoon().
-        cachedResourceLoader.decrementRequestCount(fontHandle.get());
+        cachedResourceLoader.decrementRequestCount(*fontHandle);
     }
     m_fontsToBeginLoading.clear();
 
     m_document = nullptr;
 
-    // FIXME: This object should outlive the Document.
     m_cssFontFaceSet->clear();
     m_clients.clear();
 }
 
-void CSSFontSelector::beginLoadingFontSoon(CachedFont* font)
+void CSSFontSelector::beginLoadingFontSoon(CachedFont& font)
 {
     if (!m_document)
         return;
 
-    m_fontsToBeginLoading.append(font);
+    m_fontsToBeginLoading.append(&font);
     // Increment the request count now, in order to prevent didFinishLoad from being dispatched
     // after this font has been requested but before it began loading. Balanced by
     // decrementRequestCount() in beginLoadTimerFired() and in clearDocument().
@@ -298,7 +320,7 @@ void CSSFontSelector::beginLoadTimerFired()
     for (auto& fontHandle : fontsToBeginLoading) {
         fontHandle->beginLoadIfNeeded(cachedResourceLoader);
         // Balances incrementRequestCount() in beginLoadingFontSoon().
-        cachedResourceLoader.decrementRequestCount(fontHandle.get());
+        cachedResourceLoader.decrementRequestCount(*fontHandle);
     }
     // Ensure that if the request count reaches zero, the frame loader will know about it.
     cachedResourceLoader.loadDone(nullptr);

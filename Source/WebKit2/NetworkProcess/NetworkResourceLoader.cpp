@@ -331,7 +331,7 @@ auto NetworkResourceLoader::didReceiveResponse(const ResourceResponse& receivedR
     return ShouldContinueDidReceiveResponse::No;
 }
 
-void NetworkResourceLoader::didReceiveBuffer(RefPtr<SharedBuffer>&& buffer, int reportedEncodedDataLength)
+void NetworkResourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedEncodedDataLength)
 {
 #if ENABLE(NETWORK_CACHE)
     ASSERT(!m_cacheEntryForValidation);
@@ -355,7 +355,7 @@ void NetworkResourceLoader::didReceiveBuffer(RefPtr<SharedBuffer>&& buffer, int 
         startBufferingTimerIfNeeded();
         return;
     }
-    sendBufferMaybeAborting(*buffer, encodedDataLength);
+    sendBufferMaybeAborting(buffer, encodedDataLength);
 }
 
 void NetworkResourceLoader::didFinishLoading(double finishTime)
@@ -410,7 +410,7 @@ void NetworkResourceLoader::didFailLoading(const ResourceError& error)
     cleanup();
 }
 
-void NetworkResourceLoader::willSendRedirectedRequest(const ResourceRequest& request, const WebCore::ResourceRequest& redirectRequest, const ResourceResponse& redirectResponse)
+void NetworkResourceLoader::willSendRedirectedRequest(ResourceRequest&& request, WebCore::ResourceRequest&& redirectRequest, ResourceResponse&& redirectResponse)
 {
     ++m_redirectCount;
 
@@ -424,7 +424,7 @@ void NetworkResourceLoader::willSendRedirectedRequest(const ResourceRequest& req
             m_networkLoad->clearCurrentRequest();
             overridenRequest = ResourceRequest();
         }
-        continueWillSendRequest(overridenRequest);
+        continueWillSendRequest(WTFMove(overridenRequest));
         return;
     }
     sendAbortingOnFailure(Messages::WebResourceLoader::WillSendRequest(redirectRequest, redirectResponse));
@@ -437,7 +437,7 @@ void NetworkResourceLoader::willSendRedirectedRequest(const ResourceRequest& req
 #endif
 }
 
-void NetworkResourceLoader::continueWillSendRequest(const ResourceRequest& newRequest)
+void NetworkResourceLoader::continueWillSendRequest(ResourceRequest&& newRequest)
 {
     NETWORKRESOURCELOADER_LOG_ALWAYS("Following redirect of network resource: loader = %p, pageID = %llu, frameID = %llu, isMainResource = %d, isSynchronous = %d", this, static_cast<unsigned long long>(m_parameters.webPageID), static_cast<unsigned long long>(m_parameters.webFrameID), isMainResource(), isSynchronous());
 
@@ -454,7 +454,9 @@ void NetworkResourceLoader::continueWillSendRequest(const ResourceRequest& newRe
         return;
     }
 #endif
-    m_networkLoad->continueWillSendRequest(newRequest);
+
+    if (m_networkLoad)
+        m_networkLoad->continueWillSendRequest(WTFMove(newRequest));
 }
 
 void NetworkResourceLoader::continueDidReceiveResponse()
@@ -642,7 +644,8 @@ void NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceAsync(const Pro
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 void NetworkResourceLoader::continueCanAuthenticateAgainstProtectionSpace(bool result)
 {
-    m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(result);
+    if (m_networkLoad)
+        m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(result);
 }
 #endif
 

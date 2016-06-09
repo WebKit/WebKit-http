@@ -270,19 +270,19 @@ StyleResolver::StyleResolver(Document& document)
     // is always from the document that owns the style selector
     FrameView* view = m_document.view();
     if (view)
-        m_medium = std::make_unique<MediaQueryEvaluator>(view->mediaType());
+        m_mediaQueryEvaluator = MediaQueryEvaluator { view->mediaType() };
     else
-        m_medium = std::make_unique<MediaQueryEvaluator>("all");
+        m_mediaQueryEvaluator = MediaQueryEvaluator { "all" };
 
     if (root)
         m_rootDefaultStyle = styleForElement(*root, m_document.renderStyle(), MatchOnlyUserAgentRules).renderStyle;
 
     if (m_rootDefaultStyle && view)
-        m_medium = std::make_unique<MediaQueryEvaluator>(view->mediaType(), &view->frame(), m_rootDefaultStyle.get());
+        m_mediaQueryEvaluator = MediaQueryEvaluator { view->mediaType(), m_document, m_rootDefaultStyle.get() };
 
     m_ruleSets.resetAuthorStyle();
 
-    m_ruleSets.initUserStyle(m_document.extensionStyleSheets(), *m_medium, *this);
+    m_ruleSets.initUserStyle(m_document.extensionStyleSheets(), m_mediaQueryEvaluator, *this);
 
 #if ENABLE(SVG_FONTS)
     if (m_document.svgExtensions()) {
@@ -295,7 +295,10 @@ StyleResolver::StyleResolver(Document& document)
 
 void StyleResolver::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& styleSheets)
 {
-    m_ruleSets.appendAuthorStyleSheets(styleSheets, m_medium.get(), m_inspectorCSSOMWrappers, this);
+    m_ruleSets.appendAuthorStyleSheets(styleSheets, &m_mediaQueryEvaluator, m_inspectorCSSOMWrappers, this);
+
+    document().fontSelector().buildCompleted();
+
     if (auto renderView = document().renderView())
         renderView->style().fontCascade().update(&document().fontSelector());
 
@@ -419,7 +422,7 @@ ElementStyle StyleResolver::styleForElement(const Element& element, const Render
 
     ElementRuleCollector collector(element, m_ruleSets, m_state.selectorFilter());
     collector.setRegionForStyling(regionForStyling);
-    collector.setMedium(m_medium.get());
+    collector.setMedium(&m_mediaQueryEvaluator);
 
     if (matchingBehavior == MatchOnlyUserAgentRules)
         collector.matchUARules();
@@ -510,7 +513,7 @@ void StyleResolver::keyframeStylesForAnimation(const Element& element, const Ren
 {
     list.clear();
 
-    // Get the keyframesRule for this name
+    // Get the keyframesRule for this name.
     if (list.animationName().isEmpty())
         return;
 
@@ -522,13 +525,54 @@ void StyleResolver::keyframeStylesForAnimation(const Element& element, const Ren
 
     const StyleRuleKeyframes* keyframesRule = it->value.get();
 
-    // Construct and populate the style for each keyframe
-    for (auto& keyframe : keyframesRule->keyframes()) {
-        // Apply the declaration to the style. This is a simplified version of the logic in styleForElement
+    auto* keyframes = &keyframesRule->keyframes();
+    Vector<Ref<StyleKeyframe>> newKeyframesIfNecessary;
+
+    bool hasDuplicateKeys;
+    HashSet<double> keyframeKeys;
+    for (auto& keyframe : *keyframes) {
+        for (auto key : keyframe->keys()) {
+            if (!keyframeKeys.add(key)) {
+                hasDuplicateKeys = true;
+                break;
+            }
+        }
+        if (hasDuplicateKeys)
+            break;
+    }
+
+    // FIXME: If HashMaps could have Ref<> as value types, we wouldn't need
+    // to copy the HashMap into a Vector.
+    if (hasDuplicateKeys) {
+        // Merge duplicate key times.
+        HashMap<double, RefPtr<StyleKeyframe>> keyframesMap;
+
+        for (auto& originalKeyframe : keyframesRule->keyframes()) {
+            for (auto key : originalKeyframe->keys()) {
+                if (auto keyframe = keyframesMap.get(key))
+                    keyframe->mutableProperties().mergeAndOverrideOnConflict(originalKeyframe->properties());
+                else {
+                    auto styleKeyframe = StyleKeyframe::create(MutableStyleProperties::create());
+                    styleKeyframe.ptr()->setKey(key);
+                    styleKeyframe.ptr()->mutableProperties().mergeAndOverrideOnConflict(originalKeyframe->properties());
+                    keyframesMap.set(key, styleKeyframe.ptr());
+                }
+            }
+        }
+
+        for (auto& keyframe : keyframesMap.values())
+            newKeyframesIfNecessary.append(*keyframe.get());
+
+        keyframes = &newKeyframesIfNecessary;
+    }
+
+    // Construct and populate the style for each keyframe.
+    for (auto& keyframe : *keyframes) {
+        // Apply the declaration to the style. This is a simplified version of the logic in styleForElement.
         m_state = State(element, nullptr);
 
         // Add this keyframe style to all the indicated key times
-        for (auto& key : keyframe->keys()) {
+        for (auto key : keyframe->keys()) {
             KeyframeValue keyframeValue(0, nullptr);
             keyframeValue.setStyle(styleForKeyframe(elementStyle, keyframe.ptr(), keyframeValue));
             keyframeValue.setKey(key);
@@ -536,25 +580,25 @@ void StyleResolver::keyframeStylesForAnimation(const Element& element, const Ren
         }
     }
 
-    // If the 0% keyframe is missing, create it (but only if there is at least one other keyframe)
+    // If the 0% keyframe is missing, create it (but only if there is at least one other keyframe).
     int initialListSize = list.size();
     if (initialListSize > 0 && list[0].key()) {
         static StyleKeyframe* zeroPercentKeyframe;
         if (!zeroPercentKeyframe) {
             zeroPercentKeyframe = &StyleKeyframe::create(MutableStyleProperties::create()).leakRef();
-            zeroPercentKeyframe->setKeyText("0%");
+            zeroPercentKeyframe->setKey(0);
         }
         KeyframeValue keyframeValue(0, nullptr);
         keyframeValue.setStyle(styleForKeyframe(elementStyle, zeroPercentKeyframe, keyframeValue));
         list.insert(WTFMove(keyframeValue));
     }
 
-    // If the 100% keyframe is missing, create it (but only if there is at least one other keyframe)
+    // If the 100% keyframe is missing, create it (but only if there is at least one other keyframe).
     if (initialListSize > 0 && (list[list.size() - 1].key() != 1)) {
         static StyleKeyframe* hundredPercentKeyframe;
         if (!hundredPercentKeyframe) {
             hundredPercentKeyframe = &StyleKeyframe::create(MutableStyleProperties::create()).leakRef();
-            hundredPercentKeyframe->setKeyText("100%");
+            hundredPercentKeyframe->setKey(1);
         }
         KeyframeValue keyframeValue(1, nullptr);
         keyframeValue.setStyle(styleForKeyframe(elementStyle, hundredPercentKeyframe, keyframeValue));
@@ -582,7 +626,7 @@ std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element&
     // Check UA, user and author rules.
     ElementRuleCollector collector(element, m_ruleSets, m_state.selectorFilter());
     collector.setPseudoStyleRequest(pseudoStyleRequest);
-    collector.setMedium(m_medium.get());
+    collector.setMedium(&m_mediaQueryEvaluator);
     collector.matchUARules();
 
     if (m_matchAuthorAndUserStyles) {
@@ -1009,11 +1053,6 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         if ((element->hasTagName(SVGNames::foreignObjectTag) || element->hasTagName(SVGNames::textTag)) && style.isDisplayInlineType())
             style.setDisplay(BLOCK);
     }
-
-    // If the inherited value of justify-items includes the legacy keyword, 'auto'
-    // computes to the the inherited value.
-    if (parentStyle.justifyItemsPositionType() == LegacyPosition && style.justifyItemsPosition() == ItemPositionAuto)
-        style.setJustifyItems(parentStyle.justifyItems());
 }
 
 bool StyleResolver::checkRegionStyle(const Element* regionElement)
@@ -1086,7 +1125,7 @@ Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(const Elemen
     ElementRuleCollector collector(*element, m_ruleSets, m_state.selectorFilter());
     collector.setMode(SelectorChecker::Mode::CollectingRules);
     collector.setPseudoStyleRequest(PseudoStyleRequest(pseudoId));
-    collector.setMedium(m_medium.get());
+    collector.setMedium(&m_mediaQueryEvaluator);
 
     if (rulesToInclude & UAAndUserCSSRules) {
         // First we match rules from the user agent sheet.
@@ -1878,16 +1917,15 @@ Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, boo
     }
 }
 
-void StyleResolver::addViewportDependentMediaQueryResult(const MediaQueryExp* expr, bool result)
+void StyleResolver::addViewportDependentMediaQueryResult(const MediaQueryExpression& expression, bool result)
 {
-    m_viewportDependentMediaQueryResults.append(std::make_unique<MediaQueryResult>(*expr, result));
+    m_viewportDependentMediaQueryResults.append(MediaQueryResult { expression, result });
 }
 
 bool StyleResolver::hasMediaQueriesAffectedByViewportChange() const
 {
-    unsigned s = m_viewportDependentMediaQueryResults.size();
-    for (unsigned i = 0; i < s; i++) {
-        if (m_medium->eval(&m_viewportDependentMediaQueryResults[i]->m_expression) != m_viewportDependentMediaQueryResults[i]->m_result)
+    for (auto& result : m_viewportDependentMediaQueryResults) {
+        if (m_mediaQueryEvaluator.evaluate(result.expression) != result.result)
             return true;
     }
     return false;

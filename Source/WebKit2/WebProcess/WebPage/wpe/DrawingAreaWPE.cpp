@@ -148,7 +148,7 @@ void DrawingAreaWPE::didUpdate()
 void DrawingAreaWPE::enterAcceleratedCompositingMode(GraphicsLayer* graphicsLayer)
 {
     ASSERT(!m_layerTreeHost);
-    m_layerTreeHost = LayerTreeHost::create(&m_webPage);
+    m_layerTreeHost = LayerTreeHost::create(m_webPage);
     m_layerTreeHost->setRootCompositingLayer(graphicsLayer);
     m_layerTreeHost->setShouldNotifyAfterNextScheduledLayerFlush(true);
     m_layerTreeHost->viewportSizeChanged(m_webPage.size());

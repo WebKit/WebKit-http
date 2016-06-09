@@ -59,7 +59,7 @@ class WebPage;
 
 class LayerTreeHost : public RefCounted<LayerTreeHost> {
 public:
-    static PassRefPtr<LayerTreeHost> create(WebPage*);
+    static RefPtr<LayerTreeHost> create(WebPage&);
     virtual ~LayerTreeHost();
 
     virtual const LayerTreeContext& layerTreeContext() = 0;
@@ -101,15 +101,15 @@ public:
 #endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) { return nullptr; }
+    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) { return nullptr; }
 #endif
 
     virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) = 0;
 
 protected:
-    explicit LayerTreeHost(WebPage*);
+    explicit LayerTreeHost(WebPage&);
 
-    WebPage* m_webPage;
+    WebPage& m_webPage;
 };
 
 } // namespace WebKit

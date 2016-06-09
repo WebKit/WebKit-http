@@ -586,10 +586,20 @@ static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc,
     CodeBlock* codeBlock = exec->codeBlock();
     Structure* structure = baseCell->structure();
 
-    if (structure->typeInfo().prohibitsPropertyCaching() || structure->isDictionary())
+    if (structure->typeInfo().prohibitsPropertyCaching())
         return;
 
-    ObjectPropertyConditionSet conditions = generateConditionsForPrototypePropertyHit(vm, codeBlock, exec, structure, slot.slotBase(), ident.impl());
+    if (structure->isDictionary()) {
+        if (structure->hasBeenFlattenedBefore())
+            return;
+        structure->flattenDictionaryStructure(vm, jsCast<JSObject*>(baseCell));
+    }
+
+    ObjectPropertyConditionSet conditions;
+    if (slot.isUnset())
+        conditions = generateConditionsForPropertyMiss(vm, codeBlock, exec, structure, ident.impl());
+    else
+        conditions = generateConditionsForPrototypePropertyHit(vm, codeBlock, exec, structure, slot.slotBase(), ident.impl());
 
     if (!conditions.isValid())
         return;
@@ -604,16 +614,22 @@ static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc,
             offset = condition.condition().offset();
         result.iterator->value.add(condition, pc)->install();
     }
-    ASSERT(offset != invalidOffset);
+    ASSERT((offset == invalidOffset) == slot.isUnset());
 
     ConcurrentJITLocker locker(codeBlock->m_lock);
+
+    if (slot.isUnset()) {
+        pc[0].u.opcode = LLInt::getOpcode(op_get_by_id_unset);
+        pc[4].u.structureID = structure->id();
+        return;
+    }
+    ASSERT(slot.isValue());
 
     pc[0].u.opcode = LLInt::getOpcode(op_get_by_id_proto_load);
     pc[4].u.structureID = structure->id();
     pc[5].u.operand = offset;
-    // We know that this pointer will remain valid because it is the prototype of some structure, s,
-    // watchpointed above. If any object with structure s were to change prototypes then the conditions
-    // for this cache would fail and this value will never be used again.
+    // We know that this pointer will remain valid because it will be cleared by either a watchpoint fire or
+    // during GC when we clear the LLInt caches.
     pc[6].u.pointer = slot.slotBase();
 }
 
@@ -632,11 +648,11 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
     
     if (!LLINT_ALWAYS_ACCESS_SLOW
         && baseValue.isCell()
-        && slot.isCacheableValue()) {
+        && slot.isCacheable()) {
 
         JSCell* baseCell = baseValue.asCell();
         Structure* structure = baseCell->structure();
-        if (slot.slotBase() == baseValue) {
+        if (slot.isValue() && slot.slotBase() == baseValue) {
             // Start out by clearing out the old cache.
             pc[0].u.opcode = LLInt::getOpcode(op_get_by_id);
             pc[4].u.pointer = nullptr; // old structure
@@ -653,7 +669,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
                 pc[4].u.structureID = structure->id();
                 pc[5].u.operand = slot.cachedOffset();
             }
-        } else if (UNLIKELY(pc[7].u.operand)) {
+        } else if (UNLIKELY(pc[7].u.operand && (slot.isValue() || slot.isUnset()))) {
             ASSERT(slot.slotBase() != baseValue);
 
             if (!(--pc[7].u.operand))
@@ -1152,17 +1168,6 @@ LLINT_SLOW_PATH_DECL(slow_path_new_generator_func_exp)
     LLINT_RETURN(JSGeneratorFunction::create(vm, executable, scope));
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_new_arrow_func_exp)
-{
-    LLINT_BEGIN();
-    
-    CodeBlock* codeBlock = exec->codeBlock();
-    JSScope* scope = exec->uncheckedR(pc[2].u.operand).Register::scope();
-    FunctionExecutable* executable = codeBlock->functionExpr(pc[3].u.operand);
-    
-    LLINT_RETURN(JSFunction::create(vm, executable, scope));
-}
-
 LLINT_SLOW_PATH_DECL(slow_path_set_function_name)
 {
     LLINT_BEGIN();
@@ -1487,26 +1492,27 @@ LLINT_SLOW_PATH_DECL(slow_path_get_from_scope)
     // ModuleVar is always converted to ClosureVar for get_from_scope.
     ASSERT(getPutInfo.resolveType() != ModuleVar);
 
-    PropertySlot slot(scope, PropertySlot::InternalMethodType::Get);
-    if (!scope->getPropertySlot(exec, ident, slot)) {
-        if (getPutInfo.resolveMode() == ThrowIfNotFound)
-            LLINT_RETURN(exec->vm().throwException(exec, createUndefinedVariableError(exec, ident)));
-        LLINT_RETURN(jsUndefined());
-    }
+    LLINT_RETURN(scope->getPropertySlot(exec, ident, [&] (bool found, PropertySlot& slot) -> JSValue {
+        if (!found) {
+            if (getPutInfo.resolveMode() == ThrowIfNotFound)
+                return exec->vm().throwException(exec, createUndefinedVariableError(exec, ident));
+            return jsUndefined();
+        }
 
-    JSValue result = JSValue();
-    if (scope->isGlobalLexicalEnvironment()) {
-        // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
-        result = slot.getValue(exec, ident);
-        if (result == jsTDZValue())
-            LLINT_THROW(createTDZError(exec));
-    }
+        JSValue result = JSValue();
+        if (scope->isGlobalLexicalEnvironment()) {
+            // When we can't statically prove we need a TDZ check, we must perform the check on the slow path.
+            result = slot.getValue(exec, ident);
+            if (result == jsTDZValue())
+                return exec->vm().throwException(exec, createTDZError(exec));
+        }
 
-    CommonSlowPaths::tryCacheGetFromScopeGlobal(exec, vm, pc, scope, slot, ident);
+        CommonSlowPaths::tryCacheGetFromScopeGlobal(exec, vm, pc, scope, slot, ident);
 
-    if (!result)
-        result = slot.getValue(exec, ident);
-    LLINT_RETURN(result);
+        if (!result)
+            return slot.getValue(exec, ident);
+        return result;
+    }));
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)

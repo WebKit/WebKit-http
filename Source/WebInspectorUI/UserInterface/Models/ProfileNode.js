@@ -34,9 +34,9 @@ WebInspector.ProfileNode = class ProfileNode extends WebInspector.Object
         console.assert(id);
         console.assert(!calls || calls instanceof Array);
         console.assert(!calls || calls.length >= 1);
-        console.assert(!calls || calls.every(function(call) { return call instanceof WebInspector.ProfileNodeCall; }));
+        console.assert(!calls || calls.every((call) => call instanceof WebInspector.ProfileNodeCall));
         console.assert(childNodes instanceof Array);
-        console.assert(childNodes.every(function(node) { return node instanceof WebInspector.ProfileNode; }));
+        console.assert(childNodes.every((node) => node instanceof WebInspector.ProfileNode));
 
         this._id = id;
         this._type = type || WebInspector.ProfileNode.Type.Function;
@@ -158,6 +158,10 @@ WebInspector.ProfileNode = class ProfileNode extends WebInspector.Object
                 for (var childNode of this._childNodes)
                     childNodesTotalTime += childNode.totalTime;
                 this._selfTime = this._totalTime - childNodesTotalTime;
+                // selfTime can negative or very close to zero due to floating point error.
+                // Since we show at most four decimal places, treat anything less as zero.
+                if (this._selfTime < 0.0001)
+                    this._selfTime = 0.0;
             }
 
             return {

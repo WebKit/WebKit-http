@@ -43,7 +43,6 @@ public:
     static const bool hasStaticPropertyTable = true;
 
     static TestGlobalObject* toWrapped(JSC::JSValue);
-    static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     static void destroy(JSC::JSCell*);
 
     DECLARE_INFO;
@@ -55,7 +54,7 @@ public:
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
 public:
-    static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | Base::StructureFlags;
+    static const unsigned StructureFlags = JSC::HasStaticPropertyTable | Base::StructureFlags;
 protected:
     JSTestGlobalObject(JSC::Structure*, JSDOMGlobalObject&, Ref<TestGlobalObject>&&);
 
@@ -65,7 +64,7 @@ protected:
         ASSERT(inherits(info()));
     }
 
-    void finishCreation(JSC::VM&);
+    void finishCreation(JSC::VM&, JSC::JSProxy*);
 };
 
 class JSTestGlobalObjectOwner : public JSC::WeakHandleOwner {
@@ -111,10 +110,8 @@ private:
         : JSC::JSNonFinalObject(vm, structure)
     {
     }
-
-    static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
 public:
-    static const unsigned StructureFlags = JSC::OverridesGetOwnPropertySlot | Base::StructureFlags;
+    static const unsigned StructureFlags = JSC::HasStaticPropertyTable | Base::StructureFlags;
 };
 
 

@@ -36,6 +36,7 @@
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/NoncopyableFunction.h>
 #include <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -112,7 +113,7 @@ public:
 
     void ensurePrivateBrowsingSession(WebCore::SessionID);
 
-    void grantSandboxExtensionsToDatabaseProcessForBlobs(const Vector<String>& filenames, std::function<void ()> completionHandler);
+    void grantSandboxExtensionsToDatabaseProcessForBlobs(const Vector<String>& filenames, NoncopyableFunction<void ()>&& completionHandler);
 
 private:
     NetworkProcess();
@@ -171,7 +172,7 @@ private:
     void cancelDownload(DownloadID);
 #if USE(NETWORK_SESSION)
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
-    void continueWillSendRequest(DownloadID, const WebCore::ResourceRequest&);
+    void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void continueDecidePendingDownloadDestination(DownloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite);
 #endif
     void setCacheModel(uint32_t);
@@ -204,7 +205,7 @@ private:
     typedef HashMap<const char*, std::unique_ptr<NetworkProcessSupplement>, PtrHash<const char*>> NetworkProcessSupplementMap;
     NetworkProcessSupplementMap m_supplements;
 
-    HashMap<uint64_t, std::function<void ()>> m_sandboxExtensionForBlobsCompletionHandlers;
+    HashMap<uint64_t, NoncopyableFunction<void ()>> m_sandboxExtensionForBlobsCompletionHandlers;
 
 #if PLATFORM(COCOA)
     void platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters&);

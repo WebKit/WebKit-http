@@ -40,6 +40,7 @@
 #include "CustomElementDefinitions.h"
 #include "DOMTokenList.h"
 #include "Dictionary.h"
+#include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
@@ -66,6 +67,7 @@
 #include "IdTargetObserverRegistry.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
+#include "KeyframeEffect.h"
 #include "LifecycleCallbackQueue.h"
 #include "MainFrame.h"
 #include "MutationObserverInterestGroup.h"
@@ -675,10 +677,11 @@ void Element::scrollByUnits(int units, ScrollGranularity granularity)
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (!renderer())
+    auto* renderer = this->renderer();
+    if (!renderer)
         return;
 
-    if (!renderer()->hasOverflowClip())
+    if (!renderer->hasOverflowClip())
         return;
 
     ScrollDirection direction = ScrollDown;
@@ -687,7 +690,7 @@ void Element::scrollByUnits(int units, ScrollGranularity granularity)
         units = -units;
     }
     Element* stopElement = this;
-    downcast<RenderBox>(*renderer()).scroll(direction, granularity, units, &stopElement);
+    downcast<RenderBox>(*renderer).scroll(direction, granularity, units, &stopElement);
 }
 
 void Element::scrollByLines(int lines)
@@ -1009,8 +1012,9 @@ LayoutRect Element::absoluteEventBounds(bool& boundsIncludeAllDescendantElements
         if (svgElement.getBoundingBox(localRect, SVGLocatable::DisallowStyleUpdate))
             result = LayoutRect(renderer()->localToAbsoluteQuad(localRect, UseTransforms, &includesFixedPositionElements).boundingBox());
     } else {
-        if (is<RenderBox>(renderer())) {
-            RenderBox& box = *downcast<RenderBox>(renderer());
+        auto* renderer = this->renderer();
+        if (is<RenderBox>(renderer)) {
+            auto& box = downcast<RenderBox>(*renderer);
 
             bool computedBounds = false;
             
@@ -1030,7 +1034,7 @@ LayoutRect Element::absoluteEventBounds(bool& boundsIncludeAllDescendantElements
                     // FIXME: this doesn't handle nested columns.
                     RenderElement* multicolContainer = flowThread->parent();
                     if (multicolContainer && is<RenderBox>(multicolContainer)) {
-                        LayoutRect overflowRect = downcast<RenderBox>(multicolContainer)->layoutOverflowRect();
+                        auto overflowRect = downcast<RenderBox>(*multicolContainer).layoutOverflowRect();
                         result = LayoutRect(multicolContainer->localToAbsoluteQuad(FloatRect(overflowRect), UseTransforms, &includesFixedPositionElements).boundingBox());
                         computedBounds = true;
                     }
@@ -1043,7 +1047,7 @@ LayoutRect Element::absoluteEventBounds(bool& boundsIncludeAllDescendantElements
                 boundsIncludeAllDescendantElements = layoutOverflowRectContainsAllDescendants(box);
             }
         } else
-            result = LayoutRect(renderer()->absoluteBoundingBoxRect(true /* useTransforms */, &includesFixedPositionElements));
+            result = LayoutRect(renderer->absoluteBoundingBoxRect(true /* useTransforms */, &includesFixedPositionElements));
     }
 
     return result;
@@ -1380,6 +1384,21 @@ ElementStyle Element::resolveStyle(const RenderStyle* parentStyle)
     return styleResolver().styleForElement(*this, parentStyle);
 }
 
+#if ENABLE(WEB_ANIMATIONS)
+WebAnimationVector Element::getAnimations()
+{
+    auto checkTarget = [this](AnimationEffect const& effect)
+    {
+        return (static_cast<KeyframeEffect const&>(effect).target() == this);
+    };
+
+    auto* document = DocumentAnimation::from(&this->document());
+    if (document)
+        return document->getAnimations(checkTarget);
+    return WebAnimationVector();
+}
+#endif
+
 bool Element::hasDisplayContents() const
 {
     return hasRareData() && elementRareData()->hasDisplayContents();
@@ -1683,14 +1702,46 @@ RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
     return nullptr;
 }
 
-bool Element::canHaveUserAgentShadowRoot() const
+#if ENABLE(SHADOW_DOM)
+static bool canAttachAuthorShadowRoot(const Element& element)
 {
-    return false;
+    static NeverDestroyed<HashSet<AtomicString>> tagNames = [] {
+        const AtomicString tagList[] = {
+            articleTag.localName(),
+            asideTag.localName(),
+            blockquoteTag.localName(),
+            bodyTag.localName(),
+            divTag.localName(),
+            footerTag.localName(),
+            h1Tag.localName(),
+            h2Tag.localName(),
+            h3Tag.localName(),
+            h4Tag.localName(),
+            h5Tag.localName(),
+            h6Tag.localName(),
+            headerTag.localName(),
+            navTag.localName(),
+            pTag.localName(),
+            sectionTag.localName(),
+            spanTag.localName()
+        };
+
+        HashSet<AtomicString> set;
+        for (auto& name : tagList)
+            set.add(name);
+        return set;
+    }();
+
+    if (!is<HTMLElement>(element))
+        return false;
+
+    const auto& localName = element.localName();
+    return tagNames.get().contains(localName) || Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid;
 }
 
 RefPtr<ShadowRoot> Element::attachShadow(const ShadowRootInit& init, ExceptionCode& ec)
 {
-    if (canHaveUserAgentShadowRoot()) {
+    if (!canAttachAuthorShadowRoot(*this)) {
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
     }
@@ -1717,6 +1768,7 @@ ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
     }
     return root;
 }
+#endif
 
 ShadowRoot* Element::userAgentShadowRoot() const
 {
@@ -2967,12 +3019,12 @@ Vector<RefPtr<Range>> Element::webkitGetRegionFlowRanges() const
 {
     Vector<RefPtr<Range>> rangeObjects;
     document().updateLayoutIgnorePendingStylesheets();
-    if (renderer() && renderer()->isRenderNamedFlowFragmentContainer()) {
-        RenderNamedFlowFragment& namedFlowFragment = *downcast<RenderBlockFlow>(*renderer()).renderNamedFlowFragment();
+    auto* renderer = this->renderer();
+    if (renderer && renderer->isRenderNamedFlowFragmentContainer()) {
+        auto& namedFlowFragment = *downcast<RenderBlockFlow>(*renderer).renderNamedFlowFragment();
         if (namedFlowFragment.isValid())
             namedFlowFragment.getRanges(rangeObjects);
     }
-
     return rangeObjects;
 }
 

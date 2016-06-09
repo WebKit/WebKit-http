@@ -106,6 +106,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     switch (opcodeID) {
     case op_enter:
     case op_to_this:
+    case op_argument_count:
     case op_check_tdz:
     case op_create_this:
     case op_bitand:
@@ -155,6 +156,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_try_get_by_id:
     case op_get_by_id:
     case op_get_by_id_proto_load:
+    case op_get_by_id_unset:
     case op_get_by_id_with_this:
     case op_get_by_val_with_this:
     case op_get_array_length:
@@ -226,7 +228,6 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_new_func_exp:
     case op_new_generator_func:
     case op_new_generator_func_exp:
-    case op_new_arrow_func_exp:
     case op_set_function_name:
     case op_create_lexical_environment:
     case op_get_parent_scope:

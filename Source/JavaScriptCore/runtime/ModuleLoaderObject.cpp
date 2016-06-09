@@ -119,11 +119,6 @@ void ModuleLoaderObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
     putDirectWithoutTransition(vm, Identifier::fromString(&vm, "registry"), JSMap::create(vm, globalObject->mapStructure()));
 }
 
-bool ModuleLoaderObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
-{
-    return getStaticFunctionSlot<Base>(exec, moduleLoaderObjectTable, jsCast<ModuleLoaderObject*>(object), propertyName, slot);
-}
-
 // ------------------------------ Functions --------------------------------
 
 static String printableModuleKey(ExecState* exec, JSValue key)
@@ -302,6 +297,8 @@ EncodedJSValue JSC_HOST_CALL moduleLoaderObjectRequestedModules(ExecState* exec)
         return JSValue::encode(constructEmptyArray(exec, nullptr));
 
     JSArray* result = constructEmptyArray(exec, nullptr, moduleRecord->requestedModules().size());
+    if (UNLIKELY(exec->hadException()))
+        JSValue::encode(jsUndefined());
     size_t i = 0;
     for (auto& key : moduleRecord->requestedModules())
         result->putDirectIndex(exec, i++, jsString(exec, key.get()));

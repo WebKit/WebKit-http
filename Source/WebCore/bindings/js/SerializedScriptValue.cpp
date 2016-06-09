@@ -2463,6 +2463,8 @@ DeserializationResult CloneDeserializer::deserialize()
                 goto error;
             }
             JSArray* outArray = constructEmptyArray(m_exec, 0, m_globalObject, length);
+            if (UNLIKELY(m_exec->hadException()))
+                goto error;
             m_gcBuffer.append(outArray);
             outputObjectStack.append(outArray);
         }
@@ -2796,7 +2798,7 @@ Vector<String> SerializedScriptValue::blobURLsIsolatedCopy() const
     return result;
 }
 
-void SerializedScriptValue::writeBlobsToDiskForIndexedDB(std::function<void (const IDBValue&)> completionHandler)
+void SerializedScriptValue::writeBlobsToDiskForIndexedDB(NoncopyableFunction<void (const IDBValue&)>&& completionHandler)
 {
     ASSERT(isMainThread());
     ASSERT(hasBlobURLs());
@@ -2823,14 +2825,11 @@ IDBValue SerializedScriptValue::writeBlobsToDiskForIndexedDBSynchronously()
     ASSERT(!isMainThread());
 
     IDBValue value;
-    IDBValue* valuePtr = &value;
-
     Lock lock;
     Condition condition;
-    Condition* conditionPtr = &condition;
     lock.lock();
 
-    RunLoop::main().dispatch([this, conditionPtr, valuePtr] {
+    RunLoop::main().dispatch([this, conditionPtr = &condition, valuePtr = &value] {
         writeBlobsToDiskForIndexedDB([conditionPtr, valuePtr](const IDBValue& result) {
             ASSERT(isMainThread());
             valuePtr->setAsIsolatedCopy(result);

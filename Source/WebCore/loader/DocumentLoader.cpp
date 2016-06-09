@@ -805,8 +805,9 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     }
 
     if (!isStopping() && m_substituteData.isValid() && isLoadingMainResource()) {
-        if (m_substituteData.content()->size())
-            dataReceived(0, m_substituteData.content()->data(), m_substituteData.content()->size());
+        auto content = m_substituteData.content();
+        if (content && content->size())
+            dataReceived(nullptr, content->data(), content->size());
         if (isLoadingMainResource())
             finishedLoading(0);
     }
@@ -1232,10 +1233,10 @@ void DocumentLoader::cancelPendingSubstituteLoad(ResourceLoader* loader)
 }
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
-bool DocumentLoader::scheduleArchiveLoad(ResourceLoader* loader, const ResourceRequest& request)
+bool DocumentLoader::scheduleArchiveLoad(ResourceLoader& loader, const ResourceRequest& request)
 {
     if (ArchiveResource* resource = archiveResourceForURL(request.url())) {
-        scheduleSubstituteResourceLoad(*loader, *resource);
+        scheduleSubstituteResourceLoad(loader, *resource);
         return true;
     }
 
@@ -1703,10 +1704,9 @@ void DocumentLoader::installContentFilterUnblockHandler(ContentFilter& contentFi
     String unblockRequestDeniedScript { contentFilter.unblockRequestDeniedScript() };
     if (!unblockRequestDeniedScript.isEmpty() && frame) {
         static_assert(std::is_base_of<ThreadSafeRefCounted<Frame>, Frame>::value, "Frame must be ThreadSafeRefCounted.");
-        StringCapture capturedScript { unblockRequestDeniedScript };
-        unblockHandler.wrapWithDecisionHandler([frame, capturedScript](bool unblocked) {
+        unblockHandler.wrapWithDecisionHandler([frame = WTFMove(frame), script = unblockRequestDeniedScript.isolatedCopy()](bool unblocked) {
             if (!unblocked)
-                frame->script().executeScript(capturedScript.string());
+                frame->script().executeScript(script);
         });
     }
     frameLoader()->client().contentFilterDidBlockLoad(WTFMove(unblockHandler));

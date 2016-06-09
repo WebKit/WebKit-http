@@ -43,9 +43,7 @@
 #endif
 
 #if USE(WINDOWS_EVENT_LOOP)
-#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
-#include <wtf/win/WorkItemWin.h>
 #endif
 
 #if USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
@@ -68,12 +66,12 @@ public:
         Utility,
         Background
     };
-    
+
     WTF_EXPORT_PRIVATE static Ref<WorkQueue> create(const char* name, Type = Type::Serial, QOS = QOS::Default);
     virtual ~WorkQueue();
 
-    WTF_EXPORT_PRIVATE void dispatch(std::function<void ()>) override;
-    WTF_EXPORT_PRIVATE void dispatchAfter(std::chrono::nanoseconds, std::function<void ()>);
+    WTF_EXPORT_PRIVATE void dispatch(NoncopyableFunction<void ()>&&) override;
+    WTF_EXPORT_PRIVATE void dispatchAfter(std::chrono::nanoseconds, NoncopyableFunction<void ()>&&);
 
     WTF_EXPORT_PRIVATE static void concurrentApply(size_t iterations, const std::function<void (size_t index)>&);
 
@@ -93,16 +91,12 @@ private:
     void platformInvalidate();
 
 #if USE(WINDOWS_EVENT_LOOP)
-    static void CALLBACK handleCallback(void* context, BOOLEAN timerOrWaitFired);
     static void CALLBACK timerCallback(void* context, BOOLEAN timerOrWaitFired);
     static DWORD WINAPI workThreadCallback(void* context);
 
     bool tryRegisterAsWorkThread();
     void unregisterAsWorkThread();
     void performWorkOnRegisteredWorkThread();
-
-    static void unregisterWaitAndDestroyItemSoon(PassRefPtr<HandleWorkItem>);
-    static DWORD WINAPI unregisterWaitAndDestroyItemCallback(void* context);
 #endif
 
 #if USE(EFL_EVENT_LOOP)
@@ -113,11 +107,8 @@ private:
 #elif USE(WINDOWS_EVENT_LOOP)
     volatile LONG m_isWorkThreadRegistered;
 
-    Mutex m_workItemQueueLock;
-    Vector<RefPtr<WorkItemWin>> m_workItemQueue;
-
-    Mutex m_handlesLock;
-    HashMap<HANDLE, RefPtr<HandleWorkItem>> m_handles;
+    Mutex m_functionQueueLock;
+    Vector<NoncopyableFunction<void ()>> m_functionQueue;
 
     HANDLE m_timerQueue;
 #elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)

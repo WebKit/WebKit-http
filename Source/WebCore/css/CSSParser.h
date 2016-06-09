@@ -66,7 +66,7 @@ class CSSVariableDependentValue;
 class Document;
 class Element;
 class ImmutableStyleProperties;
-class MediaQueryExp;
+class MediaQueryExpression;
 class MediaQuerySet;
 class MutableStyleProperties;
 class SVGColor;
@@ -168,14 +168,14 @@ public:
     RefPtr<CSSPrimitiveValue> parseBackgroundColor();
 
     struct SourceSize {
-        std::unique_ptr<MediaQueryExp> expression;
-        RefPtr<CSSValue> length;
+        MediaQueryExpression expression;
+        Ref<CSSValue> length;
 
         SourceSize(SourceSize&&);
-        SourceSize(std::unique_ptr<MediaQueryExp>&&, RefPtr<CSSValue>&&);
+        SourceSize(MediaQueryExpression&&, Ref<CSSValue>&&);
     };
     Vector<SourceSize> parseSizesAttribute(StringView);
-    SourceSize sourceSize(std::unique_ptr<MediaQueryExp>&&, CSSParserValue&);
+    SourceSize sourceSize(MediaQueryExpression&&, CSSParserValue&);
 
     bool parseFillImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
@@ -214,10 +214,13 @@ public:
     static Vector<double> parseKeyframeSelector(const String&);
 
     bool parseTransformOriginShorthand(RefPtr<CSSPrimitiveValue>&, RefPtr<CSSPrimitiveValue>&, RefPtr<CSSValue>&);
-    bool parseCubicBezierTimingFunctionValue(CSSParserValueList& args, double& result);
+    Optional<double> parseCubicBezierTimingFunctionValue(CSSParserValueList&);
+    Optional<double> parseSpringTimingFunctionValue(CSSParserValueList&);
     bool parseAnimationProperty(CSSPropertyID, RefPtr<CSSValue>&, AnimationParseContext&);
     bool parseTransitionShorthand(CSSPropertyID, bool important);
     bool parseAnimationShorthand(CSSPropertyID, bool important);
+
+    bool isSpringTimingFunctionEnabled() const;
 
     RefPtr<CSSPrimitiveValue> parseColumnWidth();
     RefPtr<CSSPrimitiveValue> parseColumnCount();

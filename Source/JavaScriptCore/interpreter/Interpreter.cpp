@@ -106,7 +106,7 @@ String StackFrame::friendlySourceURL() const
     return traceLine.isNull() ? emptyString() : traceLine;
 }
 
-String StackFrame::friendlyFunctionName(CallFrame* callFrame) const
+String StackFrame::friendlyFunctionName(VM& vm) const
 {
     String traceLine;
     JSObject* stackFrameCallee = callee.get();
@@ -120,10 +120,10 @@ String StackFrame::friendlyFunctionName(CallFrame* callFrame) const
         break;
     case StackFrameNativeCode:
         if (callee)
-            traceLine = getCalculatedDisplayName(callFrame, stackFrameCallee).impl();
+            traceLine = getCalculatedDisplayName(vm, stackFrameCallee).impl();
         break;
     case StackFrameFunctionCode:
-        traceLine = getCalculatedDisplayName(callFrame, stackFrameCallee).impl();
+        traceLine = getCalculatedDisplayName(vm, stackFrameCallee).impl();
         break;
     case StackFrameGlobalCode:
         traceLine = "global code";
@@ -218,7 +218,7 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
         length = jsCast<DirectArguments*>(cell)->length(callFrame);
         break;
     case ScopedArgumentsType:
-        length =jsCast<ScopedArguments*>(cell)->length(callFrame);
+        length = jsCast<ScopedArguments*>(cell)->length(callFrame);
         break;
     case StringType:
         callFrame->vm().throwException(callFrame, createInvalidFunctionApplyParameterError(callFrame,  arguments));
@@ -226,8 +226,11 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
     default:
         ASSERT(arguments.isObject());
         length = getLength(callFrame, jsCast<JSObject*>(cell));
+        if (UNLIKELY(callFrame->hadException()))
+            return 0;
         break;
     }
+
     
     if (length >= firstVarArgOffset)
         length -= firstVarArgOffset;
@@ -493,10 +496,10 @@ void StackFrame::expressionInfo(int& divot, int& startOffset, int& endOffset, un
     divot += characterOffset;
 }
 
-String StackFrame::toString(CallFrame* callFrame)
+String StackFrame::toString(VM& vm)
 {
     StringBuilder traceBuild;
-    String functionName = friendlyFunctionName(callFrame);
+    String functionName = friendlyFunctionName(vm);
     String sourceURL = friendlySourceURL();
     traceBuild.append(functionName);
     if (!sourceURL.isEmpty()) {
@@ -590,8 +593,9 @@ JSString* Interpreter::stackTraceAsString(ExecState* exec, Vector<StackFrame> st
 {
     // FIXME: JSStringJoiner could be more efficient than StringBuilder here.
     StringBuilder builder;
+    VM& vm = exec->vm();
     for (unsigned i = 0; i < stackTrace.size(); i++) {
-        builder.append(String(stackTrace[i].toString(exec)));
+        builder.append(String(stackTrace[i].toString(vm)));
         if (i != stackTrace.size() - 1)
             builder.append('\n');
     }
@@ -860,6 +864,8 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                     if (i == 0) {
                         PropertySlot slot(globalObject, PropertySlot::InternalMethodType::Get);
                         if (!globalObject->getPropertySlot(callFrame, JSONPPath[i].m_pathEntryName, slot)) {
+                            if (callFrame->hadException())
+                                return jsUndefined();
                             if (entry)
                                 return callFrame->vm().throwException(callFrame, createUndefinedVariableError(callFrame, JSONPPath[i].m_pathEntryName));
                             goto failedJSONP;
@@ -937,6 +943,9 @@ failedJSONP:
 
     if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
         return throwTerminatedExecutionException(callFrame);
+
+    if (scope->structure()->isUncacheableDictionary())
+        scope->flattenDictionaryObject(vm);
 
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
 
@@ -1186,6 +1195,9 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         }
     }
 
+    if (variableObject->structure()->isUncacheableDictionary())
+        variableObject->flattenDictionaryObject(vm);
+
     if (numVariables || numFunctions) {
         BatchedTransitionOptimizer optimizer(vm, variableObject);
         if (variableObject->next())
@@ -1242,6 +1254,9 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
 
     if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
         return throwTerminatedExecutionException(callFrame);
+
+    if (scope->structure()->isUncacheableDictionary())
+        scope->flattenDictionaryObject(vm);
 
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
 

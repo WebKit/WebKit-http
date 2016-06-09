@@ -233,6 +233,10 @@ public:
     // IWebPreferencesPrivate3
     virtual HRESULT STDMETHODCALLTYPE showTiledScrollingIndicator(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setShowTiledScrollingIndicator(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE fetchAPIEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setFetchAPIEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE shadowDOMEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setShadowDOMEnabled(BOOL);
 
     // WebPreferences
 

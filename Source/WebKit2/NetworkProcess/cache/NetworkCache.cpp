@@ -128,47 +128,6 @@ static Key makeCacheKey(const WebCore::ResourceRequest& request)
     return { partition, resourceType(), range, request.url().string() };
 }
 
-static String headerValueForVary(const WebCore::ResourceRequest& request, const String& headerName)
-{
-    // Explicit handling for cookies is needed because they are added magically by the networking layer.
-    // FIXME: The value might have changed between making the request and retrieving the cookie here.
-    // We could fetch the cookie when making the request but that seems overkill as the case is very rare and it
-    // is a blocking operation. This should be sufficient to cover reasonable cases.
-    if (headerName == httpHeaderNameString(WebCore::HTTPHeaderName::Cookie))
-        return WebCore::cookieRequestHeaderFieldValue(WebCore::NetworkStorageSession::defaultStorageSession(), request.firstPartyForCookies(), request.url());
-    return request.httpHeaderField(headerName);
-}
-
-static Vector<std::pair<String, String>> collectVaryingRequestHeaders(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response)
-{
-    String varyValue = response.httpHeaderField(WebCore::HTTPHeaderName::Vary);
-    if (varyValue.isEmpty())
-        return { };
-    Vector<String> varyingHeaderNames;
-    varyValue.split(',', /*allowEmptyEntries*/ false, varyingHeaderNames);
-    Vector<std::pair<String, String>> varyingRequestHeaders;
-    varyingRequestHeaders.reserveCapacity(varyingHeaderNames.size());
-    for (auto& varyHeaderName : varyingHeaderNames) {
-        String headerName = varyHeaderName.stripWhiteSpace();
-        String headerValue = headerValueForVary(request, headerName);
-        varyingRequestHeaders.append(std::make_pair(headerName, headerValue));
-    }
-    return varyingRequestHeaders;
-}
-
-static bool verifyVaryingRequestHeaders(const Vector<std::pair<String, String>>& varyingRequestHeaders, const WebCore::ResourceRequest& request)
-{
-    for (auto& varyingRequestHeader : varyingRequestHeaders) {
-        // FIXME: Vary: * in response would ideally trigger a cache delete instead of a store.
-        if (varyingRequestHeader.first == "*")
-            return false;
-        String headerValue = headerValueForVary(request, varyingRequestHeader.first);
-        if (headerValue != varyingRequestHeader.second)
-            return false;
-    }
-    return true;
-}
-
 static bool cachePolicyAllowsExpired(WebCore::ResourceRequestCachePolicy policy)
 {
     switch (policy) {
@@ -221,7 +180,7 @@ static UseDecision makeUseDecision(const Entry& entry, const WebCore::ResourceRe
     if (request.isConditional() && !entry.redirectRequest())
         return UseDecision::Validate;
 
-    if (!verifyVaryingRequestHeaders(entry.varyingRequestHeaders(), request))
+    if (!WebCore::verifyVaryingRequestHeaders(entry.varyingRequestHeaders(), request))
         return UseDecision::NoDueToVaryingHeaderMismatch;
 
     // We never revalidate in the case of a history navigation.
@@ -345,7 +304,7 @@ static StoreDecision makeStoreDecision(const WebCore::ResourceRequest& originalR
     return StoreDecision::Yes;
 }
 
-void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameID& frameID, std::function<void (std::unique_ptr<Entry>)> completionHandler)
+void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameID& frameID, std::function<void (std::unique_ptr<Entry>)>&& completionHandler)
 {
     ASSERT(isEnabled());
     ASSERT(request.url().protocolIsInHTTPFamily());
@@ -358,7 +317,8 @@ void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameI
     Key storageKey = makeCacheKey(request);
 
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-    if (m_speculativeLoadManager)
+    bool canUseSpeculativeRevalidation = m_speculativeLoadManager && !request.isConditional();
+    if (canUseSpeculativeRevalidation)
         m_speculativeLoadManager->registerLoad(frameID, request, storageKey);
 #endif
 
@@ -372,8 +332,8 @@ void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameI
     }
 
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-    if (m_speculativeLoadManager && m_speculativeLoadManager->retrieve(frameID, storageKey, request, [request, completionHandler](std::unique_ptr<Entry> entry) {
-        if (entry && verifyVaryingRequestHeaders(entry->varyingRequestHeaders(), request))
+    if (canUseSpeculativeRevalidation && m_speculativeLoadManager->retrieve(frameID, storageKey, request, [request, completionHandler](std::unique_ptr<Entry> entry) {
+        if (entry && WebCore::verifyVaryingRequestHeaders(entry->varyingRequestHeaders(), request))
             completionHandler(WTFMove(entry));
         else
             completionHandler(nullptr);
@@ -384,7 +344,7 @@ void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameI
     auto startTime = std::chrono::system_clock::now();
     auto priority = static_cast<unsigned>(request.priority());
 
-    m_storage->retrieve(storageKey, priority, [this, request, completionHandler, startTime, storageKey, frameID](std::unique_ptr<Storage::Record> record) {
+    m_storage->retrieve(storageKey, priority, [this, request, completionHandler = WTFMove(completionHandler), startTime, storageKey, frameID](std::unique_ptr<Storage::Record> record) {
         if (!record) {
             LOG(NetworkCache, "(NetworkProcess) not found in storage");
 
@@ -422,7 +382,7 @@ void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameI
     });
 }
 
-std::unique_ptr<Entry> Cache::store(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, RefPtr<WebCore::SharedBuffer>&& responseData, std::function<void (MappedBody&)> completionHandler)
+std::unique_ptr<Entry> Cache::store(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, RefPtr<WebCore::SharedBuffer>&& responseData, std::function<void (MappedBody&)>&& completionHandler)
 {
     ASSERT(isEnabled());
     ASSERT(responseData);
@@ -446,11 +406,10 @@ std::unique_ptr<Entry> Cache::store(const WebCore::ResourceRequest& request, con
         return nullptr;
     }
 
-    std::unique_ptr<Entry> cacheEntry = std::make_unique<Entry>(makeCacheKey(request), response, WTFMove(responseData), collectVaryingRequestHeaders(request, response));
-
+    auto cacheEntry = std::make_unique<Entry>(makeCacheKey(request), response, WTFMove(responseData), WebCore::collectVaryingRequestHeaders(request, response));
     auto record = cacheEntry->encodeAsStorageRecord();
 
-    m_storage->store(record, [completionHandler](const Data& bodyData) {
+    m_storage->store(record, [completionHandler = WTFMove(completionHandler)](const Data& bodyData) {
         MappedBody mappedBody;
 #if ENABLE(SHAREABLE_RESOURCE)
         if (RefPtr<SharedMemory> sharedMemory = bodyData.tryCreateSharedMemory()) {
@@ -482,7 +441,7 @@ std::unique_ptr<Entry> Cache::storeRedirect(const WebCore::ResourceRequest& requ
         return nullptr;
     }
 
-    std::unique_ptr<Entry> cacheEntry = std::make_unique<Entry>(makeCacheKey(request), response, redirectRequest, collectVaryingRequestHeaders(request, response));
+    std::unique_ptr<Entry> cacheEntry = std::make_unique<Entry>(makeCacheKey(request), response, redirectRequest, WebCore::collectVaryingRequestHeaders(request, response));
 
     auto record = cacheEntry->encodeAsStorageRecord();
 
@@ -498,7 +457,7 @@ std::unique_ptr<Entry> Cache::update(const WebCore::ResourceRequest& originalReq
     WebCore::ResourceResponse response = existingEntry.response();
     WebCore::updateResponseHeadersAfterRevalidation(response, validatingResponse);
 
-    auto updateEntry = std::make_unique<Entry>(existingEntry.key(), response, existingEntry.buffer(), collectVaryingRequestHeaders(originalRequest, response));
+    auto updateEntry = std::make_unique<Entry>(existingEntry.key(), response, existingEntry.buffer(), WebCore::collectVaryingRequestHeaders(originalRequest, response));
     auto updateRecord = updateEntry->encodeAsStorageRecord();
 
     m_storage->store(updateRecord, { });
@@ -521,7 +480,7 @@ void Cache::remove(const WebCore::ResourceRequest& request)
     remove(makeCacheKey(request));
 }
 
-void Cache::traverse(const std::function<void (const TraversalEntry*)>& traverseHandler)
+void Cache::traverse(NoncopyableFunction<void (const TraversalEntry*)>&& traverseHandler)
 {
     ASSERT(isEnabled());
 
@@ -530,7 +489,7 @@ void Cache::traverse(const std::function<void (const TraversalEntry*)>& traverse
     if (m_traverseCount >= maximumTraverseCount) {
         WTFLogAlways("Maximum parallel cache traverse count exceeded. Ignoring traversal request.");
 
-        RunLoop::main().dispatch([traverseHandler] {
+        RunLoop::main().dispatch([traverseHandler = WTFMove(traverseHandler)] {
             traverseHandler(nullptr);
         });
         return;
@@ -538,7 +497,7 @@ void Cache::traverse(const std::function<void (const TraversalEntry*)>& traverse
 
     ++m_traverseCount;
 
-    m_storage->traverse(resourceType(), 0, [this, traverseHandler](const Storage::Record* record, const Storage::RecordInfo& recordInfo) {
+    m_storage->traverse(resourceType(), 0, [this, traverseHandler = WTFMove(traverseHandler)](const Storage::Record* record, const Storage::RecordInfo& recordInfo) {
         if (!record) {
             --m_traverseCount;
             traverseHandler(nullptr);
@@ -617,10 +576,8 @@ void Cache::dumpContentsToFile()
 
 void Cache::deleteDumpFile()
 {
-    auto queue = WorkQueue::create("com.apple.WebKit.Cache.delete");
-    StringCapture dumpFilePathCapture(dumpFilePath());
-    queue->dispatch([dumpFilePathCapture] {
-        WebCore::deleteFile(dumpFilePathCapture.string());
+    WorkQueue::create("com.apple.WebKit.Cache.delete")->dispatch([path = dumpFilePath().isolatedCopy()] {
+        WebCore::deleteFile(path);
     });
 }
 
@@ -632,7 +589,7 @@ void Cache::clear(std::chrono::system_clock::time_point modifiedSince, std::func
         m_statistics->clear();
 
     if (!m_storage) {
-        RunLoop::main().dispatch(completionHandler);
+        RunLoop::main().dispatch(WTFMove(completionHandler));
         return;
     }
     String anyType;

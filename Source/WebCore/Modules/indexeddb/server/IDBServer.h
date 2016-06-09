@@ -27,11 +27,12 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "CrossThreadTask.h"
 #include "IDBConnectionToClient.h"
 #include "IDBDatabaseIdentifier.h"
 #include "UniqueIDBDatabase.h"
 #include "UniqueIDBDatabaseConnection.h"
+#include <wtf/CrossThreadQueue.h>
+#include <wtf/CrossThreadTask.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
 #include <wtf/MessageQueue.h>
@@ -41,7 +42,6 @@
 
 namespace WebCore {
 
-class CrossThreadTask;
 class IDBCursorInfo;
 class IDBRequestData;
 class IDBValue;
@@ -85,8 +85,8 @@ public:
 
     WEBCORE_EXPORT void getAllDatabaseNames(uint64_t serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID);
 
-    void postDatabaseTask(std::unique_ptr<CrossThreadTask>&&);
-    void postDatabaseTaskReply(std::unique_ptr<CrossThreadTask>&&);
+    void postDatabaseTask(CrossThreadTask&&);
+    void postDatabaseTaskReply(CrossThreadTask&&);
 
     void registerDatabaseConnection(UniqueIDBDatabaseConnection&);
     void unregisterDatabaseConnection(UniqueIDBDatabaseConnection&);
@@ -125,8 +125,8 @@ private:
     Lock m_mainThreadReplyLock;
     bool m_mainThreadReplyScheduled { false };
 
-    MessageQueue<CrossThreadTask> m_databaseQueue;
-    MessageQueue<CrossThreadTask> m_databaseReplyQueue;
+    CrossThreadQueue<CrossThreadTask> m_databaseQueue;
+    CrossThreadQueue<CrossThreadTask> m_databaseReplyQueue;
 
     HashMap<uint64_t, UniqueIDBDatabaseConnection*> m_databaseConnections;
     HashMap<IDBResourceIdentifier, UniqueIDBDatabaseTransaction*> m_transactions;

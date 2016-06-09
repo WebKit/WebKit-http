@@ -349,6 +349,9 @@ void CodeBlock::printGetByIdOp(PrintStream& out, ExecState* exec, int location, 
     case op_get_by_id_proto_load:
         op = "get_by_id_proto_load";
         break;
+    case op_get_by_id_unset:
+        op = "get_by_id_unset";
+        break;
     case op_get_array_length:
         op = "array_length";
         break;
@@ -815,6 +818,11 @@ void CodeBlock::dumpBytecode(
             out.printf("%s", registerName(r0).data());
             break;
         }
+        case op_argument_count: {
+            int r0 = (++it)->u.operand;
+            printLocationOpAndRegisterOperand(out, exec, location, it, "argument_count", r0);
+            break;
+        }
         case op_copy_rest: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
@@ -1119,6 +1127,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_get_by_id:
         case op_get_by_id_proto_load:
+        case op_get_by_id_unset:
         case op_get_array_length: {
             printGetByIdOp(out, exec, location, it);
             printGetByIdCacheStatus(out, exec, location, stubInfos);
@@ -1416,14 +1425,6 @@ void CodeBlock::dumpBytecode(
             int r1 = (++it)->u.operand;
             int f0 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "new_generator_func");
-            out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
-            break;
-        }
-        case op_new_arrow_func_exp: {
-            int r0 = (++it)->u.operand;
-            int r1 = (++it)->u.operand;
-            int f0 = (++it)->u.operand;
-            printLocationAndOp(out, exec, location, it, "op_new_arrow_func_exp");
             out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
@@ -1853,37 +1854,6 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, CodeBlock
     setNumParameters(other.numParameters());
 }
 
-struct AbstractResolveKey {
-    AbstractResolveKey()
-        : m_impl(nullptr)
-    { }
-    AbstractResolveKey(size_t depth, const Identifier& ident, GetOrPut getOrPut, ResolveType resolveType, InitializationMode initializationMode)
-        : m_depth(depth)
-        , m_impl(ident.impl())
-        , m_getOrPut(getOrPut)
-        , m_resolveType(resolveType)
-        , m_initializationMode(initializationMode)
-    { }
-
-
-    bool operator==(const AbstractResolveKey& other) const
-    { 
-        return m_impl == other.m_impl
-            && m_depth == other.m_depth
-            && m_getOrPut == other.m_getOrPut
-            && m_resolveType == other.m_resolveType
-            && m_initializationMode == other.m_initializationMode;
-    }
-
-    bool isNull() const { return !m_impl; }
-
-    size_t m_depth;
-    UniquedStringImpl* m_impl;
-    GetOrPut m_getOrPut;
-    ResolveType m_resolveType;
-    InitializationMode m_initializationMode;
-};
-
 void CodeBlock::finishCreation(VM& vm, CopyParsedBlockTag, CodeBlock& other)
 {
     Base::finishCreation(vm);
@@ -2052,19 +2022,6 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     setCalleeSaveRegisters(RegisterSet::llintBaselineCalleeSaveRegisters());
 #endif
 
-    AbstractResolveKey lastResolveKey;
-    ResolveOp lastCachedOp;
-    auto cachedAbstractResolve = [&] (size_t localScopeDepth, const Identifier& ident, GetOrPut getOrPut, ResolveType resolveType, InitializationMode initializationMode) -> const ResolveOp& {
-        AbstractResolveKey key(localScopeDepth, ident, getOrPut, resolveType, initializationMode);
-        if (key == lastResolveKey) {
-            ASSERT(!lastResolveKey.isNull());
-            return lastCachedOp;
-        }
-        lastCachedOp = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, getOrPut, resolveType, initializationMode);
-        lastResolveKey = key;
-        return lastCachedOp;
-    };
-
     // Copy and translate the UnlinkedInstructions
     unsigned instructionCount = unlinkedCodeBlock->instructions().count();
     UnlinkedInstructionStream::Reader instructionReader(unlinkedCodeBlock->instructions());
@@ -2176,7 +2133,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             RELEASE_ASSERT(type != LocalClosureVar);
             int localScopeDepth = pc[5].u.operand;
 
-            const ResolveOp& op = cachedAbstractResolve(localScopeDepth, ident, Get, type, InitializationMode::NotInitialization);
+            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Get, type, InitializationMode::NotInitialization);
             instructions[i + 4].u.operand = op.type;
             instructions[i + 5].u.operand = op.depth;
             if (op.lexicalEnvironment) {
@@ -2213,7 +2170,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             }
 
             const Identifier& ident = identifier(pc[3].u.operand);
-            const ResolveOp& op = cachedAbstractResolve(localScopeDepth, ident, Get, getPutInfo.resolveType(), InitializationMode::NotInitialization);
+            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Get, getPutInfo.resolveType(), InitializationMode::NotInitialization);
 
             instructions[i + 4].u.operand = GetPutInfo(getPutInfo.resolveMode(), op.type, getPutInfo.initializationMode()).operand();
             if (op.type == ModuleVar)
@@ -2248,7 +2205,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             const Identifier& ident = identifier(pc[2].u.operand);
             int localScopeDepth = pc[5].u.operand;
             instructions[i + 5].u.pointer = nullptr;
-            const ResolveOp& op = cachedAbstractResolve(localScopeDepth, ident, Put, getPutInfo.resolveType(), getPutInfo.initializationMode());
+            ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Put, getPutInfo.resolveType(), getPutInfo.initializationMode());
 
             instructions[i + 4].u.operand = GetPutInfo(getPutInfo.resolveMode(), op.type, getPutInfo.initializationMode()).operand();
             if (op.type == GlobalVar || op.type == GlobalVarWithVarInjectionChecks || op.type == GlobalLexicalVar || op.type == GlobalLexicalVarWithVarInjectionChecks)
@@ -2282,7 +2239,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 ResolveType type = static_cast<ResolveType>(pc[5].u.operand);
                 // Even though type profiling may be profiling either a Get or a Put, we can always claim a Get because
                 // we're abstractly "read"ing from a JSScope.
-                const ResolveOp& op = cachedAbstractResolve(localScopeDepth, ident, Get, type, InitializationMode::NotInitialization);
+                ResolveOp op = JSScope::abstractResolve(m_globalObject->globalExec(), localScopeDepth, scope, ident, Get, type, InitializationMode::NotInitialization);
 
                 if (op.type == ClosureVar || op.type == ModuleVar)
                     symbolTable = op.lexicalEnvironment->symbolTable();
@@ -2806,7 +2763,8 @@ void CodeBlock::finalizeLLIntInlineCaches()
         Instruction* curInstruction = &instructions()[propertyAccessInstructions[i]];
         switch (interpreter->getOpcodeID(curInstruction[0].u.opcode)) {
         case op_get_by_id:
-        case op_get_by_id_proto_load: {
+        case op_get_by_id_proto_load:
+        case op_get_by_id_unset: {
             StructureID oldStructureID = curInstruction[4].u.structureID;
             if (!oldStructureID || Heap::isMarked(m_vm->heap.structureIDTable().get(oldStructureID)))
                 break;

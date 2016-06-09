@@ -200,8 +200,12 @@ JSValue PropertyNameForFunctionCall::value(ExecState* exec) const
     if (!m_value) {
         if (m_identifier)
             m_value = jsString(exec, m_identifier->string());
-        else
-            m_value = jsNumber(m_number);
+        else {
+            VM& vm = exec->vm();
+            if (m_number <= 9)
+                return vm.smallStrings.singleCharacterString(m_number + '0');
+            m_value = jsNontrivialString(&vm, vm.numericStrings.add(m_number));
+        }
     }
     return m_value;
 }
@@ -476,12 +480,12 @@ bool Stringifier::Holder::appendNextProperty(Stringifier& stringifier, StringBui
             value = asArray(m_object.get())->getIndexQuickly(index);
         else {
             PropertySlot slot(m_object.get(), PropertySlot::InternalMethodType::Get);
-            if (m_object->methodTable()->getOwnPropertySlotByIndex(m_object.get(), exec, index, slot)) {
+            if (m_object->methodTable()->getOwnPropertySlotByIndex(m_object.get(), exec, index, slot))
                 value = slot.getValue(exec, index);
-                if (exec->hadException())
-                    return false;
-            } else
+            else
                 value = jsUndefined();
+            if (UNLIKELY(exec->hadException()))
+                return false;
         }
 
         // Append the separator string.
@@ -551,11 +555,6 @@ const ClassInfo JSONObject::s_info = { "JSON", &JSNonFinalObject::s_info, &jsonT
 */
 
 // ECMA 15.8
-
-bool JSONObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticFunctionSlot<JSObject>(exec, jsonTable, jsCast<JSONObject*>(object), propertyName, slot);
-}
 
 class Walker {
 public:
@@ -632,6 +631,8 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                         inValue = slot.getValue(m_exec, index);
                     else
                         inValue = jsUndefined();
+                    if (m_exec->hadException())
+                        return jsNull();
                 }
                     
                 if (inValue.isObject()) {

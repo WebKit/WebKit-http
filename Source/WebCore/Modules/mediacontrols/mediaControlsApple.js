@@ -82,6 +82,7 @@ Controller.prototype = {
         webkitbeginfullscreen: 'handleFullscreenChange',
         webkitendfullscreen: 'handleFullscreenChange',
     },
+    PlaceholderPollingDelay: 33,
     HideControlsDelay: 4 * 1000,
     RewindAmount: 30,
     MaximumSeekRate: 8,
@@ -837,6 +838,17 @@ Controller.prototype = {
             this.controls.pictureInPictureButton.classList.add(this.ClassNames.hidden);
     },
 
+    showInlinePlaybackPlaceholderWhenSafe: function() {
+        if (this.presentationMode() != 'picture-in-picture')
+            return;
+
+        if (!this.host.isVideoLayerInline) {
+            this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
+            this.base.classList.add(this.ClassNames.placeholderShowing);
+        } else
+            setTimeout(this.showInlinePlaybackPlaceholderWhenSafe.bind(this), this.PlaceholderPollingDelay);
+    },
+
     handlePresentationModeChange: function(event)
     {
         var presentationMode = this.presentationMode();
@@ -848,13 +860,14 @@ Controller.prototype = {
                 this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholderTextTop.classList.remove(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholderTextBottom.classList.remove(this.ClassNames.pictureInPicture);
+                this.base.classList.remove(this.ClassNames.placeholderShowing);
 
                 this.controls.pictureInPictureButton.classList.remove(this.ClassNames.returnFromPictureInPicture);
                 break;
             case 'picture-in-picture':
                 this.controls.panel.classList.add(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.pictureInPicture);
-                this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
+                this.showInlinePlaybackPlaceholderWhenSafe();
 
                 this.controls.inlinePlaybackPlaceholderTextTop.innerText = this.UIString('This video is playing in Picture in Picture');
                 this.controls.inlinePlaybackPlaceholderTextTop.classList.add(this.ClassNames.pictureInPicture);
@@ -873,16 +886,12 @@ Controller.prototype = {
                 break;
         }
 
-        if (this.controls.inlinePlaybackPlaceholder.classList.contains(this.ClassNames.hidden))
-            this.base.classList.remove(this.ClassNames.placeholderShowing);
-        else
-            this.base.classList.add(this.ClassNames.placeholderShowing);
-
         this.updateControls();
         this.updateCaptionContainer();
         this.resetHideControlsTimer();
         if (presentationMode != 'fullscreen' && this.video.paused && this.controlsAreHidden())
             this.showControls();
+        this.host.setPreparedForInline(presentationMode === 'inline')
     },
 
     handleFullscreenChange: function(event)

@@ -1,3 +1,668 @@
+2016-06-08  Brady Eidson  <beidson@apple.com>
+
+        Make CrossThreadCopier more efficient (fewer copies!).
+        https://bugs.webkit.org/show_bug.cgi?id=158456
+
+        Reviewed by Alex Christensen.
+
+        Previously, we'd run all arguments through CrossThreadCopier, then immediately make
+        an unnecessary copy of the result during lambda capture.
+
+        Instead, we should just put the CrossThreadCopier generated objects directly in lambdas,
+        which are then captured by NoncopyableFunctions.
+
+        This reduces the number of constructor calls per argument from 2 copies to 1 move.
+
+        * wtf/CrossThreadTask.h:
+        (WTF::CrossThreadTask::CrossThreadTask):
+        (WTF::createCrossThreadTask):
+
+2016-06-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Implement Air::allocateStack() in ES6 to see how much of a bad idea that is
+        https://bugs.webkit.org/show_bug.cgi?id=158318
+
+        Reviewed by Saam Barati.
+
+        * wtf/Insertion.h:
+        (WTF::executeInsertions): I found a bug while rewriting this code in JS.
+        * wtf/PrintStream.h:
+        (WTF::PrintStream::print):
+        (WTF::PrintStream::println): This is useful to have.
+
+2016-06-07  Keith Rollin  <krollin@apple.com>
+
+        Remove all uses of PassRefPtr in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=157596
+        <rdar://problem/26234391>
+
+        Reviewed by Chris Dumez.
+
+        Remove/update most interfaces that take or return PassRefPtrs.
+        Remaining references include those in non-Cocoa implementations and
+        those required for continued compatibility with modules that still use
+        PassRefPtrs (specifically: Forward.h, RefPtr interoperability,
+        SizeLimits.h, WorkQueue (Windows) DispatchQueueEfl,
+        DispatchWorkItemEfl, and PassRefPtr itself).
+
+        Update calls to interfaces that no longer take or return PassRefPtrs.
+
+        Update adoptRef(T*) to return a RefPtr instead of a PassRefPtr and
+        move it to RefPtr.h from PassRefPtr.h.
+
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::allocate):
+        * wtf/MetaAllocator.h:
+        * wtf/ParallelJobsGeneric.h:
+        (WTF::ParallelEnvironment::ThreadPrivate::create):
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::HashAndUTF8CharactersTranslator::translate):
+        (WTF::SubstringTranslator::translate):
+        * wtf/text/CString.cpp:
+        (WTF::CStringBuffer::createUninitialized):
+        * wtf/text/CString.h:
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::reifyString):
+        (WTF::StringBuilder::resize):
+        (WTF::StringBuilder::reallocateBuffer<LChar>):
+        (WTF::StringBuilder::reallocateBuffer<UChar>):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::reallocateInternal):
+        (WTF::StringImpl::reallocate):
+        (WTF::StringImpl::create8BitIfPossible):
+        (WTF::StringImpl::createSymbol):
+        (WTF::StringImpl::createNullSymbol):
+        (WTF::StringImpl::convertToLowercaseWithoutLocale):
+        (WTF::StringImpl::convertToUppercaseWithoutLocale):
+        (WTF::StringImpl::convertToLowercaseWithLocale):
+        (WTF::StringImpl::convertToUppercaseWithLocale):
+        (WTF::StringImpl::convertASCIICase):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::createSubstringSharingImpl):
+        (WTF::StringImpl::tryCreateUninitialized):
+        (WTF::StringImpl::extractFoldedStringInSymbol):
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::symbolForKey):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::substringSharingImpl):
+        * wtf/text/WTFString.h:
+        (WTF::String::String): Deleted.
+        * wtf/text/cf/StringImplCF.cpp:
+
+2016-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not allocate unnecessary UTF-8 string for encodeXXX functions
+        https://bugs.webkit.org/show_bug.cgi?id=158416
+
+        Reviewed by Darin Adler and Geoffrey Garen.
+
+        * wtf/Bitmap.h:
+        (WTF::Bitmap::size):
+        (WTF::WordType>::Bitmap):
+        (WTF::WordType>::get):
+        (WTF::WordType>::set):
+        (WTF::WordType>::testAndSet):
+        (WTF::WordType>::testAndClear):
+        (WTF::WordType>::concurrentTestAndSet):
+        (WTF::WordType>::concurrentTestAndClear):
+        (WTF::WordType>::clear):
+        (WTF::WordType>::clearAll):
+        (WTF::WordType>::nextPossiblyUnset):
+        (WTF::WordType>::findRunOfZeros):
+        (WTF::WordType>::count):
+        (WTF::WordType>::isEmpty):
+        (WTF::WordType>::isFull):
+
+2016-06-06  Saam Barati  <sbarati@apple.com>
+
+        equal(StringView, StringView) for strings should have a fast path for pointer equality
+        https://bugs.webkit.org/show_bug.cgi?id=158452
+
+        Reviewed by Andreas Kling.
+
+        JSBench does a lot of StringView::operator== on StringViews that have
+        the same underlying characters pointer. This becomes hot inside JSBench
+        because JSBench heavily stresses JSC's UnlinkedCodeCache with a high
+        hit rate. This means that when we get a hit in the cache, we used to
+        do the long form of string compare. However, we were often comparing
+        two StringViews that had the same underlying buffer and length.
+        This patch speeds this case up to run in constant time instead of
+        linear time.
+
+        * wtf/text/StringCommon.h:
+        (WTF::equalCommon):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::data):
+        * wtf/text/StringView.h:
+        (WTF::StringView::data):
+
+2016-06-04  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WorkItemWin
+        https://bugs.webkit.org/show_bug.cgi?id=158381
+
+        Reviewed by Sam Weinig.
+
+        * wtf/PlatformWin.cmake:
+        * wtf/WorkQueue.h:
+        * wtf/win/WorkItemWin.cpp: Removed.
+        (WTF::WorkItemWin::WorkItemWin): Deleted.
+        (WTF::WorkItemWin::create): Deleted.
+        (WTF::WorkItemWin::~WorkItemWin): Deleted.
+        * wtf/win/WorkItemWin.h: Removed.
+        (WTF::WorkItemWin::function): Deleted.
+        (WTF::WorkItemWin::queue): Deleted.
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::performWorkOnRegisteredWorkThread):
+        (WTF::WorkQueue::dispatch):
+
+2016-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of HANDLE registration code in WorkQueueWin
+        https://bugs.webkit.org/show_bug.cgi?id=158375
+
+        Reviewed by Darin Adler.
+
+        * wtf/WorkQueue.h:
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::HandleWorkItem::HandleWorkItem): Deleted.
+        (WTF::HandleWorkItem::createByAdoptingHandle): Deleted.
+        (WTF::HandleWorkItem::~HandleWorkItem): Deleted.
+        * wtf/win/WorkItemWin.h:
+        (WTF::HandleWorkItem::setWaitHandle): Deleted.
+        (WTF::HandleWorkItem::waitHandle): Deleted.
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback): Deleted.
+        (WTF::WorkQueue::platformInvalidate): Deleted.
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemSoon): Deleted.
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemCallback): Deleted.
+
+2016-06-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201663.
+        https://bugs.webkit.org/show_bug.cgi?id=158374
+
+        Broke the Windows build (Requested by andersca on #webkit).
+
+        Reverted changeset:
+
+        "Rename NoncopyableFunction to Function"
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+        http://trac.webkit.org/changeset/201663
+
+2016-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CrossThreadTask.h:
+        (WTF::CrossThreadTask::CrossThreadTask):
+        * wtf/Function.h: Renamed from Source/WTF/wtf/NoncopyableFunction.h.
+        * wtf/FunctionDispatcher.h:
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::WorkItem):
+        (TimerWorkItem::create):
+        (TimerWorkItem::TimerWorkItem):
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::WorkItemWin::WorkItemWin):
+        (WTF::WorkItemWin::create):
+        (WTF::HandleWorkItem::HandleWorkItem):
+        (WTF::HandleWorkItem::createByAdoptingHandle):
+        * wtf/win/WorkItemWin.h:
+        (WTF::WorkItemWin::function):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-06-03  Mark Lam  <mark.lam@apple.com>
+
+        Clean up how StackVisitor dumps its frames.
+        https://bugs.webkit.org/show_bug.cgi?id=158316
+
+        Reviewed by Keith Miller.
+
+        Added an Indenter class what works with dataLog.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Indenter.h: Added.
+        (WTF::Indenter::Indenter):
+        (WTF::Indenter::dump):
+        (WTF::Indenter::operator++):
+        (WTF::Indenter::operator--):
+
+2016-06-02  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        [iOS] PDFDocumentImage should not create a cached image larger than 4M pixels
+        https://bugs.webkit.org/show_bug.cgi?id=157857
+
+        Reviewed by Darin Adler.
+
+        * wtf/StdLibExtras.h: Add a constant value for GB (2^30).
+
+2016-06-02  Oliver Hunt  <oliver@apple.com>
+
+        JS parser incorrectly handles invalid utf8 in error messages.
+        https://bugs.webkit.org/show_bug.cgi?id=158128
+
+        Reviewed by Saam Barati.
+
+        Add a new toStringWithLatin1Fallback that simply uses
+        String::fromUTF8WithLatin1Fallback, so we can avoid the
+        standard String::fromUTF8 null return.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::toStringWithLatin1Fallback):
+        * wtf/StringPrintStream.h:
+
+2016-06-02  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, reland r201532. The associated regressions have been fixed
+        by r201584.
+
+2016-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Use "= delete" for Locker(int) 
+
+        Rubber stamped by Saam Barati.
+        
+        See discussion: https://bugs.webkit.org/show_bug.cgi?id=158306#c8
+
+        * wtf/Locker.h:
+        (WTF::Locker::Locker):
+        (WTF::Locker::~Locker):
+
+2016-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it harder to accidentally pass an integer to a locker.
+
+        Rubber stamped by Keith Miller.
+        
+        See here for the discussion: https://bugs.webkit.org/show_bug.cgi?id=158306#c3
+
+        * wtf/Locker.h:
+        (WTF::Locker::Locker):
+        (WTF::Locker::~Locker):
+
+2016-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it easier to use NoLockingNecessary
+        https://bugs.webkit.org/show_bug.cgi?id=158306
+
+        Reviewed by Keith Miller.
+        
+        An idiom that we borrowed from LLVM is that if a function requires a lock to be held, we
+        have it take a const Locker& as its first argument. This may not communicate which lock is
+        to be held, but it does help us to remember that some lock must be held. So far, it's been
+        relatively easy to then figure out which lock. We've had bugs where we forgot to hold a
+        lock but I don't remember the last time we had a bug where we grabbed the wrong lock.
+        
+        But sometimes, we know at the point where we call such a method that we actually don't
+        need to hold any lock. This usually happens during object construction. If we're
+        constructing some object then we usually know that we have not escaped it yet, so we don't
+        need to waste time acquiring its lock. We could solve this by having a separate set of
+        methods that don't do or require locking. This would be cumbersome, since usually for
+        every variant that takes const Locker&, there is already one that doesn't, and that one
+        will grab the lock for you. So this means having a third variant, that also doesn't take a
+        const Locker&, but does no locking. That's pretty weird.
+        
+        So, we introduced NoLockingNecessary for situations like this. The idiom went like so:
+        
+            Locker<Whatever> locker(Locker<Whatever>::NoLockingNecessary)
+            stuff->foo(locker);
+        
+        Usually though, there would be some distance between where the locker is defined and where
+        it's used, so when you just look at stuff->foo(locker) in isolation you don't know if this
+        is a real locker or a NoLockingNecessary cast. Also, requiring two lines for this just
+        adds code.
+        
+        This change makes this easier. Now you can just do:
+        
+            stuff->foo(NoLockingNecessary).
+        
+        This is because NoLockingNecessary has been pulled out into the WTF namespace (and is
+        usinged from the global namespace) and the Locker<> constructor that takes
+        NoLockingNecessaryTag is now implicit.
+        
+        The only possible downside of this change is that people might use this idiom more
+        frequently now that it's easier to use. I don't think that's a bad thing. I'm now
+        convinced that this is not a bad idiom. When I was fixing an unrelated bug, I almost went
+        the way of adding more locking to some core JSC data structures, and in the process, I
+        needed to use NoLockingNecessary. It's clear that this is a general-purpose idiom and we
+        should not impose artificial constraints on its use.
+
+        * wtf/Locker.h:
+        (WTF::Locker::Locker):
+        (WTF::Locker::~Locker):
+
+2016-06-01  Brady Eidson  <beidson@apple.com>
+
+        Get rid of StringCapture.
+        https://bugs.webkit.org/show_bug.cgi?id=158285
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/WTFString.h:
+        (WTF::StringCapture::StringCapture): Deleted.
+        (WTF::StringCapture::string): Deleted.
+        (WTF::StringCapture::releaseString): Deleted.
+        (WTF::StringCapture::operator=): Deleted.
+
+2016-06-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Some setters for components of Date do not timeClip() their result
+        https://bugs.webkit.org/show_bug.cgi?id=158278
+
+        Unreviewed.
+
+        * wtf/DateMath.cpp:
+        (WTF::equivalentYearForDST): Deleted.
+        The assertion is bogus.
+        As the comments above explains, the function is completely wrong for years
+        outside [1900-2100].
+        The tests passing large values for years are failing (year <= maxYear).
+        The weird NaN test is a mystery. The old changelog does not explain it.
+
+2016-05-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201363 and r201456.
+        https://bugs.webkit.org/show_bug.cgi?id=158240
+
+        "40% regression on date-format-xparb" (Requested by
+        keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "LLInt should be able to cache prototype loads for values in
+        GetById"
+        https://bugs.webkit.org/show_bug.cgi?id=158032
+        http://trac.webkit.org/changeset/201363
+
+        "get_by_id should support caching unset properties in the
+        LLInt"
+        https://bugs.webkit.org/show_bug.cgi?id=158136
+        http://trac.webkit.org/changeset/201456
+
+2016-05-31  Brady Eidson  <beidson@apple.com>
+
+        Make createCrossThreadTask() functions return on the stack instead of the heap.
+        https://bugs.webkit.org/show_bug.cgi?id=158215
+
+        Reviewed by Darin Adler.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+        * wtf/CrossThreadCopier.cpp:
+
+        * wtf/CrossThreadQueue.h: Added. A lightweight of MessageQueue that deals directly
+          in objects instead of in std::unique_ptrs.
+        (WTF::CrossThreadQueue::isKilled):
+        (WTF::CrossThreadQueue<DataType>::append):
+        (WTF::CrossThreadQueue<DataType>::waitForMessage):
+        (WTF::CrossThreadQueue<DataType>::tryGetMessage):
+
+        * wtf/CrossThreadTask.h:
+        (WTF::createCrossThreadTask):
+        (WTF::CrossThreadTask::CrossThreadTask): Deleted.
+
+2016-05-30  Brady Eidson  <beidson@apple.com>
+
+        Move CrossThreadCopier/CrossThreadTask to WTF.
+        https://bugs.webkit.org/show_bug.cgi?id=158207
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+
+        * wtf/CrossThreadCopier.cpp: Renamed from Source/WebCore/platform/CrossThreadCopier.cpp.
+        * wtf/CrossThreadCopier.h: Renamed from Source/WebCore/platform/CrossThreadCopier.h.
+        (WTF::CrossThreadCopierPassThrough::copy):
+        
+        * wtf/CrossThreadTask.h: Renamed from Source/WebCore/platform/CrossThreadTask.h.
+        (WTF::CrossThreadTask::CrossThreadTask):
+        (WTF::CrossThreadTask::performTask):
+        (WTF::createCrossThreadTask):
+
+2016-05-28  Chris Dumez  <cdumez@apple.com>
+
+        Templatize NoncopyableFunction class similarly to std::function
+        https://bugs.webkit.org/show_bug.cgi?id=158185
+
+        Reviewed by Darin Adler.
+
+        Templatize NoncopyableFunction class similarly to std::function, so
+        that it can be used as a std::function replacement in more places.
+
+        Previously, NoncopyableFunction could only support "void()" lambdas.
+
+        * wtf/FunctionDispatcher.h:
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+        * wtf/NoncopyableFunction.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::WorkItem):
+        (TimerWorkItem::create):
+        (TimerWorkItem::TimerWorkItem):
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::WorkItemWin::WorkItemWin):
+        (WTF::WorkItemWin::create):
+        (WTF::HandleWorkItem::HandleWorkItem):
+        (WTF::HandleWorkItem::createByAdoptingHandle):
+        * wtf/win/WorkItemWin.h:
+        (WTF::WorkItemWin::function):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-05-28  Dan Bernstein  <mitz@apple.com>
+
+        Build fix for projects that include MainThread.h without including FastMalloc.h.
+
+        * wtf/NoncopyableFunction.h: Include FastMalloc.h from here.
+
+2016-05-27  Chris Dumez  <cdumez@apple.com>
+
+        callOnMainThread() should not copy captured lambda variables
+        https://bugs.webkit.org/show_bug.cgi?id=158166
+
+        Reviewed by Brady Eidson.
+
+        callOnMainThread() should not copy captured lambda variables. This
+        function is usually called cross-thread with a lambda and copying
+        the lambda (and its captured variables) can lead to thread-safety
+        issues.
+
+        This patch updates callOnMainThread() to take a NoncopyableFunction&&
+        in parameter instead of a std::function. The call sites of
+        callOnMainThread() have also been updated to use C++14's lambda
+        capture with initializer.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+        * wtf/FunctionDispatcher.h:
+        * wtf/NoncopyableFunction.h:
+        - Moved NoncopyableFunction from FunctionDispatcher.h to
+          NoncopyableFunction.h.
+        - Add a new operator=(nullptr_t) operator to NoncopyableFunction to
+          match std::function, as one of the call sites needed it.
+
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+
+2016-05-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for JSCOnly port.
+        https://bugs.webkit.org/show_bug.cgi?id=158111
+
+        Use NoncopyableFunction instead of std::function<>.
+
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+
+2016-05-27  Chris Dumez  <cdumez@apple.com>
+
+        WorkQueue::dispatch() / RunLoop::dispatch() should not copy captured lambda variables
+        https://bugs.webkit.org/show_bug.cgi?id=158111
+
+        Reviewed by Darin Adler.
+
+        WorkQueue::dispatch() / RunLoop::dispatch() should not copy captured lambda variables.
+        These are often used cross-thread and copying the captured lambda variables can be
+        dangerous (e.g. we do not want to copy a String after calling isolatedCopy() upon
+        capture).
+
+        This patch introduces a new NoncopyableFunction type that behaves similarly to
+        std::function but guarantees that the passed-in lambda (and its captured variables)
+        cannot be copied. This new NoncopyableFunction type is now used for
+        WorkQueue / RunLoop's dispatch() / dispatchAfter() which are commonly used
+        cross-thread. This should now allow us to call WorkQueue::dispatch() with a lambda
+        that captures a String like so:
+        [str = str.isolatedCopy()]() { }
+
+        Also note that even though this is not leveraged in this patch, NoncopyableFunction
+        would allow us to capture move-only types such as std::unique_ptr as so:
+        [p = WTFMove(p)]() { }
+        This does not work if we convert the lambda into an std::function because
+        std::function requires the lambda to be copyable, NoncopyableFunction does not.
+
+        * wtf/FunctionDispatcher.h:
+        (WTF::CallableWrapperBase::~CallableWrapperBase):
+        (WTF::NoncopyableFunction::NoncopyableFunction):
+        (WTF::NoncopyableFunction::operator()):
+        (WTF::NoncopyableFunction::operator bool):
+        (WTF::NoncopyableFunction::operator=):
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::WorkItem):
+        (TimerWorkItem::create):
+        (TimerWorkItem::TimerWorkItem):
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::WorkItemWin::WorkItemWin):
+        (WTF::WorkItemWin::create):
+        (WTF::HandleWorkItem::HandleWorkItem):
+        (WTF::HandleWorkItem::createByAdoptingHandle):
+        * wtf/win/WorkItemWin.h:
+        (WTF::WorkItemWin::function):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::timerCallback):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-05-26  Filip Pizlo  <fpizlo@apple.com>
+
+        ScopedLambda should have a lifetime story that makes sense to the compiler
+        https://bugs.webkit.org/show_bug.cgi?id=158118
+
+        Reviewed by Mark Lam.
+
+        Prior to this change, there were two lifetime bugs in ScopedLambda:
+        
+        - scopedLambda(Functor&&) would bind Functor to const lambda&, so the resulting ScopedLambdaFunctor
+          would hold a reference to the original lambda. This would have surprising behavior; for example
+          it meant that this code was wrong:
+          
+          auto l = scopedLambda<things>([&] ...);
+          
+          The solution is to have explicit copy/move versions of scopedLambda() rather than rely on perfect
+          forwarding.
+        
+        - ScopedLambdaFunctor did not override its copy or move operations, so if the compiler did not RVO
+          scopedLambda(), it would return a ScopedLambdaFunctor whose m_arg points to a dead temporary
+          ScopedLambdaFunctor instance. The solution is to have explicit copy/move constructors and
+          operators, which preserve the invariant that ScopedLambda::m_arg points to this.
+        
+        One nice side-effect of all of these constructors and operators being explicit is that we can rely
+        on WTFMove's excellent assertions, which helped catch the first issue.
+        
+        This reverts ParkingLot to use ScopedLambda again.
+
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionallyImpl):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkOneImpl):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        * wtf/ScopedLambda.h:
+        (WTF::scopedLambda):
+
 2016-05-25  Anders Carlsson  <andersca@apple.com>
 
         Get rid of WTF/Functional.h

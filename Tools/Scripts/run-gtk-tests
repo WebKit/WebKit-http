@@ -67,6 +67,8 @@ class TestRunner:
 
     SKIPPED = [
         SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/mouse-target", "Test times out after r150890", 117689),
+        SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/usermedia-permission-requests", "Test times out", 158257),
+        SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/audio-usermedia-permission-request", "Test times out", 158257),
         SkippedTest("WebKit2Gtk/TestCookieManager", "/webkit2/WebKitCookieManager/persistent-storage", "Test is flaky", 134580),
         SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/editable/editable", "Test hits an assertion in Debug builds", 151654, "Debug"),
         SkippedTest("WebKit2Gtk/TestWebExtensions", "/webkit2/WebKitWebView/install-missing-plugins-permission-request", "Test times out", 147822),
@@ -86,7 +88,8 @@ class TestRunner:
 
     SLOW = [
         "WTF_Lock.ContendedShortSection",
-        "WTF_WordLock.ContendedShortSection"
+        "WTF_WordLock.ContendedShortSection",
+        "WebKit2Gtk/TestInspectorServer",
     ]
 
     def __init__(self, options, tests=[]):
@@ -323,8 +326,16 @@ class TestRunner:
         for test_case in self._test_cases_to_skip(test_program):
             tester_command.extend(['-s', test_case])
         tester_command.append(test_program)
+        # This timeout is supposed to be per test case, but in the case of GLib tests it affects all the tests cases of
+        # the same test program. Some test programs like TestLoaderClient, that have a lot of test cases, often time out
+        # in the bots because the timeout is not enough to run all the tests cases. So, we use a longer timeout for GLib
+        # tests (timeout * 2).
+        timeout = self._options.timeout * 2
+        test = os.path.join(os.path.basename(os.path.dirname(test_program)), os.path.basename(test_program))
+        if test in TestRunner.SLOW:
+            timeout *= 5
 
-        return self._run_test_command(tester_command, self._options.timeout)
+        return self._run_test_command(tester_command, timeout)
 
     def _get_tests_from_google_test_suite(self, test_program):
         try:

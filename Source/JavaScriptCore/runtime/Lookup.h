@@ -191,7 +191,7 @@ struct HashTable {
     }
 };
 
-JS_EXPORT_PRIVATE bool setUpStaticFunctionSlot(ExecState*, const HashTableValue*, JSObject* thisObject, PropertyName, PropertySlot&);
+JS_EXPORT_PRIVATE bool setUpStaticFunctionSlot(VM&, const HashTableValue*, JSObject* thisObject, PropertyName, PropertySlot&);
 JS_EXPORT_PRIVATE void reifyStaticAccessor(VM&, const HashTableValue&, JSObject& thisObject, PropertyName);
 
 inline BuiltinGenerator HashTableValue::builtinAccessorGetterGenerator() const
@@ -208,19 +208,9 @@ inline BuiltinGenerator HashTableValue::builtinAccessorSetterGenerator() const
     return reinterpret_cast<BuiltinGenerator>(m_values.value2);
 }
 
-/**
- * This method does it all (looking in the hashtable, checking for function
- * overrides, creating the function or retrieving from cache, calling
- * getValueProperty in case of a non-function property, forwarding to parent if
- * unknown property).
- */
-template <class ThisImp, class ParentImp>
-inline bool getStaticPropertySlot(ExecState* exec, const HashTable& table, ThisImp* thisObj, PropertyName propertyName, PropertySlot& slot)
+inline bool getStaticPropertySlotFromTable(VM& vm, const HashTable& table, JSObject* thisObject, PropertyName propertyName, PropertySlot& slot)
 {
-    if (ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot))
-        return true;
-
-    if (thisObj->staticFunctionsReified())
+    if (thisObject->staticFunctionsReified())
         return false;
 
     auto* entry = table.entry(propertyName);
@@ -228,63 +218,25 @@ inline bool getStaticPropertySlot(ExecState* exec, const HashTable& table, ThisI
         return false;
 
     if (entry->attributes() & BuiltinOrFunctionOrAccessorOrLazyProperty)
-        return setUpStaticFunctionSlot(exec, entry, thisObj, propertyName, slot);
+        return setUpStaticFunctionSlot(vm, entry, thisObject, propertyName, slot);
 
     if (entry->attributes() & ConstantInteger) {
-        slot.setValue(thisObj, attributesForStructure(entry->attributes()), jsNumber(entry->constantInteger()));
+        slot.setValue(thisObject, attributesForStructure(entry->attributes()), jsNumber(entry->constantInteger()));
         return true;
     }
 
-    slot.setCacheableCustom(thisObj, attributesForStructure(entry->attributes()), entry->propertyGetter());
+    slot.setCacheableCustom(thisObject, attributesForStructure(entry->attributes()), entry->propertyGetter());
     return true;
 }
 
-/**
- * Simplified version of getStaticPropertySlot in case there are only functions.
- * Using this instead of getStaticPropertySlot allows 'this' to avoid implementing
- * a dummy getValueProperty.
- */
-template <class ParentImp>
-inline bool getStaticFunctionSlot(ExecState* exec, const HashTable& table, JSObject* thisObj, PropertyName propertyName, PropertySlot& slot)
+inline bool replaceStaticPropertySlot(VM& vm, JSObject* thisObject, PropertyName propertyName, JSValue value)
 {
-    if (ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot))
-        return true;
-
-    if (thisObj->staticFunctionsReified())
+    if (!thisObject->putDirect(vm, propertyName, value))
         return false;
 
-    auto* entry = table.entry(propertyName);
-    if (!entry)
-        return false;
+    if (!thisObject->staticFunctionsReified())
+        thisObject->JSObject::setStructure(vm, Structure::attributeChangeTransition(vm, thisObject->structure(), propertyName, 0));
 
-    return setUpStaticFunctionSlot(exec, entry, thisObj, propertyName, slot);
-}
-
-/**
- * Simplified version of getStaticPropertySlot in case there are no functions, only "values".
- * Using this instead of getStaticPropertySlot removes the need for a FuncImp class.
- */
-template <class ThisImp, class ParentImp>
-inline bool getStaticValueSlot(ExecState* exec, const HashTable& table, ThisImp* thisObj, PropertyName propertyName, PropertySlot& slot)
-{
-    if (ParentImp::getOwnPropertySlot(thisObj, exec, propertyName, slot))
-        return true;
-
-    if (thisObj->staticFunctionsReified())
-        return false;
-
-    auto* entry = table.entry(propertyName);
-    if (!entry)
-        return false;
-
-    ASSERT(!(entry->attributes() & BuiltinOrFunctionOrAccessorOrLazyProperty));
-
-    if (entry->attributes() & ConstantInteger) {
-        slot.setValue(thisObj, attributesForStructure(entry->attributes()), jsNumber(entry->constantInteger()));
-        return true;
-    }
-
-    slot.setCacheableCustom(thisObj, attributesForStructure(entry->attributes()), entry->propertyGetter());
     return true;
 }
 
@@ -396,7 +348,7 @@ inline void reifyStaticProperties(VM& vm, const HashTableValue (&values)[numberO
     for (auto& value : values) {
         if (!value.m_key)
             continue;
-        auto key = Identifier::fromString(&vm, value.m_key);
+        auto key = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(value.m_key), strlen(value.m_key));
         reifyStaticProperty(vm, key, value, thisObj);
     }
 }

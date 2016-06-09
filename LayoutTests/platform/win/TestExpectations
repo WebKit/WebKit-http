@@ -254,7 +254,6 @@ storage/indexeddb/database-odd-names.html [ Timeout Failure ]
 storage/indexeddb/primary-key-unique-to-objectstore.html [ Timeout ]
 storage/indexeddb/version-change-event-basic.html [ Timeout ]
 storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
-storage/indexeddb/modern/blob-simple.html [ Failure ]
 storage/indexeddb/modern/date-basic-private.html [ Failure ]
 storage/indexeddb/modern/date-basic.html [ Failure ]
 storage/indexeddb/modern/get-keyrange-private.html [ Failure ]
@@ -896,12 +895,11 @@ media/encrypted-media/encrypted-media-events.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-not-loaded.html [ Skip ] # [ WontFix ]
 media/encrypted-media/encrypted-media-syntax.html [ Skip ] # [ WontFix ]
 
-# New page cache test introduced in r182901 that often crashes on Windows only.
-webkit.org/b/144057 http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Crash Pass ]
-
 webkit.org/b/103442 media/W3C/video/networkState/networkState_during_progress.html [ Skip ]
 
 # No CORS support for media elements is implemented yet.
+http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html [ Failure ]
+http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials.html [ Failure ]
 http/tests/security/video-cross-origin-readback.html [ Skip ]
 
 # Requires ENABLE(MEDIA_CAPTURE)
@@ -2234,8 +2232,6 @@ http/tests/security/contentSecurityPolicy/object-src-none-allowed.html [ Skip ] 
 http/tests/security/contentSecurityPolicy/object-src-none-blocked.html [ Skip ] # Crash
 http/tests/security/video-cross-origin-accessfailure.html [ Skip ] # Crash
 http/tests/security/mixedContent/insecure-plugin-in-iframe.html [ Skip ] # Crash
-http/tests/websocket/tests/hybi/workers/close-in-worker.html [ Skip ] # Crash
-http/tests/websocket/tests/hybi/workers/close.html [ Skip ] # Crash
 http/tests/webgl/1.0.2/texSubImage2DHTML.html [ Skip ] # Crash
 
 # The following timeout
@@ -3279,7 +3275,7 @@ webkit.org/b/148888 http/tests/navigation/slowmetaredirect-basic.html [ Pass Fai
 
 # Imported Blink tests.
 imported/blink/compositing/iframes/ancestor-clipping-layer.html [ Skip ]
-imported/blink/compositing/perspective-origin-overflow-hidden.html [ Skip ]
+imported/blink/compositing/perspective-origin-overflow-hidden.html [ ImageOnlyFailure ]
 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Skip ]
 imported/blink/plugins/empty-per-context-data.html [ Skip ]
 imported/blink/animations/animation-iteration-event-short-iterations.html [ Failure Pass ]
@@ -3362,7 +3358,10 @@ webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-heade
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Failure ]
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Failure ]
 
-webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]
+webkit.org/b/148695 fast/shadow-dom [ Pass ]
+
+# Touch events is not enabled on Windows
+webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]
 
 # The SVG -> OTF Font converter outputs 'kern' tables instead of 'GPOS' tables.
 webkit.org/b/137204 fast/text/svg-font-face-with-kerning.html [ Failure ]

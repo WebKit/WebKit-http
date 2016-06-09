@@ -270,6 +270,7 @@ CSSParserContext::CSSParserContext(Document& document, const URL& baseURL, const
 #if ENABLE(IOS_TEXT_AUTOSIZING)
         textAutosizingEnabled = settings->textAutosizingEnabled();
 #endif
+        springTimingFunctionEnabled = settings->springTimingFunctionEnabled();
     }
 
 #if PLATFORM(IOS)
@@ -291,7 +292,8 @@ bool operator==(const CSSParserContext& a, const CSSParserContext& b)
 #endif
         && a.needsSiteSpecificQuirks == b.needsSiteSpecificQuirks
         && a.enforcesCSSMIMETypeInNoQuirksMode == b.enforcesCSSMIMETypeInNoQuirksMode
-        && a.useLegacyBackgroundSizeShorthandBehavior == b.useLegacyBackgroundSizeShorthandBehavior;
+        && a.useLegacyBackgroundSizeShorthandBehavior == b.useLegacyBackgroundSizeShorthandBehavior
+        && a.springTimingFunctionEnabled == b.springTimingFunctionEnabled;
 }
 
 CSSParser::CSSParser(const CSSParserContext& context)
@@ -1529,19 +1531,20 @@ Vector<CSSParser::SourceSize> CSSParser::parseSizesAttribute(StringView string)
 
 // FIXME(141289): The following two constructors are only needed because of a bug in MSVC 2013 (and prior).
 // We should remove this code as soon as a Visual Studio update that fixes this problem is released.
+
 CSSParser::SourceSize::SourceSize(CSSParser::SourceSize&& original)
     : expression(WTFMove(original.expression))
-    , length(original.length)
+    , length(WTFMove(original.length))
 {
 }
 
-CSSParser::SourceSize::SourceSize(std::unique_ptr<MediaQueryExp>&& origExp, RefPtr<CSSValue>&& value)
-    : expression(WTFMove(origExp))
+CSSParser::SourceSize::SourceSize(MediaQueryExpression&& expression, Ref<CSSValue>&& value)
+    : expression(WTFMove(expression))
     , length(WTFMove(value))
 {
 }
 
-CSSParser::SourceSize CSSParser::sourceSize(std::unique_ptr<MediaQueryExp>&& expression, CSSParserValue& parserValue)
+CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
 {
     RefPtr<CSSValue> value;
     if (isCalculation(parserValue)) {
@@ -1554,7 +1557,7 @@ CSSParser::SourceSize CSSParser::sourceSize(std::unique_ptr<MediaQueryExp>&& exp
     destroy(parserValue);
     // FIXME: Calling the constructor explicitly here to work around an MSVC bug.
     // For other compilers, we did not need to define the constructors and we could use aggregate initialization syntax.
-    return SourceSize(WTFMove(expression), WTFMove(value));
+    return SourceSize(WTFMove(expression), value.releaseNonNull());
 }
 
 static inline void filterProperties(bool important, const ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties, HashSet<AtomicString>& seenCustomProperties)
@@ -1608,7 +1611,7 @@ void CSSParser::addProperty(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool
         return;
     }
 
-    Vector<StylePropertyShorthand> shorthands = matchingShorthandsForLonghand(propId);
+    auto shorthands = matchingShorthandsForLonghand(propId);
     if (shorthands.size() == 1)
         m_parsedProperties.append(CSSProperty(propId, WTFMove(value), important, true, CSSPropertyInvalid, m_implicitShorthand || implicit));
     else
@@ -3422,16 +3425,19 @@ RefPtr<CSSContentDistributionValue> CSSParser::parseContentDistributionOverflowP
 
 bool CSSParser::parseItemPositionOverflowPosition(CSSPropertyID propId, bool important)
 {
-    // auto | stretch | <baseline-position> | [<item-position> && <overflow-position>? ]
+    // auto | normal | stretch | <baseline-position> | [<item-position> && <overflow-position>? ]
     // <baseline-position> = baseline | last-baseline;
     // <item-position> = center | start | end | self-start | self-end | flex-start | flex-end | left | right;
-    // <overflow-position> = true | safe
+    // <overflow-position> = unsafe | safe
 
     CSSParserValue* value = m_valueList->current();
     if (!value)
         return false;
 
-    if (value->id == CSSValueAuto || value->id == CSSValueStretch || isBaselinePositionKeyword(value->id)) {
+    if (value->id == CSSValueAuto || value->id == CSSValueNormal || value->id == CSSValueStretch || isBaselinePositionKeyword(value->id)) {
+        // align-items property does not allow the 'auto' value.
+        if (value->id == CSSValueAuto && propId == CSSPropertyAlignItems)
+            return false;
         if (m_valueList->next())
             return false;
 
@@ -5153,21 +5159,36 @@ bool CSSParser::parseTransformOriginShorthand(RefPtr<CSSPrimitiveValue>& value1,
     return true;
 }
 
-bool CSSParser::parseCubicBezierTimingFunctionValue(CSSParserValueList& args, double& result)
+bool CSSParser::isSpringTimingFunctionEnabled() const
+{
+    return m_context.springTimingFunctionEnabled;
+}
+
+Optional<double> CSSParser::parseCubicBezierTimingFunctionValue(CSSParserValueList& args)
 {
     ValueWithCalculation argumentWithCalculation(*args.current());
     if (!validateUnit(argumentWithCalculation, FNumber))
-        return false;
-    result = parsedDouble(argumentWithCalculation);
+        return Nullopt;
+    Optional<double> result = parsedDouble(argumentWithCalculation);
     CSSParserValue* nextValue = args.next();
     if (!nextValue) {
         // The last number in the function has no comma after it, so we're done.
-        return true;
+        return result;
     }
     if (!isComma(nextValue))
-        return false;
+        return Nullopt;
     args.next();
-    return true;
+    return result;
+}
+
+Optional<double> CSSParser::parseSpringTimingFunctionValue(CSSParserValueList& args)
+{
+    ValueWithCalculation argumentWithCalculation(*args.current());
+    if (!validateUnit(argumentWithCalculation, FNumber))
+        return Nullopt;
+    Optional<double> result = parsedDouble(argumentWithCalculation);
+    args.next();
+    return result;
 }
 
 RefPtr<CSSValue> CSSParser::parseAnimationTimingFunction()
@@ -5215,27 +5236,58 @@ RefPtr<CSSValue> CSSParser::parseAnimationTimingFunction()
     }
 
     if (equalLettersIgnoringASCIICase(value.function->name, "cubic-bezier(")) {
-        // For cubic bezier, 4 values must be specified.
+        // For cubic bezier, 4 values must be specified (comma-separated).
         if (!args || args->size() != 7)
             return nullptr;
 
         // There are two points specified. The x values must be between 0 and 1 but the y values can exceed this range.
-        double x1, y1, x2, y2;
 
-        if (!parseCubicBezierTimingFunctionValue(*args, x1))
-            return nullptr;
-        if (x1 < 0 || x1 > 1)
-            return nullptr;
-        if (!parseCubicBezierTimingFunctionValue(*args, y1))
-            return nullptr;
-        if (!parseCubicBezierTimingFunctionValue(*args, x2))
-            return nullptr;
-        if (x2 < 0 || x2 > 1)
-            return nullptr;
-        if (!parseCubicBezierTimingFunctionValue(*args, y2))
+        auto x1 = parseCubicBezierTimingFunctionValue(*args);
+        if (!x1 || x1.value() < 0 || x1.value() > 1)
             return nullptr;
 
-        return CSSCubicBezierTimingFunctionValue::create(x1, y1, x2, y2);
+        auto y1 = parseCubicBezierTimingFunctionValue(*args);
+        if (!y1)
+            return nullptr;
+
+        auto x2 = parseCubicBezierTimingFunctionValue(*args);
+        if (!x2 || x2.value() < 0 || x2.value() > 1)
+            return nullptr;
+
+        auto y2 = parseCubicBezierTimingFunctionValue(*args);
+        if (!y2)
+            return nullptr;
+
+        return CSSCubicBezierTimingFunctionValue::create(x1.value(), y1.value(), x2.value(), y2.value());
+    }
+
+    if (isSpringTimingFunctionEnabled() && equalLettersIgnoringASCIICase(value.function->name, "spring(")) {
+        // For a spring, 4 values must be specified (space-separated).
+        // FIXME: Make the arguments all optional.
+        if (!args || args->size() != 4)
+            return nullptr;
+        
+        // Mass must be greater than 0.
+        auto mass = parseSpringTimingFunctionValue(*args);
+        if (!mass || mass.value() <= 0)
+            return nullptr;
+
+        // Stiffness must be greater than 0.
+        auto stiffness = parseSpringTimingFunctionValue(*args);
+        if (!stiffness || stiffness.value() <= 0)
+            return nullptr;
+
+        // Damping coefficient must be greater than or equal to 0.
+        auto damping = parseSpringTimingFunctionValue(*args);
+        if (!damping || damping.value() < 0)
+            return nullptr;
+
+        // Initial velocity may have any value.
+        auto initialVelocity = parseSpringTimingFunctionValue(*args);
+        if (!initialVelocity)
+            return nullptr;
+
+        return CSSSpringTimingFunctionValue::create(mass.value(), stiffness.value(), damping.value(), initialVelocity.value());
     }
 
     return nullptr;
