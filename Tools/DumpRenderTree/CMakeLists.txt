@@ -71,32 +71,32 @@ set(DumpRenderTree_INCLUDE_DIRECTORIES
 )
 
 set(TestNetscapePlugin_SOURCES
-    TestNetscapePlugin/PluginObject.cpp
-    TestNetscapePlugin/PluginTest.cpp
-    TestNetscapePlugin/TestObject.cpp
-    TestNetscapePlugin/main.cpp
+    TestNetscapePlugIn/PluginObject.cpp
+    TestNetscapePlugIn/PluginTest.cpp
+    TestNetscapePlugIn/TestObject.cpp
+    TestNetscapePlugIn/main.cpp
 
-    TestNetscapePlugin/Tests/DocumentOpenInDestroyStream.cpp
-    TestNetscapePlugin/Tests/EvaluateJSAfterRemovingPluginElement.cpp
-    TestNetscapePlugin/Tests/FormValue.cpp
-    TestNetscapePlugin/Tests/GetURLNotifyWithURLThatFailsToLoad.cpp
-    TestNetscapePlugin/Tests/GetURLWithJavaScriptURL.cpp
-    TestNetscapePlugin/Tests/GetURLWithJavaScriptURLDestroyingPlugin.cpp
-    TestNetscapePlugin/Tests/GetUserAgentWithNullNPPFromNPPNew.cpp
-    TestNetscapePlugin/Tests/LogNPPSetWindow.cpp
-    TestNetscapePlugin/Tests/NPDeallocateCalledBeforeNPShutdown.cpp
-    TestNetscapePlugin/Tests/NPPNewFails.cpp
-    TestNetscapePlugin/Tests/NPPSetWindowCalledDuringDestruction.cpp
-    TestNetscapePlugin/Tests/NPRuntimeCallsWithNullNPP.cpp
-    TestNetscapePlugin/Tests/NPRuntimeObjectFromDestroyedPlugin.cpp
-    TestNetscapePlugin/Tests/NPRuntimeRemoveProperty.cpp
-    TestNetscapePlugin/Tests/NullNPPGetValuePointer.cpp
-    TestNetscapePlugin/Tests/PassDifferentNPPStruct.cpp
-    TestNetscapePlugin/Tests/PluginScriptableNPObjectInvokeDefault.cpp
-    TestNetscapePlugin/Tests/PluginScriptableObjectOverridesAllProperties.cpp
-    TestNetscapePlugin/Tests/PrivateBrowsing.cpp
-    TestNetscapePlugin/Tests/ToStringAndValueOfObject.cpp
-    TestNetscapePlugin/Tests/URLRedirect.cpp
+    TestNetscapePlugIn/Tests/DocumentOpenInDestroyStream.cpp
+    TestNetscapePlugIn/Tests/EvaluateJSAfterRemovingPluginElement.cpp
+    TestNetscapePlugIn/Tests/FormValue.cpp
+    TestNetscapePlugIn/Tests/GetURLNotifyWithURLThatFailsToLoad.cpp
+    TestNetscapePlugIn/Tests/GetURLWithJavaScriptURL.cpp
+    TestNetscapePlugIn/Tests/GetURLWithJavaScriptURLDestroyingPlugin.cpp
+    TestNetscapePlugIn/Tests/GetUserAgentWithNullNPPFromNPPNew.cpp
+    TestNetscapePlugIn/Tests/LogNPPSetWindow.cpp
+    TestNetscapePlugIn/Tests/NPDeallocateCalledBeforeNPShutdown.cpp
+    TestNetscapePlugIn/Tests/NPPNewFails.cpp
+    TestNetscapePlugIn/Tests/NPPSetWindowCalledDuringDestruction.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeCallsWithNullNPP.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeObjectFromDestroyedPlugin.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeRemoveProperty.cpp
+    TestNetscapePlugIn/Tests/NullNPPGetValuePointer.cpp
+    TestNetscapePlugIn/Tests/PassDifferentNPPStruct.cpp
+    TestNetscapePlugIn/Tests/PluginScriptableNPObjectInvokeDefault.cpp
+    TestNetscapePlugIn/Tests/PluginScriptableObjectOverridesAllProperties.cpp
+    TestNetscapePlugIn/Tests/PrivateBrowsing.cpp
+    TestNetscapePlugIn/Tests/ToStringAndValueOfObject.cpp
+    TestNetscapePlugIn/Tests/URLRedirect.cpp
 )
 
 set(TestNetscapePlugin_LIBRARIES
@@ -113,6 +113,7 @@ list(APPEND TestNetscapePlugin_LIBRARIES
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 include_directories(${DumpRenderTree_INCLUDE_DIRECTORIES})
+include_directories(SYSTEM ${DumpRenderTree_SYSTEM_INCLUDE_DIRECTORIES})
 
 add_executable(DumpRenderTree ${DumpRenderTree_SOURCES})
 target_link_libraries(DumpRenderTree ${DumpRenderTree_LIBRARIES})
