@@ -119,7 +119,7 @@ public:
     virtual void sourceChanged();
 
     GstElement* audioSink() const override;
-    void configurePlaySink();
+    virtual void configurePlaySink() { };
 
     void simulateAudioInterruption() override;
 

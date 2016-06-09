@@ -206,6 +206,10 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     // The key might not have been received yet. Wait for it.
     if (!priv->keyReceived) {
         GST_DEBUG_OBJECT(self, "key not available yet, waiting for it");
+        if (GST_STATE(GST_ELEMENT(self)) < GST_STATE_PAUSED || (GST_STATE_TARGET(GST_ELEMENT(self)) != GST_STATE_VOID_PENDING && GST_STATE_TARGET(GST_ELEMENT(self)) < GST_STATE_PAUSED)) {
+            GST_DEBUG_OBJECT(self, "can't process key requests in less than PAUSED state");
+            return GST_FLOW_NOT_SUPPORTED;
+        }
         priv->condition.wait(priv->mutex);
         if (!priv->keyReceived) {
             GST_ERROR_OBJECT(self, "key not available");
