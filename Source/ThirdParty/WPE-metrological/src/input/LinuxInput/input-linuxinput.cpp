@@ -7,7 +7,7 @@
 
 extern "C" {
 
-struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = {
+struct wpe_input_key_mapper_interface linuxinput_input_key_mapper_interface = {
     // identifier_for_key_event
     [](struct wpe_input_keyboard_event* event) -> const char*
     {
