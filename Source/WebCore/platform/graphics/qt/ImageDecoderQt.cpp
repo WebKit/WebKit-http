@@ -93,7 +93,7 @@ void ImageDecoderQt::setData(SharedBuffer* data, bool allDataReceived)
 
     // QImageReader only allows retrieving the format before reading the image
     m_format = m_reader->format();
-    if (!isFormatWhiteListed(m_format)) {
+    if (!m_format.isEmpty() && !isFormatWhiteListed(m_format)) {
         qWarning("Image of format '%s' blocked because it is not considered safe. If you are sure it is safe to do so, you can white-list the format by setting the environment variable QTWEBKIT_IMAGEFORMAT_WHITELIST=%s", m_format.constData(), m_format.constData());
         setFailed();
         m_reader = nullptr;
