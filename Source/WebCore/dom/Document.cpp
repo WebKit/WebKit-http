@@ -529,6 +529,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_didDispatchViewportPropertiesChanged(false)
 #endif
     , m_templateDocumentHost(nullptr)
+    , m_fontSelector(CSSFontSelector::create(*this))
 #if ENABLE(WEB_REPLAY)
     , m_inputCursor(EmptyInputCursor::create())
 #endif
@@ -562,6 +563,8 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 
     initSecurityContext();
     initDNSPrefetch();
+
+    m_fontSelector->registerForInvalidationCallbacks(*this);
 
     for (auto& nodeListAndCollectionCount : m_nodeListAndCollectionCounts)
         nodeListAndCollectionCount = 0;
@@ -637,6 +640,8 @@ Document::~Document()
     extensionStyleSheets().detachFromDocument();
 
     clearStyleResolver(); // We need to destroy CSSFontSelector before destroying m_cachedResourceLoader.
+    m_fontSelector->clearDocument();
+    m_fontSelector->unregisterForInvalidationCallbacks(*this);
 
     // It's possible for multiple Documents to end up referencing the same CachedResourceLoader (e.g., SVGImages
     // load the initial empty document and the SVGDocument with the same DocumentLoader).
@@ -889,7 +894,7 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
     QualifiedName qualifiedName(nullAtom, localName, xhtmlNamespaceURI);
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    if (CustomElementDefinitions::checkName(localName) == CustomElementDefinitions::NameStatus::Valid) {
+    if (Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
         Ref<HTMLElement> element = HTMLElement::create(qualifiedName, document);
         element->setIsUnresolvedCustomElement();
         document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
@@ -1074,7 +1079,7 @@ static Ref<HTMLElement> createFallbackHTMLElement(Document& document, const Qual
         }
     }
     // FIXME: Should we also check the equality of prefix between the custom element and name?
-    if (CustomElementDefinitions::checkName(name.localName()) == CustomElementDefinitions::NameStatus::Valid) {
+    if (Document::validateCustomElementName(name.localName()) == CustomElementNameValidationStatus::Valid) {
         Ref<HTMLElement> element = HTMLElement::create(name, document);
         element->setIsUnresolvedCustomElement();
         document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
@@ -1111,6 +1116,40 @@ Ref<Element> Document::createElement(const QualifiedName& name, bool createdByPa
 
     return element.releaseNonNull();
 }
+
+#if ENABLE(CUSTOM_ELEMENTS) || ENABLE(SHADOW_DOM)
+CustomElementNameValidationStatus Document::validateCustomElementName(const AtomicString& localName)
+{
+    bool containsHyphen = false;
+    for (auto character : StringView(localName).codeUnits()) {
+        if (isASCIIUpper(character))
+            return CustomElementNameValidationStatus::ContainsUpperCase;
+        if (character == '-')
+            containsHyphen = true;
+    }
+
+    if (!containsHyphen)
+        return CustomElementNameValidationStatus::NoHyphen;
+
+#if ENABLE(MATHML)
+    const auto& annotationXmlLocalName = MathMLNames::annotation_xmlTag.localName();
+#else
+    static NeverDestroyed<const AtomicString> annotationXmlLocalName(ASCIILiteral("annotation-xml"));
+#endif
+
+    if (localName == SVGNames::color_profileTag.localName()
+        || localName == SVGNames::font_faceTag.localName()
+        || localName == SVGNames::font_face_formatTag.localName()
+        || localName == SVGNames::font_face_nameTag.localName()
+        || localName == SVGNames::font_face_srcTag.localName()
+        || localName == SVGNames::font_face_uriTag.localName()
+        || localName == SVGNames::missing_glyphTag.localName()
+        || localName == annotationXmlLocalName)
+        return CustomElementNameValidationStatus::ConflictsWithBuiltinNames;
+
+    return CustomElementNameValidationStatus::Valid;
+}
+#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
 bool Document::isCSSGridLayoutEnabled() const
@@ -2174,26 +2213,12 @@ void Document::fontsNeedUpdate(FontSelector&)
     scheduleForcedStyleRecalc();
 }
 
-CSSFontSelector& Document::fontSelector()
-{
-    if (!m_fontSelector) {
-        m_fontSelector = CSSFontSelector::create(*this);
-        m_fontSelector->registerForInvalidationCallbacks(*this);
-    }
-    return *m_fontSelector;
-}
-
 void Document::clearStyleResolver()
 {
     m_styleResolver = nullptr;
     m_userAgentShadowTreeStyleResolver = nullptr;
 
-    // FIXME: It would be better if the FontSelector could survive this operation.
-    if (m_fontSelector) {
-        m_fontSelector->clearDocument();
-        m_fontSelector->unregisterForInvalidationCallbacks(*this);
-        m_fontSelector = nullptr;
-    }
+    m_fontSelector->buildStarted();
 }
 
 void Document::createRenderTree()
@@ -4610,8 +4635,6 @@ void Document::setInPageCache(bool flag)
         }
         m_styleRecalcTimer.stop();
 
-        clearStyleResolver();
-        clearSelectorQueryCache();
         clearSharedObjectPool();
     } else {
         if (childNeedsStyleRecalc())
@@ -5162,16 +5185,26 @@ void Document::initSecurityContext()
 
     // If we do not obtain a meaningful origin from the URL, then we try to
     // find one via the frame hierarchy.
+    Frame* parentFrame = m_frame->tree().parent();
+    Frame* openerFrame = m_frame->loader().opener();
 
-    Frame* ownerFrame = m_frame->tree().parent();
+    Frame* ownerFrame = parentFrame;
     if (!ownerFrame)
-        ownerFrame = m_frame->loader().opener();
+        ownerFrame = openerFrame;
 
     if (!ownerFrame) {
         didFailToInitializeSecurityOrigin();
         return;
     }
+    
+    Document* openerDocument = openerFrame ? openerFrame->document() : nullptr;
 
+    // Per <http://www.w3.org/TR/upgrade-insecure-requests/>, new browsing contexts must inherit from an
+    // ongoing set of upgraded requests. When opening a new browsing context, we need to capture its
+    // existing upgrade request. Nested browsing contexts are handled during DocumentWriter::begin.
+    if (openerDocument)
+        contentSecurityPolicy()->inheritInsecureNavigationRequestsToUpgradeFromOpener(*openerDocument->contentSecurityPolicy());
+    
     if (isSandboxed(SandboxOrigin)) {
         // If we're supposed to inherit our security origin from our owner,
         // but we're also sandboxed, the only thing we inherit is the ability
@@ -5468,7 +5501,7 @@ void Document::windowScreenDidChange(PlatformDisplayID displayID)
 String Document::displayStringModifiedByEncoding(const String& str) const
 {
     if (m_decoder)
-        return m_decoder->encoding().displayString(str.impl());
+        return m_decoder->encoding().displayString(str.impl()).get();
     return str;
 }
 

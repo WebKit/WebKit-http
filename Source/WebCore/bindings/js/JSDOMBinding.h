@@ -305,7 +305,7 @@ String propertyNameToString(JSC::PropertyName);
 AtomicString propertyNameToAtomicString(JSC::PropertyName);
 
 template<typename DOMClass> const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching(JSC::ExecState*, JSC::PropertyName);
-template<JSC::NativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName, JSC::JSObject*);
+template<JSC::NativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 
 // Inline functions and template definitions.
 
@@ -540,6 +540,8 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalO
 template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<T>& vector)
 {
     JSC::JSArray* array = constructEmptyArray(exec, nullptr, vector.size());
+    if (UNLIKELY(exec->hadException()))
+        return JSC::jsUndefined();
     for (size_t i = 0; i < vector.size(); ++i)
         array->putDirectIndex(exec, i, toJS(exec, globalObject, vector[i]));
     return array;
@@ -548,6 +550,8 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalO
 template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<RefPtr<T>>& vector)
 {
     JSC::JSArray* array = constructEmptyArray(exec, nullptr, vector.size());
+    if (UNLIKELY(exec->hadException()))
+        return JSC::jsUndefined();
     for (size_t i = 0; i < vector.size(); ++i)
         array->putDirectIndex(exec, i, toJS(exec, globalObject, vector[i].get()));
     return array;
@@ -784,7 +788,7 @@ template<> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCachi
     return nullptr;
 }
 
-template<JSC::NativeFunction nativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState* exec, JSC::EncodedJSValue, JSC::PropertyName propertyName, JSC::JSObject*)
+template<JSC::NativeFunction nativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState* exec, JSC::EncodedJSValue, JSC::PropertyName propertyName)
 {
     return JSC::JSValue::encode(JSC::JSFunction::create(exec->vm(), exec->lexicalGlobalObject(), length, propertyName.publicName(), nativeFunction));
 }

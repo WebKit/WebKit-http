@@ -918,6 +918,7 @@ set(WebCore_SOURCES
     Modules/mediastream/MediaDevices.cpp
     Modules/mediastream/MediaDevicesRequest.cpp
     Modules/mediastream/MediaEndpointPeerConnection.cpp
+    Modules/mediastream/MediaEndpointSessionDescription.cpp
     Modules/mediastream/MediaSourceSettings.cpp
     Modules/mediastream/MediaStream.cpp
     Modules/mediastream/MediaStreamEvent.cpp
@@ -1404,7 +1405,6 @@ set(WebCore_SOURCES
     dom/BeforeUnloadEvent.cpp
     dom/CDATASection.cpp
     dom/CharacterData.cpp
-    dom/CheckedRadioButtons.cpp
     dom/ChildListMutationScope.cpp
     dom/ChildNodeList.cpp
     dom/ClassCollection.cpp
@@ -1499,6 +1499,7 @@ set(WebCore_SOURCES
     dom/ProgressEvent.cpp
     dom/PseudoElement.cpp
     dom/QualifiedName.cpp
+    dom/RadioButtonGroups.cpp
     dom/Range.cpp
     dom/RegisteredEventListener.cpp
     dom/ScopedEventQueue.cpp
@@ -3027,15 +3028,22 @@ list(APPEND WebCore_CSS_VALUE_KEYWORDS
 
 if (ENABLE_WEB_ANIMATIONS)
     list(APPEND WebCore_IDL_FILES
+        "animation/Animatable.idl"
+        "animation/AnimationEffect.idl"
         "animation/AnimationTimeline.idl"
         "animation/DocumentAnimation.idl"
         "animation/DocumentTimeline.idl"
+        "animation/KeyframeEffect.idl"
+        "animation/WebAnimation.idl"
     )
 
     list(APPEND WebCore_SOURCES
+        "animation/AnimationEffect.cpp"
         "animation/AnimationTimeline.cpp"
         "animation/DocumentAnimation.cpp"
         "animation/DocumentTimeline.cpp"
+        "animation/KeyframeEffect.cpp"
+        "animation/WebAnimation.cpp"
     )
 endif ()
 

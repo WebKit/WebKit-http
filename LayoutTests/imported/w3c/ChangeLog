@@ -1,3 +1,96 @@
+2016-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Implement EventListenerOptions argument to addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        <rdar://problem/22802031>
+
+        Reviewed by Dean Jackson.
+
+        Import new test from W3C that covers EventListenerOptions.
+
+        * web-platform-tests/dom/events/EventListenerOptions-capture-expected.txt: Added.
+        * web-platform-tests/dom/events/EventListenerOptions-capture.html: Added.
+
+2016-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201735.
+        https://bugs.webkit.org/show_bug.cgi?id=158465
+
+        fast/events/AddEventListenerOptions-once-recursive.html fails
+        on all bots (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Implement EventListenerOptions argument to addEventListener"
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        http://trac.webkit.org/changeset/201735
+
+2016-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement EventListenerOptions argument to addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        <rdar://problem/22802031>
+
+        Reviewed by Dean Jackson.
+
+        Import new test from W3C that covers EventListenerOptions.
+
+        * web-platform-tests/dom/events/EventListenerOptions-capture-expected.txt: Added.
+        * web-platform-tests/dom/events/EventListenerOptions-capture.html: Added.
+
+2016-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201730.
+        https://bugs.webkit.org/show_bug.cgi?id=158453
+
+        This change caused existing LayoutTests to crash (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Implement EventListenerOptions argument to addEventListener"
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        http://trac.webkit.org/changeset/201730
+
+2016-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement EventListenerOptions argument to addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        <rdar://problem/22802031>
+
+        Reviewed by Dean Jackson.
+
+        Import new test from W3C that covers EventListenerOptions.
+
+        * web-platform-tests/dom/events/EventListenerOptions-capture-expected.txt: Added.
+        * web-platform-tests/dom/events/EventListenerOptions-capture.html: Added.
+
+2016-06-03  Chris Dumez  <cdumez@apple.com>
+
+        CanvasRenderingContext2D.createPattern() / putImageData() throw wrong exception type
+        https://bugs.webkit.org/show_bug.cgi?id=158322
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test now that it is passing.
+
+        * canvas/2d.pattern.image.undefined-expected.txt:
+
+2016-06-02  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] 'undefined' should be an acceptable value for nullable parameters
+        https://bugs.webkit.org/show_bug.cgi?id=158321
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test. The test is failing because the first parameter to
+        createPattern is wrongly marked as nullable in our IDL and because our
+        implementation throws a legacy TYPE_MISMATCH_ERR instead of a standard
+        TypeError when getting null as first parameter. I will fix this bug
+        and this test via Bug 158322.
+
+        * canvas/2d.pattern.image.undefined-expected.txt:
+
 2016-06-01  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
 
         POST request on a blob resource should return a "network error" instead of HTTP 500 response

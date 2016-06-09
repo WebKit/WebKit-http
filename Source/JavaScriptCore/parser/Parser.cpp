@@ -93,7 +93,7 @@ void Parser<LexerType>::logError(bool)
         return;
     StringPrintStream stream;
     printUnexpectedTokenText(stream);
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A>
@@ -107,7 +107,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1)
         stream.print(". ");
     }
     stream.print(value1, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B>
@@ -121,7 +121,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C>
@@ -135,7 +135,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D>
@@ -149,7 +149,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D, typename E>
@@ -163,7 +163,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, value5, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D, typename E, typename F>
@@ -177,7 +177,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, value5, value6, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType> template <typename A, typename B, typename C, typename D, typename E, typename F, typename G>
@@ -191,7 +191,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
         stream.print(". ");
     }
     stream.print(value1, value2, value3, value4, value5, value6, value7, ".");
-    setErrorMessage(stream.toString());
+    setErrorMessage(stream.toStringWithLatin1Fallback());
 }
 
 template <typename LexerType>
@@ -1746,6 +1746,9 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFormalParameters(TreeB
         TreeDestructuringPattern parameter = 0;
         TreeExpression defaultValue = 0;
 
+        if (UNLIKELY(match(CLOSEPAREN)))
+            break;
+        
         if (match(DOTDOTDOT)) {
             next();
             failIfFalse(matchSpecIdentifier(), "Rest parameter '...' should be followed by a variable identifier");
@@ -3826,6 +3829,9 @@ template <class TreeBuilder> TreeArguments Parser<LexerType>::parseArguments(Tre
         JSTokenLocation argumentLocation(tokenLocation());
         next(TreeBuilder::DontBuildStrings);
 
+        if (UNLIKELY(match(CLOSEPAREN)))
+            break;
+        
         TreeExpression arg = parseArgument(context, argType);
         propagateError();
         semanticFailIfTrue(match(DOTDOTDOT), "The '...' operator should come before the target expression");

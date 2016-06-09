@@ -38,6 +38,10 @@ void computeUsesForBytecodeOffset(
     Instruction* instructionsBegin = codeBlock->instructions().begin();
     Instruction* instruction = &instructionsBegin[bytecodeOffset];
     OpcodeID opcodeID = interpreter->getOpcodeID(instruction->u.opcode);
+
+    if (opcodeID != op_enter && codeBlock->wasCompiledWithDebuggingOpcodes() && codeBlock->scopeRegister().isValid())
+        functor(codeBlock, instruction, opcodeID, codeBlock->scopeRegister().offset());
+
     switch (opcodeID) {
     // No uses.
     case op_new_regexp:
@@ -49,6 +53,7 @@ void computeUsesForBytecodeOffset(
     case op_jmp:
     case op_new_object:
     case op_enter:
+    case op_argument_count:
     case op_catch:
     case op_profile_control_flow:
     case op_create_direct_arguments:
@@ -157,6 +162,8 @@ void computeUsesForBytecodeOffset(
     case op_to_primitive:
     case op_try_get_by_id:
     case op_get_by_id:
+    case op_get_by_id_proto_load:
+    case op_get_by_id_unset:
     case op_get_array_length:
     case op_typeof:
     case op_is_empty:
@@ -356,6 +363,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
 #undef LLINT_HELPER_OPCODES
         return;
     // These all have a single destination for the first argument.
+    case op_argument_count:
     case op_to_index_string:
     case op_get_enumerable_length:
     case op_has_indexed_property:
@@ -390,6 +398,8 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_construct:
     case op_try_get_by_id:
     case op_get_by_id:
+    case op_get_by_id_proto_load:
+    case op_get_by_id_unset:
     case op_get_by_id_with_this:
     case op_get_by_val_with_this:
     case op_get_array_length:

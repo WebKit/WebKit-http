@@ -1,3 +1,59 @@
+2016-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Shadow DOM tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158524
+
+        Reviewed by Brent Fulgham.
+
+        Enable Shadow DOM.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2016-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB in workers
+        https://bugs.webkit.org/show_bug.cgi?id=158475
+
+        Reviewed by Antonio Gomes.
+
+        This is working now and many tests are failing only because we don't enable it.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-06-06  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Update ewebkit minor version
+        https://bugs.webkit.org/show_bug.cgi?id=158409
+
+        Reviewed by Csaba Osztrogonác.
+
+        EWebKit has used efl 1.17 version though, it still is stopped at version 1.14.
+
+        * Source/cmake/OptionsEfl.cmake: Bump minor version to 1.17.
+
+2016-06-05  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Sync EFL features with featureList.pm
+        https://bugs.webkit.org/show_bug.cgi?id=158410
+
+        Reviewed by Antonio Gomes.
+
+        In OptionsEfl, some features on/off status are different with
+        featureList.pm definitions. Sync with it.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2016-06-03  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] IndexedDB worker tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158341
+
+        Reviewed by Alex Christensen.
+
+        Enable IndexedDB in workers.
+
+        * Source/cmake/OptionsWin.cmake:
+
 2016-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update OptionsGTK.cmake and NEWS for 2.13.1 release.

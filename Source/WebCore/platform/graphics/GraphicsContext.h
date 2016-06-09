@@ -395,8 +395,8 @@ public:
     FloatRect roundToDevicePixels(const FloatRect&, RoundingMode = RoundAllSides);
 
     FloatRect computeUnderlineBoundsForText(const FloatPoint&, float width, bool printing);
-    WEBCORE_EXPORT void drawLineForText(const FloatPoint&, float width, bool printing, bool doubleLines = false);
-    void drawLinesForText(const FloatPoint&, const DashArray& widths, bool printing, bool doubleLines = false);
+    WEBCORE_EXPORT void drawLineForText(const FloatPoint&, float width, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
+    void drawLinesForText(const FloatPoint&, const DashArray& widths, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
     enum DocumentMarkerLineStyle {
 #if PLATFORM(IOS)
         TextCheckingDictationPhraseWithAlternativesLineStyle,
@@ -476,15 +476,12 @@ public:
     void set3DTransform(const TransformationMatrix&);
     TransformationMatrix get3DTransform() const;
 #endif
-    // Create an image buffer compatible with this context, with suitable resolution
-    // for drawing into the buffer and then into this context.
-    std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, bool hasAlpha = true) const;
-    bool isCompatibleWithBuffer(ImageBuffer&) const;
 
     // This function applies the device scale factor to the context, making the context capable of
     // acting as a base-level context for a HiDPI environment.
     WEBCORE_EXPORT void applyDeviceScaleFactor(float);
     void platformApplyDeviceScaleFactor(float);
+    FloatSize scaleFactor() const;
 
 #if OS(WINDOWS)
     HDC getWindowsContext(const IntRect&, bool supportAlphaBlend, bool mayCreateBitmap); // The passed in rect is used to create a bitmap for compositing inside transparency layers.

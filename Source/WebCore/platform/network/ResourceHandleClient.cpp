@@ -27,6 +27,7 @@
 #include "ResourceHandleClient.h"
 
 #include "ResourceHandle.h"
+#include "ResourceRequest.h"
 #include "SharedBuffer.h"
 
 namespace WebCore {
@@ -38,10 +39,15 @@ ResourceHandleClient::ResourceHandleClient()
 ResourceHandleClient::~ResourceHandleClient()
 {
 }
-
-void ResourceHandleClient::willSendRequestAsync(ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& /*redirectResponse*/)
+    
+ResourceRequest ResourceHandleClient::willSendRequest(ResourceHandle*, ResourceRequest&& request, ResourceResponse&&)
 {
-    handle->continueWillSendRequest(request);
+    return WTFMove(request);
+}
+
+void ResourceHandleClient::willSendRequestAsync(ResourceHandle* handle, ResourceRequest&& request, ResourceResponse&& /*redirectResponse*/)
+{
+    handle->continueWillSendRequest(WTFMove(request));
 }
 
 void ResourceHandleClient::didReceiveResponseAsync(ResourceHandle* handle, const ResourceResponse&)
@@ -68,7 +74,7 @@ void ResourceHandleClient::willCacheResponseAsync(ResourceHandle* handle, NSCach
 }
 #endif
 
-void ResourceHandleClient::didReceiveBuffer(ResourceHandle* handle, PassRefPtr<SharedBuffer> buffer, int encodedDataLength)
+void ResourceHandleClient::didReceiveBuffer(ResourceHandle* handle, Ref<SharedBuffer>&& buffer, int encodedDataLength)
 {
     didReceiveData(handle, buffer->data(), buffer->size(), encodedDataLength);
 }

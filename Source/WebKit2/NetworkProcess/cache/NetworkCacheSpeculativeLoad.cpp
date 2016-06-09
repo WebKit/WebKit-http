@@ -63,7 +63,7 @@ SpeculativeLoad::~SpeculativeLoad()
     ASSERT(!m_networkLoad);
 }
 
-void SpeculativeLoad::willSendRedirectedRequest(const ResourceRequest&, const ResourceRequest& redirectRequest, const ResourceResponse& redirectResponse)
+void SpeculativeLoad::willSendRedirectedRequest(ResourceRequest&&, ResourceRequest&& redirectRequest, ResourceResponse&& redirectResponse)
 {
     LOG(NetworkCacheSpeculativePreloading, "(NetworkProcess) Speculative revalidation for %s hit a redirect, aborting the load.", redirectResponse.url().string().utf8().data());
     // We drop speculative revalidations if they redirect for now as we would need to notify WebCore of such redirects.
@@ -88,7 +88,7 @@ auto SpeculativeLoad::didReceiveResponse(const ResourceResponse& receivedRespons
     return ShouldContinueDidReceiveResponse::Yes;
 }
 
-void SpeculativeLoad::didReceiveBuffer(RefPtr<SharedBuffer>&& buffer, int reportedEncodedDataLength)
+void SpeculativeLoad::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedEncodedDataLength)
 {
     ASSERT(!m_cacheEntryForValidation);
 

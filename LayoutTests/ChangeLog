@@ -1,3 +1,1222 @@
+2016-06-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking css3/filters/backdrop/dynamic-backdrop-filter-change.html as flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=158534
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-08  Dean Jackson  <dino@apple.com>
+
+        Multiple selectors break keyframes animation
+        https://bugs.webkit.org/show_bug.cgi?id=158199
+        <rdar://problem/26652591>
+
+        Reviewed by Simon Fraser.
+
+        * animations/duplicate-keys-expected.html: Added.
+        * animations/duplicate-keys.html: Added.
+
+2016-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Shadow DOM tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158524
+
+        Reviewed by Brent Fulgham.
+
+        Update test expectations for Shadow DOM.
+
+        * platform/win/TestExpectations:
+
+2016-06-08  Rawinder Singh  <rawinder.singh-webkit@cisra.canon.com.au>
+
+        [web-animations] Add Animatable, AnimationEffect, KeyframeEffect and Animation interface
+        https://bugs.webkit.org/show_bug.cgi?id=156096
+
+        Reviewed by Dean Jackson.
+
+        Adds:
+        - Animatable interface and implementation of getAnimations in Element
+        - Interface and implementation for Document getAnimations method.
+        - AnimationEffect interface and class stub.
+        - KeyframeEffect interface and constructor implementation.
+        - 'Animation' interface, constructor and query methods for effect and timeline.
+        - Remove runtime condition on Web animation interfaces (compile time flag is specified).
+
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * webanimations/Document-expected.txt: Added.
+        * webanimations/Document.html: Added.
+        * webanimations/script-tests/Document.js: Added.
+
+2016-06-08  Chris Dumez  <cdumez@apple.com>
+
+        self.hasOwnProperty() does not work inside Web workers
+        https://bugs.webkit.org/show_bug.cgi?id=158446
+        <rdar://problem/26638397>
+
+        Reviewed by Geoffrey Garen.
+
+        Add tests to make sure that self.toString() and self.hasOwnProperty()
+        now work in workers.
+
+        * fast/workers/self-hasOwnProperty-expected.txt: Added.
+        * fast/workers/self-hasOwnProperty.html: Added.
+        * fast/workers/self-toString-expected.txt: Added.
+        * fast/workers/self-toString.html: Added.
+
+2016-06-06  Antti Koivisto  <antti@apple.com>
+
+        WebKit memory cache doesn't respect Vary header
+        https://bugs.webkit.org/show_bug.cgi?id=71509
+        <rdar://problem/26651033>
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/cache/disk-cache/disk-cache-vary-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary-no-body-expected.txt:
+
+2016-06-08  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::setLocalDescription()
+        https://bugs.webkit.org/show_bug.cgi?id=158190
+
+        Reviewed by Eric Carlson.
+
+        Add new test for RTCPeerConnection.setLocalDescription.
+
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html: Added.
+        Set two local offers as local descriptions and inspect the state changes. Also set some
+        descriptions with bad types.
+        * platform/mac/TestExpectations:
+        Skip the above test for mac (not building with WEB_RTC)
+
+2016-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Expose Event / EventTarget properties on WorkerGlobalScope
+        https://bugs.webkit.org/show_bug.cgi?id=158511
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline existing test.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-06-07  Antoine Quint  <graouts@apple.com>
+
+        The backdrop-filter property does not respect border-radius
+        https://bugs.webkit.org/show_bug.cgi?id=158483
+        <rdar://problem/24210257>
+
+        Reviewed by Simon Fraser.
+
+        Adding new tests checking that border-radius correctly affects clipping of the backdrop layer
+        in a basic scenario, when we change border-radius to a different value, when we set border-radius
+        back to 0 and when we add a reflection.
+
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-remove-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-remove.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-change-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-change.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-remove-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-remove.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius.html: Added.
+
+2016-06-07  Sam Weinig  <sam@webkit.org>
+
+        Update tests to work around https://bugs.webkit.org/show_bug.cgi?id=158507.
+
+        * TestExpectations:
+        Re-enable now passing test.
+
+        * animations/script-tests/spring-computed-style.js:
+        * animations/script-tests/spring-parsing.js:
+        Use a non-body element to do the testing.
+
+2016-06-07  Sam Weinig  <sam@webkit.org>
+
+        Mark animations/spring-computed-style.html as failing temporarily.
+
+        * TestExpectations:
+
+2016-06-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/events/touch/document-create-touch-list-ios.html
+
+        Unreviewed test gardening.
+
+        * fast/events/touch/document-create-touch-list-ios-expected.txt:
+
+2016-06-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Text-decoration-style: dashed / dotted rendered as solid
+        https://bugs.webkit.org/show_bug.cgi?id=134336
+
+        Reviewed by Dean Jackson.
+
+        Make sure that the dotted / dashed / solid renderings are all distinct.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-dashed-expected-mismatch.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-dashed.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-dotted-dashed-expected-mismatch.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-dotted-dashed.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-dotted-expected-mismatch.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-dotted.html: Added.
+
+2016-06-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping http/tests/websocket/tests/hybi/upgrade-simple-ws.html
+        https://bugs.webkit.org/show_bug.cgi?id=158480
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-06-05  Sam Weinig  <sam@webkit.org>
+
+        Add experimental support for spring based CSS animations
+        https://bugs.webkit.org/show_bug.cgi?id=158403
+
+        Reviewed by Dean Jackson.
+
+        * animations/script-tests/spring-computed-style.js: Added.
+        * animations/script-tests/spring-parsing.js: Added.
+        * animations/spring-computed-style-expected.txt: Added.
+        * animations/spring-computed-style.html: Added.
+        * animations/spring-function-expected.txt: Added.
+        * animations/spring-function.html: Added.
+        * animations/spring-parsing-expected.txt: Added.
+        * animations/spring-parsing.html: Added.
+        Add tests for the spring timing function.
+
+2016-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Implement EventListenerOptions argument to addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        <rdar://problem/22802031>
+
+        Reviewed by Dean Jackson.
+
+        * fast/events/AddEventListenerOptions-once-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-once-recursive-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-once-recursive.html: Added.
+        * fast/events/AddEventListenerOptions-once.html: Added.
+        * fast/events/AddEventListenerOptions-passive-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-passive.html: Added.
+        * fast/events/removeEventListener-EventListenerOptions-capture-expected.txt: Added.
+        * fast/events/removeEventListener-EventListenerOptions-capture.html: Added.
+
+        Add layout testing coverage for various aspects of the functionality.
+
+        * imported/blink/fast/events/eventlisteneroptions/capture_default-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_default.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_equality-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_equality.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_query-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_query.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_dispatch-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_dispatch.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_inequality-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_inequality.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_query-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_query.html: Added.
+
+        Import blink tests for this functionality.
+
+2016-06-07  Brent Fulgham  <bfulgham@apple.com>
+
+        CSP: Content Security Policy directive, upgrade-insecure-requests (UIR)
+        https://bugs.webkit.org/show_bug.cgi?id=143653
+        <rdar://problem/23032067>
+
+        Reviewed by Andy Estes.
+
+        Some of these tests are based on a set of Blink patches by Mike West <mkwst@chromium.org>.
+        <https://src.chromium.org/viewvc/blink?revision=192607&view=revision>,
+        <https://codereview.chromium.org/1178093002>, <https://codereview.chromium.org/1964303003>
+
+        The rest of them are based on our own mixedContent tests, revised for upgraded requests.
+
+        Note that WebSockets are not part of this testing at present due to https://bugs.webkit.org/show_bug.cgi?id=157884.
+
+        * http/tests/security/contentSecurityPolicy/report-only-upgrade-insecure.php: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade-cors.https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade-cors.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade.https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/form-upgrade-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/form-upgrade.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-auxiliary-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-auxiliary.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-nested-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-nested.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-subresource-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-subresource.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-top-level-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-top-level.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-open-window-upgrades-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-open-window-upgrades.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/basic-upgrade-cors.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/check-https-header.pl: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/echo-https-header.pl: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-insecure-audio-video.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-insecure-css.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-insecure-image.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-redirect-http-to-https-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-redirect-https-to-http-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/insecure-xhr-in-main-frame-window.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/mixed-content-with-upgrade.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/post-https-header.pl: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-audio-video-in-main-frame-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-audio-video-in-main-frame.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-image-in-main-frame-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-image-in-main-frame.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-xhr-in-main-frame-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-xhr-in-main-frame.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrades-mixed-content-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrades-mixed-content.html: Added.
+        * http/tests/security/resources/post-origin-to-parent.html: Added.
+        * http/tests/ssl/iframe-upgrade.https-expected.txt: Added.
+        * http/tests/ssl/iframe-upgrade.https.html: Added.
+        * http/tests/ssl/upgrade-origin-usage-expected.txt: Added.
+        * http/tests/ssl/upgrade-origin-usage.html: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-1.html: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-1.manifest: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-2.html: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-2.manifest: Added.
+        * http/tests/websocket/tests/hybi/upgrade-simple-ws-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/upgrade-simple-ws.html: Added.
+        * TestExpectations: Skip http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-simple-ws.html since the
+        WebSocket server does not currently support wss sockets.
+
+2016-06-07  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Video elements are painted twice, in PaintPhaseForeground and PaintPhaseSelfOutline
+        https://bugs.webkit.org/show_bug.cgi?id=158247
+
+        Reviewed by Simon Fraser.
+
+        * fast/replaced/outline-replaced-elements-offset-expected.html: Added.
+        * fast/replaced/outline-replaced-elements-offset.html: Added.
+
+2016-06-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Mark fast/text/international/system-language/han-quotes.html as flaky
+
+        Unreviewed gardening
+
+        * platform/gtk/TestExpectations:
+
+2016-06-07  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        Creating a TouchList with non Touch items should throw an exception
+        https://bugs.webkit.org/show_bug.cgi?id=158302
+
+        Reviewed by Youenn Fablet.
+
+        Only Touch items should be passed to CreateTouchList function as
+        per specification (https://w3c.github.io/touch-events/#extensions-to-the-document-interface).
+
+        Tests have been modified to check whether behavior of CreateTouchList is correct.
+
+        * fast/events/touch/document-create-touch-list-crash-expected.txt:
+        * fast/events/touch/document-create-touch-list-expected.txt:
+        * fast/events/touch/script-tests/document-create-touch-list-crash.js:
+        * fast/events/touch/script-tests/document-create-touch-list.js:
+
+2016-06-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unskip js/script-tests/class-syntax-scoping.js
+        https://bugs.webkit.org/show_bug.cgi?id=158458
+
+        Reviewed by Ryosuke Niwa.
+
+        * js/script-tests/class-syntax-scoping.js:
+
+2016-06-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ASSERTION failed in get-by-pname.js when run with JSC_useLLINT=false and 2 other configurations
+        https://bugs.webkit.org/show_bug.cgi?id=138497
+        <rdar://problem/18909792>
+
+        Reviewed by Mark Lam.
+
+        * js/script-tests/get-by-pname.js:
+        Test is no longer failing. Lets unskip.
+
+2016-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201735.
+        https://bugs.webkit.org/show_bug.cgi?id=158465
+
+        fast/events/AddEventListenerOptions-once-recursive.html fails
+        on all bots (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Implement EventListenerOptions argument to addEventListener"
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        http://trac.webkit.org/changeset/201735
+
+2016-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201679.
+        https://bugs.webkit.org/show_bug.cgi?id=158464
+
+        http/tests/websocket/tests/hybi/upgrade-simple-ws.html is
+        flaky (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "CSP: Content Security Policy directive, upgrade-insecure-
+        requests (UIR)"
+        https://bugs.webkit.org/show_bug.cgi?id=143653
+        http://trac.webkit.org/changeset/201679
+
+2016-06-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URLs containing tabs or newlines are parsed incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=143381
+        <rdar://problem/26567214>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/dom/DOMURL/set-href-attribute-host-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-host.html:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-host.js:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-host-expected.txt:
+        * fast/url/segments-expected.txt:
+        * fast/url/segments-from-data-url-expected.txt:
+        * fast/url/segments-from-data-url.html:
+        * fast/url/segments.html:
+        * fast/url/tab-and-newline-stripping-expected.txt: Added.
+        * fast/url/tab-and-newline-stripping.html: Added.
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-location-htmldom-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-getAttribute-value-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-htmldom-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttribute-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttributeNS-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttributeNode-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttributeNodeNS-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-getAttribute-value-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-htmldom-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttribute-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttributeNS-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttributeNode-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttributeNodeNS-expected.txt:
+        * http/tests/security/xssAuditor/javascript-link-control-char2-expected.txt:
+
+2016-06-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update the list of elements attachShadow is allowed
+        https://bugs.webkit.org/show_bug.cgi?id=157706
+
+        Reviewed by Darin Adler.
+
+        Added more test cases for validating elements on which attachShadow is allowed and disallowed.
+
+        * fast/shadow-dom/Element-interface-attachShadow-expected.txt:
+        * fast/shadow-dom/Element-interface-attachShadow.html:
+
+2016-06-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash inside moveOutOfAllShadowRoots
+        https://bugs.webkit.org/show_bug.cgi?id=158378
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test that reproduced the crash reliably at least on my machine.
+
+        * fast/shadow-dom/shadow-host-removal-crash-expected.txt: Added.
+        * fast/shadow-dom/shadow-host-removal-crash.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement EventListenerOptions argument to addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        <rdar://problem/22802031>
+
+        Reviewed by Dean Jackson.
+
+        * fast/events/AddEventListenerOptions-once-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-once-recursive-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-once-recursive.html: Added.
+        * fast/events/AddEventListenerOptions-once.html: Added.
+        * fast/events/AddEventListenerOptions-passive-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-passive.html: Added.
+        * fast/events/removeEventListener-EventListenerOptions-capture-expected.txt: Added.
+        * fast/events/removeEventListener-EventListenerOptions-capture.html: Added.
+
+        Add layout testing coverage for various aspects of the functionality.
+
+        * imported/blink/fast/events/eventlisteneroptions/capture_default-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_default.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_equality-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_equality.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_query-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_query.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_dispatch-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_dispatch.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_inequality-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_inequality.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_query-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_query.html: Added.
+
+        Import blink tests for this functionality.
+
+2016-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201730.
+        https://bugs.webkit.org/show_bug.cgi?id=158453
+
+        This change caused existing LayoutTests to crash (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Implement EventListenerOptions argument to addEventListener"
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        http://trac.webkit.org/changeset/201730
+
+2016-06-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/misc/slow-loading-animated-image.html as flaky on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=157916
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Implement EventListenerOptions argument to addEventListener
+        https://bugs.webkit.org/show_bug.cgi?id=149466
+        <rdar://problem/22802031>
+
+        Reviewed by Dean Jackson.
+
+        * fast/events/AddEventListenerOptions-once-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-once-recursive-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-once-recursive.html: Added.
+        * fast/events/AddEventListenerOptions-once.html: Added.
+        * fast/events/AddEventListenerOptions-passive-expected.txt: Added.
+        * fast/events/AddEventListenerOptions-passive.html: Added.
+        * fast/events/removeEventListener-EventListenerOptions-capture-expected.txt: Added.
+        * fast/events/removeEventListener-EventListenerOptions-capture.html: Added.
+
+        Add layout testing coverage for various aspects of the functionality.
+
+        * imported/blink/fast/events/eventlisteneroptions/capture_default-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_default.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_equality-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_equality.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_query-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/capture_query.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_dispatch-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_dispatch.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_inequality-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_inequality.html: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_query-expected.txt: Added.
+        * imported/blink/fast/events/eventlisteneroptions/passive_query.html: Added.
+
+        Import blink tests for this functionality.
+
+2016-06-06  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update MediaEndpointPeerConnection::createOffer() to use the transceiver set
+        https://bugs.webkit.org/show_bug.cgi?id=158203
+
+        Reviewed by Eric Carlson.
+
+        Updated existing test.
+
+        * fast/mediastream/RTCPeerConnection-inspect-offer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-inspect-offer.html:
+        Add verification of mid attribute [1] (corresponds to the RTCRtpTransceiver mid attribute).
+        [1] https://tools.ietf.org/html/rfc5888
+        * fast/mediastream/resources/sdp-utils.js: Added.
+        (printComparableSessionDescription):
+        (verified):
+        (match):
+        Move the printComparableSessionDescription function to a separate file
+        to make it usable in other (future) tests.
+
+2016-06-06  Antoine Quint  <graouts@apple.com>
+
+        Position of WebGL <canvas> on iOS is incorrect with CSS borders
+        https://bugs.webkit.org/show_bug.cgi?id=156790
+
+        Reviewed by Simon Fraser.
+
+        Adding new tests checking that CSS border, box-shadow and padding properties used on a
+        WebGL <canvas> element correctly affect the position of the WebGL content.
+
+        * webgl/webgl-border-expected.html: Added.
+        * webgl/webgl-border.html: Added.
+        * webgl/webgl-box-shadow-expected.html: Added.
+        * webgl/webgl-box-shadow.html: Added.
+        * webgl/webgl-padding-expected.html: Added.
+        * webgl/webgl-padding.html: Added.
+
+2016-06-06  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ESNext] Support trailing commas in function param lists
+        https://bugs.webkit.org/show_bug.cgi?id=158020
+
+        Reviewed by Keith Miller.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+        * sputnik/Conformance/13_Function_Definition/S13_A5.html:
+
+2016-06-06  George Ruan  <gruan@apple.com>
+
+        Support createPattern(HTMLVideoElement, const String& repetitionType)
+        https://bugs.webkit.org/show_bug.cgi?id=149984
+        <rdar://problem/23058823>
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/canvas-createPattern-video-invalid-expected.txt: Added.
+        * fast/canvas/canvas-createPattern-video-invalid.html: Added. Test
+        behavior when given invalid arguments.
+        * fast/canvas/canvas-createPattern-video-loading-expected.txt: Added.
+        * fast/canvas/canvas-createPattern-video-loading.html: Added. Tests
+        behavior before video loaded, right after it's loaded, and after being
+        played.
+        * fast/canvas/canvas-createPattern-video-modify-expected.txt: Added.
+        * fast/canvas/canvas-createPattern-video-modify.html: Added. Tests
+        that modifying the video after calling the createPattern() function
+        does not affect the pattern rendered or to be rendered.
+        *
+        http/tests/security/canvas-remote-read-remote-image-allowed-expected.txt:
+        Fix typo.
+        *
+        http/tests/security/canvas-remote-read-remote-image-allowed-with-credentials-expected.txt:
+        Fix typo.
+        *
+        http/tests/security/canvas-remote-read-remote-image-allowed-with-credentials.html:
+        Fix typo.
+        * http/tests/security/canvas-remote-read-remote-image-allowed.html:
+        Fix typo.
+        *
+        http/tests/security/canvas-remote-read-remote-image-blocked-no-crossorigin-expected.txt:
+        Fix typo.
+        *
+        http/tests/security/canvas-remote-read-remote-image-blocked-no-crossorigin.html:
+        Fix typo.
+        * http/tests/security/canvas-remote-read-remote-video-allowed-anonymous-expected.txt: Added.
+        *
+        http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html:
+        Added. This test will fail as CORS is not implemented for media yet.
+        Tests that data can be retrieved from canvas even when tainted if CORS
+        is enabled with anonymous.
+        * http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials-expected.txt: Added.
+        *
+        http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials.html:
+        Added. This test will fail as CORS is not implemented for media yet.
+        Tests that data can be retrieved from canvas even when tainted if CORS
+        is enabled with credentials.
+        * http/tests/security/canvas-remote-read-remote-video-blocked-no-crossorigin-expected.txt: Added.
+        *
+        http/tests/security/canvas-remote-read-remote-video-blocked-no-crossorigin.html:
+        Added. Ensures that data cannot be retrieved from a tainted canvas if
+        no cross origin is enabled.
+        * http/tests/security/canvas-remote-read-remote-video-localhost-expected.txt: Added.
+        * http/tests/security/canvas-remote-read-remote-video-localhost.html:
+        Added. Ensures that localhost is blocked like http.
+        * http/tests/security/canvas-remote-read-remote-video-redirect-expected.txt: Added.
+        * http/tests/security/canvas-remote-read-remote-video-redirect.html:
+        Added. Ensures that redirects are blocked.
+        * http/tests/security/resources/canvas-video-crossorigin.js: Added.
+        Includes common functions used to test the CORS of canvas for video.
+        *
+        http/tests/security/resources/video-cross-origin-allow-credentials.php:
+        Added. Script that serves test video for
+        canvas-remote-read-remote-video-allowed-with-credentials.html.
+        * media/video-canvas-createPattern-expected.txt: Added.
+        * media/video-canvas-createPattern.html: Added. Naive test that
+        ensures functionality of createPattern() with HTMLVideoElement
+        argument.
+        * platform/ios-simulator-wk1/TestExpectations: Added
+        canvas-remote-read-remote-video-allowed-anonymous.html and
+        canvas-remote-read-remote-video-allowed-with-credentials.html.
+        * platform/ios-simulator-wk2/TestExpectations: Same as wk1.
+        * platform/mac/TestExpectations: Same as wk1.
+        * platform/mac/media/video-canvas-createPattern-expected.png: Added.
+        * platform/win/TestExpectations: Same as wk1.
+        * platform/wk2/TestExpectations: Same as wk1.
+
+2016-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201706.
+        https://bugs.webkit.org/show_bug.cgi?id=158427
+
+        This change broke the Yosemite build and its LayoutTest is
+        failing on Mac and iOS testers (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add experimental support for spring based CSS animations"
+        https://bugs.webkit.org/show_bug.cgi?id=158403
+        http://trac.webkit.org/changeset/201706
+
+2016-06-03  Oliver Hunt  <oliver@apple.com>
+
+        RegExp unicode parsing reads an extra character before failing
+        https://bugs.webkit.org/show_bug.cgi?id=158376
+
+        Reviewed by Saam Barati.
+
+        Add a couple of tests.
+
+        * js/script-tests/regexp-unicode.js:
+
+2016-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Crash under JSObject::getOwnPropertyDescriptor()
+        https://bugs.webkit.org/show_bug.cgi?id=158382
+        <rdar://problem/26605004>
+
+        Reviewed by Mark Lam.
+
+        Add layout test to cover the crash in JSObject::getOwnPropertyDescriptor().
+
+        * js/dom/getOwnPropertyDescriptor-crash-expected.txt: Added.
+        * js/dom/getOwnPropertyDescriptor-crash.html: Added.
+
+2016-06-06  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Horizontal scroll must account for grid container's height
+        https://bugs.webkit.org/show_bug.cgi?id=157971
+
+        Reviewed by Darin Adler.
+
+        Test to verify we account horizontal scrollbar's size for grid container's
+        height computation.
+
+        * fast/css-grid-layout/grid-container-scroll-accounts-for-sizing-expected.html: Added.
+        * fast/css-grid-layout/grid-container-scroll-accounts-for-sizing.html: Added.
+
+2016-06-05  Sam Weinig  <sam@webkit.org>
+
+        Add experimental support for spring based CSS animations
+        https://bugs.webkit.org/show_bug.cgi?id=158403
+
+        Reviewed by Dean Jackson.
+
+        * animations/script-tests/spring-computed-style.js: Added.
+        * animations/script-tests/spring-parsing.js: Added.
+        * animations/spring-computed-style-expected.txt: Added.
+        * animations/spring-computed-style.html: Added.
+        * animations/spring-function-expected.txt: Added.
+        * animations/spring-function.html: Added.
+        * animations/spring-parsing-expected.txt: Added.
+        * animations/spring-parsing.html: Added.
+        Add tests for the spring timing function.
+
+2016-06-05  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening on June 6. Unskip passing tests and mark failing tests.
+        New bug is filed for new failing tests.
+
+        * platform/efl/TestExpectations:
+
+2016-06-05  Gavin & Ellie Barraclough  <barraclough@apple.com>
+
+        Deprecate remaining uses of Lookup getStatic*, use HasStaticPropertyTable instead.
+        https://bugs.webkit.org/show_bug.cgi?id=158178
+
+        Reviewed by Darin Adler.
+
+        As of bug #158059 most JSC static table property access no longer requires getOwnPropertySlot to be
+        overridden. Port remaining calls to the getStatic* functions in Lookup.h over to the new mechanism.
+
+        Switch JSGlobalObject & WebCore DOM instance bindings to use HasStaticPropertyTable.
+
+        * fast/dom/unforgeable-attributes-expected.txt:
+            - Progression, similar to the getOwnPropertyDescriptor test below. Previously we
+              were reporting an error with a message appropriate to a disallowed value->value
+              redefinition. This is actually a disallowed accessor->value reconfiguration, now
+              reporting the correct error message for this.
+        * http/tests/security/cross-origin-window-property-access-expected.txt:
+            - Newly reporting previously missing CORS error.
+        * js/dom/getOwnPropertyDescriptor-expected.txt:
+        * js/resources/getOwnPropertyDescriptor.js:
+            - This test was previously incorrect - was expecting window.window property to
+              reflect as a value decriptor. This now reflect as an accesor descriptor. New
+              behaviour is correct per spec & matches Firefox.
+
+2016-06-05  Antti Koivisto  <antti@apple.com>
+
+        TextIterator should ignore non-visible frames in findPlainText
+        https://bugs.webkit.org/show_bug.cgi?id=158395
+
+        Reviewed by Dan Bernstein and Darin Adler.
+
+        * editing/text-iterator/count-matches-in-frames-expected.txt: Added.
+        * editing/text-iterator/count-matches-in-frames.html: Added.
+        * imported/blink/fast/shapes/shape-outside-floats/shape-outside-negative-height-crash-width.html: Non-rendered whitespace change.
+
+2016-06-04  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Add -private.html variants of crypto/subtle IndexedDB tests.
+        https://bugs.webkit.org/show_bug.cgi?id=153323
+
+        Reviewed by Darin Adler.
+
+        * crypto/subtle/resources/rsa-indexeddb-non-exportable.js: Copied from LayoutTests/crypto/subtle/rsa-indexeddb-non-exportable.html.
+        * crypto/subtle/resources/rsa-indexeddb.js: Copied from LayoutTests/crypto/subtle/rsa-indexeddb.html.
+
+        * crypto/subtle/rsa-indexeddb-non-exportable-private-expected.txt: Added.
+        * crypto/subtle/rsa-indexeddb-non-exportable-private.html: Added.
+        * crypto/subtle/rsa-indexeddb-non-exportable.html:
+        * crypto/subtle/rsa-indexeddb-private-expected.txt: Added.
+        * crypto/subtle/rsa-indexeddb-private.html: Added.
+        * crypto/subtle/rsa-indexeddb.html:
+
+2016-06-04  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r201263): Some tests have become flaky timeouts.
+        https://bugs.webkit.org/show_bug.cgi?id=157990
+
+        Reviewed by Darin Adler.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-06-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add better basic isNaN test coverage
+        https://bugs.webkit.org/show_bug.cgi?id=158379
+
+        Reviewed by Benjamin Poulain.
+
+        * js/Number-isNaN-expected.txt: Added.
+        * js/Number-isNaN.html: Added.
+        * js/global-isNaN-expected.txt: Added.
+        * js/global-isNaN.html: Added.
+        * js/script-tests/Number-isNaN.js: Added.
+        (objectWithNumberValueOf.valueOf):
+        (objectWithNaNValueOf.valueOf):
+        (objectRecordConversionCalls.toString):
+        (objectRecordConversionCalls.valueOf):
+        * js/script-tests/global-isNaN.js: Added.
+        (objectConvertToString.toString):
+        (objectRecordToStringCall.toString):
+        (objectThrowOnToString.toString):
+        (objectWithValueOf.valueOf):
+        (objectThrowOnValueOf.valueOf):
+        (objectThrowOnValueOf.toString):
+        (objectRecordValueOfCall.valueOf):
+        (objectRecordConversionCalls.toString):
+        (objectRecordConversionCalls.valueOf):
+        * js/script-tests/math-clz32.js:
+
+2016-06-04  Brent Fulgham  <bfulgham@apple.com>
+
+        CSP: Content Security Policy directive, upgrade-insecure-requests (UIR)
+        https://bugs.webkit.org/show_bug.cgi?id=143653
+        <rdar://problem/23032067>
+
+        Reviewed by Andy Estes.
+
+        Some of these tests are based on a set of Blink patches by Mike West <mkwst@chromium.org>.
+        <https://src.chromium.org/viewvc/blink?revision=192607&view=revision>,
+        <https://codereview.chromium.org/1178093002>, <https://codereview.chromium.org/1964303003>
+
+        The rest of them are based on our own mixedContent tests, revised for upgraded requests.
+
+        Note that WebSockets are not part of this testing at present due to https://bugs.webkit.org/show_bug.cgi?id=157884.
+
+        * http/tests/security/contentSecurityPolicy/report-only-upgrade-insecure.php: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade-cors.https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade-cors.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade.https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/form-upgrade-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/form-upgrade.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-auxiliary-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-auxiliary.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-nested-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-nested.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-subresource-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-subresource.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-top-level-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/https-header-top-level.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-open-window-upgrades-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-open-window-upgrades.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/basic-upgrade-cors.https.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/check-https-header.pl: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/echo-https-header.pl: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-insecure-audio-video.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-insecure-css.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-insecure-image.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-redirect-http-to-https-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/frame-with-redirect-https-to-http-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/insecure-xhr-in-main-frame-window.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/mixed-content-with-upgrade.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/post-https-header.pl: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-audio-video-in-main-frame-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-audio-video-in-main-frame.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-image-in-main-frame-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-image-in-main-frame.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-xhr-in-main-frame-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-xhr-in-main-frame.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrades-mixed-content-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrades-mixed-content.html: Added.
+        * http/tests/security/resources/post-origin-to-parent.html: Added.
+        * http/tests/ssl/iframe-upgrade.https-expected.txt: Added.
+        * http/tests/ssl/iframe-upgrade.https.html: Added.
+        * http/tests/ssl/upgrade-origin-usage-expected.txt: Added.
+        * http/tests/ssl/upgrade-origin-usage.html: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-1.html: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-1.manifest: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-2.html: Added.
+        * http/tests/ssl/resources/origin-usage-iframe-2.manifest: Added.
+        * http/tests/websocket/tests/hybi/upgrade-simple-ws-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/upgrade-simple-ws.html: Added.
+        * TestExpectations: Skip http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-simple-ws.html since the
+        WebSocket server does not currently support wss sockets.
+
+2016-06-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Bopomofo ruby in Dictionary.app is written horizontally (when it should be written vertically)
+        https://bugs.webkit.org/show_bug.cgi?id=158245
+        <rdar://problem/25675318>
+
+        Reviewed by Darin Adler.
+
+        Rebaselined fast/table/border-collapsing/004-vertical.html to show a progression.
+
+        * fast/text/orthogonal-writing-mode-containing-block-frameView-resize-relayout-expected.html: Added.
+        * fast/text/orthogonal-writing-mode-containing-block-frameView-resize-relayout.html: Added.
+        * platform/mac/fast/table/border-collapsing/004-vertical-expected.png: Rebased
+        * platform/mac/fast/table/border-collapsing/004-vertical-expected.txt: Rebased
+
+2016-06-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Text not visible while external font downloading
+        https://bugs.webkit.org/show_bug.cgi?id=25207
+        <rdar://problem/15167413>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/web-font-load-fallback-during-loading-no-multiple-expected.txt: Added.
+        * fast/text/web-font-load-fallback-during-loading-no-multiple.html: Added.
+        * fast/text/web-font-load-fallback-during-loading-expected.html: Added.
+        * fast/text/web-font-load-fallback-during-loading.html: Added.
+
+2016-06-03  Benjamin Poulain  <bpoulain@apple.com>
+
+        JSON.stringify replacer function calls with numeric array indices
+        https://bugs.webkit.org/show_bug.cgi?id=158262
+
+        Reviewed by Saam Barati.
+
+        * js/JSON-stringify-exposes-array-indices-as-strings-expected.txt: Added.
+        * js/JSON-stringify-exposes-array-indices-as-strings.html: Added.
+        * js/script-tests/JSON-stringify-exposes-array-indices-as-strings.js: Added.
+        (replacer):
+        (testObject.toJSON):
+        (toJSONArrayHelper):
+        * js/resources/JSON-stringify.js:
+        * js/dom/JSON-stringify-expected.txt:
+        Update the test results for the native implementation.
+
+2016-06-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash under VisibleSelection::firstRange()
+        https://bugs.webkit.org/show_bug.cgi?id=158241
+
+        Reviewed by Enrica Casucci.
+
+        Added a regression test.
+
+        * fast/shadow-dom/selection-at-shadow-root-crash-expected.txt: Added.
+        * fast/shadow-dom/selection-at-shadow-root-crash.html: Added.
+
+2016-06-03  Zalan Bujtas  <zalan@apple.com>
+
+        Incorrect rendering on boostmobile FAQ page
+        https://bugs.webkit.org/show_bug.cgi?id=158303
+        <rdar://problem/26603462>
+
+        Reviewed by Chris Dumez.
+
+        Initial value for background-color is 'transparent'. see https://drafts.csswg.org/css-backgrounds-3/#background-color
+
+        * fast/selectors/non-visited-link-backround-color-expected.html: Added.
+        * fast/selectors/non-visited-link-backround-color.html: Added.
+
+2016-06-03  Chris Dumez  <cdumez@apple.com>
+
+        CanvasRenderingContext2D.createPattern() / putImageData() throw wrong exception type
+        https://bugs.webkit.org/show_bug.cgi?id=158322
+
+        Reviewed by Ryosuke Niwa.
+
+        Update several outdated layout tests.
+
+        * canvas/philip/tests/2d.imageData.put.null.html:
+        * canvas/philip/tests/2d.pattern.image.null.html:
+        * canvas/philip/tests/2d.pattern.image.undefined.html:
+
+2016-06-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/scrolling/scroll-container-horizontally.html as flaky on mac-wk2 and ios-simulator-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=158237
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2016-06-03  Brady Eidson  <beidson@apple.com>
+
+        LayoutTest imported/w3c/indexeddb/idbcursor-advance-continue-async.htm is flaky on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=154606
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk2/TestExpectations: Remove expectations. Test has been working great for quite awhile.
+
+2016-06-03  Brady Eidson  <beidson@apple.com>
+
+        storage/indexeddb/intversion-open-in-upgradeneeded.html is flaky on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=155050
+
+        Reviewed by Alex Christensen.
+
+        The test no longer crashes/times out, but it does have text failures.
+        Resolve them by removing a race in the test itself.
+        
+        * platform/mac-wk2/TestExpectations:
+        * storage/indexeddb/intversion-open-in-upgradeneeded-expected.txt:
+        * storage/indexeddb/intversion-open-in-upgradeneeded-private-expected.txt:
+        * storage/indexeddb/resources/intversion-open-in-upgradeneeded.js:
+
+2016-06-03  Antoine Quint  <graouts@apple.com>
+
+        Reflection of element does not respect backdrop-filter property
+        https://bugs.webkit.org/show_bug.cgi?id=158201
+
+        Reviewed by Dean Jackson.
+
+        * css3/filters/backdrop/backdrop-filter-with-reflection-add-backdrop-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-reflection-add-backdrop.html: Added.
+
+        Covers the case where a reflected element without a backdrop-filter initially has one added later.
+
+        * css3/filters/backdrop/backdrop-filter-with-reflection-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-reflection-remove-backdrop-expected.html: Added.
+
+        Covers the case where a reflected element with a backdrop-filter initially has it removed later.
+
+        * css3/filters/backdrop/backdrop-filter-with-reflection-remove-backdrop.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-reflection-value-change-expected.html: Added.
+
+        Covers the case where a reflected element with a backdrop-filter has its backdrop-filter property changed later.
+
+        * css3/filters/backdrop/backdrop-filter-with-reflection-value-change.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-reflection.html: Added.
+
+        Covers the basic case of a reflected element with a backdrop-filter.
+
+2016-06-03  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: WebGL doesn't show up in CSS reflections
+        https://bugs.webkit.org/show_bug.cgi?id=76489
+
+        Reviewed by Dean Jackson.
+
+        Update the expected rendering to contain the reflected WebGL <canvas>.
+
+        * platform/mac/compositing/webgl/webgl-reflection-expected.png:
+
+2016-06-02  Zalan Bujtas  <zalan@apple.com>
+
+        Repaint issue with vertical text in an out of flow container.
+        https://bugs.webkit.org/show_bug.cgi?id=102665
+        <rdar://problem/26605298>
+
+        Reviewed by David Hyatt.
+
+        Since the renderer’s offset for positioned objects is always physical, we only
+        need to flip the repaint rect(always logical) for writing root, when we see the first positioned object.
+        All subsequent writing root changes for positioned objects are okay and they don't need flipping.
+
+        * fast/repaint/vertical-text-repaint-expected.txt: Added.
+        * fast/repaint/vertical-text-repaint.html: Added.
+
+2016-06-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Fix a typo in the clz32() tests
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        Joe found a bug in math-clz32.js: I typed INFINITI instead of INFINITY.
+        The tests was effectively checking "undefined" instead of infinity.
+
+        * js/math-clz32-expected.txt:
+        * js/script-tests/math-clz32.js:
+        (objectRecordConversionCalls.valueOf):
+
+2016-06-02  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] 'undefined' should be an acceptable value for nullable parameters
+        https://bugs.webkit.org/show_bug.cgi?id=158321
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline existing test that is now passing.
+
+        * canvas/philip/tests/2d.pattern.image.undefined-expected.txt:
+
+2016-06-02  Oliver Hunt  <oliver@apple.com>
+
+        JS parser incorrectly handles invalid utf8 in error messages.
+        https://bugs.webkit.org/show_bug.cgi?id=158128
+
+        Reviewed by Saam Barati.
+
+        Add a testcase.
+
+        * js/invalid-utf8-in-syntax-error-expected.txt: Added.
+        * js/script-tests/invalid-utf8-in-syntax-error.js: Added.
+
+2016-06-02  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r200694): %ThrowTypeError% is not unique
+        https://bugs.webkit.org/show_bug.cgi?id=158231
+
+        Reviewed by Joseph Pecoraro.
+
+        Rebased tests for the new TypeError messages.
+        Added a new test, throw-type-error-is-unique.html.
+
+        * inspector/runtime/getProperties-expected.txt:
+        * js/basic-strict-mode-expected.txt:
+        * js/caller-property-expected.txt:
+        * js/class-method-and-constructor-properties-expected.txt:
+        * js/script-tests/caller-property.js:
+        (strictCaller):
+        (strictTailCaller):
+        * js/script-tests/class-method-and-constructor-properties.js:
+        (F.prototype.getElement):
+        (F):
+        (G.prototype.get item):
+        (G):
+        (H.prototype.arguments):
+        (H):
+        * js/script-tests/throw-type-error-is-unique.js: Added.
+        (ThrowTypeErrorSource):
+        (ThrowTypeErrorSource.prototype.checkTypeErrorFunctions):
+        (A):
+        (strictArguments):
+        (test):
+        * js/throw-type-error-is-unique-expected.txt: Added.
+        * js/throw-type-error-is-unique.html: Added.
+
+2016-06-02  Daniel Bates  <dabates@apple.com>
+
+        Fix a couple of mistakes in CSSParserValue memory management
+        https://bugs.webkit.org/show_bug.cgi?id=158307
+        <rdar://problem/26127225>
+
+        Reviewed by Darin Adler.
+
+        * fast/css/calc-with-two-variables-crash-expected.txt: Added.
+        * fast/css/calc-with-two-variables-crash.html: Added.
+
+2016-06-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG content renders in incorrect vertical position when padding-left is not specified
+        https://bugs.webkit.org/show_bug.cgi?id=158234
+
+        Reviewed by Darin Adler.
+
+        Make sure the SVG root element is positioned correctly when either the sum
+        of its (leftPadding + rightPadding) or the sum of its (topPadding + bottomPadding)
+        is equal to zero.
+
+        * svg/custom/svg-root-padding-individual-expected.html: Added.
+        * svg/custom/svg-root-padding-individual.html: Added.
+
+2016-06-02  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Update RTCPeerConnection.addTrack() to create (or reuse) an RTCRtpTransceiver
+        https://bugs.webkit.org/show_bug.cgi?id=158191
+
+        Reviewed by Eric Carlson.
+
+        Extend existing test to verify the created RTCRtpTransceiver object.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt:
+        * fast/mediastream/RTCPeerConnection-add-removeTrack.html:
+        Add checks for bad argument lists and verify the created RTCRtpTransceiver.
+
+2016-06-02  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening.
+        
+        Unskip websocket tests passing after r201500.
+
+        * platform/win/TestExpectations:
+
+2016-06-02  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening.
+        
+        The test storage/indexeddb/modern/blob-simple.html is passing.
+
+        * platform/win/TestExpectations:
+
+2016-06-02  Javier Fernandez  <jfernandez@igalia.com>
+
+        Unreviewed GTK+ gardening Additional rebaseline after r201397.
+
+        Added reference files for pixel tests.
+
+        * fast/forms/search-input-rtl-expected.txt:
+        * platform/gtk/fast/css/text-overflow-input-expected.png:
+        * platform/gtk/fast/forms/placeholder-position-expected.png:
+        * platform/gtk/fast/forms/search-input-rtl-expected.png: Added.
+        * platform/gtk/fast/forms/search-rtl-expected.png:
+
 2016-06-01  Benjamin Poulain  <bpoulain@apple.com>
 
         [JSC] Some setters for components of Date do not timeClip() their result

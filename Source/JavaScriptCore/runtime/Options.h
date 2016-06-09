@@ -363,9 +363,14 @@ typedef const char* optionString;
     \
     v(bool, useICStats, false, Normal, nullptr) \
     \
+    v(unsigned, prototypeHitCountForLLIntCaching, 2, Normal, "Number of prototype property hits before caching a prototype in the LLInt. A count of 0 means never cache.") \
+    \
     v(bool, dumpModuleRecord, false, Normal, nullptr) \
     v(bool, dumpModuleLoadingState, false, Normal, nullptr) \
     v(bool, exposeInternalModuleLoader, false, Normal, "expose the internal module loader object to the global space for debugging") \
+    \
+    v(bool, dumpAirAsJSBeforeAllocateStack, false, Normal, nullptr) \
+    v(bool, dumpAirAfterAllocateStack, false, Normal, nullptr) \
     \
     v(bool, useSuperSampler, false, Normal, nullptr)
 

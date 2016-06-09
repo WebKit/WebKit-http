@@ -1,3 +1,500 @@
+2016-06-06  Antti Koivisto  <antti@apple.com>
+
+        WebKit memory cache doesn't respect Vary header
+        https://bugs.webkit.org/show_bug.cgi?id=71509
+        <rdar://problem/26651033>
+
+        Reviewed by Sam Weinig.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::makeCacheKey):
+        (WebKit::NetworkCache::cachePolicyAllowsExpired):
+        (WebKit::NetworkCache::makeUseDecision):
+        (WebKit::NetworkCache::Cache::retrieve):
+        (WebKit::NetworkCache::Cache::store):
+        (WebKit::NetworkCache::Cache::storeRedirect):
+        (WebKit::NetworkCache::Cache::update):
+        (WebKit::NetworkCache::headerValueForVary): Deleted.
+        (WebKit::NetworkCache::collectVaryingRequestHeaders): Deleted.
+        (WebKit::NetworkCache::verifyVaryingRequestHeaders): Deleted.
+
+            These move to WebCore.
+
+2016-06-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build with threaded compositor enabled after r201802.
+
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::create):
+
+2016-06-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        LayerTreeHost should be created with a WebPage reference instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=158520
+
+        Reviewed by Žan Doberšek.
+
+        We are indeed creating the LayerTreeHost always from a WebPage reference but getting its address to pass it to
+        the LayerTreeHost create() function.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp:
+        (WebKit::CoordinatedDrawingArea::enterAcceleratedCompositingMode):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::create):
+        (WebKit::CoordinatedLayerTreeHost::CoordinatedLayerTreeHost):
+        (WebKit::CoordinatedLayerTreeHost::didFlushRootLayer):
+        (WebKit::CoordinatedLayerTreeHost::performScheduledLayerFlush):
+        (WebKit::CoordinatedLayerTreeHost::commitSceneState):
+        (WebKit::CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::create):
+        (WebKit::ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost):
+        (WebKit::ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged):
+        (WebKit::ThreadedCoordinatedLayerTreeHost::compositorDidFlushLayers):
+        (WebKit::ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged):
+        (WebKit::ThreadedCoordinatedLayerTreeHost::setVisibleContentsRect):
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::enterAcceleratedCompositingMode):
+        * WebProcess/WebPage/LayerTreeHost.cpp:
+        (WebKit::LayerTreeHost::create):
+        (WebKit::LayerTreeHost::LayerTreeHost):
+        * WebProcess/WebPage/LayerTreeHost.h:
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::create):
+        (WebKit::LayerTreeHostGtk::LayerTreeHostGtk):
+        (WebKit::LayerTreeHostGtk::makeContextCurrent):
+        (WebKit::LayerTreeHostGtk::deviceOrPageScaleFactorChanged):
+        (WebKit::LayerTreeHostGtk::paintContents):
+        (WebKit::LayerTreeHostGtk::deviceScaleFactor):
+        (WebKit::LayerTreeHostGtk::pageScaleFactor):
+        (WebKit::LayerTreeHostGtk::flushPendingLayerChanges):
+        (WebKit::LayerTreeHostGtk::flushAndRenderLayers):
+        (WebKit::LayerTreeHostGtk::pageBackgroundTransparencyChanged):
+        (WebKit::LayerTreeHostGtk::initialize): Deleted.
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.h:
+
+2016-06-07  Sam Weinig  <sam@webkit.org>
+
+        Fix 10.10 build.
+
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (WebKit::addAnimationToLayer):
+
+2016-06-06  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize loading code
+        https://bugs.webkit.org/show_bug.cgi?id=158332
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/NetworkDataTask.h:
+        (WebKit::NetworkDataTask::client):
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::didReceiveResponseNetworkSession):
+        (WebKit::NetworkLoad::didReceiveData):
+        (WebKit::NetworkLoad::didReceiveBuffer):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkLoadClient.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didReceiveBuffer):
+        (WebKit::NetworkResourceLoader::didFinishLoading):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/PingLoad.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::didReceiveBuffer):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::didReceiveResponse):
+        (WebKit::NetworkDataTask::didReceiveData):
+        * Shared/WebHitTestResultData.cpp:
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResource):
+
+2016-06-05  Sam Weinig  <sam@webkit.org>
+
+        Add experimental support for spring based CSS animations
+        https://bugs.webkit.org/show_bug.cgi?id=158403
+
+        Reviewed by Dean Jackson.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<StepsTimingFunction>::decode):
+        (IPC::ArgumentCoder<SpringTimingFunction>::encode):
+        (IPC::ArgumentCoder<SpringTimingFunction>::decode):
+        (IPC::ArgumentCoder<FloatPoint>::encode):
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (WebKit::PlatformCAAnimationRemote::Properties::encode):
+        (WebKit::PlatformCAAnimationRemote::Properties::decode):
+        (WebKit::addAnimationToLayer):
+        Pipe through support for the Spring animation.
+
+2016-06-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Hide GTK+ 2 plugins if GTK+ 2 plugin process was built but is not installed
+        https://bugs.webkit.org/show_bug.cgi?id=158419
+
+        Reviewed by Carlos Garcia Campos.
+
+        Patch by Alberto Garcia <berto@igalia.com>
+
+        * UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp:
+        (WebKit::PluginInfoStore::getPluginInfo):
+        * UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp:
+        (WebKit::PluginProcessProxy::scanPlugin):
+
+2016-06-06  Antoine Quint  <graouts@apple.com>
+
+        Position of WebGL <canvas> on iOS is incorrect with CSS borders
+        https://bugs.webkit.org/show_bug.cgi?id=156790
+
+        Reviewed by Simon Fraser.
+
+        WebGL layers on iOS are hosted by a WKRemoteView, which applies a transform scaling
+        its content by the inverse of the device pixel ratio, which affects how positions are
+        applied to the WebGL layer. The container layer of the layer hosted by a WKRemoteView
+        then has an inverse transform applied to it in the PlatformCALayerRemoteCustom
+        constructor. However, the position of a CALayer is not affected by its transform.
+
+        The fix for <rdar://problem/18316542> should be specific to video, so we only apply the
+        scaling in the case of a LayerTypeAVPlayerLayer.
+
+        * UIProcess/ios/RemoteLayerTreeHostIOS.mm:
+        (-[WKRemoteView initWithFrame:contextID:]):
+        (WebKit::RemoteLayerTreeHost::createLayer):
+        (-[WKRemoteView initWithFrame:contextID:hostingDeviceScaleFactor:]): Deleted.
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        (WebKit::PlatformCALayerRemoteCustom::PlatformCALayerRemoteCustom):
+
+2016-06-06  Brady Eidson  <beidson@apple.com>
+
+        Fix build after r201717
+
+        Unreviewed.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles):
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::grantSandboxExtensionsToDatabaseProcessForBlobs):
+        * NetworkProcess/NetworkProcess.h:
+        
+2016-06-06  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Crash seen in IDBConnectionProxy::putOrAdd on GuardMalloc bot
+        https://bugs.webkit.org/show_bug.cgi?id=158124
+
+        Reviewed by Darin Adler.
+        
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::writeBlobsToTemporaryFiles):
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.h:
+        
+        * WebProcess/FileAPI/BlobRegistryProxy.cpp:
+        (WebKit::BlobRegistryProxy::writeBlobsToTemporaryFiles):
+        * WebProcess/FileAPI/BlobRegistryProxy.h:
+        
+        * WebProcess/Network/NetworkProcessConnection.cpp:
+        (WebKit::NetworkProcessConnection::didClose):
+        (WebKit::NetworkProcessConnection::writeBlobsToTemporaryFiles):
+        * WebProcess/Network/NetworkProcessConnection.h:
+
+2016-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201706.
+        https://bugs.webkit.org/show_bug.cgi?id=158427
+
+        This change broke the Yosemite build and its LayoutTest is
+        failing on Mac and iOS testers (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add experimental support for spring based CSS animations"
+        https://bugs.webkit.org/show_bug.cgi?id=158403
+        http://trac.webkit.org/changeset/201706
+
+2016-06-06  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce ResourceRequest copying in loading code
+        https://bugs.webkit.org/show_bug.cgi?id=158251
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::DownloadManager::continueWillSendRequest):
+        (WebKit::DownloadManager::willDecidePendingDownloadDestination):
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::PendingDownload):
+        (WebKit::PendingDownload::willSendRedirectedRequest):
+        (WebKit::PendingDownload::continueWillSendRequest):
+        (WebKit::PendingDownload::canAuthenticateAgainstProtectionSpaceAsync):
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/NetworkDataTask.h:
+        (WebKit::NetworkDataTask::firstRequest):
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::cancel):
+        (WebKit::NetworkLoad::continueWillSendRequest):
+        (WebKit::NetworkLoad::sharedDidReceiveResponse):
+        (WebKit::NetworkLoad::sharedWillSendRedirectedRequest):
+        (WebKit::NetworkLoad::setPendingDownload):
+        (WebKit::NetworkLoad::willPerformHTTPRedirection):
+        (WebKit::NetworkLoad::didReceiveChallenge):
+        (WebKit::NetworkLoad::didFail):
+        (WebKit::NetworkLoad::willSendRequestAsync):
+        * NetworkProcess/NetworkLoad.h:
+        (WebKit::NetworkLoad::currentRequest):
+        (WebKit::NetworkLoad::clearCurrentRequest):
+        (WebKit::NetworkLoad::pendingDownloadID):
+        * NetworkProcess/NetworkLoadClient.h:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::NetworkProcess::continueWillSendRequest):
+        (WebKit::NetworkProcess::pendingDownloadCanceled):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didFailLoading):
+        (WebKit::NetworkResourceLoader::willSendRedirectedRequest):
+        (WebKit::NetworkResourceLoader::continueWillSendRequest):
+        (WebKit::NetworkResourceLoader::continueDidReceiveResponse):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/PingLoad.h:
+        (WebKit::PingLoad::PingLoad):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::~SpeculativeLoad):
+        (WebKit::NetworkCache::SpeculativeLoad::willSendRedirectedRequest):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::didBecomeDownload):
+        (WebKit::NetworkDataTask::willPerformHTTPRedirection):
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::detachFromCoreLoader):
+        (WebKit::WebResourceLoader::willSendRequest):
+        * WebProcess/Network/WebResourceLoader.h:
+
+2016-06-05  Sam Weinig  <sam@webkit.org>
+
+        Add experimental support for spring based CSS animations
+        https://bugs.webkit.org/show_bug.cgi?id=158403
+
+        Reviewed by Dean Jackson.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<StepsTimingFunction>::decode):
+        (IPC::ArgumentCoder<SpringTimingFunction>::encode):
+        (IPC::ArgumentCoder<SpringTimingFunction>::decode):
+        (IPC::ArgumentCoder<FloatPoint>::encode):
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+        * WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm:
+        (WebKit::PlatformCAAnimationRemote::Properties::encode):
+        (WebKit::PlatformCAAnimationRemote::Properties::decode):
+        (WebKit::addAnimationToLayer):
+        Pipe through support for the Spring animation.
+
+2016-06-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Change ProxyObject.[[Get]] not to use custom accessor
+        https://bugs.webkit.org/show_bug.cgi?id=157080
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        (WebKit::JSNPObject::propertyGetter):
+        (WebKit::JSNPObject::methodGetter):
+        * WebProcess/Plugins/Netscape/JSNPObject.h:
+
+2016-06-05  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed, rolling out r201694.
+
+        201693
+
+        Reverted changeset:
+
+        "Fix the build after r201693."
+        https://bugs.webkit.org/show_bug.cgi?id=158394
+        http://trac.webkit.org/changeset/201694
+
+2016-06-05  Brady Eidson  <beidson@apple.com>
+
+        Fix the build after r201693.
+        https://bugs.webkit.org/show_bug.cgi?id=158394
+
+        Reviewed by NOBODY (Build fix).
+
+        r201693 landed without the Source/WebKit2 changes, and I didn't have EWS/CQ available to check myself. *sigh*
+        
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::writeBlobsToTemporaryFiles):
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.h:
+        
+        * WebProcess/FileAPI/BlobRegistryProxy.cpp:
+        (WebKit::BlobRegistryProxy::writeBlobsToTemporaryFiles):
+        * WebProcess/FileAPI/BlobRegistryProxy.h:
+        
+        * WebProcess/Network/NetworkProcessConnection.cpp:
+        (WebKit::NetworkProcessConnection::didClose):
+        (WebKit::NetworkProcessConnection::writeBlobsToTemporaryFiles):
+        * WebProcess/Network/NetworkProcessConnection.h:
+
+2016-06-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201663.
+        https://bugs.webkit.org/show_bug.cgi?id=158374
+
+        Broke the Windows build (Requested by andersca on #webkit).
+
+        Reverted changeset:
+
+        "Rename NoncopyableFunction to Function"
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+        http://trac.webkit.org/changeset/201663
+
+2016-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::fetchDiskCacheEntries):
+        (WebKit::NetworkProcess::fetchWebsiteData):
+        (WebKit::clearDiskCacheEntries):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::traverse):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::runTaskInQueue):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2016-06-03  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, roll out r196633 as it broke PageCache on iOS for WebKit.org
+        <rdar://problem/26521101>
+
+        * WebProcess/WebPage/VisitedLinkTableController.cpp:
+        (WebKit::VisitedLinkTableController::setVisitedLinkTable):
+        (WebKit::VisitedLinkTableController::visitedLinkStateChanged):
+        (WebKit::VisitedLinkTableController::allVisitedLinkStateChanged):
+        (WebKit::VisitedLinkTableController::removeAllVisitedLinks):
+
+2016-06-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(INDEXED_DATABASE) build after r201575
+        https://bugs.webkit.org/show_bug.cgi?id=158346
+
+        Reviewed by Brady Eidson.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::fetchWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteDataForOrigins):
+
+2016-06-02  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebProcess::registerWithStateDumper()
+        https://bugs.webkit.org/show_bug.cgi?id=158304
+        <rdar://problem/25329276>
+
+        Reviewed by Anders Carlsson.
+
+        The issue is that the block in registerWithStateDumper() was executed in
+        a background thread and is iterating over m_pageMap HashMap. The crash
+        occurs when a page gets removed from the m_pageMap HashMap while the
+        block is iterating over this same HashMap in another thread.
+
+        The solution proposed is to execute the registerWithStateDumper()'s
+        block in the main thread.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::registerWithStateDumper):
+
+2016-06-02  Brady Eidson  <beidson@apple.com>
+
+        Overhaul cross-thread use of ResourceRequest, ResourceResponse, and ResourceError.
+        https://bugs.webkit.org/show_bug.cgi?id=158293
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/cache/NetworkCacheEntry.cpp:
+        (WebKit::NetworkCache::Entry::Entry):
+
+2016-06-02  Chris Dumez  <cdumez@apple.com>
+
+        Modernize various lambda captures
+        https://bugs.webkit.org/show_bug.cgi?id=158292
+
+        Reviewed by Brady Eidson.
+
+        Modernize various lambda captures, especially the ones unnecessarily
+        allocating objects on the heap and destroying them in the lambda.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::fetchDiskCacheEntries):
+        (WebKit::clearDiskCacheEntries):
+        (WebKit::NetworkProcess::fetchWebsiteData): Deleted.
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::traverse):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::TraverseOperation::TraverseOperation):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2016-06-02  Chris Dumez  <cdumez@apple.com>
+
+        Speculative revalidated request returns 200 instead of 304
+        https://bugs.webkit.org/show_bug.cgi?id=158256
+
+        Reviewed by Antti Koivisto and Carlos Garcia Campos.
+
+        Already conditional requests coming from WebCore should bypass the
+        SpeculativeLoadManager. This is because the validation is requested
+        by WebCore (usually the memory cache) and not our network cache. As
+        a result, we need to pipe the revalidation response (e.g. 304 status
+        code) back to WebCore instead of resolving it as disk cache level.
+
+        This should fix the /webkit2/WebKitWebResource/response unit test.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::retrieve):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        (WebKit::NetworkCache::requestsHeadersMatch):
+
+2016-06-02  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Use more references in ResourceLoader related code
+        https://bugs.webkit.org/show_bug.cgi?id=158222
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::loadResource):
+        (WebKit::WebLoaderStrategy::schedulePluginStreamLoad):
+        (WebKit::WebLoaderStrategy::scheduleLoad):
+        (WebKit::WebLoaderStrategy::scheduleInternallyFailedLoad):
+        (WebKit::WebLoaderStrategy::startLocalLoad):
+        (WebKit::WebLoaderStrategy::networkProcessCrashed):
+        * WebProcess/Network/WebLoaderStrategy.h:
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::create):
+        (WebKit::WebResourceLoader::WebResourceLoader):
+        * WebProcess/Network/WebResourceLoader.h:
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::Stream::start):
+
 2016-06-01  Yongjun Zhang  <yongjun_zhang@apple.com>
 
         Notify client immediately if network session doesn't exist for a synchronous XHR load.

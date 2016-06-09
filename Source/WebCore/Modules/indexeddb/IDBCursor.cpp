@@ -269,9 +269,16 @@ void IDBCursor::advance(unsigned count, ExceptionCodeWithMessage& ec)
 
 void IDBCursor::continueFunction(ScriptExecutionContext& context, JSValue keyValue, ExceptionCodeWithMessage& ec)
 {
+    auto exec = context.execState();
+    if (!exec) {
+        ec.code = IDBDatabaseException::UnknownError;
+        ec.message = ASCIILiteral("Failed to execute 'continue' on 'IDBCursor': Script execution context does not have an execution state.");
+        return;
+    }
+
     RefPtr<IDBKey> key;
     if (!keyValue.isUndefined())
-        key = scriptValueToIDBKey(context, keyValue);
+        key = scriptValueToIDBKey(*exec, keyValue);
 
     continueFunction(key.get(), ec);
 }
@@ -392,6 +399,10 @@ void IDBCursor::setGetResult(IDBRequest& request, const IDBGetResult& getResult)
     if (!context)
         return;
 
+    auto* exec = context->execState();
+    if (!exec)
+        return;
+
     if (!getResult.isDefined()) {
         m_currentKey = { };
         m_currentKeyData = { };
@@ -405,13 +416,13 @@ void IDBCursor::setGetResult(IDBRequest& request, const IDBGetResult& getResult)
 
     auto& vm = context->vm();
 
-    m_currentKey = { vm, idbKeyDataToScriptValue(*context, getResult.keyData()) };
+    m_currentKey = { vm, idbKeyDataToScriptValue(*exec, getResult.keyData()) };
     m_currentKeyData = getResult.keyData();
-    m_currentPrimaryKey = { vm, idbKeyDataToScriptValue(*context, getResult.primaryKeyData()) };
+    m_currentPrimaryKey = { vm, idbKeyDataToScriptValue(*exec, getResult.primaryKeyData()) };
     m_currentPrimaryKeyData = getResult.primaryKeyData();
 
     if (isKeyCursorWithValue())
-        m_currentValue = { vm, deserializeIDBValueToJSValue(*context, getResult.value()) };
+        m_currentValue = { vm, deserializeIDBValueToJSValue(*exec, getResult.value()) };
     else
         m_currentValue = { };
 

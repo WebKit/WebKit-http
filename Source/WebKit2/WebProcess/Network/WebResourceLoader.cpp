@@ -46,13 +46,13 @@ using namespace WebCore;
 
 namespace WebKit {
 
-Ref<WebResourceLoader> WebResourceLoader::create(PassRefPtr<ResourceLoader> coreLoader)
+Ref<WebResourceLoader> WebResourceLoader::create(Ref<ResourceLoader>&& coreLoader)
 {
-    return adoptRef(*new WebResourceLoader(coreLoader));
+    return adoptRef(*new WebResourceLoader(WTFMove(coreLoader)));
 }
 
-WebResourceLoader::WebResourceLoader(PassRefPtr<WebCore::ResourceLoader> coreLoader)
-    : m_coreLoader(coreLoader)
+WebResourceLoader::WebResourceLoader(Ref<WebCore::ResourceLoader>&& coreLoader)
+    : m_coreLoader(WTFMove(coreLoader))
 {
 }
 
@@ -75,22 +75,21 @@ void WebResourceLoader::detachFromCoreLoader()
     m_coreLoader = nullptr;
 }
 
-void WebResourceLoader::willSendRequest(const ResourceRequest& proposedRequest, const ResourceResponse& redirectResponse)
+void WebResourceLoader::willSendRequest(ResourceRequest&& proposedRequest, ResourceResponse&& redirectResponse)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::willSendRequest to '%s'", proposedRequest.url().string().latin1().data());
     WEBRESOURCELOADER_LOG_ALWAYS("WebResourceLoader::willSendRequest, WebResourceLoader = %p", this);
 
-    RefPtr<WebResourceLoader> protect(this);
+    RefPtr<WebResourceLoader> protectedThis(this);
 
-    ResourceRequest newRequest = proposedRequest;
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(m_coreLoader.get(), newRequest, redirectResponse))
+    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(m_coreLoader.get(), proposedRequest, redirectResponse))
         return;
     // FIXME: Do we need to update NetworkResourceLoader clientCredentialPolicy in case loader policy is DoNotAskClientForCrossOriginCredentials?
-    m_coreLoader->willSendRequest(WTFMove(newRequest), redirectResponse, [protect](ResourceRequest&& request) {
-        if (!protect->m_coreLoader)
+    m_coreLoader->willSendRequest(WTFMove(proposedRequest), redirectResponse, [protectedThis](ResourceRequest&& request) {
+        if (!protectedThis->m_coreLoader)
             return;
 
-        protect->send(Messages::NetworkResourceLoader::ContinueWillSendRequest(request));
+        protectedThis->send(Messages::NetworkResourceLoader::ContinueWillSendRequest(request));
     });
 }
 
@@ -203,7 +202,7 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
 
     // Only send data to the didReceiveData callback if it exists.
     if (unsigned bufferSize = buffer->size())
-        m_coreLoader->didReceiveBuffer(buffer.release(), bufferSize, DataPayloadWholeResource);
+        m_coreLoader->didReceiveBuffer(buffer.releaseNonNull(), bufferSize, DataPayloadWholeResource);
 
     if (!m_coreLoader)
         return;
