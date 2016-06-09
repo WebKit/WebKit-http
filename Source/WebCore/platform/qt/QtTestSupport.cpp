@@ -81,7 +81,7 @@ void QtTestSupport::initializeTestFonts()
             "----------------------------------------------------------------------\n"
             "WEBKIT_TESTFONTS environment variable is not set correctly.\n"
             "This variable has to point to the directory containing the fonts\n"
-            "you can clone from git://gitorious.org/qtwebkit/testfonts.git\n"
+            "you can clone from https://github.com/carewolf/qtwebkit-testfonts.git\n"
             "----------------------------------------------------------------------\n"
             );
     }
