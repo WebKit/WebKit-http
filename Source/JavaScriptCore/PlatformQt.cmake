@@ -6,6 +6,10 @@ list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
     ${WTF_DIR}
 )
 
+list(APPEND JavaScriptCore_SOURCES
+    API/JSStringRefQt.cpp
+)
+
 list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Core_INCLUDE_DIRS}
 )

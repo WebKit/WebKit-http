@@ -45,5 +45,5 @@ JSRetainPtr<JSStringRef> JSStringCreateWithQString(const QString& qString)
     if (jsString)
         return JSRetainPtr<JSStringRef>(Adopt, jsString.release().leakRef());
 
-    return JSRetainPtr<JSStringRef>(Adopt, OpaqueJSString::create().leakRef());
+    return JSRetainPtr<JSStringRef>(Adopt, &OpaqueJSString::create().leakRef());
 }
