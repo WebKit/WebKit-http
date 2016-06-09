@@ -43,7 +43,6 @@
 #include "ResourceLoadNotifier.h"
 #include "ResourceRequestBase.h"
 #include "SecurityContext.h"
-#include "SharedBuffer.h"
 #include "Timer.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
@@ -76,6 +75,7 @@ class ResourceRequest;
 class ResourceResponse;
 class SecurityOrigin;
 class SerializedScriptValue;
+class SharedBuffer;
 class StringWithDirection;
 class SubframeLoader;
 class SubstituteData;
@@ -202,6 +202,7 @@ public:
     void addExtraFieldsToMainResourceRequest(ResourceRequest&);
     
     static void addHTTPOriginIfNeeded(ResourceRequest&, const String& origin);
+    static void addHTTPUpgradeInsecureRequestsIfNeeded(ResourceRequest&);
 
     FrameLoaderClient& client() const { return m_client; }
 

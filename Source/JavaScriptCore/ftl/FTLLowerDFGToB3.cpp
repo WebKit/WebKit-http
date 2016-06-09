@@ -776,8 +776,8 @@ private:
         case GetCallee:
             compileGetCallee();
             break;
-        case GetArgumentCount:
-            compileGetArgumentCount();
+        case GetArgumentCountIncludingThis:
+            compileGetArgumentCountIncludingThis();
             break;
         case GetScope:
             compileGetScope();
@@ -1138,10 +1138,10 @@ private:
                 usually(continuation), rarely(intCase));
             
             LBasicBlock lastNext = m_out.appendTo(intCase, continuation);
-            
+
             FTL_TYPE_CHECK(
                 jsValueValue(value), m_node->child1(), SpecBytecodeRealNumber,
-                isNotInt32(value, provenType(m_node->child1()) & ~SpecFullDouble));
+                isNotInt32(value, provenType(m_node->child1()) & ~SpecDoubleReal));
             ValueFromBlock slowResult = m_out.anchor(m_out.intToDouble(unboxInt32(value)));
             m_out.jump(continuation);
             
@@ -4670,7 +4670,7 @@ private:
         setJSValue(m_out.loadPtr(addressFor(JSStack::Callee)));
     }
     
-    void compileGetArgumentCount()
+    void compileGetArgumentCountIncludingThis()
     {
         setInt32(m_out.load32(payloadFor(JSStack::ArgumentCount)));
     }

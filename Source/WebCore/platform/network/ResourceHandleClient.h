@@ -24,11 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ResourceHandleClient_h
-#define ResourceHandleClient_h
+#pragma once
 
 #include "PlatformExportMacros.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 
 #if USE(CFNETWORK)
 #include <CFNetwork/CFURLCachePriv.h>
@@ -69,14 +68,13 @@ namespace WebCore {
         WEBCORE_EXPORT ResourceHandleClient();
         WEBCORE_EXPORT virtual ~ResourceHandleClient();
 
-        // Request may be modified.
-        virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse& /*redirectResponse*/) { }
+        WEBCORE_EXPORT virtual ResourceRequest willSendRequest(ResourceHandle*, ResourceRequest&&, ResourceResponse&&);
         virtual void didSendData(ResourceHandle*, unsigned long long /*bytesSent*/, unsigned long long /*totalBytesToBeSent*/) { }
 
         virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&) { }
         
         virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int /*encodedDataLength*/) { }
-        WEBCORE_EXPORT virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int encodedDataLength);
+        WEBCORE_EXPORT virtual void didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&&, int encodedDataLength);
         
         virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/) { }
         virtual void didFail(ResourceHandle*, const ResourceError&) { }
@@ -88,7 +86,7 @@ namespace WebCore {
         virtual bool loadingSynchronousXHR() { return false; }
 
         // Client will pass an updated request using ResourceHandle::continueWillSendRequest() when ready.
-        WEBCORE_EXPORT virtual void willSendRequestAsync(ResourceHandle*, const ResourceRequest&, const ResourceResponse& redirectResponse);
+        WEBCORE_EXPORT virtual void willSendRequestAsync(ResourceHandle*, ResourceRequest&&, ResourceResponse&&);
 
         // Client will call ResourceHandle::continueDidReceiveResponse() when ready.
         WEBCORE_EXPORT virtual void didReceiveResponseAsync(ResourceHandle*, const ResourceResponse&);
@@ -141,5 +139,3 @@ namespace WebCore {
     };
 
 }
-
-#endif

@@ -190,6 +190,7 @@ fast/mediastream/RTCPeerConnection-overloaded-operations.html
 fast/mediastream/RTCPeerConnection-addTransceiver.html
 fast/mediastream/RTCRtpSender-replaceTrack.html
 fast/mediastream/RTCSessionDescription.html
+fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html
 
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
@@ -353,6 +354,8 @@ webkit.org/b/82979 fast/canvas/2d.text.draw.fill.maxWidth.gradient.html [ Pass F
 webkit.org/b/82979 canvas/philip/tests/2d.text.draw.align.center.html [ Pass Failure ]
 
 # No CORS support for media elements is implemented yet.
+http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html [ Failure ]
+http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials.html [ Failure ]
 http/tests/security/video-cross-origin-readback.html
 http/tests/security/video-cross-origin-accessfailure.html
 
@@ -1344,6 +1347,8 @@ webkit.org/b/156320 fast/regions/inline-block-inside-anonymous-overflow.html [ I
 
 webkit.org/b/155196 media/video-with-file-url-allowed-by-csp-media-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html [ Skip ]
 
-webkit.org/b/157990 [ Release ] mathml/wbr-in-mroot-crash.html [ Timeout ]
-
 webkit.org/b/158101 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Pass Timeout ]
+
+webkit.org/b/143653 [ Yosemite ] http/tests/websocket/tests/hybi/upgrade-simple-ws.html [ Skip ] # Timeout
+
+webkit.org/b/158534 css3/filters/backdrop/dynamic-backdrop-filter-change.html [ Pass ImageOnlyFailure ]

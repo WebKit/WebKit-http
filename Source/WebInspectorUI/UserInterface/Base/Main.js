@@ -268,6 +268,7 @@ WebInspector.contentLoaded = function()
     this._resetZoomKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "0", this._resetZoom.bind(this));
 
     this._showTabAtIndexKeyboardShortcuts = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, `${i}`, this._showTabAtIndex.bind(this, i)));
+    this._openNewTabKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "T", this.showNewTabTab.bind(this));
 
     this.tabBrowser = new WebInspector.TabBrowser(document.getElementById("tab-browser"), this.tabBar, this.navigationSidebar, this.detailsSidebar);
     this.tabBrowser.addEventListener(WebInspector.TabBrowser.Event.SelectedTabContentViewDidChange, this._tabBrowserSelectedTabContentViewDidChange, this);
@@ -520,14 +521,7 @@ WebInspector._rememberOpenTabs = function()
 
 WebInspector._updateNewTabButtonState = function(event)
 {
-    let allTabs = [...this._knownTabClassesByType.values()];
-    let addableTabs = allTabs.filter((tabClass) => !tabClass.isEphemeral());
-
-    // FIXME: Use arrow functions once http://webkit.org/b/152497 is resolved.
-    let canMakeNewTab = addableTabs.some(function(tabClass) {
-        return this.isNewTabWithTypeAllowed(tabClass.Type);
-    }.bind(this));
-    this.tabBar.newTabItem.disabled = !canMakeNewTab;
+    this.tabBar.newTabItem.disabled = !this.isNewTabWithTypeAllowed(WebInspector.NewTabContentView.Type);
 };
 
 WebInspector._newTabItemClicked = function(event)
@@ -566,6 +560,9 @@ WebInspector._tryToRestorePendingTabs = function()
 
 WebInspector.showNewTabTab = function(shouldAnimate)
 {
+    if (!this.isNewTabWithTypeAllowed(WebInspector.NewTabContentView.Type))
+        return;
+
     let tabContentView = this.tabBrowser.bestTabContentViewForClass(WebInspector.NewTabContentView);
     if (!tabContentView)
         tabContentView = new WebInspector.NewTabContentView;
@@ -585,6 +582,13 @@ WebInspector.isNewTabWithTypeAllowed = function(tabType)
             continue;
         if (tabContentView.constructor === tabClass)
             return false;
+    }
+
+    if (tabClass === WebInspector.NewTabContentView) {
+        let allTabs = Array.from(this.knownTabClasses());
+        let addableTabs = allTabs.filter((tabClass) => !tabClass.isEphemeral());
+        let canMakeNewTab = addableTabs.some((tabClass) => WebInspector.isNewTabWithTypeAllowed(tabClass.Type));
+        return canMakeNewTab;
     }
 
     return true;
@@ -2368,19 +2372,19 @@ WebInspector.archiveMainFrame = function()
     this._downloadingPage = true;
     this._updateDownloadToolbarButton();
 
-    PageAgent.archive(function(error, data) {
+    PageAgent.archive((error, data) => {
         this._downloadingPage = false;
         this._updateDownloadToolbarButton();
 
         if (error)
             return;
 
-        var mainFrame = WebInspector.frameResourceManager.mainFrame;
-        var archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
-        var url = "web-inspector:///" + encodeURI(archiveName) + ".webarchive";
+        let mainFrame = WebInspector.frameResourceManager.mainFrame;
+        let archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
+        let url = "web-inspector:///" + encodeURI(archiveName) + ".webarchive";
 
         InspectorFrontendHost.save(url, data, true, true);
-    }.bind(this));
+    });
 };
 
 WebInspector.canArchiveMainFrame = function()

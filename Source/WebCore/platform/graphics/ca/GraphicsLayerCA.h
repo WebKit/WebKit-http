@@ -104,7 +104,7 @@ public:
     virtual bool filtersCanBeComposited(const FilterOperations&);
 
     WEBCORE_EXPORT bool setBackdropFilters(const FilterOperations&) override;
-    WEBCORE_EXPORT void setBackdropFiltersRect(const FloatRect&) override;
+    WEBCORE_EXPORT void setBackdropFiltersRect(const FloatRoundedRect&) override;
 
 #if ENABLE(CSS_COMPOSITING)
     WEBCORE_EXPORT void setBlendMode(BlendMode) override;
@@ -242,6 +242,7 @@ private:
     // Return autoreleased animation (use RetainPtr?)
     PassRefPtr<PlatformCAAnimation> createBasicAnimation(const Animation*, const String& keyPath, bool additive);
     PassRefPtr<PlatformCAAnimation> createKeyframeAnimation(const Animation*, const String&, bool additive);
+    RefPtr<PlatformCAAnimation> createSpringAnimation(const Animation*, const String&, bool additive);
     void setupAnimation(PlatformCAAnimation*, const Animation*, bool additive);
     
     const TimingFunction* timingFunctionForAnimationValue(const AnimationValue&, const Animation&);
@@ -374,7 +375,9 @@ private:
     PassRefPtr<PlatformCALayer> findOrMakeClone(CloneID, PlatformCALayer *, LayerMap*, CloneLevel);
 
     void ensureCloneLayers(CloneID, RefPtr<PlatformCALayer>& primaryLayer, RefPtr<PlatformCALayer>& structuralLayer,
-        RefPtr<PlatformCALayer>& contentsLayer, RefPtr<PlatformCALayer>& contentsClippingLayer, RefPtr<PlatformCALayer>& contentsShapeMaskLayer, RefPtr<PlatformCALayer>& shapeMaskLayer, CloneLevel);
+        RefPtr<PlatformCALayer>& contentsLayer, RefPtr<PlatformCALayer>& contentsClippingLayer, RefPtr<PlatformCALayer>& contentsShapeMaskLayer,
+        RefPtr<PlatformCALayer>& shapeMaskLayer, RefPtr<PlatformCALayer>& backdropLayer, RefPtr<PlatformCALayer>& backdropClippingLayer,
+        CloneLevel);
 
     static void clearClones(std::unique_ptr<LayerMap>&);
 
@@ -507,6 +510,7 @@ private:
     RefPtr<PlatformCALayer> m_structuralLayer; // A layer used for structural reasons, like preserves-3d or replica-flattening. Is the parent of m_layer.
     RefPtr<PlatformCALayer> m_contentsClippingLayer; // A layer used to clip inner content
     RefPtr<PlatformCALayer> m_shapeMaskLayer; // Used to clip with non-trivial corner radii.
+    RefPtr<PlatformCALayer> m_backdropClippingLayer; // Used to clip the backdrop layer with corner radii.
     RefPtr<PlatformCALayer> m_contentsLayer; // A layer used for inner content, like image and video
     RefPtr<PlatformCALayer> m_contentsShapeMaskLayer; // Used to clip the content layer with non-trivial corner radii.
     RefPtr<PlatformCALayer> m_backdropLayer; // The layer used for backdrop rendering, if necessary.
@@ -518,6 +522,8 @@ private:
     std::unique_ptr<LayerMap> m_contentsClippingLayerClones;
     std::unique_ptr<LayerMap> m_contentsShapeMaskLayerClones;
     std::unique_ptr<LayerMap> m_shapeMaskLayerClones;
+    std::unique_ptr<LayerMap> m_backdropLayerClones;
+    std::unique_ptr<LayerMap> m_backdropClippingLayerClones;
 
 #ifdef VISIBLE_TILE_WASH
     RefPtr<PlatformCALayer> m_visibleTileWashLayer;

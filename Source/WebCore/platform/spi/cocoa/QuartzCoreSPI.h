@@ -141,6 +141,20 @@ typedef enum {
 @property BOOL inheritsSecurity;
 @end
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101100
+@interface CASpringAnimation : CABasicAnimation 
+@property CGFloat mass;
+@property CGFloat stiffness;
+@property CGFloat damping;
+@property CGFloat velocity;
+@property CGFloat initialVelocity;
+@end
+#else
+@interface CASpringAnimation (Private)
+@property CGFloat velocity;
+@end
+#endif
+
 #endif // __OBJC__
 
 #endif
@@ -194,10 +208,10 @@ extern NSString * const kCAContextIgnoresHitTest;
 extern NSString * const kCAContentsFormatRGBA10XR;
 #endif
 
-#if (PLATFORM(APPLETV) && __TV_OS_VERSION_MIN_REQUIRED < 100000) \
-    || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MIN_REQUIRED < 30000) \
-    || (PLATFORM(IOS) && TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000) \
-    || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
+#if (PLATFORM(APPLETV) && __TV_OS_VERSION_MAX_ALLOWED < 100000) \
+    || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED < 30000) \
+    || (PLATFORM(IOS) && TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000) \
+    || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 @protocol CALayerDelegate <NSObject>
 @end
 

@@ -59,7 +59,7 @@ class WebPage;
 
 class LayerTreeHost : public RefCounted<LayerTreeHost> {
 public:
-    static PassRefPtr<LayerTreeHost> create(WebPage*);
+    static RefPtr<LayerTreeHost> create(WebPage&);
     virtual ~LayerTreeHost();
 
     virtual const LayerTreeContext& layerTreeContext() = 0;
@@ -107,9 +107,9 @@ public:
     virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) = 0;
 
 protected:
-    explicit LayerTreeHost(WebPage*);
+    explicit LayerTreeHost(WebPage&);
 
-    WebPage* m_webPage;
+    WebPage& m_webPage;
 };
 
 } // namespace WebKit

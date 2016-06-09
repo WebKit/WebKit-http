@@ -43,9 +43,7 @@
 #endif
 
 #if USE(WINDOWS_EVENT_LOOP)
-#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
-#include <wtf/win/WorkItemWin.h>
 #endif
 
 #if USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
@@ -93,16 +91,12 @@ private:
     void platformInvalidate();
 
 #if USE(WINDOWS_EVENT_LOOP)
-    static void CALLBACK handleCallback(void* context, BOOLEAN timerOrWaitFired);
     static void CALLBACK timerCallback(void* context, BOOLEAN timerOrWaitFired);
     static DWORD WINAPI workThreadCallback(void* context);
 
     bool tryRegisterAsWorkThread();
     void unregisterAsWorkThread();
     void performWorkOnRegisteredWorkThread();
-
-    static void unregisterWaitAndDestroyItemSoon(PassRefPtr<HandleWorkItem>);
-    static DWORD WINAPI unregisterWaitAndDestroyItemCallback(void* context);
 #endif
 
 #if USE(EFL_EVENT_LOOP)
@@ -113,11 +107,8 @@ private:
 #elif USE(WINDOWS_EVENT_LOOP)
     volatile LONG m_isWorkThreadRegistered;
 
-    Mutex m_workItemQueueLock;
-    Vector<RefPtr<WorkItemWin>> m_workItemQueue;
-
-    Mutex m_handlesLock;
-    HashMap<HANDLE, RefPtr<HandleWorkItem>> m_handles;
+    Mutex m_functionQueueLock;
+    Vector<NoncopyableFunction<void ()>> m_functionQueue;
 
     HANDLE m_timerQueue;
 #elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
