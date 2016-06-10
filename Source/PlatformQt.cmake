@@ -1,3 +1,7 @@
 if (ENABLE_API_TESTS)
-    set_target_properties(gtest PROPERTIES COMPILE_DEFINITIONS QT_NO_KEYWORDS)
+    set(GTEST_DEFINITIONS QT_NO_KEYWORDS)
+    if (COMPILER_IS_GCC_OR_CLANG)
+        list(APPEND GTEST_DEFINITIONS "GTEST_API_=__attribute__((visibility(\"default\")))")
+    endif ()
+    set_target_properties(gtest PROPERTIES COMPILE_DEFINITIONS "${GTEST_DEFINITIONS}")
 endif ()
