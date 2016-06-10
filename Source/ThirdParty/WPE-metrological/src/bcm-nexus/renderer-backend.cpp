@@ -1,20 +1,139 @@
 #include <wpe/renderer-backend-egl.h>
 
+#include "ipc.h"
+#include "ipc-bcmnexus.h"
+#include <EGL/egl.h>
+#include <cstring>
+#include <refsw/nexus_config.h>
+#include <refsw/nexus_platform.h>
+#include <refsw/nexus_display.h>
+#include <refsw/nexus_core_utils.h>
+#include <refsw/default_nexus.h>
+#include <refsw/nxclient.h>
+
+namespace BCMNexus {
+
+struct Backend {
+    Backend();
+    ~Backend();
+
+    NXPL_PlatformHandle nxplHandle;
+    NxClient_AllocResults allocResults;
+    NEXUS_SurfaceClientHandle client;
+};
+
+Backend::Backend()
+{
+    NEXUS_DisplayHandle displayHandle(nullptr);
+    NxClient_AllocSettings allocSettings;
+    NxClient_JoinSettings joinSettings;
+    NxClient_GetDefaultJoinSettings(&joinSettings);
+
+    strcpy(joinSettings.name, "wpe");
+
+    NEXUS_Error rc = NxClient_Join(&joinSettings);
+    BDBG_ASSERT(!rc);
+
+    NxClient_GetDefaultAllocSettings(&allocSettings);
+    allocSettings.surfaceClient = 1;
+    rc = NxClient_Alloc(&allocSettings, &allocResults);
+    BDBG_ASSERT(!rc);
+
+    NXPL_RegisterNexusDisplayPlatform(&nxplHandle, displayHandle);
+}
+
+Backend::~Backend()
+{
+    NXPL_UnregisterNexusDisplayPlatform(nxplHandle);
+    NxClient_Free(&allocResults);
+    NxClient_Uninit();
+}
+
+struct EGLTarget : public IPC::Client::Handler {
+    EGLTarget(struct wpe_renderer_backend_egl_target*, int);
+    virtual ~EGLTarget();
+
+    void initialize(uint32_t, uint32_t);
+
+    // IPC::Client::Handler
+    void handleMessage(char*, size_t) override;
+
+    struct wpe_renderer_backend_egl_target* target;
+    IPC::Client ipcClient;
+
+    void* nativeWindow;
+    uint32_t width { 0 };
+    uint32_t height { 0 };
+};
+
+EGLTarget::EGLTarget(struct wpe_renderer_backend_egl_target* target, int hostFd)
+    : target(target)
+{
+    ipcClient.initialize(*this, hostFd);
+}
+
+EGLTarget::~EGLTarget()
+{
+    ipcClient.deinitialize();
+
+    NEXUS_SurfaceClient_Release(reinterpret_cast<NEXUS_SurfaceClient*>(nativeWindow));
+}
+
+void EGLTarget::initialize(uint32_t width, uint32_t height)
+{
+    if (nativeWindow)
+        return;
+
+    NXPL_NativeWindowInfo windowInfo;
+    windowInfo.x = 0;
+    windowInfo.y = 0;
+    windowInfo.width = width;
+    windowInfo.height = height;
+    windowInfo.stretch = false;
+    windowInfo.clientID = 0; // For now we only accept 0. See Mail David Montgomery
+    nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
+
+    this->width = width;
+    this->height = height;
+}
+
+void EGLTarget::handleMessage(char* data, size_t size)
+{
+    if (size != IPC::BCMNexus::messageSize)
+        return;
+
+    auto& message = IPC::BCMNexus::asMessage(data);
+    switch (message.messageCode) {
+    case IPC::BCMNexus::FrameComplete::code:
+    {
+        wpe_renderer_backend_egl_target_dispatch_frame_complete(target);
+        break;
+    }
+    default:
+        fprintf(stderr, "EGLTarget: unhandled message\n");
+    };
+}
+
+} // namespace BCMNexus
+
 extern "C" {
 
 struct wpe_renderer_backend_egl_interface bcm_nexus_renderer_backend_egl_interface = {
     // create
     []() -> void*
     {
-        return nullptr;
+        return new BCMNexus::Backend;
     },
     // destroy
     [](void* data)
     {
+        auto* backend = static_cast<BCMNexus::Backend*>(data);
+        delete backend;
     },
     // get_native_display
     [](void* data) -> EGLNativeDisplayType
     {
+        return EGL_DEFAULT_DISPLAY;
     },
 };
 
@@ -22,19 +141,25 @@ struct wpe_renderer_backend_egl_target_interface bcm_nexus_renderer_backend_egl_
     // create
     [](struct wpe_renderer_backend_egl_target* target, int host_fd) -> void*
     {
-        return nullptr;
+        return new BCMNexus::EGLTarget(target, host_fd);
     },
     // destroy
     [](void* data)
     {
+        auto* target = static_cast<BCMNexus::EGLTarget*>(data);
+        delete target;
     },
     // initialize
     [](void* data, void* backend_data, uint32_t width, uint32_t height)
     {
+        auto& target = *static_cast<BCMNexus::EGLTarget*>(data);
+        target.initialize(width, height);
     },
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
+        auto& target = *static_cast<BCMNexus::EGLTarget*>(data);
+        return target.nativeWindow;
     },
     // resize
     [](void* data, uint32_t width, uint32_t height)
@@ -43,6 +168,11 @@ struct wpe_renderer_backend_egl_target_interface bcm_nexus_renderer_backend_egl_
     // frame_rendered
     [](void* data)
     {
+        auto& target = *static_cast<BCMNexus::EGLTarget*>(data);
+
+        IPC::BCMNexus::Message message;
+        IPC::BCMNexus::BufferCommit::construct(message, target.width, target.height);
+        target.ipcClient.sendMessage(IPC::BCMNexus::messageData(message), IPC::BCMNexus::messageSize);
     },
 };
 
