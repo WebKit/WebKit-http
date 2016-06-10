@@ -1025,6 +1025,25 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamerBase::movieLoadType() cons
 }
 
 #if USE(GSTREAMER_GL)
+gboolean fakeSinkSinkQuery(GstPad* pad, GstObject* parent, GstQuery* query)
+{
+    gboolean result = FALSE;
+    auto* player = static_cast<MediaPlayerPrivateGStreamerBase*>(g_object_get_data(G_OBJECT(parent), "player"));
+
+    switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_DRAIN: {
+        player->clearCurrentBuffer();
+        result = TRUE;
+        break;
+    }
+    default:
+        result = gst_pad_query_default(pad, parent, query);
+        break;
+    }
+
+    return result;
+}
+
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 {
     if (!webkitGstCheckVersion(1, 8, 0))
@@ -1070,6 +1089,9 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
         player->clearCurrentBuffer();
         return GST_PAD_PROBE_OK;
     }, this, nullptr);
+
+    g_object_set_data(G_OBJECT(fakesink), "player", (gpointer) this);
+    gst_pad_set_query_function(pad.get(), fakeSinkSinkQuery);
 
     if (result)
         g_signal_connect_swapped(fakesink, "handoff", G_CALLBACK(drawCallback), this);
