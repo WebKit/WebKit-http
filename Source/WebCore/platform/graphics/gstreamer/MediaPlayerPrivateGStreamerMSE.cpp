@@ -70,8 +70,8 @@ static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 // state change requests.
 static const unsigned gReadyStateTimerInterval = 60;
 
-GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
-#define GST_CAT_DEFAULT webkit_media_player_debug
+GST_DEBUG_CATEGORY(webkit_mse_debug);
+#define GST_CAT_DEFAULT webkit_mse_debug
 
 using namespace std;
 
@@ -208,6 +208,7 @@ bool initializeGStreamerAndRegisterWebKitMESElement()
         return false;
 
     registerWebKitGStreamerElements();
+    GST_DEBUG_CATEGORY_INIT(webkit_mse_debug, "webkitmse", 0, "WebKit MSE media player");
 
     GRefPtr<GstElementFactory> WebKitMediaSrcFactory = gst_element_factory_find("webkitmediasrc");
     if (!WebKitMediaSrcFactory)
