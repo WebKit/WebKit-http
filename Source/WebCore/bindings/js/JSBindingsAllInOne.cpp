@@ -143,7 +143,6 @@
 #include "JSXSLTProcessorCustom.cpp"
 #include "ScheduledAction.cpp"
 #include "ScriptCachedFrameData.cpp"
-#include "ScriptController.cpp"
 #include "ScriptGlobalObject.cpp"
 #include "ScriptState.cpp"
 #include "SerializedScriptValue.cpp"
