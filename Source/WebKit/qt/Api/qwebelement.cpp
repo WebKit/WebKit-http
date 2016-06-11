@@ -545,7 +545,12 @@ QRect QWebElement::geometry() const
 {
     if (!m_element)
         return QRect();
-    return m_element->renderer()->absoluteBoundingBoxRect();
+
+    auto* renderer = m_element->renderer();
+    if (!renderer)
+        return QRect();
+
+    return renderer->absoluteBoundingBoxRect();
 }
 
 /*!
@@ -1454,6 +1459,10 @@ void QWebElement::render(QPainter* painter, const QRect& clip)
     if (!e)
         return;
 
+    auto* renderer = e->renderer();
+    if (!renderer)
+        return;
+
     Frame* frame = e->document().frame();
     if (!frame || !frame->view() || !frame->contentRenderer())
         return;
@@ -1462,9 +1471,9 @@ void QWebElement::render(QPainter* painter, const QRect& clip)
 
     view->updateLayoutAndStyleIfNeededRecursive();
 
-    IntRect rect = e->renderer()->absoluteBoundingBoxRect();
+    IntRect rect = renderer->absoluteBoundingBoxRect();
 
-    if (rect.size().isEmpty())
+    if (rect.isEmpty())
         return;
 
     QRect finalClipRect = rect;
