@@ -209,7 +209,7 @@ int QStyleFacadeImp::sliderThickness(Qt::Orientation orientation) const
 
 int QStyleFacadeImp::progressBarChunkWidth(const QSize& size) const
 {
-    QStyleOptionProgressBarV2 option;
+    QStyleOptionProgressBar option;
     option.rect.setSize(size);
     // FIXME: Until http://bugreports.qt.nokia.com/browse/QTBUG-9171 is fixed,
     // we simulate one square animating across the progress bar.
@@ -260,10 +260,10 @@ void QStyleFacadeImp::paintTextField(QPainter *painter, const QStyleFacadeOption
 {
     QWidget* widget = qobject_cast<QWidget*>(widgetForPainter(painter));
 
-    MappedStyleOption<QStyleOptionFrameV2> panel(widget, proxyOption);
+    MappedStyleOption<QStyleOptionFrame> panel(widget, proxyOption);
 
     panel.lineWidth = findFrameLineWidth();
-    panel.features = QStyleOptionFrameV2::None;
+    panel.features = QStyleOptionFrame::None;
 
     style()->drawPrimitive(QStyle::PE_PanelLineEdit, &panel, painter, widget);
 }
@@ -386,7 +386,7 @@ void QStyleFacadeImp::paintProgressBar(QPainter* painter, const QStyleFacadeOpti
 {
     QWidget* widget = qobject_cast<QWidget*>(widgetForPainter(painter));
 
-    MappedStyleOption<QStyleOptionProgressBarV2> option(widget, proxyOption);
+    MappedStyleOption<QStyleOptionProgressBar> option(widget, proxyOption);
 
     option.maximum = std::numeric_limits<int>::max();
     option.minimum = 0;

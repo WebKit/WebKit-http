@@ -33,7 +33,7 @@
 #include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
-#include <QStyleOptionFrameV3>
+#include <QStyleOptionFrame>
 #include <QTimer>
 
 class LocationEdit : public QLineEdit {
