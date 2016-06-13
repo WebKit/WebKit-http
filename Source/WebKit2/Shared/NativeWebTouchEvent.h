@@ -39,7 +39,7 @@ struct _UIWebTouchEvent;
 #include <WebCore/AffineTransform.h>
 #include <wtf/RefPtr.h>
 #elif PLATFORM(WPE)
-struct wpe_input_touch_event;
+#include <wpe/input.h>
 #endif
 
 namespace WebKit {
@@ -57,6 +57,7 @@ public:
     const EwkTouchEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(WPE)
     NativeWebTouchEvent(struct wpe_input_touch_event*);
+    const struct wpe_input_touch_event_raw* nativeFallbackTouchPoint() const { return &m_fallbackTouchPoint; }
 #endif
 
 private:
@@ -68,6 +69,8 @@ private:
     GUniquePtr<GdkEvent> m_nativeEvent;
 #elif PLATFORM(EFL)
     RefPtr<EwkTouchEvent> m_nativeEvent;
+#elif PLATFORM(WPE)
+    struct wpe_input_touch_event_raw m_fallbackTouchPoint;
 #endif
 };
 
