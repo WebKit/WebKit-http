@@ -24,12 +24,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef loader_private_h
-#define loader_private_h
+#ifndef wpe_loader_private_h
+#define wpe_loader_private_h
 
 #include <wpe/loader.h>
 
 void*
 wpe_load_object(const char*);
 
-#endif // loader_private_h
+#endif // wpe_loader_private_h
