@@ -42,7 +42,6 @@ typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
 typedef struct _GstGLDisplay GstGLDisplay;
-typedef struct _GstPadProbeInfo GstPadProbeInfo;
 
 namespace WebCore {
 
@@ -195,7 +194,6 @@ protected:
 
     void triggerRepaint(GstSample*);
     void repaint();
-    void triggerDrain();
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
@@ -240,7 +238,6 @@ protected:
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 #endif
     unsigned long m_repaintHandler;
-    unsigned long m_drainHandler;
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)

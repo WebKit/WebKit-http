@@ -126,15 +126,6 @@
 #include <cairo-gl.h>
 #endif
 
-#define GST_WEBKIT_VIDEO_FORMATS "{ RGBA }" \
-
-#define GST_WEBKIT_VIDEO_CAPS \
-    "video/x-raw(" GST_CAPS_FEATURE_MEMORY_GL_MEMORY "), "              \
-    "format = (string) " GST_WEBKIT_VIDEO_FORMATS ", "                  \
-    "width = " GST_VIDEO_SIZE_RANGE ", "                                \
-    "height = " GST_VIDEO_SIZE_RANGE ", "                               \
-    "framerate = " GST_VIDEO_FPS_RANGE
-
 GST_DEBUG_CATEGORY(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
 
@@ -224,7 +215,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
 #endif
     , m_repaintHandler(0)
-    , m_drainHandler(0)
     , m_usingFallbackVideoSink(false)
 #if ENABLE(ENCRYPTED_MEDIA)
 #if USE(DXDRM)
@@ -309,11 +299,6 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
     if (m_repaintHandler) {
         g_signal_handler_disconnect(m_videoSink.get(), m_repaintHandler);
         m_repaintHandler = 0;
-    }
-
-    if (m_drainHandler) {
-        g_signal_handler_disconnect(m_videoSink.get(), m_drainHandler);
-        m_drainHandler = 0;
     }
 #endif
 
@@ -809,11 +794,6 @@ void MediaPlayerPrivateGStreamerBase::repaintCallback(MediaPlayerPrivateGStreame
 {
     player->triggerRepaint(sample);
 }
-
-void MediaPlayerPrivateGStreamerBase::drainCallback(MediaPlayerPrivateGStreamerBase* player)
-{
-    player->triggerDrain();
-}
 #endif
 
 #if USE(GSTREAMER_GL)
@@ -843,14 +823,6 @@ void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
     m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, 0));
 }
 #endif
-
-void MediaPlayerPrivateGStreamerBase::triggerDrain()
-{
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    m_videoSize.setWidth(0);
-    m_videoSize.setHeight(0);
-    m_sample = nullptr;
-}
 
 void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
 {
@@ -1115,7 +1087,6 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
         m_usingFallbackVideoSink = true;
         m_videoSink = webkitVideoSinkNew();
         m_repaintHandler = g_signal_connect_swapped(m_videoSink.get(), "repaint-requested", G_CALLBACK(repaintCallback), this);
-        m_drainHandler = g_signal_connect_swapped(m_videoSink.get(), "drain", G_CALLBACK(drainCallback), this);
     }
 
     GstElement* videoSink = nullptr;
