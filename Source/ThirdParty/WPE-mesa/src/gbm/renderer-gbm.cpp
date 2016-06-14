@@ -1,21 +1,38 @@
+/*
+ * Copyright (C) 2015, 2016 Igalia S.L.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "renderer-gbm.h"
 
 #include "ipc.h"
+#include "ipc-gbm.h"
 #include <cassert>
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <fcntl.h>
 #include <gbm.h>
-#include <unistd.h>
 #include <unordered_map>
-
-#include <gio/gio.h>
-#include <gio/gunixfdmessage.h>
-
-#include "ipc-gbm.h"
-
-#include <memory>
 
 namespace GBM {
 
@@ -64,10 +81,10 @@ struct EGLTarget : public IPC::Client::Handler {
     // IPC::Client::Handler
     void handleMessage(char* data, size_t size) override
     {
-        if (size != IPC::GBM::messageSize)
+        if (size != IPC::Message::size)
             return;
 
-        auto& message = IPC::GBM::asMessage(data);
+        auto& message = IPC::Message::cast(data);
         switch (message.messageCode) {
         case IPC::GBM::FrameComplete::code:
         {
@@ -200,10 +217,9 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
             gbm_bo_set_user_data(bo, boData, &GBM::destroyBOData);
         }
 
-        IPC::GBM::Message message;
+        IPC::Message message;
         IPC::GBM::BufferCommit::construct(message, boData->handle, boData->width, boData->height, boData->stride, boData->format);
-
-        target->ipcClient.sendMessage(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+        target->ipcClient.sendMessage(IPC::Message::data(message), IPC::Message::size);
     },
 };
 
