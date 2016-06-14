@@ -134,19 +134,7 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
         )
     endif ()
 
-    if (ENABLE_DXDRM)
-        list(APPEND WebCore_LIBRARIES
-            -lDxDrm
-        )
-        if (ENABLE_PROVISIONING)
-            list(APPEND WebCore_LIBRARIES
-                -lprovisionproxy -lgenerics
-            )
-        endif ()
-        list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/DiscretixSession.cpp
-        )
-    elseif (ENABLE_PLAYREADY)
+    if (ENABLE_PLAYREADY)
         list(APPEND WebCore_LIBRARIES
             ${PLAYREADY_LIBRARIES}
         )

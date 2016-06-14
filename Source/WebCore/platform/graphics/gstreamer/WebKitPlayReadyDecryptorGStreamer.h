@@ -22,7 +22,7 @@
 #ifndef WebKitPlayReadyDecryptorGStreamer_h
 #define WebKitPlayReadyDecryptorGStreamer_h
 
-#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && (USE(DXDRM) || USE(PLAYREADY))
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && USE(PLAYREADY)
 
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 

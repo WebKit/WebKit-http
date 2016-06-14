@@ -51,9 +51,7 @@ WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_BCM_RPI "Whether to enable suppor
 WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_BCM_NEXUS "Whether to enable support for the BCM_NEXUS rendering backend" PUBLIC OFF)
 WEBKIT_OPTION_END()
 
-if (ENABLE_DXDRM)
-    add_definitions(-DUSE_DXDRM=1)
-elseif (ENABLE_PLAYREADY)
+if (ENABLE_PLAYREADY)
     add_definitions(-DUSE_PLAYREADY=1)
     find_package(Playready REQUIRED)
 endif ()
