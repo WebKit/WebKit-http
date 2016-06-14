@@ -1,4 +1,5 @@
 include(ECMGenerateHeaders)
+include(ECMGeneratePkgConfigFile)
 include(ECMGeneratePriFile)
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
@@ -286,6 +287,14 @@ install(
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
 )
 
+ecm_generate_pkgconfig_file(
+    BASE_NAME Qt5WebKit
+    LIB_INSTALL_DIR "lib"
+    DEPS "Qt5Core Qt5Gui Qt5Network"
+    FILENAME_VAR WebKit_PKGCONFIG_FILENAME
+    INSTALL
+)
+
 ecm_generate_pri_file(
     BASE_NAME webkit
     LIB_NAME QtWebKit
@@ -397,6 +406,14 @@ install(
         ${QtWebKitWidgets_PRIVATE_HEADERS}
     DESTINATION
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets/private
+)
+
+ecm_generate_pkgconfig_file(
+    BASE_NAME Qt5WebKitWidgets
+    LIB_INSTALL_DIR "lib"
+    DEPS "Qt5Core Qt5Gui Qt5Network Qt5Widgets Qt5WebKit"
+    FILENAME_VAR WebKitWidgets_PKGCONFIG_FILENAME
+    INSTALL
 )
 
 ecm_generate_pri_file(
