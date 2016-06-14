@@ -1,4 +1,5 @@
 include(ECMGenerateHeaders)
+include(ECMGeneratePriFile)
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
@@ -285,6 +286,20 @@ install(
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
 )
 
+ecm_generate_pri_file(
+    BASE_NAME webkit
+    LIB_NAME QtWebKit
+    INCLUDE_INSTALL_DIR "include"
+    INCLUDE_INSTALL_DIR2 "include/QtWebKit"
+    DEPS "core gui network"
+    RUNTIME_DEPS "sensors positioning qml quick webchannel sql core_private gui_private"
+    DEFINES QT_WEBKIT_LIB
+    SET_RPATH ON
+    QT_MODULES webkit
+    FILENAME_VAR WebKit_PRI_FILENAME
+)
+install(FILES ${WebKit_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
+
 set(WebKit_LIBRARY_TYPE SHARED)
 set(WebKit_OUTPUT_NAME Qt5WebKit)
 
@@ -383,6 +398,20 @@ install(
     DESTINATION
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets/private
 )
+
+ecm_generate_pri_file(
+    BASE_NAME webkitwidgets
+    LIB_NAME QtWebKitWidgets
+    INCLUDE_INSTALL_DIR "include"
+    INCLUDE_INSTALL_DIR2 "include/QtWebKitWidgets"
+    DEPS "core gui network widgets webkit"
+    RUNTIME_DEPS "sensors positioning widgets_private printsupport opengl sql core_private gui_private"
+    DEFINES QT_WEBKITWIDGETS_LIB
+    SET_RPATH ON
+    QT_MODULES webkitwidgets
+    FILENAME_VAR WebKitWidgets_PRI_FILENAME
+)
+install(FILES ${WebKitWidgets_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
 
 if (WIN32)
     if (CMAKE_SIZEOF_VOID_P EQUAL 8)
