@@ -5,3 +5,80 @@ if (ENABLE_API_TESTS)
     endif ()
     set_target_properties(gtest PROPERTIES COMPILE_DEFINITIONS "${GTEST_DEFINITIONS}")
 endif ()
+
+# Documentation
+
+if (NOT TARGET Qt5::qdoc)
+    add_executable(Qt5::qdoc IMPORTED)
+    query_qmake(QDOC_EXECUTABLE QT_INSTALL_BINS)
+    set(QDOC_EXECUTABLE "${QDOC_EXECUTABLE}/qdoc")
+    set_target_properties(Qt5::qdoc PROPERTIES
+        IMPORTED_LOCATION ${QDOC_EXECUTABLE}
+    )
+endif ()
+
+if (NOT TARGET Qt5::qhelpgenerator)
+    add_executable(Qt5::qhelpgenerator IMPORTED)
+    query_qmake(QHELPGENERATOR_EXECUTABLE QT_INSTALL_BINS)
+    set(QHELPGENERATOR_EXECUTABLE "${QHELPGENERATOR_EXECUTABLE}/qhelpgenerator")
+    set_target_properties(Qt5::qhelpgenerator PROPERTIES
+        IMPORTED_LOCATION ${QHELPGENERATOR_EXECUTABLE}
+    )
+endif ()
+
+query_qmake(QT_INSTALL_DOCS QT_INSTALL_DOCS)
+#set(QDOC_CONFIG "${DERIVED_SOURCES_DIR}/qtwebkit.qdocconf")
+set(QDOC_CONFIG "${CMAKE_SOURCE_DIR}/Source/qtwebkit.qdocconf")
+set(DOC_OUTPUT_DIR "${CMAKE_BINARY_DIR}/doc")
+set(DOC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/doc")
+set(PROJECT_VERSION_TAG ${PROJECT_VERSION_MAJOR}${PROJECT_VERSION_MINOR}${PROJECT_VERSION_MICRO})
+#configure_file(qtwebkit.qdocconf.in ${QDOC_CONFIG} @ONLY)
+
+if (WIN32)
+    set(EXPORT_VAR set)
+else ()
+    set(EXPORT_VAR export)
+endif ()
+
+if (GENERATE_DOCUMENTATION)
+    set(NEED_ALL "ALL")
+else ()
+    set(NEED_ALL "")
+endif ()
+
+set(EXPORT_VARS_COMMANDS
+    COMMAND ${EXPORT_VAR} "QT_INSTALL_DOCS=${QT_INSTALL_DOCS}"
+    COMMAND ${EXPORT_VAR} "QT_VER=${PROJECT_VERSION_STRING}"
+    COMMAND ${EXPORT_VAR} "QT_VERSION=${PROJECT_VERSION_STRING}"
+    COMMAND ${EXPORT_VAR} "QT_VERSION_TAG=${PROJECT_VERSION_TAG}"
+)
+
+add_custom_target(prepare_docs ${NEED_ALL}
+    ${EXPORT_VARS_COMMANDS}
+    COMMAND Qt5::qdoc ${QDOC_CONFIG} -prepare -outputdir "${DOC_OUTPUT_DIR}/qtwebkit" -installdir ${DOC_INSTALL_DIR} -indexdir ${QT_INSTALL_DOCS} -no-link-errors
+    VERBATIM
+)
+
+add_custom_target(generate_docs ${NEED_ALL}
+    ${EXPORT_VARS_COMMANDS}
+    COMMAND Qt5::qdoc ${QDOC_CONFIG} -generate -outputdir "${DOC_OUTPUT_DIR}/qtwebkit" -installdir ${DOC_INSTALL_DIR} -indexdir ${QT_INSTALL_DOCS}
+    VERBATIM
+)
+add_dependencies(generate_docs prepare_docs)
+
+add_custom_target(html_docs)
+add_dependencies(html_docs generate_docs)
+
+add_custom_target(qch_docs ${NEED_ALL}
+    COMMAND Qt5::qhelpgenerator "${DOC_OUTPUT_DIR}/qtwebkit/qtwebkit.qhp" -o "${DOC_OUTPUT_DIR}/qtwebkit.qch"
+    VERBATIM
+)
+add_dependencies(qch_docs html_docs)
+
+add_custom_target(docs)
+add_dependencies(docs qch_docs)
+
+if (GENERATE_DOCUMENTATION)
+    install(DIRECTORY ${DOC_OUTPUT_DIR} DESTINATION ${CMAKE_INSTALL_PREFIX})
+    install(FILES "${DOC_OUTPUT_DIR}/qtwebkit.qch" DESTINATION ${DOC_INSTALL_DIR})
+endif ()

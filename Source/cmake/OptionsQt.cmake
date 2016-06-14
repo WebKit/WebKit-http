@@ -1,9 +1,11 @@
 include(FeatureSummary)
+include(ECMQueryQmake)
 
 set(PROJECT_VERSION_MAJOR 5)
 set(PROJECT_VERSION_MINOR 602)
 set(PROJECT_VERSION_MICRO 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
+set(PROJECT_VERSION_STRING "${PROJECT_VERSION}")
 
 add_definitions(-DBUILDING_QT__=1)
 
@@ -36,6 +38,7 @@ WEBKIT_OPTION_DEFINE(USE_LIBHYPHEN "Use automatic hyphenation with LibHyphen" PU
 WEBKIT_OPTION_DEFINE(USE_QT_MULTIMEDIA "Use Qt Multimedia implementation of MediaPlayer" PUBLIC ${USE_QT_MULTIMEDIA_DEFAULT})
 WEBKIT_OPTION_DEFINE(ENABLE_INSPECTOR_UI "Include Inspector UI into resources" PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_PRINT_SUPPORT "Enable support for printing web pages" PUBLIC ON)
+WEBKIT_OPTION_DEFINE(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" PUBLIC OFF)
 
 # Public options shared with other WebKit ports. There must be strong reason
 # to support changing the value of the option.
