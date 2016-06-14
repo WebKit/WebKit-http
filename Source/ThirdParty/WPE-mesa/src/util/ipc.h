@@ -28,8 +28,22 @@
 #define wpe_mesa_ipc_h
 
 #include <gio/gio.h>
+#include <memory>
+#include <stdint.h>
 
 namespace IPC {
+
+struct Message {
+    static const size_t size = 32;
+    static const size_t dataSize = 24;
+
+    uint64_t messageCode { 0 };
+    uint8_t messageData[dataSize] { 0, };
+
+    static char* data(Message& message) { return reinterpret_cast<char*>(std::addressof(message)); }
+    static Message& cast(char* data) { return *reinterpret_cast<Message*>(data); }
+};
+static_assert(sizeof(Message) == Message::size, "Message is of correct size");
 
 class Host {
 public:
@@ -46,7 +60,7 @@ public:
 
     int releaseClientFD();
 
-    void send(char*, size_t);
+    void sendMessage(char*, size_t);
 
 private:
     static gboolean socketCallback(GSocket*, GIOCondition, gpointer);
@@ -55,7 +69,6 @@ private:
 
     GSocket* m_socket;
     GSource* m_source;
-    size_t m_messageSize { 32 };
     int m_clientFd { -1 };
 };
 
@@ -81,7 +94,6 @@ private:
 
     GSocket* m_socket;
     GSource* m_source;
-    size_t m_messageSize { 32 };
 };
 
 } // namespace IPC

@@ -81,10 +81,10 @@ struct EGLTarget : public IPC::Client::Handler {
     // IPC::Client::Handler
     void handleMessage(char* data, size_t size) override
     {
-        if (size != IPC::GBM::messageSize)
+        if (size != IPC::Message::size)
             return;
 
-        auto& message = IPC::GBM::asMessage(data);
+        auto& message = IPC::Message::cast(data);
         switch (message.messageCode) {
         case IPC::GBM::FrameComplete::code:
         {
@@ -217,10 +217,9 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
             gbm_bo_set_user_data(bo, boData, &GBM::destroyBOData);
         }
 
-        IPC::GBM::Message message;
+        IPC::Message message;
         IPC::GBM::BufferCommit::construct(message, boData->handle, boData->width, boData->height, boData->stride, boData->format);
-
-        target->ipcClient.sendMessage(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+        target->ipcClient.sendMessage(IPC::Message::data(message), IPC::Message::size);
     },
 };
 

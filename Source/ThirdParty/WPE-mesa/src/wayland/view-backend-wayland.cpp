@@ -121,9 +121,9 @@ const struct wl_buffer_listener g_bufferListener = {
             return;
 
         if (bufferData.ipcHost) {
-            IPC::GBM::Message message;
+            IPC::Message message;
             IPC::GBM::ReleaseBuffer::construct(message, it->first);
-            bufferData.ipcHost->send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+            bufferData.ipcHost->sendMessage(IPC::Message::data(message), IPC::Message::size);
         }
     },
 };
@@ -135,9 +135,9 @@ const struct wl_callback_listener g_callbackListener = {
         auto& callbackData = *static_cast<ViewBackend::CallbackListenerData*>(data);
 
         if (callbackData.ipcHost) {
-            IPC::GBM::Message message;
+            IPC::Message message;
             IPC::GBM::FrameComplete::construct(message);
-            callbackData.ipcHost->send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+            callbackData.ipcHost->sendMessage(IPC::Message::data(message), IPC::Message::size);
         }
 
         callbackData.frameCallback = nullptr;
@@ -216,10 +216,10 @@ void ViewBackend::handleFd(int fd)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::GBM::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::GBM::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     if (message.messageCode != IPC::GBM::BufferCommit::code)
         return;
 

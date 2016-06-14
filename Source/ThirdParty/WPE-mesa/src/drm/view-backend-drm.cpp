@@ -149,9 +149,9 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
         return;
 
     {
-        IPC::GBM::Message message;
+        IPC::Message message;
         IPC::GBM::FrameComplete::construct(message);
-        handlerData.backend->m_renderer.ipcHost.send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+        handlerData.backend->m_renderer.ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
     }
 
     auto bufferToRelease = handlerData.lockedFB;
@@ -159,9 +159,9 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     handlerData.nextFB = { false, 0 };
 
     if (bufferToRelease.first) {
-        IPC::GBM::Message message;
+        IPC::Message message;
         IPC::GBM::ReleaseBuffer::construct(message, bufferToRelease.second);
-        handlerData.backend->m_renderer.ipcHost.send(IPC::GBM::messageData(message), IPC::GBM::messageSize);
+        handlerData.backend->m_renderer.ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
     }
 }
 
@@ -309,10 +309,10 @@ void ViewBackend::handleFd(int fd)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::GBM::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::GBM::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     if (message.messageCode != IPC::GBM::BufferCommit::code)
         return;
 

@@ -67,6 +67,8 @@ void Host::deinitialize()
         g_source_destroy(m_source);
     if (m_socket)
         g_object_unref(m_socket);
+
+    m_handler = nullptr;
 }
 
 int Host::releaseClientFD()
@@ -76,7 +78,7 @@ int Host::releaseClientFD()
     return fd;
 }
 
-void Host::send(char* data, size_t size)
+void Host::sendMessage(char* data, size_t size)
 {
     g_socket_send(m_socket, data, size, nullptr, nullptr);
 }
@@ -90,8 +92,8 @@ gboolean Host::socketCallback(GSocket* socket, GIOCondition condition, gpointer 
 
     GSocketControlMessage** messages;
     int nMessages = 0;
-    char* buffer = g_new0(char, host.m_messageSize);
-    GInputVector vector = { buffer, host.m_messageSize };
+    char* buffer = g_new0(char, Message::size);
+    GInputVector vector = { buffer, Message::size };
     gssize len = g_socket_receive_message(socket, nullptr, &vector, 1,
         &messages, &nMessages, nullptr, nullptr, nullptr);
 
@@ -122,8 +124,8 @@ gboolean Host::socketCallback(GSocket* socket, GIOCondition condition, gpointer 
         return TRUE;
     }
 
-    if (len == host.m_messageSize)
-        host.m_handler->handleMessage(buffer, host.m_messageSize);
+    if (len == Message::size)
+        host.m_handler->handleMessage(buffer, Message::size);
 
     g_free(buffer);
     return TRUE;
@@ -146,6 +148,12 @@ void Client::initialize(Handler& handler, int fd)
 
 void Client::deinitialize()
 {
+    if (m_source)
+        g_source_destroy(m_source);
+    if (m_socket)
+        g_object_unref(m_socket);
+
+    m_handler = nullptr;
 }
 
 gboolean Client::socketCallback(GSocket* socket, GIOCondition condition, gpointer data)
@@ -155,11 +163,11 @@ gboolean Client::socketCallback(GSocket* socket, GIOCondition condition, gpointe
 
     auto& client = *reinterpret_cast<Client*>(data);
 
-    char* buffer = g_new0(char, client.m_messageSize);
-    gssize len = g_socket_receive(socket, buffer, client.m_messageSize, nullptr, nullptr);
+    char* buffer = g_new0(char, Message::size);
+    gssize len = g_socket_receive(socket, buffer, Message::size, nullptr, nullptr);
 
-    if (len == client.m_messageSize)
-        client.m_handler->handleMessage(buffer, client.m_messageSize);
+    if (len == Message::size)
+        client.m_handler->handleMessage(buffer, Message::size);
 
     g_free(buffer);
     return TRUE;
