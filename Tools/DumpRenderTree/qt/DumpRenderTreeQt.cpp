@@ -568,8 +568,8 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const QUrl& url)
         m_page->setNetworkAccessManager(m_networkAccessManager);
     }
 
-    WorkQueue::shared()->clear();
-    WorkQueue::shared()->setFrozen(false);
+    WorkQueue::singleton().clear();
+    WorkQueue::singleton().setFrozen(false);
 
     DumpRenderTreeSupportQt::resetOriginAccessWhiteLists();
 

@@ -21,7 +21,9 @@
 #include "config.h"
 #include "TestsController.h"
 
+#if HAVE(WEBKIT2)
 #include "qquickwebview_p.h"
+#endif
 #include <QGuiApplication>
 
 void addQtWebProcessToPath()
@@ -53,7 +55,9 @@ int main(int argc, char** argv)
             useDesktopBehavior = false;
     }
 
+#if HAVE(WEBKIT2)
     QQuickWebViewExperimental::setFlickableViewportEnabled(!useDesktopBehavior);
+#endif
 
     // Has to be done before QApplication is constructed in case
     // QApplication itself produces debug output.
@@ -66,5 +70,5 @@ int main(int argc, char** argv)
     QGuiApplication app(argc, argv);
     addQtWebProcessToPath();
 
-    return TestWebKitAPI::TestsController::shared().run(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
+    return TestWebKitAPI::TestsController::singleton().run(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

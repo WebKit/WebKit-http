@@ -29,6 +29,7 @@
 
 #include "DumpRenderTreeQt.h"
 
+#include "InitWebCoreQt.h"
 #include "QtTestSupport.h"
 #include <qapplication.h>
 #include <qdebug.h>
@@ -111,6 +112,7 @@ int main(int argc, char* argv[])
     if (suppressQtDebugOutput)
         qInstallMessageHandler(messageHandler);
 
+    WebCore::initializeWebCoreQt();
     WebKit::QtTestSupport::initializeTestFonts();
 
     QApplication::setStyle(QStyleFactory::create(QLatin1String("windows")));

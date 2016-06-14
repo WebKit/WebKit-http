@@ -19,9 +19,9 @@
 
 #include <QtCore/qmath.h>
 
-#include <QApplication>
 #include <QBuffer>
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QImage>
 #include <QStringList>
 

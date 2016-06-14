@@ -107,7 +107,7 @@ void TestRunnerQt::processWork()
     // qDebug() << ">>>processWork";
 
     // if we didn't start a new load, then we finished all the commands, so we're ready to dump state
-    if (WorkQueue::shared()->processWork() && !shouldWaitUntilDone()) {
+    if (WorkQueue::singleton().processWork() && !shouldWaitUntilDone()) {
         emit done();
         m_hasDumped = true;
     }
@@ -136,8 +136,8 @@ void TestRunnerQt::maybeDump(bool /*success*/)
     if (m_hasDumped)
         return;
 
-    WorkQueue::shared()->setFrozen(true); // first complete load freezes the queue for the rest of this test
-    if (WorkQueue::shared()->count())
+    WorkQueue::singleton().setFrozen(true); // first complete load freezes the queue for the rest of this test
+    if (WorkQueue::singleton().count())
         QTimer::singleShot(0, this, SLOT(processWork()));
     else if (!shouldWaitUntilDone()) {
         emit done();
@@ -330,40 +330,40 @@ void TestRunnerQt::queueBackNavigation(int howFarBackward)
 {
     //qDebug() << ">>>queueBackNavigation" << howFarBackward;
     for (int i = 0; i != howFarBackward; ++i)
-        WorkQueue::shared()->queue(new BackItem(1));
+        WorkQueue::singleton().queue(new BackItem(1));
 }
 
 void TestRunnerQt::queueForwardNavigation(int howFarForward)
 {
     //qDebug() << ">>>queueForwardNavigation" << howFarForward;
     for (int i = 0; i != howFarForward; ++i)
-        WorkQueue::shared()->queue(new ForwardItem(1));
+        WorkQueue::singleton().queue(new ForwardItem(1));
 }
 
 void TestRunnerQt::queueLoadHTMLString(const QString& content, const QString& baseURL, const QString& failingURL)
 {
     if (failingURL.isEmpty())
-        WorkQueue::shared()->queue(new LoadHTMLStringItem(JSStringCreateWithQString(content).get(), JSStringCreateWithQString(baseURL).get()));
+        WorkQueue::singleton().queue(new LoadHTMLStringItem(JSStringCreateWithQString(content).get(), JSStringCreateWithQString(baseURL).get()));
     else
-        WorkQueue::shared()->queue(new LoadAlternateHTMLStringItem(JSStringCreateWithQString(content), JSStringCreateWithQString(baseURL), JSStringCreateWithQString(failingURL)));
+        WorkQueue::singleton().queue(new LoadAlternateHTMLStringItem(JSStringCreateWithQString(content), JSStringCreateWithQString(baseURL), JSStringCreateWithQString(failingURL)));
 }
 
 void TestRunnerQt::queueReload()
 {
     //qDebug() << ">>>queueReload";
-    WorkQueue::shared()->queue(new ReloadItem());
+    WorkQueue::singleton().queue(new ReloadItem());
 }
 
 void TestRunnerQt::queueLoadingScript(const QString& script)
 {
     //qDebug() << ">>>queueLoadingScript" << script;
-    WorkQueue::shared()->queue(new LoadingScriptItem(JSStringCreateWithQString(script).get()));
+    WorkQueue::singleton().queue(new LoadingScriptItem(JSStringCreateWithQString(script).get()));
 }
 
 void TestRunnerQt::queueNonLoadingScript(const QString& script)
 {
     //qDebug() << ">>>queueNonLoadingScript" << script;
-    WorkQueue::shared()->queue(new NonLoadingScriptItem(JSStringCreateWithQString(script).get()));
+    WorkQueue::singleton().queue(new NonLoadingScriptItem(JSStringCreateWithQString(script).get()));
 }
 
 void TestRunnerQt::provisionalLoad()
@@ -784,7 +784,7 @@ void TestRunner::queueLoad(JSStringRef url, JSStringRef target)
     DumpRenderTree* drt = DumpRenderTree::instance();
     QUrl mainResourceUrl = drt->webPage()->mainFrame()->url();
     QString absoluteUrl = mainResourceUrl.resolved(QUrl(JSStringCopyQString(url))).toEncoded();
-    WorkQueue::shared()->queue(new LoadItem(JSStringCreateWithQString(absoluteUrl).get(), target));
+    WorkQueue::singleton().queue(new LoadItem(JSStringCreateWithQString(absoluteUrl).get(), target));
 }
 
 void TestRunner::removeAllVisitedLinks()
@@ -839,6 +839,11 @@ int TestRunner::numberOfPendingGeolocationPermissionRequests()
     return 0;
 }
 
+bool TestRunner::isGeolocationProviderActive()
+{
+    return false;
+}
+
 void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
 {
 }
@@ -876,27 +881,6 @@ void TestRunner::addChromeInputField()
 {
 }
 
-JSValueRef TestRunner::originsWithLocalStorage(JSContextRef context)
-{
-    return JSValueMakeNull(context);
-}
-
-void TestRunner::deleteAllLocalStorage()
-{
-}
-
-void TestRunner::deleteLocalStorageForOrigin(JSStringRef originIdentifier)
-{
-}
-
-void TestRunner::observeStorageTrackerNotifications(unsigned number)
-{
-}
-
-void TestRunner::syncLocalStorage()
-{
-}
-
 int TestRunner::windowCount()
 {
     return 0;
@@ -923,7 +907,7 @@ void TestRunner::closeWebInspector()
 {
 }
 
-void TestRunner::evaluateInWebInspector(long callId, JSStringRef script)
+void TestRunner::evaluateInWebInspector(JSStringRef script)
 {
 }
 
@@ -1082,10 +1066,6 @@ void TestRunner::setPopupBlockingEnabled(bool)
 {
 }
 
-void TestRunner::setMockSpeechInputDumpRect(bool flag)
-{
-}
-
 void TestRunner::setPersistentUserStyleSheetLocation(JSStringRef path)
 {
 }
@@ -1139,10 +1119,6 @@ void TestRunner::setAllowUniversalAccessFromFileURLs(bool)
 {
 }
 
-void TestRunner::setApplicationCacheOriginQuota(unsigned long long)
-{
-}
-
 void TestRunner::denyWebNotificationPermission(JSStringRef origin)
 {
 }
@@ -1156,10 +1132,6 @@ void TestRunner::setValueForUser(JSContextRef, JSValueRef nodeObject, JSStringRe
 }
 
 void TestRunner::setViewModeMediaFeature(JSStringRef)
-{
-}
-
-void TestRunner::addMockSpeechInputResult(JSStringRef result, double confidence, JSStringRef language)
 {
 }
 
@@ -1199,8 +1171,8 @@ void TestRunner::execCommand(JSStringRef name, JSStringRef value)
 {
 }
 
-long long TestRunner::localStorageDiskUsageForOrigin(JSStringRef originIdentifier)
+JSStringRef TestRunner::inspectorTestStubURL()
 {
-    return 0;
+    return JSStringCreateWithUTF8CString("qrc:/webkit/inspector/UserInterface/TestStub.html");
 }
 
