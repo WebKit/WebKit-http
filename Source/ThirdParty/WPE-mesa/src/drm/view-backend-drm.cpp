@@ -34,7 +34,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <gbm.h>
-#include <gio/gio.h>
+#include <glib.h>
 #include <unordered_map>
 #include <utility>
 #include <xf86drm.h>
@@ -359,23 +359,17 @@ struct wpe_view_backend_interface drm_view_backend_interface = {
     // create
     [](void*, struct wpe_view_backend* backend) -> void*
     {
-        fprintf(stderr, "drm_view_backend_interface::create()\n");
-
         return new DRM::ViewBackend(backend);
     },
     // destroy
     [](void* data)
     {
-        fprintf(stderr, "drm_view_backend_interface::destroy()\n");
-
         auto* backend = static_cast<DRM::ViewBackend*>(data);
         delete backend;
     },
     // initialize
     [](void* data)
     {
-        fprintf(stderr, "drm_view_backend_interface::initialize()\n");
-
         auto* backend = static_cast<DRM::ViewBackend*>(data);
         wpe_view_backend_dispatch_set_size(backend->backend,
             backend->m_drm.size.first, backend->m_drm.size.second);
@@ -383,8 +377,6 @@ struct wpe_view_backend_interface drm_view_backend_interface = {
     // get_renderer_host_fd
     [](void* data) -> int
     {
-        fprintf(stderr, "drm_view_backend_interface::get_renderer_host_fd()\n");
-
         auto* backend = static_cast<DRM::ViewBackend*>(data);
         return backend->m_renderer.ipcHost.releaseClientFD();
     },

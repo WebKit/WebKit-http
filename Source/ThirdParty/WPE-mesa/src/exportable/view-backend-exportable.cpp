@@ -28,8 +28,6 @@
 
 #include "ipc.h"
 #include "ipc-gbm.h"
-#include <cstdio>
-#include <memory>
 
 namespace Exportable {
 

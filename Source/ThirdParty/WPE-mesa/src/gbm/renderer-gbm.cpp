@@ -27,21 +27,12 @@
 #include "renderer-gbm.h"
 
 #include "ipc.h"
+#include "ipc-gbm.h"
 #include <cassert>
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <fcntl.h>
 #include <gbm.h>
-#include <unistd.h>
 #include <unordered_map>
-
-#include <gio/gio.h>
-#include <gio/gunixfdmessage.h>
-
-#include "ipc-gbm.h"
-
-#include <memory>
 
 namespace GBM {
 

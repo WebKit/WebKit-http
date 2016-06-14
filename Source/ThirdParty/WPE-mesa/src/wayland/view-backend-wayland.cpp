@@ -32,7 +32,6 @@
 #include "ivi-application-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
-
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
@@ -248,7 +247,7 @@ void ViewBackend::handleMessage(char* data, size_t size)
     }
 
     if (!buffer) {
-        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", bufferCommit.handle);
+        fprintf(stderr, "ViewBackend: failed to create/find a buffer for PRIME handle %u\n", bufferCommit.handle);
         return;
     }
 
