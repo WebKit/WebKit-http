@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2015 Igalia S.L.
+ * Copyright (C) 2015, 2016 Igalia S.L.
+ * Copyright (C) 2015, 2016 Metrological
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
