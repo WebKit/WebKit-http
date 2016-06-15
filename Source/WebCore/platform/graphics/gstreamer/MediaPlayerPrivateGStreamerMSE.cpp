@@ -48,9 +48,7 @@
 #include <gst/video/video.h>
 
 
-#if USE(DXDRM)
-#include "DiscretixSession.h"
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
 #include "PlayreadySession.h"
 #endif
 
@@ -70,8 +68,8 @@ static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 // state change requests.
 static const unsigned gReadyStateTimerInterval = 60;
 
-GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
-#define GST_CAT_DEFAULT webkit_media_player_debug
+GST_DEBUG_CATEGORY(webkit_mse_debug);
+#define GST_CAT_DEFAULT webkit_mse_debug
 
 using namespace std;
 
@@ -208,6 +206,7 @@ bool initializeGStreamerAndRegisterWebKitMESElement()
         return false;
 
     registerWebKitGStreamerElements();
+    GST_DEBUG_CATEGORY_INIT(webkit_mse_debug, "webkitmse", 0, "WebKit MSE media player");
 
     GRefPtr<GstElementFactory> WebKitMediaSrcFactory = gst_element_factory_find("webkitmediasrc");
     if (!WebKitMediaSrcFactory)
@@ -954,22 +953,16 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 }
 #endif
 
-#if USE(DXDRM) || USE(PLAYREADY)
+#if USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerMSE::emitSession()
 {
-#if USE(DXDRM)
-    DiscretixSession* session = dxdrmSession();
-    const char* label = "dxdrm-session";
-#elif USE(PLAYREADY)
     PlayreadySession* session = prSession();
-    const char* label = "playready-session";
-#endif
     if (!session->ready())
         return;
 
     for (HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> >::iterator it = m_appendPipelinesMap.begin(); it != m_appendPipelinesMap.end(); ++it) {
         gst_element_send_event(it->value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-           gst_structure_new(label, "session", G_TYPE_POINTER, session, nullptr)));
+            gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
         it->value->setAppendStage(AppendPipeline::AppendStage::Ongoing);
     }
 }

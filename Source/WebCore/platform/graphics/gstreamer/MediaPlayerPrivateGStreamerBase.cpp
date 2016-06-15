@@ -114,9 +114,7 @@
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 #include "CDMPRSessionGStreamer.h"
 #endif
-#if USE(DXDRM)
-#include "DiscretixSession.h"
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
 #include "PlayreadySession.h"
 #endif
 #include "WebKitPlayReadyDecryptorGStreamer.h"
@@ -125,15 +123,6 @@
 #if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
 #include <cairo-gl.h>
 #endif
-
-#define GST_WEBKIT_VIDEO_FORMATS "{ RGBA }" \
-
-#define GST_WEBKIT_VIDEO_CAPS \
-    "video/x-raw(" GST_CAPS_FEATURE_MEMORY_GL_MEMORY "), "              \
-    "format = (string) " GST_WEBKIT_VIDEO_FORMATS ", "                  \
-    "width = " GST_VIDEO_SIZE_RANGE ", "                                \
-    "height = " GST_VIDEO_SIZE_RANGE ", "                               \
-    "framerate = " GST_VIDEO_FPS_RANGE
 
 GST_DEBUG_CATEGORY(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
@@ -153,7 +142,7 @@ void registerWebKitGStreamerElements()
         gst_element_register(0, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
 #endif
 
-#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && (USE(DXDRM) || USE(PLAYREADY))
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(PLAYREADY)
     GRefPtr<GstElementFactory> playReadyDecryptorFactory = gst_element_factory_find("webkitplayreadydec");
     if (!playReadyDecryptorFactory)
         gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT);
@@ -224,12 +213,9 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
 #endif
     , m_repaintHandler(0)
-    , m_drainHandler(0)
     , m_usingFallbackVideoSink(false)
 #if ENABLE(ENCRYPTED_MEDIA)
-#if USE(DXDRM)
-    , m_dxdrmSession(0)
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
     , m_prSession(0)
 #endif
 #endif
@@ -271,11 +257,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#if USE(DXDRM)
-    if (m_dxdrmSession != NULL) {
-        delete m_dxdrmSession;
-    }
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
     if (m_prSession != NULL) {
         delete m_prSession;
     }
@@ -309,11 +291,6 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
     if (m_repaintHandler) {
         g_signal_handler_disconnect(m_videoSink.get(), m_repaintHandler);
         m_repaintHandler = 0;
-    }
-
-    if (m_drainHandler) {
-        g_signal_handler_disconnect(m_videoSink.get(), m_drainHandler);
-        m_drainHandler = 0;
     }
 #endif
 
@@ -355,12 +332,8 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             return false;
 
         LOG_MEDIA_MESSAGE("handling drm-key-needed message");
-#if USE(DXDRM) || USE(PLAYREADY)
-#if USE(DXDRM)
-        DiscretixSession* session = dxdrmSession();
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
         PlayreadySession* session = prSession();
-#endif
         if (session && session->keyRequested()) {
             LOG_MEDIA_MESSAGE("key requested already");
             if (session->ready()) {
@@ -622,46 +595,6 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
 {
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
 
-#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 8, 1) && !USE(HOLE_PUNCH_GSTREAMER)
-    GstMemory *mem;
-    if (gst_buffer_n_memory (buffer) >= 1) {
-        if ((mem = gst_buffer_peek_memory (buffer, 0)) && gst_is_gl_memory_egl (mem)) {
-            guint n, i;
-
-            n = gst_buffer_n_memory (buffer);
-
-            n = 1; // FIXME
-
-            for (i = 0; i < n; i++) {
-                mem = gst_buffer_peek_memory (buffer, i);
-
-                g_assert (gst_is_gl_memory_egl (mem));
-                GstGLMemoryEGL* glMem = reinterpret_cast<GstGLMemoryEGL*>(mem);
-
-                if (i == 0)
-                    glActiveTexture (GL_TEXTURE0);
-                else if (i == 1)
-                    glActiveTexture (GL_TEXTURE1);
-                else if (i == 2)
-                    glActiveTexture (GL_TEXTURE2);
-
-                glBindTexture (GL_TEXTURE_2D, texture.id());
-                glEGLImageTargetTexture2DOES (GL_TEXTURE_2D,
-                    gst_gl_memory_egl_get_image (glMem));
-
-                m_orientation = gst_gl_memory_egl_get_orientation (glMem);
-                if (m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_NORMAL
-                    && m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_FLIP) {
-                    LOG_ERROR("MediaPlayerPrivateGStreamerBase::updateTexture: invalid GstEGLImage orientation");
-                }
-            }
-
-            return;
-        }
-    }
-
-    return;
-#endif
 #if GST_CHECK_VERSION(1, 1, 0)
     GstVideoGLTextureUploadMeta* meta;
     if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
@@ -809,11 +742,6 @@ void MediaPlayerPrivateGStreamerBase::repaintCallback(MediaPlayerPrivateGStreame
 {
     player->triggerRepaint(sample);
 }
-
-void MediaPlayerPrivateGStreamerBase::drainCallback(MediaPlayerPrivateGStreamerBase* player)
-{
-    player->triggerDrain();
-}
 #endif
 
 #if USE(GSTREAMER_GL)
@@ -826,15 +754,23 @@ gboolean MediaPlayerPrivateGStreamerBase::drawCallback(MediaPlayerPrivateGStream
     player->triggerRepaint(sample.get());
     return TRUE;
 }
-#endif
 
-void MediaPlayerPrivateGStreamerBase::triggerDrain()
+void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
 {
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    m_videoSize.setWidth(0);
-    m_videoSize.setHeight(0);
-    m_sample = nullptr;
+    m_sample.clear();
+
+    LockHolder holder(m_platformLayerProxy->lock());
+
+    if (!m_platformLayerProxy->isActive())
+        return;
+
+    // FIXME: Remove this black frame while drain or flush event
+    // we can make a copy current frame to the temporal texture,
+    // or make the decoder's buffer pool more flexible.
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, 0));
 }
+#endif
 
 void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
 {
@@ -1009,13 +945,32 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamerBase::movieLoadType() cons
 }
 
 #if USE(GSTREAMER_GL)
+gboolean fakeSinkSinkQuery(GstPad* pad, GstObject* parent, GstQuery* query)
+{
+    gboolean result = FALSE;
+    auto* player = static_cast<MediaPlayerPrivateGStreamerBase*>(g_object_get_data(G_OBJECT(parent), "player"));
+
+    switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_DRAIN: {
+        player->clearCurrentBuffer();
+        result = TRUE;
+        break;
+    }
+    default:
+        result = gst_pad_query_default(pad, parent, query);
+        break;
+    }
+
+    return result;
+}
+
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 {
     if (!webkitGstCheckVersion(1, 8, 0))
         return nullptr;
 
     gboolean result = TRUE;
-    GstElement* videoSink = gst_bin_new(nullptr);
+    GstElement* videoSink = gst_bin_new("webkitvideosinkbin");
     GstElement* upload = gst_element_factory_make("glupload", nullptr);
     GstElement* colorconvert = gst_element_factory_make("glcolorconvert", nullptr);
 
@@ -1045,6 +1000,19 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 
     g_object_set(fakesink, "enable-last-sample", FALSE, "signal-handoffs", TRUE, "silent", TRUE, "sync", TRUE, nullptr);
 
+    pad = adoptGRef(gst_element_get_static_pad(fakesink, "sink"));
+    gst_pad_add_probe (pad.get(), GST_PAD_PROBE_TYPE_EVENT_FLUSH, [] (GstPad*, GstPadProbeInfo* info,  gpointer userData) -> GstPadProbeReturn {
+        if (GST_EVENT_TYPE (GST_PAD_PROBE_INFO_EVENT (info)) != GST_EVENT_FLUSH_START)
+            return GST_PAD_PROBE_OK;
+
+        auto* player = static_cast<MediaPlayerPrivateGStreamerBase*>(userData);
+        player->clearCurrentBuffer();
+        return GST_PAD_PROBE_OK;
+    }, this, nullptr);
+
+    g_object_set_data(G_OBJECT(fakesink), "player", (gpointer) this);
+    gst_pad_set_query_function(pad.get(), fakeSinkSinkQuery);
+
     if (result)
         g_signal_connect_swapped(fakesink, "handoff", G_CALLBACK(drawCallback), this);
     else {
@@ -1067,7 +1035,6 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
         m_usingFallbackVideoSink = true;
         m_videoSink = webkitVideoSinkNew();
         m_repaintHandler = g_signal_connect_swapped(m_videoSink.get(), "repaint-requested", G_CALLBACK(repaintCallback), this);
-        m_drainHandler = g_signal_connect_swapped(m_videoSink.get(), "drain", G_CALLBACK(drainCallback), this);
     }
 
     GstElement* videoSink = nullptr;
@@ -1168,7 +1135,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
         return true;
 #endif
 
-#if (USE(DXDRM) || USE(PLAYREADY)) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
+#if USE(PLAYREADY) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
         return true;
@@ -1177,21 +1144,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
     return false;
 }
 
-#if USE(DXDRM)
-DiscretixSession* MediaPlayerPrivateGStreamerBase::dxdrmSession() const
-{
-    DiscretixSession* session = nullptr;
-#if ENABLE(ENCRYPTED_MEDIA)
-    session = m_dxdrmSession;
-#elif ENABLE(ENCRYPTED_MEDIA_V2)
-    if (m_cdmSession) {
-        CDMPRSessionGStreamer* cdmSession = static_cast<CDMPRSessionGStreamer*>(m_cdmSession);
-        session = static_cast<DiscretixSession*>(cdmSession);
-    }
-#endif
-    return session;
-}
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
 PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 {
     PlayreadySession* session = nullptr;
@@ -1207,21 +1160,15 @@ PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 }
 #endif
 
-#if USE(DXDRM) || USE(PLAYREADY)
+#if USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerBase::emitSession()
 {
-#if USE(DXDRM)
-    DiscretixSession* session = dxdrmSession();
-    const char* label = "dxdrm-session";
-#elif USE(PLAYREADY)
     PlayreadySession* session = prSession();
-    const char* label = "playready-session";
-#endif
     if (!session->ready())
         return;
 
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new(label, "session", G_TYPE_POINTER, session, nullptr)));
+        gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
 }
 #endif
 
@@ -1238,19 +1185,15 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
 {
     LOG_MEDIA_MESSAGE("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
 
-#if USE(DXDRM) || USE(PLAYREADY)
+#if USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
         RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
         RefPtr<Uint8Array> nextMessage;
         unsigned short errorCode;
         uint32_t systemCode;
-
-#if USE(DXDRM)
-        bool result = m_dxdrmSession->dxdrmProcessKey(key.get(), nextMessage, errorCode, systemCode);
-#elif USE(PLAYREADY)
         bool result = m_prSession->playreadyProcessKey(key.get(), nextMessage, errorCode, systemCode);
-#endif
+
         if (errorCode || !result) {
             LOG_MEDIA_MESSAGE("Error processing key: errorCode: %u, result: %d", errorCode, result);
             return MediaPlayer::InvalidPlayerState;
@@ -1275,41 +1218,30 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
 {
     LOG_MEDIA_MESSAGE("generating key request for system: %s", keySystem.utf8().data());
-#if USE(DXDRM) || USE(PLAYREADY)
+#if USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
-#if USE(DXDRM)
-        if (!m_dxdrmSession)
-            m_dxdrmSession = new DiscretixSession();
-#elif USE(PLAYREADY)
         if (!m_prSession)
             m_prSession = new PlayreadySession();
         if (m_prSession->ready()) {
             emitSession();
             return MediaPlayer::NoError;
         }
-#endif
 
         unsigned short errorCode;
         uint32_t systemCode;
         RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
         String destinationURL;
-#if USE(DXDRM)
-        RefPtr<Uint8Array> result = m_dxdrmSession->dxdrmGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
-#elif USE(PLAYREADY)
         RefPtr<Uint8Array> result = m_prSession->playreadyGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
-#endif
         if (errorCode) {
             ERROR_MEDIA_MESSAGE("the key request wasn't properly generated");
             return MediaPlayer::InvalidPlayerState;
         }
 
-#if USE(PLAYREADY)
         if (m_prSession->ready()) {
             emitSession();
             return MediaPlayer::NoError;
         }
-#endif
 
         URL url(URL(), destinationURL);
         m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);
@@ -1350,7 +1282,7 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
         return nullptr;
 
     LOG_MEDIA_MESSAGE("creating key session for %s", keySystem.utf8().data());
-#if USE(DXDRM) || USE(PLAYREADY)
+#if USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
         return std::make_unique<CDMPRSessionGStreamer>(client);
@@ -1367,7 +1299,7 @@ void MediaPlayerPrivateGStreamerBase::setCDMSession(CDMSession* session)
 
 void MediaPlayerPrivateGStreamerBase::keyAdded()
 {
-#if USE(DXDRM) || USE(PLAYREADY)
+#if USE(PLAYREADY)
     emitSession();
 #endif
 }

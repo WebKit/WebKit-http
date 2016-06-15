@@ -28,7 +28,7 @@
 #include "config.h"
 #include "CDMPRSessionGStreamer.h"
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER)
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(PLAYREADY)
 
 #include "CDM.h"
 #include "MediaKeyError.h"
@@ -39,11 +39,7 @@
 namespace WebCore {
 
 CDMPRSessionGStreamer::CDMPRSessionGStreamer(CDMSessionClient* client)
-#if USE(DXDRM)
-  : DiscretixSession()
-#elif USE(PLAYREADY)
-  : PlayreadySession()
-#endif
+    : PlayreadySession()
     , m_client(client)
     , m_sessionId(createCanonicalUUIDString())
 {
@@ -73,20 +69,12 @@ const String& CDMPRSessionGStreamer::sessionId() const
 RefPtr<Uint8Array> CDMPRSessionGStreamer::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
     UNUSED_PARAM(mimeType);
-#if USE(DXDRM)
-    return dxdrmGenerateKeyRequest(initData, destinationURL, errorCode, systemCode);
-#elif USE(PLAYREADY)
     return playreadyGenerateKeyRequest(initData, destinationURL, errorCode, systemCode);
-#endif
 }
 
 bool CDMPRSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode)
 {
-#if USE(DXDRM)
-    return dxdrmProcessKey(key, nextMessage, errorCode, systemCode);
-#elif USE(PLAYREADY)
     return playreadyProcessKey(key, nextMessage, errorCode, systemCode);
-#endif
 }
 
 void CDMPRSessionGStreamer::releaseKeys()

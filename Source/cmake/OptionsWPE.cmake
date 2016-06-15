@@ -41,9 +41,7 @@ WEBKIT_OPTION_DEFINE(USE_WESTEROS_SINK "Westeros-Sink to be used as video-sink f
 WEBKIT_OPTION_DEFINE(USE_FUSION_SINK "Fusion-Sink to be used as video-sink for GStreamer video player" PUBLIC OFF)
 WEBKIT_OPTION_END()
 
-if (ENABLE_DXDRM)
-    add_definitions(-DUSE_DXDRM=1)
-elseif (ENABLE_PLAYREADY)
+if (ENABLE_PLAYREADY)
     add_definitions(-DUSE_PLAYREADY=1)
     find_package(Playready REQUIRED)
 endif ()

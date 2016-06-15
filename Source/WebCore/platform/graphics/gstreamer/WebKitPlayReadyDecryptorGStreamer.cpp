@@ -21,24 +21,14 @@
 
 #include "config.h"
 
-#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && (USE(DXDRM) || USE(PLAYREADY))
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && USE(PLAYREADY)
 #include "WebKitPlayReadyDecryptorGStreamer.h"
-
-#if USE(DXDRM)
-#include "DiscretixSession.h"
-#elif USE(PLAYREADY)
 #include "PlayreadySession.h"
-#endif
-
 #include <gst/base/gstbytereader.h>
 
 #define WEBKIT_MEDIA_PLAYREADY_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT, WebKitMediaPlayReadyDecryptPrivate))
 struct _WebKitMediaPlayReadyDecryptPrivate {
-#if USE(DXDRM)
-    WebCore::DiscretixSession* sessionMetaData;
-#elif USE(PLAYREADY)
     WebCore::PlayreadySession* sessionMetaData;
-#endif
 };
 
 static void webKitMediaPlayReadyDecryptorFinalize(GObject*);
@@ -121,22 +111,14 @@ static gboolean webKitMediaPlayReadyDecryptorHandleKeyResponse(WebKitMediaCommon
     WebKitMediaPlayReadyDecryptPrivate* priv = WEBKIT_MEDIA_PLAYREADY_DECRYPT_GET_PRIVATE(WEBKIT_MEDIA_PLAYREADY_DECRYPT(self));
 
     const GstStructure* structure = gst_event_get_structure(event);
-#if USE(DXDRM)
-    const char* label = "dxdrm-session";
-#else
     const char* label = "playready-session";
-#endif
     if (!gst_structure_has_name(structure, label))
         return FALSE;
 
     GST_INFO_OBJECT(self, "received %s", label);
 
     const GValue* value = gst_structure_get_value(structure, "session");
-#if USE(DXDRM)
-    priv->sessionMetaData = reinterpret_cast<WebCore::DiscretixSession*>(g_value_get_pointer(value));
-#else
     priv->sessionMetaData = reinterpret_cast<WebCore::PlayreadySession*>(g_value_get_pointer(value));
-#endif
     return TRUE;
 }
 

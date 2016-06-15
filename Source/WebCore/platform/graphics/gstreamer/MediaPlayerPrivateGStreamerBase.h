@@ -51,9 +51,7 @@ class GraphicsContext3D;
 class IntSize;
 class IntRect;
 
-#if USE(DXDRM)
-class DiscretixSession;
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
 class PlayreadySession;
 #endif
 
@@ -151,12 +149,8 @@ public:
     virtual void dispatchDecryptionKey(GstBuffer*);
 #endif
 
-#if USE(DXDRM) || USE(PLAYREADY)
-#if USE(DXDRM)
-    DiscretixSession* dxdrmSession() const;
-#elif USE(PLAYREADY)
+#if USE(PLAYREADY)
     PlayreadySession* prSession() const;
-#endif
     virtual void emitSession();
 #endif
 
@@ -169,6 +163,7 @@ public:
 
 #if USE(GSTREAMER_GL)
     NativeImagePtr nativeImageForCurrentTime() override;
+    void clearCurrentBuffer();
 #endif
 
 protected:
@@ -193,7 +188,6 @@ protected:
 
     void triggerRepaint(GstSample*);
     void repaint();
-    void triggerDrain();
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
@@ -238,7 +232,6 @@ protected:
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 #endif
     unsigned long m_repaintHandler;
-    unsigned long m_drainHandler;
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -269,12 +262,8 @@ private:
     void updateVideoRectangle();
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-#if USE(DXDRM)
-    DiscretixSession* m_dxdrmSession;
-#elif USE(PLAYREADY)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(PLAYREADY)
     PlayreadySession* m_prSession;
-#endif
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)

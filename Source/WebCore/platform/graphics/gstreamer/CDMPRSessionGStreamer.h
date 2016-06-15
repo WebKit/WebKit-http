@@ -28,25 +28,14 @@
 #ifndef CDMPRSessionGStreamer_h
 #define CDMPRSessionGStreamer_h
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER)
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(PLAYREADY)
 
 #include "CDMSession.h"
-#if USE(DXDRM)
-#include "DiscretixSession.h"
-#elif USE(PLAYREADY)
 #include "PlayreadySession.h"
-#else
-#error "Please select either ENABLE_DXDRM or ENABLE_PLAYREADY"
-#endif
 
 namespace WebCore {
 
-class CDMPRSessionGStreamer : public CDMSession,
-#if USE(DXDRM)
-    public DiscretixSession
-#elif USE(PLAYREADY)
-    public PlayreadySession
-#endif
+class CDMPRSessionGStreamer : public CDMSession, public PlayreadySession
     {
 private:
     CDMPRSessionGStreamer(const CDMPRSessionGStreamer&);
