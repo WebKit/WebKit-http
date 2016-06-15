@@ -62,7 +62,10 @@ endif ()
 WEBKIT_FRAMEWORK(WebKit)
 
 set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
-install(TARGETS WebKit DESTINATION "${LIB_INSTALL_DIR}")
+install(TARGETS WebKit EXPORT WebKitTargets
+        DESTINATION "${LIB_INSTALL_DIR}"
+        INCLUDES DESTINATION "${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets"
+)
 
 add_dependencies(WebKit WebCore)
 if (WIN32)

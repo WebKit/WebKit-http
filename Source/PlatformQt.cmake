@@ -1,3 +1,5 @@
+# GTest
+
 if (ENABLE_API_TESTS)
     set(GTEST_DEFINITIONS QT_NO_KEYWORDS)
     if (COMPILER_IS_GCC_OR_CLANG)
@@ -5,6 +7,51 @@ if (ENABLE_API_TESTS)
     endif ()
     set_target_properties(gtest PROPERTIES COMPILE_DEFINITIONS "${GTEST_DEFINITIONS}")
 endif ()
+
+# Installation
+
+target_include_directories(WebKit INTERFACE $<INSTALL_INTERFACE:include/QtWebKit>)
+target_include_directories(WebKitWidgets INTERFACE $<INSTALL_INTERFACE:include/QtWebKitWidgets>)
+
+set(CMAKECONFIG_INSTALL_DIR "lib/cmake")
+
+ecm_configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/Qt5WebKitConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfig.cmake"
+    INSTALL_DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKit"
+)
+ecm_configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/Qt5WebKitWidgetsConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsConfig.cmake"
+    INSTALL_DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKitWidgets"
+)
+
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfigVersion.cmake"
+    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKit"
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsConfigVersion.cmake"
+    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKitWidgets"
+)
+
+install(EXPORT WebKitTargets
+    FILE WebKitTargets.cmake
+    NAMESPACE Qt5::
+    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKit"
+)
+install(EXPORT Qt5WebKitWidgetsTargets
+    FILE Qt5WebKitWidgetsTargets.cmake
+    NAMESPACE Qt5::
+    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKitWidgets"
+)
 
 # Documentation
 

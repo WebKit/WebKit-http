@@ -477,7 +477,10 @@ set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
 WEBKIT_FRAMEWORK(WebKitWidgets)
 add_dependencies(WebKitWidgets WebKit)
 set_target_properties(WebKitWidgets PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
-install(TARGETS WebKitWidgets DESTINATION "${LIB_INSTALL_DIR}")
+install(TARGETS WebKitWidgets EXPORT Qt5WebKitWidgetsTargets
+        DESTINATION "${LIB_INSTALL_DIR}"
+        INCLUDES DESTINATION "${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets"
+)
 
 if (COMPILER_IS_GCC_OR_CLANG)
     set_source_files_properties(

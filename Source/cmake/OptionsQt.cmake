@@ -1,4 +1,5 @@
 include(FeatureSummary)
+include(ECMPackageConfigHelpers)
 include(ECMQueryQmake)
 
 set(PROJECT_VERSION_MAJOR 5)
