@@ -131,10 +131,10 @@ void ViewBackend::handleFd(int)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::IntelCE::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::IntelCE::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     switch (message.messageCode) {
     case IPC::IntelCE::BufferCommit::code:
     {
@@ -152,9 +152,9 @@ void ViewBackend::commitBuffer(uint32_t width, uint32_t height)
     if (width != this->width || height != this->height)
         return;
 
-    IPC::IntelCE::Message message;
+    IPC::Message message;
     IPC::IntelCE::FrameComplete::construct(message);
-    ipcHost.send(IPC::IntelCE::messageData(message), IPC::IntelCE::messageSize);
+    ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
 }
 
 } // namespace IntelCE

@@ -99,10 +99,10 @@ void EGLTarget::initialize(uint32_t width, uint32_t height)
 
 void EGLTarget::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::BCMNexus::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::BCMNexus::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     switch (message.messageCode) {
     case IPC::BCMNexus::FrameComplete::code:
     {
@@ -170,9 +170,9 @@ struct wpe_renderer_backend_egl_target_interface bcm_nexus_renderer_backend_egl_
     {
         auto& target = *static_cast<BCMNexus::EGLTarget*>(data);
 
-        IPC::BCMNexus::Message message;
+        IPC::Message message;
         IPC::BCMNexus::BufferCommit::construct(message, target.width, target.height);
-        target.ipcClient.sendMessage(IPC::BCMNexus::messageData(message), IPC::BCMNexus::messageSize);
+        target.ipcClient.sendMessage(IPC::Message::data(message), IPC::Message::size);
     },
 };
 

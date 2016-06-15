@@ -34,10 +34,10 @@ EGLTarget::~EGLTarget()
 
 void EGLTarget::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::IntelCE::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::IntelCE::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     switch (message.messageCode) {
     case IPC::IntelCE::FrameComplete::code:
     {
@@ -103,9 +103,9 @@ struct wpe_renderer_backend_egl_target_interface intelce_renderer_backend_egl_ta
     {
         auto& target = *static_cast<IntelCE::EGLTarget*>(data);
 
-        IPC::IntelCE::Message message;
+        IPC::Message message;
         IPC::IntelCE::BufferCommit::construct(message, target.width, target.height);
-        target.ipcClient.sendMessage(IPC::IntelCE::messageData(message), IPC::IntelCE::messageSize);
+        target.ipcClient.sendMessage(IPC::Message::data(message), IPC::Message::size);
     },
 };
 

@@ -124,9 +124,9 @@ void ViewBackend::initializeRenderingTarget()
 
     wpe_view_backend_dispatch_set_size(backend, width, height);
 
-    IPC::BCMRPi::Message message;
+    IPC::Message message;
     IPC::BCMRPi::TargetConstruction::construct(message, elementHandle, width, height);
-    ipcHost.send(IPC::BCMRPi::messageData(message), IPC::BCMRPi::messageSize);
+    ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
 }
 
 void ViewBackend::initializeInput()
@@ -152,10 +152,10 @@ void ViewBackend::handleFd(int)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::BCMRPi::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::BCMRPi::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     switch (message.messageCode) {
     case IPC::BCMRPi::BufferCommit::code:
     {
@@ -204,9 +204,9 @@ void ViewBackend::handleUpdate()
     if (ret != sizeof(time))
         return;
 
-    IPC::BCMRPi::Message message;
+    IPC::Message message;
     IPC::BCMRPi::FrameComplete::construct(message);
-    ipcHost.send(IPC::BCMRPi::messageData(message), IPC::BCMRPi::messageSize);
+    ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
 }
 
 GSourceFuncs UpdateSource::sourceFuncs = {

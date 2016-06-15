@@ -83,10 +83,10 @@ void ViewBackend::handleFd(int)
 
 void ViewBackend::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::BCMNexus::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::BCMNexus::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     switch (message.messageCode) {
     case IPC::BCMNexus::BufferCommit::code:
     {
@@ -104,9 +104,9 @@ void ViewBackend::commitBuffer(uint32_t width, uint32_t height)
     if (width != this->width || height != this->height)
         return;
 
-    IPC::BCMNexus::Message message;
+    IPC::Message message;
     IPC::BCMNexus::FrameComplete::construct(message);
-    ipcHost.send(IPC::BCMNexus::messageData(message), IPC::BCMNexus::messageSize);
+    ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
 }
 
 } // namespace BCMNexus

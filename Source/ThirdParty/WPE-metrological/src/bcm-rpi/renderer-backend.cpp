@@ -40,10 +40,10 @@ EGLTarget::~EGLTarget()
 
 void EGLTarget::handleMessage(char* data, size_t size)
 {
-    if (size != IPC::BCMRPi::messageSize)
+    if (size != IPC::Message::size)
         return;
 
-    auto& message = IPC::BCMRPi::asMessage(data);
+    auto& message = IPC::Message::cast(data);
     switch (message.messageCode) {
     case IPC::BCMRPi::TargetConstruction::code:
     {
@@ -123,10 +123,10 @@ struct wpe_renderer_backend_egl_target_interface bcm_rpi_renderer_backend_egl_ta
     {
         auto& target = *static_cast<BCMRPi::EGLTarget*>(data);
 
-        IPC::BCMRPi::Message message;
+        IPC::Message message;
         IPC::BCMRPi::BufferCommit::construct(message, target.nativeWindow.element,
             target.nativeWindow.width, target.nativeWindow.height);
-        target.ipcClient.sendMessage(IPC::BCMRPi::messageData(message), IPC::BCMRPi::messageSize);
+        target.ipcClient.sendMessage(IPC::Message::data(message), IPC::Message::size);
     },
 };
 
