@@ -839,4 +839,11 @@ String localizedString(const char* key)
     return String::fromUTF8(key, strlen(key));
 }
 
+#if ENABLE(INPUT_TYPE_WEEK)
+String weekFormatInLDML()
+{
+    notImplemented();
+    return String();
+}
+#endif
 }
