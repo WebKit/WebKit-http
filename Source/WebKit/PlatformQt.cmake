@@ -208,12 +208,13 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
 list(REMOVE_DUPLICATES WebKit_SYSTEM_INCLUDE_DIRECTORIES)
 
 list(APPEND WebKit_LIBRARIES
+    PRIVATE
+        ${ICU_LIBRARIES}
+        ${Qt5Positioning_LIBRARIES}
     PUBLIC
-    ${ICU_LIBRARIES}
-    ${Qt5Core_LIBRARIES}
-    ${Qt5Gui_LIBRARIES}
-    ${Qt5Network_LIBRARIES}
-    ${Qt5Positioning_LIBRARIES}
+        ${Qt5Core_LIBRARIES}
+        ${Qt5Gui_LIBRARIES}
+        ${Qt5Network_LIBRARIES}
 )
 
 if (ENABLE_GEOLOCATION)
@@ -354,9 +355,11 @@ set(WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 set(WebKitWidgets_LIBRARIES
-    ${Qt5Widgets_LIBRARIES}
-    ${Qt5PrintSupport_LIBRARIES}
-    WebKit
+    PRIVATE
+        ${Qt5PrintSupport_LIBRARIES}
+    PUBLIC
+        ${Qt5Widgets_LIBRARIES}
+        WebKit
 )
 
 if (USE_QT_MULTIMEDIA)

@@ -39,6 +39,7 @@ set(QtTestBrowser_LIBRARIES
     ${Qt5Gui_LIBRARIES}
     ${Qt5Network_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
+    ${Qt5PrintSupport_LIBRARIES}
     WebKitWidgets
 )
 
@@ -63,8 +64,6 @@ if (NOT SHARED_CORE)
     )
     add_definitions(-DHAVE_QTTESTSUPPORT)
 endif ()
-
-# TODO: Add code for HAVE_QTPRINTSUPPORT and HAVE_FONTCONFIG
 
 include_directories(${QtTestBrowser_INCLUDE_DIRECTORIES})
 include_directories(SYSTEM ${QtTestBrowser_SYSTEM_INCLUDE_DIRECTORIES})
