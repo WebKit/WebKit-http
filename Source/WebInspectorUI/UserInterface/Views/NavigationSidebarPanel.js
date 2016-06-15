@@ -758,18 +758,17 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
                 representedObject.saveIdentityToCookie(candidateObjectCookie);
 
             var candidateCookieKeys = Object.keys(candidateObjectCookie);
-            return candidateCookieKeys.length && candidateCookieKeys.every(function valuesMatchForKey(key) {
-                return candidateObjectCookie[key] === cookie[key];
-            });
+            return candidateCookieKeys.length && candidateCookieKeys.every((key) => candidateObjectCookie[key] === cookie[key]);
         }
 
         var matchedElement = null;
-        treeElements.some(function(element) {
+        treeElements.some((element) => {
             if (treeElementMatchesCookie.call(this, element)) {
                 matchedElement = element;
                 return true;
             }
-        }, this);
+            return false;
+        });
 
         if (matchedElement) {
             let didShowContentView = this.showDefaultContentViewForTreeElement(matchedElement);
@@ -780,9 +779,9 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
 
             // Delay clearing the restoringState flag until the next runloop so listeners
             // checking for it in this runloop still know state was being restored.
-            setTimeout(function() {
+            setTimeout(() => {
                 this._restoringState = false;
-            }.bind(this));
+            }, 0);
 
             if (this._finalAttemptToRestoreViewStateTimeout) {
                 clearTimeout(this._finalAttemptToRestoreViewStateTimeout);

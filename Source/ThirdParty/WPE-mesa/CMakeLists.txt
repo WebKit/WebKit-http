@@ -5,6 +5,7 @@ option(WPE_MESA_DRM_TEGRA_SUPPORT "Whether to enable support for the Tegra-speci
 find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
 find_package(LibDRM REQUIRED)
 find_package(LibGBM REQUIRED)
+find_package(Libxkbcommon 0.4.0 REQUIRED)
 find_package(Wayland 1.6.0 REQUIRED)
 add_definitions(-DWPE_BACKEND_DRM=1)
 add_definitions(-DWPE_BACKEND_WAYLAND=1)
@@ -18,7 +19,9 @@ set(WPE_MESA_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
     "${WPE_MESA_SOURCE_DIR}/include"
     "${WPE_MESA_SOURCE_DIR}/src/drm"
+    "${WPE_MESA_SOURCE_DIR}/src/external"
     "${WPE_MESA_SOURCE_DIR}/src/gbm"
+    "${WPE_MESA_SOURCE_DIR}/src/libxkbcommon"
     "${WPE_MESA_SOURCE_DIR}/src/util"
     "${WPE_MESA_SOURCE_DIR}/src/wayland"
     "${WPE_MESA_SOURCE_DIR}/src/wayland/protocols"
@@ -26,6 +29,7 @@ set(WPE_MESA_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
     ${LIBDRM_INCLUDE_DIRS}
     ${LIBGBM_INCLUDE_DIRS}
+    ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
 )
 
@@ -34,6 +38,7 @@ set(WPE_MESA_LIBRARIES
     ${GLIB_LIBRARIES}
     ${LIBDRM_LIBRARIES}
     ${LIBGBM_LIBRARIES}
+    ${LIBXKBCOMMON_LIBRARIES}
     ${WAYLAND_LIBRARIES}
 )
 
@@ -45,6 +50,8 @@ set(WPE_MESA_SOURCES
     src/exportable/view-backend-exportable.cpp
 
     src/gbm/renderer-gbm.cpp
+
+    src/libxkbcommon/input-libxkbcommon.cpp
 
     src/util/ipc.cpp
 

@@ -40,6 +40,7 @@
 #include "CustomElementDefinitions.h"
 #include "DOMTokenList.h"
 #include "Dictionary.h"
+#include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
@@ -66,6 +67,7 @@
 #include "IdTargetObserverRegistry.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
+#include "KeyframeEffect.h"
 #include "LifecycleCallbackQueue.h"
 #include "MainFrame.h"
 #include "MutationObserverInterestGroup.h"
@@ -1382,6 +1384,21 @@ ElementStyle Element::resolveStyle(const RenderStyle* parentStyle)
     return styleResolver().styleForElement(*this, parentStyle);
 }
 
+#if ENABLE(WEB_ANIMATIONS)
+WebAnimationVector Element::getAnimations()
+{
+    auto checkTarget = [this](AnimationEffect const& effect)
+    {
+        return (static_cast<KeyframeEffect const&>(effect).target() == this);
+    };
+
+    auto* document = DocumentAnimation::from(&this->document());
+    if (document)
+        return document->getAnimations(checkTarget);
+    return WebAnimationVector();
+}
+#endif
+
 bool Element::hasDisplayContents() const
 {
     return hasRareData() && elementRareData()->hasDisplayContents();
@@ -1685,14 +1702,46 @@ RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
     return nullptr;
 }
 
-bool Element::canHaveUserAgentShadowRoot() const
+#if ENABLE(SHADOW_DOM)
+static bool canAttachAuthorShadowRoot(const Element& element)
 {
-    return false;
+    static NeverDestroyed<HashSet<AtomicString>> tagNames = [] {
+        const AtomicString tagList[] = {
+            articleTag.localName(),
+            asideTag.localName(),
+            blockquoteTag.localName(),
+            bodyTag.localName(),
+            divTag.localName(),
+            footerTag.localName(),
+            h1Tag.localName(),
+            h2Tag.localName(),
+            h3Tag.localName(),
+            h4Tag.localName(),
+            h5Tag.localName(),
+            h6Tag.localName(),
+            headerTag.localName(),
+            navTag.localName(),
+            pTag.localName(),
+            sectionTag.localName(),
+            spanTag.localName()
+        };
+
+        HashSet<AtomicString> set;
+        for (auto& name : tagList)
+            set.add(name);
+        return set;
+    }();
+
+    if (!is<HTMLElement>(element))
+        return false;
+
+    const auto& localName = element.localName();
+    return tagNames.get().contains(localName) || Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid;
 }
 
 RefPtr<ShadowRoot> Element::attachShadow(const ShadowRootInit& init, ExceptionCode& ec)
 {
-    if (canHaveUserAgentShadowRoot()) {
+    if (!canAttachAuthorShadowRoot(*this)) {
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
     }
@@ -1719,6 +1768,7 @@ ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
     }
     return root;
 }
+#endif
 
 ShadowRoot* Element::userAgentShadowRoot() const
 {

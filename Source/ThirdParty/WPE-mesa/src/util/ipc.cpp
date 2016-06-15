@@ -1,3 +1,29 @@
+/*
+ * Copyright (C) 2015, 2016 Igalia S.L.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "ipc.h"
 
 #include <cstdio>
@@ -41,6 +67,8 @@ void Host::deinitialize()
         g_source_destroy(m_source);
     if (m_socket)
         g_object_unref(m_socket);
+
+    m_handler = nullptr;
 }
 
 int Host::releaseClientFD()
@@ -50,7 +78,7 @@ int Host::releaseClientFD()
     return fd;
 }
 
-void Host::send(char* data, size_t size)
+void Host::sendMessage(char* data, size_t size)
 {
     g_socket_send(m_socket, data, size, nullptr, nullptr);
 }
@@ -64,8 +92,8 @@ gboolean Host::socketCallback(GSocket* socket, GIOCondition condition, gpointer 
 
     GSocketControlMessage** messages;
     int nMessages = 0;
-    char* buffer = g_new0(char, host.m_messageSize);
-    GInputVector vector = { buffer, host.m_messageSize };
+    char* buffer = g_new0(char, Message::size);
+    GInputVector vector = { buffer, Message::size };
     gssize len = g_socket_receive_message(socket, nullptr, &vector, 1,
         &messages, &nMessages, nullptr, nullptr, nullptr);
 
@@ -96,8 +124,8 @@ gboolean Host::socketCallback(GSocket* socket, GIOCondition condition, gpointer 
         return TRUE;
     }
 
-    if (len == host.m_messageSize)
-        host.m_handler->handleMessage(buffer, host.m_messageSize);
+    if (len == Message::size)
+        host.m_handler->handleMessage(buffer, Message::size);
 
     g_free(buffer);
     return TRUE;
@@ -120,6 +148,12 @@ void Client::initialize(Handler& handler, int fd)
 
 void Client::deinitialize()
 {
+    if (m_source)
+        g_source_destroy(m_source);
+    if (m_socket)
+        g_object_unref(m_socket);
+
+    m_handler = nullptr;
 }
 
 gboolean Client::socketCallback(GSocket* socket, GIOCondition condition, gpointer data)
@@ -129,11 +163,11 @@ gboolean Client::socketCallback(GSocket* socket, GIOCondition condition, gpointe
 
     auto& client = *reinterpret_cast<Client*>(data);
 
-    char* buffer = g_new0(char, client.m_messageSize);
-    gssize len = g_socket_receive(socket, buffer, client.m_messageSize, nullptr, nullptr);
+    char* buffer = g_new0(char, Message::size);
+    gssize len = g_socket_receive(socket, buffer, Message::size, nullptr, nullptr);
 
-    if (len == client.m_messageSize)
-        client.m_handler->handleMessage(buffer, client.m_messageSize);
+    if (len == Message::size)
+        client.m_handler->handleMessage(buffer, Message::size);
 
     g_free(buffer);
     return TRUE;

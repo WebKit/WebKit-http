@@ -53,12 +53,12 @@ BlobRegistryImpl::~BlobRegistryImpl()
 {
 }
 
-static RefPtr<ResourceHandle> createResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
+static Ref<ResourceHandle> createBlobResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
 {
     return static_cast<BlobRegistryImpl&>(blobRegistry()).createResourceHandle(request, client);
 }
 
-static void loadResourceSynchronously(NetworkingContext*, const ResourceRequest& request, StoredCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+static void loadBlobResourceSynchronously(NetworkingContext*, const ResourceRequest& request, StoredCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     BlobData* blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(request.url());
     BlobResourceHandle::loadResourceSynchronously(blobData, request, error, response, data);
@@ -68,20 +68,17 @@ static void registerBlobResourceHandleConstructor()
 {
     static bool didRegister = false;
     if (!didRegister) {
-        ResourceHandle::registerBuiltinConstructor("blob", createResourceHandle);
-        ResourceHandle::registerBuiltinSynchronousLoader("blob", loadResourceSynchronously);
+        ResourceHandle::registerBuiltinConstructor("blob", createBlobResourceHandle);
+        ResourceHandle::registerBuiltinSynchronousLoader("blob", loadBlobResourceSynchronously);
         didRegister = true;
     }
 }
 
-RefPtr<ResourceHandle> BlobRegistryImpl::createResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
+Ref<ResourceHandle> BlobRegistryImpl::createResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
 {
     auto handle = BlobResourceHandle::createAsync(getBlobDataFromURL(request.url()), request, client);
-    if (!handle)
-        return nullptr;
-
     handle->start();
-    return handle;
+    return WTFMove(handle);
 }
 
 void BlobRegistryImpl::appendStorageItems(BlobData* blobData, const BlobDataItemList& items, long long offset, long long length)
@@ -256,7 +253,7 @@ struct BlobForFileWriting {
     Vector<std::pair<String, ThreadSafeDataBuffer>> filePathsOrDataBuffers;
 };
 
-void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, std::function<void (const Vector<String>& filePaths)> completionHandler)
+void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, NoncopyableFunction<void (const Vector<String>& filePaths)>&& completionHandler)
 {
     Vector<BlobForFileWriting> blobsForWriting;
     for (auto& url : blobURLs) {
@@ -287,47 +284,45 @@ void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs
     blobUtilityQueue().dispatch([blobsForWriting = WTFMove(blobsForWriting), completionHandler = WTFMove(completionHandler)]() mutable {
         Vector<String> filePaths;
 
-        ScopeGuard completionCaller([completionHandler]() mutable {
-            callOnMainThread([completionHandler = WTFMove(completionHandler)]() {
-                Vector<String> filePaths;
-                completionHandler(filePaths);
-            });
-        });
+        auto performWriting = [blobsForWriting = WTFMove(blobsForWriting), &filePaths]() {
+            for (auto& blob : blobsForWriting) {
+                PlatformFileHandle file;
+                String tempFilePath = openTemporaryFile(ASCIILiteral("Blob"), file);
 
-        for (auto& blob : blobsForWriting) {
-            PlatformFileHandle file;
-            String tempFilePath = openTemporaryFile(ASCIILiteral("Blob"), file);
+                ScopeGuard fileCloser([file]() mutable {
+                    closeFile(file);
+                });
+                
+                if (tempFilePath.isEmpty() || !isHandleValid(file)) {
+                    LOG_ERROR("Failed to open temporary file for writing a Blob to IndexedDB");
+                    return false;
+                }
 
-            ScopeGuard fileCloser([file]() {
-                PlatformFileHandle handle = file;
-                closeFile(handle);
-            });
-            
-            if (tempFilePath.isEmpty() || !isHandleValid(file)) {
-                LOG_ERROR("Failed to open temporary file for writing a Blob to IndexedDB");
-                return;
-            }
-
-            for (auto& part : blob.filePathsOrDataBuffers) {
-                if (part.second.data()) {
-                    int length = part.second.data()->size();
-                    if (writeToFile(file, reinterpret_cast<const char*>(part.second.data()->data()), length) != length) {
-                        LOG_ERROR("Failed writing a Blob to temporary file for storage in IndexedDB");
-                        return;
-                    }
-                } else {
-                    ASSERT(!part.first.isEmpty());
-                    if (!appendFileContentsToFileHandle(part.first, file)) {
-                        LOG_ERROR("Failed copying File contents to a Blob temporary file for storage in IndexedDB (%s to %s)", part.first.utf8().data(), tempFilePath.utf8().data());
-                        return;
+                for (auto& part : blob.filePathsOrDataBuffers) {
+                    if (part.second.data()) {
+                        int length = part.second.data()->size();
+                        if (writeToFile(file, reinterpret_cast<const char*>(part.second.data()->data()), length) != length) {
+                            LOG_ERROR("Failed writing a Blob to temporary file for storage in IndexedDB");
+                            return false;
+                        }
+                    } else {
+                        ASSERT(!part.first.isEmpty());
+                        if (!appendFileContentsToFileHandle(part.first, file)) {
+                            LOG_ERROR("Failed copying File contents to a Blob temporary file for storage in IndexedDB (%s to %s)", part.first.utf8().data(), tempFilePath.utf8().data());
+                            return false;
+                        }
                     }
                 }
+
+                filePaths.append(tempFilePath.isolatedCopy());
             }
 
-            filePaths.append(tempFilePath.isolatedCopy());
-        }
+            return true;
+        };
 
-        completionCaller.disable();
+        if (!performWriting())
+            filePaths.clear();
+
         callOnMainThread([completionHandler = WTFMove(completionHandler), filePaths = WTFMove(filePaths)]() {
             completionHandler(filePaths);
         });

@@ -52,6 +52,7 @@ class PlatformWheelEvent;
 class PseudoElement;
 class RenderNamedFlowFragment;
 class RenderTreePosition;
+class WebAnimation;
 struct ElementStyle;
 
 enum SpellcheckAttributeState {
@@ -254,8 +255,10 @@ public:
         ShadowRootMode mode;
     };
 
+#if ENABLE(SHADOW_DOM)
     ShadowRoot* shadowRootForBindings(JSC::ExecState&) const;
     RefPtr<ShadowRoot> attachShadow(const ShadowRootInit&, ExceptionCode&);
+#endif
 
     ShadowRoot* userAgentShadowRoot() const;
     WEBCORE_EXPORT ShadowRoot& ensureUserAgentShadowRoot();
@@ -514,6 +517,10 @@ public:
     using ContainerNode::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
+#if ENABLE(WEB_ANIMATIONS)
+    Vector<WebAnimation*> getAnimations();
+#endif
+
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
 
@@ -594,7 +601,6 @@ private:
     Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
     virtual Ref<Element> cloneElementWithoutAttributesAndChildren(Document&);
 
-    virtual bool canHaveUserAgentShadowRoot() const;
     void removeShadowRoot();
 
     const RenderStyle* existingComputedStyle();

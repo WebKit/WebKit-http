@@ -52,7 +52,7 @@ static WebEvent::Modifiers modifiersForEvent(struct wpe_input_keyboard_event* ev
 
 static String singleCharacterStringForKeyEvent(struct wpe_input_keyboard_event* event)
 {
-    const char* singleCharacter = wpe_input_single_character_for_key_event(event);
+    const char* singleCharacter = wpe_input_single_character_for_key_event(wpe_input_key_mapper_get_singleton(), event);
     if (singleCharacter)
         return String(singleCharacter);
 
@@ -65,7 +65,7 @@ static String singleCharacterStringForKeyEvent(struct wpe_input_keyboard_event* 
 
 static String identifierStringForKeyEvent(struct wpe_input_keyboard_event* event)
 {
-    const char* identifier = wpe_input_identifier_for_key_event(event);
+    const char* identifier = wpe_input_identifier_for_key_event(wpe_input_key_mapper_get_singleton(), event);
     if (identifier)
         return String(identifier);
 
@@ -79,7 +79,7 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(struct wpe_input_keyboa
 
     return WebKeyboardEvent(event->pressed ? WebEvent::KeyDown : WebEvent::KeyUp,
         singleCharacterString, singleCharacterString, identifierString,
-        wpe_input_windows_key_code_for_key_event(event),
+        wpe_input_windows_key_code_for_key_event(wpe_input_key_mapper_get_singleton(), event),
         event->keyCode, 0, false, false, false,
         modifiersForEvent(event), event->time);
 }
