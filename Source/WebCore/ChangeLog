@@ -1,3 +1,25 @@
+2016-06-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sporadic crash in HashTableAddResult following CSSValuePool::createFontFamilyValue
+        https://bugs.webkit.org/show_bug.cgi?id=158297
+
+        Reviewed by Darin Adler.
+
+        In an effort to reduce the flash of unstyled content, we force all elements
+        to have display: none during an external stylesheet load. We do this by
+        ignoring the CSS cascade and forcing all elements to have a placeholder style
+        which hardcodes display: none. (This is necessary to make elements created by
+        script during the stylesheet load not flash.)
+
+        This style is exposed to web content via getComputedStyle(), which means it
+        needs to maintain the invariant that font-families can never be null strings.
+        We enforce this by forcing the font-family to be the standard font name.
+
+        Test: fast/text/placeholder-renderstyle-null-font.html
+
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::ensurePlaceholderStyle):
+
 2017-01-04  Babak Shafiei  <bshafiei@apple.com>
 
         Build fix for r210288.

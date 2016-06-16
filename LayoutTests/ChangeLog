@@ -1,3 +1,13 @@
+2016-06-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sporadic crash in HashTableAddResult following CSSValuePool::createFontFamilyValue
+        https://bugs.webkit.org/show_bug.cgi?id=158297
+
+        Reviewed by Darin Adler.
+
+        * fast/text/placeholder-renderstyle-null-font-expected.txt: Added.
+        * fast/text/placeholder-renderstyle-null-font.html: Added.
+
 2016-10-25  Brent Fulgham  <bfulgham@apple.com>
 
         Prevent hit tests from being performed on an invalid render tree

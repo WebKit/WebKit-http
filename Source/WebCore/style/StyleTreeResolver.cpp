@@ -49,6 +49,7 @@
 #include "RenderWidget.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "StyleFontSizeFunctions.h"
 #include "StyleResolver.h"
 #include "Text.h"
 
@@ -105,6 +106,15 @@ static void ensurePlaceholderStyle(Document& document)
         return;
     placeholderStyle = &RenderStyle::create().leakRef();
     placeholderStyle->setDisplay(NONE);
+
+    FontCascadeDescription fontDescription;
+    fontDescription.setOneFamily(standardFamily);
+    fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
+    float size = Style::fontSizeForKeyword(CSSValueMedium, false, document);
+    fontDescription.setSpecifiedSize(size);
+    fontDescription.setComputedSize(size);
+    placeholderStyle->setFontDescription(fontDescription);
+
     placeholderStyle->fontCascade().update(&document.fontSelector());
 }
 
