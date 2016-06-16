@@ -24,10 +24,15 @@
 #include <QtGui/QPolygonF>
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickWindow>
-#include <QtQuick/QSGRenderNode>
 #include <QtQuick/QSGSimpleRectNode>
 #include <WebCore/CoordinatedGraphicsScene.h>
 #include <WebCore/TransformationMatrix.h>
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+#include <QtQuick/QSGRenderNode>
+#else
+#include <QtQuick/private/qsgrendernode_p.h>
+#endif
 
 using namespace WebCore;
 
@@ -41,12 +46,33 @@ public:
         coordinatedGraphicsScene()->setActive(true);
     }
 
-    StateFlags changedStates() const Q_DECL_OVERRIDE
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+
+    StateFlags changedStates() const override
     {
         return StateFlags(StencilState) | ColorState | BlendState;
     }
 
-    void render(const RenderState *state) Q_DECL_OVERRIDE
+    void render(const RenderState* state) override
+    {
+        renderInternal(state->projectionMatrix());
+    }
+
+#else
+
+    StateFlags changedStates() Q_DECL_OVERRIDE
+    {
+        return StateFlags(StencilState) | ColorState | BlendState;
+    }
+
+    void render(const RenderState& state) Q_DECL_OVERRIDE
+    {
+        renderInternal(state.projectionMatrix);
+    }
+
+#endif // QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+
+    void renderInternal(const QMatrix4x4* projection)
     {
         TransformationMatrix renderMatrix;
         if (pageNode()->devicePixelRatio() != 1.0) {
@@ -58,14 +84,16 @@ public:
 
         // When rendering to an intermediate surface, Qt will
         // mirror the projection matrix to fit on the destination coordinate system.
-        const QMatrix4x4* projection = state->projectionMatrix();
         bool mirrored = projection && (*projection)(0, 0) * (*projection)(1, 1) - (*projection)(0, 1) * (*projection)(1, 0) > 0;
 
         // FIXME: Support non-rectangular clippings.
         coordinatedGraphicsScene()->paintToCurrentGLContext(renderMatrix, inheritedOpacity(), clipRect(), mirrored ? TextureMapper::PaintingMirrored : 0);
     }
 
-    void releaseResources() Q_DECL_OVERRIDE
+    void releaseResources()
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+        override
+#endif
     {
         coordinatedGraphicsScene()->purgeGLResources();
     }
