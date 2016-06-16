@@ -1,3 +1,1317 @@
+2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        Enabling Shadow DOM for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=158738
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed Shadow DOM from options (enabled by default)
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-06-14  Caio Lima  <ticaiolima@gmail.com>
+
+        The parser doesn't properly parse "super" when default parameter is an
+        arrow function.
+        https://bugs.webkit.org/show_bug.cgi?id=157872.
+
+        Reviewed by Saam Barati.
+
+        The "super" member or "super()" could not be used when default parameter is an
+        arrow function, resuling in sytax error. It happened because the
+        "closestOrdinaryFunctionScope" was not being initialized properly
+        before "parseFunctionParameters" step and the condition
+        "functionSuperBinding == SuperBinding::NotNeeded" or
+        "functionConstructorKind != ConstructorKind::Derived" on
+        "Parser<LexerType>::parseMemberExpression" step were being true
+        resulting in SyntaxError.
+
+        * parser/Parser.cpp: 
+        (JSC::Parser<LexerType>::parseFunctionInfo): setting
+        "functionScope->setExpectedSuperBinding(expectedSuperBinding)" and
+        "functionScope->setConstructorKind(constructorKind)" before
+        "parseFunctionParameters" step.
+
+2016-06-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename Timeline.setAutoCaptureInstruments to Timeline.setInstruments
+        https://bugs.webkit.org/show_bug.cgi?id=158762
+
+        Reviewed by Timothy Hatcher.
+
+        Rename the protocol methods since the backend may use the instruments
+        for purposes other then auto-capture, such as programmatic capture
+        via console.profile.
+
+        * inspector/protocol/Timeline.json:
+
+2016-06-14  David Kilzer  <ddkilzer@apple.com>
+
+        Document the native format of JSChar type
+        <http://webkit.org/b/156137>
+
+        Reviewed by Darin Adler.
+
+        * API/JSStringRef.h:
+        (typedef JSChar): Update documentation.
+
+2016-06-14  Keith Miller  <keith_miller@apple.com>
+
+        The Array species constructor watchpoints should be created the first time they are needed rather than on creation
+        https://bugs.webkit.org/show_bug.cgi?id=158754
+
+        Reviewed by Benjamin Poulain.
+
+        We use adaptive watchpoints for some Array prototype functions to
+        ensure that the user has not overridden the value of the
+        Array.prototype.constructor or Array[Symbol.species]. This patch
+        changes when the Array species constructor watchpoints are
+        initialized. Before, those watchpoints would be created when the
+        global object is initialized. This had the advantage that it did
+        not require validating the constructor and Symbol.species
+        properties. On the other hand, it also meant that if the user were
+        to reconfigure properties Array.prototype, which would cause the
+        structure of the property to become an uncachable dictionary,
+        prior to running code that the watchpoints would be
+        invalidated. It turns out that JSBench amazon, for instance, does
+        reconfigure some of Array.prototype's properties. This patch
+        initializes the watchpoints the first time they are needed. Since
+        we only initialize once we also flatten the structure of Array and
+        Array.prototype.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::speciesConstructArray):
+        (JSC::ArrayPrototype::attemptToInitializeSpeciesWatchpoint):
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+        (JSC::ArrayPrototype::setConstructor): Deleted.
+        * runtime/ArrayPrototype.h:
+        (JSC::ArrayPrototype::speciesWatchpointStatus):
+        (JSC::ArrayPrototype::didChangeConstructorOrSpeciesProperties): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::speciesGetterSetter):
+        (JSC::JSGlobalObject::arrayConstructor):
+        * tests/stress/array-symbol-species-lazy-watchpoints.js: Added.
+        (test):
+        (arrayEq):
+        (A):
+
+2016-06-14  Keith Miller  <keith_miller@apple.com>
+
+        REGRESSION(202002-202014): 845 32-bit JSC Stress Test failures
+        https://bugs.webkit.org/show_bug.cgi?id=158737
+
+        Reviewed by Filip Pizlo.
+
+        When the this child and arguments child for the varargs nodes was switched I missed one
+        case in the 32-bit build.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+
+2016-06-13  Gavin & Ellie Barraclough  <barraclough@apple.com>
+
+        setUpStaticFunctionSlot does not handle Builtin|Accessor properties
+        https://bugs.webkit.org/show_bug.cgi?id=158637
+
+        Reviewed by Geoff Garen.
+
+        setUpStaticFunctionSlot contains a duplicate copy of the body of the function reifyStaticProperty
+        - however it is missing handling for Accessor type under Builtin functions.
+        Fix the bug by de-duplicating - setUpStaticFunctionSlot should just call reifyStaticProperty.
+
+        * runtime/Lookup.cpp:
+        (JSC::setUpStaticFunctionSlot):
+            - should just call reifyStaticProperty.
+        * runtime/Lookup.h:
+        (JSC::lookupPut):
+        (JSC::reifyStaticProperty):
+            - changed reifyStaticProperty to take PropertyName.
+
+2016-06-13  Gavin & Ellie Barraclough  <barraclough@apple.com>
+
+        JSBoundSlotBaseFunction no longer binds slot base
+        https://bugs.webkit.org/show_bug.cgi?id=157978
+
+        Reviewed by Geoff Garen.
+
+        This class is basically currently named after a bug. We should never have
+        been binding function to slot bases - this was not ever correct behavior.
+        This was fixed earlier in the year, but there is still some cruft including
+        the class name to clean up.
+
+            - renamed JSBoundSlotBaseFunction -> JSCustomGetterSetterFunction
+            - removed m_boundSlotBase - don't retain the original slot base
+              (we were not really using it anyway).
+            - ASSERT customGetterSetter->getter/setter are non-null, rather than checking.
+            - Store the PropertyName such that we can pass this to the getter
+              (we're currently reperforming the String->Identifier conversion every time).
+            - Removed JSFunction::lookUpOrCreateNativeExecutable - this is just overhead,
+              and not used consistently.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/JSBoundSlotBaseFunction.cpp: Removed.
+        * runtime/JSBoundSlotBaseFunction.h: Removed.
+            - JSBoundSlotBaseFunction -> JSCustomGetterSetterFunction
+        * runtime/JSCustomGetterSetterFunction.cpp: Copied from Source/JavaScriptCore/runtime/JSBoundSlotBaseFunction.cpp.
+        (JSC::JSCustomGetterSetterFunction::customGetterSetterFunctionCall):
+            - made a static function on JSCustomGetterSetterFunction such that accessor
+              to member properties could be made private. Call variant of callCustomSetter
+              that does not require slotBase, ASSERT getter/setter present, pass stored
+              PropertyName to getter.
+        (JSC::JSCustomGetterSetterFunction::JSCustomGetterSetterFunction):
+            - renamed, store propertyName.
+        (JSC::JSCustomGetterSetterFunction::create):
+            - use same function name to Executable as is being passed to Function::finishCreation.
+        (JSC::JSCustomGetterSetterFunction::visitChildren):
+        (JSC::JSCustomGetterSetterFunction::finishCreation):
+            - removed m_boundSlotBase.
+        * runtime/JSCustomGetterSetterFunction.h: Copied from Source/JavaScriptCore/runtime/JSBoundSlotBaseFunction.h.
+        (JSC::JSCustomGetterSetterFunction::customGetterSetter):
+        (JSC::JSCustomGetterSetterFunction::isSetter):
+            - made private.
+        (JSC::JSCustomGetterSetterFunction::propertyName):
+            - new accessor.
+        (JSC::JSBoundSlotBaseFunction::boundSlotBase): Deleted.
+            - removed.
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::create):
+        (JSC::JSFunction::lookUpOrCreateNativeExecutable): Deleted.
+            - removed lookUpOrCreateNativeExecutable. This inconsistently used wrapper was providing no value, only bloat.
+        * runtime/JSFunction.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+            - renamed JSBoundSlotBaseFunction -> JSCustomGetterSetterFunction, etc.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::customGetterSetterFunctionStructure):
+        (JSC::JSGlobalObject::boundSlotBaseFunctionStructure): Deleted.
+            - renamed JSBoundSlotBaseFunction -> JSCustomGetterSetterFunction, etc.
+        * runtime/JSNativeStdFunction.cpp:
+        (JSC::JSNativeStdFunction::create):
+            - removed lookUpOrCreateNativeExecutable.
+        * runtime/JSObject.cpp:
+        (JSC::getCustomGetterSetterFunctionForGetterSetter):
+        (JSC::JSObject::getOwnPropertyDescriptor):
+        (JSC::getBoundSlotBaseFunctionForGetterSetter): Deleted.
+            - renamed JSBoundSlotBaseFunction -> JSCustomGetterSetterFunction, etc.
+        * runtime/VM.h:
+            - renamed JSBoundSlotBaseFunction -> JSCustomGetterSetterFunction, etc.
+
+2016-06-13  Saam Barati  <sbarati@apple.com>
+
+        The sampling profiler should further protect itself against certain forms of sampling bias that arise due to the sampling interval being in sync with some other system process
+        https://bugs.webkit.org/show_bug.cgi?id=158678
+
+        Reviewed by Benjamin Poulain.
+
+        I first became aware of this problem when I read this paper:
+        http://plv.colorado.edu/papers/mytkowicz-pldi10.pdf
+
+        To provide background for this change, I'll quote a paragraph
+        from section 6.2:
+        "One statically sound method for collecting random samples is to collect a
+        sample at every t + r milliseconds, where t is the desired sampling interval
+        and r is a random number between −t and t. One might think that sampling every
+        t seconds is enough (i.e., drop the r component) but it is not: specifically,
+        if a profiler samples every t seconds, the sampling rate would be synchronized
+        with any program or system activity that occurs at regular time intervals [17].
+        For example, if the thread scheduler switches between threads every 10ms and our
+        sampling interval was also 10ms, then we may always take samples immediately after
+        a thread switch. Because performance is often different immediately after a thread
+        switch than at other points (e.g., due to cache and TLB warm-up effects) we would
+        get biased data. The random component, r, guards against such situations."
+
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::timerLoop):
+
+2016-06-13  Oliver Hunt  <oliver@apple.com>
+
+        DFG Validation fails when performing a concatenation with only a single entry
+        https://bugs.webkit.org/show_bug.cgi?id=158699
+
+        Reviewed by Saam Barati.
+
+        Fairly simple short circuiting of a single replacement template string
+        without any padding to be planted as a simple to string rather than
+        op_strcat.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TemplateLiteralNode::emitBytecode):
+        * tests/stress/template-literal.js:
+        (testSingleNode):
+
+2016-06-13  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL::Output methods should be out-of-line whenever possible
+        https://bugs.webkit.org/show_bug.cgi?id=158704
+
+        Reviewed by Benjamin Poulain.
+        
+        These methods turn into a non-trivial amount of code because of the template-based B3 API.
+        Inlining them didn't achieve any performance advantages for the FTL, but it did make the
+        code larger. This outlines most methods in FTL::Output. It makes FTL::LowerDFGToB3 smaller
+        and it doesn't change performance.
+
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::appendTo):
+        (JSC::FTL::Output::framePointer):
+        (JSC::FTL::Output::lockedStackSlot):
+        (JSC::FTL::Output::constBool):
+        (JSC::FTL::Output::constInt32):
+        (JSC::FTL::Output::constInt64):
+        (JSC::FTL::Output::constDouble):
+        (JSC::FTL::Output::phi):
+        (JSC::FTL::Output::add):
+        (JSC::FTL::Output::sub):
+        (JSC::FTL::Output::mul):
+        (JSC::FTL::Output::div):
+        (JSC::FTL::Output::chillDiv):
+        (JSC::FTL::Output::mod):
+        (JSC::FTL::Output::chillMod):
+        (JSC::FTL::Output::neg):
+        (JSC::FTL::Output::doubleAdd):
+        (JSC::FTL::Output::doubleSub):
+        (JSC::FTL::Output::doubleMul):
+        (JSC::FTL::Output::doubleDiv):
+        (JSC::FTL::Output::doubleMod):
+        (JSC::FTL::Output::bitAnd):
+        (JSC::FTL::Output::bitOr):
+        (JSC::FTL::Output::bitXor):
+        (JSC::FTL::Output::shl):
+        (JSC::FTL::Output::aShr):
+        (JSC::FTL::Output::lShr):
+        (JSC::FTL::Output::bitNot):
+        (JSC::FTL::Output::logicalNot):
+        (JSC::FTL::Output::ctlz32):
+        (JSC::FTL::Output::doubleAbs):
+        (JSC::FTL::Output::doubleCeil):
+        (JSC::FTL::Output::doubleFloor):
+        (JSC::FTL::Output::doubleTrunc):
+        (JSC::FTL::Output::doubleSin):
+        (JSC::FTL::Output::doubleCos):
+        (JSC::FTL::Output::doublePow):
+        (JSC::FTL::Output::doublePowi):
+        (JSC::FTL::Output::doubleSqrt):
+        (JSC::FTL::Output::doubleLog):
+        (JSC::FTL::Output::hasSensibleDoubleToInt):
+        (JSC::FTL::Output::doubleToUInt):
+        (JSC::FTL::Output::signExt32To64):
+        (JSC::FTL::Output::zeroExt):
+        (JSC::FTL::Output::intToDouble):
+        (JSC::FTL::Output::unsignedToDouble):
+        (JSC::FTL::Output::castToInt32):
+        (JSC::FTL::Output::doubleToFloat):
+        (JSC::FTL::Output::floatToDouble):
+        (JSC::FTL::Output::load):
+        (JSC::FTL::Output::load8SignExt32):
+        (JSC::FTL::Output::baseIndex):
+        (JSC::FTL::Output::equal):
+        (JSC::FTL::Output::notEqual):
+        (JSC::FTL::Output::above):
+        (JSC::FTL::Output::aboveOrEqual):
+        (JSC::FTL::Output::below):
+        (JSC::FTL::Output::belowOrEqual):
+        (JSC::FTL::Output::greaterThan):
+        (JSC::FTL::Output::greaterThanOrEqual):
+        (JSC::FTL::Output::lessThan):
+        (JSC::FTL::Output::lessThanOrEqual):
+        (JSC::FTL::Output::doubleEqual):
+        (JSC::FTL::Output::doubleEqualOrUnordered):
+        (JSC::FTL::Output::doubleNotEqualOrUnordered):
+        (JSC::FTL::Output::doubleLessThan):
+        (JSC::FTL::Output::doubleLessThanOrEqual):
+        (JSC::FTL::Output::doubleGreaterThan):
+        (JSC::FTL::Output::doubleGreaterThanOrEqual):
+        (JSC::FTL::Output::doubleNotEqualAndOrdered):
+        (JSC::FTL::Output::doubleLessThanOrUnordered):
+        (JSC::FTL::Output::doubleLessThanOrEqualOrUnordered):
+        (JSC::FTL::Output::doubleGreaterThanOrUnordered):
+        (JSC::FTL::Output::doubleGreaterThanOrEqualOrUnordered):
+        (JSC::FTL::Output::isZero32):
+        (JSC::FTL::Output::notZero32):
+        (JSC::FTL::Output::isZero64):
+        (JSC::FTL::Output::notZero64):
+        (JSC::FTL::Output::select):
+        (JSC::FTL::Output::jump):
+        (JSC::FTL::Output::branch):
+        (JSC::FTL::Output::check):
+        (JSC::FTL::Output::ret):
+        (JSC::FTL::Output::unreachable):
+        (JSC::FTL::Output::speculate):
+        (JSC::FTL::Output::speculateAdd):
+        (JSC::FTL::Output::speculateSub):
+        (JSC::FTL::Output::speculateMul):
+        (JSC::FTL::Output::patchpoint):
+        (JSC::FTL::Output::trap):
+        (JSC::FTL::Output::anchor):
+        (JSC::FTL::Output::bitCast):
+        (JSC::FTL::Output::fround):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::setOrigin):
+        (JSC::FTL::Output::origin):
+        (JSC::FTL::Output::constIntPtr):
+        (JSC::FTL::Output::doubleNeg):
+        (JSC::FTL::Output::zeroExtPtr):
+        (JSC::FTL::Output::load32NonNegative):
+        (JSC::FTL::Output::isNull):
+        (JSC::FTL::Output::notNull):
+        (JSC::FTL::Output::testIsZeroPtr):
+        (JSC::FTL::Output::testNonZeroPtr):
+        (JSC::FTL::Output::call):
+        (JSC::FTL::Output::operation):
+        (JSC::FTL::Output::branch):
+        (JSC::FTL::Output::switchInstruction):
+        (JSC::FTL::Output::addIncomingToPhi):
+        (JSC::FTL::Output::framePointer): Deleted.
+        (JSC::FTL::Output::constBool): Deleted.
+        (JSC::FTL::Output::constInt32): Deleted.
+        (JSC::FTL::Output::constInt64): Deleted.
+        (JSC::FTL::Output::constDouble): Deleted.
+        (JSC::FTL::Output::phi): Deleted.
+        (JSC::FTL::Output::add): Deleted.
+        (JSC::FTL::Output::sub): Deleted.
+        (JSC::FTL::Output::mul): Deleted.
+        (JSC::FTL::Output::div): Deleted.
+        (JSC::FTL::Output::chillDiv): Deleted.
+        (JSC::FTL::Output::mod): Deleted.
+        (JSC::FTL::Output::chillMod): Deleted.
+        (JSC::FTL::Output::doubleAdd): Deleted.
+        (JSC::FTL::Output::doubleSub): Deleted.
+        (JSC::FTL::Output::doubleMul): Deleted.
+        (JSC::FTL::Output::doubleDiv): Deleted.
+        (JSC::FTL::Output::doubleMod): Deleted.
+        (JSC::FTL::Output::bitAnd): Deleted.
+        (JSC::FTL::Output::bitOr): Deleted.
+        (JSC::FTL::Output::bitXor): Deleted.
+        (JSC::FTL::Output::shl): Deleted.
+        (JSC::FTL::Output::aShr): Deleted.
+        (JSC::FTL::Output::lShr): Deleted.
+        (JSC::FTL::Output::ctlz32): Deleted.
+        (JSC::FTL::Output::addWithOverflow32): Deleted.
+        (JSC::FTL::Output::subWithOverflow32): Deleted.
+        (JSC::FTL::Output::mulWithOverflow32): Deleted.
+        (JSC::FTL::Output::addWithOverflow64): Deleted.
+        (JSC::FTL::Output::subWithOverflow64): Deleted.
+        (JSC::FTL::Output::mulWithOverflow64): Deleted.
+        (JSC::FTL::Output::doubleAbs): Deleted.
+        (JSC::FTL::Output::doubleCeil): Deleted.
+        (JSC::FTL::Output::doubleFloor): Deleted.
+        (JSC::FTL::Output::doubleSin): Deleted.
+        (JSC::FTL::Output::doubleCos): Deleted.
+        (JSC::FTL::Output::doublePow): Deleted.
+        (JSC::FTL::Output::doubleSqrt): Deleted.
+        (JSC::FTL::Output::doubleLog): Deleted.
+        (JSC::FTL::Output::signExt32To64): Deleted.
+        (JSC::FTL::Output::zeroExt): Deleted.
+        (JSC::FTL::Output::intToDouble): Deleted.
+        (JSC::FTL::Output::castToInt32): Deleted.
+        (JSC::FTL::Output::doubleToFloat): Deleted.
+        (JSC::FTL::Output::floatToDouble): Deleted.
+        (JSC::FTL::Output::equal): Deleted.
+        (JSC::FTL::Output::notEqual): Deleted.
+        (JSC::FTL::Output::above): Deleted.
+        (JSC::FTL::Output::aboveOrEqual): Deleted.
+        (JSC::FTL::Output::below): Deleted.
+        (JSC::FTL::Output::belowOrEqual): Deleted.
+        (JSC::FTL::Output::greaterThan): Deleted.
+        (JSC::FTL::Output::greaterThanOrEqual): Deleted.
+        (JSC::FTL::Output::lessThan): Deleted.
+        (JSC::FTL::Output::lessThanOrEqual): Deleted.
+        (JSC::FTL::Output::doubleEqual): Deleted.
+        (JSC::FTL::Output::doubleEqualOrUnordered): Deleted.
+        (JSC::FTL::Output::doubleNotEqualOrUnordered): Deleted.
+        (JSC::FTL::Output::doubleLessThan): Deleted.
+        (JSC::FTL::Output::doubleLessThanOrEqual): Deleted.
+        (JSC::FTL::Output::doubleGreaterThan): Deleted.
+        (JSC::FTL::Output::doubleGreaterThanOrEqual): Deleted.
+        (JSC::FTL::Output::doubleNotEqualAndOrdered): Deleted.
+        (JSC::FTL::Output::doubleLessThanOrUnordered): Deleted.
+        (JSC::FTL::Output::doubleLessThanOrEqualOrUnordered): Deleted.
+        (JSC::FTL::Output::doubleGreaterThanOrUnordered): Deleted.
+        (JSC::FTL::Output::doubleGreaterThanOrEqualOrUnordered): Deleted.
+        (JSC::FTL::Output::isZero32): Deleted.
+        (JSC::FTL::Output::notZero32): Deleted.
+        (JSC::FTL::Output::isZero64): Deleted.
+        (JSC::FTL::Output::notZero64): Deleted.
+        (JSC::FTL::Output::select): Deleted.
+        (JSC::FTL::Output::extractValue): Deleted.
+        (JSC::FTL::Output::jump): Deleted.
+        (JSC::FTL::Output::ret): Deleted.
+        (JSC::FTL::Output::unreachable): Deleted.
+        (JSC::FTL::Output::speculate): Deleted.
+        (JSC::FTL::Output::speculateAdd): Deleted.
+        (JSC::FTL::Output::speculateSub): Deleted.
+        (JSC::FTL::Output::speculateMul): Deleted.
+        (JSC::FTL::Output::patchpoint): Deleted.
+        (JSC::FTL::Output::trap): Deleted.
+        (JSC::FTL::Output::anchor): Deleted.
+        (JSC::FTL::Output::bitCast): Deleted.
+        (JSC::FTL::Output::fround): Deleted.
+
+2016-06-13  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, Cloop build fix.
+
+        * bytecode/BytecodeList.json:
+
+2016-06-12  Keith Miller  <keith_miller@apple.com>
+
+        Add new builtin opcode tailCallForwardArguments
+        https://bugs.webkit.org/show_bug.cgi?id=158666
+
+        Reviewed by Filip Pizlo.
+
+        We should support the ability to have a builtin forward its
+        arguments to a helper without allocating an arguments object. This
+        patch adds a new bytecode intrinsic @tailCallForwardArguments that
+        takes two values. The first is the target of the call and the
+        second is the new this value. This opcode will tail call to the
+        passed function without triggering an allocation of an arguments
+        object for the caller function.
+
+        In the LLInt and Baseline this function acts the same way a normal
+        tail call does.  The bytecode will allocate a new stack frame
+        copying all the arguments of the caller function into the new
+        frame, along with the new this. Then when the actual call happens
+        the new frame is copied over the caller frame. While this is not
+        necessary, it allows the target function to have more arguments
+        than the caller function via arity fixup.
+
+        Once we get to the DFG we reuse existing DFG Nodes for forwarding
+        arguments, although there were some minor changes. This patch
+        swaps the meaning of the second and third children for each DFG
+        varargs node, exchanging the argmuments and this child,
+        respectively. It also makes the arguments child for each varargs
+        node, as well as the ForwardVarargs node optional. If the optional
+        child is missing, then forwarding node assumes that the arguments
+        for the node's inlineCallFrame should be used instead. Finally,
+        when inlining the target of an inlined
+        op_tail_call_forward_arguments we make sure the arguments of the
+        forwarding function are marked as non-unboxable since this would
+        normally be done by the caller's create arguments object node,
+        which does not exist in this case.
+
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::callTypeFor):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::finishCreation):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitCallForwardArgumentsInTailPosition):
+        (JSC::BytecodeGenerator::emitCallVarargs):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_tailCallForwardArguments):
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_tryGetById):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getPredictionWithoutOSRExit):
+        (JSC::DFG::ByteCodeParser::handleCall):
+        (JSC::DFG::ByteCodeParser::handleVarargsCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasArgumentsChild):
+        (JSC::DFG::Node::argumentsChild):
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileForwardVarargs):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileForwardVarargs):
+        * interpreter/Interpreter.cpp:
+        (JSC::sizeFrameForForwardArguments):
+        (JSC::setupForwardArgumentsFrame):
+        (JSC::setupForwardArgumentsFrameAndSetThis):
+        * interpreter/Interpreter.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        (JSC::JIT::compileOpCall):
+        (JSC::JIT::compileOpCallSlowCase):
+        (JSC::JIT::emit_op_tail_call_forward_arguments):
+        (JSC::JIT::emitSlow_op_tail_call_forward_arguments):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::emitSlow_op_tail_call_forward_arguments):
+        (JSC::JIT::emit_op_tail_call_forward_arguments):
+        (JSC::JIT::compileSetupVarargsFrame):
+        (JSC::JIT::compileOpCall):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::varargsSetup):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * tests/stress/tailCallForwardArguments.js: Added.
+        (putFuncToPrivateName.createBuiltin):
+        (putFuncToPrivateName):
+        (createTailCallForwardingFuncWith):
+        (baz):
+        (baz2):
+        (baz3):
+        (let.bodyText):
+        (baz4):
+        (baz5):
+        (arrayEq):
+
+2016-06-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow up patch for r201964
+        https://bugs.webkit.org/show_bug.cgi?id=158619
+
+        Fix typo in the comment.
+
+        * runtime/MathCommon.h:
+        (JSC::toInt32):
+
+2016-06-13  Mark Lam  <mark.lam@apple.com>
+
+        Add a mechanism for collecting LLINT stats.
+        https://bugs.webkit.org/show_bug.cgi?id=158668
+
+        Reviewed by Filip Pizlo.
+
+        This patch will add a mechanism for collecting the stats on LLINT opcode
+        execution counts.  The changes made to enable this are:
+
+        1. Refactored how Options availability work so that we can add a new category:
+           Configurable (in addition to the pre-existing Normal and Restricted
+           availability).
+               Normal options - always available.
+               Restricted options - only available on debug builds.
+               Configurable options - depends on #define flag options.
+
+           This change is necessary so that:
+           a. we won't have to rebuild the world when we want to enable that #define flag
+              to make that Configurable option available.
+           b. when the #define flag is disabled, the option will be invisible to the user.
+
+           With this, we add our first configurable option, JSC_reportLLIntStats, which
+           is dependent on the ENABLE_LLINT_STATS flag.  See next.
+
+        2. Added the ENABLE_LLINT_STATS flag in LLIntCommon.h.  To enable LLINT stats
+           collection, we'll need to set this flag to a non-zero value, and rebuilding
+           the project.  By design, this will only require a minimal set of files to
+           be rebuilt.
+
+           ENABLE_LLINT_STATS is 0 (i.e. disabled) by default.
+
+        3. Added a slow path callback to the LLINT's traceExecution() macro, to call
+           _llint_count_opcode(), which in turns counts the opcode.  This callback will
+           only be built into the LLINT if ENABLE_LLINT_STATS is non-zero.
+
+        4. Added s_opcodeStatsArray to LLInt::Data.  This is where the stats are
+           recorded and stored.
+
+        5. Added calls to LLInt::Data::dumpStats() in jsc.cpp and DumpRenderTree.mm
+           to dump the LLINT stats if enabled.  If enabled, the LLINT stats will be
+           sorted and dumped (via dataLog) before the programs terminate.
+
+        * interpreter/Interpreter.h:
+        * jsc.cpp:
+        (main):
+        * llint/LLIntCommon.h:
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::initialize):
+        (JSC::LLInt::Data::dumpStats):
+        * llint/LLIntData.h:
+        (JSC::LLInt::Data::opcodeStats):
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_crash):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * runtime/Options.cpp:
+        (JSC::parse):
+        (JSC::Options::isAvailable):
+        (JSC::overrideOptionWithHeuristic):
+        (JSC::scaleJITPolicy):
+        (JSC::Options::initialize):
+        (JSC::Options::setOptionWithoutAlias):
+        (JSC::Options::dumpAllOptions):
+        (JSC::Options::dumpOption):
+        * runtime/Options.h:
+        (JSC::Option::Option):
+        (JSC::Option::operator!=):
+        (JSC::Option::id):
+
+2016-06-11  Mark Lam  <mark.lam@apple.com>
+
+        Minimize the amount of memcpy done for allocating Error stacks.
+        https://bugs.webkit.org/show_bug.cgi?id=158664
+
+        Reviewed by Darin Adler.
+
+        Currently, Vector<StackFrame> are being copied around multiple times in the
+        process of creating Error stacks.
+
+        This patch avoids this unnecessary copying by:
+        1. Sizing the StackFrame vector correctly to begin with, and skipping
+           undesirable top frames before filling in the vector.
+        2. Using perfect forwarding or passing by reference to pass the vector data around
+           instead of copying the vectors.
+        3. Changing the Exception object to take a Vector<StackFrame> instead of a
+           RefCountedArray<StackFrame>.
+
+        This patch has passed the JSC and layout tests.  Benchmarks show that perf is
+        neutral.
+
+        * API/tests/testapi.mm:
+        (testObjectiveCAPI):
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::createScriptCallStackFromException):
+        * interpreter/Interpreter.cpp:
+        (JSC::GetStackTraceFunctor::GetStackTraceFunctor):
+        (JSC::GetStackTraceFunctor::operator()):
+        (JSC::Interpreter::getStackTrace):
+        (JSC::Interpreter::stackTraceAsString):
+        (JSC::findExceptionHandler):
+        * interpreter/Interpreter.h:
+        * runtime/Error.cpp:
+        (JSC::addErrorInfoAndGetBytecodeOffset):
+        * runtime/Exception.cpp:
+        (JSC::Exception::finishCreation):
+        * runtime/Exception.h:
+        (JSC::Exception::valueOffset):
+        (JSC::Exception::value):
+        (JSC::Exception::stack):
+        (JSC::Exception::didNotifyInspectorOfThrow):
+        (JSC::Exception::setDidNotifyInspectorOfThrow):
+
+2016-06-11  Mark Lam  <mark.lam@apple.com>
+
+        Tests that overflows the stack should not be run with the sampling profiler.
+        https://bugs.webkit.org/show_bug.cgi?id=158663
+
+        Reviewed by Saam Barati.
+
+        The sampling profiler will be sampling the whole stack, and the amount of memory
+        churn will make this tests time out, especially with debug builds.  Hence,
+        let's not run the test with the sampling profiler configuration.
+
+        * tests/stress/mutual-tail-call-no-stack-overflow.js:
+        (shouldThrow):
+
+2016-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, attempt to fix r201964 failure on Apple ports
+        https://bugs.webkit.org/show_bug.cgi?id=158619
+
+        Reviewed by Mark Lam.
+
+        Add Private attributes to MathCommon.h.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2016-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Inline JSC::toInt32 to improve kraken
+        https://bugs.webkit.org/show_bug.cgi?id=158619
+
+        Reviewed by Mark Lam.
+
+        Several kraken benchmarks show that JSC::toInt32 is frequently called.
+        For example, stanford-crypto-pbkdf2 reports that the hottest runtime function is JSC::toInt32.
+
+        The data is below (taken by Linux perf tools).
+        5.50%  jsc      libJavaScriptCore.so.1.0.0  [.] _ZN3JSC7toInt32Ed
+        3.96%  jsc      libJavaScriptCore.so.1.0.0  [.] _ZN3JSC20arrayProtoFuncConcatEPNS_9ExecStateE
+        2.48%  jsc      libJavaScriptCore.so.1.0.0  [.] _ZN3JSC19arrayProtoFuncSliceEPNS_9ExecStateE
+        1.69%  jsc      libJavaScriptCore.so.1.0.0  [.] _ZNK3JSC9Structure27holesMustForwardToPrototypeERNS_2VME
+
+        This is because of CommonSlowPaths' bit operations's JSValue::toInt32.
+        Due to the slow path, in `value | 0`, `value` may be a double number value. In that case, JSC::toInt32 is called.
+
+        While JSC::toIn32 is hot, the function itself is very small. It's worth inlining.
+
+        This change offers the following kraken improvements.
+
+                                                         baseline                  patched
+        Kraken:
+           audio-beat-detection                       47.492+-1.701             46.657+-1.232           might be 1.0179x faster
+           stanford-crypto-aes                        43.669+-0.210      ^      42.862+-0.115         ^ definitely 1.0188x faster
+           stanford-crypto-ccm                        45.213+-1.424             44.490+-1.290           might be 1.0162x faster
+           stanford-crypto-pbkdf2                    107.665+-0.581      ^     106.229+-0.807         ^ definitely 1.0135x faster
+
+        This patch only focused on the call to toInt32 from the runtime functions.
+        So JSC::toInt32 calls from the baseline / DFG remain.
+        We ensure that JIT code uses operationToInt32 instead of JSC::toInt32 since JSC::toInt32 is now marked as ALWAYS_INLINE.
+        Linux perf profiler also finds that this `operationToInt32` is frequently called in the above benchmarks.
+        It may be good to introduce asm emit for that instead of calling JSC::toInt32 operation in the separated patch.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueToInt32):
+        (JSC::DFG::SpeculativeJIT::compilePutByValForIntTypedArray):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::doubleToInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::sensibleDoubleToInt32):
+        * runtime/JSCJSValue.cpp:
+        (JSC::toInt32): Deleted.
+        * runtime/JSCJSValueInlines.h:
+        * runtime/MathCommon.cpp:
+        (JSC::operationToInt32):
+        * runtime/MathCommon.h:
+        (JSC::toInt32):
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The backend should be happy to compile Unreachable even if AI didn't prove it to be unreachable
+        https://bugs.webkit.org/show_bug.cgi?id=158631
+
+        Reviewed by Keith Miller.
+        
+        We've been slowly making the DFG Unreachable opcode behave like a grown-up. When we first
+        added it, it was a hack for Throw, and we could always rely on AI proving that Unreachable
+        was not reachable. But then we started using Unreachable as a proper Unreachable opcode,
+        like Oops in B3 for example, which has a more nuanced meaning: you use it whenever you
+        emit code that *you* know will not return, and you need some way of terminating the basic
+        block. The DFG is not a proof-carrying compiler, and it never will be. So, when you have
+        proved that something is not reachable, you should be able to use Unreachable even if
+        there is no guarantee that the compiler will later be able to replicate your proof. This
+        means that the backend may find itself compiling Unreachable because AI did not prove that
+        it was unreachable.
+        
+        Prior to this change, we would crash compiling Unreachable because we would rely on AI
+        preventing us from reaching Unreachable in the backend. But that's silly! We don't want
+        users of Unreachable to have to also convince AI that their Unreachable is really
+        Unreachable.
+        
+        This fixes crashes on real websites. I couldn't work out how to turn them into a reduced
+        test.
+
+        * assembler/AbortReason.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitInvalidationPoint):
+        (JSC::DFG::SpeculativeJIT::unreachable):
+        (JSC::DFG::SpeculativeJIT::terminateSpeculativeExecution):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compilePutDynamicVar):
+        (JSC::FTL::DFG::LowerDFGToB3::compileUnreachable):
+        (JSC::FTL::DFG::LowerDFGToB3::compareEqObjectOrOtherToObject):
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up JavaScriptCore.vcxproj directory after switching to CMake.
+
+        * JavaScriptCore.vcxproj/LLInt: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/LLIntAssembly.make: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/LLIntAssembly.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/build-LLIntAssembly.pl: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/LLIntDesiredOffsets.make: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/LLIntDesiredOffsets.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/build-LLIntDesiredOffsets.pl: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractor.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractorCommon.props: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractorDebug.props: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractorProduction.props: Removed.
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractorRelease.props: Removed.
+        * JavaScriptCore.vcxproj/jsc: Removed.
+        * JavaScriptCore.vcxproj/jsc/DLLLauncherMain.cpp: Removed.
+        * JavaScriptCore.vcxproj/jsc/DLLLauncherWinCairo.props: Removed.
+        * JavaScriptCore.vcxproj/jsc/jsc.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/jsc/jsc.vcxproj.filters: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscCommon.props: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscDebug.props: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscLauncher.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscLauncherPostBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscLauncherPreBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscLauncherPreLink.cmd: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscPostBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscPreBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscPreLink.cmd: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscProduction.props: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscRelease.props: Removed.
+        * JavaScriptCore.vcxproj/testRegExp: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExp.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExp.vcxproj.filters: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpCommon.props: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpDebug.props: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncher.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncherPostBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncherPreBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncherPreLink.cmd: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpPostBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpPreBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpPreLink.cmd: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpProduction.props: Removed.
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpRelease.props: Removed.
+        * JavaScriptCore.vcxproj/testapi: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapi.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapi.vcxproj.filters: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiCommon.props: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiCommonCFLite.props: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiDebug.props: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiDebugCFLite.props: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiLauncher.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiLauncherPostBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiLauncherPreBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiLauncherPreLink.cmd: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiPostBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiPreBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiPreLink.cmd: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiProduction.props: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiRelease.props: Removed.
+        * JavaScriptCore.vcxproj/testapi/testapiReleaseCFLite.props: Removed.
+        * shell/DLLLauncherMain.cpp: Copied from JavaScriptCore.vcxproj/jsc/DLLLauncherMain.cpp.
+        * shell/PlatformWin.cmake:
+
+2016-06-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Rare failure in stress/v8-deltablue-strict.js.ftl-eager
+        https://bugs.webkit.org/show_bug.cgi?id=158591
+
+        Reviewed by Saam Barati.
+        
+        This is a simple and sensible fix to an amazing compiler bug that previously only
+        manifested rarely in the v8-deltablue-strict test. It required on average 1000 runs while
+        the system was under load for the bug to manifest. Fortunately, the bug is 100% repro with
+        concurrent JIT disabled in the new "constant-fold-multi-get-by-offset-to-get-by-offset-on-
+        prototype-and-sink-allocation.js" test.
+        
+        The problem here is that we were allowing ourselves to be super sloppy with the meaning of
+        the two children of GetByOffset, and to a lesser extent, PutByOffset. The first two
+        children of these nodes have these meanings:
+        
+        child1: the storage from which to load (or to which to store)
+        child2: the logical object base
+        
+        Normally, child1 == child2, but child1 may point to a node that vends the storage pointer
+        in case we are using multiple indirections to get to the property. That's fairly common.
+        
+        Where this gets nutty is that we don't validate the behavior of child1. Previously, the
+        DFG::Validate phase would accept code that had child1 point to one object and child2 point
+        to another object. That's bad because then, analyses will assume that we're loading from
+        one object while we are actually loading from another. One of the fixes is to make
+        Validate smarter about this, so that future problems with this get caught sooner.
+        
+        The actual bug was in ConstantFoldingPhase. When we first wrote ConstantFoldingPhase's
+        logic for converting GetByIds and MultiGetByOffsets to GetByOffset, we assumed that this
+        was only for non-prototype loads. This was becuase the logic was originally written based
+        on a static GetByIdStatus analysis, which does not handle prototypes. So, as a shortcut,
+        we would convert the GetById (or MultiGetByOffset) to a GetByOffset by doing this
+        shuffling of children:
+        
+        child1 got the storage pointer, which might be a new GetButterfly node that we created.
+        child2 got the old value of child1.
+        
+        The bug was introduced when I later made it possible for a monomorphic prototype
+        MultiGetByOffset to be converted to a GetByOffset. Then this algorithm would mean that:
+        
+        child1 got either a pointer to the prototype or a storage pointer derived from the
+            prototype.
+        child2 got the old value of child1, which was a pointer to the base object (i.e. not the
+            prototype).
+        
+        This happens super rarely because most prototype loads that we can statically reason about
+        also happen to load constants, so we don't convert to GetByOffset at all. You need the
+        strange combination of a MultiGetByOffset (not GetById or GetByOffset) on some prototypes
+        and some static reasoning about the base so that we can convert it to a GetByOffset, but
+        not enough static reasoning that we can convert it to a constant.
+        
+        Even if the bad thing happened, then this is not enough for it to cause symptons. If we
+        did nothing else - like none of the other optimizations succeeded - then this would
+        be OK because the backend will emit code based on child1, which is right. But disaster
+        strikes when the code otherwise looks sane enough for ObjectAllocationSinkingPhase to kick
+        in. This phase operates on child2, as any good phase should: child1 is only interesting
+        for knowing *how* to load, not *what* we are loading. The phase is right to ignore child1.
+
+        So the phase would assume that we are loading the prototype property ("f" in the new test
+        or "addToGraph" in deltablue) from the sunken base object allocation in the inlined
+        constructor. The base object has no such property, but the phase conservatively assumes
+        that it does indeed have such a property. That's just how the phase does things: it is
+        very abstract and general, so it assumes that the set of properties on an allocation is
+        the set of properties that accesses to the allocation speak of. Clearly, this GetByOffset
+        was speaking of the property as being on the allocation. When sinking completed, it would
+        convert the GetByOffset to the sunken (a.k.a. promoted) property. But nobody stored to
+        this property on the allocation, so we'd get the bottom value, which is 1927. Why 1927? I
+        don't remember anymore, but apparently I chose it. It helped here - when I started seeing
+        that value come up, it took a quick grep to realize that this was the object allocation
+        sinking phase's bottom value.
+        
+        The real fix to the bug is to make Node::convertToGetByOffset() take an explicit new base
+        since its clients will use it to potentially create a load on a different object than the
+        base of the original operation, as in the relatively new
+        MultiGetByOffset(prototype)->GetByOffset optimization. As far as I know, the PutByOffset
+        code did not have the same bug because we don't have any optimizations that turn a PutById
+        or MultiPutByOffset into a PutByOffset on anything but the base object. But the logical
+        bug is definitely there: there's code in ConstantFoldingPhase that claims to be able to
+        convert any node to a PutByOffset on any base, but it actually silently reuses the
+        original node's child1 as the logical base (i.e. child2). This patch makes all of this
+        stuff explicit. You can't make this mistake anymore.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::emitGetByOffset):
+        (JSC::DFG::ConstantFoldingPhase::emitPutByOffset):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToGetStack):
+        (JSC::DFG::Node::convertToGetByOffset):
+        (JSC::DFG::Node::convertToMultiGetByOffset):
+        (JSC::DFG::Node::convertToPutByOffset):
+        * dfg/DFGValidate.cpp:
+        * tests/stress/constant-fold-multi-get-by-offset-to-get-by-offset-on-prototype-and-sink-allocation.js: Added.
+        (ThingA):
+        (ThingB):
+        (foo):
+        (bar):
+        * tests/stress/sink-to-impossible-multi-get-by-offset-on-prototypes.js: Added.
+        (ThingA):
+        (ThingB):
+        (ThingC):
+        (bar):
+        (foo):
+
+2016-06-09  Mark Lam  <mark.lam@apple.com>
+
+        Make some methods const.
+        https://bugs.webkit.org/show_bug.cgi?id=158594
+
+        Reviewed by Benjamin Poulain.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::columnNumberForBytecodeOffset):
+        (JSC::CodeBlock::expressionRangeForBytecodeOffset):
+        * bytecode/CodeBlock.h:
+        * bytecode/ExpressionRangeInfo.h:
+        (JSC::ExpressionRangeInfo::encodeFatColumnMode):
+        (JSC::ExpressionRangeInfo::decodeFatLineMode):
+        (JSC::ExpressionRangeInfo::decodeFatColumnMode):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::lineNumberForBytecodeOffset):
+        (JSC::UnlinkedCodeBlock::getLineAndColumn):
+        (JSC::UnlinkedCodeBlock::expressionRangeForBytecodeOffset):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::isOpcode):
+        (JSC::StackFrame::computeLineAndColumn):
+        (JSC::StackFrame::toString):
+        * interpreter/Interpreter.h:
+        (JSC::StackFrame::isNative):
+
+2016-06-09  Michael Saboff  <msaboff@apple.com>
+
+        ES6: Reusing function name as a parameter name shouldn't throw Syntax Error
+        https://bugs.webkit.org/show_bug.cgi?id=158575
+
+        Reviewed by Benjamin Poulain.
+
+        The check for a parameter with a duplicate name doesn't take into account the
+        type of the prior variable.  Added a check that the duplicate is also a
+        parameter.
+
+        See the relevant spec section at:
+        http://www.ecma-international.org/ecma-262/6.0/#sec-function-definitions-static-semantics-early-errors
+
+        * parser/Parser.h:
+        (JSC::Scope::declareParameter):
+
+2016-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r201836, r201845, and r201848.
+
+        Looks like a 1-2% PLT regression on iOS
+
+        Reverted changesets:
+
+        "[JSC] Change some parameters based on a random search"
+        https://bugs.webkit.org/show_bug.cgi?id=158514
+        http://trac.webkit.org/changeset/201836
+
+        "Tempory fix for the debug bots"
+        http://trac.webkit.org/changeset/201845
+
+        "Change thresholdForOptimizeSoon to match
+        thresholdForOptimizeAfterWarmUp"
+        http://trac.webkit.org/changeset/201848
+
+2016-06-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201810.
+        https://bugs.webkit.org/show_bug.cgi?id=158563
+
+        breaks build without ENABLE_WEB_ANIMATION (Requested by
+        mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "[web-animations] Add Animatable, AnimationEffect,
+        KeyframeEffect and Animation interface"
+        https://bugs.webkit.org/show_bug.cgi?id=156096
+        http://trac.webkit.org/changeset/201810
+
+2016-06-08  Gavin & Ellie Barraclough  <barraclough@apple.com>
+
+        JSObject::reifyAllStaticProperties cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=158543
+
+        Reviewed by Mark Lam.
+
+        - JSObject & Structure contain fields labeled 'staticFunctionsReified', however reification now
+          affects all properties, not just functions. Rename to 'staticPropertiesReified'.
+        - reifyAllStaticProperties relies on a 'hasStaticProperties' method on ClassInfo that walks the
+          ClassInfo inheritance chain looking for static property tables. We can now more efficiently
+          get this information from TypeInfo.
+        - reifyAllStaticProperties triggers a 'toUncacheableDictionaryTransition'; this is overzealous,
+          cacheable dictionary is sufficient - this is what we do in the case of DOM prototype property
+          reification (see 'reifyStaticProperties' in Lookup.h). (Changing this with an eye on switching
+          DOM prototype property reification to use JSObject:: reifyAllStaticProperties, rather than
+          having its own special purpose code path.)
+
+        * runtime/ClassInfo.h:
+        (JSC::ClassInfo::hasStaticProperties): Deleted.
+            - deprecated by TypeInfo::hasStaticPropertyTable.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::deleteProperty):
+        (JSC::JSObject::getOwnNonIndexPropertyNames):
+            - staticFunctionsReified -> staticPropertiesReified
+        (JSC::JSObject::reifyAllStaticProperties):
+            - hasStaticProperties -> TypeInfo::hasStaticPropertyTable
+            - toUncacheableDictionaryTransition -> toCacheableDictionaryTransition
+            - staticFunctionsReified -> staticPropertiesReified
+        * runtime/JSObject.h:
+        (JSC::JSObject::staticPropertiesReified):
+        (JSC::JSObject::staticFunctionsReified): Deleted.
+        * runtime/Lookup.cpp:
+        (JSC::setUpStaticFunctionSlot):
+        * runtime/Lookup.h:
+        (JSC::getStaticPropertySlotFromTable):
+        (JSC::replaceStaticPropertySlot):
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        * runtime/Structure.h:
+            - staticFunctionsReified -> staticPropertiesReified
+
+2016-06-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Change thresholdForOptimizeSoon to match thresholdForOptimizeAfterWarmUp
+
+        Unreviewed.
+
+        This adds back the assertion removed in r201845.
+        Making those threshold equal is completely perf neutral
+        (on Haswell rMBP with 20 runs).
+
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        * runtime/Options.h:
+
+2016-06-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Tempory fix for the debug bots
+
+        Unreviewed.
+
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        Weaken an assertion while I test values for thresholdForOptimizeSoon.
+
+2016-06-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Change some parameters based on a random search
+        https://bugs.webkit.org/show_bug.cgi?id=158514
+
+        Reviewed by Filip Pizlo.
+
+        Over the weekend, I left an iMac running the JSC benchmarks
+        while changing a bunch of parameters.
+
+        The parameters were changed randomly, with a random deviation
+        from the original value.
+        To converge toward good values, the range was subject
+        to exponential annealing over time.
+
+        The values in this patch is the best outcome my iMac could
+        find over the weekend. It is about 1% better on the Haswell
+        machines I tested.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::optimizationThresholdScalingFactor):
+        * runtime/Options.h:
+
+2016-06-08  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove removeDirect
+        https://bugs.webkit.org/show_bug.cgi?id=158516
+
+        Reviewed by Ryosuke Niwa.
+
+        removeDirect is typically used as a subroutine of deleteProperty, but is also available to
+        call directly. Having this functionality factored out to a separate routine is a bad idea
+        on a couple of fronts:
+
+        - for the main use within deleteProperty there is redundancy (presence of the property
+          was being checked twice) and inconsistency (the two functions returned different results
+          in the case of a nonexistent property; the result from removeDirect was never observed).
+
+        - all uses of removeDirect are in practical terms incorrect. removeDirect had the
+          advantage of ignoring the configurable (DontDelete) attributes, but this is achievable
+          using the DeletePropertyMode setting - and the disadvantage of failing delete static
+          table properties. Last uses were one that was removed in bug #158295 (where failure to
+          delete static properties was a problem), and as addressed in this patch removeDirect is
+          being used to implement runtime enabled features. This only works because we currently
+          force reification of all properties on the DOM prototype objects, so in effect there are
+          no static properties. In order to make the code robust such that runtime enabled
+          features would still work even if we were not reifying static properties (a change we
+          may want to make) we should be calling deleteProperty in this case too.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::deleteProperty):
+            - incorporated removeDirect functionality, added comments & ASSERT.
+        (JSC::JSObject::removeDirect): Deleted.
+            - removed.
+        * runtime/JSObject.h:
+            - removed removeDirect.
+
+2016-06-08  Mark Lam  <mark.lam@apple.com>
+
+        Simplify Interpreter::StackFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=158498
+
+        Reviewed by Saam Barati.
+
+        Previously, Interpreter::StackFrame (which is used to capture info for
+        Error.stack) eagerly extracts info out of CodeBlock and duplicates the work that
+        CodeBlock does to compute line and column numbers (amongst other things).
+
+        This patch does away with the eager extraction and only stashes the CodeBlock
+        pointer in the Interpreter::StackFrame.  Instead, Interpreter::StackFrame will
+        provide methods for computing the desired values on request later.
+
+        One difference in implementation: the old StackFrame offers a sourceURL and a
+        friendlySourceURL().  The only difference between the 2 is that for native
+        functions, sourceURL returns an empty string, and friendlySourceURL() returns
+        "[native code]".  This is how it affects the clients of StackFrame:
+
+            - In the old code, the Error object's addErrorInfoAndGetBytecodeOffset() and
+              the inspector's createScriptCallStackFromException() would check if
+              sourceURL is empty.  If so, they will use this as an indicator to use
+              alternate source info in the Error object e.g. url and line numbers from
+              the parser that produced a SyntaxError.
+
+            - In the new implementation, StackFrame only has a sourceURL() function that
+              behaves like the old friendlySourceURL().  The client code which were
+              relying on sourceURL being empty, will now explicitly check if the
+              StackFrame is for native code using a new isNative() query in addition to
+              the sourceURL being empty.  This achieve functional parity with the old
+              behavior.
+
+        Also fix Error.cpp's addErrorInfoAndGetBytecodeOffset() to take a bytecodeOffset
+        pointer instead of a reference.  The bytecodeOffset arg is supposed to be
+        optional, but was implemented in a unclear way.  This change clarifies it.
+
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::createScriptCallStackFromException):
+        * interpreter/Interpreter.cpp:
+        (JSC::StackFrame::sourceID):
+        (JSC::StackFrame::sourceURL):
+        (JSC::StackFrame::functionName):
+        (JSC::eval):
+        (JSC::Interpreter::isOpcode):
+        (JSC::StackFrame::computeLineAndColumn):
+        (JSC::StackFrame::toString):
+        (JSC::GetStackTraceFunctor::operator()):
+        (JSC::StackFrame::friendlySourceURL): Deleted.
+        (JSC::StackFrame::friendlyFunctionName): Deleted.
+        (JSC::getStackFrameCodeType): Deleted.
+        (JSC::StackFrame::expressionInfo): Deleted.
+        * interpreter/Interpreter.h:
+        (JSC::StackFrame::isNative):
+        * runtime/Error.cpp:
+        (JSC::addErrorInfoAndGetBytecodeOffset):
+        (JSC::addErrorInfo):
+        * runtime/Error.h:
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::finishCreation):
+
+2016-06-08  Keith Miller  <keith_miller@apple.com>
+
+        We should be able to lookup symbols by identifier in builtins
+        https://bugs.webkit.org/show_bug.cgi?id=158530
+
+        Reviewed by Mark Lam.
+
+        This patch allows us to lookup the value of a symbol property on a
+        object by identifier in builtins. Before, it was only possible to
+        do so if we were directly emitting the bytecodes, such as in a
+        for-of loop looking for Symbol.iterator. As we tier up we convert
+        the builtin's get_by_val symbol lookups into get_by_id
+        lookups. However, there is still a significant performance
+        difference between get_by_id and get_by_val in the LLInt, where
+        this transformation does not take place.
+
+        In order to make this work we hijack BuiltinNames'
+        m_publicToPrivateMap so that it points the @<symbol>Symbol to the
+        appropriate vm symbol. This way when we lex the identifier it will
+        become the appropriate symbol's identifier.  Currently, if the
+        symbol is used to name a property in an object literal we will not
+        keep a cache of the Symbol objects we have already seen. We could
+        add a map for symbols but since we can only load symbols by
+        identifier in builtins its likely not worth it. Additionally, even
+        in builtins it is extremely rare to use Symbols in object
+        literals.
+
+        * builtins/ArrayConstructor.js:
+        (from):
+        * builtins/ArrayPrototype.js:
+        (filter):
+        (map):
+        * builtins/BuiltinNames.h:
+        (JSC::BuiltinNames::BuiltinNames):
+        * builtins/BuiltinUtils.h:
+        * builtins/GlobalObject.js:
+        (speciesConstructor):
+        * builtins/StringPrototype.js:
+        (match):
+        (intrinsic.StringPrototypeReplaceIntrinsic.replace):
+        (search):
+        (split):
+        * builtins/TypedArrayConstructor.js:
+        (from):
+        * builtins/TypedArrayPrototype.js:
+        (map):
+        (filter):
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        (JSC::BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry): Deleted.
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitLoad):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+
 2016-06-08  Rawinder Singh  <rawinder.singh-webkit@cisra.canon.com.au>
 
         [web-animations] Add Animatable, AnimationEffect, KeyframeEffect and Animation interface

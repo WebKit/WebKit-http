@@ -321,9 +321,8 @@ String Parser<LexerType>::parseInner(const Identifier& calleeName, SourceParseMo
     if (m_parsingBuiltin && isProgramParseMode(parseMode)) {
         VariableEnvironment& lexicalVariables = scope->lexicalVariables();
         const HashSet<UniquedStringImpl*>& closedVariableCandidates = scope->closedVariableCandidates();
-        const BuiltinNames& builtinNames = m_vm->propertyNames->builtinNames();
         for (UniquedStringImpl* candidate : closedVariableCandidates) {
-            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !builtinNames.isPrivateName(*candidate)) {
+            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !candidate->isSymbol()) {
                 dataLog("Bad global capture in builtin: '", candidate, "'\n");
                 dataLog(m_source->view());
                 CRASH();
@@ -1928,6 +1927,8 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
     bool upperScopeIsGenerator = currentScope()->isGenerator();
     AutoPopScopeRef functionScope(this, pushScope());
     functionScope->setSourceParseMode(mode);
+    functionScope->setExpectedSuperBinding(expectedSuperBinding);
+    functionScope->setConstructorKind(constructorKind);
     SetForScope<FunctionParsePhase> functionParsePhasePoisoner(m_parserState.functionParsePhase, FunctionParsePhase::Body);
     int functionNameStart = m_token.m_location.startOffset;
     const Identifier* lastFunctionName = m_parserState.lastFunctionName;
@@ -1949,8 +1950,6 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
 
             ConstructorKind constructorKind = static_cast<ConstructorKind>(cachedInfo->constructorKind);
             SuperBinding expectedSuperBinding = static_cast<SuperBinding>(cachedInfo->expectedSuperBinding);
-            functionScope->setConstructorKind(constructorKind);
-            functionScope->setExpectedSuperBinding(expectedSuperBinding);
 
             endLocation.line = cachedInfo->lastTokenLine;
             endLocation.startOffset = cachedInfo->lastTokenStartOffset;

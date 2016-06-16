@@ -108,6 +108,7 @@
             { "name" : "op_call_eval", "length" : 9 },
             { "name" : "op_call_varargs", "length" : 9 },
             { "name" : "op_tail_call_varargs", "length" : 9 },
+            { "name" : "op_tail_call_forward_arguments", "length" : 9 },
             { "name" : "op_ret", "length" : 2 },
             { "name" : "op_construct", "length" : 9 },
             { "name" : "op_construct_varargs", "length" : 9 },
@@ -166,7 +167,8 @@
             { "name" : "llint_cloop_did_return_from_js_8" },
             { "name" : "llint_cloop_did_return_from_js_9" },
             { "name" : "llint_cloop_did_return_from_js_10" },
-            { "name" : "llint_cloop_did_return_from_js_11" }
+            { "name" : "llint_cloop_did_return_from_js_11" },
+            { "name" : "llint_cloop_did_return_from_js_12" }
         ]
     },
     {

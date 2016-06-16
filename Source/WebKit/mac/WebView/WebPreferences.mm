@@ -606,9 +606,7 @@ public:
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
 #endif
-#if ENABLE(SHADOW_DOM)
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
-#endif
 #if ENABLE(CUSTOM_ELEMENTS)
         [NSNumber numberWithBool:NO], WebKitCustomElementsEnabledPreferenceKey,
 #endif
@@ -623,9 +621,6 @@ public:
 #endif
 #if ENABLE(CSS_GRID_LAYOUT)
         [NSNumber numberWithBool:YES], WebKitCSSGridLayoutEnabledPreferenceKey,
-#endif
-#if ENABLE(WEB_ANIMATIONS)
-        [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
 #endif
         nil];
 
@@ -2755,16 +2750,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setCSSGridLayoutEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitCSSGridLayoutEnabledPreferenceKey];
-}
-
-- (BOOL)webAnimationsEnabled
-{
-    return [self _boolValueForKey:WebKitWebAnimationsEnabledPreferenceKey];
-}
-
-- (void)setWebAnimationsEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitWebAnimationsEnabledPreferenceKey];
 }
 
 @end

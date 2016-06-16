@@ -1,3 +1,105 @@
+2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        Enabling Shadow DOM for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=158738
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed Shadow DOM from options (enabled by default)
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm:
+        * WebView/WebView.mm:
+
+2016-06-15  Antti Koivisto  <antti@apple.com>
+
+        Vary:Cookie validation doesn't work in private browsing
+        https://bugs.webkit.org/show_bug.cgi?id=158616
+        <rdar://problem/26755067>
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        (WebFrameNetworkingContext::create):
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (privateSession):
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+
+            Expose the private browsing session.
+
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+
+            Implement SessionID version of the function.
+
+        (WebPlatformStrategies::getRawCookies):
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebSocketProvider.h: Added.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce WTF::UniqueRef
+        https://bugs.webkit.org/show_bug.cgi?id=158596
+
+        Reviewed by Brady Eidson.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up EditorClient lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=158588
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::WebEditorClient):
+        (WebEditorClient::pageDestroyed): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-06-09  Andy Estes  <aestes@apple.com>
+
+        Define printing{Minimum,Maximum}ShrinkFactor in only one place
+        https://bugs.webkit.org/show_bug.cgi?id=158580
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebHTMLView.mm: Initialized _WebHTMLViewPrintingMinimumShrinkFactor and
+        _WebHTMLViewPrintingMaximumShrinkFactor with PrintContext::minimumShrinkFactor() and
+        PrintContext::maximumShrinkFactor() instead of with duplicated float literals.
+
+2016-06-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201810.
+        https://bugs.webkit.org/show_bug.cgi?id=158563
+
+        breaks build without ENABLE_WEB_ANIMATION (Requested by
+        mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "[web-animations] Add Animatable, AnimationEffect,
+        KeyframeEffect and Animation interface"
+        https://bugs.webkit.org/show_bug.cgi?id=156096
+        http://trac.webkit.org/changeset/201810
+
 2016-06-08  Rawinder Singh  <rawinder.singh-webkit@cisra.canon.com.au>
 
         [web-animations] Add Animatable, AnimationEffect, KeyframeEffect and Animation interface

@@ -1,3 +1,208 @@
+2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Honor bidi unicode codepoints
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        <rdar://problem/26527378>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/unicode/CharacterNames.h:
+
+2016-06-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202057.
+        https://bugs.webkit.org/show_bug.cgi?id=158749
+
+        This change broke the Windows build. (Requested by ryanhaddad
+        on #webkit).
+
+        Reverted changeset:
+
+        "Honor bidi unicode codepoints"
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        http://trac.webkit.org/changeset/202057
+
+2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Honor bidi unicode codepoints
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        <rdar://problem/26527378>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/unicode/CharacterNames.h:
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * wtf/UniqueRef.h:
+        (WTF::UniqueRef::operator->):
+        (WTF::UniqueRef::operator T&):
+        (WTF::UniqueRef::operator const T&):
+        Added operator T& to avoid unneeded .get() calls.
+
+2016-06-13  Sam Weinig  <sam@webkit.org>
+
+        Make HashMap and HashSet work with Refs
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+
+        Reviewed by Darin Adler.
+
+        * wtf/GetPtr.h:
+        Move HashTableDeletedValueType and HashTableEmptyValueType here, as they are now shared
+        by more than one smart pointer. This file should probably be renamed to something else
+        at some point to indicate that it contains helpers for pointer and ref related functionality.
+
+        * wtf/HashFunctions.h:
+        Add a DefaultHash for Refs. Customize the PtrHash to indicate that it is not safe to compare
+        to empty or deleted Refs.
+
+        * wtf/HashMap.h:
+        (WTF::HashMapTranslator::equal):
+        (WTF::HashMapTranslator::translate):
+        (WTF::HashMapEnsureTranslator::equal):
+        (WTF::HashMapEnsureTranslator::translate):
+        * wtf/HashSet.h:
+        (WTF::IdentityExtractor::extract):
+        (WTF::HashSetTranslator::hash):
+        (WTF::HashSetTranslator::equal):
+        (WTF::HashSetTranslator::translate):
+        * wtf/HashTable.h:
+        (WTF::IdentityHashTranslator::hash):
+        (WTF::IdentityHashTranslator::equal):
+        (WTF::IdentityHashTranslator::translate):
+        Use the new assignToEmpty trait function to allow uninitialized Ref's to be safely assigned to.
+
+        * wtf/HashTraits.h:
+        (WTF::HashTraits<Ref<P>>::emptyValue):
+        (WTF::HashTraits<Ref<P>>::isEmptyValue):
+        (WTF::HashTraits<Ref<P>>::assignToEmpty):
+        (WTF::HashTraits<Ref<P>>::peek):
+        (WTF::HashTraits<Ref<P>>::customDeleteBucket):
+        Add custom HashTraits for Ref. Also, introduce a new trait function, assignToEmpty, for use
+        in translation assignments. This is necessary since the default assignment operator for Ref
+        will not allow assignment to the empty Ref, which we need to do here.
+
+        * wtf/Ref.h:
+        (WTF::Ref::operator=):
+        (WTF::Ref::Ref):
+        (WTF::Ref::isHashTableDeletedValue):
+        (WTF::Ref::hashTableDeletedValue):
+        (WTF::Ref::isHashTableEmptyValue):
+        (WTF::Ref::hashTableEmptyValue):
+        Add explicit constructors/predicates for making deleted/empty Refs.
+
+        (WTF::Ref::assignToHashTableEmptyValue):
+        Add a special function that allows assignment to an empty Ref, which the
+        assignment operator does not.
+        
+        (WTF::IsSmartPtr):
+        Add an IsSmartPtr override to indicate that Ref is a smart pointer.
+
+        * wtf/RefPtr.h:
+        Move HashTableDeletedValueType to GetPtr.h.
+
+2016-06-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Stack overflow at RefPtr::release on Windows port since r201782
+        https://bugs.webkit.org/show_bug.cgi?id=158687
+
+        Reviewed by Chris Dumez.
+
+        RefPtr::release calls RefPtr::RefPtr, and RefPtr::RefPtr calls
+        RefPtr::release.
+
+        RefPtr::RefPtr does not need to call RefPtr::release.
+
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::RefPtr): Do not call RefPtr::release.
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments after r201978.
+        https://bugs.webkit.org/show_bug.cgi?id=158649
+        <rdar://problem/13258122>
+
+        Unreviewed.
+
+        * wtf/text/StringCommon.h:
+        (WTF::equal):
+        (WTF::naiveEqualWithoutPerformingUnicodeNormalization): Deleted.
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Map commonly used Chinese Windows font names to names present on Cocoa operating systems
+        https://bugs.webkit.org/show_bug.cgi?id=158649
+        <rdar://problem/13258122>
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringCommon.h:
+        (WTF::naiveEqualWithoutPerformingUnicodeNormalization): Added.
+
+2016-06-11  Chris Dumez  <cdumez@apple.com>
+
+        WorkerNavigator is missing some attributes
+        https://bugs.webkit.org/show_bug.cgi?id=158593
+        <rdar://problem/26731334>
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformUserPreferredLanguages.h:
+        * wtf/PlatformUserPreferredLanguagesWin.cpp:
+        (WTF::platformLanguage):
+        (WTF::platformUserPreferredLanguages):
+
+        Make platformUserPreferredLanguages() thread safe on Windows. The
+        Mac and Unix implementations are already thread-safe.
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce WTF::UniqueRef
+        https://bugs.webkit.org/show_bug.cgi?id=158596
+
+        Reviewed by Brady Eidson.
+
+        WTF::UniqueRef is like a std::unique_ptr that is guaranteed to be non-null.
+        std::make_unique returns a non-null value that is put into a std::unique_ptr, a type
+        that could contain null values.  To be able to pass such values around and store them
+        without wondering if they are null, we now have WTF::UniqueRef which cannot be null.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/UniqueRef.h: Added.
+        (WTF::makeUniqueRef):
+        (WTF::UniqueRef::UniqueRef):
+        (WTF::UniqueRef::get):
+        (WTF::UniqueRef::operator&):
+        (WTF::UniqueRef::operator->):
+
+2016-06-09  Brady Eidson  <beidson@apple.com>
+
+        Unaddressed review feedback from r201872
+
+        * wtf/CrossThreadTask.h:
+        (WTF::callFunctionForCrossThreadTask): Fix typo.
+
+2016-06-09  Brady Eidson  <beidson@apple.com>
+
+        Greatly simplify CrossThreadTask.h.
+        https://bugs.webkit.org/show_bug.cgi?id=158542
+
+        Reviewed by Darin Adler.
+
+        * wtf/CrossThreadTask.h:
+        (WTF::crossThreadCopy):
+        (WTF::callFunctionForCrossThreadTaskImpl):
+        (WTF::callFunctionForCrossThreadTask):
+        (WTF::createCrossThreadTask):
+        (WTF::callMemberFunctionForCrossThreadTaskImpl):
+        (WTF::callMemberFunctionForCrossThreadTask):
+
 2016-06-08  Brady Eidson  <beidson@apple.com>
 
         Make CrossThreadCopier more efficient (fewer copies!).

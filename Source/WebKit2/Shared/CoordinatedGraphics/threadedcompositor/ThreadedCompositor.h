@@ -84,8 +84,6 @@ public:
     static Ref<ThreadedCompositor> create(Client*, WebPage&);
     virtual ~ThreadedCompositor();
 
-    void setNeedsDisplay();
-
     void setNativeSurfaceHandleForCompositing(uint64_t);
     void setDeviceScaleFactor(float);
 
@@ -119,11 +117,9 @@ private:
     void scheduleDisplayImmediately();
     void didChangeVisibleRect() override;
 
-    bool ensureGLContext();
+    bool tryEnsureGLContext();
     WebCore::GLContext* glContext();
-    SimpleViewportController* viewportController() { return m_viewportController.get(); }
 
-    void callOnCompositingThread(std::function<void()>&&);
     void createCompositingThread();
     void runCompositingThread();
     void terminateCompositingThread();
@@ -140,10 +136,10 @@ private:
     std::unique_ptr<WebCore::GLContext> m_context;
 
     WebCore::IntSize m_viewportSize;
-    float m_deviceScaleFactor;
-    uint64_t m_nativeSurfaceHandle;
+    float m_deviceScaleFactor { 1 };
+    uint64_t m_nativeSurfaceHandle { 0 };
 
-    ThreadIdentifier m_threadIdentifier;
+    ThreadIdentifier m_threadIdentifier { 0 };
     Condition m_initializeRunLoopCondition;
     Lock m_initializeRunLoopConditionLock;
     Condition m_terminateRunLoopCondition;

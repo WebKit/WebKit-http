@@ -210,7 +210,7 @@ inline BuiltinGenerator HashTableValue::builtinAccessorSetterGenerator() const
 
 inline bool getStaticPropertySlotFromTable(VM& vm, const HashTable& table, JSObject* thisObject, PropertyName propertyName, PropertySlot& slot)
 {
-    if (thisObject->staticFunctionsReified())
+    if (thisObject->staticPropertiesReified())
         return false;
 
     auto* entry = table.entry(propertyName);
@@ -234,7 +234,7 @@ inline bool replaceStaticPropertySlot(VM& vm, JSObject* thisObject, PropertyName
     if (!thisObject->putDirect(vm, propertyName, value))
         return false;
 
-    if (!thisObject->staticFunctionsReified())
+    if (!thisObject->staticPropertiesReified())
         thisObject->JSObject::setStructure(vm, Structure::attributeChangeTransition(vm, thisObject->structure(), propertyName, 0));
 
     return true;
@@ -289,7 +289,7 @@ inline bool lookupPut(ExecState* exec, PropertyName propertyName, JSObject* base
     return true;
 }
 
-inline void reifyStaticProperty(VM& vm, const Identifier& propertyName, const HashTableValue& value, JSObject& thisObj)
+inline void reifyStaticProperty(VM& vm, const PropertyName& propertyName, const HashTableValue& value, JSObject& thisObj)
 {
     if (value.attributes() & Builtin) {
         if (value.attributes() & Accessor)

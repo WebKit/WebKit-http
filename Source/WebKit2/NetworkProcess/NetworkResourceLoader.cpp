@@ -178,7 +178,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
             loader->dispatchWillSendRequestForCacheEntry(WTFMove(entry));
             return;
         }
-        if (loader->m_parameters.needsCertificateInfo && !entry->response().containsCertificateInfo()) {
+        if (loader->m_parameters.needsCertificateInfo && !entry->response().certificateInfo()) {
             loader->startNetworkLoad(request);
             return;
         }
@@ -208,7 +208,7 @@ void NetworkResourceLoader::startNetworkLoad(const ResourceRequest& request)
     NetworkLoadParameters parameters = m_parameters;
     parameters.defersLoading = m_defersLoading;
     parameters.request = request;
-    m_networkLoad = std::make_unique<NetworkLoad>(*this, parameters);
+    m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters));
 }
 
 void NetworkResourceLoader::setDefersLoading(bool defers)
@@ -274,11 +274,11 @@ void NetworkResourceLoader::abort()
     cleanup();
 }
 
-auto NetworkResourceLoader::didReceiveResponse(const ResourceResponse& receivedResponse) -> ShouldContinueDidReceiveResponse
+auto NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedResponse) -> ShouldContinueDidReceiveResponse
 {
     NETWORKRESOURCELOADER_LOG_ALWAYS("Received network resource response: loader = %p, pageID = %llu, frameID = %llu, isMainResource = %d, isSynchronous = %d, httpStatusCode = %d", this, m_parameters.webPageID, m_parameters.webFrameID, isMainResource(), isSynchronous(), receivedResponse.httpStatusCode());
 
-    m_response = receivedResponse;
+    m_response = WTFMove(receivedResponse);
 
     // For multipart/x-mixed-replace didReceiveResponseAsync gets called multiple times and buffering would require special handling.
     if (!isSynchronous() && m_response.isMultipart())

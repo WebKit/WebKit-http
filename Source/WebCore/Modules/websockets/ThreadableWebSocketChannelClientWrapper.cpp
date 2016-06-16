@@ -34,15 +34,14 @@
 
 #include "ScriptExecutionContext.h"
 #include "WebSocketChannelClient.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/StringView.h>
 
 namespace WebCore {
 
-ThreadableWebSocketChannelClientWrapper::ThreadableWebSocketChannelClientWrapper(ScriptExecutionContext* context, WebSocketChannelClient* client)
+ThreadableWebSocketChannelClientWrapper::ThreadableWebSocketChannelClientWrapper(ScriptExecutionContext& context, WebSocketChannelClient& client)
     : m_context(context)
-    , m_client(client)
+    , m_client(&client)
     , m_peer(nullptr)
     , m_failedWebSocketChannelCreation(false)
     , m_syncMethodDone(true)
@@ -52,7 +51,7 @@ ThreadableWebSocketChannelClientWrapper::ThreadableWebSocketChannelClientWrapper
 {
 }
 
-Ref<ThreadableWebSocketChannelClientWrapper> ThreadableWebSocketChannelClientWrapper::create(ScriptExecutionContext* context, WebSocketChannelClient* client)
+Ref<ThreadableWebSocketChannelClientWrapper> ThreadableWebSocketChannelClientWrapper::create(ScriptExecutionContext& context, WebSocketChannelClient& client)
 {
     return adoptRef(*new ThreadableWebSocketChannelClientWrapper(context, client));
 }
@@ -137,12 +136,12 @@ void ThreadableWebSocketChannelClientWrapper::setSendRequestResult(ThreadableWeb
     m_syncMethodDone = true;
 }
 
-unsigned long ThreadableWebSocketChannelClientWrapper::bufferedAmount() const
+unsigned ThreadableWebSocketChannelClientWrapper::bufferedAmount() const
 {
     return m_bufferedAmount;
 }
 
-void ThreadableWebSocketChannelClientWrapper::setBufferedAmount(unsigned long bufferedAmount)
+void ThreadableWebSocketChannelClientWrapper::setBufferedAmount(unsigned bufferedAmount)
 {
     m_bufferedAmount = bufferedAmount;
     m_syncMethodDone = true;
@@ -186,7 +185,7 @@ void ThreadableWebSocketChannelClientWrapper::didReceiveBinaryData(Vector<uint8_
         processPendingTasks();
 }
 
-void ThreadableWebSocketChannelClientWrapper::didUpdateBufferedAmount(unsigned long bufferedAmount)
+void ThreadableWebSocketChannelClientWrapper::didUpdateBufferedAmount(unsigned bufferedAmount)
 {
     m_pendingTasks.append(std::make_unique<ScriptExecutionContext::Task>([this, protectedThis = Ref<ThreadableWebSocketChannelClientWrapper>(*this), bufferedAmount] (ScriptExecutionContext&) {
         if (m_client)
@@ -208,7 +207,7 @@ void ThreadableWebSocketChannelClientWrapper::didStartClosingHandshake()
         processPendingTasks();
 }
 
-void ThreadableWebSocketChannelClientWrapper::didClose(unsigned long unhandledBufferedAmount, WebSocketChannelClient::ClosingHandshakeCompletionStatus closingHandshakeCompletion, unsigned short code, const String& reason)
+void ThreadableWebSocketChannelClientWrapper::didClose(unsigned unhandledBufferedAmount, WebSocketChannelClient::ClosingHandshakeCompletionStatus closingHandshakeCompletion, unsigned short code, const String& reason)
 {
     m_pendingTasks.append(std::make_unique<ScriptExecutionContext::Task>([this, protectedThis = Ref<ThreadableWebSocketChannelClientWrapper>(*this), unhandledBufferedAmount, closingHandshakeCompletion, code, reason = reason.isolatedCopy()] (ScriptExecutionContext&) {
             if (m_client)
@@ -248,7 +247,7 @@ void ThreadableWebSocketChannelClientWrapper::processPendingTasks()
     if (!m_syncMethodDone) {
         // When a synchronous operation is in progress (i.e. the execution stack contains
         // WorkerThreadableWebSocketChannel::waitForMethodCompletion()), we cannot invoke callbacks in this run loop.
-        m_context->postTask([this, protectedThis = Ref<ThreadableWebSocketChannelClientWrapper>(*this)] (ScriptExecutionContext& context) {
+        m_context.postTask([this, protectedThis = Ref<ThreadableWebSocketChannelClientWrapper>(*this)] (ScriptExecutionContext& context) {
             ASSERT_UNUSED(context, context.isWorkerGlobalScope());
             processPendingTasks();
         });
@@ -257,7 +256,7 @@ void ThreadableWebSocketChannelClientWrapper::processPendingTasks()
 
     Vector<std::unique_ptr<ScriptExecutionContext::Task>> pendingTasks = WTFMove(m_pendingTasks);
     for (auto& task : pendingTasks)
-        task->performTask(*m_context);
+        task->performTask(m_context);
 }
 
 } // namespace WebCore

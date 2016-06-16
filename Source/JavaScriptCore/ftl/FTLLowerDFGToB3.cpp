@@ -1000,6 +1000,9 @@ private:
         case PutDynamicVar:
             compilePutDynamicVar();
             break;
+        case Unreachable:
+            compileUnreachable();
+            break;
 
         case PhantomLocal:
         case LoopHint:
@@ -5194,7 +5197,7 @@ private:
     {
         Node* node = m_node;
         LValue jsCallee = lowJSValue(m_node->child1());
-        LValue thisArg = lowJSValue(m_node->child3());
+        LValue thisArg = lowJSValue(m_node->child2());
         
         LValue jsArguments = nullptr;
         bool forwarding = false;
@@ -5204,7 +5207,7 @@ private:
         case TailCallVarargs:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
-            jsArguments = lowJSValue(node->child2());
+            jsArguments = lowJSValue(node->child3());
             break;
         case CallForwardVarargs:
         case TailCallForwardVarargs:
@@ -5357,7 +5360,12 @@ private:
                     jit.move(CCallHelpers::TrustedImm32(originalStackHeight / sizeof(EncodedJSValue)), scratchGPR2);
                     
                     CCallHelpers::JumpList slowCase;
-                    emitSetupVarargsFrameFastCase(jit, scratchGPR2, scratchGPR1, scratchGPR2, scratchGPR3, node->child2()->origin.semantic.inlineCallFrame, data->firstVarArgOffset, slowCase);
+                    InlineCallFrame* inlineCallFrame;
+                    if (node->child3())
+                        inlineCallFrame = node->child3()->origin.semantic.inlineCallFrame;
+                    else
+                        inlineCallFrame = node->origin.semantic.inlineCallFrame;
+                    emitSetupVarargsFrameFastCase(jit, scratchGPR2, scratchGPR1, scratchGPR2, scratchGPR3, inlineCallFrame, data->firstVarArgOffset, slowCase);
 
                     CCallHelpers::Jump done = jit.jump();
                     slowCase.link(&jit);
@@ -5501,7 +5509,11 @@ private:
     void compileForwardVarargs()
     {
         LoadVarargsData* data = m_node->loadVarargsData();
-        InlineCallFrame* inlineCallFrame = m_node->child1()->origin.semantic.inlineCallFrame;
+        InlineCallFrame* inlineCallFrame;
+        if (m_node->child1())
+            inlineCallFrame = m_node->child1()->origin.semantic.inlineCallFrame;
+        else
+            inlineCallFrame = m_node->origin.semantic.inlineCallFrame;
         
         LValue length = getArgumentsLength(inlineCallFrame).value;
         LValue lengthIncludingThis = m_out.add(length, m_out.constInt32(1 - data->offset));
@@ -7684,6 +7696,18 @@ private:
             m_callFrame, lowCell(m_node->child1()), lowJSValue(m_node->child2()), m_out.constIntPtr(uid), m_out.constInt32(m_node->getPutInfo())));
     }
     
+    void compileUnreachable()
+    {
+        // It's so tempting to assert that AI has proved that this is unreachable. But that's
+        // simply not a requirement of the Unreachable opcode at all. If you emit an opcode that
+        // *you* know will not return, then it's fine to end the basic block with Unreachable
+        // after that opcode. You don't have to also prove to AI that your opcode does not return.
+        // Hence, there is nothing to do here but emit code that will crash, so that we catch
+        // cases where you said Unreachable but you lied.
+        
+        crash();
+    }
+    
     void compareEqObjectOrOtherToObject(Edge leftChild, Edge rightChild)
     {
         LValue rightCell = lowCell(rightChild);
@@ -9091,7 +9115,7 @@ private:
         m_out.jump(continuation);
         
         m_out.appendTo(slowPath, continuation);
-        results.append(m_out.anchor(m_out.call(m_out.int32, m_out.operation(toInt32), doubleValue)));
+        results.append(m_out.anchor(m_out.call(m_out.int32, m_out.operation(operationToInt32), doubleValue)));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
@@ -9120,7 +9144,7 @@ private:
         
         LBasicBlock lastNext = m_out.appendTo(slowPath, continuation);
         ValueFromBlock slowResult = m_out.anchor(
-            m_out.call(m_out.int32, m_out.operation(toInt32), doubleValue));
+            m_out.call(m_out.int32, m_out.operation(operationToInt32), doubleValue));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);

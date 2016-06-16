@@ -43,6 +43,7 @@ class Identifier;
     macro(argumentCount) \
     macro(assert) \
     macro(isObject) \
+    macro(tailCallForwardArguments) \
     macro(tryGetById) \
     macro(putByValDirect) \
     macro(toString)
@@ -57,12 +58,6 @@ class Identifier;
     macro(promiseStatePending) \
     macro(promiseStateFulfilled) \
     macro(promiseStateRejected) \
-    macro(symbolIterator) \
-    macro(symbolMatch) \
-    macro(symbolReplace) \
-    macro(symbolSearch) \
-    macro(symbolSpecies) \
-    macro(symbolSplit) \
     macro(GeneratorResumeModeNormal) \
     macro(GeneratorResumeModeThrow) \
     macro(GeneratorResumeModeReturn) \

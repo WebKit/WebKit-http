@@ -1741,7 +1741,10 @@ Controller.prototype = {
 
     updateCaptionButton: function()
     {
-        if (this.video.webkitHasClosedCaptions || this.video.audioTracks.length > 1)
+        var audioTracks = this.host.sortedTrackListForMenu(this.video.audioTracks);
+        var textTracks = this.host.sortedTrackListForMenu(this.video.textTracks);
+
+        if ((textTracks && textTracks.length) || (audioTracks && audioTracks.length > 1))
             this.controls.captionButton.classList.remove(this.ClassNames.hidden);
         else
             this.controls.captionButton.classList.add(this.ClassNames.hidden);
@@ -2032,10 +2035,11 @@ Controller.prototype = {
 
     updateHasVideo: function()
     {
-        if (this.hasVideo())
-            this.controls.panel.classList.remove(this.ClassNames.noVideo);
-        else
-            this.controls.panel.classList.add(this.ClassNames.noVideo);
+        this.controls.panel.classList.toggle(this.ClassNames.noVideo, !this.hasVideo());
+        // The availability of the picture-in-picture button as well as the full-screen
+        // button depends no the value returned by hasVideo(), so make sure we invalidate
+        // the availability of both controls.
+        this.updateFullscreenButtons();
     },
 
     updateVolume: function()

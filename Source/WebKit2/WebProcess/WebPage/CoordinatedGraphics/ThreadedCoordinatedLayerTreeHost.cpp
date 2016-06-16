@@ -143,9 +143,8 @@ void ThreadedCoordinatedLayerTreeHost::forceRepaint()
     scheduleLayerFlush();
 }
 
-void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const WebCore::IntSize& newSize)
+void ThreadedCoordinatedLayerTreeHost::contentsSizeChanged(const WebCore::IntSize& newSize)
 {
-    m_coordinator->sizeDidChange(newSize);
     m_compositor->didChangeContentsSize(newSize);
 }
 
@@ -171,8 +170,9 @@ GraphicsLayerFactory* ThreadedCoordinatedLayerTreeHost::graphicsLayerFactory()
     return m_coordinator.get();
 }
 
-void ThreadedCoordinatedLayerTreeHost::viewportSizeChanged(const WebCore::IntSize& size)
+void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const WebCore::IntSize& size)
 {
+    m_coordinator->sizeDidChange(size);
     m_compositor->didChangeViewportSize(size);
 }
 
@@ -205,6 +205,7 @@ void ThreadedCoordinatedLayerTreeHost::setNativeSurfaceHandleForCompositing(uint
 {
     m_layerTreeContext.contextID = handle;
     m_compositor->setNativeSurfaceHandleForCompositing(handle);
+    scheduleLayerFlush();
 }
 #endif
 
