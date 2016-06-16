@@ -24,10 +24,10 @@
 #include <QtGui/QPolygonF>
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickWindow>
+#include <QtQuick/QSGRenderNode>
 #include <QtQuick/QSGSimpleRectNode>
 #include <WebCore/CoordinatedGraphicsScene.h>
 #include <WebCore/TransformationMatrix.h>
-#include <private/qsgrendernode_p.h>
 
 using namespace WebCore;
 
@@ -41,12 +41,12 @@ public:
         coordinatedGraphicsScene()->setActive(true);
     }
 
-    virtual StateFlags changedStates()
+    StateFlags changedStates() const Q_DECL_OVERRIDE
     {
         return StateFlags(StencilState) | ColorState | BlendState;
     }
 
-    virtual void render(const RenderState& state)
+    void render(const RenderState *state) Q_DECL_OVERRIDE
     {
         TransformationMatrix renderMatrix;
         if (pageNode()->devicePixelRatio() != 1.0) {
@@ -58,16 +58,21 @@ public:
 
         // When rendering to an intermediate surface, Qt will
         // mirror the projection matrix to fit on the destination coordinate system.
-        const QMatrix4x4* projection = state.projectionMatrix;
+        const QMatrix4x4* projection = state->projectionMatrix();
         bool mirrored = projection && (*projection)(0, 0) * (*projection)(1, 1) - (*projection)(0, 1) * (*projection)(1, 0) > 0;
 
         // FIXME: Support non-rectangular clippings.
         coordinatedGraphicsScene()->paintToCurrentGLContext(renderMatrix, inheritedOpacity(), clipRect(), mirrored ? TextureMapper::PaintingMirrored : 0);
     }
 
-    ~ContentsSGNode()
+    void releaseResources() Q_DECL_OVERRIDE
     {
         coordinatedGraphicsScene()->purgeGLResources();
+    }
+
+    ~ContentsSGNode()
+    {
+        releaseResources();
     }
 
     const QtWebPageSGNode* pageNode() const
