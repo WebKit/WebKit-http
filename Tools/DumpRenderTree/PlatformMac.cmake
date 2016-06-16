@@ -7,10 +7,8 @@ if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
 set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
 elif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
 set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceYosemite.a)
-elif ("${CURRENT_OSX_VERSION}" MATCHES "10.11")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
 else ()
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceOSX10.12.a)
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
 endif ()
 link_directories(../../WebKitLibraries)
 
@@ -26,8 +24,13 @@ list(APPEND DumpRenderTree_LIBRARIES
     WebKit2
 )
 
-add_definitions("-ObjC++ -std=c++11")
-
+if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
+elif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceYosemite.a)
+else ()
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
+endif ()
 link_directories(../../WebKitLibraries)
 include_directories(../../WebKitLibraries)
 
@@ -44,31 +47,55 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     ${WTF_DIR}/icu
 )
 
-list(APPEND TestNetscapePlugin_SOURCES
+# Common ${TestNetscapePlugin_SOURCES} from CMakeLists.txt are C++ source files.
+list(APPEND TestNetscapePlugin_Cpp_SOURCES
+    ${TestNetscapePlugin_SOURCES}
+)
+
+list(APPEND TestNetscapePlugin_ObjCpp_SOURCES
     TestNetscapePlugIn/PluginObjectMac.mm
 )
 
-list(APPEND DumpRenderTree_SOURCES
+set(TestNetscapePlugin_SOURCES
+    ${TestNetscapePlugin_Cpp_SOURCES}
+    ${TestNetscapePlugin_ObjCpp_SOURCES}
+)
+
+# Common ${DumpRenderTree_SOURCES} from CMakeLists.txt are C++ source files.
+list(APPEND DumpRenderTree_Cpp_SOURCES
+    ${DumpRenderTree_SOURCES}
+)
+
+list(APPEND DumpRenderTree_ObjC_SOURCES
     DefaultPolicyDelegate.m
     DumpRenderTreeFileDraggingSource.m
 
+    mac/AppleScriptController.m
+    mac/DumpRenderTreePasteboard.m
+    mac/NavigationController.m
+    mac/ObjCController.m
+    mac/ObjCPlugin.m
+    mac/ObjCPluginFunction.m
+    mac/TextInputController.m
+)
+
+list(APPEND DumpRenderTree_Cpp_SOURCES
     cf/WebArchiveDumpSupport.cpp
 
     cg/PixelDumpSupportCG.cpp
 
-    mac/AccessibilityCommonMac.h
+    mac/CheckedMalloc.cpp
+)
+
+list(APPEND DumpRenderTree_ObjCpp_SOURCES
     mac/AccessibilityCommonMac.mm
     mac/AccessibilityControllerMac.mm
-    mac/AccessibilityNotificationHandler.h
     mac/AccessibilityNotificationHandler.mm
     mac/AccessibilityTextMarkerMac.mm
     mac/AccessibilityUIElementMac.mm
-    mac/AppleScriptController.m
-    mac/CheckedMalloc.cpp
     mac/DumpRenderTree.mm
     mac/DumpRenderTreeDraggingInfo.mm
     mac/DumpRenderTreeMain.mm
-    mac/DumpRenderTreePasteboard.m
     mac/DumpRenderTreeWindow.mm
     mac/EditingDelegate.mm
     mac/EventSendingController.mm
@@ -77,19 +104,32 @@ list(APPEND DumpRenderTree_SOURCES
     mac/HistoryDelegate.mm
     mac/MockGeolocationProvider.mm
     mac/MockWebNotificationProvider.mm
-    mac/NavigationController.m
-    mac/ObjCController.m
-    mac/ObjCPlugin.m
-    mac/ObjCPluginFunction.m
     mac/PixelDumpSupportMac.mm
     mac/PolicyDelegate.mm
     mac/ResourceLoadDelegate.mm
     mac/TestRunnerMac.mm
-    mac/TextInputController.m
     mac/UIDelegate.mm
     mac/WebArchiveDumpSupportMac.mm
     mac/WorkQueueItemMac.mm
 )
+
+set(DumpRenderTree_SOURCES
+    ${DumpRenderTree_Cpp_SOURCES}
+    ${DumpRenderTree_ObjC_SOURCES}
+    ${DumpRenderTree_ObjCpp_SOURCES}
+)
+
+foreach (_file ${DumpRenderTree_ObjC_SOURCES})
+    set_source_files_properties(${_file} PROPERTIES COMPILE_FLAGS "-std=c99")
+endforeach ()
+
+foreach (_file ${DumpRenderTree_Cpp_SOURCES} ${TestNetscapePlugin_Cpp_SOURCES})
+    set_source_files_properties(${_file} PROPERTIES COMPILE_FLAGS "-std=c++14")
+endforeach ()
+
+foreach (_file ${DumpRenderTree_ObjCpp_SOURCES} ${TestNetscapePlugin_ObjCpp_SOURCES})
+    set_source_files_properties(${_file} PROPERTIES COMPILE_FLAGS "-ObjC++ -std=c++14")
+endforeach ()
 
 set(DumpRenderTree_RESOURCES
     AHEM____.TTF

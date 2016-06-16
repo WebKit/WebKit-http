@@ -39,6 +39,7 @@
 #include "IntRect.h"
 #include "JSDOMWindowBase.h"
 #include "MainFrame.h"
+#include "Page.h"
 #include "PageConfiguration.h"
 #include "RenderSVGRoot.h"
 #include "RenderStyle.h"
@@ -379,7 +380,7 @@ bool SVGImage::dataChanged(bool allDataReceived)
         return true;
 
     if (allDataReceived) {
-        PageConfiguration pageConfiguration;
+        PageConfiguration pageConfiguration(makeUniqueRef<EmptyEditorClient>(), makeUniqueRef<EmptySocketProvider>());
         fillWithEmptyClients(pageConfiguration);
         m_chromeClient = std::make_unique<SVGImageChromeClient>(this);
         pageConfiguration.chromeClient = m_chromeClient.get();
@@ -390,7 +391,7 @@ bool SVGImage::dataChanged(bool allDataReceived)
         // This will become an issue when SVGImage will be able to load other
         // SVGImage objects, but we're safe now, because SVGImage can only be
         // loaded by a top-level document.
-        m_page = std::make_unique<Page>(pageConfiguration);
+        m_page = std::make_unique<Page>(WTFMove(pageConfiguration));
         m_page->settings().setMediaEnabled(false);
         m_page->settings().setScriptEnabled(false);
         m_page->settings().setPluginsEnabled(false);

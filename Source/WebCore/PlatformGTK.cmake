@@ -248,7 +248,7 @@ set(WebCore_USER_AGENT_SCRIPTS
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/gtk/RenderThemeGtk.cpp)
 
 set(WebCore_SDP_PROCESSOR_SCRIPTS ${WEBCORE_DIR}/Modules/mediastream/sdp.js)
-set(WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/mediastream/gtk/SDPProcessorScriptResource.cpp)
+set(WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/mediastream/gtk/SDPProcessorScriptResourceGtk.cpp)
 
 list(APPEND WebCore_LIBRARIES
     ${ATK_LIBRARIES}
@@ -592,13 +592,9 @@ list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
 
 if (ENABLE_WEB_ANIMATIONS)
     list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
-        animation/Animatable.idl
-        animation/AnimationEffect.idl
         animation/AnimationTimeline.idl
         animation/DocumentAnimation.idl
         animation/DocumentTimeline.idl
-        animation/KeyframeEffect.idl
-        animation/WebAnimation.idl
     )
 endif ()
 

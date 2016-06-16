@@ -72,6 +72,7 @@
 #include "MemoryPressureHandler.h"
 #include "NetworkingContext.h"
 #include "NoEventDispatchAssertion.h"
+#include "Page.h"
 #include "PageGroup.h"
 #include "PageThrottler.h"
 #include "PlatformMediaSessionManager.h"
@@ -4642,7 +4643,7 @@ void HTMLMediaElement::mediaPlayerCharacteristicChanged(MediaPlayer*)
         mediaControls()->reset();
     updateRenderer();
 
-    if (isPlaying() && !m_mediaSession->playbackPermitted(*this))
+    if (!paused() && !m_mediaSession->playbackPermitted(*this))
         pauseInternal();
 
     m_mediaSession->setCanProduceAudio(m_player && m_readyState >= HAVE_METADATA && hasAudio());
@@ -7054,7 +7055,7 @@ void HTMLMediaElement::updateShouldAutoplay()
 
 void HTMLMediaElement::updateShouldPlay()
 {
-    if (isPlaying() && !m_mediaSession->playbackPermitted(*this))
+    if (!paused() && !m_mediaSession->playbackPermitted(*this))
         pauseInternal();
     else if (canTransitionFromAutoplayToPlay())
         play();

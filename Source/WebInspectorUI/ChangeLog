@@ -1,3 +1,715 @@
+2016-06-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rename DataGrid.showColumn to setColumnVisible
+        https://bugs.webkit.org/show_bug.cgi?id=158764
+        <rdar://problem/26801448>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        Drive-by update to initialize "this._columnChooserEnabled".
+
+        (WebInspector.DataGrid.prototype.set identifier):
+        (WebInspector.DataGrid.prototype.insertColumn):
+        (WebInspector.DataGrid.prototype._collapseColumnGroupWithCell):
+        Use new method name.
+
+        (WebInspector.DataGrid.prototype._contextMenuInHeader):
+        Drive-by style update.
+
+2016-06-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Storage tab should allow hiding columns in the cookies grid
+        https://bugs.webkit.org/show_bug.cgi?id=158767
+        <rdar://problem/26803568>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._rebuildTable):
+        Enable column chooser, exclude Name and Value columns.
+
+2016-06-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Visual Sidebar: Remove "Text -> Content" subsection
+        https://bugs.webkit.org/show_bug.cgi?id=158758
+        <rdar://problem/26799628>
+
+        Reviewed by Timothy Hatcher.
+
+        "content" CSS property only works with pseudo elements ::before and ::after.
+        It doesn't do anything for regular (non pseudo) elements. Remove it to
+        reduce UI clutter.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype.initialLayout):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateContentSection): Deleted.
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container > *:first-child:matches(.visual-style-property-value-container)): Deleted.
+
+2016-06-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename Timeline.setAutoCaptureInstruments to Timeline.setInstruments
+        https://bugs.webkit.org/show_bug.cgi?id=158762
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._updateAutoCaptureInstruments):
+        (WebInspector.TimelineManager):
+
+2016-06-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add the unprefixed version of the pseudo element ::placeholder
+        https://bugs.webkit.org/show_bug.cgi?id=158653
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > input[type="search"]::placeholder):
+        (.filter-bar > input[type="search"]::-webkit-input-placeholder): Deleted.
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner.console-find-banner > input[type="search"]::placeholder):
+        (.find-banner.console-find-banner > input[type="search"]::-webkit-input-placeholder): Deleted.
+        * UserInterface/Views/GoToLineDialog.css:
+        (.go-to-line-dialog > div > input::placeholder):
+        (.go-to-line-dialog > div > input::-webkit-input-placeholder): Deleted.
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog > .field > input::placeholder):
+        (.open-resource-dialog > .field > input::-webkit-input-placeholder): Deleted.
+        * UserInterface/Views/SearchBar.css:
+        (.search-bar > input[type="search"]::placeholder):
+        (.search-bar > input[type="search"]::-webkit-input-placeholder): Deleted.
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css:
+
+2016-06-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Introduce --navigation-bar-height CSS variable
+        https://bugs.webkit.org/show_bug.cgi?id=158752
+
+        Reviewed by Timothy Hatcher.
+
+        Abstract a commonly repeated height value (29px) into a variable.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content.has-filter-bar):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger > :matches(.content, .empty-content-placeholder)):
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar):
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar):
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .content):
+        (.sidebar > .panel.navigation > .overflow-shadow.top):
+        * UserInterface/Views/NetworkSidebarPanel.css:
+        (.sidebar > .panel.navigation.network > .title-bar):
+        * UserInterface/Views/ResourceSidebarPanel.css:
+        (.sidebar > .panel.navigation.resource > :matches(.content, .empty-content-placeholder)):
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (.sidebar > .panel.navigation.search > :matches(.content, .empty-content-placeholder)):
+        (.sidebar > .panel.navigation.search > .search-bar):
+        * UserInterface/Views/Sidebar.css:
+        (.sidebar.has-navigation-bar > .panel):
+        * UserInterface/Views/StorageSidebarPanel.css:
+        (.sidebar > .panel.navigation.storage > :matches(.content, .empty-content-placeholder)):
+        * UserInterface/Views/TimelineRecordingContentView.css:
+        (.content-view.timeline-recording > .content-browser .recording-progress):
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2016-06-14  Saam Barati  <sbarati@apple.com>
+
+        Follow up to: Web Inspector: Call Trees view should have a 'Top Functions'-like mode
+        https://bugs.webkit.org/show_bug.cgi?id=158555
+        <rdar://problem/26712544>
+
+        Unreviewed follow up patch.
+
+        - Move a long if-else sequence to a switch statement.
+        - Fix a copy-paste typo in a Symbol(.) enum.
+
+        * UserInterface/Models/CallingContextTree.js:
+        (WebInspector.CallingContextTree.prototype.updateTreeWithStackTrace):
+
+2016-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Exception Stack in UncaughtExceptionReporter view
+        https://bugs.webkit.org/show_bug.cgi?id=158657
+        <rdar://problem/26754441>
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.css:
+        (.uncaught-exception-sheet li):
+        Make newlines significant.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        (unblockEventHandlers):
+        (handleError):
+        (handleLinkClick):
+        (formattedEntry):
+        Format the exception and a possible stack with a bit of sanitizing.
+
+2016-06-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Filter Records not applying to new records
+        https://bugs.webkit.org/show_bug.cgi?id=158213
+        <rdar://problem/26543912>
+
+        Reviewed by Timothy Hatcher.
+
+        This patch makes the following improvements to timeline grid filtering:
+
+            - Records are filtered as they are added to the grid.
+            - Timeline view no longer triggers a filter refresh while the
+              current time changes while recording.
+            - Filters are refreshed whenever the current timeline view changes.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.hasFilters):
+        Helper function to check for custom and text filters.
+
+        (WebInspector.DataGrid.prototype._applyFiltersToNodeAndDispatchEvent):
+        Encapsulate node state change and event dispatch, which was previously
+        done in multiple places.
+
+        (WebInspector.DataGrid.prototype.insertChild):
+        Filter incoming node if needed.
+
+        (WebInspector.DataGrid.prototype._updateFilter.createIteratorForNodesToBeFiltered):
+        (WebInspector.DataGrid.prototype._updateFilter):
+        (WebInspector.DataGrid.prototype.yieldableTaskWillProcessItem):
+        Use new convenience functions.
+
+        (WebInspector.DataGrid.prototype.hasCustomFilters): Deleted.
+        Renamed `hasFilters`.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        Refresh grid filters on view change.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.set startTime):
+        (WebInspector.TimelineView.prototype.set endTime):
+        Schedule filter change notification when selection bounds changes.
+
+        (WebInspector.TimelineView.prototype._timesDidChange):
+        (WebInspector.TimelineView.prototype._scheduleFilterDidChange):
+        (WebInspector.TimelineView):
+
+2016-06-13  Saam Barati  <sbarati@apple.com>
+
+        Web Inspector: Call Trees view should have a 'Top Functions'-like mode
+        https://bugs.webkit.org/show_bug.cgi?id=158555
+        <rdar://problem/26712544>
+
+        Reviewed by Timothy Hatcher.
+
+        This patch adds a Top Functions view that is similar to Instruments'
+        Top Functions view. I really wanted to add this view because I've
+        been doing a lot of performance debugging and I've exclusively 
+        used the Top Functions view and I want the Inspector to also have
+        this view. I like to think of it as a more sophisticated version of the bottom-up view.
+        
+        Top Functions works by treating every frame as a root in the tree.
+        Top functions view then presents a list of "roots". This is the same
+        as all other views, which also present a list of roots, but in this case,
+        every frame is a root. Bottom Up is great for nailing in specific performance
+        problems in exactly one frame. But Bottom Up doesn't give you good context about where
+        a specific frame is in the call tree and how frames are related by having
+        a caller or some path of shared callers. For example, consider this call tree:
+                 (program)
+                 /        \
+                /          \
+           (many nodes...)  
+              / 
+             /
+            (parent)
+            /   \
+           /     \
+         (leaf1)  (leaf2)
+        
+        Suppose that 'leaf1' is super hot, and 'leaf2' is moderately hot.
+        If we look at this through Bottom Up view, we will see 'leaf1'
+        is super hot, but it will take more scrolling to see that 'leaf2'
+        is moderately hot. Lets say that 'parent' is also moderately hot,
+        but that the majority of its time isn't self time. With Bottom Up view,
+        there is no good way to see that 'leaf1' and 'leaf2' are both nodes under 'parent'.
+        With Top Down, you can find this information, but it requires a ton of drilling down into
+        the tree (i.e, you must expand past the 'many nodes...' I drew above). It's inconvenient to
+        use Top Down here for indentation alone. Bottom up will tell you that 'leaf1' is super hot,
+        and that 'leaf2' and 'parent' are moderately hot, but it doesn't show how they're related
+        in the original tree. It's important to see that 'parent's total time is very high
+        because it itself is moderately hot, and it has a child node that is super hot, and
+        another child that's moderately 'hot'. For the sake of this example, let's pretend
+        that 85% of the program's time is spent inside 'parent'. Seeing this information through
+        'Top Functions' is easy because this information filters to the top of the list. Specifically,
+        when using 'Top Functions' sorted by Total Time. Because every node is a root, there will be
+        a top-level entry for every frame in the program. Specifically, there will be a top-level node
+        for 'parent' in my above example. Because I've sorted this view by Total Time, I will see '(program)'
+        first. That's because 100% of execution time is under the '(program)' frame. Then, I might see
+        a few other nodes that also run the entire time because '(program)' calls them, and they eventually
+        call into other things that never leave the stack. These will also have time ranges near 100%.
+        But, only a few nodes after that, I'll see 'parent' in the list because it accounts for 85% of
+        execution time. Immediately, I will see that it has some self time, and that it has two child
+        nodes that have self time. This is really helpful.
+        
+        Let's consider another example where it's not easy in Top Down to get the full picture of 'parent':
+                   (program)
+                    /  |  \
+                 (... many nodes...)
+                  /           \
+            (many nodes...)   (many nodes...)
+                 /             \
+               parent         parent
+                 |              |
+                leaf1          leaf2
+        
+        
+        If we viewed this program in Top Down, we don't get a full picture of 'parent'
+        because it has its time distributed in two different subsections of the tree.
+        Specifically, lets say it has 70% of time in the leaf1 path, and 30% of the
+        time in the leaf2 path. We want a way to see these things together. It's impossible
+        to do this in Top Down or Bottom Up. But, in Top Functions view, we get the view that
+        we want to see because we treat 'parent' as a root of the tree. Because we do this,
+        we will create the following sub tree in the Top Functions view:
+                parent
+               /      \
+             leaf1   leaf2
+        This happens naturally because when 'parent' is a root, we add all its children
+        to its subtree.
+        
+        Constructing this tree is really easy. What we do is take any arbitrary stack
+        trace of length n, and treat is as n separate stack traces. Specifically, we
+        perform the following operation for any stack trace S.
+        
+        S = [A, B, C, D]
+        (A is the entry frame, and D is the top of the stack).
+        We will transform this into a list of stack traces S' like so:
+        S' = [[A, B, C, D], [B, C, D], [C, D], [D]]
+        
+        If we then run the normal top down tree algorithm on this set of stack
+        traces, all nodes get treated as roots, and voila, we get the Top Functions view.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/TimelineManager.js:
+        * UserInterface/Main.html:
+        * UserInterface/Models/CallingContextTree.js:
+        * UserInterface/Models/TimelineRecording.js:
+        * UserInterface/Views/ScriptProfileTimelineView.js:
+        * UserInterface/Views/TextToggleButtonNavigationItem.css: Added.
+        * UserInterface/Views/TextToggleButtonNavigationItem.js: Added.
+
+2016-06-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add ability to show/hide DataGird columns
+        https://bugs.webkit.org/show_bug.cgi?id=158676
+        <rdar://problem/26761573>
+
+        Reviewed by Timothy Hatcher.
+
+        Make it possible to show/hide grid columns using the grid header
+        context menu. This patch enables the new behavior for most of the
+        timeline grids.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype.get identifier):
+        (WebInspector.DataGrid.prototype.set identifier):
+        An identifier for the grid instance, for managing per-grid settings.
+        Setting the id causes settings to be created, and their values to be
+        applied to the grid.
+
+        (WebInspector.DataGrid.prototype.get columnChooserEnabled):
+        (WebInspector.DataGrid.prototype.set columnChooserEnabled):
+        Enable showing/hiding columns via the grid header.
+
+        (WebInspector.DataGrid.prototype.insertColumn):
+        (WebInspector.DataGrid.prototype.showColumn):
+        Set column visibility and hidden column setting, then perform layout.
+
+        (WebInspector.DataGrid.prototype._collapseColumnGroupWithCell):
+        (WebInspector.DataGrid.prototype._contextMenuInHeader):
+        Create column chooser menu items if necessary.
+
+        (WebInspector.DataGrid.prototype._showColumn): Deleted.
+        (WebInspector.DataGrid.prototype._hideColumn): Deleted.
+        Replaced by `showColumn`.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView):
+        Always show "type" and "name" columns.
+
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WebInspector.ScriptDetailsTimelineView):
+        Always show "name" column.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid):
+        Enable column chooser.
+
+2016-06-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: <template> content should not be hidden as Shadow Content
+        https://bugs.webkit.org/show_bug.cgi?id=158654
+
+        Reviewed by Ryosuke Niwa.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Template Content" string.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode):
+        Don't treat template content as shadow content.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._nodeTitleInfo):
+        Custom string for template content fragment.
+
+2016-06-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: heap snapshot comparison view shows nothing if later snapshot is chosen first
+        https://bugs.webkit.org/show_bug.cgi?id=158584
+        <rdar://problem/26727849>
+
+        Reviewed by Timothy Hatcher.
+
+        ALways compare the the later snapshot to the earlier snapshot,
+        regardless of selection order.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView):
+        (WebInspector.HeapAllocationsTimelineView.prototype._dataGridNodeSelected):
+        Swap shapshots if the first has a greater identifier than the second.
+        Drive-by cleanup: null out `_baselineDataGridNode` since it isn't used
+        after the comparison completes.
+
+2016-06-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: rendering frames timeline "60fps" horizontal guide is mispositioned after switching timeline modes
+        https://bugs.webkit.org/show_bug.cgi?id=158587
+        <rdar://problem/26728174>
+
+        Reviewed by Timothy Hatcher.
+
+        When the view mode changes we iterate over all overview graphs, updating
+        their visibility as needed. Graphs being shown perform layout, even though
+        the overview's state is in transition: its offset height may still change.
+
+        A simple fix is to use TimelineOverviewGraph.height instead of the graph
+        element's offset height when performing layout.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype.layout):
+
+2016-06-10  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION (r201538): Web Inspector: 1px gap above timeline progress view
+        https://bugs.webkit.org/show_bug.cgi?id=158626
+
+        Reviewed by Joseph Pecoraro.
+
+        Adjust progress view top position to account for grid border changes.
+
+        * UserInterface/Views/TimelineRecordingContentView.css:
+        (.content-view.timeline-recording > .content-browser .recording-progress):
+
+2016-06-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r201538): Web Inspector: Border under JS Call Trees content view is too thick
+        https://bugs.webkit.org/show_bug.cgi?id=158624
+        <rdar://problem/26743633>
+
+        Reviewed by Joseph Pecoraro.
+
+        Remove top border from <th> elements.
+
+        * UserInterface/Views/ProfileView.css:
+        (.profile > .data-grid th): Deleted.
+
+2016-06-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: Web Inspector: IndexedDB does not show ObjectStore data
+        https://bugs.webkit.org/show_bug.cgi?id=158592
+        <rdar://problem/26730696>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._noteRowRemoved):
+        (WebInspector.DataGridNode.prototype._detach):
+        When rows are removed in the non-Virtual DataGrids, we should
+        actually remove the row.
+
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        (WebInspector.IndexedDatabaseObjectStoreContentView):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._fetchMoreData.processEntries):
+        (WebInspector.IndexedDatabaseObjectStoreContentView.prototype._fetchMoreData):
+        Don't use the delete operator. Use a boolean.
+
+2016-06-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Support Command-P for quick open
+        https://bugs.webkit.org/show_bug.cgi?id=158579
+        <rdar://problem/26726751>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+
+2016-06-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r194717): Web Inspector: Elements tab: an element loses focus when selected by Up/Down key
+        https://bugs.webkit.org/show_bug.cgi?id=157768
+        <rdar://problem/26311155>
+
+        Reviewed by Timothy Hatcher.
+
+        Remove _previousFocusedSection and _newInspectorRuleSelector since it was used only
+        to focus on a newly created section (added by clicking on "+" button).
+
+        Introduce _inspectorSection and _isInspectorSectionPendingFocus.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorBlurActiveEditor): Deleted.
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleSelectorPaste): Deleted.
+        No longer needed, it was only used by _previousFocusedSection and _newInspectorRuleSelector.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.): Deleted.
+        No londer needed, it was only used by _previousFocusedSection.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.appendStyleSection):
+        (WebInspector.RulesStyleDetailsPanel.prototype.newRuleButtonClicked):
+        (WebInspector.RulesStyleDetailsPanel.prototype.nodeStylesRefreshed):
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionEditorFocused): Deleted.
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionBlurActiveEditor): Deleted.
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionFocusNewInspectorRuleWithSelector): Deleted.
+
+2016-06-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: Web Inspector: Should be able to evaluate "{a:1, b:2}" in the console
+        https://bugs.webkit.org/show_bug.cgi?id=158548
+        <rdar://problem/26708513>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow):
+        Switch the many parameters to an options dictionary.
+        Include a new option for sourceURL appender, so that
+        Console evaluations can have its own append.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted):
+        Use the appendWebInspectorConsoleEvaluationSourceURL appender.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.evaluated):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateWatchExpressionsSection.):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateWatchExpressionsSection):
+        Use the new options dictionary.
+
+2016-06-08  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: an error is encountered when trying to delete nodes that have children
+        https://bugs.webkit.org/show_bug.cgi?id=158541
+        <rdar://problem/26705901>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.adjustCollapsedRange):
+        Offset into the array variable instead of a variable holding its length.
+
+2016-06-08  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: DOMTreeOutline selection areas should be created and updated lazily
+        https://bugs.webkit.org/show_bug.cgi?id=158513
+        <rdar://problem/26689646>
+
+        Reviewed by Timothy Hatcher.
+
+        Selection areas for DOMTreeElements are used for several things: drag markers,
+        element hover styles, element selection styles, and showing forced pseudo states
+        for an element. Fortunately it's easy to tell when any of these things is necessary.
+
+        Change DOMTreeOutline and DOMTreeElement so they don't create selection areas
+        unless they are needed for one of these tasks. This significantly reduces
+        forced layouts that are required to update the selection area height in case the
+        element has new attributes that cause the tag to become more or less wrapped.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.set hovered):
+        Modernize this method a bit.
+
+        (WebInspector.DOMTreeElement.prototype.updateSelectionArea):
+        If a selection area is not necessary, don't create one.
+        If one exists and it's not needed, then remove it.
+
+        (WebInspector.DOMTreeElement.prototype.onattach):
+        Remove redundant calls to updateSelection(). This is already called in
+        updateTitle().
+
+        (WebInspector.DOMTreeElement.prototype.onselect):
+        Ask the DOMTreeOutline to update the selection rather than forcing the
+        element to do it. This is consistent with other updates to user selection.
+
+        (WebInspector.DOMTreeElement.prototype._insertInLastAttributePosition):
+        (WebInspector.DOMTreeElement.prototype._startEditingAsHTML.dispose):
+        (WebInspector.DOMTreeElement.prototype._startEditingAsHTML):
+        Use renamed method.
+
+        (WebInspector.DOMTreeElement.prototype.updateTitle):
+        Add a comment to explain why the selection area is nulled out here.
+
+        (WebInspector.DOMTreeElement.prototype.get pseudoClassesEnabled):
+        (WebInspector.DOMTreeElement.prototype._nodePseudoClassesDidChange):
+        Update the selection area in case one does not exist for this tree element.
+        The indicator for forced pseudo classes is a pseudo element of the selection area.
+
+        (WebInspector.DOMTreeElement.prototype.updateSelection): Renamed.
+        (WebInspector.DOMTreeElement.prototype.onexpand):
+        (WebInspector.DOMTreeElement.prototype.oncollapse):
+        Remove redundant calls to updateSelection(). This is already called in
+        updateTitle().
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom):
+        (.tree-outline.dom li.hovered:not(.selected) .selection-area):
+        (.tree-outline.dom li .selection-area):
+        (.tree-outline.dom li.selected .selection-area):
+        (.tree-outline.dom li.elements-drag-over .selection-area):
+        (.tree-outline.dom:focus li.selected .selection-area):
+        (.tree-outline.dom li.pseudo-class-enabled > .selection-area::before):
+        (.tree-outline.dom:focus li.selected.pseudo-class-enabled > .selection-area::before):
+        (.tree-outline.dom li.hovered:not(.selected) .selection): Deleted.
+        (.tree-outline.dom li .selection): Deleted.
+        (.tree-outline.dom li.selected .selection): Deleted.
+        (.tree-outline.dom li.elements-drag-over .selection): Deleted.
+        (.tree-outline.dom:focus li.selected .selection): Deleted.
+        (.tree-outline.dom li.pseudo-class-enabled > .selection::before): Deleted.
+        (.tree-outline.dom:focus li.selected.pseudo-class-enabled > .selection::before): Deleted.
+        Rename the selector to be less ambiguous.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.updateSelection): Simplify. The call
+        to update the selection area will bail out if there is nothing to be done.
+
+        (WebInspector.DOMTreeOutline.prototype.findTreeElement):
+        (WebInspector.DOMTreeOutline.prototype._onmousemove):
+        (WebInspector.DOMTreeOutline.prototype._onmouseout):
+        Clean up and use let and arrow functions.
+
+        (WebInspector.DOMTreeOutline.prototype._ondragover):
+        (WebInspector.DOMTreeOutline.prototype._clearDragOverTreeElementMarker):
+        Clear the dragging element before updating the selection area since it looks at
+        the dragging element to determine whether anything needs to be done.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .tree-outline.dom li.hovered:not(.selected) .selection-area):
+        (.formatted-node > .tree-outline.dom li.hovered:not(.selected) .selection): Deleted.
+        Rename the selector to be less ambiguous.
+
+2016-06-08  Brian Burg  <bburg@apple.com>
+
+        Uncaught Exception in TimelineDataGrid._updatePopoverForSelectedNode()
+        https://bugs.webkit.org/show_bug.cgi?id=158502
+        <rdar://problem/26687038>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._updatePopoverForSelectedNode):
+        It appears that this expression was moved around since it accesses
+        targetFrame before it's initialized. Check rect.size.height directly.
+
+2016-06-08  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: reduce redundant attribute modification updates in DOMTreeUpdater and DOMTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=158504
+        <rdar://problem/25561452>
+
+        Reviewed by Timothy Hatcher.
+
+        When the frontend gets lots of DOM.attributeModified events, it forwards these on to
+        DOMTreeUpdater, which pushes a record for every single modification. It then updates
+        the DOM elements with the attibute changes on an animation frame. However, since it
+        doesn't do any deduplication of the modification records, a lot of time is wasted
+        on updating DOMTreeElements with intermediate (non-final) attribute values.
+
+        This patch rewrites DOMTreeUpdater to precisely track which nodes and attributes
+        of each node need to be updated on the next animation frame. This is done using
+        Sets and Maps that only hold onto the most recent attribute values rather than
+        pushing a record object for every single mutation.
+
+        This improves the performance of the Elements tab on an SVG particle simulator
+        dramatically so that the Inspector will not immediately hang. It still only achieves
+        a few updates per second in this case, so there is still optimization to be done on
+        the frontend and throttling to be done on the backend.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement):
+        (WebInspector.DOMTreeElement.prototype.attributeDidChange):
+        (WebInspector.DOMTreeElement.prototype._buildAttributeDOM):
+        (WebInspector.DOMTreeElement.prototype._markNodeChanged):
+        (WebInspector.DOMTreeElement.prototype._nodeChangedAnimationEnd):
+        (WebInspector.DOMTreeElement.prototype._fireDidChange):
+        (WebInspector.DOMTreeElement.prototype.nodeStateChanged): Deleted.
+        Simplify the list of modified attributes a little bit. This still uses a worklist
+        approach, so it's possible that duplicate updates for the same attribute could accumulate
+        if DOMTreeUpdater pushes updates faster than DOMTreeElement can render them.
+
+        * UserInterface/Views/DOMTreeUpdater.js:
+        (WebInspector.DOMTreeUpdater):
+        (WebInspector.DOMTreeUpdater.prototype._attributesUpdated):
+        (WebInspector.DOMTreeUpdater.prototype._characterDataModified):
+        (WebInspector.DOMTreeUpdater.prototype._nodeAttributeModified):
+        (WebInspector.DOMTreeUpdater.prototype._nodeInserted):
+        (WebInspector.DOMTreeUpdater.prototype._nodeRemoved):
+        (WebInspector.DOMTreeUpdater.prototype._childNodeCountUpdated):
+        (WebInspector.DOMTreeUpdater.prototype._updateModifiedNodes):
+        (WebInspector.DOMTreeUpdater.prototype._reset):
+        Rewrite this class to separately track insertions, deletions, and modifications. Use
+        Sets and Maps so redundant entries are not kept around. Split the main work loop
+        and use fewer enum-like properties to control how each DOM element change is handled.
+
+        Attempt to update all inserted children before modifying their attributes. This
+        wasn't done previously, but enough duplicate attribute modifications occurred that
+        usually some of them would be processed after being added to the tree. There is only
+        one chance to do this now.
+
+2016-06-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r158219): Web Inspector: Border under the default Timeline content view is too thick
+        https://bugs.webkit.org/show_bug.cgi?id=158533
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/OverviewTimelineView.css:
+        (.timeline-view.overview > .data-grid th): Deleted.
+
+2016-06-08  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Command-W should not close Web Inspector tabs; it should close the window
+        https://bugs.webkit.org/show_bug.cgi?id=158538
+        rdar://problem/26699215
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser): Change shortcut to Command-Shift-W.
+
 2016-06-07  Brian Burg  <bburg@apple.com>
 
         Web Inspector: reduce timer churn when processing many DOM.attributeModified messages

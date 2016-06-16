@@ -192,6 +192,7 @@ Settings::Settings(Page* page)
     , m_isJavaEnabledForLocalFiles(true)
     , m_loadsImagesAutomatically(false)
     , m_areImagesEnabled(true)
+    , m_preferMIMETypeForImages(false)
     , m_arePluginsEnabled(false)
     , m_isScriptEnabled(false)
     , m_needsAdobeFrameReloadingQuirk(false)
@@ -417,6 +418,11 @@ void Settings::setImagesEnabled(bool areImagesEnabled)
 
     // See comment in setLoadsImagesAutomatically.
     m_setImageLoadingSettingsTimer.startOneShot(0);
+}
+
+void Settings::setPreferMIMETypeForImages(bool preferMIMETypeForImages)
+{
+    m_preferMIMETypeForImages = preferMIMETypeForImages;
 }
 
 void Settings::setForcePendingWebGLPolicy(bool forced)

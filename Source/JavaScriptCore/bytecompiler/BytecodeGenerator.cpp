@@ -1727,9 +1727,11 @@ RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, bool b)
 
 RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, const Identifier& identifier)
 {
+    ASSERT(!identifier.isSymbol());
     JSString*& stringInMap = m_stringMap.add(identifier.impl(), nullptr).iterator->value;
     if (!stringInMap)
         stringInMap = jsOwnedString(vm(), identifier.string());
+
     return emitLoad(dst, JSValue(stringInMap));
 }
 
@@ -3113,6 +3115,12 @@ RegisterID* BytecodeGenerator::emitConstructVarargs(RegisterID* dst, RegisterID*
 {
     return emitCallVarargs(op_construct_varargs, dst, func, thisRegister, arguments, firstFreeRegister, firstVarArgOffset, divot, divotStart, divotEnd);
 }
+
+RegisterID* BytecodeGenerator::emitCallForwardArgumentsInTailPosition(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+{
+    ASSERT(m_inTailPosition);
+    return emitCallVarargs(op_tail_call_forward_arguments, dst, func, thisRegister, nullptr, firstFreeRegister, firstVarArgOffset, divot, divotStart, divotEnd);
+}
     
 RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
@@ -3128,7 +3136,7 @@ RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst,
     instructions().append(dst->index());
     instructions().append(func->index());
     instructions().append(thisRegister ? thisRegister->index() : 0);
-    instructions().append(arguments->index());
+    instructions().append(arguments ? arguments->index() : 0);
     instructions().append(firstFreeRegister->index());
     instructions().append(firstVarArgOffset);
     instructions().append(arrayProfile);

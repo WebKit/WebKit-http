@@ -86,6 +86,7 @@
 #include "MIMETypeRegistry.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
+#include "Page.h"
 #include "PageCache.h"
 #include "PageThrottler.h"
 #include "PageTransitionEvent.h"
@@ -2309,11 +2310,14 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             } else {
                 FRAMELOADER_LOG_ALWAYS("Finished frame load without error, frame = %p, main = %d", &m_frame, m_frame.isMainFrame());
 #if ENABLE(DATA_DETECTION)
-                if (m_frame.settings().dataDetectorTypes() != DataDetectorTypeNone) {
-                    RefPtr<Range> documentRange = makeRange(firstPositionInNode(m_frame.document()->documentElement()), lastPositionInNode(m_frame.document()->documentElement()));
-                    m_frame.setDataDetectionResults(DataDetection::detectContentInRange(documentRange, m_frame.settings().dataDetectorTypes()));
-                    if (m_frame.isMainFrame())
-                        m_client.dispatchDidFinishDataDetection(m_frame.dataDetectionResults());
+                auto* document = m_frame.document();
+                if (m_frame.settings().dataDetectorTypes() != DataDetectorTypeNone && document) {
+                    if (auto* documentElement = document->documentElement()) {
+                        RefPtr<Range> documentRange = makeRange(firstPositionInNode(documentElement), lastPositionInNode(documentElement));
+                        m_frame.setDataDetectionResults(DataDetection::detectContentInRange(documentRange, m_frame.settings().dataDetectorTypes()));
+                        if (m_frame.isMainFrame())
+                            m_client.dispatchDidFinishDataDetection(m_frame.dataDetectionResults());
+                    }
                 }
 #endif
                 m_client.dispatchDidFinishLoad();
@@ -2321,8 +2325,10 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             }
 
             // Notify accessibility.
-            if (AXObjectCache* cache = m_frame.document()->existingAXObjectCache())
-                cache->frameLoadingEventNotification(&m_frame, loadingEvent);
+            if (auto* document = m_frame.document()) {
+                if (AXObjectCache* cache = document->existingAXObjectCache())
+                    cache->frameLoadingEventNotification(&m_frame, loadingEvent);
+            }
 
             // The above calls to dispatchDidFinishLoad() might have detached the Frame
             // from its Page and also might have caused Page to be deleted.
@@ -3423,7 +3429,7 @@ void FrameLoader::retryAfterFailedCacheOnlyMainResourceLoad()
 ResourceError FrameLoader::cancelledError(const ResourceRequest& request) const
 {
     ResourceError error = m_client.cancelledError(request);
-    error.setIsCancellation(true);
+    error.setType(ResourceError::Type::Cancellation);
     return error;
 }
 
@@ -3435,7 +3441,7 @@ ResourceError FrameLoader::blockedByContentBlockerError(const ResourceRequest& r
 ResourceError FrameLoader::blockedError(const ResourceRequest& request) const
 {
     ResourceError error = m_client.blockedError(request);
-    error.setIsCancellation(true);
+    error.setType(ResourceError::Type::Cancellation);
     return error;
 }
 

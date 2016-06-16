@@ -1,3 +1,159 @@
+2016-06-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix round-down goof in Air.js's ShuffleCustom.forEachArg
+        https://bugs.webkit.org/show_bug.cgi?id=158674
+
+        Reviewed by Michael Saboff.
+        
+        x / 3 * 3 is not how you round down to multiples of 3 in JavaScript. You need to do
+        Math.floor(x / 3) * 3 instead.
+        
+        This is a benign change, because having extra arguments to a Shuffle is not something we
+        actually take advantage of yet. But I think it's best to match the original C++ code's
+        intent.
+
+        * Air.js/custom.js:
+        (const.ShuffleCustom.forEachArg):
+
+2016-06-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, skip Air.js. It got unskipped when I renamed it from JSAir.
+
+        * Skipped:
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it easy to package Air.js
+        https://bugs.webkit.org/show_bug.cgi?id=158652
+
+        Reviewed by Benjamin Poulain.
+        
+        If you want to give Air.js to someone, you can now do:
+        
+        cd PerformanceTests/Air.js
+        ./make_dist.sh
+        
+        This will create Air.js.tar.gz and a directory called Air.js. If you want to send someone
+        the benchmark, just send either of those things and tell them to look at index.html.
+        
+        You may have to edit make_dist.sh for wherever you have Markdown.pl. You can get that from
+        https://daringfireball.net/projects/markdown/
+
+        * Air.js/make_dist.sh: Added.
+        * Air.js/test.html:
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, make the link to test.html into an actual link.
+
+        * Air.js/README.md:
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix some text in Air.js/README.md
+        https://bugs.webkit.org/show_bug.cgi?id=158650
+
+        Reviewed by Benjamin Poulain.
+        
+        I read the text again and found bugs:
+        
+        - We never actually say how to run the benchmark. This change adds a blurb about how to run
+          it.
+
+        - We both say that allocateStack is responsible for the bulk of the running time and that
+          we haven't measured where the bulk of the time is spent. This changes the text to say that
+          it was a goal to make allocateStack be the hottest part of the benchmark, but that we did
+          not measure this.
+
+        * Air.js/README.md:
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Air.js should have some documentation
+        https://bugs.webkit.org/show_bug.cgi?id=158648
+
+        Reviewed by Keith Miller.
+        
+        I want to be able to point people at a document if they want to know more about this
+        benchmark.
+
+        * Air.js/README.md: Added.
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename JSAir to Air.js.
+
+        Rubber stamped by Mark Lam.
+
+        * Air.js: Copied from PerformanceTests/JSAir.
+        * Air.js/airjs-tests.yaml: Copied from PerformanceTests/JSAir/jsair-tests.yaml.
+        * Air.js/benchmark.js: Copied from PerformanceTests/JSAir/benchmark.js.
+        (Benchmark):
+        * Air.js/jsair-tests.yaml: Removed.
+        * Air.js/payload-airjs-ACLj8C.js: Copied from PerformanceTests/JSAir/payload-jsair-ACLj8C.js.
+        * Air.js/payload-jsair-ACLj8C.js: Removed.
+        * Air.js/stress-test.js: Copied from PerformanceTests/JSAir/stress-test.js.
+        * Air.js/test.html: Copied from PerformanceTests/JSAir/test.html.
+        * Air.js/test.js: Copied from PerformanceTests/JSAir/test.js.
+        * JSAir: Removed.
+        * JSAir/all.js: Removed.
+        * JSAir/allocate_stack.js: Removed.
+        * JSAir/arg.js: Removed.
+        * JSAir/basic_block.js: Removed.
+        * JSAir/benchmark.js: Removed.
+        * JSAir/code.js: Removed.
+        * JSAir/custom.js: Removed.
+        * JSAir/frequented_block.js: Removed.
+        * JSAir/insertion_set.js: Removed.
+        * JSAir/inst.js: Removed.
+        * JSAir/jsair-tests.yaml: Removed.
+        * JSAir/liveness.js: Removed.
+        * JSAir/opcode.js: Removed.
+        * JSAir/payload-gbemu-executeIteration.js: Removed.
+        * JSAir/payload-imaging-gaussian-blur-gaussianBlur.js: Removed.
+        * JSAir/payload-jsair-ACLj8C.js: Removed.
+        * JSAir/payload-typescript-scanIdentifier.js: Removed.
+        * JSAir/reg.js: Removed.
+        * JSAir/stack_slot.js: Removed.
+        * JSAir/stress-test.js: Removed.
+        * JSAir/strip-hash.rb: Removed.
+        * JSAir/symbols.js: Removed.
+        * JSAir/test.html: Removed.
+        * JSAir/test.js: Removed.
+        * JSAir/tmp.js: Removed.
+        * JSAir/tmp_base.js: Removed.
+        * JSAir/util.js: Removed.
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC Stress Test failing: jsair-tests.yaml/test.js.ftl-eager-no-cjit
+        https://bugs.webkit.org/show_bug.cgi?id=158571
+
+        Reviewed by Keith Miller.
+        
+        Introduce a different harness for run-jsc-stress-tests, which runs for a minimum of 10
+        iterations and then tries to do any number of "bonus" iterations until it's been running for
+        two seconds. Since this is the sort of test that isn't really meant to stress anything in
+        particular, I think it's OK if it is time-limited in this way. The worst case is that some
+        of its failures will be flaky, but I think that they would have been flaky anyway given the
+        complexity of the test.
+
+        * JSAir/benchmark.js:
+        (Benchmark):
+        (Benchmark.prototype.runIteration):
+        (benchmark): Deleted.
+        * JSAir/jsair-tests.yaml:
+        * JSAir/stress-test.js: Added.
+        (preciseTime):
+        * JSAir/test.html:
+        * JSAir/test.js:
+
+2016-06-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, teach the perf bots not to run JSAir.
+
+        * Skipped:
+
 2016-06-08  Filip Pizlo  <fpizlo@apple.com>
 
         Use more ES6 features in JSAir

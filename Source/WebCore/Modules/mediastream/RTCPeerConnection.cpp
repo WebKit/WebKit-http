@@ -100,7 +100,7 @@ RTCPeerConnection::~RTCPeerConnection()
     stop();
 }
 
-RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, Vector<MediaStream*> streams, ExceptionCode& ec)
+RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, const Vector<MediaStream*>& streams, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingState::Closed) {
         ec = INVALID_STATE_ERR;
@@ -115,8 +115,7 @@ RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, 
 
     for (auto& sender : m_transceiverSet->getSenders()) {
         if (sender->trackId() == track->id()) {
-            // FIXME: Spec says InvalidParameter
-            ec = INVALID_MODIFICATION_ERR;
+            ec = INVALID_ACCESS_ERR;
             return nullptr;
         }
     }
@@ -452,6 +451,11 @@ bool RTCPeerConnection::canSuspendForDocumentSuspension() const
     return false;
 }
 
+void RTCPeerConnection::addTransceiver(RefPtr<RTCRtpTransceiver>&& transceiver)
+{
+    m_transceiverSet->append(WTFMove(transceiver));
+}
+
 void RTCPeerConnection::setSignalingState(SignalingState newState)
 {
     m_signalingState = newState;
@@ -490,9 +494,9 @@ void RTCPeerConnection::fireEvent(Event& event)
     dispatchEvent(event);
 }
 
-void RTCPeerConnection::replaceTrack(RTCRtpSender& sender, MediaStreamTrack& withTrack, PeerConnection::VoidPromise&& promise)
+void RTCPeerConnection::replaceTrack(RTCRtpSender& sender, RefPtr<MediaStreamTrack>&& withTrack, PeerConnection::VoidPromise&& promise)
 {
-    m_backend->replaceTrack(sender, withTrack, WTFMove(promise));
+    m_backend->replaceTrack(sender, WTFMove(withTrack), WTFMove(promise));
 }
 
 } // namespace WebCore
