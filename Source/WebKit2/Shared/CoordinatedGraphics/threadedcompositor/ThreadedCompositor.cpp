@@ -190,7 +190,6 @@ GLContext* ThreadedCompositor::glContext()
 #if PLATFORM(WPE)
     ASSERT(m_target);
     m_target->initialize(IntSize(m_viewportController->visibleContentsRect().size()));
-    setNativeSurfaceHandleForCompositing(0);
     m_context = m_target->createGLContext();
 #endif
 
@@ -216,8 +215,12 @@ void ThreadedCompositor::didChangeVisibleRect()
 void ThreadedCompositor::renderLayerTree()
 {
     ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-    if (!m_scene || !m_scene->isActive())
+    if (!m_scene)
         return;
+#if PLATFORM(GTK)
+    if (!m_scene->isActive())
+        return;
+#endif
 
     if (!tryEnsureGLContext())
         return;
