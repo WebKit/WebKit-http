@@ -27,6 +27,7 @@
 #include "PageClientImpl.h"
 
 #include "DrawingAreaProxyWPE.h"
+#include "NativeWebMouseEvent.h"
 #include "WPEView.h"
 #include "WebContextMenuProxy.h"
 #include <WebCore/NotImplemented.h>
@@ -162,8 +163,40 @@ void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent&, bool)
 {
 }
 
-void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent&, bool)
+void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& touchEvent, bool wasEventHandled)
 {
+    if (wasEventHandled)
+        return;
+
+    const struct wpe_input_touch_event_raw* touchPoint = touchEvent.nativeFallbackTouchPoint();
+    if (touchPoint->type == wpe_input_touch_event_type_null)
+        return;
+
+    struct wpe_input_pointer_event pointerEvent{
+        wpe_input_pointer_event_type_null, touchPoint->time,
+        touchPoint->x, touchPoint->y,
+        1, 0
+    };
+
+    switch (touchPoint->type) {
+    case wpe_input_touch_event_type_down:
+        pointerEvent.type = wpe_input_pointer_event_type_button;
+        pointerEvent.state = 1;
+        break;
+    case wpe_input_touch_event_type_motion:
+        pointerEvent.type = wpe_input_pointer_event_type_motion;
+        pointerEvent.state = 1;
+        break;
+    case wpe_input_touch_event_type_up:
+        pointerEvent.type = wpe_input_pointer_event_type_button;
+        pointerEvent.state = 0;
+        break;
+    case wpe_input_pointer_event_type_null:
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    m_view.page().handleMouseEvent(NativeWebMouseEvent(&pointerEvent));
 }
 
 void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&)

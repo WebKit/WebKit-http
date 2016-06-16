@@ -1,3 +1,742 @@
+2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        Enabling Shadow DOM for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=158738
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed Shadow DOM from options (enabled by default)
+        (comprises removal of corresponding preprocessor directives)
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        * WebProcess/WebPage/WebPage.cpp:
+
+2016-06-15  Antti Koivisto  <antti@apple.com>
+
+        Vary:Cookie validation doesn't work in private browsing
+        https://bugs.webkit.org/show_bug.cgi?id=158616
+        <rdar://problem/26755067>
+
+        Reviewed by Andreas Kling.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::cookieRequestHeaderFieldValue):
+
+            Implement SessionID version of the function.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2016-06-14  Chris Dumez  <cdumez@apple.com>
+
+        Avoid constructing a AuthenticationChallenge unnecessarily in the NetworkLoad constructor
+        https://bugs.webkit.org/show_bug.cgi?id=158746
+
+        Reviewed by Darin Adler.
+
+        Avoid constructing a AuthenticationChallenge unnecessarily in the
+        NetworkLoad constructor by using WTF::Optional<> for this data
+        member.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        * NetworkProcess/NetworkLoad.h:
+
+2016-06-14  Chris Dumez  <cdumez@apple.com>
+
+        Add missing WTFMove() in NetworkResourceLoader::didReceiveResponse()
+        https://bugs.webkit.org/show_bug.cgi?id=158745
+
+        Reviewed by Darin Adler.
+
+        Add missing WTFMove() in NetworkResourceLoader::didReceiveResponse()
+        to avoid copying the ResourceResponse.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+
+2016-06-14  Chris Dumez  <cdumez@apple.com>
+
+        Reduce copying of NetworkLoadParameters
+        https://bugs.webkit.org/show_bug.cgi?id=158744
+
+        Reviewed by Alex Christensen.
+
+        Reduce copying of NetworkLoadParameters by moving it around instead.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload):
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::PendingDownload):
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::NetworkLoad):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::SpeculativeLoad):
+
+2016-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [ThreadedCompositor] Opening the inspector in a window causes a crash.
+        https://bugs.webkit.org/show_bug.cgi?id=154444
+
+        Reviewed by Žan Doberšek.
+
+        The threaded compositor doesn't handle the case of changing or removing the native surface handle. When the web
+        view is reparented, the current native surface handle is destroyed when the view is removed from the parent, and
+        a new one is created when added to the new parent. We need to handle this case in the threaded compositor.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        (WebKit::CompositingRunLoop::stopUpdateTimer): Allow users to stop the update timer.
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::setNativeSurfaceHandleForCompositing): Use performTaskSync because this is called
+        from a synchronous IPC message and right after it returns, the current native surface is destroyed by the UI
+        process. So we need to ensure we finish all pending operations for the current native surface in the compositing
+        thread before it's destroyed. Then we enable or disable the scene depending on whether the native surface has
+        been created or destroyed and destroy the current context in case the new handle is 0.
+        (WebKit::ThreadedCompositor::tryEnsureGLContext): Just renamed to make it clear that it can fail.
+        (WebKit::ThreadedCompositor::glContext):
+        (WebKit::ThreadedCompositor::renderLayerTree): Return early if scene is not active.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::setNativeSurfaceHandleForCompositing): Schedule a new layer flush
+        after the native surface handle changed.
+
+2016-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Modernize and simplify threaded compositor code
+        https://bugs.webkit.org/show_bug.cgi?id=158615
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        (WebKit::CompositingRunLoop::performTask): Use NoncopyableFunction.
+        (WebKit::CompositingRunLoop::performTaskSync): Ditto.
+        (WebKit::CompositingRunLoop::startUpdateTimer): Just renamed to start instead of set.
+        (WebKit::CompositingRunLoop::run): Expose run/stop methods instead of the internal RunLoop object.
+        (WebKit::CompositingRunLoop::stop): Also stop the update timer instead of relying on the caller to do it.
+        (WebKit::CompositingRunLoop::setUpdateTimer): Deleted.
+        (WebKit::CompositingRunLoop::stopUpdateTimer): Deleted.
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::setNativeSurfaceHandleForCompositing): Protects this directly in lambda capture.
+        (WebKit::ThreadedCompositor::setDeviceScaleFactor): Ditto.
+        (WebKit::ThreadedCompositor::didChangeViewportSize): Ditto.
+        (WebKit::ThreadedCompositor::didChangeViewportAttribute): Ditto.
+        (WebKit::ThreadedCompositor::didChangeContentsSize): Ditto.
+        (WebKit::ThreadedCompositor::scrollTo): Ditto.
+        (WebKit::ThreadedCompositor::scrollBy): Ditto.
+        (WebKit::ThreadedCompositor::updateViewport): Use startUpdateTimer().
+        (WebKit::ThreadedCompositor::scheduleDisplayImmediately): Ditto.
+        (WebKit::ThreadedCompositor::didChangeVisibleRect): Improve lambda captures.
+        (WebKit::ThreadedCompositor::renderLayerTree): Use m_viewportController directly.
+        (WebKit::ThreadedCompositor::createCompositingThread): Use createThread() version that receives a function.
+        (WebKit::ThreadedCompositor::runCompositingThread): Use run method and don't stop the update timer when the run
+        loop finishes.
+        (WebKit::ThreadedCompositor::terminateCompositingThread): Use stop method.
+        (WebKit::ThreadedCompositor::ThreadedCompositor): Deleted.
+        (WebKit::ThreadedCompositor::compositingThreadEntry): Deleted.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        (WebKit::ThreadedCompositor::viewportController): Deleted.
+
+2016-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Flickering and rendering artifacts when resizing the web view
+        https://bugs.webkit.org/show_bug.cgi?id=154070
+
+        Reviewed by Žan Doberšek.
+
+        Resizing the web view is expected to be a sync operation, the UI process creates a new backing store state ID,
+        sends UpdateBackingStoreState message with the flag RespondImmediately to the web process and waits up to 500ms
+        for the reply (DidUpdateBackingStoreState message). When using the threaded compositor, we schedule a task in
+        the compositing thread to update the viewport size, and return immediately, so that we reply to the UI process
+        before the compositing thread has actually updated its size. There's a moment in which sizes are out of sync
+        causing the flickering and rendering artifacts, the UI process continues rendering at the new size, while the
+        web process is still rendering at the previous size. We can prevent this from happening just by making the
+        resize task synchronous in the threaded compositor.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        (WebKit::CompositingRunLoop::performTaskSync): Add sync version of performTask().
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::didChangeViewportSize): Use performTaskSync().
+
+2016-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix Soup downloads after r201943.
+
+        This is a follow up of r201943. The DownloadClient used in DownloadSoup was not updated to the new API of the
+        ResourceHandleClient because it was not using override on the virtual methods, so it was unnoticed. That broke
+        the downloads soup implementation, because didReceiveResponse is no longer used in the DownloadClient. This
+        patch updates the DownloadClient to the new ResourceHandleClient API adding also override to all the virtual
+        methods to prevent this from happening in the future.
+
+        * NetworkProcess/Downloads/soup/DownloadSoup.cpp:
+        (WebKit::Download::start):
+        (WebKit::Download::startWithHandle):
+        (WebKit::DownloadClient::DownloadClient):
+        (WebKit::DownloadClient::downloadFailed):
+        (WebKit::DownloadClient::didReceiveResponse):
+        (WebKit::DownloadClient::didReceiveData):
+        (WebKit::DownloadClient::didFinishLoading):
+        (WebKit::DownloadClient::didFail):
+        (WebKit::DownloadClient::wasBlocked): Deleted.
+        (WebKit::DownloadClient::cannotShowURL): Deleted.
+        (WebKit::DownloadClient::cancel):
+        (WebKit::DownloadClient::handleResponse):
+
+2016-06-13  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Web Content service with a restricted entitlement may load arbitrary dylibs
+        https://bugs.webkit.org/show_bug.cgi?id=156668
+        <rdar://problem/26714558>
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/WebContentService.xcconfig: Enable library validation when the Web Content
+          service is given the XPC domain extension entitlement when targeting macOS Sierra or later.
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/Network/WebSocketProvider.h: Added.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_shouldDispatchFakeMouseMoveEvents):
+
+2016-06-10  Ada Chan  <adachan@apple.com>
+
+        Use the video element's video box when getting the inline video rect in WebVideoFullscreenManager
+        https://bugs.webkit.org/show_bug.cgi?id=158351
+        <rdar://problem/26567938>
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/cocoa/WebVideoFullscreenManager.mm:
+        (WebKit::inlineVideoFrame):
+        (WebKit::WebVideoFullscreenManager::enterVideoFullscreenForVideoElement):
+        (WebKit::WebVideoFullscreenManager::exitVideoFullscreenForVideoElement):
+        (WebKit::WebVideoFullscreenManager::fullscreenMayReturnToInline):
+        (WebKit::WebVideoFullscreenManager::setVideoLayerFrameFenced):
+        (WebKit::clientRectForElement): Deleted.
+
+2016-06-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add support for passive event listeners on touch events
+        https://bugs.webkit.org/show_bug.cgi?id=158601
+
+        Reviewed by Simon Fraser.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateFrameScrollingNode>::encode):
+        (ArgumentCoder<ScrollingStateFrameScrollingNode>::decode):
+        (WebKit::dump):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<EventTrackingRegions>::encode):
+        (IPC::ArgumentCoder<EventTrackingRegions>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::eventTrackingTypeForPoint):
+        (WebKit::RemoteScrollingCoordinatorProxy::isPointInNonFastScrollableRegion): Deleted.
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::touchEventTrackingType):
+        The type is the most restrictive type of all the touch points.
+        If any touch point needs synchronous tracking, everything has to be synchronous.
+
+        (WebKit::WebPageProxy::handleTouchEventSynchronously):
+        This is a very unfortunate design.
+
+        The upper layer dealing with UIKit knows about gesture and when something
+        can be dispatched asynchrnously because a gesture has started.
+        This layer knows about tracking and can use that extra inforamtion
+        to dispatch an event asynchrnously anyway.
+
+        In the future, we should refactor this to let WebPageProxy
+        always decide of the dispatch type. I am just concerned changing
+        the upper layer while we are stabilizing WebKit.
+
+        (WebKit::WebPageProxy::handleTouchEventAsynchronously):
+        (WebKit::WebPageProxy::handleTouchEvent):
+        (WebKit::WebPageProxy::resetState):
+        (WebKit::WebPageProxy::WebPageProxy): Deleted.
+        (WebKit::WebPageProxy::shouldStartTrackingTouchEvents): Deleted.
+        * UIProcess/WebPageProxy.h:
+
+2016-06-10  Beth Dakin  <bdakin@apple.com>
+
+        Add requestExitFullScreen to WKFullScreenWindowController
+        https://bugs.webkit.org/show_bug.cgi?id=158633
+        -and corresponding-
+        rdar://problem/26564036
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/mac/WKFullScreenWindowController.h:
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController requestExitFullScreen]):
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce ResourceResponse copying
+        https://bugs.webkit.org/show_bug.cgi?id=158232
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/NetworkDataTask.h:
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::continueDidReceiveResponse):
+        (WebKit::NetworkLoad::sharedDidReceiveResponse):
+        (WebKit::NetworkLoad::sharedWillSendRedirectedRequest):
+        (WebKit::NetworkLoad::didReceiveChallenge):
+        (WebKit::NetworkLoad::didReceiveResponseNetworkSession):
+        (WebKit::NetworkLoad::didReceiveResponseAsync):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkLoadClient.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::retrieveCacheEntry):
+        (WebKit::NetworkResourceLoader::abort):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/PingLoad.h:
+        * NetworkProcess/cache/NetworkCacheCoders.h:
+        (WebKit::NetworkCache::Coder<Optional<T>>::encode):
+        (WebKit::NetworkCache::Coder<Optional<T>>::decode):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::willSendRedirectedRequest):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTask::didCompleteWithError):
+        (WebKit::NetworkDataTask::didReceiveResponse):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidCommitLoad):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::url):
+        (WebKit::WebFrame::certificateInfo):
+        (WebKit::WebFrame::innerText):
+
+2016-06-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add SPI to disable spellchecking on auto-fillable text fields
+        https://bugs.webkit.org/show_bug.cgi?id=158611
+
+        Reviewed by Anders Carlsson.
+
+        Added WKBundleNodeHandleSetHTMLInputElementSpellcheckEnabled to disable spellchecking on a text field.
+
+        This is used by WebKit2 client which desires to disable spellchecking and notably autocorrection on
+        login forms, etc... where such feature would interfere with user's actions.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp:
+        (WKBundleNodeHandleSetHTMLInputElementSpellcheckEnabled): Added.
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::setHTMLInputElementSpellcheckEnabled): Added.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce WTF::UniqueRef
+        https://bugs.webkit.org/show_bug.cgi?id=158596
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_shouldDispatchFakeMouseMoveEvents):
+
+2016-06-10  Anders Carlsson  <andersca@apple.com>
+
+        Remove CommandLine class
+        https://bugs.webkit.org/show_bug.cgi?id=158628
+
+        Reviewed by Tim Horton.
+
+        * Shared/CommandLine.h: Removed.
+        (WebKit::CommandLine::operator[]): Deleted.
+        * Shared/posix/CommandLinePOSIX.cpp: Removed.
+        (WebKit::CommandLine::parse): Deleted.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-06-10  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Rare RELEASE_ASSERT under RemoteLayerTreeDrawingArea::flushLayers()
+        https://bugs.webkit.org/show_bug.cgi?id=158622
+        rdar://problem/26609452
+
+        Reviewed by Tim Horton.
+        
+        It's possible for a CADisplayLink to fire after being paused sometimes, possibly
+        when an app is running another CADisplayLink whose callback takes some time. When
+        this happens, RemoteLayerTreeDrawingAreaProxy could erroneously send a second
+        didUpdate() to the web process between commits, which would clear the m_waitingForBackingStoreSwap
+        flag too early, and allow a subsequent RemoteLayerTreeDrawingArea::flushLayers()
+        to proceed when the m_pendingBackingStoreFlusher was still flushing.
+
+        Fix by preventing two didUpdates from being sent from the UI process between
+        commits.
+        
+        Not easily testable.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay):
+
+2016-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Content and viewport sizes are mixed
+        https://bugs.webkit.org/show_bug.cgi?id=158564
+
+        Reviewed by Žan Doberšek.
+
+        Make ThreadedCoordinatedLayerTreeHost::sizeDidChange() update the viewport size for consistency with all other
+        LayerTreeHost implementations and rename viewportSizeChanged() as contentsSizeChanged() and update the contents
+        size.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::contentsSizeChanged): Remove ifdefed code here, the drawing area is notified two lines below.
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp:
+        (WebKit::CoordinatedDrawingArea::mainFrameContentSizeChanged): Update the viewport size to the contents size
+        only when using a fixed layout here instead of in cross-platform code.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::contentsSizeChanged):
+        (WebKit::ThreadedCoordinatedLayerTreeHost::sizeDidChange):
+        (WebKit::ThreadedCoordinatedLayerTreeHost::viewportSizeChanged): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::mainFrameContentSizeChanged): Call LayerTreeHost::contentsSizeChanged().
+        (WebKit::DrawingAreaImpl::updateBackingStoreState): Remove ifdefed code for the threadecd compositor since it's
+        now consistent with all other LayerTreeHost implementations.
+        * WebProcess/WebPage/LayerTreeHost.h:
+
+2016-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Make it clear that compositing thread operations are always scheduled from the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=158562
+
+        Reviewed by Žan Doberšek.
+
+        The code is written as if the compositor thread could also call callOnCompositingRunLoop() which makes the code
+        confusing. This patch no longer checks if the task was scheduled in the compositing thread, and instead it adds
+        an ASSERT to ensure it's always called from the main thread as expected. It also adds some more ASSERTS to ensure
+        and clarify the methods are called from the expected thread.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        (WebKit::CompositingRunLoop::performTask):
+        (WebKit::CompositingRunLoop::callOnCompositingRunLoop): Deleted.
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::setNativeSurfaceHandleForCompositing):
+        (WebKit::ThreadedCompositor::setDeviceScaleFactor):
+        (WebKit::ThreadedCompositor::didChangeViewportSize):
+        (WebKit::ThreadedCompositor::didChangeViewportAttribute):
+        (WebKit::ThreadedCompositor::didChangeContentsSize):
+        (WebKit::ThreadedCompositor::scrollTo):
+        (WebKit::ThreadedCompositor::scrollBy):
+        (WebKit::ThreadedCompositor::glContext):
+        (WebKit::ThreadedCompositor::didChangeVisibleRect):
+        (WebKit::ThreadedCompositor::renderLayerTree):
+        (WebKit::ThreadedCompositor::updateSceneState):
+        (WebKit::ThreadedCompositor::callOnCompositingThread): Deleted.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+
+2016-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Browser plugins crash under Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=157605
+
+        Reviewed by Michael Catanzaro.
+
+        Fail the initialization of windowed plugins if we don't have a platform implementation.
+
+        * WebProcess/Plugins/Netscape/unix/NetscapePluginUnix.cpp:
+        (WebKit::NetscapePlugin::platformPostInitialize):
+
+2016-06-09  Antoine Quint  <graouts@apple.com>
+
+        [iOS] -webkit-overflow-scrolling: touch; ignores pointer-events: none;
+        https://bugs.webkit.org/show_bug.cgi?id=119839
+        <rdar://problem/9671514>
+
+        Reviewed by Simon Fraser.
+
+        Propagate a "userInteractionEnabled" flag from the Web process which is used to turn off
+        user interaction on a UIScrollView created for -webkit-overflow-scrolling: touch.
+
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        (WebKit::RemoteLayerTreePropertyApplier::applyProperties):
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::LayerProperties):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::encode):
+        (WebKit::RemoteLayerTreeTransaction::LayerProperties::decode):
+        (WebKit::dumpChangedLayers):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::userInteractionEnabled):
+        (WebKit::PlatformCALayerRemote::setUserInteractionEnabled):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.h:
+
+2016-06-09  Anders Carlsson  <andersca@apple.com>
+
+        Remove OriginAndDatabases.cpp, it's unused
+        https://bugs.webkit.org/show_bug.cgi?id=158595
+
+        Reviewed by Sam Weinig.
+
+        * CMakeLists.txt:
+        * Shared/OriginAndDatabases.cpp: Removed.
+        (WebKit::OriginAndDatabases::encode): Deleted.
+        (WebKit::OriginAndDatabases::decode): Deleted.
+        * Shared/OriginAndDatabases.h: Removed.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up EditorClient lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=158588
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::generateTextCheckingRequestID):
+        (WebKit::WebEditorClient::shouldDeleteRange):
+        (WebKit::WebEditorClient::pageDestroyed): Deleted.
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+        (WebKit::WebEditorClient::WebEditorClient):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_shouldDispatchFakeMouseMoveEvents):
+
+2016-06-09  Andy Estes  <aestes@apple.com>
+
+        WKWebView does not render PDF pages in AirPrint
+        https://bugs.webkit.org/show_bug.cgi?id=151386
+        rdar://problem/22499157
+
+        Reviewed by Tim Horton.
+
+        _WKWebViewPrintFormatter originally attempted to handle PDFs, but the code path was never
+        properly tested since Safari prints PDFs by setting a printingItem on the
+        UIPrintInteractionController instead of going through a print formatter. The existing code
+        almost worked, if it weren't for CGContextScaleCTM() scaling each page into oblivion due to
+        _totalScaleFactor equaling 0.
+
+        This patch properly implements -[_WKWebViewPrintFormatter drawInRect:forPageAtIndex:] to
+        handle drawing both PDFs generated by WebKit and PDFs loaded in the main frame. It also
+        takes the opportunity to clean up a number of issues in the existing code:
+
+        - Handling of -[_WKWebViewPrintFormatter startPage] is now correct. I had previously assumed
+          this property represented the first page of output to print, but it actually represents
+          the first page in the overall print job that the print formatter renders. In other words,
+          regardless of -startPage, the print formatter should always print all its pages.
+        - Code specific to webpage and PDF printing was factored out into WKContentView and
+          WKPDFView, respectively. Each conforms to @protocol(_WKWebViewPrintProvider), and
+          _WKWebViewPrintFormatter accesses the provider via -[WKWebView _printProvider].
+        - Instead of piping the printed PDF data from WebPageProxy to WKWebView via PageClient, use
+          the GenericCallback mechanism to have WebPageProxy call a lambda specified by
+          WKContentView when the printed PDF is available.
+        - Removed _totalScaleFactor and used CGPDFPageGetDrawingTransform() to transform both
+          webpages and PDFs. For webpages, _totalScaleFactor will always equal the ratio of the
+          paper width to the PDF page width, so CGPDFPageGetDrawingTransform() will apply the same
+          scaling as CGContextScaleCTM(_totalScaleFactor, _totalScaleFactor) would.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _printProvider]): Added. Returns _currentContentView if it conforms to
+        @protocol(_WKWebViewPrintProvider).
+        (-[WKWebView _computePageCountAndStartDrawingToPDFForFrame:printInfo:firstPage:computedTotalScaleFactor:]):
+        Moved code to _wk_pageCountForPrintFormatter in WKContentView and WKPDFView.
+        (-[WKWebView _endPrinting]): Deleted.
+        (-[WKWebView _printedDocument]): Deleted.
+        (-[WKWebView _setPrintedDocument:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewInternal.h: Declared the _printProvider property.
+        * UIProcess/PageClient.h: Removed didFinishDrawingPagesToPDF().
+        * UIProcess/WebPageProxy.h: Declared computePagesForPrintingAndDrawToPDF() and
+        drawToPDFCallback().
+        * UIProcess/WebPageProxy.messages.in: Renamed DidFinishDrawingPagesToPDF to
+        DrawToPDFCallback.
+        * UIProcess/_WKWebViewPrintFormatter.mm: Backed the frameToPrint property with a RetainPtr
+        ivar so that it doesn't need to be released manually in -dealloc; removed _totalScaleFactor
+        and _printInfo ivars and added a _printedDocument ivar; removed the property declaration for
+        webView.
+        (-[_WKWebViewPrintFormatter frameToPrint]): Added a custom getter for the frameToPrint
+        property.
+        (-[_WKWebViewPrintFormatter setFrameToPrint:]): Added a custom setter for the frameToPrint
+        property.
+        (-[_WKWebViewPrintFormatter _webView]): Renamed from webView; added an underscore since this
+        is a private method.
+        (-[_WKWebViewPrintFormatter _recalcPageCount]): Retrieved the page count from the print
+        provider and clamped its value to NSIntegerMax.
+        (-[_WKWebViewPrintFormatter drawInRect:forPageAtIndex:]): Retrieved the printed document
+        from the print provider if needed; modified the CTM transformations to work for both
+        webpages and PDFs.
+        (-[_WKWebViewPrintFormatter dealloc]): Deleted.
+        (-[_WKWebViewPrintFormatter webView]): Renamed to _webView.
+        (-[_WKWebViewPrintFormatter rectForPageAtIndex:]): Deleted.
+        * UIProcess/_WKWebViewPrintFormatterInternal.h: Added. Moved a UIPrintFormatter internal
+        method declaration to here and defined the _WKWebViewPrintProvider protocol.
+        * UIProcess/ios/PageClientImplIOS.h: Removed didFinishDrawingPagesToPDF().
+        * UIProcess/ios/PageClientImplIOS.mm: Ditto.
+        (WebKit::PageClientImpl::didFinishDrawingPagesToPDF): Deleted.
+        * UIProcess/ios/WKContentView.mm: Conformed to @protocol(_WKWebViewPrintProvider).
+        (-[WKContentView _wk_pageCountForPrintFormatter:]): Moved the code to compute page count
+        from WKWebView to here.
+        (-[WKContentView _wk_printedDocument]): Moved the code to get the printed document from
+        WKWebView to here.
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView _wk_pageCountForPrintFormatter:]): Moved the code to compute the page count
+        from WKWebView to here; added a call to CGPDFDocumentAllowsPrinting(), returning 0 if
+        printing is not allowed.
+        (-[WKPDFView _wk_printedDocument]): Moved the code to get the printed document from
+        WKWebView to here.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::computePagesForPrintingAndDrawToPDF): Registered the callback with
+        m_callbacks and sent Messages::WebPage::ComputePagesForPrintingAndDrawToPDF; returned the
+        synchronously-returned page count.
+        (WebKit::WebPageProxy::drawToPDFCallback): Added to perform the callback when drawing to PDF
+        is complete.
+        (WebKit::WebPageProxy::didFinishDrawingPagesToPDF): Deleted.
+        * WebKit2.xcodeproj/project.pbxproj: Added _WKWebViewPrintFormatterInternal.h.
+        * WebProcess/WebPage/WebPage.h: Renamed computePagesForPrintingAndStartDrawingToPDF() to
+        computePagesForPrintingAndDrawToPDF().
+        * WebProcess/WebPage/WebPage.messages.in: Renamed
+        ComputePagesForPrintingAndStartDrawingToPDF to ComputePagesForPrintingAndDrawToPDF. Removed
+        the startPage parameter and added a callbackID.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::computePagesForPrintingAndDrawToPDF): Renamed from
+        computePagesForPrintingAndStartDrawingToPDF(). Added a call to endPrinting() after sending
+        Messages::WebPageProxy::DrawToPDFCallback.
+        (WebKit::WebPage::computePagesForPrintingAndStartDrawingToPDF): Renamed to
+        computePagesForPrintingAndDrawToPDF.
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up WebSocket code
+        https://bugs.webkit.org/show_bug.cgi?id=158551
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/FileAPI/BlobRegistryProxy.cpp:
+        (WebKit::BlobRegistryProxy::registerFileBlobURL):
+        * WebProcess/FileAPI/BlobRegistryProxy.h:
+
+2016-06-09  David Kilzer  <ddkilzer@apple.com>
+
+        Update properties for UIWKTextInteractionAssistant
+        <https://webkit.org/b/158559>
+
+        Reviewed by Darin Adler.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        (UIWKTextInteractionAssistant.loupeGesture):
+        (UIWKTextInteractionAssistant.singleTapGesture):
+        Change from retain to assign since UIWKTextInteractionAssistant
+        is not responsible for their lifetime.  Sort alphabetically.
+
+2016-06-09  Michael Saboff  <msaboff@apple.com>
+
+        WebKitTestRunner and DumpRenderTree do not handle dangling surrogate characters
+        https://bugs.webkit.org/show_bug.cgi?id=154863
+
+        Reviewed by Alexey Proskuryakov.
+
+        Added a non-strict verions of WKStringGetUTF8CString() that will handle dangling
+        surrogates called WKStringGetUTF8CStringNonStrict().
+
+        * Shared/API/c/WKString.cpp:
+        (WKStringGetUTF8CStringImpl):
+        (WKStringGetUTF8CString):
+        (WKStringGetUTF8CStringNonStrict):
+        * Shared/API/c/WKString.h:
+
+2016-06-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Many layout tests crash when threaded compositor is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=158560
+
+        Reviewed by Žan Doberšek.
+
+        This is because CoordinatedGraphicsLayer::notifyFlushRequired() assumes it has a valid compositor when it's
+        called. But the compositor is only present when GraphicsLayer::create() is called with a
+        GraphicsLayerFactory. When running the layout tests, layers are created without a factory because DrawingAreaImpl
+        is not entering AC mode as expected and the layer tree host is not created, making
+        DrawingAreaImpl::graphicsLayerFactory() always return nullptr. This happens because DrawingAreaImpl is checking
+        acceleratedDrawingEnabled setting to decide whether to always use compositing mode or not, and WTR sets that
+        setting to false (changing its default value). The thing is that acceleratedDrawingEnabled setting doesn't have
+        any effect in non-Mac ports, what we really want to check there is whether acceleratedCompositingEnabled is true
+        or false.
+
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::updatePreferences):
+
+2016-06-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Remove ThreadedCompositor::setNeedsDisplay()
+        https://bugs.webkit.org/show_bug.cgi?id=158523
+
+        Reviewed by Michael Catanzaro.
+
+        ThreadedCompositor::setNeedsDisplay() is always called from the main thread and schedules a task to the
+        compositing thread to schedule an immediate update. But RunLoop::Timer is thread-safe so we don't really need to
+        schedule a task to the update the timer in the compositing thread, we can do that directly in the main
+        thread. And that's exactly what scheduleDisplayImmediately() does, so we can use it instead of setNeedsDisplay().
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::setNeedsDisplay(): Deleted.
+        (WebKit::ThreadedCompositor::updateSceneState):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+
+2016-06-08  Antti Koivisto  <antti@apple.com>
+
+        Increase disk cache capacity when there is lots of free space
+        https://bugs.webkit.org/show_bug.cgi?id=158526
+
+        Reviewed by Chris Dumez.
+
+        Our maximum disk cache capacity has been 175MB for a very long time. Meanwhile the average resource size has grown
+        massively. 175MB is now enough for cacheable resources of a few dozen sites at most. Using bigger caches when there is
+        room for it can reduce network traffic, reduce disk writes, save battery and speed up page loading.
+
+        This patch changes cache size for PrimaryWebBrowser cache model
+
+        >=16GB free: 175MB -> 500MB
+        8-16GB free: 150MB -> 250MB
+
+        and modestly for DocumentBrowser
+
+        >=16GB free: 50MB -> 75MB
+
+        Note that if system (on Cocoa platforms) really needs disk space it will wipe out caches so this doesn't reduce
+        available disk space in scenarios like software installation.
+
+        * Shared/CacheModel.cpp:
+        (WebKit::calculateCacheSizes):
+
+2016-06-08  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Introduce ResourceErrorBase::type
+        https://bugs.webkit.org/show_bug.cgi?id=158299
+
+        Reviewed by Alex Christensen.
+
+        * Shared/soup/WebCoreArgumentCodersSoup.cpp:
+        (IPC::ArgumentCoder<ResourceError>::encodePlatformData):
+        (IPC::ArgumentCoder<ResourceError>::decodePlatformData):
+
+2016-06-08  Beth Dakin  <bdakin@apple.com>
+
+        _web_didAddMediaControlsManager should take a controlsManager as a parameter 
+        https://bugs.webkit.org/show_bug.cgi?id=158545
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+
 2016-06-06  Antti Koivisto  <antti@apple.com>
 
         WebKit memory cache doesn't respect Vary header

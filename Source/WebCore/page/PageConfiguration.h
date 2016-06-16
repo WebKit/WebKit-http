@@ -23,11 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PageConfiguration_h
-#define PageConfiguration_h
+#pragma once
 
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
+#include <wtf/UniqueRef.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/PageConfigurationIncludes.h>
@@ -47,6 +47,7 @@ class FrameLoaderClient;
 class InspectorClient;
 class PlugInClient;
 class ProgressTrackerClient;
+class SocketProvider;
 class StorageNamespaceProvider;
 class UserContentProvider;
 class ValidationMessageClient;
@@ -59,7 +60,7 @@ class ContextMenuClient;
 class PageConfiguration {
     WTF_MAKE_NONCOPYABLE(PageConfiguration); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT PageConfiguration();
+    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, UniqueRef<SocketProvider>&&);
     WEBCORE_EXPORT ~PageConfiguration();
 
     AlternativeTextClient* alternativeTextClient { nullptr };
@@ -67,7 +68,8 @@ public:
 #if ENABLE(CONTEXT_MENUS)
     ContextMenuClient* contextMenuClient { nullptr };
 #endif
-    EditorClient* editorClient { nullptr };
+    UniqueRef<EditorClient> editorClient;
+    UniqueRef<SocketProvider> socketProvider;
     DragClient* dragClient { nullptr };
     InspectorClient* inspectorClient { nullptr };
     PlugInClient* plugInClient { nullptr };
@@ -89,5 +91,3 @@ public:
 };
 
 }
-
-#endif

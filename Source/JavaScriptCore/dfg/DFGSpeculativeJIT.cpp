@@ -307,6 +307,12 @@ void SpeculativeJIT::emitInvalidationPoint(Node* node)
     noResult(node);
 }
 
+void SpeculativeJIT::unreachable(Node* node)
+{
+    m_compileOkay = false;
+    m_jit.abortWithReason(DFGUnreachableNode, node->op());
+}
+
 void SpeculativeJIT::terminateSpeculativeExecution(ExitKind kind, JSValueRegs jsValueRegs, Node* node)
 {
     if (!m_compileOkay)
@@ -2114,7 +2120,7 @@ void SpeculativeJIT::compileValueToInt32(Node* node)
         GPRReg gpr = result.gpr();
         JITCompiler::Jump notTruncatedToInteger = m_jit.branchTruncateDoubleToInt32(fpr, gpr, JITCompiler::BranchIfTruncateFailed);
         
-        addSlowPathGenerator(slowPathCall(notTruncatedToInteger, this, toInt32, gpr, fpr, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded));
+        addSlowPathGenerator(slowPathCall(notTruncatedToInteger, this, operationToInt32, gpr, fpr, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded));
         
         int32Result(gpr, node);
         return;
@@ -2165,7 +2171,7 @@ void SpeculativeJIT::compileValueToInt32(Node* node)
             unboxDouble(gpr, resultGpr, fpr);
 
             silentSpillAllRegisters(resultGpr);
-            callOperation(toInt32, resultGpr, fpr);
+            callOperation(operationToInt32, resultGpr, fpr);
             silentFillAllRegisters(resultGpr);
 
             converted.append(m_jit.jump());
@@ -2224,7 +2230,7 @@ void SpeculativeJIT::compileValueToInt32(Node* node)
                 unboxDouble(tagGPR, payloadGPR, fpr, scratch.fpr());
 
                 silentSpillAllRegisters(resultGpr);
-                callOperation(toInt32, resultGpr, fpr);
+                callOperation(operationToInt32, resultGpr, fpr);
                 silentFillAllRegisters(resultGpr);
 
                 converted.append(m_jit.jump());
@@ -2764,7 +2770,7 @@ void SpeculativeJIT::compilePutByValForIntTypedArray(GPRReg base, GPRReg propert
                 MacroAssembler::Jump failed = m_jit.branchTruncateDoubleToInt32(
                     fpr, gpr, MacroAssembler::BranchIfTruncateFailed);
                 
-                addSlowPathGenerator(slowPathCall(failed, this, toInt32, gpr, fpr, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded));
+                addSlowPathGenerator(slowPathCall(failed, this, operationToInt32, gpr, fpr, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded));
                 
                 fixed.link(&m_jit);
                 value.adopt(result);
@@ -5946,8 +5952,12 @@ void SpeculativeJIT::compileSetFunctionName(Node* node)
 void SpeculativeJIT::compileForwardVarargs(Node* node)
 {
     LoadVarargsData* data = node->loadVarargsData();
-    InlineCallFrame* inlineCallFrame = node->child1()->origin.semantic.inlineCallFrame;
-        
+    InlineCallFrame* inlineCallFrame;
+    if (node->child1())
+        inlineCallFrame = node->child1()->origin.semantic.inlineCallFrame;
+    else
+        inlineCallFrame = node->origin.semantic.inlineCallFrame;
+
     GPRTemporary length(this);
     JSValueRegsTemporary temp(this);
     GPRReg lengthGPR = length.gpr();

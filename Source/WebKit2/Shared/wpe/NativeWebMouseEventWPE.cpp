@@ -30,8 +30,8 @@
 
 namespace WebKit {
 
-NativeWebMouseEvent::NativeWebMouseEvent(WPE::Input::PointerEvent&& event)
-    : WebMouseEvent(WebEventFactory::createWebMouseEvent(WTFMove(event)))
+NativeWebMouseEvent::NativeWebMouseEvent(struct wpe_input_pointer_event* event)
+    : WebMouseEvent(WebEventFactory::createWebMouseEvent(event))
 {
 }
 

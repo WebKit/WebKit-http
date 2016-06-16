@@ -30,6 +30,7 @@
 #include "NetworkLoadParameters.h"
 #include "RemoteNetworkingContext.h"
 #include <WebCore/ResourceHandleClient.h>
+#include <wtf/Optional.h>
 
 #if USE(NETWORK_SESSION)
 #include "DownloadID.h"
@@ -46,7 +47,7 @@ class NetworkLoad : public WebCore::ResourceHandleClient
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    NetworkLoad(NetworkLoadClient&, const NetworkLoadParameters&);
+    NetworkLoad(NetworkLoadClient&, NetworkLoadParameters&&);
     ~NetworkLoad();
 
     void setDefersLoading(bool);
@@ -67,7 +68,7 @@ public:
     // NetworkDataTaskClient
     void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler) final;
     void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler) final;
-    void didReceiveResponseNetworkSession(const WebCore::ResourceResponse&, ResponseCompletionHandler) final;
+    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler) final;
     void didReceiveData(Ref<WebCore::SharedBuffer>&&) final;
     void didCompleteWithError(const WebCore::ResourceError&) final;
     void didBecomeDownload() final;
@@ -78,7 +79,7 @@ public:
     // ResourceHandleClient
     void willSendRequestAsync(WebCore::ResourceHandle*, WebCore::ResourceRequest&&, WebCore::ResourceResponse&& redirectResponse) override;
     void didSendData(WebCore::ResourceHandle*, unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
-    void didReceiveResponseAsync(WebCore::ResourceHandle*, const WebCore::ResourceResponse&) override;
+    void didReceiveResponseAsync(WebCore::ResourceHandle*, WebCore::ResourceResponse&&) override;
     void didReceiveData(WebCore::ResourceHandle*, const char*, unsigned, int encodedDataLength) override;
     void didReceiveBuffer(WebCore::ResourceHandle*, Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
     void didFinishLoading(WebCore::ResourceHandle*, double finishTime) override;
@@ -116,14 +117,14 @@ public:
 #endif
 
 private:
-    NetworkLoadClient::ShouldContinueDidReceiveResponse sharedDidReceiveResponse(const WebCore::ResourceResponse&);
+    NetworkLoadClient::ShouldContinueDidReceiveResponse sharedDidReceiveResponse(WebCore::ResourceResponse&&);
     void sharedWillSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceResponse&&);
 
     NetworkLoadClient& m_client;
     const NetworkLoadParameters m_parameters;
 #if USE(NETWORK_SESSION)
     RefPtr<NetworkDataTask> m_task;
-    WebCore::AuthenticationChallenge m_challenge;
+    Optional<WebCore::AuthenticationChallenge> m_challenge;
     ChallengeCompletionHandler m_challengeCompletionHandler;
     ResponseCompletionHandler m_responseCompletionHandler;
     RedirectCompletionHandler m_redirectCompletionHandler;

@@ -56,8 +56,6 @@ webkit.org/b/152485 webaudio/audiocontext-state-interrupted.html [ Pass Crash ]
 
 webkit.org/b/152789 webarchive/adopt-attribute-styled-body-webarchive.html [ Pass Crash ]
 
-webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
-
 webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 
 webkit.org/b/154297 [ Debug ] fast/events/keydown-1.html [ Pass Failure ]
@@ -106,12 +104,6 @@ fast/images/animated-gif-body-outside-viewport.html [ Skip ]
 fast/images/animated-gif-window-resizing.html [ Skip ]
 fast/images/animated-gif-zooming.html [ Skip ]
 
-# Mavericks and prior do not support contentInset
-[ Mavericks ] platform/mac/fast/events/content-inset-hit-testing.html [ Skip ]
-[ Mavericks ] platform/mac/fast/events/content-inset-hit-testing-in-frame.html [ Skip ]
-[ Mavericks ] fast/scrolling/latching/scroll-select-bottom-test.html [ Skip ]
-[ Mavericks ] platform/mac-wk1/fast/backgrounds/top-content-inset-fixed-attachment.html [ Skip ]
-
 # WK1 uses the native scrollview for scrolling by page.
 scrollbars/scrolling-backward-by-page-accounting-bottom-fixed-elements-on-keyboard-spacebar.html
 scrollbars/scrolling-backward-by-page-on-keyboard-spacebar.html
@@ -140,12 +132,6 @@ http/tests/cache/disk-cache
 
 # ShouldOpenExternalURLs not yet supported in WK1
 loader/navigation-policy [ Skip ]
-
-webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Pass Timeout ]
-webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Pass Timeout ]
-webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html [ Pass Timeout ]
-webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-uniform-binding-bugs.html [ Pass Timeout ]
-webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/oes-texture-half-float.html [ Pass Timeout ]
 
 [ ElCapitan+ ] css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
@@ -223,3 +209,5 @@ webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ P
 
 # repaint rects work differently on WK1
 fast/repaint/vertical-text-repaint.html [ Pass Failure ]
+
+webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]

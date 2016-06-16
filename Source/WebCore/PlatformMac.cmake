@@ -4,10 +4,8 @@ if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
 set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
 elif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
 set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceYosemite.a)
-elif ("${CURRENT_OSX_VERSION}" MATCHES "10.11")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
 else ()
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceOSX10.12.a)
+set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
 endif ()
 link_directories(../../WebKitLibraries)
 
@@ -363,6 +361,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/avfoundation/MediaSelectionGroupAVFObjC.mm
     platform/graphics/avfoundation/MediaTimeAVFoundation.cpp
 
+    platform/graphics/avfoundation/objc/AVFoundationMIMETypeCache.mm
     platform/graphics/avfoundation/objc/AudioTrackPrivateAVFObjC.mm
     platform/graphics/avfoundation/objc/AudioTrackPrivateMediaSourceAVFObjC.cpp
     platform/graphics/avfoundation/objc/CDMSessionAVContentKeySession.mm
@@ -906,9 +905,8 @@ set(ObjC_BINDINGS_NO_MM
     NonElementParentNode
     ParentNode
     URLUtils
-    WindowBase64
     WindowEventHandlers
-    WindowTimers
+    WindowOrWorkerGlobalScope
     WorkerGlobalScopeIndexedDatabase
     WorkerGlobalScopeNotifications
     XPathNSResolver

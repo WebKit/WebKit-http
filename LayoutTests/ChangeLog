@@ -1,3 +1,1089 @@
+2016-06-15  Antti Koivisto  <antti@apple.com>
+
+        Vary:Cookie validation doesn't work in private browsing
+        https://bugs.webkit.org/show_bug.cgi?id=158616
+
+        Reviewed by Darin Adler.
+
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie.html:
+
+        Exapand the existing test to cover memory cache and private browsing.
+
+2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Honor bidi unicode codepoints
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        <rdar://problem/26527378>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/isolate-ignore-expected.html: Added.
+        * fast/text/isolate-ignore.html: Added.
+
+2016-06-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename Timeline.setAutoCaptureInstruments to Timeline.setInstruments
+        https://bugs.webkit.org/show_bug.cgi?id=158762
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/timeline/setInstruments-errors-expected.txt: Renamed from LayoutTests/inspector/timeline/setAutoCaptureInstruments-errors-expected.txt.
+        * inspector/timeline/setInstruments-errors.html: Renamed from LayoutTests/inspector/timeline/setAutoCaptureInstruments-errors.html.
+
+2016-06-14  Dean Jackson  <dino@apple.com>
+
+        decompose4 return value is unchecked, leading to potentially uninitialized data.
+        https://bugs.webkit.org/show_bug.cgi?id=158761
+        <rdar://problem/17526268>
+
+        Reviewed by Simon Fraser.
+
+        * transforms/undecomposable-expected.txt: Added.
+        * transforms/undecomposable.html: Added.
+
+2016-06-14  Keith Miller  <keith_miller@apple.com>
+
+        The Array species constructor watchpoints should be created the first time they are needed rather than on creation
+        https://bugs.webkit.org/show_bug.cgi?id=158754
+
+        Reviewed by Benjamin Poulain.
+
+        Add new micro-benchmark that tests the impact of lazily
+        initializing the array species watchpoints.
+
+        * js/regress/lazy-array-species-watchpoints-expected.txt: Added.
+        * js/regress/lazy-array-species-watchpoints.html: Added.
+        * js/regress/script-tests/lazy-array-species-watchpoints.js: Added.
+        (test):
+
+2016-06-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add the unprefixed version of the pseudo element ::placeholder
+        https://bugs.webkit.org/show_bug.cgi?id=158653
+
+        Reviewed by Dean Jackson.
+
+        * fast/css/css-selector-text-expected.txt:
+        * fast/css/css-selector-text.html:
+        * fast/css/css-set-selector-text-expected.txt:
+        * fast/css/css-set-selector-text.html:
+        This covers CSSOM for the prefixed version.
+
+        * fast/forms/placeholder-pseudo-element-with-webkit-prefix-expected.html: Added.
+        * fast/forms/placeholder-pseudo-element-with-webkit-prefix.html: Added.
+        This verifies both version of the pseudo elements are equivalent.
+
+        * fast/css/pseudo-cache-stale-expected.html:
+        * fast/css/pseudo-cache-stale.html:
+        * fast/forms/input-placeholder-paint-order-2-expected.html:
+        * fast/forms/input-placeholder-paint-order-2.html:
+        * fast/forms/input-placeholder-paint-order.html:
+        * fast/forms/input-placeholder-text-indent.html:
+        * fast/forms/input-user-modify.html:
+        * fast/forms/isindex-placeholder.html:
+        * fast/forms/placeholder-position.html:
+        * fast/forms/placeholder-pseudo-style.html:
+        * fast/forms/textarea-placeholder-pseudo-style.html:
+        * fast/forms/textarea/textarea-placeholder-paint-order-2-expected.html:
+        * fast/forms/textarea/textarea-placeholder-paint-order-2.html:
+        * fast/forms/textarea/textarea-placeholder-paint-order.html:
+
+2016-06-14  Doug Russell  <d_russell@apple.com>
+
+        AX: Form label text should be exposed as static text if it contains only static text
+        https://bugs.webkit.org/show_bug.cgi?id=158634
+
+        Reviewed by Chris Fleizach.
+
+        Use AccessibilityLabel to represent HTMLLabelElement to assistive technology.
+        AccessibilityLabel::containsOnlyStaticText() searches label subtree to evaluate 
+        if all children are static text.
+        AccessibilityLabel::stringValue() consults containsOnlyStaticText() and returns
+        textUnderElement() if true.
+        WebAccessibilityObjectWrapperMac consults containsOnlyStaticText() and substitutes
+        StaticTextRole for LabelRole if true.
+        Cache containsOnlyStaticText() in the common case when updating children.
+
+        * accessibility/aria-labelledby-overrides-label-expected.txt:
+        * accessibility/mac/label-element-all-text-string-value-expected.txt: Added.
+        * accessibility/mac/label-element-all-text-string-value.html: Added.
+        * accessibility/mac/label-element-with-hidden-control-expected.txt:
+        * accessibility/mac/label-element-with-hidden-control.html:
+        * accessibility/mac/label-element-with-link-string-value-expected.txt: Added.
+        * accessibility/mac/label-element-with-link-string-value.html: Added.
+        * accessibility/mac/slider-allows-title-ui-element-expected.txt:
+        * accessibility/mac/slider-allows-title-ui-element.html:
+
+2016-06-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Increase timeouts for userscripts/window-onerror-for-isolated-world-3.html to fix flakiness.
+        https://bugs.webkit.org/show_bug.cgi?id=158750
+
+        Reviewed by Joseph Pecoraro.
+
+        * userscripts/window-onerror-for-isolated-world-3.html:
+
+2016-06-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202057.
+        https://bugs.webkit.org/show_bug.cgi?id=158749
+
+        This change broke the Windows build. (Requested by ryanhaddad
+        on #webkit).
+
+        Reverted changeset:
+
+        "Honor bidi unicode codepoints"
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        http://trac.webkit.org/changeset/202057
+
+2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Honor bidi unicode codepoints
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        <rdar://problem/26527378>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/isolate-ignore-expected.html: Added.
+        * fast/text/isolate-ignore.html: Added.
+
+2016-06-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing duplicated TestExpectation and sorting others alphabetically
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/debugger/break-in-constructor-before-super.html as flaky on mac debug.
+        https://bugs.webkit.org/show_bug.cgi?id=158742
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Moving flaky expectation for inspector/heap/garbageCollected.html from mac-wk1 to mac
+        https://bugs.webkit.org/show_bug.cgi?id=153039
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-06-14  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        WebRTC: RTCPeerConnection::addTrack() should throw InvalidAccessError instead of InvalidModificationError.
+        https://bugs.webkit.org/show_bug.cgi?id=158735
+
+        Reviewed by Eric Carlson.
+
+        Check that an InvalidAccessError exception is thrown when the track already exists in set of senders.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt:
+
+2016-06-14  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::addIceCandidate()
+        https://bugs.webkit.org/show_bug.cgi?id=158690
+
+        Reviewed by Eric Carlson.
+
+        Add test for RTCPeerConnection.addIceCandidate() that verifies:
+        - Candidate line parsing
+        - That a underlying media description can be identified using either sdpMid or sdpMLineIndex
+        - That sdpMid takes precedence over sdpMLineIndex
+
+        * fast/mediastream/RTCPeerConnection-addIceCandidate-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-addIceCandidate.html: Added.
+        * platform/mac/TestExpectations:
+        The mac port is not building with WEB_RTC yet.
+
+2016-06-14  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Add media setup test where media is set up in one direction at a time
+        https://bugs.webkit.org/show_bug.cgi?id=158691
+
+        Reviewed by Eric Carlson.
+
+        Test setting up media in one direction at a time. This is achieved by first negotiating
+        media in one direction. In a second step, an updated offer is sent to add bi-directional
+        media.
+
+        * fast/mediastream/RTCPeerConnection-media-setup-two-dialogs-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html: Added.
+        * platform/mac/TestExpectations:
+        The mac port is not building with WEB_RTC yet.
+
+2016-06-13  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::replaceTrack()
+        https://bugs.webkit.org/show_bug.cgi?id=158688
+
+        Reviewed by Eric Carlson.
+
+        Update existing test for RTCRtpSender.replaceTrack.
+
+        * fast/mediastream/RTCRtpSender-replaceTrack-expected.txt:
+        * fast/mediastream/RTCRtpSender-replaceTrack.html:
+        Add test cases where a "not yet negotiated track" is directly replaced. Also check that the
+        old track id is used in later offers.
+        * fast/mediastream/resources/promise-utils.js:
+        (promiseShouldResolve):
+        Added utility method to test promise expressions that are expected to resolve.
+
+2016-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        window.onerror should pass the ErrorEvent's 'error' property as the 5th argument to the event handler
+        https://bugs.webkit.org/show_bug.cgi?id=55092
+        <rdar://problem/25731279>
+
+        Reviewed by Dean Jackson.
+
+        * platform/wk2/TestExpectations:
+        Skip new userscript test on WebKit2 like others.
+
+        * fast/events/constructors/error-event-constructor-expected.txt:
+        * fast/events/constructors/error-event-constructor.html:
+        Test for the new any "error" initialization property.
+
+        * fast/events/event-leak-objects-expected.txt:
+        * fast/events/event-leak-objects.html:
+        * fast/events/event-properties-gc-expected.txt:
+        * fast/events/event-properties-gc.html:
+        Like CustomEvent.details, ErrorEvent.error should not leak
+        objects across isolated worlds.
+
+        * fast/events/window-onerror-exception-in-attr-expected.txt:
+        * fast/events/window-onerror-exception-in-attr.html:
+        * fast/events/window-onerror-syntax-error-in-attr-expected.txt:
+        * fast/events/window-onerror-syntax-error-in-attr.html:
+        * fast/events/window-onerror1-expected.txt:
+        * fast/events/window-onerror1.html:
+        * fast/events/window-onerror10-expected.txt:
+        * fast/events/window-onerror10.html:
+        * fast/events/window-onerror11-expected.txt:
+        * fast/events/window-onerror11.html:
+        * fast/events/window-onerror12-expected.txt:
+        * fast/events/window-onerror12.html:
+        * fast/events/window-onerror13.html:
+        * fast/events/window-onerror14.html:
+        * fast/events/window-onerror16.html:
+        * fast/events/window-onerror17-expected.txt: Added.
+        * fast/events/window-onerror17.html: Copied from LayoutTests/fast/events/window-onerror12.html.
+        * fast/events/window-onerror2-expected.txt:
+        * fast/events/window-onerror2.html:
+        * fast/events/window-onerror3-expected.txt:
+        * fast/events/window-onerror3.html:
+        * fast/events/window-onerror4-expected.txt:
+        * fast/events/window-onerror4.html:
+        * fast/events/window-onerror5-expected.txt:
+        * fast/events/window-onerror5.html:
+        * fast/events/window-onerror6-expected.txt:
+        * fast/events/window-onerror6.html:
+        * fast/events/window-onerror7-expected.txt:
+        * fast/events/window-onerror7.html:
+        * fast/events/window-onerror8-expected.txt:
+        * fast/events/window-onerror8.html:
+        * fast/events/window-onerror9-expected.txt:
+        * fast/events/window-onerror9.html:
+        Include output for the column number and error object where possible.
+
+        * fast/files/resources/setup-for-read-common.js:
+        * fast/files/workers/worker-apply-blob-url-to-xhr.html:
+        * fast/workers/resources/worker-error-in-handling-script-error.js:
+        * fast/workers/resources/worker-script-error-bubbled.js:
+        * fast/workers/resources/worker-script-error-handled.js:
+        * fast/workers/resources/worker-script-error.js:
+        * fast/workers/worker-script-error-expected.txt:
+        Test "onerror" within Workers, and the "error" event on
+        the Worker from the spawning context.
+
+        * http/tests/security/cross-origin-script-error-event-expected.txt: Added.
+        * http/tests/security/cross-origin-script-error-event-redirected-expected.txt: Added.
+        * http/tests/security/cross-origin-script-error-event-redirected.html: Added.
+        * http/tests/security/cross-origin-script-error-event.html: Added.
+        * http/tests/security/cross-origin-script-window-onerror-expected.txt:
+        * http/tests/security/cross-origin-script-window-onerror-redirected-expected.txt:
+        * http/tests/security/cross-origin-script-window-onerror-redirected.html:
+        * http/tests/security/cross-origin-script-window-onerror.html:
+        * http/tests/security/script-crossorigin-error-event-information-expected.txt: Added.
+        * http/tests/security/script-crossorigin-error-event-information.html: Added.
+        * http/tests/security/script-crossorigin-onerror-information-expected.txt:
+        * http/tests/security/script-crossorigin-onerror-information.html:
+        * http/tests/security/script-no-crossorigin-error-event-should-be-sanitized-expected.txt: Added.
+        * http/tests/security/script-no-crossorigin-error-event-should-be-sanitized.html: Copied from LayoutTests/http/tests/security/script-no-crossorigin-onerror-should-be-sanitized.html.
+        * http/tests/security/script-no-crossorigin-onerror-should-be-sanitized-expected.txt:
+        * http/tests/security/script-no-crossorigin-onerror-should-be-sanitized.html:
+        * http/tests/security/window-onerror-exception-in-iframe-expected.txt:
+        * http/tests/security/window-onerror-exception-in-iframe.html:
+        * http/tests/workers/worker-importScriptsOnError-expected.txt:
+        * js/dom/exception-line-number-expected.txt:
+        * js/dom/script-tests/exception-line-number.js:
+        (window.onerror):
+
+        * userscripts/window-onerror-for-isolated-world-1-expected.txt:
+        * userscripts/window-onerror-for-isolated-world-1.html:
+        * userscripts/window-onerror-for-isolated-world-2-expected.txt:
+        * userscripts/window-onerror-for-isolated-world-2.html:
+        * userscripts/window-onerror-for-isolated-world-3-expected.txt: Added.
+        * userscripts/window-onerror-for-isolated-world-3.html: Added.
+        Add an explicit test for error objects crossing isolated world boundaries.
+        In the Isolated World case, serializable values are cloned, but unserializable
+        values cause the error object to return to null to avoid leaking across worlds.
+
+2016-06-13  Dean Jackson  <dino@apple.com>
+
+        SVG elements don't blend correctly into HTML
+        https://bugs.webkit.org/show_bug.cgi?id=158718
+        <rdar://problem/26782004>
+
+        Reviewed by Antoine Quint.
+
+        * svg/css/mix-blend-mode-with-inline-svg-expected.html: Added.
+        * svg/css/mix-blend-mode-with-inline-svg.html: Added.
+
+2016-06-13  Brady Eidson  <beidson@apple.com>
+
+        storage/indexeddb/modern/leaks-1.html leaks the database connection handle.
+        https://bugs.webkit.org/show_bug.cgi?id=158643
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/leak-1-expected.txt:
+        * storage/indexeddb/modern/resources/leak-1.js:
+
+2016-06-13  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Add test that verifies that RTCPeerConnection.addTrack can reuse an existing RTCRtpSender
+        https://bugs.webkit.org/show_bug.cgi?id=158621
+
+        Reviewed by Eric Carlson.
+
+        Add test to verify that RTCPeerConnection.addTrack reuses an existing RTCRtpSender
+        under the right circumstances.
+
+        * fast/mediastream/RTCPeerConnection-addTrack-reuse-sender-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-addTrack-reuse-sender.html: Added.
+        * platform/mac/TestExpectations:
+        The mac port is not building with WEB_RTC yet.
+
+2016-06-13  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Add media setup test with complete offer/answer dialog
+        https://bugs.webkit.org/show_bug.cgi?id=158620
+
+        Reviewed by Eric Carlson.
+
+        Test a complete SDP offer/answer dialog between two RTCPeerConnection instances in the same
+        page. Media is set up in both direction with a single dialog. Check the local- and
+        remoteDescription attributes and the RTCPeerConnection states.
+
+        * fast/mediastream/RTCPeerConnection-media-setup-single-dialog-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html: Added.
+        * platform/mac/TestExpectations:
+        The mac port is not building with WEB_RTC yet.
+
+2016-06-13  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [GTK] Enabling Shadow DOM by default
+        https://bugs.webkit.org/show_bug.cgi?id=158686
+
+        Reviewed by Carlos Garcia Campos.
+
+        Changed GTK test expectations for fast/shadow-dom tests (most tests
+        pass).
+
+        * platform/gtk/TestExpectations:
+
+2016-06-13  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening.
+        
+        Unskip passing fast/workers tests.
+
+        * platform/win/TestExpectations:
+
+2016-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Remove positioned descendants when RenderBlock is no longer a containing block.
+        https://bugs.webkit.org/show_bug.cgi?id=158655
+        <rdar://problem/26510032>
+
+        Reviewed by Simon Fraser.
+
+        Normally the RenderView is the containing block for fixed positioned renderers.
+        However when a renderer acquires some transform related properties, it becomes the containing
+        block for all the fixed positioned renderers in its descendant tree.
+        When the last transform related property is removed, the renderer is no longer a containing block
+        and we need to remove all these positioned renderers from the descendant tracker map (gPositionedDescendantsMap).
+        They will be inserted back into the tracker map during the next layout (either under the RenderView or
+        under the next transformed renderer in the ancestor chain).
+
+        * fast/block/fixed-position-reparent-when-transition-is-removed-expected.txt: Added.
+        * fast/block/fixed-position-reparent-when-transition-is-removed.html: Added.
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Map commonly used Chinese Windows font names to names present on Cocoa operating systems
+        https://bugs.webkit.org/show_bug.cgi?id=158649
+        <rdar://problem/13258122>
+
+        Reviewed by Darin Adler.
+
+        Because this tests platform-specific font names, the test must
+        be platform-specific. Because it's a ref test, make two tests which
+        are mutually-exclusive on Cocoa platforms, and expected to fail
+        everywhere else.
+
+        * fast/text/chinese-font-name-aliases-2-expected.html: Added.
+        * fast/text/chinese-font-name-aliases-2.html: Added.
+        * fast/text/chinese-font-name-aliases-expected.html: Added.
+        * fast/text/chinese-font-name-aliases.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-06-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201967, r201968, and r201972.
+        https://bugs.webkit.org/show_bug.cgi?id=158665
+
+        Caused flaky failures on IndexedDB tests (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Vary:Cookie validation doesn't work in private browsing"
+        https://bugs.webkit.org/show_bug.cgi?id=158616
+        http://trac.webkit.org/changeset/201967
+
+        "Build fix."
+        http://trac.webkit.org/changeset/201968
+
+        "WinCairo build fix attempt."
+        http://trac.webkit.org/changeset/201972
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Deleting a CSSOM style rule invalidates any previously-added FontFaces
+        https://bugs.webkit.org/show_bug.cgi?id=158450
+
+        Reviewed by Darin Adler.
+
+        * fast/text/font-face-set-cssom-expected.txt: Added.
+        * fast/text/font-face-set-cssom.html: Added.
+
+2016-06-11  Chris Dumez  <cdumez@apple.com>
+
+        WorkerNavigator is missing some attributes
+        https://bugs.webkit.org/show_bug.cgi?id=158593
+        <rdar://problem/26731334>
+
+        Reviewed by Darin Adler.
+
+        Improved test coverage for WorkerNavigator.
+
+        * fast/workers/resources/worker-navigator.js:
+
+2016-06-10  Antti Koivisto  <antti@apple.com>
+
+        Vary:Cookie validation doesn't work in private browsing
+        https://bugs.webkit.org/show_bug.cgi?id=158616
+
+        Reviewed by Darin Adler.
+
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary-cookie.html:
+
+        Exapand the existing test to cover memory cache and private browsing.
+
+2016-06-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add support for passive event listeners on touch events
+        https://bugs.webkit.org/show_bug.cgi?id=158601
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/tap-with-active-listener-on-elements-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-active-listener-on-elements.html: Added.
+        * fast/events/touch/ios/tap-with-active-listener-on-window-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-active-listener-on-window.html: Added.
+        * fast/events/touch/ios/tap-with-passive-listener-inside-active-listener-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-passive-listener-on-elements-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-passive-listener-on-elements.html: Added.
+        * fast/events/touch/ios/tap-with-passive-listener-on-window-expected.txt: Added.
+        * fast/events/touch/ios/tap-with-passive-listener-on-window.html: Added.
+
+2016-06-10  Enrica Casucci  <enrica@apple.com>
+
+        REGRESSION(r198177): Cannot paste an image when the pasteboard format is mime type.
+        https://bugs.webkit.org/show_bug.cgi?id=158590
+        rdar://problem/25471371
+
+        Reviewed by Darin Adler.
+
+        * editing/pasteboard/image-in-iframe-expected.txt: Added.
+        * editing/pasteboard/image-in-iframe.html: Added.
+
+2016-06-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/blink/storage/indexeddb/blob-delete-objectstore-db.html as flaky on Yosemite Release WK2
+        https://bugs.webkit.org/show_bug.cgi?id=158639
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-06-10  Brady Eidson  <beidson@apple.com>
+
+        Add an IDB leak test.
+        https://bugs.webkit.org/show_bug.cgi?id=158632
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/leak-1-expected.txt: Added.
+        * storage/indexeddb/modern/leak-1.html: Added.
+        * storage/indexeddb/modern/resources/leak-1.js: Added.
+
+2016-06-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed gardening.
+
+        * TestExpectations: shadow-dom tests timeout on the GTK port.
+        Update the general expectations file to include also Timeout as
+        an expected failure.
+        * platform/gtk/TestExpectations: Since r200320 resource-timing feature is a runtime flag and this causes failures.
+        Remove also one test that has been removed.
+        * platform/gtk/fast/table/border-collapsing/cached-change-row-border-width-expected.txt: rebaseline after r201234
+        * platform/gtk/fast/table/border-collapsing/cached-change-tbody-border-width-expected.txt: rebaseline after r201234
+        * platform/gtk/fast/table/max-width-integer-overflow-expected.txt: rebaseline after r201234
+
+2016-06-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Origin header is not included in CORS requests for preloaded cross-origin resources
+        https://bugs.webkit.org/show_bug.cgi?id=155761
+        <rdar://problem/25351850>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/security/cross-origin-css-9-expected.txt: Added.
+        * http/tests/security/cross-origin-css-9.html: Added.
+        * http/tests/security/resources/get-css-if-origin-header.php: Added.
+
+2016-06-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/hidpi/hidpi-3x-device-pixel-ratio.html as failing on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=158618
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-06-10  Chris Dumez  <cdumez@apple.com>
+
+        ErrorEvent / ProgressEvent should be exposed to workers
+        https://bugs.webkit.org/show_bug.cgi?id=158606
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline test.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-06-10  Chris Dumez  <cdumez@apple.com>
+
+        MessagePort should be exposed to workers
+        https://bugs.webkit.org/show_bug.cgi?id=158607
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline test.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-06-10  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::createAnswer()
+        https://bugs.webkit.org/show_bug.cgi?id=158566
+
+        Reviewed by Eric Carlson.
+
+        Add test for RTCPeerConnection.createAnswer.
+
+        * fast/mediastream/RTCPeerConnection-inspect-answer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-inspect-answer.html: Added.
+        Generate two answers, one with audio only and a second with audio and video, and inspect
+        the result.
+        * platform/mac/TestExpectations:
+        Skip tests for mac that require building with WEB_RTC enabled.
+
+2016-06-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] CRASH when getting the computed style of a grid with only absolutely positioned children
+        https://bugs.webkit.org/show_bug.cgi?id=158537
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-only-abspos-item-computed-style-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-only-abspos-item-computed-style-crash.html: Added.
+        * fast/css-grid-layout/grid-template-shorthand-get-set-expected.txt: Adjusted, grid-template
+        does create explicit tracks so we should return 0px instead of none.
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html: Ditto.
+
+2016-06-10  Chris Dumez  <cdumez@apple.com>
+
+        DOMException should be exposed to workers
+        https://bugs.webkit.org/show_bug.cgi?id=158608
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline existing test.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-06-09  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver Unable to View Download Progress or Completion Status for Mail Attachments
+        https://bugs.webkit.org/show_bug.cgi?id=158581
+
+        Reviewed by Darin Adler.
+
+        * accessibility/attachment-element-expected.txt:
+        * accessibility/attachment-element.html:
+        * accessibility/ios-simulator/attributed-string-for-range-expected.txt:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/accessibility/attachment-element-expected.txt: Added.
+
+2016-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        Hairline borders do not show up on 3x displays.
+        https://bugs.webkit.org/show_bug.cgi?id=158604
+        <rdar://problem/26511679>
+
+        Reviewed by Simon Fraser.
+
+        On a 3x display, when we convert a 1/3px hairline border from float
+        to LayoutUnit and pixel floor the result, we end up with a 0px width border.
+        It's because float to LayoutUnit is lossy and since the current kFixedPointDenominator % 3 != 0,
+        flooring LayoutUnit(1/3px) ends up being 0px. (float: 1/3 -> LayoutUnit: (1/3 - 1/kFixedPointDenominator) -> floor: 0)
+        This patch eliminates the (unnecessary) float -> LayoutUnit - float conversion on border width.   
+
+        * fast/borders/hidpi-3x-input-hairline-border-expected-mismatch.html: Added.
+        * fast/borders/hidpi-3x-input-hairline-border.html: Added.
+
+2016-06-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201887.
+        https://bugs.webkit.org/show_bug.cgi?id=158610
+
+        This change caused LayoutTest crashes under GuardMalloc and
+        ASan (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Deleting a CSSOM style rule invalidates any previously-added
+        FontFaces"
+        https://bugs.webkit.org/show_bug.cgi?id=158450
+        http://trac.webkit.org/changeset/201887
+
+2016-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        Add testing support for 3x device scale factor.
+        https://bugs.webkit.org/show_bug.cgi?id=158597
+
+        Reviewed by Simon Fraser.
+
+        Set 3x device scale factor on the test canvas when the test url is prefixed with hidpi-3x-. 
+
+        * fast/hidpi/hidpi-3x-device-pixel-ratio-expected.txt: Added.
+        * fast/hidpi/hidpi-3x-device-pixel-ratio.html: Added.
+
+2016-06-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r201823) editing/selection/selection-in-iframe-removed-crash.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=158569
+
+        Commit the test fix that was supposed to be landed as a part of r201823,
+        and remove the flaky test expectation.
+
+        * editing/selection/selection-in-iframe-removed-crash.html:
+        * platform/mac/TestExpectations:
+
+2016-06-09  Antoine Quint  <graouts@apple.com>
+
+        [iOS] -webkit-overflow-scrolling: touch; ignores pointer-events: none;
+        https://bugs.webkit.org/show_bug.cgi?id=119839
+        <rdar://problem/9671514>
+
+        Reviewed by Simon Fraser.
+
+        * fast/scrolling/ios/touch-scroll-pointer-events-none-expected.txt: Added.
+        * fast/scrolling/ios/touch-scroll-pointer-events-none.html: Added.
+
+2016-06-09  Chris Dumez  <cdumez@apple.com>
+
+        WorkerNavigator property should exist on WorkerGlobalScope
+        https://bugs.webkit.org/show_bug.cgi?id=158574
+        <rdar://problem/26725108>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline existing test now that WorkerNavigator is exposed to workers.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-06-09  Chris Dumez  <cdumez@apple.com>
+
+        atob() / btoa() API should be exposed to workers
+        https://bugs.webkit.org/show_bug.cgi?id=158576
+        <rdar://problem/26729340>
+
+        Reviewed by Sam Weinig.
+
+        Add test for atob() / btoa() in workers.
+
+        * fast/workers/atob-btoa-expected.txt: Added.
+        * fast/workers/atob-btoa.html: Added.
+        * fast/workers/resources/worker-atob-btoa.js: Added.
+
+2016-06-09  Michael Saboff  <msaboff@apple.com>
+
+        ES6: Reusing function name as a parameter name shouldn't throw Syntax Error
+        https://bugs.webkit.org/show_bug.cgi?id=158575
+
+        Reviewed by Benjamin Poulain.
+
+        Added a new test case.
+
+        * js/basic-strict-mode-expected.txt:
+        * js/script-tests/basic-strict-mode.js:
+
+2016-06-09  Antoine Quint  <graouts@apple.com>
+
+        Changing canvas height immediately after page load does not relayout canvas
+        https://bugs.webkit.org/show_bug.cgi?id=156097
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/canvas/canvas-css-size-after-height-change-with-display-flex-expected.html: Added.
+        * fast/canvas/canvas-css-size-after-height-change-with-display-flex.html: Added.
+
+2016-06-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Deleting a CSSOM style rule invalidates any previously-added FontFaces
+        https://bugs.webkit.org/show_bug.cgi?id=158450
+
+        Reviewed by Darin Adler.
+
+        * fast/text/font-face-set-cssom-expected.txt: Added.
+        * fast/text/font-face-set-cssom.html: Added.
+
+2016-06-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking webgl/webgl-backing-store-size-update.html as a flaky timeout on mac-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=158585
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-06-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing Mavericks-specific TestExpectations from mac-wk1 TestExpectations file.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-06-09  Eric Carlson  <eric.carlson@apple.com>
+
+        Don't show the caption menu if a video has only forced tracks
+        https://bugs.webkit.org/show_bug.cgi?id=158573
+        <rdar://problem/24632384>
+
+        Reviewed by Jer Noble.
+
+        * media/controls/forced-tracks-only-expected.txt: Added.
+        * media/controls/forced-tracks-only.html: Added.
+
+2016-06-09  Chris Dumez  <cdumez@apple.com>
+
+        WorkerGlobalScope attributes / operations should be on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=158568
+        <rdar://problem/26720079>
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/workers/WorkerGlobalScope-properties-prototype-expected.txt: Added.
+        * fast/workers/WorkerGlobalScope-properties-prototype.html: Added.
+        Add layout test coverage.
+
+        * fast/workers/self-hasOwnProperty-expected.txt:
+        * fast/workers/self-hasOwnProperty.html:
+        Update test I added a couple of days ago because it wrongly expected
+        the 'navigator' property to be on the instance. This check was failing
+        in other browsers (Firefox and Chrome).
+
+2016-06-09  Tim Horton  <timothy_horton@apple.com>
+
+        Writing-mode-dependent properties don't apply if their value is a variable
+        https://bugs.webkit.org/show_bug.cgi?id=158449
+        <rdar://problem/26662478>
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/variables/direction-dependent-variable-properties-expected.html: Added.
+        * fast/css/variables/direction-dependent-variable-properties.html: Added.
+        Add a test ensuring that direction-dependent properties work correctly,
+        including flipping when the direction is flipped.
+
+2016-06-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking editing/selection/selection-in-iframe-removed-crash.html as flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=158569
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-09  Brady Eidson  <beidson@apple.com>
+
+        LayoutTest storage/indexeddb/modern/handle-user-delete.html is a flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=158501
+
+        Reviewed by Darin Adler.
+        
+        The order in which the transaction abort happens doesn't matter; It only matters that it happens.
+        
+        Update the test to reflect this.
+        
+        * storage/indexeddb/modern/handle-user-delete-expected.txt:
+        * storage/indexeddb/modern/resources/handle-user-delete.js:
+
+2016-06-09  Simon Fraser  <simon.fraser@apple.com>
+
+        border-radius with different width and height rendered wrong
+        https://bugs.webkit.org/show_bug.cgi?id=158300
+        <rdar://problem/26672922>
+
+        Reviewed by Zalan Bujtas.
+        
+        * fast/borders/border-non-renderable-radius-inner-clip-expected.html: Added.
+        * fast/borders/border-non-renderable-radius-inner-clip.html: Added.
+        * fast/borders/border-radius-inner-clip-expected-mismatch.html: Added.
+        * fast/borders/border-radius-inner-clip-vertical-expected-mismatch.html: Added.
+        * fast/borders/border-radius-inner-clip-vertical.html: Added.
+        * fast/borders/border-radius-inner-clip.html: Added.
+        * fast/borders/resources/border-radius-helpers.js: Added.
+        (createContainer):
+        (createReferenceContainer):
+
+2016-06-09  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening.
+        
+        Unskip passing websocket tests.
+
+        * platform/win/TestExpectations:
+
+2016-06-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r201842.
+
+        The change that prompted this rebaseline was rolled out.
+
+        Reverted changeset:
+
+        "Rebaseline js/dom/global-constructors-attributes.html for Mac
+        after r201810"
+        http://trac.webkit.org/changeset/201842
+
+2016-06-09  Michael Saboff  <msaboff@apple.com>
+
+        WebKitTestRunner and DumpRenderTree do not handle dangling surrogate characters
+        https://bugs.webkit.org/show_bug.cgi?id=154863
+
+        Reviewed by Alexey Proskuryakov.
+
+        New tests.
+
+        * fast/text/dangling-surrogates-expected.txt: Added.
+        * fast/text/dangling-surrogates.html: Added.
+
+2016-06-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201810.
+        https://bugs.webkit.org/show_bug.cgi?id=158563
+
+        breaks build without ENABLE_WEB_ANIMATION (Requested by
+        mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "[web-animations] Add Animatable, AnimationEffect,
+        KeyframeEffect and Animation interface"
+        https://bugs.webkit.org/show_bug.cgi?id=156096
+        http://trac.webkit.org/changeset/201810
+
+2016-06-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        slotchange event should be fired at the end of microtask
+        https://bugs.webkit.org/show_bug.cgi?id=157374
+        <rdar://problem/26154024>
+
+        Reviewed by Antti Koivisto.
+
+        Added a test case to ensure slotchange event is dispatched at the end of a microtask.
+
+        * fast/shadow-dom/slotchange-event-expected.txt:
+        * fast/shadow-dom/slotchange-event.html:
+
+2016-06-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: Web Inspector: Should be able to evaluate "{a:1, b:2}" in the console
+        https://bugs.webkit.org/show_bug.cgi?id=158548
+        <rdar://problem/26708513>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/console/addInspectedNode.html:
+        * inspector/console/command-line-api-copy.html:
+        * inspector/console/command-line-api.html:
+        * inspector/console/console-api.html:
+        * inspector/console/console-table.html:
+        * inspector/console/messagesCleared.html:
+        * inspector/controller/runtime-controller.html:
+        * inspector/debugger/command-line-api-exception-nested-catch.html:
+        * inspector/debugger/command-line-api-exception.html:
+        * inspector/model/remote-object-get-properties.html:
+        * inspector/model/remote-object-weak-collection.html:
+        * inspector/model/remote-object.html:
+        * inspector/timeline/exception-in-injected-script-while-recording.html:
+        Update evaluateInInspectedWindow callsites to use options dictionary.
+
+2016-06-08  Chris Dumez  <cdumez@apple.com>
+
+        DedicatedWorkerGlobalScope prototype chain is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=158544
+
+        Reviewed by Brady Eidson.
+
+        Add test coverage for the DedicatedWorkerGlobalScope prototype chain.
+
+        * fast/workers/DedicatedWorkerGlobalScope-prototype-chain-expected.txt: Added.
+        * fast/workers/DedicatedWorkerGlobalScope-prototype-chain.html: Added.
+
+2016-06-08  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::setRemoteDescription()
+        https://bugs.webkit.org/show_bug.cgi?id=158467
+
+        Reviewed by Eric Carlson.
+
+        Add tests for RTCPeerConnection.setRemoteDescription() and the RTCTrackEvent constructor.
+
+        * fast/mediastream/RTCPeerConnection-setRemoteDescription-offer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html: Added.
+        Verify the description set, the expected RTCPeerConnection state changes and that the
+        'track' event is fired before the setRemoteDescription() promise fulfills.
+        * fast/mediastream/RTCTrackEvent-constructor-expected.txt: Added.
+        * fast/mediastream/RTCTrackEvent-constructor.html: Added.
+        This test has some expected failures since the bindings generator don't support 'required'
+        dictionary members for event init dictionaries.
+        * platform/mac/TestExpectations:
+        Skip tests for mac that require building with WEB_RTC enabled.
+
+2016-06-08  John Wilander  <wilander@apple.com>
+
+        Perform IDNA encoding on parameters for setHostAndPort and setHost
+        https://bugs.webkit.org/show_bug.cgi?id=158371
+        <rdar://problem/16869342>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/dom/resources/set-document-location-iframe.html: Added.
+        * fast/dom/set-document-location-host-to-unaccepted-values-expected.txt: Added.
+        * fast/dom/set-document-location-host-to-unaccepted-values.html: Added.
+        * fast/dom/set-document-location-hostname-to-unaccepted-values-expected.txt: Added.
+        * fast/dom/set-document-location-hostname-to-unaccepted-values.html: Added.
+        * http/tests/dom/resources/set-document-location-iframe.html: Added.
+        * http/tests/dom/set-document-location-host-to-accepted-values-expected.txt: Added.
+        * http/tests/dom/set-document-location-host-to-accepted-values.html: Added.
+        * http/tests/dom/set-document-location-hostname-to-accepted-values-expected.txt: Added.
+        * http/tests/dom/set-document-location-hostname-to-accepted-values.html: Added.
+
+2016-06-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline js/dom/global-constructors-attributes.html for Mac after r201810
+
+        Unreviewed test gardening.
+
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2016-06-08  Jer Noble  <jer.noble@apple.com>
+
+        With audio user gesture restriction in place, video.src = 'file', video.play() succeeds where it should fail.
+        https://bugs.webkit.org/show_bug.cgi?id=158546
+
+        Reviewed by Eric Carlson.
+
+        * media/video-playback-restriction-play-before-load-expected.txt: Added.
+        * media/video-playback-restriction-play-before-load.html: Added.
+
+2016-06-08  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to MessagePort / DedicatedWorkerGlobalScope.postMessage() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=158540
+
+        Reviewed by Geoffrey Garen.
+
+        Add test coverage.
+
+        * fast/files/workers/inline-worker-via-blob-url.html:
+        * fast/workers/postMessage-missing-parameter-expected.txt: Added.
+        * fast/workers/postMessage-missing-parameter.html: Added.
+        * fast/workers/worker-messageport-expected.txt:
+        * fast/workers/worker-messageport.html:
+
+2016-06-08  Nan Wang  <n_wang@apple.com>
+
+        For keyboard users, activating a fragment URL should transfer focus and caret to the destination
+        https://bugs.webkit.org/show_bug.cgi?id=116046
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a layout test to check that mouse pressing, fragment navigation, focusing an element and removing
+        the focused element will give us the expected focus navigation starting point.
+
+        Also updated the fragment activation test because now that navigating to an unfocusable fragment will
+        unfocus the current focused element.
+
+        * fast/dom/fragment-activation-focuses-target-expected.txt:
+        * fast/dom/fragment-activation-focuses-target.html:
+        * fast/events/sequential-focus-navigation-starting-point-expected.txt: Added.
+        * fast/events/sequential-focus-navigation-starting-point.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-06-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r201667): ASSERTION FAILED: !m_anchorNode || !editingIgnoresContent(*m_anchorNode)
+        https://bugs.webkit.org/show_bug.cgi?id=158373
+
+        Reviewed by Brent Fulgham.
+
+        Fixed a test so that the assertion failure happens within the test instead of affecting the subsequent test.
+
+        * editing/selection/selection-in-iframe-removed-crash-expected.txt:
+        * editing/selection/selection-in-iframe-removed-crash.html:
+
 2016-06-08  Ryan Haddad  <ryanhaddad@apple.com>
 
         Marking css3/filters/backdrop/dynamic-backdrop-filter-change.html as flaky on Mac

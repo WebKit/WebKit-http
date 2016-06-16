@@ -30,9 +30,17 @@
 
 namespace WebKit {
 
-NativeWebTouchEvent::NativeWebTouchEvent(WPE::Input::TouchEvent&& event)
-    : WebTouchEvent(WebEventFactory::createWebTouchEvent(WTFMove(event)))
+NativeWebTouchEvent::NativeWebTouchEvent(struct wpe_input_touch_event* event)
+    : WebTouchEvent(WebEventFactory::createWebTouchEvent(event))
+    , m_fallbackTouchPoint{ wpe_input_touch_event_type_null, 0, 0, 0, 0 }
 {
+    for (unsigned i = 0; i < event->touchpoints_length; ++i) {
+        auto& point = event->touchpoints[i];
+        if (point.type != wpe_input_touch_event_type_null) {
+            m_fallbackTouchPoint = point;
+            break;
+        }
+    }
 }
 
 } // namespace WebKit

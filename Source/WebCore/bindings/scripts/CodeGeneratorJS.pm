@@ -270,6 +270,16 @@ sub IsDOMGlobalObject
     return $interface->name eq "DOMWindow" || $codeGenerator->InheritsInterface($interface, "WorkerGlobalScope") || $interface->name eq "TestGlobalObject";
 }
 
+sub ShouldUseGlobalObjectPrototype
+{
+    my $interface = shift;
+
+    # For workers, the global object is a DedicatedWorkerGlobalScope.
+    return 0 if $interface->name eq "WorkerGlobalScope";
+
+    return IsDOMGlobalObject($interface);
+}
+
 sub GenerateGetOwnPropertySlotBody
 {
     my ($interface, $className, $inlined) = @_;
@@ -548,7 +558,8 @@ sub InterfaceRequiresAttributesOnInstance
     # FIXME: We should be able to drop this once <rdar://problem/24466097> is fixed.
     return 1 if $interface->isException;
 
-    return 1 if IsDOMGlobalObject($interface);
+    # FIXME: Add support for [PrimaryGlobal] / [Global].
+    return 1 if IsDOMGlobalObject($interface) && $interface->name ne "WorkerGlobalScope";
 
     return 1 if InterfaceRequiresAttributesOnInstanceForCompatibility($interface);
 
@@ -586,7 +597,8 @@ sub OperationShouldBeOnInstance
     my $interface = shift;
     my $function = shift;
 
-    return 1 if IsDOMGlobalObject($interface);
+    # FIXME: Add support for [PrimaryGlobal] / [Global].
+    return 1 if IsDOMGlobalObject($interface) && $interface->name ne "WorkerGlobalScope";
 
     # FIXME: The bindings generator does not support putting runtime-enabled operations on the instance yet (except for global objects).
     return 0 if $function->signature->extendedAttributes->{"EnabledAtRuntime"};
@@ -1146,7 +1158,7 @@ sub GenerateHeader
     }
 
     # Prototype
-    unless (IsDOMGlobalObject($interface)) {
+    unless (ShouldUseGlobalObjectPrototype($interface)) {
         push(@headerContent, "    static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);\n");
         push(@headerContent, "    static JSC::JSObject* prototype(JSC::VM&, JSC::JSGlobalObject*);\n");
     }
@@ -2282,7 +2294,8 @@ sub GenerateImplementation
             my $name = $signature->name;
             push(@implContent, "    if (!${enable_function}()) {\n");
             push(@implContent, "        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(\"$name\"), strlen(\"$name\"));\n");
-            push(@implContent, "        removeDirect(vm, propertyName);\n");
+            push(@implContent, "        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);\n");
+            push(@implContent, "        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);\n");
             push(@implContent, "    }\n");
             push(@implContent, "#endif\n") if $conditionalString;
         }
@@ -2399,11 +2412,14 @@ sub GenerateImplementation
             push(@implContent, "#endif\n") if $conditionalString;
         }
         push(@implContent, "}\n\n");
-    } else {
+    }
+    
+    unless (ShouldUseGlobalObjectPrototype($interface)) {
         push(@implContent, "JSObject* ${className}::createPrototype(VM& vm, JSGlobalObject* globalObject)\n");
         push(@implContent, "{\n");
-        if ($hasParent && $parentClassName ne "JSC::DOMNodeFilter") {
-            push(@implContent, "    return ${className}Prototype::create(vm, globalObject, ${className}Prototype::createStructure(vm, globalObject, ${parentClassName}::prototype(vm, globalObject)));\n");
+        if ($interface->parent) {
+            my $parentClassNameForPrototype = "JS" . $interface->parent;
+            push(@implContent, "    return ${className}Prototype::create(vm, globalObject, ${className}Prototype::createStructure(vm, globalObject, ${parentClassNameForPrototype}::prototype(vm, globalObject)));\n");
         } else {
             my $prototype = $interface->isException ? "errorPrototype" : "objectPrototype";
             push(@implContent, "    return ${className}Prototype::create(vm, globalObject, ${className}Prototype::createStructure(vm, globalObject, globalObject->${prototype}()));\n");
@@ -3149,8 +3165,7 @@ END
                         push(@implContent, "    ExceptionCode ec = 0;\n");
                     }
 
-                    my $numParameters = @{$function->parameters};
-                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
+                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
                     GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interface);
                 }
             } else {
@@ -3198,8 +3213,7 @@ END
                         $implIncludes{"JSDOMBinding.h"} = 1;
                     }
 
-                    my $numParameters = @{$function->parameters};
-                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
+                    my ($functionString, $dummy) = GenerateParametersCheck(\@implContent, $function, $interface, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType);
                     GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interface);
                 }
             }
@@ -3568,12 +3582,14 @@ sub WillConvertUndefinedToDefaultParameterValue
 
 sub GenerateParametersCheck
 {
-    my ($outputArray, $function, $interface, $numParameters, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType) = @_;
+    my ($outputArray, $function, $interface, $functionImplementationName, $svgPropertyType, $svgPropertyOrListPropertyType, $svgListPropertyType) = @_;
 
     my $interfaceName = $interface->name;
     my @arguments;
     my $functionName;
     my $implementedBy = $function->signature->extendedAttributes->{"ImplementedBy"};
+    my $numParameters = @{$function->parameters};
+
     if ($implementedBy) {
         AddToImplIncludes("${implementedBy}.h", $function->signature->extendedAttributes->{"Conditional"});
         unshift(@arguments, "impl") if !$function->isStatic;
@@ -3603,6 +3619,7 @@ sub GenerateParametersCheck
         my $type = $parameter->type;
 
         die "Optional parameters of non-nullable wrapper types are not supported" if $parameter->isOptional && !$parameter->isNullable && $codeGenerator->IsWrapperType($type);
+        die "Optional parameters preceding variadic parameters are not supported" if ($parameter->isOptional &&  @{$function->parameters}[$numParameters - 1]->isVariadic);
 
         if ($parameter->isOptional && !defined($parameter->default)) {
             # As per Web IDL, optional dictionary parameters are always considered to have a default value of an empty dictionary, unless otherwise specified.
@@ -3663,16 +3680,20 @@ sub GenerateParametersCheck
             my $nativeElementType = GetNativeType($interface, $type);
             if (!IsNativeType($type)) {
                 push(@$outputArray, "    Vector<$nativeElementType> $name;\n");
+                push(@$outputArray, "    ASSERT($argumentIndex <= state->argumentCount());\n");
+                push(@$outputArray, "    $name.reserveInitialCapacity(state->argumentCount() - $argumentIndex);\n");
                 push(@$outputArray, "    for (unsigned i = $argumentIndex, count = state->argumentCount(); i < count; ++i) {\n");
-                push(@$outputArray, "        if (!state->uncheckedArgument(i).inherits(JS${type}::info()))\n");
+                push(@$outputArray, "        auto* item = JS${type}::toWrapped(state->uncheckedArgument(i));\n");
+                push(@$outputArray, "        if (!item)\n");
                 push(@$outputArray, "            return throwArgumentTypeError(*state, i, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$type\");\n");
-                push(@$outputArray, "        $name.append(JS${type}::toWrapped(state->uncheckedArgument(i)));\n");
+                push(@$outputArray, "        $name.uncheckedAppend(item);\n");
                 push(@$outputArray, "    }\n")
             } else {
                 push(@$outputArray, "    Vector<$nativeElementType> $name = toNativeArguments<$nativeElementType>(state, $argumentIndex);\n");
                 push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
+            $value = "WTFMove($name)";
         } elsif ($codeGenerator->IsEnumType($type)) {
             my $className = GetEnumerationClassName($interface, $type);
 
@@ -5052,8 +5073,7 @@ END
 
             # FIXME: For now, we do not support SVG constructors.
             # FIXME: Currently [Constructor(...)] does not yet support optional arguments without [Default=...]
-            my $numParameters = @{$function->parameters};
-            my ($dummy, $paramIndex) = GenerateParametersCheck($outputArray, $function, $interface, $numParameters, "constructorCallback", undef, undef, undef);
+            my ($dummy, $paramIndex) = GenerateParametersCheck($outputArray, $function, $interface, "constructorCallback", undef, undef, undef);
 
             if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptState")) {
                 push(@constructorArgList, "*state");
@@ -5181,7 +5201,7 @@ sub GenerateConstructorHelperMethods
     # There must exist an interface prototype object for every non-callback interface defined, regardless
     # of whether the interface was declared with the [NoInterfaceObject] extended attribute.
     # https://heycam.github.io/webidl/#interface-prototype-object
-    if (IsDOMGlobalObject($interface)) {
+    if (ShouldUseGlobalObjectPrototype($interface)) {
         push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject.getPrototypeDirect(), DontDelete | ReadOnly | DontEnum);\n");
     } elsif ($interface->isCallback) {
         push(@$outputArray, "    UNUSED_PARAM(globalObject);\n");

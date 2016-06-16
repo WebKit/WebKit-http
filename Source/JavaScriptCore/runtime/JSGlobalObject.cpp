@@ -65,11 +65,11 @@
 #include "JSArrayBufferPrototype.h"
 #include "JSArrayIterator.h"
 #include "JSBoundFunction.h"
-#include "JSBoundSlotBaseFunction.h"
 #include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
 #include "JSCallbackObject.h"
+#include "JSCustomGetterSetterFunction.h"
 #include "JSDataView.h"
 #include "JSDataViewPrototype.h"
 #include "JSDollarVM.h"
@@ -343,9 +343,9 @@ void JSGlobalObject::init(VM& vm)
     exec->setCallee(m_globalCallee.get());
 
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
-    m_boundSlotBaseFunctionStructure.initLater(
+    m_customGetterSetterFunctionStructure.initLater(
         [] (const Initializer<Structure>& init) {
-            init.set(JSBoundSlotBaseFunction::createStructure(init.vm, init.owner, init.owner->m_functionPrototype.get()));
+            init.set(JSCustomGetterSetterFunction::createStructure(init.vm, init.owner, init.owner->m_functionPrototype.get()));
         });
     m_boundFunctionStructure.initLater(
         [] (const Initializer<Structure>& init) {
@@ -561,7 +561,8 @@ m_ ## properName ## Structure.set(vm, this, instanceType::createStructure(vm, th
     m_definePropertyFunction.set(vm, this, definePropertyFunction);
 
     JSCell* functionConstructor = FunctionConstructor::create(vm, FunctionConstructor::createStructure(vm, this, m_functionPrototype.get()), m_functionPrototype.get());
-    JSObject* arrayConstructor = ArrayConstructor::create(vm, this, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get(), m_speciesGetterSetter.get());
+    ArrayConstructor* arrayConstructor = ArrayConstructor::create(vm, this, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get(), m_speciesGetterSetter.get());
+    m_arrayConstructor.set(vm, this, arrayConstructor);
     
     m_regExpConstructor.set(vm, this, RegExpConstructor::create(vm, RegExpConstructor::createStructure(vm, this, m_functionPrototype.get()), m_regExpPrototype.get(), m_speciesGetterSetter.get()));
     
@@ -608,7 +609,7 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     
     m_objectPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, objectConstructor, DontEnum);
     m_functionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, functionConstructor, DontEnum);
-    m_arrayPrototype->setConstructor(vm, arrayConstructor, DontEnum);
+    m_arrayPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, arrayConstructor, DontEnum);
     m_regExpPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_regExpConstructor.get(), DontEnum);
     
     putDirectWithoutTransition(vm, vm.propertyNames->Object, objectConstructor, DontEnum);
@@ -1095,7 +1096,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_errorStructure);
     visitor.append(&thisObject->m_calleeStructure);
     visitor.append(&thisObject->m_functionStructure);
-    thisObject->m_boundSlotBaseFunctionStructure.visit(visitor);
+    thisObject->m_customGetterSetterFunctionStructure.visit(visitor);
     thisObject->m_boundFunctionStructure.visit(visitor);
     visitor.append(&thisObject->m_getterSetterStructure);
     thisObject->m_nativeStdFunctionStructure.visit(visitor);

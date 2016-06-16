@@ -123,6 +123,7 @@ public:
     WEBCORE_EXPORT void releaseMemory(Critical, Synchronous = Synchronous::No);
 
 private:
+    void platformInitialize();
     void releaseNoncriticalMemory();
     void releaseCriticalMemory(Synchronous);
 

@@ -67,7 +67,7 @@ public:
     const Vector<RefPtr<RTCRtpReceiver>>& getReceivers() const { return m_transceiverSet->getReceivers(); }
     const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const override { return m_transceiverSet->list(); }
 
-    RefPtr<RTCRtpSender> addTrack(Ref<MediaStreamTrack>&&, Vector<MediaStream*>, ExceptionCode&);
+    RefPtr<RTCRtpSender> addTrack(Ref<MediaStreamTrack>&&, const Vector<MediaStream*>&, ExceptionCode&);
     void removeTrack(RTCRtpSender&, ExceptionCode&);
 
     // This enum is mirrored in RTCRtpTransceiver.h
@@ -131,19 +131,21 @@ private:
     bool canSuspendForDocumentSuspension() const override;
 
     // PeerConnectionBackendClient
+    void addTransceiver(RefPtr<RTCRtpTransceiver>&&) override;
     void setSignalingState(PeerConnectionStates::SignalingState) override;
     void updateIceGatheringState(PeerConnectionStates::IceGatheringState) override;
     void updateIceConnectionState(PeerConnectionStates::IceConnectionState) override;
 
     void scheduleNegotiationNeededEvent() override;
 
+    RTCRtpSenderClient& senderClient() { return *this; }
     void fireEvent(Event&) override;
     PeerConnectionStates::SignalingState internalSignalingState() const override { return m_signalingState; }
     PeerConnectionStates::IceGatheringState internalIceGatheringState() const override { return m_iceGatheringState; }
     PeerConnectionStates::IceConnectionState internalIceConnectionState() const override { return m_iceConnectionState; }
 
     // RTCRtpSenderClient
-    void replaceTrack(RTCRtpSender&, MediaStreamTrack&, PeerConnection::VoidPromise&&) override;
+    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, PeerConnection::VoidPromise&&) override;
 
     PeerConnectionStates::SignalingState m_signalingState;
     PeerConnectionStates::IceGatheringState m_iceGatheringState;

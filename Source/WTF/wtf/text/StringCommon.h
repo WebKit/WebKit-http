@@ -323,6 +323,17 @@ ALWAYS_INLINE bool equalCommon(const StringClassA* a, const StringClassB* b)
     return equal(*a, *b);
 }
 
+template<typename StringClass, unsigned length> bool equal(const StringClass& a, const UChar (&codeUnits)[length])
+{
+    if (a.length() != length)
+        return false;
+
+    if (a.is8Bit())
+        return equal(a.characters8(), codeUnits, length);
+
+    return equal(a.characters16(), codeUnits, length);
+}
+
 template<typename CharacterTypeA, typename CharacterTypeB>
 inline bool equalIgnoringASCIICase(const CharacterTypeA* a, const CharacterTypeB* b, unsigned length)
 {

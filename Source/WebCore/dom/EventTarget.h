@@ -158,8 +158,9 @@ public:
     EventListener* getAttributeEventListener(const AtomicString& eventType);
 
     bool hasEventListeners() const;
-    bool hasEventListeners(const AtomicString& eventType);
+    bool hasEventListeners(const AtomicString& eventType) const;
     bool hasCapturingEventListeners(const AtomicString& eventType);
+    bool hasActiveEventListeners(const AtomicString& eventType) const;
     const EventListenerVector& getEventListeners(const AtomicString& eventType);
 
     bool fireEventListeners(Event&);
@@ -168,11 +169,17 @@ public:
     void visitJSEventListeners(JSC::SlotVisitor&);
     void invalidateJSEventListeners(JSC::JSObject*);
 
+    bool hasActiveTouchEventListeners() const;
+
 protected:
     virtual ~EventTarget();
     
     virtual EventTargetData* eventTargetData() = 0;
     virtual EventTargetData& ensureEventTargetData() = 0;
+    const EventTargetData* eventTargetData() const
+    {
+        return const_cast<EventTarget*>(this)->eventTargetData();
+    }
 
 private:
     virtual void refEventTarget() = 0;
@@ -214,9 +221,9 @@ inline bool EventTarget::hasEventListeners() const
     return !d->eventListenerMap.isEmpty();
 }
 
-inline bool EventTarget::hasEventListeners(const AtomicString& eventType)
+inline bool EventTarget::hasEventListeners(const AtomicString& eventType) const
 {
-    EventTargetData* d = eventTargetData();
+    const EventTargetData* d = eventTargetData();
     if (!d)
         return false;
     return d->eventListenerMap.contains(eventType);

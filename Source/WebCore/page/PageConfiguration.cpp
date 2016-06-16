@@ -30,13 +30,17 @@
 #include "BackForwardClient.h"
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
+#include "EditorClient.h"
+#include "SocketProvider.h"
 #include "StorageNamespaceProvider.h"
 #include "UserContentController.h"
 #include "VisitedLinkStore.h"
 
 namespace WebCore {
 
-PageConfiguration::PageConfiguration()
+PageConfiguration::PageConfiguration(UniqueRef<EditorClient>&& editorClient, UniqueRef<SocketProvider>&& socketProvider)
+    : editorClient(WTFMove(editorClient))
+    , socketProvider(WTFMove(socketProvider))
 {
 }
 

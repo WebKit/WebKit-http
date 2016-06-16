@@ -78,6 +78,7 @@ MemoryPressureHandler::MemoryPressureHandler()
     , m_holdOffTimer(*this, &MemoryPressureHandler::holdOffTimerFired)
 #endif
 {
+    platformInitialize();
 }
 
 void MemoryPressureHandler::releaseNoncriticalMemory()
@@ -218,6 +219,10 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
     else
         MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": =dirty (at %zu bytes)", m_logString, currentMemory);
 }
+
+#if !PLATFORM(COCOA)
+void MemoryPressureHandler::platformInitialize() { }
+#endif
 
 #if !PLATFORM(COCOA) && !OS(LINUX) && !PLATFORM(WIN)
 void MemoryPressureHandler::install() { }

@@ -40,7 +40,6 @@
 #include "CustomElementDefinitions.h"
 #include "DOMTokenList.h"
 #include "Dictionary.h"
-#include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
@@ -67,7 +66,6 @@
 #include "IdTargetObserverRegistry.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
-#include "KeyframeEffect.h"
 #include "LifecycleCallbackQueue.h"
 #include "MainFrame.h"
 #include "MutationObserverInterestGroup.h"
@@ -1262,14 +1260,12 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
             if (needsStyleInvalidation() && isInShadowTree())
                 setNeedsStyleRecalc(FullStyleChange);
         }
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
         else if (name == HTMLNames::slotAttr) {
             if (auto* parent = parentElement()) {
                 if (auto* shadowRoot = parent->shadowRoot())
                     shadowRoot->hostChildElementDidChangeSlotAttribute(oldValue, newValue);
             }
         }
-#endif
     }
 
     parseAttribute(name, newValue);
@@ -1383,21 +1379,6 @@ ElementStyle Element::resolveStyle(const RenderStyle* parentStyle)
 {
     return styleResolver().styleForElement(*this, parentStyle);
 }
-
-#if ENABLE(WEB_ANIMATIONS)
-WebAnimationVector Element::getAnimations()
-{
-    auto checkTarget = [this](AnimationEffect const& effect)
-    {
-        return (static_cast<KeyframeEffect const&>(effect).target() == this);
-    };
-
-    auto* document = DocumentAnimation::from(&this->document());
-    if (document)
-        return document->getAnimations(checkTarget);
-    return WebAnimationVector();
-}
-#endif
 
 bool Element::hasDisplayContents() const
 {
@@ -1535,12 +1516,10 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
         setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
 #endif
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (parentNode() == &insertionPoint) {
         if (auto* shadowRoot = parentNode()->shadowRoot())
             shadowRoot->hostChildElementDidChange(*this);
     }
-#endif
 
     if (!insertionPoint.isInTreeScope())
         return InsertionDone;
@@ -1621,12 +1600,10 @@ void Element::removedFrom(ContainerNode& insertionPoint)
         }
     }
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (!parentNode()) {
         if (auto* shadowRoot = insertionPoint.shadowRoot())
             shadowRoot->hostChildElementDidChange(*this);
     }
-#endif
 
     ContainerNode::removedFrom(insertionPoint);
 
@@ -1702,33 +1679,32 @@ RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
     return nullptr;
 }
 
-#if ENABLE(SHADOW_DOM)
+
 static bool canAttachAuthorShadowRoot(const Element& element)
 {
     static NeverDestroyed<HashSet<AtomicString>> tagNames = [] {
-        const AtomicString tagList[] = {
-            articleTag.localName(),
-            asideTag.localName(),
-            blockquoteTag.localName(),
-            bodyTag.localName(),
-            divTag.localName(),
-            footerTag.localName(),
-            h1Tag.localName(),
-            h2Tag.localName(),
-            h3Tag.localName(),
-            h4Tag.localName(),
-            h5Tag.localName(),
-            h6Tag.localName(),
-            headerTag.localName(),
-            navTag.localName(),
-            pTag.localName(),
-            sectionTag.localName(),
-            spanTag.localName()
+        static const HTMLQualifiedName* const tagList[] = {
+            &articleTag,
+            &asideTag,
+            &blockquoteTag,
+            &bodyTag,
+            &divTag,
+            &footerTag,
+            &h1Tag,
+            &h2Tag,
+            &h3Tag,
+            &h4Tag,
+            &h5Tag,
+            &h6Tag,
+            &headerTag,
+            &navTag,
+            &pTag,
+            &sectionTag,
+            &spanTag
         };
-
         HashSet<AtomicString> set;
         for (auto& name : tagList)
-            set.add(name);
+            set.add(name->localName());
         return set;
     }();
 
@@ -1768,7 +1744,7 @@ ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
     }
     return root;
 }
-#endif
+
 
 ShadowRoot* Element::userAgentShadowRoot() const
 {
@@ -1906,7 +1882,6 @@ void Element::childrenChanged(const ChildChange& change)
         checkForSiblingStyleChanges(*this, checkType, change.previousSiblingElement, change.nextSiblingElement);
     }
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (ShadowRoot* shadowRoot = this->shadowRoot()) {
         switch (change.type) {
         case ElementInserted:
@@ -1925,7 +1900,6 @@ void Element::childrenChanged(const ChildChange& change)
             break;
         }
     }
-#endif
 }
 
 void Element::setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& attributeValue)

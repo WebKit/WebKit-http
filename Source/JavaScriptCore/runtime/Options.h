@@ -372,7 +372,9 @@ typedef const char* optionString;
     v(bool, dumpAirAsJSBeforeAllocateStack, false, Normal, nullptr) \
     v(bool, dumpAirAfterAllocateStack, false, Normal, nullptr) \
     \
-    v(bool, useSuperSampler, false, Normal, nullptr)
+    v(bool, useSuperSampler, false, Normal, nullptr) \
+    \
+    v(bool, reportLLIntStats, false, Configurable, "Reports LLInt statistics")
 
 enum OptionEquivalence {
     SameOption,
@@ -422,7 +424,8 @@ public:
 
     enum class Availability {
         Normal = 0,
-        Restricted
+        Restricted,
+        Configurable
     };
 
     // This typedef is to allow us to eliminate the '_' in the field name in
@@ -430,7 +433,7 @@ public:
     typedef int32_t int32;
 
     // Declare the option IDs:
-    enum OptionID {
+    enum ID {
 #define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \
         name_##ID,
         JSC_OPTIONS(FOR_EACH_OPTION)
@@ -471,6 +474,8 @@ public:
     JSC_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
 
+    static bool isAvailable(ID, Availability);
+
 private:
     // For storing for an option value:
     union Entry {
@@ -500,7 +505,7 @@ private:
     static void dumpOptionsIfNeeded();
     static void dumpAllOptions(StringBuilder&, DumpLevel, const char* title,
         const char* separator, const char* optionHeader, const char* optionFooter, DumpDefaultsOption);
-    static void dumpOption(StringBuilder&, DumpLevel, OptionID,
+    static void dumpOption(StringBuilder&, DumpLevel, ID,
         const char* optionHeader, const char* optionFooter, DumpDefaultsOption);
 
     static bool setOptionWithoutAlias(const char* arg);
@@ -517,7 +522,7 @@ private:
 
 class Option {
 public:
-    Option(Options::OptionID id)
+    Option(Options::ID id)
         : m_id(id)
         , m_entry(Options::s_options[m_id])
     {
@@ -528,6 +533,7 @@ public:
     bool operator==(const Option& other) const;
     bool operator!=(const Option& other) const { return !(*this == other); }
     
+    Options::ID id() const { return m_id; }
     const char* name() const;
     const char* description() const;
     Options::Type type() const;
@@ -545,13 +551,13 @@ public:
     
 private:
     // Only used for constructing default Options.
-    Option(Options::OptionID id, Options::Entry& entry)
+    Option(Options::ID id, Options::Entry& entry)
         : m_id(id)
         , m_entry(entry)
     {
     }
     
-    Options::OptionID m_id;
+    Options::ID m_id;
     Options::Entry& m_entry;
 };
 

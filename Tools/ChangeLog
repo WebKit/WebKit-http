@@ -1,3 +1,595 @@
+2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        Enabling Shadow DOM for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=158738
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed Shadow DOM from options (enabled by default)
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2016-06-15  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test accessibility/selected-text-range-aria-elements.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158732
+
+        Reviewed by Brent Fulgham.
+
+        Implement selectedTextRange() method.
+
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (AccessibilityUIElement::selectedTextRange):
+
+2016-06-15  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] MiniBrowser is not DPI aware.
+        https://bugs.webkit.org/show_bug.cgi?id=158733
+
+        Reviewed by Brent Fulgham.
+
+        Call Win32 api function to let Windows know that we will scale the contents ourselves.
+
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain):
+
+2016-06-15  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed: add new email address to contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-06-14  Keith Miller  <keith_miller@apple.com>
+
+        JSBench should use geometric mean
+        https://bugs.webkit.org/show_bug.cgi?id=158775
+
+        Reviewed by Mark Lam.
+
+        For some reason JSBench was using algebraic mean. Since each test
+        is pretty substantially different it should use geometric mean
+        instead.
+
+        * Scripts/run-jsc-benchmarks:
+
+2016-06-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Debug crash logs are not fully symbolicated on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=158760
+
+        Reviewed by Darin Adler.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg: Don't enable dSYM generation
+        for debug builds on Yosemite.
+
+2016-06-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Tests don't work in iOS Simulator when ASan is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=158726
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver): Added a FIXME.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_environ_for_server): Don't try to insert a dylib built for
+        simulator into LayoutTestRelay, which is a macOS tool.
+
+2016-06-14  Aakash Jain  <aakash_jain@apple.com>
+
+        Continuous "Reentrancy avoided" error messages in run-webkit-tests if Simulator quits unexpectedly
+        https://bugs.webkit.org/show_bug.cgi?id=158756
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator.wait_until_device_is_booted): If checking Simulator boot state fails, verify if
+        the "simulator device" is still in booted state. Since we ensured that simulator device 
+        was in booted state earlier in this method, this indicates that simulator device has shut down
+        unexpectedly.
+
+2016-06-14  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up fix #2: REGRESSION (r202020): El Capitan CMake Debug build broken
+        <https://webkit.org/b/158743>
+
+        Unreviewed build fix.
+
+        * DumpRenderTree/PlatformMac.cmake: Fix silly typo.
+
+2016-06-14  Aakash Jain  <aakash_jain@apple.com>
+
+        Too much log data generated during layout-tests on iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=158751
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort._quit_ios_simulator): Do not use -v flag.
+        (IOSSimulatorPort.clean_up_test_run): Ditto.
+        (IOSSimulatorPort._createSimulatorApp): Ditto.
+
+2016-06-14  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up fix: REGRESSION (r202020): El Capitan CMake Debug build broken
+        <https://webkit.org/b/158743>
+
+        Unreviewed build fix.
+
+        The fix in r202056 clobbered DumpRenderTree_SOURCES and
+        TestNetscapePlugin_SOURCES from DumpRenderTree/CMakeLists.txt,
+        so the build failure is now that we're not building the common
+        sources.
+
+        Fix that by saving the common sources (which are all C++ source
+        files) into *_Cpp_SOURCES lists first, then setting the compiler
+        flags, then creating the final *_SOURCES lists.
+
+        * DumpRenderTree/PlatformMac.cmake: Add
+        ${TestNetscapePlugin_Cpp_SOURCES} to list that needs
+        "-std=c++14" compiler switch.
+        (TestNetscapePlugin_Cpp_SOURCES): Add new list for C++ source
+        files for TestNetscapePlugin.  Seeded with
+        ${TestNetscapePlugin_SOURCES} from CMakeLists.txt.
+        (TestNetscapePlugin_SOURCES): Add
+        ${TestNetscapePlugin_Cpp_SOURCES} to the list of files.
+        (DumpRenderTree_Cpp_SOURCES): Seed list for C++ source files
+        with ${DumpRenderTree_SOURCES} from CMakeLists.txt.
+        (DumpRenderTree_SOURCES): Reformat and sort source lists.
+
+2016-06-14  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r202020): El Capitan CMake Debug build broken
+        <https://webkit.org/b/158743>
+
+        Reviewed by Alex Christensen.
+
+        The bug was that pure C++ source files (and Objective-C source
+        files) were being compiled as Objective-C++ source files.  This
+        is obviously incorrect, so the fix was to split out the list of
+        source files by language, then define compiler switches based on
+        each file type.
+
+        * DumpRenderTree/PlatformMac.cmake: Replace add_definitions()
+        with separate foreach loops that set compiler flags based on
+        each source file's type.
+        (TestNetscapePlugin_ObjCpp_SOURCES): Rename from
+        TestNetscapePlugin_SOURCES.
+        (TestNetscapePlugin_SOURCES): Create based on
+        ${TestNetscapePlugin_ObjCpp_SOURCES}.
+        (DumpRenderTree_ObjC_SOURCES): Split from DumpRenderTree_SOURCES.
+        (DumpRenderTree_Cpp_SOURCES): Ditto.
+        (DumpRenderTree_ObjCpp_SOURCES): Ditto.
+        (DumpRenderTree_SOURCES): Create from above three lists.
+
+2016-06-14  Lucas Forschler  <lforschler@apple.com>
+
+        <rdar://problem/26685782>
+        Teach the copy-webkitlibraries-to-product-directory script about WebKitSystemInterfaceOSX10.12
+
+        Rubber-stamped by Jessie Berlin.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-06-14  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Activate CMake export compile commands option
+        https://bugs.webkit.org/show_bug.cgi?id=158734
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject): Activating this option for all CMake builds.
+        This allows using ymcd for WebKit hacking.
+
+2016-06-14  David Kilzer  <ddkilzer@apple.com>
+
+        Modernize DumpRenderTreeMac.h
+        <https://webkit.org/b/158721>
+
+        Reviewed by Andy Estes.
+
+        * DumpRenderTree/mac/DumpRenderTreeMac.h:
+        - Update copyright.
+        - Update license.
+        - Use #pragma once.
+        - Use OBJC_CLASS macro.
+
+2016-06-13  David Kilzer  <ddkilzer@apple.com>
+
+        False-positive over-release of WebView in destroyWebViewAndOffscreenWindow() in DumpRenderTree.mm
+        <https://webkit.org/b/158716>
+
+        Reviewed by Andy Estes.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (destroyWebViewAndOffscreenWindow): Change this function to take
+        a WebView, and assert that it's the same as [mainFrame webView].
+        (dumpRenderTree): Pass 'webView' into
+        destroyWebViewAndOffscreenWindow().
+        * DumpRenderTree/mac/DumpRenderTreeMac.h:
+        (createWebViewAndOffscreenWindow): Add NS_RETURNS_RETAINED since
+        this function returns a +1 WebView.  Declare this method only for
+        Objective-C[++] source.
+
+2016-06-13  Sam Weinig  <sam@webkit.org>
+
+        Make HashMap and HashSet work with Refs
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+        (TestWebKitAPI::TEST):
+        Add tests for using Refs in HashMaps (both as key and value) and HashSets.
+
+2016-06-13  Mark Lam  <mark.lam@apple.com>
+
+        Add a mechanism for collecting LLINT stats.
+        https://bugs.webkit.org/show_bug.cgi?id=158668
+
+        Reviewed by Filip Pizlo.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (DumpRenderTreeMain):
+
+2016-06-13  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [GTK] Enabling Shadow DOM by default
+        https://bugs.webkit.org/show_bug.cgi?id=158686
+
+        Reviewed by Carlos Garcia Campos.
+
+        Added support for enabling Shadow DOM by default for GTK.
+        Changed GTK test expectations for fast/shadow-dom tests (most tests
+        pass).
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-06-12  Aakash Jain  <aakash_jain@apple.com>
+
+        run-safari/run-webkit-app fail to quit iOS simulator after Xcode installation
+        https://bugs.webkit.org/show_bug.cgi?id=158651
+        rdar://problem/26499824
+
+        Reviewed by Daniel Bates.
+
+        This change is to make our tools more robust. Sometimes run-safari/run-webkit-app fails 
+        to start the tests as one of the first thing these scripts do is to relaunch iOS Simulators,
+        and in process call quitIOSSimulator. In case the Simulator is not registered in LaunchServices
+        for some reason, quitIOSSimulator fails and the script stops. This change will make the scripts
+        still continue when they fail to quit iOS Simuator, and modify the way Simulator is opened, 
+        so that Simulator is implicitly registered with LaunchServices while opening it.
+
+        * Scripts/webkitdirs.pm:
+        (relaunchIOSSimulator):
+        Launch iOS Simulator using complete path. Partially reverting http://trac.webkit.org/changeset/184202.
+        (quitIOSSimulator):
+        Do not die if quitting ios Simulator fails, so that relaunchIOSSimulator can still 
+        attempt to launch the simulator.
+        (waitUntilIOSSimulatorDeviceIsInState):
+        Added a FIXME.
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments after r201978.
+        https://bugs.webkit.org/show_bug.cgi?id=158649
+        <rdar://problem/13258122>
+
+        Unreviewed.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-06-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Unreviewed leak fix after r201863.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpFramesAsText):
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Map commonly used Chinese Windows font names to names present on Cocoa operating systems
+        https://bugs.webkit.org/show_bug.cgi?id=158649
+        <rdar://problem/13258122>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.h:
+        (TestWebKitAPI::TEST):
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * TestWebKitAPI/PlatformMac.cmake:
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename JSAir to Air.js
+
+        Rubber stamped by Mark Lam.
+
+        * Scripts/run-javascriptcore-tests:
+
+2016-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC Stress Test failing: jsair-tests.yaml/test.js.ftl-eager-no-cjit
+        https://bugs.webkit.org/show_bug.cgi?id=158571
+
+        Reviewed by Keith Miller.
+        
+        Unskip the JSAir test.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-06-10  Sam Weinig  <sam@webkit.org>
+
+        Re-disable the UserMedia tests which are timing out.
+
+        They used to be accidentally disabled, due to not including
+        the FeatureDefines correctly, but not we explicitly disable it.
+
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce WTF::UniqueRef
+        https://bugs.webkit.org/show_bug.cgi?id=158596
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/UniqueRef.cpp: Added.
+        (TestWebKitAPI::B::B):
+        (TestWebKitAPI::C::C):
+        (TestWebKitAPI::function):
+        (TestWebKitAPI::TEST):
+
+2016-06-10  Sam Weinig  <sam@webkit.org>
+
+        Refactor TestWebKitAPI to allow just testing WTF
+        https://bugs.webkit.org/show_bug.cgi?id=158625
+
+        Reviewed by Tim Horton.
+
+        Extract all the WTF tests into a new target to allow a faster build / test / fix
+        cycle when working on WTF bugs and features.
+        
+        By calling `run-api-tests --wtf-only`, you don't need to have a build of JavaScriptCore/WebCore/etc
+        to test WTF only changes.
+
+        * Scripts/build-api-tests:
+        * Scripts/run-api-tests:
+        (buildTestTool):
+        (testToolPaths):
+        Add new options to build-api-tests and run-api-tests to only build/run the WTF test runner.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/Configurations/TestWTF.xcconfig: Added.
+        * TestWebKitAPI/Configurations/TestWTFLibrary.xcconfig: Added.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Add two new targets, TestWTFLibrary which contains all the WTF tests, and TestWTF,
+        the test runner that runs the WTF tests.
+    
+        * TestWebKitAPI/Tests/WTF/RunLoop.cpp:
+        Use Utilities.h rather than PlatformUtilities.h.
+
+        * TestWebKitAPI/Utilities.h: Added.
+        * TestWebKitAPI/PlatformUtilities.h:
+        * TestWebKitAPI/cocoa/PlatformUtilitiesCocoa.mm:
+        * TestWebKitAPI/cocoa/UtilitiesCocoa.mm: Added.
+        Move the sleep and run functions into a new Utilities.h/cpp file. This file contains utilities
+        that don't depend on anything in the WebKit project. 
+
+2016-06-10  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION(r201928?) API test WTF.StringOperators failing
+        https://bugs.webkit.org/show_bug.cgi?id=158623
+
+        Unreviewed, but buddy coded with Alex Christensen.
+
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp:
+        (TestWebKitAPI::LifetimeLogger::fullName): Only one file in all of TestWebKitAPI is allowed
+          to use string concatenation, otherwise the linker will mess up on the symbol related to
+          this bizarre WTF_STRINGTYPEADAPTER_COPIED_WTF_STRING macro expansion.
+
+2016-06-10  Brady Eidson  <beidson@apple.com>
+
+        WTF_CrossThreadTask.Basic fails in all non mac ports.
+        https://bugs.webkit.org/show_bug.cgi?id=158612
+
+        Reviewed by Alex Christensen.
+
+        The test is very sensitive to argument evaluation order which is explicitly undefined in C++.
+        
+        Instead, we should just count the appropriate events to forget their order.
+        
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp:
+        (TestWebKitAPI::LifetimeLogger::LifetimeLogger):
+        (TestWebKitAPI::LifetimeLogger::~LifetimeLogger):
+        (TestWebKitAPI::LifetimeLogger::isolatedCopy):
+        (TestWebKitAPI::LifetimeLogger::fullName):
+        (TestWebKitAPI::testFunction):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::LifetimeLogger::log): Deleted.
+        (TestWebKitAPI::LifetimeLogger::takeLogStr): Deleted.
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up Tools *.vcxproj after switching to CMake.
+
+        * DumpRenderTree/DumpRenderTree.sln: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.def: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.rc: Removed.
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/resource.h: Removed.
+        * DumpRenderTree/PlatformWin.cmake:
+        * DumpRenderTree/win/TestNetscapePlugin.def: Copied from DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.def.
+        * DumpRenderTree/win/TestNetscapePlugin.rc: Copied from DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.rc.
+        * DumpRenderTree/win/resource.h: Copied from DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/resource.h.
+        * MiniBrowser/MiniBrowser.vcxproj: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.ico: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.rc: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.rc: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibResource.h: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserResource.h: Removed.
+        * MiniBrowser/MiniBrowser.vcxproj/small.ico: Removed.
+        * MiniBrowser/win/CMakeLists.txt:
+        * MiniBrowser/win/MiniBrowser.ico: Copied from MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.ico.
+        * MiniBrowser/win/MiniBrowser.rc: Copied from MiniBrowser/MiniBrowser.vcxproj/MiniBrowser.rc.
+        * MiniBrowser/win/MiniBrowserLib.rc: Copied from MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.rc.
+        * MiniBrowser/win/MiniBrowserLibResource.h: Copied from MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibResource.h.
+        * MiniBrowser/win/MiniBrowserResource.h: Copied from MiniBrowser/MiniBrowser.vcxproj/MiniBrowserResource.h.
+        * MiniBrowser/win/small.ico: Copied from MiniBrowser/MiniBrowser.vcxproj/small.ico.
+        * WebKitTestRunner/WebKitTestRunner.sln: Removed.
+        * win/DLLLauncher/DLLLauncherWinCairo.props: Removed.
+
+2016-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        Add testing support for 3x device scale factor.
+        https://bugs.webkit.org/show_bug.cgi?id=158597
+
+        Reviewed by Simon Fraser.
+
+        Set 3x device scale factor on the test canvas when the test url is prefixed with hidpi-3x-. 
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (changeWindowScaleIfNeeded):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::updateWindowScaleForTest):
+        * WebKitTestRunner/TestOptions.cpp:
+        (WTR::deviceScaleFactorForTest):
+        (WTR::TestOptions::TestOptions):
+        (WTR::isHiDPITestPath): Deleted.
+        * WebKitTestRunner/TestOptions.h:
+
+2016-06-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Add comments to clarify feature enablement
+        https://bugs.webkit.org/show_bug.cgi?id=158567
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-06-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, skip jsair tests while we figure out the debug timeouts.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-06-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201815.
+        https://bugs.webkit.org/show_bug.cgi?id=158570
+
+        This broke the cmake build. (Requested by lforschler on
+        #webkit).
+
+        Reverted changeset:
+
+        "Teach cmake about libWebKitSystemInterfaceOSX10.12"
+        http://trac.webkit.org/changeset/201815
+
+2016-06-09  Brady Eidson  <beidson@apple.com>
+
+        Greatly simplify CrossThreadTask.h.
+        https://bugs.webkit.org/show_bug.cgi?id=158542
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/CrossThreadTask.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r201836, r201845, and r201848.
+
+        Looks like a 1-2% PLT regression on iOS
+
+        Reverted changesets:
+
+        "[JSC] Change some parameters based on a random search"
+        https://bugs.webkit.org/show_bug.cgi?id=158514
+        http://trac.webkit.org/changeset/201836
+
+        "Tempory fix for the debug bots"
+        http://trac.webkit.org/changeset/201845
+
+        "Change thresholdForOptimizeSoon to match
+        thresholdForOptimizeAfterWarmUp"
+        http://trac.webkit.org/changeset/201848
+
+2016-06-09  Michael Saboff  <msaboff@apple.com>
+
+        WebKitTestRunner and DumpRenderTree do not handle dangling surrogate characters
+        https://bugs.webkit.org/show_bug.cgi?id=154863
+
+        Reviewed by Alexey Proskuryakov.
+
+        Added a non-strict verions of WKStringGetUTF8CString() that will handle dangling
+        surrogates.  Changed the extraction of inner text from frames in DumpRenderTree
+        to use the new WKStringGetUTF8CStringNonStrict() function instead of NSString
+        conversion since NSString doesn't have a way to handle dangling surrogates.
+        The code added in DumpRenderTree matches what was changed in WebKitTestRunner.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpFramesAsText):
+        * WebKitTestRunner/StringFunctions.h:
+        (WTR::toWTFString):
+
+2016-06-08  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Try to fix the EFL build. 
+
+        Unreviewed. 
+
+        * TestWebKitAPI/CMakeLists.txt:
+
+2016-06-08  Alex Christensen  <achristensen@webkit.org>
+
+       Fix WinCairo build
+
+        * DumpRenderTree/cairo/PixelDumpSupportCairo.h:
+
+2016-06-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix WinCairo build
+
+        * DumpRenderTree/cairo/PixelDumpSupportCairo.h:
+        (BitmapContext::createByAdoptingBitmapAndContext):
+        (BitmapContext::~BitmapContext):
+
+2016-06-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Change some parameters based on a random search
+        https://bugs.webkit.org/show_bug.cgi?id=158514
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-06-08  Aakash Jain  <aakash_jain@apple.com>
+
+        tests fail if display sleeps while run-webkit-tests is running
+        https://bugs.webkit.org/show_bug.cgi?id=153919
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (releaseSleepAssertions): Release both Display sleep and System sleep assertions.
+        (addSleepAssertions): Add sleep assertion for both Display sleep and System sleep.
+
 2016-06-08  Lucas Forschler  <lforschler@apple.com>
 
         Reverted changeset 201814.

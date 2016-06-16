@@ -28,6 +28,8 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include <wtf/MainThread.h>
+
 namespace WebKit {
 
 CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
@@ -38,14 +40,22 @@ CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
     m_updateState.store(UpdateState::Completed);
 }
 
-void CompositingRunLoop::callOnCompositingRunLoop(std::function<void ()>&& function)
+void CompositingRunLoop::performTask(NoncopyableFunction<void ()>&& function)
 {
-    if (&m_runLoop == &RunLoop::current()) {
-        function();
-        return;
-    }
-
+    ASSERT(isMainThread());
     m_runLoop.dispatch(WTFMove(function));
+}
+
+void CompositingRunLoop::performTaskSync(NoncopyableFunction<void ()>&& function)
+{
+    ASSERT(isMainThread());
+    LockHolder locker(m_dispatchSyncConditionMutex);
+    m_runLoop.dispatch([this, function = WTFMove(function)] {
+        LockHolder locker(m_dispatchSyncConditionMutex);
+        function();
+        m_dispatchSyncCondition.notifyOne();
+    });
+    m_dispatchSyncCondition.wait(m_dispatchSyncConditionMutex);
 }
 
 bool CompositingRunLoop::isActive()
@@ -86,6 +96,17 @@ void CompositingRunLoop::updateCompleted()
 void CompositingRunLoop::updateTimerFired()
 {
     m_updateFunction();
+}
+
+void CompositingRunLoop::run()
+{
+    m_runLoop.run();
+}
+
+void CompositingRunLoop::stop()
+{
+    m_updateTimer.stop();
+    m_runLoop.stop();
 }
 
 } // namespace WebKit
