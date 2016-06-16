@@ -293,6 +293,11 @@ endif ()
 
 # From PlatformWin.cmake
 if (WIN32)
+
+    if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
+        add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
+    endif ()
+
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${CMAKE_BINARY_DIR}/../include/private"
         "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore"

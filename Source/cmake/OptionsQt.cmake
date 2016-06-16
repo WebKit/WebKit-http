@@ -377,9 +377,6 @@ if (MSVC)
         # Use the multithreaded static runtime library instead of the default DLL runtime.
         string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
     endforeach ()
-
-    set(JavaScriptCore_LIBRARY_TYPE SHARED)
-    set(WTF_LIBRARY_TYPE SHARED)
 endif ()
 
 if (NOT RUBY_FOUND AND RUBY_EXECUTABLE AND NOT RUBY_VERSION VERSION_LESS 1.9)
