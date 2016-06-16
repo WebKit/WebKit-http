@@ -263,6 +263,7 @@ fast/shadow-dom/focus-across-details-element.html [ Failure ]
 fast/shadow-dom/focus-navigation-across-slots.html [ Failure ]
 fast/shadow-dom/focus-on-iframe.html [ Failure ]
 fast/shadow-dom/negative-tabindex-on-shadow-host.html [ Failure ]
+webkit.org/b/116046 fast/events/sequential-focus-navigation-starting-point.html [ Skip ]
 
 webkit.org/b/150225 fast/custom-elements [ Pass ]
 
@@ -2767,6 +2768,9 @@ webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
 # Enable "aria-table-attributes" test for iOS
 webkit.org/b/150366 accessibility/aria-table-attributes.html [ Pass ]
 
+# Enable "attachment element" test for iOS
+accessibility/attachment-element.html [ Pass ]
+
 # Enable Text marker tests for iOS
 webkit.org/b/153292 accessibility/text-marker [ Pass ]
 
@@ -2995,3 +2999,8 @@ imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation
 imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/inrange-outofrange.html [ Failure ]
 
 webkit.org/b/157916 http/tests/misc/slow-loading-animated-image.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/158618 fast/hidpi/hidpi-3x-device-pixel-ratio.html [ Failure ]
+
+# These tests hardcode platform-specific font aliases.
+webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]

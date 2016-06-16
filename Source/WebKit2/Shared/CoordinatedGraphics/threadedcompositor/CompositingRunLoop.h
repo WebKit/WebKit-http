@@ -42,7 +42,8 @@ class CompositingRunLoop {
 public:
     CompositingRunLoop(std::function<void ()>&&);
 
-    void callOnCompositingRunLoop(std::function<void ()>&&);
+    void performTask(NoncopyableFunction<void ()>&&);
+    void performTaskSync(NoncopyableFunction<void ()>&&);
 
     bool isActive();
     void scheduleUpdate();
@@ -50,7 +51,8 @@ public:
 
     void updateCompleted();
 
-    RunLoop& runLoop() { return m_runLoop; }
+    void run();
+    void stop();
 
 private:
     enum class UpdateState {
@@ -65,6 +67,8 @@ private:
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     std::function<void ()> m_updateFunction;
     Atomic<UpdateState> m_updateState;
+    Lock m_dispatchSyncConditionMutex;
+    Condition m_dispatchSyncCondition;
 };
 
 } // namespace WebKit

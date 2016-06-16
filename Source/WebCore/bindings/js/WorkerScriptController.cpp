@@ -81,24 +81,19 @@ void WorkerScriptController::initScript()
     // Explicitly protect the global object's prototype so it isn't collected
     // when we allocate the global object. (Once the global object is fully
     // constructed, it can mark its own prototype.)
-    Structure* workerGlobalScopePrototypeStructure = JSWorkerGlobalScopePrototype::createStructure(*m_vm, 0, jsNull());
-    Strong<JSWorkerGlobalScopePrototype> workerGlobalScopePrototype(*m_vm, JSWorkerGlobalScopePrototype::create(*m_vm, 0, workerGlobalScopePrototypeStructure));
-
     if (m_workerGlobalScope->isDedicatedWorkerGlobalScope()) {
-        Structure* dedicatedContextPrototypeStructure = JSDedicatedWorkerGlobalScopePrototype::createStructure(*m_vm, 0, workerGlobalScopePrototype.get());
+        Structure* dedicatedContextPrototypeStructure = JSDedicatedWorkerGlobalScopePrototype::createStructure(*m_vm, 0, jsNull());
         Strong<JSDedicatedWorkerGlobalScopePrototype> dedicatedContextPrototype(*m_vm, JSDedicatedWorkerGlobalScopePrototype::create(*m_vm, 0, dedicatedContextPrototypeStructure));
         Structure* structure = JSDedicatedWorkerGlobalScope::createStructure(*m_vm, 0, dedicatedContextPrototype.get());
         auto* proxyStructure = JSProxy::createStructure(*m_vm, nullptr, jsNull(), PureForwardingProxyType);
         auto* proxy = JSProxy::create(*m_vm, proxyStructure);
 
         m_workerGlobalScopeWrapper.set(*m_vm, JSDedicatedWorkerGlobalScope::create(*m_vm, structure, static_cast<DedicatedWorkerGlobalScope&>(*m_workerGlobalScope), proxy));
-        workerGlobalScopePrototypeStructure->setGlobalObject(*m_vm, m_workerGlobalScopeWrapper.get());
         dedicatedContextPrototypeStructure->setGlobalObject(*m_vm, m_workerGlobalScopeWrapper.get());
         ASSERT(structure->globalObject() == m_workerGlobalScopeWrapper);
         ASSERT(m_workerGlobalScopeWrapper->structure()->globalObject() == m_workerGlobalScopeWrapper);
-        workerGlobalScopePrototype->structure()->setGlobalObject(*m_vm, m_workerGlobalScopeWrapper.get());
-        workerGlobalScopePrototype->structure()->setPrototypeWithoutTransition(*m_vm, JSEventTarget::prototype(*m_vm, m_workerGlobalScopeWrapper.get()));
         dedicatedContextPrototype->structure()->setGlobalObject(*m_vm, m_workerGlobalScopeWrapper.get());
+        dedicatedContextPrototype->structure()->setPrototypeWithoutTransition(*m_vm, JSWorkerGlobalScope::prototype(*m_vm, m_workerGlobalScopeWrapper.get()));
 
         proxy->setTarget(*m_vm, m_workerGlobalScopeWrapper.get());
         proxy->structure()->setGlobalObject(*m_vm, m_workerGlobalScopeWrapper.get());
@@ -146,7 +141,8 @@ void WorkerScriptController::evaluate(const ScriptSourceCode& sourceCode, NakedP
         int lineNumber = 0;
         int columnNumber = 0;
         String sourceURL = sourceCode.url().string();
-        if (m_workerGlobalScope->sanitizeScriptError(errorMessage, lineNumber, columnNumber, sourceURL, sourceCode.cachedScript())) {
+        Deprecated::ScriptValue error;
+        if (m_workerGlobalScope->sanitizeScriptError(errorMessage, lineNumber, columnNumber, sourceURL, error, sourceCode.cachedScript())) {
             vm.throwException(exec, createError(exec, errorMessage.impl()));
             returnedException = vm.exception();
             vm.clearException();

@@ -64,6 +64,7 @@
 #include "MemoryCache.h"
 #include "MemoryPressureHandler.h"
 #include "OverflowEvent.h"
+#include "Page.h"
 #include "PageCache.h"
 #include "PageOverlayController.h"
 #include "ProgressTracker.h"
@@ -2100,8 +2101,14 @@ bool FrameView::scrollToAnchor(const String& name)
     maintainScrollPositionAtAnchor(scrollPositionAnchor);
     
     // If the anchor accepts keyboard focus, move focus there to aid users relying on keyboard navigation.
-    if (anchorElement && anchorElement->isFocusable())
-        document.setFocusedElement(anchorElement);
+    if (anchorElement) {
+        if (anchorElement->isFocusable())
+            document.setFocusedElement(anchorElement);
+        else {
+            document.setFocusedElement(nullptr);
+            document.setFocusNavigationStartingNode(anchorElement);
+        }
+    }
     
     return true;
 }
@@ -4613,7 +4620,7 @@ void FrameView::scrollableAreaSetChanged()
 {
     if (auto* page = frame().page()) {
         if (auto* scrollingCoordinator = page->scrollingCoordinator())
-            scrollingCoordinator->frameViewNonFastScrollableRegionChanged(*this);
+            scrollingCoordinator->frameViewEventTrackingRegionsChanged(*this);
     }
 }
 

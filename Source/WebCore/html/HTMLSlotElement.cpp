@@ -26,11 +26,11 @@
 #include "config.h"
 #include "HTMLSlotElement.h"
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 
 #include "Event.h"
 #include "EventNames.h"
 #include "HTMLNames.h"
+#include "MutationObserver.h"
 #include "ShadowRoot.h"
 
 namespace WebCore {
@@ -126,24 +126,23 @@ Vector<Node*> HTMLSlotElement::assignedNodes(const AssignedNodesOptions& options
 
 void HTMLSlotElement::enqueueSlotChangeEvent()
 {
-    if (m_enqueuedSlotChangeEvent)
+    // https://dom.spec.whatwg.org/#signal-a-slot-change
+    if (m_inSignalSlotList)
         return;
+    m_inSignalSlotList = true;
+    MutationObserver::enqueueSlotChangeEvent(*this);
+}
+
+void HTMLSlotElement::dispatchSlotChangeEvent()
+{
+    m_inSignalSlotList = false;
 
     bool bubbles = false;
     bool cancelable = false;
-    auto event = Event::create(eventNames().slotchangeEvent, bubbles, cancelable);
+    Ref<Event> event = Event::create(eventNames().slotchangeEvent, bubbles, cancelable);
     event->setTarget(this);
-    m_enqueuedSlotChangeEvent = event.ptr();
-    document().enqueueSlotchangeEvent(WTFMove(event));
-}
-
-bool HTMLSlotElement::dispatchEvent(Event& event)
-{
-    if (&event == m_enqueuedSlotChangeEvent)
-        m_enqueuedSlotChangeEvent = nullptr;
-    return HTMLElement::dispatchEvent(event);
+    dispatchEvent(event);
 }
 
 }
 
-#endif

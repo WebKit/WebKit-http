@@ -39,6 +39,7 @@
 #include "FrameNetworkingContext.h"
 #include "HTMLFormElement.h"
 #include "InProcessIDBServer.h"
+#include "Page.h"
 #include "PageConfiguration.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
@@ -128,9 +129,6 @@ void fillWithEmptyClients(PageConfiguration& pageConfiguration)
     static NeverDestroyed<EmptyDragClient> dummyDragClient;
     pageConfiguration.dragClient = &dummyDragClient.get();
 #endif
-
-    static NeverDestroyed<EmptyEditorClient> dummyEditorClient;
-    pageConfiguration.editorClient = &dummyEditorClient.get();
 
     static NeverDestroyed<EmptyInspectorClient> dummyInspectorClient;
     pageConfiguration.inspectorClient = &dummyInspectorClient.get();

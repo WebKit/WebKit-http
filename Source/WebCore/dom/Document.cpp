@@ -167,6 +167,7 @@
 #include "StyleSheetList.h"
 #include "StyleTreeResolver.h"
 #include "SubresourceLoader.h"
+#include "TextAutoSizing.h"
 #include "TextEvent.h"
 #include "TextNodeTraversal.h"
 #include "TransformSource.h"
@@ -419,6 +420,20 @@ static void printNavigationErrorMessage(Frame* frame, const URL& activeURL, cons
     frame->document()->domWindow()->printErrorMessage(message);
 }
 
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+
+void TextAutoSizingTraits::constructDeletedValue(TextAutoSizingKey& slot)
+{
+    new (NotNull, &slot) TextAutoSizingKey(TextAutoSizingKey::Deleted);
+}
+
+bool TextAutoSizingTraits::isDeletedValue(const TextAutoSizingKey& value)
+{
+    return value.isDeleted();
+}
+
+#endif
+
 uint64_t Document::s_globalTreeVersion = 0;
 
 HashSet<Document*>& Document::allDocuments()
@@ -431,8 +446,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     : ContainerNode(*this, CreateDocument)
     , TreeScope(*this)
 #if ENABLE(IOS_TOUCH_EVENTS)
-    , m_handlingTouchEvent(false)
-    , m_touchEventRegionsDirty(false)
     , m_touchEventsChangedTimer(*this, &Document::touchEventsChangedTimerFired)
 #endif
     , m_referencingNodeCount(0)
@@ -680,6 +693,7 @@ void Document::removedLastRef()
         m_activeElement = nullptr;
         m_titleElement = nullptr;
         m_documentElement = nullptr;
+        m_focusNavigationStartingNode = nullptr;
         m_userActionElements.documentDidRemoveLastRef();
 #if ENABLE(FULLSCREEN_API)
         m_fullScreenElement = nullptr;
@@ -1117,7 +1131,6 @@ Ref<Element> Document::createElement(const QualifiedName& name, bool createdByPa
     return element.releaseNonNull();
 }
 
-#if ENABLE(CUSTOM_ELEMENTS) || ENABLE(SHADOW_DOM)
 CustomElementNameValidationStatus Document::validateCustomElementName(const AtomicString& localName)
 {
     bool containsHyphen = false;
@@ -1149,7 +1162,6 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
 
     return CustomElementNameValidationStatus::Valid;
 }
-#endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
 bool Document::isCSSGridLayoutEnabled() const
@@ -2308,6 +2320,7 @@ void Document::destroyRenderTree()
     m_hoveredElement = nullptr;
     m_focusedElement = nullptr;
     m_activeElement = nullptr;
+    m_focusNavigationStartingNode = nullptr;
 
     if (m_documentElement)
         RenderTreeUpdater::tearDownRenderers(*m_documentElement);
@@ -3693,6 +3706,17 @@ void Document::styleResolverChanged(StyleResolverUpdateFlag updateFlag)
     evaluateMediaQueryList();
 }
 
+static bool isNodeInSubtree(Node* node, Node* container, bool amongChildrenOnly)
+{
+    bool nodeInSubtree = false;
+    if (amongChildrenOnly)
+        nodeInSubtree = node->isDescendantOf(container);
+    else
+        nodeInSubtree = (node == container) || node->isDescendantOf(container);
+    
+    return nodeInSubtree;
+}
+
 void Document::removeFocusedNodeOfSubtree(Node* node, bool amongChildrenOnly)
 {
     if (!m_focusedElement || this->inPageCache()) // If the document is in the page cache, then we don't need to clear out the focused node.
@@ -3701,15 +3725,15 @@ void Document::removeFocusedNodeOfSubtree(Node* node, bool amongChildrenOnly)
     Element* focusedElement = node->treeScope().focusedElement();
     if (!focusedElement)
         return;
-
-    bool nodeInSubtree = false;
-    if (amongChildrenOnly)
-        nodeInSubtree = focusedElement->isDescendantOf(node);
-    else
-        nodeInSubtree = (focusedElement == node) || focusedElement->isDescendantOf(node);
     
-    if (nodeInSubtree)
+    if (isNodeInSubtree(focusedElement, node, amongChildrenOnly)) {
         setFocusedElement(nullptr, FocusDirectionNone, FocusRemovalEventsMode::DoNotDispatch);
+        // Set the focus navigation starting node to the previous focused element so that
+        // we can fallback to the siblings or parent node for the next search.
+        // Also we need to call removeFocusNavigationNodeOfSubtree after this function because
+        // setFocusedElement(nullptr) will reset m_focusNavigationStartingNode.
+        setFocusNavigationStartingNode(focusedElement);
+    }
 }
 
 void Document::hoveredElementDidDetach(Element* element)
@@ -3769,6 +3793,7 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
             oldFocusedElement->setActive(false);
 
         oldFocusedElement->setFocus(false);
+        setFocusNavigationStartingNode(nullptr);
 
         if (eventsMode == FocusRemovalEventsMode::Dispatch) {
             // Dispatch a change event for form control elements that have been edited.
@@ -3819,6 +3844,7 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
         }
         // Set focus on the new node
         m_focusedElement = newFocusedElement;
+        setFocusNavigationStartingNode(m_focusedElement.get());
 
         // Dispatch the focus event and let the node do any other focus related activities (important for text fields)
         m_focusedElement->dispatchFocusEvent(oldFocusedElement.copyRef(), direction);
@@ -3883,6 +3909,59 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
 SetFocusedNodeDone:
     updateStyleIfNeeded();
     return !focusChangeBlocked;
+}
+
+static bool shouldResetFocusNavigationStartingNode(Node& node)
+{
+    // Setting focus navigation starting node to the following nodes means that we should start
+    // the search from the beginning of the document.
+    return is<HTMLHtmlElement>(node) || is<HTMLDocument>(node);
+}
+
+void Document::setFocusNavigationStartingNode(Node* node)
+{
+    if (!m_frame)
+        return;
+
+    m_focusNavigationStartingNodeIsRemoved = false;
+    if (!node || shouldResetFocusNavigationStartingNode(*node)) {
+        m_focusNavigationStartingNode = nullptr;
+        return;
+    }
+
+    m_focusNavigationStartingNode = node;
+}
+
+Element* Document::focusNavigationStartingNode(FocusDirection direction) const
+{
+    if (m_focusedElement) {
+        if (!m_focusNavigationStartingNode || !m_focusNavigationStartingNode->isDescendantOf(m_focusedElement.get()))
+            return m_focusedElement.get();
+    }
+
+    if (!m_focusNavigationStartingNode)
+        return nullptr;
+
+    Node* node = m_focusNavigationStartingNode.get();
+    
+    // When the node was removed from the document tree. This case is not specified in the spec:
+    // https://html.spec.whatwg.org/multipage/interaction.html#sequential-focus-navigation-starting-point
+    // Current behaivor is to move the sequential navigation node to / after (based on the focus direction)
+    // the previous sibling of the removed node.
+    if (m_focusNavigationStartingNodeIsRemoved) {
+        Node* nextNode = NodeTraversal::next(*node);
+        if (direction == FocusDirectionForward)
+            return ElementTraversal::previous(*nextNode);
+        if (is<Element>(*nextNode))
+            return downcast<Element>(nextNode);
+        return ElementTraversal::next(*nextNode);
+    }
+
+    if (is<Element>(*node))
+        return downcast<Element>(node);
+    if (Element* elementBeforeNextFocusableElement = direction == FocusDirectionForward ? ElementTraversal::previous(*node) : ElementTraversal::next(*node))
+        return elementBeforeNextFocusableElement;
+    return node->parentOrShadowHostElement();
 }
 
 void Document::setCSSTarget(Element* n)
@@ -3982,6 +4061,7 @@ void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
     NoEventDispatchAssertion assertNoEventDispatch;
 
     removeFocusedNodeOfSubtree(&container, true /* amongChildrenOnly */);
+    removeFocusNavigationNodeOfSubtree(container, true /* amongChildrenOnly */);
 
 #if ENABLE(FULLSCREEN_API)
     removeFullScreenElementOfSubtree(&container, true /* amongChildrenOnly */);
@@ -4014,6 +4094,7 @@ void Document::nodeWillBeRemoved(Node& n)
     NoEventDispatchAssertion assertNoEventDispatch;
 
     removeFocusedNodeOfSubtree(&n);
+    removeFocusNavigationNodeOfSubtree(n);
 
 #if ENABLE(FULLSCREEN_API)
     removeFullScreenElementOfSubtree(&n);
@@ -4033,6 +4114,22 @@ void Document::nodeWillBeRemoved(Node& n)
 
     if (is<Text>(n))
         m_markers->removeMarkers(&n);
+}
+
+static Node* fallbackFocusNavigationStartingNodeAfterRemoval(Node& node)
+{
+    return node.previousSibling() ? node.previousSibling() : node.parentNode();
+}
+
+void Document::removeFocusNavigationNodeOfSubtree(Node& node, bool amongChildrenOnly)
+{
+    if (!m_focusNavigationStartingNode)
+        return;
+
+    if (isNodeInSubtree(m_focusNavigationStartingNode.get(), &node, amongChildrenOnly)) {
+        m_focusNavigationStartingNode = amongChildrenOnly ? &node : fallbackFocusNavigationStartingNodeAfterRemoval(node);
+        m_focusNavigationStartingNodeIsRemoved = true;
+    }
 }
 
 void Document::textInserted(Node* text, unsigned offset, unsigned length)
@@ -4160,11 +4257,6 @@ void Document::enqueueDocumentEvent(Ref<Event>&& event)
 }
 
 void Document::enqueueOverflowEvent(Ref<Event>&& event)
-{
-    m_eventQueue.enqueueEvent(WTFMove(event));
-}
-
-void Document::enqueueSlotchangeEvent(Ref<Event>&& event)
 {
     m_eventQueue.enqueueEvent(WTFMove(event));
 }
@@ -6203,7 +6295,7 @@ void Document::wheelEventHandlersChanged()
 
     if (FrameView* frameView = view()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-            scrollingCoordinator->frameViewNonFastScrollableRegionChanged(*frameView);
+            scrollingCoordinator->frameViewEventTrackingRegionsChanged(*frameView);
     }
 
     bool haveHandlers = m_wheelEventTargets && !m_wheelEventTargets->isEmpty();

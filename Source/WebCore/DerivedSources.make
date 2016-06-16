@@ -223,13 +223,9 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/SQLTransactionErrorCallback.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
-    $(WebCore)/animation/Animatable.idl \
-    $(WebCore)/animation/AnimationEffect.idl \
     $(WebCore)/animation/AnimationTimeline.idl \
     $(WebCore)/animation/DocumentAnimation.idl \
     $(WebCore)/animation/DocumentTimeline.idl \
-    $(WebCore)/animation/KeyframeEffect.idl \
-    $(WebCore)/animation/WebAnimation.idl \
     $(WebCore)/crypto/CryptoKey.idl \
     $(WebCore)/crypto/CryptoKeyPair.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
@@ -518,6 +514,10 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/page/History.idl \
     $(WebCore)/page/Location.idl \
     $(WebCore)/page/Navigator.idl \
+    $(WebCore)/page/NavigatorConcurrentHardware.idl \
+    $(WebCore)/page/NavigatorID.idl \
+    $(WebCore)/page/NavigatorLanguage.idl \
+    $(WebCore)/page/NavigatorOnLine.idl \
     $(WebCore)/page/Performance.idl \
     $(WebCore)/page/PerformanceEntry.idl \
     $(WebCore)/page/PerformanceEntryList.idl \
@@ -529,10 +529,9 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/page/WebKitNamespace.idl \
     $(WebCore)/page/UserMessageHandlersNamespace.idl \
     $(WebCore)/page/UserMessageHandler.idl \
-    $(WebCore)/page/WindowBase64.idl \
     $(WebCore)/page/WindowEventHandlers.idl \
-    $(WebCore)/page/WindowTimers.idl \
     $(WebCore)/page/WorkerNavigator.idl \
+    $(WebCore)/page/WindowOrWorkerGlobalScope.idl \
     $(WebCore)/plugins/DOMMimeType.idl \
     $(WebCore)/plugins/DOMMimeTypeArray.idl \
     $(WebCore)/plugins/DOMPlugin.idl \
@@ -1082,10 +1081,6 @@ endif
 
 ifeq ($(findstring ENABLE_MEDIA_STREAM,$(FEATURE_DEFINES)), ENABLE_MEDIA_STREAM)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_MEDIA_STREAM=1
-endif
-
-ifeq ($(findstring ENABLE_SHADOW_DOM,$(FEATURE_DEFINES)), ENABLE_SHADOW_DOM)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_SHADOW_DOM=1
 endif
 
 JSHTMLElementWrapperFactory.cpp JSHTMLElementWrapperFactory.h HTMLElementFactory.cpp HTMLElementFactory.h HTMLElementTypeHelpers.h HTMLNames.cpp HTMLNames.h : htmlMakeNames.intermediate

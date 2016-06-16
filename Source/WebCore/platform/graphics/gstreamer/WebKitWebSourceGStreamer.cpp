@@ -99,7 +99,7 @@ class ResourceHandleStreamingClient : public ResourceHandleClient, public Stream
         char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize) override;
 #endif
         ResourceRequest willSendRequest(ResourceHandle*, ResourceRequest&&, ResourceResponse&&) override;
-        void didReceiveResponse(ResourceHandle*, const ResourceResponse&) override;
+        void didReceiveResponse(ResourceHandle*, ResourceResponse&&) override;
         void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
         void didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&&, int encodedLength) override;
         void didFinishLoading(ResourceHandle*, double /*finishTime*/) override;
@@ -191,7 +191,7 @@ static GstAppSrcCallbacks appsrcCallbacks = {
                 return;
         }
 
-        GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
+        GRefPtr<WebKitWebSrc> protector(src);
         priv->notifier.notify(MainThreadSourceNotification::NeedData, [protector] { webKitWebSrcNeedData(protector.get()); });
     },
     // enough_data
@@ -205,7 +205,7 @@ static GstAppSrcCallbacks appsrcCallbacks = {
                 return;
         }
 
-        GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
+        GRefPtr<WebKitWebSrc> protector(src);
         priv->notifier.notify(MainThreadSourceNotification::EnoughData, [protector] { webKitWebSrcEnoughData(protector.get()); });
     },
     // seek_data
@@ -225,7 +225,7 @@ static GstAppSrcCallbacks appsrcCallbacks = {
             priv->requestedOffset = offset;
         }
 
-        GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
+        GRefPtr<WebKitWebSrc> protector(src);
         priv->notifier.notify(MainThreadSourceNotification::Seek, [protector] { webKitWebSrcSeek(protector.get()); });
         return TRUE;
     },
@@ -646,7 +646,7 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     case GST_STATE_CHANGE_READY_TO_PAUSED:
     {
         GST_DEBUG_OBJECT(src, "READY->PAUSED");
-        GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
+        GRefPtr<WebKitWebSrc> protector(src);
         priv->notifier.notify(MainThreadSourceNotification::Start, [protector] { webKitWebSrcStart(protector.get()); });
         break;
     }
@@ -654,7 +654,7 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     {
         GST_DEBUG_OBJECT(src, "PAUSED->READY");
         priv->notifier.cancelPendingNotifications();
-        GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
+        GRefPtr<WebKitWebSrc> protector(src);
         priv->notifier.notify(MainThreadSourceNotification::Stop, [protector] { webKitWebSrcStop(protector.get()); });
         break;
     }
@@ -1118,7 +1118,7 @@ ResourceRequest ResourceHandleStreamingClient::willSendRequest(ResourceHandle*, 
     return WTFMove(request);
 }
 
-void ResourceHandleStreamingClient::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
+void ResourceHandleStreamingClient::didReceiveResponse(ResourceHandle*, ResourceResponse&& response)
 {
     handleResponseReceived(response);
 }

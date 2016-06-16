@@ -44,7 +44,7 @@ class NetworkLoadParameters;
 class PendingDownload : public NetworkLoadClient, public IPC::MessageSender {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PendingDownload(const NetworkLoadParameters&, DownloadID);
+    PendingDownload(NetworkLoadParameters&&, DownloadID);
 
     void continueWillSendRequest(WebCore::ResourceRequest&&);
     void continueCanAuthenticateAgainstProtectionSpace(bool canAuthenticate);
@@ -55,7 +55,7 @@ private:
     void canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&) override;
     bool isSynchronous() const override { return false; }
     void willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse) override;
-    ShouldContinueDidReceiveResponse didReceiveResponse(const WebCore::ResourceResponse&) override { return ShouldContinueDidReceiveResponse::No; };
+    ShouldContinueDidReceiveResponse didReceiveResponse(WebCore::ResourceResponse&&) override { return ShouldContinueDidReceiveResponse::No; };
     void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override { };
     void didFinishLoading(double finishTime) override { };
     void didFailLoading(const WebCore::ResourceError&) override;

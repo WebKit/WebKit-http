@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2013, 2015-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Research In Motion Limited. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,6 @@
 #include "JSCell.h"
 #include "JSObject.h"
 #include "JSStack.h"
-#include "LLIntData.h"
 #include "Opcode.h"
 #include "SourceProvider.h"
 #include "StackAlignment.h"
@@ -85,23 +84,16 @@ namespace JSC {
 
     struct StackFrame {
         Strong<JSObject> callee;
-        StackFrameCodeType codeType;
-        Strong<ScriptExecutable> executable;
-        Strong<UnlinkedCodeBlock> codeBlock;
-        RefPtr<SourceProvider> code;
-        int lineOffset;
-        unsigned firstLineColumnOffset;
-        unsigned characterOffset;
+        Strong<CodeBlock> codeBlock;
         unsigned bytecodeOffset;
-        String sourceURL;
-        intptr_t sourceID;
-        String toString(VM&);
-        String friendlySourceURL() const;
-        String friendlyFunctionName(VM&) const;
-        JS_EXPORT_PRIVATE void computeLineAndColumn(unsigned& line, unsigned& column);
 
-    private:
-        void expressionInfo(int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column);
+        bool isNative() const { return !codeBlock; }
+
+        void computeLineAndColumn(unsigned& line, unsigned& column) const;
+        String functionName(VM&) const;
+        intptr_t sourceID() const;
+        String sourceURL() const;
+        String toString(VM&) const;
     };
 
     class SuspendExceptionScope {
@@ -224,7 +216,7 @@ namespace JSC {
         NEVER_INLINE HandlerInfo* unwind(VM&, CallFrame*&, Exception*, UnwindStart);
         void notifyDebuggerOfExceptionToBeThrown(CallFrame*, Exception*);
         NEVER_INLINE void debug(CallFrame*, DebugHookID);
-        JSString* stackTraceAsString(ExecState*, Vector<StackFrame>);
+        static JSString* stackTraceAsString(VM&, const Vector<StackFrame>&);
 
         static EncodedJSValue JSC_HOST_CALL constructWithErrorConstructor(ExecState*);
         static EncodedJSValue JSC_HOST_CALL callErrorConstructor(ExecState*);
@@ -233,7 +225,7 @@ namespace JSC {
 
         JS_EXPORT_PRIVATE void dumpCallFrame(CallFrame*);
 
-        void getStackTrace(Vector<StackFrame>& results, size_t maxStackSize = std::numeric_limits<size_t>::max());
+        void getStackTrace(Vector<StackFrame>& results, size_t framesToSkip = 0, size_t maxStackSize = std::numeric_limits<size_t>::max());
 
     private:
         enum ExecutionFlag { Normal, InitializeAndReturn };
@@ -282,9 +274,12 @@ namespace JSC {
     unsigned sizeOfVarargs(CallFrame* exec, JSValue arguments, uint32_t firstVarArgOffset);
     static const unsigned maxArguments = 0x10000;
     unsigned sizeFrameForVarargs(CallFrame* exec, JSStack*, JSValue arguments, unsigned numUsedStackSlots, uint32_t firstVarArgOffset);
+    unsigned sizeFrameForForwardArguments(CallFrame* exec, JSStack*, unsigned numUsedStackSlots);
     void loadVarargs(CallFrame* execCaller, VirtualRegister firstElementDest, JSValue source, uint32_t offset, uint32_t length);
     void setupVarargsFrame(CallFrame* execCaller, CallFrame* execCallee, JSValue arguments, uint32_t firstVarArgOffset, uint32_t length);
     void setupVarargsFrameAndSetThis(CallFrame* execCaller, CallFrame* execCallee, JSValue thisValue, JSValue arguments, uint32_t firstVarArgOffset, uint32_t length);
+    void setupForwardArgumentsFrame(CallFrame* execCaller, CallFrame* execCallee, uint32_t length);
+    void setupForwardArgumentsFrameAndSetThis(CallFrame* execCaller, CallFrame* execCallee, JSValue thisValue, uint32_t length);
     
 } // namespace JSC
 

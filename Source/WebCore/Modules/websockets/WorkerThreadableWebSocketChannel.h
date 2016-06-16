@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WorkerThreadableWebSocketChannel_h
-#define WorkerThreadableWebSocketChannel_h
+#pragma once
 
 #if ENABLE(WEB_SOCKETS)
 
@@ -37,7 +36,6 @@
 #include "WebSocketChannelClient.h"
 #include "WorkerGlobalScope.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
@@ -55,7 +53,7 @@ class WorkerRunLoop;
 class WorkerThreadableWebSocketChannel : public RefCounted<WorkerThreadableWebSocketChannel>, public ThreadableWebSocketChannel {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<ThreadableWebSocketChannel> create(WorkerGlobalScope* workerGlobalScope, WebSocketChannelClient* client, const String& taskMode)
+    static Ref<ThreadableWebSocketChannel> create(WorkerGlobalScope& workerGlobalScope, WebSocketChannelClient& client, const String& taskMode)
     {
         return adoptRef(*new WorkerThreadableWebSocketChannel(workerGlobalScope, client, taskMode));
     }
@@ -68,7 +66,7 @@ public:
     ThreadableWebSocketChannel::SendResult send(const String& message) override;
     ThreadableWebSocketChannel::SendResult send(const JSC::ArrayBuffer&, unsigned byteOffset, unsigned byteLength) override;
     ThreadableWebSocketChannel::SendResult send(Blob&) override;
-    unsigned long bufferedAmount() const override;
+    unsigned bufferedAmount() const override;
     void close(int code, const String& reason) override;
     void fail(const String& reason) override;
     void disconnect() override; // Will suppress didClose().
@@ -80,7 +78,7 @@ public:
     class Peer : public WebSocketChannelClient {
         WTF_MAKE_NONCOPYABLE(Peer); WTF_MAKE_FAST_ALLOCATED;
     public:
-        Peer(RefPtr<ThreadableWebSocketChannelClientWrapper>&&, WorkerLoaderProxy&, ScriptExecutionContext*, const String& taskMode);
+        Peer(Ref<ThreadableWebSocketChannelClientWrapper>&&, WorkerLoaderProxy&, ScriptExecutionContext&, const String& taskMode);
         ~Peer();
 
         void connect(const URL&, const String& protocol);
@@ -98,13 +96,13 @@ public:
         void didConnect() override;
         void didReceiveMessage(const String& message) override;
         void didReceiveBinaryData(Vector<uint8_t>&&) override;
-        void didUpdateBufferedAmount(unsigned long bufferedAmount) override;
+        void didUpdateBufferedAmount(unsigned bufferedAmount) override;
         void didStartClosingHandshake() override;
-        void didClose(unsigned long unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) override;
+        void didClose(unsigned unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) override;
         void didReceiveMessageError() override;
 
     private:
-        RefPtr<ThreadableWebSocketChannelClientWrapper> m_workerClientWrapper;
+        Ref<ThreadableWebSocketChannelClientWrapper> m_workerClientWrapper;
         WorkerLoaderProxy& m_loaderProxy;
         RefPtr<ThreadableWebSocketChannel> m_mainWebSocketChannel;
         String m_taskMode;
@@ -121,9 +119,9 @@ private:
     // Bridge for Peer.  Running on the worker thread.
     class Bridge : public RefCounted<Bridge> {
     public:
-        static Ref<Bridge> create(PassRefPtr<ThreadableWebSocketChannelClientWrapper> workerClientWrapper, PassRefPtr<WorkerGlobalScope> workerGlobalScope, const String& taskMode)
+        static Ref<Bridge> create(Ref<ThreadableWebSocketChannelClientWrapper>&& workerClientWrapper, Ref<WorkerGlobalScope>&& workerGlobalScope, const String& taskMode)
         {
-            return adoptRef(*new Bridge(workerClientWrapper, workerGlobalScope, taskMode));
+            return adoptRef(*new Bridge(WTFMove(workerClientWrapper), WTFMove(workerGlobalScope), taskMode));
         }
         ~Bridge();
         void initialize();
@@ -131,7 +129,7 @@ private:
         ThreadableWebSocketChannel::SendResult send(const String& message);
         ThreadableWebSocketChannel::SendResult send(const JSC::ArrayBuffer&, unsigned byteOffset, unsigned byteLength);
         ThreadableWebSocketChannel::SendResult send(Blob&);
-        unsigned long bufferedAmount();
+        unsigned bufferedAmount();
         void close(int code, const String& reason);
         void fail(const String& reason);
         void disconnect();
@@ -142,12 +140,12 @@ private:
         using RefCounted<Bridge>::deref;
 
     private:
-        Bridge(PassRefPtr<ThreadableWebSocketChannelClientWrapper>, PassRefPtr<WorkerGlobalScope>, const String& taskMode);
+        Bridge(Ref<ThreadableWebSocketChannelClientWrapper>&&, Ref<WorkerGlobalScope>&&, const String& taskMode);
 
-        static void setWebSocketChannel(ScriptExecutionContext*, Bridge* thisPtr, Peer*, PassRefPtr<ThreadableWebSocketChannelClientWrapper>);
+        static void setWebSocketChannel(ScriptExecutionContext*, Bridge* thisPtr, Peer*, Ref<ThreadableWebSocketChannelClientWrapper>&&);
 
         // Executed on the main thread to create a Peer for this bridge.
-        static void mainThreadInitialize(ScriptExecutionContext&, WorkerLoaderProxy*, RefPtr<ThreadableWebSocketChannelClientWrapper>&&, const String& taskMode);
+        static void mainThreadInitialize(ScriptExecutionContext&, WorkerLoaderProxy&, Ref<ThreadableWebSocketChannelClientWrapper>&&, const String& taskMode);
 
         // Executed on the worker context's thread.
         void clearClientWrapper();
@@ -155,24 +153,22 @@ private:
         void setMethodNotCompleted();
         void waitForMethodCompletion();
 
-        RefPtr<ThreadableWebSocketChannelClientWrapper> m_workerClientWrapper;
+        Ref<ThreadableWebSocketChannelClientWrapper> m_workerClientWrapper;
         RefPtr<WorkerGlobalScope> m_workerGlobalScope;
         WorkerLoaderProxy& m_loaderProxy;
         String m_taskMode;
         Peer* m_peer;
     };
 
-    WorkerThreadableWebSocketChannel(WorkerGlobalScope*, WebSocketChannelClient*, const String& taskMode);
+    WorkerThreadableWebSocketChannel(WorkerGlobalScope&, WebSocketChannelClient&, const String& taskMode);
 
     class WorkerGlobalScopeDidInitializeTask;
 
-    RefPtr<WorkerGlobalScope> m_workerGlobalScope;
-    RefPtr<ThreadableWebSocketChannelClientWrapper> m_workerClientWrapper;
+    Ref<WorkerGlobalScope> m_workerGlobalScope;
+    Ref<ThreadableWebSocketChannelClientWrapper> m_workerClientWrapper;
     RefPtr<Bridge> m_bridge;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(WEB_SOCKETS)
-
-#endif // WorkerThreadableWebSocketChannel_h
