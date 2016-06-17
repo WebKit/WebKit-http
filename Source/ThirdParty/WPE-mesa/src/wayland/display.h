@@ -78,7 +78,9 @@ public:
             struct wl_pointer* object;
             std::pair<struct wl_surface*, struct wpe_view_backend*> target;
             std::pair<int, int> coords;
-        } pointer { nullptr, { }, { 0, 0 } };
+            uint32_t button;
+            uint32_t state;
+        } pointer { nullptr, { }, { 0, 0 }, 0, 0 };
         struct {
             struct wl_keyboard* object;
             std::pair<struct wl_surface*, struct wpe_view_backend*> target;

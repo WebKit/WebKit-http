@@ -157,7 +157,7 @@ static const struct wl_pointer_listener g_pointerListener = {
         pointer.coords = { x, y };
 
         if (pointer.target.first) {
-            struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_motion, time, x, y, 0, 0 };
+            struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_motion, time, x, y, pointer.button, pointer.state };
 
             struct wpe_view_backend* backend = pointer.target.second;
             wpe_view_backend_dispatch_pointer_event(backend, &event);
@@ -175,6 +175,9 @@ static const struct wl_pointer_listener g_pointerListener = {
 
         auto& pointer = static_cast<Display::SeatData*>(data)->pointer;
         auto& coords = pointer.coords;
+
+        pointer.button = !!state ? button : 0;
+        pointer.state = state;
 
         if (pointer.target.first) {
             struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_button, time, coords.first, coords.second, button, state };
