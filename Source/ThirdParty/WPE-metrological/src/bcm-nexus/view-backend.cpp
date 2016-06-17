@@ -52,7 +52,7 @@ static const std::array<FormatTuple, 9> s_formatTable = {
    FormatTuple{ "1080p60Hz", 1920, 1080 },
 };
 
-struct ViewBackend : public IPC::Host::Handler {
+struct ViewBackend : public IPC::Host::Handler, public WPE::LibinputServer::Client {
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
 
@@ -63,6 +63,12 @@ struct ViewBackend : public IPC::Host::Handler {
     void handleMessage(char*, size_t) override;
 
     void commitBuffer(uint32_t, uint32_t);
+
+    // WPE::LibinputServer::Client
+    void handleKeyboardEvent(struct wpe_input_keyboard_event*) override;
+    void handlePointerEvent(struct wpe_input_pointer_event*) override;
+    void handleAxisEvent(struct wpe_input_axis_event*) override;
+    void handleTouchEvent(struct wpe_input_touch_event*) override;
 
     struct wpe_view_backend* backend;
     IPC::Host ipcHost;
@@ -81,7 +87,7 @@ ViewBackend::~ViewBackend()
 {
     ipcHost.deinitialize();
 
-    WPE::LibinputServer::singleton().setBackend(nullptr);
+    WPE::LibinputServer::singleton().setClient(nullptr);
 }
 
 void ViewBackend::initialize()
@@ -101,7 +107,7 @@ void ViewBackend::initialize()
 
     wpe_view_backend_dispatch_set_size(backend, width, height);
 
-    WPE::LibinputServer::singleton().setBackend(backend);
+    WPE::LibinputServer::singleton().setClient(this);
 }
 
 void ViewBackend::handleFd(int)
@@ -134,6 +140,26 @@ void ViewBackend::commitBuffer(uint32_t width, uint32_t height)
     IPC::Message message;
     IPC::BCMNexus::FrameComplete::construct(message);
     ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
+}
+
+void ViewBackend::handleKeyboardEvent(struct wpe_input_keyboard_event* event)
+{
+    wpe_view_backend_dispatch_keyboard_event(backend, event);
+}
+
+void ViewBackend::handlePointerEvent(struct wpe_input_pointer_event* event)
+{
+    wpe_view_backend_dispatch_pointer_event(backend, event);
+}
+
+void ViewBackend::handleAxisEvent(struct wpe_input_axis_event* event)
+{
+    wpe_view_backend_dispatch_axis_event(backend, event);
+}
+
+void ViewBackend::handleTouchEvent(struct wpe_input_touch_event* event)
+{
+    wpe_view_backend_dispatch_touch_event(backend, event);
 }
 
 } // namespace BCMNexus
