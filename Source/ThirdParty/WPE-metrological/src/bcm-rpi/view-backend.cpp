@@ -28,10 +28,12 @@
 #include <wpe/view-backend.h>
 
 #include "LibinputServer.h"
+#include "cursor-data.h"
 #include "ipc.h"
 #include "ipc-rpi.h"
 #include <bcm_host.h>
 #include <cstdio>
+#include <memory>
 #include <sys/eventfd.h>
 #include <sys/time.h>
 
@@ -80,6 +82,26 @@ struct ViewBackend : public IPC::Host::Handler, public WPE::LibinputServer::Clie
 
     uint32_t width { 0 };
     uint32_t height { 0 };
+
+    struct Cursor : public WPE::LibinputServer::Client {
+        Cursor(WPE::LibinputServer::Client&, DISPMANX_DISPLAY_HANDLE_T, uint32_t, uint32_t);
+        ~Cursor();
+
+        // WPE::LibinputServer::Client
+        void handleKeyboardEvent(struct wpe_input_keyboard_event*) override;
+        void handlePointerEvent(struct wpe_input_pointer_event*) override;
+        void handleAxisEvent(struct wpe_input_axis_event*) override;
+        void handleTouchEvent(struct wpe_input_touch_event*) override;
+
+        static const uint32_t cursorWidth;
+        static const uint32_t cursorHeight;
+
+        WPE::LibinputServer::Client& targetClient;
+        DISPMANX_ELEMENT_HANDLE_T cursorHandle;
+        std::pair<uint32_t, uint32_t> position;
+        std::pair<uint32_t, uint32_t> displaySize;
+    };
+    std::unique_ptr<Cursor> cursor;
 };
 
 ViewBackend::ViewBackend(struct wpe_view_backend* backend)
@@ -169,13 +191,11 @@ void ViewBackend::initializeInput()
     if (std::getenv("WPE_BCMRPI_TOUCH"))
         WPE::LibinputServer::singleton().setHandleTouchEvents(true);
 
-#if 0
     if (std::getenv("WPE_BCMRPI_CURSOR")) {
-        m_cursor.reset(new Cursor(client, m_displayHandle, m_width, m_height));
-        client = m_cursor.get();
+        cursor.reset(new Cursor(*this, displayHandle, width, height));
+        inputClient = cursor.get();
         WPE::LibinputServer::singleton().setHandlePointerEvents(true);
     }
-#endif
     WPE::LibinputServer::singleton().setPointerBounds(width, height);
 
     WPE::LibinputServer::singleton().setClient(inputClient);
@@ -263,6 +283,79 @@ void ViewBackend::handleTouchEvent(struct wpe_input_touch_event* event)
 {
     wpe_view_backend_dispatch_touch_event(backend, event);
 }
+
+ViewBackend::Cursor::Cursor(WPE::LibinputServer::Client& targetClient, DISPMANX_DISPLAY_HANDLE_T displayHandle, uint32_t displayWidth, uint32_t displayHeight)
+    : targetClient(targetClient)
+    , position({ 0, 0 })
+    , displaySize({ displayWidth, displayHeight })
+{
+    static VC_DISPMANX_ALPHA_T alpha = {
+        static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FROM_SOURCE),
+        255, 0
+    };
+
+    DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
+
+    uint32_t imagePtr;
+    VC_RECT_T rect;
+    vc_dispmanx_rect_set(&rect, 0, 0, CursorData::width, CursorData::height);
+    DISPMANX_RESOURCE_HANDLE_T pointerResource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, CursorData::width, CursorData::height, &imagePtr);
+    vc_dispmanx_resource_write_data(pointerResource, VC_IMAGE_RGBA32, CursorData::width * 4, CursorData::data, &rect);
+
+    VC_RECT_T srcRect, destRect;
+    vc_dispmanx_rect_set(&srcRect, 0, 0, CursorData::width << 16, CursorData::height << 16);
+    vc_dispmanx_rect_set(&destRect, position.first, position.second, cursorWidth, cursorHeight);
+
+    cursorHandle = vc_dispmanx_element_add(updateHandle, displayHandle, 10,
+        &destRect, pointerResource, &srcRect, DISPMANX_PROTECTION_NONE, &alpha,
+        nullptr, DISPMANX_NO_ROTATE);
+
+    vc_dispmanx_resource_delete(pointerResource);
+
+    vc_dispmanx_update_submit_sync(updateHandle);
+}
+
+ViewBackend::Cursor::~Cursor()
+{
+    DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
+    vc_dispmanx_element_remove(updateHandle, cursorHandle);
+    vc_dispmanx_update_submit_sync(updateHandle);
+}
+
+void ViewBackend::Cursor::handleKeyboardEvent(struct wpe_input_keyboard_event* event)
+{
+    targetClient.handleKeyboardEvent(event);
+}
+
+void ViewBackend::Cursor::handlePointerEvent(struct wpe_input_pointer_event* event)
+{
+    targetClient.handlePointerEvent(event);
+
+    DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
+
+    VC_RECT_T destRect;
+    vc_dispmanx_rect_set(&destRect, event->x, event->y,
+        std::min<uint32_t>(cursorWidth, std::max<uint32_t>(0, displaySize.first - event->x)),
+        std::min<uint32_t>(cursorHeight, std::max<uint32_t>(0, displaySize.second - event->y)));
+
+    vc_dispmanx_element_change_attributes(updateHandle, cursorHandle, 1 << 2,
+        0, 0, &destRect, nullptr, DISPMANX_NO_HANDLE, DISPMANX_NO_ROTATE);
+
+    vc_dispmanx_update_submit_sync(updateHandle);
+}
+
+void ViewBackend::Cursor::handleAxisEvent(struct wpe_input_axis_event* event)
+{
+    targetClient.handleAxisEvent(event);
+}
+
+void ViewBackend::Cursor::handleTouchEvent(struct wpe_input_touch_event* event)
+{
+    targetClient.handleTouchEvent(event);
+}
+
+const uint32_t ViewBackend::Cursor::cursorWidth = 16;
+const uint32_t ViewBackend::Cursor::cursorHeight = 16;
 
 GSourceFuncs UpdateSource::sourceFuncs = {
     // prepare
