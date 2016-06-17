@@ -75,7 +75,7 @@ void LibinputServer::VirtualInput (unsigned int type, unsigned int code)
     Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(&rawEvent);
 
     struct wpe_input_keyboard_event event{ rawEvent.time, std::get<0>(result), std::get<1>(result), rawEvent.pressed, std::get<2>(result) };
-    wpe_view_backend_dispatch_keyboard_event(m_backend, &event);
+    m_client->handleKeyboardEvent(&event);
 }
 
 #endif
@@ -145,17 +145,15 @@ LibinputServer::~LibinputServer()
     udev_unref(m_udev);
 }
 
-void LibinputServer::setBackend(struct wpe_view_backend* backend)
+void LibinputServer::setClient(Client* client)
 {
-    m_backend = backend;
+    m_client = client;
 }
 
 void LibinputServer::handleKeyboardEvent(struct wpe_input_keyboard_event* actionEvent)
 {
-    if (m_backend != nullptr)
-    {
-        // m_client->handleKeyboardEvent(actionEvent);
-    }
+    if (m_client)
+        m_client->handleKeyboardEvent(actionEvent);
 }
 
 void LibinputServer::setHandlePointerEvents(bool handle)
@@ -205,7 +203,7 @@ void LibinputServer::processEvents()
             Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(&rawEvent);
 
             struct wpe_input_keyboard_event event{ rawEvent.time, std::get<0>(result), std::get<1>(result), rawEvent.pressed, std::get<2>(result) };
-            wpe_view_backend_dispatch_keyboard_event(m_backend, &event);
+            m_client->handleKeyboardEvent(&event);
 
             if (rawEvent.pressed)
                 m_keyboardEventRepeating->schedule(&rawEvent);
@@ -231,7 +229,7 @@ void LibinputServer::processEvents()
                 libinput_event_pointer_get_time(pointerEvent),
                 m_pointerCoords.first, m_pointerCoords.second, 0, 0
             };
-            wpe_view_backend_dispatch_pointer_event(m_backend, &event);
+            m_client->handlePointerEvent(&event);
             break;
         }
         case LIBINPUT_EVENT_POINTER_BUTTON:
@@ -247,7 +245,7 @@ void LibinputServer::processEvents()
                 libinput_event_pointer_get_button(pointerEvent),
                 libinput_event_pointer_get_button_state(pointerEvent)
             };
-            wpe_view_backend_dispatch_pointer_event(m_backend, &event);
+            m_client->handlePointerEvent(&event);
             break;
         }
         case LIBINPUT_EVENT_POINTER_AXIS:
@@ -271,7 +269,7 @@ void LibinputServer::processEvents()
                     m_pointerCoords.first, m_pointerCoords.second,
                     axis, -axisValue
                 };
-                wpe_view_backend_dispatch_axis_event(m_backend, &event);
+                m_client->handleAxisEvent(&event);
             }
 
             if (libinput_event_pointer_has_axis(pointerEvent, LIBINPUT_POINTER_AXIS_SCROLL_HORIZONTAL)) {
@@ -284,7 +282,7 @@ void LibinputServer::processEvents()
                     m_pointerCoords.first, m_pointerCoords.second,
                     axis, axisValue
                 };
-                wpe_view_backend_dispatch_axis_event(m_backend, &event);
+                m_client->handleAxisEvent(&event);
             }
 
             break;
@@ -301,7 +299,7 @@ void LibinputServer::dispatchKeyboardEvent(struct wpe_input_keyboard_event* even
 {
     Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(event);
     struct wpe_input_keyboard_event newEvent{ event->time, std::get<0>(result), std::get<1>(result), event->pressed, std::get<2>(result) };
-    wpe_view_backend_dispatch_keyboard_event(m_backend, &newEvent);
+    m_client->handleKeyboardEvent(&newEvent);
 }
 
 void LibinputServer::handleTouchEvent(struct libinput_event *event, enum wpe_input_touch_event_type type)
@@ -323,7 +321,7 @@ void LibinputServer::handleTouchEvent(struct libinput_event *event, enum wpe_inp
     targetPoint = { type, time, id, x, y };
 
     struct wpe_input_touch_event dispatchedEvent{ m_touchEvents.data(), m_touchEvents.size(), type, id, time };
-    wpe_view_backend_dispatch_touch_event(m_backend, &dispatchedEvent);
+    m_client->handleTouchEvent(&dispatchedEvent);
 
     if (type == wpe_input_touch_event_type_up) {
         targetPoint = { wpe_input_touch_event_type_null, 0, -1, -1, -1 };

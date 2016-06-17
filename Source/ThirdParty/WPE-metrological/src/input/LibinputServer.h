@@ -47,7 +47,15 @@ class LibinputServer : public Input::KeyboardEventRepeating::Client {
 public:
     static LibinputServer& singleton();
 
-    void setBackend(struct wpe_view_backend*);
+    class Client {
+    public:
+        virtual void handleKeyboardEvent(struct wpe_input_keyboard_event*) = 0;
+        virtual void handlePointerEvent(struct wpe_input_pointer_event*) = 0;
+        virtual void handleAxisEvent(struct wpe_input_axis_event*) = 0;
+        virtual void handleTouchEvent(struct wpe_input_touch_event*) = 0;
+    };
+
+    void setClient(Client*);
     void setHandlePointerEvents(bool handle);
     void setHandleTouchEvents(bool handle);
     void setPointerBounds(uint32_t, uint32_t);
@@ -63,7 +71,7 @@ private:
 
     struct udev* m_udev;
     struct libinput* m_libinput;
-    struct wpe_view_backend* m_backend;
+    Client* m_client;
     std::unique_ptr<Input::KeyboardEventHandler> m_keyboardEventHandler;
     std::unique_ptr<Input::KeyboardEventRepeating> m_keyboardEventRepeating;
 
