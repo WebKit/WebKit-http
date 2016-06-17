@@ -48,7 +48,7 @@ public:
     ViewBackend* backend;
 };
 
-struct ViewBackend : public IPC::Host::Handler {
+struct ViewBackend : public IPC::Host::Handler, public WPE::LibinputServer::Client {
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
 
@@ -62,6 +62,12 @@ struct ViewBackend : public IPC::Host::Handler {
 
     void commitBuffer(uint32_t, uint32_t, uint32_t);
     void handleUpdate();
+
+    // WPE::LibinputServer::Client
+    void handleKeyboardEvent(struct wpe_input_keyboard_event*) override;
+    void handlePointerEvent(struct wpe_input_pointer_event*) override;
+    void handleAxisEvent(struct wpe_input_axis_event*) override;
+    void handleTouchEvent(struct wpe_input_touch_event*) override;
 
     struct wpe_view_backend* backend;
     IPC::Host ipcHost;
@@ -110,7 +116,7 @@ ViewBackend::~ViewBackend()
 {
     ipcHost.deinitialize();
 
-    WPE::LibinputServer::singleton().setBackend(nullptr);
+    WPE::LibinputServer::singleton().setClient(nullptr);
 
     if (updateSource)
         g_source_destroy(updateSource);
@@ -158,6 +164,8 @@ void ViewBackend::initializeRenderingTarget()
 
 void ViewBackend::initializeInput()
 {
+    WPE::LibinputServer::Client* inputClient = this;
+
     if (std::getenv("WPE_BCMRPI_TOUCH"))
         WPE::LibinputServer::singleton().setHandleTouchEvents(true);
 
@@ -170,7 +178,7 @@ void ViewBackend::initializeInput()
 #endif
     WPE::LibinputServer::singleton().setPointerBounds(width, height);
 
-    WPE::LibinputServer::singleton().setBackend(backend);
+    WPE::LibinputServer::singleton().setClient(inputClient);
 }
 
 void ViewBackend::handleFd(int)
@@ -234,6 +242,26 @@ void ViewBackend::handleUpdate()
     IPC::Message message;
     IPC::BCMRPi::FrameComplete::construct(message);
     ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
+}
+
+void ViewBackend::handleKeyboardEvent(struct wpe_input_keyboard_event* event)
+{
+    wpe_view_backend_dispatch_keyboard_event(backend, event);
+}
+
+void ViewBackend::handlePointerEvent(struct wpe_input_pointer_event* event)
+{
+    wpe_view_backend_dispatch_pointer_event(backend, event);
+}
+
+void ViewBackend::handleAxisEvent(struct wpe_input_axis_event* event)
+{
+    wpe_view_backend_dispatch_axis_event(backend, event);
+}
+
+void ViewBackend::handleTouchEvent(struct wpe_input_touch_event* event)
+{
+    wpe_view_backend_dispatch_touch_event(backend, event);
 }
 
 GSourceFuncs UpdateSource::sourceFuncs = {
