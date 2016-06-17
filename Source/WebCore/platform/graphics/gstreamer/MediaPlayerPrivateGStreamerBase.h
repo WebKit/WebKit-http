@@ -41,10 +41,6 @@ typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
 typedef struct _GstGLDisplay GstGLDisplay;
-typedef struct _GstMessage GstMessage;
-typedef struct _GstStreamVolume GstStreamVolume;
-typedef struct _GstVideoInfo GstVideoInfo;
-typedef struct _WebKitVideoSink WebKitVideoSink;
 
 namespace WebCore {
 
