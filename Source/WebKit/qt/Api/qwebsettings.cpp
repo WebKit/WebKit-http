@@ -155,7 +155,9 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::AcceleratedCompositingEnabled,
                                       global->attributes.value(QWebSettings::AcceleratedCompositingEnabled));
 
-        settings->setAcceleratedCompositingEnabled(value);
+        // FIXME: Temporary disabled until AC is fully working
+        // settings->setAcceleratedCompositingEnabled(value);
+        settings->setAcceleratedCompositingEnabled(false);
 
         bool showDebugVisuals = qgetenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS") == "1";
         settings->setShowDebugBorders(showDebugVisuals);
