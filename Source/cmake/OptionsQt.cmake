@@ -91,6 +91,20 @@ WEBKIT_OPTION_DEPEND(USE_QT_MULTIMEDIA ENABLE_VIDEO)
 
 WEBKIT_OPTION_END()
 
+# FTL JIT and IndexedDB support require GCC 4.9
+# TODO: Patch code to avoid variadic lambdas
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if (ENABLE_FTL_JIT OR ENABLE_INDEXED_DATABASE)
+        if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
+            message(FATAL_ERROR "GCC 4.9.0 is required to build QtWebKit with FTL JIT and Indexed Database, use a newer GCC version or clang, or disable these features")
+        endif ()
+    else ()
+        if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8.0")
+            message(FATAL_ERROR "GCC 4.8.0 is required to build QtWebKit, use a newer GCC version or clang")
+        endif ()
+    endif ()
+endif ()
+
 set(ENABLE_WEBKIT ON)
 set(ENABLE_WEBKIT2 OFF)
 set(WTF_USE_UDIS86 1)
