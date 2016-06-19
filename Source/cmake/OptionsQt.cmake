@@ -39,7 +39,8 @@ WEBKIT_OPTION_DEFINE(USE_LIBHYPHEN "Use automatic hyphenation with LibHyphen" PU
 WEBKIT_OPTION_DEFINE(USE_QT_MULTIMEDIA "Use Qt Multimedia implementation of MediaPlayer" PUBLIC ${USE_QT_MULTIMEDIA_DEFAULT})
 WEBKIT_OPTION_DEFINE(ENABLE_INSPECTOR_UI "Include Inspector UI into resources" PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_PRINT_SUPPORT "Enable support for printing web pages" PUBLIC ON)
-WEBKIT_OPTION_DEFINE(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" PUBLIC OFF)
+
+option(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" OFF)
 
 # Public options shared with other WebKit ports. There must be strong reason
 # to support changing the value of the option.
