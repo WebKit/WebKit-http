@@ -10,6 +10,10 @@ set(PROJECT_VERSION_STRING "${PROJECT_VERSION}")
 
 add_definitions(-DBUILDING_QT__=1)
 
+if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(COMPILER_IS_GCC_OR_CLANG ON)
+endif ()
+
 WEBKIT_OPTION_BEGIN()
 
 if (WIN32 OR APPLE)
@@ -199,6 +203,18 @@ find_package(Qt5OpenGL ${REQUIRED_QT_VERSION})
 find_package(Qt5Test ${REQUIRED_QT_VERSION} REQUIRED)
 find_package(Qt5Widgets ${REQUIRED_QT_VERSION} REQUIRED)
 
+if (COMPILER_IS_GCC_OR_CLANG AND UNIX)
+    if (APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android" OR ${Qt5_VERSION} VERSION_LESS 5.6)
+        set(USE_LINKER_VERSION_SCRIPT_DEFAULT OFF)
+    else ()
+        set(USE_LINKER_VERSION_SCRIPT_DEFAULT ON)
+    endif ()
+else ()
+    set(USE_LINKER_VERSION_SCRIPT_DEFAULT OFF)
+endif ()
+
+option(USE_LINKER_VERSION_SCRIPT "Use linker script for ABI compatibility with Qt libraries" ${USE_LINKER_VERSION_SCRIPT_DEFAULT})
+
 if (ENABLE_GEOLOCATION)
     find_package(Qt5Positioning ${REQUIRED_QT_VERSION} REQUIRED)
     SET_AND_EXPOSE_TO_BUILD(HAVE_QTPOSITIONING 1)
@@ -220,10 +236,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 # TODO: figure out if we can run automoc only on Qt sources
-
-if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(COMPILER_IS_GCC_OR_CLANG ON)
-endif ()
 
 # From OptionsEfl.cmake
 # Optimize binary size for release builds by removing dead sections on unix/gcc.

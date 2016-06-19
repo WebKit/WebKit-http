@@ -485,6 +485,15 @@ install(TARGETS WebKitWidgets EXPORT Qt5WebKitWidgetsTargets
         INCLUDES DESTINATION "${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets"
 )
 
+if (USE_LINKER_VERSION_SCRIPT)
+    set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/QtWebKitWidgets.version")
+    add_custom_command(TARGET WebKitWidgets PRE_LINK
+        COMMAND ${PERL_EXECUTABLE} ${TOOLS_DIR}/qt/generate-version-script.pl ${Qt5_VERSION} > ${VERSION_SCRIPT}
+        VERBATIM
+    )
+    set_target_properties(WebKitWidgets PROPERTIES LINK_FLAGS -Wl,--version-script,${VERSION_SCRIPT})
+endif ()
+
 if (COMPILER_IS_GCC_OR_CLANG)
     set_source_files_properties(
         qt/Api/qwebdatabase.cpp
