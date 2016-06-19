@@ -193,10 +193,8 @@ if (WEBP_FOUND)
 endif ()
 
 set(REQUIRED_QT_VERSION 5.2.0)
-find_package(Qt5Core ${REQUIRED_QT_VERSION} REQUIRED)
-find_package(Qt5Gui ${REQUIRED_QT_VERSION} REQUIRED)
-find_package(Qt5Network ${REQUIRED_QT_VERSION} REQUIRED)
-find_package(Qt5Sql ${REQUIRED_QT_VERSION} REQUIRED)
+
+find_package(Qt5 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS Core Gui Network Sql)
 
 # FIXME: Allow building w/o these components
 find_package(Qt5OpenGL ${REQUIRED_QT_VERSION})
