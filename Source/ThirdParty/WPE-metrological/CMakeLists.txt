@@ -76,6 +76,10 @@ if (USE_WPE_BACKEND_BCM_NEXUS)
     include(src/bcm-nexus/CMakeLists.txt)
 endif ()
 
+if (USE_WPE_BACKEND_BCM_NEXUS_WAYLAND)
+    include(src/bcm-nexus-wayland/CMakeLists.txt)
+endif ()
+
 if (USE_WPE_BACKEND_BCM_RPI)
     include(src/bcm-rpi/CMakeLists.txt)
 endif ()

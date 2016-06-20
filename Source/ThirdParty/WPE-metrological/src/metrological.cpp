@@ -34,6 +34,10 @@
 #include "bcm-nexus/interfaces.h"
 #endif
 
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
+#include "bcm-nexus-wayland/interfaces.h"
+#endif
+
 #ifdef BACKEND_BCM_RPI
 #include "bcm-rpi/interfaces.h"
 #endif
@@ -74,6 +78,18 @@ struct wpe_loader_interface _wpe_loader_interface = {
 
         if (!std::strcmp(object_name, "_wpe_view_backend_interface"))
             return &bcm_nexus_view_backend_interface;
+#endif
+
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_interface"))
+            return &bcm_nexus_wayland_renderer_backend_egl_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_target_interface"))
+            return &bcm_nexus_wayland_renderer_backend_egl_target_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_offscreen_target_interface"))
+            return &bcm_nexus_wayland_renderer_backend_egl_offscreen_target_interface;
+
+        if (!std::strcmp(object_name, "_wpe_view_backend_interface"))
+            return &bcm_nexus_wayland_view_backend_interface;
 #endif
 
 #ifdef BACKEND_BCM_RPI
