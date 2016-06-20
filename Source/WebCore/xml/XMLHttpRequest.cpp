@@ -718,7 +718,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
 
-    if (m_responseType == ResponseType::Arraybuffer)
+    if (m_responseType == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING"))
         options.setDataBufferingPolicy(DoNotBufferData);
 
     if (m_timeoutMilliseconds) {
