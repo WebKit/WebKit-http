@@ -1,4 +1,4 @@
-set(WPE_EMBEDDER_DIR "${TOOLS_DIR}/WPEEmbedder")
+set(WPE_EMBEDDER_DIR "${TOOLS_DIR}/wpe/examples/embedder")
 
 set(WPE_EMBEDDER_SOURCES
     ${WPE_EMBEDDER_DIR}/main.cpp

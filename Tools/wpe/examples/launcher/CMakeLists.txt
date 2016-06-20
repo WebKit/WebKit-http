@@ -1,4 +1,4 @@
-set(WPELAUNCHER_DIR "${TOOLS_DIR}/WPELauncher")
+set(WPELAUNCHER_DIR "${TOOLS_DIR}/wpe/examples/launcher")
 
 set(WPELauncher_SOURCES
     ${WPELAUNCHER_DIR}/main.cpp
