@@ -57,11 +57,7 @@ if (Qt5OpenGL_FOUND)
     add_definitions(-DQT_CONFIGURED_WITH_OPENGL)
 endif ()
 
-if (NOT SHARED_CORE)
-    # FIXME: Static WebCoreTestSupport links another copy of WebCore
-    list(APPEND QtTestBrowser_LIBRARIES
-        WebCoreTestSupport
-    )
+if (ENABLE_TEST_SUPPORT)
     add_definitions(-DHAVE_QTTESTSUPPORT)
 endif ()
 

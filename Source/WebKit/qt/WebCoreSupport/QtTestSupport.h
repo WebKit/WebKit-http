@@ -22,15 +22,15 @@
 #ifndef QtTestSupport_h
 #define QtTestSupport_h
 
-#include <QtCore/qglobal.h>
+#include <qwebkitglobal.h>
 
 namespace WebKit {
 
 namespace QtTestSupport {
 
-void clearMemoryCaches();
-void initializeTestFonts();
-void garbageCollectorCollect();
+void QWEBKIT_EXPORT clearMemoryCaches();
+void QWEBKIT_EXPORT initializeTestFonts();
+void QWEBKIT_EXPORT garbageCollectorCollect();
 
 }
 

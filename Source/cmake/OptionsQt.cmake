@@ -45,6 +45,7 @@ WEBKIT_OPTION_DEFINE(ENABLE_INSPECTOR_UI "Include Inspector UI into resources" P
 WEBKIT_OPTION_DEFINE(ENABLE_PRINT_SUPPORT "Enable support for printing web pages" PUBLIC ON)
 
 option(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" OFF)
+option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON)
 
 # Public options shared with other WebKit ports. There must be strong reason
 # to support changing the value of the option.
@@ -114,8 +115,11 @@ set(ENABLE_WEBKIT ON)
 set(ENABLE_WEBKIT2 OFF)
 set(WTF_USE_UDIS86 1)
 
-if (NOT SHARED_CORE)
+if (SHARED_CORE)
+    set(WebCoreTestSupport_LIBRARY_TYPE SHARED)
+else ()
     set(JavaScriptCore_LIBRARY_TYPE STATIC)
+    set(WebCoreTestSupport_LIBRARY_TYPE STATIC)
 endif ()
 
 SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER TRUE)

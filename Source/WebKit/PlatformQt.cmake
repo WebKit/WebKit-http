@@ -233,6 +233,20 @@ if (USE_QT_MULTIMEDIA)
     )
 endif ()
 
+if (ENABLE_TEST_SUPPORT)
+    list(APPEND WebKit_SOURCES
+        qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp
+        qt/WebCoreSupport/QtTestSupport.cpp
+    )
+    if (SHARED_CORE)
+        list(APPEND WebKit_LIBRARIES PUBLIC WebCoreTestSupport)
+        install(TARGETS WebCoreTestSupport EXPORT WebKitTargets
+                DESTINATION "${LIB_INSTALL_DIR}")
+    else ()
+        list(APPEND WebKit_LIBRARIES PRIVATE WebCoreTestSupport)
+    endif ()
+endif ()
+
 # Resources have to be included directly in the final binary.
 # The linker won't pick them from a static library since they aren't referenced.
 if (NOT SHARED_CORE)
@@ -312,13 +326,6 @@ install(FILES ${WebKit_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
 
 set(WebKit_LIBRARY_TYPE SHARED)
 set(WebKit_OUTPUT_NAME Qt5WebKit)
-
-############   WebKitTestSupport   ############
-
-
-add_library(WebKitTestSupport STATIC qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp)
-target_link_libraries(WebKitTestSupport WebCoreTestSupport WebKit)
-WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebKitTestSupport)
 
 
 ############     WebKitWidgets     ############
