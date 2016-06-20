@@ -210,7 +210,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             GST_DEBUG_OBJECT(self, "can't process key requests in less than PAUSED state");
             return GST_FLOW_NOT_SUPPORTED;
         }
-        priv->condition.wait(priv->mutex);
+        priv->condition.waitFor(priv->mutex, std::chrono::seconds(5), [priv] { return priv->keyReceived; });
         if (!priv->keyReceived) {
             GST_ERROR_OBJECT(self, "key not available");
             return GST_FLOW_NOT_SUPPORTED;
