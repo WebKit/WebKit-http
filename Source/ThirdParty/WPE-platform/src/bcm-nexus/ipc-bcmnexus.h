@@ -25,23 +25,54 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_metrological_input_linuxinput_h
-#define wpe_metrological_input_linuxinput_h
+#ifndef wpe_platform_ipc_bcmnexus_h
+#define wpe_platform_ipc_bcmnexus_h
 
-#ifdef KEY_INPUT_HANDLING_LINUX_INPUT
+#include <memory>
+#include <stdint.h>
 
-#include <wpe/input.h>
+namespace IPC {
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace BCMNexus {
 
-extern struct wpe_input_key_mapper_interface linuxinput_input_key_mapper_interface;
+struct BufferCommit {
+    uint32_t width;
+    uint32_t height;
+    uint8_t padding[16];
 
-#ifdef __cplusplus
-}
-#endif
+    static const uint64_t code = 1;
+    static void construct(Message& message, uint32_t width, uint32_t height)
+    {
+        message.messageCode = code;
 
-#endif // KEY_INPUT_HANDLING_LINUX_INPUT
+        auto& messageData = *reinterpret_cast<BufferCommit*>(std::addressof(message.messageData));
+        messageData.width = width;
+        messageData.height = height;
+    }
+    static BufferCommit& cast(Message& message)
+    {
+        return *reinterpret_cast<BufferCommit*>(std::addressof(message.messageData));
+    }
+};
+static_assert(sizeof(BufferCommit) == Message::dataSize, "BufferCommit is of correct size");
 
-#endif // wpe_metrological_input_linuxinput_h
+struct FrameComplete {
+    int8_t padding[24];
+
+    static const uint64_t code = 2;
+    static void construct(Message& message)
+    {
+        message.messageCode = code;
+    }
+    static FrameComplete& cast(Message& message)
+    {
+        return *reinterpret_cast<FrameComplete*>(std::addressof(message.messageData));
+    }
+};
+static_assert(sizeof(FrameComplete) == Message::dataSize, "FrameComplete is of correct size");
+
+} // namespace BCMNexus
+
+} // namespace IPC
+
+#endif // wpe_platform_ipc_bcmnexus_h

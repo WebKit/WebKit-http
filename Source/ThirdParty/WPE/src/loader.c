@@ -41,7 +41,7 @@ load_impl_library()
     //    platform-specific libraries,
     // 2. should support an environment variable,
     // 3. should support a hard-coded library name specified at compile-time.
-    static const char library_name[] = "libWPE-metrological.so";
+    static const char library_name[] = "libWPE-platform.so";
 
     s_impl_library = dlopen(library_name, RTLD_NOW);
     if (!s_impl_library) {

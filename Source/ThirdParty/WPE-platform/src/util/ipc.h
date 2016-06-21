@@ -25,8 +25,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_metrological_ipc_h
-#define wpe_metrological_ipc_h
+#ifndef wpe_platform_ipc_h
+#define wpe_platform_ipc_h
 
 #include <gio/gio.h>
 #include <memory>
@@ -101,4 +101,4 @@ private:
 
 } // namespace IPC
 
-#endif // wpe_metrological_ipc_h
+#endif // wpe_platform_ipc_h

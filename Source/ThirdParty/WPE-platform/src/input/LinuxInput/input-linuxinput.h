@@ -25,10 +25,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_metrological_input_libxkbcommon_h
-#define wpe_metrological_input_libxkbcommon_h
+#ifndef wpe_platform_input_linuxinput_h
+#define wpe_platform_input_linuxinput_h
 
-#ifdef KEY_INPUT_HANDLING_XKB
+#ifdef KEY_INPUT_HANDLING_LINUX_INPUT
 
 #include <wpe/input.h>
 
@@ -36,12 +36,12 @@
 extern "C" {
 #endif
 
-extern struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface;
+extern struct wpe_input_key_mapper_interface linuxinput_input_key_mapper_interface;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // KEY_INPUT_HANDLING_XKB
+#endif // KEY_INPUT_HANDLING_LINUX_INPUT
 
-#endif // wpe_metrological_input_libxkbcommon_h
+#endif // wpe_platform_input_linuxinput_h

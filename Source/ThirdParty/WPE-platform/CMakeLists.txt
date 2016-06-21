@@ -1,4 +1,4 @@
-set(WPE_METROLOGICAL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-metrological")
+set(WPE_PLATFORM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-platform")
 
 # Converted
 option(USE_WPE_BACKEND_BCM_NEXUS "Whether to enable support for the BCM_NEXUS WPE backend" OFF)
@@ -30,18 +30,18 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
-set(WPE_METROLOGICAL_INCLUDE_DIRECTORIES
+set(WPE_PLATFORM_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include"
-    "${WPE_METROLOGICAL_SOURCE_DIR}/src/external"
-    "${WPE_METROLOGICAL_SOURCE_DIR}/src/input"
-    "${WPE_METROLOGICAL_SOURCE_DIR}/src/util"
+    "${WPE_PLATFORM_SOURCE_DIR}/src/external"
+    "${WPE_PLATFORM_SOURCE_DIR}/src/input"
+    "${WPE_PLATFORM_SOURCE_DIR}/src/util"
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBINPUT_INCLUDE_DIRS}
     ${LIBUDEV_INCLUDE_DIRS}
 )
 
-set(WPE_METROLOGICAL_LIBRARIES
+set(WPE_PLATFORM_LIBRARIES
     WPE
     ${GLIB_GIO_LIBRARIES}
     ${LIBINPUT_LIBRARIES}
@@ -49,16 +49,16 @@ set(WPE_METROLOGICAL_LIBRARIES
 )
 
 if (NOT USE_KEY_INPUT_HANDLING_LINUX_INPUT)
-    list(APPEND WPE_METROLOGICAL_INCLUDE_DIRECTORIES
+    list(APPEND WPE_PLATFORM_INCLUDE_DIRECTORIES
         ${LIBXKBCOMMON_INCLUDE_DIRS}
     )
-    list(APPEND WPE_METROLOGICAL_LIBRARIES
+    list(APPEND WPE_PLATFORM_LIBRARIES
         ${LIBXKBCOMMON_LIBRARIES}
     )
 endif ()
 
-set(WPE_METROLOGICAL_SOURCES
-    src/metrological.cpp
+set(WPE_PLATFORM_SOURCES
+    src/loader-impl.cpp
 
     src/input/KeyboardEventRepeating.cpp
     src/input/LibinputServer.cpp
@@ -96,7 +96,7 @@ if (USE_WPE_BACKEND_WESTEROS)
     include(src/westeros/CMakeLists.txt)
 endif ()
 
-add_library(WPE-metrological SHARED ${WPE_METROLOGICAL_SOURCES})
-target_include_directories(WPE-metrological PRIVATE ${WPE_METROLOGICAL_INCLUDE_DIRECTORIES})
-target_link_libraries(WPE-metrological ${WPE_METROLOGICAL_LIBRARIES})
-install(TARGETS WPE-metrological DESTINATION "${LIB_INSTALL_DIR}")
+add_library(WPE-platform SHARED ${WPE_PLATFORM_SOURCES})
+target_include_directories(WPE-platform PRIVATE ${WPE_PLATFORM_INCLUDE_DIRECTORIES})
+target_link_libraries(WPE-platform ${WPE_PLATFORM_LIBRARIES})
+install(TARGETS WPE-platform DESTINATION "${LIB_INSTALL_DIR}")
