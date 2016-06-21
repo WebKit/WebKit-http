@@ -4,11 +4,17 @@ set(WPE_EMBEDDER_SOURCES
     ${WPE_EMBEDDER_DIR}/main.cpp
 )
 
+if(WPE_BACKEND)
+  set(WPE_BACKEND_DIR "WPE-${WPE_BACKEND}")
+else ()
+  set(WPE_BACKEND_DIR "WPE-mesa")
+endif ()
+
 set(WPE_EMBEDDER_INCLUDE_DIRECTORIES
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
     ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include
-    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa/include
+    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/${WPE_BACKEND_DIR}/include
     ${FORWARDING_HEADERS_DIR}
     ${WTF_DIR}
 )
@@ -19,7 +25,7 @@ set(WPE_EMBEDDER_SYSTEM_INCLUDE_DIRECTORIES
 
 set(WPE_EMBEDDER_LIBRARIES
     WebKit2
-    WPE-mesa
+    ${WPE_BACKEND_DIR}
     wayland-egl
     ${GLIB_LIBRARIES}
 )

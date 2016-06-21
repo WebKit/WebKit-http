@@ -39,10 +39,30 @@ load_impl_library()
     // FIXME:
     // 1. should use a more generic name, usable via a symbolic link to the
     //    platform-specific libraries,
-    // 2. should support an environment variable,
-    // 3. should support a hard-coded library name specified at compile-time.
     static const char library_name[] = "libWPE-mesa.so";
 
+#ifdef WPE_BACKEND
+    s_impl_library = dlopen("libWPE-" WPE_BACKEND ".so", RTLD_NOW);
+    if (!s_impl_library) {
+        fprintf(stderr, "wpe: could not load compile-time defined WPE_BACKEND: %s\n", dlerror());
+        abort();
+    }
+    return;
+#endif
+
+    // Get the impl library from an environment variable.
+    char* env_library_name = getenv("WPE_BACKEND_LIBRARY");
+    if (env_library_name) {
+        s_impl_library = dlopen(env_library_name, RTLD_NOW);
+        if (!s_impl_library) {
+            fprintf(stderr, "wpe: could not load specified WPE_BACKEND_LIBRARY: %s\n", dlerror());
+            abort();
+        }
+        s_impl_loader = dlsym(s_impl_library, "_wpe_loader_interface");
+        return;
+    }
+
+    // Load libWPE-mesa.so by defauly.
     s_impl_library = dlopen(library_name, RTLD_NOW);
     if (!s_impl_library) {
         fprintf(stderr, "wpe: could not load the impl library: %s\n", dlerror());

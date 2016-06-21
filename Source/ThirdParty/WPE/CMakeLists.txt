@@ -2,6 +2,8 @@ set(WPE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
+add_definitions(-DWPE_BACKEND=\"${WPE_BACKEND}\")
+
 set(WPE_INCLUDE_DIRECTORIES
     "${WPE_SOURCE_DIR}/include"
     "${WPE_SOURCE_DIR}/src"
