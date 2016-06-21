@@ -36,6 +36,7 @@ import os
 import platform
 
 from webkitpy.common.memoized import memoized
+from webkitpy.common.system import path
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
 from webkitpy.port.xvfbdriver import XvfbDriver
@@ -168,11 +169,10 @@ class QtPort(Port):
     # FIXME: We should find a way to share this implmentation with Gtk,
     # or teach run-launcher how to call run-safari and move this down to Port.
     def show_results_html_file(self, results_filename):
-        run_launcher_args = []
+        run_launcher_args = [path.abspath_to_uri(self.host.platform, results_filename)]
         if self.get_option('webkit_test_runner'):
             run_launcher_args.append('-2')
-        run_launcher_args.append("file://%s" % results_filename)
-        self._run_script("run-launcher", run_launcher_args)
+        self._run_script("run-minibrowser", run_launcher_args)
 
     def operating_system(self):
         return self._operating_system
