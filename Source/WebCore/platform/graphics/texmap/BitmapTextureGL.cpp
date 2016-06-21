@@ -58,19 +58,29 @@ BitmapTextureGL* toBitmapTextureGL(BitmapTexture* texture)
     return static_cast<BitmapTextureGL*>(texture);
 }
 
-BitmapTextureGL::BitmapTextureGL(PassRefPtr<GraphicsContext3D> context3D, const Flags flags)
+BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, const Flags flags)
+    : BitmapTextureGL(WTFMove(context3D), GraphicsContext3D::DONT_CARE, flags)
+{
+}
+
+BitmapTextureGL::BitmapTextureGL(RefPtr<GraphicsContext3D>&& context3D, GC3Dint internalFormat, const Flags flags)
     : m_id(0)
     , m_fbo(0)
     , m_rbo(0)
     , m_depthBufferObject(0)
     , m_shouldClear(true)
-    , m_context3D(context3D)
+    , m_context3D(WTFMove(context3D))
 #if OS(DARWIN)
     , m_type(GL_UNSIGNED_INT_8_8_8_8_REV)
 #else
     , m_type(GraphicsContext3D::UNSIGNED_BYTE)
 #endif
 {
+    if (internalFormat != GraphicsContext3D::DONT_CARE) {
+        m_internalFormat = m_format = internalFormat;
+        return;
+    }
+
     if (flags & FBOAttachment)
         m_internalFormat = m_format = GraphicsContext3D::RGBA;
     else {
@@ -351,6 +361,34 @@ bool BitmapTextureGL::isValid() const
 IntSize BitmapTextureGL::size() const
 {
     return m_textureSize;
+}
+
+
+void BitmapTextureGL::copyFromExternalTexture(Platform3DObject sourceTextureID)
+{
+    GC3Dint boundTexture = 0;
+    GC3Dint boundFramebuffer = 0;
+    GC3Dint boundActiveTexture = 0;
+
+    m_context3D->getIntegerv(GraphicsContext3D::TEXTURE_BINDING_2D, &boundTexture);
+    m_context3D->getIntegerv(GraphicsContext3D::FRAMEBUFFER_BINDING, &boundFramebuffer);
+    m_context3D->getIntegerv(GraphicsContext3D::ACTIVE_TEXTURE, &boundActiveTexture);
+
+    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, sourceTextureID);
+
+    Platform3DObject copyFbo = m_context3D->createFramebuffer();
+    m_context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, copyFbo);
+    m_context3D->framebufferTexture2D(GraphicsContext3D::FRAMEBUFFER, GraphicsContext3D::COLOR_ATTACHMENT0, GraphicsContext3D::TEXTURE_2D, sourceTextureID, 0);
+
+    m_context3D->activeTexture(GraphicsContext3D::TEXTURE0);
+    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, id());
+    m_context3D->copyTexSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, 0, 0, 0, 0, m_textureSize.width(), m_textureSize.height());
+
+    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, boundTexture);
+    m_context3D->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, boundFramebuffer);
+    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, boundTexture);
+    m_context3D->activeTexture(boundActiveTexture);
+    m_context3D->deleteFramebuffer(copyFbo);
 }
 
 }; // namespace WebCore

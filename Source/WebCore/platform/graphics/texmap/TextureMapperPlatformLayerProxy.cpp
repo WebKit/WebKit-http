@@ -150,6 +150,7 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
 
     {
         LockHolder locker(m_lock);
+
         if (!m_targetLayer || !m_pendingBuffer)
             return;
 
@@ -163,7 +164,37 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
         m_usedBuffers.append(WTFMove(prevBuffer));
 }
 
-bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
+void TextureMapperPlatformLayerProxy::dropCurrentBufferWhilePreservingTexture()
+{
+    {
+        LockHolder locker(m_lock);
+        if (m_pendingBuffer) {
+            if (m_pendingBuffer->hasManagedTexture())
+                m_usedBuffers.append(WTFMove(m_pendingBuffer));
+            else
+                m_pendingBuffer.reset();
+        }
+    }
+
+    scheduleUpdateOnCompositorThread([this, protectedThis = Ref<TextureMapperPlatformLayerProxy>(*this)] {
+
+        if (!m_compositor || !m_targetLayer)
+            return;
+
+        TextureMapperGL* texmapGL = m_compositor->texmapGL();
+        if (!texmapGL || !m_currentBuffer)
+            return;
+
+        {
+            LockHolder locker(m_lock);
+            m_pendingBuffer = m_currentBuffer->clone(*texmapGL);
+        }
+
+        swapBuffer();
+    });
+}
+
+bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<void()>&& updateFunction)
 {
     LockHolder locker(m_lock);
     if (!m_compositorThreadUpdateTimer)
@@ -176,7 +207,7 @@ bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::func
 
 void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()
 {
-    std::function<void()> updateFunction;
+    Function<void()> updateFunction;
     {
         LockHolder locker(m_lock);
         if (!m_compositorThreadUpdateFunction)

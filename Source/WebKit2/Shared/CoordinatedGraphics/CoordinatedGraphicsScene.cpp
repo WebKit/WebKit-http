@@ -205,6 +205,14 @@ void CoordinatedGraphicsScene::onNewBufferAvailable()
     if (m_client)
         m_client->updateViewport();
 }
+
+TextureMapperGL* CoordinatedGraphicsScene::texmapGL()
+{
+    if (!m_textureMapper)
+        return nullptr;
+
+    return static_cast<TextureMapperGL*>(m_textureMapper.get());
+}
 #endif
 
 #if USE(GRAPHICS_SURFACE)

@@ -33,6 +33,7 @@
 #include "TransformationMatrix.h"
 #include <wtf/Condition.h>
 #include <wtf/Lock.h>
+#include <wtf/Function.h>
 #include <wtf/RunLoop.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
@@ -43,6 +44,7 @@
 
 namespace WebCore {
 
+class TextureMapperGL;
 class TextureMapperLayer;
 class TextureMapperPlatformLayerProxy;
 class TextureMapperPlatformLayerBuffer;
@@ -59,6 +61,7 @@ public:
     class Compositor {
     public:
         virtual void onNewBufferAvailable() = 0;
+        virtual TextureMapperGL* texmapGL() = 0;
     };
 
     TextureMapperPlatformLayerProxy();
@@ -76,8 +79,9 @@ public:
     void invalidate();
 
     void swapBuffer();
+    void dropCurrentBufferWhilePreservingTexture();
 
-    bool scheduleUpdateOnCompositorThread(std::function<void()>&&);
+    bool scheduleUpdateOnCompositorThread(Function<void()>&&);
 
 private:
     void scheduleReleaseUnusedBuffers();
@@ -100,7 +104,7 @@ private:
 
     void compositorThreadUpdateTimerFired();
     std::unique_ptr<RunLoop::Timer<TextureMapperPlatformLayerProxy>> m_compositorThreadUpdateTimer;
-    std::function<void()> m_compositorThreadUpdateFunction;
+    Function<void()> m_compositorThreadUpdateFunction;
 };
 
 } // namespace WebCore

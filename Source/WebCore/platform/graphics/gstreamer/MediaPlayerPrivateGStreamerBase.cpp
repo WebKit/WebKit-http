@@ -191,6 +191,7 @@ public:
     const IntSize& size() const { return m_size; }
     TextureMapperGL::Flags flags() const { return m_flags; }
     GLuint textureID() const { return m_textureID; }
+    GC3Dint internalFormat() const { return m_internalFormat; }
     bool isValid() const { return m_isValid; }
 
 private:
@@ -198,6 +199,7 @@ private:
     IntSize m_size;
     TextureMapperGL::Flags m_flags;
     GLuint m_textureID;
+    GC3Dint m_internalFormat;
     bool m_isValid { false };
 };
 #endif // USE(COORDINATED_GRAPHICS_THREADED) && USE(GSTREAMER_GL)
@@ -656,7 +658,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     if (UNLIKELY(!frameHolder->isValid()))
         return;
 
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(frameHolder->textureID(), frameHolder->size(), frameHolder->flags());
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(frameHolder->textureID(), frameHolder->size(), frameHolder->flags(), GraphicsContext3D::RGBA);
     layerBuffer->setUnmanagedBufferDataHolder(WTFMove(frameHolder));
     m_platformLayerProxy->pushNextBuffer(WTFMove(layerBuffer));
 #else
@@ -767,15 +769,13 @@ void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
     m_sample.clear();
 
-    LockHolder holder(m_platformLayerProxy->lock());
+    {
+        LockHolder locker(m_platformLayerProxy->lock());
 
-    if (!m_platformLayerProxy->isActive())
-        return;
-
-    // FIXME: Remove this black frame while drain or flush event
-    // we can make a copy current frame to the temporal texture,
-    // or make the decoder's buffer pool more flexible.
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, 0));
+        if (!m_platformLayerProxy->isActive())
+            return;
+    }
+    m_platformLayerProxy->dropCurrentBufferWhilePreservingTexture();
 }
 #endif
 
