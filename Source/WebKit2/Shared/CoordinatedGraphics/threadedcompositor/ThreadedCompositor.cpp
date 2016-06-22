@@ -188,6 +188,8 @@ GLContext* ThreadedCompositor::glContext()
         return nullptr;
 #endif
 #if PLATFORM(WPE)
+    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
+    m_target = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createEGLTarget(*this, m_compositingManager.releaseConnectionFd());
     ASSERT(m_target);
     m_target->initialize(IntSize(m_viewportController->visibleContentsRect().size()));
     m_context = m_target->createGLContext();
@@ -280,11 +282,6 @@ void ThreadedCompositor::runCompositingThread()
         });
         m_scene = adoptRef(new CoordinatedGraphicsScene(this));
         m_viewportController = std::make_unique<SimpleViewportController>(this);
-
-#if PLATFORM(WPE)
-        RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
-        m_target = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createEGLTarget(*this, m_compositingManager.releaseConnectionFd());
-#endif
 
         m_initializeRunLoopCondition.notifyOne();
     }
