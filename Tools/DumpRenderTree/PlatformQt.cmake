@@ -43,6 +43,11 @@ list(APPEND DumpRenderTree_LIBRARIES
     WebKitWidgets
 )
 
+if (WIN32)
+    add_definitions(-DWEBCORE_EXPORT=)
+    add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
+endif ()
+
 if (WTF_OS_UNIX)
     add_definitions(-DXP_UNIX)
     link_libraries(X11)

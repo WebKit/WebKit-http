@@ -16,6 +16,12 @@ add_definitions(
     -DQT_NO_CAST_FROM_ASCII
 )
 
+if (WIN32)
+    add_definitions(-DUSE_CONSOLE_ENTRY_POINT)
+    add_definitions(-DWEBCORE_EXPORT=)
+    add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
+endif ()
+
 set(test_main_SOURCES
     ${TESTWEBKITAPI_DIR}/qt/main.cpp
 )
