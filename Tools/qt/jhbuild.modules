@@ -8,8 +8,7 @@
         <!--      <dep package="fonts"/> -->
       <dep package="dicts"/>
       <dep package="fontconfig"/>
-      <dep package="freetype6"/>
-      <dep package="harfbuzz"/>
+      <dep package="icu"/>
       <dep package="libxml2"/>
       <dep package="glib"/>
       <dep package="gstreamer"/>
@@ -18,8 +17,11 @@
       <dep package="gst-plugins-bad"/>
       <dep package="gst-libav"/>
       <dep package="openwebrtc"/>
+      <dep package="qt"/>
     </dependencies>
   </metamodule>
+
+  <include href="jhbuild-qt.modules"/>
 
   <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
   <repository type="git" name="github.com"
@@ -28,12 +30,8 @@
       href="http://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
       href="http://ftp.gnome.org"/>
-  <repository type="git" name="git.gnome.org"
-      href="https://git.gnome.org/browse/"/>
   <repository type="tarball" name="freedesktop.org"
       href="http://www.freedesktop.org"/>
-  <repository type="tarball" name="xorg"
-      href="http://xorg.freedesktop.org"/>
   <repository type="tarball" name="xmlsoft.org"
       href="http://xmlsoft.org"/>
   <repository type="tarball" name="gstreamer"
@@ -42,8 +40,8 @@
       href="http://download.savannah.gnu.org/releases/"/>
   <repository type="git" name="freedesktop-git"
       href="http://anongit.freedesktop.org/git"/>
-  <repository type="tarball" name="people.freedesktop.org"
-      href="http://people.freedesktop.org"/>
+  <repository type="tarball" name="webkitgtk-jhbuild-mirror"
+      href="http://webkitgtk.org/jhbuild_mirror/"/>
 
   <autotools id="fonts" supports-non-srcdir-builds="no"
              skip-autogen="true">
@@ -65,12 +63,13 @@
   </autotools>
 
   <autotools id="harfbuzz" autogen-sh="configure">
-    <branch module="software/harfbuzz/release/harfbuzz-0.9.35.tar.bz2"
-            version="0.9.35"
-            checkoutdir="harfbuzz-0.9.35"
+    <dependencies>
+      <dep package="icu"/>
+    </dependencies>
+    <branch module="software/harfbuzz/release/harfbuzz-${version}.tar.bz2"
+            version="1.2.7"
             repo="freedesktop.org"
-            hash="sha256:0aa1a8aba6f502321cf6fef3c9d2c73dde48389c5ed1d3615a7691944c2a06ed"
-            md5sum="531ee8650626ecddcd90b2a4637e31d4">
+            hash="sha256:bba0600ae08b84384e6d2d7175bea10b5fc246c4583dc841498d01894d479026">
     </branch>
   </autotools>
 
@@ -83,7 +82,7 @@
 
   <autotools id="glib"
              autogen-sh="configure"
-             autogenargs="--disable-dtrace">
+             autogenargs="--disable-dtrace --disable-gtk-doc-html">
     <dependencies>
       <dep package="libffi"/>
     </dependencies>
@@ -224,6 +223,14 @@
     <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="13516c7f79a0c48bb411464f7613d4b426c70f5b"/>
   </autotools>
 
-  
+  <autotools id="icu"
+             autogen-sh="./source/configure"
+             autogenargs="--disable-samples --enable-weak-threads">
+    <branch module="icu4c-55_1-src.tgz" version="55.1" checkoutdir="icu"
+            repo="webkitgtk-jhbuild-mirror"
+            hash="sha256:e16b22cbefdd354bec114541f7849a12f8fc2015320ca5282ee4fd787571457b">
+      <patch file="icudata-stdlibs.patch" strip="1"/>
+    </branch>
+  </autotools>
 
 </moduleset>
