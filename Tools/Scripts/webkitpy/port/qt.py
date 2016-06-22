@@ -70,6 +70,13 @@ class QtPort(Port):
         # FIXME: Why is this being set at all?
         self._version = self.operating_system()
 
+        if self._should_use_jhbuild():
+            self._jhbuild_wrapper = [self.path_from_webkit_base('Tools', 'jhbuild', 'jhbuild-wrapper'), '--qt', 'run']
+            if self.get_option('wrapper'):
+                self.set_option('wrapper', ' '.join(self._jhbuild_wrapper) + ' ' + self.get_option('wrapper'))
+            else:
+                self.set_option_default('wrapper', ' '.join(self._jhbuild_wrapper))
+
     def _generate_all_test_configurations(self):
         configurations = []
         for version in self.ALL_VERSIONS:

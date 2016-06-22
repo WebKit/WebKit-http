@@ -1855,6 +1855,8 @@ sub getJhbuildPath()
         push(@jhbuildPath, "DependenciesEFL");
     } elsif (isGtk()) {
         push(@jhbuildPath, "DependenciesGTK");
+    } elsif (isQt()) {
+        push(@jhbuildPath, "DependenciesQT");
     } else {
         die "Cannot get JHBuild path for platform that isn't GTK+ or EFL.\n";
     }
@@ -1885,7 +1887,7 @@ sub isCachedArgumentfileOutOfDate($@)
 
 sub wrapperPrefixIfNeeded()
 {
-    if (isAnyWindows() || isQt()) {
+    if (isAnyWindows()) {
         return ();
     }
     if (isAppleMacWebKit()) {
@@ -1897,6 +1899,8 @@ sub wrapperPrefixIfNeeded()
             push(@prefix, "--efl");
         } elsif (isGtk()) {
             push(@prefix, "--gtk");
+        } elsif (isQt()) {
+            push(@prefix, "--qt");
         }
         push(@prefix, "run");
 
