@@ -36,19 +36,17 @@ static struct wpe_loader_interface* s_impl_loader = 0;
 void
 load_impl_library()
 {
-    // FIXME:
-    // 1. should use a more generic name, usable via a symbolic link to the
-    //    platform-specific libraries,
-    static const char library_name[] = "libWPE-mesa.so";
-
 #ifdef WPE_BACKEND
-    s_impl_library = dlopen("libWPE-" WPE_BACKEND ".so", RTLD_NOW);
+    s_impl_library = dlopen(WPE_BACKEND, RTLD_NOW);
     if (!s_impl_library) {
         fprintf(stderr, "wpe: could not load compile-time defined WPE_BACKEND: %s\n", dlerror());
         abort();
     }
-    return;
-#endif
+#else
+    // FIXME:
+    // 1. should use a more generic name, usable via a symbolic link to the
+    //    platform-specific libraries,
+    static const char library_name[] = "libWPE-mesa.so";
 
     // Get the impl library from an environment variable.
     char* env_library_name = getenv("WPE_BACKEND_LIBRARY");
@@ -58,16 +56,15 @@ load_impl_library()
             fprintf(stderr, "wpe: could not load specified WPE_BACKEND_LIBRARY: %s\n", dlerror());
             abort();
         }
-        s_impl_loader = dlsym(s_impl_library, "_wpe_loader_interface");
-        return;
+    } else {
+        // Load libWPE-mesa.so by defauly.
+        s_impl_library = dlopen(library_name, RTLD_NOW);
+        if (!s_impl_library) {
+            fprintf(stderr, "wpe: could not load the impl library: %s\n", dlerror());
+            abort();
+        }
     }
-
-    // Load libWPE-mesa.so by defauly.
-    s_impl_library = dlopen(library_name, RTLD_NOW);
-    if (!s_impl_library) {
-        fprintf(stderr, "wpe: could not load the impl library: %s\n", dlerror());
-        abort();
-    }
+#endif
 
     s_impl_loader = dlsym(s_impl_library, "_wpe_loader_interface");
 }
