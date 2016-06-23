@@ -72,6 +72,7 @@
           repo="download.qt.io"
           checkoutdir="qt-everywhere-opensource-src-5.6.1"
           hash="sha256:ce08a7eb54661705f55fb283d895a089b267c688fabe017062bd71b9231736db">
+      <patch file="qt-fontconfig-fix.patch" strip="1"/>
     </branch>
     <dependencies>
       <dep package="fontconfig"/>

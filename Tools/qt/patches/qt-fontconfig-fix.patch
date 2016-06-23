@@ -1,0 +1,56 @@
+From dc99d545f44c5d9b514cf439bfa9f501035425fd Mon Sep 17 00:00:00 2001
+From: Allan Sandfeld Jensen <allan.jensen@digia.com>
+Date: Thu, 6 Nov 2014 12:14:41 +0100
+Subject: [PATCH 1/1] Do not force the default fontconfig configuration
+
+Since 74cade1ee42dbe15d3242b08d5880e08e6294e2e, QFontconfigDatabase
+has forced a full init to the default configuration breaking
+applications that set a custom fontconfig.
+
+Change-Id: If9ee3e185c42af10c05ae3852d088881da1d4f1a
+---
+ .../fontdatabases/fontconfig/qfontconfigdatabase.cpp              | 8 +++++++-
+ .../fontdatabases/fontconfig/qfontconfigdatabase_p.h              | 1 +
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
+index 8ebabf3..194f66c 100644
+--- a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
++++ b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
+@@ -471,7 +471,7 @@ static void populateFromPattern(FcPattern *pattern)
+ 
+ void QFontconfigDatabase::populateFontDatabase()
+ {
+-    FcInitReinitialize();
++    FcInit();
+     FcFontSet  *fonts;
+ 
+     {
+@@ -535,6 +535,12 @@ void QFontconfigDatabase::populateFontDatabase()
+ //    QApplication::setFont(font);
+ }
+ 
++void QFontconfigDatabase::invalidate()
++{
++    // Clear app fonts.
++    FcConfigAppFontClear(0);
++}
++
+ QFontEngineMulti *QFontconfigDatabase::fontEngineMulti(QFontEngine *fontEngine, QChar::Script script)
+ {
+     return new QFontEngineMultiFontConfig(fontEngine, script);
+diff --git a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
+index 2199f39..ab77fab 100644
+--- a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
++++ b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
+@@ -56,6 +56,7 @@ class QFontconfigDatabase : public QBasicFontDatabase
+ {
+ public:
+     void populateFontDatabase() Q_DECL_OVERRIDE;
++    void invalidate() Q_DECL_OVERRIDE;
+     QFontEngineMulti *fontEngineMulti(QFontEngine *fontEngine, QChar::Script script) Q_DECL_OVERRIDE;
+     QFontEngine *fontEngine(const QFontDef &fontDef, void *handle) Q_DECL_OVERRIDE;
+     QFontEngine *fontEngine(const QByteArray &fontData, qreal pixelSize, QFont::HintingPreference hintingPreference) Q_DECL_OVERRIDE;
+-- 
+2.9.0
+

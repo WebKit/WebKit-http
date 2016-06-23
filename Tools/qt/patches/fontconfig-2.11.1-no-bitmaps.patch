@@ -1,0 +1,10 @@
+--- conf.d/Makefile.in.old	2016-06-23 19:00:01.309774583 +0300
++++ conf.d/Makefile.in	2016-06-23 19:00:23.542159140 +0300
+@@ -341,6 +341,7 @@
+ 	65-fonts-persian.conf \
+ 	65-nonlatin.conf \
+ 	69-unifont.conf \
++	70-no-bitmaps.conf \
+ 	80-delicious.conf \
+ 	90-synthetic.conf
+ 
