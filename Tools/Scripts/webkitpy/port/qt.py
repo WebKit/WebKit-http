@@ -39,6 +39,7 @@ from webkitpy.common.memoized import memoized
 from webkitpy.common.system import path
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
+from webkitpy.port.xorgdriver import XorgDriver
 from webkitpy.port.xvfbdriver import XvfbDriver
 from webkitpy.port.linux_get_crash_log import GDBCrashLogGenerator
 
@@ -90,6 +91,11 @@ class QtPort(Port):
 
     def supports_per_test_timeout(self):
         return True
+
+    def _driver_class(self):
+        if os.environ.get("USE_NATIVE_XDISPLAY"):
+            return XorgDriver
+        return XvfbDriver
 
     def _path_to_driver(self):
         return self._build_path('bin/%s' % self.driver_name())
