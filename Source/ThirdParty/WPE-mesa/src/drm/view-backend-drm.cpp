@@ -340,7 +340,7 @@ void ViewBackend::handleMessage(char* data, size_t size)
         m_display.pageFlipData.nextFB = { true, bufferCommit.handle };
     } else {
         auto it = m_display.fbMap.find(bufferCommit.handle);
-        assert(it != m_fbMap.end());
+        assert(it != m_display.fbMap.end());
 
         fbID = it->second.second;
         m_display.pageFlipData.nextFB = { true, bufferCommit.handle };
