@@ -505,15 +505,9 @@ float MediaPlayerPrivateGStreamer::duration() const
     if (m_mediaDuration)
         return m_mediaDuration;
 
-    GstFormat timeFormat = GST_FORMAT_TIME;
     gint64 timeLength = 0;
 
-    bool failure = !gst_element_query_duration(m_pipeline.get(), timeFormat, &timeLength) || static_cast<guint64>(timeLength) == GST_CLOCK_TIME_NONE;
-
-    if (failure && m_source)
-        failure = !gst_element_query_duration(m_source.get(), timeFormat, &timeLength) || static_cast<guint64>(timeLength) == GST_CLOCK_TIME_NONE;
-
-    if (failure) {
+    if (!gst_element_query_duration(m_pipeline.get(), GST_FORMAT_TIME, &timeLength) || static_cast<guint64>(timeLength) == GST_CLOCK_TIME_NONE) {
         LOG_MEDIA_MESSAGE("Time duration query failed for %s", m_url.string().utf8().data());
         return numeric_limits<float>::infinity();
     }
