@@ -363,7 +363,7 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
 
     // Position is only available if no async state change is going on and the state is either paused or playing.
     gint64 position = GST_CLOCK_TIME_NONE;
-    GstQuery* query= gst_query_new_position(GST_FORMAT_TIME);
+    GstQuery* query = gst_query_new_position(GST_FORMAT_TIME);
     if (gst_element_query(m_pipeline.get(), query))
         gst_query_parse_position(query, 0, &position);
 
@@ -374,6 +374,7 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
         result = m_seekTime;
 
     gst_query_unref(query);
+    LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
 #if PLATFORM(BCM_NEXUS) || USE(FUSION_SINK)
     // implement getting pts time from broadcom decoder directly for seek functionality
@@ -390,19 +391,19 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     if (videoDec)
         g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
 
-    if (currentPts) {
+    if (currentPts > -1) {
 #if PLATFORM(BCM_NEXUS)
         result = (static_cast<double>(currentPts * GST_MSECOND) / 45) / GST_SECOND;
 #else
         result = currentPts / GST_SECOND;
 #endif
+        LOG_MEDIA_MESSAGE("Using position reported by the video decoder: %f", result);
     }
 
     if (!result && m_seekTime)
         result = m_seekTime;
 #endif
 
-    LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
     m_cachedPosition = result;
     return result;
