@@ -503,8 +503,10 @@ float MediaPlayerPrivateGStreamer::duration() const
     if (!m_mediaDurationKnown)
         return numeric_limits<float>::infinity();
 
+#if !USE(FUSION_SINK)
     if (m_mediaDuration)
         return m_mediaDuration;
+#endif
 
     gint64 timeLength = 0;
 
