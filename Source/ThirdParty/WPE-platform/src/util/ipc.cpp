@@ -54,7 +54,7 @@ void Host::initialize(Handler& handler)
 
     m_source = g_socket_create_source(m_socket, G_IO_IN, nullptr);
     g_source_set_callback(m_source, reinterpret_cast<GSourceFunc>(socketCallback), this, nullptr);
-    g_source_set_priority(m_source, G_PRIORITY_HIGH + 30);
+    g_source_set_priority(m_source, G_PRIORITY_DEFAULT);
     g_source_set_can_recurse(m_source, TRUE);
     g_source_attach(m_source, g_main_context_get_thread_default());
 
