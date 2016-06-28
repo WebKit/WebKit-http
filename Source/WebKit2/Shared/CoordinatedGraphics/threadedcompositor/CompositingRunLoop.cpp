@@ -28,6 +28,7 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include <glib.h>
 #include <wtf/MainThread.h>
 
 namespace WebKit {
@@ -38,6 +39,10 @@ CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
     , m_updateFunction(WTFMove(updateFunction))
 {
     m_updateState.store(UpdateState::Completed);
+
+#if PLATFORM(WPE)
+    m_updateTimer.setPriority(G_PRIORITY_HIGH + 30);
+#endif
 }
 
 void CompositingRunLoop::performTask(NoncopyableFunction<void ()>&& function)
