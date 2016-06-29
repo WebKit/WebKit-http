@@ -43,6 +43,8 @@
       href="http://anongit.freedesktop.org/git"/>
   <repository type="tarball" name="webkitgtk-jhbuild-mirror"
       href="http://webkitgtk.org/jhbuild_mirror/"/>
+  <repository type="tarball" name="nice.freedesktop.org"
+      href="http://nice.freedesktop.org/"/>
 
   <autotools id="fonts" supports-non-srcdir-builds="no"
              skip-autogen="true">
@@ -219,11 +221,14 @@
     <branch repo="github.com" module="EricssonResearch/openwebrtc-gst-plugins.git" checkoutdir="gst-plugins-openwebrtc" tag="e359b67484af90f416ea35e301205d2b53c77a14"/>
    </autotools>
 
-   <autotools id="libnice" supports-non-srcdir-builds="no">
+  <autotools id="libnice">
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch repo="freedesktop-git" module="libnice/libnice.git" tag="0.1.10" checkoutdir="libnice"/>
+    <branch repo="nice.freedesktop.org" module="releases/libnice-0.1.10.tar.gz" checkoutdir="libnice" version="0.1.10"
+            hash="sha256:1dbfb663b730889ae8cab13a2913fe557d581f70b513c918bbbd0b7d3eefebc9"
+            md5sum="27b62d0093ce29a39df1c6fcf0bb4396" size="903083">
+    </branch>
   </autotools>
 
   <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes">
