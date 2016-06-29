@@ -107,7 +107,12 @@ private:
     WKViewRef m_view;
 
     std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> m_imageMap;
+    std::pair<uint32_t, EGLImageKHR> m_pendingImage { 0, nullptr };
     std::pair<uint32_t, EGLImageKHR> m_lockedImage { 0, nullptr };
+
+    void performUpdate();
+    GSource* m_updateSource;
+    gint64 m_frameRate { G_USEC_PER_SEC / 60 };
 };
 
 View::View(EGLConnection& eglConnection)
@@ -128,6 +133,15 @@ View::View(EGLConnection& eglConnection)
     m_view = WKViewCreateWithViewBackend(backend, m_pageConfiguration);
 
     WKPageSetPageNavigationClient(WKViewGetPage(m_view), &s_pageNavigationClient.base);
+
+    m_updateSource = g_timeout_source_new(m_frameRate / 1000);
+    g_source_set_callback(m_updateSource,
+        [](gpointer data) -> gboolean {
+            auto& view = *static_cast<View*>(data);
+            view.performUpdate();
+            return TRUE;
+        }, this, nullptr);
+    g_source_attach(m_updateSource, g_main_context_default());
 }
 
 void View::load(const char* url)
@@ -136,13 +150,26 @@ void View::load(const char* url)
     WKPageLoadURL(WKViewGetPage(m_view), shellURL.get());
 }
 
+void View::performUpdate()
+{
+    if (!m_pendingImage.first)
+        return;
+
+    wpe_mesa_view_backend_exportable_dispatch_frame_complete(m_exportable);
+    if (m_lockedImage.first) {
+        wpe_mesa_view_backend_exportable_dispatch_release_buffer(m_exportable, m_lockedImage.first);
+        m_eglConnection.destroyImage(m_eglConnection.eglDisplay(), m_lockedImage.second);
+    }
+
+    m_lockedImage = m_pendingImage;
+    m_pendingImage = { 0, nullptr };
+}
+
 struct wpe_mesa_view_backend_exportable_client View::s_exportableClient = {
     // export_dma_buf
     [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
     {
         auto& view = *static_cast<View*>(data);
-        fprintf(stderr, "View::s_exportableClient::export_dma_buf() fd %d handle %u (%u,%u) stride %u format %u\n",
-            imageData->fd, imageData->handle, imageData->width, imageData->height, imageData->stride, imageData->format);
 
         auto it = view.m_imageMap.end();
         if (imageData->fd >= 0) {
@@ -170,14 +197,7 @@ struct wpe_mesa_view_backend_exportable_client View::s_exportableClient = {
             EGL_NONE,
         };
         EGLImageKHR image = view.m_eglConnection.createImage(view.m_eglConnection.eglDisplay(), EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
-        fprintf(stderr, "\timage %p\n", image);
-
-        wpe_mesa_view_backend_exportable_dispatch_frame_complete(view.m_exportable);
-        if (view.m_lockedImage.first) {
-            wpe_mesa_view_backend_exportable_dispatch_release_buffer(view.m_exportable, view.m_lockedImage.first);
-            view.m_eglConnection.destroyImage(view.m_eglConnection.eglDisplay(), view.m_lockedImage.second);
-        }
-        view.m_lockedImage = { imageData->handle, image };
+        view.m_pendingImage = { imageData->handle, image };
     },
 };
 
