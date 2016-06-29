@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# This script needs to be run with root rights.
+if [ $UID -ne 0 ]; then
+    sudo $0
+    exit 0
+fi
+
+function printNotSupportedMessageAndExit() {
+    echo
+    echo "Currently this script only works for distributions supporting apt-get."
+    echo "Please add support for your distribution."
+    echo
+    exit 1
+}
+
+function checkInstaller {
+    # apt-get - Debian based distributions
+    apt-get --version &> /dev/null
+    if [ $? -eq 0 ]; then
+        installDependenciesWithApt
+        exit 0
+    fi
+
+    printNotSupportedMessageAndExit
+}
+
+function installDependenciesWithApt {
+    # These are dependencies necessary for building Qt and QtWebKit.
+    packages=" \
+        g++ \
+        binutils \
+        libc6-dev \
+        make \
+        cmake \
+        ninja-build \
+        bison \
+        flex \
+        gawk \
+        gperf \
+        perl \
+        python \
+        ruby \
+        libdbus-1-dev \
+        libenchant-dev \
+        libgl1-mesa-dev \
+        libglu1-mesa-dev \
+        libhyphen-dev \
+        libjpeg-dev \
+        libpng12-dev \
+        libsqlite3-dev \
+        libssl-dev \
+        libwebp-dev \
+        libx11-dev \
+        libx11-xcb-dev
+        libxcb-glx0-dev
+        libxcb1-dev \
+        libxcb-keysyms1-dev \
+        libxcb-image0-dev \
+        libxcb-shm0-dev \
+        libxcb-icccm4-dev \
+        libxcb-sync0-dev \
+        libxcb-xfixes0-dev \
+        libxcb-xinerama0-dev \
+        libxcb-shape0-dev \
+        libxcb-randr0-dev \
+        libxcb-render-util0-dev \
+        libxext-dev \
+        libxfixes-dev \
+        libxrender-dev \
+        zlib1g-dev
+        "
+
+    # These are dependencies necessary for running tests.
+    packages="$packages \
+        apache2 \
+        curl \
+        libapache2-mod-php5 \
+        xvfb"
+
+    # These are dependencies necessary for building GLib and GStreamer.
+    packages="$packages \
+        git-core \
+        gettext \
+        libtool-bin \
+        automake \
+        libfaad-dev \
+        libmpg123-dev \
+        libopus-dev \
+        libtheora-dev \
+        libvorbis-dev \
+        "
+
+    # These are dependencies necessary for building GLib and GStreamer.
+    packages="$packages \
+        libjson-glib-dev \
+        libpulse-dev \
+        "
+
+    apt-get install $packages
+}
+
+checkInstaller
+
