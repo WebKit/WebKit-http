@@ -1,0 +1,60 @@
+diff --git a/autogen.sh b/autogen.sh
+index 2c45ea9..878cf05 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -6,27 +6,42 @@
+ srcdir=`dirname $0`
+ (test -d $srcdir/m4) || mkdir $srcdir/m4
+ 
+-pushd $srcdir > /dev/null
+-gtkdocize && \
+-autoreconf --verbose --force --install --make || {
+- echo 'autogen.sh failed';
+- exit 1;
+-}
+-
+-popd > /dev/null
+-
+-while test "x$@" != "x" ; do
+-optarg=`expr "x$@" : 'x[^=]*=\(.*\)'`
+-case "$@" in
++for ag_option in $@
++do
++case $ag_option in
+   --noconfigure)
+       NOCONFIGURE=defined
+   AUTOGEN_EXT_OPT="$AUTOGEN_EXT_OPT --noconfigure"
+       echo "+ configure run disabled"
+-      shift
++      ;;
++  --disable-gtk-doc)
++      enable_gtk_doc=no
++      echo "+ gtk-doc disabled"
+       ;;
+ esac
+ done
+ 
++pushd $srcdir > /dev/null
++
++if test x$enable_gtk_doc = xno; then
++    if test -f gtk-doc.make; then :; else
++       echo "EXTRA_DIST = missing-gtk-doc" > gtk-doc.make
++    fi
++    echo "WARNING: You have disabled gtk-doc."
++    echo "         As a result, you will not be able to generate the API"
++    echo "         documentation and 'make dist' will not work."
++    echo
++else
++    gtkdocize || exit $?
++fi
++
++autoreconf --verbose --force --install --make || {
++ echo 'autogen.sh failed';
++ exit 1;
++}
++
++popd > /dev/null
++
+ for arg do CONFIGURE_EXT_OPT="$CONFIGURE_EXT_OPT $arg"; done
+ if test ! -z "$CONFIGURE_EXT_OPT"
+ then

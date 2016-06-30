@@ -27,6 +27,8 @@
   <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
   <repository type="git" name="github.com"
       href="https://github.com"/>
+  <repository type="tarball" name="github.com-tarball"
+      href="https://github.com"/>
   <repository type="tarball" name="sourceware.org-mirror"
       href="http://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
@@ -231,7 +233,7 @@
     </branch>
   </autotools>
 
-  <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes">
+  <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes --disable-tests">
      <if condition-set="macos">
        <makeargs value="CFLAGS+=-Wno-error"/>
      </if>
@@ -239,7 +241,11 @@
       <dep package="gst-plugins-openwebrtc"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="13516c7f79a0c48bb411464f7613d4b426c70f5b"/>
+    <branch repo="github.com-tarball" module="EricssonResearch/openwebrtc/archive/13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" checkoutdir="openwebrtc" version="13516c7f79a0c48bb411464f7613d4b426c70f5b"
+            hash="sha256:c849d36d97c17a198a5d9c180f13f14c7897c9236e2384ea11029e23b09b59ac"
+            md5sum="13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" size="258936">
+      <patch file="openwebrtc-no-gtk-doc.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="icu"
