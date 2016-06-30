@@ -32,6 +32,7 @@
 #include "NetworkCache.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkLoad.h"
+#include "NetworkProcess.h"
 #include "NetworkProcessConnectionMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebResourceLoaderMessages.h"
@@ -515,10 +516,7 @@ void NetworkResourceLoader::tryStoreAsCacheEntry()
     if (!m_bufferedDataForCache)
         return;
 
-    // Keep the connection alive.
-    RefPtr<NetworkConnectionToWebProcess> connection(&connectionToWebProcess());
-    RefPtr<NetworkResourceLoader> loader(this);
-    NetworkCache::singleton().store(m_networkLoad->currentRequest(), m_response, WTFMove(m_bufferedDataForCache), [loader, connection](auto& mappedBody) {
+    NetworkCache::singleton().store(m_networkLoad->currentRequest(), m_response, WTFMove(m_bufferedDataForCache), [loader = Ref<NetworkResourceLoader>(*this)](auto& mappedBody) mutable {
 #if ENABLE(SHAREABLE_RESOURCE)
         if (mappedBody.shareableResourceHandle.isNull())
             return;
@@ -635,7 +633,7 @@ bool NetworkResourceLoader::sendAbortingOnFailure(T&& message, unsigned messageS
 void NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceAsync(const ProtectionSpace& protectionSpace)
 {
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    sendAbortingOnFailure(Messages::WebResourceLoader::CanAuthenticateAgainstProtectionSpace(protectionSpace));
+    NetworkProcess::singleton().canAuthenticateAgainstProtectionSpace(*this, protectionSpace);
 #else
     UNUSED_PARAM(protectionSpace);
 #endif

@@ -858,7 +858,7 @@ void Structure::startWatchingPropertyForReplacements(VM& vm, PropertyName proper
 
 void Structure::didCachePropertyReplacement(VM& vm, PropertyOffset offset)
 {
-    ensurePropertyReplacementWatchpointSet(vm, offset)->fireAll("Did cache property replacement");
+    ensurePropertyReplacementWatchpointSet(vm, offset)->fireAll(vm, "Did cache property replacement");
 }
 
 void Structure::startWatchingInternalProperties(VM& vm)
@@ -1075,7 +1075,7 @@ DeferredStructureTransitionWatchpointFire::DeferredStructureTransitionWatchpoint
 DeferredStructureTransitionWatchpointFire::~DeferredStructureTransitionWatchpointFire()
 {
     if (m_structure)
-        m_structure->transitionWatchpointSet().fireAll(StructureFireDetail(m_structure));
+        m_structure->transitionWatchpointSet().fireAll(*m_structure->vm(), StructureFireDetail(m_structure));
 }
 
 void DeferredStructureTransitionWatchpointFire::add(const Structure* structure)
@@ -1096,7 +1096,7 @@ void Structure::didTransitionFromThisStructure(DeferredStructureTransitionWatchp
     if (deferred)
         deferred->add(this);
     else
-        m_transitionWatchpointSet.fireAll(StructureFireDetail(this));
+        m_transitionWatchpointSet.fireAll(*vm(), StructureFireDetail(this));
 }
 
 JSValue Structure::prototypeForLookup(CodeBlock* codeBlock) const
@@ -1197,16 +1197,16 @@ PassRefPtr<StructureShape> Structure::toStructureShape(JSValue value)
         curShape->markAsFinal();
 
         if (curStructure->storedPrototypeStructure()) {
-            RefPtr<StructureShape> newShape = StructureShape::create();
-            curShape->setProto(newShape);
-            curShape = newShape.release();
+            auto newShape = StructureShape::create();
+            curShape->setProto(newShape.ptr());
+            curShape = WTFMove(newShape);
             curValue = curStructure->storedPrototype();
         }
 
         curStructure = curStructure->storedPrototypeStructure();
     }
     
-    return baseShape.release();
+    return WTFMove(baseShape);
 }
 
 bool Structure::canUseForAllocationsOf(Structure* other)

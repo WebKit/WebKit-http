@@ -84,6 +84,7 @@
 #include "RenderListMarker.h"
 #include "RenderMathMLBlock.h"
 #include "RenderMathMLFraction.h"
+#include "RenderMathMLMath.h"
 #include "RenderMathMLOperator.h"
 #include "RenderMathMLRoot.h"
 #include "RenderMenuList.h"
@@ -631,12 +632,10 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
     bool isRenderText = is<RenderText>(*m_renderer);
 
 #if ENABLE(MATHML)
-    // Math operators create RenderText nodes on the fly that are not tied into the DOM in a reasonable way,
-    // so rangeOfContents does not work for them (nor does regular text selection).
-    if (isRenderText && m_renderer->isAnonymous() && ancestorsOfType<RenderMathMLOperator>(*m_renderer).first())
-        return downcast<RenderText>(*m_renderer).text();
-    if (is<RenderMathMLOperator>(*m_renderer) && !m_renderer->isAnonymous())
-        return downcast<RenderMathMLOperator>(*m_renderer).element().textContent();
+    if (isAnonymousMathOperator()) {
+        UChar operatorChar = downcast<RenderMathMLOperator>(*m_renderer).textContent();
+        return operatorChar ? String(&operatorChar, 1) : String();
+    }
 #endif
 
     if (shouldGetTextFromNode(mode))
@@ -760,6 +759,9 @@ String AccessibilityRenderObject::stringValue() const
     }
         
     if (is<RenderText>(*m_renderer))
+        return textUnderElement();
+
+    if (isAnonymousMathOperator())
         return textUnderElement();
     
     if (is<RenderMenuList>(cssBox)) {
@@ -3609,6 +3611,12 @@ bool AccessibilityRenderObject::isMathElement() const
     if (!m_renderer)
         return false;
     
+    // The mfenced element creates anonymous RenderMathMLOperators which should be treated
+    // as MathML elements and assigned the MathElementRole so that platform logic regarding
+    // inclusion and role mapping is not bypassed.
+    if (isAnonymousMathOperator())
+        return true;
+
     return is<MathMLElement>(node());
 }
 
@@ -3629,7 +3637,7 @@ bool AccessibilityRenderObject::isMathSubscriptSuperscript() const
 
 bool AccessibilityRenderObject::isMathRow() const
 {
-    return m_renderer && m_renderer->isRenderMathMLRow();
+    return m_renderer && m_renderer->isRenderMathMLRow() && !isMathRoot();
 }
 
 bool AccessibilityRenderObject::isMathUnderOver() const
@@ -3658,6 +3666,11 @@ bool AccessibilityRenderObject::isMathOperator() const
         return false;
 
     return true;
+}
+
+bool AccessibilityRenderObject::isAnonymousMathOperator() const
+{
+    return is<RenderMathMLOperator>(m_renderer) && m_renderer->isAnonymous();
 }
 
 bool AccessibilityRenderObject::isMathFenceOperator() const
@@ -3751,17 +3764,9 @@ bool AccessibilityRenderObject::isIgnoredElementWithinMathTree() const
 {
     if (!m_renderer)
         return true;
-    
-    // We ignore anonymous renderers inside math blocks.
-    // However, we do not exclude anonymous RenderMathMLOperator nodes created by the mfenced element nor RenderText nodes created by math operators so that the text can be exposed by AccessibilityRenderObject::textUnderElement.
-    if (m_renderer->isAnonymous()) {
-        if (m_renderer->isRenderMathMLOperator())
-            return false;
-        for (AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) {
-            if (parent->isMathElement())
-                return !(m_renderer->isText() && ancestorsOfType<RenderMathMLOperator>(*m_renderer).first());
-        }
-    }
+
+    if (is<RenderText>(*m_renderer))
+        return false;
 
     // Only math elements that we explicitly recognize should be included
     // We don't want things like <mstyle> to appear in the tree.
@@ -3774,33 +3779,33 @@ bool AccessibilityRenderObject::isIgnoredElementWithinMathTree() const
         return true;
     }
 
-    return false;
+    return m_renderer->isAnonymous() && m_renderer->parent() && is<RenderMathMLBlock>(m_renderer->parent());
 }
 
 AccessibilityObject* AccessibilityRenderObject::mathRadicandObject()
 {
     if (!isMathRoot())
         return nullptr;
-    RenderMathMLRoot* root = &downcast<RenderMathMLRoot>(*m_renderer);
-    AccessibilityObject* rootRadicandWrapper = axObjectCache()->getOrCreate(root->baseWrapper());
-    if (!rootRadicandWrapper)
+
+    // For MathSquareRoot, we actually return the first child of the base.
+    // See also https://webkit.org/b/146452
+    const auto& children = this->children();
+    if (children.size() < 1)
         return nullptr;
-    AccessibilityObject* rootRadicand = rootRadicandWrapper->children().first().get();
-    ASSERT(rootRadicand && children().contains(rootRadicand));
-    return rootRadicand;
+
+    return children[0].get();
 }
 
 AccessibilityObject* AccessibilityRenderObject::mathRootIndexObject()
 {
-    if (!isMathRoot())
+    if (!isMathRoot() || isMathSquareRoot())
         return nullptr;
-    RenderMathMLRoot* root = &downcast<RenderMathMLRoot>(*m_renderer);
-    AccessibilityObject* rootIndexWrapper = axObjectCache()->getOrCreate(root->indexWrapper());
-    if (!rootIndexWrapper)
+
+    const auto& children = this->children();
+    if (children.size() < 2)
         return nullptr;
-    AccessibilityObject* rootIndex = rootIndexWrapper->children().first().get();
-    ASSERT(rootIndex && children().contains(rootIndex));
-    return rootIndex;
+
+    return children[1].get();
 }
 
 AccessibilityObject* AccessibilityRenderObject::mathNumeratorObject()

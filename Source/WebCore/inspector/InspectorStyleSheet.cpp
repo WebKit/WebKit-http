@@ -357,7 +357,7 @@ static String lowercasePropertyName(const String& name)
     return name.convertToASCIILowercase();
 }
 
-bool InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* result) const
+void InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* result) const
 {
     HashSet<String> sourcePropertyNames;
 
@@ -380,8 +380,6 @@ bool InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* resul
         if (sourcePropertyNames.add(lowercasePropertyName(name)))
             result->append(InspectorStyleProperty(CSSPropertySourceData(name, m_style->getPropertyValue(name), !m_style->getPropertyPriority(name).isEmpty(), true, SourceRange()), false, false));
     }
-
-    return true;
 }
 
 Ref<Inspector::Protocol::CSS::CSSStyle> InspectorStyle::styleWithProperties() const
@@ -925,7 +923,7 @@ Ref<Inspector::Protocol::CSS::SelectorList> InspectorStyleSheet::buildObjectForS
             selectors->addItem(buildObjectForSelector(selector, element));
     }
     auto result = Inspector::Protocol::CSS::SelectorList::create()
-        .setSelectors(selectors.release())
+        .setSelectors(WTFMove(selectors))
         .setText(selectorText)
         .release();
     if (sourceData)

@@ -82,7 +82,6 @@ static String restrictionName(MediaElementSession::BehaviorRestrictions restrict
     CASE(RequireUserGestureToShowPlaybackTargetPicker);
     CASE(WirelessVideoPlaybackDisabled);
 #endif
-    CASE(RequireUserGestureForAudioRateChange);
     CASE(InvisibleAutoplayNotPermitted);
     CASE(OverrideUserGestureRequirementForMainContent);
 
@@ -212,57 +211,57 @@ bool MediaElementSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement
     return true;
 }
 
-bool MediaElementSession::canControlControlsManager(const HTMLMediaElement& element) const
+bool MediaElementSession::canControlControlsManager() const
 {
-    if (!element.hasAudio()) {
+    if (!m_element.hasAudio()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No audio");
         return false;
     }
 
-    if (element.muted()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Muted");
-        return false;
-    }
-
-    if (element.ended()) {
+    if (m_element.ended()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Ended");
         return false;
     }
 
-    if (element.document().activeDOMObjectsAreSuspended()) {
+    if (m_element.document().activeDOMObjectsAreSuspended()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: activeDOMObjectsAreSuspended()");
         return false;
     }
 
-    if (!playbackPermitted(element)) {
+    if (!playbackPermitted(m_element)) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Playback not permitted");
         return false;
     }
 
-    if (element.isVideo()) {
-        if (!element.renderer()) {
+    if (!hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || ScriptController::processingUserGestureForMedia()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: No user gesture required");
+        return true;
+    }
+
+    if (m_element.muted()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Muted");
+        return false;
+    }
+
+    if (m_element.isVideo()) {
+        if (!m_element.renderer()) {
             LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No renderer");
             return false;
         }
 
-        if (!element.hasVideo()) {
+        if (!m_element.hasVideo()) {
             LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No video");
             return false;
         }
 
-        if (isElementLargeEnoughForMainContent(element)) {
+        if (isElementLargeEnoughForMainContent(m_element)) {
             LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is main content");
             return true;
         }
     }
 
-    if (m_restrictions & RequireUserGestureToControlControlsManager && !ScriptController::processingUserGestureForMedia()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No user gesture");
-        return false;
-    }
-
-    LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: All criteria met");
-    return true;
+    LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No user gesture");
+    return false;
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -451,7 +450,7 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
     if (!settings || !settings->allowsInlineMediaPlayback())
         return true;
 
-    return settings->inlineMediaPlaybackRequiresPlaysInlineAttribute() && !element.fastHasAttribute(HTMLNames::webkit_playsinlineAttr);
+    return settings->inlineMediaPlaybackRequiresPlaysInlineAttribute() && !(element.fastHasAttribute(HTMLNames::webkit_playsinlineAttr) || element.fastHasAttribute(HTMLNames::playsinlineAttr));
 }
 
 bool MediaElementSession::allowsAutomaticMediaDataLoading(const HTMLMediaElement& element) const

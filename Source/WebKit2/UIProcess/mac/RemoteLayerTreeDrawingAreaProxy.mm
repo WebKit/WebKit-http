@@ -38,6 +38,7 @@
 #import <WebCore/IOSurfacePool.h>
 #import <WebCore/MachSendRight.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
+#import <wtf/SystemTracing.h>
 
 using namespace IPC;
 using namespace WebCore;
@@ -81,7 +82,6 @@ using namespace WebCore;
 {
     ASSERT(isUIThread());
     _drawingAreaProxy->didRefreshDisplay(sender.timestamp);
-    _displayLink.paused = YES;
 }
 
 - (void)invalidate
@@ -93,6 +93,11 @@ using namespace WebCore;
 - (void)schedule
 {
     _displayLink.paused = NO;
+}
+
+- (void)pause
+{
+    _displayLink.paused = YES;
 }
 
 @end
@@ -171,6 +176,8 @@ void RemoteLayerTreeDrawingAreaProxy::willCommitLayerTree(uint64_t transactionID
 
 void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTransaction& layerTreeTransaction, const RemoteScrollingCoordinatorTransaction& scrollingTreeTransaction)
 {
+    TraceScope tracingScope(RAFCommitLayerTreeStart, RAFCommitLayerTreeEnd);
+
     LOG(RemoteLayerTree, "%s", layerTreeTransaction.description().data());
     LOG(RemoteLayerTree, "%s", scrollingTreeTransaction.description().data());
 
@@ -219,11 +226,12 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
 
     m_webPageProxy.layerTreeCommitComplete();
 
-    m_haveSentDidUpdateSinceLastCommit = false;
-
 #if PLATFORM(IOS)
+    if (std::exchange(m_didUpdateMessageState, NotSent) == MissedCommit)
+        didRefreshDisplay(monotonicallyIncreasingTime());
     [m_displayLinkHandler schedule];
 #else
+    m_didUpdateMessageState = NotSent;
     didRefreshDisplay(monotonicallyIncreasingTime());
 #endif
 
@@ -391,10 +399,17 @@ void RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay(double)
     if (!m_webPageProxy.isValid())
         return;
 
-    if (m_haveSentDidUpdateSinceLastCommit)
+    if (m_didUpdateMessageState != NotSent) {
+        m_didUpdateMessageState = MissedCommit;
+#if PLATFORM(IOS)
+        [m_displayLinkHandler pause];
+#endif
         return;
+    }
     
-    m_haveSentDidUpdateSinceLastCommit = true;
+    m_didUpdateMessageState = Sent;
+
+    TraceScope tracingScope(RAFDidRefreshDisplayStart, RAFDidRefreshDisplayEnd);
 
     // Waiting for CA to commit is insufficient, because the render server can still be
     // using our backing store. We can improve this by waiting for the render server to commit

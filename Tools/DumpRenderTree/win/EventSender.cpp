@@ -781,6 +781,27 @@ static JSValueRef scalePageByCallback(JSContextRef context, JSObjectRef function
     return JSValueMakeUndefined(context);
 }
 
+static JSValueRef mouseScrollBy(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    if (argumentCount < 1)
+        return JSValueMakeUndefined(context);
+
+    double delta = JSValueToNumber(context, arguments[1], exception);
+
+    RECT rect;
+    ::GetWindowRect(webViewWindow, &rect);
+
+    MSG msg = makeMsg(webViewWindow, WM_MOUSEWHEEL, MAKEWPARAM(0, delta), MAKELPARAM(rect.left + lastMousePosition.x, rect.top + lastMousePosition.y));
+    dispatchMessage(&msg);
+
+    return JSValueMakeUndefined(context);
+}
+
+static JSValueRef mouseScrollByWithWheelAndMomentumPhasesCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    return mouseScrollBy(context, function, thisObject, argumentCount, arguments, exception);
+}
+
 static JSStaticFunction staticFunctions[] = {
     { "contextClick", contextClickCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "mouseDown", mouseDownCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -795,6 +816,8 @@ static JSStaticFunction staticFunctions[] = {
     { "zoomPageOut", zoomPageOutCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "beginDragWithFiles", beginDragWithFilesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { "scalePageBy", scalePageByCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+    { "mouseScrollBy", mouseScrollBy, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+    { "mouseScrollByWithWheelAndMomentumPhases", mouseScrollByWithWheelAndMomentumPhasesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
     { 0, 0, 0 }
 };
 

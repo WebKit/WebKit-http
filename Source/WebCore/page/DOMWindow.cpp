@@ -358,11 +358,13 @@ FloatRect DOMWindow::adjustWindowRect(Page* page, const FloatRect& pendingChange
 bool DOMWindow::allowPopUp(Frame* firstFrame)
 {
     ASSERT(firstFrame);
+    
+    auto& settings = firstFrame->settings();
 
-    if (ScriptController::processingUserGesture())
+    if (ScriptController::processingUserGesture() || settings.allowWindowOpenWithoutUserGesture())
         return true;
 
-    return firstFrame->settings().javaScriptCanOpenWindowsAutomatically();
+    return settings.javaScriptCanOpenWindowsAutomatically();
 }
 
 bool DOMWindow::allowPopUp()
@@ -743,6 +745,15 @@ Performance* DOMWindow::performance() const
 }
 #endif
 
+double DOMWindow::nowTimestamp() const
+{
+#if ENABLE(WEB_TIMING)
+    return performance() ? performance()->now() / 1000 : 0;
+#else
+    return document() ? document()->monotonicTimestamp() : 0;
+#endif
+}
+
 Location* DOMWindow::location() const
 {
     if (!isCurrentlyDisplayedInFrame())
@@ -812,13 +823,13 @@ Storage* DOMWindow::sessionStorage(ExceptionCode& ec) const
     if (!page)
         return 0;
 
-    RefPtr<StorageArea> storageArea = page->sessionStorage()->storageArea(document->securityOrigin());
+    auto storageArea = page->sessionStorage()->storageArea(document->securityOrigin());
     if (!storageArea->canAccessStorage(m_frame)) {
         ec = SECURITY_ERR;
         return 0;
     }
 
-    m_sessionStorage = Storage::create(m_frame, storageArea.release());
+    m_sessionStorage = Storage::create(m_frame, WTFMove(storageArea));
     return m_sessionStorage.get();
 }
 
@@ -858,14 +869,14 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
     if (!page->settings().localStorageEnabled())
         return nullptr;
 
-    RefPtr<StorageArea> storageArea = page->storageNamespaceProvider().localStorageArea(*document);
+    auto storageArea = page->storageNamespaceProvider().localStorageArea(*document);
 
     if (!storageArea->canAccessStorage(m_frame)) {
         ec = SECURITY_ERR;
         return nullptr;
     }
 
-    m_localStorage = Storage::create(m_frame, storageArea.release());
+    m_localStorage = Storage::create(m_frame, WTFMove(storageArea));
     return m_localStorage.get();
 }
 

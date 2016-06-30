@@ -161,12 +161,12 @@ static RegisterID* emitHomeObjectForCallee(BytecodeGenerator& generator)
 {
     if (generator.isDerivedClassContext() || generator.isDerivedConstructorContext()) {
         RegisterID* derivedConstructor = generator.emitLoadDerivedConstructorFromArrowFunctionLexicalEnvironment();
-        return generator.emitGetById(generator.newTemporary(), derivedConstructor, generator.propertyNames().homeObjectPrivateName);
+        return generator.emitGetById(generator.newTemporary(), derivedConstructor, generator.propertyNames().builtinNames().homeObjectPrivateName());
     }
 
     RegisterID callee;
     callee.setIndex(JSStack::Callee);
-    return generator.emitGetById(generator.newTemporary(), &callee, generator.propertyNames().homeObjectPrivateName);
+    return generator.emitGetById(generator.newTemporary(), &callee, generator.propertyNames().builtinNames().homeObjectPrivateName());
 }
 
 static RegisterID* emitSuperBaseForCallee(BytecodeGenerator& generator)
@@ -457,7 +457,7 @@ RegisterID* ObjectLiteralNode::emitBytecode(BytecodeGenerator& generator, Regist
 
 static inline void emitPutHomeObject(BytecodeGenerator& generator, RegisterID* function, RegisterID* homeObject)
 {
-    generator.emitPutById(function, generator.propertyNames().homeObjectPrivateName, homeObject);
+    generator.emitPutById(function, generator.propertyNames().builtinNames().homeObjectPrivateName(), homeObject);
 }
 
 RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
@@ -756,6 +756,7 @@ RegisterID* EvalFunctionCallNode::emitBytecode(BytecodeGenerator& generator, Reg
 
     Variable var = generator.variable(generator.propertyNames().eval);
     if (RegisterID* local = var.local()) {
+        generator.emitTDZCheckIfNecessary(var, local, nullptr);
         RefPtr<RegisterID> func = generator.emitMove(generator.tempDestination(dst), local);
         CallArguments callArguments(generator, m_args);
         generator.emitLoad(callArguments.thisRegister(), jsUndefined());
@@ -770,6 +771,7 @@ RegisterID* EvalFunctionCallNode::emitBytecode(BytecodeGenerator& generator, Reg
         callArguments.thisRegister(),
         generator.emitResolveScope(callArguments.thisRegister(), var));
     generator.emitGetFromScope(func.get(), callArguments.thisRegister(), var, ThrowIfNotFound);
+    generator.emitTDZCheckIfNecessary(var, func.get(), nullptr);
     return generator.emitCallEval(generator.finalDestination(dst, func.get()), func.get(), callArguments, divot(), divotStart(), divotEnd());
 }
 
@@ -918,6 +920,15 @@ RegisterID* BytecodeIntrinsicNode::emit_intrinsic_tryGetById(BytecodeGenerator& 
     return generator.emitTryGetById(finalDest.get(), base.get(), ident);
 }
 
+RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toNumber(BytecodeGenerator& generator, RegisterID* dst)
+{
+    ArgumentListNode* node = m_args->m_listNode;
+    RefPtr<RegisterID> src = generator.emitNode(node);
+    ASSERT(!node->m_next);
+
+    return generator.moveToDestinationIfNeeded(dst, generator.emitToNumber(generator.tempDestination(dst), src.get()));
+}
+
 RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toString(BytecodeGenerator& generator, RegisterID* dst)
 {
     ArgumentListNode* node = m_args->m_listNode;
@@ -925,6 +936,15 @@ RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toString(BytecodeGenerator& ge
     ASSERT(!node->m_next);
 
     return generator.moveToDestinationIfNeeded(dst, generator.emitToString(generator.tempDestination(dst), src.get()));
+}
+    
+RegisterID* BytecodeIntrinsicNode::emit_intrinsic_isJSArray(JSC::BytecodeGenerator& generator, JSC::RegisterID* dst)
+{
+    ArgumentListNode* node = m_args->m_listNode;
+    RefPtr<RegisterID> src = generator.emitNode(node);
+    ASSERT(!node->m_next);
+
+    return generator.moveToDestinationIfNeeded(dst, generator.emitIsJSArray(generator.tempDestination(dst), src.get()));
 }
 
 RegisterID* BytecodeIntrinsicNode::emit_intrinsic_isObject(BytecodeGenerator& generator, RegisterID* dst)
@@ -1538,6 +1558,16 @@ RegisterID* UnaryOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID* 
     RefPtr<RegisterID> src = generator.emitNode(m_expr);
     generator.emitExpressionInfo(position(), position(), position());
     return generator.emitUnaryOp(opcodeID(), generator.finalDestination(dst), src.get());
+}
+
+// ------------------------------ UnaryPlusNode -----------------------------------
+
+RegisterID* UnaryPlusNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    ASSERT(opcodeID() == op_to_number);
+    RefPtr<RegisterID> src = generator.emitNode(expr());
+    generator.emitExpressionInfo(position(), position(), position());
+    return generator.emitToNumber(generator.finalDestination(dst), src.get());
 }
 
 // ------------------------------ BitwiseNotNode -----------------------------------
@@ -3273,14 +3303,14 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
         // But to make it efficient, we will introduce JSGenerator class, add opcode new_generator and use its C++ fields instead of these private properties.
         // https://bugs.webkit.org/show_bug.cgi?id=151545
 
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().generatorNextPrivateName, next.get(), PropertyNode::KnownDirect);
+        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorNextPrivateName(), next.get(), PropertyNode::KnownDirect);
 
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().generatorThisPrivateName, generator.thisRegister(), PropertyNode::KnownDirect);
+        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorThisPrivateName(), generator.thisRegister(), PropertyNode::KnownDirect);
 
         RegisterID* initialState = generator.emitLoad(nullptr, jsNumber(0));
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().generatorStatePrivateName, initialState, PropertyNode::KnownDirect);
+        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorStatePrivateName(), initialState, PropertyNode::KnownDirect);
 
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().generatorFramePrivateName, generator.emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
+        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorFramePrivateName(), generator.emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
 
         ASSERT(startOffset() >= lineStartOffset());
         generator.emitDebugHook(WillLeaveCallFrame, lastLine(), startOffset(), lineStartOffset());

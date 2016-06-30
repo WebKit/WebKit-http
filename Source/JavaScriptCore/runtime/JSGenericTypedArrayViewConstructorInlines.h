@@ -26,6 +26,7 @@
 #ifndef JSGenericTypedArrayViewConstructorInlines_h
 #define JSGenericTypedArrayViewConstructorInlines_h
 
+#include "BuiltinNames.h"
 #include "Error.h"
 #include "IteratorOperations.h"
 #include "JSArrayBuffer.h"
@@ -48,11 +49,11 @@ void JSGenericTypedArrayViewConstructor<ViewClass>::finishCreation(VM& vm, JSGlo
 {
     Base::finishCreation(vm, name);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(3), DontEnum | DontDelete | ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontEnum | DontDelete | ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->BYTES_PER_ELEMENT, jsNumber(ViewClass::elementSize), DontEnum | ReadOnly | DontDelete);
 
     if (privateAllocator)
-        putDirectBuiltinFunction(vm, globalObject, vm.propertyNames->allocateTypedArrayPrivateName, privateAllocator, DontEnum | DontDelete | ReadOnly);
+        putDirectBuiltinFunction(vm, globalObject, vm.propertyNames->builtinNames().allocateTypedArrayPrivateName(), privateAllocator, DontEnum | DontDelete | ReadOnly);
 }
 
 template<typename ViewClass>

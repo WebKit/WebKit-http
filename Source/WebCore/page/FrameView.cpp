@@ -38,6 +38,7 @@
 #include "DebugPageOverlays.h"
 #include "DocumentMarkerController.h"
 #include "EventHandler.h"
+#include "EventNames.h"
 #include "FloatRect.h"
 #include "FocusController.h"
 #include "FrameLoader.h"
@@ -2221,9 +2222,9 @@ void FrameView::scrollOffsetChangedViaPlatformWidgetImpl(const ScrollOffset& old
 void FrameView::scrollPositionChanged(const ScrollPosition& oldPosition, const ScrollPosition& newPosition)
 {
     Page* page = frame().page();
-    auto throttlingDelay = page ? page->chrome().client().eventThrottlingDelay() : std::chrono::milliseconds::zero();
+    auto throttlingDelay = page ? page->chrome().client().eventThrottlingDelay() : 0ms;
 
-    if (throttlingDelay == std::chrono::milliseconds::zero()) {
+    if (throttlingDelay == 0ms) {
         m_delayedScrollEventTimer.stop();
         sendScrollEvent();
     } else if (!m_delayedScrollEventTimer.isActive())
@@ -2828,19 +2829,23 @@ void FrameView::unscheduleRelayout()
 }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
-void FrameView::serviceScriptedAnimations(double monotonicAnimationStartTime)
+void FrameView::serviceScriptedAnimations()
 {
     for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext()) {
         frame->view()->serviceScrollAnimations();
         frame->animation().serviceAnimations();
     }
 
+    if (!frame().document() || !frame().document()->domWindow())
+        return;
+
     Vector<RefPtr<Document>> documents;
     for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext())
         documents.append(frame->document());
 
+    double timestamp = frame().document()->domWindow()->nowTimestamp();
     for (auto& document : documents)
-        document->serviceScriptedAnimations(monotonicAnimationStartTime);
+        document->serviceScriptedAnimations(timestamp);
 }
 #endif
 
@@ -3049,11 +3054,11 @@ void FrameView::scrollToAnchor()
     // Scroll nested layers and frames to reveal the anchor.
     // Align to the top and to the closest side (this matches other browsers).
     if (anchorNode->renderer()->style().isHorizontalWritingMode())
-        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
     else if (anchorNode->renderer()->style().isFlippedBlocksWritingMode())
-        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignRightAlways, ScrollAlignment::alignToEdgeIfNeeded);
+        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, ScrollAlignment::alignRightAlways, ScrollAlignment::alignToEdgeIfNeeded);
     else
-        anchorNode->renderer()->scrollRectToVisible(rect, ScrollAlignment::alignLeftAlways, ScrollAlignment::alignToEdgeIfNeeded);
+        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, ScrollAlignment::alignLeftAlways, ScrollAlignment::alignToEdgeIfNeeded);
 
     if (AXObjectCache* cache = frame().document()->existingAXObjectCache())
         cache->handleScrolledToAnchor(anchorNode.get());
@@ -3140,7 +3145,7 @@ void FrameView::flushAnyPendingPostLayoutTasks()
         updateEmbeddedObjectsTimerFired();
 }
 
-void FrameView::queuePostLayoutCallback(NoncopyableFunction<void()>&& callback)
+void FrameView::queuePostLayoutCallback(Function<void()>&& callback)
 {
     m_postLayoutCallbackQueue.append(WTFMove(callback));
 }
@@ -3153,7 +3158,7 @@ void FrameView::flushPostLayoutTasksQueue()
     if (!m_postLayoutCallbackQueue.size())
         return;
 
-    Vector<NoncopyableFunction<void()>> queue = WTFMove(m_postLayoutCallbackQueue);
+    Vector<Function<void()>> queue = WTFMove(m_postLayoutCallbackQueue);
     for (auto& task : queue)
         task();
 }

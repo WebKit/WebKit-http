@@ -122,15 +122,9 @@ public:
         dispose();
     }
 
-    void didFail(const ResourceError&) override
+    void didFail(const ResourceError& error) override
     {
-        m_callback->sendFailure(ASCIILiteral("Loading resource for inspector failed"));
-        dispose();
-    }
-
-    void didFailRedirectCheck() override
-    {
-        m_callback->sendFailure(ASCIILiteral("Loading resource for inspector failed redirect check"));
+        m_callback->sendFailure(error.isAccessControl() ? ASCIILiteral("Loading resource for inspector failed access control check") : ASCIILiteral("Loading resource for inspector failed"));
         dispose();
     }
 
@@ -682,7 +676,7 @@ void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String&
     // InspectorThreadableLoaderClient deletes itself when the load completes.
     InspectorThreadableLoaderClient* inspectorThreadableLoaderClient = new InspectorThreadableLoaderClient(callback.copyRef());
 
-    RefPtr<DocumentThreadableLoader> loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, request, options);
+    auto loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, request, options);
     if (!loader) {
         inspectorThreadableLoaderClient->didFailLoaderCreation();
         return;
@@ -692,7 +686,7 @@ void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String&
     if (!callback->isActive())
         return;
 
-    inspectorThreadableLoaderClient->setLoader(loader.release());
+    inspectorThreadableLoaderClient->setLoader(WTFMove(loader));
 }
 
 static Ref<Inspector::Protocol::Page::SearchResult> buildObjectForSearchResult(const String& requestId, const String& frameId, const String& url, int matchesCount)

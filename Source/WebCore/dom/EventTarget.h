@@ -32,7 +32,6 @@
 #define EventTarget_h
 
 #include "EventListenerMap.h"
-#include "EventNames.h"
 #include "EventTargetInterfaces.h"
 #include "ScriptWrappable.h"
 #include <memory>
@@ -168,8 +167,6 @@ public:
 
     void visitJSEventListeners(JSC::SlotVisitor&);
     void invalidateJSEventListeners(JSC::JSObject*);
-
-    bool hasActiveTouchEventListeners() const;
 
 protected:
     virtual ~EventTarget();

@@ -944,6 +944,9 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
             break;
         case CSSSelector::PseudoClassFocus:
             return matchesFocusPseudoClass(element);
+        case CSSSelector::PseudoClassFocusWithin:
+            addStyleRelation(checkingContext, element, Style::Relation::AffectedByFocusWithin);
+            return element.hasFocusWithin();
         case CSSSelector::PseudoClassHover:
             if (m_strictParsing || element.isLink() || canMatchHoverOrActiveInQuirksMode(context)) {
                 addStyleRelation(checkingContext, element, Style::Relation::AffectedByHover);
@@ -965,7 +968,7 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
         case CSSSelector::PseudoClassFullPageMedia:
             return isMediaDocument(element);
         case CSSSelector::PseudoClassDefault:
-            return isDefaultButtonForForm(element);
+            return matchesDefaultPseudoClass(element);
         case CSSSelector::PseudoClassDisabled:
             return isDisabled(element);
         case CSSSelector::PseudoClassReadOnly:
@@ -983,7 +986,7 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
         case CSSSelector::PseudoClassChecked:
             return isChecked(element);
         case CSSSelector::PseudoClassIndeterminate:
-            return shouldAppearIndeterminate(element);
+            return matchesIndeterminatePseudoClass(element);
         case CSSSelector::PseudoClassRoot:
             if (&element == element.document().documentElement())
                 return true;

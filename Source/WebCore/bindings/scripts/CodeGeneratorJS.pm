@@ -1104,6 +1104,8 @@ sub GenerateHeader
     # Static create methods
     push(@headerContent, "public:\n");
     push(@headerContent, "    typedef $parentClassName Base;\n");
+    push(@headerContent, "    typedef $implType DOMWrapped;\n") if $interface->parent;
+
     if ($interfaceName eq "DOMWindow") {
         push(@headerContent, "    static $className* create(JSC::VM& vm, JSC::Structure* structure, Ref<$implType>&& impl, JSDOMWindowShell* windowShell)\n");
         push(@headerContent, "    {\n");
@@ -1124,7 +1126,7 @@ sub GenerateHeader
         AddIncludesForTypeInHeader($implType) unless $svgPropertyOrListPropertyType;
         push(@headerContent, "    static $className* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<$implType>&& impl)\n");
         push(@headerContent, "    {\n");
-        push(@headerContent, "        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll(\"Allocated masquerading object\");\n");
+        push(@headerContent, "        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll(globalObject->vm(), \"Allocated masquerading object\");\n");
         push(@headerContent, "        $className* ptr = new (NotNull, JSC::allocateCell<$className>(globalObject->vm().heap)) $className(structure, *globalObject, WTFMove(impl));\n");
         push(@headerContent, "        ptr->finishCreation(globalObject->vm());\n");
         push(@headerContent, "        return ptr;\n");
@@ -1152,9 +1154,6 @@ sub GenerateHeader
 
     if (InstancePropertyCount($interface) > 0) {
         $structureFlags{"JSC::HasStaticPropertyTable"} = 1;
-        push(@headerContent, "    static const bool hasStaticPropertyTable = true;\n\n");
-    } else {
-        push(@headerContent, "    static const bool hasStaticPropertyTable = false;\n\n");
     }
 
     # Prototype
@@ -1619,7 +1618,7 @@ sub GeneratePropertiesHashTable
     my @functions = @{$interface->functions};
     push(@functions, @{$interface->iterable->functions}) if $interface->iterable;
     foreach my $function (@functions) {
-        next if ($function->signature->extendedAttributes->{"Private"});
+        next if ($function->signature->extendedAttributes->{"PrivateIdentifier"} and not $function->signature->extendedAttributes->{"PublicIdentifier"});
         next if ($function->isStatic);
         next if $function->{overloadIndex} && $function->{overloadIndex} > 1;
         next if OperationShouldBeOnInstance($interface, $function) != $isInstance;
@@ -2302,7 +2301,7 @@ sub GenerateImplementation
 
         my $firstPrivateFunction = 1;
         foreach my $function (@{$interface->functions}) {
-            next unless ($function->signature->extendedAttributes->{"Private"});
+            next unless ($function->signature->extendedAttributes->{"PrivateIdentifier"});
             AddToImplIncludes("WebCoreJSClientData.h");
             push(@implContent, "    JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);\n") if $firstPrivateFunction;
             $firstPrivateFunction = 0;
@@ -2311,7 +2310,7 @@ sub GenerateImplementation
 
         if ($interface->iterable) {
             my $functionName = GetFunctionName($interface, $className, @{$interface->iterable->functions}[0]);
-            push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), ReadOnly | DontEnum);\n");
+            push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), DontEnum);\n");
         }
 
         push(@implContent, "}\n\n");
@@ -2394,6 +2393,21 @@ sub GenerateImplementation
             push(@implContent, "    }\n");
             push(@implContent, "#endif\n") if $conditionalString;
         }
+
+        # Support PrivateIdentifier attributes on global objects
+        foreach my $attribute (@{$interface->attributes}) {
+            next unless $attribute->signature->extendedAttributes->{"PrivateIdentifier"};
+
+            AddToImplIncludes("WebCoreJSClientData.h");
+            my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
+            my $attributeName = $attribute->signature->name;
+            my $getter = GetAttributeGetterName($interface, $className, $attribute);
+
+            push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
+            push(@implContent, "    putDirectCustomAccessor(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames()." . $attributeName . "PrivateName(), CustomGetterSetter::create(vm, $getter, nullptr), attributesForStructure(DontDelete | ReadOnly));\n");
+            push(@implContent, "#endif\n") if $conditionalString;
+        }
+
         # Support for RuntimeEnabled operations on global objects.
         foreach my $function (@{$interface->functions}) {
             next unless $function->signature->extendedAttributes->{"EnabledAtRuntime"};
@@ -2646,6 +2660,7 @@ sub GenerateImplementation
                 push(@implContent, "    auto& impl = castedThis->wrapped();\n");
                 push(@implContent, "    return JSValue::encode(shouldAllowAccessToNode(state, impl." . $attribute->signature->name . "()) ? " . NativeToJSValue($attribute->signature, 0, $interface, "impl.$implGetterFunctionName()", "castedThis") . " : jsNull());\n");
             } elsif ($type eq "EventHandler") {
+                $implIncludes{"EventNames.h"} = 1;
                 my $getter = $attribute->signature->extendedAttributes->{"WindowEventHandler"} ? "windowEventHandlerAttribute"
                     : $attribute->signature->extendedAttributes->{"DocumentEventHandler"} ? "documentEventHandlerAttribute"
                     : "eventHandlerAttribute";
@@ -3245,6 +3260,11 @@ END
         push(@implContent, "    thisObject->visitAdditionalChildren(visitor);\n") if $interface->extendedAttributes->{"JSCustomMarkFunction"};
         if ($interface->extendedAttributes->{"ReportExtraMemoryCost"}) {
             push(@implContent, "    visitor.reportExtraMemoryVisited(thisObject->wrapped().memoryCost());\n");
+            if ($interface->extendedAttributes->{"ReportExternalMemoryCost"}) {;
+                push(@implContent, "#if ENABLE(RESOURCE_USAGE)\n");
+                push(@implContent, "    visitor.reportExternalMemoryVisited(thisObject->wrapped().externalMemoryCost());\n");
+                push(@implContent, "#endif\n");
+            }
         }
         if ($numCachedAttributes > 0) {
             foreach (@{$interface->attributes}) {

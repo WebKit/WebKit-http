@@ -362,7 +362,7 @@ void SpeculativeJIT::addSlowPathGenerator(std::unique_ptr<SlowPathGenerator> slo
 
 void SpeculativeJIT::addSlowPathGenerator(std::function<void()> lambda)
 {
-    m_slowPathLambdas.append(std::make_pair(lambda, m_origin.semantic));
+    m_slowPathLambdas.append(std::make_pair(lambda, m_currentNode));
 }
 
 void SpeculativeJIT::runSlowPathGenerators(PCToCodeOriginMapBuilder& pcToCodeOriginMapBuilder)
@@ -372,7 +372,9 @@ void SpeculativeJIT::runSlowPathGenerators(PCToCodeOriginMapBuilder& pcToCodeOri
         slowPathGenerator->generate(this);
     }
     for (auto& generatorPair : m_slowPathLambdas) {
-        pcToCodeOriginMapBuilder.appendItem(m_jit.label(), generatorPair.second);
+        Node* currentNode = generatorPair.second;
+        m_currentNode = currentNode;
+        pcToCodeOriginMapBuilder.appendItem(m_jit.label(), currentNode->origin.semantic);
         generatorPair.first();
     }
 }
@@ -1652,7 +1654,7 @@ void SpeculativeJIT::compileCurrentBlock()
             dataLog("\n");
         }
 
-        if (Options::validateDFGExceptionHandling() && mayExit(m_jit.graph(), m_currentNode) != DoesNotExit)
+        if (Options::validateDFGExceptionHandling() && (mayExit(m_jit.graph(), m_currentNode) != DoesNotExit || m_currentNode->isTerminal()))
             m_jit.jitReleaseAssertNoException();
 
         m_jit.pcToCodeOriginMapBuilder().appendItem(m_jit.label(), m_origin.semantic);
@@ -3407,6 +3409,30 @@ void SpeculativeJIT::compileInstanceOfCustom(Node* node)
     unblessedBooleanResult(resultGPR, node);
 }
 
+void SpeculativeJIT::compileIsJSArray(Node* node)
+{
+    JSValueOperand value(this, node->child1());
+    GPRFlushedCallResult result(this);
+
+    JSValueRegs valueRegs = value.jsValueRegs();
+    GPRReg resultGPR = result.gpr();
+
+    JITCompiler::Jump isNotCell = m_jit.branchIfNotCell(valueRegs);
+
+    m_jit.compare8(JITCompiler::Equal,
+        JITCompiler::Address(valueRegs.payloadGPR(), JSCell::typeInfoTypeOffset()),
+        TrustedImm32(ArrayType),
+        resultGPR);
+    blessBoolean(resultGPR);
+    JITCompiler::Jump done = m_jit.jump();
+
+    isNotCell.link(&m_jit);
+    moveFalseTo(resultGPR);
+
+    done.link(&m_jit);
+    blessedBooleanResult(resultGPR, node);
+}
+
 void SpeculativeJIT::compileIsRegExpObject(Node* node)
 {
     JSValueOperand value(this, node->child1());
@@ -3429,6 +3455,58 @@ void SpeculativeJIT::compileIsRegExpObject(Node* node)
 
     done.link(&m_jit);
     blessedBooleanResult(resultGPR, node);
+}
+
+void SpeculativeJIT::compileIsTypedArrayView(Node* node)
+{
+    JSValueOperand value(this, node->child1());
+#if USE(JSVALUE64)
+    GPRTemporary result(this, Reuse, value);
+#else
+    GPRTemporary result(this, Reuse, value, PayloadWord);
+#endif
+
+    JSValueRegs valueRegs = value.jsValueRegs();
+    GPRReg resultGPR = result.gpr();
+
+    JITCompiler::Jump isNotCell = m_jit.branchIfNotCell(valueRegs);
+
+    m_jit.load8(JITCompiler::Address(valueRegs.payloadGPR(), JSCell::typeInfoTypeOffset()), resultGPR);
+    m_jit.sub32(TrustedImm32(Int8ArrayType), resultGPR);
+    m_jit.compare32(JITCompiler::BelowOrEqual,
+        resultGPR,
+        TrustedImm32(Float64ArrayType - Int8ArrayType),
+        resultGPR);
+    blessBoolean(resultGPR);
+    JITCompiler::Jump done = m_jit.jump();
+
+    isNotCell.link(&m_jit);
+    moveFalseTo(resultGPR);
+
+    done.link(&m_jit);
+    blessedBooleanResult(resultGPR, node);
+}
+
+void SpeculativeJIT::compileCallObjectConstructor(Node* node)
+{
+    RELEASE_ASSERT(node->child1().useKind() == UntypedUse);
+    JSValueOperand value(this, node->child1());
+#if USE(JSVALUE64)
+    GPRTemporary result(this, Reuse, value);
+#else
+    GPRTemporary result(this, Reuse, value, PayloadWord);
+#endif
+
+    JSValueRegs valueRegs = value.jsValueRegs();
+    GPRReg resultGPR = result.gpr();
+
+    MacroAssembler::JumpList slowCases;
+    slowCases.append(m_jit.branchIfNotCell(valueRegs));
+    slowCases.append(m_jit.branchIfNotObject(valueRegs.payloadGPR()));
+    m_jit.move(valueRegs.payloadGPR(), resultGPR);
+
+    addSlowPathGenerator(slowPathCall(slowCases, this, operationObjectConstructor, resultGPR, m_jit.globalObjectFor(node->origin.semantic), valueRegs));
+    cellResult(resultGPR, node);
 }
 
 void SpeculativeJIT::compileArithAdd(Node* node)

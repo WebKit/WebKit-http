@@ -358,13 +358,16 @@ RenderLayer* RenderObject::enclosingLayer() const
     return nullptr;
 }
 
-bool RenderObject::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignment& alignX, const ScrollAlignment& alignY)
+bool RenderObject::scrollRectToVisible(SelectionRevealMode revealMode, const LayoutRect& rect, const ScrollAlignment& alignX, const ScrollAlignment& alignY)
 {
+    if (revealMode == SelectionRevealMode::DoNotReveal)
+        return false;
+
     RenderLayer* enclosingLayer = this->enclosingLayer();
     if (!enclosingLayer)
         return false;
 
-    enclosingLayer->scrollRectToVisible(rect, alignX, alignY);
+    enclosingLayer->scrollRectToVisible(revealMode, rect, alignX, alignY);
     return true;
 }
 
@@ -975,7 +978,7 @@ LayoutRect RenderObject::computeRectForRepaint(const LayoutRect& rect, const Ren
 
     LayoutRect adjustedRect = rect;
     if (parent->hasOverflowClip()) {
-        downcast<RenderBox>(*parent).applyCachedClipAndScrollOffsetForRepaint(adjustedRect);
+        downcast<RenderBox>(*parent).applyCachedClipAndScrollPositionForRepaint(adjustedRect);
         if (adjustedRect.isEmpty())
             return adjustedRect;
     }

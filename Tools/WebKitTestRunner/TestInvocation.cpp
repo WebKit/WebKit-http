@@ -194,7 +194,7 @@ void TestInvocation::dumpWebProcessUnresponsiveness(const char* errorMessage)
     pid_t pid = WKPageGetProcessIdentifier(TestController::singleton().mainWebView()->page());
     sprintf(errorMessageToStderr, "#PROCESS UNRESPONSIVE - %s (pid %ld)\n", TestController::webProcessName(), static_cast<long>(pid));
 #else
-    sprintf(errorMessageToStderr, "#PROCESS UNRESPONSIVE - %s", TestController::webProcessName());
+    sprintf(errorMessageToStderr, "#PROCESS UNRESPONSIVE - %s\n", TestController::webProcessName());
 #endif
 
     dump(errorMessage, errorMessageToStderr, true);
@@ -248,8 +248,8 @@ void TestInvocation::dumpResults()
                 m_webProcessIsUnresponsive = true;
                 return;
             }
+
             WKRetainPtr<WKImageRef> windowSnapshot = TestController::singleton().mainWebView()->windowSnapshotImage();
-            ASSERT(windowSnapshot);
             dumpPixelsAndCompareWithExpected(windowSnapshot.get(), m_repaintRects.get(), TestInvocation::SnapshotResultType::WebView);
         }
     }
@@ -603,6 +603,13 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
         TestController::singleton().setHandlesAuthenticationChallenges(WKBooleanGetValue(value));
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetShouldLogCanAuthenticateAgainstProtectionSpace")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::singleton().setShouldLogCanAuthenticateAgainstProtectionSpace(WKBooleanGetValue(value));
         return;
     }
 

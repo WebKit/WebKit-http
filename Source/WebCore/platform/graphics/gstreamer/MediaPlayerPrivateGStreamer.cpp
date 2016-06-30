@@ -309,16 +309,17 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     GstQuery* query= gst_query_new_position(GST_FORMAT_TIME);
     if (gst_element_query(m_pipeline.get(), query))
         gst_query_parse_position(query, 0, &position);
-
-    float result = 0.0f;
-    if (static_cast<GstClockTime>(position) != GST_CLOCK_TIME_NONE)
-        result = static_cast<double>(position) / GST_SECOND;
-    else if (m_canFallBackToLastFinishedSeekPosition)
-        result = m_seekTime;
+    gst_query_unref(query);
 
     LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
-    gst_query_unref(query);
+    float result = 0.0f;
+    if (static_cast<GstClockTime>(position) != GST_CLOCK_TIME_NONE) {
+        GTimeVal timeValue;
+        GST_TIME_TO_TIMEVAL(position, timeValue);
+        result = static_cast<float>(timeValue.tv_sec + (timeValue.tv_usec / 1000000.0));
+    } else if (m_canFallBackToLastFinishedSeekPosition)
+        result = m_seekTime;
 
     return result;
 }
@@ -1021,6 +1022,21 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         processTableOfContents(message);
         break;
 #endif
+    case GST_MESSAGE_TAG: {
+        GstTagList* tags = nullptr;
+        GUniqueOutPtr<gchar> tag;
+        gst_message_parse_tag(message, &tags);
+        if (gst_tag_list_get_string(tags, GST_TAG_IMAGE_ORIENTATION, &tag.outPtr())) {
+            if (!g_strcmp0(tag.get(), "rotate-90"))
+                setVideoSourceRotation(VideoSourceRotation90);
+            else if (!g_strcmp0(tag.get(), "rotate-180"))
+                setVideoSourceRotation(VideoSourceRotation180);
+            else if (!g_strcmp0(tag.get(), "rotate-270"))
+                setVideoSourceRotation(VideoSourceRotation270);
+        }
+        gst_tag_list_unref(tags);
+        break;
+    }
     default:
         LOG_MEDIA_MESSAGE("Unhandled GStreamer message type: %s",
                     GST_MESSAGE_TYPE_NAME(message));
@@ -1981,6 +1997,14 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
             WARN_MEDIA_MESSAGE("Failed to create scaletempo");
         else
             g_object_set(m_pipeline.get(), "audio-filter", scale, nullptr);
+    }
+
+    if (!m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player)) {
+        // If not using accelerated compositing, let GStreamer handle
+        // the image-orientation tag.
+        GstElement* videoFlip = gst_element_factory_make("videoflip", nullptr);
+        g_object_set(videoFlip, "method", 8, nullptr);
+        g_object_set(m_pipeline.get(), "video-filter", videoFlip, nullptr);
     }
 
     GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));

@@ -37,6 +37,7 @@
 #include "EXTShaderTextureLOD.h"
 #include "EXTTextureFilterAnisotropic.h"
 #include "EXTsRGB.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "Extensions3D.h"
 #include "Frame.h"
@@ -803,6 +804,9 @@ void WebGLRenderingContextBase::reshape(int width, int height)
 
 int WebGLRenderingContextBase::drawingBufferWidth() const
 {
+    if (isContextLost())
+        return 0;
+
     if (m_isPendingPolicyResolution && !m_hasRequestedPolicyResolution)
         return 0;
 
@@ -811,6 +815,9 @@ int WebGLRenderingContextBase::drawingBufferWidth() const
 
 int WebGLRenderingContextBase::drawingBufferHeight() const
 {
+    if (isContextLost())
+        return 0;
+
     if (m_isPendingPolicyResolution && !m_hasRequestedPolicyResolution)
         return 0;
 

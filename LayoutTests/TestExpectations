@@ -17,6 +17,7 @@ editing/pasteboard/gtk [ Skip ]
 tiled-drawing [ Skip ]
 swipe [ Skip ]
 fast/zooming/ios [ Skip ]
+fast/forms/ios [ Skip ]
 fast/viewport/ios [ Skip ]
 fast/events/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
@@ -53,12 +54,12 @@ http/tests/misc/will-send-request-with-client-provided-http-body.html [ Skip ]
 fast/harness/ui-side-scripts.html [ Skip ]
 fast/harness/concurrent-ui-side-scripts.html [ Skip ]
 
+# This test only makes sense on Mac
+fast/attachment/attachment-subtitle-resize.html
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
 #//////////////////////////////////////////////////////////////////////////////////////////
-
-# pending functional patch and per-port verification
-webkit.org/b/109954 css3/line-break [ Skip ]
 
 # media/video-seek-after-end.html is flaky
 webkit.org/b/116293 media/video-seek-after-end.html [ Pass Failure ]
@@ -110,9 +111,6 @@ webkit.org/b/126166 [ Debug ] js/dfg-uint32array.html [ Skip ]
 webkit.org/b/126166 [ Debug ] js/dfg-uint32array-overflow-values.html [ Skip ]
 
 webkit.org/b/127860 [ Debug ] js/function-apply-aliased.html [ Skip ]
-
-# This test verifies dynamic manipulation of the mroot and msqrt elements.
-mathml/roots-removeChild.html [ ImageOnlyFailure ]
 
 # For now we ignore margin/padding/border properties of MathML renderers.
 mathml/presentation/bug97990.html [ Skip ]
@@ -938,9 +936,6 @@ storage/indexeddb/transaction-coordination-within-database.html [ Skip ]
 storage/indexeddb/modern/exceed-open-file-limit.html [ Skip ]
 webkit.org/b/155028 storage/indexeddb/modern/256-open-databases.html [ Skip ]
 
-# Fixed by upcoming MathML refactoring
-webkit.org/b/155019 mathml/presentation/menclose-notation-attribute-change-value.html [ Skip ]
-
 ### END OF IndexedDB failures
 ########################################
 
@@ -981,3 +976,13 @@ webkit.org/b/156631 fast/text/font-face-javascript.html [ Pass Crash Failure ]
 webkit.org/b/157849 fast/frames/crash-during-iframe-load-stop.html [ Pass Timeout ]
 
 webkit.org/b/158085 http/tests/css/shared-stylesheet-mutation.html [ Pass Failure ]
+
+# PiP tests are only relevant on macOS Sierra and newer.
+media/click-placeholder-not-pausing.html [ WontFix ]
+media/controls/picture-in-picture.html [ WontFix ]
+media/element-containing-pip-video-going-into-fullscreen.html [ WontFix ]
+media/fullscreen-api-enabled-media-with-presentation-mode.html [ WontFix ]
+media/fullscreen-video-going-into-pip.html [ WontFix ]
+media/navigate-with-pip-should-not-crash.html [ WontFix ]
+media/pip-video-going-into-fullscreen.html [ WontFix ]
+media/video-contained-in-fullscreen-element-going-into-pip.html [ WontFix ]

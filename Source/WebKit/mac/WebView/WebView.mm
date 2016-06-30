@@ -89,6 +89,7 @@
 #import "WebNodeHighlight.h"
 #import "WebNotificationClient.h"
 #import "WebPDFView.h"
+#import "WebPaymentCoordinatorClient.h"
 #import "WebPlatformStrategies.h"
 #import "WebPluginDatabase.h"
 #import "WebPolicyDelegate.h"
@@ -298,9 +299,6 @@
 #import <WebCore/WebMediaSessionManagerMac.h>
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebViewIncludes.h>
-#endif
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 #import <WebCore/WebPlaybackSessionInterfaceMac.h>
@@ -878,10 +876,20 @@ static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol()
 #endif
 }
 
+static bool shouldAllowWindowOpenWithoutUserGesture()
+{
+#if PLATFORM(IOS)
+    static bool shouldAllowWindowOpenWithoutUserGesture = IOSApplication::isTheSecretSocietyHiddenMystery() && dyld_get_program_sdk_version() < DYLD_IOS_VERSION_10_0;
+    return shouldAllowWindowOpenWithoutUserGesture;
+#else
+    return false;
+#endif
+}
+
 static bool shouldConvertInvalidURLsToBlank()
 {
 #if PLATFORM(IOS)
-    static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= 0x000A0000;
+    static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_10_0;
 #elif PLATFORM(MAC)
     static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= 0x000A0C00;
 #else
@@ -999,6 +1007,10 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #else
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
+#endif
+
+#if ENABLE(APPLE_PAY)
+    pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinatorClient();
 #endif
 
 #if USE(APPLE_INTERNAL_SDK)
@@ -2540,6 +2552,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setAllowContentSecurityPolicySourceStarToMatchAnyProtocol(shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol());
 
+    settings.setAllowWindowOpenWithoutUserGesture(shouldAllowWindowOpenWithoutUserGesture());
+
     settings.setShouldConvertInvalidURLsToBlank(shouldConvertInvalidURLsToBlank());
 }
 
@@ -2570,7 +2584,6 @@ static inline IMP getMethod(id o, SEL s)
         return;
     }
 
-    cache->didCancelAuthenticationChallengeFunc = getMethod(delegate, @selector(webView:resource:didCancelAuthenticationChallenge:fromDataSource:));
     cache->didFailLoadingWithErrorFromDataSourceFunc = getMethod(delegate, @selector(webView:resource:didFailLoadingWithError:fromDataSource:));
     cache->didFinishLoadingFromDataSourceFunc = getMethod(delegate, @selector(webView:resource:didFinishLoadingFromDataSource:));
     cache->didLoadResourceFromMemoryCacheFunc = getMethod(delegate, @selector(webView:didLoadResourceFromMemoryCache:response:length:fromDataSource:));
@@ -8599,9 +8612,9 @@ bool LayerFlushController::flushLayers()
     [self updateWebViewAdditions];
 }
 
-- (void)_clearPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement
+- (void)_clearPlaybackControlsManager
 {
-    if (!_private->playbackSessionModel || _private->playbackSessionModel->mediaElement() != &mediaElement)
+    if (!_private->playbackSessionModel || !_private->playbackSessionModel->mediaElement())
         return;
 
     _private->playbackSessionModel->setMediaElement(nullptr);

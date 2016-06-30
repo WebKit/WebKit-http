@@ -58,13 +58,6 @@ bool RenderMathMLBlock::isChildAllowed(const RenderObject& child, const RenderSt
     return is<Element>(child.node());
 }
 
-RenderPtr<RenderMathMLBlock> RenderMathMLBlock::createAnonymousMathMLBlock()
-{
-    RenderPtr<RenderMathMLBlock> newBlock = createRenderer<RenderMathMLBlock>(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), FLEX));
-    newBlock->initializeStyle();
-    return newBlock;
-}
-
 LayoutUnit RenderMathMLBlock::mathAxisHeight() const
 {
     const auto& primaryFont = style().fontCascade().primaryFont();
@@ -72,6 +65,14 @@ LayoutUnit RenderMathMLBlock::mathAxisHeight() const
         return mathData->getMathConstant(primaryFont, OpenTypeMathData::AxisHeight);
 
     return style().fontMetrics().xHeight() / 2;
+}
+
+LayoutUnit RenderMathMLBlock::mirrorIfNeeded(LayoutUnit horizontalOffset, LayoutUnit boxWidth) const
+{
+    if (style().direction() == RTL)
+        return logicalWidth() - boxWidth - horizontalOffset;
+
+    return horizontalOffset;
 }
 
 int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const

@@ -113,7 +113,7 @@ private:
 
     virtual void didRestoreScrollPosition() override;
 
-    virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
+    virtual WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
     WKWPE::View& m_view;
 };

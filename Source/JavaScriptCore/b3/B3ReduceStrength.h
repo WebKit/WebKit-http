@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ class Procedure;
 // add sophisticated optimizations to it. For that reason we have full CSE in a different phase, for
 // example.
 
-bool reduceStrength(Procedure&);
+JS_EXPORT_PRIVATE bool reduceStrength(Procedure&);
 
 } } // namespace JSC::B3
 

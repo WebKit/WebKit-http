@@ -105,14 +105,14 @@ static int greatestCommonDivisor(int a, int b)
 #if USE(COORDINATED_GRAPHICS_THREADED) && USE(GSTREAMER_GL)
 class GstVideoFrameHolder : public TextureMapperPlatformLayerBuffer::UnmanagedBufferDataHolder {
 public:
-    explicit GstVideoFrameHolder(GstSample* sample)
+    explicit GstVideoFrameHolder(GstSample* sample, TextureMapperGL::Flags flags)
     {
         GstVideoInfo videoInfo;
         if (UNLIKELY(!getSampleVideoInfo(sample, videoInfo)))
             return;
 
         m_size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-        m_flags = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0;
+        m_flags = flags | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0);
 
         GstBuffer* buffer = gst_sample_get_buffer(sample);
         if (UNLIKELY(!gst_video_frame_map(&m_videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL))))
@@ -153,6 +153,10 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
 #endif
     , m_usingFallbackVideoSink(false)
+    , m_videoSourceRotation(NoVideoSourceRotation)
+#if USE(TEXTURE_MAPPER_GL)
+    , m_textureMapperRotationFlag(0)
+#endif
 {
     g_mutex_init(&m_sampleMutex);
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -285,6 +289,14 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
     GstVideoFormat format;
     if (!getVideoSizeAndFormatFromCaps(caps, originalSize, format, pixelAspectRatioNumerator, pixelAspectRatioDenominator, stride))
         return FloatSize();
+
+#if USE(TEXTURE_MAPPER_GL)
+    // When using accelerated compositing, if the video is tagged as rotated 90 or 270 degrees, swap width and height.
+    if (m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player)) {
+        if (m_videoSourceRotation == VideoSourceRotation90 || m_videoSourceRotation == VideoSourceRotation270)
+            originalSize = originalSize.transposedSize();
+    }
+#endif
 
     LOG_MEDIA_MESSAGE("Original video size: %dx%d", originalSize.width(), originalSize.height());
     LOG_MEDIA_MESSAGE("Pixel aspect ratio: %d/%d", pixelAspectRatioNumerator, pixelAspectRatioDenominator);
@@ -472,7 +484,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         return;
 
 #if USE(GSTREAMER_GL)
-    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get());
+    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperRotationFlag);
     if (UNLIKELY(!frameHolder->isValid()))
         return;
 
@@ -485,7 +497,6 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         return;
 
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-
     std::unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size, GraphicsContext3D::DONT_CARE);
     if (UNLIKELY(!buffer)) {
         if (UNLIKELY(!m_context3D))
@@ -496,6 +507,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
     }
     updateTexture(buffer->textureGL(), videoInfo);
+    buffer->setExtraFlags(m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0));
     m_platformLayerProxy->pushNextBuffer(WTFMove(buffer));
 #endif
 }
@@ -525,9 +537,16 @@ void MediaPlayerPrivateGStreamerBase::repaint()
 
 void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 {
+    bool triggerResize;
     {
         WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+        triggerResize = !m_sample;
         m_sample = sample;
+    }
+
+    if (triggerResize) {
+        LOG_MEDIA_MESSAGE("First sample reached the sink, triggering video dimensions update");
+        m_player->sizeChanged();
     }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -630,6 +649,8 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
 
     if (m_usingFallbackVideoSink) {
         RefPtr<BitmapTexture> texture;
+        IntSize size;
+        TextureMapperGL::Flags flags;
         {
             WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
 
@@ -637,11 +658,14 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
             if (UNLIKELY(!getSampleVideoInfo(m_sample.get(), videoInfo)))
                 return;
 
-            IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+            size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+            flags = m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0);
             texture = textureMapper.acquireTextureFromPool(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
             updateTexture(static_cast<BitmapTextureGL&>(*texture), videoInfo);
         }
-        textureMapper.drawTexture(*texture, targetRect, matrix, opacity);
+        TextureMapperGL& texmapGL = reinterpret_cast<TextureMapperGL&>(textureMapper);
+        BitmapTextureGL* textureGL = static_cast<BitmapTextureGL*>(texture.get());
+        texmapGL.drawTexture(textureGL->id(), flags, textureGL->size(), targetRect, matrix, opacity);
         return;
     }
 
@@ -656,7 +680,7 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
         return;
 
     unsigned textureID = *reinterpret_cast<unsigned*>(videoFrame.data[0]);
-    TextureMapperGL::Flags flags = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0;
+    TextureMapperGL::Flags flags = m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0);
 
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
     TextureMapperGL& textureMapperGL = reinterpret_cast<TextureMapperGL&>(textureMapper);
@@ -702,6 +726,34 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
     return adoptRef(surface);
 }
 #endif
+
+void MediaPlayerPrivateGStreamerBase::setVideoSourceRotation(VideoSourceRotation rotation)
+{
+    if (m_videoSourceRotation == rotation)
+        return;
+
+    m_videoSourceRotation = rotation;
+
+#if USE(TEXTURE_MAPPER_GL)
+    switch (m_videoSourceRotation) {
+    case NoVideoSourceRotation:
+        m_textureMapperRotationFlag = 0;
+        break;
+    case VideoSourceRotation90:
+        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture90;
+        break;
+    case VideoSourceRotation180:
+        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture180;
+        break;
+    case VideoSourceRotation270:
+        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture270;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+#endif
+}
 
 bool MediaPlayerPrivateGStreamerBase::supportsFullscreen() const
 {

@@ -32,14 +32,12 @@
 #include "ContainerNode.h"
 #include "DocumentEventQueue.h"
 #include "DocumentTiming.h"
-#include "EventTrackingRegions.h"
 #include "FocusDirection.h"
 #include "FontSelectorClient.h"
 #include "MediaProducer.h"
 #include "MutationObserver.h"
 #include "PageVisibilityState.h"
 #include "PlatformEvent.h"
-#include "PlatformScreen.h"
 #include "ReferrerPolicy.h"
 #include "Region.h"
 #include "RenderPtr.h"
@@ -55,9 +53,15 @@
 #include <chrono>
 #include <memory>
 #include <wtf/Deque.h>
+#include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/text/AtomicStringHash.h>
+
+#if PLATFORM(IOS)
+#include "EventTrackingRegions.h"
+#endif
 
 namespace JSC {
 class ExecState;
@@ -168,6 +172,8 @@ class XPathResult;
 
 enum class ShouldOpenExternalURLsPolicy;
 
+using PlatformDisplayID = uint32_t;
+
 #if ENABLE(XSLT)
 class TransformSource;
 #endif
@@ -274,11 +280,6 @@ enum DimensionsCheck { WidthDimensionsCheck = 1 << 0, HeightDimensionsCheck = 1 
 enum class SelectionRestorationMode {
     Restore,
     SetDefault,
-};
-
-enum class SelectionRevealMode {
-    Reveal,
-    DoNotReveal
 };
 
 enum class HttpEquivPolicy {
@@ -1032,6 +1033,9 @@ public:
     void registerForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
     void unregisterForPageScaleFactorChangedCallbacks(HTMLMediaElement*);
     void pageScaleFactorChangedAndStable();
+    void registerForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement&);
+    void unregisterForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement&);
+    void userInterfaceLayoutDirectionChanged();
 #endif
 
     void registerForVisibilityStateChangedCallbacks(Element*);
@@ -1162,10 +1166,12 @@ public:
     const DocumentTiming& timing() const { return m_documentTiming; }
 #endif
 
+    double monotonicTimestamp() const;
+
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     int requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback>);
     void cancelAnimationFrame(int id);
-    void serviceScriptedAnimations(double monotonicAnimationStartTime);
+    void serviceScriptedAnimations(double timestamp);
 #endif
 
     void sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, const IntPoint& newPosition, const IntRect& visibleRect, const IntSize& contentsSize, Element* target = nullptr);
@@ -1601,6 +1607,7 @@ private:
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     HashSet<HTMLMediaElement*> m_pageScaleFactorChangedElements;
+    HashSet<HTMLMediaElement*> m_userInterfaceLayoutDirectionChangedElements;
 #endif
 
     HashSet<Element*> m_visibilityStateCallbackElements;

@@ -2354,7 +2354,7 @@ private:
                 fail();
                 return JSValue();
             }
-            JSValue result = JSArrayBuffer::create(m_exec->vm(), m_globalObject->arrayBufferStructure(), arrayBuffer.release());
+            JSValue result = JSArrayBuffer::create(m_exec->vm(), m_globalObject->arrayBufferStructure(), WTFMove(arrayBuffer));
             m_gcBuffer.append(result);
             return result;
         }
@@ -2798,7 +2798,7 @@ Vector<String> SerializedScriptValue::blobURLsIsolatedCopy() const
     return result;
 }
 
-void SerializedScriptValue::writeBlobsToDiskForIndexedDB(NoncopyableFunction<void (const IDBValue&)>&& completionHandler)
+void SerializedScriptValue::writeBlobsToDiskForIndexedDB(WTF::Function<void (const IDBValue&)>&& completionHandler)
 {
     ASSERT(isMainThread());
     ASSERT(hasBlobURLs());

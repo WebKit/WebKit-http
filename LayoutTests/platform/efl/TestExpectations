@@ -762,8 +762,6 @@ webkit.org/b/136099 fast/events/show-modal-dialog-onblur-onfocus.html [ Crash Ti
 webkit.org/b/136099 fast/events/scroll-event-during-modal-dialog.html [ Crash Timeout ]
 webkit.org/b/136099 fast/harness/show-modal-dialog.html [ Crash Timeout ]
 
-webkit.org/b/136227 mathml/very-large-stretchy-operators.html [ Crash Timeout Pass ]
-
 #webkit.org/b/142158 inspector/dom/remove-multiple-nodes.html [ Crash Pass ]
 #webkit.org/b/147018 inspector/css/get-system-fonts.html [ Skip ]
 
@@ -951,8 +949,6 @@ webkit.org/b/125573 compositing/backgrounds/fixed-backgrounds.html [ Crash Pass 
 webkit.org/b/129180 svg/clip-path/clip-path-on-svg-001.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure Pass ]
 
-webkit.org/b/130353 mathml/wbr-in-mroot-crash.html [ Crash Pass ]
-
 webkit.org/b/119789 fast/events/touch/touch-inside-iframe.html [ Crash Pass ]
 
 webkit.org/b/133305 fast/text/mark-matches-rendering.html [ ImageOnlyFailure Pass ]
@@ -1096,7 +1092,6 @@ webkit.org/b/129113 fast/multicol/newmulticol/clipping.html [ Pass ]
 webkit.org/b/129050 fast/sub-pixel/compositing-layers-on-subpixel-position.html [ Pass ]
 
 # This tests are passing on EFL but they do not in the Apple ports
-mathml/presentation/style-changed.html [ Pass ]
 transitions/svg-text-shadow-transition.html [ Pass ]
 
 # Need to check why these tests are passed on EFL port.
@@ -1293,7 +1288,6 @@ fast/borders/border-painting-dashed.html [ Pass ]
 fast/borders/border-painting-dotted.html [ Pass ]
 fast/borders/border-painting-double.html [ Pass ]
 fast/table/border-collapsing/collapsed-borders-adjoining-sections.html [ Pass ]
-mathml/roots-removeChild.html [ Pass ]
 
 # css variables tests are passed since r191128. However these passes aren't verified yet.
 webkit.org/b/150183 fast/css/variables/test-suite/failures/024.html [ Pass ]
@@ -1337,12 +1331,6 @@ imported/w3c/csswg-test/css-scoping-1/css-scoping-shadow-slotted-rule.html [ Pas
 imported/w3c/csswg-test/css-scoping-1/css-scoping-shadow-with-outside-rules.html [ Pass ]
 imported/w3c/csswg-test/css-scoping-1/css-scoping-shadow-with-rules-no-style-leak.html [ Pass ]
 imported/w3c/csswg-test/css-scoping-1/css-scoping-shadow-with-rules.html [ Pass ]
-fast/shadow-dom/insert-child-to-assigned-node.html [ Pass ]
-fast/shadow-dom/shadow-layout-after-attach-shadow.html [ Pass ]
-fast/shadow-dom/shadow-layout-after-host-child-changes.html [ Pass ]
-fast/shadow-dom/shadow-layout-after-inserting-or-removing-host-child.html [ Pass ]
-fast/shadow-dom/shadow-layout-after-slot-changes.html [ Pass ]
-fast/shadow-dom/shadow-layout-after-slot-fallback-changes.html [ Pass ]
 
 webkit.org/b/155875 svg/W3C-SVG-1.1/animate-elem-20-t.svg [ Pass ]
 webkit.org/b/155875 svg/W3C-SVG-1.1/interact-events-01-b.svg [ Pass ]
@@ -1366,6 +1354,8 @@ fast/scrolling/rtl-scrollbars-positioning.html
 fast/scrolling/rtl-scrollbars-text-selection-scrolled.html
 fast/scrolling/rtl-scrollbars-text-selection.html
 fast/scrolling/rtl-scrollbars.html
+
+webkit.org/b/148695 fast/shadow-dom [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FAILING TESTS
@@ -1516,8 +1506,6 @@ webkit.org/b/73544 fast/history/page-cache-notification-suspendable.html [ Skip 
 
 # The test is too slow on Debug bot and randomly fails
 webkit.org/b/61932 [ Debug ] jquery/manipulation.html [ Failure Pass Timeout ]
-
-webkit.org/b/49142 fast/css/style-scoped [ Skip ]
 
 # Tracking corner not being painted for TextArea.
 webkit.org/b/85484 fast/css/resize-corner-tracking-transformed.html [ Failure ]
@@ -2533,9 +2521,6 @@ webkit.org/b/155945 storage/indexeddb/modern/get-keyrange-private.html [ Failure
 webkit.org/b/155945 storage/indexeddb/modern/get-keyrange.html [ Failure ]
 webkit.org/b/155945 storage/indexeddb/modern/idbobjectstore-delete-1-private.html [ Failure ]
 webkit.org/b/155945 storage/indexeddb/modern/idbobjectstore-delete-1.html [ Failure ]
-
-# Shadow dom is not enabled on EFL port yet.
-Bug(EFL) fast/shadow-dom/slot-removal-crash-2.html
 
 webkit.org/b/155959 svg/text/kerning.svg [ Failure ]
 webkit.org/b/155959 svg/text/multichar-glyph.svg [ Failure ]

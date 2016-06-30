@@ -1,3 +1,350 @@
+2016-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Adopt MediaRemote.
+        https://bugs.webkit.org/show_bug.cgi?id=159250
+
+        Reviewed by Eric Carlson.
+
+        Add USE_MEDIAREMOTE.
+
+        * wtf/Platform.h:
+
+2016-06-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202580.
+        https://bugs.webkit.org/show_bug.cgi?id=159245
+
+        Caused all WKTR tests to fail on GuardMalloc and Production
+        only for unknown reasons, investigating offline. (Requested by
+        brrian on #webkit).
+
+        Reverted changeset:
+
+        "RunLoop::Timer should use constructor templates instead of
+        class templates"
+        https://bugs.webkit.org/show_bug.cgi?id=159153
+        http://trac.webkit.org/changeset/202580
+
+2016-06-28  Brian Burg  <bburg@apple.com>
+
+        RunLoop::Timer should use constructor templates instead of class templates
+        https://bugs.webkit.org/show_bug.cgi?id=159153
+
+        Reviewed by Alex Christensen.
+
+        Refactor RunLoop::Timer to align with WebCore::Timer. Use a constructor
+        template instead of a class template. Store a bound std::function rather than
+        a templated member and function. Add a constructor that takes a std::function.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::Timer::Timer):
+        (WTF::RunLoop::Timer::fired):
+
+2016-06-28  Tomas Popela  <tpopela@redhat.com>
+
+        THUMB2 support not correctly detected on Fedora with GCC 6.1.
+        https://bugs.webkit.org/show_bug.cgi?id=159083
+
+        Reviewed by Carlos Garcia Campos.
+
+        On Fedora 24 with GCC 6.1. the __thumb2__ and __thumb__ are not
+        defined so the detection of THUMB2 support will fail. Look also
+        whether the __ARM_ARCH_ISA_THUMB is defined to fix the THUMB2
+        detection.
+
+        * wtf/Platform.h:
+
+2016-06-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove now unused WTF::findNextLineStart
+        https://bugs.webkit.org/show_bug.cgi?id=159157
+
+        Reviewed by Mark Lam.
+
+        Unused after r202498.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::findNextLineStart): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::findNextLineStart): Deleted.
+        * wtf/text/WTFString.h:
+        (WTF::String::findNextLineStart): Deleted.
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CrossThreadTask.h:
+        (WTF::CrossThreadTask::CrossThreadTask):
+        * wtf/Function.h: Renamed from Source/WTF/wtf/NoncopyableFunction.h.
+        * wtf/FunctionDispatcher.h:
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::WorkItem):
+        (TimerWorkItem::create):
+        (TimerWorkItem::TimerWorkItem):
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::WorkItemWin::WorkItemWin):
+        (WTF::WorkItemWin::create):
+        (WTF::HandleWorkItem::HandleWorkItem):
+        (WTF::HandleWorkItem::createByAdoptingHandle):
+        * wtf/win/WorkItemWin.h:
+        (WTF::WorkItemWin::function):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-06-23  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r202380): iOS 9.x internal builds are broken
+
+        Follow-up fix for: Enable window.open() for existing versions of Secret Society
+        <https://webkit.org/b/159049>
+        <rdar://problem/26528349>
+
+        * wtf/spi/darwin/dyldSPI.h: Define DYLD_IOS_VERSION_10_0 when
+        building on internal SDKs older than iOS 10.
+
+2016-06-23  John Wilander  <wilander@apple.com>
+
+        Enable window.open() for existing versions of Secret Society
+        https://bugs.webkit.org/show_bug.cgi?id=159049
+        <rdar://problem/26528349>
+        
+        Reviewed by Andy Estes.
+
+        The Secret Society Hidden Mystery app has a broken version check treating iOS 10
+        as iOS 1 on iPads. Therefore it believes it can use window.open() in a tap
+        handler. We should allow the existing versions of the app to do this to not break
+        them.
+
+        * wtf/spi/darwin/dyldSPI.h:
+            Added DYLD_IOS_VERSION_10_0.
+
+2016-06-21  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Add system tracing points for requestAnimationFrame() workflow
+        https://bugs.webkit.org/show_bug.cgi?id=158723
+
+        Reviewed by Simon Fraser.
+
+        Define new trace score codes for requestAnimationFrame().
+
+        * wtf/SystemTracing.h:
+        (WTF::TracePoint):
+        (WTF::TraceScope::TraceScope):
+        (WTF::TraceScope::~TraceScope):
+
+2016-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202136.
+        https://bugs.webkit.org/show_bug.cgi?id=158932
+
+        JSBench wasn't regressed by r202002 and r202111 on iOS after
+        all (Requested by rniwa_ on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r202002 and r202111."
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+        http://trac.webkit.org/changeset/202136
+
+2016-06-17  Chris Dumez  <cdumez@apple.com>
+
+        Optimize parseCacheHeader() by using StringView
+        https://bugs.webkit.org/show_bug.cgi?id=158891
+
+        Reviewed by Darin Adler.
+
+        Add a StringView::find() overload which takes a CharacterMatchFunction
+        to match the one on String.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::find):
+
+2016-06-17  Mark Lam  <mark.lam@apple.com>
+
+        OOM Assertion failure in JSON.stringify.
+        https://bugs.webkit.org/show_bug.cgi?id=158794
+        <rdar://problem/26826254>
+
+        Reviewed by Saam Barati.
+
+        The bug was actually in StringBuilder::appendQuotedJSONString() where it failed
+        to detect an imminent unsigned int overflow.  The fix is to use Checked<unsigned>
+        for the needed math, and RELEASE_ASSERT afterwards that we did not overflow.
+
+        I also added more assertions to detect sooner if any there are any problems with
+        StringBuilder's m_buffer or m_length being incorrectly sized.  These assertions
+        have been run on the JSC and layout tests without any issue.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::resize):
+        (WTF::StringBuilder::allocateBuffer):
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        (WTF::StringBuilder::reallocateBuffer<LChar>):
+        (WTF::StringBuilder::reallocateBuffer<UChar>):
+        (WTF::StringBuilder::reserveCapacity):
+        (WTF::StringBuilder::appendUninitializedSlow):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::swap):
+
+2016-06-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should be concurrent
+        https://bugs.webkit.org/show_bug.cgi?id=158755
+
+        Reviewed by Geoffrey Garen.
+        
+        The concurrent baseline JIT needs to be able to clone bytecode to get a consistent snapshot.
+        So, this adds such a method.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        (WTF::RefCountedArray::clone):
+
+2016-06-16  Chris Dumez  <cdumez@apple.com>
+
+        No need to ref connection in lambda inside NetworkResourceLoader::tryStoreAsCacheEntry()
+        https://bugs.webkit.org/show_bug.cgi?id=158862
+
+        Reviewed by Darin Adler.
+
+        Add NoncopyableFunction constructor that takes a nullptr_t in, in order
+        to match the std::function API and make porting from one to the other
+        easier.
+
+        * wtf/NoncopyableFunction.h:
+
+2016-06-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r202002 and r202111.
+
+        Ryosuke says this was a JSBench regression on iOS
+
+        Reverted changesets:
+
+        "Make HashMap and HashSet work with Refs"
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+        http://trac.webkit.org/changeset/202002
+
+        "Improve HashMap and HashSet support for Ref"
+        https://bugs.webkit.org/show_bug.cgi?id=158789
+        http://trac.webkit.org/changeset/202111
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        [Cocoa] Clean up / optimize ResourceResponse::platformLazyInit(InitLevel)
+        https://bugs.webkit.org/show_bug.cgi?id=158809
+
+        Reviewed by Darin Adler.
+
+        Add toAtomicString() method to StringView to avoid having to call toString()
+        and then atomizing the String at call sites.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::toAtomicString):
+
+2016-06-15  Sam Weinig  <sam@webkit.org>
+
+        Improve HashMap and HashSet support for Ref
+        https://bugs.webkit.org/show_bug.cgi?id=158789
+
+        Reviewed by Chris Dumez.
+
+        Tests: Add more cases to WTF_HashMap.Ref_Key, WTF_HashMap.Ref_Value and WTF_HashSet.Ref
+
+        * wtf/HashMap.h:
+        * wtf/HashSet.h:
+        Add a MappedTakeType typedef and rework the take functions to use it and HashTraits::take(...).
+
+        * wtf/HashTraits.h:
+        (WTF::GenericHashTraits::assignToEmpty):
+        Move to GenericHashTraits rather than GenericHashTraitsBase, since it is not different
+        between integral and non-integral HashTraits.
+
+        (WTF::GenericHashTraits::take):
+        Add a trait function for take that defaults as a forward. This allows us to override take
+        just like we do with get/peek.
+
+        (WTF::HashTraits<Ref<P>>::emptyValue):
+        Remove unnecessary explicit construction.
+
+        (WTF::HashTraits<Ref<P>>::peek):
+        Fix assertion that could happen if you did a HashMap.get() on an empty Ref value.
+
+        (WTF::HashTraits<Ref<P>>::take):
+        Make the TakeType of a Ref<P> be Optional<Ref<P>>, to avoid having empty
+        Refs returned from HashMap and HashSet. Implement an explicit take() function to
+        construct one.
+
+        (WTF::HashTraits<Ref<P>>::customDeleteBucket): Deleted.
+        Remove unnecessary customDeleteBucket implementation. Ref does not assign nullptr to
+        it's m_ptr in destruction, so there is no dead store to avoid here.
+
+        * wtf/Ref.h:
+        (WTF::Ref::ptrAllowingHashTableEmptyValue):
+        Add HashTrait helper to allow getting the value of m_ptr even when it is null. This
+        allows us to avoid a branch in HashTraits<Ref<P>>::peek().
+
+2016-06-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Only Mac port needs ObjC API for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=158780
+
+        Reviewed by Philippe Normand.
+
+        * wtf/FeatureDefines.h:
+
+2016-06-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow up patch for r202092
+        https://bugs.webkit.org/show_bug.cgi?id=158661
+
+        During checking Windows port on EWS, accidentally introduce the regression.
+
+        * wtf/Platform.h:
+
+2016-06-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Move calling convention flags to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=158661
+
+        Reviewed by Keith Miller.
+
+        * wtf/Platform.h:
+
 2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Honor bidi unicode codepoints
@@ -159,6 +506,8 @@
 
         Make platformUserPreferredLanguages() thread safe on Windows. The
         Mac and Unix implementations are already thread-safe.
+
+        HAS_FASTCALL_CALLING_CONVENTION is changed to COMPILER_SUPPORTS(FASTCALL_CALLING_CONVENTION).
 
 2016-06-10  Alex Christensen  <achristensen@webkit.org>
 

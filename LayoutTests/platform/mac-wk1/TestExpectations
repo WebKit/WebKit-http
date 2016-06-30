@@ -60,8 +60,7 @@ webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html
 
 webkit.org/b/154297 [ Debug ] fast/events/keydown-1.html [ Pass Failure ]
 
-webkit.org/b/155196 media/video-with-blob-url-allowed-by-csp-media-src-star.html [ Skip ]
-webkit.org/b/155196 media/video-with-data-url-allowed-by-csp-media-src-star.html [ Skip ]
+webkit.org/b/155196 security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html [ Skip ]
 
 webkit.org/b/153143 [ Yosemite ] media/track/track-in-band-style.html [ Pass Crash ]
 
@@ -180,6 +179,7 @@ inspector/script-profiler/event-type-API.html [ Skip ]
 inspector/heap/getPreview.html [ Skip ]
 inspector/heap/getRemoteObject.html [ Skip ]
 inspector/unit-tests/heap-snapshot.html [ Skip ]
+inspector/unit-tests/heap-snapshot-collection-event.html [ Skip ]
 
 # This test checks ScrollAnimator events only for main frame scrollbars that use native widgets in WK1.
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
@@ -211,3 +211,29 @@ webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ P
 fast/repaint/vertical-text-repaint.html [ Pass Failure ]
 
 webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
+
+# <rdar://problem/23421541>
+[ Sierra+ ] http/tests/navigation/forward-and-cancel.html [ Pass Failure ]
+
+# <rdar://problem/23431065>
+[ Sierra+ ] animations/animation-welcome-safari.html [ Pass Failure ]
+
+# <rdar://problem/23884199> Crashed in com.apple.WebKitLegacy: WebEditorClient::didCheckSucceed
+[ Sierra+ ] editing/spelling/spellcheck-attribute.html [ Pass Crash ]
+
+# <rdar://problem/24818712>
+[ Sierra+ ] editing/spelling/spelling-insert-html.html [ Pass Timeout ]
+
+# <rdar://problem/26399598>
+[ Sierra+ ] editing/spelling/spellcheck-async.html [ Failure ]
+[ Sierra+ ] editing/spelling/markers.html [ Failure ]
+[ Sierra+ ] editing/spelling/spelling-unified-emulation.html [ Failure ]
+
+# <rdar://problem/26050923> The result is probably still a pass, but we don't have a way
+# to have platform specific results that are different between WK1 and WK2.
+[ Sierra+ ] accessibility/mac/document-attributes.html [ Failure ]
+[ Sierra+ ] accessibility/parent-delete.html [ Failure ]
+
+# rdar://problem/26422051
+[ Sierra+ ] fast/html/marquee-scroll.html [ Failure ]
+[ Sierra+ ] fast/inline-block/003.html [ Failure ]

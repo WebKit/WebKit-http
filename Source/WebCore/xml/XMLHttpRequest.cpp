@@ -30,6 +30,7 @@
 #include "DOMFormData.h"
 #include "DOMImplementation.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "File.h"
 #include "HTMLDocument.h"
@@ -714,7 +715,6 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.setAllowCredentials((m_sameOriginRequest || m_includeCredentials) ? AllowStoredCredentials : DoNotAllowStoredCredentials);
     options.setCredentialRequest(m_includeCredentials ? ClientRequestedCredentials : ClientDidNotRequestCredentials);
     options.crossOriginRequestPolicy = UseAccessControl;
-    options.securityOrigin = securityOrigin();
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
 
@@ -797,7 +797,7 @@ bool XMLHttpRequest::internalAbort()
     // Cancelling m_loader may trigger a window.onload callback which can call open() on the same xhr.
     // This would create internalAbort reentrant call.
     // m_loader is set to null before being cancelled to exit early in any reentrant internalAbort() call.
-    RefPtr<ThreadableLoader> loader = m_loader.release();
+    auto loader = WTFMove(m_loader);
     loader->cancel();
 
     // If window.onload callback calls open() and send() on the same xhr, m_loader is now set to a new value.
@@ -1034,11 +1034,6 @@ void XMLHttpRequest::didFail(const ResourceError& error)
     }
 
     m_exceptionCode = NETWORK_ERR;
-    networkError();
-}
-
-void XMLHttpRequest::didFailRedirectCheck()
-{
     networkError();
 }
 

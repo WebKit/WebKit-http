@@ -179,15 +179,10 @@ static bool canShareStyleWithControl(const HTMLFormControlElement& element, cons
         return false;
     if (thisInputElement.shouldAppearChecked() != otherInputElement.shouldAppearChecked())
         return false;
-    if (thisInputElement.shouldAppearIndeterminate() != otherInputElement.shouldAppearIndeterminate())
-        return false;
     if (thisInputElement.isRequired() != otherInputElement.isRequired())
         return false;
 
     if (formElement.isDisabledFormControl() != element.isDisabledFormControl())
-        return false;
-
-    if (formElement.isDefaultButtonForForm() != element.isDefaultButtonForForm())
         return false;
 
     if (formElement.isInRange() != element.isInRange())
@@ -234,6 +229,8 @@ bool SharingResolver::canShareStyleWithElement(const Context& context, const Sty
     if (const_cast<StyledElement&>(candidateElement).additionalPresentationAttributeStyle() != const_cast<StyledElement&>(element).additionalPresentationAttributeStyle())
         return false;
     if (candidateElement.affectsNextSiblingElementStyle() || candidateElement.styleIsAffectedByPreviousSibling())
+        return false;
+    if (candidateElement.styleAffectedByFocusWithin() || element.styleAffectedByFocusWithin())
         return false;
 
     auto& candidateElementId = candidateElement.idForStyleResolution();
@@ -283,6 +280,12 @@ bool SharingResolver::canShareStyleWithElement(const Context& context, const Sty
     if (element.matchesInvalidPseudoClass() != element.matchesValidPseudoClass())
         return false;
 
+    if (candidateElement.matchesIndeterminatePseudoClass() != element.matchesIndeterminatePseudoClass())
+        return false;
+
+    if (candidateElement.matchesDefaultPseudoClass() != element.matchesDefaultPseudoClass())
+        return false;
+
     if (element.shadowRoot() && !element.shadowRoot()->styleResolver().ruleSets().authorStyle()->hostPseudoClassRules().isEmpty())
         return false;
 
@@ -328,11 +331,6 @@ bool SharingResolver::sharingCandidateHasIdenticalStyleAffectingAttributes(const
 
     if (const_cast<StyledElement&>(element).presentationAttributeStyle() != const_cast<StyledElement&>(sharingCandidate).presentationAttributeStyle())
         return false;
-
-    if (element.hasTagName(HTMLNames::progressTag)) {
-        if (element.shouldAppearIndeterminate() != sharingCandidate.shouldAppearIndeterminate())
-            return false;
-    }
 
     return true;
 }

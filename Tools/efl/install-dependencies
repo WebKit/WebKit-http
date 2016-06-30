@@ -70,7 +70,7 @@ function installDependenciesWithApt {
         libgeoclue-dev \
         libgif-dev \
         libgl1-mesa-dev \
-        libgnutls-dev \
+        libgnutls28-dev \
         libgpg-error-dev \
         libhyphen-dev \
         libicu-dev \
@@ -94,7 +94,6 @@ function installDependenciesWithApt {
         libxinerama-dev \
         libxrandr-dev \
         libxrender-dev \
-        libxslt1-dev \
         libxss-dev \
         libxt-dev \
         libxtst-dev \
@@ -111,9 +110,21 @@ function installDependenciesWithApt {
     # These are dependencies necessary for running tests.
     apt-get install \
         apache2 \
-        libapache2-mod-php5 \
         libruby \
         xvfb
+
+    installPHPWithApt
+}
+
+function installPHPWithApt {
+    if [ -f "/etc/os-release" ]; then
+        ubuntu_version=`grep VERSION_ID /etc/os-release`
+        if [[ $ubuntu_version == *VERSION_ID=\"16.04* ]]; then
+            apt-get install libapache2-mod-php7.0
+        else
+            apt-get install libapache2-mod-php5
+        fi
+    fi
 }
 
 checkInstaller

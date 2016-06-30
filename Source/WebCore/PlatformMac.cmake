@@ -307,6 +307,8 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/AudioSession.cpp
 
+    platform/audio/cocoa/MediaSessionManagerCocoa.cpp
+
     platform/audio/mac/AudioBusMac.mm
     platform/audio/mac/AudioDestinationMac.cpp
     platform/audio/mac/AudioFileReaderMac.cpp
@@ -314,7 +316,7 @@ list(APPEND WebCore_SOURCES
     platform/audio/mac/AudioSessionMac.cpp
     platform/audio/mac/CARingBuffer.cpp
     platform/audio/mac/FFTFrameMac.cpp
-    platform/audio/mac/MediaSessionManagerMac.cpp
+    platform/audio/mac/MediaSessionManagerMac.mm
 
     platform/cf/CFURLExtras.cpp
     platform/cf/CoreMediaSoftLink.cpp
@@ -475,6 +477,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/KillRingMac.mm
     platform/mac/LocalCurrentGraphicsContext.mm
     platform/mac/LoggingMac.mm
+    platform/mac/MediaRemoteSoftLink.cpp
     platform/mac/NSScrollerImpDetails.mm
     platform/mac/PasteboardMac.mm
     platform/mac/PlatformClockCA.cpp
@@ -485,6 +488,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/PlatformSpeechSynthesizerMac.mm
     platform/mac/PowerObserverMac.cpp
     platform/mac/PublicSuffixMac.mm
+    platform/mac/RemoteCommandListenerMac.mm
     platform/mac/SSLKeyGeneratorMac.cpp
     platform/mac/ScrollAnimatorMac.mm
     platform/mac/ScrollViewMac.mm
@@ -593,6 +597,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     style
     svg
 
+    Modules/applepay
     Modules/geolocation
     Modules/indexeddb
     Modules/notifications
@@ -640,6 +645,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/network
     platform/sql
     platform/text
+
+    platform/audio/cocoa
 
     platform/graphics/ca
     platform/graphics/cocoa
@@ -707,12 +714,12 @@ set(WebCore_FORWARDING_HEADERS_FILES
     platform/cf/RunLoopObserver.h
 
     platform/cocoa/MachSendRight.h
+    platform/cocoa/SoftLinking.h
 
     platform/graphics/cocoa/IOSurface.h
 
     platform/graphics/transforms/AffineTransform.h
 
-    platform/mac/SoftLinking.h
     platform/mac/WebCoreSystemInterface.h
 
     platform/network/cf/CertificateInfo.h

@@ -58,12 +58,13 @@ public:
     }
     ~ScriptedAnimationController();
     void clearDocumentPointer() { m_document = nullptr; }
+    bool requestAnimationFrameEnabled() const;
 
     typedef int CallbackId;
 
     CallbackId registerCallback(PassRefPtr<RequestAnimationFrameCallback>);
     void cancelCallback(CallbackId);
-    void serviceScriptedAnimations(double monotonicTimeNow);
+    void serviceScriptedAnimations(double timestamp);
 
     void suspend();
     void resume();
@@ -87,11 +88,11 @@ private:
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
     void animationTimerFired();
     Timer m_animationTimer;
-    double m_lastAnimationFrameTimeMonotonic { 0 };
+    double m_lastAnimationFrameTimestamp { 0 };
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     // Override for DisplayRefreshMonitorClient
-    void displayRefreshFired(double timestamp) override;
+    void displayRefreshFired() override;
     RefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
 
     bool m_isUsingTimer { false };

@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2016 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
  * Copyright (C) 2010 Google Inc. All rights reserved.
@@ -404,8 +404,8 @@ void HTMLInputElement::updateFocusAppearance(SelectionRestorationMode restoratio
             select(Element::defaultFocusTextStateChangeIntent());
         else
             restoreCachedSelection();
-        if (document().frame() && revealMode == SelectionRevealMode::Reveal)
-            document().frame()->selection().revealSelection();
+        if (document().frame())
+            document().frame()->selection().revealSelection(revealMode);
     } else
         HTMLTextFormControlElement::updateFocusAppearance(restorationMode, revealMode);
 }
@@ -465,6 +465,7 @@ void HTMLInputElement::updateType()
     bool didStoreValue = m_inputType->storesValueSeparateFromAttribute();
     bool neededSuspensionCallback = needsSuspensionCallback();
     bool didRespectHeightAndWidth = m_inputType->shouldRespectHeightAndWidthAttributes();
+    bool wasSuccessfulSubmitButtonCandidate = m_inputType->canBeSuccessfulSubmitButton();
 
     m_inputType->destroyShadowSubtree();
 
@@ -506,6 +507,9 @@ void HTMLInputElement::updateType()
         if (const Attribute* align = findAttributeByName(alignAttr))
             attributeChanged(alignAttr, nullAtom, align->value());
     }
+
+    if (form() && wasSuccessfulSubmitButtonCandidate != m_inputType->canBeSuccessfulSubmitButton())
+        form()->resetDefaultButton();
 
     runPostTypeUpdateTasks();
 }
@@ -677,6 +681,9 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         updateValidity();
         m_valueAttributeWasUpdatedAfterParsing = !m_parsingInProgress;
     } else if (name == checkedAttr) {
+        if (m_inputType->isCheckable())
+            setNeedsStyleRecalc();
+
         // Another radio button in the same group might be checked by state
         // restore. We shouldn't call setChecked() even if this has the checked
         // attribute. So, delay the setChecked() call until
@@ -816,6 +823,14 @@ bool HTMLInputElement::isSuccessfulSubmitButton() const
     return !isDisabledFormControl() && m_inputType->canBeSuccessfulSubmitButton();
 }
 
+bool HTMLInputElement::matchesDefaultPseudoClass() const
+{
+    ASSERT(m_inputType);
+    if (m_inputType->canBeSuccessfulSubmitButton())
+        return !isDisabledFormControl() && form() && form()->defaultButton() == this;
+    return m_inputType->isCheckable() && fastHasAttribute(checkedAttr);
+}
+
 bool HTMLInputElement::isActivatedSubmit() const
 {
     return m_isActivatedSubmit;
@@ -861,7 +876,7 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
     setNeedsStyleRecalc();
 
     if (RadioButtonGroups* buttons = radioButtonGroups())
-            buttons->updateCheckedState(this);
+        buttons->updateCheckedState(this);
     if (renderer() && renderer()->style().hasAppearance())
         renderer()->theme().stateChanged(*renderer(), ControlStates::CheckedState);
     updateValidity();
@@ -1370,12 +1385,12 @@ String HTMLInputElement::localizeValue(const String& proposedValue) const
 
 bool HTMLInputElement::isInRange() const
 {
-    return m_inputType->isInRange(value());
+    return willValidate() && m_inputType->isInRange(value());
 }
 
 bool HTMLInputElement::isOutOfRange() const
 {
-    return m_inputType->isOutOfRange(value());
+    return willValidate() && m_inputType->isOutOfRange(value());
 }
 
 bool HTMLInputElement::needsSuspensionCallback()
@@ -1763,9 +1778,21 @@ String HTMLInputElement::defaultToolTip() const
     return m_inputType->defaultToolTip();
 }
 
+bool HTMLInputElement::matchesIndeterminatePseudoClass() const
+{
+    // For input elements, matchesIndeterminatePseudoClass()
+    // is not equivalent to shouldAppearIndeterminate() because of radio button.
+    //
+    // A group of radio button without any checked button is indeterminate
+    // for the :indeterminate selector. On the other hand, RenderTheme
+    // currently only supports single element being indeterminate.
+    // Because of this, radio is indetermindate for CSS but not for render theme.
+    return m_inputType->matchesIndeterminatePseudoClass();
+}
+
 bool HTMLInputElement::shouldAppearIndeterminate() const 
 {
-    return m_inputType->supportsIndeterminateAppearance() && indeterminate();
+    return m_inputType->shouldAppearIndeterminate();
 }
 
 #if ENABLE(MEDIA_CAPTURE)
@@ -1801,12 +1828,12 @@ HTMLInputElement* HTMLInputElement::checkedRadioButtonForGroup() const
 RadioButtonGroups* HTMLInputElement::radioButtonGroups() const
 {
     if (!isRadioButton())
-        return 0;
+        return nullptr;
     if (HTMLFormElement* formElement = form())
         return &formElement->radioButtonGroups();
     if (inDocument())
         return &document().formController().radioButtonGroups();
-    return 0;
+    return nullptr;
 }
 
 inline void HTMLInputElement::addToRadioButtonGroup()

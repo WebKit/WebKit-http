@@ -124,7 +124,6 @@ function installDependenciesWithApt {
         libvorbis-dev \
         libwebp-dev \
         libxcomposite-dev \
-        libxslt1-dev \
         libxt-dev \
         libxtst-dev \
         libwayland-dev \
@@ -138,13 +137,13 @@ function installDependenciesWithApt {
         curl \
         dbus-x11 \
         libapache2-mod-bw \
-        libapache2-mod-php5 \
         libgpg-error-dev \
         pulseaudio-utils \
         python-gi \
         ruby \
         ruby-json \
         ruby-highline \
+        weston \
         xvfb"
 
     # These are dependencies necessary for building the jhbuild.
@@ -153,21 +152,30 @@ function installDependenciesWithApt {
         gobject-introspection \
         icon-naming-utils \
         libcroco3-dev \
+        libdrm-dev \
         libegl1-mesa-dev \
         libepoxy-dev \
+        libevdev-dev \
+        libexpat1-dev \
+        libgbm-dev \
         libgcrypt11-dev \
+        libgles2-mesa-dev \
         libgpg-error-dev \
         libjson-glib-dev \
+        libinput-dev \
+        libmtdev-dev \
         liborc-0.4-dev \
         libp11-kit-dev \
         libpciaccess-dev \
         libssl-dev \
         libtiff5-dev \
         libv4l-dev \
+        libxcb-composite0-dev \
         libxcb-xfixes0-dev \
         libxfont-dev \
         libxkbfile-dev \
         libtool-bin \
+        libudev-dev \
         llvm \
         llvm-dev \
         python-dev \
@@ -192,6 +200,8 @@ function installDependenciesWithApt {
         subversion"
 
     apt-get install $packages
+
+    installPHPWithApt
 }
 
 function installDependenciesWithPacman {
@@ -256,7 +266,6 @@ function installDependenciesWithPacman {
         libvorbis \
         libwebp \
         libxcomposite \
-        libxslt \
         libxt \
         libxtst \
         ninja \
@@ -279,25 +288,32 @@ function installDependenciesWithPacman {
         python-gobject \
         ruby \
         ruby-highline \
+        weston \
         xorg-server-xvfb"
 
     # These are dependencies necessary for building the jhbuild.
     # Note: Could not find libegl-mesa
     packages="$packages \
+        expat \
         git \
         gobject-introspection \
         icon-naming-utils \
         libcroco \
+        libdrm \
         libepoxy \
+        libevdev \
         libgcrypt \
         libgpg-error \
+        libinput \
         p11-kit \
         libpciaccess \
         libtiff \
         libxfixes \
         libxfont \
+        libxcb \
         libxkbfile \
         llvm \
+        mtdev \
         python2 \
         python2-lxml \
         ragel \
@@ -366,7 +382,6 @@ function installDependenciesWithDnf {
         libwebp-devel \
         libwayland-client-devel \
         libwayland-server-devel \
-        libxslt-devel \
         llvm \
         llvm-devel \
         llvm-static \
@@ -398,10 +413,12 @@ function installDependenciesWithDnf {
         ruby \
         rubygem-json \
         rubygem-highline \
+        weston-devel \
         xorg-x11-server-Xvfb"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
+        expat-devel \
         docbook-utils \
         docbook-utils-pdf \
         git \
@@ -410,15 +427,21 @@ function installDependenciesWithDnf {
         itstool \
         libXfont-devel \
         libcroco-devel \
+        libdrm-devel \
         libepoxy-devel \
+        libevdev-devel
         libgcrypt-devel \
         libgpg-error-devel \
+        libinput-devel \
         libp11-devel \
         libpciaccess-devel \
         libtiff-devel \
+        libxcb-devel \
         libxkbfile-devel \
         mesa-libEGL-devel \
+        mtdev-devel \
         ragel \
+        systemd-devel \
         xorg-x11-font-utils \
         xorg-x11-proto-devel \
         xorg-x11-util-macros \
@@ -430,6 +453,17 @@ function installDependenciesWithDnf {
         subversion"
 
     dnf install $packages
+}
+
+function installPHPWithApt {
+    if [ -f "/etc/os-release" ]; then
+        ubuntu_version=`grep VERSION_ID /etc/os-release`
+        if [[ $ubuntu_version == *VERSION_ID=\"16.04* ]]; then
+            apt-get install libapache2-mod-php7.0
+        else
+            apt-get install libapache2-mod-php5
+        fi
+    fi
 }
 
 checkInstaller

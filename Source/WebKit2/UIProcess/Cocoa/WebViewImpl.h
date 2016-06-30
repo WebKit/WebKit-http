@@ -33,6 +33,7 @@
 #include "WebPageProxy.h"
 #include "_WKOverlayScrollbarStyle.h"
 #include <WebCore/TextIndicatorWindow.h>
+#include <WebCore/UserInterfaceLayoutDirection.h>
 #include <functional>
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
@@ -485,6 +486,9 @@ public:
     void setRequiresUserActionForEditingControlsManager(bool requiresUserActionForEditingControlsManager) { m_requiresUserActionForEditingControlsManager = requiresUserActionForEditingControlsManager; }
     bool requiresUserActionForEditingControlsManager() const { return m_requiresUserActionForEditingControlsManager; }
 
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection();
+    void setUserInterfaceLayoutDirection(NSUserInterfaceLayoutDirection);
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 
     void handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidate);
 #if USE(APPLE_INTERNAL_SDK)
@@ -541,7 +545,6 @@ private:
     bool m_clipsToVisibleRect { false };
     bool m_needsViewFrameInWindowCoordinates;
     bool m_didScheduleWindowAndViewFrameUpdate { false };
-    bool m_isDeferringViewInWindowChanges { false };
     bool m_windowOcclusionDetectionEnabled { true };
 
     bool m_automaticallyAdjustsContentInsets { false };

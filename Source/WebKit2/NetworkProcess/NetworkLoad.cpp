@@ -75,6 +75,8 @@ NetworkLoad::~NetworkLoad()
 #if USE(NETWORK_SESSION)
     if (m_responseCompletionHandler)
         m_responseCompletionHandler(PolicyIgnore);
+    if (m_challengeCompletionHandler)
+        m_challengeCompletionHandler(AuthenticationChallengeDisposition::Cancel, { });
     if (m_task)
         m_task->clearClient();
 #endif
@@ -203,14 +205,14 @@ void NetworkLoad::setPendingDownload(PendingDownload& pendingDownload)
     m_task->setPendingDownload(pendingDownload);
 }
 
-void NetworkLoad::willPerformHTTPRedirection(ResourceResponse&& response, ResourceRequest&& request, RedirectCompletionHandler completionHandler)
+void NetworkLoad::willPerformHTTPRedirection(ResourceResponse&& response, ResourceRequest&& request, RedirectCompletionHandler&& completionHandler)
 {
     ASSERT(!m_redirectCompletionHandler);
-    m_redirectCompletionHandler = completionHandler;
+    m_redirectCompletionHandler = WTFMove(completionHandler);
     sharedWillSendRedirectedRequest(WTFMove(request), WTFMove(response));
 }
 
-void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, std::function<void(AuthenticationChallengeDisposition, const Credential&)> completionHandler)
+void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, ChallengeCompletionHandler&& completionHandler)
 {
     // NetworkResourceLoader does not know whether the request is cross origin, so Web process computes an applicable credential policy for it.
     ASSERT(m_parameters.clientCredentialPolicy != DoNotAskClientForCrossOriginCredentials);
@@ -225,28 +227,21 @@ void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, 
         return;
     }
 
-    m_challengeCompletionHandler = completionHandler;
+    m_challengeCompletionHandler = WTFMove(completionHandler);
     m_challenge = challenge;
 
-    if (m_client.isSynchronous()) {
-        // FIXME: We should ask the WebProcess like the asynchronous case below does.
-        // This is currently impossible as the WebProcess is blocked waiting on this synchronous load.
-        // It's possible that we can jump straight to the UI process to resolve this.
-        continueCanAuthenticateAgainstProtectionSpace(true);
-        return;
-    } else
-        m_client.canAuthenticateAgainstProtectionSpaceAsync(challenge.protectionSpace());
+    m_client.canAuthenticateAgainstProtectionSpaceAsync(challenge.protectionSpace());
 }
 
-void NetworkLoad::didReceiveResponseNetworkSession(ResourceResponse&& response, ResponseCompletionHandler completionHandler)
+void NetworkLoad::didReceiveResponseNetworkSession(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
 {
     ASSERT(isMainThread());
     if (m_task && m_task->pendingDownloadID().downloadID())
-        NetworkProcess::singleton().findPendingDownloadLocation(*m_task.get(), completionHandler, m_task->currentRequest());
+        NetworkProcess::singleton().findPendingDownloadLocation(*m_task.get(), WTFMove(completionHandler), m_task->currentRequest());
     else if (sharedDidReceiveResponse(WTFMove(response)) == NetworkLoadClient::ShouldContinueDidReceiveResponse::Yes)
         completionHandler(PolicyUse);
     else
-        m_responseCompletionHandler = completionHandler;
+        m_responseCompletionHandler = WTFMove(completionHandler);
 }
 
 void NetworkLoad::didReceiveData(Ref<SharedBuffer>&& buffer)
@@ -339,14 +334,6 @@ void NetworkLoad::canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle* han
         return;
     }
 
-    if (m_client.isSynchronous()) {
-        // FIXME: We should ask the WebProcess like the asynchronous case below does.
-        // This is currently impossible as the WebProcess is blocked waiting on this synchronous load.
-        // It's possible that we can jump straight to the UI process to resolve this.
-        continueCanAuthenticateAgainstProtectionSpace(true);
-        return;
-    }
-
     m_client.canAuthenticateAgainstProtectionSpaceAsync(protectionSpace);
 }
 #endif
@@ -365,12 +352,7 @@ void NetworkLoad::continueCanAuthenticateAgainstProtectionSpace(bool result)
             completionHandler(AuthenticationChallengeDisposition::RejectProtectionSpace, { });
         return;
     }
-    
-    if (m_challenge->protectionSpace().authenticationScheme() == ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested) {
-        completionHandler(AuthenticationChallengeDisposition::UseCredential, serverTrustCredential(*m_challenge));
-        return;
-    }
-    
+
     if (m_parameters.clientCredentialPolicy == DoNotAskClientForAnyCredentials) {
         completionHandler(AuthenticationChallengeDisposition::UseCredential, { });
         return;
@@ -378,9 +360,9 @@ void NetworkLoad::continueCanAuthenticateAgainstProtectionSpace(bool result)
     
     if (m_task) {
         if (auto* pendingDownload = m_task->pendingDownload())
-            NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(*pendingDownload, *m_challenge, completionHandler);
+            NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(*pendingDownload, *m_challenge, WTFMove(completionHandler));
         else
-            NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, *m_challenge, completionHandler);
+            NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, *m_challenge, WTFMove(completionHandler));
     }
 #endif
     if (m_handle)
@@ -447,14 +429,6 @@ void NetworkLoad::didReceiveAuthenticationChallenge(ResourceHandle* handle, cons
     }
 
     NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, challenge);
-}
-
-void NetworkLoad::didCancelAuthenticationChallenge(ResourceHandle* handle, const AuthenticationChallenge&)
-{
-    ASSERT_UNUSED(handle, handle == m_handle);
-
-    // This function is probably not needed (see <rdar://problem/8960124>).
-    notImplemented();
 }
 
 void NetworkLoad::receivedCancellation(ResourceHandle* handle, const AuthenticationChallenge&)

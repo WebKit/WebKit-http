@@ -712,7 +712,8 @@ private:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case GetClosureVar:
-        case GetFromArguments: {
+        case GetFromArguments:
+        case ToNumber: {
             setPrediction(m_currentNode->getHeapPrediction());
             break;
         }
@@ -783,6 +784,7 @@ private:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
+        case IsJSArray:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:
@@ -791,7 +793,8 @@ private:
         case IsObject:
         case IsObjectOrNull:
         case IsFunction:
-        case IsRegExpObject: {
+        case IsRegExpObject:
+        case IsTypedArrayView: {
             setPrediction(SpecBoolean);
             break;
         }
@@ -808,6 +811,10 @@ private:
             break;
         }
 
+        case CallObjectConstructor: {
+            setPrediction(SpecObject);
+            break;
+        }
         case SkipScope:
         case GetGlobalObject: {
             setPrediction(SpecObjectOther);

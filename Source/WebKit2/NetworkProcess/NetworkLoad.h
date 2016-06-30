@@ -66,9 +66,9 @@ public:
     DownloadID pendingDownloadID() { return m_task->pendingDownloadID(); }
     
     // NetworkDataTaskClient
-    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler) final;
-    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler) final;
-    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler) final;
+    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) final;
+    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&) final;
+    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) final;
     void didReceiveData(Ref<WebCore::SharedBuffer>&&) final;
     void didCompleteWithError(const WebCore::ResourceError&) final;
     void didBecomeDownload() final;
@@ -88,7 +88,6 @@ public:
     void cannotShowURL(WebCore::ResourceHandle*) override;
     bool shouldUseCredentialStorage(WebCore::ResourceHandle*) override;
     void didReceiveAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) override;
-    void didCancelAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) override;
     void receivedCancellation(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) override;
     bool usesAsyncCallbacks() override { return true; }
     bool loadingSynchronousXHR() override { return m_client.isSynchronous(); }

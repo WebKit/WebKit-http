@@ -33,10 +33,6 @@
 #include "ResourceLoadTiming.h"
 #include "URL.h"
 
-#if OS(SOLARIS)
-#include <sys/time.h> // For time_t structure.
-#endif
-
 namespace WebCore {
 
 class ResourceResponse;
@@ -70,6 +66,7 @@ public:
 
     bool isNull() const { return m_isNull; }
     WEBCORE_EXPORT bool isHTTP() const;
+    bool isSuccessful() const;
 
     WEBCORE_EXPORT const URL& url() const;
     WEBCORE_EXPORT void setURL(const URL&);
@@ -85,7 +82,7 @@ public:
 
     WEBCORE_EXPORT int httpStatusCode() const;
     WEBCORE_EXPORT void setHTTPStatusCode(int);
-    
+
     WEBCORE_EXPORT const String& httpStatusText() const;
     WEBCORE_EXPORT void setHTTPStatusText(const String&);
 
@@ -174,7 +171,6 @@ protected:
     static bool platformCompare(const ResourceResponse&, const ResourceResponse&) { return true; }
 
 private:
-    const ResourceResponse& asResourceResponse() const;
     void parseCacheControlDirectives() const;
     void updateHeaderParsedState(HTTPHeaderName);
 
@@ -189,7 +185,6 @@ protected:
     HTTPHeaderMap m_httpHeaderFields;
     mutable ResourceLoadTiming m_resourceLoadTiming;
 
-#define RESOURCE_RESPONSE_BASE_CERT_INFO_OPTIONAL
     mutable Optional<CertificateInfo> m_certificateInfo;
 
     int m_httpStatusCode;

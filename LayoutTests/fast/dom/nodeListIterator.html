@@ -39,15 +39,29 @@
             var node;
             var forEachIndex;
             var forEachContainer;
+            var thisValue;
             nodeList.forEach(function(n, i, c) {
                 node = n;
                 forEachIndex = i;
                 forEachContainer = c;
+                thisValue = this;
                 shouldBe('forEachContainer', 'nodeList');
                 shouldBe('forEachIndex', 'index');
                 shouldBe('node', 'children[index++]');
+                shouldBe('thisValue', 'window');
             });
-                                                                   
+
+            nodeList.forEach(function() {
+                thisValue = this;
+                shouldBe('thisValue', 'window');
+            }, undefined);
+
+            var givenThisValue = nodeList;
+            nodeList.forEach(function() {
+                thisValue = this;
+                shouldBe('thisValue', 'givenThisValue');
+            }, givenThisValue);
+
             var iterator = nodeList.keys();
             shouldBe('iterator.next().value', 'children[0]');
             shouldBe('iterator.next().value', 'children[1]');
@@ -73,6 +87,18 @@
             testingGround.appendChild(document.createElement('p'));
             checkEndIterator(iterator.next());
 
+            var descriptor = Object.getOwnPropertyDescriptor(NodeList.prototype, Symbol.iterator);
+            shouldBeTrue('descriptor.configurable');
+            shouldBeTrue('descriptor.writable');
+            shouldBeFalse('descriptor.enumerable');
+
+            shouldNotThrow('NodeList.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator];');
+            var counter = 0;
+            for (var a of nodeList) {
+                shouldBeTrue('a instanceof Node');
+                counter++;
+            }
+            shouldBe('counter', '4');
         </script>
         <script src="../../resources/js-test-post.js"></script>
     </body>

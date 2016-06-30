@@ -211,15 +211,6 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
 }
 #endif
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void WebResourceLoader::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace)
-{
-    bool result = m_coreLoader ? m_coreLoader->canAuthenticateAgainstProtectionSpace(protectionSpace) : false;
-
-    send(Messages::NetworkResourceLoader::ContinueCanAuthenticateAgainstProtectionSpace(result));
-}
-#endif
-
 bool WebResourceLoader::isAlwaysOnLoggingAllowed() const
 {
     return resourceLoader() && resourceLoader()->isAlwaysOnLoggingAllowed();

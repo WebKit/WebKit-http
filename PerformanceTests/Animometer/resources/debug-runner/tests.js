@@ -2,7 +2,7 @@ Utilities.extendObject(Strings.text, {
     samples: "Samples",
     complexity: "Time Complexity",
     frameRate: "FPS",
-    confidenceInterval: "95% Confidence Interval",
+    confidenceInterval: "80% Confidence Interval",
     mergedRawComplexity: "Raw Complexity",
     graph: "Graph"
 });
@@ -168,6 +168,10 @@ Suites.push(new Suite("HTML suite",
         {
             url: "dom/leaves.html",
             name: "Leaves 2.0"
+        },
+        {
+            url: "dom/focus.html",
+            name: "Focus 2.0"
         },
         {
             url: "dom/particles.html",

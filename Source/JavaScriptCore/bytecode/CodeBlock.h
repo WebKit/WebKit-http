@@ -262,6 +262,13 @@ public:
     // that there had been inlining. Chances are if you want to use this, you're really
     // looking for a CallLinkInfoMap to amortize the cost of calling this.
     CallLinkInfo* getCallLinkInfoForBytecodeIndex(unsigned bytecodeIndex);
+    
+    // We call this when we want to reattempt compiling something with the baseline JIT. Ideally
+    // the baseline JIT would not add data to CodeBlock, but instead it would put its data into
+    // a newly created JITCode, which could be thrown away if we bail on JIT compilation. Then we
+    // would be able to get rid of this silly function.
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=159061
+    void resetJITData();
 #endif // ENABLE(JIT)
 
     void unlinkIncomingCalls();
@@ -412,11 +419,7 @@ public:
         return valueProfile(index - numberOfArgumentValueProfiles());
     }
 
-    RareCaseProfile* addRareCaseProfile(int bytecodeOffset)
-    {
-        m_rareCaseProfiles.append(RareCaseProfile(bytecodeOffset));
-        return &m_rareCaseProfiles.last();
-    }
+    RareCaseProfile* addRareCaseProfile(int bytecodeOffset);
     unsigned numberOfRareCaseProfiles() { return m_rareCaseProfiles.size(); }
     RareCaseProfile* rareCaseProfileForBytecodeOffset(int bytecodeOffset);
     unsigned rareCaseProfileCountForBytecodeOffset(int bytecodeOffset);
@@ -440,33 +443,20 @@ public:
     ResultProfile* ensureResultProfile(int bytecodeOffset);
     ResultProfile* ensureResultProfile(const ConcurrentJITLocker&, int bytecodeOffset);
     unsigned numberOfResultProfiles() { return m_resultProfiles.size(); }
-    ResultProfile* resultProfileForBytecodeOffset(int bytecodeOffset);
     ResultProfile* resultProfileForBytecodeOffset(const ConcurrentJITLocker&, int bytecodeOffset);
 
-    unsigned specialFastCaseProfileCountForBytecodeOffset(int bytecodeOffset)
-    {
-        ResultProfile* profile = resultProfileForBytecodeOffset(bytecodeOffset);
-        if (!profile)
-            return 0;
-        return profile->specialFastPathCount();
-    }
+    unsigned specialFastCaseProfileCountForBytecodeOffset(const ConcurrentJITLocker&, int bytecodeOffset);
+    unsigned specialFastCaseProfileCountForBytecodeOffset(int bytecodeOffset);
 
-    bool couldTakeSpecialFastCase(int bytecodeOffset)
-    {
-        if (!hasBaselineJITProfiling())
-            return false;
-        unsigned specialFastCaseCount = specialFastCaseProfileCountForBytecodeOffset(bytecodeOffset);
-        return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount();
-    }
+    bool couldTakeSpecialFastCase(int bytecodeOffset);
 
     unsigned numberOfArrayProfiles() const { return m_arrayProfiles.size(); }
     const ArrayProfileVector& arrayProfiles() { return m_arrayProfiles; }
-    ArrayProfile* addArrayProfile(unsigned bytecodeOffset)
-    {
-        m_arrayProfiles.append(ArrayProfile(bytecodeOffset));
-        return &m_arrayProfiles.last();
-    }
+    ArrayProfile* addArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset);
+    ArrayProfile* addArrayProfile(unsigned bytecodeOffset);
+    ArrayProfile* getArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset);
     ArrayProfile* getArrayProfile(unsigned bytecodeOffset);
+    ArrayProfile* getOrAddArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset);
     ArrayProfile* getOrAddArrayProfile(unsigned bytecodeOffset);
 
     // Exception handling support
@@ -664,15 +654,9 @@ public:
         m_llintExecuteCounter.deferIndefinitely();
     }
 
-    void jitAfterWarmUp()
-    {
-        m_llintExecuteCounter.setNewThreshold(Options::thresholdForJITAfterWarmUp(), this);
-    }
-
-    void jitSoon()
-    {
-        m_llintExecuteCounter.setNewThreshold(Options::thresholdForJITSoon(), this);
-    }
+    int32_t thresholdForJIT(int32_t threshold);
+    void jitAfterWarmUp();
+    void jitSoon();
 
     const BaselineExecutionCounter& llintExecuteCounter() const
     {
@@ -874,6 +858,7 @@ public:
 
     bool m_allTransitionsHaveBeenMarked : 1; // Initialized and used on every GC.
 
+    bool m_didFailJITCompilation : 1;
     bool m_didFailFTLCompilation : 1;
     bool m_hasBeenCompiledWithFTL : 1;
     bool m_isConstructor : 1;

@@ -38,6 +38,7 @@
 #include "DateTimeInputType.h"
 #include "DateTimeLocalInputType.h"
 #include "EmailInputType.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodePlaceholder.h"
 #include "FileInputType.h"
@@ -338,24 +339,30 @@ bool InputType::isInRange(const String& value) const
     if (!isSteppable())
         return false;
 
+    StepRange stepRange(createStepRange(RejectAny));
+    if (!stepRange.hasRangeLimitations())
+        return false;
+    
     const Decimal numericValue = parseToNumberOrNaN(value);
     if (!numericValue.isFinite())
         return true;
 
-    StepRange stepRange(createStepRange(RejectAny));
     return numericValue >= stepRange.minimum() && numericValue <= stepRange.maximum();
 }
 
 bool InputType::isOutOfRange(const String& value) const
 {
-    if (!isSteppable())
+    if (!isSteppable() || value.isEmpty())
+        return false;
+
+    StepRange stepRange(createStepRange(RejectAny));
+    if (!stepRange.hasRangeLimitations())
         return false;
 
     const Decimal numericValue = parseToNumberOrNaN(value);
     if (!numericValue.isFinite())
         return true;
 
-    StepRange stepRange(createStepRange(RejectAny));
     return numericValue < stepRange.minimum() || numericValue > stepRange.maximum();
 }
 
@@ -959,7 +966,12 @@ Optional<Decimal> InputType::findClosestTickMarkValue(const Decimal&)
 }
 #endif
 
-bool InputType::supportsIndeterminateAppearance() const
+bool InputType::matchesIndeterminatePseudoClass() const
+{
+    return false;
+}
+
+bool InputType::shouldAppearIndeterminate() const
 {
     return false;
 }

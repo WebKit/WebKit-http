@@ -436,7 +436,7 @@ bool WKBundlePageFindString(WKBundlePageRef pageRef, WKStringRef target, WKFindO
 WKImageRef WKBundlePageCreateSnapshotWithOptions(WKBundlePageRef pageRef, WKRect rect, WKSnapshotOptions options)
 {
     RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), 1, toSnapshotOptions(options));
-    return toAPI(webImage.release().leakRef());
+    return toAPI(webImage.leakRef());
 }
 
 WKImageRef WKBundlePageCreateSnapshotInViewCoordinates(WKBundlePageRef pageRef, WKRect rect, WKImageOptions options)
@@ -444,19 +444,19 @@ WKImageRef WKBundlePageCreateSnapshotInViewCoordinates(WKBundlePageRef pageRef, 
     SnapshotOptions snapshotOptions = snapshotOptionsFromImageOptions(options);
     snapshotOptions |= SnapshotOptionsInViewCoordinates;
     RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), 1, snapshotOptions);
-    return toAPI(webImage.release().leakRef());
+    return toAPI(webImage.leakRef());
 }
 
 WKImageRef WKBundlePageCreateSnapshotInDocumentCoordinates(WKBundlePageRef pageRef, WKRect rect, WKImageOptions options)
 {
     RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), 1, snapshotOptionsFromImageOptions(options));
-    return toAPI(webImage.release().leakRef());
+    return toAPI(webImage.leakRef());
 }
 
 WKImageRef WKBundlePageCreateScaledSnapshotInDocumentCoordinates(WKBundlePageRef pageRef, WKRect rect, double scaleFactor, WKImageOptions options)
 {
     RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), scaleFactor, snapshotOptionsFromImageOptions(options));
-    return toAPI(webImage.release().leakRef());
+    return toAPI(webImage.leakRef());
 }
 
 double WKBundlePageGetBackingScaleFactor(WKBundlePageRef pageRef)
@@ -626,7 +626,7 @@ void WKBundlePagePostSynchronousMessageForTesting(WKBundlePageRef pageRef, WKStr
     RefPtr<API::Object> returnData;
     page->postSynchronousMessageForTesting(toWTFString(messageNameRef), toImpl(messageBodyRef), returnData);
     if (returnDataRef)
-        *returnDataRef = toAPI(returnData.release().leakRef());
+        *returnDataRef = toAPI(returnData.leakRef());
 }
 
 void WKBundlePageAddUserScript(WKBundlePageRef pageRef, WKStringRef source, _WKUserScriptInjectionTime injectionTime, WKUserContentInjectedFrames injectedFrames)

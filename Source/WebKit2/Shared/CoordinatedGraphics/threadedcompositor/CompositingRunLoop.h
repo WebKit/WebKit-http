@@ -42,8 +42,8 @@ class CompositingRunLoop {
 public:
     CompositingRunLoop(std::function<void ()>&&);
 
-    void performTask(NoncopyableFunction<void ()>&&);
-    void performTaskSync(NoncopyableFunction<void ()>&&);
+    void performTask(Function<void ()>&&);
+    void performTaskSync(Function<void ()>&&);
 
     bool isActive();
     void scheduleUpdate();

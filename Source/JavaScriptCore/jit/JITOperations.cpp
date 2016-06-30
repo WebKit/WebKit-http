@@ -93,8 +93,10 @@ void JIT_OPERATION operationThrowStackOverflowError(ExecState* exec, CodeBlock* 
 
     VMEntryFrame* vmEntryFrame = vm->topVMEntryFrame;
     CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
-    if (!callerFrame)
+    if (!callerFrame) {
         callerFrame = exec;
+        vmEntryFrame = vm->topVMEntryFrame;
+    }
 
     NativeCallFrameTracerWithRestore tracer(vm, vmEntryFrame, callerFrame);
     throwStackOverflowError(callerFrame);
@@ -1388,6 +1390,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, int32_t byte
         }
 
         codeBlock->optimizeSoon();
+        codeBlock->unlinkedCodeBlock()->setDidOptimize(TrueTriState);
         return encodeResult(vm.getCTIStub(DFG::osrEntryThunkGenerator).code().executableAddress(), dataBuffer);
     }
 
@@ -2075,7 +2078,7 @@ void JIT_OPERATION operationPutToScope(ExecState* exec, Instruction* bytecodePC)
         JSLexicalEnvironment* environment = jsCast<JSLexicalEnvironment*>(scope);
         environment->variableAt(ScopeOffset(pc[6].u.operand)).set(vm, environment, value);
         if (WatchpointSet* set = pc[5].u.watchpointSet)
-            set->touch("Executed op_put_scope<LocalClosureVar>");
+            set->touch(vm, "Executed op_put_scope<LocalClosureVar>");
         return;
     }
 

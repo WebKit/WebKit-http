@@ -31,6 +31,7 @@
 #include "MediaPlayer.h"
 #include "PlatformMediaSession.h"
 #include "Timer.h"
+#include <wtf/TypeCasts.h>
 
 namespace WebCore {
 
@@ -53,7 +54,7 @@ public:
     bool pageAllowsDataLoading(const HTMLMediaElement&) const;
     bool pageAllowsPlaybackAfterResuming(const HTMLMediaElement&) const;
 
-    bool canControlControlsManager(const HTMLMediaElement&) const;
+    bool canControlControlsManager() const override;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void showPlaybackTargetPicker(const HTMLMediaElement&);
@@ -86,16 +87,15 @@ public:
         RequirePageConsentToLoadMedia = 1 << 3,
         RequirePageConsentToResumeMedia = 1 << 4,
         RequireUserGestureForAudioRateChange = 1 << 5,
-#if ENABLE(WIRELESS_PLAYBACK_TARGET)
         RequireUserGestureToShowPlaybackTargetPicker = 1 << 6,
         WirelessVideoPlaybackDisabled =  1 << 7,
         RequireUserGestureToAutoplayToExternalDevice = 1 << 8,
-#endif
         MetadataPreloadingNotPermitted = 1 << 9,
         AutoPreloadingNotPermitted = 1 << 10,
         InvisibleAutoplayNotPermitted = 1 << 11,
         OverrideUserGestureRequirementForMainContent = 1 << 12,
         RequireUserGestureToControlControlsManager = 1 << 13,
+        AllRestrictions = ~NoRestrictions,
     };
     typedef unsigned BehaviorRestrictions;
 
@@ -107,6 +107,8 @@ public:
 #if ENABLE(MEDIA_SOURCE)
     size_t maximumMediaSourceBufferSize(const SourceBuffer&) const;
 #endif
+
+    HTMLMediaElement& element() const { return m_element; }
 
 private:
 
@@ -143,6 +145,10 @@ private:
 
 }
 
-#endif // MediaElementSession_h
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::MediaElementSession)
+static bool isType(const WebCore::PlatformMediaSession& session) { return session.mediaType() == WebCore::PlatformMediaSession::Video || session.mediaType() == WebCore::PlatformMediaSession::Audio; }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(VIDEO)
+
+#endif // MediaElementSession_h

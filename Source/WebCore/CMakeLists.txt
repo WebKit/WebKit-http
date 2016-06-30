@@ -5,6 +5,7 @@ set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
 set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/airplay"
+    "${WEBCORE_DIR}/Modules/applepay"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/fetch"
@@ -1202,7 +1203,6 @@ set(WebCore_SOURCES
     bindings/js/JSPopStateEventCustom.cpp
     bindings/js/JSReadableStreamPrivateConstructors.cpp
     bindings/js/JSReadableStreamSourceCustom.cpp
-    bindings/js/JSRTCPeerConnectionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
@@ -1896,6 +1896,7 @@ set(WebCore_SOURCES
     inspector/NetworkResourcesData.cpp
     inspector/PageConsoleAgent.cpp
     inspector/PageDebuggerAgent.cpp
+    inspector/PageHeapAgent.cpp
     inspector/PageRuntimeAgent.cpp
     inspector/PageScriptDebugServer.cpp
     inspector/TimelineRecordFactory.cpp
@@ -2114,6 +2115,7 @@ set(WebCore_SOURCES
     platform/DisplaySleepDisabler.cpp
     platform/DragData.cpp
     platform/DragImage.cpp
+    platform/EventTrackingRegions.cpp
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
@@ -2379,6 +2381,7 @@ set(WebCore_SOURCES
     platform/text/TextCodec.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextCodecLatin1.cpp
+    platform/text/TextCodecReplacement.cpp
     platform/text/TextCodecUTF16.cpp
     platform/text/TextCodecUTF8.cpp
     platform/text/TextCodecUserDefined.cpp
@@ -2533,12 +2536,10 @@ set(WebCore_SOURCES
     rendering/mathml/RenderMathMLMath.cpp
     rendering/mathml/RenderMathMLMenclose.cpp
     rendering/mathml/RenderMathMLOperator.cpp
-    rendering/mathml/RenderMathMLRadicalOperator.cpp
     rendering/mathml/RenderMathMLRoot.cpp
     rendering/mathml/RenderMathMLRow.cpp
     rendering/mathml/RenderMathMLScripts.cpp
     rendering/mathml/RenderMathMLSpace.cpp
-    rendering/mathml/RenderMathMLSquareRoot.cpp
     rendering/mathml/RenderMathMLToken.cpp
     rendering/mathml/RenderMathMLUnderOver.cpp
 
@@ -2651,6 +2652,7 @@ set(WebCore_SOURCES
     style/RenderTreeUpdater.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
+    style/StylePendingResources.cpp
     style/StyleRelations.cpp
     style/StyleResolveForDocument.cpp
     style/StyleSharingResolver.cpp

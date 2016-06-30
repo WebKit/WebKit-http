@@ -29,6 +29,7 @@
 #if ENABLE(MATHML)
 
 #include "Event.h"
+#include "EventNames.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "MathMLNames.h"
@@ -117,7 +118,7 @@ int MathMLSelectElement::getSelectedActionChildAndIndex(Element*& selectedChild)
     int selection = fastGetAttribute(MathMLNames::selectionAttr).toInt();
     int i;
     for (i = 1; i < selection; i++) {
-        Element* nextChild = selectedChild->nextElementSibling();
+        auto* nextChild = selectedChild->nextElementSibling();
         if (!nextChild)
             break;
         selectedChild = nextChild;
@@ -130,7 +131,7 @@ Element* MathMLSelectElement::getSelectedActionChild()
 {
     ASSERT(hasTagName(mactionTag));
 
-    Element* child = firstElementChild();
+    auto* child = firstElementChild();
     if (!child)
         return child;
 
@@ -154,7 +155,7 @@ Element* MathMLSelectElement::getSelectedSemanticsChild()
 {
     ASSERT(hasTagName(semanticsTag));
 
-    Element* child = firstElementChild();
+    auto* child = firstElementChild();
     if (!child)
         return nullptr;
 
@@ -196,7 +197,7 @@ Element* MathMLSelectElement::getSelectedSemanticsChild()
 
 void MathMLSelectElement::updateSelectedChild()
 {
-    Element* newSelectedChild = hasTagName(mactionTag) ? getSelectedActionChild() : getSelectedSemanticsChild();
+    auto* newSelectedChild = hasTagName(mactionTag) ? getSelectedActionChild() : getSelectedSemanticsChild();
 
     if (m_selectedChild == newSelectedChild)
         return;

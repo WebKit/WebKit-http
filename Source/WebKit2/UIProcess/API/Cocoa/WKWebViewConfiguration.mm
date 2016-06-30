@@ -122,9 +122,10 @@ private:
     BOOL _imageControlsEnabled;
     BOOL _requiresUserActionForEditingControlsManager;
 #endif
+    BOOL _initialCapitalizationEnabled;
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewConfigurationIvars.mm>
+#if ENABLE(APPLE_PAY)
+    BOOL _applePayEnabled;
 #endif
 }
 
@@ -171,6 +172,7 @@ private:
     _imageControlsEnabled = NO;
     _requiresUserActionForEditingControlsManager = NO;
 #endif
+    _initialCapitalizationEnabled = YES;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     _allowsAirPlayForMediaPlayback = YES;
@@ -278,6 +280,7 @@ private:
     configuration->_attachmentElementEnabled = self->_attachmentElementEnabled;
     configuration->_mediaTypesRequiringUserActionForPlayback = self->_mediaTypesRequiringUserActionForPlayback;
     configuration->_mainContentUserGestureOverrideEnabled = self->_mainContentUserGestureOverrideEnabled;
+    configuration->_initialCapitalizationEnabled = self->_initialCapitalizationEnabled;
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
@@ -300,9 +303,8 @@ private:
 #if ENABLE(WIRELESS_TARGET_PLAYBACK)
     configuration->_allowsAirPlayForMediaPlayback = self->_allowsAirPlayForMediaPlayback;
 #endif
-
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewConfigurationCopy.mm>
+#if ENABLE(APPLE_PAY)
+    configuration->_applePayEnabled = self->_applePayEnabled;
 #endif
 
     return configuration;
@@ -649,6 +651,16 @@ static NSString *defaultApplicationNameForUserAgent()
     _mainContentUserGestureOverrideEnabled = mainContentUserGestureOverrideEnabled;
 }
 
+- (BOOL)_initialCapitalizationEnabled
+{
+    return _initialCapitalizationEnabled;
+}
+
+- (void)_setInitialCapitalizationEnabled:(BOOL)initialCapitalizationEnabled
+{
+    _initialCapitalizationEnabled = initialCapitalizationEnabled;
+}
+
 #if PLATFORM(MAC)
 - (BOOL)_showsURLsInToolTips
 {
@@ -692,9 +704,31 @@ static NSString *defaultApplicationNameForUserAgent()
 
 #endif // PLATFORM(MAC)
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewConfigurationPrivateMethods.mm>
+- (BOOL)_applePayEnabled
+{
+#if ENABLE(APPLE_PAY)
+    return _applePayEnabled;
+#else
+    return NO;
 #endif
+}
+
+- (void)_setApplePayEnabled:(BOOL)applePayEnabled
+{
+#if ENABLE(APPLE_PAY)
+    _applePayEnabled = applePayEnabled;
+#endif
+}
+
+- (BOOL)_paymentsEnabled
+{
+    return self._applePayEnabled;
+}
+
+- (void)_setPaymentsEnabled:(BOOL)paymentsEnabled
+{
+    [self _setApplePayEnabled:paymentsEnabled];
+}
 
 @end
 

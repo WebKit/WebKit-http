@@ -39,11 +39,6 @@
 
 namespace WebCore {
 
-inline const ResourceResponse& ResourceResponseBase::asResourceResponse() const
-{
-    return *static_cast<const ResourceResponse*>(this);
-}
-
 ResourceResponseBase::ResourceResponseBase()
     : m_isNull(true)
     , m_expectedContentLength(0)
@@ -191,6 +186,12 @@ void ResourceResponseBase::includeCertificateInfo() const
 String ResourceResponseBase::suggestedFilename() const
 {
     return static_cast<const ResourceResponse*>(this)->platformSuggestedFilename();
+}
+
+bool ResourceResponseBase::isSuccessful() const
+{
+    int code = httpStatusCode();
+    return code >= 200 && code < 300;
 }
 
 int ResourceResponseBase::httpStatusCode() const

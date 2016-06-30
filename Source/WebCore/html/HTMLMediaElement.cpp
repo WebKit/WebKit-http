@@ -155,10 +155,6 @@
 #include <bindings/ScriptObject.h>
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/HTMLMediaElementAdditions.cpp>
-#endif
-
 namespace WebCore {
 
 static const double SeekRepeatDelay = 0.1;
@@ -596,6 +592,7 @@ void HTMLMediaElement::registerWithDocument(Document& document)
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (m_mediaControlsDependOnPageScaleFactor)
         document.registerForPageScaleFactorChangedCallbacks(this);
+    document.registerForUserInterfaceLayoutDirectionChangedCallbacks(*this);
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -630,6 +627,7 @@ void HTMLMediaElement::unregisterWithDocument(Document& document)
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (m_mediaControlsDependOnPageScaleFactor)
         document.unregisterForPageScaleFactorChangedCallbacks(this);
+    document.unregisterForUserInterfaceLayoutDirectionChangedCallbacks(*this);
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -1757,6 +1755,8 @@ void HTMLMediaElement::audioTrackEnabledChanged(AudioTrack* track)
     ASSERT(track);
     if (m_audioTracks && m_audioTracks->contains(*track))
         m_audioTracks->scheduleChangeEvent();
+    if (ScriptController::processingUserGestureForMedia())
+        removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
 }
 
 void HTMLMediaElement::textTrackModeChanged(TextTrack* track)
@@ -3332,12 +3332,13 @@ void HTMLMediaElement::setMuted(bool muted)
 {
     LOG(Media, "HTMLMediaElement::setMuted(%p) - %s", this, boolString(muted));
 
-#if PLATFORM(IOS)
-    UNUSED_PARAM(muted);
-#else
     if (m_muted != muted || !m_explicitlyMuted) {
         m_muted = muted;
         m_explicitlyMuted = true;
+
+        if (ScriptController::processingUserGestureForMedia())
+            removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
+
         // Avoid recursion when the player reports volume changes.
         if (!processingMediaPlayerCallback()) {
             if (m_player) {
@@ -3360,7 +3361,6 @@ void HTMLMediaElement::setMuted(bool muted)
         updateMediaState(UpdateMediaState::Asynchronously);
 #endif
     }
-#endif
 
     updatePlaybackControlsManager();
 }
@@ -5088,6 +5088,7 @@ void HTMLMediaElement::stop()
 {
     LOG(Media, "HTMLMediaElement::stop(%p)", this);
 
+    Ref<HTMLMediaElement> protectedThis(*this);
     stopWithoutDestroyingMediaPlayer();
 
     m_asyncEventQueue.close();
@@ -5105,6 +5106,7 @@ void HTMLMediaElement::stop()
 void HTMLMediaElement::suspend(ReasonForSuspension why)
 {
     LOG(Media, "HTMLMediaElement::suspend(%p)", this);
+    Ref<HTMLMediaElement> protectedThis(*this);
 
     switch (why)
     {
@@ -5217,6 +5219,8 @@ void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPl
     configureMediaControls();
     scheduleEvent(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
     m_mediaSession->isPlayingToWirelessPlaybackTargetChanged(m_isPlayingToWirelessTarget);
+    if (m_isPlayingToWirelessTarget)
+        m_mediaSession->setCanProduceAudio(true);
     updateMediaState(UpdateMediaState::Asynchronously);
 }
 
@@ -6401,9 +6405,10 @@ void HTMLMediaElement::requestInstallMissingPlugins(const String& details, const
 }
 #endif
 
-void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
+void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::BehaviorRestrictions mask)
 {
-    MediaElementSession::BehaviorRestrictions restrictionsToRemove = MediaElementSession::RequireUserGestureForLoad
+    MediaElementSession::BehaviorRestrictions restrictionsToRemove = mask &
+        (MediaElementSession::RequireUserGestureForLoad
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         | MediaElementSession::RequireUserGestureToShowPlaybackTargetPicker
         | MediaElementSession::RequireUserGestureToAutoplayToExternalDevice
@@ -6413,26 +6418,21 @@ void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
         | MediaElementSession::RequireUserGestureForAudioRateChange
         | MediaElementSession::RequireUserGestureForFullscreen
         | MediaElementSession::InvisibleAutoplayNotPermitted
-        | MediaElementSession::RequireUserGestureToControlControlsManager;
+        | MediaElementSession::RequireUserGestureToControlControlsManager);
+
     m_mediaSession->removeBehaviorRestriction(restrictionsToRemove);
 }
 
 #if ENABLE(MEDIA_SOURCE)
 RefPtr<VideoPlaybackQuality> HTMLMediaElement::getVideoPlaybackQuality()
 {
-#if ENABLE(WEB_TIMING)
     DOMWindow* domWindow = document().domWindow();
-    Performance* performance = domWindow ? domWindow->performance() : nullptr;
-    double now = performance ? performance->now() : 0;
-#else
-    DocumentLoader* loader = document().loader();
-    double now = loader ? 1000.0 * loader->timing().monotonicTimeToZeroBasedDocumentTime(monotonicallyIncreasingTime()) : 0;
-#endif
+    double timestamp = domWindow ? 1000 * domWindow->nowTimestamp() : 0;
 
     if (!m_player)
-        return VideoPlaybackQuality::create(now, 0, 0, 0, 0);
+        return VideoPlaybackQuality::create(timestamp, 0, 0, 0, 0);
 
-    return VideoPlaybackQuality::create(now,
+    return VideoPlaybackQuality::create(timestamp,
         m_droppedVideoFrames + m_player->totalVideoFrames(),
         m_droppedVideoFrames + m_player->droppedVideoFrames(),
         m_player->corruptedVideoFrames(),
@@ -6484,13 +6484,40 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     return true;
 }
 
-static void setPageScaleFactorProperty(JSC::ExecState* exec, JSC::JSValue controllerValue, float pageScaleFactor)
+void HTMLMediaElement::updatePageScaleFactorJSProperty()
 {
+    Page* page = document().page();
+    if (!page)
+        return;
+
+    setControllerJSProperty("pageScaleFactor", JSC::jsNumber(page->pageScaleFactor()));
+}
+
+void HTMLMediaElement::updateUsesLTRUserInterfaceLayoutDirectionJSProperty()
+{
+    Page* page = document().page();
+    if (!page)
+        return;
+
+    bool usesLTRUserInterfaceLayoutDirectionProperty = page->userInterfaceLayoutDirection() == UserInterfaceLayoutDirection::LTR;
+    setControllerJSProperty("usesLTRUserInterfaceLayoutDirection", JSC::jsBoolean(usesLTRUserInterfaceLayoutDirectionProperty));
+}
+
+void HTMLMediaElement::setControllerJSProperty(const char* propertyName, JSC::JSValue propertyValue)
+{
+    DOMWrapperWorld& world = ensureIsolatedWorld();
+    ScriptController& scriptController = document().frame()->script();
+    JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(world));
+    JSC::ExecState* exec = globalObject->globalExec();
+    JSC::JSLockHolder lock(exec);
+
+    JSC::JSValue controllerValue = controllerJSValue(*exec, *globalObject, *this);
     JSC::PutPropertySlot propertySlot(controllerValue);
     JSC::JSObject* controllerObject = controllerValue.toObject(exec);
     if (!controllerObject)
         return;
-    controllerObject->methodTable()->put(controllerObject, exec, JSC::Identifier::fromString(exec, "pageScaleFactor"), JSC::jsNumber(pageScaleFactor), propertySlot);
+
+    controllerObject->methodTable()->put(controllerObject, exec, JSC::Identifier::fromString(exec, propertyName), propertyValue, propertySlot);
 }
 
 void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
@@ -6567,7 +6594,8 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 
     mediaControlsHostJSWrapperObject->putDirect(exec->vm(), controller, controllerValue, JSC::DontDelete | JSC::DontEnum | JSC::ReadOnly);
 
-    setPageScaleFactorProperty(exec, controllerValue, page->pageScaleFactor());
+    updatePageScaleFactorJSProperty();
+    updateUsesLTRUserInterfaceLayoutDirectionJSProperty();
 
     if (exec->hadException())
         exec->clearException();
@@ -6631,20 +6659,12 @@ void HTMLMediaElement::updateMediaControlsAfterPresentationModeChange()
 
 void HTMLMediaElement::pageScaleFactorChanged()
 {
-    Page* page = document().page();
-    if (!page)
-        return;
+    updatePageScaleFactorJSProperty();
+}
 
-    LOG(Media, "HTMLMediaElement::pageScaleFactorChanged(%p) = %f", this, page->pageScaleFactor());
-    DOMWrapperWorld& world = ensureIsolatedWorld();
-    ScriptController& scriptController = document().frame()->script();
-    JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(world));
-    JSC::ExecState* exec = globalObject->globalExec();
-    JSC::JSLockHolder lock(exec);
-
-    JSC::JSValue controllerValue = controllerJSValue(*exec, *globalObject, *this);
-
-    setPageScaleFactorProperty(exec, controllerValue, page->pageScaleFactor());
+void HTMLMediaElement::userInterfaceLayoutDirectionChanged()
+{
+    updateUsesLTRUserInterfaceLayoutDirectionJSProperty();
 }
 
 String HTMLMediaElement::getCurrentMediaControlsStatus()
@@ -6837,6 +6857,11 @@ void HTMLMediaElement::updateMediaState(UpdateMediaState updateState)
 
     m_mediaState = state;
     m_mediaSession->mediaStateDidChange(*this, m_mediaState);
+#if ENABLE(MEDIA_SESSION)
+    document().updateIsPlayingMedia(m_elementID);
+#else
+    document().updateIsPlayingMedia();
+#endif
 }
 #endif
 
@@ -7067,13 +7092,16 @@ void HTMLMediaElement::updatePlaybackControlsManager()
     if (!page)
         return;
 
-    if (m_mediaSession->canControlControlsManager(*this))
-        page->chrome().client().setUpPlaybackControlsManager(*this);
+    PlatformMediaSession* session = PlatformMediaSessionManager::sharedManager().currentSessionMatching([] (const PlatformMediaSession& session) {
+        return session.canControlControlsManager();
+    });
+
+    if (!is<MediaElementSession>(session))
+        page->chrome().client().clearPlaybackControlsManager();
     else
-        page->chrome().client().clearPlaybackControlsManager(*this);
+        page->chrome().client().setUpPlaybackControlsManager(downcast<MediaElementSession>(session)->element());
 }
 
-#if !USE(APPLE_INTERNAL_SDK)
 bool HTMLMediaElement::shouldOverrideBackgroundLoadingRestriction() const
 {
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -7081,14 +7109,17 @@ bool HTMLMediaElement::shouldOverrideBackgroundLoadingRestriction() const
         return true;
 #endif
 
-    return false;
+    return m_videoFullscreenMode == VideoFullscreenModePictureInPicture;
 }
 
 void HTMLMediaElement::fullscreenModeChanged(VideoFullscreenMode mode)
 {
+    if (m_videoFullscreenMode == mode)
+        return;
+
     m_videoFullscreenMode = mode;
+    m_mediaSession->scheduleClientDataBufferingCheck();
 }
-#endif
 
 }
 

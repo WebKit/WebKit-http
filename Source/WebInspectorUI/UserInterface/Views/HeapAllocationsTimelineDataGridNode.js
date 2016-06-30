@@ -36,7 +36,11 @@ WebInspector.HeapAllocationsTimelineDataGridNode = class HeapAllocationsTimeline
             name: this.displayName(),
             timestamp: zeroTime ? this._record.timestamp - zeroTime : NaN,
             size: this._record.heapSnapshot.totalSize,
+            liveSize: this._record.heapSnapshot.liveSize,
         };
+
+        this._record.heapSnapshot.addEventListener(WebInspector.HeapSnapshotProxy.Event.CollectedNodes, this._heapSnapshotCollectedNodes, this);
+        this._record.heapSnapshot.addEventListener(WebInspector.HeapSnapshotProxy.Event.Invalidated, this._heapSnapshotInvalidated, this);
     }
 
     // Public
@@ -53,10 +57,12 @@ WebInspector.HeapAllocationsTimelineDataGridNode = class HeapAllocationsTimeline
             let fragment = document.createDocumentFragment();
             let titleElement = fragment.appendChild(document.createElement("span"));
             titleElement.textContent = this._data.name;
-            let goToButton = fragment.appendChild(WebInspector.createGoToArrowButton());
-            goToButton.addEventListener("click", (event) => {
-                this._heapAllocationsView.showHeapSnapshotTimelineRecord(this._record);
-            });
+            if (!this._record.heapSnapshot.invalid) {
+                let goToButton = fragment.appendChild(WebInspector.createGoToArrowButton());
+                goToButton.addEventListener("click", (event) => {
+                    this._heapAllocationsView.showHeapSnapshotTimelineRecord(this._record);
+                });
+            }
             return fragment;
 
         case "timestamp":
@@ -64,6 +70,9 @@ WebInspector.HeapAllocationsTimelineDataGridNode = class HeapAllocationsTimeline
 
         case "size":
             return Number.bytesToString(this._data.size);
+
+        case "liveSize":
+            return Number.bytesToString(this._data.liveSize);
         }
 
         return super.createCellContent(columnIdentifier, cell);
@@ -83,6 +92,38 @@ WebInspector.HeapAllocationsTimelineDataGridNode = class HeapAllocationsTimeline
     {
         console.assert(isNaN(this._data.timestamp));
         this._data.timestamp = this._record.timestamp - zeroTime;
+        this.needsRefresh();
+    }
+
+    // Protected
+
+    createCells()
+    {
+        super.createCells();
+
+        if (this._record.heapSnapshot.invalid)
+            this.element.classList.add("invalid");
+    }
+
+    // Private
+
+    _heapSnapshotCollectedNodes()
+    {
+        let oldSize = this._data.liveSize;
+        let newSize = this._record.heapSnapshot.liveSize;
+
+        console.assert(newSize <= oldSize);
+        if (oldSize === newSize)
+            return;
+
+        this._data.liveSize = newSize;
+        this.needsRefresh();
+    }
+
+    _heapSnapshotInvalidated()
+    {
+        this._data.liveSize = 0;
+
         this.needsRefresh();
     }
 };

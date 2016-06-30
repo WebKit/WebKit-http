@@ -82,6 +82,7 @@
 #include "HTMLHtmlElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
+#include "HTMLInputElement.h"
 #include "HTMLLinkElement.h"
 #include "HTMLMediaElement.h"
 #include "HTMLNameCollection.h"
@@ -127,6 +128,7 @@
 #include "PageTransitionEvent.h"
 #include "PlatformLocale.h"
 #include "PlatformMediaSessionManager.h"
+#include "PlatformScreen.h"
 #include "PlatformStrategies.h"
 #include "PlugInsResources.h"
 #include "PluginDocument.h"
@@ -346,19 +348,6 @@ static inline bool isValidNamePart(UChar32 c)
         return false;
 
     return true;
-}
-
-static bool shouldInheritSecurityOriginFromOwner(const URL& url)
-{
-    // http://www.whatwg.org/specs/web-apps/current-work/#origin-0
-    //
-    // If a Document has the address "about:blank"
-    //     The origin of the Document is the origin it was assigned when its browsing context was created.
-    //
-    // Note: We generalize this to all "blank" URLs and invalid URLs because we
-    // treat all of these URLs as about:blank.
-    //
-    return url.isEmpty() || url.isBlankURL();
 }
 
 static Widget* widgetForElement(Element* focusedElement)
@@ -895,8 +884,8 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
 #if ENABLE(CUSTOM_ELEMENTS)
     auto* definitions = document.customElementDefinitions();
     if (UNLIKELY(definitions)) {
-        if (auto* interface = definitions->findInterface(localName))
-            return interface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
+        if (auto* elementInterface = definitions->findInterface(localName))
+            return elementInterface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
     }
 #endif
 
@@ -908,7 +897,8 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
     QualifiedName qualifiedName(nullAtom, localName, xhtmlNamespaceURI);
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    if (Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
+    if (RuntimeEnabledFeatures::sharedFeatures().customElementsEnabled()
+        && Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
         Ref<HTMLElement> element = HTMLElement::create(qualifiedName, document);
         element->setIsUnresolvedCustomElement();
         document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
@@ -1085,10 +1075,10 @@ static Ref<HTMLElement> createFallbackHTMLElement(Document& document, const Qual
 #if ENABLE(CUSTOM_ELEMENTS)
     auto* definitions = document.customElementDefinitions();
     if (UNLIKELY(definitions)) {
-        if (auto* interface = definitions->findInterface(name)) {
+        if (auto* elementInterface = definitions->findInterface(name)) {
             Ref<HTMLElement> element = HTMLElement::create(name, document);
             element->setIsUnresolvedCustomElement();
-            LifecycleCallbackQueue::enqueueElementUpgrade(element.get(), *interface);
+            LifecycleCallbackQueue::enqueueElementUpgrade(element.get(), *elementInterface);
             return element;
         }
     }
@@ -2344,7 +2334,7 @@ void Document::prepareForDestruction()
         return;
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    clearTouchEventListeners();
+    clearTouchEventHandlersAndListeners();
 #endif
 
 #if HAVE(ACCESSIBILITY)
@@ -2413,7 +2403,7 @@ void Document::removeAllEventListeners()
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
 #if ENABLE(IOS_TOUCH_EVENTS)
-    clearTouchEventListeners();
+    clearTouchEventHandlersAndListeners();
 #endif
     for (Node* node = firstChild(); node; node = NodeTraversal::next(*node))
         node->removeAllEventListeners();
@@ -2861,13 +2851,13 @@ bool Document::isLayoutTimerActive()
 std::chrono::milliseconds Document::minimumLayoutDelay()
 {
     if (m_overMinimumLayoutThreshold)
-        return std::chrono::milliseconds(0);
+        return 0ms;
     
-    std::chrono::milliseconds elapsed = elapsedTime();
+    auto elapsed = elapsedTime();
     m_overMinimumLayoutThreshold = elapsed > settings()->layoutInterval();
 
     // We'll want to schedule the timer to fire at the minimum layout threshold.
-    return std::max(std::chrono::milliseconds(0), settings()->layoutInterval() - elapsed);
+    return std::max(0ms, settings()->layoutInterval() - elapsed);
 }
 
 std::chrono::milliseconds Document::elapsedTime() const
@@ -3789,9 +3779,6 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
 
     // Remove focus from the existing focus node (if any)
     if (oldFocusedElement) {
-        if (oldFocusedElement->active())
-            oldFocusedElement->setActive(false);
-
         oldFocusedElement->setFocus(false);
         setFocusNavigationStartingNode(nullptr);
 
@@ -3822,8 +3809,11 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
                 focusChangeBlocked = true;
                 newFocusedElement = nullptr;
             }
-        } else
+        } else {
+            if (is<HTMLInputElement>(*oldFocusedElement))
+                downcast<HTMLInputElement>(*oldFocusedElement).endEditing();
             ASSERT(!m_focusedElement);
+        }
 
         if (oldFocusedElement->isRootEditableElement())
             frame()->editor().didEndEditing();
@@ -3950,6 +3940,8 @@ Element* Document::focusNavigationStartingNode(FocusDirection direction) const
     // the previous sibling of the removed node.
     if (m_focusNavigationStartingNodeIsRemoved) {
         Node* nextNode = NodeTraversal::next(*node);
+        if (!nextNode)
+            nextNode = node;
         if (direction == FocusDirectionForward)
             return ElementTraversal::previous(*nextNode);
         if (is<Element>(*nextNode))
@@ -4889,6 +4881,22 @@ void Document::pageScaleFactorChangedAndStable()
     for (HTMLMediaElement* mediaElement : m_pageScaleFactorChangedElements)
         mediaElement->pageScaleFactorChanged();
 }
+
+void Document::registerForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement& element)
+{
+    m_userInterfaceLayoutDirectionChangedElements.add(&element);
+}
+
+void Document::unregisterForUserInterfaceLayoutDirectionChangedCallbacks(HTMLMediaElement& element)
+{
+    m_userInterfaceLayoutDirectionChangedElements.remove(&element);
+}
+
+void Document::userInterfaceLayoutDirectionChanged()
+{
+    for (auto* mediaElement : m_userInterfaceLayoutDirectionChangedElements)
+        mediaElement->userInterfaceLayoutDirectionChanged();
+}
 #endif
 
 void Document::setShouldCreateRenderers(bool f)
@@ -5272,7 +5280,7 @@ void Document::initSecurityContext()
         setBaseURLOverride(parentDocument->baseURL());
     }
 
-    if (!shouldInheritSecurityOriginFromOwner(m_url))
+    if (!m_url.shouldInheritSecurityOriginFromOwner())
         return;
 
     // If we do not obtain a meaningful origin from the URL, then we try to
@@ -5315,7 +5323,7 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree().parent() || (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()))
+    if (!m_frame->tree().parent() || (!m_url.shouldInheritSecurityOriginFromOwner() && !isPluginDocument()))
         return;
 
     contentSecurityPolicy()->copyStateFrom(m_frame->tree().parent()->document()->contentSecurityPolicy());
@@ -6160,6 +6168,12 @@ void Document::loadEventDelayTimerFired()
         frame()->loader().checkCompleted();
 }
 
+double Document::monotonicTimestamp() const
+{
+    auto* loader = this->loader();
+    return loader ? loader->timing().monotonicTimeToZeroBasedDocumentTime(monotonicallyIncreasingTime()) : 0;
+}
+
 #if ENABLE(REQUEST_ANIMATION_FRAME)
 int Document::requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
 {
@@ -6186,11 +6200,11 @@ void Document::cancelAnimationFrame(int id)
     m_scriptedAnimationController->cancelCallback(id);
 }
 
-void Document::serviceScriptedAnimations(double monotonicAnimationStartTime)
+void Document::serviceScriptedAnimations(double timestamp)
 {
     if (!m_scriptedAnimationController)
         return;
-    m_scriptedAnimationController->serviceScriptedAnimations(monotonicAnimationStartTime);
+    m_scriptedAnimationController->serviceScriptedAnimations(timestamp);
 }
 
 void Document::clearScriptedAnimationController()

@@ -35,6 +35,7 @@
 #include "Supplementable.h"
 #include <functional>
 #include <memory>
+#include <wtf/HashSet.h>
 #include <wtf/Optional.h>
 #include <wtf/WeakPtr.h>
 
@@ -315,6 +316,7 @@ namespace WebCore {
 #if ENABLE(WEB_TIMING)
         Performance* performance() const;
 #endif
+        double nowTimestamp() const;
 
 #if PLATFORM(IOS)
         void incrementScrollEventListenersCount();

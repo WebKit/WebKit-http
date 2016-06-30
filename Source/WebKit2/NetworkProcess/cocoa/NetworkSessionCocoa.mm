@@ -197,7 +197,7 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
                 completionHandlerCopy(toNSURLSessionAuthChallengeDisposition(disposition), credential.nsCredential());
             Block_release(completionHandlerCopy);
         };
-        networkDataTask->didReceiveChallenge(challenge, challengeCompletionHandler);
+        networkDataTask->didReceiveChallenge(challenge, WTFMove(challengeCompletionHandler));
     } else {
         LOG(NetworkSession, "%llu didReceiveChallenge completionHandler (cancel)", taskIdentifier);
         completionHandler(NSURLSessionAuthChallengeCancelAuthenticationChallenge, nil);
@@ -413,15 +413,17 @@ WebCore::NetworkStorageSession& NetworkSession::networkStorageSession()
     return *m_networkStorageSession;
 }
 
-#if !USE(CREDENTIAL_STORAGE_WITH_NETWORK_SESSION)
 void NetworkSession::clearCredentials()
 {
+#if !USE(CREDENTIAL_STORAGE_WITH_NETWORK_SESSION)
     ASSERT(m_dataTaskMapWithCredentials.isEmpty());
     ASSERT(m_dataTaskMapWithoutCredentials.isEmpty());
     ASSERT(m_downloadMap.isEmpty());
+    // FIXME: Use resetWithCompletionHandler instead.
     m_sessionWithCredentialStorage = [NSURLSession sessionWithConfiguration:m_sessionWithCredentialStorage.get().configuration delegate:static_cast<id>(m_sessionWithCredentialStorageDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
-}
+    m_sessionWithoutCredentialStorage = [NSURLSession sessionWithConfiguration:m_sessionWithoutCredentialStorage.get().configuration delegate:static_cast<id>(m_sessionWithoutCredentialStorageDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
 #endif
+}
 
 NetworkDataTask* NetworkSession::dataTaskForIdentifier(NetworkDataTask::TaskIdentifier taskIdentifier, WebCore::StoredCredentials storedCredentials)
 {

@@ -194,7 +194,7 @@ void HTMLDocumentParser::runScriptsForPausedTreeBuilder()
     if (std::unique_ptr<CustomElementConstructionData> constructionData = m_treeBuilder->takeCustomElementConstructionData()) {
         ASSERT(!m_treeBuilder->hasParserBlockingScriptWork());
 
-        RefPtr<Element> newElement = constructionData->interface->constructElement(constructionData->name, JSCustomElementInterface::ShouldClearException::Clear);
+        RefPtr<Element> newElement = constructionData->elementInterface->constructElement(constructionData->name, JSCustomElementInterface::ShouldClearException::Clear);
         if (!newElement) {
             ASSERT(!m_treeBuilder->isParsingTemplateContents());
             newElement = HTMLUnknownElement::create(QualifiedName(nullAtom, constructionData->name, xhtmlNamespaceURI), *document());
@@ -210,7 +210,7 @@ void HTMLDocumentParser::runScriptsForPausedTreeBuilder()
         ASSERT(!m_treeBuilder->hasParserBlockingScriptWork());
         // We will not have a scriptRunner when parsing a DocumentFragment.
         if (m_scriptRunner)
-            m_scriptRunner->execute(scriptElement.release(), scriptStartPosition);
+            m_scriptRunner->execute(WTFMove(scriptElement), scriptStartPosition);
     }
 }
 

@@ -36,6 +36,7 @@
 
 #include "AudioTrackList.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "ExceptionCodePlaceholder.h"
 #include "GenericEventQueue.h"
 #include "HTMLMediaElement.h"
@@ -654,16 +655,15 @@ static bool decodeTimeComparator(const PresentationOrderSampleMap::MapType::valu
 static PassRefPtr<TimeRanges> removeSamplesFromTrackBuffer(const DecodeOrderSampleMap::MapType& samples, SourceBuffer::TrackBuffer& trackBuffer, const SourceBuffer* buffer, const char* logPrefix)
 {
 #if !LOG_DISABLED
-    double earliestSample = std::numeric_limits<double>::infinity();
-    double latestSample = 0;
+    MediaTime earliestSample = MediaTime::positiveInfiniteTime();
+    MediaTime latestSample = MediaTime::zeroTime();
     size_t bytesRemoved = 0;
 #else
     UNUSED_PARAM(logPrefix);
     UNUSED_PARAM(buffer);
 #endif
 
-    RefPtr<TimeRanges> erasedRanges = TimeRanges::create();
-    MediaTime microsecond(1, 1000000);
+    auto erasedRanges = TimeRanges::create();
     for (auto sampleIt : samples) {
         const DecodeOrderSampleMap::KeyType& decodeKey = sampleIt.first;
 #if !LOG_DISABLED
@@ -679,9 +679,9 @@ static PassRefPtr<TimeRanges> removeSamplesFromTrackBuffer(const DecodeOrderSamp
         // Also remove the erased samples from the TrackBuffer decodeQueue.
         trackBuffer.decodeQueue.erase(decodeKey);
 
-        double startTime = sample->presentationTime().toDouble();
-        double endTime = startTime + (sample->duration() + microsecond).toDouble();
-        erasedRanges->add(startTime, endTime);
+        auto startTime = sample->presentationTime();
+        auto endTime = startTime + sample->duration();
+        erasedRanges->ranges().add(startTime, endTime);
 
 #if !LOG_DISABLED
         bytesRemoved += startBufferSize - trackBuffer.samples.sizeInBytes();
@@ -694,10 +694,10 @@ static PassRefPtr<TimeRanges> removeSamplesFromTrackBuffer(const DecodeOrderSamp
 
 #if !LOG_DISABLED
     if (bytesRemoved)
-        LOG(MediaSource, "SourceBuffer::%s(%p) removed %zu bytes, start(%lf), end(%lf)", logPrefix, buffer, bytesRemoved, earliestSample, latestSample);
+        LOG(MediaSource, "SourceBuffer::%s(%p) removed %zu bytes, start(%lf), end(%lf)", logPrefix, buffer, bytesRemoved, earliestSample.toDouble(), latestSample.toDouble());
 #endif
 
-    return erasedRanges.release();
+    return WTFMove(erasedRanges);
 }
 
 void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& end)
@@ -1585,7 +1585,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
         if (m_shouldGenerateTimestamps)
             m_timestampOffset = frameEndTimestamp;
 
-        m_buffered->add(presentationTimestamp.toDouble(), (presentationTimestamp + frameDuration + microsecond).toDouble());
+        m_buffered->ranges().add(presentationTimestamp, presentationTimestamp + frameDuration);
         m_bufferedSinceLastMonitor += frameDuration.toDouble();
         setBufferedDirty(true);
 
@@ -1750,7 +1750,7 @@ void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, AtomicString track
         // FIXME(rdar://problem/20635969): Remove this re-entrancy protection when the aforementioned radar is resolved; protecting
         // against re-entrancy introduces a small inefficency when removing appended samples from the decode queue one at a time
         // rather than when all samples have been enqueued.
-        RefPtr<MediaSample> sample = trackBuffer.decodeQueue.begin()->second;
+        auto sample = trackBuffer.decodeQueue.begin()->second;
         trackBuffer.decodeQueue.erase(trackBuffer.decodeQueue.begin());
 
         // Do not enqueue samples spanning a significant unbuffered gap.
@@ -1766,7 +1766,7 @@ void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, AtomicString track
 
         trackBuffer.lastEnqueuedPresentationTime = sample->presentationTime();
         trackBuffer.lastEnqueuedDecodeEndTime = sample->decodeTime() + sample->duration();
-        m_private->enqueueSample(sample.release(), trackID);
+        m_private->enqueueSample(WTFMove(sample), trackID);
 #if !LOG_DISABLED
         ++enqueuedSamples;
 #endif

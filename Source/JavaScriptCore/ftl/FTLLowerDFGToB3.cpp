@@ -90,12 +90,7 @@ namespace {
 
 std::atomic<int> compileCounter;
 
-#if ASSERT_DISABLED
-NO_RETURN_DUE_TO_CRASH static void ftlUnreachable()
-{
-    CRASH();
-}
-#else
+#if !ASSERT_DISABLED
 NO_RETURN_DUE_TO_CRASH static void ftlUnreachable(
     CodeBlock* codeBlock, BlockIndex blockIndex, unsigned nodeIndex)
 {
@@ -393,7 +388,7 @@ private:
         if (!m_highBlock->cfaHasVisited) {
             if (verboseCompilationEnabled())
                 dataLog("Bailing because CFA didn't reach.\n");
-            crash(m_highBlock->index, UINT_MAX);
+            crash(m_highBlock, nullptr);
             return;
         }
         
@@ -497,6 +492,9 @@ private:
             break;
         case DFG::Check:
             compileNoOp();
+            break;
+        case CallObjectConstructor:
+            compileCallObjectConstructor();
             break;
         case ToThis:
             compileToThis();
@@ -725,6 +723,9 @@ private:
         case ReallocatePropertyStorage:
             compileReallocatePropertyStorage();
             break;
+        case ToNumber:
+            compileToNumber();
+            break;
         case ToString:
         case CallStringConstructor:
             compileToStringOrCallStringConstructor();
@@ -882,6 +883,9 @@ private:
         case IsString:
             compileIsString();
             break;
+        case IsJSArray:
+            compileIsJSArray();
+            break;
         case IsObject:
             compileIsObject();
             break;
@@ -893,6 +897,9 @@ private:
             break;
         case IsRegExpObject:
             compileIsRegExpObject();
+            break;
+        case IsTypedArrayView:
+            compileIsTypedArrayView();
             break;
         case TypeOf:
             compileTypeOf();
@@ -1463,6 +1470,29 @@ private:
         DFG_NODE_DO_TO_CHILDREN(m_graph, m_node, speculate);
     }
 
+    void compileCallObjectConstructor()
+    {
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        m_out.branch(isCell(value, provenType(m_node->child1())), usually(isCellCase), rarely(slowCase));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, slowCase);
+        ValueFromBlock fastResult = m_out.anchor(value);
+        m_out.branch(isObject(value), usually(continuation), rarely(slowCase));
+
+        m_out.appendTo(slowCase, continuation);
+        ValueFromBlock slowResult = m_out.anchor(vmCall(m_out.int64, m_out.operation(operationObjectConstructor), m_callFrame, m_out.constIntPtr(globalObject), value));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
+    }
+    
     void compileToThis()
     {
         LValue value = lowJSValue(m_node->child1());
@@ -4067,6 +4097,33 @@ private:
             reallocatePropertyStorage(
                 object, oldStorage, transition->previous, transition->next));
     }
+
+    void compileToNumber()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        if (!(abstractValue(m_node->child1()).m_type & SpecBytecodeNumber))
+            setJSValue(vmCall(m_out.int64, m_out.operation(operationToNumber), m_callFrame, value));
+        else {
+            LBasicBlock notNumber = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            ValueFromBlock fastResult = m_out.anchor(value);
+            m_out.branch(isNumber(value, provenType(m_node->child1())), unsure(continuation), unsure(notNumber));
+
+            // notNumber case.
+            LBasicBlock lastNext = m_out.appendTo(notNumber, continuation);
+            // We have several attempts to remove ToNumber. But ToNumber still exists.
+            // It means that converting non-numbers to numbers by this ToNumber is not rare.
+            // Instead of the lazy slow path generator, we call the operation here.
+            ValueFromBlock slowResult = m_out.anchor(vmCall(m_out.int64, m_out.operation(operationToNumber), m_callFrame, value));
+            m_out.jump(continuation);
+
+            // continuation case.
+            m_out.appendTo(continuation, lastNext);
+            setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
+        }
+    }
     
     void compileToStringOrCallStringConstructor()
     {
@@ -4854,6 +4911,15 @@ private:
         if (m_node->isBinaryUseKind(BooleanUse)) {
             setBoolean(
                 m_out.equal(lowBoolean(m_node->child1()), lowBoolean(m_node->child2())));
+            return;
+        }
+
+        if (m_node->isBinaryUseKind(UntypedUse)) {
+            nonSpeculativeCompare(
+                [&] (LValue left, LValue right) {
+                    return m_out.equal(left, right);
+                },
+                operationCompareStrictEq);
             return;
         }
 
@@ -5921,6 +5987,25 @@ private:
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
     }
 
+    void compileIsJSArray()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(
+            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
+        ValueFromBlock cellResult = m_out.anchor(isArray(value, provenType(m_node->child1())));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
     void compileIsObject()
     {
         LValue value = lowJSValue(m_node->child1());
@@ -6059,6 +6144,24 @@ private:
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
     }
 
+    void compileIsTypedArrayView()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
+        ValueFromBlock cellResult = m_out.anchor(isTypedArrayView(value, provenType(m_node->child1())));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
     void compileTypeOf()
     {
         Edge child = m_node->child1();
@@ -6135,21 +6238,19 @@ private:
 
                                 jit.addLinkTask(
                                     [=] (LinkBuffer& linkBuffer) {
-                                        CodeLocationCall callReturnLocation =
-                                            linkBuffer.locationOf(slowPathCall);
-                                        stubInfo->patch.deltaCallToDone =
-                                            CCallHelpers::differenceBetweenCodePtr(
-                                                callReturnLocation,
-                                                linkBuffer.locationOf(done));
-                                        stubInfo->patch.deltaCallToJump =
-                                            CCallHelpers::differenceBetweenCodePtr(
-                                                callReturnLocation,
-                                                linkBuffer.locationOf(jump));
-                                        stubInfo->callReturnLocation = callReturnLocation;
-                                        stubInfo->patch.deltaCallToSlowCase =
-                                            CCallHelpers::differenceBetweenCodePtr(
-                                                callReturnLocation,
-                                                linkBuffer.locationOf(slowPathBegin));
+                                        CodeLocationLabel start = linkBuffer.locationOf(jump);
+                                        stubInfo->patch.start = start;
+                                        ptrdiff_t inlineSize = MacroAssembler::differenceBetweenCodePtr(
+                                            start, linkBuffer.locationOf(done));
+                                        RELEASE_ASSERT(inlineSize >= 0);
+                                        stubInfo->patch.inlineSize = inlineSize;
+
+                                        stubInfo->patch.deltaFromStartToSlowPathCallLocation = MacroAssembler::differenceBetweenCodePtr(
+                                            start, linkBuffer.locationOf(slowPathCall));
+
+                                        stubInfo->patch.deltaFromStartToSlowPathStart = MacroAssembler::differenceBetweenCodePtr(
+                                            start, linkBuffer.locationOf(slowPathBegin));
+
                                     });
                             });
                     });
@@ -7568,7 +7669,7 @@ private:
 
                 auto generator = Box<JITGetByIdGenerator>::create(
                     jit.codeBlock(), node->origin.semantic, callSiteIndex,
-                    params.unavailableRegisters(), JSValueRegs(params[1].gpr()),
+                    params.unavailableRegisters(), uid, JSValueRegs(params[1].gpr()),
                     JSValueRegs(params[0].gpr()), type);
 
                 generator->generateFastPath(jit);
@@ -10021,6 +10122,27 @@ private:
         
         jsValueToStrictInt52(edge, lowJSValue(edge, ManualOperandSpeculation));
     }
+
+    LValue isArray(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, SpecArray))
+            return proven;
+        return m_out.equal(
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(ArrayType));
+    }
+
+    LValue isTypedArrayView(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, SpecTypedArrayView))
+            return proven;
+        LValue jsType = m_out.sub(
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(Int8ArrayType));
+        return m_out.belowOrEqual(
+            jsType,
+            m_out.constInt32(Float64ArrayType - Int8ArrayType));
+    }
     
     LValue isObject(LValue cell, SpeculatedType type = SpecFullTop)
     {
@@ -10753,10 +10875,11 @@ private:
             
             Availability availability = availabilityMap.m_locals[i];
             
-            if (Options::validateFTLOSRExitLiveness()) {
-                DFG_ASSERT(
-                    m_graph, m_node,
-                    (!(availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), exitOrigin))) || m_graph.m_plan.mode == FTLForOSREntryMode);
+            if (Options::validateFTLOSRExitLiveness()
+                && m_graph.m_plan.mode != FTLForOSREntryMode) {
+                
+                if (availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), exitOrigin))
+                    DFG_CRASH(m_graph, m_node, toCString("Live bytecode local not available: operand = ", VirtualRegister(operand), ", availability = ", availability, ", origin = ", exitOrigin).data());
             }
             ExitValue exitValue = exitValueForAvailability(arguments, map, availability);
             if (exitValue.hasIndexInStackmapLocations())
@@ -11152,14 +11275,23 @@ private:
 
     void crash()
     {
-        crash(m_highBlock->index, m_node->index());
+        crash(m_highBlock, m_node);
     }
-    void crash(BlockIndex blockIndex, unsigned nodeIndex)
+    void crash(DFG::BasicBlock* block, Node* node)
     {
+        BlockIndex blockIndex = block->index;
+        unsigned nodeIndex = node ? node->index() : UINT_MAX;
 #if ASSERT_DISABLED
-        m_out.call(m_out.voidType, m_out.operation(ftlUnreachable));
-        UNUSED_PARAM(blockIndex);
-        UNUSED_PARAM(nodeIndex);
+        m_out.patchpoint(Void)->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams&) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+                
+                jit.move(CCallHelpers::TrustedImm32(blockIndex), GPRInfo::regT0);
+                jit.move(CCallHelpers::TrustedImm32(nodeIndex), GPRInfo::regT1);
+                if (node)
+                    jit.move(CCallHelpers::TrustedImm32(node->op()), GPRInfo::regT2);
+                jit.abortWithReason(FTLCrash);
+            });
 #else
         m_out.call(
             m_out.voidType,

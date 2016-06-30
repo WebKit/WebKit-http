@@ -298,9 +298,9 @@ void PageClientImpl::didRestoreScrollPosition()
 {
 }
 
-UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirection()
+WebCore::UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirection()
 {
-    return UserInterfaceLayoutDirection::LTR;
+    return WebCore::UserInterfaceLayoutDirection::LTR;
 }
 
 } // namespace WebKit

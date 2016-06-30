@@ -1191,7 +1191,7 @@ void WebViewImpl::viewDidMoveToWindow()
         windowDidChangeScreen();
 
         WebCore::ViewState::Flags viewStateChanges = WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsVisible;
-        if (m_isDeferringViewInWindowChanges)
+        if (m_shouldDeferViewInWindowChanges)
             m_viewInWindowChangeWasDeferred = true;
         else
             viewStateChanges |= WebCore::ViewState::IsInWindow;
@@ -1220,7 +1220,7 @@ void WebViewImpl::viewDidMoveToWindow()
             [m_view addGestureRecognizer:m_immediateActionGestureRecognizer.get()];
     } else {
         WebCore::ViewState::Flags viewStateChanges = WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsVisible;
-        if (m_isDeferringViewInWindowChanges)
+        if (m_shouldDeferViewInWindowChanges)
             m_viewInWindowChangeWasDeferred = true;
         else
             viewStateChanges |= WebCore::ViewState::IsInWindow;
@@ -4029,7 +4029,29 @@ bool WebViewImpl::windowIsFrontWindowUnderMouse(NSEvent *event)
     return m_view.window.windowNumber != eventWindowNumber;
 }
 
-    
+static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUserInterfaceLayoutDirection direction)
+{
+    switch (direction) {
+    case NSUserInterfaceLayoutDirectionLeftToRight:
+        return WebCore::UserInterfaceLayoutDirection::LTR;
+    case NSUserInterfaceLayoutDirectionRightToLeft:
+        return WebCore::UserInterfaceLayoutDirection::RTL;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebCore::UserInterfaceLayoutDirection::LTR;
+}
+
+WebCore::UserInterfaceLayoutDirection WebViewImpl::userInterfaceLayoutDirection()
+{
+    return toUserInterfaceLayoutDirection(m_view.userInterfaceLayoutDirection);
+}
+
+void WebViewImpl::setUserInterfaceLayoutDirection(NSUserInterfaceLayoutDirection direction)
+{
+    m_page->setUserInterfaceLayoutDirection(toUserInterfaceLayoutDirection(direction));
+}
+
 } // namespace WebKit
 
 #endif // PLATFORM(MAC)

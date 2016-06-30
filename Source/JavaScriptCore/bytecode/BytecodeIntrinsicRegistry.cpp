@@ -26,17 +26,20 @@
 
 #include "config.h"
 #include "BytecodeIntrinsicRegistry.h"
+
+#include "ArrayIteratorPrototype.h"
+#include "BuiltinNames.h"
 #include "BytecodeGenerator.h"
-#include "JSArrayIterator.h"
 #include "JSCJSValueInlines.h"
 #include "JSGeneratorFunction.h"
 #include "JSPromise.h"
+#include "ModuleLoaderObject.h"
 #include "Nodes.h"
 #include "StrongInlines.h"
 
 namespace JSC {
 
-#define INITIALIZE_BYTECODE_INTRINSIC_NAMES_TO_SET(name) m_bytecodeIntrinsicMap.add(vm.propertyNames->name##PrivateName.impl(), &BytecodeIntrinsicNode::emit_intrinsic_##name);
+#define INITIALIZE_BYTECODE_INTRINSIC_NAMES_TO_SET(name) m_bytecodeIntrinsicMap.add(vm.propertyNames->builtinNames().name##PrivateName().impl(), &BytecodeIntrinsicNode::emit_intrinsic_##name);
 
 BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry(VM& vm)
     : m_vm(vm)
@@ -51,6 +54,13 @@ BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry(VM& vm)
     m_arrayIterationKindValue.set(m_vm, jsNumber(ArrayIterateValue));
     m_arrayIterationKindKeyValue.set(m_vm, jsNumber(ArrayIterateKeyValue));
     m_MAX_STRING_LENGTH.set(m_vm, jsNumber(JSString::MaxLength));
+    m_MAX_SAFE_INTEGER.set(m_vm, jsDoubleNumber(maxSafeInteger()));
+    m_ModuleFetch.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Fetch)));
+    m_ModuleTranslate.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Translate)));
+    m_ModuleInstantiate.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Instantiate)));
+    m_ModuleResolveDependencies.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::ResolveDependencies)));
+    m_ModuleLink.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Link)));
+    m_ModuleReady.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Ready)));
     m_promiseStatePending.set(m_vm, jsNumber(static_cast<unsigned>(JSPromise::Status::Pending)));
     m_promiseStateFulfilled.set(m_vm, jsNumber(static_cast<unsigned>(JSPromise::Status::Fulfilled)));
     m_promiseStateRejected.set(m_vm, jsNumber(static_cast<unsigned>(JSPromise::Status::Rejected)));

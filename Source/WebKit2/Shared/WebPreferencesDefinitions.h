@@ -26,14 +26,6 @@
 #ifndef WebPreferencesDefinitions_h
 #define WebPreferencesDefinitions_h
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebPreferencesDefinitionsAdditions.h>
-#endif
-
-#if !defined(FOR_EACH_ADDITIONAL_WEBKIT_BOOL_PREFERENCE)
-#define FOR_EACH_ADDITIONAL_WEBKIT_BOOL_PREFERENCE(macro)
-#endif
-
 #if PLATFORM(GTK)
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED true
 #else
@@ -63,6 +55,7 @@
 #endif
 
 #if PLATFORM(IOS)
+#define DEFAULT_ALLOWS_PICTURE_IN_PICTURE_MEDIA_PLAYBACK true
 #define DEFAULT_BACKSPACE_KEY_NAVIGATION_ENABLED false
 #define DEFAULT_FRAME_FLATTENING_ENABLED true
 #define DEFAULT_SHOULD_PRINT_BACKGROUNDS true
@@ -79,6 +72,7 @@
 #define DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED false
 #define DEFAULT_REQUIRES_USER_GESTURE_FOR_AUDIO_PLAYBACK true
 #else
+#define DEFAULT_ALLOWS_PICTURE_IN_PICTURE_MEDIA_PLAYBACK false
 #define DEFAULT_BACKSPACE_KEY_NAVIGATION_ENABLED true
 #define DEFAULT_FRAME_FLATTENING_ENABLED false
 #define DEFAULT_SHOULD_PRINT_BACKGROUNDS false
@@ -161,7 +155,7 @@
     macro(InlineMediaPlaybackRequiresPlaysInlineAttribute, inlineMediaPlaybackRequiresPlaysInlineAttribute, Bool, bool, DEFAULT_INLINE_MEDIA_PLAYBACK_REQUIRES_PLAYS_INLINE_ATTRIBUTE, "", "") \
     macro(InvisibleAutoplayNotPermitted, invisibleAutoplayNotPermitted, Bool, bool, DEFAULT_INVISIBLE_AUTOPLAY_NOT_PERMITTED, "", "") \
     macro(MediaDataLoadsAutomatically, mediaDataLoadsAutomatically, Bool, bool, DEFAULT_MEDIA_DATA_LOADS_AUTOMATICALLY, "", "") \
-    macro(AllowsPictureInPictureMediaPlayback, allowsPictureInPictureMediaPlayback, Bool, bool, true, "", "") \
+    macro(AllowsPictureInPictureMediaPlayback, allowsPictureInPictureMediaPlayback, Bool, bool, DEFAULT_ALLOWS_PICTURE_IN_PICTURE_MEDIA_PLAYBACK, "", "") \
     macro(AllowsAirPlayForMediaPlayback, allowsAirPlayForMediaPlayback, Bool, bool, true, "", "") \
     macro(AllowRunningOfInsecureContent, allowRunningOfInsecureContent, Bool, bool, false, "", "") \
     macro(AllowDisplayOfInsecureContent, allowDisplayOfInsecureContent, Bool, bool, false, "", "") \
@@ -236,7 +230,8 @@
     macro(FetchAPIEnabled, fetchAPIEnabled, Bool, bool, false, "", "") \
     macro(DownloadAttributeEnabled, downloadAttributeEnabled, Bool, bool, false, "", "") \
     macro(SelectionPaintingWithoutSelectionGapsEnabled, selectionPaintingWithoutSelectionGapsEnabled, Bool, bool, DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED, "", "") \
-    FOR_EACH_ADDITIONAL_WEBKIT_BOOL_PREFERENCE(macro) \
+    macro(ApplePayEnabled, applePayEnabled, Bool, bool, false, "", "") \
+    macro(ApplePayCapabilityDisclosureAllowed, applePayCapabilityDisclosureAllowed, Bool, bool, true, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \

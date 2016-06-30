@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "ArrayConstructor.h"
 #include "DFGAbstractInterpreter.h"
 #include "GetByIdStatus.h"
 #include "GetterSetter.h"
@@ -1026,6 +1027,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
 
     case IsEmpty:
+    case IsJSArray:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -1033,11 +1035,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
-    case IsRegExpObject: {
+    case IsRegExpObject:
+    case IsTypedArrayView: {
         AbstractValue child = forNode(node->child1());
         if (child.value()) {
             bool constantWasSet = true;
             switch (node->op()) {
+            case IsJSArray:
+                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->type() == ArrayType));
+                break;
             case IsUndefined:
                 setConstant(node, jsBoolean(
                     child.value().isCell()
@@ -1092,6 +1098,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             case IsEmpty:
                 setConstant(node, jsBoolean(child.value().isEmpty()));
                 break;
+            case IsTypedArrayView:
+                setConstant(node, jsBoolean(child.value().isObject() && isTypedView(child.value().getObject()->classInfo()->typedArrayStorageType)));
+                break;
             default:
                 constantWasSet = false;
                 break;
@@ -1106,6 +1115,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         bool constantWasSet = false;
         switch (node->op()) {
+        case IsJSArray:
+            // We don't have a SpeculatedType for Proxies yet so we can't do better at proving false.
+            if (!(child.m_type & ~SpecArray)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+
+            if (!(child.m_type & SpecObject)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+
+            break;
         case IsEmpty: {
             if (child.m_type && !(child.m_type & SpecEmpty)) {
                 setConstant(node, jsBoolean(false));
@@ -1242,6 +1266,19 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
             if (!(child.m_type & SpecObject)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+            break;
+
+        case IsTypedArrayView:
+            if (!(child.m_type & ~SpecTypedArrayView)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+            if (!(child.m_type & SpecTypedArrayView)) {
                 setConstant(node, jsBoolean(false));
                 constantWasSet = true;
                 break;
@@ -1790,11 +1827,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         ASSERT(node->child1().useKind() == UntypedUse);
         
-        if (!forNode(node->child1()).m_type) {
-            m_state.setIsValid(false);
-            break;
-        }
-        
         if (!(forNode(node->child1()).m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecSymbol))) {
             m_state.setFoundConstants(true);
             forNode(node) = forNode(node->child1());
@@ -1804,6 +1836,26 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         clobberWorld(node->origin.semantic, clobberLimit);
         
         forNode(node).setType(m_graph, SpecHeapTop & ~SpecObject);
+        break;
+    }
+
+    case ToNumber: {
+        JSValue childConst = forNode(node->child1()).value();
+        if (childConst && childConst.isNumber()) {
+            setConstant(node, childConst);
+            break;
+        }
+
+        ASSERT(node->child1().useKind() == UntypedUse);
+
+        if (!(forNode(node->child1()).m_type & ~SpecBytecodeNumber)) {
+            m_state.setFoundConstants(true);
+            forNode(node) = forNode(node->child1());
+            break;
+        }
+
+        clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).setType(m_graph, SpecBytecodeNumber);
         break;
     }
         
@@ -1904,7 +1956,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         ASSERT(node->structure());
         forNode(node).set(m_graph, node->structure());
         break;
-        
+
+    case CallObjectConstructor: {
+        AbstractValue& source = forNode(node->child1());
+        AbstractValue& destination = forNode(node);
+
+        if (!(source.m_type & ~SpecObject)) {
+            m_state.setFoundConstants(true);
+            destination = source;
+            break;
+        }
+
+        forNode(node).setType(m_graph, SpecObject);
+        break;
+    }
+
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:

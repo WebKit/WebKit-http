@@ -352,7 +352,7 @@ void CachedResource::finish()
 bool CachedResource::passesAccessControlCheck(SecurityOrigin& securityOrigin)
 {
     String errorDescription;
-    return WebCore::passesAccessControlCheck(response(), resourceRequest().allowCookies() ? AllowStoredCredentials : DoNotAllowStoredCredentials, &securityOrigin, errorDescription);
+    return WebCore::passesAccessControlCheck(response(), resourceRequest().allowCookies() ? AllowStoredCredentials : DoNotAllowStoredCredentials, securityOrigin, errorDescription);
 }
 
 bool CachedResource::passesSameOriginPolicyCheck(SecurityOrigin& securityOrigin)
@@ -392,7 +392,7 @@ std::chrono::microseconds CachedResource::freshnessLifetime(const ResourceRespon
             // FIXME: We should not cache subresources either, but when we tried this
             // it caused performance and flakiness issues in our test infrastructure.
             if (m_type == MainResource || SchemeRegistry::shouldAlwaysRevalidateURLScheme(protocol))
-                return std::chrono::microseconds::zero();
+                return 0us;
         }
 
         return std::chrono::microseconds::max();

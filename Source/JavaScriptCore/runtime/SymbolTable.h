@@ -280,10 +280,10 @@ public:
         return bits() & DontEnumFlag;
     }
     
-    void disableWatching()
+    void disableWatching(VM& vm)
     {
         if (WatchpointSet* set = watchpointSet())
-            set->invalidate("Disabling watching in symbol table");
+            set->invalidate(vm, "Disabling watching in symbol table");
         if (varOffset().isScope())
             pack(varOffset(), false, isReadOnly(), isDontEnum());
     }
@@ -679,6 +679,9 @@ public:
     SymbolTable* cloneScopePart(VM&);
 
     void prepareForTypeProfiling(const ConcurrentJITLocker&);
+
+    CodeBlock* rareDataCodeBlock();
+    void setRareDataCodeBlock(CodeBlock*);
     
     InferredValue* singletonScope() { return m_singletonScope.get(); }
 
@@ -695,12 +698,13 @@ private:
     Map m_map;
     ScopeOffset m_maxScopeOffset;
     
-    struct TypeProfilingRareData {
+    struct SymbolTableRareData {
         UniqueIDMap m_uniqueIDMap;
         OffsetToVariableMap m_offsetToVariableMap;
         UniqueTypeSetMap m_uniqueTypeSetMap;
+        WriteBarrier<CodeBlock> m_codeBlock;
     };
-    std::unique_ptr<TypeProfilingRareData> m_typeProfilingRareData;
+    std::unique_ptr<SymbolTableRareData> m_rareData;
 
     bool m_usesNonStrictEval : 1;
     bool m_nestedLexicalScope : 1; // Non-function LexicalScope.

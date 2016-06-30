@@ -1752,7 +1752,7 @@ bool EventHandler::handleMouseDoubleClickEvent(const PlatformMouseEvent& platfor
     m_mousePressed = false;
     setLastKnownMousePosition(platformMouseEvent);
 
-    HitTestRequest request(HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent);
+    HitTestRequest request(HitTestRequest::Release | HitTestRequest::DisallowUserAgentShadowContent);
     MouseEventWithHitTestResults mouseEvent = prepareMouseEvent(request, platformMouseEvent);
     Frame* subframe = subframeForHitTestResult(mouseEvent);
     if (m_eventHandlerWillResetCapturingMouseEventsElement)
@@ -2278,7 +2278,7 @@ bool EventHandler::updateDragAndDrop(const PlatformMouseEvent& event, DataTransf
             m_shouldOnlyFireDragOverEvent = false;
         }
     }
-    m_dragTarget = newTarget.release();
+    m_dragTarget = WTFMove(newTarget);
     return accept;
 }
 

@@ -170,14 +170,21 @@ public:
     bool shouldCollect();
     JS_EXPORT_PRIVATE void collect(HeapOperation collectionType = AnyCollection);
     bool collectIfNecessaryOrDefer(); // Returns true if it did collect.
+    void collectAccordingToDeferGCProbability();
 
-    void completeAllDFGPlans();
+    void completeAllJITPlans();
     
     // Use this API to report non-GC memory referenced by GC objects. Be sure to
     // call both of these functions: Calling only one may trigger catastropic
     // memory growth.
     void reportExtraMemoryAllocated(size_t);
     void reportExtraMemoryVisited(CellState cellStateBeforeVisiting, size_t);
+
+#if ENABLE(RESOURCE_USAGE)
+    // Use this API to report the subset of extra memory that lives outside this process.
+    void reportExternalMemoryVisited(CellState cellStateBeforeVisiting, size_t);
+    size_t externalMemorySize() { return m_extraMemorySize; }
+#endif
 
     // Use this API to report non-GC memory if you can't use the better API above.
     void deprecatedReportExtraMemory(size_t);
@@ -342,7 +349,6 @@ private:
     void didFinishCollection(double gcStartTime);
     void resumeCompilerThreads();
     void zombifyDeadObjects();
-    void markDeadObjects();
     void gatherExtraHeapSnapshotData(HeapProfiler&);
     void removeDeadHeapSnapshotNodes(HeapProfiler&);
 
@@ -463,6 +469,7 @@ private:
 
 #if ENABLE(RESOURCE_USAGE)
     size_t m_blockBytesAllocated { 0 };
+    size_t m_externalMemorySize { 0 };
 #endif
 };
 

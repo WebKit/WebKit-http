@@ -1,3 +1,281 @@
+2016-06-27  Anders Carlsson  <andersca@apple.com>
+
+        WebKit::WebPaymentCoordinator leak
+        https://bugs.webkit.org/show_bug.cgi?id=159168
+        rdar://problem/26929772
+
+        Reviewed by Beth Dakin.
+
+        Update for WebCore changes.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::paymentCoordinatorDestroyed):
+        (WebPaymentCoordinatorClient::mainFrameDestroyed): Deleted.
+
+2016-06-27  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r189052): Clipping occurs when using context menu to Look Up words within the Dictionary app
+        https://bugs.webkit.org/show_bug.cgi?id=159184
+        <rdar://problem/26370206>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _lookUpInDictionaryFromMenu:]):
+        * WebView/WebImmediateActionController.h:
+        * WebView/WebImmediateActionController.mm:
+        (+[WebImmediateActionController _dictionaryPopupInfoForRange:inFrame:withLookupOptions:indicatorOptions:transition:]):
+        (-[WebImmediateActionController _animationControllerForText]):
+        (dictionaryPopupInfoForRange): Deleted.
+        WebImmediateActionController's code to make a DictionaryPopupInfo and TextIndicator
+        from a Range in WebKit1 is much better than WebHTMLView's; use it in both cases.
+
+2016-06-24  Jer Noble  <jer.noble@apple.com>
+
+        Playback controls refer to wrong element when playing multiple items in a page.
+        https://bugs.webkit.org/show_bug.cgi?id=159076
+        <rdar://problem/26953532>
+
+        Reviewed by Beth Dakin.
+
+        clearPlaybackControlsManager() no longer takes a parameter.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::clearPlaybackControlsManager):
+        * WebView/WebView.mm:
+        (-[WebView _clearPlaybackControlsManager]): Renamed from _clearPlaybackControlsManagerForMediaElement:.
+        * WebView/WebViewInternal.h:
+
+2016-06-23  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused didCancelAuthenticationChallenge
+        https://bugs.webkit.org/show_bug.cgi?id=158819
+
+        Reviewed by David Kilzer.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownloadInternal download:didCancelAuthenticationChallenge:]): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidCancelAuthenticationChallenge): Deleted.
+        * WebView/WebDelegateImplementationCaching.h:
+        * WebView/WebView.mm:
+        (-[WebView _cacheResourceLoadDelegateImplementations]):
+
+2016-06-23  John Wilander  <wilander@apple.com>
+
+        Enable window.open() for existing versions of Secret Society app
+        https://bugs.webkit.org/show_bug.cgi?id=159049
+        <rdar://problem/26528349>
+
+        Reviewed by Andy Estes.
+
+        The Secret Society Hidden Mystery app has a broken version check treating iOS 10
+        as iOS 1 on iPads. Therefore it believes it can use window.open() in a tap
+        handler. We should allow the existing versions of the app to do this to not break
+        them.
+
+        * WebView/WebView.mm:
+        (shouldAllowWindowOpenWithoutUserGesture):
+            Added.
+        (shouldConvertInvalidURLsToBlank):
+            Changed hex number to constant DYLD_IOS_VERSION_10_0.
+
+2016-06-22  Anders Carlsson  <andersca@apple.com>
+
+        Move the WebKitLegacy Apple Pay code to the open source repository
+        https://bugs.webkit.org/show_bug.cgi?id=159035
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h: Added.
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm: Added.
+        (WebPaymentCoordinatorClient::WebPaymentCoordinatorClient):
+        (WebPaymentCoordinatorClient::~WebPaymentCoordinatorClient):
+        (WebPaymentCoordinatorClient::supportsVersion):
+        (WebPaymentCoordinatorClient::canMakePayments):
+        (WebPaymentCoordinatorClient::canMakePaymentsWithActiveCard):
+        (WebPaymentCoordinatorClient::showPaymentUI):
+        (WebPaymentCoordinatorClient::completeMerchantValidation):
+        (WebPaymentCoordinatorClient::completeShippingMethodSelection):
+        (WebPaymentCoordinatorClient::completeShippingContactSelection):
+        (WebPaymentCoordinatorClient::completePaymentMethodSelection):
+        (WebPaymentCoordinatorClient::completePaymentSession):
+        (WebPaymentCoordinatorClient::abortPaymentSession):
+        (WebPaymentCoordinatorClient::mainFrameDestroyed):
+        * WebKitAdditions.mm: Removed.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Begin moving the Apple Pay code to the open source repository
+        https://bugs.webkit.org/show_bug.cgi?id=158998
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add ENABLE_APPLE_PAY.
+
+2016-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Focus event dispatched in iframe causes parent document to scroll incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=158629
+        rdar://problem/26521616
+
+        Reviewed by Tim Horton.
+        
+        Pass SelectionRevealMode::Reveal in existing code.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _scrollDOMRangeToVisible:]):
+        (-[WebFrame _scrollDOMRangeToVisible:withInset:]):
+        (-[WebFrame revealSelectionAtExtent:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView jumpToSelection:]):
+        (-[WebHTMLView centerSelectionInVisibleArea:]):
+
+2016-06-21  Amir Alavi  <aalavi@apple.com>
+
+        Upstream WKHTTPCookiesForURL from WebKitSystemInterface to OpenSource
+        https://bugs.webkit.org/show_bug.cgi?id=158967
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+
+2016-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202243.
+        https://bugs.webkit.org/show_bug.cgi?id=158972
+
+        Broke Windows build and iOS tests (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Focus event dispatched in iframe causes parent document to
+        scroll incorrectly"
+        https://bugs.webkit.org/show_bug.cgi?id=158629
+        http://trac.webkit.org/changeset/202243
+
+2016-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Focus event dispatched in iframe causes parent document to scroll incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=158629
+        rdar://problem/26521616
+
+        Reviewed by Tim Horton.
+        
+        Pass SelectionRevealMode::Reveal in existing code.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _scrollDOMRangeToVisible:]):
+        (-[WebFrame _scrollDOMRangeToVisible:withInset:]):
+        (-[WebFrame revealSelectionAtExtent:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView jumpToSelection:]):
+        (-[WebHTMLView centerSelectionInVisibleArea:]):
+
+2016-06-20  Keith Rollin  <krollin@apple.com>
+
+        Remove RefPtr::release() and change calls sites to use WTFMove()
+        https://bugs.webkit.org/show_bug.cgi?id=158369
+
+        Reviewed by Chris Dumez.
+
+        RefPtr::release() releases its managed pointer awkwardly. It's more
+        direct and clearer to use WTFMove to transfer ownership of the managed
+        pointer.
+
+        As part of this cleanup, also change a lot of explicit data types to
+        'auto'.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::create):
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener receivedPolicyDecision:]):
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin initWithURL:]):
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        (-[WebArchive initWithData:]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource mainResource]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _documentFragmentWithNodesAsParagraphs:]):
+
+2016-06-15  Alexey Proskuryakov  <ap@apple.com>
+
+        +[WebHTMLRepresentation supportedMIMETypes] leaks
+        https://bugs.webkit.org/show_bug.cgi?id=158683
+
+        Reviewed by Darin Adler.
+
+        The problem occurred when chaining newArrayByConcatenatingArrays calls.
+
+        Also refactored the code to avoid returning NSMutableArrays disguised as NSArrays,
+        and removed __unsafe_unretained modifiers that were added in http://trac.webkit.org/r149453
+        for no apparent reason.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (newArrayWithStrings):
+        (+[WebHTMLRepresentation supportedMIMETypes]):
+        (+[WebHTMLRepresentation supportedMediaMIMETypes]):
+        (+[WebHTMLRepresentation supportedNonImageMIMETypes]):
+        (+[WebHTMLRepresentation supportedImageMIMETypes]):
+        (+[WebHTMLRepresentation unsupportedTextMIMETypes]):
+        (newArrayByConcatenatingArrays): Deleted.
+
+2016-06-15  Dean Jackson  <dino@apple.com>
+
+        RTL <select> forms are misplaced
+        https://bugs.webkit.org/show_bug.cgi?id=158810
+        <rdar://problem/24847541>
+
+        Reviewed by Eric Carlson.
+
+        AppKit made a change in Sierra that causes popup menus
+        to snap to a different point when the system language is RTL.
+        We need to be more explicit about what directionality
+        we want, and override the location of the popup based
+        on the text direction.
+
+        I also made a small tweak to the fudge offsets we use
+        in order to make button text and menu text to be
+        more consistent.
+
+        Unfortunately since this is just about the location
+        of the popup menu, it's unable to be tested in our
+        current infrastructure.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Drop some unnecessary header includes
+        https://bugs.webkit.org/show_bug.cgi?id=158788
+
+        Reviewed by Alexey Proskuryakov.
+
+        Drop some unnecessary header includes in headers to speed up build time.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
 2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
 
         Enabling Shadow DOM for all platforms

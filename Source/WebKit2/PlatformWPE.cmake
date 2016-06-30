@@ -152,7 +152,11 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
 
+    WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
+    WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
+    WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
     WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+    WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp
 
     WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
 

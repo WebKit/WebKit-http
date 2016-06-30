@@ -34,9 +34,11 @@
 #include "EventSource.h"
 
 #include "ContentSecurityPolicy.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "MessageEvent.h"
 #include "ResourceError.h"
+#include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
@@ -111,7 +113,6 @@ void EventSource::connect()
     options.preflightPolicy = PreventPreflight;
     options.crossOriginRequestPolicy = UseAccessControl;
     options.setDataBufferingPolicy(DoNotBufferData);
-    options.securityOrigin = &origin;
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
 
     m_loader = ThreadableLoader::create(scriptExecutionContext(), this, request, options);
@@ -241,6 +242,15 @@ void EventSource::didFinishLoading(unsigned long, double)
 void EventSource::didFail(const ResourceError& error)
 {
     ASSERT(m_state != CLOSED);
+
+    if (error.isAccessControl()) {
+        String message = makeString("EventSource cannot load ", error.failingURL().string(), ". ", error.localizedDescription());
+        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, message);
+
+        abortConnectionAttempt();
+        return;
+    }
+
     ASSERT(m_requestInFlight);
 
     if (error.isCancellation())
@@ -249,19 +259,6 @@ void EventSource::didFail(const ResourceError& error)
     // FIXME: Why don't we need to clear data members here as in didFinishLoading?
 
     networkRequestEnded();
-}
-
-void EventSource::didFailAccessControlCheck(const ResourceError& error)
-{
-    String message = makeString("EventSource cannot load ", error.failingURL().string(), ". ", error.localizedDescription());
-    scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, message);
-
-    abortConnectionAttempt();
-}
-
-void EventSource::didFailRedirectCheck()
-{
-    abortConnectionAttempt();
 }
 
 void EventSource::abortConnectionAttempt()

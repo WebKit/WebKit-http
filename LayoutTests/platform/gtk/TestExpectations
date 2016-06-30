@@ -336,20 +336,17 @@ webkit.org/b/85212 ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyF
 webkit.org/b/79203 fast/mediastream/MediaStream-MediaElement-srcObject.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/MediaStreamTrack.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/MediaStreamTrack-onended.html [ Skip ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-AddRemoveStream.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-createAnswer.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-createOffer.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-datachannel.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-dtmf.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-events.html [ Skip ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-getConfiguration.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-local-offer.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-local-pranswer.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-remote-offer.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-remote-pranswer.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-ice.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-localDescription.html [ Skip ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-onnegotiationneeded.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remoteDescription.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stable.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
@@ -407,25 +404,11 @@ Bug(GTK) [ Debug ] perf [ Skip ]
 Bug(GTK) editing/secure-input [ Failure ]
 
 # crypto.subtle is not yet enabled, but digest algorithms are already implemented
-# and their tests are whitelisted
+# This feature was disabled from development builds recently, see also bug #159260
 webkit.org/b/133122 crypto/subtle [ Skip ]
-webkit.org/b/133319 crypto/subtle/sha-1.html [ Pass ]
-webkit.org/b/133319 crypto/subtle/sha-224.html [ Pass ]
-webkit.org/b/133319 crypto/subtle/sha-256.html [ Pass ]
-webkit.org/b/133319 crypto/subtle/sha-384.html [ Pass ]
-webkit.org/b/133319 crypto/subtle/sha-512.html [ Pass ]
-webkit.org/b/133320 crypto/subtle/hmac-check-algorithm.html [ Pass ]
-webkit.org/b/133320 crypto/subtle/hmac-export-key.html [ Pass ]
-webkit.org/b/133320 crypto/subtle/hmac-generate-key.html [ Pass ]
-webkit.org/b/133320 crypto/subtle/hmac-import-jwk.html [ Pass ]
-webkit.org/b/133320 crypto/subtle/hmac-sign-verify-empty-key.html [ Pass ]
-webkit.org/b/133320 crypto/subtle/hmac-sign-verify.html [ Pass ]
 
 # QuickTime plug-in not relevant to this port
 Bug(GTK) plugins/quicktime-plugin-replacement.html [ Skip ]
-
-# Style scoped support unimplemented
-Bug(GTK) fast/css/style-scoped [ Skip ]
 
 # ENABLE(CSS_SCROLL_SNAP) is disabled.
 css3/scroll-snap [ Skip ]
@@ -604,11 +587,6 @@ webkit.org/b/146724 fast/text/word-break-keep-all.html [ ImageOnlyFailure ]
 
 # This tests fail since the upgrade of GTK to 3.16 and Cairo to 1.14 on the JHBuild
 webkit.org/b/146731 fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure Timeout ]
-webkit.org/b/146731 fast/hidpi/filters-blur.html [ ImageOnlyFailure ]
-webkit.org/b/146731 fast/hidpi/filters-hue-rotate.html [ ImageOnlyFailure ]
-webkit.org/b/146731 fast/hidpi/filters-invert.html [ ImageOnlyFailure ]
-webkit.org/b/146731 fast/hidpi/filters-multiple.html [ ImageOnlyFailure ]
-webkit.org/b/146731 fast/hidpi/filters-reference.html [ ImageOnlyFailure ]
 
 webkit.org/b/149016 accessibility/aria-current.html [ Skip ]
 
@@ -710,10 +688,6 @@ webkit.org/b/156148 svg/text/text-text-04-t.svg [ Failure ]
 webkit.org/b/156148 svg/text/text-text-06-t.svg [ Failure ]
 webkit.org/b/156148 svg/text/text-vkern.svg [ Failure ]
 
-# Some shadow-dom tests that are not under fast/shadow-dom that are passing for mac
-webkit.org/b/148695 imported/w3c/csswg-test/css-scoping-1 [ Timeout Failure ImageOnlyFailure ]
-
-
 # Since r200320 resource-timing feature is a runtime flag.
 webkit.org/b/158617 fast/dom/Window/window-properties-performance-resource-timing.html [ Failure ]
 webkit.org/b/158617 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_connection_reuse.html [ Timeout ]
@@ -810,8 +784,6 @@ webkit.org/b/135051 fast/regions/repaint/region-painting-in-composited-view.html
 webkit.org/b/135051 fast/regions/repaint/region-painting-invalidation.html [ Crash Pass ]
 
 webkit.org/b/129050 fast/sub-pixel/compositing-layers-on-subpixel-position.html [ ImageOnlyFailure Crash Pass ]
-
-webkit.org/b/144771 editing/selection/selection-invalid-offset.html [ Crash ]
 
 webkit.org/b/152043 [ Debug ] http/tests/media/clearkey/clear-key-hls-aes128.html [ Crash ]
 webkit.org/b/152043 [ Debug ] http/tests/media/hls [ Crash ]
@@ -1109,7 +1081,6 @@ webkit.org/b/132254 fast/sub-pixel/simple-clipping.html [ ImageOnlyFailure Crash
 webkit.org/b/132257 fast/history/form-submit-in-frame-via-onclick.html [ Timeout Pass ]
 webkit.org/b/132260 fast/workers/worker-close.html [ Timeout Pass ]
 webkit.org/b/132261 html5lib/generated/run-tests16-data.html [ Timeout Pass ]
-webkit.org/b/132267 mathml/wbr-in-mroot-crash.html [ Timeout Pass ]
 webkit.org/b/132272 fast/dom/gc-10.html [ Failure Pass ]
 webkit.org/b/132279 perf/mouse-event.html [ Failure Pass ]
 webkit.org/b/132281 fast/workers/worker-constructor.html [ Timeout Pass ]
@@ -1332,6 +1303,25 @@ webkit.org/b/157730 fast/forms/select/optgroup-clicking.html [ Failure Pass ]
 webkit.org/b/157731 fast/events/touch/touch-inside-iframe-scrolled.html [ Timeout Pass ]
 
 webkit.org/b/158472 fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure Pass ]
+
+webkit.org/b/158912 imported/blink/compositing/animation/hidden-animated-layer-should-not-have-scrollbars.html [ ImageOnlyFailure Pass ]
+
+webkit.org/b/158913 media/media-controls-play-button-updates.html [ Failure Pass ]
+
+webkit.org/b/158914 media/restore-from-page-cache.html [ Failure Pass ]
+
+webkit.org/b/158915 fast/forms/select/menulist-type-ahead-find.html [ Failure Pass ]
+
+webkit.org/b/158916 fast/forms/input-appearance-preventDefault.html [ Failure Pass ]
+
+webkit.org/b/158917 fast/scrolling/overflow-scroll-past-max.html [ Failure Pass ]
+
+webkit.org/b/158918 fast/css3-text/css3-text-decoration/text-decoration-dashed.html [ ImageOnlyFailure Pass ]
+webkit.org/b/158918 fast/css3-text/css3-text-decoration/text-decoration-dotted-dashed.html [ ImageOnlyFailure Pass ]
+webkit.org/b/158918 fast/css3-text/css3-text-decoration/text-decoration-dotted.html [ ImageOnlyFailure Pass ]
+
+webkit.org/b/158919 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Failure Pass ]
+webkit.org/b/158919 http/tests/loading/basic-credentials-sent-automatically.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -1603,7 +1593,6 @@ webkit.org/b/144690 editing/spelling/delete-into-misspelled-word.html [ Timeout 
 webkit.org/b/141835 media/video-controls-no-scripting.html [ Failure ]
 
 # May take too long on the bots.
-Bug(GTK) mathml/very-large-stretchy-operators.html [ Pass Timeout ]
 
 Bug(GTK) fast/history/go-back-to-iframe-with-plugin.html [ Timeout Pass ]
 
@@ -1617,6 +1606,18 @@ webkit.org/b/153949 media/media-volume-slider-rendered-normal.html [ Timeout Pas
 
 webkit.org/b/156109 http/tests/security/contentSecurityPolicy/audio-redirect-blocked.html [ Timeout ]
 webkit.org/b/156109 http/tests/security/contentSecurityPolicy/video-redirect-blocked.html [ Timeout ]
+
+webkit.org/b/158921 http/tests/security/video-cross-origin-caching.html [ Timeout ]
+
+webkit.org/b/158922 imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-basic-setrequestheader-and-arguments.htm [ Timeout ]
+
+webkit.org/b/158923 media/airplay-autoplay.html [ Timeout ]
+
+webkit.org/b/158924 media/media-fullscreen-return-to-inline.html [ Timeout ]
+
+webkit.org/b/158925 media/media-source/media-source-loadedmetada-with-two-sourcebuffers.html [ Timeout ]
+
+webkit.org/b/158926 media/video-load-preload-none.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -2282,9 +2283,6 @@ webkit.org/b/133803 editing/input/option-page-up-down.html [ Failure ]
 webkit.org/b/133803 editing/input/scroll-viewport-page-up-down.html [ Failure ]
 webkit.org/b/133803 editing/undo/undo-deleteWord.html [ Failure ]
 
-# Difference invisible at the naked eye with Latin Modern Math.
-webkit.org/b/134153 mathml/presentation/mo-stacked-glyphs.html [ ImageOnlyFailure ]
-
 webkit.org/b/134976 media/media-controls-invalid-url.html [ Failure ]
 webkit.org/b/134976 media/video-fast-seek.html [ Failure ]
 
@@ -2351,6 +2349,9 @@ webkit.org/b/138077 fast/layers/parent-clipping-overflow-is-overwritten-by-child
 # Smooth scrolling causes failure of scrolling tests
 webkit.org/b/138078 fast/dom/vertical-scrollbar-in-rtl.html [ Failure ]
 webkit.org/b/138078 fast/repaint/fixed-move-after-keyboard-scroll.html [ Failure ]
+
+# Scrolling cleanup causing some test to fail
+webkit.org/b/159143 fast/dom/horizontal-scrollbar-in-rtl.html [ Failure ]
 
 # Incomplete implementation of eventSender causes this test to fail
 webkit.org/b/42194 fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
@@ -2577,6 +2578,10 @@ webkit.org/b/156438 imported/w3c/web-platform-tests/IndexedDB/keyorder.htm [ Fai
 webkit.org/b/156438 inspector/indexeddb/requestDatabaseNames.html [ Failure ]
 webkit.org/b/156438 storage/indexeddb/cursor-key-order.html [ Failure ]
 
+webkit.org/b/158928 svg/zoom/page/zoom-svg-through-object-with-absolute-size-2.xhtml [ Failure ]
+webkit.org/b/158928 svg/zoom/page/zoom-svg-through-object-with-absolute-size.xhtml [ Failure ]
+webkit.org/b/158928 svg/zoom/page/zoom-svg-through-object-with-percentage-size.xhtml [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2591,8 +2596,6 @@ css3/flexbox/multiline-reverse-wrap-baseline.html [ Pass ]
 ietestcenter/css3/flexbox/flexbox-layout-001.htm [ Pass ]
 
 imported/w3c/canvas/2d.line.cap.round.html [ Pass ]
-
-mathml/presentation/style-changed.html [ Pass ]
 
 transitions/svg-text-shadow-transition.html [ Pass ]
 
@@ -2649,6 +2652,6 @@ http/tests/security/contentSecurityPolicy/object-redirect-blocked3.html [ Pass ]
 # Timing out on OS X.
 imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Pass ]
 
-# These tests hardcode platform-specific font aliases.
-webkit.org/b/158649 fast/text/chinese-font-name-aliases.html [ ImageOnlyFailure ]
-webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
+#////////////////////////////////////////////////////////////////////////////////////////
+# End of PASSING tests. See top of file where to put new expectations.
+#////////////////////////////////////////////////////////////////////////////////////////

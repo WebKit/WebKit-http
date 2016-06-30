@@ -3972,7 +3972,7 @@ HRESULT WebView::centerSelectionInVisibleArea(_In_opt_ IUnknown* /* sender */)
     if (!coreFrame)
         return E_UNEXPECTED;
 
-    coreFrame->selection().revealSelection(ScrollAlignment::alignCenterAlways);
+    coreFrame->selection().revealSelection(SelectionRevealMode::Reveal, ScrollAlignment::alignCenterAlways);
     return S_OK;
 }
 
@@ -5051,6 +5051,13 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(!!enabled);
+
+#if ENABLE(CUSTOM_ELEMENTS)
+    hr = prefsPrivate->customElementsEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(!!enabled);
+#endif
 
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
@@ -6941,6 +6948,11 @@ void WebView::setAcceleratedCompositing(bool accelerated)
             m_backingLayer->setSize(IntRect(clientRect).size());
             m_backingLayer->setNeedsDisplay();
             m_layerTreeHost->setRootChildLayer(PlatformCALayer::platformCALayer(m_backingLayer->platformLayer()));
+
+            TransformationMatrix m;
+            m.scale(deviceScaleFactor());
+            m_backingLayer->setAnchorPoint(FloatPoint3D());
+            m_backingLayer->setTransform(m);
 
             // We aren't going to be using our backing store while we're in accelerated compositing
             // mode. But don't delete it immediately, in case we switch out of accelerated

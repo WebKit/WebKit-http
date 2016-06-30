@@ -106,13 +106,15 @@ ObjCProtocol
 ObjCUseDefaultView
 OverrideBuiltins
 PassContext
-Private
+PrivateIdentifier
+PublicIdentifier
 PutForwards=*
 RaisesException
 RaisesExceptionWithMessage
 Reflect=*
 Replaceable
 ReportExtraMemoryCost
+ReportExternalMemoryCost
 RequiresExistingAtomicString
 SetterRaisesException
 SetterRaisesExceptionWithMessage

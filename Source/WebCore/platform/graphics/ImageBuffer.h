@@ -83,7 +83,7 @@ public:
     static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, const GraphicsContext&, bool hasAlpha = true);
     static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&, bool hasAlpha);
 
-    static FloatSize compatibleBufferSize(const FloatSize&, const GraphicsContext&);
+    static IntSize compatibleBufferSize(const FloatSize&, const GraphicsContext&);
     bool isCompatibleWithContext(const GraphicsContext&) const;
 
     WEBCORE_EXPORT ~ImageBuffer();
@@ -126,6 +126,9 @@ public:
 #if USE(CAIRO)
     NativeImagePtr nativeImage() const;
 #endif
+
+    size_t memoryCost() const;
+    size_t externalMemoryCost() const;
 
     // FIXME: current implementations of this method have the restriction that they only work
     // with textures that are RGB or RGBA format, and UNSIGNED_BYTE type.

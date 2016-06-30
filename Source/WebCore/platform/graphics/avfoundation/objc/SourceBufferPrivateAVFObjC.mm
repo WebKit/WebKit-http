@@ -28,6 +28,7 @@
 
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
+#import "AVFoundationSPI.h"
 #import "CDMSessionAVContentKeySession.h"
 #import "CDMSessionMediaSourceAVFObjC.h"
 #import "ExceptionCodePlaceholder.h"
@@ -96,21 +97,6 @@ SOFT_LINK_CONSTANT(AVFoundation, AVSampleBufferDisplayLayerFailedToDecodeNotific
 @end
 
 #pragma mark -
-#pragma mark AVStreamDataParser
-
-@interface AVStreamDataParser : NSObject
-- (void)setDelegate:(id)delegate;
-- (void)appendStreamData:(NSData *)data;
-- (void)setShouldProvideMediaData:(BOOL)shouldProvideMediaData forTrackID:(CMPersistentTrackID)trackID;
-- (BOOL)shouldProvideMediaDataForTrackID:(CMPersistentTrackID)trackID;
-- (void)providePendingMediaData;
-- (void)processContentKeyResponseData:(NSData *)contentKeyResponseData forTrackID:(CMPersistentTrackID)trackID;
-- (void)processContentKeyResponseError:(NSError *)error forTrackID:(CMPersistentTrackID)trackID;
-- (void)renewExpiringContentKeyResponseDataForTrackID:(CMPersistentTrackID)trackID;
-- (NSData *)streamingContentKeyRequestDataForApp:(NSData *)appIdentifier contentIdentifier:(NSData *)contentIdentifier trackID:(CMPersistentTrackID)trackID options:(NSDictionary *)options error:(NSError **)outError;
-@end
-
-#pragma mark -
 #pragma mark AVSampleBufferDisplayLayer
 
 @interface AVSampleBufferDisplayLayer : CALayer
@@ -140,7 +126,7 @@ SOFT_LINK_CONSTANT(AVFoundation, AVSampleBufferDisplayLayerFailedToDecodeNotific
 #pragma mark -
 #pragma mark WebAVStreamDataParserListener
 
-@interface WebAVStreamDataParserListener : NSObject {
+@interface WebAVStreamDataParserListener : NSObject<AVStreamDataParserOutputHandling> {
     WeakPtr<WebCore::SourceBufferPrivateAVFObjC> _parent;
     AVStreamDataParser* _parser;
 }
@@ -219,7 +205,7 @@ SOFT_LINK_CONSTANT(AVFoundation, AVSampleBufferDisplayLayerFailedToDecodeNotific
     });
 }
 
-- (void)streamDataParser:(AVStreamDataParser *)streamDataParser didProvideMediaData:(CMSampleBufferRef)sample forTrackID:(CMPersistentTrackID)trackID mediaType:(NSString *)nsMediaType flags:(NSUInteger)flags
+- (void)streamDataParser:(AVStreamDataParser *)streamDataParser didProvideMediaData:(CMSampleBufferRef)sample forTrackID:(CMPersistentTrackID)trackID mediaType:(NSString *)nsMediaType flags:(AVStreamDataParserOutputMediaDataFlags)flags
 {
 #if ASSERT_DISABLED
     UNUSED_PARAM(streamDataParser);
@@ -630,6 +616,11 @@ void SourceBufferPrivateAVFObjC::didParseStreamDataAsAsset(AVAsset* asset)
     segment.duration = toMediaTime([m_asset duration]);
 
     for (AVAssetTrack* track in [m_asset tracks]) {
+        if ([track hasMediaCharacteristic:AVMediaCharacteristicLegible]) {
+            // FIXME(125161): Handle in-band text tracks.
+            continue;
+        }
+
         if ([track hasMediaCharacteristic:AVMediaCharacteristicVisual]) {
             SourceBufferPrivateClient::InitializationSegment::VideoTrackInformation info;
             RefPtr<VideoTrackPrivateMediaSourceAVFObjC> videoTrack = VideoTrackPrivateMediaSourceAVFObjC::create(track, this);
@@ -690,13 +681,17 @@ bool SourceBufferPrivateAVFObjC::processCodedFrame(int trackID, CMSampleBufferRe
             if (m_mediaSource)
                 m_mediaSource->player()->sizeChanged();
         }
+    } else if (!m_audioRenderers.contains(trackID)) {
+        // FIXME(125161): We don't handle text tracks, and passing this sample up to SourceBuffer
+        // will just confuse its state. Drop this sample until we can handle text tracks properly.
+        return false;
     }
 
 
     if (m_client) {
         RefPtr<MediaSample> mediaSample = MediaSampleAVFObjC::create(sampleBuffer, trackID);
         LOG(MediaSourceSamples, "SourceBufferPrivateAVFObjC::processCodedFrame(%p) - sample(%s)", this, toString(*mediaSample).utf8().data());
-        m_client->sourceBufferPrivateDidReceiveSample(this, mediaSample.release());
+        m_client->sourceBufferPrivateDidReceiveSample(this, WTFMove(mediaSample));
     }
 
     return true;

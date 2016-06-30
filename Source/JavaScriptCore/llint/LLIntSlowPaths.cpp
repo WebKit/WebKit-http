@@ -40,6 +40,7 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITExceptions.h"
+#include "JITWorklist.h"
 #include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
@@ -326,6 +327,8 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         return false;
     }
     
+    JITWorklist::instance()->poll(vm);
+    
     switch (codeBlock->jitType()) {
     case JITCode::BaselineJIT: {
         if (Options::verboseOSR())
@@ -334,24 +337,8 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         return true;
     }
     case JITCode::InterpreterThunk: {
-        CompilationResult result = JIT::compile(&vm, codeBlock, JITCompilationCanFail);
-        switch (result) {
-        case CompilationFailed:
-            CODEBLOCK_LOG_EVENT(codeBlock, "delayJITCompile", ("compilation failed"));
-            if (Options::verboseOSR())
-                dataLogF("    JIT compilation failed.\n");
-            codeBlock->dontJITAnytimeSoon();
-            return false;
-        case CompilationSuccessful:
-            if (Options::verboseOSR())
-                dataLogF("    JIT compilation successful.\n");
-            codeBlock->ownerScriptExecutable()->installCode(codeBlock);
-            codeBlock->jitSoon();
-            return true;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return false;
-        }
+        JITWorklist::instance()->compileLater(codeBlock);
+        return codeBlock->jitType() == JITCode::BaselineJIT;
     }
     default:
         dataLog("Unexpected code block in LLInt: ", *codeBlock, "\n");
@@ -479,7 +466,17 @@ LLINT_SLOW_PATH_DECL(replace)
 
 LLINT_SLOW_PATH_DECL(stack_check)
 {
-    LLINT_BEGIN();
+    VM& vm = exec->vm();
+    VMEntryFrame* vmEntryFrame = vm.topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
+    if (!callerFrame) {
+        callerFrame = exec;
+        vmEntryFrame = vm.topVMEntryFrame;
+    }
+    NativeCallFrameTracerWithRestore tracer(&vm, vmEntryFrame, callerFrame);
+
+    LLINT_SET_PC_FOR_STUBS();
+
 #if LLINT_SLOW_PATH_TRACING
     dataLogF("Checking stack height with exec = %p.\n", exec);
     dataLogF("CodeBlock = %p.\n", exec->codeBlock());
@@ -506,10 +503,9 @@ LLINT_SLOW_PATH_DECL(stack_check)
         LLINT_RETURN_TWO(pc, 0);
 #endif
 
-    vm.topCallFrame = exec;
     ErrorHandlingScope errorScope(vm);
-    vm.throwException(exec, createStackOverflowError(exec));
-    pc = returnToThrow(exec);
+    throwStackOverflowError(callerFrame);
+    pc = returnToThrow(callerFrame);
     LLINT_RETURN_TWO(pc, exec);
 }
 
@@ -588,6 +584,9 @@ static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc,
     Structure* structure = baseCell->structure();
 
     if (structure->typeInfo().prohibitsPropertyCaching())
+        return;
+    
+    if (structure->needImpurePropertyWatchpoint())
         return;
 
     if (structure->isDictionary()) {
@@ -1555,7 +1554,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
         // to have already changed the value of the variable. Otherwise we might watch and constant-fold
         // to the Undefined value from before the assignment.
         if (WatchpointSet* set = pc[5].u.watchpointSet)
-            set->touch("Executed op_put_scope<LocalClosureVar>");
+            set->touch(vm, "Executed op_put_scope<LocalClosureVar>");
         LLINT_END();
     }
 
@@ -1652,6 +1651,13 @@ LLINT_SLOW_PATH_DECL(count_opcode)
 {
     OpcodeID opcodeID = exec->vm().interpreter->getOpcodeID(pc[0].u.opcode);
     Data::opcodeStats(opcodeID).count++;
+    LLINT_END_IMPL();
+}
+
+LLINT_SLOW_PATH_DECL(count_opcode_slow_path)
+{
+    OpcodeID opcodeID = exec->vm().interpreter->getOpcodeID(pc[0].u.opcode);
+    Data::opcodeStats(opcodeID).slowPathCount++;
     LLINT_END_IMPL();
 }
 

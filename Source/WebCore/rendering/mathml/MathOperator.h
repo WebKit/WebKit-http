@@ -40,19 +40,22 @@ class RenderStyle;
 class MathOperator {
 public:
     MathOperator() { }
-    enum class Type { UndefinedOperator, DisplayOperator, VerticalOperator, HorizontalOperator };
+    enum class Type { NormalOperator, DisplayOperator, VerticalOperator, HorizontalOperator };
     void setOperator(const RenderStyle&, UChar baseCharacter, Type);
     void reset(const RenderStyle&);
 
     LayoutUnit width() const { return m_width; }
     LayoutUnit maxPreferredWidth() const { return m_maxPreferredWidth; }
+    LayoutUnit ascent() const { return m_ascent; }
+    LayoutUnit descent() const { return m_descent; }
     LayoutUnit italicCorrection() const { return m_italicCorrection; }
 
-    bool isStretched() const { return m_stretchType != StretchType::Unstretched; }
-    void unstretch() { m_stretchType = StretchType::Unstretched; }
+    void stretchTo(const RenderStyle&, LayoutUnit ascent, LayoutUnit descent);
+    void stretchTo(const RenderStyle&, LayoutUnit width);
 
-    // FIXME: All the code below should be private when it is no longer needed by RenderMathMLOperator (http://webkit.org/b/152244).
+    void paint(const RenderStyle&, PaintInfo&, const LayoutPoint&);
 
+private:
     struct GlyphAssemblyData {
         GlyphData topOrRight;
         GlyphData extension;
@@ -84,7 +87,7 @@ public:
     void paintHorizontalGlyphAssembly(const RenderStyle&, PaintInfo&, const LayoutPoint&);
 
     UChar m_baseCharacter { 0 };
-    Type m_operatorType { Type::UndefinedOperator };
+    Type m_operatorType { Type::NormalOperator };
     StretchType m_stretchType { StretchType::Unstretched };
     union {
         GlyphData m_variant;
@@ -95,6 +98,7 @@ public:
     LayoutUnit m_ascent { 0 };
     LayoutUnit m_descent { 0 };
     LayoutUnit m_italicCorrection { 0 };
+    float m_radicalVerticalScale { 1 };
 };
 
 }

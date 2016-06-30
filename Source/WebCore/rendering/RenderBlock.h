@@ -81,7 +81,7 @@ public:
     virtual void invalidateLineLayoutPath() { }
 
     void insertPositionedObject(RenderBox&);
-    static void removePositionedObject(RenderBox&);
+    static void removePositionedObject(const RenderBox&);
     void removePositionedObjects(const RenderBlock*, ContainingBlockState = SameContainingBlock);
 
     TrackedRendererListHashSet* positionedObjects() const;
@@ -314,7 +314,7 @@ protected:
     void layoutPositionedObjects(bool relayoutChildren, bool fixedPositionObjectsOnly = false);
     virtual void layoutPositionedObject(RenderBox&, bool relayoutChildren, bool fixedPositionObjectsOnly);
     
-    void markFixedPositionObjectForLayoutIfNeeded(RenderObject& child);
+    void markFixedPositionObjectForLayoutIfNeeded(RenderBox& child);
 
     LayoutUnit marginIntrinsicLogicalWidthForChild(RenderBox&) const;
 

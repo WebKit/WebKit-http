@@ -38,11 +38,13 @@
 #include "B3MathExtras.h"
 #include "B3MemoryValue.h"
 #include "B3Procedure.h"
+#include "B3ReduceStrength.h"
 #include "B3SlotBaseValue.h"
 #include "B3StackSlot.h"
 #include "B3StackmapGenerationParams.h"
 #include "B3SwitchValue.h"
 #include "B3UpsilonValue.h"
+#include "B3Validate.h"
 #include "B3ValueInlines.h"
 #include "CCallHelpers.h"
 #include "InitializeThreading.h"
@@ -12050,6 +12052,58 @@ void testLateRegister()
     CHECK(invoke<uint64_t>(*code) == result);
 }
 
+void testReduceStrengthCheckBottomUseInAnotherBlock()
+{
+    Procedure proc;
+    
+    BasicBlock* one = proc.addBlock();
+    BasicBlock* two = proc.addBlock();
+    
+    CheckValue* check = one->appendNew<CheckValue>(
+        proc, Check, Origin(), one->appendNew<Const32Value>(proc, Origin(), 1));
+    check->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams&) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+
+            jit.move(CCallHelpers::TrustedImm32(666), GPRInfo::returnValueGPR);
+            jit.emitFunctionEpilogue();
+            jit.ret();
+        });
+    Value* arg = one->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    one->appendNew<ControlValue>(proc, Jump, Origin(), FrequentedBlock(two));
+    
+    check = two->appendNew<CheckValue>(
+        proc, CheckAdd, Origin(), arg,
+        two->appendNew<ConstPtrValue>(proc, Origin(), 1));
+    check->setGenerator(
+        [&] (CCallHelpers&, const StackmapGenerationParams&) {
+            CHECK(!"Should not execute");
+        });
+    two->appendNew<ControlValue>(proc, Return, Origin(), check);
+    
+    proc.resetReachability();
+    reduceStrength(proc);
+}
+
+void testResetReachabilityDanglingReference()
+{
+    Procedure proc;
+    
+    BasicBlock* one = proc.addBlock();
+    BasicBlock* two = proc.addBlock();
+    
+    UpsilonValue* upsilon = one->appendNew<UpsilonValue>(
+        proc, Origin(), one->appendNew<Const32Value>(proc, Origin(), 42));
+    one->appendNew<ControlValue>(proc, Oops, Origin());
+    
+    Value* phi = two->appendNew<Value>(proc, Phi, Int32, Origin());
+    upsilon->setPhi(phi);
+    two->appendNew<ControlValue>(proc, Oops, Origin());
+    
+    proc.resetReachability();
+    validate(proc);
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -13449,11 +13503,11 @@ void run(const char* filter)
     RUN(testLShiftSelf64());
 
     RUN(testPatchpointDoubleRegs());
-
     RUN(testSpillDefSmallerThanUse());
     RUN(testSpillUseLargerThanDef());
-
     RUN(testLateRegister());
+    RUN(testReduceStrengthCheckBottomUseInAnotherBlock());
+    RUN(testResetReachabilityDanglingReference());
 
     if (tasks.isEmpty())
         usage();

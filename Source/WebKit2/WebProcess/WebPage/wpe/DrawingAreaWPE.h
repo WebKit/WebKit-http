@@ -37,7 +37,7 @@ public:
     DrawingAreaWPE(WebPage&, const WebPageCreationParameters&);
     virtual ~DrawingAreaWPE();
 
-    void layerHostDidFlushLayers();
+    void layerHostDidFlushLayers() override;
 
 private:
     // DrawingArea

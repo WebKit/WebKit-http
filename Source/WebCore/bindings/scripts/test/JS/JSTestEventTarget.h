@@ -28,15 +28,14 @@ namespace WebCore {
 class JSTestEventTarget : public JSEventTarget {
 public:
     typedef JSEventTarget Base;
+    typedef TestEventTarget DOMWrapped;
     static JSTestEventTarget* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestEventTarget>&& impl)
     {
-        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll("Allocated masquerading object");
+        globalObject->masqueradesAsUndefinedWatchpoint()->fireAll(globalObject->vm(), "Allocated masquerading object");
         JSTestEventTarget* ptr = new (NotNull, JSC::allocateCell<JSTestEventTarget>(globalObject->vm().heap)) JSTestEventTarget(structure, *globalObject, WTFMove(impl));
         ptr->finishCreation(globalObject->vm());
         return ptr;
     }
-
-    static const bool hasStaticPropertyTable = false;
 
     static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
     static JSC::JSObject* prototype(JSC::VM&, JSC::JSGlobalObject*);

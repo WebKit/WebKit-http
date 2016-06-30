@@ -29,6 +29,7 @@
 #if ENABLE(B3_JIT)
 
 #include "B3ArgumentRegValue.h"
+#include "B3BottomProvider.h"
 #include "B3CCallValue.h"
 #include "B3ControlValue.h"
 #include "B3MemoryValue.h"
@@ -60,7 +61,7 @@ void Value::replaceWithIdentity(Value* value)
     ASSERT(m_type == value->m_type);
 
     if (m_type == Void) {
-        replaceWithNop();
+        replaceWithNopIgnoringType();
         return;
     }
 
@@ -79,7 +80,18 @@ void Value::replaceWithIdentity(Value* value)
     this->m_index = index;
 }
 
+void Value::replaceWithBottom(InsertionSet& insertionSet, size_t index)
+{
+    replaceWithBottom(BottomProvider(insertionSet, index));
+}
+
 void Value::replaceWithNop()
+{
+    RELEASE_ASSERT(m_type == Void);
+    replaceWithNopIgnoringType();
+}
+
+void Value::replaceWithNopIgnoringType()
 {
     unsigned index = m_index;
     Origin origin = m_origin;
@@ -633,25 +645,6 @@ void Value::dumpMeta(CommaPrinter&, PrintStream&) const
 {
 }
 
-#if !ASSERT_DISABLED
-void Value::checkOpcode(Opcode opcode)
-{
-    ASSERT(!ArgumentRegValue::accepts(opcode));
-    ASSERT(!CCallValue::accepts(opcode));
-    ASSERT(!CheckValue::accepts(opcode));
-    ASSERT(!Const32Value::accepts(opcode));
-    ASSERT(!Const64Value::accepts(opcode));
-    ASSERT(!ConstDoubleValue::accepts(opcode));
-    ASSERT(!ConstFloatValue::accepts(opcode));
-    ASSERT(!ControlValue::accepts(opcode));
-    ASSERT(!MemoryValue::accepts(opcode));
-    ASSERT(!PatchpointValue::accepts(opcode));
-    ASSERT(!SlotBaseValue::accepts(opcode));
-    ASSERT(!UpsilonValue::accepts(opcode));
-    ASSERT(!VariableValue::accepts(opcode));
-}
-#endif // !ASSERT_DISABLED
-
 Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
 {
     switch (opcode) {
@@ -727,6 +720,12 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     default:
         RELEASE_ASSERT_NOT_REACHED();
     }
+}
+
+void Value::badOpcode(Opcode opcode, unsigned numArgs)
+{
+    dataLog("Bad opcode ", opcode, " with ", numArgs, " args.\n");
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 } } // namespace JSC::B3

@@ -1,3 +1,84 @@
+2016-06-28  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Custom elements tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=159139
+
+        Reviewed by Alex Christensen.
+
+        Add preference for enabling custom element API.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::customElementsEnabled):
+        (WebPreferences::setCustomElementsEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-06-23  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test accessibility/aria-labelledby-overrides-label.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=159057
+
+        Reviewed by Brent Fulgham.
+
+        The test expects the label to have a static text role, but currently it has a
+        group role.
+ 
+        * AccessibleBase.cpp:
+        (MSAARole): Change the role of labels to static text.
+
+2016-06-23  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused didCancelAuthenticationChallenge
+        https://bugs.webkit.org/show_bug.cgi?id=158819
+
+        Reviewed by David Kilzer.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidCancelAuthenticationChallenge): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2016-06-22  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test storage/indexeddb/modern/handle-user-delete.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=158934
+
+        Reviewed by Brent Fulgham.
+
+        Add a method to delete all indexed databases.
+
+        * Interfaces/IWebDatabaseManager.idl:
+        * WebDatabaseManager.cpp:
+        (WebDatabaseManager::QueryInterface):
+        (WebDatabaseManager::deleteAllIndexedDatabases):
+        * WebDatabaseManager.h:
+
+2016-06-17  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Rendering is not scaled correctly if process is DPI aware.
+        https://bugs.webkit.org/show_bug.cgi?id=158781
+
+        Reviewed by Brent Fulgham.
+
+        Scale the root graphics layer with the device scale factor.
+
+        * WebView.cpp:
+        (WebView::setAcceleratedCompositing):
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Drop some unnecessary header includes
+        https://bugs.webkit.org/show_bug.cgi?id=158788
+
+        Reviewed by Alexey Proskuryakov.
+
+        Drop some unnecessary header includes in headers to speed up build time.
+
+        * Plugins/PluginView.cpp:
+
 2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
 
         Enabling Shadow DOM for all platforms

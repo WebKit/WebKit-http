@@ -28,6 +28,7 @@
 #include "MediaQueryList.h"
 #include "MediaQueryListListener.h"
 #include "NodeRenderStyle.h"
+#include "RenderElement.h"
 #include "StyleResolver.h"
 
 namespace WebCore {
@@ -117,7 +118,11 @@ void MediaQueryMatcher::styleResolverChanged()
         return;
 
     MediaQueryEvaluator evaluator { mediaType(), *m_document, style.get() };
-    for (auto& listener : m_listeners) {
+    Vector<Listener> listeners;
+    listeners.reserveInitialCapacity(m_listeners.size());
+    for (auto& listener : m_listeners)
+        listeners.uncheckedAppend({ listener.listener.copyRef(), listener.query.copyRef() });
+    for (auto& listener : listeners) {
         bool notify;
         listener.query->evaluate(evaluator, notify);
         if (notify)
