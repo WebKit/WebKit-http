@@ -38,6 +38,8 @@
 #include <OpenGL/gl.h>
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
+#elif PLATFORM(QT)
+#include <qopengl.h>
 #endif
 
 namespace WebCore {
