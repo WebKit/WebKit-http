@@ -48,7 +48,7 @@ if (WIN32)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
 endif ()
 
-if (WTF_OS_UNIX)
+if (WTF_OS_UNIX AND ENABLE_NETSCAPE_PLUGIN_API)
     add_definitions(-DXP_UNIX)
     link_libraries(X11)
 endif ()
