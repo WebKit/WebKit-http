@@ -359,7 +359,7 @@ my @features = (
       define => "ENABLE_NAVIGATOR_HWCONCURRENCY", default => 1, value => \$hardwareConcurrencySupport },
 
     { option => "netscape-plugin-api", desc => "Toggle Netscape Plugin API support",
-      define => "ENABLE_NETSCAPE_PLUGIN_API", default => !isIOSWebKit(), value => \$netscapePluginAPISupport },
+      define => "ENABLE_NETSCAPE_PLUGIN_API", default => (!isIOSWebKit() && !isQt()), value => \$netscapePluginAPISupport },
 
     { option => "nosniff", desc => "Toggle support for 'X-Content-Type-Options: nosniff'",
       define => "ENABLE_NOSNIFF", default => isEfl(), value => \$nosniffSupport },
