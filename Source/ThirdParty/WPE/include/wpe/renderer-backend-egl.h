@@ -57,6 +57,7 @@ struct wpe_renderer_backend_egl_target_interface {
     void (*initialize)(void*, void*, uint32_t, uint32_t);
     EGLNativeWindowType (*get_native_window)(void*);
     void (*resize)(void*, uint32_t, uint32_t);
+    void (*frame_will_render)(void*);
     void (*frame_rendered)(void*);
 };
 
@@ -96,6 +97,9 @@ wpe_renderer_backend_egl_target_get_native_window(struct wpe_renderer_backend_eg
 
 void
 wpe_renderer_backend_egl_target_resize(struct wpe_renderer_backend_egl_target*, uint32_t, uint32_t);
+
+void
+wpe_renderer_backend_egl_target_frame_will_render(struct wpe_renderer_backend_egl_target*);
 
 void
 wpe_renderer_backend_egl_target_frame_rendered(struct wpe_renderer_backend_egl_target*);

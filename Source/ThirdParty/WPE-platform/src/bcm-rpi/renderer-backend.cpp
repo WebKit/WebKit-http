@@ -145,6 +145,10 @@ struct wpe_renderer_backend_egl_target_interface bcm_rpi_renderer_backend_egl_ta
     [](void* data, uint32_t width, uint32_t height)
     {
     },
+    // frame_will_render
+    [](void* data)
+    {
+    },
     // frame_rendered
     [](void* data)
     {
