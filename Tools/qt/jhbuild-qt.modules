@@ -47,7 +47,6 @@
  -system-sqlite
  -system-zlib
 
- -no-accessibility
  -no-alsa
  -no-cups
  -no-eglfs
