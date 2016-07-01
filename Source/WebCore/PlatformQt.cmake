@@ -222,11 +222,32 @@ if (ENABLE_OPENGL)
     list(APPEND WebCore_SOURCES
         platform/graphics/OpenGLShims.cpp
 
-        platform/graphics/opengl/Extensions3DOpenGL.cpp
         platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
-        platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
         platform/graphics/opengl/TemporaryOpenGLSetting.cpp
+    )
+
+    if (${Qt5Gui_OPENGL_IMPLEMENTATION} STREQUAL GLESv2)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/opengl/Extensions3DOpenGLES.cpp
+            platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
+        )
+    elseif (${Qt5Gui_OPENGL_IMPLEMENTATION} STREQUAL GL)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/opengl/Extensions3DOpenGL.cpp
+            platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
+        )
+    else ()
+        message(FATAL_ERROR "Unsupported Qt OpenGL implementation ${Qt5Gui_OPENGL_IMPLEMENTATION}")
+    endif ()
+
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+        ${Qt5Gui_EGL_INCLUDE_DIRS}
+        ${Qt5Gui_OPENGL_INCLUDE_DIRS}
+    )
+    list(APPEND WebCore_LIBRARIES
+        ${Qt5Gui_EGL_LIBRARIES}
+        ${Qt5Gui_OPENGL_LIBRARIES}
     )
 endif ()
 
