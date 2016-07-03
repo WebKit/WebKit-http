@@ -198,7 +198,6 @@ public:
     static bool trackRepaintRects(QWebFrameAdapter*);
     static void getTrackedRepaintRects(QWebFrameAdapter*, QVector<QRectF>& result);
 
-    static void setSeamlessIFramesEnabled(bool);
     static void setShouldUseFontSmoothing(bool);
 
     static QString frameRenderTreeDump(QWebFrameAdapter*);

@@ -863,15 +863,6 @@ void DumpRenderTreeSupportQt::getTrackedRepaintRects(QWebFrameAdapter* adapter, 
         result.append(rects[i]);
 }
 
-void DumpRenderTreeSupportQt::setSeamlessIFramesEnabled(bool enabled)
-{
-#if ENABLE(IFRAME_SEAMLESS)
-    WebCore::RuntimeEnabledFeatures::sharedFeatures().setSeamlessIFramesEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
-}
-
 void DumpRenderTreeSupportQt::setShouldUseFontSmoothing(bool enabled)
 {
     WebCore::FontCascade::setShouldUseSmoothing(enabled);
