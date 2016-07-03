@@ -873,7 +873,7 @@ void Connection::dispatchSyncMessage(MessageDecoder& decoder)
         RELEASE_ASSERT(unwrappedDecoder);
         processIncomingMessage(WTFMove(unwrappedDecoder));
 
-        m_syncMessageState->dispatchMessages(nullptr);
+        SyncMessageState::singleton().dispatchMessages(nullptr);
     } else {
         // Hand off both the decoder and encoder to the client.
         m_client->didReceiveSyncMessage(*this, decoder, replyEncoder);
