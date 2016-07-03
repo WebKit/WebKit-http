@@ -300,7 +300,6 @@ private:
 
     class SyncMessageState;
     friend class SyncMessageState;
-    RefPtr<SyncMessageState> m_syncMessageState;
 
     Lock m_syncReplyStateMutex;
     bool m_shouldWaitForSyncReplies;

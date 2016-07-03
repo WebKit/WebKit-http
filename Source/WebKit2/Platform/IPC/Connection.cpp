@@ -57,10 +57,12 @@ struct WaitForMessageState {
     std::unique_ptr<MessageDecoder> decoder;
 };
 
-class Connection::SyncMessageState : public ThreadSafeRefCounted<Connection::SyncMessageState> {
+class Connection::SyncMessageState {
 public:
-    static Ref<SyncMessageState> getOrCreate(RunLoop&);
-    ~SyncMessageState();
+    static SyncMessageState& singleton();
+
+    SyncMessageState();
+    ~SyncMessageState() = delete;
 
     void wakeUpClientRunLoop()
     {
@@ -81,29 +83,8 @@ public:
     void dispatchMessages(Connection* allowedConnection);
 
 private:
-    explicit SyncMessageState(RunLoop&);
-
-    typedef HashMap<RunLoop*, SyncMessageState*> SyncMessageStateMap;
-    static SyncMessageStateMap& syncMessageStateMap()
-    {
-        static NeverDestroyed<SyncMessageStateMap> syncMessageStateMap;
-        return syncMessageStateMap;
-    }
-
-    static std::mutex& syncMessageStateMapMutex()
-    {
-        static LazyNeverDestroyed<std::mutex> syncMessageStateMapMutex;
-        static std::once_flag onceFlag;
-        std::call_once(onceFlag, [] {
-            syncMessageStateMapMutex.construct();
-        });
-
-        return syncMessageStateMapMutex;
-    }
-
     void dispatchMessageAndResetDidScheduleDispatchMessagesForConnection(Connection&);
 
-    RunLoop& m_runLoop;
     BinarySemaphore m_waitForSyncReplySemaphore;
 
     // Protects m_didScheduleDispatchMessagesWorkSet and m_messagesToDispatchWhileWaitingForSyncReply.
@@ -128,33 +109,20 @@ public:
 };
 
 
-Ref<Connection::SyncMessageState> Connection::SyncMessageState::getOrCreate(RunLoop& runLoop)
+Connection::SyncMessageState& Connection::SyncMessageState::singleton()
 {
-    std::lock_guard<std::mutex> lock(syncMessageStateMapMutex());
+    static std::once_flag onceFlag;
+    static LazyNeverDestroyed<SyncMessageState> syncMessageState;
 
-    auto& slot = syncMessageStateMap().add(&runLoop, nullptr).iterator->value;
-    if (slot)
-        return *slot;
-
-    Ref<SyncMessageState> syncMessageState = adoptRef(*new SyncMessageState(runLoop));
-    slot = syncMessageState.ptr();
+    std::call_once(onceFlag, [] {
+        syncMessageState.construct();
+    });
 
     return syncMessageState;
 }
 
-Connection::SyncMessageState::SyncMessageState(RunLoop& runLoop)
-    : m_runLoop(runLoop)
+Connection::SyncMessageState::SyncMessageState()
 {
-}
-
-Connection::SyncMessageState::~SyncMessageState()
-{
-    std::lock_guard<std::mutex> lock(syncMessageStateMapMutex());
-
-    ASSERT(syncMessageStateMap().contains(&m_runLoop));
-    syncMessageStateMap().remove(&m_runLoop);
-
-    ASSERT(m_messagesToDispatchWhileWaitingForSyncReply.isEmpty());
 }
 
 bool Connection::SyncMessageState::processIncomingMessage(Connection& connection, std::unique_ptr<MessageDecoder>& message)
@@ -168,7 +136,7 @@ bool Connection::SyncMessageState::processIncomingMessage(Connection& connection
         std::lock_guard<Lock> lock(m_mutex);
         
         if (m_didScheduleDispatchMessagesWorkSet.add(&connection).isNewEntry) {
-            m_runLoop.dispatch([this, protectedConnection = Ref<Connection>(connection)]() mutable {
+            RunLoop::main().dispatch([this, protectedConnection = Ref<Connection>(connection)]() mutable {
                 dispatchMessageAndResetDidScheduleDispatchMessagesForConnection(protectedConnection);
             });
         }
@@ -183,7 +151,7 @@ bool Connection::SyncMessageState::processIncomingMessage(Connection& connection
 
 void Connection::SyncMessageState::dispatchMessages(Connection* allowedConnection)
 {
-    ASSERT(&m_runLoop == &RunLoop::current());
+    ASSERT(RunLoop::isMain());
 
     Vector<ConnectionAndIncomingMessage> messagesToDispatchWhileWaitingForSyncReply;
 
@@ -250,7 +218,6 @@ Connection::Connection(Identifier identifier, bool isServer, Client& client)
     , m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount(0)
     , m_didReceiveInvalidMessage(false)
     , m_waitingForMessage(nullptr)
-    , m_syncMessageState(SyncMessageState::getOrCreate(RunLoop::main()))
     , m_shouldWaitForSyncReplies(true)
 {
     ASSERT(RunLoop::isMain());
@@ -586,7 +553,7 @@ std::unique_ptr<MessageDecoder> Connection::waitForSyncReply(uint64_t syncReques
     bool timedOut = false;
     while (!timedOut) {
         // First, check if we have any messages that we need to process.
-        m_syncMessageState->dispatchMessages(nullptr);
+        SyncMessageState::singleton().dispatchMessages(nullptr);
         
         {
             LockHolder locker(m_syncReplyStateMutex);
@@ -617,7 +584,7 @@ std::unique_ptr<MessageDecoder> Connection::waitForSyncReply(uint64_t syncReques
         // We didn't find a sync reply yet, keep waiting.
         // This allows the WebProcess to still serve clients while waiting for the message to return.
         // Notably, it can continue to process accessibility requests, which are on the main thread.
-        timedOut = !m_syncMessageState->wait(absoluteTime);
+        timedOut = !SyncMessageState::singleton().wait(absoluteTime);
     }
 
     CONNECTION_LOG_ALWAYS_ERROR("Connection::waitForSyncReply: Timed-out while waiting for reply, id = %" PRIu64, syncRequestID);
@@ -645,7 +612,7 @@ void Connection::processIncomingSyncReply(std::unique_ptr<MessageDecoder> decode
 
         // We got a reply to the last send message, wake up the client run loop so it can be processed.
         if (i == m_pendingSyncReplies.size())
-            m_syncMessageState->wakeUpClientRunLoop();
+            SyncMessageState::singleton().wakeUpClientRunLoop();
 
         return;
     }
@@ -713,7 +680,7 @@ void Connection::processIncomingMessage(std::unique_ptr<MessageDecoder> message)
     // Check if this is a sync message or if it's a message that should be dispatched even when waiting for
     // a sync reply. If it is, and we're waiting for a sync reply this message needs to be dispatched.
     // If we don't we'll end up with a deadlock where both sync message senders are stuck waiting for a reply.
-    if (m_syncMessageState->processIncomingMessage(*this, message))
+    if (SyncMessageState::singleton().processIncomingMessage(*this, message))
         return;
 
     // Check if we're waiting for this message.
@@ -789,7 +756,7 @@ void Connection::connectionDidClose()
         m_shouldWaitForSyncReplies = false;
 
         if (!m_pendingSyncReplies.isEmpty())
-            m_syncMessageState->wakeUpClientRunLoop();
+            SyncMessageState::singleton().wakeUpClientRunLoop();
 
         for (SecondaryThreadPendingSyncReplyMap::iterator iter = m_secondaryThreadPendingSyncReplyMap.begin(); iter != m_secondaryThreadPendingSyncReplyMap.end(); ++iter)
             iter->value->semaphore.signal();
