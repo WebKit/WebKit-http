@@ -526,4 +526,4 @@ if (COMPILER_IS_GCC_OR_CLANG)
     )
 endif ()
 
-#add_subdirectory(qt/tests)
+add_subdirectory(qt/tests)
