@@ -194,10 +194,6 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/WebEventConversion.cpp
 )
 
-qt_wrap_cpp(WebKit WebKit_SOURCES
-    qt/Api/qwebkitplatformplugin.h
-)
-
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Gui_INCLUDE_DIRS}
@@ -271,19 +267,23 @@ ecm_generate_headers(
         QtWebKit_HEADERS
 )
 
+set(WebKit_PUBLIC_HEADERS
+    qt/Api/qwebkitglobal.h
+    ${QtWebKit_HEADERS}
+    ${QtWebKit_FORWARDING_HEADERS}
+)
+
 install(
     FILES
-        qt/Api/qwebkitglobal.h
-        ${QtWebKit_HEADERS}
-        ${QtWebKit_FORWARDING_HEADERS}
+        ${WebKit_PUBLIC_HEADERS}
     DESTINATION
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKit
 )
 
-file(GLOB QtWebKit_PRIVATE_HEADERS qt/Api/*_p.h)
+file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h)
 install(
     FILES
-        ${QtWebKit_PRIVATE_HEADERS}
+        ${WebKit_PRIVATE_HEADERS}
     DESTINATION
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
 )
@@ -395,18 +395,22 @@ ecm_generate_headers(
         QtWebKitWidgets_HEADERS
 )
 
+set(WebKitWidgets_PUBLIC_HEADERS
+    ${QtWebKitWidgets_HEADERS}
+    ${QtWebKitWidgets_FORWARDING_HEADERS}
+)
+
 install(
     FILES
-        ${QtWebKitWidgets_HEADERS}
-        ${QtWebKitWidgets_FORWARDING_HEADERS}
+        ${WebKitWidgets_PUBLIC_HEADERS}
     DESTINATION
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets
 )
 
-file(GLOB QtWebKitWidgets_PRIVATE_HEADERS qt/WidgetApi/*_p.h)
+file(GLOB WebKitWidgets_PRIVATE_HEADERS qt/WidgetApi/*_p.h)
 install(
     FILES
-        ${QtWebKitWidgets_PRIVATE_HEADERS}
+        ${WebKitWidgets_PRIVATE_HEADERS}
     DESTINATION
         ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets/private
 )
@@ -476,6 +480,7 @@ endif ()
 
 set(WebKitWidgets_LIBRARY_TYPE SHARED)
 set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
+set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/Private)
 
 WEBKIT_FRAMEWORK(WebKitWidgets)
 add_dependencies(WebKitWidgets WebKit)
