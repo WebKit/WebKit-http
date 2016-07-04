@@ -68,3 +68,10 @@ add_library(WPE-mesa SHARED ${WPE_MESA_SOURCES})
 target_include_directories(WPE-mesa PRIVATE ${WPE_MESA_INCLUDE_DIRECTORIES})
 target_link_libraries(WPE-mesa ${WPE_MESA_LIBRARIES})
 install(TARGETS WPE-mesa DESTINATION "${LIB_INSTALL_DIR}")
+
+# Create a libWPE-backend.so symlink to libWPE-mesa.so and install it.
+add_custom_command(TARGET WPE-mesa
+                   POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E create_symlink libWPE-mesa.so ${CMAKE_BINARY_DIR}/lib/libWPE-backend.so
+                  )
+install(FILES ${CMAKE_BINARY_DIR}/lib/libWPE-backend.so DESTINATION "${LIB_INSTALL_DIR}")

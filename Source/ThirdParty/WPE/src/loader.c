@@ -43,10 +43,7 @@ load_impl_library()
         abort();
     }
 #else
-    // FIXME:
-    // 1. should use a more generic name, usable via a symbolic link to the
-    //    platform-specific libraries,
-    static const char library_name[] = "libWPE-mesa.so";
+    static const char library_name[] = "libWPE-backend.so";
 
     // Get the impl library from an environment variable.
     char* env_library_name = getenv("WPE_BACKEND_LIBRARY");
@@ -57,10 +54,10 @@ load_impl_library()
             abort();
         }
     } else {
-        // Load libWPE-mesa.so by defauly.
+        // Load libWPE-backend.so by defauly.
         s_impl_library = dlopen(library_name, RTLD_NOW);
         if (!s_impl_library) {
-            fprintf(stderr, "wpe: could not load the impl library: %s\n", dlerror());
+            fprintf(stderr, "wpe: could not load the impl library. Is there any backend installed?: %s\n", dlerror());
             abort();
         }
     }
