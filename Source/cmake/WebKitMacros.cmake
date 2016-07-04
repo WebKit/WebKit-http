@@ -249,6 +249,8 @@ macro(WEBKIT_FRAMEWORK _target)
         ${${_target}_HEADERS}
         ${${_target}_SOURCES}
         ${${_target}_DERIVED_SOURCES}
+        ${${_target}_PRIVATE_HEADERS}
+        ${${_target}_PUBLIC_HEADERS}
     )
     target_link_libraries(${_target} ${${_target}_LIBRARIES})
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "BUILDING_${_target}")
@@ -269,6 +271,14 @@ macro(WEBKIT_FRAMEWORK _target)
 
     if (APPLE AND NOT PORT STREQUAL "GTK" AND NOT ${${_target}_LIBRARY_TYPE} MATCHES STATIC)
         set_target_properties(${_target} PROPERTIES FRAMEWORK TRUE)
+        if (${_target}_PUBLIC_HEADERS)
+            set_target_properties(${_target} PROPERTIES PUBLIC_HEADER "${${_target}_PUBLIC_HEADERS}}")
+            if (${_target}_PRIVATE_HEADERS)
+                foreach (CURRENT_PRIVATE_HEADER ${${_target}_PRIVATE_HEADERS})
+                    set_property(SOURCE ${CURRENT_PRIVATE_HEADER} PROPERTY MACOSX_PACKAGE_LOCATION ${${_target}_PRIVATE_HEADERS_LOCATION} )
+                endforeach ()
+            endif ()
+        endif ()
         install(TARGETS ${_target} FRAMEWORK DESTINATION ${LIB_INSTALL_DIR})
     endif ()
 endmacro()

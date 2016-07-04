@@ -59,6 +59,8 @@ if (MSVC)
     endif ()
 endif ()
 
+set(WebKit_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKit/Private)
+
 WEBKIT_FRAMEWORK(WebKit)
 
 set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
