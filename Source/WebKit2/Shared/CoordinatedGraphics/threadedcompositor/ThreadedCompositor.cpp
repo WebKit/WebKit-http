@@ -102,10 +102,6 @@ void ThreadedCompositor::setDeviceScaleFactor(float scale)
 void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
     m_compositingRunLoop->performTaskSync([this, protectedThis = Ref<ThreadedCompositor>(*this), size] {
-#if PLATFORM(WPE)
-        if (m_target)
-            m_target->resize(size);
-#endif
         m_viewportController->didChangeViewportSize(size);
     });
 }
@@ -120,6 +116,10 @@ void ThreadedCompositor::didChangeViewportAttribute(const ViewportAttributes& at
 void ThreadedCompositor::didChangeContentsSize(const IntSize& size)
 {
     m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), size] {
+#if PLATFORM(WPE)
+        if (m_target)
+            m_target->resize(size);
+#endif
         m_viewportController->didChangeContentsSize(size);
     });
 }
