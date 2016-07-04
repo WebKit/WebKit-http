@@ -2,6 +2,7 @@ set(ForwardingHeadersForWebKitTestRunner_NAME WebKitTestRunner-forwarding-header
 
 list(APPEND WebKitTestRunner_SOURCES
     ${WEBKIT_TESTRUNNER_DIR}/wpe/EventSenderProxyWPE.cpp
+    ${WEBKIT_TESTRUNNER_DIR}/wpe/HeadlessViewBackend.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/PlatformWebViewWPE.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/TestControllerWPE.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/TestInvocationWPE.cpp
@@ -9,12 +10,15 @@ list(APPEND WebKitTestRunner_SOURCES
 )
 
 list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
+    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include
+    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa/include
     ${FORWARDING_HEADERS_DIR}
     ${CAIRO_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
 )
 
 list(APPEND WebKitTestRunner_LIBRARIES
+    WPE-mesa
     ${CAIRO_LIBRARIES}
     ${GLIB_LIBRARIES}
 )

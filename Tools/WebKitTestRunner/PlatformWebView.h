@@ -51,8 +51,9 @@ typedef GtkWidget* PlatformWindow;
 typedef Evas_Object* PlatformWKView;
 typedef Ecore_Evas* PlatformWindow;
 #elif PLATFORM(WPE)
+class HeadlessViewBackend;
 typedef WKViewRef PlatformWKView;
-typedef void* PlatformWindow;
+typedef HeadlessViewBackend* PlatformWindow;
 #endif
 
 namespace WTR {
