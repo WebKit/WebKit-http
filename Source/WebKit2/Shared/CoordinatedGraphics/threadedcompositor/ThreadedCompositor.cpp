@@ -115,8 +115,12 @@ void ThreadedCompositor::didChangeViewportAttribute(const ViewportAttributes& at
 
 void ThreadedCompositor::didChangeContentsSize(const IntSize& size)
 {
+    // FIXME: This seems a bit wrong, but it works. Needs review and investigation.
+    m_viewportSize = size;
+
     m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), size] {
 #if PLATFORM(WPE)
+        // FIXME: Ditto.
         if (m_target)
             m_target->resize(size);
 #endif
@@ -164,14 +168,7 @@ bool ThreadedCompositor::tryEnsureGLContext()
         return false;
 
     glContext()->makeContextCurrent();
-    // The window size may be out of sync with the page size at this point, and getting
-    // the viewport parameters incorrect, means that the content will be misplaced. Thus
-    // we set the viewport parameters directly from the window size.
-    IntSize contextSize = glContext()->defaultFrameBufferSize();
-    if (m_viewportSize != contextSize) {
-        glViewport(0, 0, contextSize.width(), contextSize.height());
-        m_viewportSize = contextSize;
-    }
+    glViewport(0, 0, m_viewportSize.width(), m_viewportSize.height());
 
     return true;
 }
