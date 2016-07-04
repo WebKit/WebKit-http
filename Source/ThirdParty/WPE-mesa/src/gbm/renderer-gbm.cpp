@@ -210,6 +210,10 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
         assert(result.second);
 
         auto* boData = static_cast<IPC::GBM::BufferCommit*>(gbm_bo_get_user_data(bo));
+        if (boData && (boData->width != target->width || boData->height != target->height)) {
+            delete boData;
+            boData = nullptr;
+        }
         if (!boData) {
             target->ipcClient.sendFd(gbm_bo_get_fd(bo));
 
