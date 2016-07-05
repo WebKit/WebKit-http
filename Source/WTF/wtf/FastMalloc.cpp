@@ -126,8 +126,13 @@ TryMallocReturnValue tryFastMalloc(size_t n)
 void* fastMalloc(size_t n) 
 {
     void* result = malloc(n);
-    if (!result)
+    if (!result) {
+        #if INTPTR_MAX == INT32_MAX
+            printf("Allocation of %d bytes failed \n", n);
+        #endif
         CRASH();
+    }
+        
 
     return result;
 }
