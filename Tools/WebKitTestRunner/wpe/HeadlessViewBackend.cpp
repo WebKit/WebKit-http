@@ -90,6 +90,8 @@ struct wpe_view_backend* HeadlessViewBackend::backend() const
 
 cairo_surface_t* HeadlessViewBackend::createSnapshot()
 {
+    performUpdate();
+
     EGLImageKHR image = std::get<0>(m_lockedImage.second);
     if (!image)
         return nullptr;
@@ -135,10 +137,16 @@ cairo_surface_t* HeadlessViewBackend::createSnapshot()
     }
 
     cairo_surface_t* imageSurface = cairo_image_surface_create_for_data(buffer,
-        CAIRO_FORMAT_ARGB32, width, height, width * 4);
-    // cairo_surface_write_to_png(imageSurface, "/tmp/wpe-snapshot.png");
+        CAIRO_FORMAT_ARGB32, width, height, cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width));
+    cairo_surface_mark_dirty(imageSurface);
 
-    delete[] buffer;
+    static cairo_user_data_key_t bufferKey;
+    cairo_surface_set_user_data(imageSurface, &bufferKey, buffer,
+        [](void* data) {
+            auto* buffer = static_cast<uint8_t*>(data);
+            delete[] buffer;
+        });
+
     return imageSurface;
 }
 
@@ -167,8 +175,6 @@ struct wpe_mesa_view_backend_exportable_client HeadlessViewBackend::s_exportable
     [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
     {
         auto& backend = *static_cast<HeadlessViewBackend*>(data);
-        fprintf(stderr, "export_dma_buf() fd %d handle %u (%u,%u)\n",
-            imageData->fd, imageData->handle, imageData->width, imageData->height);
 
         auto it = backend.m_imageMap.end();
         if (imageData->fd >= 0) {
