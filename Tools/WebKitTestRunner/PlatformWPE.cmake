@@ -1,11 +1,12 @@
 set(ForwardingHeadersForWebKitTestRunner_NAME WebKitTestRunner-forwarding-headers)
 
 list(APPEND WebKitTestRunner_SOURCES
+    ${WEBKIT_TESTRUNNER_DIR}/cairo/TestInvocationCairo.cpp
+
     ${WEBKIT_TESTRUNNER_DIR}/wpe/EventSenderProxyWPE.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/HeadlessViewBackend.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/PlatformWebViewWPE.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/TestControllerWPE.cpp
-    ${WEBKIT_TESTRUNNER_DIR}/wpe/TestInvocationWPE.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/main.cpp
 )
 
