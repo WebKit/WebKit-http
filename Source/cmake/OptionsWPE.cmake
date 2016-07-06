@@ -100,6 +100,10 @@ if (USE_WPE_BACKEND_WESTEROS)
     find_package(westeros REQUIRED)
 endif(USE_WPE_BACKEND_WESTEROS)
 
+if (USE_WPE_BACKEND_BCM_NEXUS_WAYLAND)
+    find_package(Wayland REQUIRED)
+endif(USE_WPE_BACKEND_BCM_NEXUS_WAYLAND)
+
 if (ENABLE_MEDIA_STREAM)
     find_package(OpenWebRTC)
     if (NOT OPENWEBRTC_FOUND)
