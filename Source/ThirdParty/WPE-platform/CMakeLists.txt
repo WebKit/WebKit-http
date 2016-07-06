@@ -57,6 +57,12 @@ if (NOT USE_KEY_INPUT_HANDLING_LINUX_INPUT)
     )
 endif ()
 
+if (USE_WPE_VIRTUAL_KEYBOARD)
+    list(APPEND WPE_PLATFORM_LIBRARIES
+        ${LIBVIRTUAL_KEYBOARD_LIBRARIES}
+    )
+endif ()
+
 set(WPE_PLATFORM_SOURCES
     src/loader-impl.cpp
 
