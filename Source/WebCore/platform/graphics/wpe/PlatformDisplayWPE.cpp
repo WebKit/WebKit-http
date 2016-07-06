@@ -115,6 +115,11 @@ void PlatformDisplayWPE::EGLTarget::resize(const IntSize& size)
     wpe_renderer_backend_egl_target_resize(m_backend, std::max(0, size.width()), std::max(0, size.height()));
 }
 
+void PlatformDisplayWPE::EGLTarget::frameWillRender()
+{
+    wpe_renderer_backend_egl_target_frame_will_render(m_backend);
+}
+
 void PlatformDisplayWPE::EGLTarget::frameRendered()
 {
     wpe_renderer_backend_egl_target_frame_rendered(m_backend);

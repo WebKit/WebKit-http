@@ -120,6 +120,13 @@ wpe_renderer_backend_egl_target_resize(struct wpe_renderer_backend_egl_target* t
 
 __attribute__((visibility("default")))
 void
+wpe_renderer_backend_egl_target_frame_will_render(struct wpe_renderer_backend_egl_target* target)
+{
+    target->interface->frame_will_render(target->interface_data);
+}
+
+__attribute__((visibility("default")))
+void
 wpe_renderer_backend_egl_target_frame_rendered(struct wpe_renderer_backend_egl_target* target)
 {
     target->interface->frame_rendered(target->interface_data);

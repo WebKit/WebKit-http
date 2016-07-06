@@ -224,6 +224,10 @@ void ThreadedCompositor::renderLayerTree()
     if (!tryEnsureGLContext())
         return;
 
+#if PLATFORM(WPE)
+    m_target->frameWillRender();
+#endif
+
     FloatRect clipRect(0, 0, m_viewportSize.width(), m_viewportSize.height());
 
     TransformationMatrix viewportTransform;

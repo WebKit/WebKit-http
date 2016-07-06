@@ -59,6 +59,7 @@ public:
 
         void resize(const IntSize&);
 
+        void frameWillRender();
         void frameRendered();
 
     private:

@@ -194,6 +194,10 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
         target->width = width;
         target->height = height;
     },
+    // frame_will_render
+    [](void* data)
+    {
+    },
     // frame_rendered
     [](void* data)
     {
