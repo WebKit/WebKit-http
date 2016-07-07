@@ -1,0 +1,18 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock (anonymous) at (0,0) size 784x59
+        RenderText {#text} at (0,0) size 627x17
+          text run at (0,0) width 627: "This tests that when an option is dynamically added to a menu list, and it is too long for the current width,"
+        RenderBR {BR} at (627,14) size 0x0
+        RenderText {#text} at (0,17) size 348x17
+          text run at (0,17) width 348: "that the select automatically recalculates the correct width."
+        RenderBR {BR} at (348,31) size 0x0
+        RenderMenuList {SELECT} at (2,36) size 140x21 [bgcolor=#FFFFFF]
+          RenderBlock (anonymous) at (4,3) size 112x15
+            RenderText at (0,0) size 31x15
+              text run at (0,0) width 31: "Short"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {DIV} at (0,59) size 784x0

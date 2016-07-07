@@ -1,0 +1,20 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {DIV} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 779x34
+          text run at (0,0) width 779: "This text area should be drawn with a reasonable width. To match IE, using GDI fonts it should wrap at 66 characters (after the X"
+          text run at (0,17) width 470: "in the third set of digits). See https://bugs.webkit.org/show_bug.cgi?id=15312."
+      RenderBlock (anonymous) at (0,34) size 784x241
+        RenderBR {BR} at (0,0) size 0x17
+        RenderText {#text} at (0,0) size 0x0
+layer at (8,59) size 547x224
+  RenderTextControl {TEXTAREA} at (0,17) size 547x224 [color=#333333]
+    RenderBlock {DIV} at (2,2) size 543x33
+      RenderText {#text} at (0,0) size 538x22
+        text run at (0,0) width 538: "1234567890abcdefghijABCDEFGHIJ1234567890abcdefghijABCDEFGHIJ12345X7890abcdefghijABCDEFGXIJ12"
+        text run at (0,11) width 163: "34567890abcdefghijABCDEFGHIJ"
+        text run at (163,11) width 0: " "
+      RenderBR {BR} at (0,22) size 0x11

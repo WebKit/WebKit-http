@@ -1,0 +1,45 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x576
+      RenderBlock {P} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 202x17
+          text run at (0,0) width 202 LTR override: "This tests for a regression against "
+        RenderInline {I} at (0,0) size 702x34
+          RenderInline {A} at (0,0) size 350x17 [color=#0000EE]
+            RenderText {#text} at (202,0) size 350x17
+              text run at (202,0) width 350 LTR override: "http://bugzilla.opendarwin.org/show_bug.cgi?id=6334"
+          RenderText {#text} at (552,0) size 702x34
+            text run at (552,0) width 150 LTR override: " REGRESSION: <input"
+            text run at (0,17) width 382 LTR override: "type=\"button\"> text is reversed on \"visual Hebrew\" pages"
+        RenderText {#text} at (382,17) size 4x17
+          text run at (382,17) width 4 LTR override: "."
+      RenderBlock {HR} at (0,50) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,68) size 784x17
+        RenderText {#text} at (0,0) size 296x17
+          text run at (0,0) width 296 LTR override: "The text on both buttons should like this: \x{5E8}\x{5D5}\x{5EA}\x{5E4}\x{5DB}"
+      RenderBlock (anonymous) at (0,101) size 784x62
+        RenderButton {BUTTON} at (2,2) size 52x27 [bgcolor=#C0C0C0]
+          RenderBlock (anonymous) at (6,6) size 40x15
+            RenderText {#text} at (0,0) size 40x15
+              text run at (0,0) width 40 LTR override: "\x{5E8}\x{5D5}\x{5EA}\x{5E4}\x{5DB}"
+        RenderText {#text} at (56,6) size 4x17
+          text run at (56,6) width 4 LTR override: " "
+        RenderBR {BR} at (60,20) size 0x0
+        RenderButton {INPUT} at (2,33) size 52x27 [bgcolor=#C0C0C0]
+          RenderBlock (anonymous) at (6,6) size 40x15
+            RenderText at (0,0) size 40x15
+              text run at (0,0) width 40 RTL: "\x{5DB}\x{5E4}\x{5EA}\x{5D5}\x{5E8}"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {HR} at (0,171) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,189) size 784x17
+        RenderText {#text} at (0,0) size 229x17
+          text run at (0,0) width 229 LTR override: "The following lines should be identical:"
+      RenderBlock {P} at (0,222) size 784x17
+        RenderText {#text} at (0,0) size 76x17
+          text run at (0,0) width 16: "21"
+          text run at (16,0) width 60 RTL: "\x{5D4}\x{5DE}\x{5D0}\x{5D4} \x{5D4}-"
+      RenderBlock {P} at (0,255) size 784x17
+        RenderText {#text} at (0,0) size 76x17
+          text run at (0,0) width 76 LTR override: "21-\x{5D4} \x{5D4}\x{5D0}\x{5DE}\x{5D4}"

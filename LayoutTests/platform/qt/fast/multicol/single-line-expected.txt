@@ -1,0 +1,57 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x279
+  RenderBlock {HTML} at (0,0) size 800x279
+    RenderBody {BODY} at (8,16) size 784x247
+      RenderBlock {P} at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 721x17
+          text run at (0,0) width 370: "This test checks if CSS3 multi-column layout properly works "
+          text run at (370,0) width 351: "when the multi-column block contains only one line of text."
+      RenderBlock {P} at (0,33) size 784x17
+        RenderText {#text} at (0,0) size 522x17
+          text run at (0,0) width 280: "Test successful if the following text is readable "
+          text run at (280,0) width 242: "(i.e. not split into two different columns)."
+      RenderBlock {DIV} at (0,230) size 784x17
+layer at (8,82) size 784x17
+  RenderBlock {P} at (0,66) size 784x17 [bgcolor=#EEEEEE]
+    RenderMultiColumnSet at (0,0) size 784x17
+layer at (8,82) size 184x17
+  RenderMultiColumnFlowThread at (0,0) size 184x17
+    RenderText {#text} at (0,0) size 63x17
+      text run at (0,0) width 63: "Short text."
+layer at (8,115) size 784x33
+  RenderBlock {P} at (0,99) size 784x33 [bgcolor=#EEEEEE]
+    RenderMultiColumnSet at (0,0) size 784x33
+layer at (8,115) size 184x33
+  RenderMultiColumnFlowThread at (0,0) size 184x33
+    RenderInline {SPAN} at (0,0) size 137x33
+      RenderText {#text} at (0,0) size 137x33
+        text run at (0,0) width 137: "Bigger text."
+    RenderText {#text} at (0,0) size 0x0
+layer at (8,164) size 784x33
+  RenderBlock {P} at (0,148) size 784x33 [bgcolor=#EEEEEE]
+    RenderMultiColumnSet at (0,0) size 784x33
+layer at (8,164) size 184x33
+  RenderMultiColumnFlowThread at (0,0) size 184x33
+    RenderText {#text} at (0,13) size 52x17
+      text run at (0,13) width 52: "Partially "
+    RenderInline {SPAN} at (0,0) size 36x33
+      RenderText {#text} at (52,0) size 36x33
+        text run at (52,0) width 36: "big"
+    RenderText {#text} at (88,13) size 30x17
+      text run at (88,13) width 30: " text."
+layer at (8,213) size 784x17
+  RenderBlock {DIV} at (0,197) size 784x17 [bgcolor=#EEEEEE]
+    RenderMultiColumnSet at (0,0) size 784x17
+layer at (8,213) size 184x50
+  RenderMultiColumnFlowThread at (0,0) size 184x50
+    RenderBlock {P} at (0,16) size 184x18
+      RenderText {#text} at (0,1) size 86x17
+        text run at (0,1) width 86: "Nested block."
+layer at (8,246) size 784x17
+  RenderBlock {P} at (0,0) size 784x17 [bgcolor=#EEEEEE]
+    RenderMultiColumnSet at (0,0) size 784x17
+layer at (8,246) size 184x17
+  RenderMultiColumnFlowThread at (0,0) size 184x17
+    RenderText {#text} at (0,0) size 106x17
+      text run at (0,0) width 106: "Nested block #2."

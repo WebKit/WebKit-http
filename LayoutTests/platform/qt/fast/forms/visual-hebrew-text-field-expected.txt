@@ -1,0 +1,28 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {P} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 202x17
+          text run at (0,0) width 202 LTR override: "This tests for a regression against "
+        RenderInline {I} at (0,0) size 765x34
+          RenderInline {A} at (0,0) size 350x17 [color=#0000EE]
+            RenderText {#text} at (202,0) size 350x17
+              text run at (202,0) width 350 LTR override: "http://bugzilla.opendarwin.org/show_bug.cgi?id=8076"
+          RenderText {#text} at (552,0) size 765x34
+            text run at (552,0) width 213 LTR override: " REGRESSION: native text fields"
+            text run at (0,17) width 253 LTR override: "are reversed on \"visual Hebrew\" pages"
+        RenderText {#text} at (253,17) size 4x17
+          text run at (253,17) width 4 LTR override: "."
+      RenderBlock {HR} at (0,50) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,68) size 784x17
+        RenderText {#text} at (0,0) size 272x17
+          text run at (0,0) width 272 LTR override: "Text in the field should look like this: \x{5E8}\x{5D5}\x{5EA}\x{5E4}\x{5DB}"
+      RenderBlock (anonymous) at (0,101) size 784x23
+        RenderTextControl {INPUT} at (2,2) size 170x19
+        RenderText {#text} at (0,0) size 0x0
+layer at (12,113) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+    RenderText {#text} at (0,0) size 40x15
+      text run at (0,0) width 40 RTL: "\x{5DB}\x{5E4}\x{5EA}\x{5D5}\x{5E8}"

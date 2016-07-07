@@ -1,0 +1,84 @@
+layer at (0,0) size 785x600
+  RenderView at (0,0) size 785x600
+layer at (0,0) size 785x600
+  RenderBlock {HTML} at (0,0) size 785x600
+    RenderBody {BODY} at (8,8) size 769x584
+      RenderBlock (anonymous) at (0,0) size 769x17
+        RenderText {#text} at (0,0) size 296x17
+          text run at (0,0) width 296: "The body should always have a vertical scrollbar."
+      RenderBlock (anonymous) at (0,217) size 769x56
+        RenderText {#text} at (183,39) size 4x17
+          text run at (183,39) width 4: " "
+        RenderText {#text} at (0,0) size 0x0
+layer at (8,25) size 300x100 clip at (8,25) size 285x100 scrollHeight 306
+  RenderBlock {DIV} at (0,17) size 300x100
+    RenderText {#text} at (0,0) size 47x17
+      text run at (0,0) width 47: "Y scroll"
+    RenderBR {BR} at (47,14) size 0x0
+    RenderText {#text} at (0,17) size 47x17
+      text run at (0,17) width 47: "Y scroll"
+    RenderBR {BR} at (47,31) size 0x0
+    RenderText {#text} at (0,34) size 47x17
+      text run at (0,34) width 47: "Y scroll"
+    RenderBR {BR} at (47,48) size 0x0
+    RenderText {#text} at (0,51) size 47x17
+      text run at (0,51) width 47: "Y scroll"
+    RenderBR {BR} at (47,65) size 0x0
+    RenderText {#text} at (0,68) size 47x17
+      text run at (0,68) width 47: "Y scroll"
+    RenderBR {BR} at (47,82) size 0x0
+    RenderText {#text} at (0,85) size 47x17
+      text run at (0,85) width 47: "Y scroll"
+    RenderBR {BR} at (47,99) size 0x0
+    RenderText {#text} at (0,102) size 47x17
+      text run at (0,102) width 47: "Y scroll"
+    RenderBR {BR} at (47,116) size 0x0
+    RenderText {#text} at (0,119) size 47x17
+      text run at (0,119) width 47: "Y scroll"
+    RenderBR {BR} at (47,133) size 0x0
+    RenderText {#text} at (0,136) size 47x17
+      text run at (0,136) width 47: "Y scroll"
+    RenderBR {BR} at (47,150) size 0x0
+    RenderText {#text} at (0,153) size 47x17
+      text run at (0,153) width 47: "Y scroll"
+    RenderBR {BR} at (47,167) size 0x0
+    RenderText {#text} at (0,170) size 47x17
+      text run at (0,170) width 47: "Y scroll"
+    RenderBR {BR} at (47,184) size 0x0
+    RenderText {#text} at (0,187) size 47x17
+      text run at (0,187) width 47: "Y scroll"
+    RenderBR {BR} at (47,201) size 0x0
+    RenderText {#text} at (0,204) size 47x17
+      text run at (0,204) width 47: "Y scroll"
+    RenderBR {BR} at (47,218) size 0x0
+    RenderText {#text} at (0,221) size 47x17
+      text run at (0,221) width 47: "Y scroll"
+    RenderBR {BR} at (47,235) size 0x0
+    RenderText {#text} at (0,238) size 47x17
+      text run at (0,238) width 47: "Y scroll"
+    RenderBR {BR} at (47,252) size 0x0
+    RenderText {#text} at (0,255) size 47x17
+      text run at (0,255) width 47: "Y scroll"
+    RenderBR {BR} at (47,269) size 0x0
+    RenderText {#text} at (0,272) size 47x17
+      text run at (0,272) width 47: "Y scroll"
+    RenderBR {BR} at (47,286) size 0x0
+    RenderText {#text} at (0,289) size 47x17
+      text run at (0,289) width 47: "Y scroll"
+    RenderBR {BR} at (47,303) size 0x0
+layer at (8,125) size 300x100 clip at (8,125) size 300x85 scrollWidth 1118
+  RenderBlock {DIV} at (0,117) size 300x100
+    RenderText {#text} at (0,0) size 1118x17
+      text run at (0,0) width 459: "X scroll X scroll X scroll X scroll X scroll X scroll X scroll X scroll X scroll "
+      text run at (459,0) width 306: "X scroll X scroll X scroll X scroll X scroll X scroll "
+      text run at (765,0) width 353: "X scroll X scroll X scroll X scroll X scroll X scroll X scroll"
+layer at (10,242) size 179x34 clip at (10,242) size 164x34
+  RenderTextControl {TEXTAREA} at (2,17) size 179x34
+    RenderBlock {DIV} at (2,2) size 160x15
+      RenderText {#text} at (0,0) size 96x15
+        text run at (0,0) width 96: "Textarea y-scroll"
+layer at (197,227) size 179x49 clip at (197,227) size 179x34
+  RenderTextControl {TEXTAREA} at (189,2) size 179x49
+    RenderBlock {DIV} at (2,2) size 175x15
+      RenderText {#text} at (0,0) size 96x15
+        text run at (0,0) width 96: "Textarea x-scroll"

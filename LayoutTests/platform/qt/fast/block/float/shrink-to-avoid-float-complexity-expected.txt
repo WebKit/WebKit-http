@@ -1,0 +1,342 @@
+layer at (0,0) size 785x2058
+  RenderView at (0,0) size 785x600
+layer at (0,0) size 785x2058
+  RenderBlock {HTML} at (0,0) size 785x2059
+    RenderBody {BODY} at (8,19) size 769x2024
+      RenderBlock {H2} at (0,0) size 769x26
+        RenderText {#text} at (0,0) size 147x26
+          text run at (0,0) width 147: "Test 1 (1 float)"
+      RenderBlock {HR} at (48,293) size 673x3 [border: (1px inset #000000)]
+      RenderBlock {H2} at (0,343) size 769x27
+        RenderText {#text} at (0,0) size 147x26
+          text run at (0,0) width 147: "Test 2 (1 float)"
+      RenderBlock {HR} at (48,637) size 673x3 [border: (1px inset #000000)]
+      RenderBlock {H2} at (0,687) size 769x27
+        RenderText {#text} at (0,0) size 147x26
+          text run at (0,0) width 147: "Test 3 (1 float)"
+      RenderBlock {HR} at (48,981) size 673x3 [border: (1px inset #000000)]
+      RenderBlock {H2} at (0,1031) size 769x27
+        RenderText {#text} at (0,0) size 156x26
+          text run at (0,0) width 156: "Test 4 (2 floats)"
+      RenderBlock {HR} at (48,1325) size 673x3 [border: (1px inset #000000)]
+      RenderBlock {H2} at (0,1375) size 769x27
+        RenderText {#text} at (0,0) size 156x26
+          text run at (0,0) width 156: "Test 5 (2 floats)"
+      RenderBlock {HR} at (48,1669) size 673x3 [border: (1px inset #000000)]
+      RenderBlock {H2} at (0,1719) size 769x27
+        RenderText {#text} at (0,0) size 156x26
+          text run at (0,0) width 156: "Test 6 (2 floats)"
+layer at (8,66) size 769x200
+  RenderBlock {DIV} at (0,45) size 769x201 [bgcolor=#C0C0C0]
+    RenderBlock (floating) {DIV} at (0,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x51
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 124: "floated left and it has"
+        text run at (36,70) width 63: "no margin."
+layer at (208,66) size 469x155
+  RenderBlock {DIV} at (200,0) size 469x155 [bgcolor=#FFA500]
+    RenderText {#text} at (0,0) size 131x17
+      text run at (0,0) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,0) size 0x17
+    RenderText {#text} at (0,17) size 91x17
+      text run at (0,17) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,17) size 187x17
+        text run at (91,17) width 187: "new block formating context"
+    RenderText {#text} at (278,17) size 184x17
+      text run at (278,17) width 184: " thanks to the CSS declaration"
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (0,37) size 128x15
+        text run at (0,37) width 128: "overflow: hidden"
+    RenderText {#text} at (128,34) size 4x17
+      text run at (128,34) width 4: ";"
+    RenderBR {BR} at (132,34) size 0x17
+    RenderText {#text} at (0,52) size 310x17
+      text run at (0,52) width 310: "\x{2013} has a 100px left margin and a 100px right margin;"
+    RenderBR {BR} at (310,52) size 0x17
+    RenderBR {BR} at (0,69) size 0x17
+    RenderText {#text} at (0,86) size 131x17
+      text run at (0,86) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,86) size 0x17
+    RenderText {#text} at (0,103) size 91x17
+      text run at (0,103) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,103) size 187x17
+        text run at (91,103) width 187: "new block formating context"
+    RenderText {#text} at (278,103) size 184x17
+      text run at (278,103) width 184: " thanks to the CSS declaration"
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (0,123) size 128x15
+        text run at (0,123) width 128: "overflow: hidden"
+    RenderText {#text} at (128,120) size 4x17
+      text run at (128,120) width 4: ";"
+    RenderBR {BR} at (132,120) size 0x17
+    RenderText {#text} at (0,138) size 310x17
+      text run at (0,138) width 310: "\x{2013} has a 100px left margin and a 100px right margin;"
+layer at (8,410) size 769x200
+  RenderBlock {DIV} at (0,389) size 769x201 [bgcolor=#C0C0C0]
+    RenderBlock (floating) {DIV} at (0,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x51
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 124: "floated left and it has"
+        text run at (36,70) width 63: "no margin."
+layer at (208,410) size 569x157
+  RenderBlock {DIV} at (200,0) size 569x157 [bgcolor=#FFA500]
+    RenderText {#text} at (0,0) size 131x17
+      text run at (0,0) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,0) size 0x17
+    RenderText {#text} at (0,17) size 91x17
+      text run at (0,17) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,17) size 187x17
+        text run at (91,17) width 187: "new block formating context"
+    RenderText {#text} at (278,17) size 188x17
+      text run at (278,17) width 188: " thanks to the CSS declaration "
+    RenderInline {CODE} at (0,0) size 538x33
+      RenderText {#text} at (466,20) size 538x33
+        text run at (466,20) width 72: "overflow:"
+        text run at (0,38) width 48: "hidden"
+    RenderText {#text} at (48,35) size 4x17
+      text run at (48,35) width 4: ";"
+    RenderBR {BR} at (52,35) size 0x17
+    RenderText {#text} at (0,53) size 156x17
+      text run at (0,53) width 156: "\x{2013} has a 200px left margin;"
+    RenderBR {BR} at (156,53) size 0x17
+    RenderBR {BR} at (0,70) size 0x17
+    RenderText {#text} at (0,87) size 131x17
+      text run at (0,87) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,87) size 0x17
+    RenderText {#text} at (0,104) size 91x17
+      text run at (0,104) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,104) size 187x17
+        text run at (91,104) width 187: "new block formating context"
+    RenderText {#text} at (278,104) size 188x17
+      text run at (278,104) width 188: " thanks to the CSS declaration "
+    RenderInline {CODE} at (0,0) size 538x33
+      RenderText {#text} at (466,107) size 538x33
+        text run at (466,107) width 72: "overflow:"
+        text run at (0,125) width 48: "hidden"
+    RenderText {#text} at (48,122) size 4x17
+      text run at (48,122) width 4: ";"
+    RenderBR {BR} at (52,122) size 0x17
+    RenderText {#text} at (0,140) size 156x17
+      text run at (0,140) width 156: "\x{2013} has a 200px left margin;"
+layer at (8,754) size 769x200
+  RenderBlock {DIV} at (0,733) size 769x201 [bgcolor=#C0C0C0]
+    RenderBlock (floating) {DIV} at (0,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x68
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 111: "a floated left and it"
+        text run at (36,70) width 121: "has a right margin of"
+        text run at (36,87) width 43: "100px."
+layer at (308,754) size 369x155
+  RenderBlock {DIV} at (300,0) size 369x155 [bgcolor=#FFA500]
+    RenderText {#text} at (0,0) size 131x17
+      text run at (0,0) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,0) size 0x17
+    RenderText {#text} at (0,17) size 91x17
+      text run at (0,17) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,17) size 187x17
+        text run at (91,17) width 187: "new block formating context"
+    RenderText {#text} at (278,17) size 359x34
+      text run at (278,17) width 81: " thanks to the"
+      text run at (0,34) width 103: "CSS declaration "
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (103,37) size 128x15
+        text run at (103,37) width 128: "overflow: hidden"
+    RenderText {#text} at (231,34) size 4x17
+      text run at (231,34) width 4: ";"
+    RenderBR {BR} at (235,34) size 0x17
+    RenderText {#text} at (0,52) size 294x17
+      text run at (0,52) width 294: "\x{2013} has a 0px left margin and a 100px right margin;"
+    RenderBR {BR} at (294,52) size 0x17
+    RenderBR {BR} at (0,69) size 0x17
+    RenderText {#text} at (0,86) size 131x17
+      text run at (0,86) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,86) size 0x17
+    RenderText {#text} at (0,103) size 91x17
+      text run at (0,103) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,103) size 187x17
+        text run at (91,103) width 187: "new block formating context"
+    RenderText {#text} at (278,103) size 359x34
+      text run at (278,103) width 81: " thanks to the"
+      text run at (0,120) width 103: "CSS declaration "
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (103,123) size 128x15
+        text run at (103,123) width 128: "overflow: hidden"
+    RenderText {#text} at (231,120) size 4x17
+      text run at (231,120) width 4: ";"
+    RenderBR {BR} at (235,120) size 0x17
+    RenderText {#text} at (0,138) size 294x17
+      text run at (0,138) width 294: "\x{2013} has a 0px left margin and a 100px right margin;"
+layer at (8,1098) size 769x200
+  RenderBlock {DIV} at (0,1077) size 769x201 [bgcolor=#C0C0C0]
+    RenderBlock (floating) {DIV} at (0,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x51
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 124: "floated left and it has"
+        text run at (36,70) width 63: "no margin."
+    RenderBlock (floating) {DIV} at (569,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x51
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 119: "a floated right and it"
+        text run at (36,70) width 87: "has no margin."
+layer at (208,1098) size 369x155
+  RenderBlock {DIV} at (200,0) size 369x155 [bgcolor=#FFA500]
+    RenderText {#text} at (0,0) size 131x17
+      text run at (0,0) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,0) size 0x17
+    RenderText {#text} at (0,17) size 91x17
+      text run at (0,17) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,17) size 187x17
+        text run at (91,17) width 187: "new block formating context"
+    RenderText {#text} at (278,17) size 359x34
+      text run at (278,17) width 81: " thanks to the"
+      text run at (0,34) width 103: "CSS declaration "
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (103,37) size 128x15
+        text run at (103,37) width 128: "overflow: hidden"
+    RenderText {#text} at (231,34) size 4x17
+      text run at (231,34) width 4: ";"
+    RenderBR {BR} at (235,34) size 0x17
+    RenderText {#text} at (0,52) size 310x17
+      text run at (0,52) width 310: "\x{2013} has a 100px left margin and a 100px right margin;"
+    RenderBR {BR} at (310,52) size 0x17
+    RenderBR {BR} at (0,69) size 0x17
+    RenderText {#text} at (0,86) size 131x17
+      text run at (0,86) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,86) size 0x17
+    RenderText {#text} at (0,103) size 91x17
+      text run at (0,103) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,103) size 187x17
+        text run at (91,103) width 187: "new block formating context"
+    RenderText {#text} at (278,103) size 359x34
+      text run at (278,103) width 81: " thanks to the"
+      text run at (0,120) width 103: "CSS declaration "
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (103,123) size 128x15
+        text run at (103,123) width 128: "overflow: hidden"
+    RenderText {#text} at (231,120) size 4x17
+      text run at (231,120) width 4: ";"
+    RenderBR {BR} at (235,120) size 0x17
+    RenderText {#text} at (0,138) size 310x17
+      text run at (0,138) width 310: "\x{2013} has a 100px left margin and a 100px right margin;"
+layer at (8,1441) size 769x200
+  RenderBlock {DIV} at (0,1421) size 769x201 [bgcolor=#C0C0C0]
+    RenderBlock (floating) {DIV} at (0,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x51
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 124: "floated left and it has"
+        text run at (36,70) width 63: "no margin."
+    RenderBlock (floating) {DIV} at (569,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x51
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 119: "a floated right and it"
+        text run at (36,70) width 87: "has no margin."
+layer at (208,1441) size 369x155
+  RenderBlock {DIV} at (200,0) size 369x155 [bgcolor=#FFA500]
+    RenderText {#text} at (0,0) size 131x17
+      text run at (0,0) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,0) size 0x17
+    RenderText {#text} at (0,17) size 91x17
+      text run at (0,17) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,17) size 187x17
+        text run at (91,17) width 187: "new block formating context"
+    RenderText {#text} at (278,17) size 359x34
+      text run at (278,17) width 81: " thanks to the"
+      text run at (0,34) width 103: "CSS declaration "
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (103,37) size 128x15
+        text run at (103,37) width 128: "overflow: hidden"
+    RenderText {#text} at (231,34) size 4x17
+      text run at (231,34) width 4: ";"
+    RenderBR {BR} at (235,34) size 0x17
+    RenderText {#text} at (0,52) size 164x17
+      text run at (0,52) width 164: "\x{2013} has a 200px right margin;"
+    RenderBR {BR} at (164,52) size 0x17
+    RenderBR {BR} at (0,69) size 0x17
+    RenderText {#text} at (0,86) size 131x17
+      text run at (0,86) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,86) size 0x17
+    RenderText {#text} at (0,103) size 91x17
+      text run at (0,103) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 187x17
+      RenderText {#text} at (91,103) size 187x17
+        text run at (91,103) width 187: "new block formating context"
+    RenderText {#text} at (278,103) size 359x34
+      text run at (278,103) width 81: " thanks to the"
+      text run at (0,120) width 103: "CSS declaration "
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (103,123) size 128x15
+        text run at (103,123) width 128: "overflow: hidden"
+    RenderText {#text} at (231,120) size 4x17
+      text run at (231,120) width 4: ";"
+    RenderBR {BR} at (235,120) size 0x17
+    RenderText {#text} at (0,138) size 164x17
+      text run at (0,138) width 164: "\x{2013} has a 200px right margin;"
+layer at (8,1785) size 769x257
+  RenderBlock {DIV} at (0,1765) size 769x258 [bgcolor=#C0C0C0]
+    RenderBlock (floating) {DIV} at (0,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x68
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 124: "floated left and it has"
+        text run at (36,70) width 97: "a right margin of"
+        text run at (36,87) width 43: "100px."
+    RenderBlock (floating) {DIV} at (569,0) size 200x200 [bgcolor=#FFFF00] [border: (4px solid #008000)]
+      RenderText {#text} at (36,36) size 125x68
+        text run at (36,36) width 125: "This yellow square is"
+        text run at (36,53) width 108: "floated right and it"
+        text run at (36,70) width 113: "has a left margin of"
+        text run at (36,87) width 43: "100px."
+layer at (308,1785) size 169x257
+  RenderBlock {DIV} at (300,0) size 169x257 [bgcolor=#FFA500]
+    RenderText {#text} at (0,0) size 131x17
+      text run at (0,0) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,0) size 0x17
+    RenderText {#text} at (0,17) size 91x17
+      text run at (0,17) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 157x34
+      RenderText {#text} at (91,17) size 157x34
+        text run at (91,17) width 66: "new block"
+        text run at (0,34) width 117: "formating context"
+    RenderText {#text} at (117,34) size 160x34
+      text run at (117,34) width 43: " thanks"
+      text run at (0,51) width 137: "to the CSS declaration"
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (0,71) size 128x15
+        text run at (0,71) width 128: "overflow: hidden"
+    RenderText {#text} at (128,68) size 4x17
+      text run at (128,68) width 4: ";"
+    RenderBR {BR} at (132,68) size 0x17
+    RenderText {#text} at (0,86) size 162x34
+      text run at (0,86) width 162: "\x{2013} has a 0px left margin and"
+      text run at (0,103) width 112: "a 0px right margin;"
+    RenderBR {BR} at (112,103) size 0x17
+    RenderBR {BR} at (0,120) size 0x17
+    RenderText {#text} at (0,137) size 131x17
+      text run at (0,137) width 131: "This orange rectangle:"
+    RenderBR {BR} at (131,137) size 0x17
+    RenderText {#text} at (0,154) size 91x17
+      text run at (0,154) width 91: "\x{2013} establishes a "
+    RenderInline {STRONG} at (0,0) size 157x34
+      RenderText {#text} at (91,154) size 157x34
+        text run at (91,154) width 66: "new block"
+        text run at (0,171) width 117: "formating context"
+    RenderText {#text} at (117,171) size 160x34
+      text run at (117,171) width 43: " thanks"
+      text run at (0,188) width 137: "to the CSS declaration"
+    RenderInline {CODE} at (0,0) size 128x15
+      RenderText {#text} at (0,208) size 128x15
+        text run at (0,208) width 128: "overflow: hidden"
+    RenderText {#text} at (128,205) size 4x17
+      text run at (128,205) width 4: ";"
+    RenderBR {BR} at (132,205) size 0x17
+    RenderText {#text} at (0,223) size 162x34
+      text run at (0,223) width 162: "\x{2013} has a 0px left margin and"
+      text run at (0,240) width 112: "a 0px right margin;"

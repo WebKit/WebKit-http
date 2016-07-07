@@ -1,0 +1,19 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x149
+  RenderBlock {HTML} at (0,0) size 800x149
+    RenderBody {BODY} at (8,16) size 784x117
+      RenderBlock {P} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 733x34
+          text run at (0,0) width 733: "This HTML tests if the 'while-space' property controls the behavors of line-break characters (U+000A and U+000D) in a"
+          text run at (0,17) width 81: "complex text."
+      RenderBlock {P} at (0,50) size 784x17
+        RenderText {#text} at (0,0) size 491x17
+          text run at (0,0) width 281: "If this test succeeds, you can see three words \""
+          text run at (281,0) width 40 RTL: "\x{5E9}\x{5D5}\x{5BC}\x{5E8}\x{5D4}"
+          text run at (321,0) width 170: "\", separated with line-break."
+      RenderBlock {P} at (0,83) size 784x34
+        RenderText {#text} at (0,0) size 80x34
+          text run at (0,0) width 40 RTL: "\x{5E9}\x{5D5}\x{5BC}\x{5E8}\x{5D4}"
+          text run at (40,0) width 0: " "
+          text run at (0,17) width 80 RTL: "\x{5E9}\x{5D5}\x{5BC}\x{5E8}\x{5D4}\x{D}\x{5E9}\x{5D5}\x{5BC}\x{5E8}\x{5D4}"

@@ -1,0 +1,240 @@
+layer at (0,0) size 785x1175
+  RenderView at (0,0) size 785x600
+layer at (0,0) size 785x1175
+  RenderBlock {HTML} at (0,0) size 785x1176
+    RenderBody {BODY} at (8,16) size 769x1152
+      RenderBlock {P} at (0,0) size 769x17
+        RenderText {#text} at (0,0) size 155x17
+          text run at (0,0) width 155: "div, span, nested div/span"
+      RenderBlock {P} at (0,33) size 769x17
+        RenderText {#text} at (0,0) size 58x17
+          text run at (0,0) width 58: "Single div"
+      RenderBlock {DIV} at (1,66) size 767x19 [border: (1px solid #000000)]
+        RenderText {#text} at (743,1) size 23x17
+          text run at (743,1) width 23 RTL override: "abc"
+      RenderBlock {P} at (0,101) size 769x17
+        RenderText {#text} at (0,0) size 380x17
+          text run at (0,0) width 380: "The following 2 lines should be identical, ignorning whitespaces:"
+      RenderBlock {DIV} at (1,134) size 767x36 [border: (1px solid #000000)]
+        RenderBlock (anonymous) at (1,1) size 765x17
+          RenderText {#text} at (742,0) size 23x17
+            text run at (742,0) width 23 RTL override: "abc"
+        RenderBlock {DIV} at (1,18) size 765x17
+          RenderText {#text} at (742,0) size 23x17
+            text run at (742,0) width 23: "cba"
+      RenderBlock {P} at (0,186) size 769x17
+        RenderText {#text} at (0,0) size 389x17
+          text run at (0,0) width 389: "The following 2 textes should be identical, ignorning whitespaces:"
+      RenderBlock {DIV} at (1,219) size 767x19 [border: (1px solid #000000)]
+        RenderText {#text} at (739,1) size 27x17
+          text run at (739,1) width 27 RTL override: "abc "
+        RenderInline {SPAN} at (0,0) size 23x17
+          RenderText {#text} at (717,1) size 23x17
+            text run at (717,1) width 23 RTL override: "abc"
+      RenderBlock {P} at (0,254) size 769x17
+        RenderText {#text} at (0,0) size 380x17
+          text run at (0,0) width 380: "The following 2 lines should be identical, ignorning whitespaces:"
+      RenderBlock {DIV} at (1,287) size 767x36 [border: (1px solid #000000)]
+        RenderBlock {DIV} at (1,1) size 765x17
+          RenderText {#text} at (742,0) size 23x17
+            text run at (742,0) width 23: "cba"
+        RenderBlock (anonymous) at (1,18) size 765x17
+          RenderText {#text} at (742,0) size 23x17
+            text run at (742,0) width 23 RTL override: "abc"
+      RenderBlock {P} at (0,339) size 769x17
+        RenderText {#text} at (0,0) size 389x17
+          text run at (0,0) width 389: "The following 2 textes should be identical, ignorning whitespaces:"
+      RenderBlock {DIV} at (1,372) size 767x19 [border: (1px solid #000000)]
+        RenderInline {SPAN} at (0,0) size 27x17
+          RenderText {#text} at (739,1) size 27x17
+            text run at (739,1) width 27 RTL override: "abc "
+        RenderText {#text} at (717,1) size 23x17
+          text run at (717,1) width 23 RTL override: "abc"
+      RenderBlock {P} at (0,407) size 769x17
+        RenderText {#text} at (0,0) size 68x17
+          text run at (0,0) width 68: "Single span"
+      RenderBlock (anonymous) at (0,440) size 769x17
+        RenderInline {SPAN} at (0,0) size 25x19 [border: (1px solid #000000)]
+          RenderText {#text} at (2,0) size 23x17
+            text run at (2,0) width 23 RTL override: "abc"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,473) size 769x17
+        RenderText {#text} at (0,0) size 389x17
+          text run at (0,0) width 389: "The following 2 textes should be identical, ignorning whitespaces:"
+      RenderBlock (anonymous) at (0,506) size 769x17
+        RenderInline {SPAN} at (0,0) size 51x19 [border: (1px solid #000000)]
+          RenderText {#text} at (24,0) size 27x17
+            text run at (24,0) width 27 RTL override: "abc "
+          RenderInline {SPAN} at (0,0) size 23x17
+            RenderText {#text} at (2,0) size 23x17
+              text run at (2,0) width 23 RTL override: "abc"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,539) size 769x17
+        RenderText {#text} at (0,0) size 389x17
+          text run at (0,0) width 389: "The following 2 textes should be identical, ignorning whitespaces:"
+      RenderBlock (anonymous) at (0,572) size 769x17
+        RenderInline {SPAN} at (0,0) size 51x19 [border: (1px solid #000000)]
+          RenderInline {SPAN} at (0,0) size 27x17
+            RenderText {#text} at (24,0) size 27x17
+              text run at (24,0) width 27 RTL override: "abc "
+          RenderText {#text} at (2,0) size 23x17
+            text run at (2,0) width 23 RTL override: "abc"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,605) size 769x17
+        RenderText {#text} at (0,0) size 389x17
+          text run at (0,0) width 389: "The following 2 textes should be identical, ignorning whitespaces:"
+      RenderBlock (anonymous) at (0,638) size 769x17
+        RenderInline {SPAN} at (0,0) size 23x19 [border: (1px solid #000000)]
+          RenderText {#text} at (0,0) size 22x17
+            text run at (0,0) width 22 RTL override: "abc"
+      RenderBlock (anonymous) at (0,655) size 769x17
+        RenderBlock {DIV} at (0,0) size 769x17
+          RenderText {#text} at (747,0) size 22x17
+            text run at (747,0) width 22: "cba"
+      RenderBlock (anonymous) at (0,672) size 769x17
+        RenderInline {SPAN} at (0,0) size 2x19 [border: (1px solid #000000)]
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,705) size 769x17
+        RenderText {#text} at (0,0) size 389x17
+          text run at (0,0) width 389: "The following 2 textes should be identical, ignorning whitespaces:"
+      RenderBlock (anonymous) at (0,738) size 769x17
+        RenderInline {SPAN} at (0,0) size 1x19 [border: (1px solid #000000)]
+      RenderBlock (anonymous) at (0,755) size 769x17
+        RenderBlock {DIV} at (0,0) size 769x17
+          RenderText {#text} at (747,0) size 22x17
+            text run at (747,0) width 22: "cba"
+      RenderBlock (anonymous) at (0,772) size 769x17
+        RenderInline {SPAN} at (0,0) size 24x19 [border: (1px solid #000000)]
+          RenderText {#text} at (2,0) size 23x17
+            text run at (2,0) width 23 RTL override: "abc"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,805) size 769x17
+        RenderText {#text} at (0,0) size 27x17
+          text run at (0,0) width 27: "ruby"
+      RenderBlock {DIV} at (0,838) size 769x28 [border: (1px solid #000000)]
+        RenderRuby (inline) {RUBY} at (0,0) size 23x17
+          RenderRubyRun (anonymous) at (165,10) size 23x17
+            RenderRubyText {RT} at (0,-9) size 22x9
+              RenderText {#text} at (5,0) size 12x9
+                text run at (5,0) width 12: "def"
+            RenderRubyBase (anonymous) at (0,0) size 22x17
+              RenderText {#text} at (0,0) size 22x17
+                text run at (0,0) width 22 RTL override: "abc"
+        RenderText {#text} at (159,10) size 5x17
+          text run at (159,10) width 5 RTL: " "
+        RenderRuby (inline) {RUBY} at (0,0) size 23x17
+          RenderRubyRun (anonymous) at (136,10) size 23x17
+            RenderRubyText {RT} at (0,-9) size 22x9
+              RenderText {#text} at (5,0) size 12x9
+                text run at (5,0) width 12 RTL override: "def"
+            RenderRubyBase (anonymous) at (0,0) size 22x17
+              RenderText {#text} at (0,0) size 22x17
+                text run at (0,0) width 22 RTL override: "abc"
+        RenderText {#text} at (130,10) size 5x17
+          text run at (130,10) width 5 RTL: " "
+        RenderRuby (inline) {RUBY} at (0,0) size 23x17
+          RenderRubyRun (anonymous) at (107,10) size 23x17
+            RenderRubyBase (anonymous) at (0,0) size 22x17
+              RenderText {#text} at (0,0) size 22x17
+                text run at (0,0) width 22 RTL override: "abc"
+        RenderText {#text} at (101,10) size 5x17
+          text run at (101,10) width 5 RTL: " "
+        RenderRuby (inline) {RUBY} at (0,0) size 12x17
+          RenderRubyRun (anonymous) at (89,26) size 12x0
+            RenderRubyText {RT} at (0,-9) size 11x9
+              RenderText {#text} at (0,0) size 11x9
+                text run at (0,0) width 11: "def"
+        RenderText {#text} at (83,10) size 5x17
+          text run at (83,10) width 5 RTL: " "
+        RenderRuby (inline) {RUBY} at (0,0) size 23x17
+          RenderRubyRun (anonymous) at (60,10) size 23x17
+            RenderRubyBase (anonymous) at (0,0) size 22x17
+              RenderInline {RB} at (0,0) size 22x17
+                RenderText {#text} at (0,0) size 22x17
+                  text run at (0,0) width 22 RTL override: "abc"
+        RenderText {#text} at (54,10) size 5x17
+          text run at (54,10) width 5 RTL: " "
+        RenderRuby (inline) {RUBY} at (0,0) size 23x17
+          RenderRubyRun (anonymous) at (31,10) size 23x17
+            RenderRubyText {RT} at (0,-9) size 22x9
+              RenderText {#text} at (5,0) size 12x9
+                text run at (5,0) width 12: "def"
+            RenderRubyBase (anonymous) at (0,0) size 22x17
+              RenderInline {RB} at (0,0) size 22x17
+                RenderText {#text} at (0,0) size 22x17
+                  text run at (0,0) width 22 RTL override: "abc"
+        RenderText {#text} at (25,10) size 5x17
+          text run at (25,10) width 5 RTL: " "
+        RenderRuby (inline) {RUBY} at (0,0) size 23x17
+          RenderRubyRun (anonymous) at (2,10) size 23x17
+            RenderRubyText {RT} at (0,-9) size 22x9
+              RenderText {#text} at (5,0) size 12x9
+                text run at (5,0) width 12: "def"
+            RenderRubyBase (anonymous) at (0,0) size 22x17
+              RenderInline {RB} at (0,0) size 22x17
+                RenderText {#text} at (0,0) size 22x17
+                  text run at (0,0) width 22 RTL override: "abc"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,882) size 769x17
+        RenderText {#text} at (0,0) size 389x17
+          text run at (0,0) width 389: "The following 2 tables should be identical, ignorning whitespaces:"
+      RenderTable {TABLE} at (1,915) size 81x63 [border: (1px solid #808080)]
+        RenderBlock {CAPTION} at (0,0) size 80x17
+          RenderText {#text} at (0,0) size 80x17
+            text run at (0,0) width 80: "NormalTable"
+        RenderTableSection {TBODY} at (1,18) size 78x44
+          RenderTableRow {TR} at (0,2) size 78x19
+            RenderTableCell {TD} at (41,2) size 36x19 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (11,1) size 23x17
+                text run at (11,1) width 23: "abc"
+            RenderTableCell {TD} at (2,2) size 38x19 [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (17,1) size 20x17
+                text run at (17,1) width 20: "def"
+          RenderTableRow {TR} at (0,23) size 78x19
+            RenderTableCell {TD} at (41,23) size 36x19 [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (19,1) size 15x17
+                text run at (19,1) width 15: "hij"
+            RenderTableCell {TD} at (2,23) size 38x19 [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (12,1) size 25x17
+                text run at (12,1) width 25: "opq"
+      RenderTable {DIV} at (1,979) size 136x54 [border: (1px solid #000000)]
+        RenderBlock {DIV} at (0,0) size 135x17
+          RenderText {#text} at (0,0) size 135x17
+            text run at (0,0) width 135: "AnonymousTableRow"
+        RenderTableSection (anonymous) at (1,18) size 133x34
+          RenderTableRow {DIV} at (0,0) size 133x17
+            RenderTableCell {DIV} at (69,0) size 65x17 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (41,0) size 23x17
+                text run at (41,0) width 23: "abc"
+            RenderTableCell {DIV} at (0,0) size 70x17 [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (50,0) size 20x17
+                text run at (50,0) width 20: "def"
+          RenderTableRow {DIV} at (0,17) size 133x17
+            RenderTableCell {DIV} at (69,17) size 65x17 [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (49,0) size 15x17
+                text run at (49,0) width 15: "hij"
+            RenderTableCell {DIV} at (0,17) size 70x17 [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (45,0) size 25x17
+                text run at (45,0) width 25: "opq"
+      RenderBlock {P} at (0,1048) size 769x18
+        RenderText {#text} at (0,0) size 489x17
+          text run at (0,0) width 489: "Anonymous TABLE, TABLE_ROW, TABLE_ROW_GROUP, TABLE_CELL"
+      RenderBlock {DIV} at (0,1081) size 769x71 [border: (1px solid #000000)]
+        RenderTable at (1,1) size 24x68
+          RenderTableSection (anonymous) at (0,17) size 24x34
+            RenderTableRow {DIV} at (0,0) size 24x17
+              RenderTableCell (anonymous) at (0,0) size 24x17 [r=0 c=0 rs=1 cs=1]
+                RenderText {#text} at (2,0) size 22x17
+                  text run at (2,0) width 22 RTL override: "abc"
+            RenderTableRow (anonymous) at (0,17) size 24x17
+              RenderTableCell {DIV} at (0,17) size 24x17 [r=1 c=0 rs=1 cs=1]
+                RenderText {#text} at (5,0) size 19x17
+                  text run at (5,0) width 19 RTL override: "def"
+          RenderBlock {DIV} at (0,0) size 24x17
+            RenderText {#text} at (10,0) size 14x17
+              text run at (10,0) width 14 RTL override: "hij"
+          RenderTableSection {DIV} at (0,51) size 24x17
+            RenderTableRow (anonymous) at (0,0) size 24x17
+              RenderTableCell (anonymous) at (0,0) size 24x17 [r=0 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 24x17
+                  text run at (0,0) width 24 RTL override: "opq"

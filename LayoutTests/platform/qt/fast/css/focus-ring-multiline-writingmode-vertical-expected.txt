@@ -1,0 +1,19 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {DIV} at (0,0) size 160x160
+        RenderText {#text} at (0,0) size 102x160
+          text run at (0,0) width 160: "Assuming the port-specific"
+          text run at (0,160) width 0: " "
+          text run at (17,0) width 149: "theme draws focus rings,"
+          text run at (17,149) width 4: " "
+          text run at (34,0) width 154: "this test draws focus rings"
+          text run at (34,154) width 4: " "
+          text run at (51,0) width 145: "around editable multiline"
+          text run at (51,145) width 4: " "
+          text run at (68,0) width 127: "text in vertical writing"
+          text run at (68,127) width 4: " "
+          text run at (85,0) width 38: "mode."
+caret: position 1 of child 0 {#text} of child 1 {DIV} of body

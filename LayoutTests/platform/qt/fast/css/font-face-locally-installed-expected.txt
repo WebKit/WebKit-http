@@ -1,0 +1,33 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x576
+      RenderBlock {P} at (0,0) size 784x35
+        RenderText {#text} at (0,0) size 523x17
+          text run at (0,0) width 414: "This tests that locally-installed fonts are used for a family of the same "
+          text run at (414,0) width 109: "name defined in a "
+        RenderInline {TT} at (0,0) size 80x15
+          RenderText {#text} at (523,3) size 80x15
+            text run at (523,3) width 80: "@font-face"
+        RenderText {#text} at (603,0) size 782x35
+          text run at (603,0) width 179: " rule if they are a better match"
+          text run at (0,18) width 29: "than "
+          text run at (29,18) width 48: "the rule."
+      RenderBlock {P} at (0,51) size 784x17
+        RenderText {#text} at (0,0) size 211x17
+          text run at (0,0) width 211: "This should be Lucida Grande "
+        RenderInline {I} at (0,0) size 199x17
+          RenderText {#text} at (211,0) size 199x17
+            text run at (211,0) width 199: "and this should be Times Italic."
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,84) size 784x17
+        RenderText {#text} at (0,0) size 131x17
+          text run at (0,0) width 131: "This should be Times "
+        RenderInline {B} at (0,0) size 226x17
+          RenderText {#text} at (131,0) size 226x17
+            text run at (131,0) width 226: "and this should be Helvetica Bold."
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,117) size 784x17
+        RenderText {#text} at (0,0) size 446x17
+          text run at (0,0) width 446: "UPPERCASE SHOULD BE MONACO and lowercase should be times."

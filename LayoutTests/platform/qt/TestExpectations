@@ -1,0 +1,1391 @@
+# These are the layout test expectations for the Qt port of WebKit.
+#
+# See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
+
+# =========================================================================== #
+#       Entries merged in from the old Skipped file                           #
+# =========================================================================== #
+
+# =========================================================================== #
+# Categories of Skipped Tests                                                 #
+# =========================================================================== #
+#
+# Note:Try to add newly skipped tests to the appropriate category. If you create
+#      a new category, be sure to list it here. If all else fails you can just
+#      add to the 'unsorted' category at the bottom.
+#      Where a test is a layout test, rather than plaintext, it can help to run
+#      it with '--platform mac --ignore-metrics'  and add or create a section
+#      in the category to indicate whether it still failed.
+#
+# List of Categories:
+#
+# - Permanently Skipped Tests.
+# - Disabled features.
+# - Feature not supported yet.
+# - Drag and Drop Support in DRT.
+# - Failing HTTP tests.
+# - Failing xmlhttprequest tests
+# - Failing editing/inserting tests.
+# - Failing editing/pasteboard tests.
+# - Failing editing/deleting tests
+# - Failing editing/selection tests.
+# - Failing editing/spelling tests
+# - Failing plugins tests.
+# - Failing execCommand tests.
+# - Failing Sputnik tests
+# - Fluctuating/flakey tests
+# - failing media tests
+# - Crashing tests due to re-enabled Phonon support in Buildbot's Qt
+# - Missing features in our DumpRenderTree implementation
+# - Failing SVG tests
+# - Failing CSS Tests
+# - failing fast tests
+# - failing fonts tests
+# - failing security tests
+# - failing tables tests
+# - Failed canvas tests from http://philip.html5.org/tests/canvas/suite/tests/
+# - failing transforms tests
+# - failing storage tests
+# - new tests without expected results
+# - Regressions occured after Qt version update
+
+# Tests that have failure expectation in global file
+fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
+fast/sub-pixel/input-caret-on-subpixel-bound.html [ Pass ]
+
+# =========================================================================== #
+#       Permanently Skipped Tests.                                            #
+# =========================================================================== #
+
+fast/html/keygen.html [ WontFix ]
+fast/text/line-initial-and-final-swashes.html [ WontFix ]
+
+# =========================================================================== #
+#       Disabled features.                                                    #
+# =========================================================================== #
+
+# ENABLE(INPUT_TYPE_*) are not enabled.
+# https://bugs.webkit.org/show_bug.cgi?id=29359
+fast/forms/date
+fast/forms/datetime
+fast/forms/datetimelocal
+fast/forms/month
+fast/forms/time
+fast/forms/week
+fast/forms/input-in-table-cell-no-value.html
+
+# ENABLE(INDIE_UI) is disabled.
+indieui/
+
+# ENABLE(QUOTA) is disabled.
+storage/storageinfo-missing-arguments.html
+storage/storageinfo-no-callbacks.html
+storage/storageinfo-query-usage.html
+storage/storageinfo-request-quota.html
+storage/storagequota-query-usage.html
+storage/storagequota-request-quota.html
+fast/workers/worker-storagequota-query-usage.html
+
+# ENABLE(WEBGL) is disabled.
+http/tests/canvas/webgl
+compositing/webgl
+fast/canvas/webgl
+fast/images/webgl-teximage2d.html
+http/tests/security/webgl-remote-read-remote-image-allowed.html
+http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
+http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
+webgl/
+
+# ENABLE(DASHBOARD_SUPPORT) is disabled
+http/tests/xmlhttprequest/default-content-type-dashboard.html
+http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html
+svg/custom/embedded-svg-allowed-in-dashboard.xml
+svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html
+svg/custom/manually-parsed-svg-allowed-in-dashboard.html
+svg/custom/svg-allowed-in-dashboard-object.html
+
+# ENABLE(MOUSE_CURSOR_SCALE) is disabled
+fast/css/cursor-parsing-image-set.html
+
+# accessibility support
+accessibility
+
+# ENABLE(NETSCAPE_PLUGIN_API) is disabled
+plugins
+fast/dom/Window/Plug-ins.html
+
+# Encrypted Media Extensions are not enabled.
+media/encrypted-media/
+
+# ENABLE(MEDIA_STREAM) is disabled
+fast/mediastream
+fast/events/constructors/media-stream-event-constructor.html
+
+# ENBALE(SPEECH_SYNTHESIS) is disabled
+fast/speechsynthesis
+
+# ENABLE(DOM4_EVENTS_CONSTRUCTOR) is disabled.
+fast/events/constructors/ui-event-constructor.html
+fast/events/constructors/mouse-event-constructor.html
+fast/events/constructors/composition-event-constructor.html
+fast/events/constructors/wheel-event-constructor.html
+fast/events/constructors/keyboard-event-constructor.html
+fast/events/constructors/focus-event-constructor.html
+
+# No woff2 yet
+fast/text/woff2.html [ ImageOnlyFailure ]
+
+# CSS image-resolution is not yet enabled.
+webkit.org/b/85262 fast/css/image-resolution
+
+# CSS image-orientation is not yet enabled.
+webkit.org/b/89052 fast/css/image-orientation
+
+# ENABLE(TEXT_AUTOSIZING) is disabled
+# webkit.org/b/84186
+  fast/text-autosizing/cluster-inline-block-or-table.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-inline-grid-flex-box.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-list-item.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-narrow-in-wide-ohidden.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-narrow-in-wide.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-wide-in-narrow.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-with-narrow-lca-and-cluster.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-with-narrow-lca.html [ ImageOnlyFailure ]
+  fast/text-autosizing/cluster-with-wide-lca.html [ ImageOnlyFailure ]
+  fast/text-autosizing/clusters-insufficient-text.html [ ImageOnlyFailure ]
+  fast/text-autosizing/clusters-insufficient-width.html [ ImageOnlyFailure ]
+  fast/text-autosizing/clusters-sufficient-text-except-in-root.html [ ImageOnlyFailure ]
+  fast/text-autosizing/clusters-sufficient-width.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-and-overflow-auto-ancestor.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-and-overflow-paged-x-ancestor.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-and-overflow-scroll-ancestor.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-height-body.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-then-float-ancestors.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-then-overflow-ancestors.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-then-position-absolute-ancestors.html [ ImageOnlyFailure ]
+  fast/text-autosizing/constrained-then-position-fixed-ancestors.html [ ImageOnlyFailure ]
+  fast/text-autosizing/em-margin-border-padding.html [ ImageOnlyFailure ]
+  fast/text-autosizing/font-scale-factor.html [ ImageOnlyFailure ]
+  fast/text-autosizing/form-controls-autosizing-button-input-elements.html [ ImageOnlyFailure ]
+  fast/text-autosizing/form-controls-autosizing-checkbox-input-element.html [ ImageOnlyFailure ]
+  fast/text-autosizing/form-controls-autosizing-radio-input-element.html [ ImageOnlyFailure ]
+  fast/text-autosizing/form-controls-autosizing-select-element.html [ ImageOnlyFailure ]
+  fast/text-autosizing/form-controls-autosizing-textfield-input-elements.html [ ImageOnlyFailure ]
+  fast/text-autosizing/header-li-links-autosizing.html [ ImageOnlyFailure ]
+  fast/text-autosizing/header-links-autosizing-different-fontsize.html [ ImageOnlyFailure ]
+  fast/text-autosizing/header-links-autosizing.html [ ImageOnlyFailure ]
+  fast/text-autosizing/narrow-child.html [ ImageOnlyFailure ]
+  fast/text-autosizing/narrow-descendants-combined.html [ ImageOnlyFailure ]
+  fast/text-autosizing/narrow-iframe-flattened.html [ ImageOnlyFailure ]
+  fast/text-autosizing/narrow-iframe.html [ ImageOnlyFailure ]
+  fast/text-autosizing/nested-child.html [ ImageOnlyFailure ]
+  fast/text-autosizing/nested-em-line-height.html [ ImageOnlyFailure ]
+  fast/text-autosizing/oscillation-javascript-fontsize-change.html [ ImageOnlyFailure ]
+  fast/text-autosizing/simple-paragraph.html [ ImageOnlyFailure ]
+  fast/text-autosizing/span-child.html [ ImageOnlyFailure ]
+  fast/text-autosizing/unwrappable-blocks.html [ ImageOnlyFailure ]
+  fast/text-autosizing/unwrappable-inlines.html [ ImageOnlyFailure ]
+  fast/text-autosizing/various-font-sizes.html [ ImageOnlyFailure ]
+  fast/text-autosizing/wide-block.html [ ImageOnlyFailure ]
+  fast/text-autosizing/wide-child.html [ ImageOnlyFailure ]
+  fast/text-autosizing/wide-iframe.html [ ImageOnlyFailure ]
+  fast/text-autosizing/wide-in-narrow-overflow-scroll.html [ ImageOnlyFailure ]
+
+# CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
+#webkit.org/b/58491 fast/css3-text/css3-text-decoration [ ImageOnlyFailure ]
+#webkit.org/b/76173 fast/css3-text/css3-text-align-last [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-align-last/text-align-last-with-text-align-justify.html [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-decoration/text-decoration-skip/decoration-skip-crash-fallback-svg.html [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-decoration/text-decoration-skip/glyph-inside-underline.html [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink.html [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-decoration/text-decoration-style-double-space-scales.html [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-justify/text-justify-none.html [ ImageOnlyFailure ]
+#webkit.org/b/99945 fast/css3-text/css3-text-justify [ Failure ]
+#webkit.org/b/112755 fast/css3-text/css3-text-indent [ ImageOnlyFailure ]
+fast/css3-text/css3-text-indent/text-indent-each-line-hanging.html [ ImageOnlyFailure ]
+
+# CURSOR_VISIBILITY is not enabled in qt
+webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html [ Failure ]
+
+# ENABLE(ATTACHMENT_ELEMENT) is disabled
+fast/attachment [ Failure ]
+fast/attachment/attachment-default-icon.html [ Pass ]
+fast/attachment/attachment-disabled-dom.html [ Pass ]
+fast/attachment/attachment-folder-icon.html [ Pass ]
+fast/attachment/attachment-icon-from-file-extension.html [ Pass ]
+fast/attachment/attachment-label-highlight.html [ Pass ]
+fast/attachment/attachment-type-attribute.html [ Pass ]
+
+
+# =========================================================================== #
+#       Feature not yet supported.                                            #
+# =========================================================================== #
+
+webkit.org/b/49142 fast/css/style-scoped
+
+#207 border-image-repeat: space and -webkit-mask-repeat: space
+css3/masking/mask-repeat-one-copy.html [ ImageOnlyFailure ]
+css3/masking/mask-repeat-space-border.html [ ImageOnlyFailure ]
+css3/masking/mask-repeat-space-content.html [ ImageOnlyFailure ]
+css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
+fast/borders/border-image-space.html [ ImageOnlyFailure ]
+
+#232
+fast/images/pdf-as-background.html [ Missing ]
+fast/images/pdf-as-image-landscape.html [ Missing ]
+fast/images/pdf-as-image-with-annotations.html [ ImageOnlyFailure ]
+fast/images/pdf-as-tiled-background.html [ Missing ]
+fast/replaced/pdf-as-image.html [ Missing ]
+fast/replaced/pdf-as-object-and-embed.html [ ImageOnlyFailure ]
+
+# EXIF orientation support has not yet been implemented for this platform
+# http://webkit.org/b/19688
+fast/images/exif-orientation.html [ Missing ]
+fast/images/exif-orientation-css.html [ Missing ]
+fast/images/exif-orientation-composited.html [ Missing ]
+fast/images/exif-orientation-image-document.html [ Missing ]
+
+# =========================================================================== #
+#       Drag and Drop Support in DRT.                                         #
+# =========================================================================== #
+# Drag n drop support on DRT cannot work at the moment because Qt's drag'n'drop
+# relies on an X event getting to the main window. In the absence of being able
+# to receive this event, running windowless, DRT cannot tell what is being dropped and where.
+# Bug: https://bugs.webkit.org/show_bug.cgi?id=31332
+
+fast/css/draggable-region-parser.html [ Failure ]
+
+fast/lists/drag-into-marker.html [ Missing ]
+
+# ============================================================================= #
+#            Missing features in our DumpRenderTree implementation              #
+# ============================================================================= #
+
+# Skip fast/events for now, causes a lot of timeouts
+fast/events
+
+# DumpRenderTree code to enable Java is currently a no-op
+java
+fast/replaced/applet-display-none.html
+fast/replaced/applet-rendering-java-disabled.html
+
+#192, also webkit.org/b/85689
+fast/animation/request-animation-frame-disabled.html
+
+#193
+fast/scrolling/overflow-scroll-past-max.html
+
+# Missing WebKitCanvasUsesAcceleratedDrawing in overridePreference()
+fast/canvas/canvas-blend-solid.html
+fast/canvas/drawImage-with-small-values.html
+
+# Need WebKitImageControlsEnabled in overridePreference()
+fast/images/image-controls-basic.html [ Missing ]
+
+# Need layoutTestController.enableAutoResizeMode()
+fast/autoresize/basic.html
+fast/autoresize/turn-off-autoresize.html
+
+# [Qt] Implement layouTestController.setShouldStayOnPageAfterHandlingBeforeUnload
+# https://bugs.webkit.org/show_bug.cgi?id=66162
+fast/loader/form-submission-after-beforeunload-cancel.html [ Failure ]
+
+#241
+fast/forms/input-readonly-autoscroll.html [ Missing ]
+fast/forms/input-text-drag-down.html [ Missing ]
+
+
+#201 - Support testRunner.setBackingScaleFactor() in DRT
+fast/hidpi
+fast/backgrounds/gradient-background-leakage-hidpi.html
+fast/canvas/2d.backingStorePixelRatio.html
+fast/canvas/2d.imageDataHD.html
+fast/canvas/canvas-as-image-hidpi.html
+fast/canvas/canvas-resize-reset-pixelRatio.html
+imported/blink/fast/hidpi/border-background-align.html
+imported/blink/svg/zoom/text/lowdpi-zoom-text.html
+svg/as-image/animated-svg-repaints-completely-in-hidpi.html
+svg/as-image/image-respects-deviceScaleFactor.html
+svg/as-image/svg-as-image-canvas.html
+# All hidpi-* tests should activate HiDPI, but our DRT doesn't support it
+fast/backgrounds/hidpi-bitmap-background-on-subpixel-position.html
+fast/backgrounds/hidpi-bitmap-background-origin-on-subpixel-position.html
+fast/backgrounds/hidpi-generated-gradient-background-on-subpixel-position.html
+fast/borders/hidpi-border-image-gradient-on-subpixels.html
+fast/borders/hidpi-border-radius-outer-border-goes-rectangle.html
+fast/borders/hidpi-border-width-flooring.html
+fast/borders/hidpi-outline-on-subpixel-position.html
+fast/borders/hidpi-rounded-border-on-subpixel-position.html
+fast/box-shadow/hidpi-webkit-box-shadow-subpixel-position.html
+fast/canvas/hidpi-repaint-on-retina-leaves-bits-behind.html
+fast/flexbox/hidpi-simple-line-layout-with-flexbox-and-transition.html
+fast/forms/hidpi-fieldset-on-subpixel-position-when-legend-is-present.html
+fast/forms/hidpi-textarea-on-subpixel-position.html
+fast/frames/hidpi-position-iframe-on-device-pixel.html
+fast/images/hidpi-directly-composited-image-on-subpixel-position.html
+fast/images/hidpi-image-position-on-device-pixels.html
+fast/inline/hidpi-rtl-text-does-not-fit-line-and-gets-cut-off.html
+fast/inline/hidpi-selection-gap-and-inline-selection-have-gap-rtl.html
+fast/inline/hidpi-selection-gap-on-subpixel-position.html
+fast/inline/hidpi-selection-gap-overlaps-inline-selection.html
+fast/inline/hidpi-slow-path-text-on-subpixel-position.html
+fast/layers/hidpi-floor-negative-coordinate-values-to-maintain-rounding-direction.html
+fast/layers/hidpi-nested-layers-with-subpixel-accumulation.html
+fast/layers/hidpi-transform-on-child-content-is-mispositioned.html
+fast/repaint/hidpi-absolute-positioned-element-wrong-cliprect-after-move.html
+fast/repaint/hidpi-block-width-change-leaves-cruft.html
+fast/repaint/hidpi-box-with-subpixel-height-inflates.html
+fast/repaint/hidpi-content-inside-iframe-leaves-trails.html
+fast/repaint/hidpi-device-pixel-based-repaint-rect-tracking.html
+fast/repaint/hidpi-transform-on-subpixel-repaintrect.html
+fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html
+fast/backgrounds/hidpi-background-image-contain-cover-scale-needs-more-precision.html [ ImageOnlyFailure ]
+fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-clipping-right-after-move.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-painting-groove.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-painting-ridge.html [ ImageOnlyFailure ]
+fast/borders/hidpi-border-radius-with-subpixel-margin-not-renderable.html [ ImageOnlyFailure ]
+fast/borders/hidpi-double-border-with-border-radius-always-produce-solid-line.html [ ImageOnlyFailure ]
+fast/borders/hidpi-outline-hairline-painting.html [ ImageOnlyFailure ]
+fast/borders/hidpi-simple-hairline-border-painting.html [ ImageOnlyFailure ]
+fast/forms/hidpi-textfield-background-bleeding.html [ ImageOnlyFailure ]
+fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ ImageOnlyFailure ]
+fast/inline/hidpi-inline-selection-leaves-gap.html [ ImageOnlyFailure ]
+fast/inline/hidpi-inline-text-decoration-with-subpixel-value.html [ ImageOnlyFailure ]
+fast/inline/hidpi-pixel-gap-between-adjacent-selection-inlines.html [ ImageOnlyFailure ]
+fast/inline/hidpi-select-inline-on-subpixel-position.html [ ImageOnlyFailure ]
+fast/layers/hidpi-box-positioned-off-by-one-when-transform-is-present.html [ ImageOnlyFailure ]
+fast/regions/hidpi-region-with-auto-margin-on-subpixel-position.html [ ImageOnlyFailure ]
+fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
+
+# ============================================================================= #
+# Fluctuating/flakey tests
+# ============================================================================= #
+
+fast/regions/repaint/hover-border-radius.html [ Failure Pass ]
+fast/repaint/4776765.html [ Failure Pass ]
+fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Failure Pass ]
+fast/scrolling/scroll-position-on-reload-rtl.html [ Failure Pass ]
+fast/workers/worker-exception-during-navigation.html [ Crash Timeout Pass ]
+fast/notifications/notifications-constructor-without-permission.html [ Failure Pass ]
+fast/notifications/request-notification-permission-while-reloading.html [ Failure Pass ]
+fast/workers/worker-context-gc.html [ Crash Pass ]
+fast/filter-image/filter-image-animation.html [ Failure Pass ]
+fast/loader/javascript-url-in-embed.html [ Failure Pass ]
+
+#255
+fast/parser/adoption-agency-crash-02.html [ Pass Missing ]
+
+# ============================================================================= #
+# Failing fast Tests
+# ============================================================================= #
+
+# These tests are actually pixel-tests and have Mac-only expectations
+fast/borders/border-painting-correctness-dashed.html [ ImageOnlyFailure ]
+fast/borders/border-painting-correctness-dotted.html [ ImageOnlyFailure ]
+
+#198
+fast/forms/select-initial-position.html [ Failure ]
+
+# -webkit-named-image(wireless-playback)
+fast/css/named-images.html [ WontFix ]
+# -apple-system-* colors
+fast/css/apple-system-colors.html [ WontFix ]
+
+#119
+fast/css/direct-adjacent-style-update-optimization.html [ Failure ]
+
+##120
+#fast/css/getComputedStyle/computed-style-font.html [ Failure ]
+#fast/css/font-shorthand-from-longhands.html [ Failure ]
+#fast/css/font-shorthand-line-height.html [ Failure ]
+#fast/css/getComputedStyle/computed-style-without-renderer.html [ Failure ]
+#fast/css/getComputedStyle/computed-style.html [ Failure ]
+#fast/css/line-height-text-autosizing.html [ Failure ]
+
+#122
+fast/css/pseudo-visited-background-color-on-input.html [ ImageOnlyFailure ]
+#135
+fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
+
+webkit.org/b/131498 fast/css/cascade/box-shadow-and-webkit-box-shadow-cascade-order.html [ ImageOnlyFailure ]
+
+#137
+fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
+fast/css/will-change/will-change-creates-stacking-context-inline.html [ ImageOnlyFailure ]
+
+#138
+fast/css/word-spacing-characters-complex-text.html [ ImageOnlyFailure ]
+
+# 140
+fast/css/read-only-read-write-webkit-user-modify.html [ Failure ]
+
+# These failures are suspected to be caused by subpixel rendering errors
+
+#121
+fast/css/negative-text-indent-in-inline-block.html [ ImageOnlyFailure ]
+
+webkit.org/b/115437 fast/css/sticky/sticky-writing-mode-vertical-lr.html [ ImageOnlyFailure ]
+# Similar to above
+fast/css/sticky/sticky-writing-mode-vertical-rl.html [ ImageOnlyFailure ]
+
+fast/sub-pixel/block-with-margin-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/85532 fast/sub-pixel/file-upload-control-at-fractional-offset.html [ ImageOnlyFailure ]
+fast/sub-pixel/ellipsis-table.html [ ImageOnlyFailure ]
+
+webkit.org/b/104696 fast/block/float/floats-offset-image-quirk-lineheight.html [ ImageOnlyFailure ]
+webkit.org/b/104696 fast/block/float/floats-offset-image-quirk.html [ ImageOnlyFailure ]
+webkit.org/b/104696 fast/block/float/floats-offset-image-strict-lineheight.html [ ImageOnlyFailure ]
+webkit.org/b/104696 fast/block/float/floats-offset-image-strict.html [ ImageOnlyFailure ]
+#webkit.org/b/104696 fast/block/float/floats-wrap-inside-inline-007.html [ ImageOnlyFailure ]
+
+#197
+fast/css-generated-content/012.html [ Failure ]
+#200
+fast/repaint/transform-layout-repaint.html [ Failure ]
+#191 - Ligatures
+fast/css/text-rendering.html [ ImageOnlyFailure ]
+#190
+fast/css/square-button-appearance.html [ Failure ]
+
+#189
+fast/css/font-face-multiple-faces.html [ Failure ]
+fast/css/font-face-synthetic-bold-italic.html [ Failure ]
+fast/css3-text/font-synthesis.html [ ImageOnlyFailure ]
+
+#185
+fast/text/midword-break-before-surrogate-pair-2.html [ Failure ]
+
+#184 - Accents
+fast/text/atsui-small-caps-punctuation-size.html [ Failure ]
+fast/text/space-width.html [ ImageOnlyFailure ]
+
+#177
+fast/replaced/width100percent-checkbox.html [ Failure ]
+fast/replaced/width100percent-radio.html [ Failure ]
+fast/replaced/width100percent-searchfield.html [ Failure ]
+fast/replaced/width100percent-textarea.html [ Failure ]
+fast/replaced/width100percent-textfield.html [ Failure ]
+
+#174
+fast/borders/borderRadiusDashed04.html [ ImageOnlyFailure ]
+fast/borders/borderRadiusDashed05.html [ ImageOnlyFailure ]
+fast/box-shadow/inset.html [ Failure ]
+fast/borders/borderRadiusAllStylesAllCorners.html [ Missing ]
+fast/borders/borderRadiusDashed01.html [ Missing ]
+fast/borders/borderRadiusDashed02.html [ Missing ]
+fast/borders/borderRadiusDashed03.html [ Missing ]
+fast/borders/borderRadiusDotted01.html [ Missing ]
+fast/borders/borderRadiusDotted02.html [ Missing ]
+fast/borders/borderRadiusDotted03.html [ Missing ]
+
+#160 - ???
+fast/frames/inline-object-inside-frameset.html [ Failure ]
+
+#156
+fast/forms/input-text-click-inside.html [ Failure ]
+fast/forms/input-text-click-outside.html [ Failure ]
+fast/forms/textfield-focus-ring.html [ Failure ]
+fast/frames/take-focus-from-iframe.html [ Failure ]
+fast/css/focus-ring-exists-for-search-field.html [ Failure ]
+
+#155
+#fast/forms/input-readonly-dimmed.html [ Failure ]
+
+#154
+fast/forms/basic-buttons.html [ Failure ]
+
+#146
+fast/block/float/015.html [ Failure ]
+
+#211
+fast/dom/Window/window-properties-device-orientation.html [ Failure ]
+
+webkit.org/b/30620 fast/xsl/sort-locale.xml [ Failure ]
+
+#235
+fast/dom/HTMLMeterElement/meter-appearances-capacity.html [ Missing ]
+fast/dom/HTMLMeterElement/meter-appearances-rating-relevancy.html [ Missing ]
+
+#236
+fast/dom/Window/btoa-pnglet.html [ Missing ]
+
+#238
+fast/gradients/css3-color-stops.html [ Missing ]
+fast/gradients/css3-radial-gradients2.html [ Missing ]
+#239
+fast/gradients/css3-radial-gradients.html [ Missing ]
+fast/gradients/css3-radial-gradients3.html [ Missing ]
+fast/gradients/css3-repeating-radial-gradients.html [ Missing ]
+fast/gradients/unprefixed-radial-gradients.html [ Missing ]
+#242
+fast/forms/menulist-narrow-width.html [ Missing ]
+#243
+fast/forms/menulist-restrict-line-height.html [ Missing ]
+#245
+fast/forms/validation-message-appearance.html [ Missing ]
+#246
+fast/replaced/image-solid-color-with-alpha.html [ Missing ]
+#248
+fast/text/decorations-with-text-combine.html [ Missing ]
+fast/text/emphasis-vertical.html [ Missing ]
+#249
+fast/text/international/bidi-menulist.html [ Missing ]
+fast/text/international/pop-up-button-text-alignment-and-direction.html [ Missing ]
+#250
+fast/text/justify-ideograph-leading-expansion.html [ Missing ]
+#251
+fast/text/wide-zero-width-space.html [ Missing ]
+
+
+
+# Failing reftests
+webkit.org/b/103424 fast/backgrounds/background-opaque-images-over-color.html [ ImageOnlyFailure ]
+# Fails on ios-simulator as well
+fast/animation/height-auto-transition-computed-value.html [ ImageOnlyFailure ]
+#217
+fast/block/nested-renderers.html [ ImageOnlyFailure ]
+webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
+#85
+fast/forms/datalist/update-range-with-datalist.html [ ImageOnlyFailure ]
+#218
+fast/regions/absolute-in-relative-overflow.html [ ImageOnlyFailure ]
+#219
+fast/forms/select/intrinsic-min-width-applies-with-fixed-width.html [ ImageOnlyFailure ]
+#220
+fast/css-grid-layout/flex-content-sized-columns-resize.html [ Timeout ]
+
+webkit.org/b/153700 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+webkit.org/b/153700 fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
+webkit.org/b/153700 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
+webkit.org/b/153700 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
+webkit.org/b/153700 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
+fast/ruby/text-decoration-in-descendants-ruby.html [ ImageOnlyFailure ]
+fast/ruby/base-shorter-than-text.html [ Missing ]
+fast/ruby/bopomofo-letter-spacing.html [ Missing ]
+fast/ruby/bopomofo-rl.html [ Missing ]
+fast/ruby/bopomofo.html [ Missing ]
+fast/ruby/nested-ruby.html [ Missing ]
+fast/ruby/ruby-beforeafter.html [ Missing ]
+fast/ruby/ruby-empty-rt.html [ Missing ]
+fast/ruby/ruby-length.html [ Missing ]
+fast/ruby/ruby-run-break.html [ Missing ]
+fast/ruby/ruby-runs-spans.html [ Missing ]
+fast/ruby/ruby-runs.html [ Missing ]
+fast/ruby/ruby-simple-rp.html [ Missing ]
+fast/ruby/ruby-simple.html [ Missing ]
+fast/ruby/ruby-trailing.html [ Missing ]
+fast/ruby/select-ruby.html [ Missing ]
+
+#223
+fast/multicol/newmulticol/multicol-clip-rounded-corners.html [ ImageOnlyFailure ]
+
+# Wrong fonts used
+fast/shapes/shape-outside-floats/shape-outside-floats-layout-after-initial-layout-pass.html [ ImageOnlyFailure ]
+
+webkit.org/b/132235 fast/shapes/shape-outside-floats/shape-outside-floats-shape-margin-percent.html [ ImageOnlyFailure ]
+
+#226
+fast/text/arabic-zwj-and-zwnj.html [ ImageOnlyFailure ]
+
+webkit.org/b/124504 fast/text/break-word-pre-wrap.html [ ImageOnlyFailure ]
+
+#221
+fast/block/positioning/fixed-container-with-relative-parent.html [ ImageOnlyFailure ]
+fast/repaint/layer-child-outline.html [ ImageOnlyFailure ]
+fast/inline/outline-corners-with-offset.html [ ImageOnlyFailure ]
+fast/inline/padding-ellipsis-right.html [ ImageOnlyFailure ]
+
+fast/text/descent-clip-in-scaled-page.html [ ImageOnlyFailure ]
+
+#228
+fast/text/font-kerning.html [ ImageOnlyFailure ]
+fast/text/multiple-feature-properties.html [ ImageOnlyFailure ]
+#229
+fast/text/kerning-with-TextLayout.html [ ImageOnlyFailure ]
+#230
+fast/gradients/css3-color-stop-invalid.html [ ImageOnlyFailure ]
+#231
+fast/images/animated-png.html [ ImageOnlyFailure ]
+fast/backgrounds/animated-gif-as-background.html [ Missing ]
+
+webkit.org/b/42194 fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
+
+#233
+fast/text/decorations-vertical-underline.html [ ImageOnlyFailure ]
+fast/text/international/synthesized-italic-vertical.html [ ImageOnlyFailure ]
+fast/writing-mode/vertical-subst-font-vert-no-dflt.html [ ImageOnlyFailure ]
+fast/dynamic/text-combine.html [ Missing ]
+fast/text/orientation-sideways.html [ Missing ]
+fast/text/text-combine-shrink-on-color-change.html [ Missing ]
+fast/writing-mode/text-orientation-basic.html [ Missing ]
+fast/writing-mode/vertical-align-table-baseline.html [ Missing ]
+fast/writing-mode/vertical-baseline-alignment.html [ Missing ]
+fast/writing-mode/vertical-font-fallback.html [ Missing ]
+
+webkit.org/b/146724 fast/text/word-break-keep-all.html [ ImageOnlyFailure ]
+
+#webkit.org/b/160248 fast/text/combining-character-sequence-vertical.html [ ImageOnlyFailure ]
+webkit.org/b/160248 fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
+webkit.org/b/160248 fast/text/synthetic-bold-transformed.html [ ImageOnlyFailure ]
+webkit.org/b/160248 fast/text/trailing-word.html [ ImageOnlyFailure ]
+
+webkit.org/b/139493 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure ]
+
+# Failing regions tests
+  fast/regions/absolute-pos-elem-in-region.html [ ImageOnlyFailure ]
+  fast/regions/animation-element-in-region-flowed-to-other-thread.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-abspos-region.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-allregions-nobreaks.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-allregions.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-break-after.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-breakafteralways-maxheight.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-breakbeforealways.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-definedheight-changenotdetected.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-dynamic-update.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-firstregion-breakalways.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-flexbox.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-floatright-region.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-horizontal-bt.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-inlineblock-normalflow-region.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-lastregion-overflowauto-breaksignored.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-lastregion-overflowauto.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-maxheight-region.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-middleregion.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-minheight-region.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-normalflow-region.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-region-valid-from-invalid.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-secondregion-breakoutside.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-secondregion.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-breakafteralways-maxheight.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-breakafteralways.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-breakaftermargin.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-breakbeforealways-minheight.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-breakbeforealways.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-multiplebreaks.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-overflowauto-breaksignored.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autoheight-singleregion-overflowauto.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-abspos-regionchain.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-abspos.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-float.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-inlineblock.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-nonreplaced-abspos.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-nonreplacedblock-normalflow.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-normalflow-minmaxwidth.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-normalflow-minwidth.html [ ImageOnlyFailure ]
+  fast/regions/auto-size/autowidth-normalflow.html [ ImageOnlyFailure ]
+  fast/regions/box-decorations-over-region-padding-fragmented.html [ ImageOnlyFailure ]
+  fast/regions/box-decorations-over-region-padding-horiz-bt.html [ ImageOnlyFailure ]
+  fast/regions/box-decorations-over-region-padding.html [ ImageOnlyFailure ]
+  fast/regions/clip-to-padding-box-vertical-lr.html [ ImageOnlyFailure ]
+  fast/regions/collapse-anonymous-region.html [ ImageOnlyFailure ]
+  fast/regions/content-relative-next-tile.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-001.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-002.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-003.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-004.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-005.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-006.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-007.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-008.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-009.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-010.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-011.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-012.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-013.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-014.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-list-items-015.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-numbered-paragraphs-divs-001.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-numbered-paragraphs-divs-002.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-numbered-paragraphs.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-numbered-spans-display-only-some.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-ordered-lists-in-regions-001.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-ordered-lists-in-regions-002.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-ordered-lists-in-regions-003.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-001.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-002.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-003.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-ordered-lists-in-regions-explicit-counters-004.html [ ImageOnlyFailure ]
+  fast/regions/counters/extract-unordered-lists-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/drag-scrollbars-of-content.html [ ImageOnlyFailure ]
+  fast/regions/float-pushed-width-change-2.html [ ImageOnlyFailure ]
+  fast/regions/float-pushed-width-change.html [ ImageOnlyFailure ]
+  fast/regions/float-slicing-on-forced-break.html [ ImageOnlyFailure ]
+  fast/regions/floats-basic-in-variable-width-regions.html [ ImageOnlyFailure ]
+  fast/regions/fragmentation-after-float-overflow-single-region.html [ ImageOnlyFailure ]
+  fast/regions/fragmentation-after-monolithic-overflow-self-collapsed.html [ ImageOnlyFailure ]
+  fast/regions/fragmentation-after-monolithic-overflow-single-region.html [ ImageOnlyFailure ]
+  fast/regions/fragmentation-after-monolithic-overflow.html [ ImageOnlyFailure ]
+  fast/regions/frame-view-overflow-scroll.html [ ImageOnlyFailure ]
+  fast/regions/generated-content/firstletter-inside-flowthread.html [ ImageOnlyFailure ]
+  fast/regions/hover-content-inside-iframe-in-region.html [ ImageOnlyFailure ]
+  fast/regions/hover-in-second-region.html [ ImageOnlyFailure ]
+  fast/regions/hover-overflow-hidden.html [ ImageOnlyFailure ]
+  fast/regions/inline-block-flowed-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/inline-block-inline-children-flowed-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
+  fast/regions/inline-block-overflow.html [ ImageOnlyFailure ]
+  fast/regions/inline-blocks-dyn-enlarged-regions.html [ ImageOnlyFailure ]
+  fast/regions/inline-blocks-dyn-shrunk-regions.html [ ImageOnlyFailure ]
+  fast/regions/inline-blocks-in-two-regions.html [ ImageOnlyFailure ]
+  fast/regions/inlineblock-child-inlineblock-contentnode-in-region.html [ ImageOnlyFailure ]
+  fast/regions/last-region-border-radius.html [ ImageOnlyFailure ]
+  fast/regions/layers/region-normalflow-stacking-context.html [ ImageOnlyFailure ]
+  fast/regions/layers/region-removed-during-animation.html [ ImageOnlyFailure ]
+  fast/regions/layers/stacking-context-paint-order.html [ ImageOnlyFailure ]
+  fast/regions/list-item-as-region.html [ ImageOnlyFailure ]
+  fast/regions/listmarker-inside-flowthread.html [ ImageOnlyFailure ]
+  fast/regions/multicol/multicol-as-region-prevented.html [ ImageOnlyFailure ]
+  fast/regions/multicol/regions-in-multicol-bt.html [ ImageOnlyFailure ]
+  fast/regions/multicol/regions-in-multicol-hover-overflow.html [ ImageOnlyFailure ]
+  fast/regions/multicol/regions-in-multicol-hover.html [ ImageOnlyFailure ]
+  fast/regions/multicol/regions-in-multicol.html [ ImageOnlyFailure ]
+  fast/regions/named-flow-content-order-1.html [ ImageOnlyFailure ]
+  fast/regions/named-flow-content-order-2.html [ ImageOnlyFailure ]
+  fast/regions/nested-floated-region.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-auto-after-float.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-content-transform-rotate.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-content-zero-height-region.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-in-uniform-regions-dynamic.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-in-variable-width-regions-inline-bt.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-in-variable-width-regions-inline-continuation.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-in-variable-width-regions-inline.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-nested-regions.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-not-moving-below-floats-in-variable-width-regions.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-region-inline.html [ ImageOnlyFailure ]
+  fast/regions/overflow/overflow-size-change-in-variable-width-regions.html [ ImageOnlyFailure ]
+  fast/regions/percentage-margins-mixed-ltr-dominant-regions.html [ ImageOnlyFailure ]
+  fast/regions/percentage-margins-mixed-rtl-dominant-regions.html [ ImageOnlyFailure ]
+  fast/regions/percentage-margins-rtl-variable-width-regions.html [ ImageOnlyFailure ]
+  fast/regions/percentage-margins-variable-width-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/fixed-in-named-flow-position-changed.html [ ImageOnlyFailure ]
+  fast/regions/positioning/fixed-inside-fixed-in-named-flow.html [ ImageOnlyFailure ]
+  fast/regions/positioning/fixed-inside-named-flow-zIndex.html [ ImageOnlyFailure ]
+  fast/regions/positioning/fixed-pos-content-fragmented.html [ ImageOnlyFailure ]
+  fast/regions/positioning/fixed-pos-elem-in-namedflow-noregions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/fixed-pos-elem-in-region.html [ ImageOnlyFailure ]
+  fast/regions/positioning/fixed-pos-region-overflow-content.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-fragmented-content.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-block-static-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-block-static-in-rtl-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-block-static-spanning-regions-rtl.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-block-static-spanning-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-clipped-spanning-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-in-rtl-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-inline-static-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-inline-static-in-rtl-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-inline-static-spanning-regions-rtl.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-inline-static-spanning-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-perpendicular-flows-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-objects-spanning-regions.html [ ImageOnlyFailure ]
+  fast/regions/positioning/positioned-slider-in-regions.html [ ImageOnlyFailure ]
+  fast/regions/region-as-bfc-avoids-float.html [ ImageOnlyFailure ]
+  fast/regions/region-border-radius-overflow-clip.html [ ImageOnlyFailure ]
+  fast/regions/region-clipping.html [ ImageOnlyFailure ]
+  fast/regions/region-content-flown-into-region.html [ ImageOnlyFailure ]
+  fast/regions/region-overflow-break.html [ ImageOnlyFailure ]
+  fast/regions/region-padding-overflow-hidden.html [ ImageOnlyFailure ]
+  fast/regions/region-styling/region-style-in-columns.html [ ImageOnlyFailure ]
+  fast/regions/region-styling/region-style-not-supported-properties.html [ ImageOnlyFailure ]
+  fast/regions/region-styling/region-style-rule-position.html [ ImageOnlyFailure ]
+  fast/regions/region-styling/region-withstyling-valid-from-invalid.html [ ImageOnlyFailure ]
+  fast/regions/region-visual-overflow-transform.html [ ImageOnlyFailure ]
+  fast/regions/region-width-change-relayout-1.html [ ImageOnlyFailure ]
+  fast/regions/region-width-change-relayout-2.html [ ImageOnlyFailure ]
+  fast/regions/region-width-change-relayout-3.html [ ImageOnlyFailure ]
+  fast/regions/relative-borders-overflow.html [ ImageOnlyFailure ]
+  fast/regions/relative-in-absolute-borders-overflow.html [ ImageOnlyFailure ]
+  fast/regions/repaint/fixed-in-named-flow-cb-changed.html [ ImageOnlyFailure ]
+  fast/regions/repaint/fixed-in-named-flow-cb-changed2.html [ ImageOnlyFailure ]
+  fast/regions/repaint/region-painting-composited-element.html [ ImageOnlyFailure ]
+  fast/regions/repaint/region-painting-in-composited-view.html [ ImageOnlyFailure ]
+  fast/regions/scrolling/scroll-into-view-relative.html [ ImageOnlyFailure ]
+  fast/regions/scrolling/scroll-into-view.html [ ImageOnlyFailure ]
+  fast/regions/scrolling/scrollable-first-region.html [ ImageOnlyFailure ]
+  fast/regions/scrolling/scrollable-paragraph-unsplittable.html [ ImageOnlyFailure ]
+  fast/regions/scrolling/wheel-scroll-abspos.html [ ImageOnlyFailure ]
+  fast/regions/scrolling/wheel-scroll.html [ ImageOnlyFailure ]
+  fast/regions/scrolling/wheel-scrollable-single-region.html [ ImageOnlyFailure ]
+  fast/regions/selection/selecting-text-ignoring-region-horiz-bt.html [ ImageOnlyFailure ]
+  fast/regions/selection/selecting-text-ignoring-region-vert-lr.html [ ImageOnlyFailure ]
+  fast/regions/selection/selecting-text-ignoring-region.html [ ImageOnlyFailure ]
+  fast/regions/selection/selecting-text-in-2-regions-horiz-bt.html [ ImageOnlyFailure ]
+  fast/regions/selection/selecting-text-in-2-regions-vert-lr.html [ ImageOnlyFailure ]
+  fast/regions/selection/selecting-text-in-2-regions.html [ ImageOnlyFailure ]
+  fast/regions/selection/selecting-text-through-different-region-flows.html [ ImageOnlyFailure ]
+  fast/regions/selection/selection-in-overflow-hit-testing.html [ ImageOnlyFailure ]
+  fast/regions/selection/selection-in-overflow.html [ ImageOnlyFailure ]
+  fast/regions/selection/selection-in-text-after-overflow-hit-testing.html [ ImageOnlyFailure ]
+  fast/regions/shape-outside-floats/regions-shape-outside-content-flows-multiple-regions.html [ ImageOnlyFailure ]
+  fast/regions/shape-outside-floats/regions-shape-outside-floats-inset.html [ ImageOnlyFailure ]
+  fast/regions/shape-outside-floats/regions-shape-outside-region-polygon-floats.html [ ImageOnlyFailure ]
+  fast/regions/static-in-relative-overflow.html [ ImageOnlyFailure ]
+  fast/regions/sticky-border-overflow.html [ ImageOnlyFailure ]
+  fast/regions/subtree-with-horiz-bt.html [ ImageOnlyFailure ]
+  fast/regions/subtree-with-vert-lr.html [ ImageOnlyFailure ]
+  fast/regions/subtree-with-vert-rl.html [ ImageOnlyFailure ]
+  fast/regions/table-cell-as-region.html [ ImageOnlyFailure ]
+  fast/regions/top-overflow-out-of-second-region.html [ ImageOnlyFailure ]
+  fast/regions/unsplittable-nested-region.html [ ImageOnlyFailure ]
+  fast/regions/visibility-hidden.html [ ImageOnlyFailure ]
+  fast/regions/webkit-flow-double-pagination-float-push.html [ ImageOnlyFailure ]
+  fast/regions/webkit-flow-float-unable-to-push.html [ ImageOnlyFailure ]
+  fast/regions/webkit-flow-renderer-layer.html [ ImageOnlyFailure ]
+  fast/regions/webkit-flow-renderer-nested.html [ ImageOnlyFailure ]
+  fast/regions/webkit-flow-renderer.html [ ImageOnlyFailure ]
+  fast/regions/writing-mode/invalid-first-region-with-writing-mode-2.html [ ImageOnlyFailure ]
+  fast/regions/writing-mode/invalid-first-region-with-writing-mode.html [ ImageOnlyFailure ]
+
+# Unsorted timeouts (FIXME)
+
+fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
+fast/animation/request-animation-frame-throttle-subframe.html [ Skip ]
+fast/dom/Geolocation/startUpdatingOnlyWhenPageVisible.html [ Skip ]
+fast/dom/Geolocation/stopUpdatingForHiddenPage.html [ Skip ]
+fast/dom/MutationObserver/database-callback-delivery.html [ Skip ]
+fast/dom/MutationObserver/end-of-task-delivery.html [ Skip ]
+fast/dom/MutationObserver/inline-event-listener.html [ Skip ]
+fast/dom/Window/window-resize-contents.html [ Skip ]
+fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Skip ]
+fast/dynamic/window-resize-scrollbars-test.html [ Skip ]
+fast/encoding/percent-escaping.html [ Skip ]
+fast/fixed-layout/fixed-layout.html [ Skip ]
+fast/forms/color/color-suggestion-picker-crash-on-set-value.html [ Skip ]
+fast/forms/color/input-color-onchange-event.html [ Skip ]
+fast/forms/range/range-type-change-onchange.html [ Skip ]
+fast/forms/validation-message-on-checkbox.html [ Skip ]
+fast/forms/validation-message-on-listbox.html [ Skip ]
+fast/forms/validation-message-on-radio.html [ Skip ]
+fast/frames/crash-during-iframe-load-stop.html [ Skip ]
+fast/frames/flattening/iframe-flattening-inside-flexbox-with-delayed-scroll-update.html [ Skip ]
+fast/frames/flattening/scrollable-flexbox-inside-iframe-with-zero-height-and-needs-full-repaint-crash.html [ Skip ]
+fast/frames/frame-unload-crash2.html [ Skip ]
+fast/history/page-cache-media-source-closed-2.html [ Skip ]
+fast/history/page-cache-media-source-closed.html [ Skip ]
+fast/history/page-cache-media-source-opened.html [ Skip ]
+fast/history/page-cache-notification-suspendable.html [ Skip ]
+fast/history/page-cache-removed-source-buffer.html [ Skip ]
+fast/history/page-cache-running-audiocontext.html [ Skip ]
+fast/history/page-cache-suspended-audiocontext.html [ Skip ]
+fast/history/page-cache-webdatabase-no-transaction-db.html [ Skip ]
+fast/history/page-cache-webdatabase-pending-transaction.html [ Skip ]
+#fast/html/object-image-nested-fallback.html [ Skip ]
+fast/images/animated-gif-body-outside-viewport.html [ Skip ]
+fast/images/animated-gif-iframe-webkit-transform.html [ Skip ]
+fast/images/animated-gif-webkit-transform.html [ Skip ]
+fast/images/animated-gif-window-resizing.html [ Skip ]
+fast/images/animated-gif-zooming.html [ Skip ]
+fast/images/composited-animated-gif-outside-viewport.html [ Skip ]
+fast/images/move-image-to-new-document.html [ Skip ]
+fast/notifications/notifications-click-event-focus.html [ Skip ]
+fast/notifications/notifications-click-event.html [ Skip ]
+fast/notifications/notifications-display-close-events.html [ Skip ]
+fast/notifications/notifications-document-close-crash.html [ Skip ]
+fast/notifications/notifications-with-permission.html [ Skip ]
+fast/picture/viewport-resize.html [ Skip ]
+fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Skip ]
+fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
+fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
+fast/scrolling/rtl-point-in-iframe.html [ Skip ]
+
+platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled-by-webkit.html
+
+# Unsorted
+
+# Expected to fail, but passed: (2)
+  fast/shadow-dom/text-slot-child-crash.svg [ Pass ]
+
+
+# Regressions: Unexpected text-only failures (290)
+  fast/backgrounds/repeat/noRepeatCorrectClip.html [ Failure ]
+  fast/block/float/001.html [ Failure ]
+  fast/block/float/4145535Crash.html [ Failure ]
+  fast/block/float/br-with-clear.html [ Failure ]
+  fast/block/float/float-not-removed-from-next-sibling.html [ Failure ]
+  fast/block/float/float-not-removed-from-next-sibling2.html [ Failure ]
+  fast/block/float/float-not-removed-from-next-sibling3.html [ Failure ]
+  fast/block/float/intruding-float-remove-from-sibling-block-on-absolute-position.html [ Failure ]
+  fast/block/float/intruding-float-remove-from-sibling-block-on-absolute-position2.html [ Failure ]
+  fast/block/float/intruding-float-remove-from-sibling-block-on-fixed-position.html [ Failure ]
+  fast/block/float/intruding-float-remove-from-sibling-block-on-fixed-position2.html [ Failure ]
+  fast/block/positioning/054.html [ Failure ]
+  fast/block/positioning/061.html [ Failure ]
+  fast/block/positioning/negative-rel-position.html [ Failure ]
+  fast/block/positioning/pref-width-change.html [ Failure ]
+  fast/block/positioning/relative-positioned-inline-container.html [ Failure ]
+  fast/borders/borderRadiusArcs01.html [ Failure ]
+  fast/borders/borderRadiusSolid03.html [ Failure ]
+  fast/borders/empty-outline-border-assert.html [ Failure ]
+  fast/canvas/canvas-blend-image.html [ Failure ]
+  fast/canvas/canvas-composite-canvas.html [ Failure ]
+  fast/canvas/canvas-composite-image.html [ Failure ]
+  fast/canvas/canvas-composite-text-alpha.html [ Failure ]
+  fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
+  fast/canvas/canvas-imageSmoothingQuality.html [ Failure ]
+  fast/canvas/canvas-lineDash.html [ Failure ]
+  fast/canvas/canvas-negative-lineDashOffset.html [ Failure ]
+  fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
+  fast/canvas/fallback-content.html [ Failure ]
+  fast/canvas/fillText-shadow.html [ Failure ]
+  fast/css-generated-content/nested-tables-with-before-after-content-crash.html [ Failure ]
+  fast/css/font-shorthand-from-longhands.html [ Failure ]
+  fast/css/font-shorthand-line-height.html [ Failure ]
+  fast/css/font-weight-1.html [ Failure ]
+  fast/css/getComputedStyle/computed-style-font.html [ Failure ]
+  fast/css/line-height-text-autosizing.html [ Failure ]
+  fast/css/rtl-to-viewport.html [ Failure ]
+  fast/css/vertical-align-lengths.html [ Failure ]
+  fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last-inherited.html [ Failure ]
+  fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html [ Failure ]
+  fast/css3-text/css3-text-decoration/text-underline-position/underline-visual-overflow-with-subpixel-position.html [ Failure ]
+  fast/css3-text/css3-text-indent/getComputedStyle/getComputedStyle-text-indent-inherited.html [ Failure ]
+  fast/css3-text/css3-text-indent/getComputedStyle/getComputedStyle-text-indent.html [ Failure ]
+  fast/css3-text/css3-text-justify/getComputedStyle/getComputedStyle-text-justify-inherited.html [ Failure ]
+  fast/css3-text/css3-text-justify/getComputedStyle/getComputedStyle-text-justify.html [ Failure ]
+  fast/dom/DeviceMotion/window-property.html [ Failure ]
+  fast/dom/DeviceOrientation/window-property.html [ Failure ]
+  fast/dom/Document/CaretRangeFromPoint/hittest-relative-to-viewport.html [ Failure ]
+  fast/dom/Element/getClientRects.html [ Failure ]
+  fast/dom/Geolocation/coordinates-interface-attributes.html [ Failure ]
+  fast/dom/HTMLDocument/hasFocus.html [ Failure ]
+  fast/dom/HTMLHeadElement/textInHead3.html [ Failure ]
+  fast/dom/HTMLHeadElement/textInHead4.html [ Failure ]
+  fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Failure ]
+  fast/dom/Orientation/create-event-orientationchange.html [ Failure ]
+  fast/dom/Range/getClientRects.html [ Failure ]
+  fast/dom/Window/mozilla-focus-blur.html [ Failure ]
+  fast/dom/Window/new-window-opener.html [ Failure ]
+  fast/dom/Window/open-window-min-size.html [ Failure ]
+  fast/dom/Window/open-zero-size-as-default.html [ Failure ]
+  fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html [ Failure ]
+  fast/dom/Window/slow-unload-handler.html [ Failure ]
+  fast/dom/Window/webkitConvertPoint.html [ Failure ]
+  fast/dom/Window/window-properties-performance.html [ Failure ]
+  fast/dom/Window/window-property-invalid-characters-ignored.html [ Failure ]
+  fast/dom/adopt-attribute-crash.svg [ Failure ]
+  fast/dom/adopt-node-crash-2.html [ Failure ]
+  fast/dom/attr_dead_doc.html [ Failure ]
+  fast/dom/comment-not-documentElement.html [ Failure ]
+  fast/dom/html-link-element-activation-behavior-url-is-null.html [ Failure ]
+  fast/dom/icon-url-property.html [ Failure ]
+  fast/dom/navigation-with-sideeffects.html [ Failure ]
+  fast/dom/tabindex-clamp.html [ Failure ]
+  fast/dom/title-directionality-removeChild.html [ Failure ]
+  fast/dom/title-directionality.html [ Failure ]
+  fast/dynamic/010.html [ Failure ]
+  fast/dynamic/first-letter-display-change.html [ Failure ]
+  fast/dynamic/float-in-trailing-whitespace-after-last-line-break-2.html [ Failure ]
+  fast/dynamic/genContentDestroyChildren.html [ Failure ]
+  fast/dynamic/positioned-movement-with-positioned-children.html [ Failure ]
+  fast/dynamic/staticY.html [ Failure ]
+  fast/encoding/idn-security.html [ Failure ]
+  fast/files/filereader-zip-bundle.html [ Failure ]
+  fast/forms/datalist/datalist-child-validation.html [ Failure ]
+  fast/forms/datalist/input-list.html [ Failure ]
+  fast/forms/drag-into-textarea.html [ Failure ]
+  fast/forms/drag-out-of-textarea.html [ Failure ]
+  fast/forms/file/file-input-capture.html [ Failure ]
+  fast/forms/file/input-file-directory-upload.html [ Failure ]
+  fast/forms/focus-option-control-on-page.html [ Failure ]
+  fast/forms/focus2.html [ Failure ]
+  fast/forms/indeterminate-progress-inline-height.html [ Failure ]
+  fast/forms/input-autofilled.html [ Failure ]
+  fast/forms/input-live-pseudo-selectors.html [ Failure ]
+  fast/forms/input-set-composition-scroll.html [ Failure ]
+  fast/forms/input-width.html [ Failure ]
+  fast/forms/listbox-deselect-scroll.html [ Failure ]
+  fast/forms/listbox-non-contiguous-keyboard-selection.html [ Failure ]
+  fast/forms/listbox-onchange.html [ Failure ]
+  fast/forms/listbox-scrollbar-hit-test.html [ Failure ]
+  fast/forms/listbox-selection-2.html [ Failure ]
+  fast/forms/listbox-selection.html [ Failure ]
+  fast/forms/listbox-visible-size.html [ Failure ]
+  fast/forms/number/number-validation-message.html [ Failure ]
+  fast/forms/radio/input-radio-checked-tab.html [ Failure ]
+  fast/forms/range/slider-thumb-stylability.html [ Failure ]
+  fast/forms/range/slider-zoomed.html [ Failure ]
+  fast/forms/select-empty-option-height.html [ Failure ]
+  fast/forms/select-multiple-elements-with-mouse-drag-with-options-less-than-size.html [ Failure ]
+  fast/forms/textarea-live-pseudo-selectors.html [ Failure ]
+  fast/forms/textarea-metrics.html [ Failure ]
+  fast/forms/textfield-overflow-by-value-update.html [ Failure ]
+  fast/forms/validation-message-clone.html [ Failure ]
+  fast/forms/validation-message-in-relative-body.html [ Failure ]
+  fast/forms/validation-message-on-textarea.html [ Failure ]
+  fast/forms/validationMessage.html [ Failure ]
+  fast/forms/validity-assertion-inserting-into-datalist.html [ Failure ]
+  fast/frames/content-opacity-1.html [ Failure ]
+  fast/frames/content-opacity-2.html [ Failure ]
+  fast/frames/iframe-text-contents.html [ Failure ]
+  fast/frames/sandboxed-iframe-about-blank.html [ Failure ]
+  fast/frames/sandboxed-iframe-navigation-allowed.html [ Failure ]
+  fast/frames/sandboxed-iframe-plugins.html [ Failure ]
+  fast/frames/sandboxed-iframe-storage.html [ Failure ]
+  fast/history/page-cache-geolocation-active-oneshot.html [ Failure ]
+  fast/history/page-cache-geolocation-active-watcher.html [ Failure ]
+  fast/history/page-cache-notification-non-suspendable.html [ Failure ]
+  fast/history/window-open.html [ Failure ]
+  fast/html/details-add-summary-1.html [ Failure ]
+  fast/html/details-add-summary-2.html [ Failure ]
+  fast/html/details-add-summary-3.html [ Failure ]
+  fast/html/details-add-summary-4.html [ Failure ]
+  fast/html/details-add-summary-5.html [ Failure ]
+  fast/html/details-add-summary-6.html [ Failure ]
+  fast/html/details-add-summary-7.html [ Failure ]
+  fast/html/details-add-summary-8.html [ Failure ]
+  fast/html/details-no-summary1.html [ Failure ]
+  fast/html/details-no-summary2.html [ Failure ]
+  fast/html/details-no-summary3.html [ Failure ]
+  fast/html/details-open1.html [ Failure ]
+  fast/html/details-open3.html [ Failure ]
+  fast/html/details-open5.html [ Failure ]
+  fast/html/details-open6.html [ Failure ]
+  fast/html/details-remove-summary-1.html [ Failure ]
+  fast/html/details-remove-summary-2.html [ Failure ]
+  fast/html/details-remove-summary-3.html [ Failure ]
+  fast/html/details-remove-summary-4.html [ Failure ]
+  fast/html/details-remove-summary-5.html [ Failure ]
+  fast/html/details-remove-summary-6.html [ Failure ]
+  fast/images/support-broken-image-delegate.html [ Failure ]
+  fast/inline/positioned-object-between-replaced-elements.html [ Failure ]
+  fast/inline/positionedLifetime.html [ Failure ]
+  fast/invalid/005.html [ Failure ]
+  fast/invalid/020.xml [ Failure ]
+  fast/line-grid/line-align-left-edges.html [ Failure ]
+  fast/lists/list-marker-before-content-table.html [ Failure ]
+  fast/lists/ol-start-dynamic.html [ Failure ]
+  fast/loader/main-document-url-for-non-http-loads.html [ Failure ]
+  fast/loader/stop-provisional-loads.html [ Failure ]
+  fast/masking/clip-path-selection.html [ Failure ]
+  fast/media/mq-any-hover-matchMedia.html [ Failure ]
+  fast/media/mq-any-hover-styling.html [ Failure ]
+  fast/media/mq-any-pointer-matchMedia.html [ Failure ]
+  fast/media/mq-any-pointer-styling.html [ Failure ]
+  fast/media/mq-hover-matchMedia.html [ Failure ]
+  fast/media/mq-hover-styling.html [ Failure ]
+  fast/media/mq-pointer-matchMedia.html [ Failure ]
+  fast/media/mq-pointer-styling.html [ Failure ]
+  fast/media/mq-pointer.html [ Failure ]
+  fast/media/mq-resolution-dpi-dpcm-warning.html [ Failure ]
+  fast/media/mq-resolution.html [ Failure ]
+  fast/multicol/hit-test-above-or-below.html [ Failure ]
+  fast/multicol/pagination-h-horizontal-bt.html [ Failure ]
+  fast/multicol/pagination-h-horizontal-tb.html [ Failure ]
+  fast/multicol/pagination-h-vertical-lr.html [ Failure ]
+  fast/multicol/pagination-h-vertical-rl.html [ Failure ]
+  fast/multicol/pagination-v-horizontal-bt.html [ Failure ]
+  fast/multicol/pagination-v-horizontal-tb.html [ Failure ]
+  fast/multicol/pagination-v-vertical-lr.html [ Failure ]
+  fast/multicol/pagination-v-vertical-rl.html [ Failure ]
+  fast/multicol/shrink-to-column-height-for-pagination.html [ Failure ]
+  fast/multicol/span/clone-flexbox.html [ Failure ]
+  fast/multicol/span/clone-summary.html [ Failure ]
+  fast/notifications/notifications-cancel-request-permission.html [ Failure ]
+  fast/notifications/notifications-check-permission.html [ Failure ]
+  fast/notifications/notifications-constructor-request-permission.html [ Failure ]
+  fast/notifications/notifications-constructor-with-permission.html [ Failure ]
+  fast/notifications/notifications-no-icon.html [ Failure ]
+  fast/notifications/notifications-replace.html [ Failure ]
+  fast/notifications/notifications-request-permission-optional.html [ Failure ]
+  fast/notifications/notifications-request-permission.html [ Failure ]
+  fast/notifications/notifications-rtl.html [ Failure ]
+  fast/notifications/notifications-sandbox-permission.html [ Failure ]
+  fast/notifications/notifications-without-permission.html [ Failure ]
+  fast/overflow/position-relative.html [ Failure ]
+  fast/parser/nested-fragment-parser-crash.html [ Failure ]
+  fast/parser/pre-html5-parser-quirks.html [ Failure ]
+  fast/parser/tabs-in-scripts.html [ Failure ]
+  fast/regions/flows-dependency-dynamic-remove.html [ Failure ]
+  fast/regions/fullscreen/full-screen-video-in-region-crash.html [ Failure ]
+  fast/regions/overflow/overflow-3dtransformed-region.html [ Failure ]
+  fast/regions/selection/position-for-point-1-vert-lr.html [ Failure ]
+  fast/regions/selection/position-for-point-1-vert-rl.html [ Failure ]
+  fast/regions/selection/position-for-point-1.html [ Failure ]
+  fast/regions/selection/position-for-point-vert-lr.html [ Failure ]
+  fast/regions/selection/position-for-point-vert-rl.html [ Failure ]
+  fast/regions/selection/position-for-point.html [ Failure ]
+  fast/regions/text-region-split-vertical-rl.html [ Failure ]
+  fast/repaint/animation-after-layer-scroll.html [ Failure ]
+  fast/repaint/background-shorthand-with-gradient-and-height-changes.html [ Failure ]
+  fast/repaint/block-inputrange-repaint.html [ Failure ]
+  fast/repaint/focus-ring.html [ Failure ]
+  fast/repaint/line-in-scrolled-clipped-block.html [ Failure ]
+  fast/repaint/overflow-scroll-touch-repaint.html [ Failure ]
+  fast/repaint/repaint-during-scroll-with-zoom.html [ Failure ]
+  fast/repaint/repaint-svg-after-style-change.html [ Failure ]
+  fast/repaint/table-two-pass-layout-overpaint.html [ Failure ]
+  fast/replaced/invalid-object-with-fallback.html [ Failure ]
+  fast/replaced/object-with-embed-url-param.html [ Failure ]
+  fast/replaced/percent-height-in-anonymous-block.html [ Failure ]
+  fast/replaced/table-percent-height.html [ Failure ]
+  fast/ruby/ruby-base-merge-block-children-crash.html [ Failure ]
+  fast/ruby/ruby-block-style-not-updated-with-before-after-content.html [ Failure ]
+  fast/ruby/ruby-block-style-not-updated.html [ Failure ]
+  fast/ruby/ruby-inline-style-not-updated-with-before-after-content.html [ Failure ]
+  fast/ruby/ruby-inline-style-not-updated.html [ Failure ]
+  fast/ruby/ruby-line-height.html [ Failure ]
+  fast/selectors/placeholder-shown-long-adjacent-backtracking.html [ Failure ]
+  fast/selectors/placeholder-shown-style-update.html [ Failure ]
+  fast/selectors/placeholder-shown-with-input-basics.html [ Failure ]
+  fast/selectors/placeholder-shown-with-textarea-basics.html [ Failure ]
+  fast/selectors/read-only-read-write-contenteditable-basics.html [ Failure ]
+  fast/selectors/read-only-read-write-designmode-basics.html [ Failure ]
+  fast/selectors/read-only-read-write-input-basics.html [ Failure ]
+  fast/selectors/read-only-read-write-input-in-fieldset.html [ Failure ]
+  fast/selectors/read-only-read-write-textarea-basics.html [ Failure ]
+  fast/selectors/read-only-read-write-textarea-in-fieldset.html [ Failure ]
+  fast/sub-pixel/client-width-height-snapping.html [ Failure ]
+  fast/table/001.html [ Failure ]
+  fast/table/013.html [ Failure ]
+  fast/table/024.html [ Failure ]
+  fast/table/026.html [ Failure ]
+  fast/table/border-collapsing/cached-cell-append.html [ Failure ]
+  fast/table/border-collapsing/cached-cell-remove.html [ Failure ]
+  fast/table/border-collapsing/cached-change-cell-border-width.html [ Failure ]
+  fast/table/border-collapsing/cached-change-col-border-color.html [ Failure ]
+  fast/table/border-collapsing/cached-change-col-border-width.html [ Failure ]
+  fast/table/border-collapsing/cached-change-colgroup-border-color.html [ Failure ]
+  fast/table/border-collapsing/equal-precedence-resolution-vertical.html [ Failure ]
+  fast/table/border-collapsing/equal-precedence-resolution.html [ Failure ]
+  fast/table/cell-coalescing.html [ Failure ]
+  fast/table/cell-pref-width-invalidation.html [ Failure ]
+  fast/table/col-width-span-expand.html [ Failure ]
+  fast/table/form-with-non-table-display-inside-table-elements.html [ Failure ]
+  fast/table/percent-widths-stretch-vertical.html [ Failure ]
+  fast/table/percent-widths-stretch.html [ Failure ]
+  fast/table/simple_paint.html [ Failure ]
+  fast/table/table-before-child-style-update.html [ Failure ]
+  fast/table/table-cell-before-after-content-around-table-block.html [ Failure ]
+  fast/table/table-cell-before-after-content-around-table-row.html [ Failure ]
+  fast/table/table-cell-before-after-content-around-table.html [ Failure ]
+  fast/table/table-row-before-after-content-around-block.html [ Failure ]
+  fast/table/table-row-before-after-content-around-table.html [ Failure ]
+  fast/table/table-row-before-child-style-update.html [ Failure ]
+  fast/table/table-row-style-not-updated-with-after-content.html [ Failure ]
+  fast/table/table-row-style-not-updated-with-before-content.html [ Failure ]
+  fast/table/table-row-style-not-updated.html [ Failure ]
+  fast/table/table-style-not-updated.html [ Failure ]
+  fast/text/emphasis-overlap.html [ Failure ]
+  fast/text/international/cjk-segmentation.html [ Failure ]
+  fast/text/international/spaces-combined-in-vertical-text.html [ Failure ]
+  fast/text/international/system-language/declarative-language.html [ Failure ]
+  fast/text/justify-nbsp.html [ Failure ]
+  fast/text/simple-line-layout-text-stroke-width.html [ Failure ]
+  fast/text/trak-optimizeLegibility.html [ Failure ]
+  fast/url/anchor.html [ Failure ]
+  fast/viewport/viewport-legacy-handheldfriendly.html [ Failure ]
+  fast/viewport/viewport-legacy-mobileoptimized-2.html [ Failure ]
+  fast/viewport/viewport-legacy-mobileoptimized-3.html [ Failure ]
+  fast/viewport/viewport-legacy-mobileoptimized.html [ Failure ]
+  fast/viewport/viewport-legacy-ordering-5.html [ Failure ]
+  fast/viewport/viewport-legacy-ordering-6.html [ Failure ]
+  fast/viewport/viewport-legacy-xhtmlmp-remove-and-add.html [ Failure ]
+  fast/viewport/viewport-legacy-xhtmlmp.html [ Failure ]
+  platform/qt/fast/history/back-to-unreachable-url-then-forward.html [ Failure ]
+
+# Regressions: Unexpected image-only failures (22)
+  fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
+  fast/canvas/canvas-incremental-repaint-2.html [ ImageOnlyFailure ]
+  fast/canvas/setWidthResetAfterForcedRender.html [ ImageOnlyFailure ]
+  fast/css3-text/css3-text-decoration/repaint/repaint-text-decoration-line.html [ ImageOnlyFailure ]
+  fast/images/embed-image.html [ ImageOnlyFailure ]
+  fast/images/object-image.html [ ImageOnlyFailure ]
+  fast/repaint/fixed-after-scroll.html [ ImageOnlyFailure ]
+  fast/repaint/fixed-scroll-simple.html [ ImageOnlyFailure ]
+  fast/repaint/inline-overflow.html [ ImageOnlyFailure ]
+  fast/repaint/inline-vertical-lr-overflow.html [ ImageOnlyFailure ]
+  fast/repaint/inline-vertical-rl-overflow.html [ ImageOnlyFailure ]
+  fast/replaced/border-radius-clip-content-edge.html [ ImageOnlyFailure ]
+  fast/ruby/positioned-ruby-text.html [ ImageOnlyFailure ]
+  fast/sub-pixel/selection/selection-gaps-at-fractional-offsets.html [ ImageOnlyFailure ]
+  fast/text/control-characters/visible-control-characters-1.html [ ImageOnlyFailure ]
+  fast/text/control-characters/visible-control-characters-2.html [ ImageOnlyFailure ]
+  fast/text/control-characters/visible-control-characters-2.xhtml [ ImageOnlyFailure ]
+  fast/text/control-characters/visible-control-characters-3.html [ ImageOnlyFailure ]
+  fast/text/control-characters/visible-control-characters-3.xhtml [ ImageOnlyFailure ]
+  fast/text/fallback-language-han-2.html [ ImageOnlyFailure ]
+  fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
+  fast/text/svg-font-invalid-glyph-path-failure.html [ ImageOnlyFailure ]
+
+# Regressions: Unexpected image and text failures (33)
+  fast/backgrounds/mask-composite.html [ Failure ]
+  fast/block/positioning/056.html [ Failure ]
+  fast/block/positioning/auto-height-with-top-and-bottom.html [ Failure ]
+  fast/body-propagation/background-image/009-xhtml.xhtml [ Failure ]
+  fast/body-propagation/background-image/009.html [ Failure ]
+  fast/body-propagation/overflow/001-xhtml.xhtml [ Failure ]
+  fast/body-propagation/overflow/001.html [ Failure ]
+  fast/css/outline-narrowLine.html [ Failure ]
+  fast/css/percentage-non-integer.html [ Failure ]
+  fast/multicol/block-axis-horizontal-bt.html [ Failure ]
+  fast/multicol/block-axis-vertical-rl.html [ Failure ]
+  fast/multicol/vertical-lr/float-multicol.html [ Failure ]
+  fast/multicol/vertical-lr/float-paginate-complex.html [ Failure ]
+  fast/multicol/vertical-rl/float-multicol.html [ Failure ]
+  fast/multicol/vertical-rl/float-paginate-complex.html [ Failure ]
+  fast/reflections/inline-crash.html [ Failure ]
+  fast/repaint/delete-into-nested-block.html [ Failure ]
+  fast/repaint/line-flow-with-floats-10.html [ Failure ]
+  fast/repaint/line-flow-with-floats-6.html [ Failure ]
+  fast/repaint/moving-shadow-on-container.html [ Failure ]
+  fast/repaint/moving-shadow-on-path.html [ Failure ]
+  fast/repaint/multicol-repaint.html [ Failure ]
+  fast/repaint/outline-shrinking.html [ Failure ]
+  fast/repaint/overflow-scroll-delete.html [ Failure ]
+  fast/repaint/renderer-destruction-by-invalidateSelection-crash.html [ Failure ]
+  fast/repaint/selection-after-delete.html [ Failure ]
+  fast/repaint/selection-after-remove.html [ Failure ]
+  fast/repaint/selection-clear.html [ Failure ]
+  fast/repaint/text-append-dirty-lines.html [ Failure ]
+  fast/repaint/text-selection-rect-in-overflow-2.html [ Failure ]
+  fast/repaint/text-selection-rect-in-overflow.html [ Failure ]
+  fast/selectors/083.html [ Failure ]
+  fast/text/text-letter-spacing.html [ Failure ]
+
+# Regressions: Unexpected missing results (203)
+  fast/attachment/attachment-disabled-rendering.html [ Missing ]
+  fast/attachment/attachment-progress.html [ Missing ]
+  fast/attachment/attachment-rendering.html [ Missing ]
+  fast/attachment/attachment-select-on-click-inside-user-select-all.html [ Missing ]
+  fast/attachment/attachment-select-on-click.html [ Missing ]
+  fast/attachment/attachment-subtitle.html [ Missing ]
+  fast/attachment/attachment-title.html [ Missing ]
+  fast/autoresize/autoresize-with-iframe.html [ Missing ]
+  fast/backgrounds/gradient-background-leakage-2.html [ Missing ]
+  fast/borders/border-image-omit-right-slice.html [ Missing ]
+  fast/borders/border-left-right-same-bottom-different-color.html [ Missing ]
+  fast/borders/border-radius-percent.html [ Missing ]
+  fast/borders/border-radius-wide-border-05.html [ Missing ]
+  fast/borders/border-radius-with-box-shadow-01.html [ Missing ]
+  fast/borders/border-radius-with-box-shadow.html [ Missing ]
+  fast/borders/border-shadow-large-radius.html [ Missing ]
+  fast/borders/mixed-border-style2.html [ Missing ]
+  fast/canvas/canvas-composite-fill-repaint.html [ Missing ]
+  fast/canvas/canvas-empty-image-pattern.html [ Missing ]
+  fast/canvas/canvas-resize-after-paint-without-layout.html [ Missing ]
+  fast/canvas/canvas-toDataURL-webp.html [ Missing ]
+  fast/css/dumpAsText/xml-stylesheet-pi-not-in-prolog.xml [ Missing ]
+  fast/css/read-write.html [ Missing ]
+  fast/css/rect-shadow-tiled.html [ Missing ]
+  fast/css/viewport-units-dynamic.html [ Missing ]
+  fast/css3-text/css3-text-decoration/repaint/repaint-text-decoration-style.html [ Missing ]
+  fast/css3-text/css3-text-decoration/text-decoration-style.html [ Missing ]
+  fast/css3-text/css3-text-decoration/text-underline-position/text-underline-position-all.html [ Missing ]
+  fast/css3-text/css3-text-decoration/text-underline-position/text-underline-position-alphabetic.html [ Missing ]
+  fast/css3-text/css3-text-decoration/text-underline-position/text-underline-position-auto.html [ Missing ]
+  fast/css3-text/css3-text-decoration/text-underline-position/text-underline-position-under-out-of-flow.html [ Missing ]
+  fast/css3-text/css3-text-decoration/text-underline-position/text-underline-position-under.html [ Missing ]
+  fast/encoding/dumpAsText/utf-16-no-bom.xml [ Missing ]
+  fast/flexbox/clear-overflow-before-scroll-update.html [ Missing ]
+  fast/forms/001.html [ Missing ]
+  fast/forms/auto-fill-button/input-auto-fill-button.html [ Missing ]
+  fast/forms/auto-fill-button/input-contacts-auto-fill-button.html [ Missing ]
+  fast/forms/basic-textareas.html [ Missing ]
+  fast/forms/color/input-appearance-color.html [ Missing ]
+  fast/forms/datalist/range-snap-to-datalist.html [ Missing ]
+  fast/forms/file/input-file-re-render.html [ Missing ]
+  fast/forms/input-appearance-spinbutton-up.html [ Missing ]
+  fast/forms/input-type-text-min-width.html [ Missing ]
+  fast/forms/zoomed-controls.html [ Missing ]
+  fast/gradients/css3-repeating-linear-gradients.html [ Missing ]
+  fast/gradients/gradient-after-transparent-border.html [ Missing ]
+  fast/gradients/unprefixed-color-stop-units.html [ Missing ]
+  fast/gradients/unprefixed-color-stops.html [ Missing ]
+  fast/gradients/unprefixed-generated-gradients.html [ Missing ]
+  fast/gradients/unprefixed-linear-angle-gradients.html [ Missing ]
+  fast/gradients/unprefixed-linear-right-angle-gradients.html [ Missing ]
+  fast/gradients/unprefixed-list-item-gradient.html [ Missing ]
+  fast/gradients/unprefixed-radial-gradients2.html [ Missing ]
+  fast/gradients/unprefixed-radial-gradients3.html [ Missing ]
+  fast/gradients/unprefixed-repeating-end-fill.html [ Missing ]
+  fast/gradients/unprefixed-repeating-linear-gradient.html [ Missing ]
+  fast/gradients/unprefixed-repeating-radial-gradients.html [ Missing ]
+  fast/gradients/unprefixed-zero-range-repeating-gradient-hang.html [ Missing ]
+  fast/images/animate-list-item-image-assertion.html [ Missing ]
+  fast/images/jpeg-with-color-profile.html [ Missing ]
+  fast/images/paint-subrect-grid.html [ Missing ]
+  fast/images/paint-subrect.html [ Missing ]
+  fast/images/paletted-png-with-color-profile.html [ Missing ]
+  fast/images/png-with-color-profile.html [ Missing ]
+  fast/images/rgb-jpeg-with-adobe-marker-only.html [ Missing ]
+  fast/images/webp-color-profile-lossless.html [ Missing ]
+  fast/images/webp-color-profile-lossy-alpha.html [ Missing ]
+  fast/images/webp-color-profile-lossy.html [ Missing ]
+  fast/inline/justify-emphasis-inline-box.html [ Missing ]
+  fast/multicol/pagination/LeftToRight-tb-hittest.html [ Missing ]
+  fast/multicol/pagination/RightToLeft-rl-hittest.html [ Missing ]
+  fast/multicol/pagination/nested-transforms.html [ Missing ]
+  fast/multicol/vertical-rl/rules-with-border-before.html [ Missing ]
+  fast/overflow/infiniteRecursionGuard.html [ Missing ]
+  fast/regions/auto-size/autoheight-regions-mark.html [ Missing ]
+  fast/regions/flows-dependency-same-flow.html [ Missing ]
+  fast/regions/fullscreen/full-screen-video-from-region.html [ Missing ]
+  fast/regions/iframe-html-collected.html [ Missing ]
+  fast/regions/repaint/line-flow-with-floats-in-regions.html [ Missing ]
+  fast/regions/repaint/overflow-flipped-writing-mode-block-in-regions.html [ Missing ]
+  fast/regions/repaint/region-painting-invalidation.html [ Missing ]
+  fast/regions/repaint/region-painting-via-layout.html [ Missing ]
+  fast/repaint/block-selection-gap-in-table-cell.html [ Missing ]
+  fast/repaint/inline-horizontal-bt-overflow.html [ Missing ]
+  fast/repaint/japanese-rl-selection-clear.html [ Missing ]
+  fast/repaint/japanese-rl-selection-repaint.html [ Missing ]
+  fast/repaint/nested-iframe-scroll-inner.html [ Missing ]
+  fast/repaint/nested-iframe-scroll-outer.html [ Missing ]
+  fast/repaint/overflow-hide.html [ Missing ]
+  fast/repaint/overflow-outline-repaint.html [ Missing ]
+  fast/repaint/overflow-show.html [ Missing ]
+  fast/repaint/repaint-across-writing-mode-boundary.html [ Missing ]
+  fast/repaint/scroll-fixed-layer-with-transformed-parent-layer.html [ Missing ]
+  fast/repaint/scroll-in-transformed-layer.html [ Missing ]
+  fast/repaint/scroll-inside-table-cell.html [ Missing ]
+  fast/repaint/scroll-relative-table-inside-table-cell.html [ Missing ]
+  fast/repaint/scroll-with-transformed-parent-layer.html [ Missing ]
+  fast/scrolling/scrollbar-tickmarks-styled.html [ Missing ]
+  fast/shadow-dom/tooltip-on-composed-tree.html [ Missing ]
+  fast/shadow-dom/touch-event-ios.html [ Missing ]
+  fast/sub-pixel/selection/selection-rect-in-sub-pixel-table.html [ Missing ]
+  fast/sub-pixel/sub-pixel-accumulates-to-layers.html [ Missing ]
+  fast/sub-pixel/sub-pixel-iframe-copy-on-scroll.html [ Missing ]
+  fast/sub-pixel/transformed-iframe-copy-on-scroll.html [ Missing ]
+  fast/text/capitalize-boundaries.html [ Missing ]
+  fast/text/crash-complex-text-surrogate.html [ Missing ]
+  fast/text/emoji.html [ Missing ]
+  fast/text/emphasis-combined-text.html [ Missing ]
+  fast/text/emphasis.html [ Missing ]
+  fast/text/fixed-pitch-control-characters.html [ Missing ]
+  fast/text/font-weights-zh.html [ Missing ]
+  fast/text/font-weights.html [ Missing ]
+  fast/text/han-generic-font-families.html [ Missing ]
+  fast/text/hangul-generic-font-families.html [ Missing ]
+  fast/text/hyphenate-locale.html [ Missing ]
+  fast/text/indic.html [ Missing ]
+  fast/text/international/bidi-layout-across-linebreak.html [ Missing ]
+  fast/text/international/bold-bengali.html [ Missing ]
+  fast/text/international/complex-character-based-fallback.html [ Missing ]
+  fast/text/international/khmer-selection.html [ Missing ]
+  fast/text/international/plane2.html [ Missing ]
+  fast/text/international/synthesized-italic-vertical-latin.html [ Missing ]
+  fast/text/international/system-language/system-font-punctuation.html [ Missing ]
+  fast/text/international/thai-baht-space.html [ Missing ]
+  fast/text/international/vertical-text-glyph-test.html [ Missing ]
+  fast/text/khmer-lao-font.html [ Missing ]
+  fast/text/selection-painted-separately.html [ Missing ]
+  fast/text/selection-rect-rounding.html [ Missing ]
+  fast/text/shaping/shaping-script-order.html [ Missing ]
+  fast/text/shaping/shaping-selection-rect.html [ Missing ]
+  fast/text/soft-hyphen-2.html [ Missing ]
+  fast/text/softbank-emoji.html [ Missing ]
+  fast/text/text-combine-different-fonts.html [ Missing ]
+  fast/text/trailing-white-space-2.html [ Missing ]
+  fast/text/vertical-rl-rtl-linebreak.html [ Missing ]
+  fast/text/whitespace/028.html [ Missing ]
+  fast/writing-mode/japanese-lr-selection.html [ Missing ]
+  fast/writing-mode/japanese-rl-selection.html [ Missing ]
+  fast/xsl/xslt_unicode.xml [ Missing ]
+  platform/qt/fast/forms/button-line-break.html [ Missing ]
+  platform/qt/fast/forms/range/slider-crash-on-input.html [ Missing ]

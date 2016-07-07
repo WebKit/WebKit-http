@@ -1,0 +1,31 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x220
+  RenderBlock {html} at (0,0) size 800x220
+    RenderBody {body} at (8,8) size 784x204
+      RenderTable {table} at (0,0) size 73x204
+        RenderBlock {caption} at (0,0) size 73x68
+          RenderText {#text} at (16,0) size 73x68
+            text run at (16,0) width 41: "PASS:"
+            text run at (0,17) width 73: "Dynamically"
+            text run at (17,34) width 39: "added"
+            text run at (14,51) width 45: "caption"
+        RenderBlock {caption} at (0,68) size 73x34
+          RenderText {#text} at (0,0) size 73x34
+            text run at (0,0) width 73: "PASS: Text"
+            text run at (1,17) width 71: "in caption 1"
+layer at (8,110) size 73x34
+  RenderBlock {caption} at (0,102) size 73x34
+    RenderText {#text} at (0,0) size 73x34
+      text run at (0,0) width 73: "PASS: Text"
+      text run at (1,17) width 71: "in caption 2"
+layer at (8,144) size 73x34
+  RenderBlock {caption} at (0,136) size 73x34
+    RenderText {#text} at (0,0) size 73x34
+      text run at (0,0) width 73: "PASS: Text"
+      text run at (1,17) width 71: "in caption 3"
+layer at (8,178) size 73x34
+  RenderBlock {caption} at (0,170) size 73x34
+    RenderText {#text} at (0,0) size 73x34
+      text run at (0,0) width 73: "PASS: Text"
+      text run at (1,17) width 71: "in caption 4"

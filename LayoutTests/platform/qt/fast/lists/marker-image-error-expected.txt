@@ -1,0 +1,42 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x576
+      RenderBlock {P} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 51x17
+          text run at (0,0) width 51: "Test for "
+        RenderInline {I} at (0,0) size 776x34
+          RenderInline {A} at (0,0) size 305x17 [color=#0000EE]
+            RenderText {#text} at (51,0) size 305x17
+              text run at (51,0) width 305: "http://bugs.webkit.org/show_bug.cgi?id=13157"
+          RenderText {#text} at (356,0) size 776x34
+            text run at (356,0) width 4: " "
+            text run at (360,0) width 416: "List markers positioned incorrectly and don't repaint properly on"
+            text run at (0,17) width 116: "Oxford homepage"
+        RenderText {#text} at (116,17) size 4x17
+          text run at (116,17) width 4: "."
+      RenderBlock {P} at (0,50) size 784x17
+        RenderText {#text} at (0,0) size 372x17
+          text run at (0,0) width 372: "There should be a bullet next to each item on the following list:"
+      RenderBlock {UL} at (0,83) size 784x85
+        RenderListItem {LI} at (40,0) size 744x17
+          RenderListMarker at (-17,0) size 7x17: bullet
+          RenderText {#text} at (0,0) size 156x17
+            text run at (0,0) width 156: "Prospectuses and courses"
+        RenderListItem {LI} at (40,17) size 744x17
+          RenderListMarker at (-17,0) size 7x17: bullet
+          RenderText {#text} at (0,0) size 159x17
+            text run at (0,0) width 159: "Undergraduate admissions"
+        RenderListItem {LI} at (40,34) size 744x17
+          RenderListMarker at (-17,0) size 7x17: bullet
+          RenderText {#text} at (0,0) size 125x17
+            text run at (0,0) width 125: "Graduate admissions"
+        RenderListItem {LI} at (40,51) size 744x17
+          RenderListMarker at (-17,0) size 7x17: bullet
+          RenderText {#text} at (0,0) size 126x17
+            text run at (0,0) width 126: "Continuing education"
+        RenderListItem {LI} at (40,68) size 744x17
+          RenderListMarker at (-17,0) size 7x17: bullet
+          RenderText {#text} at (0,0) size 89x17
+            text run at (0,0) width 89: "Online courses"

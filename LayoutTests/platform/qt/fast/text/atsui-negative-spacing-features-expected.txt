@@ -1,0 +1,53 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x257
+  RenderBlock {HTML} at (0,0) size 800x257
+    RenderBody {BODY} at (8,16) size 784x233
+      RenderBlock {P} at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 349x17
+          text run at (0,0) width 349: "Test for negative spacing values in complex text rendering."
+      RenderBlock (anonymous) at (0,33) size 784x17
+        RenderText {#text} at (0,0) size 483x17
+          text run at (0,0) width 483: "Each green box should be identical to the blue box it follows, except for accents."
+      RenderBlock {HR} at (0,58) size 784x2 [border: (1px inset #000000)]
+      RenderTable {TABLE} at (0,68) size 414x165
+        RenderTableSection {TBODY} at (0,0) size 414x165
+          RenderTableRow {TR} at (0,2) size 414x19
+            RenderTableCell {TD} at (2,2) size 204x19 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (59,1) size 86x17
+                text run at (59,1) width 86: "Word spacing"
+            RenderTableCell {TD} at (208,2) size 204x19 [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (59,1) size 86x17
+                text run at (59,1) width 86: "Letter spacing"
+          RenderTableRow {TR} at (0,23) size 414x140
+            RenderTableCell {TD} at (2,23) size 204x140 [r=1 c=0 rs=1 cs=1]
+              RenderBlock {DIV} at (1,1) size 202x138
+                RenderBlock {DIV} at (0,0) size 202x56 [border: (1px solid #0000FF)]
+                  RenderText {#text} at (15,1) size 186x53
+                    text run at (15,1) width 186 RTL: "\x{5D9}\x{5B0}\x{5D4}\x{5B4}\x{5D9}, \x{5D0}\x{5B8}\x{5D7}\x{5B4}\x{5D9}, \x{5DC}\x{5B0}\x{5DA}\x{5B8} \x{5E1}\x{5B5}\x{5E4}\x{5B6}\x{5E8} \x{5E9}\x{5C1}\x{5B0}\x{5DC}\x{5B7}\x{5D7}\x{5B0}\x{5EA}\x{5BC}\x{5B4}\x{5D9}\x{5D5}"
+                    text run at (57,19) width 82 RTL: "\x{5E6}\x{5B0}\x{5DE}\x{5B4}\x{5D9}\x{5EA}\x{5D5}\x{5BC}\x{5EA} \x{5DC}\x{5B8}\x{5DA}\x{5B0}"
+                    text run at (139,19) width 62 RTL: "\x{5D5}\x{5BC}\x{5DE}\x{5B4}\x{5DE}\x{5B0}\x{5DB}\x{5BC}\x{5B6}\x{5E8}\x{5B6}\x{5EA} "
+                    text run at (137,37) width 64 RTL: "\x{5DE}\x{5B0}\x{5DB}\x{5B7}\x{5E8}\x{5B0}\x{5EA}\x{5BC}\x{5B4}\x{5D9}\x{5D5}."
+                RenderBlock {DIV} at (0,61) size 202x36 [border: (1px solid #0000FF)]
+                  RenderText {#text} at (1,1) size 161x34
+                    text run at (1,1) width 161: "Lore\x{300}m ipsum dolor sit ame\x{300}t,"
+                    text run at (1,18) width 160: "consectetuer adipiscing e\x{300}lit."
+                RenderBlock {DIV} at (0,102) size 202x36 [border: (1px solid #008000)]
+                  RenderText {#text} at (1,1) size 161x34
+                    text run at (1,1) width 161: "Lorem ipsum dolor sit amet,"
+                    text run at (1,18) width 160: "consectetuer adipiscing elit."
+            RenderTableCell {TD} at (208,23) size 204x122 [r=1 c=1 rs=1 cs=1]
+              RenderBlock {DIV} at (1,1) size 202x120
+                RenderBlock {DIV} at (0,0) size 202x38 [border: (1px solid #0000FF)]
+                  RenderText {#text} at (30,1) size 192x35
+                    text run at (30,1) width 171 RTL: "\x{5D9}\x{5B0}\x{5D4}\x{5B4}\x{5D9}, \x{5D0}\x{5B8}\x{5D7}\x{5B4}\x{5D9}, \x{5DC}\x{5B0}\x{5DA}\x{5B8} \x{5E1}\x{5B5}\x{5E4}\x{5B6}\x{5E8} \x{5E9}\x{5C1}\x{5B0}\x{5DC}\x{5B7}\x{5D7}\x{5B0}\x{5EA}\x{5BC}\x{5B4}\x{5D9}\x{5D5}"
+                    text run at (9,19) width 135 RTL: "\x{5E6}\x{5B0}\x{5DE}\x{5B4}\x{5D9}\x{5EA}\x{5D5}\x{5BC}\x{5EA} \x{5DC}\x{5B8}\x{5DA}\x{5B0} \x{5DE}\x{5B0}\x{5DB}\x{5B7}\x{5E8}\x{5B0}\x{5EA}\x{5BC}\x{5B4}\x{5D9}\x{5D5}."
+                    text run at (144,19) width 57 RTL: "\x{5D5}\x{5BC}\x{5DE}\x{5B4}\x{5DE}\x{5B0}\x{5DB}\x{5BC}\x{5B6}\x{5E8}\x{5B6}\x{5EA} "
+                RenderBlock {DIV} at (0,43) size 202x36 [border: (1px solid #0000FF)]
+                  RenderText {#text} at (1,1) size 140x34
+                    text run at (1,1) width 140: "Lore\x{300}m ipsum dolor sit ame\x{300}t,"
+                    text run at (1,18) width 133: "consectetue\x{300}r adipiscing e\x{300}lit."
+                RenderBlock {DIV} at (0,84) size 202x36 [border: (1px solid #008000)]
+                  RenderText {#text} at (1,1) size 142x34
+                    text run at (1,1) width 142: "Lorem ipsum dolor sit amet,"
+                    text run at (1,18) width 135: "consectetuer adipiscing elit."

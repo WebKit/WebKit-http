@@ -1,0 +1,44 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock (anonymous) at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 315x17
+          text run at (0,0) width 315: "The style rule on this page should be totally ignored. "
+        RenderInline {A} at (0,0) size 75x17
+          RenderText {#text} at (315,0) size 75x17
+            text run at (315,0) width 75: "here is a link"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {H1} at (0,38) size 784x37
+        RenderText {#text} at (0,0) size 109x36
+          text run at (0,0) width 109: "heading"
+      RenderBlock (anonymous) at (0,95) size 784x86
+        RenderInline {SPAN} at (0,0) size 29x17
+          RenderText {#text} at (0,0) size 29x17
+            text run at (0,0) width 29: "issue"
+        RenderBR {BR} at (29,14) size 0x0
+        RenderInline {SPAN} at (0,0) size 17x17
+          RenderText {#text} at (0,17) size 17x17
+            text run at (0,17) width 17: "fail"
+        RenderBR {BR} at (17,31) size 0x0
+        RenderInline {A} at (0,0) size 113x17
+          RenderText {#text} at (0,34) size 113x17
+            text run at (0,34) width 113: "here is another link"
+        RenderBR {BR} at (113,48) size 0x0
+        RenderInline {SPAN} at (0,0) size 18x17
+          RenderText {#text} at (0,51) size 18x17
+            text run at (0,51) width 18: "n/a"
+        RenderBR {BR} at (18,65) size 0x0
+        RenderInline {SPAN} at (0,0) size 27x17
+          RenderText {#text} at (0,68) size 27x17
+            text run at (0,68) width 27: "pass"
+        RenderBR {BR} at (27,82) size 0x0
+      RenderBlock {H1} at (0,202) size 784x37
+        RenderText {#text} at (0,0) size 224x36
+          text run at (0,0) width 224: "another heading"
+      RenderBlock (anonymous) at (0,259) size 784x18
+        RenderInline {SPAN} at (0,0) size 18x17
+          RenderText {#text} at (0,0) size 18x17
+            text run at (0,0) width 18: "n/a"
+        RenderBR {BR} at (18,14) size 0x0

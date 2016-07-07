@@ -1,0 +1,33 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {DIV} at (0,0) size 784x178 [border: (2px solid #FF0000)]
+        RenderBlock (anonymous) at (2,2) size 780x17
+          RenderInline {I} at (0,0) size 234x17
+            RenderText {#text} at (0,0) size 96x17
+              text run at (0,0) width 96: "Start of a line. "
+            RenderInline {FONT} at (0,0) size 138x17 [color=#FF0000]
+              RenderText {#text} at (96,0) size 138x17
+                text run at (96,0) width 138: "More red on this line:"
+        RenderBlock (anonymous) at (2,37) size 780x68 [color=#FF0000]
+          RenderBlock {H3} at (0,0) size 780x21
+            RenderText {#text} at (0,0) size 213x21
+              text run at (0,0) width 213: "Suddenly a block appears!"
+          RenderBlock {H2} at (0,40) size 780x27
+            RenderText {#text} at (0,0) size 192x26
+              text run at (0,0) width 192: "And another block!"
+        RenderBlock (anonymous) at (2,124) size 780x52
+          RenderInline {I} at (0,0) size 297x34
+            RenderInline {FONT} at (0,0) size 100x34 [color=#FF0000]
+              RenderText {#text} at (0,0) size 100x17
+                text run at (0,0) width 100: "Now more text."
+              RenderBR {BR} at (100,14) size 0x0
+              RenderText {#text} at (0,17) size 66x17
+                text run at (0,17) width 66: "This is red"
+            RenderText {#text} at (66,17) size 231x17
+              text run at (66,17) width 231: " but now only italic on the same line"
+          RenderBR {BR} at (297,31) size 0x0
+          RenderText {#text} at (0,34) size 120x17
+            text run at (0,34) width 120: "Plain line at the end."

@@ -1,0 +1,30 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {P} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 634x17
+          text run at (0,0) width 634: "The black outline box should be a 50px by 50px square with its bottom right corner anchored to the right "
+        RenderInline {SPAN} at (0,0) size 41x17 [color=#FFA500]
+          RenderText {#text} at (634,0) size 41x17
+            text run at (634,0) width 41: "orange"
+        RenderText {#text} at (675,0) size 761x34
+          text run at (675,0) width 86: " border on the"
+          text run at (0,17) width 55: "third line."
+      RenderBlock {DIV} at (0,50) size 600x68
+        RenderText {#text} at (0,0) size 178x17
+          text run at (0,0) width 178: "ILorem ipsum dolor sit amet, "
+        RenderText {#text} at (425,34) size 559x34
+          text run at (425,34) width 134: "duis aute irure dolor in"
+          text run at (0,51) width 185: "reprehenderit in voluptate velit."
+layer at (8,58) size 595x53
+  RenderInline (relative positioned) {SPAN} at (0,0) size 595x53 [bgcolor=#008000] [border: (1px solid #808080) (20px solid #FFA500) (1px solid #808080) (20px solid #0000FF)]
+    RenderText {#text} at (218,0) size 595x34
+      text run at (218,0) width 377: "con a pariatur. Excepteur sint occaecat cupidatat non proident,"
+      text run at (0,17) width 284: "sunt in culp qui officia deserunt mollit animequs "
+    RenderText {#text} at (284,17) size 552x34
+      text run at (284,17) width 268: "ILOREM ipsum dol sDuis aute irure dolor in"
+      text run at (0,34) width 385: "reprehenderit in voluptate velit esse cillum dolore eu fugiat nullat "
+layer at (353,59) size 50x50
+  RenderBlock (positioned) {DIV} at (157,2) size 50x50

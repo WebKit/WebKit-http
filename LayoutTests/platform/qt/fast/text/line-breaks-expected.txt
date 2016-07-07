@@ -1,0 +1,37 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x470
+  RenderBlock {HTML} at (0,0) size 800x470
+    RenderBody {BODY} at (8,8) size 784x441
+      RenderBlock (anonymous) at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 76x17
+          text run at (0,0) width 76: "This is good:"
+      RenderBlock {DIV} at (0,38) size 100x49
+        RenderBlock {P} at (0,0) size 100x48 [border: (1px solid #008000)]
+          RenderText {#text} at (40,1) size 59x46
+            text run at (40,1) width 59: "Lorem"
+            text run at (45,24) width 54: "ipsum"
+      RenderBlock (anonymous) at (0,107) size 784x18
+        RenderText {#text} at (0,0) size 264x17
+          text run at (0,0) width 264: "The following three should look like \x{201C}good\x{201D}:"
+      RenderBlock {DIV} at (0,145) size 100x188
+        RenderBlock {P} at (0,0) size 100x48 [border: (1px solid #0000FF)]
+          RenderText {#text} at (40,1) size 59x46
+            text run at (40,1) width 59: "Lorem"
+            text run at (44,24) width 55: "\x{131}psum"
+        RenderBlock {P} at (0,69) size 100x49 [border: (1px solid #0000FF)]
+          RenderText {#text} at (40,1) size 59x46
+            text run at (40,1) width 59: "Lorem"
+            text run at (44,24) width 55: "\x{131}psum"
+        RenderBlock {P} at (0,138) size 100x49 [border: (1px solid #0000FF)]
+          RenderText {#text} at (43,1) size 56x46
+            text run at (43,1) width 56: "Lore\x{1E3F}"
+            text run at (45,24) width 54: "ipsum"
+      RenderBlock (anonymous) at (0,353) size 784x18
+        RenderText {#text} at (0,0) size 68x17
+          text run at (0,0) width 68: "This is bad:"
+      RenderBlock {DIV} at (0,392) size 100x49
+        RenderBlock {P} at (0,0) size 100x48 [border: (1px solid #FF0000)]
+          RenderText {#text} at (34,1) size 65x46
+            text run at (34,1) width 65: "Lorem "
+            text run at (45,24) width 54: "ipsum"

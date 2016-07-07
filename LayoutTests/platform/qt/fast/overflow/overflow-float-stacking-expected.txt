@@ -1,0 +1,157 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderText {#text} at (0,0) size 646x17
+        text run at (0,0) width 646: "Make sure that floating overflow:auto/hidden/scroll blocks stack properly with other floats at the same level."
+      RenderText {#text} at (0,0) size 0x0
+      RenderBlock (floating) {DIV} at (250,17) size 300x300 [bgcolor=#FFFF00]
+        RenderText {#text} at (0,0) size 295x212
+          text run at (0,0) width 198: "This block"
+          text run at (0,53) width 240: "should be on"
+          text run at (0,106) width 179: "top of the"
+          text run at (0,159) width 295: "overflow block."
+layer at (8,25) size 300x300 clip at (8,25) size 285x300 scrollHeight 799
+  RenderBlock (floating) {DIV} at (0,17) size 300x300 [bgcolor=#00FF00]
+    RenderText {#text} at (0,0) size 71x17
+      text run at (0,0) width 71: "Hello world"
+    RenderBR {BR} at (71,14) size 0x0
+    RenderText {#text} at (0,17) size 71x17
+      text run at (0,17) width 71: "Hello world"
+    RenderBR {BR} at (71,31) size 0x0
+    RenderText {#text} at (0,34) size 71x17
+      text run at (0,34) width 71: "Hello world"
+    RenderBR {BR} at (71,48) size 0x0
+    RenderText {#text} at (0,51) size 71x17
+      text run at (0,51) width 71: "Hello world"
+    RenderBR {BR} at (71,65) size 0x0
+    RenderText {#text} at (0,68) size 71x17
+      text run at (0,68) width 71: "Hello world"
+    RenderBR {BR} at (71,82) size 0x0
+    RenderText {#text} at (0,85) size 71x17
+      text run at (0,85) width 71: "Hello world"
+    RenderBR {BR} at (71,99) size 0x0
+    RenderText {#text} at (0,102) size 71x17
+      text run at (0,102) width 71: "Hello world"
+    RenderBR {BR} at (71,116) size 0x0
+    RenderText {#text} at (0,119) size 71x17
+      text run at (0,119) width 71: "Hello world"
+    RenderBR {BR} at (71,133) size 0x0
+    RenderText {#text} at (0,136) size 71x17
+      text run at (0,136) width 71: "Hello world"
+    RenderBR {BR} at (71,150) size 0x0
+    RenderText {#text} at (0,153) size 71x17
+      text run at (0,153) width 71: "Hello world"
+    RenderBR {BR} at (71,167) size 0x0
+    RenderText {#text} at (0,170) size 71x17
+      text run at (0,170) width 71: "Hello world"
+    RenderBR {BR} at (71,184) size 0x0
+    RenderText {#text} at (0,187) size 71x17
+      text run at (0,187) width 71: "Hello world"
+    RenderBR {BR} at (71,201) size 0x0
+    RenderText {#text} at (0,204) size 71x17
+      text run at (0,204) width 71: "Hello world"
+    RenderBR {BR} at (71,218) size 0x0
+    RenderText {#text} at (0,221) size 71x17
+      text run at (0,221) width 71: "Hello world"
+    RenderBR {BR} at (71,235) size 0x0
+    RenderText {#text} at (0,238) size 71x17
+      text run at (0,238) width 71: "Hello world"
+    RenderBR {BR} at (71,252) size 0x0
+    RenderText {#text} at (0,255) size 71x17
+      text run at (0,255) width 71: "Hello world"
+    RenderBR {BR} at (71,269) size 0x0
+    RenderText {#text} at (0,272) size 71x17
+      text run at (0,272) width 71: "Hello world"
+    RenderBR {BR} at (71,286) size 0x0
+    RenderText {#text} at (0,289) size 71x17
+      text run at (0,289) width 71: "Hello world"
+    RenderBR {BR} at (71,303) size 0x0
+    RenderText {#text} at (0,306) size 71x17
+      text run at (0,306) width 71: "Hello world"
+    RenderBR {BR} at (71,320) size 0x0
+    RenderText {#text} at (0,323) size 71x17
+      text run at (0,323) width 71: "Hello world"
+    RenderBR {BR} at (71,337) size 0x0
+    RenderText {#text} at (0,340) size 71x17
+      text run at (0,340) width 71: "Hello world"
+    RenderBR {BR} at (71,354) size 0x0
+    RenderText {#text} at (0,357) size 71x17
+      text run at (0,357) width 71: "Hello world"
+    RenderBR {BR} at (71,371) size 0x0
+    RenderText {#text} at (0,374) size 71x17
+      text run at (0,374) width 71: "Hello world"
+    RenderBR {BR} at (71,388) size 0x0
+    RenderText {#text} at (0,391) size 71x17
+      text run at (0,391) width 71: "Hello world"
+    RenderBR {BR} at (71,405) size 0x0
+    RenderText {#text} at (0,408) size 71x17
+      text run at (0,408) width 71: "Hello world"
+    RenderBR {BR} at (71,422) size 0x0
+    RenderText {#text} at (0,425) size 71x17
+      text run at (0,425) width 71: "Hello world"
+    RenderBR {BR} at (71,439) size 0x0
+    RenderText {#text} at (0,442) size 71x17
+      text run at (0,442) width 71: "Hello world"
+    RenderBR {BR} at (71,456) size 0x0
+    RenderText {#text} at (0,459) size 71x17
+      text run at (0,459) width 71: "Hello world"
+    RenderBR {BR} at (71,473) size 0x0
+    RenderText {#text} at (0,476) size 71x17
+      text run at (0,476) width 71: "Hello world"
+    RenderBR {BR} at (71,490) size 0x0
+    RenderText {#text} at (0,493) size 71x17
+      text run at (0,493) width 71: "Hello world"
+    RenderBR {BR} at (71,507) size 0x0
+    RenderText {#text} at (0,510) size 71x17
+      text run at (0,510) width 71: "Hello world"
+    RenderBR {BR} at (71,524) size 0x0
+    RenderText {#text} at (0,527) size 71x17
+      text run at (0,527) width 71: "Hello world"
+    RenderBR {BR} at (71,541) size 0x0
+    RenderText {#text} at (0,544) size 71x17
+      text run at (0,544) width 71: "Hello world"
+    RenderBR {BR} at (71,558) size 0x0
+    RenderText {#text} at (0,561) size 71x17
+      text run at (0,561) width 71: "Hello world"
+    RenderBR {BR} at (71,575) size 0x0
+    RenderText {#text} at (0,578) size 71x17
+      text run at (0,578) width 71: "Hello world"
+    RenderBR {BR} at (71,592) size 0x0
+    RenderText {#text} at (0,595) size 71x17
+      text run at (0,595) width 71: "Hello world"
+    RenderBR {BR} at (71,609) size 0x0
+    RenderText {#text} at (0,612) size 71x17
+      text run at (0,612) width 71: "Hello world"
+    RenderBR {BR} at (71,626) size 0x0
+    RenderText {#text} at (0,629) size 71x17
+      text run at (0,629) width 71: "Hello world"
+    RenderBR {BR} at (71,643) size 0x0
+    RenderText {#text} at (0,646) size 71x17
+      text run at (0,646) width 71: "Hello world"
+    RenderBR {BR} at (71,660) size 0x0
+    RenderText {#text} at (0,663) size 71x17
+      text run at (0,663) width 71: "Hello world"
+    RenderBR {BR} at (71,677) size 0x0
+    RenderText {#text} at (0,680) size 71x17
+      text run at (0,680) width 71: "Hello world"
+    RenderBR {BR} at (71,694) size 0x0
+    RenderText {#text} at (0,697) size 71x17
+      text run at (0,697) width 71: "Hello world"
+    RenderBR {BR} at (71,711) size 0x0
+    RenderText {#text} at (0,714) size 71x17
+      text run at (0,714) width 71: "Hello world"
+    RenderBR {BR} at (71,728) size 0x0
+    RenderText {#text} at (0,731) size 71x17
+      text run at (0,731) width 71: "Hello world"
+    RenderBR {BR} at (71,745) size 0x0
+    RenderText {#text} at (0,748) size 71x17
+      text run at (0,748) width 71: "Hello world"
+    RenderBR {BR} at (71,762) size 0x0
+    RenderText {#text} at (0,765) size 71x17
+      text run at (0,765) width 71: "Hello world"
+    RenderBR {BR} at (71,779) size 0x0
+    RenderText {#text} at (0,782) size 71x17
+      text run at (0,782) width 71: "Hello world"
+    RenderBR {BR} at (71,796) size 0x0

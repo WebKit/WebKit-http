@@ -1,0 +1,31 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {P} at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 305x17
+          text run at (0,0) width 305: "The black outline box should stretch from the right "
+        RenderInline {SPAN} at (0,0) size 25x17 [color=#0000FF]
+          RenderText {#text} at (305,0) size 25x17
+            text run at (305,0) width 25: "blue"
+        RenderText {#text} at (330,0) size 113x17
+          text run at (330,0) width 113: " border, to the left "
+        RenderInline {SPAN} at (0,0) size 41x17 [color=#FFA500]
+          RenderText {#text} at (443,0) size 41x17
+            text run at (443,0) width 41: "orange"
+        RenderText {#text} at (484,0) size 49x17
+          text run at (484,0) width 49: " border."
+      RenderBlock {DIV} at (0,33) size 600x17
+        RenderText {#text} at (422,0) size 178x17
+          text run at (422,0) width 178 RTL override: "ILorem ipsum dolor sit amet, "
+        RenderText {#text} at (29,0) size 165x17
+          text run at (29,0) width 165 RTL override: "irure dolor in reprehenderit."
+layer at (8,41) size 208x19
+  RenderInline (relative positioned) {SPAN} at (0,0) size 208x19 [bgcolor=#008000] [border: (1px solid #808080) (20px solid #0000FF) (1px solid #808080) (20px solid #FFA500)]
+    RenderText {#text} at (291,0) size 91x17
+      text run at (291,0) width 91 RTL override: "con a pariatur. "
+    RenderText {#text} at (234,0) size 57x17
+      text run at (234,0) width 57 RTL override: "duis aute "
+layer at (232,41) size 168x17
+  RenderBlock (positioned) {DIV} at (20,1) size 168x17

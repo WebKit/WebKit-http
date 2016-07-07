@@ -1,0 +1,101 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x411
+  RenderBlock {HTML} at (0,0) size 800x411
+    RenderBody {BODY} at (8,16) size 784x379
+      RenderBlock {P} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 164x17
+          text run at (0,0) width 164: "This is a regression test for "
+        RenderInline {I} at (0,0) size 732x34
+          RenderInline {A} at (0,0) size 350x17 [color=#0000EE]
+            RenderText {#text} at (164,0) size 350x17
+              text run at (164,0) width 350: "http://bugzilla.opendarwin.org/show_bug.cgi?id=9122"
+          RenderText {#text} at (514,0) size 732x34
+            text run at (514,0) width 4: " "
+            text run at (518,0) width 214: "REGRESSION: Incorrect vertical"
+            text run at (0,17) width 314: "position for text fields in a \"display: table\" block"
+        RenderText {#text} at (314,17) size 4x17
+          text run at (314,17) width 4: "."
+      RenderBlock {P} at (0,50) size 784x34
+        RenderText {#text} at (0,0) size 761x34
+          text run at (0,0) width 761: "Type something in the text field. Resize the window. The text field should not jump down. Delete what you typed and resize the"
+          text run at (0,17) width 241: "window. The text field should not move."
+      RenderBlock {FORM} at (0,100) size 784x279
+        RenderTable {DL} at (0,0) size 199x23
+          RenderTableSection (anonymous) at (0,0) size 199x23
+            RenderTableRow {DIV} at (0,0) size 199x23
+              RenderTableCell {DT} at (0,2) size 25x17 [r=0 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,0) size 174x23 [r=0 c=1 rs=1 cs=1]
+                RenderTextControl {INPUT} at (2,2) size 170x19
+        RenderBlock {HR} at (0,39) size 784x2 [border: (1px inset #000000)]
+        RenderBlock {P} at (0,57) size 784x34
+          RenderText {#text} at (0,0) size 770x34
+            text run at (0,0) width 770: "And here's more. There should not be a difference in distance between the labels, nor any difference in distance between the text"
+            text run at (0,17) width 35: "fields."
+        RenderTable {DL} at (0,107) size 223x172
+          RenderTableSection (anonymous) at (0,0) size 223x172
+            RenderTableRow {DIV} at (0,0) size 223x23
+              RenderTableCell {DT} at (0,2) size 25x17 [r=0 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,0) size 198x23 [r=0 c=1 rs=1 cs=1]
+                RenderTextControl {INPUT} at (2,2) size 170x19
+            RenderTableRow {DIV} at (0,23) size 223x23
+              RenderTableCell {DT} at (0,25) size 25x17 [r=1 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,23) size 198x23 [r=1 c=1 rs=1 cs=1]
+                RenderTextControl {INPUT} at (2,2) size 170x19
+            RenderTableRow {DIV} at (0,46) size 223x23
+              RenderTableCell {DT} at (0,48) size 25x17 [r=2 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,46) size 198x23 [r=2 c=1 rs=1 cs=1]
+                RenderTextControl {INPUT} at (2,2) size 170x19
+            RenderTableRow {DIV} at (0,69) size 223x23
+              RenderTableCell {DT} at (0,71) size 25x17 [r=3 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,69) size 198x23 [r=3 c=1 rs=1 cs=1]
+                RenderTextControl {INPUT} at (2,2) size 170x19
+            RenderTableRow {DIV} at (0,92) size 223x23
+              RenderTableCell {DT} at (0,94) size 25x17 [r=4 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,92) size 198x23 [r=4 c=1 rs=1 cs=1]
+                RenderTextControl {INPUT} at (2,2) size 170x19
+            RenderTableRow {DIV} at (0,115) size 223x23
+              RenderTableCell {DT} at (0,117) size 25x17 [r=5 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,115) size 198x23 [r=5 c=1 rs=1 cs=1]
+                RenderTextControl {INPUT} at (2,2) size 170x19
+            RenderTableRow {DIV} at (0,138) size 223x34
+              RenderTableCell {DT} at (0,155) size 25x17 [r=6 c=0 rs=1 cs=1]
+                RenderText {#text} at (0,0) size 25x17
+                  text run at (0,0) width 25: "Foo"
+              RenderTableCell {DD} at (25,138) size 198x34 [r=6 c=1 rs=1 cs=1]
+                RenderBlock {DIV} at (0,0) size 198x34
+                  RenderBR {BR} at (0,0) size 0x17
+                  RenderText {#text} at (0,17) size 198x17
+                    text run at (0,17) width 198: "Bar (should be aligned with Foo)"
+layer at (37,120) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+layer at (37,227) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+layer at (37,250) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+layer at (37,273) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+    RenderText {#text} at (0,0) size 20x15
+      text run at (0,0) width 20: "Bar"
+layer at (37,296) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+    RenderText {#text} at (0,0) size 20x15
+      text run at (0,0) width 20: "Bar"
+layer at (37,319) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+layer at (37,342) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15

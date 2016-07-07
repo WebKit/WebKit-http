@@ -1,0 +1,80 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {P} at (0,0) size 784x34
+        RenderText {#text} at (0,0) size 81x17
+          text run at (0,0) width 81: "This tests for "
+        RenderInline {I} at (0,0) size 771x34
+          RenderText {#text} at (81,0) size 771x34
+            text run at (81,0) width 690: "http://bugzilla.opendarwin.org/show_bug.cgi?id=6014 Bidi algorithm: incorrect resolved levels for neutrals"
+            text run at (0,17) width 156: "between R and ET ON L"
+        RenderText {#text} at (156,17) size 4x17
+          text run at (156,17) width 4: "."
+      RenderBlock {P} at (0,50) size 784x34
+        RenderText {#text} at (0,0) size 773x34
+          text run at (0,0) width 93: "The characters "
+          text run at (93,0) width 10 RTL: "\x{5D0}"
+          text run at (103,0) width 30: " and "
+          text run at (133,0) width 10 RTL: "\x{5D1}"
+          text run at (143,0) width 630: " are of type R; ^ and @ are of type ON; $ and % are of type ET; a is of type L; 1 is of type EN. In each"
+          text run at (0,17) width 410: "of the following pairs, the two lines should be identical to each other."
+      RenderBlock {HR} at (0,100) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,118) size 784x17
+        RenderText {#text} at (0,0) size 77x17
+          text run at (0,0) width 10 RTL: "\x{5D0}"
+          text run at (10,0) width 67: " ^ @ $% a"
+      RenderBlock (anonymous) at (0,151) size 784x17
+        RenderInline {BDO} at (0,0) size 77x17
+          RenderText {#text} at (0,0) size 77x17
+            text run at (0,0) width 77 LTR override: "\x{5D0} ^ @ $% a"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {HR} at (0,176) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,194) size 784x17
+        RenderText {#text} at (0,0) size 80x17
+          text run at (0,0) width 80 RTL: "\x{5D0} ^ @ $% \x{5D1}"
+      RenderBlock (anonymous) at (0,227) size 784x17
+        RenderInline {BDO} at (0,0) size 80x17
+          RenderText {#text} at (0,0) size 80x17
+            text run at (0,0) width 80 LTR override: "\x{5D1} %$ @ ^ \x{5D0}"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {HR} at (0,252) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,270) size 784x17
+        RenderText {#text} at (0,0) size 74x17
+          text run at (0,0) width 29: "$%1"
+          text run at (29,0) width 45 RTL: "\x{5D0} ^ @ "
+      RenderBlock (anonymous) at (0,303) size 784x17
+        RenderInline {BDO} at (0,0) size 74x17
+          RenderText {#text} at (0,0) size 74x17
+            text run at (0,0) width 74 LTR override: "$%1 @ ^ \x{5D0}"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {HR} at (0,328) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,346) size 784x17
+        RenderText {#text} at (0,0) size 77x17
+          text run at (0,0) width 7: "a"
+          text run at (7,0) width 70 RTL: "\x{5D0} ^ @ $% "
+      RenderBlock (anonymous) at (0,379) size 784x17
+        RenderInline {BDO} at (0,0) size 77x17
+          RenderText {#text} at (0,0) size 77x17
+            text run at (0,0) width 77 LTR override: "a %$ @ ^ \x{5D0}"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {HR} at (0,404) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,422) size 784x17
+        RenderText {#text} at (0,0) size 80x17
+          text run at (0,0) width 80 RTL: "\x{5D0} ^ @ $% \x{5D1}"
+      RenderBlock (anonymous) at (0,455) size 784x17
+        RenderInline {BDO} at (0,0) size 80x17
+          RenderText {#text} at (0,0) size 80x17
+            text run at (0,0) width 80 LTR override: "\x{5D1} %$ @ ^ \x{5D0}"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {HR} at (0,480) size 784x2 [border: (1px inset #000000)]
+      RenderBlock {P} at (0,498) size 784x17
+        RenderText {#text} at (0,0) size 74x17
+          text run at (0,0) width 29: "$%1"
+          text run at (29,0) width 45 RTL: "\x{5D0} ^ @ "
+      RenderBlock (anonymous) at (0,531) size 784x17
+        RenderInline {BDO} at (0,0) size 74x17
+          RenderText {#text} at (0,0) size 74x17
+            text run at (0,0) width 74 LTR override: "$%1 @ ^ \x{5D0}"
+        RenderText {#text} at (0,0) size 0x0

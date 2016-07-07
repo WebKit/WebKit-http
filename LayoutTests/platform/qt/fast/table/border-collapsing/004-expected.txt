@@ -1,0 +1,308 @@
+layer at (0,0) size 785x1397
+  RenderView at (0,0) size 785x600
+layer at (0,0) size 785x1397
+  RenderBlock {HTML} at (0,0) size 785x1397
+    RenderBody {BODY} at (8,21) size 769x1360
+      RenderBlock {H1} at (0,0) size 769x36
+        RenderText {#text} at (0,0) size 292x36
+          text run at (0,0) width 292: "Table Border Models"
+      RenderBlock {P} at (0,57) size 769x18
+        RenderText {#text} at (0,0) size 113x17
+          text run at (0,0) width 113: "This tests tests the "
+        RenderInline {A} at (0,0) size 204x17 [color=#0000EE]
+          RenderText {#text} at (113,0) size 204x17
+            text run at (113,0) width 204: "CSS2 spec rules on table borders"
+        RenderText {#text} at (317,0) size 172x17
+          text run at (317,0) width 8: ". "
+          text run at (325,0) width 164: "The styles applied here are:"
+      RenderBlock {PRE} at (0,90) size 769x181
+        RenderText {#text} at (0,0) size 688x180
+          text run at (0,0) width 408: "TABLE\x{9}{ margin: 1em; border: medium solid blue; }"
+          text run at (0,15) width 408: "TD\x{9}{ border: thin solid green; padding: 5px; }"
+          text run at (0,30) width 392: "TH { border: medium solid purple; padding: 5px; }"
+          text run at (0,45) width 360: "TABLE.one, TABLE.two { border-spacing: 1em; }"
+          text run at (0,60) width 320: "TABLE.one { border-collapse: collapse; }"
+          text run at (0,75) width 320: "TABLE.two { border-collapse: separate; }"
+          text run at (0,90) width 536: "TABLE.three { border-collapse: separate; border-spacing: 0 0.5em; }"
+          text run at (0,105) width 528: "TABLE.four { border-collapse: separate; border-spacing: 0.5em 0; }"
+          text run at (0,120) width 328: "TABLE.five { border-collapse: separate; }"
+          text run at (0,135) width 464: "TABLE.five, TABLE.five TD, TABLE.five TH { border: none; }"
+          text run at (0,150) width 688: "TABLE.five TR, TABLE.five COL, TABLE.five COLGROUP, TABLE.five TBODY, TABLE.five THEAD"
+          text run at (0,165) width 296: "\x{9}{ border: medium solid red; }"
+      RenderTable {TABLE} at (16,286) size 737x160 [border: (1px solid #0000FF)]
+        RenderTableSection {TBODY} at (1,1) size 734x156
+          RenderTableRow {TR} at (0,0) size 734x30
+            RenderTableCell {TH} at (0,0) size 248x30 [border: (2px solid #800080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (83,7) size 83x17
+                text run at (83,7) width 83: "Header One"
+            RenderTableCell {TH} at (247,0) size 232x30 [border: (2px solid #800080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (75,7) size 83x17
+                text run at (75,7) width 83: "Header Two"
+            RenderTableCell {TH} at (478,0) size 257x30 [border: (2px solid #800080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (81,7) size 95x17
+                text run at (81,7) width 95: "Header Three"
+          RenderTableRow {TR} at (0,30) size 734x63
+            RenderTableCell {TD} at (0,38) size 248x47 [border: (2px solid #008000)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (7,7) size 222x35
+                text run at (7,8) width 222: "This table uses the collapsed borders"
+                text run at (7,25) width 41: "model."
+            RenderTableCell {TD} at (247,38) size 232x47 [border: (2px solid #008000)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,7) size 210x35
+                text run at (6,8) width 210: "This means that elements within the"
+                text run at (6,25) width 171: "cell have no border-spacing."
+            RenderTableCell {TD} at (478,30) size 257x63 [border: (2px solid #008000)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,7) size 241x51
+                text run at (6,7) width 206: "Since it has collapsed borders, the"
+                text run at (6,24) width 171: "borders on the header cells, "
+                text run at (177,24) width 70: "on all sides,"
+                text run at (6,41) width 187: "should be medium solid purple."
+          RenderTableRow {TR} at (0,93) size 734x63
+            RenderTableCell {TD} at (0,93) size 248x63 [border: (1px solid #008000)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (7,6) size 232x51
+                text run at (7,6) width 232: "The border of the table itself should be"
+                text run at (7,23) width 160: "medium solid blue, except "
+                text run at (167,23) width 37: "where"
+                text run at (7,40) width 196: "header cells override the border."
+            RenderTableCell {TD} at (247,93) size 232x63 [border: (1px solid #008000)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 203x51
+                text run at (6,6) width 203: "The borders that I haven't already"
+                text run at (6,23) width 188: "mentioned (all the other internal"
+                text run at (6,40) width 193: "ones) should be thin solid green."
+            RenderTableCell {TD} at (478,93) size 257x63 [border: (1px solid #008000)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 218x51
+                text run at (6,6) width 218: "This table should have a 1em margin"
+                text run at (6,23) width 106: "around all edges. "
+                text run at (112,23) width 73: "This margin "
+                text run at (185,23) width 9: "is"
+                text run at (6,40) width 116: "measured from the "
+              RenderInline {EM} at (0,0) size 43x17
+                RenderText {#text} at (122,40) size 43x17
+                  text run at (122,40) width 43: "middle"
+              RenderText {#text} at (165,40) size 82x17
+                text run at (165,40) width 82: " of its border."
+      RenderTable {TABLE} at (16,461) size 737x230 [border: (3px solid #0000FF)]
+        RenderTableSection {TBODY} at (3,3) size 731x223
+          RenderTableRow {TR} at (0,16) size 731x33
+            RenderTableCell {TH} at (16,16) size 163x33 [border: (3px solid #800080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (40,8) size 83x17
+                text run at (40,8) width 83: "Header One"
+            RenderTableCell {TH} at (194,16) size 193x33 [border: (3px solid #800080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (54,8) size 83x17
+                text run at (54,8) width 83: "Header Two"
+            RenderTableCell {TH} at (402,16) size 314x33 [border: (3px solid #800080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (109,8) size 95x17
+                text run at (109,8) width 95: "Header Three"
+          RenderTableRow {TR} at (0,65) size 731x63
+            RenderTableCell {TD} at (16,65) size 163x63 [border: (1px solid #008000)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 110x51
+                text run at (6,6) width 110: "This table uses the"
+                text run at (6,23) width 110: "separated borders"
+                text run at (6,40) width 41: "model."
+            RenderTableCell {TD} at (194,65) size 193x63 [border: (1px solid #008000)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 164x51
+                text run at (6,6) width 149: "This means that elements"
+                text run at (6,23) width 164: "within the cell have border-"
+                text run at (6,40) width 95: "spacing of 1em."
+            RenderTableCell {TD} at (402,73) size 314x47 [border: (1px solid #008000)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 268x35
+                text run at (6,7) width 198: "The borders on the header cells, "
+                text run at (204,7) width 70: "on all sides,"
+                text run at (6,24) width 187: "should be medium solid purple."
+          RenderTableRow {TR} at (0,144) size 731x63
+            RenderTableCell {TD} at (16,144) size 163x63 [border: (1px solid #008000)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 140x51
+                text run at (6,6) width 139: "The border of the table"
+                text run at (6,23) width 140: "itself should be medium"
+                text run at (6,40) width 61: "solid blue."
+            RenderTableCell {TD} at (194,152) size 193x47 [border: (1px solid #008000)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 156x35
+                text run at (6,7) width 155: "The borders of other cells"
+                text run at (6,24) width 156: "should be thin solid green."
+            RenderTableCell {TD} at (402,144) size 314x63 [border: (1px solid #008000)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 281x34
+                text run at (6,6) width 281: "This table should have a 1em margin around all"
+                text run at (6,23) width 43: "edges. "
+                text run at (49,23) width 73: "This margin "
+                text run at (122,23) width 129: "is measured from the "
+              RenderInline {EM} at (0,0) size 279x34
+                RenderText {#text} at (251,23) size 279x34
+                  text run at (251,23) width 34: "outer"
+                  text run at (6,40) width 30: "edge"
+              RenderText {#text} at (36,40) size 82x17
+                text run at (36,40) width 82: " of its border."
+      RenderTable {TABLE} at (16,706) size 737x249 [border: (3px solid #0000FF)]
+        RenderTableSection {TBODY} at (3,3) size 731x242
+          RenderTableRow {TR} at (0,8) size 731x33
+            RenderTableCell {TH} at (0,8) size 190x33 [border: (3px solid #800080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (53,8) size 83x17
+                text run at (53,8) width 83: "Header One"
+            RenderTableCell {TH} at (189,8) size 267x33 [border: (3px solid #800080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (91,8) size 83x17
+                text run at (91,8) width 83: "Header Two"
+            RenderTableCell {TH} at (455,8) size 277x33 [border: (3px solid #800080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (90,8) size 95x17
+                text run at (90,8) width 95: "Header Three"
+          RenderTableRow {TR} at (0,49) size 731x80
+            RenderTableCell {TD} at (0,66) size 190x46 [border: (1px solid #008000)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 173x34
+                text run at (6,6) width 173: "This table uses the separated"
+                text run at (6,23) width 92: "borders model."
+            RenderTableCell {TD} at (189,49) size 267x80 [border: (1px solid #008000)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 241x68
+                text run at (6,6) width 233: "Elements within the cell have horizontal"
+                text run at (6,23) width 180: "border-spacing (i.e., width of "
+                text run at (186,23) width 43: "vertical"
+                text run at (6,40) width 136: "lines) of 0 and vertical "
+                text run at (142,40) width 92: "border-spacing"
+                text run at (6,57) width 241: "(i.e., height of horizontal lines) of 0.5em."
+            RenderTableCell {TD} at (455,66) size 277x46 [border: (1px solid #008000)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 230x34
+                text run at (6,6) width 198: "The borders on the header cells, "
+                text run at (204,6) width 32: "on all"
+                text run at (6,23) width 225: "sides, should be medium solid purple."
+          RenderTableRow {TR} at (0,137) size 731x97
+            RenderTableCell {TD} at (0,145) size 190x81 [border: (1px solid #008000)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 174x69
+                text run at (6,7) width 170: "The border of the table itself"
+                text run at (6,24) width 174: "should be medium solid blue."
+                text run at (6,41) width 155: "The borders of other cells"
+                text run at (6,58) width 156: "should be thin solid green."
+            RenderTableCell {TD} at (189,154) size 267x63 [border: (1px solid #008000)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 250x51
+                text run at (6,6) width 218: "This table should have a 1em margin"
+                text run at (6,23) width 106: "around all edges. "
+                text run at (112,23) width 73: "This margin "
+                text run at (185,23) width 71: "is measured"
+                text run at (6,40) width 54: "from the "
+              RenderInline {EM} at (0,0) size 68x17
+                RenderText {#text} at (60,40) size 68x17
+                  text run at (60,40) width 68: "outer edge"
+              RenderText {#text} at (128,40) size 82x17
+                text run at (128,40) width 82: " of its border."
+            RenderTableCell {TD} at (455,137) size 277x97 [border: (1px solid #008000)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 238x85
+                text run at (6,6) width 230: "The table should not be wider than the"
+                text run at (6,23) width 164: "room available for it unless "
+                text run at (170,23) width 74: "that space is"
+                text run at (6,40) width 68: "very small. "
+                text run at (74,40) width 160: "Because of its margins, the"
+                text run at (6,57) width 75: "width of the "
+                text run at (81,57) width 146: "table should be less than"
+                text run at (6,74) width 41: "100%."
+      RenderTable {TABLE} at (16,970) size 737x200 [border: (3px solid #0000FF)]
+        RenderTableSection {TBODY} at (3,3) size 731x193
+          RenderTableRow {TR} at (0,0) size 731x33
+            RenderTableCell {TH} at (8,0) size 202x33 [border: (3px solid #800080)] [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (59,8) size 83x17
+                text run at (59,8) width 83: "Header One"
+            RenderTableCell {TH} at (217,0) size 206x33 [border: (3px solid #800080)] [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (61,8) size 83x17
+                text run at (61,8) width 83: "Header Two"
+            RenderTableCell {TH} at (430,0) size 294x33 [border: (3px solid #800080)] [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (99,8) size 95x17
+                text run at (99,8) width 95: "Header Three"
+          RenderTableRow {TR} at (0,33) size 731x80
+            RenderTableCell {TD} at (8,50) size 202x46 [border: (1px solid #008000)] [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 173x34
+                text run at (6,6) width 173: "This table uses the separated"
+                text run at (6,23) width 92: "borders model."
+            RenderTableCell {TD} at (217,33) size 206x80 [border: (1px solid #008000)] [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 171x68
+                text run at (6,6) width 171: "Elements within the cell have"
+                text run at (6,23) width 170: "horizontal border-spacing of"
+                text run at (6,40) width 115: "0.5em and vertical "
+                text run at (121,40) width 47: "border-"
+                text run at (6,57) width 77: "spacing of 0."
+            RenderTableCell {TD} at (430,50) size 294x46 [border: (1px solid #008000)] [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 268x34
+                text run at (6,6) width 198: "The borders on the header cells, "
+                text run at (204,6) width 70: "on all sides,"
+                text run at (6,23) width 187: "should be medium solid purple."
+          RenderTableRow {TR} at (0,113) size 731x80
+            RenderTableCell {TD} at (8,113) size 202x80 [border: (1px solid #008000)] [r=2 c=0 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 174x68
+                text run at (6,6) width 170: "The border of the table itself"
+                text run at (6,23) width 174: "should be medium solid blue."
+                text run at (6,40) width 155: "The borders of other cells"
+                text run at (6,57) width 156: "should be thin solid green."
+            RenderTableCell {TD} at (217,113) size 206x80 [border: (1px solid #008000)] [r=2 c=1 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 175x51
+                text run at (6,6) width 174: "This table should have a 1em"
+                text run at (6,23) width 150: "margin around all edges. "
+                text run at (156,23) width 25: "This"
+                text run at (6,40) width 44: "margin "
+                text run at (50,40) width 125: "is measured from the"
+              RenderInline {EM} at (0,0) size 68x17
+                RenderText {#text} at (6,57) size 68x17
+                  text run at (6,57) width 68: "outer edge"
+              RenderText {#text} at (74,57) size 82x17
+                text run at (74,57) width 82: " of its border."
+            RenderTableCell {TD} at (430,113) size 294x80 [border: (1px solid #008000)] [r=2 c=2 rs=1 cs=1]
+              RenderText {#text} at (6,6) size 270x68
+                text run at (6,6) width 266: "The table should not be wider than the room"
+                text run at (6,23) width 128: "available for it unless "
+                text run at (134,23) width 142: "that space is very small."
+                text run at (6,40) width 239: "Because of its margins, the width of the "
+                text run at (245,40) width 29: "table"
+                text run at (6,57) width 158: "should be less than 100%."
+      RenderTable {TABLE} at (16,1185) size 737x175
+        RenderBlock {CAPTION} at (0,0) size 737x17
+          RenderText {#text} at (312,0) size 113x17
+            text run at (312,0) width 113: "This is the caption."
+        RenderTableCol {COLGROUP} at (0,0) size 0x0 [border: (3px solid #FF0000)]
+          RenderTableCol {COL} at (0,0) size 0x0 [border: (3px solid #FF0000)]
+        RenderTableCol {COLGROUP} at (0,0) size 0x0 [border: (3px solid #FF0000)]
+          RenderTableCol {COL} at (0,0) size 0x0 [border: (3px solid #FF0000)]
+          RenderTableCol {COL} at (0,0) size 0x0 [border: (3px solid #FF0000)]
+        RenderTableSection {THEAD} at (0,17) size 737x31 [border: (3px solid #FF0000)]
+          RenderTableRow {TR} at (0,2) size 737x27 [border: (3px solid #FF0000)]
+            RenderTableCell {TH} at (2,2) size 122x27 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (19,5) size 83x17
+                text run at (19,5) width 83: "Header One"
+            RenderTableCell {TH} at (125,2) size 320x27 [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (118,5) size 83x17
+                text run at (118,5) width 83: "Header Two"
+            RenderTableCell {TH} at (446,2) size 290x27 [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (97,5) size 95x17
+                text run at (97,5) width 95: "Header Three"
+        RenderTableSection {TBODY} at (0,48) size 737x126 [border: (3px solid #FF0000)]
+          RenderTableRow {TR} at (0,0) size 737x61 [border: (3px solid #FF0000)]
+            RenderTableCell {TD} at (2,0) size 122x61 [r=0 c=0 rs=1 cs=1]
+              RenderText {#text} at (5,5) size 110x51
+                text run at (5,5) width 110: "This table uses the"
+                text run at (5,22) width 110: "separated borders"
+                text run at (5,39) width 41: "model."
+            RenderTableCell {TD} at (125,8) size 320x45 [r=0 c=1 rs=1 cs=1]
+              RenderText {#text} at (5,5) size 299x35
+                text run at (5,6) width 299: "This means that borders are allowed only on table"
+                text run at (5,23) width 106: "elements or table "
+                text run at (111,23) width 80: "cell elements."
+            RenderTableCell {TD} at (446,0) size 290x61 [r=0 c=2 rs=1 cs=1]
+              RenderText {#text} at (5,5) size 247x51
+                text run at (5,5) width 228: "They are not allowed on elements that"
+                text run at (5,22) width 98: "represent rows, "
+                text run at (103,22) width 149: "row-groups, columns, or"
+                text run at (5,39) width 94: "column-groups."
+          RenderTableRow {TR} at (0,63) size 737x61 [border: (3px solid #FF0000)]
+            RenderTableCell {TD} at (2,63) size 122x61 [r=1 c=0 rs=1 cs=1]
+              RenderText {#text} at (5,5) size 98x51
+                text run at (5,5) width 97: "There should be"
+                text run at (5,22) width 98: "no borders at all"
+                text run at (5,39) width 77: "on this table!"
+            RenderTableCell {TD} at (125,63) size 320x61 [r=1 c=1 rs=1 cs=1]
+              RenderText {#text} at (5,5) size 308x51
+                text run at (5,5) width 308: "If there are any borders shown that are not medium"
+                text run at (5,22) width 89: "solid red, then "
+                text run at (94,22) width 213: "the problem is something other than"
+                text run at (5,39) width 137: "what this test is testing."
+            RenderTableCell {TD} at (446,63) size 290x61 [r=1 c=2 rs=1 cs=1]
+              RenderText {#text} at (5,5) size 264x34
+                text run at (5,5) width 264: "This table should have a 1em margin around"
+                text run at (5,22) width 60: "all edges. "
+                text run at (65,22) width 73: "This margin "
+                text run at (138,22) width 125: "is measured from the"
+              RenderInline {EM} at (0,0) size 68x17
+                RenderText {#text} at (5,39) size 68x17
+                  text run at (5,39) width 68: "outer edge"
+              RenderText {#text} at (73,39) size 82x17
+                text run at (73,39) width 82: " of its border."

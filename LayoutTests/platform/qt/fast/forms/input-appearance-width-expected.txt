@@ -1,0 +1,36 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderText {#text} at (0,0) size 328x17
+        text run at (0,0) width 328: "This tests that the new text fields use the correct width."
+      RenderBR {BR} at (328,14) size 0x0
+      RenderTextControl {INPUT} at (2,19) size 170x19
+      RenderBR {BR} at (174,33) size 0x0
+      RenderTextControl {INPUT} at (0,42) size 200x19
+      RenderBR {BR} at (200,56) size 0x0
+      RenderTextControl {INPUT} at (2,65) size 410x19
+      RenderBR {BR} at (414,79) size 0x0
+      RenderTextControl {INPUT} at (0,88) size 200x19
+      RenderBR {BR} at (200,102) size 0x0
+      RenderTextControl {INPUT} at (2,111) size 90x19
+      RenderBR {BR} at (94,125) size 0x0
+layer at (12,29) size 166x15
+  RenderBlock {DIV} at (2,2) size 166x15
+layer at (10,52) size 196x15
+  RenderBlock {DIV} at (2,2) size 196x15
+    RenderText {#text} at (0,0) size 108x15
+      text run at (0,0) width 108: "styled width 200px"
+layer at (12,75) size 406x15
+  RenderBlock {DIV} at (2,2) size 406x15
+    RenderText {#text} at (0,0) size 42x15
+      text run at (0,0) width 42: "size 50"
+layer at (10,98) size 196x15
+  RenderBlock {DIV} at (2,2) size 196x15
+    RenderText {#text} at (0,0) size 171x15
+      text run at (0,0) width 171: "styled width 200px & size=10"
+layer at (12,121) size 86x15
+  RenderBlock {DIV} at (2,2) size 86x15
+    RenderText {#text} at (0,0) size 42x15
+      text run at (0,0) width 42: "size 10"

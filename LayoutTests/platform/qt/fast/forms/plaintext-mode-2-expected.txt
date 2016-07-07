@@ -1,0 +1,41 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x576
+      RenderBlock (anonymous) at (0,0) size 784x23
+        RenderTextControl {INPUT} at (0,2) size 600x19
+        RenderText {#text} at (600,2) size 4x17
+          text run at (600,2) width 4: " "
+        RenderBR {BR} at (604,16) size 0x0
+      RenderBlock {DIV} at (0,23) size 784x17
+        RenderText {#text} at (0,0) size 29x17
+          text run at (0,0) width 29: "This "
+        RenderInline {B} at (0,0) size 69x17
+          RenderText {#text} at (29,0) size 44x17
+            text run at (29,0) width 44: "styled "
+          RenderInline {I} at (0,0) size 25x17
+            RenderText {#text} at (73,0) size 25x17
+              text run at (73,0) width 25: "text"
+        RenderText {#text} at (98,0) size 34x17
+          text run at (98,0) width 34: ", and "
+        RenderInline {A} at (0,0) size 21x17 [color=#0000EE]
+          RenderText {#text} at (132,0) size 21x17
+            text run at (132,0) width 21: "link"
+        RenderText {#text} at (153,0) size 382x17
+          text run at (153,0) width 194: " will be pasted into the textfield. "
+          text run at (347,0) width 188: "All richness should be stripped."
+      RenderBlock {OL} at (0,56) size 784x34
+        RenderListItem {LI} at (40,0) size 744x17
+          RenderListMarker at (-20,0) size 16x17: "1"
+          RenderText {#text} at (0,0) size 313x17
+            text run at (0,0) width 313: "Success: document.execCommand(\"Copy\") == true"
+        RenderListItem {LI} at (40,17) size 744x17
+          RenderListMarker at (-20,0) size 16x17: "2"
+          RenderText {#text} at (0,0) size 312x17
+            text run at (0,0) width 312: "Success: document.execCommand(\"Paste\") == true"
+layer at (10,12) size 596x15
+  RenderBlock {DIV} at (2,2) size 596x15
+    RenderText {#text} at (0,0) size 511x15
+      text run at (0,0) width 511: "This styled text, and link will be pasted into the textfield. All richness should be stripped."
+caret: position 94 of child 0 {#text} of child 0 {DIV} of {#document-fragment} of child 0 {INPUT} of body
