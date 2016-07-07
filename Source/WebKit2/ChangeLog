@@ -1,3 +1,969 @@
+2016-07-06  Tim Horton  <timothy_horton@apple.com>
+
+        Some API tests started failing after r202889
+        https://bugs.webkit.org/show_bug.cgi?id=159498
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadHTMLString):
+        Fix a typo; this is a MIME type, not an encoding :|
+
+2016-07-06  Tim Horton  <timothy_horton@apple.com>
+
+        Email from June 1st containing text 'Today @ 7:10PM' is linkified, but shouldn't be
+        https://bugs.webkit.org/show_bug.cgi?id=159498
+        <rdar://problem/26719903>
+
+        Reviewed by Sam Weinig.
+
+        * Shared/Cocoa/LoadParametersCocoa.mm: Added.
+        (WebKit::LoadParameters::platformEncode):
+        (WebKit::LoadParameters::platformDecode):
+        * Shared/LoadParameters.cpp: Added.
+        (WebKit::LoadParameters::encode):
+        (WebKit::LoadParameters::decode):
+        * Shared/LoadParameters.h: Added.
+        Add a struct that knows how to encode all of the different parameters
+        to all of the Load* messages, including the platform-specific DataDetectors parameters.
+
+        * Shared/mac/ArgumentCodersMac.h:
+        * Shared/mac/ArgumentCodersMac.mm:
+        (IPC::typeFromObject):
+        (IPC::encode):
+        (IPC::decode):
+        Add NSURL coders that defer to the CFURL coders.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::dataDetectionContext):
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate):
+        (WebKit::UIDelegate::UIClient::dataDetectionContext):
+        Add APIUIClient methods to retrieve the DataDetectors context dictionary.
+
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        (WebKit::WebPageProxy::addPlatformLoadParameters):
+        Add the DataDetectors context dictionary to the given LoadParameters.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dataDetectionContext):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::dataDetectionContext):
+        Store the dataDetectionContext on WebPage, and make it accessible to WebCore
+        via the FrameLoaderClient (it is used in FrameLoader when the load completes).
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadRequest):
+        (WebKit::WebPageProxy::loadFile):
+        (WebKit::WebPageProxy::loadData):
+        (WebKit::WebPageProxy::loadHTMLString):
+        (WebKit::WebPageProxy::loadAlternateHTMLString):
+        (WebKit::WebPageProxy::loadPlainTextString):
+        (WebKit::WebPageProxy::loadWebArchiveData):
+        * UIProcess/WebPageProxy.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadRequest):
+        (WebKit::WebPage::loadStringImpl):
+        (WebKit::WebPage::loadData):
+        (WebKit::WebPage::loadString):
+        (WebKit::WebPage::loadAlternateHTMLString):
+        (WebKit::WebPage::loadHTMLString): Deleted.
+        (WebKit::WebPage::loadPlainTextString): Deleted.
+        (WebKit::WebPage::loadWebArchiveData): Deleted.
+        * WebProcess/WebPage/WebPage.messages.in:
+        Adopt LoadParameters, taking this opportunity to reduce the number of very similar messages.
+        We can take this further (we should be able to get it down to just LoadRequest
+        and LoadData) in the future. When any load occurs, grab the client's DataDetectorse
+        context dictionary and send it along with the load request, storing it in WebPage.
+
+2016-07-06  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][Cocoa] Disable ResourceResponse lazy initialization
+        https://bugs.webkit.org/show_bug.cgi?id=159497
+        <rdar://problem/27209066>
+
+        Reviewed by Alex Christensen.
+
+        Disable ResourceResponse lazy initialization for WebKit2 as
+        we always end up initializing all the fields anyway when
+        sending the response to the WebContent process via IPC.
+
+        Even worse, we always do a partial lazy initialization (common
+        fields only) before the IPC so we always do the initialization
+        in 2 steps. This normally would not be an issue but the 2 steps
+        actually have some overlap because both call
+        CFHTTPMessageCopyAllHeaderFields(), which is expensive (See
+        <rdar://problem/26796059>) to first get the common HTTP headers,
+        then ALL the HTTP headers.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+
+2016-07-06  Chelsea Pugh  <cpugh@apple.com>
+
+        [iOS] Text suggestions should be cleared when form input session is invalidated        
+        https://bugs.webkit.org/show_bug.cgi?id=159477
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKFormInputSession invalidate]): Set input delegate's suggestions to nil when a form input session is
+        invalidated. This will set the keyboard QuickType suggestions back to their default values.
+
+2016-07-06  Alex Christensen  <achristensen@webkit.org>
+
+        Call continueCanAuthenticateAgainstProtectionSpace when cancelling loads waiting for the callback
+        https://bugs.webkit.org/show_bug.cgi?id=159492
+        <rdar://problem/26921670>
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::~NetworkLoad):
+        (WebKit::NetworkLoad::canAuthenticateAgainstProtectionSpaceAsync):
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        * NetworkProcess/NetworkLoad.h:
+
+2016-07-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] RTL Scrollbars broken with clients creating Web Views via [WKView initWithFrame:contextRef:pageGroupRef:]
+        https://bugs.webkit.org/show_bug.cgi?id=159383
+        <rdar://problem/26921117>
+
+        Reviewed by Anders Carlsson.
+
+        The code which consults with the userInterfaceLayoutDirection of the view is
+        inside [WKWebView _initializeWithConfiguration:]. However, some clients create
+        Web Views via [WKView initWithFrame:contextRef:pageGroupRef:] which doesn't
+        call this code. Therefore, this codepath should do the same kind of direction
+        consulting.
+
+        * UIProcess/API/mac/WKView.mm:
+        (toUserInterfaceLayoutDirection):
+        (-[WKView initWithFrame:contextRef:pageGroupRef:relatedToPage:]):
+
+2016-07-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202867.
+        https://bugs.webkit.org/show_bug.cgi?id=159491
+
+        This change caused an existing LayoutTest to crash on ios-
+        simulator (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "<img> with a wide gamut PDF does not display using a wide
+        gamut color space"
+        https://bugs.webkit.org/show_bug.cgi?id=158983
+        http://trac.webkit.org/changeset/202867
+
+2016-07-06  Enrica Casucci  <enrica@apple.com>
+
+        Limit touch distance for two finger tap.
+        https://bugs.webkit.org/show_bug.cgi?id=159476
+        rdar://problem/26439052
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        * Platform/spi/ios/UIKitSPI.h
+
+2016-07-06  Antoine Quint  <graouts@apple.com>
+
+        <img> with a wide gamut PDF does not display using a wide gamut color space
+        https://bugs.webkit.org/show_bug.cgi?id=158983
+        <rdar://problem/25720247>
+
+        Reviewed by Tim Horton.
+
+        ColorSpace parameters have been replaced with CGColorSpaceRef parameters for IOSurface.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::decode):
+        (WebKit::RemoteLayerBackingStore::swapToValidFrontBuffer):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _takeViewSnapshot]):
+        (-[WKWebView _snapshotRect:intoImageOfWidth:completionHandler:]):
+
+2016-07-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202725.
+        https://bugs.webkit.org/show_bug.cgi?id=159473
+
+        didn't reduce coreui memory usage (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Mac] Get rid of the old timey rubber-banding linen pattern."
+        https://bugs.webkit.org/show_bug.cgi?id=159329
+        http://trac.webkit.org/changeset/202725
+
+2016-07-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Duplicated code in DrawingAreaImpl and CoordinatedDrawingArea
+        https://bugs.webkit.org/show_bug.cgi?id=159259
+
+        Reviewed by Žan Doberšek.
+
+        It seems that CoordinatedDrawingArea is just a copy paste of DrawingAreaImpl with non-accelerated code path
+        removed. There's actually nothing (or very little) specific to coordinated graphics in the
+        CoordinatedDrawingArea implementation. This patch renames CoordinatedDrawingArea as AcceleratedDrawingArea and
+        makes DrawingAreaImpl inherit from it, so that in case of accelerated compositing the parent class is used, and
+        DrawingAreaImpl only adds the non accelerated code path.
+
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp: Renamed from Source/WebKit2/WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp.
+        (WebKit::AcceleratedDrawingArea::~AcceleratedDrawingArea):
+        (WebKit::AcceleratedDrawingArea::AcceleratedDrawingArea):
+        (WebKit::AcceleratedDrawingArea::setNeedsDisplay):
+        (WebKit::AcceleratedDrawingArea::setNeedsDisplayInRect):
+        (WebKit::AcceleratedDrawingArea::scroll):
+        (WebKit::AcceleratedDrawingArea::pageBackgroundTransparencyChanged):
+        (WebKit::AcceleratedDrawingArea::setLayerTreeStateIsFrozen):
+        (WebKit::AcceleratedDrawingArea::forceRepaint):
+        (WebKit::AcceleratedDrawingArea::forceRepaintAsync):
+        (WebKit::AcceleratedDrawingArea::setPaintingEnabled):
+        (WebKit::AcceleratedDrawingArea::updatePreferences):
+        (WebKit::AcceleratedDrawingArea::mainFrameContentSizeChanged):
+        (WebKit::AcceleratedDrawingArea::layerHostDidFlushLayers):
+        (WebKit::AcceleratedDrawingArea::graphicsLayerFactory):
+        (WebKit::AcceleratedDrawingArea::setRootCompositingLayer):
+        (WebKit::AcceleratedDrawingArea::scheduleCompositingLayerFlush):
+        (WebKit::AcceleratedDrawingArea::scheduleCompositingLayerFlushImmediately):
+        (WebKit::AcceleratedDrawingArea::updateBackingStoreState):
+        (WebKit::AcceleratedDrawingArea::sendDidUpdateBackingStoreState):
+        (WebKit::AcceleratedDrawingArea::suspendPainting):
+        (WebKit::AcceleratedDrawingArea::resumePainting):
+        (WebKit::AcceleratedDrawingArea::enterAcceleratedCompositingMode):
+        (WebKit::AcceleratedDrawingArea::exitAcceleratedCompositingModeSoon):
+        (WebKit::AcceleratedDrawingArea::didReceiveCoordinatedLayerTreeHostMessage):
+        (WebKit::AcceleratedDrawingArea::viewStateDidChange):
+        (WebKit::AcceleratedDrawingArea::attachViewOverlayGraphicsLayer):
+        * WebProcess/WebPage/AcceleratedDrawingArea.h: Renamed from Source/WebKit2/WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.h.
+        (WebKit::AcceleratedDrawingArea::exitAcceleratedCompositingModePending):
+        (WebKit::AcceleratedDrawingArea::didUpdateBackingStoreState):
+        (WebKit::AcceleratedDrawingArea::exitAcceleratedCompositingMode):
+        * WebProcess/WebPage/DrawingArea.cpp:
+        (WebKit::DrawingArea::create):
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::DrawingAreaImpl):
+        (WebKit::DrawingAreaImpl::setNeedsDisplay):
+        (WebKit::DrawingAreaImpl::setNeedsDisplayInRect):
+        (WebKit::DrawingAreaImpl::scroll):
+        (WebKit::DrawingAreaImpl::forceRepaint):
+        (WebKit::DrawingAreaImpl::setRootCompositingLayer):
+        (WebKit::DrawingAreaImpl::updateBackingStoreState):
+        (WebKit::DrawingAreaImpl::didUpdateBackingStoreState):
+        (WebKit::DrawingAreaImpl::sendDidUpdateBackingStoreState):
+        (WebKit::DrawingAreaImpl::suspendPainting):
+        (WebKit::DrawingAreaImpl::enterAcceleratedCompositingMode):
+        (WebKit::DrawingAreaImpl::~DrawingAreaImpl): Deleted.
+        (WebKit::DrawingAreaImpl::mainFrameContentSizeChanged): Deleted.
+        (WebKit::DrawingAreaImpl::updatePreferences): Deleted.
+        (WebKit::DrawingAreaImpl::didUpdate): Deleted.
+        (WebKit::DrawingAreaImpl::exitAcceleratedCompositingMode): Deleted.
+        (WebKit::DrawingAreaImpl::scheduleDisplay): Deleted.
+        (WebKit::DrawingAreaImpl::displayTimerFired): Deleted.
+        (WebKit::DrawingAreaImpl::display): Deleted.
+        (WebKit::shouldPaintBoundsRect): Deleted.
+        (WebKit::DrawingAreaImpl::setNativeSurfaceHandleForCompositing): Deleted.
+        * WebProcess/WebPage/DrawingAreaImpl.h:
+
+2016-07-06  Youenn Fablet  <youenn@apple.com>
+
+        Refactor NetworkResourceLoadParameters
+        https://bugs.webkit.org/show_bug.cgi?id=159402
+
+        Reviewed by Alex Christensen.
+
+        Making NetworkResourceLoadParameters derive from NetworkLoadParameters.
+
+        * CMakeLists.txt: Removed NetworkLoadParameters.cpp
+        * NetworkProcess/NetworkLoadParameters.cpp: Deleted.
+        * NetworkProcess/NetworkLoadParameters.h:
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::NetworkResourceLoadParameters): Deleted.
+        * NetworkProcess/NetworkResourceLoadParameters.h: Making it derive from NetworkLoadParameters.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-07-05  Alex Christensen  <achristensen@webkit.org>
+
+        Actually persist changes to cookie accept policy.
+        https://bugs.webkit.org/show_bug.cgi?id=159377
+        <rdar://problem/22774152>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::NetworkSession::NetworkSession):
+        Added logging.
+        * UIProcess/mac/WebCookieManagerProxyMac.mm:
+        (WebKit::WebCookieManagerProxy::persistHTTPCookieAcceptPolicy):
+        When we persist the cookie accept policy, we want to call _saveCookies to actually write the
+        change to disk so that when we create a new process which reads from disk to determine its
+        cookie accept policy, it will read the new cookie accept policy.  Before this patch it was
+        reading the old one in some cases where the changes had not yet been persisted to disk.
+
+2016-07-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Coordinated Graphics] Modernize and cleanup CompositingCoordinator
+        https://bugs.webkit.org/show_bug.cgi?id=159212
+
+        Reviewed by Žan Doberšek.
+
+        Changes done:
+
+          - Use references instead of pointers when possible.
+          - Add missing final/override keywords.
+          - Reduce the use of PassRefPtr
+          - Move member initializations to the declaration.
+          - Use nullptr instead of 0.
+          - Use HashMap::ensure() instead of complicated code with iterators.
+          - Avoid heap allocation when possible.
+
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp:
+        (WebKit::WebCoordinatedSurface::paintToSurface):
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::paintToSurface):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.h:
+        * WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp:
+        (WebKit::GeneralAreaAllocator::expand):
+        (WebKit::GeneralAreaAllocator::splitNode):
+        (WebKit::GeneralAreaAllocator::release):
+        (WebKit::GeneralAreaAllocator::GeneralAreaAllocator): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::CompositingCoordinator):
+        (WebKit::CompositingCoordinator::flushPendingLayerChanges):
+        (WebKit::CompositingCoordinator::createImageBackingIfNeeded):
+        (WebKit::CompositingCoordinator::updateImageBacking):
+        (WebKit::CompositingCoordinator::notifyFlushRequired):
+        (WebKit::CompositingCoordinator::paintContents):
+        (WebKit::CompositingCoordinator::createUpdateAtlas):
+        (WebKit::CompositingCoordinator::commitScrollOffset):
+        (WebKit::CompositingCoordinator::paintToSurface):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::CoordinatedLayerTreeHost):
+        (WebKit::CoordinatedLayerTreeHost::setViewOverlayRootLayer):
+        (WebKit::CoordinatedLayerTreeHost::setRootCompositingLayer):
+        (WebKit::CoordinatedLayerTreeHost::invalidate):
+        (WebKit::CoordinatedLayerTreeHost::forceRepaint):
+        (WebKit::CoordinatedLayerTreeHost::sizeDidChange):
+        (WebKit::CoordinatedLayerTreeHost::setVisibleContentsRect):
+        (WebKit::CoordinatedLayerTreeHost::renderNextFrame):
+        (WebKit::CoordinatedLayerTreeHost::purgeBackingStores):
+        (WebKit::CoordinatedLayerTreeHost::layerFlushTimerFired):
+        (WebKit::CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged):
+        (WebKit::CoordinatedLayerTreeHost::graphicsLayerFactory):
+        (WebKit::CoordinatedLayerTreeHost::scheduleAnimation):
+        (WebKit::CoordinatedLayerTreeHost::commitScrollOffset):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp:
+        (WebKit::UpdateAtlas::UpdateAtlas):
+        (WebKit::UpdateAtlas::~UpdateAtlas):
+        (WebKit::UpdateAtlas::buildLayoutIfNeeded):
+        (WebKit::UpdateAtlas::paintOnAvailableBuffer):
+        (WebKit::UpdateAtlasSurfaceClient::UpdateAtlasSurfaceClient): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h:
+
+2016-07-04  Brady Eidson  <beidson@apple.com>
+
+        WebProcesses don't handle DatabaseProcess going away uncleanly..
+        https://bugs.webkit.org/show_bug.cgi?id=159371
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::terminateDatabaseProcess): Deleted.
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::connectionToServerLost):
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+
+        * WebProcess/Databases/WebToDatabaseProcessConnection.cpp:
+        (WebKit::WebToDatabaseProcessConnection::didReceiveMessage):
+        (WebKit::WebToDatabaseProcessConnection::didClose): Notify each connection
+          that the database server connection dropped.
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Null WebCore::Range dereference in WebEditorClient::updateGlobalSelection
+        https://bugs.webkit.org/show_bug.cgi?id=159341
+
+        Reviewed by Carlos Garcia Campos.
+
+        FrameSelection::toNormalizedRange() can return null. Null check is
+        needed.
+
+        Tests:
+            editing/input/set-value-on-input-and-delete.html
+            editing/selection/selection-in-iframe-removed-crash.html
+            imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html
+            imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-after-content-change.html
+            imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-textarea.html
+            imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application.html
+
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        (WebKit::WebEditorClient::updateGlobalSelection): Do not update
+        global selection if FrameSelection::toNormalizedRange() returns
+        null.
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] ASSERTION_FAILED: m_key != PTHREAD_KEYS_MAX when defining WEBKIT2_PAUSE_WEB_PROCESS_ON_LAUNCH
+        https://bugs.webkit.org/show_bug.cgi?id=158149
+
+        Reviewed by Carlos Garcia Campos.
+
+        WTF::sleep can not be used at the beginning of web process because
+        WTF is not initialized at the moment yet.
+
+        * WebProcess/gtk/WebProcessMainGtk.cpp: Use g_usleep instead of WTF::sleep.
+
+2016-07-03  Dan Bernstein  <mitz@apple.com>
+
+        Follow-up to r202789.
+
+        Reviewed by Sam Weinig.
+
+        Ensure that API that isn’t available at all on a platform is declared under an appropriate
+        TARGET_OS_* conditional.
+
+        * Shared/API/Cocoa/_WKHitTestResult.h:
+        * Shared/API/Cocoa/_WKHitTestResult.mm:
+        * Shared/API/Cocoa/_WKHitTestResultInternal.h:
+        * UIProcess/API/Cocoa/WKOpenPanelParameters.h:
+        * UIProcess/API/Cocoa/WKOpenPanelParameters.mm:
+        * UIProcess/API/Cocoa/WKOpenPanelParametersInternal.h:
+        * UIProcess/API/Cocoa/WKPreviewActionItemIdentifiers.h:
+        * UIProcess/API/Cocoa/WKPreviewActionItemIdentifiers.mm:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2016-07-03  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Adopt modern API availability macros
+        https://bugs.webkit.org/show_bug.cgi?id=159378
+
+        Reviewed by Sam Weinig.
+
+        iOS 10 and macOS Sierra introduce new macros for declaring API availability, defined in
+        CFAvailability.h, including API_AVAILABLE, API_DEPRECATED, and
+        API_DEPRECATED_WITH_REPLACEMENT. Rather than having positional parameters for macOS and iOS
+        versions, the new macros take a variable number of function-like parameters, where the
+        function specifies the platform to which it applies.
+
+        To have WebKit2’s postprocessed headers use the new macros, we make the following changes:
+
+        - Replace instances of WK_AVAILABLE(_mac, _ios) with WK_API_AVAILABLE(macosx(_mac), ios(_ios)),
+          eliding a platform if its current availability is NA.
+        - Change instances of WK_CLASS_AVAILABLE(_mac, _ios) to
+          WK_CLASS_AVAILABLE(macosx(_mac), ios(_ios)), eliding a platform if its current
+          availability is NA.
+        - Replace instances of WK_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...) with
+          WK_API_DEPRECATED_WITH_REPLACEMENT(_replacement, macosx(_macIntro, _macDep), ios(_iosIntro, _iosDep))
+          when there is a one-for-one replacement, and with
+          WK_API_DEPRECATED(_message, macosx(_macIntro, _macDep), ios(_iosIntro, _iosDep)) when the
+          replacement isn’t one-for-one. Again, if the API doesn’t apply to a platform, then it’s
+          elided.
+        - Replace instances of WK_CLASS_DEPRECATED with WK_CLASS_DEPRECATED_WITH_REPLACEMENT,
+          following the same rules.
+        - Replace instances of the WK_ENUM_* macros with corresponding WK_API_* macros, now that
+          all supported compilers support availability attributes on enum values.
+
+        * Configurations/WebKit.xcconfig: Disable header postprocessing when building for iOS 9.x,
+          which doesn’t have the new macros.
+
+        * mac/postprocess-framework-headers.sh: Handle the new WK_* macros: WK_API_AVAILABLE becomes
+          API_AVAILABLE; WK_API_DEPRECATED(_WITH_REPLACEMENT) become API_DEPRECATED(_WITH_REPLACEMENT);
+          WK_CLASS_AVAILABLE and WK_CLASS_DEPRECATED(_WITH_REPLACEMENT) change to the corresponding
+          API_ macros, prefixed with WK_EXTERN.
+        * Shared/API/Cocoa/WKFoundation.h: When header postprocessing is disabled, provide
+          definitions of the new WK_* macros we use.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h: In addition to the above, changed one
+          instance of (iOS) 10_0 to WK_IOS_TBA.
+
+        Made the above changes in the following headers:
+
+        * Shared/API/Cocoa/WKBrowsingContextHandle.h:
+        * Shared/API/Cocoa/_WKFrameHandle.h:
+        * Shared/API/Cocoa/_WKHitTestResult.h:
+        * Shared/API/Cocoa/_WKRemoteObjectInterface.h:
+        * Shared/API/Cocoa/_WKRemoteObjectRegistry.h:
+        * Shared/API/Cocoa/_WKRenderingProgressEvents.h:
+        * Shared/API/Cocoa/_WKSameDocumentNavigationType.h:
+        * UIProcess/API/Cocoa/WKBackForwardList.h:
+        * UIProcess/API/Cocoa/WKBackForwardListItem.h:
+        * UIProcess/API/Cocoa/WKBrowsingContextController.h:
+        * UIProcess/API/Cocoa/WKBrowsingContextGroup.h:
+        * UIProcess/API/Cocoa/WKConnection.h:
+        * UIProcess/API/Cocoa/WKError.h:
+        * UIProcess/API/Cocoa/WKErrorPrivate.h:
+        * UIProcess/API/Cocoa/WKFrameInfo.h:
+        * UIProcess/API/Cocoa/WKFrameInfoPrivate.h:
+        * UIProcess/API/Cocoa/WKMenuItemIdentifiersPrivate.h:
+        * UIProcess/API/Cocoa/WKNavigation.h:
+        * UIProcess/API/Cocoa/WKNavigationAction.h:
+        * UIProcess/API/Cocoa/WKNavigationActionPrivate.h:
+        * UIProcess/API/Cocoa/WKNavigationData.h:
+        * UIProcess/API/Cocoa/WKNavigationDelegate.h:
+        * UIProcess/API/Cocoa/WKNavigationDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKNavigationResponse.h:
+        * UIProcess/API/Cocoa/WKOpenPanelParameters.h:
+        * UIProcess/API/Cocoa/WKPreferences.h:
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * UIProcess/API/Cocoa/WKPreviewActionItem.h:
+        * UIProcess/API/Cocoa/WKPreviewActionItemIdentifiers.h:
+        * UIProcess/API/Cocoa/WKPreviewElementInfo.h:
+        * UIProcess/API/Cocoa/WKProcessGroup.h:
+        * UIProcess/API/Cocoa/WKProcessPool.h:
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/API/Cocoa/WKScriptMessage.h:
+        * UIProcess/API/Cocoa/WKSecurityOrigin.h:
+        * UIProcess/API/Cocoa/WKTypeRefWrapper.h:
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKUserContentController.h:
+        * UIProcess/API/Cocoa/WKUserContentControllerPrivate.h:
+        * UIProcess/API/Cocoa/WKUserScript.h:
+        * UIProcess/API/Cocoa/WKUserScriptPrivate.h:
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataRecord.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataRecordPrivate.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/API/Cocoa/WKWindowFeatures.h:
+        * UIProcess/API/Cocoa/_WKActivatedElementInfo.h:
+        * UIProcess/API/Cocoa/_WKAutomationSession.h:
+        * UIProcess/API/Cocoa/_WKContextMenuElementInfo.h:
+        * UIProcess/API/Cocoa/_WKDiagnosticLoggingDelegate.h:
+        * UIProcess/API/Cocoa/_WKDownload.h:
+        * UIProcess/API/Cocoa/_WKElementAction.h:
+        * UIProcess/API/Cocoa/_WKExperimentalFeature.h:
+        * UIProcess/API/Cocoa/_WKFindOptions.h:
+        * UIProcess/API/Cocoa/_WKFormInputSession.h:
+        * UIProcess/API/Cocoa/_WKInputDelegate.h:
+        * UIProcess/API/Cocoa/_WKLayoutMode.h:
+        * UIProcess/API/Cocoa/_WKOverlayScrollbarStyle.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKSessionState.h:
+        * UIProcess/API/Cocoa/_WKThumbnailView.h:
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.h:
+        * UIProcess/API/Cocoa/_WKUserContentFilter.h:
+        * UIProcess/API/Cocoa/_WKUserContentWorld.h:
+        * UIProcess/API/Cocoa/_WKUserStyleSheet.h:
+        * UIProcess/API/Cocoa/_WKVisitedLinkProvider.h:
+        * UIProcess/API/Cocoa/_WKVisitedLinkStore.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataRecord.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataSize.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataStore.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFormDelegatePrivate.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInHitTestResult.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInPageGroup.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorld.h:
+        * WebProcess/InjectedBundle/API/mac/WKDOMDocument.h:
+        * WebProcess/InjectedBundle/API/mac/WKDOMElement.h:
+        * WebProcess/InjectedBundle/API/mac/WKDOMNode.h:
+        * WebProcess/InjectedBundle/API/mac/WKDOMRange.h:
+        * WebProcess/InjectedBundle/API/mac/WKDOMText.h:
+        * WebProcess/InjectedBundle/API/mac/WKDOMTextIterator.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugIn.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.h:
+
+2016-07-01  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Many layout tests are timeout after r202532.
+        https://bugs.webkit.org/show_bug.cgi?id=159337
+
+        Reviewed by Gyuyoung Kim.
+
+        WebPageProxy::forceRepaint() wait for the next commit from the web process
+        after r202532, but WebPageProxy::callAfterNextPresentationUpdate() is not 
+        implemented in CoordinatedDrawingAreaProxy.
+
+        * UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.cpp:
+        (WebKit::CoordinatedDrawingAreaProxy::contentsRect):
+        (WebKit::CoordinatedDrawingAreaProxy::dispatchAfterEnsuringDrawing):
+        (WebKit::CoordinatedDrawingAreaProxy::sizeDidChange):
+        * UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.h:
+        (WebKit::CoordinatedDrawingAreaProxy::page):
+
+2016-07-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r189668): Notification tests are flakey
+        https://bugs.webkit.org/show_bug.cgi?id=159375
+        <rdar://problem/22760990>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Implement WKNotificationManagerGetLocalID(). For more information, see the entry in Tools/ChangeLog.
+
+        * UIProcess/API/C/WKNotificationManager.cpp:
+        (WKNotificationManagerGetLocalID):
+        * UIProcess/Notifications/WebNotificationManagerProxy.cpp:
+        (WebKit::WebNotificationManagerProxy::notificationLocalIDForTesting):
+        * UIProcess/Notifications/WebNotificationManagerProxy.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-07-01  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(r201405): Fullscreen video no longer enters low-power mode
+        https://bugs.webkit.org/show_bug.cgi?id=159220
+        <rdar://problem/26701056>
+
+        Reviewed by Beth Dakin.
+
+        In r201405, we removed the call to setTopContentInset(0) to avoid a flash
+        during repainting where the WebProcess still thought it had an inset and
+        the UIProcess did not, but the >0 inset breaks low power video playback 
+        in fullscreen. So, instead, fix the repaint issue by setting a CALayer
+        fence which makes sure both the UIProcess and WebProcess paint simultaneously
+        after resizing and changing the top content inset.
+
+        This requires a new message from WebPageProxy -> WebPage: setTopContentInsetFenced().
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setTopContentInset):
+        * UIProcess/mac/WKFullScreenWindowController.h:
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController enterFullScreen:]):
+        (-[WKFullScreenWindowController finishedEnterFullScreenAnimation:]):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setTopContentInsetFenced):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2016-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Get rid of support for old SDKs
+        https://bugs.webkit.org/show_bug.cgi?id=159369
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/API/Cocoa/WKFoundation.h: Removed the WK_ARRAY, WK_DICTIONARY, and WK_SET macros,
+          which were only needed for pre-10.11 SDKs.
+
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::mouseButtonForEvent): Removed checking for pre-10.10.3 SDKs.
+        (WebKit::globalPointForEvent): Ditto.
+        (WebKit::pointForEvent): Ditto.
+        (WebKit::WebEventFactory::createWebMouseEvent): Ditto.
+
+        * UIProcess/API/Cocoa/WKBackForwardList.h: Replaced WK_ARRAY(...) with NSArray<...>.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm: Ditto.
+        (-[WKPreferences _setFixedPitchFontFamily:]):
+        (+[WKPreferences _experimentalFeatures]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h: Ditto.
+
+        * UIProcess/API/Cocoa/WKUIDelegate.h: Ditto.
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h: Ditto.
+
+        * UIProcess/API/Cocoa/WKUserContentController.h: Ditto.
+        * UIProcess/API/Cocoa/WKUserContentControllerPrivate.h: Ditto.
+
+        * UIProcess/API/Cocoa/WKUserScriptPrivate.h: Ditto.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataRecord.h: Replaced WK_SET(...) with NSSet<...>.
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.h: Ditto.
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm: Ditto.
+        (-[WKWebsiteDataStore fetchDataRecordsOfTypes:completionHandler:]):
+        (-[WKWebsiteDataStore _fetchDataRecordsOfTypes:withOptions:completionHandler:]):
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h: Ditto.
+
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h: Replaced WK_ARRAY(...) with NSArray<...>.
+
+        * UIProcess/API/Cocoa/_WKUserStyleSheet.h: Ditto.
+        * UIProcess/API/Cocoa/_WKUserStyleSheet.mm: Ditto.
+        (-[_WKUserStyleSheet initWithSource:forMainFrameOnly:]):
+        (-[_WKUserStyleSheet initWithSource:forMainFrameOnly:legacyWhitelist:legacyBlacklist:userContentWorld:]):
+        (-[_WKUserStyleSheet initWithSource:forMainFrameOnly:legacyWhitelist:legacyBlacklist:baseURL:userContentWorld:]):
+
+        * UIProcess/API/Cocoa/_WKWebsiteDataSize.h: Replaced WK_SET(...) with NSSet<...>.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::pressureChangeWithEvent): Removed checking for pre-10.10.3 SDKs.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.h: Replaced WK_ARRAY(...) with
+          NSArray<...>.
+
+        * mac/postprocess-framework-headers.sh: Removed sed rules for WK_ARRAY, WK_DICTIONARY and
+          WK_SET.
+
+2016-07-01  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Possible null Range dereference under computeAutocorrectionContext()
+        https://bugs.webkit.org/show_bug.cgi?id=159328
+        <rdar://problem/26766720>
+
+        Reviewed by Benjamin Poulain.
+
+        The code in computeAutocorrectionContext() was checking Editor::hasComposition()
+        before dereferencing Editor::compositionRange(). However, compositionRange()
+        can also return null in other cases (e.g. compositionStart == compositionEnd).
+
+        Drop the check for hasComposition() and do a null check on the value returned
+        by compositionRange() instead.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::computeAutocorrectionContext):
+
+2016-07-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Prevent crash when attempting to copy an image
+        https://bugs.webkit.org/show_bug.cgi?id=159288
+        <rdar://problem/23507828>
+
+        Reviewed by Brady Eidson.
+        
+        WebKit could crash if the HTMLImageElement had a null cachedImage member.
+        A little investigation showed that the URL we retrieve from the cachedImage
+        is never used, so rather than adding a null check, let's just pass a
+        default argument. The actual URL gets read from elsewhere in the pasteboard
+        processing code.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::performActionOnElement): Don't bother passing the
+        unused URL argument to the pasteboard method.
+
+2016-07-01  Brady Eidson  <beidson@apple.com>
+
+        Blob content type not preserved when retrieving blobs from IndexedDB.
+        <rdar://problem/27057357> and https://bugs.webkit.org/show_bug.cgi?id=159360
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::registerBlobURLOptionallyFileBacked):
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.h:
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURLOptionallyFileBacked):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+
+        * WebProcess/FileAPI/BlobRegistryProxy.cpp:
+        (WebKit::BlobRegistryProxy::registerBlobURLOptionallyFileBacked):
+        * WebProcess/FileAPI/BlobRegistryProxy.h:
+
+2016-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Get rid of WK_NULLABLE_SPECIFIER now that all supported compilers understand _Nullable
+        https://bugs.webkit.org/show_bug.cgi?id=159361
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/API/Cocoa/WKFoundation.h:
+        * UIProcess/API/Cocoa/WKNavigationDelegate.h:
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * mac/postprocess-framework-headers.sh:
+
+2016-07-01  Youenn Fablet  <youennf@gmail.com>
+
+        Add a runtime flag for DOM iterators
+        https://bugs.webkit.org/show_bug.cgi?id=159300
+
+        Reviewed by Alex Christensen.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-07-01  Andreas Kling  <akling@apple.com>
+
+        [Mac] Get rid of the old timey rubber-banding linen pattern.
+        <https://webkit.org/b/159329>
+
+        Reviewed by Benjamin Poulain.
+
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        (WebKit::updateCustomAppearance):
+
+2016-06-30  Tina Liu  <iting_liu@apple.com>
+
+        Add SPI to allow restoring session state without navigation in WKPage
+        https://bugs.webkit.org/show_bug.cgi?id=159326
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (restoreFromSessionState):
+        Added a helper function that takes a bool parameter to specify whether
+        to navigate or not when restoring from the session state.
+        (WKPageRestoreFromSessionState):
+        Calling restoreFromSessionState, passing navigate = true.
+        (WKPageRestoreFromSessionStateWithoutNavigation):
+        Ditto but passing navigate = false.
+        * UIProcess/API/C/WKPagePrivate.h:
+
+2016-06-30  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] WebContent processes do not exit promptly
+        https://bugs.webkit.org/show_bug.cgi?id=159301
+        <rdar://problem/26965488>
+
+        Reviewed by Anders Carlsson.
+
+        WebContent processes do not exit promptly, they hang around for 10 seconds
+        until the watchdog forcefully calls exit().
+
+        This patch addresses the issue by asking XPC to exit when clean. It also
+        fixes 2 XPC transactions that were leaking so that XPC can become clean.
+
+        * DatabaseProcess/EntryPoint/mac/XPCService/DatabaseServiceEntryPoint.mm:
+        (DatabaseServiceInitializer):
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkServiceEntryPoint.mm:
+        (NetworkServiceInitializer):
+        * PluginProcess/EntryPoint/mac/XPCService/PluginServiceEntryPoint.mm:
+        (PluginServiceInitializer):
+        * WebProcess/EntryPoint/mac/XPCService/WebContentServiceEntryPoint.mm:
+        (WebContentServiceInitializer):
+        Add extra priorityBoostMessage parameter which is then passed along to
+        ChildProcess via initialization parameters. ChildProcess is now in
+        charge of retaining the message for as long as it needs the priority
+        boost. In particular, ChildProcess now takes care of releasing the
+        boost message before existing to avoid leaking an XPC transaction.
+
+        * Shared/ChildProcess.cpp:
+        (WebKit::ChildProcess::initialize):
+        Retain priorityBoostMessage as a data member.
+
+        (WebKit::ChildProcess::stopRunLoop):
+        (WebKit::ChildProcess::platformStopRunLoop):
+        * Shared/ios/ChildProcessIOS.mm:
+        (WebKit::ChildProcess::platformStopRunLoop):
+        On iOS, call XPCServiceExit() to exit instead of RunLoop::main().stop()
+        which did not work.
+
+        * Shared/ChildProcess.h:
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.h:
+        (WebKit::XPCServiceInitializer):
+        Set priorityBoostMessage on ChildProcessInitializationParameters.
+
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm:
+        (WebKit::XPCServiceExit):
+        Add XPCServiceExit() function which destroys the priority boost
+        message, calls xpc_transaction_end() to balance the
+        xpc_transaction_begin() in XPCServiceInitializer() and then call
+        xpc_transaction_exit_clean() to ask XPC to exit when clean.
+
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm:
+        (WebKit::XPCServiceEventHandler):
+        Leaking the "pre-bootstrap" event for priority boosting would cause us to
+        leak an XPC transaction, which would prevent XPC from becoming clean and
+        exiting. Instead, we now pass it along to the initialization function.
+        We then pass it to ChildProcess which manages the lifetime of this message
+        instead of leaking it.
+
+2016-06-30  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r202329): WebInspectorProxy's WKPagePolicyClient callbacks are not being called
+        https://bugs.webkit.org/show_bug.cgi?id=159308
+        <rdar://problem/27111764>
+
+        Reviewed by Tim Horton.
+
+        Adopt WKPageNavigationClient and ditch WKPolicyClient and WKPageLoaderClient.
+        After r202329, it's not possible to set a WKPolicyClient for a WKPage/WebPageProxy that backs a WKWebView.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::isMainOrTestInspectorPage): Take a WebCore::ResourceRequest.
+        (WebKit::processDidCrash): Deleted.
+        (WebKit::webProcessDidCrash): Rename to match new client callback name.
+        (WebKit::decidePolicyForNavigationAction): Rework this to take new argument types.
+        (WebKit::WebInspectorProxy::eagerlyCreateInspectorPage):
+        Install a WKPageNavigationClient. 
+
+2016-06-30  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Process suspension is prevented for 30 seconds after closing a tab
+        https://bugs.webkit.org/show_bug.cgi?id=159280
+        <rdar://problem/27014867>
+
+        Reviewed by Gavin Barraclough.
+
+        When closing a tab, ConnectionTerminationWatchdog takes a background
+        assertion on behalf of the WebContent process and only releases it
+        after 30 seconds, allowing for the WebContent process to exit cleanly
+        without worrying about getting suspended too early.
+
+        However, the child process normally exits much sooner than this and
+        we end up holding a process assertion for no reason for a full 30
+        seconds anyway. This patch addresses the issue by registering an
+        invalidation handler with the BKSProcessAssertion and releasing our
+        our assertion in such case. The invalidation handler gets called
+        as soon as the child process exits.
+
+        * Platform/spi/ios/AssertionServicesSPI.h:
+        * UIProcess/ProcessAssertion.cpp:
+        (WebKit::ProcessAssertion::ProcessAssertion):
+        * UIProcess/ProcessAssertion.h:
+        (WebKit::ProcessAssertion::ProcessAssertion):
+        (WebKit::ProcessAssertion::validity):
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (WebKit::ProcessAssertion::ProcessAssertion):
+        (WebKit::ProcessAssertion::~ProcessAssertion):
+        (WebKit::ProcessAndUIAssertion::updateRunInBackgroundCount):
+        (WebKit::ProcessAndUIAssertion::ProcessAndUIAssertion):
+        (WebKit::ProcessAssertion::setState): Deleted.
+
+2016-06-30  Tim Horton  <timothy_horton@apple.com>
+
+        Keep track of when a WKWebView is blank before the initial non-empty layout
+        https://bugs.webkit.org/show_bug.cgi?id=159217
+        <rdar://problem/26071766>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        (-[WKWebView _setIsBlankBeforeFirstNonEmptyLayout:]):
+        (-[WKWebView _didFirstVisuallyNonEmptyLayoutForMainFrame]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame):
+
+2016-06-29  Gavin Barraclough  <barraclough@apple.com>
+
+        Cleanup ProcessAssertion RunInBackground management
+        https://bugs.webkit.org/show_bug.cgi?id=159284
+
+        Reviewed by Chris Dumez.
+
+        Factor out code that handles taking a background assertion on the UI app into
+        ProcessAndUIAssertion::updateRunInBackgroundCount helper.
+
+        This patch just cleanup to enable a futher fix.
+
+        * UIProcess/ProcessAssertion.h:
+        (WebKit::ProcessAssertion::state):
+            - Added ProcessAndUIAssertion::updateRunInBackgroundCount
+            - Added ProcessAndUIAssertion::m_isHoldingBackgroundAssertionOnApp
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (WebKit::ProcessAndUIAssertion::updateRunInBackgroundCount):
+            - helper to manage calls to incrementNeedsToRunInBackgroundCount/decrementNeedsToRunInBackgroundCount
+        (WebKit::ProcessAndUIAssertion::ProcessAndUIAssertion):
+            - call updateRunInBackgroundCount
+        (WebKit::ProcessAndUIAssertion::~ProcessAndUIAssertion):
+            changed to use m_isHoldingBackgroundAssertionOnApp
+        (WebKit::ProcessAndUIAssertion::setState):
+            - call updateRunInBackgroundCount
+
 2016-06-30  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [Coordinated Graphics] Move CompositingCoordinator from platform to WebKit2 layer

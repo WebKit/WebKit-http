@@ -245,6 +245,10 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
         }
 
         WebCore::ResourceResponse resourceResponse(response);
+        // Lazy initialization is not helpful in the WebKit2 case because we always end up initializing
+        // all the fields when sending the response to the WebContent process over IPC.
+        resourceResponse.disableLazyInitialization();
+
         copyTimingData([dataTask _timingData], resourceResponse.resourceLoadTiming());
         auto completionHandlerCopy = Block_copy(completionHandler);
         networkDataTask->didReceiveResponse(WTFMove(resourceResponse), [completionHandlerCopy, taskIdentifier](WebCore::PolicyAction policyAction) {
@@ -393,6 +397,7 @@ NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID, CustomPr
     configuration.URLCredentialStorage = nil;
     m_sessionWithoutCredentialStorageDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this withCredentials:false]);
     m_sessionWithoutCredentialStorage = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionWithoutCredentialStorageDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
+    LOG(NetworkSession, "Created NetworkSession with cookieAcceptPolicy %lu", configuration.HTTPCookieStorage.cookieAcceptPolicy);
 }
 
 NetworkSession::~NetworkSession()

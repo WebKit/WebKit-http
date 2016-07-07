@@ -1956,12 +1956,13 @@ sub ToMethodName
 {
     my $param = shift;
     my $ret = lcfirst($param);
+    $ret =~ s/cSS/css/ if $ret =~ /^cSS/;
+    $ret =~ s/dOM/dom/ if $ret =~ /^dOM/;
     $ret =~ s/hTML/html/ if $ret =~ /^hTML/;
-    $ret =~ s/uRL/url/ if $ret =~ /^uRL/;
     $ret =~ s/jS/js/ if $ret =~ /^jS/;
+    $ret =~ s/uRL/url/ if $ret =~ /^uRL/;
     $ret =~ s/xML/xml/ if $ret =~ /^xML/;
     $ret =~ s/xSLT/xslt/ if $ret =~ /^xSLT/;
-    $ret =~ s/cSS/css/ if $ret =~ /^cSS/;
 
     # For HTML5 FileSystem API Flags attributes.
     # (create is widely used to instantiate an object and must be avoided.)
@@ -2309,8 +2310,7 @@ sub GenerateImplementation
         }
 
         if ($interface->iterable) {
-            my $functionName = GetFunctionName($interface, $className, @{$interface->iterable->functions}[0]);
-            push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), DontEnum);\n");
+            addIterableProperties($interface, $className);
         }
 
         push(@implContent, "}\n\n");
@@ -3521,6 +3521,13 @@ sub GenerateCallWith
         push(@$outputArray, "    auto& document = downcast<Document>(*context);\n");
         push(@callWithArgs, "document");
     }
+    if ($codeGenerator->ExtendedAttributeContains($callWith, "CallerDocument")) {
+        $implIncludes{"Document.h"} = 1;
+        push(@$outputArray, "    auto* document = callerDOMWindow(state).document();\n");
+        push(@$outputArray, "    if (!document)\n");
+        push(@$outputArray, "        return" . ($returnValue ? " " . $returnValue : "") . ";\n");
+        push(@callWithArgs, "*document");
+    }
     if ($function and $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments")) {
         push(@$outputArray, "    RefPtr<Inspector::ScriptArguments> scriptArguments(Inspector::createScriptArguments(state, " . @{$function->parameters} . "));\n");
         $implIncludes{"<inspector/ScriptArguments.h>"} = 1;
@@ -3529,6 +3536,7 @@ sub GenerateCallWith
     }
     push(@callWithArgs, "activeDOMWindow(state)") if $codeGenerator->ExtendedAttributeContains($callWith, "ActiveWindow");
     push(@callWithArgs, "firstDOMWindow(state)") if $codeGenerator->ExtendedAttributeContains($callWith, "FirstWindow");
+    push(@callWithArgs, "callerDOMWindow(state)") if $codeGenerator->ExtendedAttributeContains($callWith, "CallerWindow");
 
     return @callWithArgs;
 }
@@ -4245,6 +4253,26 @@ JSC::EncodedJSValue JSC_HOST_CALL ${functionName}(JSC::ExecState* state)
 END
         }
     }
+}
+
+sub addIterableProperties()
+{
+    my $interface = shift;
+    my $className = shift;
+
+    if ($interface->iterable->extendedAttributes->{"EnabledAtRuntime"}) {
+        AddToImplIncludes("RuntimeEnabledFeatures.h");
+        my $enable_function = GetRuntimeEnableFunctionName($interface->iterable);
+        push(@implContent, "    if (${enable_function}()) {\n    ");
+    }
+
+    my $functionName = GetFunctionName($interface, $className, @{$interface->iterable->functions}[0]);
+    push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), DontEnum);\n");
+
+    if ($interface->iterable->extendedAttributes->{"EnabledAtRuntime"}) {
+        push(@implContent, "    }\n");
+    }
+
 }
 
 sub GetNativeTypeFromSignature

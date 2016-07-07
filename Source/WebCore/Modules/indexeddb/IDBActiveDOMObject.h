@@ -40,6 +40,8 @@ public:
     ThreadIdentifier originThreadID() const { return m_originThreadID; }
 
     void contextDestroyed() final {
+        ASSERT(currentThread() == m_originThreadID);
+
         Locker<Lock> lock(m_scriptExecutionContextLock);
         ActiveDOMObject::contextDestroyed();
     }
@@ -61,6 +63,22 @@ public:
             return;
 
         context->postCrossThreadTask(object, method, arguments...);
+    }
+
+    void callFunctionOnOriginThread(WTF::Function<void ()>&& function)
+    {
+        if (originThreadID() == currentThread()) {
+            function();
+            return;
+        }
+
+        Locker<Lock> lock(m_scriptExecutionContextLock);
+
+        ScriptExecutionContext* context = scriptExecutionContext();
+        if (!context)
+            return;
+
+        context->postTask(WTFMove(function));
     }
 
 protected:

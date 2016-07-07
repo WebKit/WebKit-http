@@ -169,7 +169,6 @@ http/tests/xmlhttprequest/upload-onprogress-event.html [ Skip ]
 fast/files [ Skip ]
 http/tests/fileapi [ Skip ]
 fast/forms/file/recover-file-input-in-unposted-form.html [ Skip ]
-http/tests/security/contentSecurityPolicy/blob-urls-match-self.html [ Skip ]
 http/tests/xmlhttprequest/post-blob-content-type-async.html [ Skip ]
 http/tests/xmlhttprequest/post-blob-content-type-sync.html [ Skip ]
 webkit.org/b/29287 http/tests/local/fileapi/ [ Skip ]
@@ -225,23 +224,13 @@ http/tests/misc/image-checks-for-accept.html [ Skip ]
 # TODO Need to add functionality to DumpRenderTree to handle enable/disable Spatial Navigation
 fast/spatial-navigation/ [ Skip ]
 
-# TODO mouseScrollBy() and continuousMouseScrollBy() are not yet implemented in the Windows EventSender API.
-webkit.org/b/36002 fast/events/remove-child-onscroll.html [ Skip ]
-webkit.org/b/36002 fast/events/platform-wheelevent-in-scrolling-div.html [ Skip ]
-webkit.org/b/36002 fast/events/platform-wheelevent-with-delta-zero-crash.html [ Skip ]
-webkit.org/b/36002 fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Skip ]
-webkit.org/b/36002 fast/events/scroll-in-scaled-page-with-overflow-hidden.html [ Skip ]
-webkit.org/b/36002 fast/events/wheelevent-direction-inverted-from-device.html [ Skip ]
-webkit.org/b/36002 fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Skip ]
-webkit.org/b/36002 fast/events/wheelevent-in-text-node.html [ Skip ]
-webkit.org/b/36002 fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Skip ]
-webkit.org/b/36002 fast/forms/search/search-scroll-hidden-decoration-container-crash.html [ Skip ]
-webkit.org/b/36002 fast/repaint/overflow-auto-in-overflow-auto-scrolled.html [ Skip ]
-webkit.org/b/36002 fast/repaint/overflow-scroll-in-overflow-scroll-scrolled.html [ Skip ]
-webkit.org/b/36002 fast/repaint/table-overflow-auto-in-overflow-auto-scrolled.html [ Skip ]
-webkit.org/b/36002 fast/repaint/table-overflow-scroll-in-overflow-scroll-scrolled.html [ Skip ]
-webkit.org/b/36002 scrollbars/scrollevent-iframe-no-scrolling-wheel.html [ Skip ]
-webkit.org/b/36002 scrollbars/scroll-rtl-or-bt-layer.html [ Skip ]
+# TODO Investigate why these mouse scroll tests are failing.
+fast/events/platform-wheelevent-in-scrolling-div.html [ Failure ]
+fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Failure ]
+fast/events/scroll-in-scaled-page-with-overflow-hidden.html [ Failure ]
+fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Failure ]
+fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Failure ]
+scrollbars/scroll-rtl-or-bt-layer.html [ Timeout ]
 
 # TODO Needs testRunner.enableAutoResizeMode()
 fast/autoresize/ [ Skip ]
@@ -1950,20 +1939,18 @@ http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html [
 ################################################################################
 ##################          MathML Issues                   ####################
 ################################################################################
-webkit.org/b/119002 mathml/presentation/bug97990.html [ ImageOnlyFailure ]
 mathml/presentation/mo-stacked-glyphs.html [ ImageOnlyFailure ]
 mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
-webkit.org/b/130322 mathml/opentype/large-operators.html [ Failure ]
-webkit.org/b/130322 mathml/opentype/opentype-stretchy.html [ Failure ]
-webkit.org/b/130322 mathml/opentype/vertical.html [ Failure ]
-webkit.org/b/72828 mathml/opentype/horizontal.html [ Failure ]
-webkit.org/b/72828 mathml/opentype/horizontal-munderover.html [ Failure ]
-mathml/presentation/mo-invisible.html [ Skip ]  # Crashing
-webkit.org/b/119038 mathml/presentation/mo-stretch.html [ Failure ]
-webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
-mathml/opentype/opentype-stretchy-horizontal.html [ Skip ]  # Crashing
 mathml/presentation/style-changed.html [ Crash Pass ]
-webkit.org/b/140522 mathml/opentype/munderover-layout-resize.html [ Skip ]  # Crashing
+mathml/opentype/large-operators-munderover.html [ Failure ]
+mathml/presentation/attributes-mathvariant.html [ ImageOnlyFailure ]
+webkit.org/b/159202 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
+mathml/presentation/tokenElements-mathvariant.html [ ImageOnlyFailure ]
+
+# These tests require the Latin Modern Math font.
+mathml/opentype/fraction-line.html [ Skip ]
+mathml/opentype/large-operators-italic-correction.html [ Skip ]
+mathml/presentation/fractions-linethickness.html [ Skip ]
 ################################################################################
 #################          End MathML Issues                ####################
 ################################################################################
@@ -1981,7 +1968,6 @@ webkit.org/b/117322 fast/css/text-indent-first-line-006.html [ ImageOnlyFailure 
 webkit.org/b/117322 fast/css/word-spacing-characters-complex-text.html [ ImageOnlyFailure ]
 fast/css/image-set-setting.html [ Failure ]
 fast/css/image-set-value-not-removed-crash.html [ Failure ]
-fast/css/fontloader-download-error.html [ Failure ]
 fast/css/input-search-padding.html [ Failure ]
 fast/css/getComputedStyle/getComputedStyle-outline-shorthand.html [ Pass Timeout ]
 webkit.org/b/136484 fast/css-generated-content/initial-letter-basic.html [ Failure ]
@@ -2185,7 +2171,6 @@ http/tests/security/contentSecurityPolicy/block-mixed-content-hides-warning.html
 http/tests/security/contentSecurityPolicy/object-src-url-allowed.html [ Failure ]
 http/tests/security/contentSecurityPolicy/object-src-url-blocked.html [ Failure ]
 http/tests/security/contentSecurityPolicy/script-src-star-cross-scheme.html [ Failure ]
-webkit.org/b/147646 http/tests/security/contentSecurityPolicy/source-list-parsing-10.html [ Failure ]
 
 # Crashes
 http/tests/misc/drag-not-loaded-image.html [ Skip ] # Crash
@@ -2667,7 +2652,6 @@ webkit.org/b/150830 fast/text/woff2.html [ Skip ]
 [ Debug ] http/tests/security/mixedContent/data-url-script-in-iframe.html [ Skip ]
 [ Debug ] http/tests/security/listener/xss-window-onclick-addEventListener.html [ Skip ] # Causes later tests to fail
 [ Debug ] ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
-[ Debug ] mathml/roots-removeChild.html [ ImageOnlyFailure ]
 [ Debug ] platform/win/fast/events/panScroll-no-iframe-jump.html [ Skip ] # Causes later tests to fail
 [ Debug ] sputnik/Unicode/Unicode_320/S7.6_A3.1.html [ Skip ] # Debug Assertion
 [ Debug ] sputnik/Unicode/Unicode_320/S7.6_A3.2.html [ Skip ] # Debug Assertion
@@ -3097,8 +3081,6 @@ webkit.org/b/140216 fast/writing-mode/broken-ideograph-small-caps.html [ Failure
 webkit.org/b/117322 fast/writing-mode/vertical-subst-font-vert-no-dflt.html [ ImageOnlyFailure ]
 fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
 
-imported/w3c/html-templates/parsing-html-templates/creating-an-element-for-the-token/template-owner-document.html [ Pass Failure Timeout ]
-
 webkit.org/b/117322 printing/quirks-percentage-height-body.html [ ImageOnlyFailure ]
 webkit.org/b/117322 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
 webkit.org/b/117322 printing/standards-percentage-heights.html [ ImageOnlyFailure ]
@@ -3223,9 +3205,6 @@ media/video-seek-to-current-time.html [ Skip ]
 # Weird black image sometimes
 webkit.org/b/148144 fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
 
-# This operating system does not have language-sensitive font fallback.
-css3/line-break-language-sensitive [ Pass ImageOnlyFailure ]
-
 # TestRunner::cellForColumnAndRow() not implemented
 webkit.org/b/148354 accessibility/aria-table-content.html [ Skip ]
 
@@ -3332,6 +3311,9 @@ webkit.org/b/137204 svg/W3C-SVG-1.1/fonts-kern-01-t.svg [ Failure ]
 webkit.org/b/137204 svg/text/kerning.svg [ Failure ]
 webkit.org/b/137204 svg/text/text-hkern.svg [ Failure ]
 webkit.org/b/137204 svg/text/text-vkern.svg [ Failure ]
+
+# This test is WebKit2 only.
+fast/dom/Window/child-window-focus.html
 
 # SVG Fonts don't draw multibyte characters.
 webkit.org/b/154690 svg/W3C-SVG-1.1/text-align-08-b.svg [ Failure ]

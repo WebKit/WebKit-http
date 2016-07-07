@@ -109,7 +109,7 @@ void CrossOriginPreflightChecker::startPreflight()
     // Keep buffering the data for the preflight request.
     options.setDataBufferingPolicy(BufferData);
 
-    options.fetchOptions().redirect = FetchOptions::Redirect::Manual;
+    options.redirect = FetchOptions::Redirect::Manual;
 
     CachedResourceRequest preflightRequest(createAccessControlPreflightRequest(m_request, m_loader.securityOrigin()), options);
     if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
@@ -130,7 +130,7 @@ void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, 
     ResourceError error;
     ResourceResponse response;
     RefPtr<SharedBuffer> data;
-    unsigned identifier = loader.document().frame()->loader().loadResourceSynchronously(preflightRequest, loader.options().allowCredentials(), loader.options().clientCredentialPolicy(), error, response, data);
+    unsigned identifier = loader.document().frame()->loader().loadResourceSynchronously(preflightRequest, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, error, response, data);
 
     if (!error.isNull() && response.httpStatusCode() <= 0) {
         error.setType(ResourceError::Type::AccessControl);

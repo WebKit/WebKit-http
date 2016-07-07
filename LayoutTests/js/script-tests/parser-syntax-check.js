@@ -345,21 +345,21 @@ valid  ("for ((a, b) in c) break");
 invalid("for (a ? b : c in c) break");
 valid  ("for ((a ? b : c) in c) break");
 valid  ("for (var a in b in c) break");
-invalid("for (var a = 5 += 6 in b) break");
-invalid("for (var a = debug('should not be hit') in b) break");
+valid("for (var a = 5 += 6 in b) break");
+valid("for (var a = debug('should not be hit') in b) break");
 invalid("for (var a += 5 in b) break");
 invalid("for (var a = in b) break");
 invalid("for (var a, b in b) break");
 invalid("for (var a = -6, b in b) break");
 invalid("for (var a, b = 8 in b) break");
-invalid("for (var a = (b in c) in d) break");
+valid("for (var a = (b in c) in d) break");
 invalid("for (var a = (b in c in d) break");
 invalid("for (var (a) in b) { }");
 valid  ("for (var a = 7, b = c < d >= d ; f()[6]++ ; --i()[1]++ ) {}");
 invalid("for (var {a} = 20 in b) { }");
 invalid("for (var {a} = 20 of b) { }");
 invalid("for (var {a} = 20 in b) { }");
-invalid("for (var i = 20 in b) { }");
+valid("for (var i = 20 in b) { }");
 invalid("for (var i = 20 of b) { }");
 invalid("for (var {i} = 20 of b) { }");
 invalid("for (var [i] = 20 of b) { }");
@@ -753,6 +753,11 @@ valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } 
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { x(y = (y = () => super.foo) => {return y()}) { return y(); } }");
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { constructor(x = () => super.foo) { super(); this._x_f = x; } x() { return this._x_f(); } }");
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { constructor(x = () => super()) { x(); } x() { return super.foo; } }");
+
+debug("Weird things that used to crash.");
+invalid(`or ([[{break //(elseifo (a=0;a<2;a++)n=
+        [[{aFYY sga=
+        [[{a=Yth FunctionRY&=Ylet 'a'}V a`)
 
 try { eval("a.b.c = {};"); } catch(e1) { e=e1; shouldBe("e.line", "1") }
 foo = 'FAIL';

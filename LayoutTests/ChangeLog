@@ -1,3 +1,1955 @@
+2016-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Align Document.body setter with the HTML specification
+        https://bugs.webkit.org/show_bug.cgi?id=159490
+
+        Reviewed by Alex Christensen.
+
+        Update existing test that was setting a document's body to another frame's body
+        as it was expecting the body element to get cloned rather than adopted / transferred.
+
+        * fast/dom/document-set-body-expected.txt:
+        * fast/dom/document-set-body.html:
+
+2016-07-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Return values of JSArray::createUninitialized (and related) are not consistently checked for nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=159495
+        <rdar://problem/26075433>
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/canvas-getImageData-invalid-result-buffer-crash.html: Added.
+        * fast/canvas/canvas-getImageData-invalid-result-buffer-crash-expected.txt: Added.
+
+2016-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/restore-from-page-cache.html as a flaky crash on mac-wk2 debug
+        https://bugs.webkit.org/show_bug.cgi?id=159430
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        More test gardening after r202835.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/fast/attachment/attachment-select-on-click-expected.txt: Copied from LayoutTests/platform/mac/fast/attachment/attachment-select-on-click-expected.txt.
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.png:
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.txt:
+
+2016-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/model/remote-object.html after r202873
+
+        Unreviewed test gardening.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Correct a typo in the Mac TestExpectations file.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-06  Chris Dumez  <cdumez@apple.com>
+
+        [ShadowDOM] assignedSlot property should be on Text, not CharacterData
+        https://bugs.webkit.org/show_bug.cgi?id=159482
+        <rdar://problem/27201687>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update / rebaseline a couple of existing tests.
+
+        * fast/shadow-dom/Slotable-interface-assignedSlot-expected.txt: Renamed from LayoutTests/fast/shadow-dom/NonDocumentTypeChildNode-interface-assignedSlot-expected.txt.
+        * fast/shadow-dom/Slotable-interface-assignedSlot.html: Renamed from LayoutTests/fast/shadow-dom/NonDocumentTypeChildNode-interface-assignedSlot.html.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2016-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Add support for Node.isConnected
+        https://bugs.webkit.org/show_bug.cgi?id=159474
+        <rdar://problem/27197947>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test now that a new property is exposed on nodes.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2016-07-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198928 and r198985.
+        https://bugs.webkit.org/show_bug.cgi?id=159478
+
+        "It's breaking some websites" (Requested by saamyjoon on
+        #webkit).
+
+        Reverted changesets:
+
+        "[ES6] Disallow var assignments in for-in loops"
+        https://bugs.webkit.org/show_bug.cgi?id=155451
+        http://trac.webkit.org/changeset/198928
+
+        "Unreviewed, turn ES6 for-in loop test success"
+        https://bugs.webkit.org/show_bug.cgi?id=155451
+        http://trac.webkit.org/changeset/198985
+
+2016-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/debugger/tail-deleted-frames-from-vm-entry.html as flaky on mac-wk2 debug
+        https://bugs.webkit.org/show_bug.cgi?id=159447
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Land test expectations for rdar://problem/27187013.
+
+        * platform/mac/TestExpectations:
+
+2016-07-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Height percentages are not properly resolved for item's children
+        https://bugs.webkit.org/show_bug.cgi?id=159258
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/percent-resolution-grid-item-children-expected.txt: Added.
+        * fast/css-grid-layout/percent-resolution-grid-item-children.html: Added.
+
+2016-07-05  Youenn Fablet  <youenn@apple.com>
+
+        Rebasing tests
+
+        Importing tests
+
+        Refresh WPT tests up to 03916af
+        https://bugs.webkit.org/show_bug.cgi?id=159420
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wk2/imported/w3c/web-platform-tests/html/semantics/document-metadata/styling/LinkStyle-expected.txt:
+
+2016-07-05  Per Arne Vollan  <pvollan@apple.com>
+
+        Enhance Windows DRT implementation to support platform scroll wheel events.
+        https://bugs.webkit.org/show_bug.cgi?id=36002
+
+        Reviewed by Brent Fulgham.
+
+        Update test expectations.
+
+        * platform/win/TestExpectations:
+
+2016-07-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Layout Test http/tests/security/contentSecurityPolicy/source-list-parsing-10.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=147646
+
+        Reviewed by Brent Fulgham.
+
+        Update test expectations.
+
+        * platform/win/TestExpectations:
+
+2016-07-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        RELEASE_ASSERT(!thisObject) in ObjCCallbackFunctionImpl::call when calling JSExport ObjC Constructor without operator new
+        https://bugs.webkit.org/show_bug.cgi?id=159446
+
+        Reviewed by Mark Lam.
+
+        * js/class-syntax-call-expected.txt:
+        * js/class-syntax-default-constructor-expected.txt:
+        * js/script-tests/class-syntax-call.js:
+        * js/script-tests/class-syntax-default-constructor.js:
+        Improve error message when calling a class constructor without 'new'.
+
+2016-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        Throw exceptions for invalid number of channels for ConvolverNode
+        <https://webkit.org/b/159238>
+
+        Reviewed by Brent Fulgham.
+
+        Test based on a Blink change (patch by <rtoy@chromium.org>):
+        <https://chromium.googlesource.com/chromium/src.git/+/0cc26bbb7175aec77910d0b47faf9f8c8a640fe5>
+
+        compatibility.js based on a Blink change (patch by <rtoy@google.com>):
+        <https://chromium.googlesource.com/chromium/src.git/+/f846f5a461d1fcdbe5152898576c125058079ed1>
+
+        * webaudio/convolver-channels-expected.txt: Added.
+        * webaudio/convolver-channels.html: Added.
+        * webaudio/resources/compatibility.js: Added.
+
+2016-07-05  Johan K. Jensen  <jj@johanjensen.dk>
+
+        Web Inspector: Sending XHR with UTF8 encoded data shows garbled data in Resource sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=159358
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/xhr-request-data-encoded-correctly-expected.txt: Added.
+        * http/tests/inspector/network/xhr-request-data-encoded-correctly.html: Added.
+
+2016-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Test gardening after r202835.
+
+        Unreviewed test garedening.
+
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-expected.txt:
+        * platform/mac-elcapitan/fast/attachment/attachment-select-on-click-expected.txt: Removed.
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.txt:
+
+2016-07-05  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Image attachment in email does not show up in AX tree
+        https://bugs.webkit.org/show_bug.cgi?id=159422
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/image-load-on-delay-expected.txt: Added.
+        * accessibility/image-load-on-delay.html: Added.
+
+2016-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Land test expectations for rdar://problem/27182687.
+
+        * platform/mac/TestExpectations:
+
+2016-07-05  Enrica Casucci  <enrica@apple.com>
+
+        HTMLAttachment elements don't receive clicks after the first on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=159310
+        rdar://problem/25776940
+
+        Reviewed by Tim Horton.
+
+        Updated existing test to correctly reflect the new behavior.
+
+        * fast/attachment/attachment-select-on-click.html:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-expected.txt:
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.txt:
+
+2016-07-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] The prototype cycle checks throws the wrong error type
+        https://bugs.webkit.org/show_bug.cgi?id=159393
+
+        Reviewed by Geoffrey Garen.
+
+        * js/cyclic-prototypes-expected.txt:
+        * js/script-tests/cyclic-prototypes.js:
+        (catch):
+
+2016-07-05  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r202641): Netflix playback stalls after a few seconds
+        https://bugs.webkit.org/show_bug.cgi?id=159365
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-small-gap-expected.txt: Added.
+        * media/media-source/media-source-small-gap.html: Added.
+
+2016-07-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Sierra] Rebaseline tests to use un-mocked system font metrics
+        https://bugs.webkit.org/show_bug.cgi?id=159311
+        <rdar://problem/24138411>
+
+        Reviewed in person by Alexey Proskuryakov.
+
+        * platform/mac-elcapitan/accessibility/aria-readonly-expected.txt: Copied from LayoutTests/platform/mac/accessibility/aria-readonly-expected.txt.
+        * platform/mac-elcapitan/accessibility/form-control-value-settable-expected.txt: Copied from LayoutTests/platform/mac/accessibility/form-control-value-settable-expected.txt.
+        * platform/mac-elcapitan/compositing/contents-opaque/control-layer-expected.txt: Copied from LayoutTests/platform/mac/compositing/contents-opaque/control-layer-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-19b-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/html/css3-modsel-19b-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-23-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/html/css3-modsel-23-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-24-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/html/css3-modsel-24-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-64-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/html/css3-modsel-64-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-68-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/html/css3-modsel-68-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-69-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/html/css3-modsel-69-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-19b-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xhtml/css3-modsel-19b-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-23-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xhtml/css3-modsel-23-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-24-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xhtml/css3-modsel-24-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-64-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xhtml/css3-modsel-64-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-68-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xhtml/css3-modsel-68-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-69-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xhtml/css3-modsel-69-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-19b-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xml/css3-modsel-19b-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-23-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xml/css3-modsel-23-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-24-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xml/css3-modsel-24-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-64-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xml/css3-modsel-64-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-68-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xml/css3-modsel-68-expected.txt.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-69-expected.txt: Copied from LayoutTests/platform/mac/css3/selectors3/xml/css3-modsel-69-expected.txt.
+        * platform/mac-elcapitan/editing/input/caret-at-the-edge-of-input-expected.txt: Copied from LayoutTests/platform/mac/editing/input/caret-at-the-edge-of-input-expected.txt.
+        * platform/mac-elcapitan/editing/input/reveal-caret-of-multiline-input-expected.txt: Copied from LayoutTests/platform/mac/editing/input/reveal-caret-of-multiline-input-expected.txt.
+        * platform/mac-elcapitan/editing/inserting/4960120-1-expected.txt: Copied from LayoutTests/platform/mac/editing/inserting/4960120-1-expected.txt.
+        * platform/mac-elcapitan/editing/inserting/before-after-input-element-expected.txt: Copied from LayoutTests/platform/mac/editing/inserting/before-after-input-element-expected.txt.
+        * platform/mac-elcapitan/editing/mac/spelling/autocorrection-at-beginning-of-word-1-expected.txt: Added.
+        * platform/mac-elcapitan/editing/mac/spelling/autocorrection-at-beginning-of-word-2-expected.txt: Added.
+        * platform/mac-elcapitan/editing/mac/spelling/delete-autocorrected-word-2-expected.txt: Copied from LayoutTests/editing/mac/spelling/delete-autocorrected-word-2-expected.txt.
+        * platform/mac-elcapitan/editing/pasteboard/4641033-expected.txt: Copied from LayoutTests/platform/mac/editing/pasteboard/4641033-expected.txt.
+        * platform/mac-elcapitan/editing/pasteboard/4806874-expected.txt: Copied from LayoutTests/platform/mac/editing/pasteboard/4806874-expected.txt.
+        * platform/mac-elcapitan/editing/pasteboard/4944770-1-expected.txt: Copied from LayoutTests/platform/mac/editing/pasteboard/4944770-1-expected.txt.
+        * platform/mac-elcapitan/editing/pasteboard/4944770-2-expected.txt: Copied from LayoutTests/platform/mac/editing/pasteboard/4944770-2-expected.txt.
+        * platform/mac-elcapitan/editing/pasteboard/drop-text-without-selection-expected.txt: Copied from LayoutTests/platform/mac/editing/pasteboard/drop-text-without-selection-expected.txt.
+        * platform/mac-elcapitan/editing/pasteboard/input-field-1-expected.txt: Copied from LayoutTests/platform/mac/editing/pasteboard/input-field-1-expected.txt.
+        * platform/mac-elcapitan/editing/pasteboard/pasting-tabs-expected.txt: Copied from LayoutTests/platform/mac/editing/pasteboard/pasting-tabs-expected.txt.
+        * platform/mac-elcapitan/editing/selection/3690703-2-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/3690703-2-expected.txt.
+        * platform/mac-elcapitan/editing/selection/3690703-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/3690703-expected.txt.
+        * platform/mac-elcapitan/editing/selection/3690719-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/3690719-expected.txt.
+        * platform/mac-elcapitan/editing/selection/4397952-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/4397952-expected.txt.
+        * platform/mac-elcapitan/editing/selection/4895428-3-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/4895428-3-expected.txt.
+        * platform/mac-elcapitan/editing/selection/4975120-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/4975120-expected.txt.
+        * platform/mac-elcapitan/editing/selection/5240265-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/5240265-expected.txt.
+        * platform/mac-elcapitan/editing/selection/drag-select-1-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/drag-select-1-expected.txt.
+        * platform/mac-elcapitan/editing/selection/replaced-boundaries-3-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/replaced-boundaries-3-expected.txt.
+        * platform/mac-elcapitan/editing/selection/select-across-readonly-input-3-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/select-across-readonly-input-3-expected.txt.
+        * platform/mac-elcapitan/editing/selection/select-box-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/select-box-expected.txt.
+        * platform/mac-elcapitan/editing/selection/select-element-paragraph-boundary-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/select-element-paragraph-boundary-expected.txt.
+        * platform/mac-elcapitan/editing/selection/select-from-textfield-outwards-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/select-from-textfield-outwards-expected.txt.
+        * platform/mac-elcapitan/editing/selection/selection-button-text-expected.txt: Copied from LayoutTests/platform/mac/editing/selection/selection-button-text-expected.txt.
+        * platform/mac-elcapitan/fast/attachment/attachment-label-highlight-expected.txt: Copied from LayoutTests/platform/mac/fast/attachment/attachment-label-highlight-expected.txt.
+        * platform/mac-elcapitan/fast/attachment/attachment-progress-expected.txt: Copied from LayoutTests/platform/mac/fast/attachment/attachment-progress-expected.txt.
+        * platform/mac-elcapitan/fast/attachment/attachment-select-on-click-expected.txt: Copied from LayoutTests/platform/mac/fast/attachment/attachment-select-on-click-expected.txt.
+        * platform/mac-elcapitan/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt: Copied from LayoutTests/platform/mac/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt.
+        * platform/mac-elcapitan/fast/attachment/attachment-subtitle-expected.txt: Copied from LayoutTests/platform/mac/fast/attachment/attachment-subtitle-expected.txt.
+        * platform/mac-elcapitan/fast/block/float/float-avoidance-expected.txt: Copied from LayoutTests/platform/mac/fast/block/float/float-avoidance-expected.txt.
+        * platform/mac-elcapitan/fast/block/margin-collapse/103-expected.txt: Copied from LayoutTests/platform/mac/fast/block/margin-collapse/103-expected.txt.
+        * platform/mac-elcapitan/fast/block/positioning/inline-block-relposition-expected.txt: Copied from LayoutTests/platform/mac/fast/block/positioning/inline-block-relposition-expected.txt.
+        * platform/mac-elcapitan/fast/css/continuationCrash-expected.txt: Copied from LayoutTests/platform/mac/fast/css/continuationCrash-expected.txt.
+        * platform/mac-elcapitan/fast/css/focus-ring-exists-for-search-field-expected.txt: Copied from LayoutTests/platform/mac/fast/css/focus-ring-exists-for-search-field-expected.txt.
+        * platform/mac-elcapitan/fast/css/line-height-expected.txt: Copied from LayoutTests/platform/mac/fast/css/line-height-expected.txt.
+        * platform/mac-elcapitan/fast/css/margin-top-bottom-dynamic-expected.txt: Copied from LayoutTests/platform/mac/fast/css/margin-top-bottom-dynamic-expected.txt.
+        * platform/mac-elcapitan/fast/css/text-overflow-input-expected.txt: Copied from LayoutTests/platform/mac/fast/css/text-overflow-input-expected.txt.
+        * platform/mac-elcapitan/fast/css/text-transform-select-expected.txt: Copied from LayoutTests/platform/mac/fast/css/text-transform-select-expected.txt.
+        * platform/mac-elcapitan/fast/dom/HTMLInputElement/input-image-alt-text-expected.txt: Copied from LayoutTests/platform/mac/fast/dom/HTMLInputElement/input-image-alt-text-expected.txt.
+        * platform/mac-elcapitan/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.txt: Copied from LayoutTests/platform/mac/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.txt.
+        * platform/mac-elcapitan/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt: Copied from LayoutTests/platform/mac/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt.
+        * platform/mac-elcapitan/fast/dom/isindex-001-expected.txt: Copied from LayoutTests/platform/mac/fast/dom/isindex-001-expected.txt.
+        * platform/mac-elcapitan/fast/dom/isindex-002-expected.txt: Copied from LayoutTests/platform/mac/fast/dom/isindex-002-expected.txt.
+        * platform/mac-elcapitan/fast/dynamic/008-expected.txt: Copied from LayoutTests/platform/mac/fast/dynamic/008-expected.txt.
+        * platform/mac-elcapitan/fast/dynamic/positioned-movement-with-positioned-children-expected.txt: Copied from LayoutTests/platform/mac/fast/dynamic/positioned-movement-with-positioned-children-expected.txt.
+        * platform/mac-elcapitan/fast/events/context-no-deselect-expected.txt: Copied from LayoutTests/platform/mac/fast/events/context-no-deselect-expected.txt.
+        * platform/mac-elcapitan/fast/events/shadow-event-path-2-expected.txt: Copied from LayoutTests/platform/mac/fast/events/shadow-event-path-2-expected.txt.
+        * platform/mac-elcapitan/fast/forms/001-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/001-expected.txt.
+        * platform/mac-elcapitan/fast/forms/004-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/004-expected.txt.
+        * platform/mac-elcapitan/fast/forms/auto-fill-button/input-auto-fill-button-expected.txt: Added.
+        * platform/mac-elcapitan/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt: Added.
+        * platform/mac-elcapitan/fast/forms/basic-buttons-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/basic-buttons-expected.txt.
+        * platform/mac-elcapitan/fast/forms/basic-inputs-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/basic-inputs-expected.txt.
+        * platform/mac-elcapitan/fast/forms/basic-selects-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/basic-selects-expected.txt.
+        * platform/mac-elcapitan/fast/forms/basic-textareas-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/basic-textareas-expected.txt.
+        * platform/mac-elcapitan/fast/forms/basic-textareas-quirks-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/basic-textareas-quirks-expected.txt.
+        * platform/mac-elcapitan/fast/forms/blankbuttons-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/blankbuttons-expected.txt.
+        * platform/mac-elcapitan/fast/forms/box-shadow-override-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/box-shadow-override-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-align-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-align-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-cannot-be-nested-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-cannot-be-nested-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-default-title-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-default-title-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-generated-content-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-generated-content-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-positioned-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-positioned-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-sizes-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-sizes-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-style-color-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-style-color-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-table-styles-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-table-styles-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-text-transform-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-text-transform-expected.txt.
+        * platform/mac-elcapitan/fast/forms/button-white-space-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/button-white-space-expected.txt.
+        * platform/mac-elcapitan/fast/forms/control-clip-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/control-clip-expected.txt.
+        * platform/mac-elcapitan/fast/forms/control-clip-overflow-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/control-clip-overflow-expected.txt.
+        * platform/mac-elcapitan/fast/forms/control-restrict-line-height-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/control-restrict-line-height-expected.txt.
+        * platform/mac-elcapitan/fast/forms/disabled-select-change-index-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/disabled-select-change-index-expected.txt.
+        * platform/mac-elcapitan/fast/forms/encoding-test-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/encoding-test-expected.txt.
+        * platform/mac-elcapitan/fast/forms/fieldset-align-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/fieldset-align-expected.txt.
+        * platform/mac-elcapitan/fast/forms/file/file-input-direction-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/file/file-input-direction-expected.txt.
+        * platform/mac-elcapitan/fast/forms/file/file-input-disabled-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/file/file-input-disabled-expected.txt.
+        * platform/mac-elcapitan/fast/forms/file/input-file-re-render-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/file/input-file-re-render-expected.txt.
+        * platform/mac-elcapitan/fast/forms/floating-textfield-relayout-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/floating-textfield-relayout-expected.txt.
+        * platform/mac-elcapitan/fast/forms/form-element-geometry-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/form-element-geometry-expected.txt.
+        * platform/mac-elcapitan/fast/forms/hidden-listbox-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/hidden-listbox-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-align-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-align-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-bkcolor-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-bkcolor-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-default-bkcolor-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-default-bkcolor-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-disabled-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-disabled-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-focus-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-focus-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-height-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-height-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-preventDefault-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-preventDefault-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-readonly-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-readonly-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-selection-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-selection-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-spinbutton-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-spinbutton-up-expected.txt: Added.
+        * platform/mac-elcapitan/fast/forms/input-appearance-visibility-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-visibility-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-appearance-width-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-appearance-width-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-baseline-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-baseline-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-button-sizes-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-button-sizes-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-disabled-color-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-disabled-color-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-double-click-selection-gap-bug-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-double-click-selection-gap-bug-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-field-text-truncated-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-field-text-truncated-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-first-letter-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-first-letter-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-placeholder-visibility-1-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-placeholder-visibility-1-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-placeholder-visibility-3-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-placeholder-visibility-3-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-readonly-autoscroll-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-readonly-autoscroll-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-readonly-dimmed-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-readonly-dimmed-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-readonly-empty-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-readonly-empty-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-spaces-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-spaces-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-table-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-table-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-click-inside-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-click-inside-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-click-outside-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-click-outside-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-double-click-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-double-click-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-drag-down-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-drag-down-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-option-delete-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-option-delete-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-scroll-left-on-blur-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-scroll-left-on-blur-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-self-emptying-click-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-self-emptying-click-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-text-word-wrap-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-text-word-wrap-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-value-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-value-expected.txt.
+        * platform/mac-elcapitan/fast/forms/input-width-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/input-width-expected.txt.
+        * platform/mac-elcapitan/fast/forms/listbox-bidi-align-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/listbox-bidi-align-expected.txt.
+        * platform/mac-elcapitan/fast/forms/listbox-scrollbar-incremental-load-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/listbox-scrollbar-incremental-load-expected.txt.
+        * platform/mac-elcapitan/fast/forms/listbox-width-change-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/listbox-width-change-expected.txt.
+        * platform/mac-elcapitan/fast/forms/menulist-clip-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/menulist-clip-expected.txt.
+        * platform/mac-elcapitan/fast/forms/menulist-deselect-update-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/menulist-deselect-update-expected.txt.
+        * platform/mac-elcapitan/fast/forms/menulist-narrow-width-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/menulist-narrow-width-expected.txt.
+        * platform/mac-elcapitan/fast/forms/menulist-no-overflow-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/menulist-no-overflow-expected.txt.
+        * platform/mac-elcapitan/fast/forms/menulist-restrict-line-height-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/menulist-restrict-line-height-expected.txt.
+        * platform/mac-elcapitan/fast/forms/menulist-style-color-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/menulist-style-color-expected.txt.
+        * platform/mac-elcapitan/fast/forms/menulist-width-change-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/menulist-width-change-expected.txt.
+        * platform/mac-elcapitan/fast/forms/minWidthPercent-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/minWidthPercent-expected.txt.
+        * platform/mac-elcapitan/fast/forms/number/number-appearance-rtl-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/number/number-appearance-rtl-expected.txt.
+        * platform/mac-elcapitan/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt.
+        * platform/mac-elcapitan/fast/forms/number/number-appearance-spinbutton-layer-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/number/number-appearance-spinbutton-layer-expected.txt.
+        * platform/mac-elcapitan/fast/forms/option-script-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/option-script-expected.txt.
+        * platform/mac-elcapitan/fast/forms/option-strip-whitespace-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/option-strip-whitespace-expected.txt.
+        * platform/mac-elcapitan/fast/forms/option-text-clip-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/option-text-clip-expected.txt.
+        * platform/mac-elcapitan/fast/forms/placeholder-position-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/placeholder-position-expected.txt.
+        * platform/mac-elcapitan/fast/forms/placeholder-pseudo-style-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/placeholder-pseudo-style-expected.txt.
+        * platform/mac-elcapitan/fast/forms/plaintext-mode-2-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/plaintext-mode-2-expected.txt.
+        * platform/mac-elcapitan/fast/forms/search-cancel-button-style-sharing-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search-cancel-button-style-sharing-expected.txt.
+        * platform/mac-elcapitan/fast/forms/search-display-none-cancel-button-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search-display-none-cancel-button-expected.txt.
+        * platform/mac-elcapitan/fast/forms/search-input-rtl-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search-input-rtl-expected.txt.
+        * platform/mac-elcapitan/fast/forms/search-rtl-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search-rtl-expected.txt.
+        * platform/mac-elcapitan/fast/forms/search-styled-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search-styled-expected.txt.
+        * platform/mac-elcapitan/fast/forms/search-vertical-alignment-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search-vertical-alignment-expected.txt.
+        * platform/mac-elcapitan/fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Added.
+        * platform/mac-elcapitan/fast/forms/search/search-size-with-decorations-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search/search-size-with-decorations-expected.txt.
+        * platform/mac-elcapitan/fast/forms/searchfield-heights-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/searchfield-heights-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-background-none-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-background-none-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-baseline-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-baseline-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-block-background-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-block-background-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-change-listbox-size-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-change-listbox-size-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-change-listbox-to-popup-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-change-listbox-to-popup-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-change-popup-to-listbox-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-change-popup-to-listbox-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-dirty-parent-pref-widths-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-dirty-parent-pref-widths-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-disabled-appearance-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-disabled-appearance-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-empty-option-height-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-empty-option-height-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-initial-position-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-initial-position-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-item-background-clip-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-item-background-clip-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-list-box-with-height-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-list-box-with-height-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-listbox-multiple-no-focusring-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-listbox-multiple-no-focusring-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-non-native-rendering-direction-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-non-native-rendering-direction-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-overflow-scroll-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-overflow-scroll-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-overflow-scroll-inherited-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-overflow-scroll-inherited-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-selected-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-selected-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-style-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-style-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select-writing-direction-natural-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select-writing-direction-natural-expected.txt.
+        * platform/mac-elcapitan/fast/forms/select/optgroup-rendering-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/select/optgroup-rendering-expected.txt.
+        * platform/mac-elcapitan/fast/forms/stuff-on-my-optgroup-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/stuff-on-my-optgroup-expected.txt.
+        * platform/mac-elcapitan/fast/forms/tabbing-input-iframe-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/tabbing-input-iframe-expected.txt.
+        * platform/mac-elcapitan/fast/forms/text-style-color-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/text-style-color-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textAreaLineHeight-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textAreaLineHeight-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-align-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-align-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-placeholder-pseudo-style-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-placeholder-pseudo-style-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-placeholder-visibility-1-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-placeholder-visibility-1-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-placeholder-visibility-2-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-placeholder-visibility-2-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-scroll-height-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-scroll-height-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-scrollbar-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-scrollbar-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-scrolled-type-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-scrolled-type-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textarea-setinnerhtml-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textarea-setinnerhtml-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textfield-focus-ring-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textfield-focus-ring-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textfield-outline-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textfield-outline-expected.txt.
+        * platform/mac-elcapitan/fast/forms/textfield-overflow-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/textfield-overflow-expected.txt.
+        * platform/mac-elcapitan/fast/forms/validation-message-appearance-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/validation-message-appearance-expected.txt.
+        * platform/mac-elcapitan/fast/forms/visual-hebrew-text-field-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/visual-hebrew-text-field-expected.txt.
+        * platform/mac-elcapitan/fast/frames/take-focus-from-iframe-expected.txt: Copied from LayoutTests/platform/mac/fast/frames/take-focus-from-iframe-expected.txt.
+        * platform/mac-elcapitan/fast/hidpi/resize-corner-hidpi-expected.txt: Copied from LayoutTests/platform/mac/fast/hidpi/resize-corner-hidpi-expected.txt.
+        * platform/mac-elcapitan/fast/html/details-no-summary4-expected.txt: Copied from LayoutTests/platform/mac/fast/html/details-no-summary4-expected.txt.
+        * platform/mac-elcapitan/fast/html/details-open-javascript-expected.txt: Copied from LayoutTests/platform/mac/fast/html/details-open-javascript-expected.txt.
+        * platform/mac-elcapitan/fast/html/details-open2-expected.txt: Copied from LayoutTests/platform/mac/fast/html/details-open2-expected.txt.
+        * platform/mac-elcapitan/fast/html/details-open4-expected.txt: Copied from LayoutTests/platform/mac/fast/html/details-open4-expected.txt.
+        * platform/mac-elcapitan/fast/html/keygen-expected.txt: Copied from LayoutTests/platform/mac/fast/html/keygen-expected.txt.
+        * platform/mac-elcapitan/fast/lists/dynamic-marker-crash-expected.txt: Copied from LayoutTests/platform/mac/fast/lists/dynamic-marker-crash-expected.txt.
+        * platform/mac-elcapitan/fast/overflow/overflow-x-y-expected.txt: Copied from LayoutTests/platform/mac/fast/overflow/overflow-x-y-expected.txt.
+        * platform/mac-elcapitan/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt: Copied from LayoutTests/platform/mac/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt.
+        * platform/mac-elcapitan/fast/overflow/scrollRevealButton-expected.txt: Copied from LayoutTests/platform/mac/fast/overflow/scrollRevealButton-expected.txt.
+        * platform/mac-elcapitan/fast/parser/document-write-option-expected.txt: Copied from LayoutTests/platform/mac/fast/parser/document-write-option-expected.txt.
+        * platform/mac-elcapitan/fast/parser/entity-comment-in-textarea-expected.txt: Copied from LayoutTests/platform/mac/fast/parser/entity-comment-in-textarea-expected.txt.
+        * platform/mac-elcapitan/fast/parser/open-comment-in-textarea-expected.txt: Copied from LayoutTests/platform/mac/fast/parser/open-comment-in-textarea-expected.txt.
+        * platform/mac-elcapitan/fast/repaint/renderer-destruction-by-invalidateSelection-crash-expected.txt: Copied from LayoutTests/platform/mac/fast/repaint/renderer-destruction-by-invalidateSelection-crash-expected.txt.
+        * platform/mac-elcapitan/fast/repaint/search-field-cancel-expected.txt: Copied from LayoutTests/platform/mac/fast/repaint/search-field-cancel-expected.txt.
+        * platform/mac-elcapitan/fast/repaint/subtree-root-skipped-expected.txt: Copied from LayoutTests/platform/mac/fast/repaint/subtree-root-skipped-expected.txt.
+        * platform/mac-elcapitan/fast/replaced/replaced-breaking-expected.txt: Copied from LayoutTests/platform/mac/fast/replaced/replaced-breaking-expected.txt.
+        * platform/mac-elcapitan/fast/replaced/replaced-breaking-mixture-expected.txt: Copied from LayoutTests/platform/mac/fast/replaced/replaced-breaking-mixture-expected.txt.
+        * platform/mac-elcapitan/fast/replaced/width100percent-button-expected.txt: Copied from LayoutTests/platform/mac/fast/replaced/width100percent-button-expected.txt.
+        * platform/mac-elcapitan/fast/replaced/width100percent-menulist-expected.txt: Copied from LayoutTests/platform/mac/fast/replaced/width100percent-menulist-expected.txt.
+        * platform/mac-elcapitan/fast/replaced/width100percent-textarea-expected.txt: Copied from LayoutTests/platform/mac/fast/replaced/width100percent-textarea-expected.txt.
+        * platform/mac-elcapitan/fast/selectors/064-expected.txt: Copied from LayoutTests/platform/mac/fast/selectors/064-expected.txt.
+        * platform/mac-elcapitan/fast/spatial-navigation/snav-multiple-select-focusring-expected.txt: Copied from LayoutTests/platform/mac/fast/spatial-navigation/snav-multiple-select-focusring-expected.txt.
+        * platform/mac-elcapitan/fast/table/003-expected.txt: Copied from LayoutTests/platform/mac/fast/table/003-expected.txt.
+        * platform/mac-elcapitan/fast/table/append-cells2-expected.txt: Copied from LayoutTests/platform/mac/fast/table/append-cells2-expected.txt.
+        * platform/mac-elcapitan/fast/table/colspanMinWidth-expected.txt: Copied from LayoutTests/platform/mac/fast/table/colspanMinWidth-expected.txt.
+        * platform/mac-elcapitan/fast/table/colspanMinWidth-vertical-expected.txt: Copied from LayoutTests/platform/mac/fast/table/colspanMinWidth-vertical-expected.txt.
+        * platform/mac-elcapitan/fast/table/remove-td-display-none-expected.txt: Copied from LayoutTests/platform/mac/fast/table/remove-td-display-none-expected.txt.
+        * platform/mac-elcapitan/fast/table/spanOverlapRepaint-expected.txt: Copied from LayoutTests/platform/mac/fast/table/spanOverlapRepaint-expected.txt.
+        * platform/mac-elcapitan/fast/table/text-field-baseline-expected.txt: Copied from LayoutTests/platform/mac/fast/table/text-field-baseline-expected.txt.
+        * platform/mac-elcapitan/fast/text/backslash-to-yen-sign-euc-expected.txt: Copied from LayoutTests/platform/mac/fast/text/backslash-to-yen-sign-euc-expected.txt.
+        * platform/mac-elcapitan/fast/text/drawBidiText-expected.txt: Copied from LayoutTests/platform/mac/fast/text/drawBidiText-expected.txt.
+        * platform/mac-elcapitan/fast/text/international/hindi-spacing-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/hindi-spacing-expected.txt.
+        * platform/mac-elcapitan/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt.
+        * platform/mac-elcapitan/fast/text/international/unicode-bidi-plaintext-in-textarea-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/unicode-bidi-plaintext-in-textarea-expected.txt.
+        * platform/mac-elcapitan/fast/text/textIteratorNilRenderer-expected.txt: Copied from LayoutTests/platform/mac/fast/text/textIteratorNilRenderer-expected.txt.
+        * platform/mac-elcapitan/fast/text/trak-optimizeLegibility-expected.txt: Added.
+        * platform/mac-elcapitan/fast/transforms/transformed-focused-text-input-expected.txt: Copied from LayoutTests/platform/mac/fast/transforms/transformed-focused-text-input-expected.txt.
+        * platform/mac-elcapitan/http/tests/navigation/javascriptlink-frames-expected.txt: Copied from LayoutTests/platform/mac/http/tests/navigation/javascriptlink-frames-expected.txt.
+        * platform/mac-elcapitan/media/controls-after-reload-expected.txt: Copied from LayoutTests/platform/mac/media/controls-after-reload-expected.txt.
+        * platform/mac-elcapitan/media/controls-styling-expected.txt: Renamed from LayoutTests/platform/mac-yosemite/media/controls-styling-expected.txt.
+        * platform/mac-elcapitan/media/media-document-audio-repaint-expected.txt: Copied from LayoutTests/platform/mac/media/media-document-audio-repaint-expected.txt.
+        * platform/mac-elcapitan/plugins/mouse-click-plugin-clears-selection-expected.txt: Copied from LayoutTests/platform/mac/plugins/mouse-click-plugin-clears-selection-expected.txt.
+        * platform/mac-elcapitan/scrollbars/key-window-not-first-responder-expected.txt: Copied from LayoutTests/platform/mac/scrollbars/key-window-not-first-responder-expected.txt.
+        * platform/mac-elcapitan/svg/custom/inline-svg-in-xhtml-expected.txt: Copied from LayoutTests/platform/mac/svg/custom/inline-svg-in-xhtml-expected.txt.
+        * platform/mac-elcapitan/svg/hixie/mixed/003-expected.txt: Copied from LayoutTests/platform/mac/svg/hixie/mixed/003-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug1188-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug1188-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug12384-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug12384-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug138725-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug138725-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug18359-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug18359-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug194024-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug194024-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug24200-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug24200-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug2479-2-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug2479-2-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug2479-3-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug2479-3-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug2479-4-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug2479-4-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug26178-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug26178-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug28928-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug28928-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug29326-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug29326-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug30559-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug30559-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug30692-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug30692-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug33855-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug33855-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug39209-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug39209-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug4382-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug4382-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug4429-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug4429-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug4527-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug4527-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug46368-1-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug46368-1-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug46368-2-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug46368-2-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug51037-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug51037-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug51727-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug51727-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug52505-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug52505-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug52506-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug52506-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug55545-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug55545-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug59354-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug59354-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug68912-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug68912-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug7342-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug7342-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug96334-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug96334-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug99948-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/bugs/bug99948-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/collapsing_borders/bug41262-4-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/collapsing_borders/bug41262-4-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/core/margins-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/core/margins-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/dom/tableDom-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/dom/tableDom-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla/other/move_row-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla/other/move_row-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug1725-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla_expected_failures/bugs/bug1725-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt: Copied from LayoutTests/platform/mac/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt.
+        * platform/mac-elcapitan/transforms/2d/zoom-menulist-expected.txt: Copied from LayoutTests/platform/mac/transforms/2d/zoom-menulist-expected.txt.
+        * platform/mac-elcapitan/transforms/3d/general/perspective-non-layer-expected.txt: Copied from LayoutTests/platform/mac/transforms/3d/general/perspective-non-layer-expected.txt.
+        * platform/mac/accessibility/aria-readonly-expected.txt:
+        * platform/mac/accessibility/form-control-value-settable-expected.txt:
+        * platform/mac/compositing/contents-opaque/control-layer-expected.txt:
+        * platform/mac/css3/selectors3/html/css3-modsel-19b-expected.png:
+        * platform/mac/css3/selectors3/html/css3-modsel-19b-expected.txt:
+        * platform/mac/css3/selectors3/html/css3-modsel-23-expected.png:
+        * platform/mac/css3/selectors3/html/css3-modsel-23-expected.txt:
+        * platform/mac/css3/selectors3/html/css3-modsel-24-expected.png:
+        * platform/mac/css3/selectors3/html/css3-modsel-24-expected.txt:
+        * platform/mac/css3/selectors3/html/css3-modsel-64-expected.png:
+        * platform/mac/css3/selectors3/html/css3-modsel-64-expected.txt:
+        * platform/mac/css3/selectors3/html/css3-modsel-68-expected.png:
+        * platform/mac/css3/selectors3/html/css3-modsel-68-expected.txt:
+        * platform/mac/css3/selectors3/html/css3-modsel-69-expected.png:
+        * platform/mac/css3/selectors3/html/css3-modsel-69-expected.txt:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-19b-expected.png:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-19b-expected.txt:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-23-expected.png:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-23-expected.txt:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-24-expected.png:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-24-expected.txt:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-64-expected.png:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-64-expected.txt:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-68-expected.png:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-68-expected.txt:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-69-expected.png:
+        * platform/mac/css3/selectors3/xhtml/css3-modsel-69-expected.txt:
+        * platform/mac/css3/selectors3/xml/css3-modsel-19b-expected.png:
+        * platform/mac/css3/selectors3/xml/css3-modsel-19b-expected.txt:
+        * platform/mac/css3/selectors3/xml/css3-modsel-23-expected.png:
+        * platform/mac/css3/selectors3/xml/css3-modsel-23-expected.txt:
+        * platform/mac/css3/selectors3/xml/css3-modsel-24-expected.png:
+        * platform/mac/css3/selectors3/xml/css3-modsel-24-expected.txt:
+        * platform/mac/css3/selectors3/xml/css3-modsel-64-expected.png:
+        * platform/mac/css3/selectors3/xml/css3-modsel-64-expected.txt:
+        * platform/mac/css3/selectors3/xml/css3-modsel-68-expected.png:
+        * platform/mac/css3/selectors3/xml/css3-modsel-68-expected.txt:
+        * platform/mac/css3/selectors3/xml/css3-modsel-69-expected.png:
+        * platform/mac/css3/selectors3/xml/css3-modsel-69-expected.txt:
+        * platform/mac/editing/input/caret-at-the-edge-of-input-expected.png:
+        * platform/mac/editing/input/caret-at-the-edge-of-input-expected.txt:
+        * platform/mac/editing/input/reveal-caret-of-multiline-input-expected.png:
+        * platform/mac/editing/input/reveal-caret-of-multiline-input-expected.txt:
+        * platform/mac/editing/inserting/4960120-1-expected.png:
+        * platform/mac/editing/inserting/4960120-1-expected.txt:
+        * platform/mac/editing/inserting/before-after-input-element-expected.png:
+        * platform/mac/editing/inserting/before-after-input-element-expected.txt:
+        * platform/mac/editing/mac/spelling/autocorrection-at-beginning-of-word-1-expected.png: Added.
+        * platform/mac/editing/mac/spelling/autocorrection-at-beginning-of-word-1-expected.txt: Added.
+        * platform/mac/editing/mac/spelling/autocorrection-at-beginning-of-word-2-expected.png: Added.
+        * platform/mac/editing/mac/spelling/autocorrection-at-beginning-of-word-2-expected.txt: Added.
+        * platform/mac/editing/mac/spelling/delete-autocorrected-word-2-expected.png: Added.
+        * platform/mac/editing/mac/spelling/delete-autocorrected-word-2-expected.txt: Renamed from LayoutTests/editing/mac/spelling/delete-autocorrected-word-2-expected.txt.
+        * platform/mac/editing/pasteboard/4641033-expected.png:
+        * platform/mac/editing/pasteboard/4641033-expected.txt:
+        * platform/mac/editing/pasteboard/4806874-expected.png:
+        * platform/mac/editing/pasteboard/4806874-expected.txt:
+        * platform/mac/editing/pasteboard/4944770-1-expected.png:
+        * platform/mac/editing/pasteboard/4944770-1-expected.txt:
+        * platform/mac/editing/pasteboard/4944770-2-expected.png:
+        * platform/mac/editing/pasteboard/4944770-2-expected.txt:
+        * platform/mac/editing/pasteboard/drop-text-without-selection-expected.png:
+        * platform/mac/editing/pasteboard/drop-text-without-selection-expected.txt:
+        * platform/mac/editing/pasteboard/input-field-1-expected.png:
+        * platform/mac/editing/pasteboard/input-field-1-expected.txt:
+        * platform/mac/editing/pasteboard/pasting-tabs-expected.png:
+        * platform/mac/editing/pasteboard/pasting-tabs-expected.txt:
+        * platform/mac/editing/selection/3690703-2-expected.png:
+        * platform/mac/editing/selection/3690703-2-expected.txt:
+        * platform/mac/editing/selection/3690703-expected.png:
+        * platform/mac/editing/selection/3690703-expected.txt:
+        * platform/mac/editing/selection/3690719-expected.png:
+        * platform/mac/editing/selection/3690719-expected.txt:
+        * platform/mac/editing/selection/4397952-expected.png:
+        * platform/mac/editing/selection/4397952-expected.txt:
+        * platform/mac/editing/selection/4895428-3-expected.png:
+        * platform/mac/editing/selection/4895428-3-expected.txt:
+        * platform/mac/editing/selection/4975120-expected.png:
+        * platform/mac/editing/selection/4975120-expected.txt:
+        * platform/mac/editing/selection/5240265-expected.png:
+        * platform/mac/editing/selection/5240265-expected.txt:
+        * platform/mac/editing/selection/drag-select-1-expected.png:
+        * platform/mac/editing/selection/drag-select-1-expected.txt:
+        * platform/mac/editing/selection/replaced-boundaries-3-expected.png:
+        * platform/mac/editing/selection/replaced-boundaries-3-expected.txt:
+        * platform/mac/editing/selection/select-across-readonly-input-3-expected.png:
+        * platform/mac/editing/selection/select-across-readonly-input-3-expected.txt:
+        * platform/mac/editing/selection/select-box-expected.png:
+        * platform/mac/editing/selection/select-box-expected.txt:
+        * platform/mac/editing/selection/select-element-paragraph-boundary-expected.png:
+        * platform/mac/editing/selection/select-element-paragraph-boundary-expected.txt:
+        * platform/mac/editing/selection/select-from-textfield-outwards-expected.png:
+        * platform/mac/editing/selection/select-from-textfield-outwards-expected.txt:
+        * platform/mac/editing/selection/selection-button-text-expected.png:
+        * platform/mac/editing/selection/selection-button-text-expected.txt:
+        * platform/mac/fast/attachment/attachment-label-highlight-expected.png:
+        * platform/mac/fast/attachment/attachment-label-highlight-expected.txt:
+        * platform/mac/fast/attachment/attachment-progress-expected.png:
+        * platform/mac/fast/attachment/attachment-progress-expected.txt:
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.png:
+        * platform/mac/fast/attachment/attachment-select-on-click-expected.txt:
+        * platform/mac/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.png:
+        * platform/mac/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt:
+        * platform/mac/fast/attachment/attachment-subtitle-expected.png:
+        * platform/mac/fast/attachment/attachment-subtitle-expected.txt:
+        * platform/mac/fast/block/float/float-avoidance-expected.png:
+        * platform/mac/fast/block/float/float-avoidance-expected.txt:
+        * platform/mac/fast/block/margin-collapse/103-expected.png:
+        * platform/mac/fast/block/margin-collapse/103-expected.txt:
+        * platform/mac/fast/block/positioning/inline-block-relposition-expected.png:
+        * platform/mac/fast/block/positioning/inline-block-relposition-expected.txt:
+        * platform/mac/fast/css/continuationCrash-expected.png:
+        * platform/mac/fast/css/continuationCrash-expected.txt:
+        * platform/mac/fast/css/focus-ring-exists-for-search-field-expected.png:
+        * platform/mac/fast/css/focus-ring-exists-for-search-field-expected.txt:
+        * platform/mac/fast/css/line-height-expected.png:
+        * platform/mac/fast/css/line-height-expected.txt:
+        * platform/mac/fast/css/margin-top-bottom-dynamic-expected.png:
+        * platform/mac/fast/css/margin-top-bottom-dynamic-expected.txt:
+        * platform/mac/fast/css/text-overflow-input-expected.png:
+        * platform/mac/fast/css/text-overflow-input-expected.txt:
+        * platform/mac/fast/css/text-transform-select-expected.png:
+        * platform/mac/fast/css/text-transform-select-expected.txt:
+        * platform/mac/fast/dom/HTMLInputElement/input-image-alt-text-expected.png:
+        * platform/mac/fast/dom/HTMLInputElement/input-image-alt-text-expected.txt:
+        * platform/mac/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.png:
+        * platform/mac/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.txt:
+        * platform/mac/fast/dom/HTMLTextAreaElement/reset-textarea-expected.png:
+        * platform/mac/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt:
+        * platform/mac/fast/dom/isindex-001-expected.png:
+        * platform/mac/fast/dom/isindex-001-expected.txt:
+        * platform/mac/fast/dom/isindex-002-expected.png:
+        * platform/mac/fast/dom/isindex-002-expected.txt:
+        * platform/mac/fast/dynamic/008-expected.png:
+        * platform/mac/fast/dynamic/008-expected.txt:
+        * platform/mac/fast/dynamic/positioned-movement-with-positioned-children-expected.png:
+        * platform/mac/fast/dynamic/positioned-movement-with-positioned-children-expected.txt:
+        * platform/mac/fast/events/context-no-deselect-expected.png:
+        * platform/mac/fast/events/context-no-deselect-expected.txt:
+        * platform/mac/fast/events/shadow-event-path-2-expected.txt:
+        * platform/mac/fast/forms/001-expected.png:
+        * platform/mac/fast/forms/001-expected.txt:
+        * platform/mac/fast/forms/004-expected.png:
+        * platform/mac/fast/forms/004-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-auto-fill-button-expected.png: Added.
+        * platform/mac/fast/forms/auto-fill-button/input-auto-fill-button-expected.txt: Added.
+        * platform/mac/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.png: Added.
+        * platform/mac/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt: Added.
+        * platform/mac/fast/forms/basic-buttons-expected.png:
+        * platform/mac/fast/forms/basic-buttons-expected.txt:
+        * platform/mac/fast/forms/basic-inputs-expected.png:
+        * platform/mac/fast/forms/basic-inputs-expected.txt:
+        * platform/mac/fast/forms/basic-selects-expected.png:
+        * platform/mac/fast/forms/basic-selects-expected.txt:
+        * platform/mac/fast/forms/basic-textareas-expected.png:
+        * platform/mac/fast/forms/basic-textareas-expected.txt:
+        * platform/mac/fast/forms/basic-textareas-quirks-expected.png:
+        * platform/mac/fast/forms/basic-textareas-quirks-expected.txt:
+        * platform/mac/fast/forms/blankbuttons-expected.png:
+        * platform/mac/fast/forms/blankbuttons-expected.txt:
+        * platform/mac/fast/forms/box-shadow-override-expected.png:
+        * platform/mac/fast/forms/box-shadow-override-expected.txt:
+        * platform/mac/fast/forms/button-align-expected.png:
+        * platform/mac/fast/forms/button-align-expected.txt:
+        * platform/mac/fast/forms/button-cannot-be-nested-expected.png:
+        * platform/mac/fast/forms/button-cannot-be-nested-expected.txt:
+        * platform/mac/fast/forms/button-default-title-expected.png:
+        * platform/mac/fast/forms/button-default-title-expected.txt:
+        * platform/mac/fast/forms/button-generated-content-expected.png:
+        * platform/mac/fast/forms/button-generated-content-expected.txt:
+        * platform/mac/fast/forms/button-positioned-expected.png:
+        * platform/mac/fast/forms/button-positioned-expected.txt:
+        * platform/mac/fast/forms/button-sizes-expected.png:
+        * platform/mac/fast/forms/button-sizes-expected.txt:
+        * platform/mac/fast/forms/button-style-color-expected.png:
+        * platform/mac/fast/forms/button-style-color-expected.txt:
+        * platform/mac/fast/forms/button-table-styles-expected.png:
+        * platform/mac/fast/forms/button-table-styles-expected.txt:
+        * platform/mac/fast/forms/button-text-transform-expected.png:
+        * platform/mac/fast/forms/button-text-transform-expected.txt:
+        * platform/mac/fast/forms/button-white-space-expected.png:
+        * platform/mac/fast/forms/button-white-space-expected.txt:
+        * platform/mac/fast/forms/control-clip-expected.png:
+        * platform/mac/fast/forms/control-clip-expected.txt:
+        * platform/mac/fast/forms/control-clip-overflow-expected.png:
+        * platform/mac/fast/forms/control-clip-overflow-expected.txt:
+        * platform/mac/fast/forms/control-restrict-line-height-expected.png:
+        * platform/mac/fast/forms/control-restrict-line-height-expected.txt:
+        * platform/mac/fast/forms/disabled-select-change-index-expected.png:
+        * platform/mac/fast/forms/disabled-select-change-index-expected.txt:
+        * platform/mac/fast/forms/encoding-test-expected.png:
+        * platform/mac/fast/forms/encoding-test-expected.txt:
+        * platform/mac/fast/forms/fieldset-align-expected.png:
+        * platform/mac/fast/forms/fieldset-align-expected.txt:
+        * platform/mac/fast/forms/file/file-input-direction-expected.png:
+        * platform/mac/fast/forms/file/file-input-direction-expected.txt:
+        * platform/mac/fast/forms/file/file-input-disabled-expected.png:
+        * platform/mac/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/mac/fast/forms/file/input-file-re-render-expected.txt:
+        * platform/mac/fast/forms/floating-textfield-relayout-expected.png:
+        * platform/mac/fast/forms/floating-textfield-relayout-expected.txt:
+        * platform/mac/fast/forms/form-element-geometry-expected.png:
+        * platform/mac/fast/forms/form-element-geometry-expected.txt:
+        * platform/mac/fast/forms/hidden-listbox-expected.png:
+        * platform/mac/fast/forms/hidden-listbox-expected.txt:
+        * platform/mac/fast/forms/input-align-expected.png:
+        * platform/mac/fast/forms/input-align-expected.txt:
+        * platform/mac/fast/forms/input-appearance-bkcolor-expected.png:
+        * platform/mac/fast/forms/input-appearance-bkcolor-expected.txt:
+        * platform/mac/fast/forms/input-appearance-default-bkcolor-expected.png:
+        * platform/mac/fast/forms/input-appearance-default-bkcolor-expected.txt:
+        * platform/mac/fast/forms/input-appearance-disabled-expected.png:
+        * platform/mac/fast/forms/input-appearance-disabled-expected.txt:
+        * platform/mac/fast/forms/input-appearance-focus-expected.png:
+        * platform/mac/fast/forms/input-appearance-focus-expected.txt:
+        * platform/mac/fast/forms/input-appearance-height-expected.png:
+        * platform/mac/fast/forms/input-appearance-height-expected.txt:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.png:
+        * platform/mac/fast/forms/input-appearance-preventDefault-expected.txt:
+        * platform/mac/fast/forms/input-appearance-readonly-expected.png:
+        * platform/mac/fast/forms/input-appearance-readonly-expected.txt:
+        * platform/mac/fast/forms/input-appearance-selection-expected.png:
+        * platform/mac/fast/forms/input-appearance-selection-expected.txt:
+        * platform/mac/fast/forms/input-appearance-spinbutton-expected.png: Added.
+        * platform/mac/fast/forms/input-appearance-spinbutton-expected.txt:
+        * platform/mac/fast/forms/input-appearance-spinbutton-up-expected.png: Added.
+        * platform/mac/fast/forms/input-appearance-spinbutton-up-expected.txt: Added.
+        * platform/mac/fast/forms/input-appearance-visibility-expected.png:
+        * platform/mac/fast/forms/input-appearance-visibility-expected.txt:
+        * platform/mac/fast/forms/input-appearance-width-expected.png:
+        * platform/mac/fast/forms/input-appearance-width-expected.txt:
+        * platform/mac/fast/forms/input-baseline-expected.png:
+        * platform/mac/fast/forms/input-baseline-expected.txt:
+        * platform/mac/fast/forms/input-button-sizes-expected.png:
+        * platform/mac/fast/forms/input-button-sizes-expected.txt:
+        * platform/mac/fast/forms/input-disabled-color-expected.png:
+        * platform/mac/fast/forms/input-disabled-color-expected.txt:
+        * platform/mac/fast/forms/input-double-click-selection-gap-bug-expected.png:
+        * platform/mac/fast/forms/input-double-click-selection-gap-bug-expected.txt:
+        * platform/mac/fast/forms/input-field-text-truncated-expected.png:
+        * platform/mac/fast/forms/input-field-text-truncated-expected.txt:
+        * platform/mac/fast/forms/input-first-letter-expected.png:
+        * platform/mac/fast/forms/input-first-letter-expected.txt:
+        * platform/mac/fast/forms/input-placeholder-visibility-1-expected.png:
+        * platform/mac/fast/forms/input-placeholder-visibility-1-expected.txt:
+        * platform/mac/fast/forms/input-placeholder-visibility-3-expected.png:
+        * platform/mac/fast/forms/input-placeholder-visibility-3-expected.txt:
+        * platform/mac/fast/forms/input-readonly-autoscroll-expected.png:
+        * platform/mac/fast/forms/input-readonly-autoscroll-expected.txt:
+        * platform/mac/fast/forms/input-readonly-dimmed-expected.png:
+        * platform/mac/fast/forms/input-readonly-dimmed-expected.txt:
+        * platform/mac/fast/forms/input-readonly-empty-expected.png:
+        * platform/mac/fast/forms/input-readonly-empty-expected.txt:
+        * platform/mac/fast/forms/input-spaces-expected.png:
+        * platform/mac/fast/forms/input-spaces-expected.txt:
+        * platform/mac/fast/forms/input-table-expected.png:
+        * platform/mac/fast/forms/input-table-expected.txt:
+        * platform/mac/fast/forms/input-text-click-inside-expected.png:
+        * platform/mac/fast/forms/input-text-click-inside-expected.txt:
+        * platform/mac/fast/forms/input-text-click-outside-expected.png:
+        * platform/mac/fast/forms/input-text-click-outside-expected.txt:
+        * platform/mac/fast/forms/input-text-double-click-expected.png:
+        * platform/mac/fast/forms/input-text-double-click-expected.txt:
+        * platform/mac/fast/forms/input-text-drag-down-expected.png:
+        * platform/mac/fast/forms/input-text-drag-down-expected.txt:
+        * platform/mac/fast/forms/input-text-option-delete-expected.png:
+        * platform/mac/fast/forms/input-text-option-delete-expected.txt:
+        * platform/mac/fast/forms/input-text-scroll-left-on-blur-expected.png:
+        * platform/mac/fast/forms/input-text-scroll-left-on-blur-expected.txt:
+        * platform/mac/fast/forms/input-text-self-emptying-click-expected.png:
+        * platform/mac/fast/forms/input-text-self-emptying-click-expected.txt:
+        * platform/mac/fast/forms/input-text-word-wrap-expected.png:
+        * platform/mac/fast/forms/input-text-word-wrap-expected.txt:
+        * platform/mac/fast/forms/input-value-expected.png:
+        * platform/mac/fast/forms/input-value-expected.txt:
+        * platform/mac/fast/forms/input-width-expected.png:
+        * platform/mac/fast/forms/input-width-expected.txt:
+        * platform/mac/fast/forms/listbox-bidi-align-expected.png:
+        * platform/mac/fast/forms/listbox-bidi-align-expected.txt:
+        * platform/mac/fast/forms/listbox-scrollbar-incremental-load-expected.png:
+        * platform/mac/fast/forms/listbox-scrollbar-incremental-load-expected.txt:
+        * platform/mac/fast/forms/listbox-width-change-expected.png:
+        * platform/mac/fast/forms/listbox-width-change-expected.txt:
+        * platform/mac/fast/forms/menulist-clip-expected.png:
+        * platform/mac/fast/forms/menulist-clip-expected.txt:
+        * platform/mac/fast/forms/menulist-deselect-update-expected.png:
+        * platform/mac/fast/forms/menulist-deselect-update-expected.txt:
+        * platform/mac/fast/forms/menulist-narrow-width-expected.png:
+        * platform/mac/fast/forms/menulist-narrow-width-expected.txt:
+        * platform/mac/fast/forms/menulist-no-overflow-expected.png:
+        * platform/mac/fast/forms/menulist-no-overflow-expected.txt:
+        * platform/mac/fast/forms/menulist-restrict-line-height-expected.png:
+        * platform/mac/fast/forms/menulist-restrict-line-height-expected.txt:
+        * platform/mac/fast/forms/menulist-style-color-expected.png:
+        * platform/mac/fast/forms/menulist-style-color-expected.txt:
+        * platform/mac/fast/forms/menulist-width-change-expected.png:
+        * platform/mac/fast/forms/menulist-width-change-expected.txt:
+        * platform/mac/fast/forms/minWidthPercent-expected.png:
+        * platform/mac/fast/forms/minWidthPercent-expected.txt:
+        * platform/mac/fast/forms/number/number-appearance-rtl-expected.png:
+        * platform/mac/fast/forms/number/number-appearance-rtl-expected.txt:
+        * platform/mac/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.png:
+        * platform/mac/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt:
+        * platform/mac/fast/forms/number/number-appearance-spinbutton-layer-expected.png:
+        * platform/mac/fast/forms/number/number-appearance-spinbutton-layer-expected.txt:
+        * platform/mac/fast/forms/option-script-expected.png:
+        * platform/mac/fast/forms/option-script-expected.txt:
+        * platform/mac/fast/forms/option-strip-whitespace-expected.png:
+        * platform/mac/fast/forms/option-strip-whitespace-expected.txt:
+        * platform/mac/fast/forms/option-text-clip-expected.png:
+        * platform/mac/fast/forms/option-text-clip-expected.txt:
+        * platform/mac/fast/forms/placeholder-position-expected.png:
+        * platform/mac/fast/forms/placeholder-position-expected.txt:
+        * platform/mac/fast/forms/placeholder-pseudo-style-expected.png:
+        * platform/mac/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/mac/fast/forms/plaintext-mode-2-expected.png:
+        * platform/mac/fast/forms/plaintext-mode-2-expected.txt:
+        * platform/mac/fast/forms/search-cancel-button-style-sharing-expected.png:
+        * platform/mac/fast/forms/search-cancel-button-style-sharing-expected.txt:
+        * platform/mac/fast/forms/search-display-none-cancel-button-expected.png:
+        * platform/mac/fast/forms/search-display-none-cancel-button-expected.txt:
+        * platform/mac/fast/forms/search-input-rtl-expected.png: Added.
+        * platform/mac/fast/forms/search-input-rtl-expected.txt:
+        * platform/mac/fast/forms/search-rtl-expected.png:
+        * platform/mac/fast/forms/search-rtl-expected.txt:
+        * platform/mac/fast/forms/search-styled-expected.png:
+        * platform/mac/fast/forms/search-styled-expected.txt:
+        * platform/mac/fast/forms/search-vertical-alignment-expected.png:
+        * platform/mac/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.png: Copied from LayoutTests/platform/mac/fast/forms/textarea-setinnerhtml-expected.png.
+        * platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Added.
+        * platform/mac/fast/forms/search/search-size-with-decorations-expected.png:
+        * platform/mac/fast/forms/search/search-size-with-decorations-expected.txt:
+        * platform/mac/fast/forms/searchfield-heights-expected.png:
+        * platform/mac/fast/forms/searchfield-heights-expected.txt:
+        * platform/mac/fast/forms/select-background-none-expected.png:
+        * platform/mac/fast/forms/select-background-none-expected.txt:
+        * platform/mac/fast/forms/select-baseline-expected.png:
+        * platform/mac/fast/forms/select-baseline-expected.txt:
+        * platform/mac/fast/forms/select-block-background-expected.png:
+        * platform/mac/fast/forms/select-block-background-expected.txt:
+        * platform/mac/fast/forms/select-change-listbox-size-expected.png:
+        * platform/mac/fast/forms/select-change-listbox-size-expected.txt:
+        * platform/mac/fast/forms/select-change-listbox-to-popup-expected.png:
+        * platform/mac/fast/forms/select-change-listbox-to-popup-expected.txt:
+        * platform/mac/fast/forms/select-change-popup-to-listbox-expected.png:
+        * platform/mac/fast/forms/select-change-popup-to-listbox-expected.txt:
+        * platform/mac/fast/forms/select-dirty-parent-pref-widths-expected.png:
+        * platform/mac/fast/forms/select-dirty-parent-pref-widths-expected.txt:
+        * platform/mac/fast/forms/select-disabled-appearance-expected.png:
+        * platform/mac/fast/forms/select-disabled-appearance-expected.txt:
+        * platform/mac/fast/forms/select-empty-option-height-expected.png:
+        * platform/mac/fast/forms/select-empty-option-height-expected.txt:
+        * platform/mac/fast/forms/select-initial-position-expected.png:
+        * platform/mac/fast/forms/select-initial-position-expected.txt:
+        * platform/mac/fast/forms/select-item-background-clip-expected.png:
+        * platform/mac/fast/forms/select-item-background-clip-expected.txt:
+        * platform/mac/fast/forms/select-list-box-with-height-expected.png:
+        * platform/mac/fast/forms/select-list-box-with-height-expected.txt:
+        * platform/mac/fast/forms/select-listbox-multiple-no-focusring-expected.png:
+        * platform/mac/fast/forms/select-listbox-multiple-no-focusring-expected.txt:
+        * platform/mac/fast/forms/select-non-native-rendering-direction-expected.png:
+        * platform/mac/fast/forms/select-non-native-rendering-direction-expected.txt:
+        * platform/mac/fast/forms/select-overflow-scroll-expected.png:
+        * platform/mac/fast/forms/select-overflow-scroll-expected.txt:
+        * platform/mac/fast/forms/select-overflow-scroll-inherited-expected.png:
+        * platform/mac/fast/forms/select-overflow-scroll-inherited-expected.txt:
+        * platform/mac/fast/forms/select-selected-expected.png:
+        * platform/mac/fast/forms/select-selected-expected.txt:
+        * platform/mac/fast/forms/select-style-expected.png:
+        * platform/mac/fast/forms/select-style-expected.txt:
+        * platform/mac/fast/forms/select-writing-direction-natural-expected.png:
+        * platform/mac/fast/forms/select-writing-direction-natural-expected.txt:
+        * platform/mac/fast/forms/select/optgroup-rendering-expected.png:
+        * platform/mac/fast/forms/select/optgroup-rendering-expected.txt:
+        * platform/mac/fast/forms/stuff-on-my-optgroup-expected.png:
+        * platform/mac/fast/forms/stuff-on-my-optgroup-expected.txt:
+        * platform/mac/fast/forms/tabbing-input-iframe-expected.png:
+        * platform/mac/fast/forms/tabbing-input-iframe-expected.txt:
+        * platform/mac/fast/forms/text-style-color-expected.png:
+        * platform/mac/fast/forms/text-style-color-expected.txt:
+        * platform/mac/fast/forms/textAreaLineHeight-expected.png:
+        * platform/mac/fast/forms/textAreaLineHeight-expected.txt:
+        * platform/mac/fast/forms/textarea-align-expected.png:
+        * platform/mac/fast/forms/textarea-align-expected.txt:
+        * platform/mac/fast/forms/textarea-placeholder-pseudo-style-expected.png:
+        * platform/mac/fast/forms/textarea-placeholder-pseudo-style-expected.txt:
+        * platform/mac/fast/forms/textarea-placeholder-visibility-1-expected.png:
+        * platform/mac/fast/forms/textarea-placeholder-visibility-1-expected.txt:
+        * platform/mac/fast/forms/textarea-placeholder-visibility-2-expected.png:
+        * platform/mac/fast/forms/textarea-placeholder-visibility-2-expected.txt:
+        * platform/mac/fast/forms/textarea-scroll-height-expected.png:
+        * platform/mac/fast/forms/textarea-scroll-height-expected.txt:
+        * platform/mac/fast/forms/textarea-scrollbar-expected.png:
+        * platform/mac/fast/forms/textarea-scrollbar-expected.txt:
+        * platform/mac/fast/forms/textarea-scrolled-type-expected.png:
+        * platform/mac/fast/forms/textarea-scrolled-type-expected.txt:
+        * platform/mac/fast/forms/textarea-setinnerhtml-expected.png:
+        * platform/mac/fast/forms/textarea-setinnerhtml-expected.txt:
+        * platform/mac/fast/forms/textfield-focus-ring-expected.png:
+        * platform/mac/fast/forms/textfield-focus-ring-expected.txt:
+        * platform/mac/fast/forms/textfield-outline-expected.png:
+        * platform/mac/fast/forms/textfield-outline-expected.txt:
+        * platform/mac/fast/forms/textfield-overflow-expected.png:
+        * platform/mac/fast/forms/textfield-overflow-expected.txt:
+        * platform/mac/fast/forms/validation-message-appearance-expected.png:
+        * platform/mac/fast/forms/validation-message-appearance-expected.txt:
+        * platform/mac/fast/forms/visual-hebrew-text-field-expected.png:
+        * platform/mac/fast/forms/visual-hebrew-text-field-expected.txt:
+        * platform/mac/fast/frames/take-focus-from-iframe-expected.png:
+        * platform/mac/fast/frames/take-focus-from-iframe-expected.txt:
+        * platform/mac/fast/hidpi/resize-corner-hidpi-expected.png:
+        * platform/mac/fast/hidpi/resize-corner-hidpi-expected.txt:
+        * platform/mac/fast/html/details-no-summary4-expected.png:
+        * platform/mac/fast/html/details-no-summary4-expected.txt:
+        * platform/mac/fast/html/details-open-javascript-expected.png:
+        * platform/mac/fast/html/details-open-javascript-expected.txt:
+        * platform/mac/fast/html/details-open2-expected.png:
+        * platform/mac/fast/html/details-open2-expected.txt:
+        * platform/mac/fast/html/details-open4-expected.png:
+        * platform/mac/fast/html/details-open4-expected.txt:
+        * platform/mac/fast/html/keygen-expected.png:
+        * platform/mac/fast/html/keygen-expected.txt:
+        * platform/mac/fast/lists/dynamic-marker-crash-expected.png:
+        * platform/mac/fast/lists/dynamic-marker-crash-expected.txt:
+        * platform/mac/fast/overflow/overflow-x-y-expected.png:
+        * platform/mac/fast/overflow/overflow-x-y-expected.txt:
+        * platform/mac/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.png:
+        * platform/mac/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt:
+        * platform/mac/fast/overflow/scrollRevealButton-expected.png:
+        * platform/mac/fast/overflow/scrollRevealButton-expected.txt:
+        * platform/mac/fast/parser/document-write-option-expected.png:
+        * platform/mac/fast/parser/document-write-option-expected.txt:
+        * platform/mac/fast/parser/entity-comment-in-textarea-expected.png:
+        * platform/mac/fast/parser/entity-comment-in-textarea-expected.txt:
+        * platform/mac/fast/parser/open-comment-in-textarea-expected.png:
+        * platform/mac/fast/parser/open-comment-in-textarea-expected.txt:
+        * platform/mac/fast/repaint/renderer-destruction-by-invalidateSelection-crash-expected.png:
+        * platform/mac/fast/repaint/renderer-destruction-by-invalidateSelection-crash-expected.txt:
+        * platform/mac/fast/repaint/search-field-cancel-expected.png:
+        * platform/mac/fast/repaint/search-field-cancel-expected.txt:
+        * platform/mac/fast/repaint/subtree-root-skipped-expected.png:
+        * platform/mac/fast/repaint/subtree-root-skipped-expected.txt:
+        * platform/mac/fast/replaced/replaced-breaking-expected.png:
+        * platform/mac/fast/replaced/replaced-breaking-expected.txt:
+        * platform/mac/fast/replaced/replaced-breaking-mixture-expected.png:
+        * platform/mac/fast/replaced/replaced-breaking-mixture-expected.txt:
+        * platform/mac/fast/replaced/width100percent-button-expected.png:
+        * platform/mac/fast/replaced/width100percent-button-expected.txt:
+        * platform/mac/fast/replaced/width100percent-menulist-expected.png:
+        * platform/mac/fast/replaced/width100percent-menulist-expected.txt:
+        * platform/mac/fast/replaced/width100percent-textarea-expected.png:
+        * platform/mac/fast/replaced/width100percent-textarea-expected.txt:
+        * platform/mac/fast/selectors/064-expected.png:
+        * platform/mac/fast/selectors/064-expected.txt:
+        * platform/mac/fast/spatial-navigation/snav-multiple-select-focusring-expected.png:
+        * platform/mac/fast/spatial-navigation/snav-multiple-select-focusring-expected.txt:
+        * platform/mac/fast/table/003-expected.png:
+        * platform/mac/fast/table/003-expected.txt:
+        * platform/mac/fast/table/append-cells2-expected.png:
+        * platform/mac/fast/table/append-cells2-expected.txt:
+        * platform/mac/fast/table/colspanMinWidth-expected.png:
+        * platform/mac/fast/table/colspanMinWidth-expected.txt:
+        * platform/mac/fast/table/colspanMinWidth-vertical-expected.png:
+        * platform/mac/fast/table/colspanMinWidth-vertical-expected.txt:
+        * platform/mac/fast/table/remove-td-display-none-expected.png:
+        * platform/mac/fast/table/remove-td-display-none-expected.txt:
+        * platform/mac/fast/table/spanOverlapRepaint-expected.png:
+        * platform/mac/fast/table/spanOverlapRepaint-expected.txt:
+        * platform/mac/fast/table/text-field-baseline-expected.png:
+        * platform/mac/fast/table/text-field-baseline-expected.txt:
+        * platform/mac/fast/text/backslash-to-yen-sign-euc-expected.png:
+        * platform/mac/fast/text/backslash-to-yen-sign-euc-expected.txt:
+        * platform/mac/fast/text/drawBidiText-expected.png:
+        * platform/mac/fast/text/drawBidiText-expected.txt:
+        * platform/mac/fast/text/international/hindi-spacing-expected.png:
+        * platform/mac/fast/text/international/hindi-spacing-expected.txt:
+        * platform/mac/fast/text/international/pop-up-button-text-alignment-and-direction-expected.png:
+        * platform/mac/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt:
+        * platform/mac/fast/text/international/unicode-bidi-plaintext-in-textarea-expected.png:
+        * platform/mac/fast/text/international/unicode-bidi-plaintext-in-textarea-expected.txt:
+        * platform/mac/fast/text/textIteratorNilRenderer-expected.png:
+        * platform/mac/fast/text/textIteratorNilRenderer-expected.txt:
+        * platform/mac/fast/text/trak-optimizeLegibility-expected.txt: Added.
+        * platform/mac/fast/transforms/transformed-focused-text-input-expected.png:
+        * platform/mac/fast/transforms/transformed-focused-text-input-expected.txt:
+        * platform/mac/http/tests/media/video-buffered-range-contains-currentTime-expected.png: Added.
+        * platform/mac/http/tests/navigation/javascriptlink-frames-expected.png:
+        * platform/mac/http/tests/navigation/javascriptlink-frames-expected.txt:
+        * platform/mac/media/controls-after-reload-expected.png:
+        * platform/mac/media/controls-after-reload-expected.txt:
+        * platform/mac/media/controls-styling-expected.png:
+        * platform/mac/media/controls-styling-expected.txt:
+        * platform/mac/media/media-document-audio-repaint-expected.png:
+        * platform/mac/media/media-document-audio-repaint-expected.txt:
+        * platform/mac/media/video-controls-rendering-expected.png: Added.
+        * platform/mac/media/video-controls-rendering-expected.txt:
+        * platform/mac/media/video-display-toggle-expected.png: Added.
+        * platform/mac/media/video-display-toggle-expected.txt:
+        * platform/mac/media/video-no-audio-expected.png: Added.
+        * platform/mac/media/video-no-audio-expected.txt:
+        * platform/mac/media/video-volume-slider-expected.png: Added.
+        * platform/mac/media/video-volume-slider-expected.txt:
+        * platform/mac/plugins/mouse-click-plugin-clears-selection-expected.png: Added.
+        * platform/mac/plugins/mouse-click-plugin-clears-selection-expected.txt:
+        * platform/mac/scrollbars/key-window-not-first-responder-expected.txt:
+        * platform/mac/svg/custom/inline-svg-in-xhtml-expected.png:
+        * platform/mac/svg/custom/inline-svg-in-xhtml-expected.txt:
+        * platform/mac/svg/hixie/mixed/003-expected.png:
+        * platform/mac/svg/hixie/mixed/003-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug1188-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug12384-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug12384-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug138725-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug138725-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug18359-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug194024-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug194024-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug24200-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug24200-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug2479-2-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug2479-3-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug2479-4-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug26178-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug26178-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug28928-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug28928-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug29326-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug29326-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug30559-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug30559-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug30692-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug30692-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug33855-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug33855-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug39209-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug39209-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4382-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug4382-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4429-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug4429-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4527-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug4527-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46368-1-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug46368-2-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug46368-2-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug51037-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug51727-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug51727-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug52505-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug52505-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug52506-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug52506-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug55545-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug55545-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug59354-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug68912-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug68912-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug7342-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug7342-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug96334-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug99948-expected.png:
+        * platform/mac/tables/mozilla/bugs/bug99948-expected.txt:
+        * platform/mac/tables/mozilla/collapsing_borders/bug41262-4-expected.png:
+        * platform/mac/tables/mozilla/collapsing_borders/bug41262-4-expected.txt:
+        * platform/mac/tables/mozilla/core/margins-expected.png:
+        * platform/mac/tables/mozilla/core/margins-expected.txt:
+        * platform/mac/tables/mozilla/dom/tableDom-expected.png:
+        * platform/mac/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/mac/tables/mozilla/other/move_row-expected.png:
+        * platform/mac/tables/mozilla/other/move_row-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug1725-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug1725-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug2479-5-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug58402-2-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug92647-1-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt:
+        * platform/mac/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.png:
+        * platform/mac/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt:
+        * platform/mac/transforms/2d/zoom-menulist-expected.png:
+        * platform/mac/transforms/2d/zoom-menulist-expected.txt:
+        * platform/mac/transforms/3d/general/perspective-non-layer-expected.png:
+        * platform/mac/transforms/3d/general/perspective-non-layer-expected.txt:
+
+2016-07-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION (r202529?) inspector/debugger/break-on-* tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=159272
+        <rdar://problem/27087938>
+
+        Reviewed by Timothy Hatcher.
+
+        Rewrite the break on exception and uncaught exception tests
+        to be easier to read and understand, reduce duplicated code,
+        and avoid unnecessary work (such as a reload and script check).
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        Unskip the core break-on-* tests, but mark them as Slow.
+
+        * inspector/debugger/break-on-exception-throw-in-promise.html:
+        * inspector/debugger/break-on-exception-throw-in-promise-expected.txt:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-expected.txt:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise.html:
+        * inspector/debugger/break-on-exception-expected.txt:
+        * inspector/debugger/break-on-exception.html:
+        * inspector/debugger/break-on-uncaught-exception-expected.txt:
+        * inspector/debugger/break-on-uncaught-exception.html:
+        Converge into 4 tests, share a significant amount of code,
+        and make them easier to read and understand.
+        
+        * inspector/debugger/break-on-exception-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-catch.html: Removed.
+        * inspector/debugger/break-on-exception-finally-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-finally.html: Removed.
+        * inspector/debugger/break-on-exception-native-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-native.html: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-rethrow-in-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-rethrow-in-catch.html: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-then-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-then-with-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-then-with-catch.html: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-then.html: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-with-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-throw-in-promise-with-catch.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-catch.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-finally-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-finally.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-native-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-native.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-rethrow-in-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-rethrow-in-catch.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-then-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-then-with-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-then-with-catch.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-then.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-with-catch-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-with-catch.html: Removed.
+        Merged into the 4 tests above.
+
+        * inspector/debugger/break-on-exception-window-onerror-expected.txt: Removed.
+        * inspector/debugger/break-on-exception-window-onerror.html: Removed.
+        * inspector/debugger/break-on-uncaught-exception-window-onerror-expected.txt: Removed.
+        * inspector/debugger/break-on-uncaught-exception-window-onerror.html: Removed.
+        Eliminate these entirely. Tests already have an onerror listener,
+        so these were actually already equivalent to the basic tests.
+
+2016-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/restore-from-page-cache.html as a flaky failure on El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=158747
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/media/hls/video-controller-getStartDate.html as a flaky timeout on Yosemite WK1
+        https://bugs.webkit.org/show_bug.cgi?id=158645
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/history/page-cache-webdatabase-pending-transaction.html as flaky on ios-simulator-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=159379
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-07-05  Frederic Wang  <fwang@igalia.com>
+
+        Unskip mathml/presentation/fractions-box.html
+        https://bugs.webkit.org/show_bug.cgi?id=159347
+
+        Unreviewed test gardening.
+
+        * platform/efl/TestExpectations:
+
+2016-07-05  Frederic Wang  <fred.wang@free.fr>
+
+        Remove obsolete test mathml/presentation/bug97990.html
+
+        This test is currently skipped on all platforms. It was a test for the
+        old flexbox-based MathML layout. The new layout ignore padding or
+        borders for MathML elements and it's not clear whether this will change
+        in the future.
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Remove skip flag for bug97990.html.
+        * mathml/presentation/bug97990-expected.html: Removed.
+        * mathml/presentation/bug97990.html: Removed.
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Null Node dereference in FrameSelection::notifyAccessibilityForSelectionChange of FrameSelectionAtk.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=159411
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Removed a crash expectation of
+        editing/selection/selection-in-iframe-removed-crash.html.
+
+2016-07-04  Youenn Fablet  <youenn@apple.com>
+
+        Shield WebRTC JS built-ins from user scripts
+        https://bugs.webkit.org/show_bug.cgi?id=155964
+
+        Reviewed by Sam Weinig.
+
+        * fast/mediastream/RTCPeerConnection-createOffer.html:
+        * fast/mediastream/RTCPeerConnection-stable.html:
+
+2016-07-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, skip misc-bugs-847389-jpeg2000.js in jsc stress tests
+        https://bugs.webkit.org/show_bug.cgi?id=159334
+
+        In debug build, it takes too much time.
+        Since run-jsc-stress-tests can take the arbitrary JSC shell, ifJSCArgIsntProvidedAreWeReleaseBuild
+        is not good source to determine whether the test is executed with the debug built JSC shell.
+        So here, we skip this test.
+        This test is still executed under the run-webkit-tests. So the coverage is still kept.
+
+        * js/regress/script-tests/misc-bugs-847389-jpeg2000.js:
+
+2016-07-04  Per Arne Vollan  <pvollan@apple.com>
+
+        Update Windows test expectations for fast/css/fontloader-download-error.html.
+        It is skipped on all platforms.
+
+        Unreviewed test gardening.
+        
+        * platform/win/TestExpectations:
+
+2016-07-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] MacroAssemblerX86::branch8 should accept unsigned 8bit value
+        https://bugs.webkit.org/show_bug.cgi?id=159334
+
+        Reviewed by Benjamin Poulain.
+
+        * TestExpectations:
+        * js/regress/misc-bugs-847389-jpeg2000-expected.txt: Added.
+        * js/regress/misc-bugs-847389-jpeg2000.html: Added.
+        * js/regress/script-tests/misc-bugs-847389-jpeg2000.js: Added.
+        (error):
+        (warn):
+        (JpxImage.JpxImageClosure.JpxImage):
+        (JpxImage.JpxImageClosure.JpxImage.prototype.load.JpxImage_load.xhr.onload):
+        (JpxImage.JpxImageClosure.JpxImage.prototype.load):
+        (JpxImage.JpxImageClosure.JpxImage.prototype.parse.JpxImage_parse.readUint):
+        (JpxImage.JpxImageClosure.JpxImage.prototype.parse):
+        (JpxImage.JpxImageClosure.JpxImage.prototype.parseCodestream):
+        (JpxImage.JpxImageClosure.readUint32):
+        (JpxImage.JpxImageClosure.readUint16):
+        (JpxImage.JpxImageClosure.log2):
+        (JpxImage.JpxImageClosure.calculateComponentDimensions):
+        (JpxImage.JpxImageClosure.calculateTileGrids):
+        (JpxImage.JpxImageClosure.getBlocksDimensions):
+        (JpxImage.JpxImageClosure.buildPrecincts):
+        (JpxImage.JpxImageClosure.buildCodeblocks):
+        (JpxImage.JpxImageClosure.createPacket):
+        (JpxImage.JpxImageClosure.LayerResolutionComponentPositionIterator.this.nextPacket):
+        (JpxImage.JpxImageClosure.LayerResolutionComponentPositionIterator):
+        (JpxImage.JpxImageClosure.ResolutionLayerComponentPositionIterator.this.nextPacket):
+        (JpxImage.JpxImageClosure.ResolutionLayerComponentPositionIterator):
+        (JpxImage.JpxImageClosure.buildPackets):
+        (JpxImage.JpxImageClosure.readBits):
+        (JpxImage.JpxImageClosure.alignToByte):
+        (JpxImage.JpxImageClosure.readCodingpasses):
+        (JpxImage.JpxImageClosure.parseTilePackets):
+        (JpxImage.JpxImageClosure.copyCoefficients):
+        (JpxImage.JpxImageClosure.transformTile):
+        (JpxImage.JpxImageClosure.transformComponents):
+        (JpxImage.JpxImageClosure.initializeTile):
+        (JpxImage.JpxImageClosure.):
+        (JpxImage.JpxImageClosure.TagTree):
+        (JpxImage.JpxImageClosure.InclusionTree):
+        (JpxImage.JpxImageClosure.ArithmeticDecoder):
+        (JpxImage.JpxImageClosure.BitModel):
+        (JpxImage.JpxImageClosure.Transform):
+        (JpxImage.JpxImageClosure.IrreversibleTransform):
+        (JpxImage.JpxImageClosure.ReversibleTransform):
+        (JpxImage):
+        (atob):
+
+2016-07-03  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] __lookupGetter__ and __lookupSetter__ should not ignore exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=159390
+
+        Reviewed by Mark Lam.
+
+        * js/property-getters-and-setters-expected.txt:
+        * js/script-tests/property-getters-and-setters.js:
+        (getter17):
+        (get getter17):
+        (getOwnPropertyDescriptor):
+        (setter18):
+        (set setter18):
+
+2016-07-03  Frederic Wang  <fred.wang@free.fr>
+
+        Update windows test expectations for some MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+        * platform/win/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Added.
+
+2016-07-03  Frederic Wang  <fred.wang@free.fr>
+
+        [win] Update TestExpectations after the MathML refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=159386
+
+        Reviewed by Alex Christensen.
+
+        * platform/win/TestExpectations:
+
+2016-07-03  Frederic Wang  <fred.wang@free.fr>
+
+        Update windows test expectations for some MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+        * platform/win/mathml/opentype/horizontal-expected.txt:
+        * platform/win/mathml/opentype/horizontal-munderover-expected.txt:
+
+2016-07-03  David Kilzer  <ddkilzer@apple.com>
+
+        fast/css/image-set-unprefixed.html fails on iOS Simulator
+
+        Follow-up fix for:
+
+        "image-src" support is missing. We only support "-webkit-image-src"
+        https://bugs.webkit.org/show_bug.cgi?id=159373
+        <rdar://problem/27140443>
+
+        * platform/ios-simulator/fast/css/image-set-unprefixed-expected.txt: Added.
+        Cursor tests are expected to fail on iOS Simulator.
+
+2016-07-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        inspector/debugger/command-line-api-exception.html flakily times out on mac
+        https://bugs.webkit.org/show_bug.cgi?id=152029
+        <rdar://problem/23813812>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/command-line-api-exception-expected.txt:
+        * inspector/debugger/command-line-api-exception-nested-catch-expected.txt:
+        * inspector/debugger/command-line-api-exception-nested-catch.html:
+        * inspector/debugger/command-line-api-exception.html:
+        * platform/mac/TestExpectations:
+        Rewrite these tests to use the new test harness.
+        This also is more careful about Pause/Resume timing differences
+        between Release and Debug builds.
+
+2016-07-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix inspector/debugger/pause-reason.html
+        https://bugs.webkit.org/show_bug.cgi?id=159325
+
+        Reviewed by Timothy Hatcher.
+
+        * platform/mac/TestExpectations:
+        * inspector/debugger/pause-reason.html:
+        This test was pausing on inspector code (evaluateInPage) and
+        auto-resuming. Instead change the test to pause on the page
+        doing the setTimeout, so we get the expected pause on next
+        statement evaluation.
+
+2016-07-02  Frederic Wang  <fred.wang@free.fr>
+
+        Update EFL expectations for some MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/efl/TestExpectations: Mark mathml/presentation/radical-bar-visibility.html as failing.
+        * platform/efl/mathml/opentype/horizontal-munderover-expected.txt: Update expectation using latest buildbot results.
+        * platform/efl/mathml/presentation/menclose-notation-values-expected.txt: Ditto.
+        * platform/efl/mathml/presentation/mspace-children-expected.txt: Ditto.
+
+2016-07-02  Frederic Wang  <fred.wang@free.fr>
+
+        Update windows expectations for some MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+        * platform/win/mathml/opentype/large-operators-expected.txt: Added.
+        * platform/win/mathml/opentype/opentype-stretchy-expected.txt: Added.
+        * platform/win/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Removed.
+        * platform/win/mathml/opentype/vertical-expected.txt: Added.
+        * platform/win/mathml/presentation/menclose-notation-default-longdiv-expected.txt:
+        * platform/win/mathml/presentation/mo-stretch-expected.txt: Added.
+        * platform/win/mathml/presentation/roots-expected.txt: Added.
+        * platform/win/mathml/radical-fallback-expected.png: Added.
+        * platform/win/mathml/radical-fallback-expected.txt: Added.
+        * platform/efl/mathml/radical-fallback-expected.txt:
+
+2016-07-02  Frederic Wang  <fred.wang@free.fr>
+
+        Update EFL expectations for some MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/efl/accessibility/math-mo-fences-and-separators-expected.txt: Added.
+        * platform/efl/mathml/opentype/horizontal-expected.txt:
+        * platform/efl/mathml/opentype/horizontal-munderover-expected.txt:
+        * platform/efl/mathml/opentype/large-operators-expected.png: Removed.
+        * platform/efl/mathml/opentype/large-operators-expected.txt:
+        * platform/efl/mathml/opentype/opentype-stretchy-expected.png: Removed.
+        * platform/efl/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/efl/mathml/opentype/vertical-expected.png: Removed.
+        * platform/efl/mathml/opentype/vertical-expected.txt:
+        * platform/efl/mathml/presentation/menclose-notation-default-longdiv-expected.png: Removed.
+        * platform/efl/mathml/presentation/menclose-notation-default-longdiv-expected.txt:
+        * platform/efl/mathml/presentation/menclose-notation-values-expected.txt:
+        * platform/efl/mathml/presentation/mo-stretch-expected.png: Removed.
+        * platform/efl/mathml/presentation/mo-stretch-expected.txt:
+        * platform/efl/mathml/presentation/mspace-children-expected.txt:
+        * platform/efl/mathml/presentation/roots-expected.png: Removed.
+        * platform/efl/mathml/presentation/roots-expected.txt:
+        * platform/efl/mathml/radical-fallback-expected.txt: Added.
+
+2016-07-02  Frederic Wang  <fred.wang@free.fr>
+
+        Update iOS expectations for some MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/mathml/mathml-in-dashboard-actual.txt: Added.
+
+2016-07-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r189668): Notification tests are flakey
+        https://bugs.webkit.org/show_bug.cgi?id=159375
+        <rdar://problem/22760990>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2016-07-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202766.
+        https://bugs.webkit.org/show_bug.cgi?id=159382
+
+        The new test asserts every time (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Sending XHR with UTF8 encoded data shows
+        garbled data in Resource sidebar"
+        https://bugs.webkit.org/show_bug.cgi?id=159358
+        http://trac.webkit.org/changeset/202766
+
+2016-07-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] RegExp.compile is not returning the regexp when it succeed
+        https://bugs.webkit.org/show_bug.cgi?id=159381
+
+        Reviewed by Mark Lam.
+
+        * js/regexp-compile-expected.txt:
+        * js/script-tests/regexp-compile.js:
+
+2016-07-01  Zalan Bujtas  <zalan@apple.com>
+
+        prepareForDestruction() always needs to be called before destroying the Document object.
+        https://bugs.webkit.org/show_bug.cgi?id=159372
+        rdar://problem/26788150
+
+        Reviewed by Antti Koivisto.
+
+        We should never start destroying the Document object without calling prepareForDestruction() first.
+        It ensures that render tree gets nuked before we start tearing down the node tree.
+
+        * fast/history/page-cache-destroy-document-expected.txt: Added.
+        * fast/history/page-cache-destroy-document.html: Added.
+        * fast/history/resources/page-cache-destroy-helper.html: Added.
+
+2016-07-01  Saam Barati  <sbarati@apple.com>
+
+        fix "ASSERTION FAILED: currentOffset() >= currentLineStartOffset()"
+        https://bugs.webkit.org/show_bug.cgi?id=158572
+        <rdar://problem/26884092>
+
+        Reviewed by Mark Lam.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+        (invalid.or.break.catch):
+        (catch): Deleted.
+
+2016-07-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/history/page-cache-webdatabase-pending-transaction.html as flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=159379
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-01  Johan K. Jensen  <jj@johanjensen.dk>
+
+        Web Inspector: Sending XHR with UTF8 encoded data shows garbled data in Resource sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=159358
+
+        Reviewed by Joseph Pecoraro.
+
+        Based on Chromium patch:
+        <https://chromium.googlesource.com/chromium/src/+/bcbb663864624ab38b36731eb2edc839a90f9e65%5E%21/#F2>
+
+        * http/tests/inspector/network/xhr-request-data-encoded-correctly-expected.txt:
+        * http/tests/inspector/network/xhr-request-data-encoded-correctly.html:
+
+2016-07-01  Dean Jackson  <dino@apple.com>
+
+        "image-src" support is missing. We only support "-webkit-image-src"
+        https://bugs.webkit.org/show_bug.cgi?id=159373
+        <rdar://problem/27140443>
+
+        Patch by Brent Fulgham and Dean Jackson.
+        Reviewed by Dean Jackson and Brent Fulgham.
+
+        Convert some existing tests to use the unprefixed form,
+        and add a test that checks we are compatible with
+        the prefixed form.
+
+        * cssom/cssvalue-comparison-expected.txt:
+        * cssom/cssvalue-comparison.html:
+        * fast/css/cursor-parsing-image-set-expected.txt:
+        * fast/css/cursor-parsing-image-set.html:
+        * fast/css/image-set-setting-expected.txt:
+        * fast/css/image-set-unprefixed-expected.txt: Added.
+        * fast/css/image-set-unprefixed.html: Added.
+        * fast/css/script-tests/image-set-setting.js:
+        (testImageSetRule):
+
+2016-07-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Land test expectations for rdar://problem/27141291.
+
+        * platform/mac/TestExpectations:
+
+2016-07-01  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r199087): window.focus() / window.close() can no longer be called by a Window's opener
+        https://bugs.webkit.org/show_bug.cgi?id=159364
+        <rdar://problem/27117169>
+
+        Reviewed by Gavin Barraclough.
+
+        Add layout test coverage.
+
+        * fast/dom/Window/child-window-focus-expected.txt: Added.
+        * fast/dom/Window/child-window-focus.html: Added.
+
+2016-07-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Test gardening for Sierra WK1
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Remove failure expectation for mathml/presentation/bug97990.html on ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-07-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        __defineGetter__/__defineSetter__ should throw exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=142934
+
+        Reviewed by Mark Lam.
+
+        * js/dom/dom-properties-are-configurable-expected.txt: Added.
+        * js/dom/dom-properties-are-configurable.html: Added.
+        * js/object-literal-duplicate-properties-expected.txt:
+        * js/property-getters-and-setters-expected.txt:
+        * js/script-tests/object-literal-duplicate-properties.js:
+        * js/script-tests/property-getters-and-setters.js:
+
+2016-07-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Date.toGMTString should be the Date.toUTCString function
+        https://bugs.webkit.org/show_bug.cgi?id=159318
+
+        Reviewed by Mark Lam.
+
+        * js/date-prototype-expected.txt: Added.
+        * js/date-prototype.html: Added.
+        * js/script-tests/date-prototype.js: Added.
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Rebaseline some MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/gtk/mathml/opentype/munderover-window-resize-expected.txt: Removed.
+        * platform/ios-simulator/mathml/presentation/roots-expected.png: Added.
+        * platform/mac/mathml/opentype/munderover-window-resize-expected.png: Removed.
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Update OS X and iOS expectations for some MathML pixel tests.
+        https://bugs.webkit.org/show_bug.cgi?id=159339
+
+        Unreviewed test gardening.
+
+        * mathml/opentype/fraction-line.html: Add a comment about font requirements.
+        * mathml/opentype/horizontal-munderover.html: Ditto.
+        * mathml/opentype/horizontal.html: Ditto.
+        * mathml/opentype/large-operators-italic-correction.html: Ditto.
+        * mathml/opentype/large-operators.html: Ditto.
+        * mathml/opentype/vertical.html: Ditto.
+        * mathml/presentation/attributes-mathvariant.html: Ditto.
+        * mathml/presentation/fractions-linethickness.html: Ditto.
+        * mathml/presentation/tokenElements-mathvariant.html: Ditto.
+        * mathml/radical-fallback.html: Ditto.
+        * platform/ios-simulator-wk1/TestExpectations: Update expectations.
+        * platform/ios-simulator-wk2/TestExpectations: Ditto.
+        * platform/ios-simulator-wk2/mathml/opentype/large-operators-expected.png: Removed.
+        * platform/ios-simulator-wk2/mathml/opentype/vertical-expected.png: Removed.
+        * platform/ios-simulator-wk2/mathml/presentation/mo-stretch-expected.png: Removed.
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/mathml/opentype/horizontal-expected.txt: Removed.
+        * platform/ios-simulator/mathml/opentype/horizontal-munderover-expected.txt: Removed.
+        * platform/ios-simulator/mathml/opentype/large-operators-expected.txt: Removed.
+        * platform/ios-simulator/mathml/opentype/opentype-stretchy-expected.png: Added.
+        * platform/ios-simulator/mathml/opentype/opentype-stretchy-horizontal-expected.png: Added.
+        * platform/ios-simulator/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+        * platform/ios-simulator/mathml/opentype/vertical-expected.txt: Removed.
+        * platform/ios-simulator/mathml/presentation/menclose-notation-default-longdiv-expected.png: Added.
+        * platform/ios-simulator/mathml/presentation/menclose-notation-values-expected.png: Added.
+        * platform/ios-simulator/mathml/presentation/mo-stretch-expected.png: Added.
+        * platform/ios-simulator/mathml/presentation/mo-stretch-expected.txt:
+        * platform/ios-simulator/mathml/presentation/mspace-children-expected.png: Added.
+        * platform/ios-simulator/mathml/radical-fallback-expected.png:
+        * platform/mac/TestExpectations: Update expectations.
+        * platform/mac/mathml/opentype/horizontal-expected.txt: Removed.
+        * platform/mac/mathml/opentype/horizontal-munderover-expected.txt: Removed.
+        * platform/mac/mathml/opentype/large-operators-expected.txt: Removed.
+        * platform/mac/mathml/opentype/opentype-stretchy-expected.png: Added.
+        * platform/mac/mathml/opentype/vertical-expected.txt: Removed.
+        * platform/mac/mathml/presentation/menclose-notation-values-expected.png:
+        * platform/mac/mathml/presentation/menclose-notation-values-expected.txt:
+        * platform/mac/mathml/presentation/mo-stretch-expected.png:
+        * platform/mac/mathml/presentation/mo-stretch-expected.txt:
+        * platform/mac/mathml/presentation/mspace-children-expected.png: Added.
+        * platform/mac/mathml/presentation/roots-expected.png:
+        * platform/mac/mathml/presentation/roots-expected.txt:
+        * platform/mac/mathml/radical-fallback-expected.png:
+        * platform/mac/mathml/radical-fallback-expected.txt:
+
+2016-07-01  Brady Eidson  <beidson@apple.com>
+
+        Blob content type not preserved when retrieving blobs from IndexedDB.
+        <rdar://problem/27057357> and https://bugs.webkit.org/show_bug.cgi?id=159360
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/blob-svg-image-expected.txt: Added.
+        * storage/indexeddb/modern/blob-svg-image.html: Added.
+        * storage/indexeddb/modern/resources/blob-svg-image.js: Added.
+        * storage/indexeddb/modern/resources/blob-svg-image1.html: Added.
+        * storage/indexeddb/modern/resources/blob-svg-image2.html: Added.
+
+2016-07-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup inspector/console/console-message.html
+        https://bugs.webkit.org/show_bug.cgi?id=159324
+
+        Reviewed by Brian Burg.
+
+        * inspector/console/console-message.html:
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Rebaseline opentype-stretchy-horizontal.html for EFL.
+        https://bugs.webkit.org/show_bug.cgi?id=135561
+
+        Unreviewed test gardening.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Regenerate EFL expectation for foreign-element-in-token.html
+        https://bugs.webkit.org/show_bug.cgi?id=133972
+
+        Unreviewed test gardening.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/mathml/presentation/foreign-element-in-token-expected.txt: Added.
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Fix warnings about non existent paths in TestExpectations
+
+        Unreviewed test gardening.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Fix error in r202729
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations: Revert unintentional change of horizontal-munderover.
+
+2016-07-01  Frederic Wang  <fwang@igalia.com>
+
+        Reorganize and improve comments for MathML test expectations on ios and mac.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-06-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping flaky inspector/debugger/break-on-* tests
+        https://bugs.webkit.org/show_bug.cgi?id=159272
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Moving flaky expectation for inspector/codemirror/prettyprinting-css-rules.html from mac-wk1 to mac.
+        https://bugs.webkit.org/show_bug.cgi?id=153460
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Wrong function name next to scope
+        https://bugs.webkit.org/show_bug.cgi?id=158210
+        <rdar://problem/26543093>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/paused-scopes-expected.txt: Added.
+        * inspector/debugger/paused-scopes.html: Added.
+        * inspector/debugger/resources/paused-scopes.js: Added.
+        Test dumps the call frames and scope chains for each call frame
+        when pausing at different locations in a program. Outputting
+        the hashes we can see even identically named functions have
+        different hashes because their location is different.
+
+        * inspector/model/scope-chain-node.html:
+        Make the test more stable on debug builds which run slower.
+
+2016-06-30  Antoine Quint  <graouts@apple.com>
+
+        Drawing an SVG image into a <canvas> that is not in the DOM draws the wrong region
+        https://bugs.webkit.org/show_bug.cgi?id=159276
+
+        Reviewed by Dean Jackson.
+
+        Adding a series of new tests to check we correctly respect mismatching source and
+        destination rectangles with SVG images as sources, both with the source <img> element
+        being present and absent from the DOM, and explicit sizes being set or not set.
+
+        * svg/as-image/img-with-svg-resource-in-dom-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-in-dom-and-drawImage.html: Added.
+        * svg/as-image/img-with-svg-resource-in-dom-no-size-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-in-dom-no-size-and-drawImage.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-and-drawImage.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-no-size-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-no-size-and-drawImage.html: Added.
+
+2016-06-30  Antoine Quint  <graouts@apple.com>
+
+        [iOS] Media controls are too cramped with small video
+        https://bugs.webkit.org/show_bug.cgi?id=158815
+        <rdar://problem/26824238>
+
+        Reviewed by Eric Carlson.
+
+        Adjust the output of a couple of tests to account for the time label clones, ensure the video
+        is wide enough to always have its timeline visible for tests that rely on the timeline being
+        visible to drag and seek, and finally add a new test.
+
+        * media/controls-drag-timebar.html:
+        * media/media-controls-drag-timeline-set-controls-property.html:
+        * media/video-controls-drop-and-restore-timeline-expected.txt: Added.
+        * media/video-controls-drop-and-restore-timeline.html: Added.
+        * platform/mac-yosemite/http/tests/media/hls/video-controls-live-stream-expected.txt:
+        * platform/mac/http/tests/media/hls/video-controls-live-stream-expected.txt:
+
+2016-06-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing duplicated line from Mac TestExpectations file.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/shrink-wrap/rect-shrink-wrap.html as flaky on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=159275
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-06-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202659.
+        https://bugs.webkit.org/show_bug.cgi?id=159305
+
+        The test for this change times out on mac-wk2 debug and caused
+        an existing test to crash. (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Wrong function name next to scope"
+        https://bugs.webkit.org/show_bug.cgi?id=158210
+        http://trac.webkit.org/changeset/202659
+
+2016-06-30  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Date.setYear() misses timeClip()
+        https://bugs.webkit.org/show_bug.cgi?id=159289
+
+        Reviewed by Geoffrey Garen.
+
+        * js/date-timeClip-large-values-expected.txt:
+        * js/script-tests/date-timeClip-large-values.js:
+        The failures are caused by bugs related to GregorianDateTime.
+        The last test case is the one covering this patch.
+
 2016-06-30  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r202679.

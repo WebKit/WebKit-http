@@ -1,3 +1,54 @@
+2016-07-06  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Unify how we throw TypeError from C++
+        https://bugs.webkit.org/show_bug.cgi?id=159500
+
+        Reviewed by Saam Barati.
+
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::invokeMethod):
+
+2016-07-01  Youenn Fablet  <youennf@gmail.com>
+
+        Add a runtime flag for DOM iterators
+        https://bugs.webkit.org/show_bug.cgi?id=159300
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences DOMIteratorEnabled]):
+        (-[WebPreferences setDOMIteratorEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-06-30  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Create a generic "linked-on-or-after" check for new CSP Rules
+        https://bugs.webkit.org/show_bug.cgi?id=159322
+        <rdar://problem/27117220>
+
+        Reviewed by Brent Fulgham.
+
+        * WebView/WebView.mm:
+        (shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol):
+
+2016-06-30  Anders Carlsson  <andersca@apple.com>
+
+        Mail crashes on launch at WebCore::PaymentCoordinator::~PaymentCoordinator() + 20
+        https://bugs.webkit.org/show_bug.cgi?id=159306
+        rdar://problem/27092107
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        Create a WebPaymentCoordinatorClient. Remove an unneeded #import.
+
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        Remove an unneeded #import.
+
 2016-06-27  Anders Carlsson  <andersca@apple.com>
 
         WebKit::WebPaymentCoordinator leak

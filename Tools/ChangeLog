@@ -1,3 +1,302 @@
+2016-07-06  Tim Horton  <timothy_horton@apple.com>
+
+        Email from June 1st containing text 'Today @ 7:10PM' is linkified, but shouldn't be
+        https://bugs.webkit.org/show_bug.cgi?id=159498
+        <rdar://problem/26719903>
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DataDetection.mm: Added.
+        (-[DataDetectionNavigationDelegate webView:didFinishNavigation:]):
+        (-[DataDetectionUIDelegate _dataDetectionContextForWebView:]):
+        (expectLinkCount):
+        (TEST):
+        Add a test ensuring that ReferenceDate in the DataDetectors context is respected
+        when deciding what to linkify.
+
+2016-07-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix - work around rdar://problem/27196668.
+
+        * LayoutTestRelay/Configurations/Base.xcconfig:
+
+2016-07-05  Per Arne Vollan  <pvollan@apple.com>
+
+        Enhance Windows DRT implementation to support platform scroll wheel events.
+        https://bugs.webkit.org/show_bug.cgi?id=36002
+
+        Reviewed by Brent Fulgham.
+
+        Implement function continuousMouseScrollBy in Windows event sender.
+
+        * DumpRenderTree/win/EventSender.cpp:
+        (mouseScrollBy):
+        (continuousMouseScrollBy):
+
+2016-07-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Sierra] Rebaseline tests to use un-mocked system font metrics
+        https://bugs.webkit.org/show_bug.cgi?id=159311
+        <rdar://problem/24138411>
+
+        Reviewed in person by Alexey Proskuryakov.
+
+        Stop mocking the system font on Sierra.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize):
+
+2016-07-05  Brady Eidson  <beidson@apple.com>
+
+        Database process crashes deleting a corrupt SQLite database file (null deref).
+        https://bugs.webkit.org/show_bug.cgi?id=155506.
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.mm: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.sqlite3: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.sqlite3-shm: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.sqlite3-wal: Added.
+
+2016-07-05  Alexey Proskuryakov  <ap@apple.com>
+
+        run-webkit-tests should print more complete baseline search paths
+        https://bugs.webkit.org/show_bug.cgi?id=159354
+
+        Reviewed by Daniel Bates.
+
+        run-webkit-tests used to only print directory names in baseline search paths.
+        This was ok in basic usage, but quickly got confusing when using
+        --additional-platform-directory flags.
+
+        * Scripts/webkitpy/layout_tests/views/printing.py:
+        (Printer.print_config):
+        * Scripts/webkitpy/layout_tests/views/printing_unittest.py:
+        (Testprinter.test_print_config):
+        (Testprinter.test_print_one_line_summary):
+
+2016-07-04  Brady Eidson  <beidson@apple.com>
+
+        WebProcesses don't handle DatabaseProcess going away uncleanly..
+        https://bugs.webkit.org/show_bug.cgi?id=159371
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBDatabaseProcessKill-1.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBDatabaseProcessKill.mm: Added.
+        (-[DatabaseProcessKillNavigationDelegate webView:didFinishNavigation:]):
+        (-[DatabaseProcessKillMessageHandler userContentController:didReceiveScriptMessage:]):
+
+2016-07-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [EFL][GTK] Layout Test doesn't run on Ubuntu 16.04
+        https://bugs.webkit.org/show_bug.cgi?id=158141
+
+        Rubber-stamped by Michael Catanzaro.
+
+        Instead of checking for an specific Ubuntu version, query the apt
+        database to see which version of PHP is available.
+
+        * efl/install-dependencies:
+        * gtk/install-dependencies:
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        webkit-patch failure-reason always raises TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=159394
+
+        Reviewed by Benjamin Poulain.
+
+        In r170637 (Bug 133067), the first and second arguments of
+        pluralize were swapped.
+
+        * Scripts/webkitpy/tool/commands/queries.py:
+        (FailureReason._builder_to_explain): Swap the first and second
+        arguments of pluralize.
+
+2016-07-02  Youenn Fablet  <youennf@gmail.com>
+
+        Make it straightforward to start the Web Platform Tests HTTP server using run-webkit-httpd
+        https://bugs.webkit.org/show_bug.cgi?id=152486
+
+        Reviewed by Daniel Bates.
+
+        Add launch of web-platform-tests server by run-webkit-httpd.
+        Add two options to disable starting httpd and web-platform-tests servers.
+
+        * Scripts/run-webkit-httpd:
+        (parse_args):
+        (main):
+
+2016-07-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r189668): Notification tests are flakey
+        https://bugs.webkit.org/show_bug.cgi?id=159375
+        <rdar://problem/22760990>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Notifications are objects which must exist in both the UI Process and the Web Process. Each process
+        identifies a notification object by a unique ID. When the Web Process sends a message regarding a
+        notification to the UI Process, the UI Process's WebNotificationManagerProxy holds a map from
+        (Page ID, Web Process notification ID) -> UI Process notification ID. This works as intended.
+
+        Our tests, however, include an additional method, simulateWebNotificationClick(), which is implemented
+        by WebKitTestRunner in the Web Process via the Injected Bundle. This method involves sending a message
+        to the UI process, to handle the simulated click. However, that RPC didn't perform the same local ->
+        global notification ID mapping, causing the wrong notification to be investigated.
+
+        The solution is for WebNotificationProvider, implemented in WebKitTestRunner in the UI Process, to
+        manually perform this same mapping. Luckily, this object already receives callbacks every time a
+        notification is created or destroyed. However, because this object is implemented outside WebKit,
+        it isn't privy to the internal Web Process ID used inside WebNotificationmanagerProxy. Therefore,
+        this patch adds a private testing function which returns this internal ID. Once given this intenal ID,
+        WebNotificationProvider can properly map between the different IDs.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::runTestingServerLoop):
+        (WTR::TestController::simulateWebNotificationClick):
+        * WebKitTestRunner/WebNotificationProvider.cpp:
+        (WTR::WebNotificationProvider::showWebNotification):
+        (WTR::removeGlobalIDFromIDMap):
+        (WTR::WebNotificationProvider::closeWebNotification):
+        (WTR::WebNotificationProvider::removeNotificationManager):
+        (WTR::WebNotificationProvider::simulateWebNotificationClick):
+        (WTR::WebNotificationProvider::reset):
+        * WebKitTestRunner/WebNotificationProvider.h:
+
+2016-07-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Simplify LayoutTestRelay
+        https://bugs.webkit.org/show_bug.cgi?id=159353
+
+        Reviewed by Daniel Bates.
+
+        1. Use UDID to pass the device from webkitpy to LayoutTestRelay, searching for it
+        by name and runtime makes no sense.
+        2. Removed code to create devices, webkitpy always does this in advance.
+        3. Don't create copies of testing apps - we can install the same one into
+        each simulator, now that we don't run multiple tester processes in a single simulator.
+        4. Pass information on how to find I/O pipes via environment, not via Info.plist.
+        5. Removed code that kept testing apps alive in the background.
+        6. Slightly updated coding style in functions that I touched.
+
+        * LayoutTestRelay/LayoutTestRelay/CoreSimulatorSPI.h:
+        Updated for what we acually use at this point.
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.h:
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController initWithDevice:productDir:appPath:deviceUDID:dumpToolArguments:]):
+        (-[LTRelayController ipcIdentifier]):
+        (-[LTRelayController processName]):
+        (-[LTRelayController didReceiveStdoutData:]):
+        (-[LTRelayController didCrashWithMessage:]):
+        (-[LTRelayController installApp]):
+        (-[LTRelayController _environmentVariables]):
+        (-[LTRelayController launchApp]):
+        (-[LTRelayController start]):
+        (-[LTRelayController initWithDevice:productDir:appPath:identifierSuffix:dumpToolArguments:]): Deleted.
+        (-[LTRelayController uniqueAppPath]): Deleted.
+        (-[LTRelayController uniqueAppURL]): Deleted.
+        (-[LTRelayController uniqueAppIdentifier]): Deleted.
+        (-[LTRelayController createUniqueApp]): Deleted.
+        * LayoutTestRelay/LayoutTestRelay/main.m:
+        (usage):
+        (getRequiredStringArgument):
+        (main):
+        (getTestingSimDevice): Deleted.
+        * Scripts/webkitpy/port/driver.py:
+        (IOSSimulatorDriver.cmd_line):
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformInitialize):
+        * WebKitTestRunner/ios/mainIOS.mm:
+        (-[WebKitTestRunnerApp applicationDidEnterBackground:]):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpRenderTree):
+        (-[DumpRenderTree applicationDidEnterBackground:]):
+
+2016-07-01  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Build TestNetscapePlugin only if NPAPI is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=159344
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/CMakeLists.txt:
+
+2016-07-01  Youenn Fablet  <youennf@gmail.com>
+
+        Add a runtime flag for DOM iterators
+        https://bugs.webkit.org/show_bug.cgi?id=159300
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        * Scripts/webkitperl/FeatureList.pm:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setDOMIteratorEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-06-30  Tina Liu  <iting_liu@apple.com>
+
+        Add an API test for WKPageRestoreFromSessionStateWithoutNavigation.
+        https://bugs.webkit.org/show_bug.cgi?id=159326
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/RestoreSessionStateWithoutNavigation.cpp: Added.
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::didChangeBackForwardListForPage):
+        (TestWebKitAPI::setPageLoaderClient):
+        Set the page loader client and register for didFinishLoadForFrame and
+        didChangeBackForwardList callbacks.
+        (TestWebKitAPI::createSessionStateData):
+        Load a webpage ("simple.html") and return the session state for this page.
+        (TestWebKitAPI::TEST):
+        Restore the page session state with that of "simple.html" without navigation.
+        Verify that the committed URL is NULL since there's no navigation involved.
+        Verify that the current item in the back forward list, which should be what
+        we restored from the session state, has the expected URL.
+
+2016-06-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Generators violate bytecode liveness validation
+        https://bugs.webkit.org/show_bug.cgi?id=159279
+
+        Reviewed by Yusuke Suzuki.
+        
+        Add Basic to our test harness.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-06-30  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win][Debug] Assertion fails in TestWTF.
+        https://bugs.webkit.org/show_bug.cgi?id=159299
+
+        Reviewed by Alex Christensen.
+
+        The assert in the & operator in the UniqueRef class fails, because the instance has been moved.
+        The Windows version of the UNUSED_PARAM macro is getting the address of the parameter, causing
+        the assertion failure. Since the variable is actually used, there is no need to use the
+        UNUSED_PARAM macro.
+
+        * TestWebKitAPI/Tests/WTF/UniqueRef.cpp:
+        (TestWebKitAPI::TEST):
+
 2016-06-30  Youenn Fablet  <youennf@gmail.com>
 
         LayoutTests intermittently failing to run due to issues starting Web Platform Test server

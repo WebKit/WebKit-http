@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -146,6 +146,7 @@
 #include "SVGElement.h"
 #include "SVGElementFactory.h"
 #include "SVGNames.h"
+#include "SVGSVGElement.h"
 #include "SVGTitleElement.h"
 #include "SVGZoomEvent.h"
 #include "SchemeRegistry.h"
@@ -539,8 +540,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_cookieCacheExpiryTimer(*this, &Document::invalidateDOMCookieCache)
     , m_disabledFieldsetElementsCount(0)
     , m_hasInjectedPlugInsScript(false)
-    , m_renderTreeBeingDestroyed(false)
-    , m_hasPreparedForDestruction(false)
     , m_hasStyleWithViewportUnits(false)
 {
     allDocuments().add(this);
@@ -675,6 +674,7 @@ void Document::removedLastRef()
         // until after removeDetachedChildren returns, so we protect ourselves.
         incrementReferencingNodeCount();
 
+        prepareForDestruction();
         // We must make sure not to be retaining any of our children through
         // these extra pointers or we will create a reference cycle.
         m_focusedElement = nullptr;
@@ -1621,33 +1621,43 @@ void Document::updateTitleFromTitleElement()
 
 void Document::setTitle(const String& title)
 {
-    if (!isHTMLDocument() && !isXHTMLDocument())
+    if (!m_titleElement) {
+        if (isHTMLDocument() || isXHTMLDocument()) {
+            auto* headElement = head();
+            if (!headElement)
+                return;
+            m_titleElement = HTMLTitleElement::create(HTMLNames::titleTag, *this);
+            headElement->appendChild(*m_titleElement);
+        } else if (isSVGDocument()) {
+            auto* element = documentElement();
+            if (!is<SVGSVGElement>(element))
+                return;
+            m_titleElement = SVGTitleElement::create(SVGNames::titleTag, *this);
+            element->insertBefore(*m_titleElement, element->firstChild());
+        }
+    } else if (!isHTMLDocument() && !isXHTMLDocument() && !isSVGDocument())
         m_titleElement = nullptr;
-    else if (!m_titleElement) {
-        auto* headElement = head();
-        if (!headElement)
-            return;
-        m_titleElement = createElement(titleTag, false);
-        headElement->appendChild(*m_titleElement, ASSERT_NO_EXCEPTION);
-    }
 
     // The DOM API has no method of specifying direction, so assume LTR.
     updateTitle(StringWithDirection(title, LTR));
 
     if (is<HTMLTitleElement>(m_titleElement.get()))
         downcast<HTMLTitleElement>(*m_titleElement).setText(title);
+    else if (is<SVGTitleElement>(m_titleElement.get()))
+        downcast<SVGTitleElement>(*m_titleElement).setText(title);
 }
 
 void Document::updateTitleElement(Element* newTitleElement)
 {
-    // Only allow the first title element in tree order to change the title -- others have no effect.
-    if (m_titleElement) {
-        if (isHTMLDocument() || isXHTMLDocument())
-            m_titleElement = descendantsOfType<HTMLTitleElement>(*this).first();
-        else if (isSVGDocument())
-            m_titleElement = descendantsOfType<SVGTitleElement>(*this).first();
-    } else
-        m_titleElement = newTitleElement;
+    if (is<SVGSVGElement>(documentElement()))
+        m_titleElement = childrenOfType<SVGTitleElement>(*documentElement()).first();
+    else {
+        if (m_titleElement) {
+            if (isHTMLDocument() || isXHTMLDocument())
+                m_titleElement = descendantsOfType<HTMLTitleElement>(*this).first();
+        } else
+            m_titleElement = newTitleElement;
+    }
 
     updateTitleFromTitleElement();
 }
@@ -2614,7 +2624,7 @@ HTMLElement* Document::bodyOrFrameset() const
 {
     // Return the first body or frameset child of the html element.
     auto* element = documentElement();
-    if (!element)
+    if (!is<HTMLHtmlElement>(element))
         return nullptr;
     for (auto& child : childrenOfType<HTMLElement>(*element)) {
         if (is<HTMLBodyElement>(child) || is<HTMLFrameSetElement>(child))
@@ -2625,27 +2635,26 @@ HTMLElement* Document::bodyOrFrameset() const
 
 void Document::setBodyOrFrameset(RefPtr<HTMLElement>&& newBody, ExceptionCode& ec)
 {
-    // FIXME: This does not support setting a <frameset> Element, only a <body>. This does
-    // not match the HTML specification:
-    // https://html.spec.whatwg.org/multipage/dom.html#dom-document-body
-    if (!newBody || !documentElement() || !newBody->hasTagName(bodyTag)) { 
+    if (!is<HTMLBodyElement>(newBody.get()) && !is<HTMLFrameSetElement>(newBody.get())) {
         ec = HIERARCHY_REQUEST_ERR;
         return;
     }
 
-    if (&newBody->document() != this) {
-        ec = 0;
-        RefPtr<Node> node = importNode(*newBody, true, ec);
-        if (ec)
-            return;
-        
-        newBody = downcast<HTMLElement>(node.get());
+    auto* currentBody = bodyOrFrameset();
+    if (newBody == currentBody)
+        return;
+
+    if (currentBody) {
+        documentElement()->replaceChild(*newBody, *currentBody, ec);
+        return;
     }
 
-    if (auto* body = bodyOrFrameset())
-        documentElement()->replaceChild(*newBody, *body, ec);
-    else
-        documentElement()->appendChild(*newBody, ec);
+    if (!documentElement()) {
+        ec = HIERARCHY_REQUEST_ERR;
+        return;
+    }
+
+    documentElement()->appendChild(*newBody, ec);
 }
 
 Location* Document::location() const

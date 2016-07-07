@@ -2191,12 +2191,12 @@ static void computeAutocorrectionContext(Frame& frame, String& contextBefore, St
     if (frame.selection().isRange())
         selectedText = plainTextReplacingNoBreakSpace(frame.selection().selection().toNormalizedRange().get());
 
-    if (frame.editor().hasComposition()) {
-        range = Range::create(*frame.document(), frame.editor().compositionRange()->startPosition(), startPosition);
+    if (auto compositionRange = frame.editor().compositionRange()) {
+        range = Range::create(*frame.document(), compositionRange->startPosition(), startPosition);
         String markedTextBefore;
         if (range)
             markedTextBefore = plainTextReplacingNoBreakSpace(range.get());
-        range = Range::create(*frame.document(), endPosition, frame.editor().compositionRange()->endPosition());
+        range = Range::create(*frame.document(), endPosition, compositionRange->endPosition());
         String markedTextAfter;
         if (range)
             markedTextAfter = plainTextReplacingNoBreakSpace(range.get());
@@ -2444,7 +2444,7 @@ void WebPage::performActionOnElement(uint32_t action)
         if (is<RenderImage>(*element.renderer())) {
             Element* linkElement = containingLinkElement(&element);
             if (!linkElement)
-                m_interactionNode->document().frame()->editor().writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), element, downcast<RenderImage>(*element.renderer()).cachedImage()->url(), String());
+                m_interactionNode->document().frame()->editor().writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), element, URL(), String());
             else
                 m_interactionNode->document().frame()->editor().copyURL(linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->fastGetAttribute(HTMLNames::hrefAttr))), linkElement->textContent());
         } else if (element.isLink()) {

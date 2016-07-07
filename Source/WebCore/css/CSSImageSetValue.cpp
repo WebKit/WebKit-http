@@ -118,7 +118,7 @@ StyleCachedImageSet* CSSImageSetValue::cachedImageSet(CachedResourceLoader& load
         ImageWithScale image = bestImageForScaleFactor();
         CachedResourceRequest request(ResourceRequest(document->completeURL(image.imageURL)), options);
         request.setInitiator(cachedResourceRequestInitiators().css);
-        if (options.requestOriginPolicy() == PotentiallyCrossOriginEnabled) {
+        if (options.mode == FetchOptions::Mode::Cors) {
             ASSERT(document->securityOrigin());
             updateRequestForAccessControl(request.mutableResourceRequest(), *document->securityOrigin(), options.allowCredentials());
         }
@@ -154,7 +154,7 @@ StyleImage* CSSImageSetValue::cachedOrPendingImageSet(const Document& document)
 String CSSImageSetValue::customCSSText() const
 {
     StringBuilder result;
-    result.appendLiteral("-webkit-image-set(");
+    result.appendLiteral("image-set(");
 
     size_t length = this->length();
     size_t i = 0;

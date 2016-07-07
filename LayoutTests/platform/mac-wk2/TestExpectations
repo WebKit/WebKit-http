@@ -276,8 +276,6 @@ webkit.org/b/150095 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-in
 
 webkit.org/b/150241 webarchive/loading/object.html [ Pass Crash ] 
 
-webkit.org/b/150736 http/tests/notifications/legacy/events.html [ Pass Crash ]
-
 webkit.org/b/150942 animations/multiple-backgrounds.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/151053 http/tests/security/cross-frame-access-put.html [ Pass Failure ]
@@ -295,8 +293,6 @@ webkit.org/b/151709 [ Release ] http/tests/xmlhttprequest/workers/methods.html [
 webkit.org/b/151729 [ Yosemite ] http/tests/xmlhttprequest/methods-async.html [ Pass Timeout ]
 
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
-
-webkit.org/b/152492 [ Debug ] inspector/debugger/break-on-exception-catch.html [ Pass Timeout ]
 
 webkit.org/b/155138 [ Yosemite ElCapitan ] inspector/console/addInspectedNode.html [ Pass Timeout ]
 
@@ -518,3 +514,7 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 [ Sierra+ ] swipe/main-frame-pinning-requirement.html [ Skip ]
 [ Sierra+ ] swipe/pushState-cached-back-swipe.html [ Skip ]
 [ Sierra+ ] swipe/swipe-start-hysteresis-failures.html [ Skip ]
+
+webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-entry.html [ Pass Failure ]
+
+webkit.org/b/159430 [ Debug Sierra+ ] media/restore-from-page-cache.html [ Pass Crash ]

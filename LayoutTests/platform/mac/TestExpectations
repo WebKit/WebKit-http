@@ -190,7 +190,6 @@ fast/mediastream/RTCPeerConnection-js-built-ins-check-this.html
 fast/mediastream/RTCPeerConnection-inspect-offer.html
 fast/mediastream/RTCPeerConnection-add-removeTrack.html
 fast/mediastream/RTCPeerConnection-addTrack-reuse-sender.html
-fast/mediastream/RTCPeerConnection-onnegotiationneeded.html
 fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html
 fast/mediastream/RTCPeerConnection-closed-state.html
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html
@@ -738,15 +737,14 @@ webkit.org/b/123250 plugins/destroy-during-npp-new-object-with-fallback-content.
 webkit.org/b/123369 svg/css/parent-shadow-offscreen.svg [ ImageOnlyFailure ]
 webkit.org/b/123369 svg/css/root-shadow-offscreen.svg [ ImageOnlyFailure ]
 
-webkit.org/b/151832 inspector/debugger/break-on-uncaught-exception-throw-in-promise-rethrow-in-catch.html
-webkit.org/b/151832 inspector/debugger/break-on-uncaught-exception-throw-in-promise-then-with-catch.html
-webkit.org/b/151832 inspector/debugger/break-on-uncaught-exception-throw-in-promise-then.html
-webkit.org/b/151832 inspector/debugger/break-on-uncaught-exception-throw-in-promise-with-catch.html
-webkit.org/b/151832 inspector/debugger/break-on-uncaught-exception-throw-in-promise.html
 inspector/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html
 inspector/debugger/didSampleProbe-multiple-probes.html
 inspector/debugger/nested-inspectors.html
-inspector/debugger/pause-reason.html
+
+inspector/debugger/break-on-exception-throw-in-promise.html [ Slow ]
+inspector/debugger/break-on-exception.html [ Slow ]
+inspector/debugger/break-on-uncaught-exception-throw-in-promise.html [ Slow ]
+inspector/debugger/break-on-uncaught-exception.html [ Slow ]
 
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
@@ -796,22 +794,21 @@ webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]
 # Skipped for ios-simulator as well:
 webkit.org/b/129758 js/dom/create-lots-of-workers.html [ Skip ]
 
-webkit.org/b/130693 mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
-
 # These tests require an OpenType MATH font on the Apple bots.
-webkit.org/b/72828 mathml/opentype/horizontal.html [ Failure ]
-webkit.org/b/72828 mathml/opentype/horizontal-munderover.html [ Failure ]
+mathml/opentype/vertical.html [ Skip ]
+mathml/opentype/large-operators.html [ Skip ]
+mathml/opentype/horizontal.html [ Skip ]
+mathml/opentype/horizontal-munderover.html [ Skip ]
 
 # These tests require the Latin Modern Math font.
-mathml/opentype/fraction-line.html [ Pass ImageOnlyFailure ]
-mathml/presentation/fractions-linethickness.html [ Pass ImageOnlyFailure ]
-mathml/opentype/large-operators-italic-correction.html [ Pass Failure ]
+mathml/opentype/fraction-line.html [ Skip ]
+mathml/presentation/fractions-linethickness.html [ Skip ]
+mathml/opentype/large-operators-italic-correction.html [ Skip ]
+
+# MathML tests that fail:
 mathml/presentation/multiscripts-positions.html [ Pass ImageOnlyFailure ]
 mathml/presentation/scripts-subsup.html [ Pass ImageOnlyFailure ]
-
-# Missing references
-webkit.org/b/119038 mathml/presentation/mo-stretch.html [ Failure ]
-webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
+webkit.org/b/130693 mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
 
 webkit.org/b/128255 compositing/columns/composited-lr-paginated-repaint.html [ Pass Failure ]
 webkit.org/b/128255 compositing/columns/composited-rl-paginated-repaint.html [ Pass Failure ]
@@ -1211,9 +1208,8 @@ webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node
 webkit.org/b/148636 inspector/css/pseudo-element-matches.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
+webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
-webkit.org/b/152029 inspector/debugger/command-line-api-exception.html [ Pass Timeout ]
-webkit.org/b/152487 inspector/debugger/command-line-api-exception-nested-catch.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-nodes.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-removal.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
@@ -1257,9 +1253,6 @@ webkit.org/b/150225 fast/custom-elements [ Pass ]
 # Marking test as flaky in El Capitan
 webkit.org/b/149819 [ Debug ElCapitan+ ] compositing/video/video-poster.html [ Pass Crash ]
 
-# Marking as flaky again, patch did not work
-webkit.org/b/149218 http/tests/notifications/events.html [ Pass Crash ]
-
 # Flaky on Mac
 webkit.org/b/148435 storage/domstorage/events/basic-body-attribute.html [ Pass Failure ]
 
@@ -1271,10 +1264,6 @@ imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ 
 
 webkit.org/b/150806 imported/w3c/web-platform-tests/XMLHttpRequest/send-timeout-events.htm [ Pass Failure ]
 webkit.org/b/150823 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
-
-webkit.org/b/152436 [ Debug ] imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection.https.html [ Pass Crash ]
-webkit.org/b/153781 [ Debug ] imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection-1.html [ Pass Crash ]
-webkit.org/b/153781 [ Debug ] imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection-2.html [ Pass Crash ]
 
 # WOFF2 is only supported on certain Operating Systems.
 webkit.org/b/150830 [ Yosemite ElCapitan ] fast/text/woff2.html [ ImageOnlyFailure ]
@@ -1433,3 +1422,17 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 # rdar://problem/27000853
 [ Sierra+ ] fast/canvas/canvas-strokePath-gradient-shadow.html [ Failure ]
 [ Sierra+ ] fast/canvas/canvas-strokeRect-gradient-shadow.html [ Failure ]
+
+# rdar://problem/27141291
+[ Sierra+ ] editing/selection/triple-click-in-pre.html [ Failure ]
+
+webkit.org/b/159379 fast/history/page-cache-webdatabase-pending-transaction.html [ Pass Failure ]
+
+webkit.org/b/158747 [ ElCapitan ] media/restore-from-page-cache.html [ Pass Failure ]
+
+# rdar://problem/27182687
+[ Sierra+ ] canvas/philip/tests/2d.path.stroke.scale2.html [ Failure ]
+[ Sierra+ ] imported/w3c/canvas/2d.path.stroke.scale2.html [ Failure ]
+
+# rdar://problem/27187013
+[ Sierra+ ] fast/block/float/overhanging-tall-block.html [ Failure ]

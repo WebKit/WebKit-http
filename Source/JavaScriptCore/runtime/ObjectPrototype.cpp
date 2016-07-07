@@ -134,7 +134,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineGetter(ExecState* exec)
     JSValue get = exec->argument(1);
     CallData callData;
     if (getCallData(get, callData) == CallType::None)
-        return throwVMError(exec, createTypeError(exec, ASCIILiteral("invalid getter usage")));
+        return throwVMTypeError(exec, ASCIILiteral("invalid getter usage"));
 
     auto propertyName = exec->argument(0).toPropertyKey(exec);
     if (exec->hadException())
@@ -145,7 +145,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineGetter(ExecState* exec)
     descriptor.setEnumerable(true);
     descriptor.setConfigurable(true);
 
-    bool shouldThrow = false;
+    bool shouldThrow = true;
     thisObject->methodTable(exec->vm())->defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
 
     return JSValue::encode(jsUndefined());
@@ -160,7 +160,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineSetter(ExecState* exec)
     JSValue set = exec->argument(1);
     CallData callData;
     if (getCallData(set, callData) == CallType::None)
-        return throwVMError(exec, createTypeError(exec, ASCIILiteral("invalid setter usage")));
+        return throwVMTypeError(exec, ASCIILiteral("invalid setter usage"));
 
     auto propertyName = exec->argument(0).toPropertyKey(exec);
     if (exec->hadException())
@@ -171,7 +171,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncDefineSetter(ExecState* exec)
     descriptor.setEnumerable(true);
     descriptor.setConfigurable(true);
 
-    bool shouldThrow = false;
+    bool shouldThrow = true;
     thisObject->methodTable(exec->vm())->defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
 
     return JSValue::encode(jsUndefined());
@@ -187,7 +187,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncLookupGetter(ExecState* exec)
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
-    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::GetOwnProperty);
     if (thisObject->getPropertySlot(exec, propertyName, slot)) {
         if (slot.isAccessor()) {
             GetterSetter* getterSetter = slot.getterSetter();
@@ -214,7 +214,7 @@ EncodedJSValue JSC_HOST_CALL objectProtoFuncLookupSetter(ExecState* exec)
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
-    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
+    PropertySlot slot(thisObject, PropertySlot::InternalMethodType::GetOwnProperty);
     if (thisObject->getPropertySlot(exec, propertyName, slot)) {
         if (slot.isAccessor()) {
             GetterSetter* getterSetter = slot.getterSetter();

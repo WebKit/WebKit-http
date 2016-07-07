@@ -26,6 +26,7 @@
 
 const driver = new Driver(
     document.getElementById("trigger"),
+    "driver.start(10)",
     document.getElementById("magic"),
     document.getElementById("Geomean"),
     "sampleBench");

@@ -127,11 +127,11 @@ PASS a["shadowRoot"] is null
 PASS a["slot"] is 
 PASS a["previousElementSibling"] is [object HTMLDivElement]
 PASS a["nextElementSibling"] is [object HTMLScriptElement]
-PASS a["assignedSlot"] is null
 PASS a["children"] is [object HTMLCollection]
 PASS a["firstElementChild"] is null
 PASS a["lastElementChild"] is null
 PASS a["childElementCount"] is 0
+PASS a["assignedSlot"] is null
 PASS a["ALLOW_KEYBOARD_INPUT"] is 1
 PASS a["nodeName"] is A
 PASS a["nodeValue"] is null
@@ -147,6 +147,7 @@ PASS a["namespaceURI"] is http://www.w3.org/1999/xhtml
 PASS a["prefix"] is null
 PASS a["localName"] is a
 PASS a["textContent"] is nerget
+PASS a["isConnected"] is true
 PASS a["parentElement"] is [object HTMLBodyElement]
 PASS a["ELEMENT_NODE"] is 1
 PASS a["ATTRIBUTE_NODE"] is 2

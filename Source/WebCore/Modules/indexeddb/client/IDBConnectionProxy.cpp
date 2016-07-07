@@ -223,7 +223,7 @@ void IDBConnectionProxy::completeOperation(const IDBResultData& resultData)
     if (!operation)
         return;
 
-    operation->performCompleteOnOriginThread(resultData);
+    operation->performCompleteOnOriginThread(resultData, WTFMove(operation));
 }
 
 void IDBConnectionProxy::abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
@@ -384,6 +384,48 @@ void IDBConnectionProxy::didCloseFromServer(uint64_t databaseConnectionIdentifie
 void IDBConnectionProxy::confirmDidCloseFromServer(IDBDatabase& database)
 {
     callConnectionOnMainThread(&IDBConnectionToServer::confirmDidCloseFromServer, database.databaseConnectionIdentifier());
+}
+
+void IDBConnectionProxy::connectionToServerLost(const IDBError& error)
+{
+    Vector<uint64_t> databaseConnectionIdentifiers;
+    {
+        Locker<Lock> locker(m_databaseConnectionMapLock);
+        copyKeysToVector(m_databaseConnectionMap, databaseConnectionIdentifiers);
+    }
+
+    for (auto connectionIdentifier : databaseConnectionIdentifiers) {
+        RefPtr<IDBDatabase> database;
+        {
+            Locker<Lock> locker(m_databaseConnectionMapLock);
+            database = m_databaseConnectionMap.get(connectionIdentifier);
+        }
+
+        if (!database)
+            continue;
+
+        database->performCallbackOnOriginThread(*database, &IDBDatabase::connectionToServerLost, error);
+    }
+
+    Vector<IDBResourceIdentifier> openDBRequestIdentifiers;
+    {
+        Locker<Lock> locker(m_openDBRequestMapLock);
+        copyKeysToVector(m_openDBRequestMap, openDBRequestIdentifiers);
+    }
+
+    for (auto& requestIdentifier : openDBRequestIdentifiers) {
+        RefPtr<IDBOpenDBRequest> request;
+        {
+            Locker<Lock> locker(m_openDBRequestMapLock);
+            request = m_openDBRequestMap.get(requestIdentifier);
+        }
+
+        if (!request)
+            continue;
+
+        auto result = IDBResultData::error(requestIdentifier, error);
+        request->performCallbackOnOriginThread(*request, &IDBOpenDBRequest::requestCompleted, result);
+    }
 }
 
 void IDBConnectionProxy::scheduleMainThreadTasks()
