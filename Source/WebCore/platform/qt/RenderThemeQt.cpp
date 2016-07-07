@@ -889,9 +889,14 @@ String RenderThemeQt::fileListNameForWidth(const FileList* fileList, const FontC
     return string;
 }
 
-void RenderThemeQt::updateCachedSystemFontDescription(CSSValueID systemFontID, FontCascadeDescription&) const
+void RenderThemeQt::updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription& fontDescription) const
 {
-// FIXME
+    QFontInfo fi(qGuiApp->font());
+    fontDescription.setOneFamily(fi.family());
+    fontDescription.setSpecifiedSize(fi.pixelSize());
+    fontDescription.setIsAbsoluteSize(true);
+    fontDescription.setWeight((fi.bold() ? FontWeightBold : FontWeightNormal));
+    fontDescription.setItalic(fi.italic() ? FontItalicOn : FontItalicOff);
 }
 
 StylePainter::StylePainter(GraphicsContext& context)
