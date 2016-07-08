@@ -50,7 +50,7 @@ public:
     void stopUpdates();
 
     void updateCompleted();
-
+    RunLoop& runLoop() { return m_runLoop; }
     void run();
     void stop();
 
