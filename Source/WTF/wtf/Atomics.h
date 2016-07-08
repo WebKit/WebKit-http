@@ -58,7 +58,7 @@ struct Atomic {
 
     bool compareExchangeWeak(T expected, T desired, std::memory_order order = std::memory_order_seq_cst)
     {
-#if OS(WINDOWS)
+#if OS(WINDOWS) || (COMPILER(GCC) && defined __OPTIMIZE_SIZE__)
         // Windows makes strange assertions about the argument to compare_exchange_weak, and anyway,
         // Windows is X86 so seq_cst is cheap.
         order = std::memory_order_seq_cst;
