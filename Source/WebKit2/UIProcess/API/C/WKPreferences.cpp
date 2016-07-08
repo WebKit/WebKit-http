@@ -1386,16 +1386,6 @@ bool WKPreferencesGetGamepadsEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->gamepadsEnabled();
 }
 
-void WKPreferencesSetMediaDataLoadsAutomatically(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setMediaDataLoadsAutomatically(enabled);
-}
-
-bool WKPreferencesGetMediaDataLoadsAutomatically(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->mediaDataLoadsAutomatically();
-}
-
 // FIXME: Remove these when possible.
 void WKPreferencesSetLongMousePressEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {

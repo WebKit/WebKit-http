@@ -454,6 +454,7 @@ bool MediaPlayerPrivateGStreamer::changePipelineState(GstState newState)
 
 void MediaPlayerPrivateGStreamer::prepareToPlay()
 {
+    m_preload = MediaPlayer::Auto;
     if (m_delayingLoad) {
         m_delayingLoad = false;
         commitLoad();
@@ -470,6 +471,7 @@ void MediaPlayerPrivateGStreamer::play()
     if (changePipelineState(GST_STATE_PLAYING)) {
         m_isEndReached = false;
         m_delayingLoad = false;
+        m_preload = MediaPlayer::Auto;
         setDownloadBuffering();
         LOG_MEDIA_MESSAGE("Play");
     } else {
