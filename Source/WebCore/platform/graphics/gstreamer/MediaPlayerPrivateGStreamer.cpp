@@ -2035,6 +2035,26 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaE
     return extendedSupportsType(parameters, result);
 }
 
+bool isMediaDiskCacheDisabled()
+{
+    static bool result = false;
+    static bool computed = false;
+
+    if (computed)
+        return result;
+
+    String s(std::getenv("WPE_SHELL_DISABLE_MEDIA_DISK_CACHE"));
+    if (!s.isEmpty()) {
+        String value = s.stripWhiteSpace().convertToLowercaseWithoutLocale();
+        result = (value=="1" || value=="t" || value=="true");
+    }
+
+    LOG_MEDIA_MESSAGE("Media on-disk cache is %s", (result)?"disabled":"enabled");
+
+    computed = true;
+    return result;
+}
+
 void MediaPlayerPrivateGStreamer::setDownloadBuffering()
 {
     if (!m_pipeline)
@@ -2049,7 +2069,7 @@ void MediaPlayerPrivateGStreamer::setDownloadBuffering()
     if (flags & flagDownload && m_readyState > MediaPlayer::HaveNothing && !m_resetPipeline)
         return;
 
-    bool shouldDownload = !isLiveStream() && m_preload == MediaPlayer::Auto;
+    bool shouldDownload = !isLiveStream() && m_preload == MediaPlayer::Auto && !isMediaDiskCacheDisabled();
     if (shouldDownload) {
         LOG_MEDIA_MESSAGE("Enabling on-disk buffering");
         g_object_set(m_pipeline.get(), "flags", flags | flagDownload, nullptr);
