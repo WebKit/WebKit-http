@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!DOCTYPE moduleset SYSTEM "moduleset.dtd">
+<?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
+<moduleset>
+
+  <repository type="tarball" name="download.qt.io"
+      href="http://download.qt.io"/>
+
+  <autotools id="qt"
+      makeinstallargs="install INSTALL_ROOT='$(DESTDIR)'"
+      autogen-template="%(srcdir)s/%(autogen-sh)s -prefix %(prefix)s -I%(prefix)s/include -L%(prefix)s/lib -libdir %(prefix)s/lib"
+      autogen-sh="configure
+ -opensource
+ -confirm-license
+
+ -icu
+ -openssl
+ -openssl-linked
+
+ -nomake examples
+ -nomake tools
+ -nomake tests
+
+ -skip connectivity
+ -skip enginio
+ -skip graphicaleffects
+ -skip imageformats
+ -skip multimedia
+ -skip quickcontrols
+ -skip script
+ -skip serialport
+ -skip svg
+ -skip translations
+ -skip wayland
+ -skip webengine
+ -skip webkit
+ -skip x11extras
+ -skip xmlpatterns
+
+ -system-harfbuzz
+ -system-freetype
+ -system-libjpeg
+ -system-libpng
+ -system-sqlite
+ -system-zlib
+
+ -no-alsa
+ -no-cups
+ -no-eglfs
+ -no-evdev
+ -no-gtkstyle
+ -no-libudev
+ -no-linuxfb
+ -no-mtdev
+ -no-nis
+ -no-pulseaudio
+ -no-qml-debug
+ -no-tslib
+
+ -no-gif
+
+ -no-sql-db2 -no-sql-ibase -no-sql-mysql -no-sql-oci -no-sql-odbc -no-sql-psql -no-sql-sqlite2 -no-sql-tds
+ -plugin-sql-sqlite
+                ">
+    <branch module="archive/qt/5.4/${version}/single/qt-everywhere-opensource-src-${version}.tar.xz" version="5.4.0"
+          repo="download.qt.io"
+          hash="sha256:b2d9df47b9fd2fcfa5ebd162e1373b7eddf4759e6ba148c4589f3d8b6628c39c">
+      <patch file="qt-5.4-fontconfig-fix.patch" strip="1"/>
+    </branch>
+    <dependencies>
+      <dep package="fontconfig"/>
+      <dep package="freetype6"/>
+      <dep package="icu"/>
+      <dep package="glib"/>
+      <dep package="harfbuzz"/>
+    </dependencies>
+  </autotools>
+
+</moduleset>

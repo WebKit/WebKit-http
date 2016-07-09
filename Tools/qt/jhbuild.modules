@@ -22,7 +22,7 @@
     </dependencies>
   </metamodule>
 
-  <include href="jhbuild-qt.modules"/>
+  <include href="jhbuild-qt-5.4.modules"/>
 
   <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
   <repository type="git" name="github.com"
