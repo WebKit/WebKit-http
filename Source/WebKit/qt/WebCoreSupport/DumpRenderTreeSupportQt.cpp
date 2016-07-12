@@ -265,13 +265,9 @@ bool DumpRenderTreeSupportQt::hasDocumentElement(QWebFrameAdapter *adapter)
 void DumpRenderTreeSupportQt::setValueForUser(const QWebElement& element, const QString& value)
 {
     WebCore::Element* webElement = element.m_element;
-    if (!webElement)
+    if (!webElement || !is<HTMLInputElement>(webElement))
         return;
-    HTMLInputElement* inputElement = downcast<HTMLInputElement>(webElement);
-    if (!inputElement)
-        return;
-
-    inputElement->setValueForUser(value);
+    downcast<HTMLInputElement>(*webElement).setValueForUser(value);
 }
 
 void DumpRenderTreeSupportQt::clearFrameName(QWebFrameAdapter *adapter)

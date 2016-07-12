@@ -449,17 +449,19 @@ bool RenderThemeQStyle::paintSliderTrack(const RenderObject& o, const PaintInfo&
         p.styleOption.state |= QStyleFacade::State_Sunken;
 
     // some styles need this to show a highlight on one side of the groove
-    HTMLInputElement* slider = downcast<HTMLInputElement>(o.node());
-    if (slider && slider->isSteppable()) {
-        p.styleOption.slider.upsideDown = (p.appearance == SliderHorizontalPart) && !o.style().isLeftToRightDirection();
-        // Use the width as a multiplier in case the slider values are <= 1
-        const int width = r.width() > 0 ? r.width() : 100;
-        p.styleOption.slider.maximum = slider->maximum() * width;
-        p.styleOption.slider.minimum = slider->minimum() * width;
-        if (!p.styleOption.slider.upsideDown)
-            p.styleOption.slider.position = slider->valueAsNumber() * width;
-        else
-            p.styleOption.slider.position = p.styleOption.slider.minimum + p.styleOption.slider.maximum - slider->valueAsNumber() * width;
+    if (is<HTMLInputElement>(o.node())) {
+        HTMLInputElement& slider = downcast<HTMLInputElement>(*o.node());
+        if (slider.isSteppable()) {
+            p.styleOption.slider.upsideDown = (p.appearance == SliderHorizontalPart) && !o.style().isLeftToRightDirection();
+            // Use the width as a multiplier in case the slider values are <= 1
+            const int width = r.width() > 0 ? r.width() : 100;
+            p.styleOption.slider.maximum = slider.maximum() * width;
+            p.styleOption.slider.minimum = slider.minimum() * width;
+            if (!p.styleOption.slider.upsideDown)
+                p.styleOption.slider.position = slider.valueAsNumber() * width;
+            else
+                p.styleOption.slider.position = p.styleOption.slider.minimum + p.styleOption.slider.maximum - slider.valueAsNumber() * width;
+        }
     }
 
     p.paintSliderTrack();
