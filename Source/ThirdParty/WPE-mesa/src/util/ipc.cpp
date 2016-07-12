@@ -73,9 +73,7 @@ void Host::deinitialize()
 
 int Host::releaseClientFD()
 {
-    int fd = m_clientFd;
-    m_clientFd = -1;
-    return fd;
+    return dup(m_clientFd);
 }
 
 void Host::sendMessage(char* data, size_t size)
