@@ -40,7 +40,7 @@ void CompositingManager::establishConnection(WebPage& webPage)
 {
     IPC::Attachment connectionHandle;
     webPage.sendSync(Messages::CompositingManagerProxy::EstablishConnection(),
-        Messages::CompositingManagerProxy::EstablishConnection::Reply(connectionHandle), webPage.pageID());
+        Messages::CompositingManagerProxy::EstablishConnection::Reply(connectionHandle));
 
     m_connectionFd = connectionHandle.releaseFileDescriptor();
 }

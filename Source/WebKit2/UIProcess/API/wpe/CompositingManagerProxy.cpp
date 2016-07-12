@@ -29,6 +29,7 @@
 #include "Attachment.h"
 #include "CompositingManagerProxyMessages.h"
 #include "WPEView.h"
+#include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <wpe/view-backend.h>
 
@@ -43,7 +44,7 @@ CompositingManagerProxy::~CompositingManagerProxy() = default;
 
 void CompositingManagerProxy::initialize()
 {
-    m_view.page().process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_view.page().pageID(), *this);
+    m_view.page().process().processPool().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_view.page().pageID(), *this);
 }
 
 void CompositingManagerProxy::establishConnection(IPC::Attachment& connectionHandle)
