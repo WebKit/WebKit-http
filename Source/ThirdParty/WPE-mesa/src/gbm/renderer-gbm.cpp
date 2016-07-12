@@ -95,7 +95,8 @@ struct EGLTarget : public IPC::Client::Handler {
         {
             auto& releaseBuffer = IPC::GBM::ReleaseBuffer::cast(message);
             auto it = lockedBuffers.find(releaseBuffer.handle);
-            assert(it != lockedBuffers.end());
+            if (it == lockedBuffers.end())
+                return;
 
             struct gbm_bo* bo = it->second;
             if (bo)
