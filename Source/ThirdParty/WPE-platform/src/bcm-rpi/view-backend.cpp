@@ -58,6 +58,8 @@ struct ViewBackend : public IPC::Host::Handler, public WPE::LibinputServer::Clie
     void initializeRenderingTarget();
     void initializeInput();
 
+    int releaseClientFD();
+
     // IPC::Host::Handler
     void handleFd(int) override;
     void handleMessage(char*, size_t) override;
@@ -178,10 +180,6 @@ void ViewBackend::initializeRenderingTarget()
     vc_dispmanx_update_submit_sync(updateHandle);
 
     wpe_view_backend_dispatch_set_size(backend, width, height);
-
-    IPC::Message message;
-    IPC::BCMRPi::TargetConstruction::construct(message, elementHandle, width, height);
-    ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
 }
 
 void ViewBackend::initializeInput()
@@ -199,6 +197,15 @@ void ViewBackend::initializeInput()
     WPE::LibinputServer::singleton().setPointerBounds(width, height);
 
     WPE::LibinputServer::singleton().setClient(inputClient);
+}
+
+int ViewBackend::releaseClientFD()
+{
+    IPC::Message message;
+    IPC::BCMRPi::TargetConstruction::construct(message, elementHandle, width, height);
+    ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
+
+    return ipcHost.releaseClientFD();
 }
 
 void ViewBackend::handleFd(int)
@@ -415,7 +422,7 @@ struct wpe_view_backend_interface bcm_rpi_view_backend_interface = {
     [](void* data) -> int
     {
         auto& backend = *static_cast<BCMRPi::ViewBackend*>(data);
-        return backend.ipcHost.releaseClientFD();
+        return backend.releaseClientFD();
     },
 };
 
