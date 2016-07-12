@@ -106,7 +106,7 @@ public:
     static void garbageCollectorCollect();
     static void garbageCollectorCollectOnAlternateThread(bool waitUntilDone);
     static void setValueForUser(const QWebElement&, const QString& value);
-    static int javaScriptObjectsCount();
+    static size_t javaScriptObjectsCount();
     static void clearScriptWorlds();
     static void evaluateScriptInIsolatedWorld(QWebFrameAdapter*, int worldID, const QString& script);
 
