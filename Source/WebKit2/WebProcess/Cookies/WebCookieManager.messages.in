@@ -33,6 +33,9 @@
     void SetHTTPCookieAcceptPolicy(uint32_t policy)
     void GetHTTPCookieAcceptPolicy(uint64_t callbackID)
     
+    void SetCookies(Vector<String> cookies)
+    void GetCookies(uint64_t callbackID)
+
     void StartObservingCookieChanges()
     void StopObservingCookieChanges()
 

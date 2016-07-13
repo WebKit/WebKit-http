@@ -186,4 +186,36 @@ void WebCookieManagerProxy::didGetHTTPCookieAcceptPolicy(uint32_t policy, uint64
     callback->performCallbackWithReturnValue(policy);
 }
 
+void WebCookieManagerProxy::setCookies(const Vector<String>& cookies)
+{
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies(cookies));
+}
+
+void WebCookieManagerProxy::getCookies(std::function<void (API::Array*, CallbackBase::Error)> callbackFunction)
+{
+    RefPtr<ArrayCallback> callback = ArrayCallback::create(WTFMove(callbackFunction));
+    uint64_t callbackID = callback->callbackID();
+    m_arrayCallbacks.set(callbackID, callback.release());
+
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies(callbackID));
+}
+
+void WebCookieManagerProxy::didGetCookies(Vector<String> cookies, uint64_t callbackID)
+{
+    RefPtr<ArrayCallback> callback = m_arrayCallbacks.take(callbackID);
+    if (!callback)
+    {
+        return;
+    }
+
+    const size_t cookiesSize = cookies.size();
+    Vector<RefPtr<API::Object> > passCookies(cookiesSize);
+
+    for (size_t i = 0; i < cookiesSize; ++i)
+    {
+        passCookies[i] = API::String::create(WTFMove(cookies[i]));
+    }
+    callback->performCallbackWithReturnValue(API::Array::create(WTFMove(passCookies)).ptr());
+}
+
 } // namespace WebKit
