@@ -194,7 +194,7 @@ void TextureMapperPlatformLayerProxy::dropCurrentBufferWhilePreservingTexture()
     });
 }
 
-bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<void()>&& updateFunction)
+bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(NoncopyableFunction<void()>&& updateFunction)
 {
     LockHolder locker(m_lock);
     if (!m_compositorThreadUpdateTimer)
@@ -207,7 +207,7 @@ bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<
 
 void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()
 {
-    Function<void()> updateFunction;
+    NoncopyableFunction<void()> updateFunction;
     {
         LockHolder locker(m_lock);
         if (!m_compositorThreadUpdateFunction)
