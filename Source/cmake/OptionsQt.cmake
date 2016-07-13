@@ -499,6 +499,7 @@ if (MSVC)
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG:FASTLINK")
         endif ()
 
+        set(CMAKE_DEBUG_POSTFIX d)
     elseif (${CMAKE_BUILD_TYPE} MATCHES "Release")
         add_compile_options(/Oy-)
     endif ()
