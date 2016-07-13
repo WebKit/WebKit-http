@@ -126,6 +126,8 @@ WK_EXPORT void WKPageSetApplicationNameForUserAgent(WKPageRef page, WKStringRef 
 WK_EXPORT WKStringRef WKPageCopyCustomUserAgent(WKPageRef page);
 WK_EXPORT void WKPageSetCustomUserAgent(WKPageRef page, WKStringRef userAgent);
 
+WK_EXPORT void WKPageSetProxies(WKPageRef page, WKArrayRef proxies);
+
 WK_EXPORT void WKPageSetUserContentExtensionsEnabled(WKPageRef, bool);
     
 WK_EXPORT bool WKPageSupportsTextEncoding(WKPageRef page);

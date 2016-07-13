@@ -2160,6 +2160,13 @@ void WebPageProxy::setCustomUserAgent(const String& customUserAgent)
     setUserAgent(m_customUserAgent);
 }
 
+void WebPageProxy::setProxies(const Vector<WebCore::Proxy>& proxies)
+{
+#if USE(SOUP)
+    m_process->processPool().sendToNetworkingProcessRelaunchingIfNecessary(Messages::NetworkProcess::SetProxies(m_sessionID, proxies));
+#endif
+}
+
 void WebPageProxy::resumeActiveDOMObjectsAndAnimations()
 {
     if (!isValid() || !m_isPageSuspended)

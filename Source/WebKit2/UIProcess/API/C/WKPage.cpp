@@ -45,6 +45,7 @@
 #include "APIPolicyClient.h"
 #include "APISessionState.h"
 #include "APIUIClient.h"
+#include "APIWebProxy.h"
 #include "APIWindowFeatures.h"
 #include "AuthenticationChallengeProxy.h"
 #include "LegacySessionStateCoding.h"
@@ -54,6 +55,7 @@
 #include "NavigationActionData.h"
 #include "PluginInformation.h"
 #include "PrintInfo.h"
+#include "WKArray.h"
 #include "WKAPICast.h"
 #include "WKPagePolicyClientInternal.h"
 #include "WKPageRenderingProgressEventsInternal.h"
@@ -381,6 +383,23 @@ WKStringRef WKPageCopyCustomUserAgent(WKPageRef pageRef)
 void WKPageSetCustomUserAgent(WKPageRef pageRef, WKStringRef userAgentRef)
 {
     toImpl(pageRef)->setCustomUserAgent(toWTFString(userAgentRef));
+}
+
+void WKPageSetProxies(WKPageRef pageRef, WKArrayRef proxies)
+{
+    size_t size = proxies ? WKArrayGetSize(proxies) : 0;
+    if (!size)
+        return;
+
+    Vector<WebCore::Proxy> passProxies(size);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        WKTypeRef proxy = WKArrayGetItemAtIndex(proxies, i);
+        ASSERT(WKGetType(proxy) == WKProxyGetTypeID());
+        passProxies[i] = toImpl(static_cast<WKProxyRef>(proxy))->proxy();
+    }
+    toImpl(pageRef)->setProxies(passProxies);
 }
 
 void WKPageSetUserContentExtensionsEnabled(WKPageRef pageRef, bool enabled)

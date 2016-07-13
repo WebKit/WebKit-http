@@ -111,6 +111,7 @@ class WebTextChecker;
 class WebUserContentControllerProxy;
 class WebVibrationProxy;
 class WebViewportAttributes;
+class WebProxy;
 
 WK_ADD_API_MAPPING(WKAuthenticationChallengeRef, AuthenticationChallengeProxy)
 WK_ADD_API_MAPPING(WKAuthenticationDecisionListenerRef, AuthenticationDecisionListener)
@@ -168,6 +169,7 @@ WK_ADD_API_MAPPING(WKVibrationRef, WebVibrationProxy)
 WK_ADD_API_MAPPING(WKViewportAttributesRef, WebViewportAttributes)
 WK_ADD_API_MAPPING(WKWebsiteDataStoreRef, API::WebsiteDataStore)
 WK_ADD_API_MAPPING(WKWindowFeaturesRef, API::WindowFeatures)
+WK_ADD_API_MAPPING(WKProxyRef, WebProxy)
 
 /* Enum conversions */
 

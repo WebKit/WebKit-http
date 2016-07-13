@@ -149,6 +149,7 @@ typedef const struct OpaqueWKVibration* WKVibrationRef;
 typedef const struct OpaqueWKViewportAttributes* WKViewportAttributesRef;
 typedef const struct OpaqueWKWebsiteDataStore* WKWebsiteDataStoreRef;
 typedef const struct OpaqueWKWindowFeatures* WKWindowFeaturesRef;
+typedef const struct OpaqueWKProxy* WKProxyRef;
 
 /* WebKit2 Bundle types */
 

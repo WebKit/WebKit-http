@@ -64,6 +64,11 @@ void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languag
     SoupNetworkSession::defaultSession().setAcceptLanguages(languages);
 }
 
+void NetworkProcess::setProxies(WebCore::SessionID, const Vector<WebCore::Proxy>& proxies)
+{
+    SoupNetworkSession::defaultSession().setProxies(proxies);
+}
+
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
     ASSERT(!parameters.diskCacheDirectory.isEmpty());
