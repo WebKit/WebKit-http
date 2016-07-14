@@ -1,3 +1,32 @@
+2016-07-13  Brent Fulgham  <bfulgham@apple.com>
+
+        CSSStyleSheet members should clear their owner node when destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=117470
+
+        Reviewed by Chris Dumez.
+
+        Make sure that CSSStyleSheet members are detached from their owner node when
+        the owning object is destroyed.
+
+        I audited other CSSStyleSheet uses, and found one other place where the owner node was not
+        being cleared during destruction. The Inspector also uses CSSStyleSheet, but seems to
+        handle the node ownership properly.
+
+        Fix based on a Blink change (patch by <haraken@chromium.org>):
+        <https://chromium.googlesource.com/chromium/blink/+/c4949bfdeb2a613701afa1410bdae70531b8f6bf>
+
+        Also includes a follow-up fix (patch by <haraken@chromium.org>):
+        <https://chromium.googlesource.com/chromium/blink/+/9c3932dc80b33429db3a5873cb266b726c8a19bf>
+
+        No test case. Was found by the Chromium team through review of their crash traces under minor DOM GC.
+
+        * contentextensions/ContentExtensionStyleSheet.cpp:
+        (WebCore::ContentExtensions::ContentExtensionStyleSheet::~ContentExtensionStyleSheet):
+        * contentextensions/ContentExtensionStyleSheet.h:
+        * dom/InlineStyleSheetOwner.cpp:
+        (WebCore::InlineStyleSheetOwner::~InlineStyleSheetOwner):
+        (WebCore::authorStyleSheetsForElement):
+
 2017-03-07  Dave Hyatt  <hyatt@apple.com>
 
         Animated GIFs fail to play in multi-column layout
