@@ -1534,7 +1534,7 @@ sub GenerateHeader
 
     if (HasCustomConstructor($interface)) {
         push(@headerContent, "// Custom constructor\n");
-        push(@headerContent, "JSC::EncodedJSValue JSC_HOST_CALL construct${className}(JSC::ExecState*);\n\n");
+        push(@headerContent, "JSC::EncodedJSValue JSC_HOST_CALL construct${className}(JSC::ExecState&);\n\n");
     }
 
     if ($codeGenerator->IsConstructorTemplate($interface, "Event")) {
@@ -1616,7 +1616,7 @@ sub GeneratePropertiesHashTable
     }
 
     my @functions = @{$interface->functions};
-    push(@functions, @{$interface->iterable->functions}) if $interface->iterable;
+    push(@functions, @{$interface->iterable->functions}) if IsKeyValueIterableInterface($interface);
     foreach my $function (@functions) {
         next if ($function->signature->extendedAttributes->{"PrivateIdentifier"} and not $function->signature->extendedAttributes->{"PublicIdentifier"});
         next if ($function->isStatic);
@@ -2043,7 +2043,7 @@ sub GenerateImplementation
     push(@implContent, GenerateDictionaryImplementationContent($interface, $dictionaries));
 
     my @functions = @{$interface->functions};
-    push(@functions, @{$interface->iterable->functions}) if $interface->iterable;
+    push(@functions, @{$interface->iterable->functions}) if IsKeyValueIterableInterface($interface);
 
     my $numConstants = @{$interface->constants};
     my $numFunctions = @functions;
@@ -3717,7 +3717,7 @@ sub GenerateParametersCheck
                 push(@$outputArray, "        $name.uncheckedAppend(item);\n");
                 push(@$outputArray, "    }\n")
             } else {
-                push(@$outputArray, "    Vector<$nativeElementType> $name = toNativeArguments<$nativeElementType>(state, $argumentIndex);\n");
+                push(@$outputArray, "    Vector<$nativeElementType> $name = toNativeArguments<$nativeElementType>(*state, $argumentIndex);\n");
                 push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
@@ -4205,6 +4205,24 @@ sub GenerateImplementationFunctionCall()
     }
 }
 
+sub IsValueIterableInterface
+{
+    my $interface = shift;
+    return 0 unless $interface->iterable;
+    return 0 if length $interface->iterable->keyType;
+    # FIXME: See https://webkit.org/b/159140, we should die if the next check is false.
+    return 0 unless GetIndexedGetterFunction($interface);
+    return 1;
+}
+
+sub IsKeyValueIterableInterface
+{
+    my $interface = shift;
+    return 0 unless $interface->iterable;
+    return 0 if IsValueIterableInterface($interface);
+    return 1;
+}
+
 sub GenerateImplementationIterableFunctions
 {
     my $interface = shift;
@@ -4214,6 +4232,8 @@ sub GenerateImplementationIterableFunctions
     my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($interface);
 
     AddToImplIncludes("JSDOMIterator.h");
+
+    return unless IsKeyValueIterableInterface($interface);
 
     push(@implContent,  <<END);
 using ${interfaceName}Iterator = JSDOMIterator<${className}>;
@@ -4266,8 +4286,12 @@ sub addIterableProperties()
         push(@implContent, "    if (${enable_function}()) {\n    ");
     }
 
-    my $functionName = GetFunctionName($interface, $className, @{$interface->iterable->functions}[0]);
-    push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), DontEnum);\n");
+    if (IsKeyValueIterableInterface($interface)) {
+        my $functionName = GetFunctionName($interface, $className, @{$interface->iterable->functions}[0]);
+        push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), DontEnum);\n");
+    } else {
+        push(@implContent, "    addValueIterableMethods(*globalObject(), *this);\n");
+    }
 
     if ($interface->iterable->extendedAttributes->{"EnabledAtRuntime"}) {
         push(@implContent, "    }\n");
@@ -4454,7 +4478,7 @@ sub JSValueToNative
             AddToImplIncludes("JS${arrayOrSequenceType}.h");
             return ("(toRefPtrNativeArray<${arrayOrSequenceType}, JS${arrayOrSequenceType}>(state, $value, &JS${arrayOrSequenceType}::toWrapped))", 1);
         }
-        return ("toNativeArray<" . GetNativeVectorInnerType($arrayOrSequenceType) . ">(state, $value)", 1);
+        return ("toNativeArray<" . GetNativeVectorInnerType($arrayOrSequenceType) . ">(*state, $value)", 1);
     }
 
     return ($value, 0) if $type eq "any";
@@ -5089,9 +5113,10 @@ END
 
 END
          } elsif ($interface->extendedAttributes->{"CustomConstructor"}) {
-            push(@$outputArray, "template<> JSC::EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(JSC::ExecState* state)\n");
+            push(@$outputArray, "template<> JSC::EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(JSC::ExecState* exec)\n");
             push(@$outputArray, "{\n");
-            push(@$outputArray, "    return construct${className}(state);\n");
+            push(@$outputArray, "    ASSERT(exec);\n");
+            push(@$outputArray, "    return construct${className}(*exec);\n");
             push(@$outputArray, "}\n\n");
          } elsif (!HasCustomConstructor($interface) && (!$interface->extendedAttributes->{"NamedConstructor"} || $generatingNamedConstructor)) {
             if ($function->{overloadedIndex} && $function->{overloadedIndex} > 0) {

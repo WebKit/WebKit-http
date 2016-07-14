@@ -5435,6 +5435,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.availableScreenSize = availableScreenSize();
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
+    parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
 #endif
 
 #if PLATFORM(MAC)

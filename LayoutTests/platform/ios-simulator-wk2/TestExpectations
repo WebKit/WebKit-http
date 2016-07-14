@@ -134,10 +134,6 @@ scrollbars/scrolling-by-page-on-keyboard-spacebar.html [ Failure ]
 # WebKitTestRunner needs testRunner.setUseDashboardCompatibilityMode
 mathml/mathml-in-dashboard.html [ Skip ]
 
-# MathML tests that fail due to slight pixel differences:
-mathml/presentation/semantics.html [ ImageOnlyFailure ]
-mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
-
 # SVG tests that time out (these require EventSender)
 svg/animations/animVal-basics.html
 svg/animations/animate-calcMode-spline-by.html
@@ -1769,7 +1765,6 @@ editing/selection/move-by-line-002.html [ Failure Pass ]
 editing/selection/move-by-sentence-001.html [ Failure Pass ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Pass Timeout ]
 perf/mouse-event.html [ Failure Pass ]
-perf/rel-list-remove.html [ Failure Pass ]
 platform/ios-simulator/ios/fast/coordinates/document-elementFromPoint.html [ Failure Pass ]
 transitions/transition-on-element-with-content.html [ Failure Pass ]
 transitions/visited-link-color.html [ Failure Pass ]
@@ -1913,3 +1908,5 @@ svg/animations/animate-linear-discrete-additive.svg [ ImageOnlyFailure ]
 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure ]
 
 webkit.org/b/159379 fast/history/page-cache-webdatabase-pending-transaction.html [ Pass Failure ]
+
+webkit.org/b/159724 [ Release ] imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure ]

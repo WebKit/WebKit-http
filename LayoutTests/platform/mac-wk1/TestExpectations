@@ -80,6 +80,9 @@ plugins/unavailable-plugin-indicator-obscurity.html
 webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Skip ]
 webkit.org/b/119094 fast/forms/color/color-suggestion-picker-crash-on-set-value.html [ Skip ]
 
+# DumpRenderTree doesn't support logging calls to runOpenPanel.
+fast/forms/file/open-file-panel.html [ Skip ]
+
 # WK1 and WK2 mousemove events are subtly different in ways that break this test on WK1.
 fast/events/ghostly-mousemoves-in-subframe.html [ Skip ]
 
@@ -250,3 +253,4 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 [ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html  [ ImageOnlyFailure ]
 
 [ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
+

@@ -175,8 +175,6 @@ bool ThreadedCompositor::tryEnsureGLContext()
 
 GLContext* ThreadedCompositor::glContext()
 {
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-
     if (m_context)
         return m_context.get();
 
@@ -202,8 +200,6 @@ void ThreadedCompositor::scheduleDisplayImmediately()
 
 void ThreadedCompositor::didChangeVisibleRect()
 {
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-
     RunLoop::main().dispatch([this, protectedThis = Ref<ThreadedCompositor>(*this), visibleRect = m_viewportController->visibleContentsRect(), scale = m_viewportController->pageScaleFactor()] {
         m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
@@ -213,7 +209,6 @@ void ThreadedCompositor::didChangeVisibleRect()
 
 void ThreadedCompositor::renderLayerTree()
 {
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
     if (!m_scene)
         return;
 #if PLATFORM(GTK)

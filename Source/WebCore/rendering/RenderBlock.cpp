@@ -68,7 +68,7 @@
 #include "RenderView.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TransformState.h"
 
 #include <wtf/NeverDestroyed.h>
@@ -2179,6 +2179,8 @@ LayoutUnit RenderBlock::logicalLeftSelectionOffset(RenderBlock& rootBlock, Layou
         ASSERT(currentCache);
         auto info = currentCache->containingBlockInfo(*cb);
         cb = info.block();
+        if (!cb)
+            break;
         currentCache = info.cache();
     }
     return logicalLeft;
@@ -2201,6 +2203,8 @@ LayoutUnit RenderBlock::logicalRightSelectionOffset(RenderBlock& rootBlock, Layo
         ASSERT(currentCache);
         auto info = currentCache->containingBlockInfo(*cb);
         cb = info.block();
+        if (!cb)
+            break;
         currentCache = info.cache();
     }
     return logicalRight;

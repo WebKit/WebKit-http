@@ -173,10 +173,11 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("startsWith", stringProtoFuncStartsWith, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("endsWith", stringProtoFuncEndsWith, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("includes", stringProtoFuncIncludes, DontEnum, 1);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("normalize", stringProtoFuncNormalize, DontEnum, 1);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->iteratorSymbol, stringProtoFuncIterator, DontEnum, 0);
-
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("normalize", stringProtoFuncNormalize, DontEnum, 0);
     JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().charCodeAtPrivateName(), stringProtoFuncCharCodeAt, DontEnum, 1, CharCodeAtIntrinsic);
+
+    JSFunction* iteratorFunction = JSFunction::create(vm, globalObject, 0, ASCIILiteral("[Symbol.iterator]"), stringProtoFuncIterator, NoIntrinsic);
+    putDirectWithoutTransition(vm, vm.propertyNames->iteratorSymbol, iteratorFunction, DontEnum);
 
     // The constructor will be added later, after StringConstructor has been built
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontDelete | ReadOnly | DontEnum);
@@ -749,25 +750,14 @@ static inline bool checkObjectCoercible(JSValue thisValue)
 }
 
 template <typename CharacterType>
-static inline JSValue repeatCharacter(ExecState* exec, CharacterType character, unsigned repeatCount)
-{
-    CharacterType* buffer = nullptr;
-    auto impl = StringImpl::tryCreateUninitialized(repeatCount, buffer);
-    if (!impl)
-        return throwOutOfMemoryError(exec);
-
-    std::fill_n(buffer, repeatCount, character);
-
-    return jsString(exec, WTFMove(impl));
-}
-
-template <typename CharacterType>
 static inline JSString* repeatCharacter(ExecState& exec, CharacterType character, unsigned repeatCount)
 {
     CharacterType* buffer = nullptr;
     auto impl = StringImpl::tryCreateUninitialized(repeatCount, buffer);
-    if (!impl)
-        return throwOutOfMemoryError(&exec), nullptr;
+    if (!impl) {
+        throwOutOfMemoryError(&exec);
+        return nullptr;
+    }
 
     std::fill_n(buffer, repeatCount, character);
 
@@ -788,6 +778,8 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncRepeatCharacter(ExecState* exec)
         return JSValue::encode(jsNull());
 
     int32_t repeatCount = exec->uncheckedArgument(1).asInt32();
+    ASSERT(repeatCount >= 0);
+
     UChar character = string->view(exec)[0];
     if (!(character & ~0xff))
         return JSValue::encode(repeatCharacter(*exec, static_cast<LChar>(character), repeatCount));

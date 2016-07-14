@@ -29,7 +29,9 @@
 
 #if ENABLE(MATHML)
 
-#include "RenderFlexibleBox.h"
+#include "MathMLElement.h"
+#include "MathMLStyle.h"
+#include "RenderBlock.h"
 #include "RenderTable.h"
 #include "StyleInheritedData.h"
 
@@ -39,10 +41,13 @@ namespace WebCore {
 
 class RenderMathMLOperator;
 
-class RenderMathMLBlock : public RenderFlexibleBox {
+class RenderMathMLBlock : public RenderBlock {
 public:
     RenderMathMLBlock(Element&, RenderStyle&&);
     RenderMathMLBlock(Document&, RenderStyle&&);
+    virtual ~RenderMathMLBlock();
+
+    MathMLStyle* mathMLStyle() const { return const_cast<MathMLStyle*>(&m_mathMLStyle.get()); }
 
     bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
 
@@ -61,39 +66,58 @@ public:
     virtual void paint(PaintInfo&, const LayoutPoint&);
 #endif
 
+protected:
+    LayoutUnit ruleThicknessFallback() const
+    {
+        // This function returns a value for the default rule thickness (TeX's \xi_8) to be used as a fallback when we lack a MATH table.
+        // This arbitrary value of 0.05em was used in early WebKit MathML implementations for the thickness of the fraction bars.
+        // Note that Gecko has a slower but more accurate version that measures the thickness of U+00AF MACRON to be more accurate and otherwise fallback to some arbitrary value.
+        return 0.05f * style().fontCascade().size();
+    }
+
     LayoutUnit mathAxisHeight() const;
     LayoutUnit mirrorIfNeeded(LayoutUnit horizontalOffset, LayoutUnit boxWidth = 0) const;
     LayoutUnit mirrorIfNeeded(LayoutUnit horizontalOffset, const RenderBox& child) const { return mirrorIfNeeded(horizontalOffset, child.logicalWidth()); }
 
-protected:
     static LayoutUnit ascentForChild(const RenderBox& child)
     {
         return child.firstLineBaseline().valueOr(child.logicalHeight());
     }
 
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+
 private:
     bool isRenderMathMLBlock() const final { return true; }
-    const char* renderName() const override;
-    bool isFlexibleBoxImpl() const override { return true; }
+    const char* renderName() const override { return "RenderMathMLBlock"; }
+    bool avoidsFloats() const final { return true; }
+    bool canDropAnonymousBlockChild() const final { return false; }
+    void layoutItems(bool relayoutChildren);
+
+    Ref<MathMLStyle> m_mathMLStyle;
 };
 
 class RenderMathMLTable final : public RenderTable {
 public:
     explicit RenderMathMLTable(Element& element, RenderStyle&& style)
         : RenderTable(element, WTFMove(style))
+        , m_mathMLStyle(MathMLStyle::create())
     {
     }
 
     Optional<int> firstLineBaseline() const override;
 
+    MathMLStyle* mathMLStyle() const { return const_cast<MathMLStyle*>(&m_mathMLStyle.get()); }
+
 private:
     bool isRenderMathMLTable() const override { return true; }
     const char* renderName() const override { return "RenderMathMLTable"; }
+
+    Ref<MathMLStyle> m_mathMLStyle;
 };
 
 // Parsing functions for MathML Length values
 bool parseMathMLLength(const String&, LayoutUnit&, const RenderStyle*, bool allowNegative = true);
-bool parseMathMLNamedSpace(const String&, LayoutUnit&, const RenderStyle*, bool allowNegative = true);
+LayoutUnit toUserUnits(const MathMLElement::Length&, const RenderStyle&, const LayoutUnit& referenceValue);
 
 } // namespace WebCore
 

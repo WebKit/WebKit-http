@@ -805,10 +805,9 @@ mathml/opentype/fraction-line.html [ Skip ]
 mathml/presentation/fractions-linethickness.html [ Skip ]
 mathml/opentype/large-operators-italic-correction.html [ Skip ]
 
-# MathML tests that fail:
-mathml/presentation/multiscripts-positions.html [ Pass ImageOnlyFailure ]
-mathml/presentation/scripts-subsup.html [ Pass ImageOnlyFailure ]
-webkit.org/b/130693 mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
+# These tests use key navigation to test MathML links but do not seem to work on Mac.
+webkit.org/b/159662 mathml/presentation/href-enter.html [ Skip ]
+webkit.org/b/159662 mathml/presentation/href-style.html [ Skip ]
 
 webkit.org/b/128255 compositing/columns/composited-lr-paginated-repaint.html [ Pass Failure ]
 webkit.org/b/128255 compositing/columns/composited-rl-paginated-repaint.html [ Pass Failure ]
@@ -1217,6 +1216,7 @@ webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
 webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
+webkit.org/b/159684 [ Debug ] inspector/indexeddb/deleteDatabaseNamesWithSpace.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-get-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
@@ -1288,6 +1288,7 @@ webkit.org/b/152009 [ Debug ElCapitan ] fast/canvas/canvas-too-large-to-draw.htm
 [ Yosemite ] media/airplay-target-availability.html
 [ Yosemite ] media/controls/airplay-picker.html
 [ Yosemite ] media/airplay-autoplay.html
+[ Yosemite ] media/controls/airplay-controls.html
 
 webkit.org/b/153086 sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.3_encodeURI/S15.1.3.3_A2.4_T2.html [ Pass Crash ]
 
@@ -1388,7 +1389,7 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 [ Sierra+ ] http/tests/security/anchor-download-allow-blob.html [ Skip ]
 
 # <rdar://problem/26590623> LayoutTest http/tests/preload/single_download_preload_runner.html failing
-[ Sierra+ ] http/tests/preload/single_download_preload_runner.html [ Pass Failure ]
+[ Sierra+ ] http/tests/preload/single_download_preload_runner.html [ Pass Timeout Failure ]
 
 # <rdar://problem/26187657> LayoutTests timing out in NSCorrectionPanel code
 [ Sierra+ ] editing/input/password-echo-textnode.html [ Timeout ]
@@ -1436,3 +1437,15 @@ webkit.org/b/158747 [ ElCapitan ] media/restore-from-page-cache.html [ Pass Fail
 
 # rdar://problem/27187013
 [ Sierra+ ] fast/block/float/overhanging-tall-block.html [ Failure ]
+
+webkit.org/b/151287 [ ElCapitan ] media/controls/inline-elements-dropoff-order.html [ Failure ]
+
+webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Pass Failure ]
+
+webkit.org/b/158741 [ Yosemite Release ] storage/indexeddb/modern/handle-user-delete.html [ Pass Timeout ]
+
+webkit.org/b/158500 storage/indexeddb/database-close-private.html [ Pass Failure ]
+
+webkit.org/b/159173 fast/css/ancestor-of-hovered-element-detached.html [ Pass Failure ]
+
+webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]

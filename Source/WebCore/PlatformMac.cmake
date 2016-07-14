@@ -566,7 +566,6 @@ list(APPEND WebCore_SOURCES
 
     platform/text/mac/LocaleMac.mm
     platform/text/mac/TextBoundaries.mm
-    platform/text/mac/TextBreakIteratorInternalICUMac.mm
     platform/text/mac/TextCodecMac.cpp
 
     rendering/RenderThemeMac.mm
@@ -596,12 +595,14 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     storage
     style
     svg
+    workers
 
     Modules/applepay
     Modules/geolocation
     Modules/indexeddb
     Modules/notifications
     Modules/webdatabase
+    Modules/websockets
 
     Modules/indexeddb/client
     Modules/indexeddb/shared

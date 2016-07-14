@@ -1,5 +1,6 @@
 list(APPEND WTF_SOURCES
     PlatformUserPreferredLanguagesUnix.cpp
+    UniStdExtras.cpp
 
     generic/WorkQueueGeneric.cpp
 
@@ -7,6 +8,8 @@ list(APPEND WTF_SOURCES
     glib/GLibUtilities.cpp
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
+
+    text/wpe/TextBreakIteratorInternalICUWPE.cpp
 )
 
 list(APPEND WTF_LIBRARIES

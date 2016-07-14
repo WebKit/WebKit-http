@@ -486,11 +486,6 @@ void Heap::finalizeUnconditionalFinalizers()
     m_slotVisitor.finalizeUnconditionalFinalizers();
 }
 
-inline JSStack& Heap::stack()
-{
-    return m_vm->interpreter->stack();
-}
-
 void Heap::willStartIterating()
 {
     m_objectSpace.willStartIterating();
@@ -681,7 +676,7 @@ void Heap::gatherJSStackRoots(ConservativeRoots& roots)
 {
 #if !ENABLE(JIT)
     GCPHASE(GatherJSStackRoots);
-    stack().gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks);
+    m_vm->interpreter->cloopStack().gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks);
 #else
     UNUSED_PARAM(roots);
 #endif
@@ -1462,9 +1457,6 @@ void Heap::didFinishCollection(double gcStartTime)
 
     if (Options::dumpObjectStatistics())
         HeapStatistics::dumpObjectStatistics(this);
-
-    if (Options::logGC() == GCLogging::Verbose)
-        GCLogging::dumpObjectGraph(this);
 
     if (HeapProfiler* heapProfiler = m_vm->heapProfiler()) {
         gatherExtraHeapSnapshotData(*heapProfiler);

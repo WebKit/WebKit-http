@@ -1,3 +1,442 @@
+2016-07-14  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Request and Response url getter should use URL serialization
+        https://bugs.webkit.org/show_bug.cgi?id=159705
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/basic/response-url-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/response-url-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/response-url-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/response-url.html: Added.
+        * web-platform-tests/fetch/api/basic/response-url.js: Added.
+        (checkResponseURL):
+        * web-platform-tests/fetch/api/request/request-init-003.sub-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-003.sub.html:
+
+2016-07-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Import W3C WebCryptoAPI tests
+        https://bugs.webkit.org/show_bug.cgi?id=159636
+
+        Reviewed by Alex Christensen.
+
+        * WebCryptoAPI/OWNERS: Added.
+        * WebCryptoAPI/README.md: Added.
+        * WebCryptoAPI/WebCryptoAPI.idl: Added.
+        * WebCryptoAPI/digest/digest.js: Added.
+        (run_test.):
+        (run_test.copyBuffer):
+        (run_test.equalBuffers):
+        (run_test):
+        * WebCryptoAPI/digest/digest.worker.js: Added.
+        * WebCryptoAPI/digest/test_digest-expected.txt: Added.
+        * WebCryptoAPI/digest/test_digest.html: Added.
+        * WebCryptoAPI/digest/w3c-import.log: Added.
+        * WebCryptoAPI/encrypt_decrypt/aes.js: Added.
+        (run_test.):
+        (run_test.importVectorKey):
+        (run_test):
+        (run_test.equalBuffers):
+        * WebCryptoAPI/encrypt_decrypt/aes_cbc.worker.js: Added.
+        * WebCryptoAPI/encrypt_decrypt/aes_cbc_vectors.js: Added.
+        (getTestVectors):
+        * WebCryptoAPI/encrypt_decrypt/aes_ctr.worker.js: Added.
+        * WebCryptoAPI/encrypt_decrypt/aes_ctr_vectors.js: Added.
+        (getTestVectors):
+        * WebCryptoAPI/encrypt_decrypt/aes_gcm.worker.js: Added.
+        * WebCryptoAPI/encrypt_decrypt/aes_gcm_vectors.js: Added.
+        (getTestVectors):
+        * WebCryptoAPI/encrypt_decrypt/rsa.js: Added.
+        (run_test.):
+        (run_test.else):
+        (run_test.importVectorKeys):
+        (run_test.copyBuffer):
+        (run_test.equalBuffers):
+        (run_test):
+        * WebCryptoAPI/encrypt_decrypt/rsa.worker.js: Added.
+        * WebCryptoAPI/encrypt_decrypt/rsa_vectors.js: Added.
+        (getTestVectors):
+        * WebCryptoAPI/encrypt_decrypt/test_aes_cbc-expected.txt: Added.
+        * WebCryptoAPI/encrypt_decrypt/test_aes_cbc.html: Added.
+        * WebCryptoAPI/encrypt_decrypt/test_aes_ctr-expected.txt: Added.
+        * WebCryptoAPI/encrypt_decrypt/test_aes_ctr.html: Added.
+        * WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt: Added.
+        * WebCryptoAPI/encrypt_decrypt/test_aes_gcm.html: Added.
+        * WebCryptoAPI/encrypt_decrypt/test_rsa_oaep-expected.txt: Added.
+        * WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.html: Added.
+        * WebCryptoAPI/encrypt_decrypt/w3c-import.log: Added.
+        * WebCryptoAPI/generateKey/failures.js: Added.
+        (run_test.parameterString):
+        (run_test.testError):
+        (run_test):
+        (run_test.invalidUsages):
+        (run_test.):
+        * WebCryptoAPI/generateKey/failures.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_AES-CBC.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_AES-CTR.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_AES-GCM.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_AES-KW.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_ECDH.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_ECDSA.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_HMAC.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_RSA-OAEP.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_RSA-PSS.worker.js: Added.
+        * WebCryptoAPI/generateKey/failures_RSASSA-PKCS1-v1_5.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes.js: Added.
+        (run_test.parameterString):
+        (run_test.):
+        (run_test.testSuccess):
+        (run_test):
+        * WebCryptoAPI/generateKey/successes.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_AES-CBC.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_AES-CTR.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_AES-GCM.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_AES-KW.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_ECDH.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_ECDSA.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_HMAC.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_RSA-OAEP.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_RSA-PSS.worker.js: Added.
+        * WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.worker.js: Added.
+        * WebCryptoAPI/generateKey/test_aes-cbc-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_aes-cbc.html: Added.
+        * WebCryptoAPI/generateKey/test_aes-ctr-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_aes-ctr.html: Added.
+        * WebCryptoAPI/generateKey/test_failures-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-CBC-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-CBC.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-CTR-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-CTR.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-GCM-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-GCM.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-KW-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_AES-KW.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_ECDH-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_ECDH.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_ECDSA-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_ECDSA.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_HMAC-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_HMAC.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_RSA-OAEP-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_RSA-OAEP.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_RSA-PSS-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_RSA-PSS.html: Added.
+        * WebCryptoAPI/generateKey/test_failures_RSASSA-PKCS1-v1_5-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_failures_RSASSA-PKCS1-v1_5.html: Added.
+        * WebCryptoAPI/generateKey/test_successes-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-CBC-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-CBC.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-CTR-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-CTR.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-GCM-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-GCM.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-KW-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_AES-KW.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_ECDH-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_ECDH.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_ECDSA-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_ECDSA.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_HMAC-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_HMAC.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_RSA-OAEP-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_RSA-PSS-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_RSA-PSS.html: Added.
+        * WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5-expected.txt: Added.
+        * WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html: Added.
+        * WebCryptoAPI/generateKey/w3c-import.log: Added.
+        * WebCryptoAPI/getRandomValues.js: Added.
+        (run_test.):
+        (run_test):
+        * WebCryptoAPI/getRandomValues.worker.js: Added.
+        * WebCryptoAPI/idlharness-expected.txt: Added.
+        * WebCryptoAPI/idlharness.html: Added.
+        * WebCryptoAPI/idlharness.worker.js: Added.
+        (request.onload):
+        * WebCryptoAPI/test_getRandomValues-expected.txt: Added.
+        * WebCryptoAPI/test_getRandomValues.html: Added.
+        * WebCryptoAPI/tools/generate.py: Added.
+        * WebCryptoAPI/tools/w3c-import.log: Added.
+        * WebCryptoAPI/util/helpers.js: Added.
+        (allNonemptySubsetsOf):
+        (objectToString.):
+        (objectToString):
+        (assert_goodCryptoKey):
+        (allAlgorithmSpecifiersFor):
+        (allValidUsages):
+        (allNameVariants):
+        * WebCryptoAPI/util/w3c-import.log: Added.
+        * WebCryptoAPI/w3c-import.log: Added.
+
+2016-07-13  Youenn Fablet  <youennf@gmail.com>
+
+        Refresh WPT tests up to c875b42
+        https://bugs.webkit.org/show_bug.cgi?id=159712
+
+        Reviewed by Alex Christensen.
+
+        * resources/ImportExpectations:
+        * resources/TestRepositories:
+        * resources/web-platform-tests-modules.json:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-6-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-6.htm: Added.
+        * web-platform-tests/XMLHttpRequest/responsexml-basic-expected.txt:
+        * web-platform-tests/XMLHttpRequest/responsexml-basic.htm:
+        * web-platform-tests/XMLHttpRequest/responsexml-document-properties-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-redirect-post-upload-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm: Added.
+        * web-platform-tests/__init__.py:
+        * web-platform-tests/dom/events/CustomEvent-expected.txt: Added.
+        * web-platform-tests/dom/events/CustomEvent.html: Added.
+        * web-platform-tests/dom/events/Event-dispatch-bubbles-true-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-bubbles-true.html: Added.
+        * web-platform-tests/dom/events/Event-dispatch-detached-click-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-detached-click.html: Added.
+        * web-platform-tests/dom/events/Event-dispatch-multiple-stopPropagation-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-multiple-stopPropagation.html: Added.
+        * web-platform-tests/dom/events/Event-dispatch-order-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-order.html: Added.
+        * web-platform-tests/dom/events/Event-dispatch-throwing-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-throwing.html: Added.
+        * web-platform-tests/dom/events/Event-init-while-dispatching-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-init-while-dispatching.html: Added.
+        * web-platform-tests/dom/events/Event-subclasses-constructors-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-subclasses-constructors.html: Added.
+        * web-platform-tests/dom/events/EventListener-handleEvent-expected.txt: Added.
+        * web-platform-tests/dom/events/EventListener-handleEvent.html: Added.
+        * web-platform-tests/dom/events/EventListener-incumbent-global-1.sub-expected.txt: Added.
+        * web-platform-tests/dom/events/EventListener-incumbent-global-1.sub.html: Added.
+        * web-platform-tests/dom/events/EventListener-incumbent-global-2.sub-expected.txt: Added.
+        * web-platform-tests/dom/events/EventListener-incumbent-global-2.sub.html: Added.
+        * web-platform-tests/dom/events/EventListener-incumbent-global-subframe-1.sub.html: Added.
+        * web-platform-tests/dom/events/EventListener-incumbent-global-subframe-2.sub.html: Added.
+        * web-platform-tests/dom/events/EventListener-incumbent-global-subsubframe.sub.html: Added.
+        * web-platform-tests/dom/lists/DOMTokenList-coverage-for-attributes-expected.txt: Added.
+        * web-platform-tests/dom/lists/DOMTokenList-coverage-for-attributes.html: Added.
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.html: Added.
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.svg: Added.
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.xhtml: Added.
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-tests/empty.xml: Added.
+        * web-platform-tests/dom/nodes/ProcessingInstruction-escapes-1-expected.txt: Added.
+        * web-platform-tests/dom/nodes/ProcessingInstruction-escapes-1.xhtml: Added.
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html-expected.txt:
+        * web-platform-tests/domparsing/DOMParser-parseFromString-html.html:
+        * web-platform-tests/domparsing/createContextualFragment-expected.txt: Added.
+        * web-platform-tests/domparsing/createContextualFragment.html: Added.
+        * web-platform-tests/domparsing/innerhtml-01-expected.txt: Added.
+        * web-platform-tests/domparsing/innerhtml-01.xhtml: Added.
+        * web-platform-tests/domparsing/innerhtml-03-expected.txt: Added.
+        * web-platform-tests/domparsing/innerhtml-03.xhtml: Added.
+        * web-platform-tests/domparsing/innerhtml-04-expected.txt: Added.
+        * web-platform-tests/domparsing/innerhtml-04.html: Added.
+        * web-platform-tests/domparsing/innerhtml-05-expected.txt: Added.
+        * web-platform-tests/domparsing/innerhtml-05.xhtml: Added.
+        * web-platform-tests/domparsing/innerhtml-06-expected.txt: Added.
+        * web-platform-tests/domparsing/innerhtml-06.html: Added.
+        * web-platform-tests/domparsing/innerhtml-07-expected.txt: Added.
+        * web-platform-tests/domparsing/innerhtml-07.html: Added.
+        * web-platform-tests/domparsing/insert_adjacent_html-expected.txt: Added.
+        * web-platform-tests/domparsing/insert_adjacent_html.html: Added.
+        * web-platform-tests/domparsing/insert_adjacent_html.js: Added.
+        (testThrowingNoParent):
+        * web-platform-tests/domparsing/outerhtml-01-expected.txt: Added.
+        * web-platform-tests/domparsing/outerhtml-01.html: Added.
+        * web-platform-tests/domparsing/outerhtml-02-expected.txt: Added.
+        * web-platform-tests/domparsing/outerhtml-02.html: Added.
+        * web-platform-tests/domparsing/xml-serialization-expected.txt: Added.
+        * web-platform-tests/domparsing/xml-serialization.xhtml: Added.
+        * web-platform-tests/fetch/api/basic/request-head-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-head-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-head-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/request-head.html: Added.
+        * web-platform-tests/fetch/api/basic/request-head.js: Added.
+        (promise_test):
+        * web-platform-tests/fetch/api/basic/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers.js:
+        * web-platform-tests/fetch/api/basic/response-url-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/response-url-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/response-url-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/response-url.html: Added.
+        * web-platform-tests/fetch/api/basic/response-url.js: Added.
+        (checkResponseURL):
+        * web-platform-tests/fetch/api/basic/w3c-import.log:
+        * web-platform-tests/fetch/api/cors/cors-basic-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight.js:
+        (corsPreflight):
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt:
+        * web-platform-tests/fetch/api/credentials/authentication-basic-worker-expected.txt:
+        * web-platform-tests/fetch/api/credentials/cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location-worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-mode-worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-002.html:
+        * web-platform-tests/fetch/api/request/request-init-003.sub-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-003.sub.html:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_about_blank-expected.txt: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_about_blank.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_href_invalid-expected.txt: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_href_invalid.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_srcdoc-expected.txt: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_srcdoc.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context-expected.txt: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/link-style-error-01-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/link-style-error-01.html:
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/stylesheet.py: Added.
+        (main):
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/video_008-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/video_008.htm: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/historical-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/historical.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-in-object-fallback-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-in-object-fallback-subdocument.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-in-object-fallback.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/change_child.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/change_grandchild.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/change_parentage-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/change_parentage.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross_origin_child.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross_origin_grandchild.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross_origin_parentage-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross_origin_parentage.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-load-event-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-load-event.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_harness.js: Added.
+        (get_test_results.):
+        (get_test_results):
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_helper.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/same_origin_child.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/same_origin_grandchild.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/same_origin_parentage-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/same_origin_parentage.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/stash.py: Added.
+        (main):
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/viewport-change-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/invalid-src-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/invalid-src.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/form-submission-0/submit-entity-body-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/form-submission-0/submit-entity-body.html: Added.
+        * web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setSelectionRange-expected.txt:
+        * web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setSelectionRange.html:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-indexed-element-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-form-element/form-indexed-element.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-not-executed-after-shutdown-child.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-not-executed-after-shutdown-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-not-executed-after-shutdown.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-not-executed-after-shutdown.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/scripting-enabled-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/scripting-enabled.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/w3c-import.log:
+        * web-platform-tests/lint.whitelist:
+        * web-platform-tests/streams/readable-streams/bad-strategies.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/bad-strategies.js:
+        (get string_appeared_here):
+        (promise_test): Deleted.
+
+2016-07-13  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Response should not become disturbed on the ReadableStream creation
+        https://bugs.webkit.org/show_bug.cgi?id=159714
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-1-expected.txt:
+
+2016-07-12  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] isRedirected should be conveyed in workers
+        https://bugs.webkit.org/show_bug.cgi?id=159676
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/redirect/redirect-method-worker-expected.txt:
+
+2016-07-08  Daniel Bates  <dabates@apple.com>
+
+        Setting table.tFoot or calling table.createTFoot() should append HTML tfont element to the end of the table
+        https://bugs.webkit.org/show_bug.cgi?id=159583
+        <rdar://problem/27255292>
+
+        Reviewed by Chris Dumez.
+
+        Update expected result now that we append the HTML tfoot element to the end of the table.
+
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/tFoot-expected.txt:
+
+2016-07-07  Chris Dumez  <cdumez@apple.com>
+
+        tdody.deleteRow(-1) and tr.deleteCell(-1) should not throw when there are no rows / cells
+        https://bugs.webkit.org/show_bug.cgi?id=159527
+        <rdar://problem/27232261>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/semantics/tabular-data/the-tbody-element/deleteRow-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/deleteCell-expected.txt:
+
+2016-07-07  Chris Dumez  <cdumez@apple.com>
+
+        HTMLTitleElement.text should only account for direct children Text nodes
+        https://bugs.webkit.org/show_bug.cgi?id=159536
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/semantics/document-metadata/the-title-element/title.text-01-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-title-element/title.text-02-expected.txt:
+
+2016-07-07  Chris Dumez  <cdumez@apple.com>
+
+        td / th should be exposed as HTMLTableCellElement objects
+        https://bugs.webkit.org/show_bug.cgi?id=159518
+        <rdar://problem/27225436>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/interfaces-expected.txt:
+
+2016-07-07  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Response constructor should throw in case of bad reason phrase
+        https://bugs.webkit.org/show_bug.cgi?id=159508
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/response/response-error-expected.txt:
+
+2016-07-07  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Response.redirect should throw a RangeError in case of bad status code
+        https://bugs.webkit.org/show_bug.cgi?id=159507
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/response/response-static-redirect-expected.txt:
+
 2016-07-06  Chris Dumez  <cdumez@apple.com>
 
         Document.title setter does not work for SVG documents

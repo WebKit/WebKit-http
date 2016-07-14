@@ -51,12 +51,10 @@ class ThreadableWebSocketChannel {
     WTF_MAKE_NONCOPYABLE(ThreadableWebSocketChannel);
 public:
     ThreadableWebSocketChannel() { }
-    static Ref<ThreadableWebSocketChannel> create(ScriptExecutionContext&, WebSocketChannelClient&);
 
     enum SendResult {
         SendSuccess,
-        SendFail,
-        InvalidMessage
+        SendFail
     };
 
     virtual void connect(const URL&, const String& protocol) = 0;

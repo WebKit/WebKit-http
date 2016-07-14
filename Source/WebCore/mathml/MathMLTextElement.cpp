@@ -32,7 +32,6 @@
 
 #include "MathMLNames.h"
 #include "RenderMathMLOperator.h"
-#include "RenderMathMLSpace.h"
 #include "RenderMathMLToken.h"
 
 namespace WebCore {
@@ -66,11 +65,14 @@ void MathMLTextElement::childrenChanged(const ChildChange& change)
 
 void MathMLTextElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (name == stretchyAttr || name == lspaceAttr || name == rspaceAttr) {
+    if (name == stretchyAttr || name == lspaceAttr || name == rspaceAttr || name == movablelimitsAttr) {
         if (is<RenderMathMLOperator>(renderer()))
             downcast<RenderMathMLOperator>(*renderer()).updateFromElement();
         return;
     }
+
+    if (name == mathvariantAttr && renderer())
+        MathMLStyle::resolveMathMLStyleTree(renderer());
 
     MathMLElement::parseAttribute(name, value);
 }
@@ -79,8 +81,6 @@ RenderPtr<RenderElement> MathMLTextElement::createElementRenderer(RenderStyle&& 
 {
     if (hasTagName(MathMLNames::moTag))
         return createRenderer<RenderMathMLOperator>(*this, WTFMove(style));
-    if (hasTagName(MathMLNames::mspaceTag))
-        return createRenderer<RenderMathMLSpace>(*this, WTFMove(style));
     if (hasTagName(MathMLNames::annotationTag))
         return MathMLElement::createElementRenderer(WTFMove(style), insertionPosition);
 

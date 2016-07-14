@@ -73,3 +73,96 @@ function test() {
 for (var i = 0; i < 1000; i++)
     test();
 
+// Test that we handle neutering for any toInteger neutering the arraybuffer.
+prototypeFunctions = [
+    { func:proto.copyWithin, args:["prim", "prim", "prim"] },
+    { func:proto.every, args:["func"] },
+    { func:proto.fill, args:["prim", "prim", "prim"] },
+    { func:proto.filter, args:["func"] },
+    { func:proto.find, args:["func"] },
+    { func:proto.findIndex, args:["func"] },
+    { func:proto.forEach, args:["func"] },
+    { func:proto.indexOf, args:["na", "prim"] },
+    { func:proto.join, args:["prim"] },
+    { func:proto.lastIndexOf, args:["na", "prim"] },
+    { func:proto.map, args:["func"] },
+    { func:proto.reduce, args:["func"] },
+    { func:proto.reduceRight, args:["func"] },
+    { func:proto.set, args:["array", "prim"] },
+    { func:proto.slice, args:["prim", "prim"] },
+    { func:proto.some, args:["func"] },
+    { func:proto.sort, args:["func"] },
+    { func:proto.subarray, args:["prim", "prim"] },
+];
+
+function defaultForArg(arg, argNum)
+{
+    if (arg === "func")
+        return () => { return argNum; }
+    if (arg === "array")
+        return [1,2];
+
+    return argNum;
+}
+
+function callWithArgs(func, array, args) {
+    let failed = true;
+    try {
+        func.call(array, ...args);
+    } catch (e) {
+        if (e != "TypeError: Underlying ArrayBuffer has been detached from the view")
+            throw new Error(e);
+        failed = false;
+    }
+    if (failed)
+        throw new Error([func, args]);
+}
+
+
+function checkArgumentsForType(func, args, constructor) {
+    let defaultArgs = args.map(defaultForArg);
+
+    for (let argNum = 0; argNum < args.length; argNum++) {
+        let arg = args[argNum];
+        let callArgs = defaultArgs.slice();
+
+        if (arg === "na")
+            continue;
+
+        let array = new constructor(10);
+        if (arg === "func") {
+            callArgs[argNum] = () => {
+                transferArrayBuffer(array.buffer);
+                return func === array.every ? 1 : 0;
+            };
+            callWithArgs(func, array, callArgs);
+        } else if (arg === "prim") {
+            callArgs[argNum] = { [Symbol.toPrimitive]() {
+                transferArrayBuffer(array.buffer);
+                return argNum;
+            } };
+            callWithArgs(func, array, callArgs);
+        } else if (arg === "array") {
+            callArgs[argNum] = new Array(4);
+            callArgs[argNum].fill(2);
+            let desc = { get: () => {
+                transferArrayBuffer(array.buffer);
+                return 1;
+            } };
+            Object.defineProperty(callArgs[argNum], 1, desc);
+            callWithArgs(func, array, callArgs);
+        } else
+            throw new Error(arg);
+    }
+}
+
+function checkArguments({func, args}) {
+    for (constructor of typedArrays)
+        checkArgumentsForType(func, args, constructor);
+}
+
+function test2() {
+    prototypeFunctions.forEach(checkArguments);
+}
+
+test2();

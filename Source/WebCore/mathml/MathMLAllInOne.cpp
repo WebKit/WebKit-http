@@ -29,6 +29,8 @@
 #include "MathMLInlineContainerElement.cpp"
 #include "MathMLMathElement.cpp"
 #include "MathMLMencloseElement.cpp"
+#include "MathMLOperatorDictionary.cpp"
+#include "MathMLPaddedElement.cpp"
 #include "MathMLSelectElement.cpp"
 #include "MathMLTextElement.cpp"
 

@@ -106,6 +106,10 @@
 #include <wtf/text/AtomicStringTable.h>
 #include <wtf/text/SymbolRegistry.h>
 
+#if !ENABLE(JIT)
+#include "CLoopStack.h"
+#endif
+
 #if ENABLE(DFG_JIT)
 #include "ConservativeRoots.h"
 #endif
@@ -193,10 +197,7 @@ VM::VM(VMType vmType, HeapType heapType)
 {
     interpreter = new Interpreter(*this);
     StackBounds stack = wtfThreadData().stack();
-    updateReservedZoneSize(Options::reservedZoneSize());
-#if !ENABLE(JIT)
-    interpreter->stack().setReservedZoneSize(Options::reservedZoneSize());
-#endif
+    updateSoftReservedZoneSize(Options::softReservedZoneSize());
     setLastStackTop(stack.origin());
 
     // Need to be careful to keep everything consistent here
@@ -609,17 +610,20 @@ JSObject* VM::throwException(ExecState* exec, JSObject* error)
 void VM::setStackPointerAtVMEntry(void* sp)
 {
     m_stackPointerAtVMEntry = sp;
-    updateStackLimit();
+    updateStackLimits();
 }
 
-size_t VM::updateReservedZoneSize(size_t reservedZoneSize)
+size_t VM::updateSoftReservedZoneSize(size_t softReservedZoneSize)
 {
-    size_t oldReservedZoneSize = m_reservedZoneSize;
-    m_reservedZoneSize = reservedZoneSize;
+    size_t oldSoftReservedZoneSize = m_currentSoftReservedZoneSize;
+    m_currentSoftReservedZoneSize = softReservedZoneSize;
+#if !ENABLE(JIT)
+    interpreter->cloopStack().setSoftReservedZoneSize(softReservedZoneSize);
+#endif
 
-    updateStackLimit();
+    updateStackLimits();
 
-    return oldReservedZoneSize;
+    return oldSoftReservedZoneSize;
 }
 
 #if PLATFORM(WIN)
@@ -647,23 +651,34 @@ static void preCommitStackMemory(void* stackLimit)
 }
 #endif
 
-inline void VM::updateStackLimit()
+inline void VM::updateStackLimits()
 {
 #if PLATFORM(WIN)
-    void* lastJSCPUStackLimit = m_jsCPUStackLimit;
+    void* lastSoftStackLimit = m_softStackLimit;
 #endif
 
+    size_t reservedZoneSize = Options::reservedZoneSize();
     if (m_stackPointerAtVMEntry) {
         ASSERT(wtfThreadData().stack().isGrowingDownward());
         char* startOfStack = reinterpret_cast<char*>(m_stackPointerAtVMEntry);
-        m_jsCPUStackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_reservedZoneSize);
+        m_softStackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_currentSoftReservedZoneSize);
+        m_stackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), reservedZoneSize);
     } else {
-        m_jsCPUStackLimit = wtfThreadData().stack().recursionLimit(m_reservedZoneSize);
+        m_softStackLimit = wtfThreadData().stack().recursionLimit(m_currentSoftReservedZoneSize);
+        m_stackLimit = wtfThreadData().stack().recursionLimit(reservedZoneSize);
     }
 
 #if PLATFORM(WIN)
-    if (lastJSCPUStackLimit != m_jsCPUStackLimit)
-        preCommitStackMemory(m_jsCPUStackLimit);
+    // We only need to precommit stack memory dictated by the VM::m_softStackLimit limit.
+    // This is because VM::m_softStackLimit applies to stack usage by LLINT asm or JIT
+    // generated code which can allocate stack space that the C++ compiler does not know
+    // about. As such, we have to precommit that stack memory manually.
+    //
+    // In contrast, we do not need to worry about VM::m_stackLimit because that limit is
+    // used exclusively by C++ code, and the C++ compiler will automatically commit the
+    // needed stack pages.
+    if (lastSoftStackLimit != m_softStackLimit)
+        preCommitStackMemory(m_softStackLimit);
 #endif
 }
 
@@ -839,9 +854,23 @@ void sanitizeStackForVM(VM* vm)
 {
     logSanitizeStack(vm);
 #if !ENABLE(JIT)
-    vm->interpreter->stack().sanitizeStack();
+    vm->interpreter->cloopStack().sanitizeStack();
 #else
     sanitizeStackForVMImpl(vm);
+#endif
+}
+
+size_t VM::committedStackByteCount()
+{
+#if ENABLE(JIT)
+    // When using the C stack, we don't know how many stack pages are actually
+    // committed. So, we use the current stack usage as an estimate.
+    ASSERT(wtfThreadData().stack().isGrowingDownward());
+    int8_t* current = reinterpret_cast<int8_t*>(&current);
+    int8_t* high = reinterpret_cast<int8_t*>(wtfThreadData().stack().origin());
+    return high - current;
+#else
+    return CLoopStack::committedByteCount();
 #endif
 }
 

@@ -530,7 +530,7 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
         paymentRequest.setRequiredBillingContactFields(*requiredBillingContactFields);
     } else if (auto requiredBillingAddressFieldsArray = dictionary.get<ArrayValue>("requiredBillingAddressFields")) {
         if (PageConsoleClient* pageConsole = window.console())
-            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredShippingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredShippingContactFields\" instead.");
+            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredBillingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredBillingContactFields\" instead.");
 
         auto requiredBillingAddressFields = createContactFields(window, *requiredBillingAddressFieldsArray);
         if (!requiredBillingAddressFields)
@@ -806,15 +806,18 @@ void ApplePaySession::begin(ExceptionCode& ec)
         return;
     }
 
-    paymentCoordinator().beginPaymentSession(*this);
-
     Vector<URL> linkIconURLs;
     for (auto& icon : LinkIconCollector { document }.iconsOfTypes({ LinkIconType::TouchIcon, LinkIconType::TouchPrecomposedIcon }))
         linkIconURLs.append(icon.url);
 
-    m_state = State::Active;
+    if (!paymentCoordinator().beginPaymentSession(*this, document.url(), linkIconURLs, m_paymentRequest)) {
+        window.printErrorMessage("There is already has an active payment session.");
 
-    paymentCoordinator().showPaymentUI(document.url(), linkIconURLs, m_paymentRequest);
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    m_state = State::Active;
 
     setPendingActivity(this);
 }

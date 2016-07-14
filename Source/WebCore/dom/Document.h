@@ -665,6 +665,9 @@ public:
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
 #endif
+#if ENABLE(WEB_SOCKETS)
+    SocketProvider* socketProvider() final;
+#endif
 
     bool canNavigate(Frame* targetFrame);
     Frame* findUnsafeParentScrollPropagationBoundary();
@@ -860,7 +863,7 @@ public:
 
     // Used by DOM bindings; no direction known.
     String title() const { return m_title.string(); }
-    void setTitle(const String&);
+    void setTitle(const String&, ExceptionCode&);
 
     void titleElementAdded(Element& titleElement);
     void titleElementRemoved(Element& titleElement);
@@ -1793,6 +1796,9 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     RefPtr<IDBClient::IDBConnectionProxy> m_idbConnectionProxy;
+#endif
+#if ENABLE(WEB_SOCKETS)
+    RefPtr<SocketProvider> m_socketProvider;
 #endif
 };
 

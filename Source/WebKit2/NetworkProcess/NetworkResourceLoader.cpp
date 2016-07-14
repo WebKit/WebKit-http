@@ -34,7 +34,9 @@
 #include "NetworkLoad.h"
 #include "NetworkProcess.h"
 #include "NetworkProcessConnectionMessages.h"
+#include "SessionTracker.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebErrors.h"
 #include "WebResourceLoaderMessages.h"
 #include <WebCore/BlobDataFileReference.h>
 #include <WebCore/CertificateInfo.h>
@@ -209,7 +211,18 @@ void NetworkResourceLoader::startNetworkLoad(const ResourceRequest& request)
     NetworkLoadParameters parameters = m_parameters;
     parameters.defersLoading = m_defersLoading;
     parameters.request = request;
+
+#if USE(NETWORK_SESSION)
+    auto* networkSession = SessionTracker::networkSession(parameters.sessionID);
+    if (!networkSession) {
+        WTFLogAlways("Attempted to create a NetworkLoad with a session (id=%" PRIu64 ") that does not exist.", parameters.sessionID.sessionID());
+        didFailLoading(internalError(request.url()));
+        return;
+    }
+    m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters), *networkSession);
+#else
     m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters));
+#endif
 }
 
 void NetworkResourceLoader::setDefersLoading(bool defers)
@@ -405,8 +418,8 @@ void NetworkResourceLoader::didFailLoading(const ResourceError& error)
     if (isSynchronous()) {
         m_synchronousLoadData->error = error;
         sendReplyToSynchronousRequest(*m_synchronousLoadData, nullptr);
-    } else
-        send(Messages::WebResourceLoader::DidFailResourceLoad(error));
+    } else if (auto* connection = messageSenderConnection())
+        connection->send(Messages::WebResourceLoader::DidFailResourceLoad(error), messageSenderDestinationID(), 0);
 
     cleanup();
 }
@@ -586,7 +599,7 @@ void NetworkResourceLoader::dispatchWillSendRequestForCacheEntry(std::unique_ptr
 
 IPC::Connection* NetworkResourceLoader::messageSenderConnection()
 {
-    return connectionToWebProcess().connection();
+    return &connectionToWebProcess().connection();
 }
 
 void NetworkResourceLoader::consumeSandboxExtensions()

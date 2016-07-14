@@ -1,3 +1,146 @@
+2016-07-13  Matt Baker  <mattbaker@apple.com>
+
+        Uncaught Exception: TypeError: null is not an object (evaluating 'this._contentViewContainer.currentContentView.showsFilterBar')
+        https://bugs.webkit.org/show_bug.cgi?id=159696
+        <rdar://problem/27312356>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSelectionPathComponentDidChange):
+        Early return if content view not visible, since the event is sent during
+        tab teardown and the current TimelineView may be invalid.
+
+2016-07-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r192789): Web Inspector: Log Value context menu appears twice
+        https://bugs.webkit.org/show_bug.cgi?id=159681
+        <rdar://problem/27304804>
+
+        Reviewed by Brian Burg.
+
+        In r192789 contextmenu events may bubble up so that multiple handlers
+        may append ContextMenuItems. In nested ObjectTrees / ObjectPreviews
+        this could result in duplicate items. Add a flag on the bubbling event
+        so that we only include Object Tree context menu items for the deepest
+        part of the Object Tree, but still allow bubbling up to the root.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._contextMenuHandler):
+        (WebInspector.ObjectPreviewView):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._contextMenuHandler):
+
+2016-07-12  Johan K. Jensen  <johan_jensen@apple.com>
+
+        Web Inspector: ER: Copy as cURL
+        https://bugs.webkit.org/show_bug.cgi?id=159380
+
+        Reviewed by Joseph Pecoraro.
+
+        Inspired by https://chromium.googlesource.com/chromium/src/+/b7c1115dbae65030ad96e773d9a270465a05f5c4/third_party/WebKit/Source/devtools/front_end/network/NetworkLogView.js
+
+        This "Copy as cURL" feature only approximates the original request as only some parts of
+        that request is known to the frontend.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.generateCURLCommand.escapeStringPosix.escapeCharacter):
+        (WebInspector.Resource.prototype.generateCURLCommand.escapeStringPosix):
+        (WebInspector.Resource.prototype.generateCURLCommand):
+        (WebInspector.Resource):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.appendContextMenuItems):
+
+2016-07-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use separate files for TreeOutline/TreeElement and DataGrid/DataGridNode
+        https://bugs.webkit.org/show_bug.cgi?id=159659
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/DataGrid.js:
+        * UserInterface/Views/DataGridNode.js: Added.
+        * UserInterface/Views/TreeElement.js: Added.
+        * UserInterface/Views/TreeOutline.js:
+        Extra the component classes to their own file.
+
+2016-07-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ProfileView sometimes shows Top Functions data despite Top Functions being disabled
+        https://bugs.webkit.org/show_bug.cgi?id=159660
+        <rdar://problem/27291647>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ScriptProfileTimelineView.js:
+        (WebInspector.ScriptProfileTimelineView.prototype._profileOrientationButtonClicked):
+        Pass the value of the setting, not the setting itself.
+
+2016-07-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Transition and Animation sections in Visual Styles sidebar should have more spacing to their left
+        https://bugs.webkit.org/show_bug.cgi?id=159633
+        <rdar://problem/27281805>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.visual-style-property-container.animation):
+
+2016-07-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Command-Shift-S in the Styles sidebar should always show the save dialog
+        https://bugs.webkit.org/show_bug.cgi?id=156858
+        <rdar://problem/25859098>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+
+2016-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector, regression: JS/JSON pretty-printing sporadically broken in STP8
+        https://bugs.webkit.org/show_bug.cgi?id=159511
+        <rdar://problem/27218435>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Workers/Formatter/FormatterWorker.js:
+        (FormatterWorker.prototype.formatJavaScript):
+        Attempt to format invalid JSON that can be evaluated to an object.
+
+2016-07-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: scrolled Snapshot list is reset to top and drawn blank after switching back from Snapshot Comparison view
+        https://bugs.webkit.org/show_bug.cgi?id=158218
+        rdar://problem/26545000
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView.prototype.get scrollableElements): Added.
+        A default implementation for all cluster views.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype.get scrollableElements): Deleted.
+        This was duplicated in the class, removed one.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView): Initialize _snapshotListScrollTop.
+        (WebInspector.HeapAllocationsTimelineView.prototype.get scrollableElements): Added. Return elements
+        based on what is showing.
+
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotList): Restore the scroll position
+        of the DataGrid after it is added to the view.
+
+        (WebInspector.HeapAllocationsTimelineView.prototype.showHeapSnapshotTimelineRecord): Save the scroll position
+        of the DataGrid before it is removed from the view.
+
+        * UserInterface/Views/ScriptClusterTimelineView.js:
+        (WebInspector.ScriptClusterTimelineView.prototype.get scrollableElements): Deleted. Handled by the base class now.
+
 2016-07-06  Timothy Hatcher  <timothy@apple.com>
 
         Web Inspector: REGRESSION: Hitting ⌘T in Web Inspector no longer opens in new tab in Safari

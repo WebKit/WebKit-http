@@ -213,6 +213,11 @@ bool MediaElementSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement
 
 bool MediaElementSession::canControlControlsManager() const
 {
+    if (m_element.isFullscreen()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is fullscreen");
+        return true;
+    }
+
     if (!m_element.hasAudio()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No audio");
         return false;
@@ -599,16 +604,18 @@ void MediaElementSession::mainContentCheckTimerFired()
     if (!hasBehaviorRestriction(OverrideUserGestureRequirementForMainContent))
         return;
 
+    updateIsMainContent();
+}
+
+bool MediaElementSession::updateIsMainContent() const
+{
     bool wasMainContent = m_isMainContent;
     m_isMainContent = isMainContent(m_element);
 
     if (m_isMainContent != wasMainContent)
         m_element.updateShouldPlay();
-}
 
-bool MediaElementSession::updateIsMainContent() const
-{
-    return m_isMainContent = isMainContent(m_element);
+    return m_isMainContent;
 }
 
 }

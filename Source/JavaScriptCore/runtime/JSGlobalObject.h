@@ -77,7 +77,6 @@ class JSInternalPromise;
 class JSPromise;
 class JSPromiseConstructor;
 class JSPromisePrototype;
-class JSStack;
 class JSTypedArrayViewConstructor;
 class JSTypedArrayViewPrototype;
 class LLIntOffsetsExtractor;
@@ -209,7 +208,7 @@ private:
 public:
     template<typename T> using Initializer = typename LazyProperty<JSGlobalObject, T>::Initializer;
     
-    Register m_globalCallFrame[JSStack::CallFrameHeaderSize];
+    Register m_globalCallFrame[CallFrame::headerSizeInRegisters];
 
     WriteBarrier<JSObject> m_globalThis;
 

@@ -135,10 +135,6 @@ list(APPEND WebCore_SOURCES
     platform/soup/SharedBufferSoup.cpp
     platform/soup/URLSoup.cpp
 
-    platform/text/icu/UTextProvider.cpp
-    platform/text/icu/UTextProviderLatin1.cpp
-    platform/text/icu/UTextProviderUTF16.cpp
-
     platform/text/Hyphenation.cpp
     platform/text/LocaleICU.cpp
     platform/text/TextCodecICU.cpp
@@ -162,8 +158,6 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/wpe/IconWPE.cpp
     platform/graphics/wpe/ImageWPE.cpp
-
-    platform/text/wpe/TextBreakIteratorInternalICUWPE.cpp
 
     platform/unix/LoggingUnix.cpp
 

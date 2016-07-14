@@ -118,7 +118,8 @@ Controller.prototype = {
         out: 'out',
         pictureInPictureButton: 'picture-in-picture-button',
         placeholderShowing: 'placeholder-showing',
-        usesLTRUserInterfaceLayoutDirection: 'uses-ltr-user-interface-layout-direction'
+        usesLTRUserInterfaceLayoutDirection: 'uses-ltr-user-interface-layout-direction',
+        appleTV: 'appletv',
     },
     KeyCodes: {
         enter: 13,
@@ -133,7 +134,7 @@ Controller.prototype = {
         right: 39,
         down: 40
     },
-    MinimumTimelineWidth: 100,
+    MinimumTimelineWidth: 80,
     ButtonWidth: 32,
 
     extend: function(child)
@@ -301,16 +302,19 @@ Controller.prototype = {
         return this.shouldHaveControls() || (this.video.textTracks && this.video.textTracks.length) || this.currentPlaybackTargetIsWireless();
     },
 
-    shouldHaveControls: function()
+    shouldShowControls: function()
     {
         if (!this.isAudio() && !this.host.allowsInlineMediaPlayback)
             return true;
 
-        if (this.isFullScreen() || this.presentationMode() === 'picture-in-picture' || this.currentPlaybackTargetIsWireless())
-            return true;
-
-        return this.video.controls;
+        return this.video.controls || this.isFullScreen();
     },
+
+    shouldHaveControls: function()
+    {
+        return this.shouldShowControls() || this.isFullScreen() || this.presentationMode() === 'picture-in-picture' || this.currentPlaybackTargetIsWireless();
+    },
+    
 
     setNeedsTimelineMetricsUpdate: function()
     {
@@ -670,7 +674,7 @@ Controller.prototype = {
         this.updateLayoutForDisplayedWidth();
         this.setNeedsTimelineMetricsUpdate();
 
-        if (this.shouldHaveControls()) {
+        if (this.shouldShowControls()) {
             this.controls.panel.classList.add(this.ClassNames.show);
             this.controls.panel.classList.remove(this.ClassNames.hidden);
             this.resetHideControlsTimer();
@@ -2153,6 +2157,7 @@ Controller.prototype = {
             this.controls.inlinePlaybackPlaceholderTextTop.innerText = deviceType;
             this.controls.inlinePlaybackPlaceholderTextBottom.innerText = deviceName;
             this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', deviceType + ", " + deviceName);
+            this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.appleTV);
             this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
             this.controls.wirelessTargetPicker.classList.add(this.ClassNames.playing);
             if (!this.isFullScreen() && (this.video.offsetWidth <= 250 || this.video.offsetHeight <= 200)) {
@@ -2170,6 +2175,7 @@ Controller.prototype = {
             this.showControls();
         } else {
             this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
+            this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.appleTV);
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.playing);
             this.controls.volumeBox.classList.remove(this.ClassNames.hidden);
             this.controls.muteBox.classList.remove(this.ClassNames.hidden);
@@ -2288,33 +2294,37 @@ Controller.prototype = {
             {
                 name: "Show Controls",
                 object: this.showControlsButton,
-                extraProperties: ["hidden"]
+                extraProperties: ["hidden"],
             },
             {
                 name: "Status Display",
                 object: this.controls.statusDisplay,
                 styleValues: ["display"],
-                extraProperties: ["textContent"]
+                extraProperties: ["textContent"],
             },
             {
                 name: "Play Button",
-                object: this.controls.playButton
+                object: this.controls.playButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Rewind Button",
-                object: this.controls.rewindButton
+                object: this.controls.rewindButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Timeline Box",
-                object: this.controls.timelineBox
+                object: this.controls.timelineBox,
             },
             {
                 name: "Mute Box",
-                object: this.controls.muteBox
+                object: this.controls.muteBox,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Fullscreen Button",
-                object: this.controls.fullscreenButton
+                object: this.controls.fullscreenButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "AppleTV Device Picker",
@@ -2325,15 +2335,49 @@ Controller.prototype = {
             {
                 name: "Picture-in-picture Button",
                 object: this.controls.pictureInPictureButton,
-                extraProperties: ["parentElement"],
+                extraProperties: ["parentElement", "hidden"],
+            },
+            {
+                name: "Caption Button",
+                object: this.controls.captionButton,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Timeline",
+                object: this.controls.timeline,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Current Time",
+                object: this.controls.currentTime,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Thumbnail Track",
+                object: this.controls.thumbnailTrack,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Time Remaining",
+                object: this.controls.remainingTime,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Track Menu",
-                object: this.captionMenu
+                object: this.captionMenu,
             },
             {
                 name: "Inline playback placeholder",
                 object: this.controls.inlinePlaybackPlaceholder,
+            },
+            {
+                name: "Media Controls Panel",
+                object: this.controls.panel,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Control Base Element",
+                object: this.base || null,
             },
         ];
 

@@ -162,6 +162,7 @@
 #include "SelectorQuery.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "SocketProvider.h"
 #include "StorageEvent.h"
 #include "StyleProperties.h"
 #include "StyleResolveForDocument.h"
@@ -541,6 +542,9 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_disabledFieldsetElementsCount(0)
     , m_hasInjectedPlugInsScript(false)
     , m_hasStyleWithViewportUnits(false)
+#if ENABLE(WEB_SOCKETS)
+    , m_socketProvider(page() ? &page()->socketProvider() : nullptr)
+#endif
 {
     allDocuments().add(this);
 
@@ -1619,7 +1623,7 @@ void Document::updateTitleFromTitleElement()
     }
 }
 
-void Document::setTitle(const String& title)
+void Document::setTitle(const String& title, ExceptionCode& ec)
 {
     if (!m_titleElement) {
         if (isHTMLDocument() || isXHTMLDocument()) {
@@ -1642,9 +1646,9 @@ void Document::setTitle(const String& title)
     updateTitle(StringWithDirection(title, LTR));
 
     if (is<HTMLTitleElement>(m_titleElement.get()))
-        downcast<HTMLTitleElement>(*m_titleElement).setText(title);
+        downcast<HTMLTitleElement>(*m_titleElement).setTextContent(title, ec);
     else if (is<SVGTitleElement>(m_titleElement.get()))
-        downcast<SVGTitleElement>(*m_titleElement).setText(title);
+        downcast<SVGTitleElement>(*m_titleElement).setTextContent(title, ec);
 }
 
 void Document::updateTitleElement(Element* newTitleElement)
@@ -3087,6 +3091,13 @@ IDBClient::IDBConnectionProxy* Document::idbConnectionProxy()
 }
 #endif // ENABLE(INDEXED_DATABASE)
 
+#if ENABLE(WEB_SOCKETS)
+SocketProvider* Document::socketProvider()
+{
+    return m_socketProvider.get();
+}
+#endif
+    
 bool Document::canNavigate(Frame* targetFrame)
 {
     if (!m_frame)
@@ -5237,6 +5248,20 @@ RefPtr<XPathResult> Document::evaluate(const String& expression, Node* contextNo
     return m_xpathEvaluator->evaluate(expression, contextNode, WTFMove(resolver), type, result, ec);
 }
 
+static bool shouldInheritSecurityOriginFromOwner(const URL& url)
+{
+    // Paraphrased from <https://html.spec.whatwg.org/multipage/browsers.html#origin> (8 July 2016)
+    //
+    // If a Document has the address "about:blank"
+    //      The origin of the document is the origin it was assigned when its browsing context was created.
+    // If a Document has the address "about:srcdoc"
+    //      The origin of the document is the origin of its parent document.
+    //
+    // Note: We generalize this to invalid URLs because we treat such URLs as about:blank.
+    //
+    return url.isEmpty() || equalIgnoringASCIICase(url.string(), blankURL()) || equalLettersIgnoringASCIICase(url.string(), "about:srcdoc");
+}
+
 void Document::initSecurityContext()
 {
     if (haveInitializedSecurityOrigin()) {
@@ -5289,7 +5314,7 @@ void Document::initSecurityContext()
         setBaseURLOverride(parentDocument->baseURL());
     }
 
-    if (!m_url.shouldInheritSecurityOriginFromOwner())
+    if (!shouldInheritSecurityOriginFromOwner(m_url))
         return;
 
     // If we do not obtain a meaningful origin from the URL, then we try to
@@ -5332,7 +5357,7 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree().parent() || (!m_url.shouldInheritSecurityOriginFromOwner() && !isPluginDocument()))
+    if (!m_frame->tree().parent() || (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()))
         return;
 
     contentSecurityPolicy()->copyStateFrom(m_frame->tree().parent()->document()->contentSecurityPolicy());

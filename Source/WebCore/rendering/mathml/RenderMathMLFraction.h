@@ -43,7 +43,7 @@ public:
     float relativeLineThickness() const { return m_defaultLineThickness ? m_lineThickness / m_defaultLineThickness : LayoutUnit(0); }
 
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
-    void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) final;
+    void updateFromElement() final;
 
 protected:
     void computePreferredLogicalWidths() final;
@@ -52,12 +52,12 @@ private:
     bool isRenderMathMLFraction() const final { return true; }
     const char* renderName() const final { return "RenderMathMLFraction"; }
 
-    void updateFromElement() final;
     Optional<int> firstLineBaseline() const final;
     void paint(PaintInfo&, const LayoutPoint&) final;
     RenderMathMLOperator* unembellishedOperator() final;
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
 
+    bool isStack() const { return !m_lineThickness; }
     bool isValid() const;
     RenderBox& numerator() const;
     RenderBox& denominator() const;
@@ -69,10 +69,24 @@ private:
     FractionAlignment parseAlignmentAttribute(const String& value);
     LayoutUnit horizontalOffset(RenderBox&, FractionAlignment);
 
-    LayoutUnit m_defaultLineThickness;
+    LayoutUnit m_ascent;
+    LayoutUnit m_defaultLineThickness { 1 };
     LayoutUnit m_lineThickness;
-    FractionAlignment m_numeratorAlign;
-    FractionAlignment m_denominatorAlign;
+    union {
+        LayoutUnit m_numeratorGapMin;
+        LayoutUnit m_gapMin;
+    };
+    LayoutUnit m_denominatorGapMin;
+    union {
+        LayoutUnit m_numeratorMinShiftUp;
+        LayoutUnit m_topShiftUp;
+    };
+    union {
+        LayoutUnit m_denominatorMinShiftDown;
+        LayoutUnit m_bottomShiftDown;
+    };
+    FractionAlignment m_numeratorAlign { FractionAlignmentCenter };
+    FractionAlignment m_denominatorAlign { FractionAlignmentCenter };
 };
 
 } // namespace WebCore

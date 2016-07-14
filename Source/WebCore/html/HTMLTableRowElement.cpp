@@ -28,7 +28,7 @@
 #include "ExceptionCode.h"
 #include "GenericCachedHTMLCollection.h"
 #include "HTMLNames.h"
-#include "HTMLTableDataCellElement.h"
+#include "HTMLTableCellElement.h"
 #include "HTMLTableElement.h"
 #include "HTMLTableSectionElement.h"
 #include "NodeList.h"
@@ -112,7 +112,7 @@ RefPtr<HTMLTableCellElement> HTMLTableRowElement::insertCell(int index, Exceptio
         return nullptr;
     }
 
-    auto cell = HTMLTableDataCellElement::create(document());
+    auto cell = HTMLTableCellElement::create(tdTag, document());
     if (index < 0 || index >= numCells)
         appendChild(cell, ec);
     else {
@@ -130,8 +130,12 @@ void HTMLTableRowElement::deleteCell(int index, ExceptionCode& ec)
 {
     Ref<HTMLCollection> children = cells();
     int numCells = children->length();
-    if (index == -1)
-        index = numCells-1;
+    if (index == -1) {
+        if (!numCells)
+            return;
+
+        index = numCells - 1;
+    }
     if (index >= 0 && index < numCells)
         HTMLElement::removeChild(*children->item(index), ec);
     else

@@ -2749,6 +2749,13 @@ void WKPageSetResourceCachingDisabled(WKPageRef page, bool disabled)
     toImpl(page)->setResourceCachingDisabled(disabled);
 }
 
+void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportScaleLimits)
+{
+#if PLATFORM(IOS)
+    toImpl(page)->setForceAlwaysUserScalable(ignoresViewportScaleLimits);
+#endif
+}
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 // -- DEPRECATED --

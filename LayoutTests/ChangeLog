@@ -1,3 +1,1806 @@
+2016-07-14  Youenn Fablet  <youenn@apple.com>
+
+        DOM value iterable interfaces should use Array prototype methods
+        https://bugs.webkit.org/show_bug.cgi?id=159296
+
+        Reviewed by Chris Dumez and Mark Lam.
+
+        * fast/dom/nodeListIterator-expected.txt:
+        * fast/dom/nodeListIterator.html:
+        * fast/dom/NodeList/nodelist-iterable-expected.txt: Added.
+        * fast/dom/NodeList/nodelist-iterable.html: Added.
+
+2016-07-14  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Request and Response url getter should use URL serialization
+        https://bugs.webkit.org/show_bug.cgi?id=159705
+
+        Reviewed by Alex Christensen.
+
+        * fetch/fetch-url-serialization-expected.txt: Added.
+        * fetch/fetch-url-serialization.html: Added.
+        * fetch/fetch-urls.json: Added.
+
+2016-07-14  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r202918): LayoutTest media/video-main-content-allow-then-deny.html is flaky, failing almost every time on El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=159533
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Rebaseline test after r203204 and r203207.
+
+        * js/typed-array-mutated-during-set-expected.txt:
+
+2016-07-13  Frederic Wang  <fwang@igalia.com>
+
+        Rebaseline EFL and Windows MathML tests after r203171
+
+        Unreviewed test gardening.
+
+        * platform/efl/mathml/opentype/horizontal-expected.txt:
+        * platform/efl/mathml/opentype/horizontal-munderover-expected.txt:
+        * platform/efl/mathml/opentype/large-operators-expected.txt:
+        * platform/efl/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/efl/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+        * platform/efl/mathml/opentype/vertical-expected.txt:
+        * platform/efl/mathml/presentation/menclose-notation-default-longdiv-expected.txt:
+        * platform/efl/mathml/presentation/menclose-notation-values-expected.txt:
+        * platform/efl/mathml/presentation/mo-stretch-expected.txt:
+        * platform/efl/mathml/presentation/mspace-children-expected.txt:
+        * platform/efl/mathml/presentation/roots-expected.txt:
+        * platform/efl/mathml/radical-fallback-expected.txt:
+        * platform/win/mathml/mathml-in-dashboard-expected.txt:
+        * platform/win/mathml/opentype/horizontal-expected.txt:
+        * platform/win/mathml/opentype/horizontal-munderover-expected.txt:
+        * platform/win/mathml/opentype/large-operators-expected.txt:
+        * platform/win/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/win/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+        * platform/win/mathml/opentype/vertical-expected.txt:
+        * platform/win/mathml/presentation/menclose-notation-default-longdiv-expected.txt:
+        * platform/win/mathml/presentation/mo-stretch-expected.txt:
+        * platform/win/mathml/presentation/mspace-children-expected.txt:
+        * platform/win/mathml/presentation/roots-expected.txt:
+        * platform/win/mathml/radical-fallback-expected.txt:
+
+2016-07-13  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, rebaseline tests for ES6 TypedArray behavior.
+
+        * js/typed-array-mutated-during-set-expected.txt:
+        * js/typed-array-mutated-during-set.html:
+
+2016-07-13  Michael Saboff  <msaboff@apple.com>
+
+        Some bad unicode regex escapes aren't flagged as errors
+        https://bugs.webkit.org/show_bug.cgi?id=158080
+
+        Reviewed by Saam Barati.
+
+        New tests.
+
+        * js/regress-158080.html: Added.
+        * js/script-tests/regress-158080.js: Added.
+
+2016-07-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Import W3C WebCryptoAPI tests
+        https://bugs.webkit.org/show_bug.cgi?id=159636
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        Skip test cases for unimplemented features.
+
+2016-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove duplicated TestExpectation for perf/rel-list-remove.html on ios-simulator
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-07-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening for fast/text/font-face-javascript.html
+        https://bugs.webkit.org/show_bug.cgi?id=156631
+
+        Unreviewed.
+
+        * TestExpectations:
+        * fast/text/font-face-javascript-expected.txt:
+        * fast/text/font-face-javascript.html:
+
+2016-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/blink/storage/indexeddb/blob-valid-after-deletion.html as flaky on Mac and ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=158640
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-07-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add test verifying detached iframes cannot set IDB values
+        https://bugs.webkit.org/show_bug.cgi?id=159736
+
+        Reviewed by Brady Eidson.
+        
+        We match Chrome but not Firefox in this case.
+
+        * storage/indexeddb/detached-iframe-expected.txt: Added.
+        * storage/indexeddb/detached-iframe.html: Added.
+        * storage/indexeddb/resources/detached-iframe.html: Added.
+        * storage/indexeddb/resources/detached-iframe.js: Added.
+        (done):
+        (unexpectedErrorCallback):
+        (getRequestCallback):
+        (dbOpenedSecondTime):
+        (getValueFromIDB):
+        (makeDetachedFrame):
+        (prepareDatabase):
+
+2016-07-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r202953): Clicking on input[type=file] doesn't open a file picker
+        https://bugs.webkit.org/show_bug.cgi?id=159686
+        <rdar://problem/27263589>
+
+        Reviewed by Chris Dumez.
+
+        Added a regression test for opening a file picker on a type=file input element.
+
+        The test currently only works on WebKit2 since the support for logging "OPEN FILE PANEL"
+        was only added to WebKitTestRunner.
+
+        Also added WebKit2 specific expected results for some tests that tries to open file panel.
+
+        * fast/forms/file/open-file-panel-expected.txt: Added.
+        * fast/forms/file/open-file-panel.html: Added.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wk2/accessibility: Added.
+        * platform/wk2/accessibility/axpress-on-aria-button-expected.txt: Copied from LayoutTests/accessibility/axpress-on-aria-button-expected.txt.
+        * platform/wk2/accessibility/file-upload-button-with-axpress-expected.txt: Copied from LayoutTests/accessibility/file-upload-button-with-axpress-expected.txt.
+        * platform/wk2/fast: Added.
+        * platform/wk2/fast/events: Added.
+        * platform/wk2/fast/events/domactivate-sets-underlying-click-event-as-handled-expected.txt: Copied from LayoutTests/fast/events/domactivate-sets-underlying-click-event-as-handled-expected.txt.
+
+2016-07-13  Frederic Wang  <fwang@igalia.com>
+
+        Remove padding and margin around the <math> element
+        https://bugs.webkit.org/show_bug.cgi?id=157989
+
+        Reviewed by Brent Fulgham.
+
+        * imported/mathml-in-html5/mathml/relations/html5-tree/href-click-1.html: Remove spacing hack.
+        * imported/mathml-in-html5/mathml/relations/html5-tree/href-click-2.html: Ditto.
+        * mathml/presentation/fractions-box-expected.html: Ditto.
+        * mathml/presentation/fractions-box.html: Ditto.
+        * mathml/presentation/href-enter.html: Ditto.
+        * mathml/presentation/maction-toggle-href.html: Ditto.
+        * mathml/presentation/mpadded-1-2.html: Ditto.
+        * mathml/presentation/mpadded-1.html: Ditto.
+        * mathml/presentation/mpadded-2.html: Ditto.
+        * mathml/presentation/mpadded-3.html: Ditto.
+        * mathml/presentation/mpadded-4-expected.html: Ditto.
+        * mathml/presentation/mpadded-4.html: Ditto.
+        * mathml/presentation/mspace-prefered-width.html: Ditto.
+        * mathml/presentation/mspace-units-expected.html: Ditto.
+        * mathml/presentation/mspace-units.html: Ditto.
+        * mathml/presentation/mspace.html: Ditto.
+        * mathml/presentation/scripts-height-expected.html: Ditto.
+        * mathml/presentation/scripts-subsup-expected.html: Ditto.
+        * mathml/presentation/scripts-subsup.html: Ditto.
+        * mathml/presentation/scripts-underover-expected.html: Ditto.
+        * mathml/presentation/scripts-underover.html: Ditto.
+        * mathml/presentation/semantics-2.html: Ditto.
+        * mathml/presentation/semantics-3.html: Ditto.
+        * mathml/presentation/semantics-4.html: Ditto.
+        * mathml/presentation/semantics-href.html: Ditto.
+        * mathml/presentation/style-border-padding-background.html: Ditto.
+        * platform/gtk/mathml/opentype/horizontal-expected.png: Rebaseline due to spacing change around the math tag.
+        * platform/gtk/mathml/opentype/horizontal-expected.txt: Ditto.
+        * platform/gtk/mathml/opentype/horizontal-munderover-expected.png: Ditto.
+        * platform/gtk/mathml/opentype/horizontal-munderover-expected.txt: Ditto.
+        * platform/gtk/mathml/opentype/large-operators-expected.txt: Ditto.
+        * platform/gtk/mathml/opentype/opentype-stretchy-expected.png: Ditto.
+        * platform/gtk/mathml/opentype/opentype-stretchy-expected.txt: Ditto.
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.png: Ditto.
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Ditto.
+        * platform/gtk/mathml/opentype/vertical-expected.png: Ditto.
+        * platform/gtk/mathml/opentype/vertical-expected.txt: Ditto.
+        * platform/gtk/mathml/presentation/menclose-notation-default-longdiv-expected.png: Ditto.
+        * platform/gtk/mathml/presentation/menclose-notation-default-longdiv-expected.txt: Ditto.
+        * platform/gtk/mathml/presentation/menclose-notation-values-expected.png: Ditto.
+        * platform/gtk/mathml/presentation/menclose-notation-values-expected.txt: Ditto.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png: Ditto.
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt: Ditto.
+        * platform/gtk/mathml/presentation/mspace-children-expected.txt: Ditto.
+        * platform/gtk/mathml/presentation/roots-expected.png: Ditto.
+        * platform/gtk/mathml/presentation/roots-expected.txt: Ditto.
+        * platform/gtk/mathml/radical-fallback-expected.png: Ditto.
+        * platform/gtk/mathml/radical-fallback-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/opentype/opentype-stretchy-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/menclose-notation-default-longdiv-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/menclose-notation-values-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/mo-stretch-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/mspace-children-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/roots-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/radical-fallback-expected.txt: Ditto.
+        * platform/mac/mathml/opentype/opentype-stretchy-expected.txt: Ditto.
+        * platform/mac/mathml/opentype/opentype-stretchy-horizontal-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/menclose-notation-default-longdiv-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/menclose-notation-values-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/mo-stretch-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/mspace-children-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/roots-expected.txt: Ditto.
+        * platform/mac/mathml/radical-fallback-expected.txt: Ditto.
+        * mathml/mathml-in-dashboard-expected.txt: Ditto
+
+2016-07-13  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] spinbutton-crash.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=159723
+
+        Reviewed by Chris Fleizach.
+
+        In ATK, the accessible object for an input element has no children for
+        the text component. As a result, the spinner is the first and only child.
+        In AXAPI, the input element has an AXGroup child for the text component.
+        As a result, the spinner is the second of two children. Therefore, add a
+        helper method to accessibility-helper.js to retrieve the correct child
+        for the current platform use it in spinbutton-crash.html.
+
+        * accessibility/spinbutton-crash.html: Modified.
+        * resources/accessibility-helper.js:
+        (spinnerForTextInput): Added.
+
+2016-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm as failing on Mac and ios-sim Release WK2
+        https://bugs.webkit.org/show_bug.cgi?id=159724
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2016-07-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK1][iOS] Crash when WebSocket attempts to dispatch a mixed content blocker event
+        https://bugs.webkit.org/show_bug.cgi?id=159680
+        <rdar://problem/22102028>
+
+        Reviewed by Zalan Bujtas.
+
+        * http/tests/ssl/mixedContent: Added.
+        * http/tests/ssl/mixedContent/insecure-websocket-expected.txt: Added.
+        * http/tests/ssl/mixedContent/insecure-websocket.html: Added.
+
+2016-07-13  Youenn Fablet  <youennf@gmail.com>
+
+        Refresh WPT tests up to c875b42
+        https://bugs.webkit.org/show_bug.cgi?id=159712
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations: Adding some test expectations and skipping some resource files.
+
+2016-07-13  Frederic Wang  <fwang@igalia.com>
+
+        The display property of many MathML elements can not be overriden by page authors
+        https://bugs.webkit.org/show_bug.cgi?id=139403
+
+        Reviewed by Brent Fulgham.
+
+        * imported/mathml-in-html5/mathml/relations/css-styling/display-1-expected.html: Added.
+        * imported/mathml-in-html5/mathml/relations/css-styling/display-1.html: Added.
+
+2016-07-13  Frederic Wang  <fwang@igalia.com>
+
+        Update Windows expectations for two MathML tests.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2016-07-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [EFL] [GTK] Enable back crypto subtle on development builds.
+        https://bugs.webkit.org/show_bug.cgi?id=159260
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Enable back the tests that were
+        passing on GTK.
+
+2016-07-13  Frederic Wang  <fwang@igalia.com>
+
+        Update MathML expectations on EFL and Windows ports.
+
+        Unreviewed test gardening.
+
+        * platform/efl/mathml/opentype/horizontal-expected.txt:
+        * platform/efl/mathml/opentype/horizontal-munderover-expected.txt:
+        * platform/win/TestExpectations:
+        * platform/win/mathml/opentype/horizontal-expected.txt:
+        * platform/win/mathml/opentype/horizontal-munderover-expected.txt:
+
+2016-07-12  Eric Carlson  <eric.carlson@apple.com>
+
+        REGRESSION (r202509): media controls controls enabled AirPlay placeholder is shown
+        https://bugs.webkit.org/show_bug.cgi?id=159685
+        <rdar://problem/27198899>
+
+        Reviewed by Dean Jackson.
+
+        * media/controls/airplay-controls-expected.txt: Added.
+        * media/controls/airplay-controls.html: Added.
+
+        * media/controls/controls-test-helpers.js:
+        (ControlsTest.prototype.get currentState): Put a try block around the call to get the current
+        status in case it fails.
+
+        * platform/mac/TestExpectations: Skip the new test on Yosemite where AirPlay doesn't work.
+
+2016-07-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Array.prototype.join() fails some conformance tests
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+
+        Reviewed by Saam Barati.
+
+        I removed 3 sputnik tests that are incorrect in the latest spec.
+        In ES5, Array.prototype.join() was using ToUint32 on the argument:
+            https://es5.github.io/#x15.4.4.5
+        In ES6, the function uses ToLength:
+            https://tc39.github.io/ecma262/#sec-array.prototype.join
+
+        The test use Infinity and very large integer as the length.
+        They are guaranteed to time out or run out of memory.
+        Even if we waited the hours it takes to run this, the results would be different
+        from what the tests expect.
+
+        * js/array-join-expected.txt: Added.
+        * js/array-join.html: Added.
+        * js/script-tests/array-join.js: Added.
+
+2016-07-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203131.
+        https://bugs.webkit.org/show_bug.cgi?id=159698
+
+        This change caused an existing LayoutTest to time out on debug
+        testers (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Array.prototype.join() fails some conformance tests"
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+        http://trac.webkit.org/changeset/203131
+
+2016-07-12  Mark Lam  <mark.lam@apple.com>
+
+        We should use different stack limits for stack checks from JS and host code.
+        https://bugs.webkit.org/show_bug.cgi?id=159442
+        <rdar://problem/26889188>
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress-141098-expected.txt:
+        * js/script-tests/regress-141098.js:
+        (testEval):
+        (probeAndRecurse):
+        - Gave all the test constants names.
+        - Tweaked the constants to allow the test to run in the least amount of time, and
+          also to behave consistently across all test configurations.
+        - Re-enable eager tests now that the test should finish quickly.
+
+2016-07-12  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (202694): Audio and Video playback controls: Cannot find a position slider to adjust playback position using VO.
+        https://bugs.webkit.org/show_bug.cgi?id=159661
+        <rdar://problem/27285135>
+
+        Unreviewed. Slight tweak to test to hopefully avoid flakiness.
+
+        * media/controls/default-size-should-show-scrubber-expected.txt:
+        * media/controls/default-size-should-show-scrubber.html:
+
+2016-07-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/css/ancestor-of-hovered-element-detached.html as flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=159173
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-12  Johan K. Jensen  <johan_jensen@apple.com>
+
+        Web Inspector: ER: Copy as cURL
+        https://bugs.webkit.org/show_bug.cgi?id=159380
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/copy-as-curl-expected.txt: Added.
+        * http/tests/inspector/network/copy-as-curl.html: Added.
+
+2016-07-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Array.prototype.join() fails some conformance tests
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+
+        Reviewed by Saam Barati.
+
+        I removed 3 sputnik tests that are incorrect in the latest spec.
+        In ES5, Array.prototype.join() was using ToUint32 on the argument:
+            https://es5.github.io/#x15.4.4.5
+        In ES6, the function uses ToLength:
+            https://tc39.github.io/ecma262/#sec-array.prototype.join
+
+        The test use Infinity and very large integer as the length.
+        They are guaranteed to time out or run out of memory.
+        Even if we waited the hours it takes to run this, the results would be different
+        from what the tests expect.
+
+        * js/array-join-expected.txt: Added.
+        * js/array-join.html: Added.
+        * js/script-tests/array-join.js: Added.
+
+2016-07-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/indexeddb/database-close-private.html as flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=158500
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking storage/indexeddb/modern/handle-user-delete.html as flaky on Yosemite Release
+        https://bugs.webkit.org/show_bug.cgi?id=158741
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/indexeddb/deleteDatabaseNamesWithSpace.html as a flaky timeout on Mac debug.
+        https://bugs.webkit.org/show_bug.cgi?id=159684
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update test expectations for rdar://problem/26590623 after r203117.
+
+        * platform/mac/TestExpectations:
+
+2016-07-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking imported/w3c/web-platform-tests/fetch/api/request/request-cache.html as flaky on Mac and ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=159683
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-07-11  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (202694): Audio and Video playback controls: Cannot find a position slider to adjust playback position using VO.
+        https://bugs.webkit.org/show_bug.cgi?id=159661
+        <rdar://problem/27285135>
+
+        Reviewed by Eric Carlson.
+
+        Add a test that checks the scrubber is visible on a default media element.
+        Unfortunately this isn't quite an accurate test, since we really want to
+        examine a Media Document, but it's close enough.
+
+        * media/controls/default-size-should-show-scrubber-expected.txt: Added.
+        * media/controls/default-size-should-show-scrubber.html: Added.
+
+2016-07-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/preload/single_download_preload_runner.html as a timeout
+        https://bugs.webkit.org/show_bug.cgi?id=159678
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-07-11  Caio Lima  <ticaiolima@gmail.com>
+
+        ECMAScript 2016: %TypedArray%.prototype.includes implementation
+        https://bugs.webkit.org/show_bug.cgi?id=159385
+
+        Reviewed by Benjamin Poulain.
+
+        This patch implements test case to ECMAScript 2016:
+        %TypedArray%.prototype.includes implementation
+        following spec 22.2.3.14
+        https://tc39.github.io/ecma262/2016/#sec-%typedarray%.prototype.includes
+
+        * js/regress/script-tests/typed-array-includes.js: Added.
+        (assertProperError):
+        (testIntTypedArray):
+        (testFloatTypedArray):
+        * js/typed-array-includes-expected.txt: Added.
+        * js/typed-array-includes.html: Added.
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Disable some a failing test.
+
+        Unreviewed test gardening.
+
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-1.html:
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Add support for @href attribute in MathML
+        https://bugs.webkit.org/show_bug.cgi?id=85733
+
+        Reviewed by Brent Fulgham.
+
+        We import some tests from the MathML in HTML5 test suite to
+        test clicks on href attributes and write similar tests.
+        We also test tab/enter keys and user agent style with links.
+
+        * mathml/mathml-in-html5/href-click-1.html: Added. Verify mouse click on a MathML link.
+        * mathml/mathml-in-html5/href-click-1-expected.html: Added.
+        * mathml/mathml-in-html5/href-click-2.html: Added.
+        Verify mouse click on a descendant of a MathML link.
+        * mathml/mathml-in-html5/href-click-2-expected.html: Added.
+        * mathml/presentation/href-enter.html: Added.
+        Verify tab navigation and activing link with enter.
+        * mathml/presentation/href-enter-expected.html: Added.
+        * mathml/presentation/href-style.html: Added.
+        Verify default style of links and of focused links.
+        * mathml/presentation/href-style-expected.html: Added.
+        * mathml/presentation/maction-toggle-href.html: Added.
+        Verify conflicts between maction toggle and href link.
+        * mathml/presentation/maction-toggle-href-expected.html: Added.
+        * mathml/presentation/semantics-href.html: Added. Verify mouse click on a <semantics> link.
+        * mathml/presentation/semantics-href-expected.html: Added.
+        * platform/mac/TestExpectations: Disable MathML link tests that rely on keyboard events.
+        * platform/ios-simulator/TestExpectations: Ditto.
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Replace reftest mathml/presentation/fractions-positions.html with script tests
+        https://bugs.webkit.org/show_bug.cgi?id=159558
+
+        Reviewed by Martin Robinson.
+
+        * TestExpectations: Remove fractions-positions.html
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-1-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-1.html: Added.
+        * mathml/presentation/fractions-positions-expected.html: Removed.
+        * mathml/presentation/fractions-positions.html: Removed.
+
+2016-07-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Array.from() and Array.of() try to build objects even if "this" is not a constructor
+        https://bugs.webkit.org/show_bug.cgi?id=159604
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/array-from-expected.txt:
+        * js/array-of-expected.txt:
+        * js/script-tests/array-from.js:
+        * js/script-tests/array-of.js:
+
+2016-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Deleting in a text input inside an iframe causes the page to scroll incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=159654
+        rdar://problem/26805722
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/forms/ios/delete-in-input-in-iframe-expected.txt: Added.
+        * fast/forms/ios/delete-in-input-in-iframe.html: Added.
+
+2016-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Honor the second argument to FontFaceSet.load and FontFaceSet.check
+        https://bugs.webkit.org/show_bug.cgi?id=159607
+        <rdar://problem/27284902>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/font-face-set-document-expected.txt:
+        * fast/text/font-face-set-document.html:
+        * fast/text/font-face-set-javascript-expected.txt:
+        * fast/text/font-face-set-javascript.html:
+        * fast/text/unicode-range-javascript-expected.txt: Added.
+        * fast/text/unicode-range-javascript.html: Added.
+
+2016-07-11  Nan Wang  <n_wang@apple.com>
+
+        AX: Crash when backspacing in number field with spin button
+        https://bugs.webkit.org/show_bug.cgi?id=157830
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/spinbutton-crash-expected.txt: Added.
+        * accessibility/spinbutton-crash.html: Added.
+
+2016-07-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebGL] Check for existing buffer exists for enabled vertex array attributes before permitting glDrawArrays to execute
+        https://bugs.webkit.org/show_bug.cgi?id=159590
+        <rdar://problem/26865535>
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/webgl-drawarrays-crash-2-expected.txt: Added.
+        * fast/canvas/webgl/webgl-drawarrays-crash-2.html: Added.
+
+2016-07-11  Keith Miller  <keith_miller@apple.com>
+
+        STP TypedArray.subarray 5x slowdown compared to 9.1
+        https://bugs.webkit.org/show_bug.cgi?id=156404
+
+        Reviewed by Geoffrey Garen.
+
+        Add new micro-benchmark for testing subarray performance with small subarray sizes.
+
+        * js/regress/script-tests/typed-array-subarray.js: Added.
+        (createManySubs):
+        (go):
+        * js/regress/typed-array-subarray-expected.txt: Added.
+        * js/regress/typed-array-subarray.html: Added.
+
+2016-07-11  Nan Wang  <n_wang@apple.com>
+
+        AX: WKWebView should have API to prevent pinch-to-zoom always being allowed
+        https://bugs.webkit.org/show_bug.cgi?id=158364
+
+        Reviewed by Anders Carlsson.
+
+        * fast/viewport/ios/force-always-user-scalable.html:
+        * fast/viewport/ios/user-scalable-does-not-scale-for-keyboard-focus-with-author-defined-scale.html:
+        * fast/viewport/ios/user-scalable-scales-for-keyboard-focus-with-no-author-defined-scale.html:
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Use parameters from the OpenType MATH table for <munderover>
+        https://bugs.webkit.org/show_bug.cgi?id=155756
+
+        Reviewed by Brent Fulgham.
+
+        Import some tests from the MathML in HTML5 test suite to verify
+        the layout of the <munderover> element. We also write a test to
+        verify dynamic change of accent/accentunder attributes and adjust
+        other tests.
+
+        * imported/mathml-in-html5/fonts/math/limits-lowerlimitbaselinedropmin3000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/limits-lowerlimitgapmin11000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/limits-upperlimitbaselinerisemin5000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/limits-upperlimitgapmin7000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stretchstack-bottomshiftdown3000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stretchstack-gapabovemin7000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stretchstack-gapbelowmin11000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stretchstack-topshiftup5000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/underover-accentbaseheight4000-overbarextraascender3000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/underover-accentbaseheight4000-overbarverticalgap11000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/underover-accentbaseheight4000-underbarextradescender5000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/underover-accentbaseheight4000-underbarverticalgap7000.woff: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-1-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-1.html: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-2-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-2.html: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-3-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-3.html: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-4-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-4.html: Added.
+        * mathml/presentation/attributes-accent-accentunder-dynamic.html: Added.
+        Test dynamic changes of accent and accentunder.
+        * mathml/presentation/attributes-accent-accentunder-dynamic-expected.html: Added.
+        * mathml/presentation/scripts-underover.html: Remove one of the test since munderover
+        with an empty script is no longer equivalent to munder or mover.
+        * mathml/presentation/scripts-underover-expected.html: Ditto.
+        * platform/gtk/mathml/opentype/horizontal-expected.png: Updated due to change in
+        vertical metrics of scripts.
+        * platform/gtk/mathml/opentype/horizontal-expected.txt: Ditto.
+        * platform/gtk/mathml/opentype/horizontal-munderover-expected.png: Ditto.
+        * platform/gtk/mathml/opentype/horizontal-munderover-expected.txt: Ditto.
+        * platform/gtk/mathml/presentation/roots-expected.txt: Udapted due to script baseline fix.
+        * platform/gtk/mathml/presentation/roots-expected.png: ditto.
+        * mathml/presentation/underover-nonstretchy-or-vertical.html: Prevent the <mo> to be treated
+        as an accent so that we always get the same spacing as the reference. We also use the Ahem
+        font to make the result more reliable.
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Use Stack* parameters from the OpenType MATH table
+        https://bugs.webkit.org/show_bug.cgi?id=155714
+
+        Reviewed by Brent Fulgham.
+
+        We import a test from the MathML in HTML5 test suite to verify Stack* parameters.
+
+        * imported/mathml-in-html5/fonts/math/stack-axisheight7000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stack-bottomdisplaystyleshiftdown5000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stack-bottomshiftdown6000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stack-displaystylegapmin4000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stack-gapmin8000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stack-topdisplaystyleshiftup3000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/stack-topshiftup9000.woff: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-2-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-2.html: Added.
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Add support for mathvariants that cannot be emulated via CSS.
+        https://bugs.webkit.org/show_bug.cgi?id=108778
+
+        Reviewed by Brent Fulgham.
+
+        Import a test from the MathML in HTML5 test suite to perform an exhaustive
+        verification of all the mathvariant transforms allowed.
+        We also add some tests to verify inheritance of the mathvariant style, the
+        effect on each token element and dynamic modification of mathvariant.
+        Finally, we modify one test now that mathvariant is no longer emulated via CSS.
+
+        * mathml/mathml-in-html5/fonts/mathvariant-transforms.woff: Added.
+        * mathml/mathml-in-html5/mathvariant-transforms-1-expected.html: Added.
+        * mathml/mathml-in-html5/mathvariant-transforms-1.html: Added.
+        * mathml/mathml-in-html5/mathvariant-transforms-2-expected.html: Added.
+        * mathml/mathml-in-html5/mathvariant-transforms-2.html: Added.
+        * mathml/presentation/attributes-mathvariant-expected.html: Update this test now that
+        mathvariant is correctly implemented using character transforms.
+        * mathml/presentation/mathvariant-inheritance-expected.html: Added.
+        * mathml/presentation/mathvariant-inheritance.html: Added.
+        * mathml/presentation/mathvariant-tokens-expected.html: Added.
+        * mathml/presentation/mathvariant-tokens.html: Added.
+        * mathml/presentation/mathvariant-dynamic.html: Added.
+        * mathml/presentation/mathvariant-dynamic-expected.html: Added.
+
+2016-07-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/controls/inline-elements-dropoff-order.html as failing on El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=151287
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Add a test for media control dropoff
+        https://bugs.webkit.org/show_bug.cgi?id=151287
+        <rdar://problem/23544666>
+
+        Unreviewed El Capitan-specific test results after r203057.
+
+        * platform/mac-elcapitan/media/controls: Added.
+        * platform/mac-elcapitan/media/controls/inline-elements-dropoff-order-expected.txt: Added.
+        * platform/mac-yosemite/media/controls: Added.
+
+2016-07-11  Mark Lam  <mark.lam@apple.com>
+
+        Change run-webkit-tests.py and run-jsc-stress-tests to use a smaller JS stack size for testing.
+        https://bugs.webkit.org/show_bug.cgi?id=159524
+
+        Reviewed by Michael Saboff.
+
+        * js/dom/deep-recursion-test.html:
+        * js/script-tests/stack-overflow-arrity-catch.js:
+        (funcWith20Args):
+
+2016-07-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Using dpi unit in sizes attribute raises SIGSEGV
+        https://bugs.webkit.org/show_bug.cgi?id=159412
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: Unskip fast/dom/HTMLImageElement/sizes.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-invalids-expected.txt: Updated.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-invalids.html: Added a dpi unit test case.
+        Renumbering element IDs.
+
+2016-07-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Add a test for media control dropoff
+        https://bugs.webkit.org/show_bug.cgi?id=151287
+        <rdar://problem/23544666>
+
+        Reviewed by Antoine Quint.
+
+        * media/controls/inline-elements-dropoff-order-expected.txt: Added.
+        * media/controls/inline-elements-dropoff-order.html: Added.
+        * platform/mac-yosemite/media/controls: Added.
+        * platform/mac-yosemite/media/controls/inline-elements-dropoff-order-expected.txt: Added.
+        * platform/mac-elcapitan/media/controls: Added.
+        * platform/mac-elcapitan/media/controls/inline-elements-dropoff-order-expected.txt: Added.
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Update expectations for some MathML pixel tests on Windows.
+
+        Unreviewed test gardening.
+
+        * platform/win/mathml/opentype/vertical-expected.txt:
+        * platform/win/mathml/presentation/mo-stretch-expected.txt:
+        * platform/win/mathml/presentation/roots-expected.txt:
+        * platform/win/mathml/radical-fallback-expected.txt:
+
+2016-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Update expectations for some MathML pixel tests on EFL.
+
+        Unreviewed test gardening.
+
+        * platform/efl/mathml/opentype/vertical-expected.txt:
+        * platform/efl/mathml/presentation/mo-stretch-expected.txt:
+        * platform/efl/mathml/presentation/roots-expected.txt:
+        * platform/efl/mathml/radical-fallback-expected.txt:
+
+2016-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Setting document.title reuses <title>'s textnode child
+        https://bugs.webkit.org/show_bug.cgi?id=28864
+        <rdar://problem/7186473>
+
+        Reviewed by Benjamin Poulain.
+
+        * fast/dom/title-setter-new-text-node-expected.txt: Added.
+        * fast/dom/title-setter-new-text-node.html: Added.
+        Add test coverage.
+
+        * fast/dom/title-text-property-2-expected.txt:
+        * fast/dom/title-text-property-expected.txt:
+        * http/tests/globalhistory/history-delegate-basic-title-expected.txt:
+        Rebaseline a few tests now that we do not reuse the <title>'s text
+        node child.
+
+2016-07-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203037.
+        https://bugs.webkit.org/show_bug.cgi?id=159614
+
+        The JSC tests are breaking in elcapitan-debug-tests-jsc and
+        elcapitan-release-tests-jsc (Requested by caiolima on
+        #webkit).
+
+        Reverted changeset:
+
+        "ECMAScript 2016: %TypedArray%.prototype.includes
+        implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=159385
+        http://trac.webkit.org/changeset/203037
+
+2016-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        Fix LogicalSelectionOffsetCaches to work with detached render tree.
+        https://bugs.webkit.org/show_bug.cgi?id=159605
+        <rdar://problem/27248845>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/text/selection-on-a-detached-tree-expected.txt: Added.
+        * fast/text/selection-on-a-detached-tree.html: Added.
+
+2016-07-10  Chris Dumez  <cdumez@apple.com>
+
+        adoptNode() changes css class to lowercase for document loaded with XHR responseType = "document"
+        https://bugs.webkit.org/show_bug.cgi?id=159555
+        <rdar://problem/27252541>
+
+        Reviewed by Benjamin Poulain.
+
+        Add test coverage.
+
+        * fast/dom/Document/adoptNode-quirks-mismatch2-expected.txt: Added.
+        * fast/dom/Document/adoptNode-quirks-mismatch2.html: Added.
+        * fast/dom/Document/resources/document-noquirks-class.html: Added.
+        * fast/dom/Document/resources/document-noquirks-id.html: Added.
+
+2016-07-10  Caio Lima  <ticaiolima@gmail.com>
+
+        ECMAScript 2016: %TypedArray%.prototype.includes implementation
+        https://bugs.webkit.org/show_bug.cgi?id=159385
+
+        Reviewed by Benjamin Poulain.
+
+        This patch implements test case to ECMAScript 2016:
+        %TypedArray%.prototype.includes implementation
+        following spec 22.2.3.14
+        https://tc39.github.io/ecma262/2016/#sec-%typedarray%.prototype.includes
+
+        * js/regress/script-tests/typed-array-includes.js: Added.
+        (assertProperError):
+        (testIntTypedArray):
+        (testFloatTypedArray):
+        * js/typed-array-includes-expected.txt: Added.
+        * js/typed-array-includes.html: Added.
+
+2016-07-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK] Crash on https://diafygi.github.io/webcrypto-examples with ENABLE_SUBTLE_CRYPTO
+        https://bugs.webkit.org/show_bug.cgi?id=159189
+
+        Reviewed by Michael Catanzaro.
+
+        If you execute the added test with subtle-crypto-enabled GTK environment without this patch, this causes the crash.
+
+        * crypto/subtle/unimplemented-unwrap-crash-expected.txt: Added.
+        * crypto/subtle/unimplemented-unwrap-crash.html: Added.
+
+2016-07-09  Keith Miller  <keith_miller@apple.com>
+
+        appendMemcpy might fail in concatAppendOne
+        https://bugs.webkit.org/show_bug.cgi?id=159601
+
+        Reviewed by Mark Lam.
+
+        Add new microbenchmark testing the performance of concat
+        when appending one new element. This patch appears to be
+        about a 13% progression on this test.
+
+        * js/regress/concat-append-one-expected.txt: Added.
+        * js/regress/concat-append-one.html: Added.
+        * js/regress/script-tests/concat-append-one.js: Added.
+        (test):
+
+2016-07-09  Youenn Fablet  <youenn@apple.com>
+
+        Make use of PrivateIdentifier to simplify Fetch Headers built-in checks
+        https://bugs.webkit.org/show_bug.cgi?id=159554
+
+        Reviewed by Alex Christensen.
+
+        * fetch/header-constructor-overriden-expected.txt: Added.
+        * fetch/header-constructor-overriden.html: Added.
+
+2016-07-08  Chris Dumez  <cdumez@apple.com>
+
+        adoptNode() changes css class to lowercase for document loaded with XHR responseType = "document"
+        https://bugs.webkit.org/show_bug.cgi?id=159555
+        <rdar://problem/27252541>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add test coverage for id and class attributes.
+
+        * fast/dom/Document/adoptNode-quirks-mismatch-expected.txt: Added.
+        * fast/dom/Document/adoptNode-quirks-mismatch.html: Added.
+        * fast/dom/Document/resources/document-quirks-class.html: Added.
+        * fast/dom/Document/resources/document-quirks-id.html: Added.
+
+2016-07-08  Daniel Bates  <dabates@apple.com>
+
+        Setting table.tFoot or calling table.createTFoot() should append HTML tfont element to the end of the table
+        https://bugs.webkit.org/show_bug.cgi?id=159583
+        <rdar://problem/27255292>
+
+        Reviewed by Chris Dumez.
+
+        Update expected results now that we append the HTML tfoot element to the end of the table.
+
+        * platform/efl/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/gtk/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/ios-simulator/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug30418-expected.txt:
+        * platform/win/tables/mozilla/bugs/bug30418-expected.txt:
+
+2016-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Object.defineProperty() should maintain existing getter / setter if not overridden in the new descriptor
+        https://bugs.webkit.org/show_bug.cgi?id=159576
+        <rdar://problem/27242197>
+
+        Reviewed by Mark Lam.
+
+        Add test coverage.
+
+        * js/dom/customAccessor-defineProperty-expected.txt: Added.
+        * js/dom/customAccessor-defineProperty.html: Added.
+        * js/dom/customAccessor-defineProperty_getterOnly-expected.txt: Added.
+        * js/dom/customAccessor-defineProperty_getterOnly.html: Added.
+        * js/dom/customAccessor-defineProperty_setterOnly-expected.txt: Added.
+        * js/dom/customAccessor-defineProperty_setterOnly.html: Added.
+
+2016-07-08  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Load blocked pages more like other error pages are loaded
+        https://bugs.webkit.org/show_bug.cgi?id=159485
+        <rdar://problem/26014076>
+
+        Reviewed by Brady Eidson.
+
+        Changed allow-* and block-* tests from ref tests to text tests so that they can capture
+        frame load delegate callbacks and the back forward list.
+
+        * contentfiltering/allow-after-add-data-expected.html: Removed.
+        * contentfiltering/allow-after-add-data-expected.txt: Added.
+        * contentfiltering/allow-after-finished-adding-data-expected.html: Removed.
+        * contentfiltering/allow-after-finished-adding-data-expected.txt: Added.
+        * contentfiltering/allow-after-response-expected.html: Removed.
+        * contentfiltering/allow-after-response-expected.txt: Added.
+        * contentfiltering/allow-after-will-send-request-expected.html: Removed.
+        * contentfiltering/allow-after-will-send-request-expected.txt: Added.
+        * contentfiltering/allow-never-expected.html: Removed.
+        * contentfiltering/allow-never-expected.txt: Added.
+        * contentfiltering/block-after-add-data-expected.html: Removed.
+        * contentfiltering/block-after-add-data-expected.txt: Added.
+        * contentfiltering/block-after-add-data-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-add-data-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-add-data-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-add-data-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-after-finished-adding-data-expected.html: Removed.
+        * contentfiltering/block-after-finished-adding-data-expected.txt: Added.
+        * contentfiltering/block-after-finished-adding-data-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-finished-adding-data-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-finished-adding-data-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-finished-adding-data-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-after-response-expected.html: Removed.
+        * contentfiltering/block-after-response-expected.txt: Added.
+        * contentfiltering/block-after-response-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-response-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-response-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-response-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-after-will-send-request-expected.html: Removed.
+        * contentfiltering/block-after-will-send-request-expected.txt: Added.
+        * contentfiltering/block-after-will-send-request-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-will-send-request-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-will-send-request-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-will-send-request-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-never-expected.html: Removed.
+        * contentfiltering/block-never-expected.txt: Added.
+        * contentfiltering/resources/contentfiltering.js: Added testRunner calls to dump as text,
+        dump frame load callbacks, and dump the back forward list. Changed from loading data: URLs
+        to file: URLs in the test iframe.
+
+2016-07-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] The callback passed to document.fonts.ready should always be called
+        https://bugs.webkit.org/show_bug.cgi?id=158884
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations:
+        * fast/text/font-face-set-ready-fire-expected.txt: Added.
+        * fast/text/font-face-set-ready-fire.html: Added.
+
+2016-07-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/shadow-dom/trusted-event-scoped-flags.html for ios-simulator after r202953.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/fast/shadow-dom/trusted-event-scoped-flags-expected.txt:
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202944.
+        https://bugs.webkit.org/show_bug.cgi?id=159570
+
+        caused some tests to crash under GuardMalloc (Requested by
+        estes on #webkit).
+
+        Reverted changeset:
+
+        "[Content Filtering] Load blocked pages more like other error
+        pages are loaded"
+        https://bugs.webkit.org/show_bug.cgi?id=159485
+        http://trac.webkit.org/changeset/202944
+
+2016-07-08  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Eliminate test noise from roles-computedRoleString.html
+        https://bugs.webkit.org/show_bug.cgi?id=159563
+
+        Reviewed by Chris Fleizach.
+
+        Ensure we hide all the content, as the test intends to do.
+
+        * accessibility/roles-computedRoleString-expected.txt: Updated.
+        * accessibility/roles-computedRoleString.html: Updated.
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt: Updated.
+
+2016-07-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking some mathml tests as timeouts after r202983.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-07-08  Antti Koivisto  <antti@apple.com>
+
+        Regression(r201805): Crash with <use> resource that has Vary header
+        https://bugs.webkit.org/show_bug.cgi?id=159560
+        <rdar://problem/27034208>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache/resources/svg-defs-vary.php: Added.
+        * http/tests/cache/vary-frameless-document-expected.txt: Added.
+        * http/tests/cache/vary-frameless-document.html: Added.
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202945.
+        https://bugs.webkit.org/show_bug.cgi?id=159565
+
+        The test for this change is failing on all platforms.
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[Font Loading] The callback passed to document.fonts.ready
+        should always be called"
+        https://bugs.webkit.org/show_bug.cgi?id=158884
+        http://trac.webkit.org/changeset/202945
+
+2016-07-08  Keith Miller  <keith_miller@apple.com>
+
+        TypedArrays need more isNeutered checks.
+        https://bugs.webkit.org/show_bug.cgi?id=159231
+
+        Reviewed by Filip Pizlo.
+
+        Update tests that assert that we can access indexed properties on
+        a neutered TypedArray.
+
+        * fast/canvas/webgl/script-tests/arraybuffer-transfer-of-control.js:
+        (assertViewClosed):
+        * js/dom/dfg-typed-array-neuter-expected.txt:
+        * js/dom/script-tests/dfg-typed-array-neuter.js:
+
+2016-07-08  Frederic Wang  <fwang@igalia.com>
+
+        Use Fraction* parameters from the OpenType MATH table
+        https://bugs.webkit.org/show_bug.cgi?id=155639
+
+        Reviewed by Brent Fulgham.
+
+        We import a test from the MathML in HTML5 test suite to verify Fraction* parameters.
+        We also do some small test adjustments.
+
+        * TestExpectations: We disable fractions-positions.html for now until it is replaced with a more reliable test.
+        * imported/mathml-in-html5/fonts/math/fraction-axisheight7000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-denominatordisplaystylegapmin5000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-denominatordisplaystyleshiftdown6000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-denominatorgapmin4000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-denominatorshiftdown3000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-numeratordisplaystylegapmin8000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-numeratordisplaystyleshiftup2000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-numeratorgapmin9000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-numeratorshiftup11000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/math/fraction-rulethickness10000.woff: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html: Added.
+        * mathml/presentation/fractions-linethickness-expected.html: Adjust the test to interpret
+        "thick" and "thin" as suggested the MathML in HTML5 implementation note.
+        * mathml/presentation/stretchy-depth-height-symmetric.html: Increase error tolerance.
+        * platform/gtk/mathml/presentation/roots-expected.png: Handle small rendering changes.
+        * platform/gtk/mathml/presentation/roots-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/roots-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/roots-expected.txt: Ditto.
+
+2016-07-08  Frederic Wang  <fwang@igalia.com>
+
+        Use Radical* constants from the OpenType MATH table.
+        https://bugs.webkit.org/show_bug.cgi?id=155638
+
+        Reviewed by Brent Fulgham.
+
+        Import a test from the MathML in HTML5 test suite to verify all the Radical* parameters.
+        For test RadicalDegreeBottomRaisePercent, WebKit's drawing of one of the radical sign
+        is weird. This causes unexpected height of the radical and a fortiori wrong vertical
+        position of the index. For now, we tweak that height to make the test pass.
+
+        * imported/mathml-in-html5/fonts/radical-degreebottomraisepercent25-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/radical-displaystyleverticalgap7000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/radical-extraascender3000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/radical-kernafterdegreeminus5000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/radical-kernbeforedegree4000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/fonts/radical-rulethickness8000.woff: Added.
+        * imported/mathml-in-html5/fonts/radical-verticalgap6000-rulethickness1000.woff: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/radicals/root-parameters-1-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/radicals/root-parameters-1.html: Added.
+        * platform/gtk/mathml/radical-fallback-expected.png: Updated to take into account new rendering.
+        * platform/gtk/mathml/radical-fallback-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/mo-stretch-expected.txt: Ditto.
+        * platform/mac/mathml/presentation/roots-expected.txt: Ditto.
+        * platform/mac/mathml/radical-fallback-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/mo-stretch-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/presentation/roots-expected.txt: Ditto.
+        * platform/ios-simulator/mathml/radical-fallback-expected.txt: Ditto.
+
+2016-07-08  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Inline size is never indefinite during layout
+        https://bugs.webkit.org/show_bug.cgi?id=159253
+
+        Reviewed by Sergio Villar Senin.
+
+        Created a new test verifying the expected behavior. Updated the results
+        in a few tests too.
+
+        * fast/css-grid-layout/grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-container-percentage-columns-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-percentage-columns.html: Added.
+        * fast/css-grid-layout/named-grid-line-get-set-expected.txt:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size-expected.txt:
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size.html:
+        The results of this test now show some FAIL messages becase of a bug in
+        RenderBox::hasDefiniteLogicalHeight() (http://webkit.org/b/159251).
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set-multiple.js:
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set.js:
+
+2016-07-08  Frederic Wang  <fwang@igalia.com>
+
+        Use OpenType MATH constant AxisHeight.
+        https://bugs.webkit.org/show_bug.cgi?id=133567
+
+        Reviewed by Brent Fulgham.
+
+        Import tests from the MathML in HTML5 test suite to verify the AxisHeight parameter.
+
+        * imported/mathml-in-html5/fonts/math/axisheight5000-verticalarrow14000.woff: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/operators/mo-axis-height-1-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/operators/mo-axis-height-1.html: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/tables/table-axis-height.html: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/operators/mo-axis-height-expected.txt: Added.
+
+2016-07-08  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Disallow repeat() in grid-template shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=159200
+
+        Reviewed by Sergio Villar Senin.
+
+        Modified test to follow the new behavior including new cases.
+
+        * fast/css-grid-layout/grid-template-shorthand-get-set-expected.txt:
+        * fast/css-grid-layout/grid-template-shorthand-get-set.html:
+
+2016-07-08  Frederic Wang  <fwang@igalia.com>
+
+        Add support for movablelimits.
+        https://bugs.webkit.org/show_bug.cgi?id=155542
+
+        Reviewed by Brent Fulgham.
+
+        We import some reftests from Mozilla and write more tests in order to verify the effect of
+        movablelimits. We also adjust one existing test due to change in how munderover handles
+        invalid markup.
+
+        * mathml/presentation/displaystyle-1.html: Added. Imported from Mozilla. This verifies the
+        inheritance of displaystyle via its effect on movablelimits.
+        * mathml/presentation/displaystyle-1-expected.html: Added.
+        * mathml/presentation/displaystyle-2.html: Added. Imported from Mozilla. Test the effect of
+        displaystyle on munder, mover and munderover with a movablelimits base.
+        * mathml/presentation/displaystyle-2-expected.html: Added.
+        * mathml/presentation/displaystyle-3.html: Added. Imported from Mozilla. Test dynamic change
+        of displaystyle via its effect on movablelimits.
+        * mathml/presentation/displaystyle-3-expected.html: Added.
+        * mathml/presentation/mo-movablelimits-default.html: Added. Test that the default
+        movablelimits value from the operator dictionary is correctly read.
+        * mathml/presentation/mo-movablelimits-default-expected.html: Added.
+        * mathml/presentation/mo-movablelimits-dynamic.html: Added. Imported from Mozilla.
+        Test dynamic change of movablelimits.
+        * mathml/presentation/mo-movablelimits-dynamic-expected.html: Added.
+        * mathml/presentation/mo-movablelimits.html: Added. Basic test to check the effect of
+        movablelimits on munder.
+        * mathml/presentation/mo-movablelimits-expected.html: Added.
+        * mathml/presentation/underover-scriptshifts.html: Added. This verifies that script shifts
+        do not have any effect on munderover/mover/munder elements when their limits are rendered
+        as postscripts.
+        * mathml/presentation/underover-scriptshifts-expected.html: Added.
+
+2016-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        padStart/padEnd with Infinity produces unexpected result
+        https://bugs.webkit.org/show_bug.cgi?id=159543
+
+        Reviewed by Benjamin Poulain.
+
+        * js/script-tests/string-padend.js: Added.
+        (thisObject.toString):
+        (lengthObject.valueOf):
+        (fillObject.toString):
+        * js/script-tests/string-padstart.js: Added.
+        (thisObject.toString):
+        (lengthObject.valueOf):
+        (fillObject.toString):
+        * js/string-padend-expected.txt: Added.
+        * js/string-padend.html: Added.
+        * js/string-padstart-expected.txt: Added.
+        * js/string-padstart.html: Added.
+        Add some basic String.prototype.padStart/padEnd test coverage
+        that is not just in the JavaScriptCore/tests/es6 directory.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Bug 155792 - Basic implementation of mpadded
+        https://bugs.webkit.org/show_bug.cgi?id=155792
+
+        Reviewed by Brent Fulgham.
+
+        We import mpadded tests from Mozilla test suite.
+        We also add some tests for dynamic changes of mpadded attributes and to verify
+        that the mpadded element behaves as if it had an inferred <mrow>.
+        Finally, we check that fallback properly for negative and pseudo-unit values that
+        we do not support yet.
+
+        * mathml/presentation/inferred-mrow-baseline.html: Check baseline for mpadded.
+        * mathml/presentation/inferred-mrow-baseline-expected.txt: Ditto.
+        * mathml/presentation/inferred-mrow-stretchy.html: Check stretching of operators for mpadded.
+        * mathml/presentation/inferred-mrow-stretchy-expected.txt: Ditto.
+        * mathml/presentation/mpadded-dynamic.html: Added. Verify dynamic change of mpadded attributes.
+        * mathml/presentation/mpadded-dynamic-expected.html: Added. Ditto.
+        * mathml/presentation/mpadded-unsupported-values.html: Added. Check negative and pseudo-unit values.
+        * mathml/presentation/mpadded-unsupported-values-expected.html: Added.
+        * mathml/presentation/mpadded-1-2-expected.html: Added.
+        * mathml/presentation/mpadded-1-2.html: Added.
+        * mathml/presentation/mpadded-1-expected.html: Added.
+        * mathml/presentation/mpadded-1.html: Added.
+        * mathml/presentation/mpadded-2-expected.html: Added.
+        * mathml/presentation/mpadded-2.html: Added.
+        * mathml/presentation/mpadded-3-expected.html: Added.
+        * mathml/presentation/mpadded-3.html: Added.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Implement an internal style property for displaystyle.
+        https://bugs.webkit.org/show_bug.cgi?id=133845
+
+        Reviewed by Brent Fulgham.
+
+        This is based on a patch by Alejandro G. Castro <alex@igalia.com>
+
+        Add two new tests to verify that the displaystyle property is correctly inherited
+        on various MathML elements.
+        large-operators-displaystyle verifies that large operators are only drawn bigger when
+        the displaystyle is true.
+        large-operators-displaystyle-dynamic verifies the same displaystyle is calculated when
+        the display and displaystyle attributes are changed dynamically.
+
+        * mathml/opentype/large-operators-displaystyle-dynamic-expected.html: Added.
+        * mathml/opentype/large-operators-displaystyle-dynamic.html: Added.
+        * mathml/opentype/large-operators-displaystyle-expected.txt: Added.
+        * imported/mathml-in-html5/fonts/math/largeop-displayoperatorminheight5000.woff: Added.
+        * imported/mathml-in-html5/mathml/relations/css-styling/displaystyle-1.html: Added.
+        * imported/mathml-in-html5/mathml/relations/css-styling/displaystyle-1-expected.txt: Added.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Rebaseline some MathML tests on Windows after r202934
+
+        Unreviewed test gardening.
+
+        * platform/win/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/win/mathml/opentype/vertical-expected.txt:
+        * platform/win/mathml/presentation/mo-stretch-expected.txt:
+        * platform/win/mathml/presentation/roots-expected.txt:
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Rebaseline MathML pixels tests
+        https://bugs.webkit.org/show_bug.cgi?id=159348
+
+        Unreviewed test gardening.
+
+        * platform/efl/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/efl/mathml/opentype/vertical-expected.txt:
+        * platform/efl/mathml/presentation/mo-stretch-expected.txt:
+        * platform/efl/mathml/presentation/roots-expected.txt:
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] String.prototype[Symbol.iterator] needs a name
+        https://bugs.webkit.org/show_bug.cgi?id=159541
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/script-tests/string-iterator.js: Added.
+        * js/string-iterator-expected.txt: Added.
+        * js/string-iterator.html: Added.
+
+2016-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unexpected "Out of memory" error for "x".repeat(-1)
+        https://bugs.webkit.org/show_bug.cgi?id=159529
+
+        Reviewed by Benjamin Poulain.
+
+        Extended test coverage for:
+
+          - function properties
+          - fast path with invalid counts
+          - observable side effects for fast path which were wrong before
+
+        * js/script-tests/string-repeat.js:
+        * js/string-repeat-expected.txt:
+
+2016-07-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace scoped flag in Event by composed flag
+        https://bugs.webkit.org/show_bug.cgi?id=158415
+
+        Reviewed by Chris Dumez.
+
+        Updated the tests to reflect the rename of scoped to composed and the negation of its semantics.
+        Now every Event is assumed to be scoped / non-composed by default, and we need to explicitly set
+        composed to true in order for events to cross shadow boundaries.
+
+        Also, every Event behaves as if related target is assumed to be scoped in the old terminology
+        althoug the flag no longer exists.
+
+        * fast/shadow-dom/Extensions-to-Event-Interface-expected.txt:
+        * fast/shadow-dom/Extensions-to-Event-Interface.html: Removed a test case that was testing 
+        relatedTargetScoped to false since this flag no longer exists.
+        * fast/shadow-dom/MouseEvent-prototype-offsetX-offsetY.html:
+        * fast/shadow-dom/event-inside-shadow-tree.html:
+        * fast/shadow-dom/event-inside-slotted-node.html:
+        * fast/shadow-dom/event-with-related-target.html:
+        * fast/shadow-dom/trusted-event-scoped-flags-expected.txt:
+        * fast/shadow-dom/trusted-event-scoped-flags.html:
+        * fast/xmlhttprequest/xmlhttprequest-get-expected.txt:
+        * http/tests/workers/worker-importScriptsOnError-expected.txt:
+        * inspector/model/remote-object-get-properties-expected.txt:
+
+2016-07-07  Dean Jackson  <dino@apple.com>
+
+        REGRESSION(r200769): animations are no longer overridden
+        https://bugs.webkit.org/show_bug.cgi?id=159450
+        <rdar://problem/27120570>
+
+        Reviewed by Zalan Bujtas.
+
+        Update an existing test to exercise a prefixed form applying
+        to non-prefixed longhands.
+
+        * fast/css/shorthand-omitted-initial-value-overrides-shorthand-expected.txt:
+        * fast/css/shorthand-omitted-initial-value-overrides-shorthand.html:
+
+2016-07-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r202826
+        https://bugs.webkit.org/show_bug.cgi?id=159538
+        <rdar://problem/27197375>
+
+        Unreviewed.
+
+        * editing/style/text-indent.html:
+        * platform/mac-wk1/TestExpectations:
+
+2016-07-07  Myles C. Maxfield  <mmaxfield@apple.com> and Frédéric Wang  <fred.wang@free.fr>
+
+        [Font Loading] The callback passed to document.fonts.ready should always be called
+        https://bugs.webkit.org/show_bug.cgi?id=158884
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/font-face-set-ready-fire-expected.txt: Added.
+        * fast/text/font-face-set-ready-fire.html: Added.
+
+2016-07-07  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Load blocked pages more like other error pages are loaded
+        https://bugs.webkit.org/show_bug.cgi?id=159485
+        <rdar://problem/26014076>
+
+        Reviewed by Brady Eidson.
+
+        Changed allow-* and block-* tests from ref tests to text tests so that they can capture
+        frame load delegate callbacks and the back forward list.
+
+        * contentfiltering/allow-after-add-data-expected.html: Removed.
+        * contentfiltering/allow-after-add-data-expected.txt: Added.
+        * contentfiltering/allow-after-finished-adding-data-expected.html: Removed.
+        * contentfiltering/allow-after-finished-adding-data-expected.txt: Added.
+        * contentfiltering/allow-after-response-expected.html: Removed.
+        * contentfiltering/allow-after-response-expected.txt: Added.
+        * contentfiltering/allow-after-will-send-request-expected.html: Removed.
+        * contentfiltering/allow-after-will-send-request-expected.txt: Added.
+        * contentfiltering/allow-never-expected.html: Removed.
+        * contentfiltering/allow-never-expected.txt: Added.
+        * contentfiltering/block-after-add-data-expected.html: Removed.
+        * contentfiltering/block-after-add-data-expected.txt: Added.
+        * contentfiltering/block-after-add-data-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-add-data-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-add-data-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-add-data-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-after-finished-adding-data-expected.html: Removed.
+        * contentfiltering/block-after-finished-adding-data-expected.txt: Added.
+        * contentfiltering/block-after-finished-adding-data-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-finished-adding-data-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-finished-adding-data-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-finished-adding-data-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-after-response-expected.html: Removed.
+        * contentfiltering/block-after-response-expected.txt: Added.
+        * contentfiltering/block-after-response-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-response-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-response-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-response-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-after-will-send-request-expected.html: Removed.
+        * contentfiltering/block-after-will-send-request-expected.txt: Added.
+        * contentfiltering/block-after-will-send-request-then-allow-unblock-expected.html: Removed.
+        * contentfiltering/block-after-will-send-request-then-allow-unblock-expected.txt: Added.
+        * contentfiltering/block-after-will-send-request-then-deny-unblock-expected.html: Removed.
+        * contentfiltering/block-after-will-send-request-then-deny-unblock-expected.txt: Added.
+        * contentfiltering/block-never-expected.html: Removed.
+        * contentfiltering/block-never-expected.txt: Added.
+        * contentfiltering/resources/contentfiltering.js: Added testRunner calls to dump as text,
+        dump frame load callbacks, and dump the back forward list. Changed from loading data: URLs
+        to file: URLs in the test iframe.
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Array.prototype[Symbol.unscopables] should have the "includes" property
+        https://bugs.webkit.org/show_bug.cgi?id=159504
+
+        Reviewed by Keith Miller.
+
+        * js/array-unscopables-properties-expected.txt: Added.
+        * js/array-unscopables-properties.html: Added.
+        * js/script-tests/array-unscopables-properties.js: Added.
+
+2016-07-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Land test expectations for rdar://problem/27197375.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-07-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/video-main-content-allow-then-deny.html as failing on ElCapitan+
+        https://bugs.webkit.org/show_bug.cgi?id=159533
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-07-07  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: When IDBDatabase objects are garbage collected, they don't close their server connection.
+        <rdar://problem/25910345> and https://bugs.webkit.org/show_bug.cgi?id=159523
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/gc-closes-database-expected.txt: Added.
+        * storage/indexeddb/modern/gc-closes-database-private-expected.txt: Added.
+        * storage/indexeddb/modern/gc-closes-database-private.html: Added.
+        * storage/indexeddb/modern/gc-closes-database.html: Added.
+        * storage/indexeddb/modern/resources/gc-closes-database.js: Added.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Refactor layout functions to avoid using flexbox in MathML
+        https://bugs.webkit.org/show_bug.cgi?id=153991
+
+        Reviewed by Brent Fulgham.
+
+        Update expectations of some MathML tests to take into account the
+        removal of some line breaks and a better computation of the width of
+        MathML expressions with vertical stretchy operators.
+
+        * mathml/presentation/stretchy-depth-height-expected.txt:
+        * platform/gtk/mathml/opentype/opentype-stretchy-expected.png:
+        * platform/gtk/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/gtk/mathml/opentype/vertical-expected.png:
+        * platform/gtk/mathml/opentype/vertical-expected.txt:
+        * platform/gtk/mathml/presentation/mo-stretch-expected.png:
+        * platform/gtk/mathml/presentation/mo-stretch-expected.txt:
+        * platform/gtk/mathml/presentation/roots-expected.png:
+        * platform/gtk/mathml/presentation/roots-expected.txt:
+        * platform/ios-simulator/mathml/opentype/opentype-stretchy-expected.png:
+        * platform/ios-simulator/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/ios-simulator/mathml/presentation/mo-stretch-expected.txt:
+        * platform/mac/mathml/opentype/opentype-stretchy-expected.png:
+        * platform/mac/mathml/opentype/opentype-stretchy-expected.txt:
+        * platform/mac/mathml/presentation/mo-stretch-expected.png:
+        * platform/mac/mathml/presentation/mo-stretch-expected.txt:
+        * accessibility/mac/mathml-elements-expected.txt:
+        * imported/blink/fast/text/output-isolate-at-end-of-line-crash-expected.txt:
+
+2016-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector, regression: JS/JSON pretty-printing sporadically broken in STP8
+        https://bugs.webkit.org/show_bug.cgi?id=159511
+        <rdar://problem/27218435>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/formatting/formatting-json-expected.txt: Added.
+        * inspector/formatting/formatting-json.html: Added.
+
+2016-07-07  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r199054): CrashTracer: [USER] parseWebKit at WebCore: WebCore::RenderBlockFlow::checkFloatsInCleanLine + 107
+        https://bugs.webkit.org/show_bug.cgi?id=159519
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/inline/trailing-floats-inline-crash-expected.txt: Added.
+        * fast/inline/trailing-floats-inline-crash.html: Added.
+
+2016-07-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202905 and r202911.
+        https://bugs.webkit.org/show_bug.cgi?id=159522
+
+        This test is fails on El Capitan and Sierra WK1 (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Add a test for media control dropoff"
+        https://bugs.webkit.org/show_bug.cgi?id=151287
+        http://trac.webkit.org/changeset/202905
+
+        "Add a test for media control dropoff"
+        https://bugs.webkit.org/show_bug.cgi?id=151287
+        http://trac.webkit.org/changeset/202911
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Array.prototype.includes uses ToInt32 instead of ToInteger on the index argument
+        https://bugs.webkit.org/show_bug.cgi?id=159505
+
+        Reviewed by Mark Lam.
+
+        * js/array-includes-expected.txt:
+        * js/script-tests/array-includes.js:
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] String.prototype.normalize should have a length of zero
+        https://bugs.webkit.org/show_bug.cgi?id=159506
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/script-tests/string-normalize.js: Added.
+        (listener.toString):
+        * js/string-normalize-expected.txt: Added.
+        * js/string-normalize.html: Added.
+
+2016-07-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Add a test for media control dropoff
+        https://bugs.webkit.org/show_bug.cgi?id=151287
+        <rdar://problem/23544666>
+
+        Unreviewed El Capitan-specific test results after r202905.
+
+        * platform/mac-elcapitan/media/controls: Added.
+        * platform/mac-elcapitan/media/controls/inline-elements-dropoff-order-expected.txt: Added.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Replace reftest scripts-height.html with script tests
+        https://bugs.webkit.org/show_bug.cgi?id=159423
+
+        We import a test from the MathML in HTML5 test suite to replace the test scripts-height.html
+        and make results more reliable, explicit and accurate. This avoids the failure on iOS.
+
+        Reviewed by Martin Robinson.
+
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-4-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-4.html: Added.
+        * mathml/presentation/scripts-height.html: Removed.
+        * platform/ios-simulator/TestExpectations: Remove failure expectation.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Replace multiscripts-positions.html reftest with script tests
+        https://bugs.webkit.org/show_bug.cgi?id=159418
+
+        We import more tests from the MathML in HTML5 test suite to replace
+        and extend the reftest testing metrics in the mmultiscripts element.
+        This allows to make such tests work on OS X and iOS.
+
+        Reviewed by Martin Robinson.
+
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-2-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-2.html: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-3-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-3.html: Added.
+        * mathml/presentation/multiscripts-positions.html: Removed.
+        * platform/ios-simulator/TestExpectations: Remove failure for multiscripts-positions.
+        * platform/mac/TestExpectations: Ditto.
+
+2016-07-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Add a test for media control dropoff
+        https://bugs.webkit.org/show_bug.cgi?id=151287
+        <rdar://problem/23544666>
+
+        Reviewed by Antoine Quint.
+
+        * media/controls/inline-elements-dropoff-order-expected.txt: Added.
+        * media/controls/inline-elements-dropoff-order.html: Added.
+        * platform/mac-yosemite/media/controls: Added.
+        * platform/mac-yosemite/media/controls/inline-elements-dropoff-order-expected.txt: Added.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Rewrite the tests of scripts-subsup.html
+        https://bugs.webkit.org/show_bug.cgi?id=159202
+
+        The tests for script metrics in scripts-subsup.html are very unreliable and difficult to
+        debug. They currently fail on all platforms. We remove them and import a test from the
+        MathML in HTML5 test suite that verifies equivalent features in a more reliable and
+        understandable way. The equivalence test for msubsup and empty script is not preserved as
+        the current code does not actually try to achieve this equivalence.
+
+        Reviewed by Martin Robinson.
+
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-1-expected.txt: Added.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-1.html: Added.
+        * mathml/presentation/scripts-subsup-expected.html: Remove the tests for metrics.
+        * mathml/presentation/scripts-subsup.html: Ditto.
+        * platform/gtk/TestExpectations: Remove failure for scripts-subsup.html.
+        * platform/ios-simulator-wk1/TestExpectations: Ditto.
+        * platform/ios-simulator/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Improve test mathml/presentation/tokenElements-background-color.html
+        https://bugs.webkit.org/show_bug.cgi?id=130693
+
+        We use the Ahem font to make tokenElements-background-color.html more reliable. However, we
+        remove the case of italic m because Ahem does not contain the required character U+1D45A.
+
+        Reviewed by Martin Robinson.
+
+        * mathml/presentation/tokenElements-background-color-expected.html:
+        * mathml/presentation/tokenElements-background-color.html:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-07-07  Frederic Wang  <fred.wang@free.fr>
+
+        Fix the name of mathml-in-dashboard-expected.txt for iOS.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/mathml/mathml-in-dashboard-expected.txt: Renamed from LayoutTests/platform/ios-simulator/mathml/mathml-in-dashboard-actual.txt.
+
+2016-07-07  Frederic Wang  <fwang@igalia.com>
+
+        Tweak mathml/presentation/semantics.html to make it pass on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=159457
+
+        Reviewed by Sergio Villar Senin.
+
+        * mathml/presentation/semantics-expected.html: Force a line break between the two tests.
+        * mathml/presentation/semantics.html: Ditto.
+        * platform/ios-simulator-wk1/TestExpectations: Remove failure expectation.
+        * platform/ios-simulator-wk2/TestExpectations: Ditto.
+
 2016-07-06  Chris Dumez  <cdumez@apple.com>
 
         Align Document.body setter with the HTML specification

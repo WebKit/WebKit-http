@@ -50,6 +50,7 @@
 #include "ScriptController.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "SocketProvider.h"
 #include "ThreadableWebSocketChannel.h"
 #include "WebSocketChannel.h"
 #include <inspector/ScriptCallStack.h>
@@ -61,6 +62,10 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
+
+#if USE(WEB_THREAD)
+#include "WebCoreThreadRun.h"
+#endif
 
 namespace WebCore {
 
@@ -250,7 +255,11 @@ void WebSocket::connect(const String& url, const Vector<String>& protocols, Exce
         return;
     }
 
-    m_channel = ThreadableWebSocketChannel::create(*scriptExecutionContext(), *this);
+    if (auto socketProvider = scriptExecutionContext()->socketProvider())
+        m_channel = socketProvider->createWebSocketChannel(*scriptExecutionContext(), *this);
+
+    // Only an EmptySocketProvider can return nullptr, and every ScriptExecutionContext should have a SocketProvider.
+    RELEASE_ASSERT(m_channel);
 
     // FIXME: There is a disagreement about restriction of subprotocols between WebSocket API and hybi-10 protocol
     // draft. The former simply says "only characters in the range U+0021 to U+007E are allowed," while the latter
@@ -287,10 +296,21 @@ void WebSocket::connect(const String& url, const Vector<String>& protocols, Exce
             // using the error event. But since this code executes as part of the WebSocket's
             // constructor, we have to wait until the constructor has completed before firing the
             // event; otherwise, users can't connect to the event.
+#if USE(WEB_THREAD)
+            ref();
+            dispatch_async(dispatch_get_main_queue(), ^{
+                WebThreadRun(^{
+                    dispatchOrQueueErrorEvent();
+                    stop();
+                    deref();
+                });
+            });
+#else
             RunLoop::main().dispatch([this, protectedThis = Ref<WebSocket>(*this)]() {
                 dispatchOrQueueErrorEvent();
                 stop();
             });
+#endif
             return;
         }
     }
@@ -318,12 +338,7 @@ void WebSocket::send(const String& message, ExceptionCode& ec)
         return;
     }
     ASSERT(m_channel);
-    ThreadableWebSocketChannel::SendResult result = m_channel->send(message);
-    if (result == ThreadableWebSocketChannel::InvalidMessage) {
-        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, ASCIILiteral("Websocket message contains invalid character(s)."));
-        ec = SYNTAX_ERR;
-        return;
-    }
+    m_channel->send(message);
 }
 
 void WebSocket::send(ArrayBuffer& binaryData, ExceptionCode& ec)

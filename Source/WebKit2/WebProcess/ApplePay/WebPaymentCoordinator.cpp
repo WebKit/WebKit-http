@@ -47,7 +47,7 @@ WebPaymentCoordinator::WebPaymentCoordinator(WebPage& webPage)
 
 WebPaymentCoordinator::~WebPaymentCoordinator()
 {
-    WebProcess::singleton().removeMessageReceiver(Messages::WebPaymentCoordinator::messageReceiverName(), m_webPage.pageID());
+    WebProcess::singleton().removeMessageReceiver(*this);
 }
 
 bool WebPaymentCoordinator::supportsVersion(unsigned version)
@@ -84,13 +84,17 @@ void WebPaymentCoordinator::canMakePaymentsWithActiveCard(const String& merchant
     m_webPage.send(Messages::WebPaymentCoordinatorProxy::CanMakePaymentsWithActiveCard(merchantIdentifier, domainName, replyID));
 }
 
-void WebPaymentCoordinator::showPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest& paymentRequest)
+bool WebPaymentCoordinator::showPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest& paymentRequest)
 {
     Vector<String> linkIconURLStrings;
     for (const auto& linkIconURL : linkIconURLs)
         linkIconURLStrings.append(linkIconURL.string());
 
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::ShowPaymentUI(originatingURL.string(), linkIconURLStrings, paymentRequest));
+    bool result;
+    if (!m_webPage.sendSync(Messages::WebPaymentCoordinatorProxy::ShowPaymentUI(originatingURL.string(), linkIconURLStrings, paymentRequest), Messages::WebPaymentCoordinatorProxy::ShowPaymentUI::Reply(result)))
+        return false;
+
+    return result;
 }
 
 void WebPaymentCoordinator::completeMerchantValidation(const WebCore::PaymentMerchantSession& paymentMerchantSession)

@@ -59,7 +59,6 @@ namespace JSC {
     class Identifier;
     class Interpreter;
     class JSScope;
-    class JSStack;
     class MarkedAllocator;
     class Register;
     class StructureChain;
@@ -706,7 +705,7 @@ namespace JSC {
 
         void emitInitRegister(int dst);
 
-        void emitPutIntToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry);
+        void emitPutIntToCallFrameHeader(RegisterID from, int entry);
 
         JSValue getConstantOperand(int src);
         bool isOperandConstantInt(int src);

@@ -55,6 +55,22 @@ static WKNavigationType toWKNavigationType(WebCore::NavigationType navigationTyp
     return WKNavigationTypeOther;
 }
 
+#if PLATFORM(IOS)
+static WKSyntheticClickType toWKSyntheticClickType(WebKit::WebMouseEvent::SyntheticClickType syntheticClickType)
+{
+    switch (syntheticClickType) {
+    case WebKit::WebMouseEvent::NoTap:
+        return WKSyntheticClickTypeNoTap;
+    case WebKit::WebMouseEvent::OneFingerTap:
+        return WKSyntheticClickTypeOneFingerTap;
+    case WebKit::WebMouseEvent::TwoFingerTap:
+        return WKSyntheticClickTypeTwoFingerTap;
+    }
+    ASSERT_NOT_REACHED();
+    return WKSyntheticClickTypeNoTap;
+}
+#endif
+
 #if PLATFORM(MAC)
 
 // FIXME: This really belongs in WebEventFactory.
@@ -108,8 +124,14 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@: %p; navigationType = %ld; request = %@; sourceFrame = %@; targetFrame = %@>", NSStringFromClass(self.class), self,
-        (long)self.navigationType, self.request, self.sourceFrame, self.targetFrame];
+    return [NSString stringWithFormat:@"<%@: %p; navigationType = %ld; syntheticClickType = %ld; request = %@; sourceFrame = %@; targetFrame = %@>", NSStringFromClass(self.class), self,
+        (long)self.navigationType,
+#if PLATFORM(IOS)
+        (long)self._syntheticClickType,
+#else
+        0L,
+#endif
+        self.request, self.sourceFrame, self.targetFrame];
 }
 
 - (WKFrameInfo *)sourceFrame
@@ -135,6 +157,13 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 {
     return _navigationAction->request().nsURLRequest(WebCore::DoNotUpdateHTTPBody);
 }
+
+#if PLATFORM(IOS)
+- (WKSyntheticClickType)_syntheticClickType
+{
+    return toWKSyntheticClickType(_navigationAction->syntheticClickType());
+}
+#endif
 
 #if PLATFORM(MAC)
 - (NSEventModifierFlags)modifierFlags

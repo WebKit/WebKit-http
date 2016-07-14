@@ -1,3 +1,165 @@
+2016-07-13  Beth Dakin  <bdakin@apple.com>
+
+        Add more candidate tests
+        https://bugs.webkit.org/show_bug.cgi?id=159730
+
+        Reviewed by Tim Horton.
+
+        Move shouldRequestCandidates from WebViewInternal to WebViewPrivate so that 
+        we can use it in tests. 
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2016-07-13  Enrica Casucci  <enrica@apple.com>
+
+        Update supported platforms in xcconfig files to match the sdk names.
+        https://bugs.webkit.org/show_bug.cgi?id=159728
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2016-07-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove ENABLE_CSS3_TEXT_LINE_BREAK flag
+        https://bugs.webkit.org/show_bug.cgi?id=159671
+
+        Reviewed by Csaba Osztrogonác.
+
+        ENABLE_CSS3_TEXT_LINE_BREAK feature was implemented without guards.
+        https://bugs.webkit.org/show_bug.cgi?id=89235
+
+        So this guard can be removed in build scripts.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-07-11  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Purge PassRefPtr in platform/efl and platform/mac 
+        https://bugs.webkit.org/show_bug.cgi?id=159548
+
+        Reviewed by Alex Christensen.
+
+        Remove all use of PassRefPtr and clean up unnecessary tabs and spaces.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::setBufferForType):
+
+2016-07-11  Enrica Casucci  <enrica@apple.com>
+
+        Add synthetic click origin to WKNavigationAction.
+        https://bugs.webkit.org/show_bug.cgi?id=159584
+        rdar://problem/25610422
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _dragSourceEndedAt:operation:]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2016-07-11  Anders Carlsson  <andersca@apple.com>
+
+        Able to open multiple payment sheets in Safari at the same time
+        https://bugs.webkit.org/show_bug.cgi?id=159637
+        rdar://problem/26411339
+
+        Reviewed by Beth Dakin.
+
+        Update for WebCore changes.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::showPaymentUI):
+
+2016-07-08  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Load blocked pages more like other error pages are loaded
+        https://bugs.webkit.org/show_bug.cgi?id=159485
+        <rdar://problem/26014076>
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebKitErrors.h: Defined WebKitErrorFrameLoadBlockedByContentFilter.
+        * Misc/WebKitErrors.m:
+        (registerErrors): Registered WebKitErrorDescriptionFrameLoadBlockedByContentFilter.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::blockedByContentFilterError): Returned a ResourceError for WebKitErrorFrameLoadBlockedByContentFilter.
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202944.
+        https://bugs.webkit.org/show_bug.cgi?id=159570
+
+        caused some tests to crash under GuardMalloc (Requested by
+        estes on #webkit).
+
+        Reverted changeset:
+
+        "[Content Filtering] Load blocked pages more like other error
+        pages are loaded"
+        https://bugs.webkit.org/show_bug.cgi?id=159485
+        http://trac.webkit.org/changeset/202944
+
+2016-07-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Define DYLD_MACOSX_VERSION_10_12
+        https://bugs.webkit.org/show_bug.cgi?id=159525
+        <rdar://problem/26250296>
+
+        Reviewed by Brent Fulgham.
+
+        * WebView/WebView.mm:
+        (shouldConvertInvalidURLsToBlank):
+        Replace 0x000A0C00 with DYLD_MACOSX_VERSION_10_12.
+
+2016-07-07  Beth Dakin  <bdakin@apple.com>
+
+        API Test DoNotLeakWebView.ViewThatLoadsEditableArea times out on macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=159532
+        -and corresponding-
+        rdar://problem/27177179
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView showCandidates:forString:inRect:forSelectedRange:view:completionHandler:]):
+        (-[WebView forceRequestCandidatesForTesting]):
+        (-[WebView shouldRequestCandidates]):
+        * WebView/WebViewPrivate.h:
+
+2016-07-07  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Load blocked pages more like other error pages are loaded
+        https://bugs.webkit.org/show_bug.cgi?id=159485
+        <rdar://problem/26014076>
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebKitErrors.h: Defined WebKitErrorFrameLoadBlockedByContentFilter.
+        * Misc/WebKitErrors.m:
+        (registerErrors): Registered WebKitErrorDescriptionFrameLoadBlockedByContentFilter.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::blockedByContentFilterError): Returned a ResourceError for WebKitErrorFrameLoadBlockedByContentFilter.
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create WebSocketChannels
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        Reviewed by Brent Fulgham.
+
+        * Misc/WebSocketProvider.mm: Copied from Source/WebCore/Modules/websockets/ThreadableWebSocketChannel.cpp.
+        (WebSocketProvider::createWebSocketChannel):
+        (WebCore::ThreadableWebSocketChannel::create): Deleted.
+        * Misc/WebSocketProvider.h:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
 2016-07-06  Benjamin Poulain  <bpoulain@apple.com>
 
         [JSC] Unify how we throw TypeError from C++

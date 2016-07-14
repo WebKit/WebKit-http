@@ -41,13 +41,13 @@ public:
     static Ref<HTMLTableElement> create(const QualifiedName&, Document&);
 
     HTMLTableCaptionElement* caption() const;
-    void setCaption(PassRefPtr<HTMLTableCaptionElement>, ExceptionCode&);
+    void setCaption(RefPtr<HTMLTableCaptionElement>&&, ExceptionCode&);
 
     HTMLTableSectionElement* tHead() const;
-    void setTHead(PassRefPtr<HTMLTableSectionElement>, ExceptionCode&);
+    void setTHead(RefPtr<HTMLTableSectionElement>&&, ExceptionCode&);
 
     HTMLTableSectionElement* tFoot() const;
-    void setTFoot(PassRefPtr<HTMLTableSectionElement>, ExceptionCode&);
+    void setTFoot(RefPtr<HTMLTableSectionElement>&&, ExceptionCode&);
 
     Ref<HTMLTableSectionElement> createTHead();
     void deleteTHead();

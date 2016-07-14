@@ -46,7 +46,6 @@
 #include "JSCJSValue.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
-#include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
 #include "LLIntCommon.h"
@@ -483,10 +482,9 @@ LLINT_SLOW_PATH_DECL(stack_check)
     dataLogF("Num callee registers = %u.\n", exec->codeBlock()->m_numCalleeLocals);
     dataLogF("Num vars = %u.\n", exec->codeBlock()->m_numVars);
 
-#if ENABLE(JIT)
-    dataLogF("Current end is at %p.\n", exec->vm().jsCPUStackLimit());
-#else
-    dataLogF("Current end is at %p.\n", exec->vm().jsEmulatedStackLimit());
+    dataLogF("Current OS stack end is at %p.\n", exec->vm().softStackLimit());
+#if !ENABLE(JIT)
+    dataLogF("Current C Loop stack end is at %p.\n", exec->vm().cloopStackLimit());
 #endif
 
 #endif
@@ -498,8 +496,8 @@ LLINT_SLOW_PATH_DECL(stack_check)
     // Hence, if we get here, then we know a stack overflow is imminent. So, just
     // throw the StackOverflowError unconditionally.
 #if !ENABLE(JIT)
-    ASSERT(!vm.interpreter->stack().containsAddress(exec->topOfFrame()));
-    if (LIKELY(vm.interpreter->stack().ensureCapacityFor(exec->topOfFrame())))
+    ASSERT(!vm.interpreter->cloopStack().containsAddress(exec->topOfFrame()));
+    if (LIKELY(vm.ensureStackCapacityFor(exec->topOfFrame())))
         LLINT_RETURN_TWO(pc, 0);
 #endif
 
@@ -1326,7 +1324,7 @@ inline SlowPathReturnType genericCall(ExecState* exec, Instruction* pc, CodeSpec
     ExecState* execCallee = exec - pc[4].u.operand;
     
     execCallee->setArgumentCountIncludingThis(pc[3].u.operand);
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
+    execCallee->uncheckedR(CallFrameSlot::callee) = calleeAsValue;
     execCallee->setCallerFrame(exec);
     
     ASSERT(pc[5].u.callLinkInfo);
@@ -1352,7 +1350,7 @@ LLINT_SLOW_PATH_DECL(slow_path_size_frame_for_varargs)
     // - Set up a call frame while respecting the variable arguments.
     
     unsigned numUsedStackSlots = -pc[5].u.operand;
-    unsigned length = sizeFrameForVarargs(exec, &vm.interpreter->stack(),
+    unsigned length = sizeFrameForVarargs(exec, vm,
         LLINT_OP_C(4).jsValue(), numUsedStackSlots, pc[6].u.operand);
     LLINT_CALL_CHECK_EXCEPTION(exec, exec);
     
@@ -1371,7 +1369,7 @@ LLINT_SLOW_PATH_DECL(slow_path_size_frame_for_forward_arguments)
 
     unsigned numUsedStackSlots = -pc[5].u.operand;
 
-    unsigned arguments = sizeFrameForForwardArguments(exec, &vm.interpreter->stack(), numUsedStackSlots);
+    unsigned arguments = sizeFrameForForwardArguments(exec, vm, numUsedStackSlots);
     LLINT_CALL_CHECK_EXCEPTION(exec, exec);
 
     ExecState* execCallee = calleeFrameForVarargs(exec, numUsedStackSlots, arguments + 1);
@@ -1405,7 +1403,7 @@ inline SlowPathReturnType varargsSetup(ExecState* exec, Instruction* pc, CodeSpe
         setupForwardArgumentsFrameAndSetThis(exec, execCallee, LLINT_OP_C(3).jsValue(), vm.varargsLength);
 
     execCallee->setCallerFrame(exec);
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
+    execCallee->uncheckedR(CallFrameSlot::callee) = calleeAsValue;
     exec->setCurrentVPC(pc);
 
     return setUpCall(execCallee, pc, kind, calleeAsValue);
@@ -1436,7 +1434,7 @@ LLINT_SLOW_PATH_DECL(slow_path_call_eval)
     
     execCallee->setArgumentCountIncludingThis(pc[3].u.operand);
     execCallee->setCallerFrame(exec);
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
+    execCallee->uncheckedR(CallFrameSlot::callee) = calleeAsValue;
     execCallee->setReturnPC(LLInt::getCodePtr(llint_generic_return_point));
     execCallee->setCodeBlock(0);
     exec->setCurrentVPC(pc);
@@ -1629,7 +1627,7 @@ extern "C" SlowPathReturnType llint_throw_stack_overflow_error(VM* vm, ProtoCall
 #if !ENABLE(JIT)
 extern "C" SlowPathReturnType llint_stack_check_at_vm_entry(VM* vm, Register* newTopOfStack)
 {
-    bool success = vm->interpreter->stack().ensureCapacityFor(newTopOfStack);
+    bool success = vm->ensureStackCapacityFor(newTopOfStack);
     return encodeResult(reinterpret_cast<void*>(success), 0);
 }
 #endif

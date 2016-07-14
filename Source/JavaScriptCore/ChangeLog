@@ -1,3 +1,1664 @@
+2016-07-14  Youenn Fablet  <youenn@apple.com>
+
+        DOM value iterable interfaces should use Array prototype methods
+        https://bugs.webkit.org/show_bug.cgi?id=159296
+
+        Reviewed by Chris Dumez and Mark Lam.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Marking some header files as private so that they can be included in
+        WebCore.
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation): copying iterable methods (entries, forEach, keys and values) to private slots.
+
+2016-07-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the magic numbers for ARM traditional in InlineAccess.h
+        https://bugs.webkit.org/show_bug.cgi?id=159708
+
+        Reviewed by Saam Barati.
+
+        * bytecode/InlineAccess.h:
+        (JSC::InlineAccess::sizeForPropertyAccess):
+        (JSC::InlineAccess::sizeForPropertyReplace):
+        (JSC::InlineAccess::sizeForLengthAccess):
+
+2016-07-13  Michael Saboff  <msaboff@apple.com>
+
+        YARR uses mixture of int and unsigned values to index into subject string
+        https://bugs.webkit.org/show_bug.cgi?id=159744
+
+        Reviewed by Benjamin Poulain.
+
+        In most cases, we refer to characters in subject strings using a negative index from the number of
+        "checked" characters in a subject string.  The required length is compared against the actual length
+        and then we use that required length as the checked amount.  For example, when matching the string of
+        4 digits in the RegExp /abc \d{4}/, we know that need 8 characters in the subject string.  We refer
+        to the digits part of the expression from an already checked index of 8 and use negative offsets of
+        -4 through -1.  In many cases we used a signed int for the negative offsets.  There are other cases
+        where we used unsigned values as the amount of negative offset to use when accessing subject characters.
+
+        Changed all occurrances of character offsets to unsigned or Checked Arithmetic unsigned values.  Note
+        that the pre-existing Checked class is used in other places to check for under/overflow with arithmetic
+        operations.  Those unsigned offsets are always the number of characters before (negative) from the
+        current checked character offset.  Also added some asserts for cases where arithmetic is not protected
+        by other checks or with Checked<> wrapped values.
+
+        In the case of the JIT, subject characters are accessed using base with scaled index and offset
+        addressing.  The MacroAssembler provides this addressing using the BaseIndex struct.  The offset for
+        this struct is a 32 bit signed quantity.  Since we only care about negative offsets, we really only
+        have 31 bits.  Changed the generation of a BaseOffset address to handle the case when the offset and
+        scaled combination will exceed the 31 bits of negative offset.  This is done by moving the base value
+        into a temp register and biasing the temp base and offset to smaller values so that we can emit
+        instructions that can reference characters without exceeding the 31 bits of negative offset.
+
+        To abstract the character address generation, put the base with scaled index and offset into
+        one function and used that function everywhere the YARR JIT wants to access subject characters.
+        Also consilidated a few cases where we were generating inline what readCharacter() does.  Usually
+        this was due to using a different index register.
+
+        Added a new regression test.
+
+        * tests/stress/regress-159744.js: Added regression test.
+        (testRegExp):
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::recordParenthesesMatch):
+        (JSC::Yarr::Interpreter::resetMatches):
+        (JSC::Yarr::Interpreter::matchParenthesesOnceEnd):
+        (JSC::Yarr::Interpreter::backtrackParenthesesOnceEnd):
+        (JSC::Yarr::ByteCompiler::closeBodyAlternative):
+        (JSC::Yarr::ByteCompiler::atomParenthesesSubpatternEnd):
+        (JSC::Yarr::ByteCompiler::atomParenthesesOnceEnd):
+        (JSC::Yarr::ByteCompiler::atomParenthesesTerminalEnd):
+        (JSC::Yarr::ByteCompiler::emitDisjunction):
+        * yarr/YarrInterpreter.h:
+        (JSC::Yarr::ByteTerm::ByteTerm):
+        (JSC::Yarr::ByteTerm::BOL):
+        (JSC::Yarr::ByteTerm::UncheckInput):
+        (JSC::Yarr::ByteTerm::EOL):
+        (JSC::Yarr::ByteTerm::WordBoundary):
+        (JSC::Yarr::ByteTerm::BackReference):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::notAtEndOfInput):
+        (JSC::Yarr::YarrGenerator::negativeOffsetIndexedAddress):
+        (JSC::Yarr::YarrGenerator::readCharacter):
+        (JSC::Yarr::YarrGenerator::jumpIfCharNotEquals):
+        (JSC::Yarr::YarrGenerator::storeToFrame):
+        (JSC::Yarr::YarrGenerator::generateAssertionBOL):
+        (JSC::Yarr::YarrGenerator::backtrackAssertionBOL):
+        (JSC::Yarr::YarrGenerator::generateAssertionEOL):
+        (JSC::Yarr::YarrGenerator::matchAssertionWordchar):
+        (JSC::Yarr::YarrGenerator::generateAssertionWordBoundary):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterOnce):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterFixed):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterGreedy):
+        (JSC::Yarr::YarrGenerator::backtrackPatternCharacterNonGreedy):
+        (JSC::Yarr::YarrGenerator::generateCharacterClassOnce):
+        (JSC::Yarr::YarrGenerator::generateCharacterClassFixed):
+        (JSC::Yarr::YarrGenerator::generateCharacterClassGreedy):
+        (JSC::Yarr::YarrGenerator::backtrackCharacterClassNonGreedy):
+        (JSC::Yarr::YarrGenerator::generate):
+        (JSC::Yarr::YarrGenerator::backtrack):
+        (JSC::Yarr::YarrGenerator::YarrGenerator):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::PatternTerm::PatternTerm):
+
+2016-07-13  Keith Miller  <keith_miller@apple.com>
+
+        Crashes with detached ArrayBuffers
+        https://bugs.webkit.org/show_bug.cgi?id=157088
+        <rdar://problem/27327362>
+
+        Reviewed by Filip Pizlo.
+
+        TypedArray.prototype.fill was incorrect because it should perform
+        ToNumber coercion each time it tries to store the
+        object. Currently, we only perform the coercion once at the
+        beginning of the loop. If we find that we need to improve the
+        performance of this function, we can add a faster C++ path back
+        that only handles the primitive case.
+
+        This patch also moves the isNeutered() checks from put and
+        putByIndex into setIndex. This fixes an issue where setIndex might
+        store to a no longer valid offset.
+
+        * builtins/TypedArrayPrototype.js:
+        (globalPrivate.typedArrayClampArgumentToStartOrEnd):
+        (fill):
+        * runtime/JSGenericTypedArrayView.h:
+        (JSC::JSGenericTypedArrayView::setIndexQuickly):
+        (JSC::JSGenericTypedArrayView::setIndex):
+        (JSC::JSGenericTypedArrayView::setRangeToValue): Deleted.
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::put): Deleted.
+        (JSC::JSGenericTypedArrayView<Adaptor>::putByIndex): Deleted.
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncFill): Deleted.
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        (JSC::typedArrayViewProtoFuncFill): Deleted.
+        * tests/stress/typedarray-fill.js:
+        * tests/stress/typedarray-functions-with-neutered.js:
+        (defaultForArg):
+        (test2):
+        (checkArgumentsForType): Deleted.
+        (checkArguments): Deleted.
+
+2016-07-13  Michael Saboff  <msaboff@apple.com>
+
+        Some bad unicode regex escapes aren't flagged as errors
+        https://bugs.webkit.org/show_bug.cgi?id=158080
+
+        Reviewed by Saam Barati.
+
+        If we have a partial unicode escape, eg /\u{1/u or /\u12|abc/u, we
+        didn't check for the closing '}' and processed the unicode escape with
+        the hex value provided.  
+
+        Added a check that we properly terminated a \u{} unicode escape.
+        If we fail that check and there isn't a prior error, we record that we
+        have an invalid unicode escape.  The next existing line in the code will
+        terminate parsing and bubble up the error.
+
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::parseEscape):
+
+2016-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r203199.
+
+        Broke the build
+
+        Reverted changeset:
+
+        "Crashes with detached ArrayBuffers"
+        https://bugs.webkit.org/show_bug.cgi?id=157088
+        http://trac.webkit.org/changeset/203199
+
+2016-07-13  Keith Miller  <keith_miller@apple.com>
+
+        Crashes with detached ArrayBuffers
+        https://bugs.webkit.org/show_bug.cgi?id=157088
+        <rdar://problem/27327362>
+
+        Reviewed by Filip Pizlo.
+
+        TypedArray.prototype.fill was incorrect because it should perform
+        ToNumber coercion each time it tries to store the
+        object. Currently, we only perform the coercion once at the
+        beginning of the loop. If we find that we need to improve the
+        performance of this function, we can add a faster C++ path back
+        that only handles the primitive case.
+
+        This patch also moves the isNeutered() checks from put and
+        putByIndex into setIndex. This fixes an issue where setIndex might
+        store to a no longer valid offset.
+
+        * builtins/TypedArrayPrototype.js:
+        (globalPrivate.typedArrayClampArgumentToStartOrEnd):
+        (fill):
+        * runtime/JSGenericTypedArrayView.h:
+        (JSC::JSGenericTypedArrayView::setIndexQuickly):
+        (JSC::JSGenericTypedArrayView::setIndex):
+        (JSC::JSGenericTypedArrayView::setRangeToValue): Deleted.
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::put): Deleted.
+        (JSC::JSGenericTypedArrayView<Adaptor>::putByIndex): Deleted.
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncFill): Deleted.
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        (JSC::typedArrayViewProtoFuncFill): Deleted.
+        * tests/stress/typedarray-fill.js:
+        * tests/stress/typedarray-functions-with-neutered.js:
+        (defaultForArg):
+        (test2):
+        (checkArgumentsForType): Deleted.
+        (checkArguments): Deleted.
+
+2016-07-13  Enrica Casucci  <enrica@apple.com>
+
+        Update supported platforms in xcconfig files to match the sdk names.
+        https://bugs.webkit.org/show_bug.cgi?id=159728
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2016-07-13  Csaba Osztrogonác  <ossy@webkit.org>
+
+        CLoop buildfix after r203142
+        https://bugs.webkit.org/show_bug.cgi?id=159706
+
+        Unreviewed buildfix.
+
+        * interpreter/CLoopStack.cpp:
+        (JSC::CLoopStack::isSafeToRecurse):
+        * interpreter/CLoopStack.h:
+        * interpreter/CLoopStackInlines.h:
+        (JSC::CLoopStack::isSafeToRecurse): Deleted.
+
+2016-07-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Array.prototype.join() fails some conformance tests
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+
+        Reviewed by Saam Barati.
+
+        There were a couple of failures:
+        -separator.toString() was called *before* we get the length
+         and process ToLength() on it.
+        -We were using toUInt32() on length instead of ToLength(),
+         failing on big integers and various negative numbers.
+
+        Additionally, I replaced the "fast" ArrayStorage path
+        by a fully generic implementation that does not depends on StringJoiner.
+
+        The reason is StringJoiner was doing poorly on sparse objects
+        in certain cases.
+        If you have a sparse object with a length > INT_MAX but very few
+        indices defined, and you join on the empty string, it should be possible
+        to join the array (albeit very slowly). With StringJoiner, we fail
+        because we try to allocate > INT_MAX empty strings in a contiguous vector.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::slowJoin):
+        (JSC::canUseFastJoin):
+        (JSC::fastJoin):
+        (JSC::arrayProtoFuncJoin):
+        (JSC::join): Deleted.
+        * runtime/JSArray.h:
+        (JSC::toLength):
+
+2016-07-12  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: C Loop build fix after r203142.
+
+        Not reviewed.
+
+        * interpreter/CLoopStackInlines.h:
+        (JSC::CLoopStack::isSafeToRecurse):
+
+2016-07-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203131.
+        https://bugs.webkit.org/show_bug.cgi?id=159698
+
+        This change caused an existing LayoutTest to time out on debug
+        testers (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Array.prototype.join() fails some conformance tests"
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+        http://trac.webkit.org/changeset/203131
+
+2016-07-12  Mark Lam  <mark.lam@apple.com>
+
+        We should use different stack limits for stack checks from JS and host code.
+        https://bugs.webkit.org/show_bug.cgi?id=159442
+        <rdar://problem/26889188>
+
+        Reviewed by Geoffrey Garen.
+
+        We have 2 stack reservedZoneSizes:
+        1. Options::softReservedZoneSize()
+        2. Options::reservedZoneSize()
+
+        Respectively, there are used to define 2 stack limits based on these reserved
+        zone sizes:
+        1. VM::m_softStackLimit
+        2. VM::m_stackLimit
+
+        Options::reservedZoneSize() is the amount of the stack space that JSC guarantees
+        to the VM and client host code for it's use.  Host code that has well known
+        stack usage characteristics (i.e. doesn't call arbitrary code) may do stack
+        checks against the VM::m_stackLimit limit (which is computed using
+        Options::reservedZoneSize()).
+
+        Options::softReservedZoneSize() is a more conservative amount of reserved stack
+        space.  This is used to compute the VM::m_softStackLimit limit.  Any code that
+        is difficult to have its stack usage characterized (i.e. may call arbitrary code)
+        may need more stack space for its work.  Hence, these should do stack checks
+        against the VM::m_softStackLimit limit.
+
+        JS code and host code that may call into JS code falls into the category of code
+        that may call arbitrary code.  Hence, they should do stack checks against the
+        VM::m_softStackLimit limit.
+
+        Accordingly, the VM now provides 2 recursion check functions:
+
+        1. VM::isSafeToRecurseSoft() will do a stack check against VM::m_softStackLimit.
+           In addition, for C Loop builds, VM::isSafeToRecurseSoft() will also
+           check the CLoopStack against VM::m_cloopStackLimit.
+
+        2. VM::isSafeToRecurse() will do a stack check against VM::m_stackLimit.
+
+        Also added a promise-infinite-recursion-should-not-crash.js test.
+
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::emitNodeInTailPosition):
+        (JSC::BytecodeGenerator::emitNodeInConditionContext):
+        * interpreter/CLoopStack.cpp:
+        (JSC::CLoopStack::grow):
+        * interpreter/CLoopStack.h:
+        (JSC::CLoopStack::size):
+        * interpreter/CLoopStackInlines.h:
+        (JSC::CLoopStack::ensureCapacityFor):
+        (JSC::CLoopStack::isSafeToRecurse):
+        (JSC::CLoopStack::topOfFrameFor):
+        * interpreter/CachedCall.h:
+        (JSC::CachedCall::CachedCall):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * parser/Parser.cpp:
+        * runtime/Options.h:
+        * runtime/ProxyObject.cpp:
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        (JSC::ProxyObject::getOwnPropertySlotCommon):
+        (JSC::ProxyObject::performPut):
+        (JSC::performProxyCall):
+        (JSC::performProxyConstruct):
+        (JSC::ProxyObject::performDelete):
+        (JSC::ProxyObject::performPreventExtensions):
+        (JSC::ProxyObject::performIsExtensible):
+        (JSC::ProxyObject::performDefineOwnProperty):
+        (JSC::ProxyObject::performGetOwnPropertyNames):
+        (JSC::ProxyObject::performSetPrototype):
+        (JSC::ProxyObject::performGetPrototype):
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::finishCreation):
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * runtime/StringRecursionChecker.h:
+        (JSC::StringRecursionChecker::performCheck):
+        * runtime/VM.cpp:
+        (JSC::VM::setStackPointerAtVMEntry):
+        (JSC::VM::updateSoftReservedZoneSize):
+        (JSC::preCommitStackMemory):
+        (JSC::VM::updateStackLimits):
+        (JSC::VM::updateStackLimit): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::stackLimit):
+        (JSC::VM::softStackLimit):
+        (JSC::VM::addressOfSoftStackLimit):
+        (JSC::VM::setCLoopStackLimit):
+        (JSC::VM::isSafeToRecurse):
+        (JSC::VM::lastStackTop):
+        (JSC::VM::setException):
+        * runtime/VMInlines.h:
+        (JSC::VM::ensureStackCapacityFor):
+        (JSC::VM::isSafeToRecurseSoft):
+        (JSC::VM::shouldTriggerTermination):
+        * tests/stress/promise-infinite-recursion-should-not-crash.js: Added.
+        (testPromise):
+        (promiseFunc):
+        * yarr/YarrPattern.cpp:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix for build error when trying to version stamp dll.
+        https://bugs.webkit.org/show_bug.cgi?id=159692
+
+        Reviewed by Brent Fulgham.
+
+        Use correct path to version stamp script.
+
+        * CMakeLists.txt:
+
+2016-07-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Array.prototype.join() fails some conformance tests
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+
+        Reviewed by Saam Barati.
+
+        There were a couple of failures:
+        -separator.toString() was called *before* we get the length
+         and process ToLength() on it.
+        -We were using toUInt32() on length instead of ToLength(),
+         failing on big integers and various negative numbers.
+
+        Additionally, I replaced the "fast" ArrayStorage path
+        by a fully generic implementation that does not depends on StringJoiner.
+
+        The reason is StringJoiner was doing poorly on sparse objects
+        in certain cases.
+        If you have a sparse object with a length > INT_MAX but very few
+        indices defined, and you join on the empty string, it should be possible
+        to join the array (albeit very slowly). With StringJoiner, we fail
+        because we try to allocate > INT_MAX empty strings in a contiguous vector.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::slowJoin):
+        (JSC::canUseFastJoin):
+        (JSC::fastJoin):
+        (JSC::arrayProtoFuncJoin):
+        (JSC::join): Deleted.
+        * runtime/JSArray.h:
+        (JSC::toLength):
+
+2016-07-12  Mark Lam  <mark.lam@apple.com>
+
+        More stack limit and reserved zone renaming.
+        https://bugs.webkit.org/show_bug.cgi?id=159690
+
+        Rubber-stamped by Geoffrey Garen.
+
+        We should rename the following:
+            osStackLimitWithReserve => softStackLimit
+            reservedZoneSize => softReservedZoneSize
+            errorModeReservedZoneSize => reservedZoneSize
+
+        * API/tests/PingPongStackOverflowTest.cpp:
+        (testPingPongStackOverflow):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::compileFunction):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        * interpreter/CLoopStack.cpp:
+        (JSC::CLoopStack::CLoopStack):
+        (JSC::CLoopStack::grow):
+        (JSC::CLoopStack::releaseExcessCapacity):
+        (JSC::CLoopStack::addToCommittedByteCount):
+        (JSC::CLoopStack::setSoftReservedZoneSize):
+        (JSC::CLoopStack::setReservedZoneSize): Deleted.
+        * interpreter/CLoopStack.h:
+        (JSC::CLoopStack::size):
+        * interpreter/CLoopStackInlines.h:
+        (JSC::CLoopStack::shrink):
+        * jit/JIT.cpp:
+        (JSC::JIT::compileWithoutLinking):
+        * jit/SetupVarargsFrame.cpp:
+        (JSC::emitSetupVarargsFrameFastCase):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/ErrorHandlingScope.cpp:
+        (JSC::ErrorHandlingScope::ErrorHandlingScope):
+        (JSC::ErrorHandlingScope::~ErrorHandlingScope):
+        * runtime/ErrorHandlingScope.h:
+        * runtime/Options.h:
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::finishCreation):
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::setStackPointerAtVMEntry):
+        (JSC::VM::updateSoftReservedZoneSize):
+        (JSC::VM::updateStackLimit):
+        (JSC::VM::updateReservedZoneSize): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::stackPointerAtVMEntry):
+        (JSC::VM::softReservedZoneSize):
+        (JSC::VM::softStackLimit):
+        (JSC::VM::addressOfSoftStackLimit):
+        (JSC::VM::cloopStackLimit):
+        (JSC::VM::setCLoopStackLimit):
+        (JSC::VM::isSafeToRecurse):
+        (JSC::VM::reservedZoneSize): Deleted.
+        (JSC::VM::osStackLimitWithReserve): Deleted.
+        (JSC::VM::addressOfOSStackLimitWithReserve): Deleted.
+        * runtime/VMInlines.h:
+        (JSC::VM::ensureStackCapacityFor):
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::startFunction):
+
+2016-07-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove ENABLE_CSS3_TEXT_LINE_BREAK flag
+        https://bugs.webkit.org/show_bug.cgi?id=159671
+
+        Reviewed by Csaba Osztrogonác.
+
+        ENABLE_CSS3_TEXT_LINE_BREAK feature was implemented without guards.
+        https://bugs.webkit.org/show_bug.cgi?id=89235
+
+        So this guard can be removed in build scripts.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        Generate autoversion.h and run perl version stamp utility.
+
+        * CMakeLists.txt:
+
+2016-07-11  Caio Lima  <ticaiolima@gmail.com>
+
+        ECMAScript 2016: %TypedArray%.prototype.includes implementation
+        https://bugs.webkit.org/show_bug.cgi?id=159385
+
+        Reviewed by Benjamin Poulain.
+
+        This patch implements the ECMAScript 2016:
+        %TypedArray%.prototype.includes
+        following spec 22.2.3.14
+        https://tc39.github.io/ecma262/2016/#sec-%typedarray%.prototype.includes
+
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncIncludes):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::typedArrayViewProtoFuncIncludes):
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+
+2016-07-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Array.from() and Array.of() try to build objects even if "this" is not a constructor
+        https://bugs.webkit.org/show_bug.cgi?id=159604
+
+        Reviewed by Yusuke Suzuki.
+
+        The spec says IsConstructor(), we were just checking if "this"
+        is any function.
+
+        * builtins/ArrayConstructor.js:
+        (of):
+        (from):
+
+2016-07-11  Keith Miller  <keith_miller@apple.com>
+
+        defineProperty on a index of a TypedArray should throw if configurable
+        https://bugs.webkit.org/show_bug.cgi?id=159653
+
+        Reviewed by Saam Barati.
+
+        When I fixed this before I misread the spec and thought it said we
+        should throw if the descriptor said the proprety is not
+        configurable. This is the opposite. We should throw if the
+        descriptor says the property is configurable.
+
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        * tests/stress/typedarray-access-monomorphic-neutered.js:
+        * tests/stress/typedarray-access-neutered.js:
+        * tests/stress/typedarray-configure-index.js: Added.
+        (assert):
+        (assertThrows):
+        (makeDescriptor):
+        (test):
+
+2016-07-11  Saam Barati  <sbarati@apple.com>
+
+        some paths in Array.prototype.splice don't account for the array not having certain indexed properties
+        https://bugs.webkit.org/show_bug.cgi?id=159641
+        <rdar://problem/27171999>
+
+        Reviewed by Filip Pizlo and Keith Miller.
+
+        Array.prototype.splice was incorrectly putting properties on
+        the result array even if the |this| array didn't have those
+        properties. This is not the behavior of the spec. However, this
+        could also cause a crash because we can construct a program where
+        we would putByIndex on a typed array where the value we are
+        putting is JSValue(). This is bad because the typed array will
+        try to convert JSValue() into an integer.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSplice):
+        * tests/stress/array-prototype-splice-making-typed-array.js: Added.
+        (assert):
+        (test):
+
+2016-07-11  Mark Lam  <mark.lam@apple.com>
+
+        Refactor JSStack to only be the stack data structure for the C Loop.
+        https://bugs.webkit.org/show_bug.cgi?id=159545
+
+        Reviewed by Geoffrey Garen.
+
+        Changes made:
+        1. Renamed JSStack to CLoopStack.
+        2. Made all of CLoopStack code to conditional on #if !ENABLE(JIT) i.e. they will
+           only be in effect for the C Loop build.
+        3. Changed clients of JSStack to use new equivalent VM APIs:
+            a. JSStack::ensureCapacityFor() => VM::ensureStackCapacityFor()
+            b. JSStack::committedByteCount() => VM::committedStackByteCount()
+        4. Made VM::updateReservedZoneSize() call CLoopStack::setReservedZoneSize()
+           instead of calling it from all the clients of VM::updateReservedZoneSize().
+        5. Removed all unnecessary references to JSStack.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MaxFrameExtentForSlowPathCall.h:
+        * bytecode/BytecodeConventions.h:
+        * dfg/DFGGraph.h:
+        * dfg/DFGOSREntry.cpp:
+        (JSC::DFG::prepareOSREntry):
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+        * heap/Heap.cpp:
+        (JSC::Heap::finalizeUnconditionalFinalizers):
+        (JSC::Heap::willStartIterating):
+        (JSC::Heap::gatherJSStackRoots):
+        (JSC::Heap::stack): Deleted.
+        * heap/Heap.h:
+        * interpreter/CLoopStack.cpp: Copied from Source/JavaScriptCore/interpreter/JSStack.cpp.
+        (JSC::commitSize):
+        (JSC::CLoopStack::CLoopStack):
+        (JSC::CLoopStack::~CLoopStack):
+        (JSC::CLoopStack::grow):
+        (JSC::CLoopStack::gatherConservativeRoots):
+        (JSC::CLoopStack::sanitizeStack):
+        (JSC::CLoopStack::releaseExcessCapacity):
+        (JSC::CLoopStack::addToCommittedByteCount):
+        (JSC::CLoopStack::setReservedZoneSize):
+        (JSC::CLoopStack::committedByteCount):
+        (JSC::JSStack::JSStack): Deleted.
+        (JSC::JSStack::~JSStack): Deleted.
+        (JSC::JSStack::growSlowCase): Deleted.
+        (JSC::JSStack::gatherConservativeRoots): Deleted.
+        (JSC::JSStack::sanitizeStack): Deleted.
+        (JSC::JSStack::releaseExcessCapacity): Deleted.
+        (JSC::JSStack::addToCommittedByteCount): Deleted.
+        (JSC::JSStack::setReservedZoneSize): Deleted.
+        (JSC::JSStack::lowAddress): Deleted.
+        (JSC::JSStack::highAddress): Deleted.
+        (JSC::JSStack::committedByteCount): Deleted.
+        * interpreter/CLoopStack.h: Copied from Source/JavaScriptCore/interpreter/JSStack.h.
+        (JSC::CLoopStack::containsAddress):
+        (JSC::CLoopStack::lowAddress):
+        (JSC::CLoopStack::highAddress):
+        (JSC::CLoopStack::reservationTop):
+        (JSC::JSStack::containsAddress): Deleted.
+        (JSC::JSStack::lowAddress): Deleted.
+        (JSC::JSStack::highAddress): Deleted.
+        (JSC::JSStack::reservationTop): Deleted.
+        * interpreter/CLoopStackInlines.h: Copied from Source/JavaScriptCore/interpreter/JSStackInlines.h.
+        (JSC::CLoopStack::ensureCapacityFor):
+        (JSC::CLoopStack::topOfFrameFor):
+        (JSC::CLoopStack::topOfStack):
+        (JSC::CLoopStack::shrink):
+        (JSC::CLoopStack::setCLoopStackLimit):
+        (JSC::JSStack::ensureCapacityFor): Deleted.
+        (JSC::JSStack::topOfFrameFor): Deleted.
+        (JSC::JSStack::topOfStack): Deleted.
+        (JSC::JSStack::shrink): Deleted.
+        (JSC::JSStack::grow): Deleted.
+        (JSC::JSStack::setCLoopStackLimit): Deleted.
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::unsafeCallSiteIndex):
+        (JSC::CallFrame::currentVPC):
+        (JSC::CallFrame::stack): Deleted.
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::callerFrameAndPC):
+        (JSC::ExecState::unsafeCallerFrameAndPC):
+        * interpreter/Interpreter.cpp:
+        (JSC::sizeOfVarargs):
+        (JSC::sizeFrameForForwardArguments):
+        (JSC::sizeFrameForVarargs):
+        (JSC::Interpreter::Interpreter):
+        * interpreter/Interpreter.h:
+        (JSC::Interpreter::cloopStack):
+        (JSC::Interpreter::getOpcode):
+        (JSC::Interpreter::isCallBytecode):
+        (JSC::Interpreter::stack): Deleted.
+        * interpreter/JSStack.cpp: Removed.
+        * interpreter/JSStack.h: Removed.
+        * interpreter/JSStackInlines.h: Removed.
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::dump):
+        * jit/JIT.h:
+        * jit/JITOperations.cpp:
+        * jit/JSInterfaceJIT.h:
+        * jit/SpecializedThunkJIT.h:
+        * jit/ThunkGenerators.cpp:
+        * llint/LLIntOffsetsExtractor.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::llint_stack_check_at_vm_entry):
+        * llint/LLIntThunks.cpp:
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::arityCheckFor):
+        * runtime/ErrorHandlingScope.cpp:
+        (JSC::ErrorHandlingScope::ErrorHandlingScope):
+        (JSC::ErrorHandlingScope::~ErrorHandlingScope):
+        * runtime/JSGlobalObject.h:
+        * runtime/MemoryStatistics.cpp:
+        (JSC::globalMemoryStatistics):
+        * runtime/StackAlignment.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::updateReservedZoneSize):
+        (JSC::sanitizeStackForVM):
+        (JSC::VM::committedStackByteCount):
+        * runtime/VM.h:
+        (JSC::VM::reservedZoneSize):
+        (JSC::VM::osStackLimitWithReserve):
+        (JSC::VM::addressOfOSStackLimitWithReserve):
+        * runtime/VMInlines.h:
+        (JSC::VM::ensureStackCapacityFor):
+        (JSC::VM::shouldTriggerTermination):
+
+2016-07-11  Keith Miller  <keith_miller@apple.com>
+
+        STP TypedArray.subarray 5x slowdown compared to 9.1
+        https://bugs.webkit.org/show_bug.cgi?id=156404
+        <rdar://problem/26493032>
+
+        Reviewed by Geoffrey Garen.
+
+        This patch moves the species constructor work for
+        %TypedArray%.prototype.subarray to a js wrapper. By moving the
+        species constructor work to JS we are able to completely optimize
+        it out in DFG. The actual work of creating a TypedArray is still
+        done in C++ since we are able to avoid calling into the
+        constructor, which is expensive. This patch also changes the error
+        message when a %TypedArray%.prototype function is passed a non-typed
+        array this value. Finally, we used to check that the this value
+        had not been detached, however, this behavior was incorrect.
+
+        * builtins/BuiltinNames.h:
+        * builtins/TypedArrayPrototype.js:
+        (globalPrivate.typedArraySpeciesConstructor):
+        (subarray):
+        * runtime/ConstructData.cpp:
+        (JSC::construct):
+        * runtime/ConstructData.h:
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewPrivateFuncSubarrayCreate):
+        (JSC::genericTypedArrayViewProtoFuncSubarray): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::typedArrayViewPrivateFuncLength):
+        (JSC::typedArrayViewPrivateFuncSubarrayCreate):
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        (JSC::typedArrayViewProtoFuncSubarray): Deleted.
+        * runtime/JSTypedArrayViewPrototype.h:
+
+2016-07-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r202992): JSC varargs tests are broken
+        https://bugs.webkit.org/show_bug.cgi?id=159616
+
+        Reviewed by Csaba Osztrogonác.
+
+        The substitution miss in r202992 causes varargs tests failures in GTK port.
+
+        * jit/SetupVarargsFrame.cpp:
+        (JSC::emitSetupVarargsFrameFastCase):
+
+2016-07-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Promise.{all,race} no longer use @@species
+        https://bugs.webkit.org/show_bug.cgi?id=159615
+
+        Reviewed by Keith Miller.
+
+        As per the latest ES draft, Promise.{all,race} no longer use @@species.
+        So, this patch drops FIXMEs.
+
+        * builtins/PromiseConstructor.js:
+        (all):
+        (race):
+        * tests/stress/ignore-promise-species.js: Added.
+        (shouldBe):
+        (DerivedPromise.prototype.get Symbol):
+        (DerivedPromise):
+
+2016-07-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203037.
+        https://bugs.webkit.org/show_bug.cgi?id=159614
+
+        The JSC tests are breaking in elcapitan-debug-tests-jsc and
+        elcapitan-release-tests-jsc (Requested by caiolima on
+        #webkit).
+
+        Reverted changeset:
+
+        "ECMAScript 2016: %TypedArray%.prototype.includes
+        implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=159385
+        http://trac.webkit.org/changeset/203037
+
+2016-07-10  Caio Lima  <ticaiolima@gmail.com>
+
+        ECMAScript 2016: %TypedArray%.prototype.includes implementation
+        https://bugs.webkit.org/show_bug.cgi?id=159385
+
+        Reviewed by Benjamin Poulain.
+
+        This patch implements the ECMAScript 2016:
+        %TypedArray%.prototype.includes
+        following spec 22.2.3.14
+        https://tc39.github.io/ecma262/2016/#sec-%typedarray%.prototype.includes
+
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncIncludes):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::typedArrayViewProtoFuncIncludes):
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+
+2016-07-09  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(201900): validation failure for GetByOffset/PutByOffset in VALIDATE((node), node->child1().node() == node->child2().node() || node->child1()->result() == NodeResultStorage)
+        https://bugs.webkit.org/show_bug.cgi?id=159603
+
+        Reviewed by Keith Miller.
+        
+        This removes an incorrect validation rule and replaces it with a FIXME about how to make this
+        aspect of IR easier to validate soundly.
+        
+        It's not valid to assert that two children of a node are the same. It should always be valid
+        to take:
+        
+        Foo(@x, @x)
+        
+        and turn it into:
+        
+        a: ValueRep(@x)
+        b: ValueRep(@x)
+        Foo(@a, @b)
+        
+        or even something like:
+        
+        y: Identity(@y)
+        Foo(@x, @y)
+        
+        That's because it should be possible to rewire any data flow edge something that produces an
+        equivalent value.
+        
+        The validation rule that this patch removes meant that such rewirings were invalid on
+        GetByOffset/PutByOffset. FixupPhase did such a rewiring sometimes.
+
+        * dfg/DFGValidate.cpp:
+        * tests/stress/get-by-offset-double.js: Added.
+
+2016-07-09  Keith Miller  <keith_miller@apple.com>
+
+        appendMemcpy might fail in concatAppendOne
+        https://bugs.webkit.org/show_bug.cgi?id=159601
+        <rdar://problem/27211300>
+
+        Reviewed by Mark Lam.
+
+        There are multiple reasons why we might fail appendMemcpy. One
+        reason, which I suspect was the source of the crashes, is that one
+        of the Array prototypes has an indexed property. This patch
+        consolidates the two old cases by just creating an array then
+        attempting to memcpy append. If that fails, we fall back to
+        moveElements.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::concatAppendOne):
+        * tests/stress/concat-with-holesMustForwardToPrototype.js: Added.
+        (arrayEq):
+
+2016-07-09  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Fix the Template Raw Value of \ (escape) + LineTerminatorSequence
+        https://bugs.webkit.org/show_bug.cgi?id=159595
+
+        Reviewed by Yusuke Suzuki.
+
+        The spec (https://tc39.github.io/ecma262/#sec-static-semantics-tv-and-trv)
+        says:
+        "The TRV of LineContinuation::\LineTerminatorSequence is the sequence
+         consisting of the code unit value 0x005C followed by the code units
+         of TRV of LineTerminatorSequence."
+        
+        We were not normalizing the LineTerminatorSequence in that case, but it should
+        be as it is the TRV of LineTerminatorSequence.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::parseTemplateLiteral):
+        * tests/stress/tagged-templates-raw-strings.js:
+
+2016-07-08  Saam Barati  <sbarati@apple.com>
+
+        We may add a ReadOnly property without setting the corresponding bit on Structure
+        https://bugs.webkit.org/show_bug.cgi?id=159542
+        <rdar://problem/27084591>
+
+        Reviewed by Benjamin Poulain.
+
+        The reason this usually is OK is due to happenstance. Often, instances that putDirectWithoutTransition
+        also happen to have a static property table. Having a static property table causes the
+        HasReadOnlyOrGetterSetterPropertiesExcludingProto on the structure to be set. However, 
+        there are times where an object calls putDirectWithoutTransition, and it doesn't have a
+        static property hash table. The fix is simple, putDirectWithTransition needs to set the
+        HasReadOnlyOrGetterSetterPropertiesExcludingProto if it puts a ReadOnly property.
+
+        * runtime/JSObject.h:
+        (JSC::JSObject::putDirectWithoutTransition):
+        * tests/stress/proper-property-store-with-prototype-property-that-is-not-writable.js: Added.
+        (assert):
+
+2016-07-08  Michael Saboff  <msaboff@apple.com>
+
+        ASSERTION FAILED: Heap::isMarked(cell) in SlotVisitor::appendToMarkStack(JSC::JSCell *)
+        https://bugs.webkit.org/show_bug.cgi?id=159588
+
+        Reviewed by Geoffrey Garen.
+
+        We were jettisoning a CodeBlock during GC that won't survive and its owning script
+        won't survive either.  We can't install any code on the owning script as that involves
+        a write barrier that will "pull" the script back into the remembered set.  Badness would
+        ensue.  Added an early return in CodeBlock::jettison() when we are garbage collecting
+        and the owning script isn't marked.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::jettison):
+
+2016-07-08  Mark Lam  <mark.lam@apple.com>
+
+        Move CallFrame header info from JSStack.h to CallFrame.h
+        https://bugs.webkit.org/show_bug.cgi?id=159549
+
+        Reviewed by Geoffrey Garen.
+
+        CallFrame.h is a much better location for CallFrame header info.
+
+        Replaced CallFrame::init() with ExecState::initGlobalExec() because normal
+        CallFrames are setup by a different mechanism now.  Only the globalExec is still
+        using it.  So, might as well change it to be specifically for the globalExec.
+
+        Removed the use of JSStack::containsAddress() in ExecState::initGlobalExec()
+        because it is not relevant to the globalExec.
+
+        Also removed some unused code: JSStack::gatherConservativeRoots() and
+        JSStack::sanitizeStack() is never called for JIT builds.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/VirtualRegister.h:
+        (JSC::VirtualRegister::isValid):
+        (JSC::VirtualRegister::isLocal):
+        (JSC::VirtualRegister::isArgument):
+        (JSC::VirtualRegister::isHeader):
+        (JSC::VirtualRegister::isConstant):
+        (JSC::VirtualRegister::toLocal):
+        (JSC::VirtualRegister::toArgument):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitCall):
+        (JSC::BytecodeGenerator::emitConstruct):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::CallArguments::thisRegister):
+        (JSC::CallArguments::argumentRegister):
+        (JSC::CallArguments::stackOffset):
+        (JSC::CallArguments::argumentCountIncludingThis):
+        (JSC::CallArguments::argumentsNode):
+        (JSC::BytecodeGenerator::registerFor):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::emitHomeObjectForCallee):
+        (JSC::emitGetSuperFunctionForConstruct):
+        (JSC::CallArguments::CallArguments):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGArgumentsUtilities.cpp:
+        (JSC::DFG::argumentsInvolveStackSlot):
+        (JSC::DFG::emitCodeToGetArgumentsArrayLength):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::get):
+        (JSC::DFG::ByteCodeParser::findArgumentPositionForLocal):
+        (JSC::DFG::ByteCodeParser::flush):
+        (JSC::DFG::ByteCodeParser::addCallWithoutSettingResult):
+        (JSC::DFG::ByteCodeParser::getArgumentCount):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isLiveInBytecode):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::forAllLocalsLiveInBytecode):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compileEntry):
+        (JSC::DFG::JITCompiler::compileSetupRegistersForEntry):
+        (JSC::DFG::JITCompiler::compileFunction):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::emitStoreCallSiteIndex):
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGOSREntry.cpp:
+        (JSC::DFG::prepareOSREntry):
+        * dfg/DFGOSRExitCompiler.cpp:
+        (JSC::DFG::OSRExitCompiler::emitRestoreArguments):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGOSRExitCompilerCommon.h:
+        (JSC::DFG::adjustFrameAndStackInOSRExitCompilerThunk):
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitGetLength):
+        (JSC::DFG::SpeculativeJIT::emitGetCallee):
+        (JSC::DFG::SpeculativeJIT::emitGetArgumentStart):
+        (JSC::DFG::SpeculativeJIT::compileCreateDirectArguments):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrEntryThunkGenerator):
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetMyArgumentByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetCallee):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetArgumentCountIncludingThis):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetScope):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileTailCall):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileLogShadowChickenPrologue):
+        (JSC::FTL::DFG::LowerDFGToB3::getArgumentsLength):
+        (JSC::FTL::DFG::LowerDFGToB3::getCurrentCallee):
+        (JSC::FTL::DFG::LowerDFGToB3::getArgumentsStart):
+        (JSC::FTL::DFG::LowerDFGToB3::callPreflight):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        * ftl/FTLSlowPathCall.h:
+        (JSC::FTL::callOperation):
+        * interpreter/CallFrame.cpp:
+        (JSC::ExecState::initGlobalExec):
+        (JSC::CallFrame::callSiteBitsAreBytecodeOffset):
+        (JSC::CallFrame::callSiteAsRawBits):
+        (JSC::CallFrame::unsafeCallSiteAsRawBits):
+        (JSC::CallFrame::callSiteIndex):
+        (JSC::CallFrame::setCurrentVPC):
+        (JSC::CallFrame::callSiteBitsAsBytecodeOffset):
+        * interpreter/CallFrame.h:
+        (JSC::CallSiteIndex::CallSiteIndex):
+        (JSC::ExecState::calleeAsValue):
+        (JSC::ExecState::callee):
+        (JSC::ExecState::unsafeCallee):
+        (JSC::ExecState::codeBlock):
+        (JSC::ExecState::unsafeCodeBlock):
+        (JSC::ExecState::scope):
+        (JSC::ExecState::setCallerFrame):
+        (JSC::ExecState::setScope):
+        (JSC::ExecState::argumentCount):
+        (JSC::ExecState::argumentCountIncludingThis):
+        (JSC::ExecState::argumentOffset):
+        (JSC::ExecState::argumentOffsetIncludingThis):
+        (JSC::ExecState::offsetFor):
+        (JSC::ExecState::noCaller):
+        (JSC::ExecState::setArgumentCountIncludingThis):
+        (JSC::ExecState::setCallee):
+        (JSC::ExecState::setCodeBlock):
+        (JSC::ExecState::setReturnPC):
+        (JSC::ExecState::argIndexForRegister):
+        (JSC::ExecState::callerFrameAndPC):
+        (JSC::ExecState::unsafeCallerFrameAndPC):
+        (JSC::ExecState::init): Deleted.
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::dumpRegisters):
+        * interpreter/Interpreter.h:
+        (JSC::calleeFrameForVarargs):
+        * interpreter/JSStack.h:
+        (JSC::JSStack::containsAddress):
+        (JSC::JSStack::gatherConservativeRoots): Deleted.
+        (JSC::JSStack::sanitizeStack): Deleted.
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::jitAssertArgumentCountSane):
+        (JSC::AssemblyHelpers::emitRandomThunk):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::restoreReturnAddressBeforeReturn):
+        (JSC::AssemblyHelpers::emitGetFromCallFrameHeaderPtr):
+        (JSC::AssemblyHelpers::emitGetFromCallFrameHeader32):
+        (JSC::AssemblyHelpers::emitGetFromCallFrameHeader64):
+        (JSC::AssemblyHelpers::emitPutToCallFrameHeader):
+        (JSC::AssemblyHelpers::emitPutToCallFrameHeaderBeforePrologue):
+        (JSC::AssemblyHelpers::emitPutPayloadToCallFrameHeaderBeforePrologue):
+        (JSC::AssemblyHelpers::emitPutTagToCallFrameHeaderBeforePrologue):
+        (JSC::AssemblyHelpers::calleeFrameSlot):
+        * jit/CCallHelpers.cpp:
+        (JSC::CCallHelpers::logShadowChickenProloguePacket):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::prepareForTailCallSlow):
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::CallFrameShuffler):
+        (JSC::CallFrameShuffler::dump):
+        (JSC::CallFrameShuffler::extendFrameIfNeeded):
+        (JSC::CallFrameShuffler::prepareForSlowPath):
+        (JSC::CallFrameShuffler::prepareForTailCall):
+        (JSC::CallFrameShuffler::prepareAny):
+        * jit/CallFrameShuffler.h:
+        (JSC::CallFrameShuffler::snapshot):
+        (JSC::CallFrameShuffler::setCalleeJSValueRegs):
+        (JSC::CallFrameShuffler::assumeCalleeIsCell):
+        (JSC::CallFrameShuffler::numLocals):
+        (JSC::CallFrameShuffler::getOld):
+        (JSC::CallFrameShuffler::setOld):
+        (JSC::CallFrameShuffler::firstOld):
+        (JSC::CallFrameShuffler::lastOld):
+        (JSC::CallFrameShuffler::isValidOld):
+        (JSC::CallFrameShuffler::argCount):
+        (JSC::CallFrameShuffler::getNew):
+        * jit/JIT.cpp:
+        (JSC::JIT::compileWithoutLinking):
+        * jit/JIT.h:
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        (JSC::JIT::compileCallEvalSlowCase):
+        (JSC::JIT::compileOpCall):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        (JSC::JIT::compileCallEvalSlowCase):
+        (JSC::JIT::compileOpCall):
+        * jit/JITInlines.h:
+        (JSC::JIT::getConstantOperand):
+        (JSC::JIT::emitPutIntToCallFrameHeader):
+        (JSC::JIT::updateTopCallFrame):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_get_scope):
+        (JSC::JIT::emit_op_argument_count):
+        (JSC::JIT::emit_op_get_rest_length):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::privateCompileCTINativeCall):
+        (JSC::JIT::emit_op_get_scope):
+        * jit/JSInterfaceJIT.h:
+        (JSC::JSInterfaceJIT::emitJumpIfNotType):
+        (JSC::JSInterfaceJIT::emitGetFromCallFrameHeaderPtr):
+        (JSC::JSInterfaceJIT::emitPutToCallFrameHeader):
+        (JSC::JSInterfaceJIT::emitPutCellToCallFrameHeader):
+        * jit/SetupVarargsFrame.cpp:
+        (JSC::emitSetVarargsFrame):
+        (JSC::emitSetupVarargsFrameFastCase):
+        * jit/SpecializedThunkJIT.h:
+        (JSC::SpecializedThunkJIT::SpecializedThunkJIT):
+        * jit/ThunkGenerators.cpp:
+        (JSC::nativeForGenerator):
+        (JSC::arityFixupGenerator):
+        (JSC::boundThisNoArgsFunctionCallGenerator):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::genericCall):
+        (JSC::LLInt::varargsSetup):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::arityCheckFor):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        * runtime/StackAlignment.h:
+        (JSC::roundArgumentCountToAlignFrame):
+        (JSC::roundLocalRegisterCountForFramePointerOffset):
+        (JSC::logStackAlignmentRegisters):
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::startFunction):
+        (JSC::WASMFunctionCompiler::endFunction):
+        (JSC::WASMFunctionCompiler::boxArgumentsAndAdjustStackPointer):
+        (JSC::WASMFunctionCompiler::callAndUnboxResult):
+        * wasm/WASMFunctionSyntaxChecker.h:
+        (JSC::WASMFunctionSyntaxChecker::updateTempStackHeightForCall):
+
+2016-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Object.defineProperty() should maintain existing getter / setter if not overridden in the new descriptor
+        https://bugs.webkit.org/show_bug.cgi?id=159576
+        <rdar://problem/27242197>
+
+        Reviewed by Mark Lam.
+
+        Object.defineProperty() should maintain existing getter / setter if not
+        overridden in the new descriptor. Previously, if the property is a had
+        a custom getter / setter, and if the new descriptor only had a setter
+        (or only a getter), JSC would clear the existing getter (or setter).
+        This behavior did not match the EcmaScript specification or Firefox /
+        Chrome. This patch fixes the issue.
+
+        This fixes searching and search suggestions on www.iciba.com.
+
+        * runtime/JSObject.cpp:
+        (JSC::validateAndApplyPropertyDescriptor):
+
+2016-07-08  Michael Saboff  <msaboff@apple.com>
+
+        Dumping the object graph doesn't work with verbose GC logging
+        https://bugs.webkit.org/show_bug.cgi?id=159569
+
+        Reviewed by Mark Lam.
+
+        The current object graph logging code tries to revisits the graph.  This doesn't work
+        correctly and asking around it isn't used.  The only way to dump the true object graph
+        is to log while we GC and that has obvious performance implications.
+        Therefore I eliminated GCLogging::dumpObjectGraph() and related code.  
+
+        * heap/GCLogging.cpp:
+        (JSC::GCLogging::levelAsString):
+        (JSC::LoggingFunctor::LoggingFunctor): Deleted.
+        (JSC::LoggingFunctor::~LoggingFunctor): Deleted.
+        (JSC::LoggingFunctor::operator()): Deleted.
+        (JSC::LoggingFunctor::log): Deleted.
+        (JSC::LoggingFunctor::reviveCells): Deleted.
+        (JSC::LoggingFunctor::returnValue): Deleted.
+        (JSC::GCLogging::dumpObjectGraph): Deleted.
+        * heap/Heap.cpp:
+        (JSC::Heap::didFinishCollection):
+
+2016-07-08  Keith Miller  <keith_miller@apple.com>
+
+        speculateTypedArrayIsNotNeutered has an inverted speculation
+        https://bugs.webkit.org/show_bug.cgi?id=159571
+
+        Reviewed by Mark Lam.
+
+        For some confusing reason FTLLowerDFGToB3 takes the condition the
+        speculation wants to be false. This issue caused
+        typedarray-access-monomorphic-neutered.js to fail on the bots.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::speculateTypedArrayIsNotNeutered):
+
+2016-07-08  Mark Lam  <mark.lam@apple.com>
+
+        Rename jsCPUStackLimit to osStackLimitWithReserve and jsEmulatedStackLimit to cloopStackLimit.
+        https://bugs.webkit.org/show_bug.cgi?id=159544
+
+        Reviewed by Geoffrey Garen.
+
+        This patch does the following refactoring:
+        1. Rename jsCPUStackLimit to osStackLimitWithReserve.
+        2. Rename jsEmulatedStackLimit to cloopStackLimit.
+        2. Remove llintStackLimit (which previously is either an alias for
+           jsCPUStackLimit or jsEmulatedStackLimit depending on whether we have a JIT or
+           C Loop build).  Instead, we'll change the LLINT to conditionally use the
+           osStackLimitWithReserve or cloopStackLimit.
+
+        There are no semantic changes.
+
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::compileFunction):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        * interpreter/JSStack.cpp:
+        (JSC::JSStack::JSStack):
+        (JSC::JSStack::growSlowCase):
+        (JSC::JSStack::lowAddress):
+        (JSC::JSStack::highAddress):
+        * interpreter/JSStack.h:
+        * interpreter/JSStackInlines.h:
+        (JSC::JSStack::ensureCapacityFor):
+        (JSC::JSStack::shrink):
+        (JSC::JSStack::grow):
+        (JSC::JSStack::setCLoopStackLimit):
+        (JSC::JSStack::setJSEmulatedStackLimit): Deleted.
+        * jit/JIT.cpp:
+        (JSC::JIT::compileWithoutLinking):
+        * jit/SetupVarargsFrame.cpp:
+        (JSC::emitSetupVarargsFrameFastCase):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::finishCreation):
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * runtime/VM.cpp:
+        (JSC::VM::updateStackLimit):
+        * runtime/VM.h:
+        (JSC::VM::reservedZoneSize):
+        (JSC::VM::osStackLimitWithReserve):
+        (JSC::VM::addressOfOSStackLimitWithReserve):
+        (JSC::VM::cloopStackLimit):
+        (JSC::VM::setCLoopStackLimit):
+        (JSC::VM::isSafeToRecurse):
+        (JSC::VM::jsCPUStackLimit): Deleted.
+        (JSC::VM::addressOfJSCPUStackLimit): Deleted.
+        (JSC::VM::jsEmulatedStackLimit): Deleted.
+        (JSC::VM::setJSEmulatedStackLimit): Deleted.
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::startFunction):
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202799.
+        https://bugs.webkit.org/show_bug.cgi?id=159568
+
+        Caused build failure (Requested by perarne on #webkit).
+
+        Reverted changeset:
+
+        "[Win] DLLs are missing version information."
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+        http://trac.webkit.org/changeset/202799
+
+2016-07-08  Youenn Fablet  <youenn@apple.com>
+
+        Built-in generator should generate files with a default copyright
+        https://bugs.webkit.org/show_bug.cgi?id=159561
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/builtins/builtins_model.py:
+        (BuiltinsCollection._parse_copyright_lines): Adding default copyright to the parsed copyrights.
+        * Scripts/builtins/builtins_templates.py:
+        (BuiltinsGeneratorTemplates): Adding a default copyright.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result: Rebasing with added default copyright.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result: Ditto.
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result: Ditto.
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-result: Ditto.
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result: Ditto.
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result: Ditto.
+
+
+2016-07-08  Keith Miller  <keith_miller@apple.com>
+
+        TypedArrays need more isNeutered checks.
+        https://bugs.webkit.org/show_bug.cgi?id=159231
+
+        Reviewed by Filip Pizlo.
+
+        According to the ES6 spec if a user tries to get, set, or define a
+        property on a neutered TypedArray we should throw an
+        exception. Currently, if a user tries to get an out of bounds
+        access on a TypedArray we will always OSR.  This makes handling
+        the exception easy as all we need to do is make out of bounds gets
+        in PolymorphicAccess go to the slow path, which will then throw
+        the appropriate exception. For the case of set, we need ensure we
+        don't OSR on each out of bounds put since, for some confusing
+        reason, people do this.  Thus, for GetByVal in the DFG/FTL if the
+        user accesses out of bounds we then need to check if the view has
+        been neutered. If it is neutered then we will OSR.
+
+        Additionally, this patch adds a bunch of isNeutered checks to
+        various prototype functions for TypedArray, which are needed for
+        correctness.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::jumpForTypedArrayIsNeuteredIfOutOfBounds):
+        (JSC::DFG::SpeculativeJIT::compilePutByValForIntTypedArray):
+        (JSC::DFG::SpeculativeJIT::compilePutByValForFloatTypedArray):
+        * dfg/DFGSpeculativeJIT.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compilePutByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateTypedArrayIsNotNeutered):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+        (JSC::JIT::emitFloatTypedArrayPutByVal):
+        * runtime/JSArrayBufferView.h:
+        * runtime/JSCJSValue.h:
+        (JSC::encodedJSUndefined):
+        (JSC::encodedJSValue):
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::throwNeuteredTypedArrayTypeError):
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot):
+        (JSC::JSGenericTypedArrayView<Adaptor>::put):
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        (JSC::JSGenericTypedArrayView<Adaptor>::deleteProperty):
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlotByIndex):
+        (JSC::JSGenericTypedArrayView<Adaptor>::putByIndex):
+        (JSC::JSGenericTypedArrayView<Adaptor>::deletePropertyByIndex):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewProtoFuncCopyWithin):
+        (JSC::genericTypedArrayViewProtoFuncFill):
+        (JSC::genericTypedArrayViewProtoFuncIndexOf):
+        (JSC::genericTypedArrayViewProtoFuncJoin):
+        (JSC::genericTypedArrayViewProtoFuncLastIndexOf):
+        (JSC::genericTypedArrayViewProtoFuncSlice):
+        (JSC::genericTypedArrayViewProtoFuncSubarray):
+        * tests/stress/fold-typed-array-properties.js:
+        * tests/stress/typedarray-access-monomorphic-neutered.js: Added.
+        (check):
+        (test):
+        (testFTL):
+        * tests/stress/typedarray-access-neutered.js: Added.
+        (check):
+        (test):
+        * tests/stress/typedarray-functions-with-neutered.js:
+        (defaultForArg):
+        (callWithArgs):
+        (checkArgumentsForType):
+        (checkArguments):
+        * tests/stress/typedarray-view-string-properties-neutered.js: Added.
+        (call):
+        (test):
+
+2016-07-08  Youenn Fablet  <youenn@apple.com>
+
+        Generate WebCore builtin wrapper files
+        https://bugs.webkit.org/show_bug.cgi?id=159461
+
+        Reviewed by Brian Burg.
+
+        Updating builtin generator to generate wrapper files used in WebCore (See WebCore change log).
+        Rebasing builtins generator test results according generator changes by activating wrapper file generation for
+        WebCore builtins tests.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/builtins/builtins.py: Adding new generators.
+        * Scripts/builtins/builtins_generate_internals_wrapper_header.py: Added to generate WebCoreJSBuiltinInternals.h.
+        * Scripts/builtins/builtins_generate_internals_wrapper_implementation.py: Added to generate WebCoreJSBuiltinInternals.cpp.
+        * Scripts/builtins/builtins_generate_wrapper_header.py: Added to generate WebCoreJSBuiltins.h.
+        * Scripts/builtins/builtins_generate_wrapper_implementation.py: Added to generate WebCoreJSBuiltins.cpp.
+        * Scripts/generate-js-builtins.py: Adding new option to activate generation of the wrapper files.
+        (generate_bindings_for_builtins_files):
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+
+2016-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        padStart/padEnd with Infinity produces unexpected result
+        https://bugs.webkit.org/show_bug.cgi?id=159543
+
+        Reviewed by Benjamin Poulain.
+
+        * builtins/GlobalOperations.js:
+        (globalPrivate.toLength):
+        Fix style.
+
+        * builtins/StringPrototype.js:
+        (padStart):
+        (padEnd):
+        After all observable operations, and after empty string has been handled,
+        throw an out of memory error if the resulting string would be greater
+        than the maximum string size.
+
+        * tests/es6/Object_static_methods_Object.getOwnPropertyDescriptors-proxy.js:
+        (shouldThrow): Deleted.
+        * tests/es6/Object_static_methods_Object.getOwnPropertyDescriptors.js:
+        (shouldThrow):
+        (testMeta):
+        * tests/es6/String.prototype_methods_String.prototype.padEnd.js:
+        (shouldThrow):
+        (TestToLength):
+        (TestMemoryLimits):
+        (TestMeta): Deleted.
+        * tests/es6/String.prototype_methods_String.prototype.padStart.js:
+        (shouldThrow):
+        (TestToLength):
+        (TestMemoryLimits):
+        Replace incorrect shouldThrow(..., errorType) with explicit shouldThrow(..., errorMessage).
+        The old shouldThrow would incorrectly succeed if the expected error type was just "Error".
+        Now we explicitly check the error message.
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] String.prototype[Symbol.iterator] needs a name
+        https://bugs.webkit.org/show_bug.cgi?id=159541
+
+        Reviewed by Yusuke Suzuki.
+
+        A man needs a name.
+        Spec: https://tc39.github.io/ecma262/#sec-string.prototype-@@iterator
+
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+
+2016-07-07  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(184445): Need to insert a StoreBarrier when we don't know child's epoch
+        https://bugs.webkit.org/show_bug.cgi?id=159537
+
+        Reviewed by Benjamin Poulain.
+
+        We weren't checking the case of a child node with a null epoch.  The problem surfaces
+        when the base node of a PutByVal variant has a non-null epoch, because it represents an
+        allocation in the current function, while the child of the same node has an unknown epoch.
+        Added a check that the child node is not null before comparing the epochs of the base and
+        child nodes.
+
+        The added test creates the problem circumstance by doing a full GC to place an array in
+        remembered space, allocating a new object followed by an eden GC.  The new object is
+        only referenced by the array and therefore won't be visited Without the store barrier.
+        The test may crash or more likely get the wrong answer with the bug.
+
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * tests/stress/regress-159537.js: Added test.
+        (MyNumber):
+        (MyNumber.prototype.plusOne):
+        (bar):
+        (foo):
+        (test):
+
+2016-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unexpected "Out of memory" error for "x".repeat(-1)
+        https://bugs.webkit.org/show_bug.cgi?id=159529
+
+        Reviewed by Benjamin Poulain.
+
+        * builtins/StringPrototype.js:
+        (globalPrivate.repeatSlowPath):
+        (repeat):
+        Move the @toInteger and range checking to the always path,
+        since the spec does say it should always happen. Also remove
+        the duplication of the fast path here.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::repeatCharacter):
+        Remove unused function.
+
+        (JSC::stringProtoFuncRepeatCharacter):
+        ASSERT if given a negative number. This is a private function
+        only used internally.
+
+        * tests/stress/string-repeat-edge-cases.js:
+        (shouldThrow):
+        Update expected error message.
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Array.prototype[Symbol.unscopables] should have the "includes" property
+        https://bugs.webkit.org/show_bug.cgi?id=159504
+
+        Reviewed by Keith Miller.
+
+        The property "includes" was missing.
+        Spec: https://tc39.github.io/ecma262/#sec-array.prototype-@@unscopables
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        * tests/stress/unscopables.js:
+
+2016-07-07  Saam Barati  <sbarati@apple.com>
+
+        ToThis constant folding in DFG is incorrect when the structure indicates that toThis is overridden
+        https://bugs.webkit.org/show_bug.cgi?id=159501
+        <rdar://problem/27109354>
+
+        Reviewed by Mark Lam.
+
+        We *cannot* constant fold ToThis when the structure of an object
+        indicates that toThis() is overridden. isToThisAnIdentity() inside
+        AbstractInterpreterInlines accidentally wrote the opposite rule.
+        The rule was written as we can constant fold ToThis only when
+        toThis() is overridden. To fix the bug, we must write the rule
+        as isToThisAnIdentity() can only be true as long as the structure
+        set indicates that no structures override toThis().
+
+        We could probably get more clever in the future and notice
+        when we're dealing with a constant |this| values. For example,
+        a ToThis might occur on a constant JSLexicalEnvironment. We could
+        implement the rules of JSLexicalEnvironment's toThis() implementation
+        inside AI/constant folding.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::isToThisAnIdentity):
+        * tests/stress/to-this-on-constant-lexical-environment.js: Added.
+        (foo.bar):
+        (foo.inner):
+        (foo):
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Array.prototype.includes uses ToInt32 instead of ToInteger on the index argument
+        https://bugs.webkit.org/show_bug.cgi?id=159505
+
+        Reviewed by Mark Lam.
+
+        The code was using (value)|0 which is effectively a ToInt32.
+        This fails on large integers and +-Infinity.
+
+        Spec: https://tc39.github.io/ecma262/#sec-array.prototype.includes
+
+        * builtins/ArrayPrototype.js:
+        (includes):
+
+2016-07-07  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] String.prototype.normalize should have a length of zero
+        https://bugs.webkit.org/show_bug.cgi?id=159506
+
+        Reviewed by Yusuke Suzuki.
+
+        Spec: https://tc39.github.io/ecma262/#sec-string.prototype.normalize
+        The argument is optional, the length should be zero.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+
+2016-07-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARMv7] REGRESSION(r197655): ASSERTION FAILED: (cond == Zero) || (cond == NonZero)
+        https://bugs.webkit.org/show_bug.cgi?id=159419
+
+        Reviewed by Benjamin Poulain.
+
+        Allow Signed and PositiveOrZero conditions too because tst instruction updates N and Z flags.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::branchTest32):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::branchTest32): Add assertions to avoid possible bugs in the future.
+
 2016-07-06  Youenn Fablet  <youenn@apple.com>
 
         Builtin generator should use pragma once for header files

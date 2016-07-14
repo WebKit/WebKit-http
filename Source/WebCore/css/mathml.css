@@ -1,6 +1,21 @@
 @namespace "http://www.w3.org/1998/Math/MathML";
 
+:any-link {
+    color: -webkit-link;
+    cursor: auto;
+}
+
+:any-link:active {
+    color: -webkit-activelink;
+}
+
+:focus {
+    outline: auto 5px -webkit-focus-ring-color
+}
+
 math {
+    display: inline;
+
     /*
     We use the exact bounding boxes of glyphs to avoid excessive gaps in mathematical formulas.
     FIXME: Should we replace this with a more general handling of ink/logical ascent/descent?
@@ -94,22 +109,13 @@ math {
     /* FIXME: Should we reset more CSS properties (http://webkit.org/b/156839)? */
 }
 
-math {
-    display: -webkit-inline-flex !important;
-    padding-left: 1px;
-    padding-right: 1px;
-}
-
 math[display="block"] {
-    display: flex !important;
-    justify-content: center;
+    display: block;
     page-break-inside: avoid;
-    /* -webkit-margin-before: 1em; -- FIXME: Ask www-math for a default MathML stylesheet, including this (or margin-top). */
-    -webkit-margin-after: 1em;
 }
 
-ms, mi, mo, mrow, mfenced, mfrac, msub, msup, msubsup, mmultiscripts, mprescripts, none, munder, mover, munderover, msqrt, mroot, merror, mphantom, mstyle, menclose {
-    display: -webkit-inline-flex !important;
+ms, mspace, mtext, mi, mn, mo, mrow, mfenced, mfrac, msub, msup, msubsup, mmultiscripts, mprescripts, none, munder, mover, munderover, msqrt, mroot, merror, mphantom, mstyle, menclose, semantics, mpadded, maction {
+    display: block;
 }
 
 ms, mtext, mi, mn, mo, annotation, mtd {
@@ -131,26 +137,6 @@ msub > mi:first-child, msubsup > mi:first-child {
 }
 msubsup > mi:first-child + * + * {
     -webkit-margin-start: 0.14em; /* This is larger than 0.1em because the child's font-size is smaller than the <msubsup>'s. */
-}
-
-math[mathvariant="normal"], mstyle[mathvariant="normal"], mo[mathvariant="normal"], mn[mathvariant="normal"], mi[mathvariant="normal"], mtext[mathvariant="normal"], mspace[mathvariant="normal"], ms[mathvariant="normal"] {
-    font-style: normal;
-    font-weight: normal;
-}
-
-math[mathvariant="bold"], mstyle[mathvariant="bold"], mo[mathvariant="bold"], mn[mathvariant="bold"], mi[mathvariant="bold"], mtext[mathvariant="bold"], mspace[mathvariant="bold"], ms[mathvariant="bold"] {
-    font-style: normal;
-    font-weight: bold;
-}
-
-math[mathvariant="italic"], mstyle[mathvariant="italic"], mo[mathvariant="italic"], mn[mathvariant="italic"], mi[mathvariant="italic"], mtext[mathvariant="italic"], mspace[mathvariant="italic"], ms[mathvariant="italic"] {
-    font-style: italic;
-    font-weight: normal;
-}
-
-math[mathvariant="bold-italic"], mstyle[mathvariant="bold-italic"], mo[mathvariant="bold-italic"], mn[mathvariant="bold-italic"], mi[mathvariant="bold-italic"], mtext[mathvariant="bold-italic"], mspace[mathvariant="bold-italic"], ms[mathvariant="bold-italic"] {
-    font-weight: bold;
-    font-style: italic;
 }
 
 math[mathsize="small"], mstyle[mathsize="small"], mo[mathsize="small"], mn[mathsize="small"], mi[mathsize="small"], mtext[mathsize="small"], mspace[mathsize="small"], ms[mathsize="small"] {
@@ -189,6 +175,10 @@ mtr {
 mtd {
     display: table-cell;
     padding: 0.5ex;
+}
+/* Use inline-block for children so that the text-align property is taken into account */
+mtd > * {
+    display: inline-block;
 }
 
 mtable[columnalign="left"], mtr[columnalign="left"], mtd[columnalign="left"] {
