@@ -314,8 +314,8 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
         // remains valid until the drm-key-need message has been sent.
         priv->protectionEvent = event;
         RunLoop::main().dispatch([self, initDataBuffer] {
-            if (self) {
-                WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
+            WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
+            if (klass) {
                 klass->requestDecryptionKey(self, initDataBuffer);
                 if (self->priv->protectionEvent) {
                     gst_event_unref(self->priv->protectionEvent);
