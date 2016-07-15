@@ -76,10 +76,14 @@ wpe_view_backend_get_renderer_host_fd(struct wpe_view_backend*);
 
 struct wpe_view_backend_client {
     void (*set_size)(void*, uint32_t, uint32_t);
+    void (*frame_displayed)(void*);
 };
 
 void
 wpe_view_backend_dispatch_set_size(struct wpe_view_backend*, uint32_t, uint32_t);
+
+void
+wpe_view_backend_dispatch_frame_displayed(struct wpe_view_backend*);
 
 
 struct wpe_view_backend_input_client {

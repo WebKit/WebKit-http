@@ -109,6 +109,14 @@ wpe_view_backend_dispatch_set_size(struct wpe_view_backend* backend, uint32_t wi
 
 __attribute__((visibility("default")))
 void
+wpe_view_backend_dispatch_frame_displayed(struct wpe_view_backend* backend)
+{
+    if (backend->backend_client)
+        backend->backend_client->frame_displayed(backend->backend_client_data);
+}
+
+__attribute__((visibility("default")))
+void
 wpe_view_backend_dispatch_keyboard_event(struct wpe_view_backend* backend, struct wpe_input_keyboard_event* event)
 {
     if (backend->input_client)
