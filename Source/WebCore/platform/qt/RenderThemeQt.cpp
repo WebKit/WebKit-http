@@ -429,57 +429,53 @@ void RenderThemeQt::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderSty
     style.setHeight(Length(cancelButtonSize, Fixed));
 }
 
-// FIXME: See convertToPaintingPosition in RenderThemeMac, git 7cf3a1fd
-// Function taken from RenderThemeChromium.cpp
-//IntRect RenderThemeQt::convertToPaintingRect(const RenderObject& inputRenderer, const RenderObject& partRenderer, IntRect partRect, const IntRect& localOffset) const
-//{
-//    // Compute an offset between the part renderer and the input renderer.
-//    IntSize offsetFromInputRenderer = -roundedIntSize(partRenderer.offsetFromAncestorContainer(inputRenderer));
-//    // Move the rect into partRenderer's coords.
-//    partRect.move(offsetFromInputRenderer);
-//    // Account for the local drawing offset.
-//    partRect.move(localOffset.x(), localOffset.y());
-//
-//    return partRect;
-//}
+// Function taken from RenderThemeMac.mm
+static FloatPoint convertToPaintingPosition(const RenderBox& inputRenderer, const RenderBox& customButtonRenderer,
+    const FloatPoint& customButtonLocalPosition, const IntPoint& paintOffset)
+{
+    IntPoint offsetFromInputRenderer = roundedIntPoint(customButtonRenderer.localToContainerPoint(customButtonRenderer.contentBoxRect().location(), &inputRenderer));
+    FloatPoint paintingPosition = customButtonLocalPosition;
+    paintingPosition.moveBy(-offsetFromInputRenderer);
+    paintingPosition.moveBy(paintOffset);
+    return paintingPosition;
+}
 
 QPalette RenderThemeQt::colorPalette() const
 {
     return QGuiApplication::palette();
 }
 
-// FIXME: see git 7cf3a1fd
 bool RenderThemeQt::paintSearchFieldCancelButton(const RenderBox& box, const PaintInfo& pi,
                                                  const IntRect& r)
 {
-    // Logic copied from RenderThemeChromium.cpp.
+    if (!box.element())
+        return false;
 
     // Get the renderer of <input> element.
-    Node* input = box.element()->shadowHost();
+    Element* input = box.element()->shadowHost();
     if (!input)
         input = box.element();
+
     if (!is<RenderBox>(input->renderer()))
         return false;
-    const RenderBox& inputRenderBox = downcast<RenderBox>(*input->renderer());
-    IntRect inputContentBox = snappedIntRect(inputRenderBox.contentBoxRect());
+    RenderBox& inputBox = downcast<RenderBox>(*input->renderer());
+    IntRect inputBoxRect = snappedIntRect(inputBox.contentBoxRect());
 
     // Make sure the scaled button stays square and will fit in its parent's box.
-    int cancelButtonSize = qMin(inputContentBox.width(), qMin(inputContentBox.height(), r.height()));
+    int cancelButtonSize = qMin(inputBoxRect.width(), qMin(inputBoxRect.height(), r.height()));
+
     // Calculate cancel button's coordinates relative to the input element.
     // Center the button vertically. Round up though, so if it has to be one pixel off-center, it will
     // be one pixel closer to the bottom of the field. This tends to look better with the text.
+    FloatRect cancelButtonRect(box.offsetFromAncestorContainer(inputBox).width(),
+        inputBoxRect.y() + (inputBoxRect.height() - cancelButtonSize + 1) / 2,
+        cancelButtonSize, cancelButtonSize);
+    FloatPoint paintingPos = convertToPaintingPosition(inputBox, box, cancelButtonRect.location(), r.location());
+    cancelButtonRect.setLocation(paintingPos);
 
-    // FIXME
-#if 0
-    IntRect cancelButtonRect(o.offsetFromAncestorContainer(inputRenderBox).width(),
-                             inputContentBox.y() + (inputContentBox.height() - cancelButtonSize + 1) / 2,
-                             cancelButtonSize, cancelButtonSize);
-    IntRect paintingRect = convertToPaintingRect(inputRenderBox, o, cancelButtonRect, r);
     static Image* cancelImage = Image::loadPlatformResource("searchCancelButton").leakRef();
     static Image* cancelPressedImage = Image::loadPlatformResource("searchCancelButtonPressed").leakRef();
-    pi.context().drawImage(isPressed(o) ? *cancelPressedImage : *cancelImage,
-                                 /*o.style()->colorSpace(),*/ paintingRect);
-#endif
+    pi.context().drawImage(isPressed(box) ? *cancelPressedImage : *cancelImage, cancelButtonRect);
     return false;
 }
 
