@@ -269,6 +269,8 @@ void ViewBackend::handleUpdate()
     IPC::Message message;
     IPC::BCMRPi::FrameComplete::construct(message);
     ipcHost.sendMessage(IPC::Message::data(message), IPC::Message::size);
+
+    wpe_view_backend_dispatch_frame_displayed(backend);
 }
 
 void ViewBackend::handleKeyboardEvent(struct wpe_input_keyboard_event* event)
