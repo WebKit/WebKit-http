@@ -37,6 +37,9 @@ enum WKFontSmoothingLevel {
     kWKFontSmoothingLevelLight = 1,
     kWKFontSmoothingLevelMedium = 2,
     kWKFontSmoothingLevelStrong = 3,
+#if defined(WIN32) || defined(_WIN32)
+    kWKFontSmoothingLevelWindows = 4,
+#endif
 };
 typedef enum WKFontSmoothingLevel WKFontSmoothingLevel;
 
@@ -57,7 +60,7 @@ typedef unsigned WKJavaScriptRuntimeFlagSet;
 // Creates a copy with no identifier.
 WK_EXPORT WKPreferencesRef WKPreferencesCreateCopy(WKPreferencesRef);
 
-// Defaults to kWKFontSmoothingLevelMedium.
+// Defaults to kWKFontSmoothingLevelWindows on Windows, kWKFontSmoothingLevelMedium on other platforms.
 WK_EXPORT void WKPreferencesSetFontSmoothingLevel(WKPreferencesRef, WKFontSmoothingLevel);
 WK_EXPORT WKFontSmoothingLevel WKPreferencesGetFontSmoothingLevel(WKPreferencesRef);
 
