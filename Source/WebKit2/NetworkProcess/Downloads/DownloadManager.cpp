@@ -149,4 +149,13 @@ AuthenticationManager& DownloadManager::downloadsAuthenticationManager()
     return m_client.downloadsAuthenticationManager();
 }
 
+#if PLATFORM(QT)
+void DownloadManager::startTransfer(uint64_t downloadID, const String& destination)
+{
+    ASSERT(m_downloads.contains(downloadID));
+    Download* download = m_downloads.get(downloadID);
+    download->startTransfer(destination);
+}
+#endif
+
 } // namespace WebKit

@@ -153,6 +153,9 @@ WebProcess::WebProcess()
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
     , m_fullKeyboardAccessEnabled(false)
+#if PLATFORM(QT)
+    , m_networkAccessManager(0)
+#endif
     , m_textCheckerState()
     , m_iconDatabaseProxy(*new WebIconDatabaseProxy(this))
     , m_webLoaderStrategy(*new WebLoaderStrategy)
@@ -1058,6 +1061,13 @@ void WebProcess::ensureWebToDatabaseProcessConnection()
 }
 
 #endif // ENABLED(DATABASE_PROCESS)
+
+#if PLATFORM(QT)
+void WebProcess::startTransfer(uint64_t downloadID, const String& destination)
+{
+    downloadManager().startTransfer(downloadID, destination);
+}
+#endif
 
 void WebProcess::setEnhancedAccessibility(bool flag)
 {

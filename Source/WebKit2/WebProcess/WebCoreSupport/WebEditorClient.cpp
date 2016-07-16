@@ -57,6 +57,12 @@
 #include <WebCore/PlatformDisplay.h>
 #endif
 
+#if PLATFORM(QT)
+#include <QClipboard>
+#include <QGuiApplication>
+#include <WebCore/Pasteboard.h>
+#endif
+
 using namespace WebCore;
 using namespace HTMLNames;
 
@@ -194,7 +200,7 @@ void WebEditorClient::respondToChangedSelection(Frame* frame)
 
     m_page->didChangeSelection();
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(QT)
     updateGlobalSelection(frame);
 #endif
 }
@@ -208,6 +214,17 @@ void WebEditorClient::discardedComposition(Frame*)
 {
     m_page->discardedComposition();
 }
+
+#if PLATFORM(QT)
+
+// FIXME: Use this function for other X11-based platforms that need to manually update the global selection.
+void WebEditorClient::updateGlobalSelection(Frame* frame)
+{
+    if (supportsGlobalSelection() && frame->selection().isRange())
+        Pasteboard::createForGlobalSelection()->writeSelection(frame->selection().toNormalizedRange().get(), frame->editor().canSmartCopyOrDelete(), frame);
+}
+
+#endif
 
 void WebEditorClient::didEndEditing()
 {
@@ -524,6 +541,11 @@ void WebEditorClient::requestCheckingOfString(WTF::PassRefPtr<TextCheckingReques
 
 void WebEditorClient::willSetInputMethodState()
 {
+#if PLATFORM(QT)
+    m_page->send(Messages::WebPageProxy::WillSetInputMethodState());
+#else
+    notImplemented();
+#endif
 }
 
 void WebEditorClient::setInputMethodState(bool enabled)
@@ -540,6 +562,8 @@ bool WebEditorClient::supportsGlobalSelection()
 {
 #if PLATFORM(GTK) && PLATFORM(X11)
     return PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::X11;
+#elif PLATFORM(QT) && !defined(QT_NO_CLIPBOARD)
+    return qApp->clipboard()->supportsSelection();
 #else
     // FIXME: Return true on other X11 platforms when they support global selection.
     return false;

@@ -53,6 +53,17 @@ void EditorState::encode(IPC::ArgumentEncoder& encoder) const
     encoder << lastMarkedRect;
     encoder << markedText;
 #endif
+
+#if PLATFORM(QT)
+    encoder << cursorPosition;
+    encoder << cursorRect;
+    encoder << anchorPosition;
+    encoder << editorRect;
+    encoder << compositionRect;
+    encoder << inputMethodHints;
+    encoder << selectedText;
+    encoder << surroundingText;
+#endif
 }
 
 bool EditorState::decode(IPC::ArgumentDecoder& decoder, EditorState& result)
@@ -97,6 +108,32 @@ bool EditorState::decode(IPC::ArgumentDecoder& decoder, EditorState& result)
     if (!decoder.decode(result.lastMarkedRect))
         return false;
     if (!decoder.decode(result.markedText))
+        return false;
+#endif
+
+#if PLATFORM(QT)
+    if (!decoder.decode(result.cursorPosition))
+        return false;
+
+    if (!decoder.decode(result.cursorRect))
+        return false;
+
+    if (!decoder.decode(result.anchorPosition))
+        return false;
+
+    if (!decoder.decode(result.editorRect))
+        return false;
+
+    if (!decoder.decode(result.compositionRect))
+        return false;
+
+    if (!decoder.decode(result.inputMethodHints))
+        return false;
+
+    if (!decoder.decode(result.selectedText))
+        return false;
+
+    if (!decoder.decode(result.surroundingText))
         return false;
 #endif
 

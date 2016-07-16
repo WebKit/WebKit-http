@@ -61,6 +61,21 @@ struct EditorState {
     WebCore::IntRect lastMarkedRect;
     String markedText;
 #endif
+#if PLATFORM(QT)
+    // The anchor, cursor represent either the selection or composition, depending
+    // whether a composition exists or not.
+    unsigned cursorPosition { 0 };
+    unsigned anchorPosition { 0 };
+
+    WebCore::IntRect cursorRect;
+    WebCore::IntRect editorRect;
+    WebCore::IntRect compositionRect;
+
+    uint64_t inputMethodHints { 0 };
+
+    WTF::String selectedText;
+    WTF::String surroundingText;
+#endif
 
 #if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
     struct PostLayoutData {

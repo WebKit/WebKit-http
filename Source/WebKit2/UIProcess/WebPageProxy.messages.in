@@ -95,6 +95,11 @@ messages -> WebPageProxy {
     PageTransitionViewportReady()
     DidFindZoomableArea(WebCore::IntPoint target, WebCore::IntRect area)
 #endif
+#if PLATFORM(QT)
+    AuthenticationRequiredRequest(String hostname, String realm, String prefilledUsername) -> (String username, String password)
+    CertificateVerificationRequest(String hostname) -> (bool ignoreErrors)
+    ProxyAuthenticationRequiredRequest(String hostname, uint16_t port, String prefilledUsername) -> (String username, String password)
+#endif
 
     DidChangeContentSize(WebCore::IntSize newSize)
 
@@ -141,6 +146,10 @@ messages -> WebPageProxy {
     DidDestroyNavigation(uint64_t navigationID)
 
     FrameDidBecomeFrameSet(uint64_t frameID, bool value)
+
+#if PLATFORM(QT)
+    ResolveApplicationSchemeRequest(WebKit::QtNetworkRequestData request)
+#endif
 
     # History client messages.
     DidNavigateWithNavigationData(struct WebKit::WebNavigationDataStore store, uint64_t frameID)
@@ -232,6 +241,10 @@ messages -> WebPageProxy {
     EditorStateChanged(struct WebKit::EditorState editorState)
     CompositionWasCanceled(struct WebKit::EditorState editorState)
 
+#if PLATFORM(QT)
+    WillSetInputMethodState()
+#endif
+
     # Find messages
     DidCountStringMatches(String string, uint32_t matchCount)
     SetTextIndicator(struct WebCore::TextIndicatorData indicator, uint64_t lifetime)
@@ -300,7 +313,7 @@ messages -> WebPageProxy {
     SetPromisedDataForAttachment(String pasteboardName, String filename, String extension, String title, String url, String visibleURL)
 #endif
 #endif
-#if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
+#if (PLATFORM(QT) || PLATFORM(GTK)) && ENABLE(DRAG_SUPPORT)
     StartDrag(WebCore::DragData dragData, WebKit::ShareableBitmap::Handle dragImage)
 #endif
 

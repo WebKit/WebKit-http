@@ -52,7 +52,11 @@ public:
 
     bool isEmpty() const;
 
+#if PLATFORM(QT)
+    uint32_t coordinatedLayerID;
+#else
     uint64_t contextID;
+#endif
 };
 
 bool operator==(const LayerTreeContext&, const LayerTreeContext&);

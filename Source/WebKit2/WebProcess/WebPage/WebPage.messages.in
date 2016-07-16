@@ -105,6 +105,9 @@ messages -> WebPage LegacyReceiver {
 #if !ENABLE(IOS_TOUCH_EVENTS) && ENABLE(TOUCH_EVENTS)
     TouchEvent(WebKit::WebTouchEvent event)
 #endif
+#if ENABLE(TOUCH_EVENTS) && PLATFORM(QT)
+    HighlightPotentialActivation(WebCore::IntPoint point, WebCore::IntSize area)
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
     DidEndColorPicker()
@@ -134,6 +137,11 @@ messages -> WebPage LegacyReceiver {
 
     Reload(uint64_t navigationID, bool reloadFromOrigin, bool contentBlockersEnabled, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
     StopLoading()
+
+#if PLATFORM(QT)
+    ApplicationSchemeReply(WebKit::QtNetworkReplyData reply)
+    RegisterApplicationScheme(String scheme)
+#endif
 
     StopLoadingFrame(uint64_t frameID)
     
@@ -228,10 +236,10 @@ messages -> WebPage LegacyReceiver {
     AddMIMETypeWithCustomContentProvider(String mimeType)
 
     # Drag and drop.
-#if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
+#if (PLATFORM(QT) || PLATFORM(GTK)) && ENABLE(DRAG_SUPPORT)
     PerformDragControllerAction(uint64_t action, WebCore::DragData dragData)
 #endif
-#if !PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
+#if !PLATFORM(QT) && !PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
     PerformDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, String dragStorageName, uint32_t flags, WebKit::SandboxExtension::Handle sandboxExtensionHandle, WebKit::SandboxExtension::HandleArray sandboxExtensionsForUpload)
 #endif
 #if ENABLE(DRAG_SUPPORT)
@@ -244,6 +252,10 @@ messages -> WebPage LegacyReceiver {
     SetTextForActivePopupMenu(int32_t index)
 #if PLATFORM(GTK)
     FailedToShowPopupMenu()
+#endif
+#if PLATFORM(QT)
+    HidePopupMenu()
+    SelectedIndex(int32_t newIndex)
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
@@ -329,7 +341,7 @@ messages -> WebPage LegacyReceiver {
     CommitPageTransitionViewport()
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(QT) || PLATFORM(GTK)
     SetComposition(String text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
     ConfirmComposition(String text, int64_t selectionStart, int64_t selectionLength)
     CancelComposition()

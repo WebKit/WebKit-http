@@ -49,7 +49,9 @@
 #define _WINSOCKAPI_ /* Prevent inclusion of winsock.h in windows.h */
 #endif
 
+#if !PLATFORM(QT)
 #include <WebCore/config.h>
+#endif
 #include <windows.h>
 
 #if USE(CG)
@@ -81,7 +83,7 @@
 #define PLUGIN_ARCHITECTURE(ARCH) (defined PLUGIN_ARCHITECTURE_##ARCH && PLUGIN_ARCHITECTURE_##ARCH)
 
 #ifndef ENABLE_INSPECTOR_SERVER
-#if ENABLE(WEB_SOCKETS) && (PLATFORM(GTK) || PLATFORM(EFL))
+#if ENABLE(WEB_SOCKETS) && (PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL))
 #define ENABLE_INSPECTOR_SERVER 1
 #endif
 #endif

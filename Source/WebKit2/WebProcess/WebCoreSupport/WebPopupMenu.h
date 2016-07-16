@@ -47,7 +47,7 @@ public:
     void disconnectFromPage() { m_page = 0; }
     void didChangeSelectedIndex(int newIndex);
     void setTextForIndex(int newIndex);
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(QT)
     WebCore::PopupMenuClient* client() const { return m_popupClient; }
 #endif
 

@@ -44,12 +44,18 @@ OBJC_CLASS NSView;
 typedef union _GdkEvent GdkEvent;
 #endif
 
+#if PLATFORM(QT)
+#include <qevent.h>
+#endif
+
 namespace WebKit {
 
 class NativeWebMouseEvent : public WebMouseEvent {
 public:
 #if USE(APPKIT)
     NativeWebMouseEvent(NSEvent *, NSEvent *lastPressureEvent, NSView *);
+#elif PLATFORM(QT)
+    explicit NativeWebMouseEvent(QMouseEvent*, const QTransform& fromItemTransform, int eventClickCount);
 #elif PLATFORM(GTK)
     NativeWebMouseEvent(const NativeWebMouseEvent&);
     NativeWebMouseEvent(GdkEvent*, int);
@@ -60,6 +66,8 @@ public:
 
 #if USE(APPKIT)
     NSEvent* nativeEvent() const { return m_nativeEvent.get(); }
+#elif PLATFORM(QT)
+    const QMouseEvent* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(GTK)
     const GdkEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(EFL)
@@ -71,6 +79,8 @@ public:
 private:
 #if USE(APPKIT)
     RetainPtr<NSEvent> m_nativeEvent;
+#elif PLATFORM(QT)
+    QMouseEvent* m_nativeEvent;
 #elif PLATFORM(GTK)
     GUniquePtr<GdkEvent> m_nativeEvent;
 #elif PLATFORM(EFL)

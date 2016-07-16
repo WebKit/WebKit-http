@@ -36,6 +36,10 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(QT)
+#include <QLibrary>
+#endif
+
 #if PLATFORM(GTK)
 typedef struct _GModule GModule;
 #endif
@@ -65,6 +69,8 @@ namespace WebKit {
 
 #if USE(FOUNDATION)
 typedef NSBundle *PlatformBundle;
+#elif PLATFORM(QT)
+typedef QLibrary PlatformBundle;
 #elif PLATFORM(GTK)
 typedef ::GModule* PlatformBundle;
 #elif PLATFORM(EFL)

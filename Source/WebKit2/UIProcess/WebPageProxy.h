@@ -109,6 +109,10 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #include "AttributedString.h"
 #endif
 
+#if PLATFORM(QT)
+#include "QtNetworkRequestData.h"
+#endif
+
 #if PLATFORM(IOS)
 #include "ProcessThrottler.h"
 #endif
@@ -130,6 +134,10 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 namespace WebCore {
 class MediaSessionMetadata;
 }
+#endif
+
+#if PLATFORM(QT)
+class QQuickNetworkReply;
 #endif
 
 namespace API {
@@ -532,11 +540,19 @@ public:
     void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
     void commitPageTransitionViewport();
 #endif
+#if PLATFORM(QT)
+    void registerApplicationScheme(const String& scheme);
+    void resolveApplicationSchemeRequest(QtNetworkRequestData);
+    void sendApplicationSchemeReply(const QQuickNetworkReply*);
+    void authenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password);
+    void certificateVerificationRequest(const String& hostname, bool& ignoreErrors);
+    void proxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password);
+#endif // PLATFORM(QT).
 #if PLATFORM(EFL)
     void setThemePath(const String&);
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(QT) || PLATFORM(GTK)
     void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
     void confirmComposition(const String& compositionString, int64_t selectionStart, int64_t selectionLength);
     void cancelComposition();
@@ -619,6 +635,9 @@ public:
 
 #elif ENABLE(TOUCH_EVENTS)
     void handleTouchEvent(const NativeWebTouchEvent&);
+#if PLATFORM(QT)
+    void handlePotentialActivation(const WebCore::IntPoint& touchPoint, const WebCore::IntSize& touchArea);
+#endif
 #endif
 
     void scrollBy(WebCore::ScrollDirection, WebCore::ScrollGranularity);
@@ -803,7 +822,7 @@ public:
     void setPromisedDataForAttachment(const String& pasteboardName, const String& filename, const String& extension, const String& title, const String& url, const String& visibleURL);
 #endif
 #endif
-#if PLATFORM(GTK)
+#if PLATFORM(QT) || PLATFORM(GTK)
     void startDrag(const WebCore::DragData&, const ShareableBitmap::Handle& dragImage);
 #endif
 #endif
@@ -1127,6 +1146,10 @@ private:
 #if PLATFORM(GTK)
     virtual void failedToShowPopupMenu() override;
 #endif
+#if PLATFORM(QT)
+    virtual void changeSelectedIndex(int32_t newSelectedIndex);
+    virtual void closePopupMenu();
+#endif
 
     void didCreateMainFrame(uint64_t frameID);
     void didCreateSubframe(uint64_t frameID);
@@ -1252,6 +1275,9 @@ private:
 
     void editorStateChanged(const EditorState&);
     void compositionWasCanceled(const EditorState&);
+#if PLATFORM(QT)
+    void willSetInputMethodState();
+#endif
 
     // Back/Forward list management
     void backForwardAddItem(uint64_t itemID);
@@ -1773,6 +1799,9 @@ private:
     bool m_shouldScaleViewToFitDocument { false };
     bool m_suppressNavigationSnapshotting { false };
 
+#if PLATFORM(QT)
+    WTF::HashSet<RefPtr<QtRefCountedNetworkRequestData>> m_applicationSchemeRequests;
+#endif
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
     std::unique_ptr<WebCore::RunLoopObserver> m_viewStateChangeDispatcher;

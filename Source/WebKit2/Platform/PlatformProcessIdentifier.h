@@ -27,11 +27,21 @@
 #ifndef PlatformProcessIdentifier_h
 #define PlatformProcessIdentifier_h
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QProcess;
+QT_END_NAMESPACE
+#else
 #include <unistd.h>
+#endif
 
 namespace WebKit {
 
+#if PLATFORM(QT)
+typedef QProcess* PlatformProcessIdentifier;
+#else
 typedef pid_t PlatformProcessIdentifier;
+#endif
 
 } // namespace WebKit
 

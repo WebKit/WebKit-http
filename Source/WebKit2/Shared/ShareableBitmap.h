@@ -40,6 +40,10 @@
 #include <WebCore/RefPtrCairo.h>
 #endif
 
+#if PLATFORM(QT)
+#include <QImage>
+#endif
+
 namespace WebCore {
     class Image;
     class GraphicsContext;
@@ -119,6 +123,11 @@ public:
     // This creates a BitmapImage that directly references the shared bitmap data.
     // This is only safe to use when we know that the contents of the shareable bitmap won't change.
     PassRefPtr<cairo_surface_t> createCairoSurface();
+#elif PLATFORM(QT)
+    // This creates a QImage that directly references the shared bitmap data.
+    // This is only safe to use when we know that the contents of the shareable bitmap won't change.
+    QImage createQImage();
+    static void releaseSharedMemoryData(void* typelessBitmap);
 #endif
 
 private:

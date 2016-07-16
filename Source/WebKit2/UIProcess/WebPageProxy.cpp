@@ -127,6 +127,10 @@
 #include "RemoteScrollingCoordinatorProxy.h"
 #endif
 
+#if PLATFORM(QT)
+#include "ArgumentCodersQt.h"
+#endif
+
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
 #include "CoordinatedLayerTreeHostProxyMessages.h"
 #endif
@@ -1657,7 +1661,7 @@ void WebPageProxy::performDragControllerAction(DragControllerAction action, Drag
 {
     if (!isValid())
         return;
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(QT)
     UNUSED_PARAM(dragStorageName);
     UNUSED_PARAM(sandboxExtensionHandle);
     UNUSED_PARAM(sandboxExtensionsForUpload);
@@ -1680,7 +1684,7 @@ void WebPageProxy::didPerformDragControllerAction(uint64_t dragOperation, bool m
     m_currentDragNumberOfFilesToBeAccepted = numberOfItemsToBeAccepted;
 }
 
-#if PLATFORM(GTK)
+#if PLATFORM(QT) || PLATFORM(GTK)
 void WebPageProxy::startDrag(const DragData& dragData, const ShareableBitmap::Handle& dragImageHandle)
 {
     RefPtr<ShareableBitmap> dragImage = 0;
@@ -1999,6 +2003,14 @@ void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& eve
 }
 
 #elif ENABLE(TOUCH_EVENTS)
+
+#if PLATFORM(QT)
+void WebPageProxy::handlePotentialActivation(const IntPoint& touchPoint, const IntSize& touchArea)
+{
+    m_process->send(Messages::WebPage::HighlightPotentialActivation(touchPoint, touchArea), m_pageID);
+}
+#endif
+
 void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
 {
     if (!isValid())
@@ -5727,7 +5739,7 @@ PassRefPtr<ViewSnapshot> WebPageProxy::takeViewSnapshot()
 }
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(QT) || PLATFORM(GTK)
 void WebPageProxy::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
 {
     // FIXME: We need to find out how to proper handle the crashes case.
@@ -5752,7 +5764,7 @@ void WebPageProxy::cancelComposition()
 
     process().send(Messages::WebPage::CancelComposition(), m_pageID);
 }
-#endif // PLATFORM(GTK)
+#endif // PLATFORM(QT) || PLATFORM(GTK)
 
 void WebPageProxy::didSaveToPageCache()
 {

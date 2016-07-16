@@ -780,6 +780,11 @@ DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const Reso
         return downloadProxy;
     }
 
+#if PLATFORM(QT)
+    ASSERT(initiatingPage); // Our design does not suppport downloads without a WebPage.
+    initiatingPage->handleDownloadRequest(downloadProxy);
+#endif
+
     return downloadProxy;
 }
 

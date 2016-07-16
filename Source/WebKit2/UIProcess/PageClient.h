@@ -152,7 +152,7 @@ public:
     virtual void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&) = 0;
 #endif
 
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(QT)
     virtual void updateTextInputState() = 0;
 #endif // PLATFORM(EFL)
 
@@ -162,9 +162,16 @@ public:
 
     virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
 
-#if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
+#if (PLATFORM(QT) || PLATFORM(GTK)) && ENABLE(DRAG_SUPPORT)
     virtual void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage) = 0;
 #endif
+
+#if PLATFORM(QT)
+    virtual void handleAuthenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password) = 0;
+    virtual void handleCertificateVerificationRequest(const String& hostname, bool& ignoreErrors) = 0;
+    virtual void handleProxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password) = 0;
+    virtual void handleWillSetInputMethodState() = 0;
+#endif // PLATFORM(QT).
 
     virtual void setCursor(const WebCore::Cursor&) = 0;
     virtual void setCursorHiddenUntilMouseMoves(bool) = 0;

@@ -32,7 +32,7 @@
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED false
 #endif
 
-#if ENABLE(SMOOTH_SCROLLING)
+#if ENABLE(SMOOTH_SCROLLING) && !PLATFORM(QT)
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED true
 #else
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED false
@@ -281,7 +281,7 @@
     macro(PictographFontFamily, pictographFontFamily, String, String, "Apple Color Emoji") \
     \
 
-#elif PLATFORM(GTK) || PLATFORM(EFL)
+#elif PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
 
 #define FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
     macro(StandardFontFamily, standardFontFamily, String, String, "Times") \
