@@ -71,11 +71,9 @@ protected:
 
     virtual bool paintMenuListButton(RenderObject&, const PaintInfo&, const IntRect&);
 
-#if ENABLE(PROGRESS_ELEMENT)
     // Returns the duration of the animation for the progress bar.
-    virtual double animationDurationForProgressBar(RenderProgress*) const;
+    double animationDurationForProgressBar(RenderProgress&) const override;
     bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
-#endif
 
     bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
     bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;

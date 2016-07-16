@@ -47,9 +47,7 @@
 #include "PaintInfo.h"
 #include "QWebPageClient.h"
 #include "RenderBox.h"
-#if ENABLE(PROGRESS_ELEMENT)
 #include "RenderProgress.h"
-#endif
 #include "RenderSlider.h"
 #include "ScrollbarThemeQStyle.h"
 #include "SliderThumbElement.h"
@@ -406,19 +404,18 @@ bool RenderThemeQStyle::paintMenuListButtonDecorations(const RenderBox& o, const
     return false;
 }
 
-#if ENABLE(PROGRESS_ELEMENT)
-double RenderThemeQStyle::animationDurationForProgressBar(RenderProgress* renderProgress) const
+double RenderThemeQStyle::animationDurationForProgressBar(RenderProgress& renderProgress) const
 {
-    if (renderProgress->position() >= 0)
+    if (renderProgress.position() >= 0)
         return 0;
 
-    IntSize size = renderProgress->pixelSnappedSize();
+    IntSize size = roundedIntSize(renderProgress.size());
     // FIXME: Until http://bugreports.qt.nokia.com/browse/QTBUG-9171 is fixed,
     // we simulate one square animating across the progress bar.
     return (size.width() / m_qStyle->progressBarChunkWidth(size)) * animationRepeatIntervalForProgressBar(renderProgress);
 }
 
-bool RenderThemeQStyle::paintProgressBar(RenderObject& o, const PaintInfo& pi, const IntRect& r)
+bool RenderThemeQStyle::paintProgressBar(const RenderObject& o, const PaintInfo& pi, const IntRect& r)
 {
     if (!o.isProgress())
         return true;
@@ -428,11 +425,10 @@ bool RenderThemeQStyle::paintProgressBar(RenderObject& o, const PaintInfo& pi, c
         return true;
 
     p.styleOption.rect = r;
-    RenderProgress* renderProgress = toRenderProgress(o);
-    p.paintProgressBar(renderProgress->position(), renderProgress->animationProgress());
+    auto& renderProgress = downcast<RenderProgress>(o);
+    p.paintProgressBar(renderProgress.position(), renderProgress.animationProgress());
     return false;
 }
-#endif
 
 bool RenderThemeQStyle::paintSliderTrack(const RenderObject& o, const PaintInfo& pi, const IntRect& r)
 {

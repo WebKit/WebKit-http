@@ -35,9 +35,7 @@ QT_END_NAMESPACE
 
 namespace WebCore {
 
-#if ENABLE(PROGRESS_ELEMENT)
 class RenderProgress;
-#endif
 class RenderStyle;
 class HTMLMediaElement;
 class StylePainter;
@@ -119,11 +117,9 @@ protected:
 
     void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-#if ENABLE(PROGRESS_ELEMENT)
     void adjustProgressBarStyle(StyleResolver&, RenderStyle&, Element*) const override;
     // Returns the repeat interval of the animation for the progress bar.
-    double animationRepeatIntervalForProgressBar(RenderProgress*) const override;
-#endif
+    double animationRepeatIntervalForProgressBar(RenderProgress&) const override;
 
     void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
 

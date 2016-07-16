@@ -50,9 +50,7 @@
 #include "Page.h"
 #include "PaintInfo.h"
 #include "RenderBox.h"
-#if ENABLE(PROGRESS_ELEMENT)
 #include "RenderProgress.h"
-#endif
 #include "RenderTheme.h"
 #include "RenderThemeQtMobile.h"
 #include "ScrollbarTheme.h"
@@ -362,10 +360,9 @@ void RenderThemeQt::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& style
     setPopupPadding(style);
 }
 
-#if ENABLE(PROGRESS_ELEMENT)
-double RenderThemeQt::animationRepeatIntervalForProgressBar(RenderProgress* renderProgress) const
+double RenderThemeQt::animationRepeatIntervalForProgressBar(RenderProgress& renderProgress) const
 {
-    if (renderProgress->position() >= 0)
+    if (renderProgress.position() >= 0)
         return 0;
 
     // FIXME: Use hard-coded value until http://bugreports.qt.nokia.com/browse/QTBUG-9171 is fixed.
@@ -377,7 +374,6 @@ void RenderThemeQt::adjustProgressBarStyle(StyleResolver&, RenderStyle& style, E
 {
     style.setBoxShadow(nullptr);
 }
-#endif
 
 void RenderThemeQt::adjustSliderTrackStyle(StyleResolver&, RenderStyle& style, Element*) const
 {

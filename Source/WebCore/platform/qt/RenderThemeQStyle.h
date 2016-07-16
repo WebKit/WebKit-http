@@ -66,11 +66,9 @@ protected:
     bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
     void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
 
-#if ENABLE(PROGRESS_ELEMENT)
     // Returns the duration of the animation for the progress bar.
-    virtual double animationDurationForProgressBar(RenderProgress*) const;
+    double animationDurationForProgressBar(RenderProgress&) const override;
     bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
-#endif
 
     bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
     void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;

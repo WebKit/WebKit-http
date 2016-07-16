@@ -36,9 +36,7 @@
 #include "PaintInfo.h"
 #include "QWebPageClient.h"
 #include "RenderBox.h"
-#if ENABLE(PROGRESS_ELEMENT)
 #include "RenderProgress.h"
-#endif
 #include "StyleResolver.h"
 
 #include <wtf/PassRefPtr.h>
@@ -69,9 +67,7 @@ static const float menuListPadding = 9;
 static const float textFieldPadding = 10;
 static const float radiusFactor = 0.36;
 static const float progressBarChunkPercentage = 0.2;
-#if ENABLE(PROGRESS_ELEMENT)
 static const int progressAnimationGranularity = 2;
-#endif
 static const float sliderGrooveBorderRatio = 0.2;
 static const QColor darkColor(40, 40, 40);
 static const QColor highlightColor(16, 128, 221);
@@ -849,17 +845,16 @@ bool RenderThemeQtMobile::paintMenuListButton(RenderObject& o, const PaintInfo& 
     return false;
 }
 
-#if ENABLE(PROGRESS_ELEMENT)
-double RenderThemeQtMobile::animationDurationForProgressBar(RenderProgress* renderProgress) const
+double RenderThemeQtMobile::animationDurationForProgressBar(RenderProgress& renderProgress) const
 {
-    if (renderProgress->isDeterminate())
+    if (renderProgress.isDeterminate())
         return 0;
     // Our animation goes back and forth so we need to make it last twice as long
     // and we need the numerator to be an odd number to ensure we get a progress value of 0.5.
     return (2 * progressAnimationGranularity +1) / progressBarChunkPercentage * animationRepeatIntervalForProgressBar(renderProgress);
 }
 
-bool RenderThemeQtMobile::paintProgressBar(RenderObject& o, const PaintInfo& pi, const IntRect& r)
+bool RenderThemeQtMobile::paintProgressBar(const RenderObject& o, const PaintInfo& pi, const IntRect& r)
 {
     if (!o.isProgress())
         return true;
@@ -868,17 +863,16 @@ bool RenderThemeQtMobile::paintProgressBar(RenderObject& o, const PaintInfo& pi,
     if (!p.isValid())
         return true;
 
-    RenderProgress& renderProgress = downcast<RenderProgress>(o);
+    auto& renderProgress = downcast<RenderProgress>(o);
     const bool isRTL = (renderProgress.style().direction() == RTL);
 
-    if (renderProgress->isDeterminate())
+    if (renderProgress.isDeterminate())
         p.drawProgress(r, renderProgress.position(), !isRTL);
     else
         p.drawProgress(r, renderProgress.animationProgress(), !isRTL, true);
 
     return false;
 }
-#endif
 
 bool RenderThemeQtMobile::paintSliderTrack(const RenderObject& o, const PaintInfo& pi,
                                      const IntRect& r)
