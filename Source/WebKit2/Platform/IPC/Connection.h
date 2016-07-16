@@ -48,6 +48,10 @@
 #include <wtf/spi/darwin/XPCSPI.h>
 #endif
 
+#if PLATFORM(GTK) || PLATFORM(EFL)
+#include "PlatformProcessIdentifier.h"
+#endif
+
 #if PLATFORM(GTK)
 #include "GSocketMonitor.h"
 #endif

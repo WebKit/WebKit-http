@@ -830,7 +830,7 @@ void WebProcessPool::setAdditionalPluginsDirectory(const String& directory)
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-pid_t WebProcessPool::networkProcessIdentifier()
+PlatformProcessIdentifier WebProcessPool::networkProcessIdentifier()
 {
     if (!m_networkProcess)
         return 0;
