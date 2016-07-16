@@ -33,6 +33,10 @@
 #include "WebSocketServerConnection.h"
 #include <WebCore/SocketStreamHandle.h>
 
+#if PLATFORM(QT)
+#include "WebSocketServerQt.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {

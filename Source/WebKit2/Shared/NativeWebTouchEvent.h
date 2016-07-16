@@ -34,6 +34,8 @@
 struct _UIWebTouchEvent;
 #elif PLATFORM(GTK)
 #include <WebCore/GUniquePtrGtk.h>
+#elif PLATFORM(QT)
+#include <QTouchEvent>
 #elif PLATFORM(EFL)
 #include "EwkTouchEvent.h"
 #include <WebCore/AffineTransform.h>
@@ -50,8 +52,15 @@ public:
     NativeWebTouchEvent(GdkEvent*, Vector<WebPlatformTouchPoint>&&);
     NativeWebTouchEvent(const NativeWebTouchEvent&);
     const GdkEvent* nativeEvent() const { return m_nativeEvent.get(); }
+#elif PLATFORM(QT)
+    explicit NativeWebTouchEvent(const QTouchEvent*, const QTransform& fromItemTransform);
 #elif PLATFORM(EFL)
     NativeWebTouchEvent(EwkTouchEvent*, const WebCore::AffineTransform&);
+#endif
+
+#if PLATFORM(QT)
+    const QTouchEvent* nativeEvent() const { return &m_nativeEvent; }
+#elif PLATFORM(EFL)
     const EwkTouchEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #endif
 
@@ -62,6 +71,8 @@ private:
 
 #if PLATFORM(GTK)
     GUniquePtr<GdkEvent> m_nativeEvent;
+#elif PLATFORM(QT)
+    const QTouchEvent m_nativeEvent;
 #elif PLATFORM(EFL)
     RefPtr<EwkTouchEvent> m_nativeEvent;
 #endif

@@ -38,6 +38,12 @@
 #include <wtf/glib/GRefPtr.h>
 #endif
 
+#if PLATFORM(QT)
+namespace WebKit {
+class QtTcpServerHandler;
+}
+#endif
+
 namespace WebCore {
 class SocketStreamHandle;
 }
@@ -75,7 +81,9 @@ private:
     WebSocketServerClient* m_client;
     String m_bindAddress;
     unsigned short m_port;
-#if USE(SOUP)
+#if PLATFORM(QT)
+    OwnPtr<QtTcpServerHandler> m_tcpServerHandler;
+#elif USE(SOUP)
     GRefPtr<GSocketService> m_socketService;
 #endif
     friend class WebSocketServerConnection;

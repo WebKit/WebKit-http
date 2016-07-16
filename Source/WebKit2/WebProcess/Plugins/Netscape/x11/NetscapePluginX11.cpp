@@ -37,7 +37,9 @@
 #include <WebCore/PlatformDisplayX11.h>
 #include <WebCore/XUniquePtr.h>
 
-#if PLATFORM(GTK)
+#if PLATFORM(QT)
+#include <WebCore/QtX11ImageConversion.h>
+#elif PLATFORM(GTK)
 #include <gtk/gtk.h>
 #ifndef GTK_API_VERSION_2
 #include <gtk/gtkx.h>
@@ -65,7 +67,33 @@ static inline Display* x11HostDisplay()
 
 static Display* getPluginDisplay()
 {
-#if PLATFORM(GTK)
+#if PLATFORM(QT)
+    // At the moment, we only support gdk based plugins (like Flash) that use a different X connection.
+    // The code below has the same effect as this one:
+    // Display *gdkDisplay = gdk_x11_display_get_xdisplay(gdk_display_get_default());
+
+    QLibrary library(QLatin1String("libgdk-x11-2.0"), 0);
+    if (!library.load())
+        return 0;
+
+    typedef void *(*gdk_init_check_ptr)(void*, void*);
+    gdk_init_check_ptr gdk_init_check = (gdk_init_check_ptr)library.resolve("gdk_init_check");
+    if (!gdk_init_check)
+        return 0;
+
+    typedef void *(*gdk_display_get_default_ptr)();
+    gdk_display_get_default_ptr gdk_display_get_default = (gdk_display_get_default_ptr)library.resolve("gdk_display_get_default");
+    if (!gdk_display_get_default)
+        return 0;
+
+    typedef void *(*gdk_x11_display_get_xdisplay_ptr)(void *);
+    gdk_x11_display_get_xdisplay_ptr gdk_x11_display_get_xdisplay = (gdk_x11_display_get_xdisplay_ptr)library.resolve("gdk_x11_display_get_xdisplay");
+    if (!gdk_x11_display_get_xdisplay)
+        return 0;
+
+    gdk_init_check(0, 0);
+    return (Display*)gdk_x11_display_get_xdisplay(gdk_display_get_default());
+#elif PLATFORM(GTK)
     // Since we're a gdk/gtk app, we'll (probably?) have the same X connection as any gdk-based
     // plugins, so we can return that. We might want to add other implementations here later.
     return GDK_DISPLAY_XDISPLAY(gdk_display_get_default());
@@ -78,7 +106,9 @@ static Display* getPluginDisplay()
 
 static inline int x11Screen()
 {
-#if PLATFORM(GTK)
+#if PLATFORM(QT)
+    return XDefaultScreen(NetscapePlugin::x11HostDisplay());
+#elif PLATFORM(GTK)
     return gdk_screen_get_number(gdk_screen_get_default());
 #elif PLATFORM(EFL) && defined(HAVE_ECORE_X)
     return ecore_x_screen_index_get(ecore_x_default_screen_get());
@@ -89,7 +119,9 @@ static inline int x11Screen()
 
 static inline int displayDepth()
 {
-#if PLATFORM(GTK)
+#if PLATFORM(QT)
+    return XDefaultDepth(NetscapePlugin::x11HostDisplay(), x11Screen());
+#elif PLATFORM(GTK)
     return gdk_visual_get_depth(gdk_screen_get_system_visual(gdk_screen_get_default()));
 #elif PLATFORM(EFL) && defined(HAVE_ECORE_X)
     return ecore_x_default_depth_get(x11HostDisplay(), ecore_x_default_screen_get());
@@ -100,7 +132,9 @@ static inline int displayDepth()
 
 static inline unsigned long rootWindowID()
 {
-#if PLATFORM(GTK)
+#if PLATFORM(QT)
+    return XDefaultRootWindow(NetscapePlugin::x11HostDisplay());
+#elif PLATFORM(GTK)
     return GDK_ROOT_WINDOW();
 #elif PLATFORM(EFL) && defined(HAVE_ECORE_X)
     return ecore_x_window_root_first_get();
@@ -163,6 +197,9 @@ NetscapePluginX11::NetscapePluginX11(NetscapePlugin& plugin, Display* display)
 {
     Display* hostDisplay = x11HostDisplay();
     int depth = displayDepth();
+#if PLATFORM(QT)
+    ASSERT(depth == 16 || depth == 24 || depth == 32);
+#endif
     m_setWindowCallbackStruct.display = hostDisplay;
     m_setWindowCallbackStruct.depth = depth;
 
@@ -298,7 +335,14 @@ void NetscapePluginX11::paint(GraphicsContext& context, const IntRect& dirtyRect
     if (m_pluginDisplay != x11HostDisplay())
         XSync(m_pluginDisplay, false);
 
-#if PLATFORM(GTK) || (PLATFORM(EFL) && USE(CAIRO))
+#if PLATFORM(QT)
+    XImage* xImage = XGetImage(NetscapePlugin::x11HostDisplay(), m_drawable, exposedRect.x(), exposedRect.y(),
+        exposedRect.width(), exposedRect.height(), ULONG_MAX, ZPixmap);
+    QPainter* painter = context->platformContext();
+    painter->drawImage(QPoint(exposedRect.x(), exposedRect.y()), qimageFromXImage(xImage), exposedRect);
+
+    XDestroyImage(xImage);
+#elif PLATFORM(GTK) || (PLATFORM(EFL) && USE(CAIRO))
     RefPtr<cairo_surface_t> drawableSurface = adoptRef(cairo_xlib_surface_create(m_pluginDisplay, m_drawable.get(),
         m_setWindowCallbackStruct.visual, m_plugin.size().width(), m_plugin.size().height()));
     cairo_t* cr = context.platformContext()->cr();

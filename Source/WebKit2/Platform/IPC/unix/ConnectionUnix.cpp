@@ -41,6 +41,9 @@
 
 #if PLATFORM(GTK)
 #include <gio/gio.h>
+#elif PLATFORM(QT)
+#include <QPointer>
+#include <QSocketNotifier>
 #endif
 
 // Although it's available on Darwin, SOCK_SEQPACKET seems to work differently
@@ -136,6 +139,10 @@ void Connection::platformInitialize(Identifier identifier)
     m_readBufferSize = 0;
     m_fileDescriptors.resize(attachmentMaxAmount);
     m_fileDescriptorsSize = 0;
+
+#if PLATFORM(QT)
+    m_socketNotifier = 0;
+#endif
 }
 
 void Connection::platformInvalidate()
@@ -155,9 +162,34 @@ void Connection::platformInvalidate()
     m_connectionQueue->unregisterSocketEventHandler(m_socketDescriptor);
 #endif
 
+#if PLATFORM(QT)
+    delete m_socketNotifier;
+    m_socketNotifier = 0;
+#endif
+
     m_socketDescriptor = -1;
     m_isConnected = false;
 }
+
+#if PLATFORM(QT)
+class SocketNotifierResourceGuard {
+public:
+    SocketNotifierResourceGuard(QSocketNotifier* socketNotifier)
+        : m_socketNotifier(socketNotifier)
+    {
+        m_socketNotifier.data()->setEnabled(false);
+    }
+
+    ~SocketNotifierResourceGuard()
+    {
+        if (m_socketNotifier)
+            m_socketNotifier.data()->setEnabled(true);
+    }
+
+private:
+    QPointer<QSocketNotifier> const m_socketNotifier;
+};
+#endif
 
 bool Connection::processMessage()
 {
@@ -330,6 +362,10 @@ static ssize_t readBytesFromSocket(int socketDescriptor, uint8_t* buffer, int co
 
 void Connection::readyReadHandler()
 {
+#if PLATFORM(QT)
+    SocketNotifierResourceGuard socketNotifierEnabler(m_socketNotifier);
+#endif
+
     while (true) {
         size_t fileDescriptorsCount = 0;
         size_t bytesToRead = m_readBuffer.size() - m_readBufferSize;
@@ -366,6 +402,10 @@ void Connection::readyReadHandler()
 
 bool Connection::open()
 {
+#if PLATFORM(QT)
+    ASSERT(!m_socketNotifier);
+#endif
+
     int flags = fcntl(m_socketDescriptor, F_GETFL, 0);
     while (fcntl(m_socketDescriptor, F_SETFL, flags | O_NONBLOCK) == -1) {
         if (errno != EINTR) {
@@ -392,6 +432,8 @@ bool Connection::open()
         ASSERT_NOT_REACHED();
         return G_SOURCE_REMOVE;
     });
+#elif PLATFORM(QT)
+    m_socketNotifier = m_connectionQueue->registerSocketEventHandler(m_socketDescriptor, QSocketNotifier::Read, WTF::bind(&Connection::readyReadHandler, this));
 #elif PLATFORM(EFL)
     m_connectionQueue->registerSocketEventHandler(m_socketDescriptor,
         [protectedThis] {
@@ -414,6 +456,10 @@ bool Connection::platformCanSendOutgoingMessages() const
 
 bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
 {
+#if PLATFORM(QT)
+    ASSERT(m_socketNotifier);
+#endif
+
     COMPILE_ASSERT(sizeof(MessageInfo) + attachmentMaxAmount * sizeof(size_t) <= messageMaxSize, AttachmentsFitToMessageInline);
 
     Vector<Attachment> attachments = encoder->releaseAttachments();
@@ -563,5 +609,12 @@ void Connection::didReceiveSyncReply(unsigned flags)
 {
     UNUSED_PARAM(flags);    
 }
+
+#if PLATFORM(QT)
+void Connection::setShouldCloseConnectionOnProcessTermination(WebKit::PlatformProcessIdentifier process)
+{
+    m_connectionQueue->dispatchOnTermination(process, WTF::bind(&Connection::connectionDidClose, this));
+}
+#endif
 
 } // namespace IPC

@@ -64,7 +64,7 @@
 
 #if defined(__OBJC__) && __OBJC__
 #import <WebKit/WKView.h>
-#elif !(defined(__APPLE__) && __APPLE__)
+#elif !((defined(__APPLE__) && __APPLE__) || defined(BUILDING_QT__))
 #include <WebKit/WKView.h>
 #endif
 
