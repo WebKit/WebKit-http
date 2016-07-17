@@ -63,12 +63,20 @@ static void addFromVector(T& hashSet, const U& vector)
         hashSet.add(vector[i]);
 }
 
+// We use a ListHashSet so that plugins will be loaded from the additional plugins directories first
+// (which in turn means those plugins will be preferred if two plugins claim the same MIME type).
+#if OS(WINDOWS)
+typedef ListHashSet<String, ASCIICaseInsensitiveHash> PathHashSet;
+#else
+typedef ListHashSet<String> PathHashSet;
+#endif
+
 void PluginInfoStore::loadPluginsIfNecessary()
 {
     if (m_pluginListIsUpToDate)
         return;
 
-    ListHashSet<String> uniquePluginPaths;
+    PathHashSet uniquePluginPaths;
 
     // First, load plug-ins from the additional plug-ins directories specified.
     for (size_t i = 0; i < m_additionalPluginsDirectories.size(); ++i)
@@ -85,7 +93,7 @@ void PluginInfoStore::loadPluginsIfNecessary()
     m_plugins.clear();
 
     for (const auto& pluginPath : uniquePluginPaths)
-        loadPlugin(m_plugins, pluginPath);
+        loadPlugin(m_plugins, *it);
 
     m_pluginListIsUpToDate = true;
 

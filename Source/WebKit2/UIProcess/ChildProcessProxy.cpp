@@ -174,6 +174,8 @@ void ChildProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::Id
     m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     m_connection->setShouldCloseConnectionOnMachExceptions();
+#elif PLATFORM(QT) && !OS(WINDOWS)
+    m_connection->setShouldCloseConnectionOnProcessTermination(processIdentifier());
 #endif
 
     connectionWillOpen(*m_connection);
