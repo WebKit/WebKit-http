@@ -84,11 +84,23 @@
 # (To distribute this file outside of extra-cmake-modules, substitute the full
 #  License text for the above reference.)
 
-if(KDE_INSTALL_USE_QT_SYS_PATHS)
+
+# Replicate the logic from KDEInstallDirs.cmake as we can't depend on it
+# Ask qmake if we're using the same prefix as Qt
+set(_askqmake OFF)
+if(NOT DEFINED KDE_INSTALL_USE_QT_SYS_PATHS)
+    include(ECMQueryQmake)
+    query_qmake(qt_install_prefix_dir QT_INSTALL_PREFIX)
+    if(qt_install_prefix_dir STREQUAL "${CMAKE_INSTALL_PREFIX}")
+        set(_askqmake ON)
+    endif()
+endif()
+
+if(KDE_INSTALL_USE_QT_SYS_PATHS OR _askqmake)
   include(ECMQueryQmake)
   query_qmake(qt_host_data_dir QT_HOST_DATA)
   set(ECM_MKSPECS_INSTALL_DIR ${qt_host_data_dir}/mkspecs/modules CACHE PATH "The directory where mkspecs will be installed to.")
-else ()
+else()
   set(ECM_MKSPECS_INSTALL_DIR mkspecs/modules CACHE PATH "The directory where mkspecs will be installed to.")
 endif()
 
