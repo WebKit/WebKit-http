@@ -54,8 +54,11 @@ struct wpe_loader_interface _wpe_loader_interface = {
             return &nc_renderer_backend_egl_offscreen_target_interface;
         if (!std::strcmp(object_name, "_wpe_renderer_host_interface"))
             return &nc_renderer_host_interface;
-        if (!std::strcmp(object_name, "_wpe_view_backend_interface"))
-            return &nc_view_backend_interface;
+        if (!std::strcmp(object_name, "_wpe_view_backend_interface")) {
+            if (under_wayland)
+                return &nc_view_backend_wayland_interface;
+            return &nc_view_backend_drm_interface;
+        }
 
 #if 0
         if (!std::strcmp(object_name, "_wpe_view_backend_interface")) {

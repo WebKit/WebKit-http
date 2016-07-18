@@ -475,7 +475,7 @@ void ViewBackend::initialize()
 
 extern "C" {
 
-struct wpe_view_backend_interface nc_view_backend_interface = {
+struct wpe_view_backend_interface nc_view_backend_wayland_interface = {
     // create
     [](void*, struct wpe_view_backend* backend) -> void*
     {

@@ -43,7 +43,8 @@ extern struct wpe_renderer_backend_egl_offscreen_target_interface nc_renderer_ba
 
 extern struct wpe_renderer_host_interface nc_renderer_host_interface;
 
-extern struct wpe_view_backend_interface nc_view_backend_interface;
+extern struct wpe_view_backend_interface nc_view_backend_drm_interface;
+extern struct wpe_view_backend_interface nc_view_backend_wayland_interface;
 
 #ifdef __cplusplus
 }
