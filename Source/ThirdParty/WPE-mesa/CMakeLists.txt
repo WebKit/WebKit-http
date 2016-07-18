@@ -60,6 +60,7 @@ set(WPE_MESA_SOURCES
     src/nc/renderer-backend-egl.cpp
     src/nc/renderer-host.cpp
     src/nc/view-backend.cpp
+    src/nc/view-backend-exportable.cpp
 
     src/util/ipc.cpp
 
