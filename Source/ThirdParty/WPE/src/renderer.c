@@ -33,14 +33,14 @@
 
 __attribute__((visibility("default")))
 struct wpe_renderer_backend_egl*
-wpe_renderer_backend_egl_create()
+wpe_renderer_backend_egl_create(int host_fd)
 {
     struct wpe_renderer_backend_egl* backend = malloc(sizeof(struct wpe_renderer_backend_egl));
     if (!backend)
         return 0;
 
     backend->interface = wpe_load_object("_wpe_renderer_backend_egl_interface");
-    backend->interface_data = backend->interface->create();
+    backend->interface_data = backend->interface->create(host_fd);
 
     return backend;
 }

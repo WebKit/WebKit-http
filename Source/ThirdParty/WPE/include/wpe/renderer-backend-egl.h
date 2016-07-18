@@ -40,7 +40,7 @@ struct wpe_renderer_backend_egl_offscreen_target;
 struct wpe_renderer_backend_egl_target_client;
 
 struct wpe_renderer_backend_egl_interface {
-    void* (*create)();
+    void* (*create)(int);
     void (*destroy)(void*);
 
     EGLNativeDisplayType (*get_native_display)(void*);
@@ -67,7 +67,7 @@ struct wpe_renderer_backend_egl_offscreen_target_interface {
 
 
 struct wpe_renderer_backend_egl*
-wpe_renderer_backend_egl_create();
+wpe_renderer_backend_egl_create(int);
 
 void
 wpe_renderer_backend_egl_destroy(struct wpe_renderer_backend_egl*);
