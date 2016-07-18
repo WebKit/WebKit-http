@@ -156,7 +156,7 @@ struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface = {
     [](void* data) -> EGLNativeDisplayType
     {
         auto* backend = static_cast<GBM::Backend*>(data);
-        return backend->device;
+        return (EGLNativeDisplayType)backend->device;
     },
 };
 
