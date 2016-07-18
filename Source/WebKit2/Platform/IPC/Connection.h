@@ -48,12 +48,18 @@
 #include <wtf/spi/darwin/XPCSPI.h>
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
 #include "PlatformProcessIdentifier.h"
 #endif
 
 #if PLATFORM(GTK)
 #include "GSocketMonitor.h"
+#endif
+
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QSocketNotifier;
+QT_END_NAMESPACE
 #endif
 
 namespace IPC {
@@ -151,6 +157,8 @@ public:
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void setShouldCloseConnectionOnMachExceptions();
+#elif PLATFORM(QT)
+    void setShouldCloseConnectionOnProcessTermination(WebKit::PlatformProcessIdentifier);
 #endif
 
     void setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(bool);
@@ -335,6 +343,9 @@ private:
     int m_socketDescriptor;
 #if PLATFORM(GTK)
     GSocketMonitor m_socketMonitor;
+#endif
+#if PLATFORM(QT)
+    QSocketNotifier* m_socketNotifier;
 #endif
 #elif OS(DARWIN)
     // Called on the connection queue.
