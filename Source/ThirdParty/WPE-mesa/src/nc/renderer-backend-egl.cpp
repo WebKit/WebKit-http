@@ -176,7 +176,7 @@ struct wpe_renderer_backend_egl_target_interface nc_renderer_backend_egl_target_
     {
     },
     // initialize
-    [](void* data, void* backend_data, uint32_t width, uint32_t height)
+    [](void* data, void* backend_data, EGLDisplay display, uint32_t width, uint32_t height)
     {
     },
     // get_native_window
@@ -210,7 +210,7 @@ struct wpe_renderer_backend_egl_offscreen_target_interface nc_renderer_backend_e
     {
     },
     // initialize
-    [](void* data, void* backend_data)
+    [](void* data, void* backend_data, EGLDisplay display)
     {
     },
     // get_native_window

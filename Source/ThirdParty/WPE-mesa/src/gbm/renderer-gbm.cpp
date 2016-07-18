@@ -173,7 +173,7 @@ struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target
         delete target;
     },
     // initialize
-    [](void* data, void* backend_data, uint32_t width, uint32_t height)
+    [](void* data, void* backend_data, EGLDisplay, uint32_t width, uint32_t height)
     {
         auto* target = static_cast<GBM::EGLTarget*>(data);
         auto* backend = static_cast<GBM::Backend*>(backend_data);
@@ -245,7 +245,7 @@ struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_
         delete target;
     },
     // initialize
-    [](void* data, void* backend_data)
+    [](void* data, void* backend_data, EGLDisplay)
     {
         auto* target = static_cast<GBM::EGLOffscreenTarget*>(data);
         auto* backend = static_cast<GBM::Backend*>(backend_data);
