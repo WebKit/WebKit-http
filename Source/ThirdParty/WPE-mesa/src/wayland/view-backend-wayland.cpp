@@ -90,8 +90,12 @@ private:
 
 static const struct xdg_surface_listener g_xdgSurfaceListener = {
     // configure
-    [](void*, struct xdg_surface* surface, int32_t, int32_t, struct wl_array*, uint32_t serial)
+    [](void* data, struct xdg_surface* surface, int32_t width, int32_t height, struct wl_array*, uint32_t serial)
     {
+        if( width != 0 || height != 0 ) {
+            struct wpe_view_backend* backend = static_cast<ViewBackend::ResizingData*>(data)->backend;
+            wpe_view_backend_dispatch_set_size(backend, std::max(0, width), std::max(0, height));
+        }
         xdg_surface_ack_configure(surface, serial);
     },
     // delete
@@ -155,7 +159,7 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
 
     if (m_display.interfaces().xdg) {
         m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
-        xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
+        xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, &m_resizingData);
         xdg_surface_set_title(m_xdgSurface, "WPE");
     }
 
