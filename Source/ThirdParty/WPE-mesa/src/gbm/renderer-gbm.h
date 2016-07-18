@@ -27,6 +27,8 @@
 #ifndef wpe_renderer_gbm_h
 #define wpe_renderer_gbm_h
 
+#define __GBM__
+
 #include <wpe/renderer-backend-egl.h>
 
 #ifdef __cplusplus
