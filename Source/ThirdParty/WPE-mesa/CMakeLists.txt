@@ -51,7 +51,7 @@ set(WPE_MESA_SOURCES
 
     src/drm/view-backend-drm.cpp
 
-    src/exportable/view-backend-exportable.cpp
+    #src/exportable/view-backend-exportable.cpp
 
     src/gbm/renderer-gbm.cpp
 
