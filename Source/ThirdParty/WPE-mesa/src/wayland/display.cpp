@@ -94,7 +94,7 @@ GSourceFuncs EventSource::sourceFuncs = {
 
 const struct wl_registry_listener g_registryListener = {
     // global
-    [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t)
+    [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version)
     {
         auto& interfaces = *static_cast<Display::Interfaces*>(data);
 
@@ -104,14 +104,17 @@ const struct wl_registry_listener g_registryListener = {
         if (!std::strcmp(interface, "wl_data_device_manager"))
             interfaces.data_device_manager = static_cast<struct wl_data_device_manager*>(wl_registry_bind(registry, name, &wl_data_device_manager_interface, 2));
 
-        if (!std::strcmp(interface, "wl_drm"))
-            interfaces.drm = static_cast<struct wl_drm*>(wl_registry_bind(registry, name, &wl_drm_interface, 2));
+        if (!std::strcmp(interface, "wl_drm")) {
+            interfaces.drm = static_cast<struct wl_drm*>(wl_registry_bind(registry, name, &wl_drm_interface, version));
+            interfaces.drm_name = name;
+            interfaces.drm_version = version;
+        }
 
         if (!std::strcmp(interface, "wl_seat"))
             interfaces.seat = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 4));
 
         if (!std::strcmp(interface, "xdg_shell"))
-            interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
+            interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1));
 
         if (!std::strcmp(interface, "ivi_application"))
             interfaces.ivi_application = static_cast<struct ivi_application*>(wl_registry_bind(registry, name, &ivi_application_interface, 1));
@@ -539,7 +542,7 @@ Display::~Display()
         xdg_shell_destroy(m_interfaces.xdg);
     if (m_interfaces.ivi_application)
         ivi_application_destroy(m_interfaces.ivi_application);
-    m_interfaces = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+    m_interfaces = { nullptr, nullptr, nullptr, 0, 0, nullptr, nullptr, nullptr };
 
     if (m_registry)
         wl_registry_destroy(m_registry);

@@ -28,8 +28,11 @@
 
 #include <cstdio>
 #include <cstring>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <glib.h>
 #include <wayland-client.h>
+#include <wayland-egl.h>
 
 namespace NC {
 
@@ -83,6 +86,8 @@ public:
 
     struct wl_display* display() const { return m_display; }
 
+    struct wl_surface* createSurface() const;
+
 private:
     static const struct wl_registry_listener s_registryListener;
 
@@ -93,17 +98,48 @@ private:
     GSource* m_source;
 };
 
+struct EGLTarget {
+    EGLTarget(struct wpe_renderer_backend_egl_target* target)
+        : target(target)
+    {
+    }
+
+    ~EGLTarget()
+    {
+        if (surface)
+            wl_surface_destroy(surface);
+
+        if (egl_window)
+            wl_egl_window_destroy(egl_window);
+    }
+
+    struct wpe_renderer_backend_egl_target* target;
+
+    struct wl_surface* surface {NULL};
+    struct wl_egl_window* egl_window {NULL};
+};
+
+struct EGLOffscreenTarget {
+    EGLOffscreenTarget()
+    {
+    }
+
+    ~EGLOffscreenTarget()
+    {
+    }
+};
+
 Backend::Backend(int hostFd)
 {
     m_display = wl_display_connect_to_fd(hostFd);
     m_registry = wl_display_get_registry(m_display);
-    fprintf(stderr, "Backend::Backend() %p \n", m_display);
 
     m_source = g_source_new(&ClientSource::sourceFuncs, sizeof(ClientSource));
     auto& source = *reinterpret_cast<ClientSource*>(m_source);
     source.pfd.fd = wl_display_get_fd(m_display);
     source.pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
     source.pfd.revents = 0;
+    source.display = m_display;
 
     g_source_add_poll(m_source, &source.pfd);
     g_source_set_name(m_source, "NS::ClientSource");
@@ -113,14 +149,17 @@ Backend::Backend(int hostFd)
 
     wl_registry_add_listener(m_registry, &s_registryListener, this);
     wl_display_roundtrip(m_display);
-
-    fprintf(stderr, "Backend::Backend() m_compositor %p\n", m_compositor);
 }
 
 Backend::~Backend()
 {
     if (m_source)
         g_source_unref(m_source);
+}
+
+struct wl_surface* Backend::createSurface() const
+{
+    return wl_compositor_create_surface(m_compositor);
 }
 
 const struct wl_registry_listener Backend::s_registryListener = {
@@ -146,7 +185,6 @@ struct wpe_renderer_backend_egl_interface nc_renderer_backend_egl_interface = {
     // create
     [](int host_fd) -> void*
     {
-        fprintf(stderr, "nc_renderer_backend_egl_interface::create() host_fd %d\n", host_fd);
         return new NC::Backend(host_fd);
     },
     // destroy
@@ -158,9 +196,8 @@ struct wpe_renderer_backend_egl_interface nc_renderer_backend_egl_interface = {
     // get_native_display
     [](void* data) -> EGLNativeDisplayType
     {
-        fprintf(stderr, "nc_renderer_backend_egl_interface::get_native_display()\n");
         auto& backend = *static_cast<NC::Backend*>(data);
-        return backend.display();
+        return (EGLNativeDisplayType)backend.display();
     },
 };
 
@@ -168,25 +205,36 @@ struct wpe_renderer_backend_egl_target_interface nc_renderer_backend_egl_target_
     // create
     [](struct wpe_renderer_backend_egl_target* target, int hostFd) -> void*
     {
-        fprintf(stderr, "nc_renderer_backend_egl_target_interface::create() hostFd %d\n", hostFd);
-        return nullptr;
+        return new NC::EGLTarget(target);
     },
     // destroy
     [](void* data)
     {
+        auto* target = static_cast<NC::EGLTarget*>(data);
+        delete target;
     },
     // initialize
     [](void* data, void* backend_data, EGLDisplay display, uint32_t width, uint32_t height)
     {
+        auto& target = *static_cast<NC::EGLTarget*>(data);
+        auto& backend = *static_cast<NC::Backend*>(backend_data);
+
+        target.surface = backend.createSurface();
+        target.egl_window = wl_egl_window_create(target.surface,
+                width, height);
     },
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        return nullptr;
+        auto& target = *static_cast<NC::EGLTarget*>(data);
+        return (EGLNativeWindowType)target.egl_window;
     },
     // resize
     [](void* data, uint32_t width, uint32_t height)
     {
+        auto& target = *static_cast<NC::EGLTarget*>(data);
+        if (target.egl_window)
+            wl_egl_window_resize(target.egl_window, width, height, 0, 0);
     },
     // frame_will_render
     [](void* data)
@@ -195,6 +243,8 @@ struct wpe_renderer_backend_egl_target_interface nc_renderer_backend_egl_target_
     // frame_rendered
     [](void* data)
     {
+        auto& target = *static_cast<NC::EGLTarget*>(data);
+        wpe_renderer_backend_egl_target_dispatch_frame_complete(target.target);
     },
 };
 
@@ -202,12 +252,13 @@ struct wpe_renderer_backend_egl_offscreen_target_interface nc_renderer_backend_e
     // create
     []() -> void*
     {
-        fprintf(stderr, "nc_renderer_backend_egl_offscreen_target_interface::create()\n");
-        return nullptr;
+        return new NC::EGLOffscreenTarget();
     },
     // destroy
     [](void* data)
     {
+        auto* target = static_cast<NC::EGLOffscreenTarget*>(data);
+        delete target;
     },
     // initialize
     [](void* data, void* backend_data, EGLDisplay display)
@@ -216,7 +267,7 @@ struct wpe_renderer_backend_egl_offscreen_target_interface nc_renderer_backend_e
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        return nullptr;
+        return (EGLNativeWindowType)nullptr;
     },
 };
 

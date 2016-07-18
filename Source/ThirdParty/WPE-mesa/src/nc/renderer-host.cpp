@@ -25,32 +25,25 @@
  */
 
 #include "nested-compositor.h"
+#include "nc-renderer-host.h"
 
 #include <cstdio>
 #include <glib.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <wayland-client.h>
-#include <wayland-server.h>
-
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
+#include <wayland-server-core.h>
 
 namespace NC {
 
-struct HostSource {
-    static GSourceFuncs sourceFuncs;
-
-    GSource source;
-    GPollFD pfd;
-    struct wl_display* display;
-};
-
-GSourceFuncs HostSource::sourceFuncs = {
+GSourceFuncs RendererHost::HostSource::sourceFuncs = {
     // prepare
-    [](GSource*, gint* timeout) -> gboolean
+    [](GSource* base, gint* timeout) -> gboolean
     {
+        auto& source = *reinterpret_cast<HostSource*>(base);
+
         *timeout = -1;
+
+        wl_display_flush_clients(source.display);
         return FALSE;
     },
     // check
@@ -81,51 +74,19 @@ GSourceFuncs HostSource::sourceFuncs = {
     nullptr, // closure_marshall
 };
 
-class RendererHost {
-public:
-    RendererHost();
-    ~RendererHost();
-
-    int createClient();
-
-private:
-    static const struct wl_compositor_interface s_compositorInterface;
-
-    struct wl_display* m_display;
-    GSource* m_source;
-};
 
 RendererHost::RendererHost()
 {
     m_display = wl_display_create();
-
-    m_source = g_source_new(&HostSource::sourceFuncs, sizeof(HostSource));
-    auto& source = *reinterpret_cast<HostSource*>(m_source);
-
-    struct wl_event_loop* eventLoop = wl_display_get_event_loop(m_display);
-    source.pfd.fd = wl_event_loop_get_fd(eventLoop);
-    source.pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
-    source.pfd.revents = 0;
-    source.display = m_display;
-
-    g_source_add_poll(m_source, &source.pfd);
-    g_source_set_name(m_source, "NC::HostSource");
-    g_source_set_priority(m_source, G_PRIORITY_DEFAULT);
-    g_source_set_can_recurse(m_source, TRUE);
-    g_source_attach(m_source, g_main_context_get_thread_default());
-
-    wl_global_create(m_display, &wl_compositor_interface, 1, this,
-        [](struct wl_client* client, void* data, uint32_t, uint32_t id)
-        {
-            struct wl_resource* resource = wl_resource_create(client, &wl_compositor_interface, 1, id);
-            wl_resource_set_implementation(resource, &s_compositorInterface, data, nullptr);
-        });
 }
 
 RendererHost::~RendererHost()
 {
     if (m_source)
         g_source_unref(m_source);
+
+    if (m_display)
+        wl_display_destroy(m_display);
 }
 
 int RendererHost::createClient()
@@ -142,14 +103,35 @@ int RendererHost::createClient()
     return clientFd;
 }
 
-const struct wl_compositor_interface RendererHost::s_compositorInterface = {
-    // create_surface
-    [](struct wl_client*, struct wl_resource*, uint32_t)
-    {
-    },
-    // create_region
-    [](struct wl_client*, struct wl_resource*, uint32_t) { },
-};
+void RendererHost::initialize()
+{
+    m_source = g_source_new(&HostSource::sourceFuncs, sizeof(HostSource));
+    auto& source = *reinterpret_cast<HostSource*>(m_source);
+
+    struct wl_event_loop* eventLoop = wl_display_get_event_loop(m_display);
+    source.pfd.fd = wl_event_loop_get_fd(eventLoop);
+    source.pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
+    source.pfd.revents = 0;
+    source.display = m_display;
+
+    g_source_add_poll(m_source, &source.pfd);
+    g_source_set_name(m_source, "NC::HostSource");
+    g_source_set_priority(m_source, G_PRIORITY_DEFAULT);
+    g_source_set_can_recurse(m_source, TRUE);
+    g_source_attach(m_source, g_main_context_get_thread_default());
+}
+
+
+RendererHost& RendererHost::singleton()
+{
+    static RendererHost* host = nullptr;
+
+    if (host)
+        return *host;
+
+    host = new RendererHost();
+    return *host;
+}
 
 } // namespace NC
 
@@ -159,19 +141,16 @@ struct wpe_renderer_host_interface nc_renderer_host_interface = {
     // create
     []() -> void*
     {
-        return new NC::RendererHost;
+        return nullptr;
     },
     // destroy
     [](void* data)
     {
-        auto* rendererHost = static_cast<NC::RendererHost*>(data);
-        delete rendererHost;
     },
     // create_client
     [](void* data) -> int
     {
-        auto& rendererHost = *static_cast<NC::RendererHost*>(data);
-        return rendererHost.createClient();
+        return NC::RendererHost::singleton().createClient();
     },
 };
 
