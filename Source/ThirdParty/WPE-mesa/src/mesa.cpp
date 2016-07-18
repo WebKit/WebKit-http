@@ -41,7 +41,7 @@
 
 extern "C" {
 
-static bool under_wayland = !!std::getenv("WAYLAND_DISPLAY");
+static bool under_wayland = !!(std::getenv("WAYLAND_DISPLAY") || std::getenv("WAYLAND_SOCKET"));
 
 __attribute__((visibility("default")))
 struct wpe_loader_interface _wpe_loader_interface = {
