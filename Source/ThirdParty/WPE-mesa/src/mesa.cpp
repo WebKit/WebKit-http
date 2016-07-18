@@ -27,13 +27,17 @@
 #include <wpe/loader.h>
 
 #include "input-libxkbcommon.h"
+#include "nested-compositor.h"
 #include "pasteboard-wayland.h"
-#include "renderer-gbm.h"
-#include "view-backend-drm.h"
-#include "view-backend-wayland.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+#if 0
+#include "renderer-gbm.h"
+#include "view-backend-drm.h"
+#include "view-backend-wayland.h"
+#endif
 
 extern "C" {
 
@@ -42,6 +46,18 @@ static bool under_wayland = !!std::getenv("WAYLAND_DISPLAY");
 __attribute__((visibility("default")))
 struct wpe_loader_interface _wpe_loader_interface = {
     [](const char* object_name) -> void* {
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_interface"))
+            return &nc_renderer_backend_egl_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_target_interface"))
+            return &nc_renderer_backend_egl_target_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_offscreen_target_interface"))
+            return &nc_renderer_backend_egl_offscreen_target_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_host_interface"))
+            return &nc_renderer_host_interface;
+        if (!std::strcmp(object_name, "_wpe_view_backend_interface"))
+            return &nc_view_backend_interface;
+
+#if 0
         if (!std::strcmp(object_name, "_wpe_view_backend_interface")) {
             if (under_wayland)
                 return reinterpret_cast<void*>(&wayland_view_backend_interface);
@@ -54,6 +70,7 @@ struct wpe_loader_interface _wpe_loader_interface = {
             return &gbm_renderer_backend_egl_target_interface;
         if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_offscreen_target_interface"))
             return &gbm_renderer_backend_egl_offscreen_target_interface;
+#endif
 
         if (!std::strcmp(object_name, "_wpe_pasteboard_interface") && under_wayland)
             return &wayland_pasteboard_interface;

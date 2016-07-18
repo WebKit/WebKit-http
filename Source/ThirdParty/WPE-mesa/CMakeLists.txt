@@ -22,6 +22,7 @@ set(WPE_MESA_INCLUDE_DIRECTORIES
     "${WPE_MESA_SOURCE_DIR}/src/external"
     "${WPE_MESA_SOURCE_DIR}/src/gbm"
     "${WPE_MESA_SOURCE_DIR}/src/libxkbcommon"
+    "${WPE_MESA_SOURCE_DIR}/src/nc"
     "${WPE_MESA_SOURCE_DIR}/src/util"
     "${WPE_MESA_SOURCE_DIR}/src/wayland"
     "${WPE_MESA_SOURCE_DIR}/src/wayland/protocols"
@@ -52,6 +53,10 @@ set(WPE_MESA_SOURCES
     src/gbm/renderer-gbm.cpp
 
     src/libxkbcommon/input-libxkbcommon.cpp
+
+    src/nc/renderer-backend-egl.cpp
+    src/nc/renderer-host.cpp
+    src/nc/view-backend.cpp
 
     src/util/ipc.cpp
 
