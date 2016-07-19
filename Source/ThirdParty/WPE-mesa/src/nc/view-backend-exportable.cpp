@@ -41,8 +41,8 @@
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
 #include <xf86drm.h>
-
-#include "wayland-drm-server-protocol.h"
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 namespace NC {
 namespace Exportable {
@@ -60,30 +60,27 @@ public:
     struct wpe_mesa_view_backend_exportable_client* client;
     void* data;
     ViewBackend* viewBackend;
-};
-
-class Buffer {
-public:
-    Buffer(struct wl_resource*,
-            struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data&);
-
-    ~Buffer();
-
-    struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data&
-    getImageData() { return m_imageData; }
-
-    void sendRelease() const;
-
-private:
-    struct wl_resource* m_resource;
-    struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data m_imageData;
-    struct wl_listener m_buffer_destroy_listener;
-
-    static void onBufferDestroyed(struct wl_listener*, void*);
+    EGLDisplay display;
 };
 
 class ViewBackend {
 public:
+    class Buffer {
+    public:
+        Buffer(struct wl_resource*, ViewBackend*);
+        ~Buffer();
+
+        void sendRelease() const;
+        struct wl_resource* getResource() const { return m_resource; }
+
+    private:
+        struct wl_resource* m_resource;
+        ViewBackend* m_backend;
+        struct wl_listener m_buffer_destroy_listener;
+
+        static void onBufferDestroyed(struct wl_listener*, void*);
+    };
+
     ViewBackend(ClientBundle*, struct wpe_view_backend* backend);
     virtual ~ViewBackend();
 
@@ -92,11 +89,18 @@ public:
     void sendFrameCompleteCallback();
 
     Buffer* getBuffer(uint32_t);
+    Buffer* getBuffer(struct wl_resource*);
+
 private:
     struct {
-        std::string dev_path;
-        int fd {-1};
-    } m_drm;
+        EGLDisplay display;
+        bool waylandBound {false};
+
+        PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
+        PFNEGLBINDWAYLANDDISPLAYWL eglBindWaylandDisplayWL;
+        PFNEGLUNBINDWAYLANDDISPLAYWL eglUnbindWaylandDisplayWL;
+        PFNEGLQUERYWAYLANDBUFFERWL eglQueryWaylandBufferWL;
+    } m_egl;
 
     struct {
         struct {
@@ -109,59 +113,63 @@ private:
         } current;
 
         struct wl_global* compositor;
-        struct wl_global* drm;
     } m_server;
 
     ClientBundle* m_clientBundle;
     struct wpe_view_backend* m_backend;
 
     std::unordered_map<uint32_t, Buffer*> m_bufferMap;
-    uint32_t m_handle {1};
 
-    static const struct wl_drm_interface g_drmImplementation;
     static const struct wl_surface_interface g_surfaceImplementation;
     static const struct wl_compositor_interface g_compositorImplementation;
-    static const struct wl_buffer_interface g_drmBufferImplementation;
 
-    static void bindDrm(struct wl_client*, void*, uint32_t, uint32_t);
     static void bindCompositor(struct wl_client*, void*, uint32_t, uint32_t);
 
     static void destroyBuffer(struct wl_resource*);
-    static void destroyDrm(struct wl_resource*);
     static void destroyCallback(struct wl_resource*);
 
 };
 
-Buffer::Buffer(struct wl_resource* resource,
-        struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data& imageData)
+ViewBackend::Buffer::Buffer(struct wl_resource* resource, ViewBackend* backend)
     : m_resource(resource)
-    , m_imageData(imageData)
+    , m_backend(backend)
 {
     memset(&m_buffer_destroy_listener, 0, sizeof(m_buffer_destroy_listener));
     m_buffer_destroy_listener.notify = onBufferDestroyed;
 
     wl_resource_add_destroy_listener(resource, &m_buffer_destroy_listener);
+
+    backend->m_bufferMap.insert({wl_resource_get_id(resource), this});
 }
 
-Buffer::~Buffer()
+ViewBackend::Buffer::~Buffer()
 {
-    if (m_imageData.fd >= 0)
-        close(m_imageData.fd);
-
     wl_list_remove(&m_buffer_destroy_listener.link);
+    m_backend->m_bufferMap.erase(wl_resource_get_id(m_resource));
+
+    if (m_backend->m_server.pending.buffer == this )
+        m_backend->m_server.pending.buffer = nullptr;
 }
 
-void Buffer::sendRelease() const
+void ViewBackend::Buffer::sendRelease() const
 {
-    if (m_resource)
-        wl_buffer_send_release(m_resource);
+    wl_buffer_send_release(m_resource);
 }
 
-void Buffer::onBufferDestroyed(struct wl_listener* listener, void* data)
+void ViewBackend::Buffer::onBufferDestroyed(struct wl_listener* listener, void* data)
 {
-    auto* buffer = container_of(listener, &Buffer::m_buffer_destroy_listener);
-    buffer->m_resource = nullptr;
-    wl_list_remove(&buffer->m_buffer_destroy_listener.link);
+    auto* buffer = container_of(listener, &ViewBackend::Buffer::m_buffer_destroy_listener);
+    delete buffer;
+}
+
+template<class T>
+static void bindEGLproc(T& p, char const* name)
+{
+    p = reinterpret_cast<T>(eglGetProcAddress(name));
+    if (!p) {
+        fprintf(stderr, "Cannot bind %s\n", name);
+        abort();
+    }
 }
 
 ViewBackend::ViewBackend(ClientBundle* clientBundle, struct wpe_view_backend* backend)
@@ -169,29 +177,31 @@ ViewBackend::ViewBackend(ClientBundle* clientBundle, struct wpe_view_backend* ba
     , m_backend(backend)
 {
     m_clientBundle->viewBackend = this;
-
-    // TODO: We need to get this via some other method
-    m_drm.dev_path = "/dev/dri/renderD128";
-    m_drm.fd = open(m_drm.dev_path.c_str(), O_CLOEXEC | O_RDWR);
-
-    if (m_drm.fd < 0 ) {
-        fprintf(stderr, "Cannot open %s: %s\n", m_drm.dev_path.c_str(), strerror(errno));
-        return;
-    }
+    m_egl.display = m_clientBundle->display;
 
     auto& server = NC::RendererHost::singleton();
     server.initialize();
 
     m_server.compositor = wl_global_create(server.display(), &wl_compositor_interface, 3, this, bindCompositor);
-    m_server.drm = wl_global_create(server.display(), &wl_drm_interface, 2, this, bindDrm);
+
+    bindEGLproc(m_egl.eglCreateImageKHR, "eglCreateImageKHR");
+    bindEGLproc(m_egl.eglBindWaylandDisplayWL, "eglBindWaylandDisplayWL");
+    bindEGLproc(m_egl.eglUnbindWaylandDisplayWL, "eglUnbindWaylandDisplayWL");
+    bindEGLproc(m_egl.eglQueryWaylandBufferWL, "eglQueryWaylandBufferWL");
+
+    m_egl.waylandBound = m_egl.eglBindWaylandDisplayWL(m_egl.display, server.display());
+    if (!m_egl.waylandBound) {
+        fprintf(stderr, "Cannot bind Wayland Display to EGL Display: %d\n", eglGetError());
+        return;
+    }
 }
 
 ViewBackend::~ViewBackend()
 {
-    if (m_drm.fd >= 0 )
-        close(m_drm.fd);
-
     m_backend = nullptr;
+
+    if (m_egl.waylandBound)
+        m_egl.eglUnbindWaylandDisplayWL(m_egl.display, NC::RendererHost::singleton().display());
 }
 
 void ViewBackend::initialize()
@@ -221,8 +231,14 @@ const struct wl_surface_interface ViewBackend::g_surfaceImplementation = {
         auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
 
         backend.m_server.pending.buffer = nullptr;
-        if (buffer_resource)
-            backend.m_server.pending.buffer = static_cast<Buffer*>(wl_resource_get_user_data(buffer_resource));
+        if (buffer_resource) {
+            auto* buffer = backend.getBuffer(buffer_resource);
+
+            if (!buffer)
+                buffer = new Buffer(buffer_resource, &backend);
+
+            backend.m_server.pending.buffer = buffer;
+        }
     },
     // damage
     [](struct wl_client*, struct wl_resource* resource, int32_t x, int32_t y, int32_t width, int32_t height)
@@ -269,8 +285,21 @@ const struct wl_surface_interface ViewBackend::g_surfaceImplementation = {
         if (buffer) {
             backend.m_server.current.callback = callback;
 
-            backend.m_clientBundle->client->export_dma_buf_egl_image(backend.m_clientBundle->data,
-                    &buffer->getImageData());
+            auto* resource = buffer->getResource();
+
+            struct wpe_mesa_view_backend_exportable_egl_image_data data;
+
+            data.handle = wl_resource_get_id(resource);
+            data.image = backend.m_egl.eglCreateImageKHR(backend.m_egl.display, EGL_NO_CONTEXT,
+                    EGL_WAYLAND_BUFFER_WL, (EGLClientBuffer)resource, nullptr);
+
+            backend.m_egl.eglQueryWaylandBufferWL(backend.m_egl.display, resource, EGL_WIDTH,
+                    &data.width);
+            backend.m_egl.eglQueryWaylandBufferWL(backend.m_egl.display, resource, EGL_HEIGHT,
+                    &data.height);
+
+            backend.m_clientBundle->client->export_egl_image(backend.m_clientBundle->data,
+                    &data);
         }
     },
     // set_buffer_transform
@@ -323,86 +352,6 @@ void ViewBackend::bindCompositor(struct wl_client* client, void* data, uint32_t 
     wl_resource_set_implementation(resource, &g_compositorImplementation, &backend, nullptr);
 }
 
-const struct wl_buffer_interface ViewBackend::g_drmBufferImplementation = {
-    // destroy
-    [] (struct wl_client*, struct wl_resource* resource)
-    {
-    },
-};
-
-const struct wl_drm_interface ViewBackend::g_drmImplementation = {
-    // authenticate
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        // Since we are using a render node, there isn't really any authentication,
-        // just report success
-        wl_drm_send_authenticated(resource);
-    },
-    // create_buffer
-	[](struct wl_client *client, struct wl_resource *resource, uint32_t id, uint32_t name,
-            int32_t width, int32_t height, uint32_t stride, uint32_t format)
-    {
-        wl_resource_post_error(resource, WL_DRM_ERROR_INVALID_NAME,
-                "non-Prime buffers are not supported on render nodes");
-    },
-    // create_planar_buffer
-    [](struct wl_client *client, struct wl_resource *resource, uint32_t id, uint32_t name,
-            int32_t width, int32_t height, uint32_t format, int32_t offset0, int32_t stride0,
-            int32_t offset1, int32_t stride1, int32_t offset2, int32_t stride2)
-    {
-        wl_resource_post_error(resource, WL_DRM_ERROR_INVALID_NAME,
-                "non-Prime buffers are not supported on render nodes");
-    },
-	// create_prime_buffer
-    [](struct wl_client *client, struct wl_resource *resource, uint32_t id, int32_t fd,
-            int32_t width, int32_t height, uint32_t format, int32_t offset0, int32_t stride0,
-            int32_t offset1, int32_t stride1, int32_t offset2, int32_t stride2)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* buffer_resource = wl_resource_create(client, &wl_buffer_interface,
-                1, id);
-
-        if (!buffer_resource) {
-            wl_client_post_no_memory(client);
-            return;
-        }
-
-        struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data imageData;
-        imageData.fd = fd;
-        imageData.width = width;
-        imageData.height = height;
-        imageData.format = format;
-        imageData.stride = stride0;
-        imageData.handle = backend.m_handle;
-
-        auto* buffer = new Buffer(buffer_resource, imageData);
-
-        backend.m_bufferMap.insert({imageData.handle, buffer});
-        backend.m_handle++;
-
-        wl_resource_set_implementation(buffer_resource, &g_drmBufferImplementation, buffer, nullptr);
-    },
-};
-
-void ViewBackend::bindDrm(struct wl_client* client, void* data, uint32_t version, uint32_t id)
-{
-    auto& backend = *static_cast<ViewBackend*>(data);
-    struct wl_resource* resource = wl_resource_create(client, &wl_drm_interface,
-        version, id);
-
-    if (!resource) {
-        wl_client_post_no_memory(client);
-        return;
-    }
-
-    wl_resource_set_implementation(resource, &g_drmImplementation, &backend, nullptr);
-    wl_drm_send_device(resource, backend.m_drm.dev_path.c_str());
-    wl_drm_send_format(resource, WL_DRM_FORMAT_XRGB8888);
-    wl_drm_send_format(resource, WL_DRM_FORMAT_ARGB8888);
-    wl_drm_send_capabilities(resource, WL_DRM_CAPABILITY_PRIME);
-}
-
 void ViewBackend::sendFrameCompleteCallback()
 {
     if (m_server.current.callback) {
@@ -411,13 +360,19 @@ void ViewBackend::sendFrameCompleteCallback()
     }
 }
 
-Buffer* ViewBackend::getBuffer(uint32_t handle)
+ViewBackend::Buffer* ViewBackend::getBuffer(uint32_t handle)
 {
     auto i = m_bufferMap.find(handle);
     if (i == m_bufferMap.end())
         return nullptr;
     return i->second;
 }
+
+ViewBackend::Buffer* ViewBackend::getBuffer(struct wl_resource* resource)
+{
+    return getBuffer(wl_resource_get_id(resource));
+}
+
 } // namespace Exportable
 } // namespace NC
 
@@ -460,6 +415,8 @@ wpe_mesa_view_backend_exportable_create(EGLDisplay display, struct wpe_mesa_view
         void* client_data)
 {
     auto* clientBundle = new NC::Exportable::ClientBundle{ client, client_data, nullptr };
+    clientBundle->display = display;
+
     struct wpe_view_backend* backend = wpe_view_backend_create_with_backend_interface(&exportable_view_backend_interface, clientBundle);
 
     auto* exportable = new struct wpe_mesa_view_backend_exportable;

@@ -53,14 +53,12 @@ private:
         EGLConfig config;
         EGLContext context;
 
-        PFNEGLCREATEIMAGEKHRPROC createImage;
         PFNEGLDESTROYIMAGEKHRPROC destroyImage;
         PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DOES;
     } m_egl;
 
     struct wpe_mesa_view_backend_exportable* m_exportable;
 
-    std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> m_imageMap;
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_pendingImage { };
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_lockedImage { };
 
