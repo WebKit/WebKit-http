@@ -1009,7 +1009,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
     bool issueError = true;
     bool attemptNextLocation = false;
     const GstStructure* structure = gst_message_get_structure(message);
-    GstState requestedState, currentState;
+    GstState requestedState, currentState, newState;
 
     m_canFallBackToLastFinishedSeekPosition = false;
 
@@ -1090,13 +1090,18 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         asyncStateChangeDone();
         break;
     case GST_MESSAGE_STATE_CHANGED: {
-        // DEBUG
-        {
-            GstState newState;
-            gst_message_parse_state_changed(message, &currentState, &newState, 0);
-            TRACE_MEDIA_MESSAGE("State changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
+        gst_message_parse_state_changed(message, &currentState, &newState, 0);
+        TRACE_MEDIA_MESSAGE("State changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
+
+#if USE(FUSION_SINK)
+        if (g_strstr_len(GST_MESSAGE_SRC_NAME(message), 9, "h264parse")) {
+            // Force regular H264 SPS/PPS updates.
+            if (currentState == GST_STATE_NULL && newState == GST_STATE_READY)
+                g_object_set(GST_MESSAGE_SRC(message), "config-interval", 1, nullptr);
         }
-       if (!messageSourceIsPlaybin || m_delayingLoad)
+#endif
+
+        if (!messageSourceIsPlaybin || m_delayingLoad)
             break;
         updateStates();
 
