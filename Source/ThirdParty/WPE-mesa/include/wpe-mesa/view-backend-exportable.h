@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 #include <wpe/view-backend.h>
+#include <EGL/egl.h>
 
 struct wpe_mesa_view_backend_exportable;
 
@@ -49,7 +50,7 @@ struct wpe_mesa_view_backend_exportable_client {
 };
 
 struct wpe_mesa_view_backend_exportable*
-wpe_mesa_view_backend_exportable_create(struct wpe_mesa_view_backend_exportable_client*, void*);
+wpe_mesa_view_backend_exportable_create(EGLDisplay, struct wpe_mesa_view_backend_exportable_client*, void*);
 
 void
 wpe_mesa_view_backend_exportable_destroy(struct wpe_mesa_view_backend_exportable*);

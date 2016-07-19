@@ -71,7 +71,7 @@ HeadlessViewBackend::HeadlessViewBackend()
     m_egl.destroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
     m_egl.imageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
 
-    m_exportable = wpe_mesa_view_backend_exportable_create(&s_exportableClient, this);
+    m_exportable = wpe_mesa_view_backend_exportable_create(m_egl.display, &s_exportableClient, this);
 
     m_updateSource = g_timeout_source_new(m_frameRate / 1000);
     g_source_set_callback(m_updateSource,

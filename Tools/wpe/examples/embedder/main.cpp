@@ -422,7 +422,7 @@ int main(int argc, char* argv[])
         WKPageConfigurationSetPageGroup(e.pageConfiguration, pageGroup.get());
     }
 
-    e.exportableBackend = wpe_mesa_view_backend_exportable_create(&Embedder::exportableClient, &e);
+    e.exportableBackend = wpe_mesa_view_backend_exportable_create(e.eglDisplay, &Embedder::exportableClient, &e);
     e.view = WKViewCreateWithViewBackend(wpe_mesa_view_backend_exportable_get_view_backend(e.exportableBackend), e.pageConfiguration);
     auto pageNavigationClient = createPageNavigationClient();
     WKPageSetPageNavigationClient(WKViewGetPage(e.view), &pageNavigationClient.base);

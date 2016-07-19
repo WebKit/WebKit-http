@@ -172,7 +172,7 @@ View::View(GLContext& glContext)
         WKPageConfigurationSetPageGroup(m_pageConfiguration, pageGroup.get());
     }
 
-    m_exportable = wpe_mesa_view_backend_exportable_create(&s_exportableClient, this);
+    m_exportable = wpe_mesa_view_backend_exportable_create(glContext.eglDisplay(), &s_exportableClient, this);
 
     auto* backend = wpe_mesa_view_backend_exportable_get_view_backend(m_exportable);
     m_view = WKViewCreateWithViewBackend(backend, m_pageConfiguration);
