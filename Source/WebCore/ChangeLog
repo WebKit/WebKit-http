@@ -1,3 +1,28 @@
+2016-07-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Don't associate form-associated elements with forms in other trees.
+        https://bugs.webkit.org/show_bug.cgi?id=119451
+        <rdar://problem/27382946>
+
+        Change is based on the Blink change (patch by <adamk@chromium.org>):
+        <https://chromium.googlesource.com/chromium/blink/+/0b33128be67e7845d495d5219614c02ccfe7a414>
+
+        Reviewed by Chris Dumez.
+
+        Prevent elements from being associated with forms that are not part of the same home subtree.
+        This brings us in line with the WhatWG HTML specification as of September, 2013.
+
+        Tests: fast/forms/image-disconnected-during-parse.html
+               fast/forms/input-disconnected-during-parse.html
+
+        * dom/Element.h:
+        (WebCore::Node::rootElement): Added.
+        * html/FormAssociatedElement.cpp:
+        (WebCore::FormAssociatedElement::insertedInto): If the element is associated with a form that
+        is not part of the same tree, remove the association.
+        * html/HTMLImageElement.cpp:
+        (WebCore::HTMLImageElement::insertedInto): Ditto.
+
 2016-08-30  Brent Fulgham  <bfulgham@apple.com>
 
         Use of uninitialised memory in TransformationMatrx::blend4()
