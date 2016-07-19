@@ -1011,19 +1011,57 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
 
 void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing, bool doubleLines)
 {
-    // FIXME: drawLinesForText produces incorreclty thick lines
-//    DashArray widths;
-//    widths.append(width);
-//    widths.append(0);
-//    drawLinesForText(origin, widths, printing, doubleLines);
-
     if (paintingDisabled())
         return;
 
-    FloatPoint startPoint = origin;
-    FloatPoint endPoint = origin + FloatSize(width, 0);
+    if (isRecording()) {
+        DashArray widths;
+        widths.append(width);
+        widths.append(0);
+        m_displayListRecorder->drawLinesForText(origin, widths, printing, doubleLines, strokeThickness());
+        return;
+    }
 
-    drawLine(startPoint, endPoint);
+    Color localStrokeColor(strokeColor());
+
+    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(origin, width, printing, localStrokeColor);
+    bool strokeColorChanged = strokeColor() != localStrokeColor;
+    bool strokeThicknessChanged = strokeThickness() != bounds.height();
+    bool needSavePen = strokeColorChanged || strokeThicknessChanged;
+
+    QPainter* p = platformContext();
+    const bool savedAntiAlias = p->testRenderHint(QPainter::Antialiasing);
+    p->setRenderHint(QPainter::Antialiasing, m_data->antiAliasingForRectsAndLines);
+
+    QPen oldPen(p->pen());
+    if (needSavePen) {
+        QPen newPen(oldPen);
+        if (strokeThicknessChanged)
+            newPen.setWidthF(bounds.height());
+        if (strokeColorChanged)
+            newPen.setColor(localStrokeColor);
+        p->setPen(newPen);
+    }
+
+    QPointF startPoint = bounds.location();
+    startPoint.setY(startPoint.y() + bounds.height() / 2);
+    QPointF endPoint = startPoint;
+    endPoint.setX(endPoint.x() + bounds.width());
+
+    p->drawLine(startPoint, endPoint);
+
+    if (doubleLines) {
+        // The space between double underlines is equal to the height of the underline
+        // so distance between line centers is 2x height
+        startPoint.setY(startPoint.y() + 2 * bounds.height());
+        endPoint.setY(endPoint.y() + 2 * bounds.height());
+        p->drawLine(startPoint, endPoint);
+    }
+
+    if (needSavePen)
+        p->setPen(oldPen);
+
+    p->setRenderHint(QPainter::Antialiasing, savedAntiAlias);
 }
 
 // NOTE: this code is based on GraphicsContextCG implementation
