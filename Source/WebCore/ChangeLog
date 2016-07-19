@@ -1,3 +1,25 @@
+2016-07-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Bubbles appear split for a brief moment in Messages
+        https://bugs.webkit.org/show_bug.cgi?id=159915
+        rdar://problem/27182267
+
+        Reviewed by David Hyatt.
+
+        RenderView::repaintRootContents() had a long-standing bug in WebView when the
+        view is scrolled. repaint() uses visualOverflowRect() but, for the 
+        RenderView, the visualOverflowRect() is the initial containing block
+        which is anchored at 0,0. When the view is scrolled it's clipped out and
+        calls to repaintRootContents() have no effect.
+        
+        Change repaintRootContents() to use layoutOverflowRect(). ScrollView::repaintContentRectangle()
+        will clip it to the view if necessary.
+
+        Test: fast/repaint/scrolled-view-full-repaint.html
+
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::repaintRootContents):
+
 2016-03-25  Brady Eidson  <beidson@apple.com>
 
         Soften push/replaceState frequency restrictions.
