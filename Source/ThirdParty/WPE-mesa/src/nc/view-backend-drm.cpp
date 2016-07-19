@@ -447,7 +447,7 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
         abort();
     }
 
-    m_egl.surface = eglCreateWindowSurface(m_egl.display, config, gbm.surface, nullptr);
+    m_egl.surface = eglCreateWindowSurface(m_egl.display, config, (EGLNativeWindowType)gbm.surface, nullptr);
 
     if (m_egl.surface == EGL_NO_SURFACE) {
         fprintf(stderr, "Cannot create EGL surface\n");
