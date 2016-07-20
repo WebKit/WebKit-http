@@ -368,6 +368,7 @@ set(WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
 
 set(WebKitWidgets_LIBRARIES
     PRIVATE
+        ${Qt5MultimediaWidgets_LIBRARIES}
         ${Qt5PrintSupport_LIBRARIES}
     PUBLIC
         ${Qt5Widgets_LIBRARIES}
@@ -381,9 +382,6 @@ if (USE_QT_MULTIMEDIA)
     )
     list(APPEND WebKitWidgets_SYSTEM_INCLUDE_DIRECTORIES
         ${Qt5MultimediaWidgets_INCLUDE_DIRS}
-    )
-    list(APPEND WebKitWidgets_LIBRARIES
-        ${Qt5MultimediaWidgets_LIBRARIES}
     )
 endif ()
 
