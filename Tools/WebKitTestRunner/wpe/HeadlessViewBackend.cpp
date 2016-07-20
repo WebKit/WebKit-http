@@ -67,11 +67,10 @@ HeadlessViewBackend::HeadlessViewBackend()
     if (!eglMakeCurrent(m_egl.display, EGL_NO_SURFACE, EGL_NO_SURFACE, m_egl.context))
         return;
 
-    m_egl.createImage = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImageKHR"));
     m_egl.destroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
     m_egl.imageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
 
-    m_exportable = wpe_mesa_view_backend_exportable_create(&s_exportableClient, this);
+    m_exportable = wpe_mesa_view_backend_exportable_create(m_egl.display, &s_exportableClient, this);
 
     m_updateSource = g_timeout_source_new(m_frameRate / 1000);
     g_source_set_callback(m_updateSource,
@@ -171,37 +170,10 @@ void HeadlessViewBackend::performUpdate()
 }
 
 struct wpe_mesa_view_backend_exportable_client HeadlessViewBackend::s_exportableClient = {
-    // export_dma_buf
-    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
+    // export_egl_image
+    [](void* data, struct wpe_mesa_view_backend_exportable_egl_image_data* imageData)
     {
         auto& backend = *static_cast<HeadlessViewBackend*>(data);
-
-        auto it = backend.m_imageMap.end();
-        if (imageData->fd >= 0) {
-            assert(backend.m_imageMap.find(imageData->handle) == backend.m_imageMap.end());
-
-            it = backend.m_imageMap.insert({ imageData->handle, { imageData->fd, nullptr }}).first;
-        } else {
-            assert(backend.m_imageMap.find(imageData->handle) != backend.m_imageMap.end());
-            it = backend.m_imageMap.find(imageData->handle);
-        }
-
-        assert(it != backend.m_imageMap.end());
-        uint32_t handle = it->first;
-        int32_t fd = it->second.first;
-
-        backend.makeCurrent();
-
-        EGLint attributes[] = {
-            EGL_WIDTH, static_cast<EGLint>(imageData->width),
-            EGL_HEIGHT, static_cast<EGLint>(imageData->height),
-            EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLint>(imageData->format),
-            EGL_DMA_BUF_PLANE0_FD_EXT, fd,
-            EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-            EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(imageData->stride),
-            EGL_NONE,
-        };
-        EGLImageKHR image = backend.m_egl.createImage(backend.m_egl.display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
-        backend.m_pendingImage = { imageData->handle, std::make_tuple(image, imageData->width, imageData->height) };
+        backend.m_pendingImage = { imageData->handle, std::make_tuple(imageData->image, imageData->width, imageData->height) };
     },
 };

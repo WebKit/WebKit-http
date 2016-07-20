@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Igalia S.L.
+ * Copyright (C) 2016 Garmin Ltd.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,47 +24,40 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_mesa_view_backend_exportable_h
-#define wpe_mesa_view_backend_exportable_h
+#ifndef wpe_nc_renderer_host_h
+#define wpe_nc_renderer_host_h
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <glib.h>
 
-#include <wpe/view-backend.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
+struct wl_display;
 
-struct wpe_mesa_view_backend_exportable;
+namespace NC {
 
-struct wpe_mesa_view_backend_exportable_egl_image_data {
-    uint32_t handle;
-    EGLImageKHR image;
-    int32_t width;
-    int32_t height;
+class RendererHost {
+public:
+    int createClient();
+    struct wl_display* display() const { return m_display; }
+    void initialize();
+
+    static RendererHost& singleton();
+
+private:
+    RendererHost();
+    ~RendererHost();
+
+    struct HostSource {
+        static GSourceFuncs sourceFuncs;
+
+        GSource source;
+        GPollFD pfd;
+        struct wl_display* display;
+    };
+
+    struct wl_display* m_display {nullptr};
+    GSource* m_source {nullptr};
 };
 
-struct wpe_mesa_view_backend_exportable_client {
-    void (*export_egl_image)(void*, struct wpe_mesa_view_backend_exportable_egl_image_data*);
-};
+}; // namespace NC
 
-struct wpe_mesa_view_backend_exportable*
-wpe_mesa_view_backend_exportable_create(EGLDisplay, struct wpe_mesa_view_backend_exportable_client*, void*);
+#endif // wpe_nc_renderer_host_h
 
-void
-wpe_mesa_view_backend_exportable_destroy(struct wpe_mesa_view_backend_exportable*);
-
-struct wpe_view_backend*
-wpe_mesa_view_backend_exportable_get_view_backend(struct wpe_mesa_view_backend_exportable*);
-
-void
-wpe_mesa_view_backend_exportable_dispatch_frame_complete(struct wpe_mesa_view_backend_exportable*);
-
-void
-wpe_mesa_view_backend_exportable_dispatch_release_buffer(struct wpe_mesa_view_backend_exportable*, uint32_t);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // wpe_mesa_view_backend_exportable_h

@@ -7,6 +7,7 @@ find_package(LibDRM REQUIRED)
 find_package(LibGBM REQUIRED)
 find_package(Libxkbcommon 0.4.0 REQUIRED)
 find_package(Wayland 1.6.0 REQUIRED)
+find_package(WaylandEGL REQUIRED)
 add_definitions(-DWPE_BACKEND_DRM=1)
 add_definitions(-DWPE_BACKEND_WAYLAND=1)
 add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
@@ -32,6 +33,7 @@ set(WPE_MESA_INCLUDE_DIRECTORIES
     ${LIBGBM_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
+    ${WAYLAND_EGL_INCLUDE_DIRS}
 )
 
 set(WPE_MESA_LIBRARIES
@@ -41,6 +43,7 @@ set(WPE_MESA_LIBRARIES
     ${LIBGBM_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WAYLAND_LIBRARIES}
+    ${WAYLAND_EGL_LIBRARIES}
 )
 
 set(WPE_MESA_SOURCES
@@ -48,7 +51,7 @@ set(WPE_MESA_SOURCES
 
     src/drm/view-backend-drm.cpp
 
-    src/exportable/view-backend-exportable.cpp
+    #src/exportable/view-backend-exportable.cpp
 
     src/gbm/renderer-gbm.cpp
 
@@ -57,6 +60,8 @@ set(WPE_MESA_SOURCES
     src/nc/renderer-backend-egl.cpp
     src/nc/renderer-host.cpp
     src/nc/view-backend.cpp
+    src/nc/view-backend-drm.cpp
+    src/nc/view-backend-exportable.cpp
 
     src/util/ipc.cpp
 

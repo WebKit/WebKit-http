@@ -154,7 +154,7 @@ struct wpe_view_backend_interface exportable_view_backend_interface = {
 
 __attribute__((visibility("default")))
 struct wpe_mesa_view_backend_exportable*
-wpe_mesa_view_backend_exportable_create(struct wpe_mesa_view_backend_exportable_client* client, void* client_data)
+wpe_mesa_view_backend_exportable_create(EGLDisplay, struct wpe_mesa_view_backend_exportable_client* client, void* client_data)
 {
     auto* clientBundle = new Exportable::ClientBundle{ client, client_data, nullptr };
     struct wpe_view_backend* backend = wpe_view_backend_create_with_backend_interface(&exportable_view_backend_interface, clientBundle);

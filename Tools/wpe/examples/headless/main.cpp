@@ -31,7 +31,6 @@ public:
     bool makeCurrent();
     bool readImage(EGLImageKHR, uint32_t, uint32_t, uint8_t*);
 
-    PFNEGLCREATEIMAGEKHRPROC createImage;
     PFNEGLDESTROYIMAGEKHRPROC destroyImage;
     PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DOES;
 
@@ -81,7 +80,6 @@ GLContext::GLContext()
     if (!eglMakeCurrent(m_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, m_eglContext))
         return;
 
-    createImage = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImageKHR"));
     destroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
     imageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
 
@@ -151,7 +149,6 @@ private:
     struct wpe_mesa_view_backend_exportable* m_exportable;
     WKViewRef m_view;
 
-    std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> m_imageMap;
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_pendingImage { };
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_lockedImage { };
 
@@ -172,7 +169,7 @@ View::View(GLContext& glContext)
         WKPageConfigurationSetPageGroup(m_pageConfiguration, pageGroup.get());
     }
 
-    m_exportable = wpe_mesa_view_backend_exportable_create(&s_exportableClient, this);
+    m_exportable = wpe_mesa_view_backend_exportable_create(glContext.eglDisplay(), &s_exportableClient, this);
 
     auto* backend = wpe_mesa_view_backend_exportable_get_view_backend(m_exportable);
     m_view = WKViewCreateWithViewBackend(backend, m_pageConfiguration);
@@ -235,38 +232,11 @@ void View::performUpdate()
 }
 
 struct wpe_mesa_view_backend_exportable_client View::s_exportableClient = {
-    // export_dma_buf
-    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
+    // export_egl_image
+    [](void* data, struct wpe_mesa_view_backend_exportable_egl_image_data* imageData)
     {
         auto& view = *static_cast<View*>(data);
-
-        auto it = view.m_imageMap.end();
-        if (imageData->fd >= 0) {
-            assert(view.m_imageMap.find(imageData->handle) == view.m_imageMap.end());
-
-            it = view.m_imageMap.insert({ imageData->handle, { imageData->fd, nullptr }}).first;
-        } else {
-            assert(view.m_imageMap.find(imageData->handle) != view.m_imageMap.end());
-            it = view.m_imageMap.find(imageData->handle);
-        }
-
-        assert(it != view.m_imageMap.end());
-        uint32_t handle = it->first;
-        int32_t fd = it->second.first;
-
-        view.m_glContext.makeCurrent();
-
-        EGLint attributes[] = {
-            EGL_WIDTH, static_cast<EGLint>(imageData->width),
-            EGL_HEIGHT, static_cast<EGLint>(imageData->height),
-            EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLint>(imageData->format),
-            EGL_DMA_BUF_PLANE0_FD_EXT, fd,
-            EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-            EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(imageData->stride),
-            EGL_NONE,
-        };
-        EGLImageKHR image = view.m_glContext.createImage(view.m_glContext.eglDisplay(), EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
-        view.m_pendingImage = { imageData->handle, std::make_tuple(image, imageData->width, imageData->height) };
+        view.m_pendingImage = { imageData->handle, std::make_tuple(imageData->image, imageData->width, imageData->height) };
     },
 };
 

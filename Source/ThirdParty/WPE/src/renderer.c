@@ -99,9 +99,9 @@ wpe_renderer_backend_egl_target_set_client(struct wpe_renderer_backend_egl_targe
 
 __attribute__((visibility("default")))
 void
-wpe_renderer_backend_egl_target_initialize(struct wpe_renderer_backend_egl_target* target, struct wpe_renderer_backend_egl* backend, uint32_t width, uint32_t height)
+wpe_renderer_backend_egl_target_initialize(struct wpe_renderer_backend_egl_target* target, struct wpe_renderer_backend_egl* backend, EGLDisplay display, uint32_t width, uint32_t height)
 {
-    target->interface->initialize(target->interface_data, backend->interface_data, width, height);
+    target->interface->initialize(target->interface_data, backend->interface_data, display, width, height);
 }
 
 __attribute__((visibility("default")))
@@ -158,9 +158,9 @@ wpe_renderer_backend_egl_offscreen_target_destroy(struct wpe_renderer_backend_eg
 
 __attribute__((visibility("default")))
 void
-wpe_renderer_backend_egl_offscreen_target_initialize(struct wpe_renderer_backend_egl_offscreen_target* target, struct wpe_renderer_backend_egl* backend)
+wpe_renderer_backend_egl_offscreen_target_initialize(struct wpe_renderer_backend_egl_offscreen_target* target, struct wpe_renderer_backend_egl* backend, EGLDisplay display)
 {
-    target->interface->initialize(target->interface_data, backend->interface_data);
+    target->interface->initialize(target->interface_data, backend->interface_data, display);
 }
 
 __attribute__((visibility("default")))

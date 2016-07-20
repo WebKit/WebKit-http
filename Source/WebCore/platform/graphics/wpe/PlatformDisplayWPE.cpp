@@ -73,7 +73,7 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLConte
 
     auto contextData = std::make_unique<OffscreenContextData>();
     contextData->surface = wpe_renderer_backend_egl_offscreen_target_create();
-    wpe_renderer_backend_egl_offscreen_target_initialize(contextData->surface, m_backend);
+    wpe_renderer_backend_egl_offscreen_target_initialize(contextData->surface, m_backend, m_eglDisplay);
 
     EGLNativeWindowType nativeWindow = wpe_renderer_backend_egl_offscreen_target_get_native_window(contextData->surface);
     return GLContextEGL::createContext(nativeWindow, sharingContext, WTFMove(contextData));
@@ -104,7 +104,7 @@ PlatformDisplayWPE::EGLTarget::~EGLTarget()
 void PlatformDisplayWPE::EGLTarget::initialize(const IntSize& size)
 {
     wpe_renderer_backend_egl_target_initialize(m_backend, m_display.m_backend,
-        std::max(0, size.width()), std::max(0, size.height()));
+        m_display.m_eglDisplay, std::max(0, size.width()), std::max(0, size.height()));
 }
 
 std::unique_ptr<GLContextEGL> PlatformDisplayWPE::EGLTarget::createGLContext() const

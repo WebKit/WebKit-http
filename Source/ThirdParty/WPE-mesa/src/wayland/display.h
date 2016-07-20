@@ -58,6 +58,7 @@ public:
     static Display& singleton();
 
     struct wl_display* display() const { return m_display; }
+    struct wl_registry* registry() const { return m_registry; }
 
     uint32_t serial() const { return m_seatData.serial; }
 
@@ -65,6 +66,8 @@ public:
         struct wl_compositor* compositor;
         struct wl_data_device_manager* data_device_manager;
         struct wl_drm* drm;
+        uint32_t drm_name;
+        uint32_t drm_version;
         struct wl_seat* seat;
         struct xdg_shell* xdg;
         struct ivi_application* ivi_application;
