@@ -324,7 +324,12 @@ ecm_generate_pri_file(
 )
 install(FILES ${WebKit_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
 
-set(WebKit_LIBRARY_TYPE SHARED)
+if (QT_STATIC_BUILD)
+    set(WebKit_LIBRARY_TYPE STATIC)
+else ()
+    set(WebKit_LIBRARY_TYPE SHARED)
+endif ()
+
 set(WebKit_OUTPUT_NAME Qt5WebKit)
 
 
@@ -489,7 +494,12 @@ if (WIN32)
     ADD_PRECOMPILED_HEADER("WebKitWidgetsPrefix.h" "qt/WebKitWidgetsPrefix.cpp" WebKitWidgets_SOURCES)
 endif ()
 
-set(WebKitWidgets_LIBRARY_TYPE SHARED)
+if (QT_STATIC_BUILD)
+    set(WebKitWidgets_LIBRARY_TYPE STATIC)
+else ()
+    set(WebKitWidgets_LIBRARY_TYPE SHARED)
+endif ()
+
 set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
 set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/Private)
 
