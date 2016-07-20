@@ -142,7 +142,7 @@ Path absolutePathForRenderer(RenderObject* const o)
 {
     ASSERT(o);
 
-    Vector<IntRect> rects;
+    Vector<LayoutRect> rects;
     LayoutPoint frameOffset = ownerFrameToMainFrameOffset(o);
     o->addFocusRingRects(rects, frameOffset);
 
