@@ -453,6 +453,11 @@ void WebViewImpl::webViewImplAdditionsWillDestroyView()
 {
 }
 
+void WebViewImpl::setEditableElementIsFocused(bool editableElementIsFocused)
+{
+    m_editableElementIsFocused = editableElementIsFocused;
+}
+
 } // namespace WebKit
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
 
@@ -750,7 +755,10 @@ void WebViewImpl::updateWindowAndViewFrames()
 
 void WebViewImpl::setFixedLayoutSize(CGSize fixedLayoutSize)
 {
-    m_page->setFixedLayoutSize(WebCore::expandedIntSize(WebCore::FloatSize(fixedLayoutSize)));
+    m_lastRequestedFixedLayoutSize = fixedLayoutSize;
+
+    if (supportsArbitraryLayoutModes())
+        m_page->setFixedLayoutSize(WebCore::expandedIntSize(WebCore::FloatSize(fixedLayoutSize)));
 }
 
 CGSize WebViewImpl::fixedLayoutSize() const
@@ -1001,16 +1009,20 @@ void WebViewImpl::updateSupportsArbitraryLayoutModes()
     if (!supportsArbitraryLayoutModes()) {
         WKLayoutMode oldRequestedLayoutMode = m_lastRequestedLayoutMode;
         CGFloat oldRequestedViewScale = m_lastRequestedViewScale;
+        CGSize oldRequestedFixedLayoutSize = m_lastRequestedFixedLayoutSize;
         setViewScale(1);
         setLayoutMode(kWKLayoutModeViewSize);
+        setFixedLayoutSize(CGSizeZero);
 
         // The 'last requested' parameters will have been overwritten by setting them above, but we don't
         // want this to count as a request (only changes from the client count), so reset them.
         m_lastRequestedLayoutMode = oldRequestedLayoutMode;
         m_lastRequestedViewScale = oldRequestedViewScale;
+        m_lastRequestedFixedLayoutSize = oldRequestedFixedLayoutSize;
     } else if (m_lastRequestedLayoutMode != [m_layoutStrategy layoutMode]) {
         setViewScale(m_lastRequestedViewScale);
         setLayoutMode(m_lastRequestedLayoutMode);
+        setFixedLayoutSize(m_lastRequestedFixedLayoutSize);
     }
 }
 
@@ -3004,8 +3016,8 @@ void WebViewImpl::setPromisedDataForAttachment(NSString *filename, NSString *ext
 void WebViewImpl::pasteboardChangedOwner(NSPasteboard *pasteboard)
 {
     m_promisedImage = nullptr;
-    m_promisedFilename = "";
-    m_promisedURL = "";
+    m_promisedFilename = emptyString();
+    m_promisedURL = emptyString();
 }
 
 void WebViewImpl::provideDataForPasteboard(NSPasteboard *pasteboard, NSString *type)

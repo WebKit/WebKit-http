@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -74,7 +74,7 @@ public:
     WEBCORE_EXPORT bool hasAttribute(const QualifiedName&) const;
     WEBCORE_EXPORT const AtomicString& getAttribute(const QualifiedName&) const;
     WEBCORE_EXPORT void setAttribute(const QualifiedName&, const AtomicString& value);
-    void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
+    WEBCORE_EXPORT void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
     void setSynchronizedLazyAttribute(const QualifiedName&, const AtomicString& value);
     bool removeAttribute(const QualifiedName&);
 
@@ -86,8 +86,8 @@ public:
 
     // Call this to get the value of an attribute that is known not to be the style
     // attribute or one of the SVG animatable attributes.
-    bool fastHasAttribute(const QualifiedName&) const;
-    const AtomicString& fastGetAttribute(const QualifiedName&) const;
+    bool hasAttributeWithoutSynchronization(const QualifiedName&) const;
+    const AtomicString& attributeWithoutSynchronization(const QualifiedName&) const;
 #ifndef NDEBUG
     WEBCORE_EXPORT bool fastAttributeLookupAllowed(const QualifiedName&) const;
 #endif
@@ -146,6 +146,8 @@ public:
     // FIXME: Replace uses of offsetParent in the platform with calls
     // to the render layer and merge bindingsOffsetParent and offsetParent.
     Element* bindingsOffsetParent();
+
+    const Element* rootElement() const;
 
     Element* offsetParent();
     double clientLeft();
@@ -663,13 +665,24 @@ inline Element* Node::parentElement() const
     return is<Element>(parent) ? downcast<Element>(parent) : nullptr;
 }
 
-inline bool Element::fastHasAttribute(const QualifiedName& name) const
+inline const Element* Element::rootElement() const
+{
+    if (inDocument())
+        return document().documentElement();
+
+    const Element* highest = this;
+    while (highest->parentElement())
+        highest = highest->parentElement();
+    return highest;
+}
+
+inline bool Element::hasAttributeWithoutSynchronization(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
     return elementData() && findAttributeByName(name);
 }
 
-inline const AtomicString& Element::fastGetAttribute(const QualifiedName& name) const
+inline const AtomicString& Element::attributeWithoutSynchronization(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
     if (elementData()) {
@@ -705,7 +718,7 @@ inline const AtomicString& Element::getNameAttribute() const
 
 inline void Element::setIdAttribute(const AtomicString& value)
 {
-    setAttribute(HTMLNames::idAttr, value);
+    setAttributeWithoutSynchronization(HTMLNames::idAttr, value);
 }
 
 inline const SpaceSplitString& Element::classNames() const

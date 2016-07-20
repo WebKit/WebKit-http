@@ -33,11 +33,9 @@
 #include "MathMLNames.h"
 #include "RenderMathMLBlock.h"
 #include "RenderMathMLFenced.h"
-#include "RenderMathMLFraction.h"
 #include "RenderMathMLMenclose.h"
 #include "RenderMathMLRoot.h"
 #include "RenderMathMLRow.h"
-#include "RenderMathMLScripts.h"
 #include "RenderMathMLUnderOver.h"
 
 namespace WebCore {
@@ -67,12 +65,8 @@ RenderPtr<RenderElement> MathMLInlineContainerElement::createElementRenderer(Ren
 {
     if (hasTagName(annotation_xmlTag) || hasTagName(merrorTag) || hasTagName(mphantomTag) || hasTagName(mrowTag) || hasTagName(mstyleTag))
         return createRenderer<RenderMathMLRow>(*this, WTFMove(style));
-    if (hasTagName(msubTag) || hasTagName(msupTag) || hasTagName(msubsupTag) || hasTagName(mmultiscriptsTag))
-        return createRenderer<RenderMathMLScripts>(*this, WTFMove(style));
     if (hasTagName(moverTag) || hasTagName(munderTag) || hasTagName(munderoverTag))
         return createRenderer<RenderMathMLUnderOver>(*this, WTFMove(style));
-    if (hasTagName(mfracTag))
-        return createRenderer<RenderMathMLFraction>(*this, WTFMove(style));
     if (hasTagName(msqrtTag) || hasTagName(mrootTag))
         return createRenderer<RenderMathMLRoot>(*this, WTFMove(style));
     if (hasTagName(mfencedTag))

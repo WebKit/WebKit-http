@@ -48,6 +48,7 @@
 #include "ResourceRequest.h"
 #include "ScriptExecutionContext.h"
 #include "Settings.h"
+#include "SocketProvider.h"
 #include "SocketStreamError.h"
 #include "SocketStreamHandle.h"
 #include "WebSocketChannelClient.h"
@@ -64,11 +65,12 @@ namespace WebCore {
 
 const double TCPMaximumSegmentLifetime = 2 * 60.0;
 
-WebSocketChannel::WebSocketChannel(Document& document, WebSocketChannelClient& client)
+WebSocketChannel::WebSocketChannel(Document& document, WebSocketChannelClient& client, SocketProvider& provider)
     : m_document(&document)
     , m_client(&client)
     , m_resumeTimer(*this, &WebSocketChannel::resumeTimerFired)
     , m_closingTimer(*this, &WebSocketChannel::closingTimerFired)
+    , m_socketProvider(provider)
 {
     if (Page* page = document.page())
         m_identifier = page->progress().createUniqueIdentifier();
@@ -97,7 +99,8 @@ void WebSocketChannel::connect(const URL& url, const String& protocol)
         if (NetworkingContext* networkingContext = frame->loader().networkingContext()) {
             ref();
             Page* page = frame->page();
-            m_handle = SocketStreamHandle::create(m_handshake->url(), *this, *networkingContext, (page ? page->usesEphemeralSession() : false));
+            SessionID sessionID = page ? page->sessionID() : SessionID::defaultSessionID();
+            m_handle = m_socketProvider->createSocketStreamHandle(m_handshake->url(), *this, *networkingContext, sessionID);
         }
     }
 }
@@ -106,10 +109,10 @@ String WebSocketChannel::subprotocol()
 {
     LOG(Network, "WebSocketChannel %p subprotocol()", this);
     if (!m_handshake || m_handshake->mode() != WebSocketHandshake::Connected)
-        return "";
+        return emptyString();
     String serverProtocol = m_handshake->serverWebSocketProtocol();
     if (serverProtocol.isNull())
-        return "";
+        return emptyString();
     return serverProtocol;
 }
 
@@ -117,10 +120,10 @@ String WebSocketChannel::extensions()
 {
     LOG(Network, "WebSocketChannel %p extensions()", this);
     if (!m_handshake || m_handshake->mode() != WebSocketHandshake::Connected)
-        return "";
+        return emptyString();
     String extensions = m_handshake->acceptedExtensions();
     if (extensions.isNull())
-        return "";
+        return emptyString();
     return extensions;
 }
 

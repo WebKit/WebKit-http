@@ -529,7 +529,8 @@ void CodeBlock::printCallOp(PrintStream& out, ExecState* exec, int location, con
     int argCount = (++it)->u.operand;
     int registerOffset = (++it)->u.operand;
     printLocationAndOp(out, exec, location, it, op);
-    out.printf("%s, %s, %d, %d", registerName(dst).data(), registerName(func).data(), argCount, registerOffset);
+    out.print(registerName(dst), ", ", registerName(func), ", ", argCount, ", ", registerOffset);
+    out.print(" (this at ", virtualRegisterForArgument(0, -registerOffset), ")");
     if (cacheDumpMode == DumpCaches) {
         LLIntCallLinkInfo* callLinkInfo = it[1].u.callLinkInfo;
         if (callLinkInfo->lastSeenCallee) {
@@ -609,6 +610,7 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         static_cast<unsigned long>(instructions().size()),
         static_cast<unsigned long>(instructions().size() * sizeof(Instruction)),
         m_numParameters, m_numCalleeLocals, m_numVars);
+    out.print("; scope at ", scopeRegister());
     out.printf("\n");
     
     StubInfoMap stubInfos;
@@ -1311,6 +1313,7 @@ void CodeBlock::dumpBytecode(
             int offset = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "jneq_ptr");
             out.printf("%s, %d (%p), %d(->%d)", registerName(r0).data(), pointer, m_globalObject->actualPointerFor(pointer), offset, location + offset);
+            ++it;
             break;
         }
         case op_jless: {
@@ -3447,7 +3450,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         // This accomplishes (1), and does its own book-keeping about whether it has already happened.
         if (!jitCode()->dfgCommon()->invalidate()) {
             // We've already been invalidated.
-            RELEASE_ASSERT(this != replacement());
+            RELEASE_ASSERT(this != replacement() || (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable())));
             return;
         }
     }

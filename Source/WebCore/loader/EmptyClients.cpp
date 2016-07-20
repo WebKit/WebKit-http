@@ -264,10 +264,5 @@ void EmptyEditorClient::registerUndoStep(PassRefPtr<UndoStep>)
 void EmptyEditorClient::registerRedoStep(PassRefPtr<UndoStep>)
 {
 }
-    
-RefPtr<ThreadableWebSocketChannel> EmptySocketProvider::createWebSocketChannel(ScriptExecutionContext&, WebSocketChannelClient&)
-{
-    return nullptr;
-}
 
 }

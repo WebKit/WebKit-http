@@ -172,7 +172,7 @@ RefPtr<CSSValue> PropertySetCSSStyleDeclaration::getPropertyCSSValue(const Strin
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return nullptr;
-    return cloneAndCacheForCSSOM(getPropertyCSSValueInternal(propertyID).get());
+    return cloneAndCacheForCSSOM(m_propertySet->getPropertyCSSValue(propertyID).get());
 }
 
 String PropertySetCSSStyleDeclaration::getPropertyValue(const String& propertyName)
@@ -183,18 +183,18 @@ String PropertySetCSSStyleDeclaration::getPropertyValue(const String& propertyNa
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return String();
-    return getPropertyValueInternal(propertyID);
+    return m_propertySet->getPropertyValue(propertyID);
 }
 
 String PropertySetCSSStyleDeclaration::getPropertyPriority(const String& propertyName)
 {
     if (isCustomPropertyName(propertyName))
-        return m_propertySet->customPropertyIsImportant(propertyName) ? "important" : "";
+        return m_propertySet->customPropertyIsImportant(propertyName) ? ASCIILiteral("important") : emptyString();
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return String();
-    return m_propertySet->propertyIsImportant(propertyID) ? "important" : "";
+    return m_propertySet->propertyIsImportant(propertyID) ? ASCIILiteral("important") : emptyString();
 }
 
 String PropertySetCSSStyleDeclaration::getPropertyShorthand(const String& propertyName)
@@ -226,7 +226,9 @@ void PropertySetCSSStyleDeclaration::setProperty(const String& propertyName, con
     if (!willMutate())
         return;
 
-    bool important = priority.find("important", 0, false) != notFound;
+    bool important = equalIgnoringASCIICase(priority, "important");
+    if (!important && !priority.isEmpty())
+        return;
 
     ec = 0;
     bool changed = propertyID != CSSPropertyCustom ? m_propertySet->setProperty(propertyID, value, important, contextStyleSheet()) : m_propertySet->setCustomProperty(propertyName, value, important, contextStyleSheet());
@@ -265,28 +267,12 @@ String PropertySetCSSStyleDeclaration::removeProperty(const String& propertyName
 
 RefPtr<CSSValue> PropertySetCSSStyleDeclaration::getPropertyCSSValueInternal(CSSPropertyID propertyID)
 {
-    RefPtr<CSSValue> value = m_propertySet->getPropertyCSSValue(propertyID);
-    if (value)
-        return value;
-
-    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propertyID);
-    if (prefixingVariant != propertyID)
-        return m_propertySet->getPropertyCSSValue(prefixingVariant);
-
-    return nullptr;
+    return m_propertySet->getPropertyCSSValue(propertyID);
 }
 
 String PropertySetCSSStyleDeclaration::getPropertyValueInternal(CSSPropertyID propertyID)
-{
-    String value = m_propertySet->getPropertyValue(propertyID);
-    if (!value.isEmpty())
-        return value;
-
-    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propertyID);
-    if (prefixingVariant != propertyID)
-        return m_propertySet->getPropertyValue(prefixingVariant);
-
-    return String();
+{ 
+    return m_propertySet->getPropertyValue(propertyID);
 }
 
 bool PropertySetCSSStyleDeclaration::setPropertyInternal(CSSPropertyID propertyID, const String& value, bool important, ExceptionCode& ec)

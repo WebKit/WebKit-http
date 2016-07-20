@@ -1033,6 +1033,7 @@ set(WebCore_SOURCES
     Modules/webdatabase/SQLTransactionCoordinator.cpp
     Modules/webdatabase/SQLTransactionStateMachine.cpp
 
+    Modules/websockets/ThreadableWebSocketChannel.cpp
     Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp
     Modules/websockets/WebSocket.cpp
     Modules/websockets/WebSocketChannel.cpp
@@ -1985,11 +1986,13 @@ set(WebCore_SOURCES
     loader/icon/PageURLRecord.cpp
 
     mathml/MathMLElement.cpp
+    mathml/MathMLFractionElement.cpp
     mathml/MathMLInlineContainerElement.cpp
     mathml/MathMLMathElement.cpp
     mathml/MathMLMencloseElement.cpp
     mathml/MathMLOperatorDictionary.cpp
     mathml/MathMLPaddedElement.cpp
+    mathml/MathMLScriptsElement.cpp
     mathml/MathMLSelectElement.cpp
     mathml/MathMLSpaceElement.cpp
     mathml/MathMLTextElement.cpp
@@ -2054,6 +2057,7 @@ set(WebCore_SOURCES
     page/SecurityOriginData.cpp
     page/SecurityPolicy.cpp
     page/Settings.cpp
+    page/SocketProvider.cpp
     page/SpatialNavigation.cpp
     page/SuspendableTimer.cpp
     page/TextIndicator.cpp
@@ -3710,6 +3714,7 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
 
 set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/fetch/FetchHeaders.js
+    ${WEBCORE_DIR}/Modules/fetch/FetchInternals.js
     ${WEBCORE_DIR}/Modules/fetch/FetchResponse.js
     ${WEBCORE_DIR}/Modules/mediastream/MediaDevices.js
     ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js

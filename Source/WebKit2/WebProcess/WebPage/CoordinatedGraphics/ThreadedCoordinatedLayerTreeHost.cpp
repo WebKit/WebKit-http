@@ -58,6 +58,12 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage& webP
 {
 }
 
+void ThreadedCoordinatedLayerTreeHost::invalidate()
+{
+    m_compositor->invalidate();
+    CoordinatedLayerTreeHost::invalidate();
+}
+
 void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const WebCore::IntRect& rect)
 {
     m_compositor->scrollTo(rect.location());

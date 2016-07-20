@@ -1,3 +1,232 @@
+2016-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling of HTMLMediaElement.mediaGroup
+        https://bugs.webkit.org/show_bug.cgi?id=159974
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2016-07-19  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling of several HTMLDocument attributes
+        https://bugs.webkit.org/show_bug.cgi?id=159923
+
+        Reviewed by Benjamin Poulain.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-sections-expected.txt:
+
+2016-07-19  Chris Dumez  <cdumez@apple.com>
+
+        Document.createElementNS() / createAttributeNS() parameters should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=159938
+
+        Reviewed by Benjamin Poulain.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElementNS-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-19  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling of HTMLScriptElement.text attribute
+        https://bugs.webkit.org/show_bug.cgi?id=159943
+
+        Reviewed by Benjamin Poulain.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-text-expected.txt:
+
+2016-07-19  Youenn Fablet  <youenn@apple.com>
+
+        [Streams API] ReadableStreamController methods should throw if its stream is not readable
+        https://bugs.webkit.org/show_bug.cgi?id=159871
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * web-platform-tests/streams/readable-streams/bad-underlying-sources.https-expected.txt:
+
+2016-07-19  Youenn Fablet  <youennf@gmail.com>
+
+        Refresh WPT tests up to 98ec1ad
+        https://bugs.webkit.org/show_bug.cgi?id=159879
+
+        Reviewed by Alex Christensen.
+
+        This refresh concerns fetch API tests with a number of test fixes.
+        Rebasing both window and worker expectations.
+
+        * resources/TestRepositories:
+        * web-platform-tests/fetch/api/basic/mode-same-origin-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker.html:
+        * web-platform-tests/fetch/api/basic/mode-same-origin.html:
+        * web-platform-tests/fetch/api/basic/mode-same-origin.js:
+        * web-platform-tests/fetch/api/cors/cors-basic-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-basic.html:
+        * web-platform-tests/fetch/api/cors/cors-basic.js:
+        (cors):
+        * web-platform-tests/fetch/api/cors/cors-cookies-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-cookies.html:
+        * web-platform-tests/fetch/api/cors/cors-cookies.js:
+        (corsCookies):
+        * web-platform-tests/fetch/api/cors/cors-no-preflight-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-no-preflight.html:
+        * web-platform-tests/fetch/api/cors/cors-no-preflight.js:
+        (corsNoPreflight):
+        * web-platform-tests/fetch/api/cors/cors-origin-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-origin.html:
+        * web-platform-tests/fetch/api/cors/cors-origin.js:
+        (corsOrigin):
+        * web-platform-tests/fetch/api/cors/cors-preflight-redirect-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight-redirect.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight-redirect.js:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer.js:
+        (corsPreflightReferrer):
+        * web-platform-tests/fetch/api/cors/cors-preflight-status-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight-status.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight-status.js:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials.html:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials.js:
+        * web-platform-tests/fetch/api/cors/cors-redirect-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-redirect.html:
+        * web-platform-tests/fetch/api/cors/cors-redirect.js:
+        * web-platform-tests/fetch/api/request/request-cache.html:
+        * web-platform-tests/fetch/api/request/resources/w3c-import.log:
+        * web-platform-tests/fetch/api/resources/get-host-info.sub.js: Added.
+        (get_host_info):
+        * web-platform-tests/fetch/api/resources/utils.js:
+        (validateBufferFromString):
+        * web-platform-tests/fetch/api/resources/w3c-import.log:
+        * web-platform-tests/fetch/api/response/response-clone-expected.txt:
+        * web-platform-tests/fetch/api/response/response-clone.html:
+        * web-platform-tests/fetch/api/response/response-consume-stream-expected.txt:
+
+2016-07-19  Youenn Fablet  <youenn@apple.com>
+
+        [Streams API] Make ReadableStream properties not enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=159868
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/streams/readable-streams/general.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/readable-stream-reader.https-expected.txt:
+
+2016-07-18  Chris Dumez  <cdumez@apple.com>
+
+        input.formEnctype / formMethod and button.formEnctype / formMethod / type should treat null as "null"
+        https://bugs.webkit.org/show_bug.cgi?id=159908
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+
+2016-07-18  Chris Dumez  <cdumez@apple.com>
+
+        DocType's publicId / systemId should not be nullable
+        https://bugs.webkit.org/show_bug.cgi?id=159901
+
+        Reviewed by Benjamin Poulain.
+
+        Rebaseline now that more checks regarding DocumentType serialization
+        are passing.
+
+        * web-platform-tests/domparsing/xml-serialization-expected.txt:
+
+2016-07-18  Chris Dumez  <cdumez@apple.com>
+
+        The 2 first parameters to addEventListener() / removeEventListener() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=158008
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-18  Youenn Fablet  <youenn@apple.com>
+
+        [Streams API] ReadableStream should throw a RangeError in case of NaN highWaterMark
+        https://bugs.webkit.org/show_bug.cgi?id=159870
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * web-platform-tests/streams/readable-streams/bad-strategies.https-expected.txt:
+
+2016-07-17  Brady Eidson  <beidson@apple.com>
+
+        Update DOMCoreException to use the description in toString().
+        https://bugs.webkit.org/show_bug.cgi?id=159857
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic-setrequestheader-and-arguments-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-non-same-origin.sub-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-bogus-name-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-bogus-value-expected.txt:
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-sync-block-defer-scripts-expected.txt:
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-sync-block-scripts-expected.txt:
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-sync-not-hang-scriptloader-expected.txt:
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-worker-synconworker-expected.txt:
+        * web-platform-tests/dom/events/ProgressEvent-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElementNS-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createEvent-expected.txt:
+        * web-platform-tests/dom/nodes/Element-closest-expected.txt:
+        * web-platform-tests/dom/nodes/Element-matches-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-xht-expected.txt:
+        * web-platform-tests/dom/nodes/insert-adjacent-expected.txt:
+        * web-platform-tests/domparsing/createContextualFragment-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/volume_nonfinite-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/month-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/range-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/time-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-meter-element/meter-expected.txt:
+
+2016-07-15  Brady Eidson  <beidson@apple.com>
+
+        Change toString() behavior for exceptions constructed with "createWithDescriptionAsMessage".
+        https://bugs.webkit.org/show_bug.cgi?id=159839
+
+        Reviewed by Alex Christensen.
+
+        * IndexedDB-private-browsing/idbindex_get7-expected.txt:
+        * IndexedDB-private-browsing/idbindex_getKey7-expected.txt:
+        * IndexedDB-private-browsing/idbindex_openCursor2-expected.txt:
+        * IndexedDB-private-browsing/idbindex_openKeyCursor3-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_get7-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_getKey7-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_openCursor2-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_openKeyCursor3-expected.txt:
+
+2016-07-14  Youenn Fablet  <youenn@apple.com>
+
+        DOMIterators should be assigned a correct prototype
+        https://bugs.webkit.org/show_bug.cgi?id=159115
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/fetch/api/headers/headers-basic.html: Updating test (changes to be upstreamed to w3c wpt repo)
+
 2016-07-14  Youenn Fablet  <youenn@apple.com>
 
         [Fetch API] Request and Response url getter should use URL serialization

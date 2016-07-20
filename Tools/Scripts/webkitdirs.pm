@@ -1576,7 +1576,7 @@ sub windowsOutputDir()
 sub fontExists($)
 {
     my $font = shift;
-    my $cmd = "reg query \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts\\" . $font ."\" 2>&1";
+    my $cmd = "reg query \"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts\" /v \"$font\" 2>&1";
     my $val = `$cmd`;
     return $? == 0;
 }
@@ -1599,8 +1599,9 @@ sub checkInstalledTools()
         }
     }
 
-    # MathML requires fonts that do not ship with Windows (at least through Windows 8). Warn the user if they are missing
-    my @fonts = qw(STIXGeneral-Regular MathJax_Main-Regular);
+    # MathML requires fonts that may not ship with Windows.
+    # Warn the user if they are missing.
+    my @fonts = ('Cambria & Cambria Math (TrueType)', 'LatinModernMath-Regular (TrueType)', 'STIXMath-Regular (TrueType)');
     my @missing = ();
     foreach my $font (@fonts) {
         push @missing, $font if not fontExists($font);
@@ -1608,11 +1609,11 @@ sub checkInstalledTools()
 
     if (scalar @missing > 0) {
         print "*************************************************************\n";
-        print "Mathematical fonts, such as STIX and MathJax, are needed to\n";
+        print "Mathematical fonts, such as Latin Modern Math are needed to\n";
         print "use the MathML feature.  You do not appear to have these fonts\n";
         print "on your system.\n\n";
         print "You can download a suitable set of fonts from the following URL:\n";
-        print "https://developer.mozilla.org/Mozilla/MathML_Projects/Fonts\n";
+        print "https://trac.webkit.org/wiki/MathML/Fonts\n";
         print "*************************************************************\n";
     }
 

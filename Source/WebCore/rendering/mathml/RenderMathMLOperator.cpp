@@ -70,7 +70,7 @@ RenderMathMLOperator::RenderMathMLOperator(Document& document, RenderStyle&& sty
 
 void RenderMathMLOperator::setOperatorFlagFromAttribute(MathMLOperatorDictionary::Flag flag, const QualifiedName& name)
 {
-    setOperatorFlagFromAttributeValue(flag, element().fastGetAttribute(name));
+    setOperatorFlagFromAttributeValue(flag, element().attributeWithoutSynchronization(name));
 }
 
 void RenderMathMLOperator::setOperatorFlagFromAttributeValue(MathMLOperatorDictionary::Flag flag, const AtomicString& attributeValue)
@@ -105,7 +105,7 @@ void RenderMathMLOperator::setOperatorProperties()
     // We determine the form of the operator.
     bool explicitForm = true;
     if (!isAnonymous()) {
-        const AtomicString& form = element().fastGetAttribute(MathMLNames::formAttr);
+        const AtomicString& form = element().attributeWithoutSynchronization(MathMLNames::formAttr);
         if (form == "prefix")
             m_operatorForm = MathMLOperatorDictionary::Prefix;
         else if (form == "infix")
@@ -161,11 +161,11 @@ void RenderMathMLOperator::setOperatorProperties()
         setOperatorFlagFromAttribute(MathMLOperatorDictionary::MovableLimits, MathMLNames::movablelimitsAttr);
         setOperatorFlagFromAttribute(MathMLOperatorDictionary::Accent, MathMLNames::accentAttr);
 
-        parseMathMLLength(element().fastGetAttribute(MathMLNames::lspaceAttr), m_leadingSpace, &style(), false); // FIXME: Negative leading space must be implemented (https://bugs.webkit.org/show_bug.cgi?id=124830).
-        parseMathMLLength(element().fastGetAttribute(MathMLNames::rspaceAttr), m_trailingSpace, &style(), false); // FIXME: Negative trailing space must be implemented (https://bugs.webkit.org/show_bug.cgi?id=124830).
+        parseMathMLLength(element().attributeWithoutSynchronization(MathMLNames::lspaceAttr), m_leadingSpace, &style(), false); // FIXME: Negative leading space must be implemented (https://bugs.webkit.org/show_bug.cgi?id=124830).
+        parseMathMLLength(element().attributeWithoutSynchronization(MathMLNames::rspaceAttr), m_trailingSpace, &style(), false); // FIXME: Negative trailing space must be implemented (https://bugs.webkit.org/show_bug.cgi?id=124830).
 
-        parseMathMLLength(element().fastGetAttribute(MathMLNames::minsizeAttr), m_minSize, &style(), false);
-        const AtomicString& maxsize = element().fastGetAttribute(MathMLNames::maxsizeAttr);
+        parseMathMLLength(element().attributeWithoutSynchronization(MathMLNames::minsizeAttr), m_minSize, &style(), false);
+        const AtomicString& maxsize = element().attributeWithoutSynchronization(MathMLNames::maxsizeAttr);
         if (maxsize != "infinity")
             parseMathMLLength(maxsize, m_maxSize, &style(), false);
     }
@@ -203,7 +203,7 @@ void RenderMathMLOperator::stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit 
     m_stretchHeightAboveBaseline *= aspect;
     m_stretchDepthBelowBaseline *= aspect;
 
-    m_mathOperator.stretchTo(style(), m_stretchHeightAboveBaseline, m_stretchDepthBelowBaseline);
+    m_mathOperator.stretchTo(style(), m_stretchHeightAboveBaseline + m_stretchDepthBelowBaseline);
 
     setLogicalHeight(m_mathOperator.ascent() + m_mathOperator.descent());
 }
@@ -246,7 +246,7 @@ void RenderMathMLOperator::computePreferredLogicalWidths()
         if (isInvisibleOperator()) {
             // In some fonts, glyphs for invisible operators have nonzero width. Consequently, we subtract that width here to avoid wide gaps.
             GlyphData data = style().fontCascade().glyphDataForCharacter(m_textContent, false);
-            float glyphWidth = data.isValid() ? data.font->widthForGlyph(data.glyph) : 0;
+            float glyphWidth = data.font ? data.font->widthForGlyph(data.glyph) : 0;
             ASSERT(glyphWidth <= preferredWidth);
             preferredWidth -= glyphWidth;
         }
@@ -361,10 +361,18 @@ void RenderMathMLOperator::styleDidChange(StyleDifference diff, const RenderStyl
     updateOperatorProperties();
 }
 
+LayoutUnit RenderMathMLOperator::verticalStretchedOperatorShift() const
+{
+    if (!m_isVertical || !stretchSize())
+        return 0;
+
+    return (m_stretchDepthBelowBaseline - m_stretchHeightAboveBaseline - m_mathOperator.descent() + m_mathOperator.ascent()) / 2;
+}
+
 Optional<int> RenderMathMLOperator::firstLineBaseline() const
 {
     if (useMathOperator())
-        return Optional<int>(std::lround(static_cast<float>(m_mathOperator.ascent())));
+        return Optional<int>(std::lround(static_cast<float>(m_mathOperator.ascent() - verticalStretchedOperatorShift())));
     return RenderMathMLToken::firstLineBaseline();
 }
 

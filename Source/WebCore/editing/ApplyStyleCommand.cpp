@@ -73,7 +73,7 @@ bool isLegacyAppleStyleSpan(const Node* node)
     if (!is<HTMLSpanElement>(node))
         return false;
 
-    return downcast<HTMLSpanElement>(*node).fastGetAttribute(classAttr) == styleSpanClassString();
+    return downcast<HTMLSpanElement>(*node).attributeWithoutSynchronization(classAttr) == styleSpanClassString();
 }
 
 static bool hasNoAttributeOrOnlyStyleAttribute(const StyledElement* element, ShouldStyleAttributeBeEmpty shouldStyleAttributeBeEmpty)
@@ -82,7 +82,7 @@ static bool hasNoAttributeOrOnlyStyleAttribute(const StyledElement* element, Sho
         return true;
 
     unsigned matchedAttributes = 0;
-    if (element->getAttribute(classAttr) == styleSpanClassString())
+    if (element->attributeWithoutSynchronization(classAttr) == styleSpanClassString())
         matchedAttributes++;
     if (element->hasAttribute(styleAttr) && (shouldStyleAttributeBeEmpty == AllowNonEmptyStyleAttribute
         || !element->inlineStyle() || element->inlineStyle()->isEmpty()))
@@ -114,7 +114,7 @@ bool isEmptyFontTag(const Element* element, ShouldStyleAttributeBeEmpty shouldSt
     return hasNoAttributeOrOnlyStyleAttribute(downcast<HTMLFontElement>(element), shouldStyleAttributeBeEmpty);
 }
 
-static RefPtr<Element> createFontElement(Document& document)
+static RefPtr<HTMLElement> createFontElement(Document& document)
 {
     return createHTMLElement(document, fontTag);
 }
@@ -530,7 +530,7 @@ void ApplyStyleCommand::removeEmbeddingUpToEnclosingBlock(Node* node, Node* unsp
         // and all matching style rules in order to determine how to best set the unicode-bidi property to 'normal'.
         // For now, it assumes that if the 'dir' attribute is present, then removing it will suffice, and
         // otherwise it sets the property in the inline style declaration.
-        if (element.fastHasAttribute(dirAttr)) {
+        if (element.hasAttributeWithoutSynchronization(dirAttr)) {
             // FIXME: If this is a BDO element, we should probably just remove it if it has no
             // other attributes, like we (should) do with B and I elements.
             removeNodeAttribute(&element, dirAttr);
@@ -1461,13 +1461,13 @@ void ApplyStyleCommand::applyInlineStyleChange(PassRefPtr<Node> passedStart, Pas
             if (styleChange.applyFontSize())
                 setNodeAttribute(fontContainer, sizeAttr, styleChange.fontSize());
         } else {
-            RefPtr<Element> fontElement = createFontElement(document());
+            auto fontElement = createFontElement(document());
             if (styleChange.applyFontColor())
-                fontElement->setAttribute(colorAttr, styleChange.fontColor());
+                fontElement->setAttributeWithoutSynchronization(colorAttr, styleChange.fontColor());
             if (styleChange.applyFontFace())
-                fontElement->setAttribute(faceAttr, styleChange.fontFace());
+                fontElement->setAttributeWithoutSynchronization(faceAttr, styleChange.fontFace());
             if (styleChange.applyFontSize())
-                fontElement->setAttribute(sizeAttr, styleChange.fontSize());
+                fontElement->setAttributeWithoutSynchronization(sizeAttr, styleChange.fontSize());
             surroundNodeRangeWithElement(startNode, endNode, fontElement.get());
         }
     }

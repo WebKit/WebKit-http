@@ -1722,9 +1722,6 @@ sub GetFunctionLength
 {
     my $function = shift;
 
-    # FIXME: EventTarget.addEventListener() / removeEventListener() currently specifies all the parameters as optional.
-    return 2 if $function->signature->name eq "addEventListener" || $function->signature->name eq "removeEventListener";
-
     my $length = 0;
     foreach my $parameter (@{$function->parameters}) {
         # Abort as soon as we find the first optional parameter as no mandatory
@@ -4453,10 +4450,8 @@ sub JSValueToNative
     if ($type eq "DOMString") {
         return ("AtomicString($value.toString(state)->toExistingAtomicString(state))", 1) if $signature->extendedAttributes->{"RequiresExistingAtomicString"};
 
-        if ($signature->extendedAttributes->{"TreatNullAs"}) {
-            return ("valueToStringTreatingNullAsEmptyString(state, $value)", 1) if $signature->extendedAttributes->{"TreatNullAs"} eq "EmptyString";
-            return ("valueToStringWithNullCheck(state, $value)", 1) if $signature->extendedAttributes->{"TreatNullAs"} eq "LegacyNullString";
-        }
+        my $treatNullAs = $signature->extendedAttributes->{"TreatNullAs"};
+        return ("valueToStringTreatingNullAsEmptyString(state, $value)", 1) if $treatNullAs && $treatNullAs eq "EmptyString";
         return ("valueToStringWithUndefinedOrNullCheck(state, $value)", 1) if $signature->isNullable;
         return ("$value.toString(state)->toAtomicString(state)", 1) if $signature->extendedAttributes->{"AtomicString"};
         return ("$value.toWTFString(state)", 1);

@@ -71,16 +71,22 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
 
 ThreadedCompositor::~ThreadedCompositor()
 {
+    ASSERT(!m_client);
+}
+
+void ThreadedCompositor::invalidate()
+{
+    terminateCompositingThread();
+    m_client = nullptr;
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     m_displayRefreshMonitor->invalidate();
 #endif
-    terminateCompositingThread();
 }
 
 void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
     m_compositingRunLoop->stopUpdates();
-    m_compositingRunLoop->performTaskSync([this, protectedThis = Ref<ThreadedCompositor>(*this), handle] {
+    m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this), handle] {
         m_scene->setActive(!!handle);
 
         // A new native handle can't be set without destroying the previous one first if any.
@@ -93,7 +99,7 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
 
 void ThreadedCompositor::setDeviceScaleFactor(float scale)
 {
-    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), scale] {
+    m_compositingRunLoop->performTask([this, protectedThis = makeRef(*this), scale] {
         m_deviceScaleFactor = scale;
         scheduleDisplayImmediately();
     });
@@ -101,14 +107,14 @@ void ThreadedCompositor::setDeviceScaleFactor(float scale)
 
 void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
-    m_compositingRunLoop->performTaskSync([this, protectedThis = Ref<ThreadedCompositor>(*this), size] {
+    m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this), size] {
         m_viewportController->didChangeViewportSize(size);
     });
 }
 
 void ThreadedCompositor::didChangeViewportAttribute(const ViewportAttributes& attr)
 {
-    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), attr] {
+    m_compositingRunLoop->performTask([this, protectedThis = makeRef(*this), attr] {
         m_viewportController->didChangeViewportAttribute(attr);
     });
 }
@@ -118,7 +124,7 @@ void ThreadedCompositor::didChangeContentsSize(const IntSize& size)
     // FIXME: This seems a bit wrong, but it works. Needs review and investigation.
     m_viewportSize = size;
 
-    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), size] {
+    m_compositingRunLoop->performTask([this, protectedThis = makeRef(*this), size] {
 #if PLATFORM(WPE)
         // FIXME: Ditto.
         if (m_target)
@@ -130,14 +136,14 @@ void ThreadedCompositor::didChangeContentsSize(const IntSize& size)
 
 void ThreadedCompositor::scrollTo(const IntPoint& position)
 {
-    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), position] {
+    m_compositingRunLoop->performTask([this, protectedThis = makeRef(*this), position] {
         m_viewportController->scrollTo(position);
     });
 }
 
 void ThreadedCompositor::scrollBy(const IntSize& delta)
 {
-    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), delta] {
+    m_compositingRunLoop->performTask([this, protectedThis = makeRef(*this), delta] {
         m_viewportController->scrollBy(delta);
     });
 }
@@ -200,8 +206,9 @@ void ThreadedCompositor::scheduleDisplayImmediately()
 
 void ThreadedCompositor::didChangeVisibleRect()
 {
-    RunLoop::main().dispatch([this, protectedThis = Ref<ThreadedCompositor>(*this), visibleRect = m_viewportController->visibleContentsRect(), scale = m_viewportController->pageScaleFactor()] {
-        m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
+    RunLoop::main().dispatch([this, protectedThis = makeRef(*this), visibleRect = m_viewportController->visibleContentsRect(), scale = m_viewportController->pageScaleFactor()] {
+        if (m_client)
+            m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
     scheduleDisplayImmediately();

@@ -1544,7 +1544,7 @@ CSSParser::SourceSize::SourceSize(MediaQueryExpression&& expression, Ref<CSSValu
 {
 }
 
-CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
+Optional<CSSParser::SourceSize> CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
 {
     RefPtr<CSSValue> value;
     if (isCalculation(parserValue)) {
@@ -1552,12 +1552,11 @@ CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, C
         if (args && args->size())
             value = CSSCalcValue::create(parserValue.function->name, *args, CalculationRangeNonNegative);
     }
-    if (!value) {
+    if (!value)
         value = parserValue.createCSSValue();
-        if (!value)
-            value = CSSPrimitiveValue::create(0, CSSPrimitiveValue::CSS_UNKNOWN);
-    }
     destroy(parserValue);
+    if (!value)
+        return Nullopt;
     // FIXME: Calling the constructor explicitly here to work around an MSVC bug.
     // For other compilers, we did not need to define the constructors and we could use aggregate initialization syntax.
     return SourceSize(WTFMove(expression), value.releaseNonNull());
@@ -1604,6 +1603,23 @@ Ref<ImmutableStyleProperties> CSSParser::createStyleProperties()
         results.remove(0, unusedEntries);
 
     return ImmutableStyleProperties::create(results.data(), results.size(), m_context.mode);
+}
+
+void CSSParser::addPropertyWithPrefixingVariant(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
+{
+    addProperty(propId, value.copyRef(), important, implicit);
+
+    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propId);
+    if (prefixingVariant == propId)
+        return;
+
+    if (m_currentShorthand) {
+        // We can't use ShorthandScope here as we can already be inside one (e.g we are parsing CSSTransition).
+        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
+        addProperty(prefixingVariant, WTFMove(value), important, implicit);
+        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
+    } else
+        addProperty(prefixingVariant, WTFMove(value), important, implicit);
 }
 
 void CSSParser::addProperty(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
@@ -1879,10 +1895,12 @@ RefPtr<CSSValue> CSSParser::parseVariableDependentValue(CSSPropertyID propID, co
     return nullptr;
 }
 
+#if ENABLE(CSS_IMAGE_SET)
 static bool isImageSetFunctionValue(const CSSParserValue& value)
 {
     return value.unit == CSSParserValue::Function && (equalLettersIgnoringASCIICase(value.function->name, "image-set(") || equalLettersIgnoringASCIICase(value.function->name, "-webkit-image-set("));
 }
+#endif
 
 bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 {
@@ -2721,7 +2739,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         RefPtr<CSSValue> val;
         AnimationParseContext context;
         if (parseAnimationProperty(propId, val, context)) {
-            addProperty(propId, WTFMove(val), important);
+            addPropertyWithPrefixingVariant(propId, WTFMove(val), important);
             return true;
         }
         return false;
@@ -3815,39 +3833,16 @@ bool CSSParser::parseAnimationShorthand(CSSPropertyID propId, bool important)
             return false;
     }
 
-    // Fill in any remaining properties with the initial value.
     for (i = 0; i < numProperties; ++i) {
+        // If we didn't find the property, set an intial value.
         if (!parsedProperty[i])
             addAnimationValue(values[i], cssValuePool.createImplicitInitialValue());
-    }
 
-    // Now add all of the properties we found.
-    // In this case we have to explicitly set the variant form as well,
-    // to make sure that a shorthand clears all existing prefixed and
-    // unprefixed values.
-    for (i = 0; i < numProperties; ++i)
-        addPropertyWithPrefixingVariant(shorthand.properties()[i], WTFMove(values[i]), important);
+        addProperty(shorthand.properties()[i], WTFMove(values[i]), important);
+    }
 
     return true;
 }
-
-void CSSParser::addPropertyWithPrefixingVariant(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
-{
-    addProperty(propId, value.copyRef(), important, implicit);
-
-    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propId);
-    if (prefixingVariant == propId)
-        return;
-
-    if (m_currentShorthand) {
-        // We can't use ShorthandScope here as we can already be inside one (e.g we are parsing CSSTransition).
-        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
-        addProperty(prefixingVariant, WTFMove(value), important, implicit);
-        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
-    } else
-        addProperty(prefixingVariant, WTFMove(value), important, implicit);
-}
-
 
 RefPtr<CSSPrimitiveValue> CSSParser::parseColumnWidth()
 {
@@ -3976,9 +3971,6 @@ bool CSSParser::parseTransitionShorthand(CSSPropertyID propId, bool important)
     }
 
     // Now add all of the properties we found.
-    // In this case we have to explicitly set the variant form as well,
-    // to make sure that a shorthand clears all existing prefixed and
-    // unprefixed values.
     for (i = 0; i < numProperties; ++i)
         addPropertyWithPrefixingVariant(shorthand.properties()[i], WTFMove(values[i]), important);
 

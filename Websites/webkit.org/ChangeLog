@@ -1,3 +1,53 @@
+2016-07-19  Jon Davis  <jond@apple.com>
+
+        Adjust margins for first-line floating elements and add preset floating video sizing
+        https://bugs.webkit.org/show_bug.cgi?id=159898
+
+        Reviewed by Benjamin Poulain.
+
+        * wp-content/themes/webkit/style.css:
+        (article video.alignright):
+        (article .alignright:first-child):
+        (@media only screen and (max-width: 690px)):
+            (article .alignright:first-child):
+        (@media only screen and (max-width: 415px)):
+            (article video.alignright):
+            (article .alignright:first-child):
+
+2016-07-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Implement table-based switches in B3/Air
+        https://bugs.webkit.org/show_bug.cgi?id=151141
+
+        Reviewed by Benjamin Poulain.
+        
+        Update documentation to reflect Patchpoint's new powers.
+
+        * docs/b3/intermediate-representation.html:
+
+2016-07-15  Jon Davis  <jond@apple.com>
+
+        Fixed content overflow and missing build information behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=159820
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/nightly-start.php:
+
+2016-07-14  Jon Davis  <jond@apple.com>
+
+        Improved WebKit Nightly start page design.
+        https://bugs.webkit.org/show_bug.cgi?id=159780
+
+        Reviewed by Timothy Hatcher.
+
+        Added better 404 handling, improved presentation of the 
+        start page and new Apache rewrites for the P1 bug list.
+
+        * .htaccess:
+        * wp-content/themes/webkit/functions.php:
+        * wp-content/themes/webkit/nightly-start.php:
+
 2016-07-01  Jon Davis  <jond@apple.com>
 
         Added a colorful new image and fixed the Open Graph attribute.

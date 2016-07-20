@@ -169,6 +169,16 @@ void WebChromeClient::unfocus()
 }
 
 #if PLATFORM(COCOA)
+void WebChromeClient::elementDidFocus(const WebCore::Node* node)
+{
+    m_page->elementDidFocus(const_cast<WebCore::Node*>(node));
+}
+
+void WebChromeClient::elementDidBlur(const WebCore::Node* node)
+{
+    m_page->elementDidBlur(const_cast<WebCore::Node*>(node));
+}
+
 void WebChromeClient::makeFirstResponder()
 {
     m_page->send(Messages::WebPageProxy::MakeFirstResponder());
@@ -214,6 +224,8 @@ Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& reques
         frame->document()->webkitCancelFullScreen();
 #endif
 
+    auto& webProcess = WebProcess::singleton();
+
     WebFrame* webFrame = WebFrame::fromCoreFrame(*frame);
 
     NavigationActionData navigationActionData;
@@ -221,14 +233,13 @@ Page* WebChromeClient::createWindow(Frame* frame, const FrameLoadRequest& reques
     navigationActionData.modifiers = InjectedBundleNavigationAction::modifiersForNavigationAction(navigationAction);
     navigationActionData.mouseButton = InjectedBundleNavigationAction::mouseButtonForNavigationAction(navigationAction);
     navigationActionData.syntheticClickType = InjectedBundleNavigationAction::syntheticClickTypeForNavigationAction(navigationAction);
-    navigationActionData.isProcessingUserGesture = navigationAction.processingUserGesture();
+    navigationActionData.userGestureTokenIdentifier = webProcess.userGestureTokenIdentifier(navigationAction.userGestureToken());
     navigationActionData.canHandleRequest = m_page->canHandleRequest(request.resourceRequest());
     navigationActionData.shouldOpenExternalURLsPolicy = navigationAction.shouldOpenExternalURLsPolicy();
     navigationActionData.downloadAttribute = navigationAction.downloadAttribute();
 
     uint64_t newPageID = 0;
     WebPageCreationParameters parameters;
-    auto& webProcess = WebProcess::singleton();
     if (!webProcess.parentProcessConnection()->sendSync(Messages::WebPageProxy::CreateNewPage(webFrame->frameID(), SecurityOriginData::fromFrame(frame), request.resourceRequest(), windowFeatures, navigationActionData), Messages::WebPageProxy::CreateNewPage::Reply(newPageID, parameters), m_page->pageID()))
         return nullptr;
 

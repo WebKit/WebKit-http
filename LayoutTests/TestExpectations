@@ -364,7 +364,8 @@ webkit.org/b/159712 imported/w3c/web-platform-tests/html/semantics/document-meta
 webkit.org/b/159712 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping.html [ Failure Pass ]
 webkit.org/b/159712 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping.html [ Failure Pass ]
 webkit.org/b/159712 imported/w3c/web-platform-tests/XMLHttpRequest/open-url-multi-window-6.htm [ Pass Timeout ]
-webkit.org/b/159712 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Crash Pass ]
+
+webkit.org/b/159724 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure Crash Pass ]
 
 # New W3C ref tests that are failing.
 webkit.org/b/148856 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ ImageOnlyFailure ]
@@ -973,6 +974,9 @@ fast/scrolling/rtl-scrollbars-listbox-select-right.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-listbox-simple.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-listbox.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-positioned-intersect-scrollbars.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement.html [ Skip ]
+fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement-2.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html [ ImageOnlyFailure ]
 
 # <a download> does not support Blobs
 webkit.org/b/156099 http/tests/security/anchor-download-allow-blob.html [ Failure ]
@@ -999,6 +1003,11 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Sk
 [ Debug ] js/regress/misc-bugs-847389-jpeg2000.html [ Skip ]
 
 webkit.org/b/159678 http/tests/preload/single_download_preload_runner.html [ Timeout ]
+
+# This test is way too slow for debug.
+[ Debug ] workers/bomb.html [ Skip ]
+# This test is just way too slow.
+workers/bomb-with-v8.html [ Skip ]
 
 # WebCryptoAPI tests, skip for unimplemented features. webkit.org/b/159638
 imported/w3c/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.html [ Skip ]
@@ -1030,3 +1039,30 @@ imported/w3c/WebCryptoAPI/generateKey/test_successes_RSA-PSS.html [ Skip ]
 imported/w3c/WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html [ Skip ]
 imported/w3c/WebCryptoAPI/generateKey/test_successes.html [ Skip ]
 imported/w3c/WebCryptoAPI/idlharness.html [ Skip ]
+
+editing/deleting/delete-emoji.html [ Slow ]
+
+# New emoji requires system support.
+webkit.org/b/159755 fast/text/emoji-num-glyphs.html [ Failure ]
+webkit.org/b/159755 fast/text/emoji-gender-2-3.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-2-4.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-2-5.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-2-6.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-2-7.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-2-8.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-2-9.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-3.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-4.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-5.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-6.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-8.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-9.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-fe0f-3.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-fe0f-4.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-fe0f-5.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-fe0f-6.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-fe0f-7.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-fe0f-8.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender-fe0f-9.html [ ImageOnlyFailure ]
+webkit.org/b/159755 fast/text/emoji-gender.html [ ImageOnlyFailure ]
+

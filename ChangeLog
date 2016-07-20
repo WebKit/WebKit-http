@@ -1,3 +1,28 @@
+2016-07-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        JSC JIT Broken on ARMv7 Traditional (without Thumb2)
+        https://bugs.webkit.org/show_bug.cgi?id=159880
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsCommon.cmake: Use the BFD linker on ARM traditional because of a gold linker bug.
+
+2016-07-18  Alexey Proskuryakov  <ap@apple.com>
+
+        "make ARCHS=x86_64" fails to build
+        https://bugs.webkit.org/show_bug.cgi?id=159867
+
+        Reviewed by Dan Bernstein.
+
+        * Makefile.shared: Override VALID_ARCHS when ARCHS is set, so that even projects
+        that normally customize VALID_ARCHS wouldn't fail to build.
+
+2016-07-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.13.3 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
 2016-07-13  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] DLLs are missing version information.

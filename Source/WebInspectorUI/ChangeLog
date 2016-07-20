@@ -1,3 +1,148 @@
+2016-07-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pausing when Debugger tab is closed opens tab in wrong state
+        https://bugs.webkit.org/show_bug.cgi?id=159946
+        <rdar://problem/27429886>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        At the end of construction, update the UI to match the current state
+        of the world. Such as updating the UI if we are paused, or if the
+        Timeline is capturing and we are temporarily disabling breakpoints.
+
+2016-07-15  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make Open Quickly and Goto Line dialogs match Xcode 8
+        https://bugs.webkit.org/show_bug.cgi?id=159823
+        rdar://problem/27376501
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GoToLineDialog.css:
+        (.go-to-line-dialog):
+        (.go-to-line-dialog > div > input):
+        (.go-to-line-dialog > div > input::placeholder):
+        (.go-to-line-dialog > div > img):
+        (.go-to-line-dialog > div): Deleted.
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog):
+        (.open-resource-dialog > .field):
+        (.open-resource-dialog > .field > input):
+        (.open-resource-dialog > .field > input::placeholder):
+        (.open-resource-dialog > .field > img):
+        (.open-resource-dialog > .tree-outline .item): Deleted.
+        (.open-resource-dialog > .tree-outline .item:first-child): Deleted.
+
+2016-07-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename CCTNode to CallingContextTreeNode
+        https://bugs.webkit.org/show_bug.cgi?id=159782
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CallingContextTree.js:
+        * UserInterface/Models/CallingContextTreeNode.js:
+        Extra to its own file and rename.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/TestStub.html:
+        Include the new file.
+
+        * UserInterface/Views/ProfileDataGridNode.js:
+        (WebInspector.ProfileDataGridNode):
+        * UserInterface/Views/ProfileDataGridTree.js:
+        (WebInspector.ProfileDataGridTree.prototype._updateCurrentFocusDetails):
+        Rename shorthand "cctnode".
+
+2016-07-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: SidebarPanel classes should use View.layout instead of "refresh"
+        https://bugs.webkit.org/show_bug.cgi?id=159745
+        <rdar://problem/27335252>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        (WebInspector.ApplicationCacheDetailsSidebarPanel.prototype.set applicationCacheFrame):
+        Use needsLayout.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.layout):
+        Move refresh logic to layout.
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.initialLayout):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._styleSheetAddedOrRemoved):
+        Defer layout to coalesce updates.
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.refresh): Deleted.
+
+        * UserInterface/Views/DOMDetailsSidebarPanel.js:
+        (WebInspector.DOMDetailsSidebarPanel.prototype.set domNode):
+        Use needsLayout.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        Move refresh logic to layout.
+
+        * UserInterface/Views/DetailsSidebarPanel.js:
+        (WebInspector.DetailsSidebarPanel.prototype.shown): Deleted.
+        Base class already forces a layout when shown.
+        (WebInspector.DetailsSidebarPanel.prototype.needsRefresh): Deleted.
+        No longer needed.
+        (WebInspector.DetailsSidebarPanel.prototype.refresh): Deleted.
+        Renamed layout.
+        (WebInspector.DetailsSidebarPanel): Deleted.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype.supportsDOMNode):
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._layerTreeDidChange):
+        Use needsLayout.
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype.shown):
+        Base class already forces a layout when shown.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.set resource):
+        Use needsLayout.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.set callFrame):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._addWatchExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._removeWatchExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._clearAllWatchExpressions):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._refreshAllWatchExpressionsButtonClicked):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._didEvaluateExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._mainResourceDidChange):
+        Use needsLayout.
+
+2016-07-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Maintain selected function when switching between different profile representations
+        https://bugs.webkit.org/show_bug.cgi?id=159778
+        <rdar://problem/27355913>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CallingContextTree.js:
+        (WebInspector.CCTNode):
+        (WebInspector.CCTNode.prototype.get hash):
+        (WebInspector.CCTNode.prototype.findOrMakeChild):
+        (WebInspector.CCTNode.prototype.equals):
+        Expose the hash so two nodes can be compared cheaply.
+
+        * UserInterface/Views/ProfileView.js:
+        (WebInspector.ProfileView.prototype._repopulateDataGridFromTree):
+        (WebInspector.ProfileView.prototype._restoreSharedState):
+        (WebInspector.ProfileView.prototype._dataGridNodeSelected):
+        Share data between multiple ProfileViews. Currently just remembering
+        and restoring the selected function.
+
+        * UserInterface/Views/ScriptProfileTimelineView.js:
+        (WebInspector.ScriptProfileTimelineView):
+        (WebInspector.ScriptProfileTimelineView.prototype._showProfileViewForOrientation):
+        Include the shared data when constructing new ProfileViews.
+
 2016-07-13  Matt Baker  <mattbaker@apple.com>
 
         Uncaught Exception: TypeError: null is not an object (evaluating 'this._contentViewContainer.currentContentView.showsFilterBar')

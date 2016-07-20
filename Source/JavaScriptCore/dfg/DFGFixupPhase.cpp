@@ -620,7 +620,7 @@ private:
             }
             break;
         }
-
+            
         case StringFromCharCode:
             if (node->child1()->shouldSpeculateInt32())
                 fixEdge<Int32Use>(node->child1());
@@ -1535,12 +1535,12 @@ private:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case NotifyWrite:
-        case VarInjectionWatchpoint:
         case Call:
         case CheckTypeInfoFlags:
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -1589,6 +1589,7 @@ private:
         case PutByIdWithThis:
         case PutByValWithThis:
         case GetByValWithThis:
+        case CompareEqPtr:
             break;
             
             break;

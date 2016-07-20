@@ -30,7 +30,11 @@
 
 #include "AirGenerationContext.h"
 #include "AllowMacroScratchRegisterUsage.h"
+#include "B3CheckValue.h"
+#include "B3PatchpointValue.h"
+#include "B3SlotBaseValue.h"
 #include "B3StackmapGenerationParams.h"
+#include "B3ValueInlines.h"
 #include "CallFrameShuffler.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGAbstractInterpreterInlines.h"
@@ -819,6 +823,9 @@ private:
         case CompareGreaterEq:
             compileCompareGreaterEq();
             break;
+        case CompareEqPtr:
+            compileCompareEqPtr();
+            break;
         case LogicalNot:
             compileLogicalNot();
             break;
@@ -839,6 +846,9 @@ private:
         case ConstructVarargs:
         case ConstructForwardVarargs:
             compileCallOrConstructVarargs();
+            break;
+        case CallEval:
+            compileCallEval();
             break;
         case LoadVarargs:
             compileLoadVarargs();
@@ -4984,14 +4994,12 @@ private:
         DFG_CRASH(m_graph, m_node, "Bad use kinds");
     }
     
-    void compileCompareStrictEqConstant()
+    void compileCompareEqPtr()
     {
-        JSValue constant = m_node->child2()->asJSValue();
-
         setBoolean(
             m_out.equal(
                 lowJSValue(m_node->child1()),
-                m_out.constInt64(JSValue::encode(constant))));
+                weakPointer(m_node->cellOperand()->cell())));
     }
     
     void compileCompareLess()
@@ -5540,6 +5548,90 @@ private:
             setJSValue(patchpoint);
             break;
         }
+    }
+    
+    void compileCallEval()
+    {
+        Node* node = m_node;
+        unsigned numArgs = node->numChildren() - 1;
+        
+        LValue jsCallee = lowJSValue(m_graph.varArgChild(node, 0));
+        
+        unsigned frameSize = CallFrame::headerSizeInRegisters + numArgs;
+        unsigned alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
+        
+        m_proc.requestCallArgAreaSize(alignedFrameSize);
+        
+        Vector<ConstrainedValue> arguments;
+        arguments.append(ConstrainedValue(jsCallee, ValueRep::reg(GPRInfo::regT0)));
+        
+        auto addArgument = [&] (LValue value, VirtualRegister reg, int offset) {
+            intptr_t offsetFromSP = 
+                (reg.offset() - CallerFrameAndPC::sizeInRegisters) * sizeof(EncodedJSValue) + offset;
+            arguments.append(ConstrainedValue(value, ValueRep::stackArgument(offsetFromSP)));
+        };
+        
+        addArgument(jsCallee, VirtualRegister(CallFrameSlot::callee), 0);
+        addArgument(m_out.constInt32(numArgs), VirtualRegister(CallFrameSlot::argumentCount), PayloadOffset);
+        for (unsigned i = 0; i < numArgs; ++i)
+            addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgument(i), 0);
+        
+        PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        patchpoint->appendVector(arguments);
+        
+        RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
+        
+        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
+        patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
+        
+        CodeOrigin codeOrigin = codeOriginDescriptionOfCallSite();
+        State* state = &m_ftlState;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+                CallSiteIndex callSiteIndex = state->jitCode->common.addUniqueCallSiteIndex(codeOrigin);
+                
+                Box<CCallHelpers::JumpList> exceptions = exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+                
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
+                
+                jit.store32(
+                    CCallHelpers::TrustedImm32(callSiteIndex.bits()),
+                    CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
+                
+                CallLinkInfo* callLinkInfo = jit.codeBlock()->addCallLinkInfo();
+                callLinkInfo->setUpCall(CallLinkInfo::Call, node->origin.semantic, GPRInfo::regT0);
+                
+                jit.addPtr(CCallHelpers::TrustedImm32(-static_cast<ptrdiff_t>(sizeof(CallerFrameAndPC))), CCallHelpers::stackPointerRegister, GPRInfo::regT1);
+                jit.storePtr(GPRInfo::callFrameRegister, CCallHelpers::Address(GPRInfo::regT1, CallFrame::callerFrameOffset()));
+                
+                // Now we need to make room for:
+                // - The caller frame and PC for a call to operationCallEval.
+                // - Potentially two arguments on the stack.
+                unsigned requiredBytes = sizeof(CallerFrameAndPC) + sizeof(ExecState*) * 2;
+                requiredBytes = WTF::roundUpToMultipleOf(stackAlignmentBytes(), requiredBytes);
+                jit.subPtr(CCallHelpers::TrustedImm32(requiredBytes), CCallHelpers::stackPointerRegister);
+                jit.setupArgumentsWithExecState(GPRInfo::regT1);
+                jit.move(CCallHelpers::TrustedImmPtr(bitwise_cast<void*>(operationCallEval)), GPRInfo::nonPreservedNonArgumentGPR);
+                jit.call(GPRInfo::nonPreservedNonArgumentGPR);
+                exceptions->append(jit.emitExceptionCheck(AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
+                
+                CCallHelpers::Jump done = jit.branchTest64(CCallHelpers::NonZero, GPRInfo::returnValueGPR);
+                
+                jit.addPtr(CCallHelpers::TrustedImm32(requiredBytes), CCallHelpers::stackPointerRegister);
+                jit.load64(CCallHelpers::calleeFrameSlot(CallFrameSlot::callee), GPRInfo::regT0);
+                jit.emitDumbVirtualCall(callLinkInfo);
+                
+                done.link(&jit);
+                jit.addPtr(
+                    CCallHelpers::TrustedImm32(-params.proc().frameSize()),
+                    GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
+            });
+        
+        setJSValue(patchpoint);
     }
     
     void compileLoadVarargs()

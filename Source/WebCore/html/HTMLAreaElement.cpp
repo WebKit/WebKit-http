@@ -251,7 +251,7 @@ bool HTMLAreaElement::supportsFocus() const
 
 String HTMLAreaElement::target() const
 {
-    return getAttribute(targetAttr);
+    return attributeWithoutSynchronization(targetAttr);
 }
 
 }

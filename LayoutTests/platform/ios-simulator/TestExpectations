@@ -266,6 +266,7 @@ fast/css/pseudo-active-style-sharing-4.html [ Skip ]
 fast/css/pseudo-active-style-sharing-5.html [ Skip ]
 fast/css/pseudo-active-style-sharing-6.html [ Skip ]
 fast/css/pseudo-active-with-programmatic-focus.html [ Skip ]
+http/tests/security/history-username-password.html [ Skip ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 
@@ -676,6 +677,9 @@ mathml/presentation/attributes-mathvariant.html [ Skip ]
 mathml/presentation/tokenElements-mathvariant.html [ Skip ]
 mathml/presentation/mathvariant-inheritance.html [ Skip ]
 mathml/presentation/mathvariant-tokens.html [ Skip ]
+
+# This test fails because the USE_TYPO_METRICS flag is ignored for non-math font
+webkit.org/b/150394 imported/mathml-in-html5/mathml/relations/text-and-math/use-typo-metrics-1.html [ ImageOnlyFailure ]
 
 # The web font loading & relayout seems to be performed too late.
 imported/mathml-in-html5/mathml/relations/css-styling/mathvariant-transforms-1.html [ Pass ImageOnlyFailure ]
@@ -1408,7 +1412,6 @@ fast/canvas/draw-focus-if-needed.html [ Failure ]
 fast/clip/clip-when-rect-has-fractional-pixel-value.html [ ImageOnlyFailure ]
 fast/css-generated-content/table-parts-before-and-after.html [ Failure ]
 fast/css/absolute-child-with-percent-height-inside-relative-parent.html [ Failure ]
-fast/css/ancestor-of-hovered-element-detached.html [ Failure ]
 fast/css/ancestor-of-hovered-element-removed.html [ Failure ]
 fast/css/background-image-with-baseurl.html [ Failure ]
 fast/css/button-height.html [ Failure ]
@@ -3002,6 +3005,7 @@ webkit.org/b/158618 fast/hidpi/hidpi-3x-device-pixel-ratio.html [ Failure ]
 # These tests hardcode platform-specific font aliases.
 webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
 
+
 webkit.org/b/159214 fast/multicol/fixed-stack.html [ ImageOnlyFailure ]
 
 webkit.org/b/157592 fast/images/composited-animated-gif-outside-viewport.html [ Pass Timeout ]
@@ -3011,3 +3015,8 @@ webkit.org/b/156561 perf/rel-list-remove.html [ Pass Timeout Failure ]
 webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Pass Failure ]
 
 webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
+
+webkit.org/b/142969 editing/spelling/copy-paste-crash.html
+
+# This test is iPad only
+platform/ios-simulator/media/video-interruption-suspendunderlock.html [ Skip ]

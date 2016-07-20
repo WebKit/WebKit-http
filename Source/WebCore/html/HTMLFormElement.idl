@@ -26,10 +26,9 @@
     [Reflect, URL] attribute DOMString action;
     attribute DOMString autocomplete;
 
-    // FIXME: These should not have [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString enctype;
-    [TreatNullAs=LegacyNullString] attribute DOMString encoding;
-    [TreatNullAs=LegacyNullString] attribute DOMString method;
+    attribute DOMString enctype;
+    [ImplementedAs=enctype] attribute DOMString encoding;
+    attribute DOMString method;
 
     [Reflect] attribute DOMString name;
     [Reflect] attribute boolean noValidate;
@@ -46,8 +45,7 @@
 
     [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
 
-    // FIXME: This should not use [TreatNullAs=LegacyNullString].
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=LegacyNullString] attribute DOMString autocapitalize;
+    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=EmptyString] attribute DOMString autocapitalize;
 
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [ImplementedAs=submitFromJavaScript] void submit();
