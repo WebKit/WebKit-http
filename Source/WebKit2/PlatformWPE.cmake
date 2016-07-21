@@ -128,6 +128,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/gstreamer/WebPageProxyGStreamer.cpp
 
+    UIProcess/linux/MemoryPressureMonitor.cpp
+
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebProcessPoolSoup.cpp
 
@@ -228,6 +230,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/API/C/wpe"
     "${WEBKIT2_DIR}/UIProcess/API/wpe"
     "${WEBKIT2_DIR}/UIProcess/Network/CustomProtocols/soup"
+    "${WEBKIT2_DIR}/UIProcess/linux"
     "${WEBKIT2_DIR}/UIProcess/soup"
     "${WEBKIT2_DIR}/WebProcess/soup"
     "${WEBKIT2_DIR}/WebProcess/unix"
