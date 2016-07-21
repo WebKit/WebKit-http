@@ -1,3 +1,17 @@
+2016-07-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash accessing null renderer inside WebCore::DeleteSelectionCommand::doApply
+        https://bugs.webkit.org/show_bug.cgi?id=160011
+
+        Reviewed by Chris Dumez.
+
+        Add a null pointer check for renderer() call.
+
+        Unfortunately no new tests since we don't have a reproduction.
+
+        * editing/DeleteSelectionCommand.cpp:
+        (WebCore::DeleteSelectionCommand::doApply):
+
 2016-07-20  Chris Dumez  <cdumez@apple.com>
 
         PostResolutionCallbackDisabler can resume pending requests while a ResourceLoadSuspender is alive
