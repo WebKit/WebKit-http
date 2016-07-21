@@ -36,7 +36,6 @@
 #include "SecurityOrigin.h"
 #include "TimeRanges.h"
 #include "UUID.h"
-#include "WebKitWebSourceGStreamer.h"
 #include <gst/gst.h>
 #include <gst/pbutils/missing-plugins.h>
 #include <gst/video/gstvideodecoder.h>
@@ -47,6 +46,10 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
+
+#if USE(GSTREAMER_WEBKIT_HTTP_SRC)
+#include "WebKitWebSourceGStreamer.h"
+#endif
 
 #if ENABLE(VIDEO_TRACK)
 #include "AudioTrackPrivateGStreamer.h"
@@ -107,12 +110,18 @@ bool initializeGStreamerAndRegisterWebKitElements()
 
     registerWebKitGStreamerElements();
 
-    GRefPtr<GstElementFactory> srcFactory = adoptGRef(gst_element_factory_find("webkitwebsrc"));
-    if (!srcFactory) {
+    static bool gstDebugEnabled = false;
+
+    if (!gstDebugEnabled) {
         GST_DEBUG_CATEGORY_INIT(webkit_media_player_debug, "webkitmediaplayer", 0, "WebKit media player");
-        gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
+        gstDebugEnabled = true;
     }
 
+#if USE(GSTREAMER_WEBKIT_HTTP_SRC)
+    GRefPtr<GstElementFactory> srcFactory = adoptGRef(gst_element_factory_find("webkitwebsrc"));
+    if (!srcFactory)
+        gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
+#endif
     return true;
 }
 
@@ -254,8 +263,10 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
 
     m_url = URL(URL(), cleanURL);
 
+#if USE(GSTREAMER_WEBKIT_HTTP_SRC)
     if (m_url.protocolIsInHTTPFamily())
         m_url.setProtocol("webkit+" + m_url.protocol());
+#endif
 
     if (!m_pipeline)
         createGSTPlayBin();
@@ -1500,8 +1511,12 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
     m_source.clear();
     g_object_get(m_pipeline.get(), "source", &m_source.outPtr(), nullptr);
 
+#if USE(GSTREAMER_WEBKIT_HTTP_SRC)
     if (WEBKIT_IS_WEB_SRC(m_source.get()))
         webKitWebSrcSetMediaPlayer(WEBKIT_WEB_SRC(m_source.get()), m_player);
+#else
+    // TODO: set HTTP headers on source element here.
+#endif
 }
 
 void MediaPlayerPrivateGStreamer::cancelLoad()
@@ -2279,9 +2294,14 @@ void MediaPlayerPrivateGStreamer::simulateAudioInterruption()
 
 bool MediaPlayerPrivateGStreamer::didPassCORSAccessCheck() const
 {
+#if USE(GSTREAMER_WEBKIT_HTTP_SRC)
     if (WEBKIT_IS_WEB_SRC(m_source.get()))
         return webKitSrcPassedCORSAccessCheck(WEBKIT_WEB_SRC(m_source.get()));
     return false;
+#else
+    // Huh...
+    return true;
+#endif
 }
 
 bool MediaPlayerPrivateGStreamer::canSaveMediaData() const
