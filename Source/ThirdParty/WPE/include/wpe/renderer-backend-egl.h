@@ -35,6 +35,7 @@ extern "C" {
 #define __GBM__
 #endif
 
+#include <stdint.h>
 #include <EGL/eglplatform.h>
 
 struct wpe_renderer_backend_egl;
