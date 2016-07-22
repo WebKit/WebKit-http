@@ -41,9 +41,7 @@
 #include "NetworkStateNotifier.h"
 #include "Page.h"
 #include "PageCache.h"
-#if !PLUGIN_VIEW_IS_BROKEN
 #include "PluginDatabase.h"
-#endif
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "SharedBuffer.h"

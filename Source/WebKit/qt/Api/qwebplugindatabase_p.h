@@ -40,9 +40,7 @@ public:
     ~QWebPluginInfo();
 
 private:
-#if !PLUGIN_VIEW_IS_BROKEN
     QWebPluginInfo(WebCore::PluginPackage* package);
-#endif
 
 public:
     typedef QWebPluginFactory::MimeType MimeType;
@@ -65,9 +63,7 @@ public:
 
 private:
     QWebPluginInfoPrivate* d;
-#if !PLUGIN_VIEW_IS_BROKEN
     WebCore::PluginPackage* m_package;
-#endif
     mutable QList<MimeType> m_mimeTypes;
 };
 
@@ -96,9 +92,7 @@ public:
 
 private:
     QWebPluginDatabasePrivate* d;
-#if !PLUGIN_VIEW_IS_BROKEN
     WebCore::PluginDatabase* m_database;
-#endif
 };
 
 #endif // QWEBPLUGINDATABASE_H

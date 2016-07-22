@@ -59,10 +59,8 @@
 #include "NotificationPresenterClientQt.h"
 #include "Page.h"
 #include "PageGroup.h"
-#if !PLUGIN_VIEW_IS_BROKEN
 #include "PluginDatabase.h"
 #include "PluginView.h"
-#endif
 #include "PositionError.h"
 #include "PrintContext.h"
 #include "ProgressTrackerClientQt.h"
@@ -205,7 +203,6 @@ void DumpRenderTreeSupportQt::initialize()
 
 void DumpRenderTreeSupportQt::overwritePluginDirectories()
 {
-#if !PLUGIN_VIEW_IS_BROKEN
     PluginDatabase* db = PluginDatabase::installedPlugins(/* populate */ false);
 
     Vector<String> paths;
@@ -214,7 +211,6 @@ void DumpRenderTreeSupportQt::overwritePluginDirectories()
 
     db->setPluginDirectories(paths);
     db->refresh();
-#endif
 }
 
 void DumpRenderTreeSupportQt::setDumpRenderTreeModeEnabled(bool b)

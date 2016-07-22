@@ -64,10 +64,8 @@
 #include "PlatformMouseEvent.h"
 #include "PlatformTouchEvent.h"
 #include "PlatformWheelEvent.h"
-#if !PLUGIN_VIEW_IS_BROKEN
 #include "PluginDatabase.h"
 #include "PluginPackage.h"
-#endif
 #include "ProgressTracker.h"
 #include "ProgressTrackerClientQt.h"
 #include "QWebFrameAdapter.h"
@@ -88,9 +86,7 @@
 #include "WebStorageNamespaceProvider.h"
 #include "WindowFeatures.h"
 #include "qwebhistory_p.h"
-#if !PLUGIN_VIEW_IS_BROKEN
 #include "qwebpluginfactory.h"
-#endif
 #include "qwebsettings.h"
 #include <Page.h>
 #include <QBitArray>
@@ -213,9 +209,7 @@ Ref<UserContentController> s_userContentProvider = UserContentController::create
 QWebPageAdapter::QWebPageAdapter()
     : settings(0)
     , page(0)
-#if !PLUGIN_VIEW_IS_BROKEN
     , pluginFactory(0)
-#endif
     , forwardUnsupportedContent(false)
     , insideOpenCall(false)
     , clickCausedFocus(false)
@@ -952,12 +946,10 @@ QStringList QWebPageAdapter::supportedContentTypes() const
 {
     QStringList mimeTypes;
 
-#if !PLUGIN_VIEW_IS_BROKEN
     extractContentTypeFromHash(MIMETypeRegistry::getSupportedImageMIMETypes(), mimeTypes);
     extractContentTypeFromHash(MIMETypeRegistry::getSupportedNonImageMIMETypes(), mimeTypes);
     if (page->settings().arePluginsEnabled())
         extractContentTypeFromPluginVector(PluginDatabase::installedPlugins()->plugins(), mimeTypes);
-#endif
 
     return mimeTypes;
 }
@@ -985,11 +977,9 @@ bool QWebPageAdapter::supportsContentType(const QString& mimeType) const
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(type))
         return true;
 
-#if !PLUGIN_VIEW_IS_BROKEN
     if (page->settings().arePluginsEnabled()
         && PluginDatabase::installedPlugins()->isMIMETypeRegistered(type))
         return true;
-#endif
 
     return false;
 }
