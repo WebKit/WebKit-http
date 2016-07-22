@@ -30,9 +30,6 @@
 #ifndef FrameLoaderClientQt_h
 #define FrameLoaderClientQt_h
 
-// FIXME
-#define PLUGIN_VIEW_IS_BROKEN 1
-
 #include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -48,7 +45,7 @@
 #include <wtf/RefCounted.h>
 
 #if !PLUGIN_VIEW_IS_BROKEN
-#include "WebCore/plugins/PluginView.h"
+#include "PluginView.h"
 #endif
 
 QT_BEGIN_NAMESPACE

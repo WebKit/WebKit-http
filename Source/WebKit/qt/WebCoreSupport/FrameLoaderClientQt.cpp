@@ -1319,14 +1319,14 @@ ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const S
     if (arePluginsEnabled && PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
         plugInType = ObjectContentNetscapePlugin;
     else if (m_frame->page()) {
-        bool allowPlugins = m_frame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin);
+        bool allowPlugins = m_frame->loader().subframeLoader().allowPlugins();
         if ((m_frame->page()->pluginData().supportsMimeType(mimeType, PluginData::AllPlugins) && allowPlugins)
             || m_frame->page()->pluginData().supportsMimeType(mimeType, PluginData::OnlyApplicationPlugins))
                 plugInType = ObjectContentOtherPlugin;
     }
 
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return shouldPreferPlugInsForImages && plugInType != ObjectContentNone ? plugInType : ObjectContentImage;
+        return ObjectContentImage;
     
     if (plugInType != ObjectContentNone)
         return plugInType;

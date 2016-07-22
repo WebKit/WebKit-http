@@ -175,6 +175,13 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     )
 endif ()
 
+if (ENABLE_NETSCAPE_PLUGIN_API AND WIN32)
+    list(APPEND WebCore_SOURCES
+        platform/win/BitmapInfo.cpp
+        platform/win/WebCoreInstanceHandle.cpp
+    )
+endif ()
+
 # Do it in the WebCore to support SHARED_CORE since WebKitWidgets won't load WebKit in that case.
 # This should match the opposite statement in WebKit/PlatformQt.cmake
 if (SHARED_CORE)
@@ -302,15 +309,24 @@ list(REMOVE_DUPLICATES WebCore_SYSTEM_INCLUDE_DIRECTORIES)
 
 # TODO: Think how to unify fwd headers handling throughout WebKit
 set(WebCore_FORWARDING_HEADERS_DIRECTORIES
+    bridge
     dom
+    html
     loader
     page
     platform
+    rendering
     storage
 
     Modules/indexeddb/legacy
     Modules/indexeddb/shared
 
+    bindings/js
+
+    bridge/c
+    bridge/jsc
+
+    platform/graphics
     platform/network
     platform/sql
     platform/text

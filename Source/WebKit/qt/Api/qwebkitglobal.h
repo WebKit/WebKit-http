@@ -46,6 +46,4 @@ QWEBKIT_EXPORT QString qWebKitVersion();
 QWEBKIT_EXPORT int qWebKitMajorVersion();
 QWEBKIT_EXPORT int qWebKitMinorVersion();
 
-#define PLUGIN_VIEW_IS_BROKEN 1
-
 #endif // QWEBKITGLOBAL_H

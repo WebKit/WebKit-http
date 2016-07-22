@@ -2224,7 +2224,7 @@ protected:
 
 void tst_QObjectBridge::scriptablePlugin()
 {
-#if !PLUGIN_VIEW_IS_BROKEN
+//#if !PLUGIN_VIEW_IS_BROKEN
     QWebView view;
     TestWebPage* page = new TestWebPage;
     view.setPage(page);
@@ -2236,7 +2236,7 @@ void tst_QObjectBridge::scriptablePlugin()
 
     QVariant result = page->mainFrame()->evaluateJavaScript("document.querySelector(\"object\").slotWithReturnValue()");
     QCOMPARE(result.toString(), QLatin1String("42"));
-#endif
+//#endif
 }
 
 QTEST_MAIN(tst_QObjectBridge)

@@ -64,13 +64,4 @@ bool PluginPackage::equal(const PluginPackage&, const PluginPackage&)
     return true;
 }
 
-int PluginPackage::compare(const PluginPackage&) const
-{
-    return 0;
-}
-
-PluginPackage::~PluginPackage()
-{
-}
-
 }

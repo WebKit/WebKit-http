@@ -935,40 +935,28 @@ QWebHitTestResultPrivate* QWebPageAdapter::updatePositionDependentMenuActions(co
     return new QWebHitTestResultPrivate(result);
 }
 
-#if !PLUGIN_VIEW_IS_BROKEN
-static void extractContentTypeFromHash(const HashSet<String>& types, QStringList* list)
+static void extractContentTypeFromHash(const HashSet<String, ASCIICaseInsensitiveHash>& types, QStringList& list)
 {
-    if (!list)
-        return;
-
-    HashSet<String>::const_iterator endIt = types.end();
-    for (HashSet<String>::const_iterator it = types.begin(); it != endIt; ++it)
-        *list << *it;
+    for (auto& type : types)
+        list << type;
 }
 
-static void extractContentTypeFromPluginVector(const Vector<PluginPackage*>& plugins, QStringList* list)
+static void extractContentTypeFromPluginVector(const Vector<PluginPackage*>& plugins, QStringList& list)
 {
-    if (!list)
-        return;
-
-    for (unsigned i = 0; i < plugins.size(); ++i) {
-        MIMEToDescriptionsMap::const_iterator it = plugins[i]->mimeToDescriptions().begin();
-        MIMEToDescriptionsMap::const_iterator end = plugins[i]->mimeToDescriptions().end();
-        for (; it != end; ++it)
-            *list << it->key;
-    }
+    for (auto* plugin : plugins)
+        for (auto& mimeToDescription :  plugin->mimeToDescriptions().keys())
+            list << mimeToDescription;
 }
-#endif
 
 QStringList QWebPageAdapter::supportedContentTypes() const
 {
     QStringList mimeTypes;
 
 #if !PLUGIN_VIEW_IS_BROKEN
-    extractContentTypeFromHash(MIMETypeRegistry::getSupportedImageMIMETypes(), &mimeTypes);
-    extractContentTypeFromHash(MIMETypeRegistry::getSupportedNonImageMIMETypes(), &mimeTypes);
+    extractContentTypeFromHash(MIMETypeRegistry::getSupportedImageMIMETypes(), mimeTypes);
+    extractContentTypeFromHash(MIMETypeRegistry::getSupportedNonImageMIMETypes(), mimeTypes);
     if (page->settings().arePluginsEnabled())
-        extractContentTypeFromPluginVector(PluginDatabase::installedPlugins()->plugins(), &mimeTypes);
+        extractContentTypeFromPluginVector(PluginDatabase::installedPlugins()->plugins(), mimeTypes);
 #endif
 
     return mimeTypes;

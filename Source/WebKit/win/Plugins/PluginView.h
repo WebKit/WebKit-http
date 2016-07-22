@@ -291,8 +291,10 @@ namespace WebCore {
         void handleKeyboardEvent(KeyboardEvent*);
         void handleMouseEvent(MouseEvent*);
 
+#if OS(WINDOWS)
         void paintIntoTransformedContext(HDC);
         PassRefPtr<Image> snapshot();
+#endif
 
         float deviceScaleFactor() const;
 

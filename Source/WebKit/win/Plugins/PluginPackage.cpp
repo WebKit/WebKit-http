@@ -162,6 +162,7 @@ void PluginPackage::setEnabled(bool enabled)
     m_isEnabled = enabled;
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 PassRefPtr<PluginPackage> PluginPackage::createPackage(const String& path, const time_t& lastModified)
 {
     RefPtr<PluginPackage> package = adoptRef(new PluginPackage(path, lastModified));
@@ -171,6 +172,7 @@ PassRefPtr<PluginPackage> PluginPackage::createPackage(const String& path, const
 
     return package.release();
 }
+#endif
 
 #if ENABLE(NETSCAPE_PLUGIN_METADATA_CACHE)
 PassRefPtr<PluginPackage> PluginPackage::createPackageFromCache(const String& path, const time_t& lastModified, const String& name, const String& description, const String& mimeDescription)
@@ -338,10 +340,15 @@ int PluginPackage::compareFileVersion(const PlatformModuleVersion& compareVersio
     // return -1, 0, or 1 if plug-in version is less than, equal to, or greater than
     // the passed version
 
+#if OS(WINDOWS)
     if (m_moduleVersion.mostSig != compareVersion.mostSig)
         return m_moduleVersion.mostSig > compareVersion.mostSig ? 1 : -1;
     if (m_moduleVersion.leastSig != compareVersion.leastSig)
         return m_moduleVersion.leastSig > compareVersion.leastSig ? 1 : -1;
+#else
+    if (m_moduleVersion != compareVersion)
+        return m_moduleVersion > compareVersion ? 1 : -1;
+#endif
 
     return 0;
 }

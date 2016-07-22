@@ -45,7 +45,7 @@ void PluginView::hide()
 {
 }
 
-void PluginView::paint(GraphicsContext*, const IntRect&)
+void PluginView::paint(GraphicsContext&, const IntRect&)
 {
 }
 

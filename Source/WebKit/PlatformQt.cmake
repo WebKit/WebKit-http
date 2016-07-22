@@ -143,6 +143,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/qt"
     "${WEBKIT_DIR}/qt/Api"
     "${WEBKIT_DIR}/qt/WebCoreSupport"
+    "${WEBKIT_DIR}/win/Plugins"
 
     "${WTF_DIR}"
 )
@@ -192,6 +193,12 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/VisitedLinkStoreQt.cpp
     qt/WebCoreSupport/WebDatabaseProviderQt.cpp
     qt/WebCoreSupport/WebEventConversion.cpp
+
+    win/Plugins/PluginDatabase.cpp
+    win/Plugins/PluginDebug.cpp
+    win/Plugins/PluginPackage.cpp
+    win/Plugins/PluginStream.cpp
+    win/Plugins/PluginView.cpp
 )
 
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
@@ -241,6 +248,40 @@ if (ENABLE_TEST_SUPPORT)
     else ()
         list(APPEND WebKit_LIBRARIES PRIVATE WebCoreTestSupport)
     endif ()
+endif ()
+
+if (ENABLE_NETSCAPE_PLUGIN_API)
+    list(APPEND WebKit_SOURCES
+        win/Plugins/npapi.cpp
+        win/Plugins/PluginMainThreadScheduler.cpp
+    )
+
+    if (UNIX AND NOT APPLE)
+        list(APPEND WebKit_SOURCES
+            qt/Plugins/PluginPackageQt.cpp
+            qt/Plugins/PluginViewQt.cpp
+        )
+    endif ()
+
+    if (PLUGIN_BACKEND_XLIB)
+        list(APPEND WebKit_SOURCES
+            qt/Plugins/QtX11ImageConversion.cpp
+        )
+    endif ()
+
+    if (WIN32)
+        list(APPEND WebKit_SOURCES
+            win/Plugins/PluginDatabaseWin.cpp
+            win/Plugins/PluginPackageWin.cpp
+            win/Plugins/PluginMessageThrottlerWin.cpp
+            win/Plugins/PluginViewWin.cpp
+        )
+    endif ()
+else ()
+    list(APPEND WebKit_SOURCES
+        qt/Plugins/PluginPackageNone.cpp
+        qt/Plugins/PluginViewNone.cpp
+    )
 endif ()
 
 # Resources have to be included directly in the final binary.
