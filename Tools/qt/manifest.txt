@@ -4,6 +4,7 @@ exclude ChangeLog
 exclude CMakeLists.txt.user
 exclude Makefile
 exclude PlatformAppleWin.cmake
+exclude PlatformGTK.cmake
 exclude PlatformEfl.cmake
 exclude PlatformMac.cmake
 exclude PlatformWin.cmake
@@ -43,7 +44,7 @@ exclude \.xcconfig$
 exclude \.xcodeproj$
 
 # Exclude directories from other ports
-exclude .*\/(Configurations|mac|ios|spi|cf|cg|cocoa|Cocoa|objc|avfoundation|ca|curl|efl|win)\/.*$
+exclude .*\/(Configurations|mac|ios|spi|cf|cg|cocoa|Cocoa|objc|avfoundation|ca|curl|efl|win|gtk|cairo|soup|gnutls)\/.*$
 
 directory Source
 exclude Source/JavaScriptCore/tests
@@ -56,38 +57,57 @@ exclude Source/cmake/OptionsWinCairo.cmake$
 exclude Source/cmake/OptionsWindows.cmake$
 exclude Source/cmake/OptionsAppleWin.cmake$
 exclude Source/cmake/OptionsEfl.cmake$
+exclude Source/cmake/OptionsGTK.cmake$
 exclude Source/cmake/eflsymbols.filter$
 exclude Source/WebInspectorUI/Tools
 exclude Source/WebInspectorUI/UserInterface/Images
 
-directory Source/WebInspectorUI/UserInterface/Images/gtk
-
-# Most of the files in Source/WebKit are not necessary to build GTK+ and
-# the directory includes lots of images, so we're a bit more picky here.
-exclude Source/WebKit/.*
 exclude Source/WebKit2/Resources
-exclude Source/WebKit2/gtk/NEWS$
 
-# We do want to include the NEWS, but we want it to be in the root of the archive.
-file Source/WebKit2/gtk/NEWS NEWS
+file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
 
-file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
-file Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
+# Windows-specific code
+file Source/WebCore/platform/win/BitmapInfo.cpp
+file Source/WebCore/platform/win/BitmapInfo.h
+file Source/WebCore/platform/win/SystemInfo.cpp
+file Source/WebCore/platform/win/SystemInfo.h
+file Source/WebCore/platform/win/WebCoreInstanceHandle.cpp
+file Source/WebCore/platform/win/WebCoreInstanceHandle.h
 
-# Include only the resources we actually build
-file Source/WebCore/Resources/missingImage.png
-file Source/WebCore/Resources/missingImage@2x.png
-file Source/WebCore/Resources/panIcon.png
+# WK1 plugin code is in WebKit/win
+file Source/WebKit/win/Plugins
+
+# Version
+file Source/WebKit/mac/Configurations/Version.xcconfig
+
+directory Source/WebInspectorUI/UserInterface/Images
+exclude Source/WebInspectorUI/UserInterface/Images/.*
+file Source/WebInspectorUI/UserInterface/Images/gtk
+file Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
+
+# Resources
 file Source/WebCore/Resources/plugIns.js
+
+# WebCore.qrc
+file Source/WebCore/Resources/missingImage.png
+file Source/WebCore/Resources/nullPlugin.png
 file Source/WebCore/Resources/textAreaResizeCorner.png
-file Source/WebCore/Resources/textAreaResizeCorner@2x.png
 file Source/WebCore/Resources/urlIcon.png
+file Source/WebCore/Resources/zoomInCursor.png
+file Source/WebCore/Resources/zoomOutCursor.png
+file Source/WebCore/Resources/verticalTextCursor.png
+file Source/WebCore/Resources/cellCursor.png
+file Source/WebCore/Resources/contextMenuCursor.png
+file Source/WebCore/Resources/copyCursor.png
+file Source/WebCore/Resources/progressCursor.png
+file Source/WebCore/Resources/aliasCursor.png
 file Source/WebCore/platform/audio/resources/Composite.wav
 
-directory Tools/gtk
+directory Tools/qt
 directory Tools/ImageDiff
 directory Tools/MiniBrowser
 directory Tools/TestWebKitAPI
+directory Tools/QtTestBrowser
 
 directory Tools/DumpRenderTree
 exclude Tools/DumpRenderTree/fonts
@@ -103,5 +123,3 @@ file Tools/Scripts/webkit-build-directory
 file Tools/Scripts/webkitdirs.pm
 file Tools/jhbuild/jhbuildutils.py
 
-directory ${CMAKE_BINARY_DIR}/Documentation/webkit2gtk-${WEBKITGTK_API_VERSION}/html Documentation/webkit2gtk-${WEBKITGTK_API_VERSION}/html
-directory ${CMAKE_BINARY_DIR}/Documentation/webkitdomgtk-${WEBKITGTK_API_VERSION}/html Documentation/webkitdomgtk-${WEBKITGTK_API_VERSION}/html
