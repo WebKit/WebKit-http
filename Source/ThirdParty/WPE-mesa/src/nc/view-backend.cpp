@@ -30,6 +30,7 @@
 
 #include "display.h"
 #include "nc-renderer-host.h"
+#include "nc-view-display.h"
 #include "ivi-application-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -49,10 +50,15 @@
 namespace NC {
 namespace Wayland {
 
-class ViewBackend {
+class ViewBackend: public NC::ViewDisplay::Client {
 public:
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
+
+    virtual void OnSurfaceAttach(NC::ViewDisplay::Surface const&, NC::ViewDisplay::Buffer const*) override;
+
+    virtual void OnSurfaceCommit(NC::ViewDisplay::Surface const&, NC::ViewDisplay::Buffer const*,
+            NC::ViewDisplay::FrameCallback const*, NC::ViewDisplay::Damage const*) override;
 
     void initialize();
 
@@ -75,24 +81,20 @@ private:
     ResizingData m_resizingData { nullptr, 0, 0 };
 
     struct {
-        struct wl_global* compositor;
         struct wl_global* drm;
     } m_server;
 
+    NC::ViewDisplay m_viewDisplay;
+
     static const struct wl_drm_interface g_drmImplementation;
-    static const struct wl_surface_interface g_surfaceImplementation;
     static const struct wl_drm_listener g_drmListener;
-    static const struct wl_callback_listener g_frameCallbackListener;
-    static const struct wl_compositor_interface g_compositorImplementation;
     static const struct wl_buffer_interface g_drmBufferImplementation;
     static const struct wl_buffer_listener g_drmBufferListener;
 
     static void bindDrm(struct wl_client*, void*, uint32_t, uint32_t);
-    static void bindCompositor(struct wl_client*, void*, uint32_t, uint32_t);
 
     static void destroyBuffer(struct wl_resource*);
     static void destroyDrm(struct wl_resource*);
-    static void destroyCallback(struct wl_resource*);
 };
 
 static const struct xdg_surface_listener g_xdgSurfaceListener = {
@@ -121,130 +123,6 @@ static const struct ivi_surface_listener g_iviSurfaceListener = {
         resizeData->height = height;
     },
 };
-
-const struct wl_callback_listener ViewBackend::g_frameCallbackListener = {
-    // done
-    [](void* data, struct wl_callback*, uint32_t callback_data)
-    {
-        auto* callback_resource = static_cast<struct wl_resource*>(data);
-        wl_callback_send_done(callback_resource, callback_data);
-    },
-};
-
-void ViewBackend::destroyCallback(struct wl_resource* resource)
-{
-    auto* callback = static_cast<struct wl_callback*>(wl_resource_get_user_data(resource));
-    wl_callback_destroy(callback);
-}
-
-const struct wl_surface_interface ViewBackend::g_surfaceImplementation = {
-    // destroy
-    [](struct wl_client*, struct wl_resource* resource)
-    {
-    },
-    // attach
-    [](struct wl_client*, struct wl_resource* resource, struct wl_resource* buffer_resource, int32_t x,
-            int32_t y)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-        struct wl_buffer* buffer = nullptr;
-
-        if (buffer_resource)
-            buffer = static_cast<struct wl_buffer*>(wl_resource_get_user_data(buffer_resource));
-
-        wl_surface_attach(backend.m_surface, buffer, x, y);
-    },
-    // damage
-    [](struct wl_client*, struct wl_resource* resource, int32_t x, int32_t y, int32_t width, int32_t height)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-        wl_surface_damage(backend.m_surface, x, y, width, height);
-    },
-    // frame
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* callback_resource = wl_resource_create(client, &wl_callback_interface,
-                1, id);
-
-        if (!callback_resource) {
-            wl_resource_post_no_memory(resource);
-            return;
-        }
-
-        struct wl_callback* callback = wl_surface_frame(backend.m_surface);
-
-        wl_resource_set_implementation(callback_resource, nullptr, callback, destroyCallback);
-
-        wl_callback_add_listener(callback, &g_frameCallbackListener, callback_resource);
-    },
-    // set_opaque_region
-    [](struct wl_client*, struct wl_resource*, struct wl_resource*)
-    {
-        assert(0);
-    },
-    // set_input_region
-    [](struct wl_client*, struct wl_resource*, struct wl_resource*)
-    {
-        assert(0);
-    },
-    // commit
-    [](struct wl_client*, struct wl_resource* resource)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        wl_surface_commit(backend.m_surface);
-    },
-    // set_buffer_transform
-    [](struct wl_client*, struct wl_resource*, int32_t)
-    {
-        assert(0);
-    },
-    // set_buffer_scale
-    [](struct wl_client*, struct wl_resource*, int32_t)
-    {
-        assert(0);
-    }
-};
-
-const struct wl_compositor_interface ViewBackend::g_compositorImplementation = {
-    // create_surface
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* surface_resource = wl_resource_create(client, &wl_surface_interface,
-                3, id);
-
-        if (!surface_resource) {
-            wl_resource_post_no_memory(resource);
-            return;
-        }
-
-        wl_resource_set_implementation(surface_resource, &ViewBackend::g_surfaceImplementation,
-                &backend, nullptr);
-    },
-    // create_region
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        assert(0);
-    },
-};
-
-void ViewBackend::bindCompositor(struct wl_client* client, void* data, uint32_t version, uint32_t id)
-{
-    auto& backend = *static_cast<ViewBackend*>(data);
-    struct wl_resource* resource = wl_resource_create(client, &wl_compositor_interface,
-        version, id);
-
-    if (!resource) {
-        wl_client_post_no_memory(client);
-        return;
-    }
-
-    wl_resource_set_implementation(resource, &g_compositorImplementation, &backend, nullptr);
-}
 
 const struct wl_buffer_interface ViewBackend::g_drmBufferImplementation = {
     // destroy
@@ -417,6 +295,7 @@ const struct wl_drm_listener ViewBackend::g_drmListener = {
 ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     : m_display(::Wayland::Display::singleton())
     , m_backend(backend)
+    , m_viewDisplay(this)
 {
     m_surface = wl_compositor_create_surface(m_display.interfaces().compositor);
 
@@ -442,7 +321,8 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     auto& server = NC::RendererHost::singleton();
     server.initialize();
 
-    m_server.compositor = wl_global_create(server.display(), &wl_compositor_interface, 3, this, bindCompositor);
+    m_viewDisplay.initialize(server.display());
+
     m_server.drm = wl_global_create(server.display(), &wl_drm_interface, m_display.interfaces().drm_version,
             this, bindDrm);
 }
@@ -464,6 +344,53 @@ ViewBackend::~ViewBackend()
     if (m_surface)
         wl_surface_destroy(m_surface);
     m_surface = nullptr;
+}
+
+void ViewBackend::OnSurfaceAttach(NC::ViewDisplay::Surface const&, NC::ViewDisplay::Buffer const* buffer)
+{
+    struct wl_buffer* b = nullptr;
+    int32_t x = 0;
+    int32_t y = 0;
+
+    if (buffer) {
+        b = static_cast<struct wl_buffer*>(wl_resource_get_user_data(buffer->resource()));
+        x = buffer->X();
+        y = buffer->Y();
+    }
+
+    wl_surface_attach(m_surface, b, x, y);
+}
+
+void ViewBackend::OnSurfaceCommit(NC::ViewDisplay::Surface const&, NC::ViewDisplay::Buffer const*,
+        NC::ViewDisplay::FrameCallback const* frameCallback, NC::ViewDisplay::Damage const* damage)
+{
+    if (damage)
+        wl_surface_damage(m_surface, damage->X(), damage->Y(), damage->width(),
+                damage->height());
+
+    if (frameCallback) {
+        static const struct wl_callback_listener frameCallbackListener = {
+            // done
+            [](void* data, struct wl_callback*, uint32_t callback_data)
+            {
+                auto* callback_resource = static_cast<struct wl_resource*>(data);
+                wl_callback_send_done(callback_resource, callback_data);
+            },
+        };
+
+        struct wl_callback* callback = wl_surface_frame(m_surface);
+
+        wl_resource_set_implementation(frameCallback->resource(), nullptr, callback,
+                [](struct wl_resource* resource)
+                {
+                    auto* callback = static_cast<struct wl_callback*>(wl_resource_get_user_data(resource));
+                    wl_callback_destroy(callback);
+                });
+
+        wl_callback_add_listener(callback, &frameCallbackListener, frameCallback->resource());
+    }
+
+    wl_surface_commit(m_surface);
 }
 
 void ViewBackend::initialize()

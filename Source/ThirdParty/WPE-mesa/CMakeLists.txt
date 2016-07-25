@@ -62,6 +62,7 @@ set(WPE_MESA_SOURCES
     src/nc/view-backend.cpp
     src/nc/view-backend-drm.cpp
     src/nc/view-backend-exportable.cpp
+    src/nc/nc-view-display.cpp
 
     src/util/ipc.cpp
 
