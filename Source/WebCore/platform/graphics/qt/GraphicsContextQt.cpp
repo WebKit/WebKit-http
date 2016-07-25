@@ -1002,7 +1002,7 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
     if (!rects.size())
         return;
 
-    int radius = (width - 1) / 2;
+    float radius = (width - 1) / 2;
     QPainterPath path;
     for (unsigned i = 0; i < rectCount; ++i) {
         QRectF rect = QRectF(rects[i]).adjusted(-offset - radius, -offset - radius, offset + radius, offset + radius);
