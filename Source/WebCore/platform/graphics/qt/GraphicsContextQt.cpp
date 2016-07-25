@@ -372,9 +372,15 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
     const bool antiAlias = p->testRenderHint(QPainter::Antialiasing);
     p->setRenderHint(QPainter::Antialiasing, m_data->antiAliasingForRectsAndLines);
 
-    // FIXME: use borderThickness
+    // strokeThickness() is disregarded
+    QPen oldPen(p->pen());
+    QPen newPen(oldPen);
+    newPen.setWidthF(borderThickness);
+    p->setPen(newPen);
+
     p->drawRect(rect);
 
+    p->setPen(oldPen);
     p->setRenderHint(QPainter::Antialiasing, antiAlias);
 }
 
