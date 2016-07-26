@@ -38,6 +38,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <wayland-client.h>
+#include <wayland-cursor.h>
 #include <wpe/input.h>
 #include <wpe/view-backend.h>
 
@@ -118,6 +119,9 @@ const struct wl_registry_listener g_registryListener = {
 
         if (!std::strcmp(interface, "ivi_application"))
             interfaces.ivi_application = static_cast<struct ivi_application*>(wl_registry_bind(registry, name, &ivi_application_interface, 1));
+
+        if (!std::strcmp(interface, "wl_shm"))
+            interfaces.shm = static_cast<struct wl_shm*>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
@@ -133,13 +137,27 @@ static const struct xdg_shell_listener g_xdgShellListener = {
 
 static const struct wl_pointer_listener g_pointerListener = {
     // enter
-    [](void* data, struct wl_pointer*, uint32_t serial, struct wl_surface* surface, wl_fixed_t, wl_fixed_t)
+    [](void* data, struct wl_pointer* pointer, uint32_t serial, struct wl_surface* surface, wl_fixed_t, wl_fixed_t)
     {
         auto& seatData = *static_cast<Display::SeatData*>(data);
         seatData.serial = serial;
         auto it = seatData.inputClients.find(surface);
         if (it != seatData.inputClients.end())
             seatData.pointer.target = *it;
+
+        if (seatData.cursor.cursor && seatData.cursor.surface) {
+            struct wl_cursor_image* image = seatData.cursor.cursor->images[0];
+
+            wl_pointer_set_cursor(pointer, serial, seatData.cursor.surface,
+                    image->hotspot_x, image->hotspot_y);
+
+            struct wl_buffer* buffer = wl_cursor_image_get_buffer(image);
+
+            wl_surface_attach(seatData.cursor.surface, buffer, 0, 0);
+            wl_surface_damage(seatData.cursor.surface, 0, 0, image->width, image->height);
+            wl_surface_commit(seatData.cursor.surface);
+
+        }
     },
     // leave
     [](void* data, struct wl_pointer*, uint32_t serial, struct wl_surface* surface)
@@ -530,6 +548,9 @@ Display::~Display()
         g_source_unref(m_eventSource);
     m_eventSource = nullptr;
 
+    if (m_seatData.cursor.surface)
+        wl_surface_destroy(m_seatData.cursor.surface);
+
     if (m_interfaces.compositor)
         wl_compositor_destroy(m_interfaces.compositor);
     if (m_interfaces.data_device_manager)
@@ -542,7 +563,9 @@ Display::~Display()
         xdg_shell_destroy(m_interfaces.xdg);
     if (m_interfaces.ivi_application)
         ivi_application_destroy(m_interfaces.ivi_application);
-    m_interfaces = { nullptr, nullptr, nullptr, 0, 0, nullptr, nullptr, nullptr };
+    if (m_interfaces.shm)
+        wl_shm_destroy(m_interfaces.shm);
+    m_interfaces = { nullptr, nullptr, nullptr, 0, 0, nullptr, nullptr, nullptr, nullptr };
 
     if (m_registry)
         wl_registry_destroy(m_registry);
@@ -591,6 +614,13 @@ void Display::unregisterInputClient(struct wl_surface* surface)
     if (m_seatData.keyboard.target.first == it->first)
         m_seatData.keyboard.target = { };
     m_seatData.inputClients.erase(it);
+}
+
+void Display::setCursor(struct wl_cursor* cursor)
+{
+    m_seatData.cursor.cursor = cursor;
+    if (cursor && !m_seatData.cursor.surface)
+        m_seatData.cursor.surface = wl_compositor_create_surface(m_interfaces.compositor);
 }
 
 } // namespace Wayland

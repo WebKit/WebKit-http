@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <wayland-client.h>
+#include <wayland-cursor.h>
 #include <wayland-server-core.h>
 #include "wayland-drm-server-protocol.h"
 #include <wayland-server-protocol.h>
@@ -77,6 +78,7 @@ private:
     struct wl_surface* m_surface;
     struct xdg_surface* m_xdgSurface;
     struct ivi_surface* m_iviSurface;
+    struct wl_cursor_theme* m_cursorTheme {nullptr};
 
     ResizingData m_resizingData { nullptr, 0, 0 };
 
@@ -325,6 +327,13 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
 
     m_server.drm = wl_global_create(server.display(), &wl_drm_interface, m_display.interfaces().drm_version,
             this, bindDrm);
+
+
+    if (m_display.interfaces().shm)
+        m_cursorTheme = wl_cursor_theme_load(NULL, 32, m_display.interfaces().shm);
+
+    if (m_cursorTheme)
+        m_display.setCursor(wl_cursor_theme_get_cursor(m_cursorTheme, "left_ptr"));
 }
 
 ViewBackend::~ViewBackend()
@@ -332,6 +341,7 @@ ViewBackend::~ViewBackend()
     m_backend = nullptr;
 
     m_display.unregisterInputClient(m_surface);
+    m_display.setCursor(nullptr);
 
     m_resizingData = { nullptr, 0, 0 };
 
@@ -343,6 +353,9 @@ ViewBackend::~ViewBackend()
     m_xdgSurface = nullptr;
     if (m_surface)
         wl_surface_destroy(m_surface);
+    if (m_cursorTheme)
+        wl_cursor_theme_destroy(m_cursorTheme);
+
     m_surface = nullptr;
 }
 
