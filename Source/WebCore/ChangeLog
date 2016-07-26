@@ -1,3 +1,14 @@
+2016-07-26  Eric Carlson  <eric.carlson@apple.com>
+
+        Occasional crash in WebCore::RenderVTTCue::initializeLayoutParameters
+        https://bugs.webkit.org/show_bug.cgi?id=160208
+
+        Reviewed by Darin Adler.
+
+        * rendering/RenderVTTCue.cpp:
+        (WebCore::RenderVTTCue::initializeLayoutParameters): Return when firstChild is NULL so a
+        release build will not crash.
+
 2016-12-22  Zalan Bujtas  <zalan@apple.com>
 
         Do not destroy the RenderNamedFlowFragment as leftover anonymous block.
