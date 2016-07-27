@@ -28,6 +28,7 @@
 #include "nested-compositor.h"
 
 #include "nc-renderer-host.h"
+#include "nc-view-display.h"
 #include <assert.h>
 #include <cstdio>
 #include <cstring>
@@ -63,7 +64,7 @@ public:
     EGLDisplay display;
 };
 
-class ViewBackend {
+class ViewBackend: public NC::ViewDisplay::Client {
 public:
     class Buffer {
     public:
@@ -84,12 +85,16 @@ public:
     ViewBackend(ClientBundle*, struct wpe_view_backend* backend);
     virtual ~ViewBackend();
 
+    virtual void OnSurfaceCommit(NC::ViewDisplay::Surface const&, NC::ViewDisplay::Buffer const*,
+            NC::ViewDisplay::FrameCallback const*, NC::ViewDisplay::Damage const*) override;
+
     void initialize();
 
     void sendFrameCompleteCallback();
 
     Buffer* getBuffer(uint32_t);
     Buffer* getBuffer(struct wl_resource*);
+    Buffer* addBuffer(struct wl_resource*);
 
 private:
     struct {
@@ -102,31 +107,16 @@ private:
         PFNEGLQUERYWAYLANDBUFFERWL eglQueryWaylandBufferWL;
     } m_egl;
 
-    struct {
-        struct {
-            Buffer* buffer {nullptr};
-            struct wl_resource* callback {nullptr};
-        } pending;
+    struct wl_resource *m_callback {nullptr};
 
-        struct {
-            struct wl_resource* callback {nullptr};
-        } current;
-
-        struct wl_global* compositor;
-    } m_server;
+    NC::ViewDisplay m_viewDisplay;
 
     ClientBundle* m_clientBundle;
     struct wpe_view_backend* m_backend;
 
     std::unordered_map<uint32_t, Buffer*> m_bufferMap;
 
-    static const struct wl_surface_interface g_surfaceImplementation;
-    static const struct wl_compositor_interface g_compositorImplementation;
-
-    static void bindCompositor(struct wl_client*, void*, uint32_t, uint32_t);
-
     static void destroyBuffer(struct wl_resource*);
-    static void destroyCallback(struct wl_resource*);
 
 };
 
@@ -146,9 +136,6 @@ ViewBackend::Buffer::~Buffer()
 {
     wl_list_remove(&m_buffer_destroy_listener.link);
     m_backend->m_bufferMap.erase(wl_resource_get_id(m_resource));
-
-    if (m_backend->m_server.pending.buffer == this )
-        m_backend->m_server.pending.buffer = nullptr;
 }
 
 void ViewBackend::Buffer::sendRelease() const
@@ -175,6 +162,7 @@ static void bindEGLproc(T& p, char const* name)
 ViewBackend::ViewBackend(ClientBundle* clientBundle, struct wpe_view_backend* backend)
     : m_clientBundle(clientBundle)
     , m_backend(backend)
+    , m_viewDisplay(this)
 {
     m_clientBundle->viewBackend = this;
     m_egl.display = m_clientBundle->display;
@@ -182,7 +170,7 @@ ViewBackend::ViewBackend(ClientBundle* clientBundle, struct wpe_view_backend* ba
     auto& server = NC::RendererHost::singleton();
     server.initialize();
 
-    m_server.compositor = wl_global_create(server.display(), &wl_compositor_interface, 3, this, bindCompositor);
+    m_viewDisplay.initialize(server.display());
 
     bindEGLproc(m_egl.eglCreateImageKHR, "eglCreateImageKHR");
     bindEGLproc(m_egl.eglBindWaylandDisplayWL, "eglBindWaylandDisplayWL");
@@ -204,159 +192,48 @@ ViewBackend::~ViewBackend()
         m_egl.eglUnbindWaylandDisplayWL(m_egl.display, NC::RendererHost::singleton().display());
 }
 
+void ViewBackend::OnSurfaceCommit(NC::ViewDisplay::Surface const&, NC::ViewDisplay::Buffer const* buffer,
+        NC::ViewDisplay::FrameCallback const* frameCallback, NC::ViewDisplay::Damage const*)
+{
+    if (buffer) {
+        if (frameCallback) {
+            m_callback = frameCallback->resource();
+
+            wl_resource_set_implementation(frameCallback->resource(), nullptr, this,
+                    [](struct wl_resource* resource)
+                    {
+                        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
+                        backend.m_callback = nullptr;
+                    });
+        }
+
+        auto* resource = buffer->resource();
+
+        addBuffer(resource);
+
+        struct wpe_mesa_view_backend_exportable_egl_image_data data;
+
+        data.handle = wl_resource_get_id(resource);
+        data.image = m_egl.eglCreateImageKHR(m_egl.display, EGL_NO_CONTEXT,
+                EGL_WAYLAND_BUFFER_WL, (EGLClientBuffer)resource, nullptr);
+
+        m_egl.eglQueryWaylandBufferWL(m_egl.display, resource, EGL_WIDTH, &data.width);
+        m_egl.eglQueryWaylandBufferWL(m_egl.display, resource, EGL_HEIGHT, &data.height);
+
+        m_clientBundle->client->export_egl_image(m_clientBundle->data, &data);
+    }
+}
+
 void ViewBackend::initialize()
 {
     wpe_view_backend_dispatch_set_size(m_backend, 800, 600);
 }
 
-void ViewBackend::destroyCallback(struct wl_resource* resource)
-{
-    auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-    if (backend.m_server.current.callback == resource)
-        backend.m_server.current.callback = nullptr;
-
-    if (backend.m_server.pending.callback == resource)
-        backend.m_server.pending.callback = nullptr;
-}
-
-const struct wl_surface_interface ViewBackend::g_surfaceImplementation = {
-    // destroy
-    [](struct wl_client*, struct wl_resource* resource)
-    {
-    },
-    // attach
-    [](struct wl_client*, struct wl_resource* resource, struct wl_resource* buffer_resource, int32_t x,
-            int32_t y)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        backend.m_server.pending.buffer = nullptr;
-        if (buffer_resource) {
-            auto* buffer = backend.getBuffer(buffer_resource);
-
-            if (!buffer)
-                buffer = new Buffer(buffer_resource, &backend);
-
-            backend.m_server.pending.buffer = buffer;
-        }
-    },
-    // damage
-    [](struct wl_client*, struct wl_resource* resource, int32_t x, int32_t y, int32_t width, int32_t height)
-    {
-    },
-    // frame
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* callback_resource = wl_resource_create(client, &wl_callback_interface,
-                1, id);
-
-        if (!callback_resource) {
-            wl_resource_post_no_memory(resource);
-            return;
-        }
-
-        wl_resource_set_implementation(callback_resource, nullptr, &backend, destroyCallback);
-
-        backend.m_server.pending.callback = callback_resource;
-    },
-    // set_opaque_region
-    [](struct wl_client*, struct wl_resource*, struct wl_resource*)
-    {
-        assert(0);
-    },
-    // set_input_region
-    [](struct wl_client*, struct wl_resource*, struct wl_resource*)
-    {
-        assert(0);
-    },
-    // commit
-    [](struct wl_client*, struct wl_resource* resource)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        auto* buffer = backend.m_server.pending.buffer;
-        auto* callback = backend.m_server.pending.callback;
-
-        backend.m_server.pending.buffer = nullptr;
-        backend.m_server.pending.callback = nullptr;
-
-        if (buffer) {
-            backend.m_server.current.callback = callback;
-
-            auto* resource = buffer->getResource();
-
-            struct wpe_mesa_view_backend_exportable_egl_image_data data;
-
-            data.handle = wl_resource_get_id(resource);
-            data.image = backend.m_egl.eglCreateImageKHR(backend.m_egl.display, EGL_NO_CONTEXT,
-                    EGL_WAYLAND_BUFFER_WL, (EGLClientBuffer)resource, nullptr);
-
-            backend.m_egl.eglQueryWaylandBufferWL(backend.m_egl.display, resource, EGL_WIDTH,
-                    &data.width);
-            backend.m_egl.eglQueryWaylandBufferWL(backend.m_egl.display, resource, EGL_HEIGHT,
-                    &data.height);
-
-            backend.m_clientBundle->client->export_egl_image(backend.m_clientBundle->data,
-                    &data);
-        }
-    },
-    // set_buffer_transform
-    [](struct wl_client*, struct wl_resource*, int32_t)
-    {
-        assert(0);
-    },
-    // set_buffer_scale
-    [](struct wl_client*, struct wl_resource*, int32_t)
-    {
-        assert(0);
-    }
-};
-
-const struct wl_compositor_interface ViewBackend::g_compositorImplementation = {
-    // create_surface
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* surface_resource = wl_resource_create(client, &wl_surface_interface,
-                3, id);
-
-        if (!surface_resource) {
-            wl_resource_post_no_memory(resource);
-            return;
-        }
-
-        wl_resource_set_implementation(surface_resource, &ViewBackend::g_surfaceImplementation,
-                &backend, nullptr);
-    },
-    // create_region
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        assert(0);
-    },
-};
-
-void ViewBackend::bindCompositor(struct wl_client* client, void* data, uint32_t version, uint32_t id)
-{
-    auto& backend = *static_cast<ViewBackend*>(data);
-    struct wl_resource* resource = wl_resource_create(client, &wl_compositor_interface,
-        version, id);
-
-    if (!resource) {
-        wl_client_post_no_memory(client);
-        return;
-    }
-
-    wl_resource_set_implementation(resource, &g_compositorImplementation, &backend, nullptr);
-}
-
 void ViewBackend::sendFrameCompleteCallback()
 {
-    if (m_server.current.callback) {
-        wl_callback_send_done(m_server.current.callback, 0);
-        m_server.current.callback = nullptr;
+    if (m_callback) {
+        wl_callback_send_done(m_callback, 0);
+        m_callback = nullptr;
     }
 }
 
@@ -371,6 +248,17 @@ ViewBackend::Buffer* ViewBackend::getBuffer(uint32_t handle)
 ViewBackend::Buffer* ViewBackend::getBuffer(struct wl_resource* resource)
 {
     return getBuffer(wl_resource_get_id(resource));
+}
+
+ViewBackend::Buffer* ViewBackend::addBuffer(struct wl_resource* resource)
+{
+    auto* buffer = getBuffer(resource);
+    if (buffer)
+        return buffer;
+
+    buffer = new Buffer(resource, this);
+
+    return buffer;
 }
 
 } // namespace Exportable

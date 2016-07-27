@@ -38,6 +38,7 @@ struct wpe_view_backend;
 
 struct ivi_application;
 struct wl_compositor;
+struct wl_cursor;
 struct wl_data_device_manager;
 struct wl_display;
 struct wl_drm;
@@ -45,6 +46,7 @@ struct wl_keyboard;
 struct wl_pointer;
 struct wl_registry;
 struct wl_seat;
+struct wl_shm;
 struct wl_surface;
 struct wl_touch;
 struct xdg_shell;
@@ -71,6 +73,7 @@ public:
         struct wl_seat* seat;
         struct xdg_shell* xdg;
         struct ivi_application* ivi_application;
+        struct wl_shm* shm;
     };
     const Interfaces& interfaces() const { return m_interfaces; }
 
@@ -121,10 +124,17 @@ public:
         } repeatData { 0, 0, 0, 0 };
 
         uint32_t serial;
+
+        struct {
+            struct wl_cursor* cursor {nullptr};
+            struct wl_surface* surface {nullptr};
+        } cursor;
     };
 
     void registerInputClient(struct wl_surface*, struct wpe_view_backend*);
     void unregisterInputClient(struct wl_surface*);
+
+    void setCursor(struct wl_cursor*);
 
 private:
     Display();
@@ -137,6 +147,7 @@ private:
     SeatData m_seatData;
 
     GSource* m_eventSource;
+
 };
 
 } // namespace Wayland

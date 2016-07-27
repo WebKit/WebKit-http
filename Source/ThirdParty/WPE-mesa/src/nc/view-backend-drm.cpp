@@ -26,6 +26,7 @@
 #include "nested-compositor.h"
 
 #include "nc-renderer-host.h"
+#include "nc-view-display.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -144,10 +145,13 @@ private:
     static void frameCallbackDestroyed(struct wl_listener* listener, void*);
 };
 
-class ViewBackend {
+class ViewBackend: public NC::ViewDisplay::Client {
 public:
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
+
+    virtual void OnSurfaceCommit(NC::ViewDisplay::Surface const&, NC::ViewDisplay::Buffer const*,
+            NC::ViewDisplay::FrameCallback const*, NC::ViewDisplay::Damage const*) override;
 
     struct wpe_view_backend* backend;
 
@@ -171,16 +175,6 @@ public:
         struct gbm_bo* next_bo {nullptr};
     } m_display;
 
-
-    struct {
-        struct wl_global* compositor;
-
-        struct {
-            struct wl_resource* buffer {nullptr};
-            struct wl_resource* frame_callback {nullptr};
-        } pending;
-    } m_server;
-
     struct {
         PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
         PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
@@ -197,13 +191,7 @@ public:
         GLuint tex_id;
     } m_egl;
 
-
-    static const struct wl_compositor_interface g_compositorImplementation;
-    static const struct wl_surface_interface g_surfaceImplementation;
-
-    static void bindCompositor(struct wl_client*, void*, uint32_t, uint32_t);
-
-    static void callbackDestroyed(struct wl_resource*);
+    NC::ViewDisplay m_viewDisplay;
 
     static void pageFlipHandler(int, unsigned, unsigned, unsigned, void*);
 
@@ -272,6 +260,7 @@ static void bindEGLproc(T& p, char const* name)
 
 ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     : backend(backend)
+    , m_viewDisplay(this)
 {
     decltype(m_drm) drm;
     auto drmCleanup = defer(
@@ -397,7 +386,7 @@ ViewBackend::ViewBackend(struct wpe_view_backend* backend)
     auto& server = ::NC::RendererHost::singleton();
     server.initialize();
 
-    m_server.compositor = wl_global_create(server.display(), &wl_compositor_interface, 3, this, bindCompositor);
+    m_viewDisplay.initialize(server.display());
 
     m_egl.display = eglGetDisplay(reinterpret_cast<NativeDisplayType>(m_gbm.device));
 
@@ -561,6 +550,65 @@ ViewBackend::~ViewBackend()
     eglDestroyContext(m_egl.display, m_egl.context);
 }
 
+void ViewBackend::OnSurfaceCommit(NC::ViewDisplay::Surface const& surface,
+        NC::ViewDisplay::Buffer const* buffer, NC::ViewDisplay::FrameCallback const* frameCallback,
+        NC::ViewDisplay::Damage const* damage)
+{
+    if (buffer) {
+        if (m_display.next_bo) {
+            fprintf(stderr, "Page flip already pending\n");
+            abort();
+        }
+
+        if (m_egl.egl_image != EGL_NO_IMAGE_KHR) {
+            m_egl.eglDestroyImageKHR(m_egl.display, m_egl.egl_image);
+        }
+
+        m_egl.egl_image = m_egl.eglCreateImageKHR(m_egl.display,
+                nullptr, EGL_WAYLAND_BUFFER_WL, buffer->resource(), nullptr);
+
+        if (m_egl.egl_image == EGL_NO_IMAGE_KHR) {
+            fprintf(stderr, "Cannot create EGL image: %i\n", eglGetError());
+            return;
+        }
+
+        m_egl.glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_egl.egl_image);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        static const GLfloat vertices[] = {
+            -1.0f, 1.0f, 0.0f,
+            1.0f, 1.0f, 0.0f,
+            -1.0f, -1.0f, 0.0f,
+            1.0f, -1.0f, 0.0f,
+        };
+
+        static const GLfloat texCoord[] = {
+            0.0f, 0.0f,
+            1.0f, 0.0f,
+            0.0f, 1.0f,
+            1.0f, 1.0f
+        };
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, texCoord);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        eglSwapBuffers(m_egl.display, m_egl.surface);
+
+        m_display.next_bo = gbm_surface_lock_front_buffer(m_gbm.surface);
+
+        auto* fb = getFBInfo(m_display.next_bo);
+        fb->setBuffer(buffer->resource());
+        if (frameCallback)
+            fb->setFrameCallback(frameCallback->resource());
+
+        drmModePageFlip(m_drm.fd, m_drm.crtcId, fb->getFBID(),
+                DRM_MODE_PAGE_FLIP_EVENT, this);
+    }
+}
+
 void ViewBackend::boDestroyed(struct gbm_bo* bo, void* data)
 {
     auto* fb = static_cast<FBInfo*>(data);
@@ -668,172 +716,6 @@ void FBInfo::frameCallbackDestroyed(struct wl_listener* listener, void* data)
 {
     FBInfo* fb = container_of(listener, &FBInfo::m_frame_callback_destroy_listener);
     fb->setFrameCallback(nullptr);
-}
-
-
-const struct wl_surface_interface ViewBackend::g_surfaceImplementation = {
-    // destroy
-    [](struct wl_client*, struct wl_resource* resource)
-    {
-    },
-    // attach
-    [](struct wl_client*, struct wl_resource* resource, struct wl_resource* buffer_resource, int32_t x,
-            int32_t y)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-        backend.m_server.pending.buffer = buffer_resource;
-    },
-    // damage
-    [](struct wl_client*, struct wl_resource* resource, int32_t x, int32_t y, int32_t width, int32_t height)
-    {
-    },
-    // frame
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* callback_resource = wl_resource_create(client, &wl_callback_interface,
-                1, id);
-
-        if (!callback_resource) {
-            wl_resource_post_no_memory(resource);
-            return;
-        }
-
-        backend.m_server.pending.frame_callback = callback_resource;
-
-        wl_resource_set_implementation(callback_resource, nullptr, &backend, callbackDestroyed);
-    },
-    // set_opaque_region
-    [](struct wl_client*, struct wl_resource*, struct wl_resource*)
-    {
-        assert(0);
-    },
-    // set_input_region
-    [](struct wl_client*, struct wl_resource*, struct wl_resource*)
-    {
-        assert(0);
-    },
-    // commit
-    [](struct wl_client*, struct wl_resource* resource)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* buffer = backend.m_server.pending.buffer;
-        struct wl_resource* frame_callback = backend.m_server.pending.frame_callback;
-
-        backend.m_server.pending.buffer = nullptr;
-        backend.m_server.pending.frame_callback = nullptr;
-
-        if (buffer) {
-            if (backend.m_display.next_bo) {
-                fprintf(stderr, "Page flip already pending\n");
-                abort();
-            }
-
-            if (backend.m_egl.egl_image != EGL_NO_IMAGE_KHR) {
-                backend.m_egl.eglDestroyImageKHR(backend.m_egl.display, backend.m_egl.egl_image);
-            }
-
-            backend.m_egl.egl_image = backend.m_egl.eglCreateImageKHR(backend.m_egl.display,
-                    nullptr, EGL_WAYLAND_BUFFER_WL, buffer, nullptr);
-
-            if (backend.m_egl.egl_image == EGL_NO_IMAGE_KHR) {
-                fprintf(stderr, "Cannot create EGL image: %i\n", eglGetError());
-                return;
-            }
-
-            backend.m_egl.glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, backend.m_egl.egl_image);
-
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            static const GLfloat vertices[] = {
-                -1.0f, 1.0f, 0.0f,
-                1.0f, 1.0f, 0.0f,
-                -1.0f, -1.0f, 0.0f,
-                1.0f, -1.0f, 0.0f,
-            };
-
-            static const GLfloat texCoord[] = {
-                0.0f, 0.0f,
-                1.0f, 0.0f,
-                0.0f, 1.0f,
-                1.0f, 1.0f
-            };
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, texCoord);
-
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-            eglSwapBuffers(backend.m_egl.display, backend.m_egl.surface);
-
-            backend.m_display.next_bo = gbm_surface_lock_front_buffer(backend.m_gbm.surface);
-
-            auto* fb = getFBInfo(backend.m_display.next_bo);
-            fb->setBuffer(buffer);
-            fb->setFrameCallback(frame_callback);
-
-            drmModePageFlip(backend.m_drm.fd, backend.m_drm.crtcId, fb->getFBID(),
-                    DRM_MODE_PAGE_FLIP_EVENT, &backend);
-        }
-    },
-    // set_buffer_transform
-    [](struct wl_client*, struct wl_resource*, int32_t)
-    {
-        assert(0);
-    },
-    // set_buffer_scale
-    [](struct wl_client*, struct wl_resource*, int32_t)
-    {
-        assert(0);
-    }
-};
-
-const struct wl_compositor_interface ViewBackend::g_compositorImplementation = {
-    // create_surface
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-        struct wl_resource* surface_resource = wl_resource_create(client, &wl_surface_interface,
-                3, id);
-
-        if (!surface_resource) {
-            wl_resource_post_no_memory(resource);
-            return;
-        }
-
-        wl_resource_set_implementation(surface_resource, &ViewBackend::g_surfaceImplementation,
-                &backend, nullptr);
-    },
-    // create_region
-    [](struct wl_client* client, struct wl_resource* resource, uint32_t id)
-    {
-        assert(0);
-    },
-};
-
-void ViewBackend::bindCompositor(struct wl_client* client, void* data, uint32_t version, uint32_t id)
-{
-    auto& backend = *static_cast<ViewBackend*>(data);
-    struct wl_resource* resource = wl_resource_create(client, &wl_compositor_interface,
-        version, id);
-
-    if (!resource) {
-        wl_client_post_no_memory(client);
-        return;
-    }
-
-    wl_resource_set_implementation(resource, &g_compositorImplementation, &backend, nullptr);
-}
-
-void ViewBackend::callbackDestroyed(struct wl_resource* resource)
-{
-    auto& backend = *static_cast<ViewBackend*>(wl_resource_get_user_data(resource));
-
-    if (backend.m_server.pending.frame_callback == resource)
-        backend.m_server.pending.frame_callback = nullptr;
 }
 
 } // namespace DRM
