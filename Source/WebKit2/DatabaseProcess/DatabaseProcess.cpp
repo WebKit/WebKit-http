@@ -182,8 +182,8 @@ void DatabaseProcess::createDatabaseToWebProcessConnection()
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
 
     // Create a listening connection.
-    RefPtr<DatabaseToWebProcessConnection> connection = DatabaseToWebProcessConnection::create(IPC::Connection::Identifier(listeningPort));
-    m_databaseToWebProcessConnections.append(connection.release());
+    auto connection = DatabaseToWebProcessConnection::create(IPC::Connection::Identifier(listeningPort));
+    m_databaseToWebProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientPort(listeningPort, MACH_MSG_TYPE_MAKE_SEND);
     parentProcessConnection()->send(Messages::DatabaseProcessProxy::DidCreateDatabaseToWebProcessConnection(clientPort), 0);
@@ -284,7 +284,7 @@ Vector<RefPtr<WebCore::SecurityOrigin>> DatabaseProcess::indexedDatabaseOrigins(
 
 #endif
 
-void DatabaseProcess::getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, std::function<void (const SandboxExtension::HandleArray&)> completionHandler)
+void DatabaseProcess::getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, std::function<void (SandboxExtension::HandleArray&&)> completionHandler)
 {
     static uint64_t lastRequestID;
 
@@ -293,10 +293,10 @@ void DatabaseProcess::getSandboxExtensionsForBlobFiles(const Vector<String>& fil
     parentProcessConnection()->send(Messages::DatabaseProcessProxy::GetSandboxExtensionsForBlobFiles(requestID, filenames), 0);
 }
 
-void DatabaseProcess::didGetSandboxExtensionsForBlobFiles(uint64_t requestID, const SandboxExtension::HandleArray& handles)
+void DatabaseProcess::didGetSandboxExtensionsForBlobFiles(uint64_t requestID, SandboxExtension::HandleArray&& handles)
 {
     if (auto handler = m_sandboxExtensionForBlobsCompletionHandlers.take(requestID))
-        handler(handles);
+        handler(WTFMove(handles));
 }
 
 #if !PLATFORM(COCOA)

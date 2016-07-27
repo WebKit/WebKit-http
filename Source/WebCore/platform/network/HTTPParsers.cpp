@@ -102,6 +102,17 @@ static inline bool skipValue(const String& str, unsigned& pos)
     return pos != start;
 }
 
+// See RFC 7230, Section 3.1.2.
+bool isValidReasonPhrase(const String& value)
+{
+    for (unsigned i = 0; i < value.length(); ++i) {
+        UChar c = value[i];
+        if (c == 0x7F || c > 0xFF || (c < 0x20 && c != '\t'))
+            return false;
+    }
+    return true;
+}
+
 // See RFC 7230, Section 3.2.3.
 bool isValidHTTPHeaderValue(const String& value)
 {
@@ -461,12 +472,13 @@ ContentTypeOptionsDisposition parseContentTypeOptionsHeader(const String& header
 }
 #endif
 
-String extractReasonPhraseFromHTTPStatusLine(const String& statusLine)
+AtomicString extractReasonPhraseFromHTTPStatusLine(const String& statusLine)
 {
-    size_t spacePos = statusLine.find(' ');
+    StringView view = statusLine;
+    size_t spacePos = view.find(' ');
     // Remove status code from the status line.
-    spacePos = statusLine.find(' ', spacePos + 1);
-    return statusLine.substring(spacePos + 1);
+    spacePos = view.find(' ', spacePos + 1);
+    return view.substring(spacePos + 1).toAtomicString();
 }
 
 XFrameOptionsDisposition parseXFrameOptionsHeader(const String& header)

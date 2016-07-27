@@ -36,6 +36,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Editor.h"
+#include "EventNames.h"
 #include "FormDataList.h"
 #include "Frame.h"
 #include "FrameSelection.h"
@@ -50,7 +51,7 @@
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextControlInnerElements.h"
 #include "TextEvent.h"
 #include "TextIterator.h"
@@ -410,7 +411,7 @@ static String autoFillButtonTypeToAccessibilityLabel(AutoFillButtonType autoFill
     default:
     case AutoFillButtonType::None:
         ASSERT_NOT_REACHED();
-        return AtomicString();
+        return String();
     }
 }
     
@@ -518,7 +519,7 @@ void TextFieldInputType::updatePlaceholderText()
 bool TextFieldInputType::appendFormData(FormDataList& list, bool multipart) const
 {
     InputType::appendFormData(list, multipart);
-    const AtomicString& dirnameAttrValue = element().fastGetAttribute(dirnameAttr);
+    const AtomicString& dirnameAttrValue = element().attributeWithoutSynchronization(dirnameAttr);
     if (!dirnameAttrValue.isNull())
         list.appendData(dirnameAttrValue, element().directionForFormData());
     return true;
@@ -663,8 +664,8 @@ void TextFieldInputType::createAutoFillButton(AutoFillButtonType autoFillButtonT
 
     m_autoFillButton = AutoFillButtonElement::create(element().document(), *this);
     m_autoFillButton->setPseudo(autoFillButtonTypeToAutoFillButtonPseudoClassName(autoFillButtonType));
-    m_autoFillButton->setAttribute(roleAttr, "button");
-    m_autoFillButton->setAttribute(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(autoFillButtonType));
+    m_autoFillButton->setAttributeWithoutSynchronization(roleAttr, AtomicString("button", AtomicString::ConstructFromLiteral));
+    m_autoFillButton->setAttributeWithoutSynchronization(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(autoFillButtonType));
     m_container->appendChild(*m_autoFillButton, IGNORE_EXCEPTION);
 }
 
@@ -677,11 +678,11 @@ void TextFieldInputType::updateAutoFillButton()
         if (!m_autoFillButton)
             createAutoFillButton(element().autoFillButtonType());
 
-        const AtomicString& attribute = m_autoFillButton->fastGetAttribute(pseudoAttr);
+        const AtomicString& attribute = m_autoFillButton->attributeWithoutSynchronization(pseudoAttr);
         bool shouldUpdateAutoFillButtonType = isAutoFillButtonTypeChanged(attribute, element().autoFillButtonType());
         if (shouldUpdateAutoFillButtonType) {
             m_autoFillButton->setPseudo(autoFillButtonTypeToAutoFillButtonPseudoClassName(element().autoFillButtonType()));
-            m_autoFillButton->setAttribute(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(element().autoFillButtonType()));
+            m_autoFillButton->setAttributeWithoutSynchronization(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(element().autoFillButtonType()));
         }
         m_autoFillButton->setInlineStyleProperty(CSSPropertyDisplay, CSSValueBlock, true);
         return;

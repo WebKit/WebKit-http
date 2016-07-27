@@ -55,7 +55,7 @@ namespace NetworkCache {
 static const AtomicString& resourceType()
 {
     ASSERT(WTF::isMainThread());
-    static NeverDestroyed<const AtomicString> resource("resource", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> resource("Resource", AtomicString::ConstructFromLiteral);
     return resource;
 }
 
@@ -382,7 +382,7 @@ void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameI
     });
 }
 
-std::unique_ptr<Entry> Cache::store(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, RefPtr<WebCore::SharedBuffer>&& responseData, std::function<void (MappedBody&)>&& completionHandler)
+std::unique_ptr<Entry> Cache::store(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, RefPtr<WebCore::SharedBuffer>&& responseData, Function<void (MappedBody&)>&& completionHandler)
 {
     ASSERT(isEnabled());
     ASSERT(responseData);
@@ -412,8 +412,8 @@ std::unique_ptr<Entry> Cache::store(const WebCore::ResourceRequest& request, con
     m_storage->store(record, [completionHandler = WTFMove(completionHandler)](const Data& bodyData) {
         MappedBody mappedBody;
 #if ENABLE(SHAREABLE_RESOURCE)
-        if (RefPtr<SharedMemory> sharedMemory = bodyData.tryCreateSharedMemory()) {
-            mappedBody.shareableResource = ShareableResource::create(WTFMove(sharedMemory), 0, bodyData.size());
+        if (auto sharedMemory = bodyData.tryCreateSharedMemory()) {
+            mappedBody.shareableResource = ShareableResource::create(sharedMemory.releaseNonNull(), 0, bodyData.size());
             ASSERT(mappedBody.shareableResource);
             mappedBody.shareableResource->createHandle(mappedBody.shareableResourceHandle);
         }
@@ -480,7 +480,7 @@ void Cache::remove(const WebCore::ResourceRequest& request)
     remove(makeCacheKey(request));
 }
 
-void Cache::traverse(NoncopyableFunction<void (const TraversalEntry*)>&& traverseHandler)
+void Cache::traverse(Function<void (const TraversalEntry*)>&& traverseHandler)
 {
     ASSERT(isEnabled());
 

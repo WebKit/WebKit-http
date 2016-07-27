@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -80,7 +80,6 @@ private:
     void dispatchWillSendRequest(WebCore::DocumentLoader*, unsigned long identifier, WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse) override;
     bool shouldUseCredentialStorage(WebCore::DocumentLoader*, unsigned long identifier) override;
     void dispatchDidReceiveAuthenticationChallenge(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::AuthenticationChallenge&) override;
-    void dispatchDidCancelAuthenticationChallenge(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::AuthenticationChallenge&) override;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     bool canAuthenticateAgainstProtectionSpace(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::ProtectionSpace&) override;
 #endif
@@ -163,6 +162,7 @@ private:
     WebCore::ResourceError blockedByContentBlockerError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError cannotShowURLError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError interruptedForPolicyChangeError(const WebCore::ResourceRequest&) override;
+    WebCore::ResourceError blockedByContentFilterError(const WebCore::ResourceRequest&) override;
 
     WebCore::ResourceError cannotShowMIMETypeError(const WebCore::ResourceResponse&) override;
     WebCore::ResourceError fileDoesNotExistError(const WebCore::ResourceResponse&) override;

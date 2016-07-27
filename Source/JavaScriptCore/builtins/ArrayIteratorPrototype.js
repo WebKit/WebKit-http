@@ -28,11 +28,8 @@ function next()
 {
     "use strict";
 
-    if (this == null) {
-        if (this === null)
-            throw new @TypeError("%ArrayIteratorPrototype%.next requires that |this| not be null");
-        throw new @TypeError("%ArrayIteratorPrototype%.next requires that |this| not be undefined");
-    }
+    if (this == null)
+        throw new @TypeError("%ArrayIteratorPrototype%.next requires that |this| not be null or undefined");
 
     let next = this.@arrayIteratorNext;
     if (next === @undefined)
@@ -41,6 +38,7 @@ function next()
     return next.@call(this);
 }
 
+@globalPrivate
 function arrayIteratorValueNext()
 {
     "use strict";
@@ -63,6 +61,7 @@ function arrayIteratorValueNext()
     return { done, value };
 }
 
+@globalPrivate
 function arrayIteratorKeyNext()
 {
     "use strict";
@@ -85,6 +84,7 @@ function arrayIteratorKeyNext()
     return { done, value };
 }
 
+@globalPrivate
 function arrayIteratorKeyValueNext()
 {
     "use strict";

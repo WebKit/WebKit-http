@@ -71,7 +71,7 @@ void WebCoreAVCFResourceLoader::startLoading()
     RetainPtr<CFURLRequestRef> urlRequest = AVCFAssetResourceLoadingRequestGetURLRequest(m_avRequest.get());
 
     // ContentSecurityPolicyImposition::DoPolicyCheck is a placeholder value. It does not affect the request since Content Security Policy does not apply to raw resources.
-    CachedResourceRequest request(ResourceRequest(urlRequest.get()), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, ClientDidNotRequestCredentials, DoSecurityCheck, UseDefaultOriginRestrictionsForType, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
+    CachedResourceRequest request(ResourceRequest(urlRequest.get()), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
 
     request.mutableResourceRequest().setPriority(ResourceLoadPriority::Low);
     CachedResourceLoader* loader = m_parent->player()->cachedResourceLoader();
@@ -99,8 +99,14 @@ void WebCoreAVCFResourceLoader::stopLoading()
 
 void WebCoreAVCFResourceLoader::invalidate()
 {
+    if (!m_parent)
+        return;
+
     m_parent = nullptr;
-    stopLoading();
+
+    callOnMainThread([protectedThis = makeRef(*this)] () mutable {
+        protectedThis->stopLoading();
+    });
 }
 
 void WebCoreAVCFResourceLoader::responseReceived(CachedResource* resource, const ResourceResponse& response)

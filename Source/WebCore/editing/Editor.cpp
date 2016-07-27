@@ -136,9 +136,9 @@ void ClearTextCommand::CreateAndApply(const RefPtr<Frame> frame)
     
     const VisibleSelection oldSelection = frame->selection().selection();
     frame->selection().selectAll();
-    RefPtr<ClearTextCommand> clearCommand = adoptRef(new ClearTextCommand(*frame->document()));
+    auto clearCommand = adoptRef(*new ClearTextCommand(*frame->document()));
     clearCommand->setStartingSelection(oldSelection);
-    applyCommand(clearCommand.release());
+    applyCommand(WTFMove(clearCommand));
 }
 
 using namespace HTMLNames;
@@ -1203,8 +1203,14 @@ bool Editor::insertTextWithoutSendingTextEvent(const String& text, bool selectIn
 
             // Reveal the current selection
             if (Frame* editedFrame = document->frame())
-                if (Page* page = editedFrame->page())
-                    page->focusController().focusedOrMainFrame().selection().revealSelection(ScrollAlignment::alignCenterIfNeeded);
+                if (Page* page = editedFrame->page()) {
+#if PLATFORM(IOS)
+                    SelectionRevealMode revealMode = SelectionRevealMode::RevealUpToMainFrame;
+#else
+                    SelectionRevealMode revealMode = SelectionRevealMode::Reveal;
+#endif
+                    page->focusController().focusedOrMainFrame().selection().revealSelection(revealMode, ScrollAlignment::alignCenterIfNeeded);
+                }
         }
     }
 
@@ -1655,7 +1661,7 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
     if (is<HTMLTextFormControlElement>(focusedElement)) {
         if (direction == NaturalWritingDirection)
             return;
-        downcast<HTMLTextFormControlElement>(*focusedElement).setAttribute(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
+        downcast<HTMLTextFormControlElement>(*focusedElement).setAttributeWithoutSynchronization(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
         focusedElement->dispatchInputEvent();
         document().updateStyleIfNeeded();
         return;
@@ -2433,16 +2439,16 @@ void Editor::markAllMisspellingsAndBadGrammarInRanges(TextCheckingTypeMask textC
     bool asynchronous = m_frame.settings().asynchronousSpellCheckingEnabled() && !shouldShowCorrectionPanel;
 
     // In asynchronous mode, we intentionally check paragraph-wide sentence.
-    RefPtr<SpellCheckRequest> request = SpellCheckRequest::create(resolveTextCheckingTypeMask(textCheckingOptions), TextCheckingProcessIncremental, asynchronous ? paragraphRange : rangeToCheck, paragraphRange);
+    auto request = SpellCheckRequest::create(resolveTextCheckingTypeMask(textCheckingOptions), TextCheckingProcessIncremental, asynchronous ? paragraphRange : rangeToCheck, paragraphRange);
 
     if (asynchronous) {
-        m_spellChecker->requestCheckingFor(request.release());
+        m_spellChecker->requestCheckingFor(WTFMove(request));
         return;
     }
 
     Vector<TextCheckingResult> results;
     checkTextOfParagraph(*textChecker(), paragraphToCheck.text(), resolveTextCheckingTypeMask(textCheckingOptions), results, m_frame.selection().selection());
-    markAndReplaceFor(request.release(), results);
+    markAndReplaceFor(WTFMove(request), results);
 }
 
 static bool isAutomaticTextReplacementType(TextCheckingType type)
@@ -2799,7 +2805,13 @@ void Editor::revealSelectionAfterEditingOperation(const ScrollAlignment& alignme
     if (m_ignoreCompositionSelectionChange)
         return;
 
-    m_frame.selection().revealSelection(alignment, revealExtentOption);
+#if PLATFORM(IOS)
+    SelectionRevealMode revealMode = SelectionRevealMode::RevealUpToMainFrame;
+#else
+    SelectionRevealMode revealMode = SelectionRevealMode::Reveal;
+#endif
+
+    m_frame.selection().revealSelection(revealMode, alignment, revealExtentOption);
 }
 
 void Editor::setIgnoreCompositionSelectionChange(bool ignore, RevealSelection shouldRevealExistingSelection)
@@ -2817,15 +2829,15 @@ void Editor::setIgnoreCompositionSelectionChange(bool ignore, RevealSelection sh
         revealSelectionAfterEditingOperation(ScrollAlignment::alignToEdgeIfNeeded, RevealExtent);
 }
 
-PassRefPtr<Range> Editor::compositionRange() const
+RefPtr<Range> Editor::compositionRange() const
 {
     if (!m_compositionNode)
-        return 0;
+        return nullptr;
     unsigned length = m_compositionNode->length();
     unsigned start = std::min(m_compositionStart, length);
     unsigned end = std::min(std::max(start, m_compositionEnd), length);
     if (start >= end)
-        return 0;
+        return nullptr;
     return Range::create(m_compositionNode->document(), m_compositionNode.get(), start, m_compositionNode.get(), end);
 }
 
@@ -3147,7 +3159,7 @@ RefPtr<Range> Editor::findStringAndScrollToVisible(const String& target, Range* 
     if (!nextMatch)
         return nullptr;
 
-    nextMatch->firstNode()->renderer()->scrollRectToVisible(nextMatch->absoluteBoundingBox(),
+    nextMatch->firstNode()->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, nextMatch->absoluteBoundingBox(),
         ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded);
 
     return nextMatch;

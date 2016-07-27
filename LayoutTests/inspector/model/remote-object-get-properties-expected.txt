@@ -48,8 +48,7 @@ DISPLAYABLE PROPERTIES:
     eventPhase
     bubbles
     cancelable
-    scoped
-    relatedTargetScoped
+    composed
     timeStamp
     defaultPrevented
     srcElement
@@ -67,8 +66,7 @@ ALL PROPERTIES:
     eventPhase
     bubbles
     cancelable
-    scoped
-    relatedTargetScoped
+    composed
     timeStamp
     defaultPrevented
     srcElement
@@ -316,6 +314,44 @@ ALL PROPERTIES:
     __lookupGetter__
     __lookupSetter__
     constructor
+    __proto__
+-----------------------------------------------------
+
+-----------------------------------------------------
+EXPRESSION: document.getElementById('my-select').options
+type: object
+subtype: array
+description: HTMLOptionsCollection
+
+OWN PROPERTIES:
+    0
+    __proto__
+
+DISPLAYABLE PROPERTIES:
+    0
+    selectedIndex
+    length
+    __proto__
+
+ALL PROPERTIES:
+    0
+    constructor
+    selectedIndex
+    length
+    item
+    namedItem
+    add
+    remove
+    toString
+    toLocaleString
+    valueOf
+    hasOwnProperty
+    propertyIsEnumerable
+    isPrototypeOf
+    __defineGetter__
+    __defineSetter__
+    __lookupGetter__
+    __lookupSetter__
     __proto__
 -----------------------------------------------------
 DONE

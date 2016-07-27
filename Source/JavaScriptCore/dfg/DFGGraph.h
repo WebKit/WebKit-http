@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,6 @@
 #include "DFGPropertyTypeKey.h"
 #include "DFGScannable.h"
 #include "FullBytecodeLiveness.h"
-#include "JSStack.h"
 #include "MethodOfGettingAValueProfile.h"
 #include <unordered_map>
 #include <wtf/BitVector.h>
@@ -709,9 +708,9 @@ public:
             
             if (inlineCallFrame) {
                 if (inlineCallFrame->isClosureCall)
-                    functor(stackOffset + JSStack::Callee);
+                    functor(stackOffset + CallFrameSlot::callee);
                 if (inlineCallFrame->isVarargs())
-                    functor(stackOffset + JSStack::ArgumentCount);
+                    functor(stackOffset + CallFrameSlot::argumentCount);
             }
             
             CodeBlock* codeBlock = baselineCodeBlockFor(inlineCallFrame);
@@ -814,6 +813,9 @@ public:
     // because it queries the m_hasExceptionHandlers boolean whose value
     // is only fully determined after bytcode parsing.
     bool willCatchExceptionInMachineFrame(CodeOrigin, CodeOrigin& opCatchOriginOut, HandlerInfo*& catchHandlerOut);
+    
+    bool needsScopeRegister() const { return m_hasDebuggerEnabled || m_codeBlock->usesEval(); }
+    bool needsFlushedThis() const { return m_codeBlock->usesEval(); }
 
     VM& m_vm;
     Plan& m_plan;

@@ -439,12 +439,12 @@ WKTypeRef WKPageCopySessionState(WKPageRef pageRef, void* context, WKPageSession
     });
 
     if (shouldReturnData)
-        return toAPI(encodeLegacySessionState(sessionState).release().leakRef());
+        return toAPI(encodeLegacySessionState(sessionState).leakRef());
 
     return toAPI(&API::SessionState::create(WTFMove(sessionState)).leakRef());
 }
 
-void WKPageRestoreFromSessionState(WKPageRef pageRef, WKTypeRef sessionStateRef)
+static void restoreFromSessionState(WKPageRef pageRef, WKTypeRef sessionStateRef, bool navigate)
 {
     SessionState sessionState;
 
@@ -458,7 +458,17 @@ void WKPageRestoreFromSessionState(WKPageRef pageRef, WKTypeRef sessionStateRef)
         sessionState = toImpl(static_cast<WKSessionStateRef>(sessionStateRef))->sessionState();
     }
 
-    toImpl(pageRef)->restoreFromSessionState(WTFMove(sessionState), true);
+    toImpl(pageRef)->restoreFromSessionState(WTFMove(sessionState), navigate);
+}
+
+void WKPageRestoreFromSessionState(WKPageRef pageRef, WKTypeRef sessionStateRef)
+{
+    restoreFromSessionState(pageRef, sessionStateRef, true);
+}
+
+void WKPageRestoreFromSessionStateWithoutNavigation(WKPageRef pageRef, WKTypeRef sessionStateRef)
+{
+    restoreFromSessionState(pageRef, sessionStateRef, false);
 }
 
 double WKPageGetTextZoomFactor(WKPageRef pageRef)
@@ -1687,8 +1697,9 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
                 auto sourceFrameInfo = API::FrameInfo::create(*initiatingFrame, securityOriginData.securityOrigin());
 
+                auto userInitiatedActivity = page->process().userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
                 bool shouldOpenAppLinks = !hostsAreEqual(WebCore::URL(WebCore::ParsedURLString, initiatingFrame->url()), resourceRequest.url());
-                auto apiNavigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, resourceRequest, WebCore::URL(), shouldOpenAppLinks);
+                auto apiNavigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, resourceRequest, WebCore::URL(), shouldOpenAppLinks, userInitiatedActivity);
 
                 auto apiWindowFeatures = API::WindowFeatures::create(windowFeatures);
 
@@ -2737,6 +2748,13 @@ bool WKPageGetResourceCachingDisabled(WKPageRef page)
 void WKPageSetResourceCachingDisabled(WKPageRef page, bool disabled)
 {
     toImpl(page)->setResourceCachingDisabled(disabled);
+}
+
+void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportScaleLimits)
+{
+#if PLATFORM(IOS)
+    toImpl(page)->setForceAlwaysUserScalable(ignoresViewportScaleLimits);
+#endif
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

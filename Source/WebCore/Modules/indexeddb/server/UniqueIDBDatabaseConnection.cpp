@@ -56,11 +56,13 @@ UniqueIDBDatabaseConnection::UniqueIDBDatabaseConnection(UniqueIDBDatabase& data
     , m_openRequestIdentifier(request.requestData().requestIdentifier())
 {
     m_database.server().registerDatabaseConnection(*this);
+    m_connectionToClient.registerDatabaseConnection(*this);
 }
 
 UniqueIDBDatabaseConnection::~UniqueIDBDatabaseConnection()
 {
     m_database.server().unregisterDatabaseConnection(*this);
+    m_connectionToClient.unregisterDatabaseConnection(*this);
 }
 
 bool UniqueIDBDatabaseConnection::hasNonFinishedTransactions() const
@@ -149,11 +151,11 @@ void UniqueIDBDatabaseConnection::didAbortTransaction(UniqueIDBDatabaseTransacti
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::didAbortTransaction - %s - %" PRIu64, m_openRequestIdentifier.loggingString().utf8().data(), m_identifier);
 
     auto transactionIdentifier = transaction.info().identifier();
+    auto takenTransaction = m_transactionMap.take(transactionIdentifier);
 
-    ASSERT(m_transactionMap.contains(transactionIdentifier));
-    m_transactionMap.remove(transactionIdentifier);
-
-    m_connectionToClient.didAbortTransaction(transactionIdentifier, error);
+    ASSERT(takenTransaction || m_database.hardClosedForUserDelete());
+    if (takenTransaction)
+        m_connectionToClient.didAbortTransaction(transactionIdentifier, error);
 }
 
 void UniqueIDBDatabaseConnection::didCommitTransaction(UniqueIDBDatabaseTransaction& transaction, const IDBError& error)

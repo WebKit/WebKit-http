@@ -209,7 +209,7 @@ class TestExpectationParser(object):
 
     # FIXME: Update the original modifiers and remove this once the old syntax is gone.
     _configuration_tokens_list = [
-        'Mac', 'SnowLeopard', 'Lion', 'MountainLion', 'Mavericks', 'Yosemite', 'ElCapitan',
+        'Mac', 'SnowLeopard', 'Lion', 'MountainLion', 'Mavericks', 'Yosemite', 'ElCapitan', 'Sierra',
         'Win', 'XP', 'Vista', 'Win7',
         'Linux',
         'Android',
@@ -578,7 +578,6 @@ class TestExpectationsModel(object):
             if item[1] == expectation:
                 return item[0].upper()
         raise ValueError(expectation)
-
 
     def add_expectation_line(self, expectation_line, in_skipped=False):
         """Returns a list of warnings encountered while matching modifiers."""

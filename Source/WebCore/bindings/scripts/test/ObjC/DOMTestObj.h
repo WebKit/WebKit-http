@@ -163,6 +163,7 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (void)methodWithExceptionWithMessage;
 - (void)customMethod;
 - (void)customMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
+- (NSString *)publicAndPrivateMethod:(NSString *)argument;
 - (void)addEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture;
 - (void)removeEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture;
 - (void)withScriptStateVoid;
@@ -175,6 +176,8 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (DOMTestObj *)withScriptExecutionContextAndScriptStateWithSpaces;
 - (void)withScriptArgumentsAndCallStack;
 - (void)withDocumentArgument;
+- (void)withCallerDocumentArgument;
+- (void)withCallerWindowArgument;
 - (void)methodWithOptionalArg:(int)opt;
 - (void)methodWithOptionalArgAndDefaultValue:(int)opt;
 - (void)methodWithNonOptionalArgAndOptionalArg:(int)nonOpt opt:(int)opt;

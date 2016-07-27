@@ -29,10 +29,6 @@
 #include <wtf/RefPtr.h>
 #include <wtf/UniqueRef.h>
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/PageConfigurationIncludes.h>
-#endif
-
 namespace WebCore {
 
 class AlternativeTextClient;
@@ -45,6 +41,7 @@ class DragClient;
 class EditorClient;
 class FrameLoaderClient;
 class InspectorClient;
+class PaymentCoordinatorClient;
 class PlugInClient;
 class ProgressTrackerClient;
 class SocketProvider;
@@ -60,7 +57,7 @@ class ContextMenuClient;
 class PageConfiguration {
     WTF_MAKE_NONCOPYABLE(PageConfiguration); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, UniqueRef<SocketProvider>&&);
+    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, Ref<SocketProvider>&&);
     WEBCORE_EXPORT ~PageConfiguration();
 
     AlternativeTextClient* alternativeTextClient { nullptr };
@@ -69,19 +66,19 @@ public:
     ContextMenuClient* contextMenuClient { nullptr };
 #endif
     UniqueRef<EditorClient> editorClient;
-    UniqueRef<SocketProvider> socketProvider;
+    Ref<SocketProvider> socketProvider;
     DragClient* dragClient { nullptr };
     InspectorClient* inspectorClient { nullptr };
+#if ENABLE(APPLE_PAY)
+    PaymentCoordinatorClient* paymentCoordinatorClient { nullptr };
+#endif
+
     PlugInClient* plugInClient { nullptr };
     ProgressTrackerClient* progressTrackerClient { nullptr };
     RefPtr<BackForwardClient> backForwardClient;
     ValidationMessageClient* validationMessageClient { nullptr };
     FrameLoaderClient* loaderClientForMainFrame { nullptr };
     std::unique_ptr<DiagnosticLoggingClient> diagnosticLoggingClient { nullptr };
-
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/PageConfigurationMembers.h>
-#endif
 
     RefPtr<ApplicationCacheStorage> applicationCacheStorage;
     RefPtr<DatabaseProvider> databaseProvider;

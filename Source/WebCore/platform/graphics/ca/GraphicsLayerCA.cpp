@@ -1439,7 +1439,8 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
         FloatRect initialClip(boundsOrigin(), size());
 
         GraphicsContext context;
-        DisplayList::Recorder recorder(context, *m_displayList, initialClip, AffineTransform());
+        // The Recorder is large, so heap-allocate.
+        std::unique_ptr<DisplayList::Recorder> recorder = std::make_unique<DisplayList::Recorder>(context, *m_displayList, initialClip, AffineTransform());
         paintGraphicsLayerContents(context, FloatRect(FloatPoint(), size()));
 
 #ifdef LOG_RECORDING_TIME
@@ -3495,7 +3496,7 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
 
     if (behavior & LayerTreeAsTextDebug) {
         writeIndent(textStream, indent + 1);
-        textStream << "(acceleratetes drawing " << m_acceleratesDrawing << ")\n";
+        textStream << "(accelerates drawing " << m_acceleratesDrawing << ")\n";
         writeIndent(textStream, indent + 1);
         textStream << "(uses display-list drawing " << m_usesDisplayListDrawing << ")\n";
     }
@@ -3815,8 +3816,8 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
 
         for (auto* childLayer : childLayers) {
             GraphicsLayerCA& childLayerCA = downcast<GraphicsLayerCA>(*childLayer);
-            if (RefPtr<PlatformCALayer> platformLayer = childLayerCA.fetchCloneLayers(replicaRoot, replicaState, IntermediateCloneLevel))
-                clonalSublayers.append(platformLayer.release());
+            if (auto platformLayer = childLayerCA.fetchCloneLayers(replicaRoot, replicaState, IntermediateCloneLevel))
+                clonalSublayers.append(WTFMove(platformLayer));
         }
 
         replicaState.pop();

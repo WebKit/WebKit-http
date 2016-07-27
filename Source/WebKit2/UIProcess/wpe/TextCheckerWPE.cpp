@@ -108,7 +108,7 @@ void TextChecker::updateSpellingUIWithGrammarString(int64_t, const String&, cons
     notImplemented();
 }
 
-void TextChecker::getGuessesForWord(int64_t, const String&, const String&, int32_t, Vector<String>&)
+void TextChecker::getGuessesForWord(int64_t, const String&, const String&, int32_t, Vector<String>&, bool)
 {
     notImplemented();
 }

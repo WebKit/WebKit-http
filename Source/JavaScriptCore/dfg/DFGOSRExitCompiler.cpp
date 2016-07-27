@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -70,7 +70,7 @@ void OSRExitCompiler::emitRestoreArguments(const Operands<ValueRecovery>& operan
         
         if (!inlineCallFrame || inlineCallFrame->isClosureCall) {
             m_jit.loadPtr(
-                AssemblyHelpers::addressFor(stackOffset + JSStack::Callee),
+                AssemblyHelpers::addressFor(stackOffset + CallFrameSlot::callee),
                 GPRInfo::regT0);
         } else {
             m_jit.move(
@@ -80,7 +80,7 @@ void OSRExitCompiler::emitRestoreArguments(const Operands<ValueRecovery>& operan
         
         if (!inlineCallFrame || inlineCallFrame->isVarargs()) {
             m_jit.load32(
-                AssemblyHelpers::payloadFor(stackOffset + JSStack::ArgumentCount),
+                AssemblyHelpers::payloadFor(stackOffset + CallFrameSlot::argumentCount),
                 GPRInfo::regT1);
         } else {
             m_jit.move(
@@ -153,9 +153,10 @@ void compileOSRExit(ExecState* exec)
             // So, we must restore our call frame and stack pointer.
             jit.restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer();
             jit.loadPtr(vm->addressOfCallFrameForCatch(), GPRInfo::callFrameRegister);
-            jit.addPtr(CCallHelpers::TrustedImm32(codeBlock->stackPointerOffset() * sizeof(Register)),
-                GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
         }
+        jit.addPtr(
+            CCallHelpers::TrustedImm32(codeBlock->stackPointerOffset() * sizeof(Register)),
+            GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
 
         jit.jitAssertHasValidCallFrame();
         

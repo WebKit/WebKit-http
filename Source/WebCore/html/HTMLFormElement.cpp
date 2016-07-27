@@ -88,6 +88,7 @@ HTMLFormElement::~HTMLFormElement()
     if (!shouldAutocomplete())
         document().unregisterForDocumentSuspensionCallbacks(this);
 
+    m_defaultButton = nullptr;
     for (auto& associatedElement : m_associatedElements)
         associatedElement->formWillBeDestroyed();
     for (auto& imageElement : m_imageElements)
@@ -284,8 +285,8 @@ void HTMLFormElement::prepareForSubmission(Event* event)
 
     StringPairVector controlNamesAndValues;
     getTextFieldValues(controlNamesAndValues);
-    RefPtr<FormState> formState = FormState::create(this, controlNamesAndValues, &document(), NotSubmittedByJavaScript);
-    frame->loader().client().dispatchWillSendSubmitEvent(formState.release());
+    auto formState = FormState::create(this, controlNamesAndValues, &document(), NotSubmittedByJavaScript);
+    frame->loader().client().dispatchWillSendSubmitEvent(WTFMove(formState));
 
     Ref<HTMLFormElement> protectedThis(*this);
     // Event handling can result in m_shouldSubmit becoming true, regardless of dispatchEvent() return value.
@@ -395,7 +396,7 @@ void HTMLFormElement::reset()
 
 bool HTMLFormElement::autocorrect() const
 {
-    const AtomicString& autocorrectValue = fastGetAttribute(autocorrectAttr);
+    const AtomicString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
     if (!autocorrectValue.isEmpty())
         return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
     if (HTMLFormElement* form = this->form())
@@ -405,12 +406,12 @@ bool HTMLFormElement::autocorrect() const
 
 void HTMLFormElement::setAutocorrect(bool autocorrect)
 {
-    setAttribute(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
+    setAttributeWithoutSynchronization(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
 }
 
 WebAutocapitalizeType HTMLFormElement::autocapitalizeType() const
 {
-    return autocapitalizeTypeForAttributeValue(fastGetAttribute(autocapitalizeAttr));
+    return autocapitalizeTypeForAttributeValue(attributeWithoutSynchronization(autocapitalizeAttr));
 }
 
 const AtomicString& HTMLFormElement::autocapitalize() const
@@ -420,7 +421,7 @@ const AtomicString& HTMLFormElement::autocapitalize() const
 
 void HTMLFormElement::setAutocapitalize(const AtomicString& value)
 {
-    setAttribute(autocapitalizeAttr, value);
+    setAttributeWithoutSynchronization(autocapitalizeAttr, value);
 }
 
 #endif
@@ -550,7 +551,7 @@ unsigned HTMLFormElement::formElementIndex(FormAssociatedElement* associatedElem
 
     // Treats separately the case where this element has the form attribute
     // for performance consideration.
-    if (associatedHTMLElement.fastHasAttribute(formAttr)) {
+    if (associatedHTMLElement.hasAttributeWithoutSynchronization(formAttr)) {
         unsigned short position = compareDocumentPosition(&associatedHTMLElement);
         if (position & DOCUMENT_POSITION_PRECEDING) {
             ++m_associatedElementsBeforeIndex;
@@ -593,6 +594,16 @@ unsigned HTMLFormElement::formElementIndex(FormAssociatedElement* associatedElem
 void HTMLFormElement::registerFormElement(FormAssociatedElement* e)
 {
     m_associatedElements.insert(formElementIndex(e), e);
+
+    if (is<HTMLFormControlElement>(e)) {
+        HTMLFormControlElement& control = downcast<HTMLFormControlElement>(*e);
+        if (control.isSuccessfulSubmitButton()) {
+            if (!m_defaultButton)
+                control.setNeedsStyleRecalc();
+            else
+                resetDefaultButton();
+        }
+    }
 }
 
 void HTMLFormElement::removeFormElement(FormAssociatedElement* e)
@@ -605,6 +616,9 @@ void HTMLFormElement::removeFormElement(FormAssociatedElement* e)
         --m_associatedElementsAfterIndex;
     removeFromPastNamesMap(e);
     m_associatedElements.remove(index);
+
+    if (e == m_defaultButton)
+        resetDefaultButton();
 }
 
 void HTMLFormElement::registerInvalidAssociatedFormControl(const HTMLFormControlElement& formControlElement)
@@ -660,7 +674,7 @@ String HTMLFormElement::name() const
 
 bool HTMLFormElement::noValidate() const
 {
-    return fastHasAttribute(novalidateAttr);
+    return hasAttributeWithoutSynchronization(novalidateAttr);
 }
 
 // FIXME: This function should be removed because it does not do the same thing as the
@@ -668,17 +682,17 @@ bool HTMLFormElement::noValidate() const
 // (Darin Adler) removed this, someone added it back, so I am leaving it in for now.
 String HTMLFormElement::action() const
 {
-    return fastGetAttribute(actionAttr);
+    return attributeWithoutSynchronization(actionAttr);
 }
 
 void HTMLFormElement::setAction(const String &value)
 {
-    setAttribute(actionAttr, value);
+    setAttributeWithoutSynchronization(actionAttr, value);
 }
 
 void HTMLFormElement::setEnctype(const String &value)
 {
-    setAttribute(enctypeAttr, value);
+    setAttributeWithoutSynchronization(enctypeAttr, value);
 }
 
 String HTMLFormElement::method() const
@@ -688,12 +702,12 @@ String HTMLFormElement::method() const
 
 void HTMLFormElement::setMethod(const String &value)
 {
-    setAttribute(methodAttr, value);
+    setAttributeWithoutSynchronization(methodAttr, value);
 }
 
 String HTMLFormElement::target() const
 {
-    return getAttribute(targetAttr);
+    return attributeWithoutSynchronization(targetAttr);
 }
 
 bool HTMLFormElement::wasUserSubmitted() const
@@ -703,15 +717,38 @@ bool HTMLFormElement::wasUserSubmitted() const
 
 HTMLFormControlElement* HTMLFormElement::defaultButton() const
 {
-    for (auto& associatedElement : m_associatedElements) {
-        if (!is<HTMLFormControlElement>(*associatedElement))
-            continue;
-        HTMLFormControlElement& control = downcast<HTMLFormControlElement>(*associatedElement);
-        if (control.isSuccessfulSubmitButton())
-            return &control;
+    if (!m_defaultButton) {
+        for (auto& associatedElement : m_associatedElements) {
+            if (!is<HTMLFormControlElement>(*associatedElement))
+                continue;
+            HTMLFormControlElement& control = downcast<HTMLFormControlElement>(*associatedElement);
+            if (control.isSuccessfulSubmitButton()) {
+                m_defaultButton = &control;
+                break;
+            }
+        }
+    }
+    return m_defaultButton;
+}
+
+void HTMLFormElement::resetDefaultButton()
+{
+    if (!m_defaultButton) {
+        // Computing the default button is not cheap, we don't want to do it unless needed.
+        // If there was no default button set, the only style to invalidate is the element
+        // being added to the form. This is done explicitely in registerFormElement().
+        return;
     }
 
-    return nullptr;
+    HTMLFormControlElement* oldDefault = m_defaultButton;
+    m_defaultButton = nullptr;
+    defaultButton();
+    if (m_defaultButton != oldDefault) {
+        if (oldDefault)
+            oldDefault->setNeedsStyleRecalc();
+        if (m_defaultButton)
+            m_defaultButton->setNeedsStyleRecalc();
+    }
 }
 
 bool HTMLFormElement::checkValidity()
@@ -842,7 +879,7 @@ void HTMLFormElement::didMoveToNewDocument(Document* oldDocument)
 
 bool HTMLFormElement::shouldAutocomplete() const
 {
-    return !equalLettersIgnoringASCIICase(fastGetAttribute(autocompleteAttr), "off");
+    return !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(autocompleteAttr), "off");
 }
 
 void HTMLFormElement::finishParsingChildren()
@@ -872,7 +909,7 @@ const AtomicString& HTMLFormElement::autocomplete() const
     static NeverDestroyed<AtomicString> on("on", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<AtomicString> off("off", AtomicString::ConstructFromLiteral);
 
-    return equalIgnoringASCIICase(fastGetAttribute(autocompleteAttr), "off") ? off : on;
+    return equalIgnoringASCIICase(attributeWithoutSynchronization(autocompleteAttr), "off") ? off : on;
 }
 
 } // namespace

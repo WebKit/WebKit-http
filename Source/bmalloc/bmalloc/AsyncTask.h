@@ -45,9 +45,7 @@ public:
     void stop();
 
 private:
-    enum State { Exited, ExitRequested, Sleeping, Running, RunRequested };
-
-    static const constexpr std::chrono::seconds exitDelay = std::chrono::seconds(1);
+    enum State { Sleeping, Running, RunRequested };
 
     void runSlowCase();
 
@@ -65,13 +63,11 @@ private:
     Function m_function;
 };
 
-template<typename Object, typename Function> const constexpr std::chrono::seconds AsyncTask<Object, Function>::exitDelay;
-
 template<typename Object, typename Function>
 AsyncTask<Object, Function>::AsyncTask(Object& object, const Function& function)
-    : m_state(Exited)
+    : m_state(Running)
     , m_condition()
-    , m_thread()
+    , m_thread(std::thread(&AsyncTask::threadEntryPoint, this))
     , m_object(object)
     , m_function(function)
 {
@@ -80,7 +76,9 @@ AsyncTask<Object, Function>::AsyncTask(Object& object, const Function& function)
 template<typename Object, typename Function>
 AsyncTask<Object, Function>::~AsyncTask()
 {
-    stop();
+    // We'd like to mark our destructor deleted but C++ won't allow it because
+    // we are an automatic member of Heap.
+    RELEASE_BASSERT(0);
 }
 
 template<typename Object, typename Function>
@@ -116,16 +114,9 @@ NO_INLINE void AsyncTask<Object, Function>::runSlowCase()
     if (oldState == RunRequested || oldState == Running)
         return;
 
-    if (oldState == Sleeping) {
-        std::lock_guard<Mutex> lock(m_conditionMutex);
-        m_condition.notify_all();
-        return;
-    }
-
-    BASSERT(oldState == Exited);
-    if (m_thread.joinable())
-        m_thread.detach();
-    m_thread = std::thread(&AsyncTask::threadEntryPoint, this);
+    BASSERT(oldState == Sleeping);
+    std::lock_guard<Mutex> lock(m_conditionMutex);
+    m_condition.notify_all();
 }
 
 template<typename Object, typename Function>
@@ -137,10 +128,9 @@ void AsyncTask<Object, Function>::threadEntryPoint(AsyncTask* asyncTask)
 template<typename Object, typename Function>
 void AsyncTask<Object, Function>::threadRunLoop()
 {
-    // This loop ratchets downward from most active to least active state, and
-    // finally exits. While we ratchet downward, any other thread may reset our
-    // state to RunRequested or ExitRequested.
-    
+    // This loop ratchets downward from most active to least active state. While
+    // we ratchet downward, any other thread may reset our state.
+
     // We require any state change while we are sleeping to signal to our
     // condition variable and wake us up.
 
@@ -152,16 +142,8 @@ void AsyncTask<Object, Function>::threadRunLoop()
         expectedState = Running;
         if (m_state.compare_exchange_weak(expectedState, Sleeping)) {
             std::unique_lock<Mutex> lock(m_conditionMutex);
-            m_condition.wait_for(lock, exitDelay, [=]() { return this->m_state != Sleeping; });
+            m_condition.wait(lock, [&]() { return m_state != Sleeping; });
         }
-
-        expectedState = Sleeping;
-        if (m_state.compare_exchange_weak(expectedState, Exited))
-            return;
-        
-        expectedState = ExitRequested;
-        if (m_state.compare_exchange_weak(expectedState, Exited))
-            return;
     }
 }
 

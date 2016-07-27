@@ -33,6 +33,7 @@
 #include "IDBConnectionProxy.h"
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
+#include "SocketProvider.h"
 #include "ThreadGlobalData.h"
 #include "URL.h"
 #include <utility>
@@ -93,7 +94,7 @@ WorkerThreadStartupData::WorkerThreadStartupData(const URL& scriptURL, const Str
 {
 }
 
-WorkerThread::WorkerThread(const URL& scriptURL, const String& userAgent, const String& sourceCode, WorkerLoaderProxy& workerLoaderProxy, WorkerReportingProxy& workerReportingProxy, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin* topOrigin, IDBClient::IDBConnectionProxy* connectionProxy)
+WorkerThread::WorkerThread(const URL& scriptURL, const String& userAgent, const String& sourceCode, WorkerLoaderProxy& workerLoaderProxy, WorkerReportingProxy& workerReportingProxy, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin* topOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
     : m_threadID(0)
     , m_workerLoaderProxy(workerLoaderProxy)
     , m_workerReportingProxy(workerReportingProxy)
@@ -104,10 +105,17 @@ WorkerThread::WorkerThread(const URL& scriptURL, const String& userAgent, const 
 #if ENABLE(INDEXED_DATABASE)
     , m_idbConnectionProxy(connectionProxy)
 #endif
+#if ENABLE(WEB_SOCKETS)
+    , m_socketProvider(socketProvider)
+#endif
 {
 #if !ENABLE(INDEXED_DATABASE)
     UNUSED_PARAM(connectionProxy);
 #endif
+#if !ENABLE(WEB_SOCKETS)
+    UNUSED_PARAM(socketProvider);
+#endif
+
     std::lock_guard<StaticLock> lock(threadSetMutex);
 
     workerThreads().add(this);
@@ -153,7 +161,7 @@ void WorkerThread::workerThread()
 
     {
         LockHolder lock(m_threadCreationMutex);
-        m_workerGlobalScope = createWorkerGlobalScope(m_startupData->m_scriptURL, m_startupData->m_userAgent, m_startupData->m_contentSecurityPolicyResponseHeaders, m_startupData->m_shouldBypassMainWorldContentSecurityPolicy, m_startupData->m_topOrigin.release());
+        m_workerGlobalScope = createWorkerGlobalScope(m_startupData->m_scriptURL, m_startupData->m_userAgent, m_startupData->m_contentSecurityPolicyResponseHeaders, m_startupData->m_shouldBypassMainWorldContentSecurityPolicy, WTFMove(m_startupData->m_topOrigin));
 
         if (m_runLoop.terminated()) {
             // The worker was terminated before the thread had a chance to run. Since the context didn't exist yet,
@@ -248,6 +256,15 @@ IDBClient::IDBConnectionProxy* WorkerThread::idbConnectionProxy()
 {
 #if ENABLE(INDEXED_DATABASE)
     return m_idbConnectionProxy.get();
+#else
+    return nullptr;
+#endif
+}
+
+SocketProvider* WorkerThread::socketProvider()
+{
+#if ENABLE(WEB_SOCKETS)
+    return m_socketProvider.get();
 #else
     return nullptr;
 #endif

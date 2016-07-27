@@ -313,7 +313,7 @@ String HitTestResult::altDisplayString() const
     
     if (is<HTMLImageElement>(*m_innerNonSharedNode)) {
         HTMLImageElement& image = downcast<HTMLImageElement>(*m_innerNonSharedNode);
-        return displayString(image.fastGetAttribute(altAttr), m_innerNonSharedNode.get());
+        return displayString(image.attributeWithoutSynchronization(altAttr), m_innerNonSharedNode.get());
     }
     
     if (is<HTMLInputElement>(*m_innerNonSharedNode)) {
@@ -470,7 +470,7 @@ void HitTestResult::toggleMediaFullscreenState() const
 #if ENABLE(VIDEO)
     if (HTMLMediaElement* mediaElement = this->mediaElement()) {
         if (mediaElement->isVideo() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
             mediaElement->toggleStandardFullscreenState();
         }
     }
@@ -484,7 +484,7 @@ void HitTestResult::enterFullscreenForVideo() const
     if (is<HTMLVideoElement>(mediaElement)) {
         HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
         if (!videoElement.isFullscreen() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
             videoElement.enterFullscreen();
         }
     }
@@ -786,22 +786,40 @@ Element* HitTestResult::innerNonSharedElement() const
     return node->parentElement();
 }
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/HitTestResultAdditions.cpp>
-#else
 bool HitTestResult::mediaSupportsEnhancedFullscreen() const
 {
+#if PLATFORM(MAC) && ENABLE(VIDEO) && ENABLE(VIDEO_PRESENTATION_MODE)
+    HTMLMediaElement* mediaElt(mediaElement());
+    return is<HTMLVideoElement>(mediaElt) && mediaElt->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
+#else
     return false;
+#endif
 }
 
 bool HitTestResult::mediaIsInEnhancedFullscreen() const
 {
+#if PLATFORM(MAC) && ENABLE(VIDEO) && ENABLE(VIDEO_PRESENTATION_MODE)
+    HTMLMediaElement* mediaElt(mediaElement());
+    return is<HTMLVideoElement>(mediaElt) && mediaElt->fullscreenMode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture;
+#else
     return false;
+#endif
 }
 
 void HitTestResult::toggleEnhancedFullscreenForVideo() const
 {
-}
+#if PLATFORM(MAC) && ENABLE(VIDEO) && ENABLE(VIDEO_PRESENTATION_MODE)
+    HTMLMediaElement* mediaElement(this->mediaElement());
+    if (!is<HTMLVideoElement>(mediaElement) || !mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture))
+        return;
+
+    HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
+    UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
+    if (videoElement.fullscreenMode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture)
+        videoElement.exitFullscreen();
+    else
+        videoElement.enterFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
 #endif
+}
 
 } // namespace WebCore

@@ -23,25 +23,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLMath_h
-#define RenderMathMLMath_h
+#pragma once
 
 #if ENABLE(MATHML)
 
 #include "RenderMathMLRow.h"
 
 namespace WebCore {
-    
+
 class RenderMathMLMath final : public RenderMathMLRow {
 public:
     RenderMathMLMath(Element&, RenderStyle&&);
 
 private:
-    bool isRenderMathMLMath() const override { return true; }
-    const char* renderName() const override { return "RenderMathMLMath"; }
+    bool isRenderMathMLMath() const final { return true; }
+    const char* renderName() const final { return "RenderMathMLMath"; }
 };
-    
+
 }
 
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLMath, isRenderMathMLMath())
+
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLMath_h

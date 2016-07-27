@@ -80,7 +80,6 @@ void DisplayRefreshMonitor::displayRefreshCallback()
         shouldHandleDisplayRefreshNotification = isScheduled() && isPreviousFrameDone();
         if (shouldHandleDisplayRefreshNotification) {
             setIsPreviousFrameDone(false);
-            setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
         }
     }
 

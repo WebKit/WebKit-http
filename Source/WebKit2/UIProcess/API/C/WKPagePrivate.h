@@ -145,6 +145,10 @@ WK_EXPORT void WKPageCallAfterNextPresentationUpdate(WKPageRef page, void* conte
 WK_EXPORT bool WKPageGetResourceCachingDisabled(WKPageRef page);
 WK_EXPORT void WKPageSetResourceCachingDisabled(WKPageRef page, bool disabled);
 
+WK_EXPORT void WKPageRestoreFromSessionStateWithoutNavigation(WKPageRef page, WKTypeRef sessionState);
+
+WK_EXPORT void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportScaleLimits);
+
 #ifdef __cplusplus
 }
 #endif

@@ -59,7 +59,6 @@ namespace JSC {
     class Identifier;
     class Interpreter;
     class JSScope;
-    class JSStack;
     class MarkedAllocator;
     class Register;
     class StructureChain;
@@ -194,6 +193,14 @@ namespace JSC {
         static const int patchPutByIdDefaultOffset = 256;
 
     public:
+        JIT(VM*, CodeBlock* = 0);
+        ~JIT();
+
+        void compileWithoutLinking(JITCompilationEffort);
+        CompilationResult link();
+
+        void doMainThreadPreparationBeforeCompile();
+        
         static CompilationResult compile(VM* vm, CodeBlock* codeBlock, JITCompilationEffort effort)
         {
             return JIT(vm, codeBlock).privateCompile(effort);
@@ -256,9 +263,6 @@ namespace JSC {
         JS_EXPORT_PRIVATE static HashMap<CString, double> compileTimeStats();
 
     private:
-        JIT(VM*, CodeBlock* = 0);
-        ~JIT();
-
         void privateCompileMainPass();
         void privateCompileLinkPass();
         void privateCompileSlowCases();
@@ -524,6 +528,7 @@ namespace JSC {
         void emit_op_is_boolean(Instruction*);
         void emit_op_is_number(Instruction*);
         void emit_op_is_string(Instruction*);
+        void emit_op_is_jsarray(Instruction*);
         void emit_op_is_object(Instruction*);
         void emit_op_jeq_null(Instruction*);
         void emit_op_jfalse(Instruction*);
@@ -700,7 +705,7 @@ namespace JSC {
 
         void emitInitRegister(int dst);
 
-        void emitPutIntToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry);
+        void emitPutIntToCallFrameHeader(RegisterID from, int entry);
 
         JSValue getConstantOperand(int src);
         bool isOperandConstantInt(int src);
@@ -712,7 +717,8 @@ namespace JSC {
         }
         void linkSlowCase(Vector<SlowCaseEntry>::iterator& iter)
         {
-            iter->from.link(this);
+            if (iter->from.isSet())
+                iter->from.link(this);
             ++iter;
         }
         void linkDummySlowCase(Vector<SlowCaseEntry>::iterator& iter)
@@ -907,8 +913,15 @@ namespace JSC {
 
         static bool reportCompileTimes();
         static bool computeCompileTimes();
+        
+        // If you need to check the value of an instruction multiple times and the instruction is
+        // part of a LLInt inline cache, then you want to use this. It will give you the value of
+        // the instruction at the start of JITing.
+        Instruction* copiedInstruction(Instruction*);
 
         Interpreter* m_interpreter;
+        
+        RefCountedArray<Instruction> m_instructions;
 
         Vector<CallRecord> m_calls;
         Vector<Label> m_labels;
@@ -929,6 +942,9 @@ namespace JSC {
         unsigned m_putByIdIndex;
         unsigned m_byValInstructionIndex;
         unsigned m_callLinkInfoIndex;
+        
+        Label m_arityCheck;
+        std::unique_ptr<LinkBuffer> m_linkBuffer;
 
         std::unique_ptr<JITDisassembler> m_disassembler;
         RefPtr<Profiler::Compilation> m_compilation;

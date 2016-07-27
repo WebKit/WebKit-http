@@ -30,6 +30,7 @@
 #include "ClassCollection.h"
 #include "ContainerNodeAlgorithms.h"
 #include "Editor.h"
+#include "EventNames.h"
 #include "FloatRect.h"
 #include "FrameView.h"
 #include "GenericCachedHTMLCollection.h"
@@ -102,9 +103,11 @@ static inline void destroyRenderTreeIfNeeded(Node& child)
     bool childIsHTMLSlotElement = false;
     childIsHTMLSlotElement = is<HTMLSlotElement>(child);
     // FIXME: Get rid of the named flow test.
-    if (!child.renderer() && !child.isNamedFlowContentNode() && !childIsHTMLSlotElement)
+    bool isElement = is<Element>(child);
+    if (!child.renderer() && !childIsHTMLSlotElement
+        && !(isElement && downcast<Element>(child).isNamedFlowContentElement()))
         return;
-    if (is<Element>(child))
+    if (isElement)
         RenderTreeUpdater::tearDownRenderers(downcast<Element>(child));
     else if (is<Text>(child))
         RenderTreeUpdater::tearDownRenderer(downcast<Text>(child));
@@ -520,13 +523,6 @@ bool ContainerNode::removeChild(Node& oldChild, ExceptionCode& ec)
     }
 
     Ref<Node> child(oldChild);
-
-    // Events fired when blurring currently focused node might have moved this
-    // child into a different parent.
-    if (child->parentNode() != this) {
-        ec = NOT_FOUND_ERR;
-        return false;
-    }
 
     willRemoveChild(*this, child);
 

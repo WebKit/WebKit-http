@@ -55,7 +55,7 @@ JIT::CodeRef JIT::privateCompileCTINativeCall(VM* vm, NativeFunction func)
     Call nativeCall;
 
     emitFunctionPrologue();
-    emitPutToCallFrameHeader(0, JSStack::CodeBlock);
+    emitPutToCallFrameHeader(0, CallFrameSlot::codeBlock);
     storePtr(callFrameRegister, &m_vm->topCallFrame);
 
 #if CPU(X86)
@@ -81,7 +81,7 @@ JIT::CodeRef JIT::privateCompileCTINativeCall(VM* vm, NativeFunction func)
     // Host function signature is f(ExecState*).
     move(callFrameRegister, argumentGPR0);
 
-    emitGetFromCallFrameHeaderPtr(JSStack::Callee, argumentGPR1);
+    emitGetFromCallFrameHeaderPtr(CallFrameSlot::callee, argumentGPR1);
     loadPtr(Address(argumentGPR1, OBJECT_OFFSETOF(JSFunction, m_executable)), regT2);
 
     // call the function
@@ -368,6 +368,24 @@ void JIT::emit_op_is_string(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
+void JIT::emit_op_is_jsarray(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int value = currentInstruction[2].u.operand;
+
+    emitLoad(value, regT1, regT0);
+    Jump isNotCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+
+    compare8(Equal, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(ArrayType), regT0);
+    Jump done = jump();
+
+    isNotCell.link(this);
+    move(TrustedImm32(0), regT0);
+
+    done.link(this);
+    emitStoreBool(dst, regT0);
+}
+
 void JIT::emit_op_is_object(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -571,8 +589,12 @@ void JIT::emit_op_jneq_ptr(Instruction* currentInstruction)
     unsigned target = currentInstruction[3].u.operand;
 
     emitLoad(src, regT1, regT0);
-    addJump(branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag)), target);
-    addJump(branchPtr(NotEqual, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr))), target);
+    CCallHelpers::Jump notCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    CCallHelpers::Jump equal = branchPtr(Equal, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr)));
+    notCell.link(this);
+    store32(TrustedImm32(1), &currentInstruction[4].u.operand);
+    addJump(jump(), target);
+    equal.link(this);
 }
 
 void JIT::emit_op_eq(Instruction* currentInstruction)
@@ -810,6 +832,7 @@ void JIT::emit_op_to_number(Instruction* currentInstruction)
     addSlowCase(branch32(AboveOrEqual, regT1, TrustedImm32(JSValue::LowestTag)));
     isInt32.link(this);
 
+    emitValueProfilingSite();
     if (src != dst)
         emitStore(dst, regT1, regT0);
 }
@@ -978,7 +1001,7 @@ void JIT::emit_op_enter(Instruction* currentInstruction)
 void JIT::emit_op_get_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
-    emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
+    emitGetFromCallFrameHeaderPtr(CallFrameSlot::callee, regT0);
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT0);
     emitStoreCell(dst, regT0);
 }

@@ -141,6 +141,7 @@ public:
     void time(Frame&, const String&);
     void timeEnd(Frame&, const String&);
     void mainFrameStartedLoading();
+    void mainFrameNavigated();
 
 private:
     // ScriptDebugListener
@@ -152,6 +153,18 @@ private:
     void breakpointActionLog(JSC::ExecState&, const String&) final { }
     void breakpointActionSound(int) final { }
     void breakpointActionProbe(JSC::ExecState&, const Inspector::ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, JSC::JSValue result) final;
+
+    void startProgrammaticCapture();
+    void stopProgrammaticCapture();
+
+    enum class InstrumentState { Start, Stop };
+    void toggleInstruments(InstrumentState);
+    void toggleScriptProfilerInstrument(InstrumentState);
+    void toggleHeapInstrument(InstrumentState);
+    void toggleMemoryInstrument(InstrumentState);
+    void toggleTimelineInstrument(InstrumentState);
+    void disableBreakpoints();
+    void enableBreakpoints();
 
     friend class TimelineRecordStack;
 
@@ -200,14 +213,18 @@ private:
     InspectorPageAgent* m_pageAgent;
 
     Vector<TimelineRecordEntry> m_recordStack;
+    Vector<TimelineRecordEntry> m_pendingConsoleProfileRecords;
 
     int m_id { 1 };
     int m_maxCallStackDepth { 5 };
 
     bool m_enabled { false };
     bool m_enabledFromFrontend { false };
+    bool m_programmaticCaptureRestoreBreakpointActiveValue { false };
 
     bool m_autoCaptureEnabled { false };
+    enum class AutoCapturePhase { None, BeforeLoad, FirstNavigation, AfterFirstNavigation };
+    AutoCapturePhase m_autoCapturePhase { AutoCapturePhase::None };
     Vector<Inspector::Protocol::Timeline::Instrument> m_instruments;
 
 #if PLATFORM(COCOA)

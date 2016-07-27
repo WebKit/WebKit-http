@@ -1,3 +1,1100 @@
+2016-07-18  Anders Carlsson  <andersca@apple.com>
+
+        WebKit nightly fails to build on macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=159902
+        rdar://problem/27365672
+
+        Reviewed by Tim Horton.
+
+        * icu/unicode/ucurr.h: Added.
+        Add ucurr.h from ICU.
+
+2016-07-18  Michael Saboff  <msaboff@apple.com>
+
+        ASSERTION FAILED: : (year >= 1970 && yearday >= 0) || (year < 1970 && yearday < 0) -- WTF/wtf/DateMath.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=159883
+
+        Reviewed by Filip Pizlo.
+
+        The function daysFrom1970ToYear() takes an integer year and returns a double result.
+        The calculation uses 1970 as a baseline year and subtracts 1970 from the argument year.
+        It does that subtraction using integer arithmetic, which given negative years close to
+        INT_MIN can underflow as a result of subtracting 1970.  Since we want a double result,
+        the fix is to cast year as a double before the subtraction, which eliminates the underflow.
+
+        * wtf/DateMath.cpp:
+        (WTF::daysFrom1970ToYear):
+
+2016-07-17  Filip Pizlo  <fpizlo@apple.com>
+
+        RegisterSet should use a Bitmap instead of a BitVector so that it never allocates memory and is trivial to copy
+        https://bugs.webkit.org/show_bug.cgi?id=159863
+
+        Reviewed by Saam Barati.
+        
+        Give Bitmap all of the power of BitVector (except for automatic resizing). This means a
+        variant of set() that takes a bool, and a bunch of helper methods (merge, filter, exclude,
+        forEachSetBit, ==, !=, and hash).
+
+        * wtf/Bitmap.h:
+        (WTF::WordType>::set):
+        (WTF::WordType>::testAndSet):
+        (WTF::WordType>::isFull):
+        (WTF::WordType>::merge):
+        (WTF::WordType>::filter):
+        (WTF::WordType>::exclude):
+        (WTF::WordType>::forEachSetBit):
+        (WTF::=):
+        (WTF::WordType>::hash):
+
+2016-07-02  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::Lock should be fair eventually
+        https://bugs.webkit.org/show_bug.cgi?id=159384
+
+        Reviewed by Geoffrey Garen.
+        
+        In https://webkit.org/blog/6161/locking-in-webkit/ we showed how relaxing the fairness of
+        locks makes them fast. That post presented lock fairness as a trade-off between two
+        extremes:
+        
+        - Barging. A barging lock, like WTF::Lock, releases the lock in unlock() even if there was a
+          thread on the queue. If there was a thread on the queue, the lock is released and that
+          thread is made runnable. That thread may then grab the lock, or some other thread may grab
+          the lock first (it may barge). Usually, the barging thread is the thread that released the
+          lock in the first place. This maximizes throughput but hurts fairness. There is no good
+          theoretical bound on how unfair the lock may become, but empirical data suggests that it's
+          fair enough for the cases we previously measured.
+        
+        - FIFO. A FIFO lock, like HandoffLock in ToyLocks.h, does not release the lock in unlock()
+          if there is a thread waiting. If there is a thread waiting, unlock() will make that thread
+          runnable and inform it that it now holds the lock. This ensures perfect round-robin
+          fairness and allows us to reason theoretically about how long it may take for a thread to
+          grab the lock. For example, if we know that only N threads are running and each one may
+          contend on a critical section, and each one may hold the lock for at most S seconds, then
+          the time it takes to grab the lock is N * S. Unfortunately, FIFO locks perform very badly
+          in most cases. This is because for the common case of short critical sections, they force
+          a context switch after each critical section if the lock is contended.
+        
+        This change makes WTF::Lock almost as fair as FIFO while still being as fast as barging.
+        Thanks to this new algorithm, you can now have both of these things at the same time.
+        
+        This change makes WTF::Lock eventually fair. We can almost (more on the caveats below)
+        guarantee that the time it takes to grab a lock is N * max(1ms, S). In other words, critical
+        sections that are longer than 1ms are always fair. For shorter critical sections, the amount
+        of time that any thread waits is 1ms times the number of threads. There are some caveats
+        that arise from our use of randomness, but even then, in the limit as the critical section
+        length goes to infinity, the lock becomes fair. The corner cases are unlikely to happen; our
+        experiments show that the lock becomes exactly as fair as a FIFO lock for any critical
+        section that is 1ms or longer.
+        
+        The fairness mechanism is broken into two parts. WTF::Lock can now choose to unlock a lock
+        fairly or unfairly thanks to the new ParkingLot token mechanism. WTF::Lock knows when to use
+        fair unlocking based on a timeout mechanism in ParkingLot called timeToBeFair.
+        
+        ParkingLot::unparkOne() and ParkingLot::parkConditionally() can now communicate with each
+        other via a token. unparkOne() can pass a token, which parkConditionally() will return. This
+        change also makes parkConditionally() a lot more precise about when it was unparked due to a
+        call to unparkOne(). If unparkOne() is told that a thread was unparked then this thread is
+        guaranteed to report that it was unparked rather than timing out, and that thread is
+        guaranteed to get the token that unparkOne() passed. The token is an intptr_t. We use it as
+        a boolean variable in WTF::Lock, but you could use it to pass arbitrary data structures. By
+        default, the token is zero. WTF::Lock's unlock() will pass 1 as the token if it is doing
+        fair unlocking. In that case, unlock() will not release the lock, and lock() will know that
+        it holds the lock as soon as parkConditionally() returns. Note that this algorithm relies
+        on unparkOne() invoking WTF::Lock's callback while the queue lock is held, so that WTF::Lock
+        can make a decision about unlock strategy and inject a token while it has complete knowledge
+        over the state of the queue. As such, it's not immediately obvious how to implement this
+        algorithm on top of futexes. You really need ParkingLot!
+        
+        WTF::Lock does not use fair unlocking every time. We expose a new API, Lock::unlockFairly(),
+        which forces the fair unlocking behavior. Additionally, ParkingLot now maintains a
+        per-bucket stochastic fairness timeout. When the timeout fires, the unparkOne() callback
+        sees UnparkResult::timeToBeFair = true. This timeout is set to be anywhere from 0ms to 1ms
+        at random. When a dequeue happens and there are threads that actually get dequeued, we check
+        if the time since the last unfair unlock (the last time timeToBeFair was set to true) is
+        more than the timeout amount. If so, then we set timeToBeFair to true and reset the timeout.
+        This means that in the absence of ParkingLot collisions, unfair unlocking is guaranteed to
+        happen at least once per millisecond. It will happen at 2 KHz on average. If there are
+        collisions, then each collision adds one millisecond to the worst case (and 0.5 ms to the
+        average case). The reason why we don't just use a fixed 1ms timeout is that we want to avoid
+        resonance. Imagine a program in which some thread acquires a lock at 1 KHz in-phase with the
+        timeToBeFair timeout. Then this thread would be the benefactor of fairness to the detriment
+        of everyone else. Randomness ensures that we aren't too fair to any one thread.
+        
+        Empirically, this is neutral on our major benchmarks like JetStream but it's an enormous
+        improvement in LockFairnessTest. It's common for an unfair lock (either our BargingLock, the
+        old WTF::Lock, any of the other futex-based locks that barge, or new os_unfair_lock) to
+        allow only one thread to hold the lock during a whole second in which each thread is holding
+        the lock for 1ms at a time. This is because in a barging lock, releasing a lock after
+        holding it for 1ms and then reacquiring it immediately virtually ensures that none of the
+        other threads can wake up in time to grab it before it's relocked. But the new WTF::Lock
+        handles this case like a champ: each thread gets equal turns.
+        
+        Here's some data. If we launch 10 threads and have each of them run for 1 second while
+        repeatedly holding a critical section for 1ms, then here's how many times each thread gets
+        to hold the lock using the old WTF::Lock algorithm:
+        
+        799, 6, 1, 1, 1, 1, 1, 1, 1, 1
+        
+        One thread hogged the lock for almost the whole time! With the new WTF::Lock, the lock
+        becomes totally fair:
+        
+        80, 79, 79, 79, 79, 79, 79, 80, 80, 79
+        
+        I don't know of anyone creating such an automatically-fair adaptive lock before, so I think
+        that this is a pretty awesome advancement to the state of the art!
+        
+        This change is good for three reasons:
+        
+        - We do have long critical sections in WebKit and we don't want to have to worry about
+          starvation. This reduces the likelihood that we will see starvation due to our lock
+          strategy.
+        
+        - I was talking to ggaren about bmalloc's locking needs, and he wanted unlockFairly() or
+          lockFairly() or some moral equivalent for the scavenger thread.
+        
+        - If we use a WTF::Lock to manage heap access in a multithreaded GC, we'll need the ability
+          to unlock and relock without barging.
+
+        * benchmarks/LockFairnessTest.cpp:
+        (main):
+        * benchmarks/ToyLocks.h:
+        * wtf/Condition.h:
+        (WTF::ConditionBase::waitUntil):
+        (WTF::ConditionBase::notifyOne):
+        * wtf/Lock.cpp:
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        (WTF::LockBase::unlockFairlySlow):
+        (WTF::LockBase::unlockSlowImpl):
+        * wtf/Lock.h:
+        (WTF::LockBase::try_lock):
+        (WTF::LockBase::unlock):
+        (WTF::LockBase::unlockFairly):
+        (WTF::LockBase::isHeld):
+        (WTF::LockBase::isFullyReset):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionallyImpl):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkOneImpl):
+        (WTF::ParkingLot::unparkAll):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::compareAndPark):
+        (WTF::ParkingLot::unparkOne):
+
+2016-07-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Support new emoji group candidates
+        https://bugs.webkit.org/show_bug.cgi?id=159755
+        <rdar://problem/27325521>
+
+        Reviewed by Dean Jackson.
+
+        This patch doesn't update the rules for our cursor movement iterator, because
+        I don't know the language used for implementing these rules. These rules will
+        be updated in the near future. When they do,
+        editing/deleting/delete-emoji-expected.txt will need to be updated.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::cursorMovementIterator):
+
+2016-07-16  Chris Dumez  <cdumez@apple.com>
+
+        Add move constructor / assignment operator to ListHashSet
+        https://bugs.webkit.org/show_bug.cgi?id=159837
+
+        Reviewed by Darin Adler.
+
+        Add move constructor / assignment operator to ListHashSet.
+
+        * wtf/ListHashSet.h:
+        (WTF::ListHashSetConstIterator::operator++):
+        (WTF::U>::ListHashSet):
+        (WTF::=):
+        (WTF::U>::clear):
+        (WTF::U>::appendNode):
+        (WTF::U>::prependNode):
+        (WTF::U>::deleteAllNodes):
+        (WTF::ListHashSetNode::ListHashSetNode): Deleted.
+
+2016-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Use emptyString() / nullAtom when possible
+        https://bugs.webkit.org/show_bug.cgi?id=159850
+
+        Reviewed by Ryosuke Niwa.
+
+        Use emptyString() / nullAtom when possible, for performance.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::convertASCIICase):
+
+2016-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r203304.
+
+        This is wrong because of Node* entries in the internal HashMap
+
+        Reverted changeset:
+
+        "Add move constructor / assignment operator to ListHashSet"
+        https://bugs.webkit.org/show_bug.cgi?id=159837
+        http://trac.webkit.org/changeset/203304
+
+2016-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Add move constructor / assignment operator to ListHashSet
+        https://bugs.webkit.org/show_bug.cgi?id=159837
+
+        Reviewed by Alex Christensen.
+
+        Add move constructor / assignment operator to ListHashSet.
+
+        * wtf/ListHashSet.h:
+
+2016-07-15  Geoffrey Garen  <ggaren@apple.com>
+
+        Added a makeRef<T> helper
+        https://bugs.webkit.org/show_bug.cgi?id=159835
+
+        Reviewed by Andreas Kling.
+
+        Anders told me to!
+
+        * wtf/Ref.h:
+        (WTF::makeRef): Helper function to do type inference for you.
+
+2016-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r203266.
+
+        This change caused editing/deleting/delete-emoji.html to time
+        out on El Capitan, crash under GuardMalloc
+
+        Reverted changeset:
+
+        "Support new emoji group candidates"
+        https://bugs.webkit.org/show_bug.cgi?id=159755
+        http://trac.webkit.org/changeset/203266
+
+2016-07-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Revert r202560 to fix the ARMv7 build with ARM instruction set
+        https://bugs.webkit.org/show_bug.cgi?id=159707
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Revert r202560.
+
+2016-07-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Support new emoji group candidates
+        https://bugs.webkit.org/show_bug.cgi?id=159755
+        <rdar://problem/27325521>
+
+        Reviewed by Dean Jackson.
+
+        This patch doesn't update the rules for our cursor movement iterator, because
+        I don't know the language used for implementing these rules. These rules will
+        be updated in the near future. When they do,
+        editing/deleting/delete-emoji-expected.txt will need to be updated.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::cursorMovementIterator):
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Allow RefPtrs of const RefCounted types
+        https://bugs.webkit.org/show_bug.cgi?id=158269
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/RefCounted.h:
+        (WTF::RefCountedBase::ref):
+        (WTF::RefCountedBase::~RefCountedBase):
+        (WTF::RefCountedBase::derefBase):
+        (WTF::RefCounted::deref):
+        Creating references to a const object does not really modify the object,
+        so everything in RefCounted is now mutable, and ref and deref are const.
+
+2016-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Avoid an extra heap allocation when dispatching Functions to WorkQueue
+        https://bugs.webkit.org/show_bug.cgi?id=158367
+
+        Reviewed by Anders Carlsson.
+
+        Avoid an extra heap allocation when dispatching Functions to WorkQueue
+        by adding leakCallable() / adoptCallable() functions to Function.
+
+        * wtf/Function.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-07-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments after r203119
+        https://bugs.webkit.org/show_bug.cgi?id=159749
+
+        Unreviewed.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::CodePoints::Iterator::Iterator):
+        (WTF::StringView::CodePoints::Iterator::operator*):
+        (WTF::StringView::CodePoints::Iterator::operator==):
+
+2016-07-13  Enrica Casucci  <enrica@apple.com>
+
+        Update supported platforms in xcconfig files to match the sdk names.
+        https://bugs.webkit.org/show_bug.cgi?id=159728
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2016-07-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebKitGtk+ uses too many file descriptors
+        https://bugs.webkit.org/show_bug.cgi?id=152316
+
+        Reviewed by Michael Catanzaro.
+
+        Add helper functions to duplicate a file descriptor setting close on exec flag, and also to set close on exec
+        flag to an existing file descriptor.
+
+        * wtf/UniStdExtras.h:
+        * wtf/UniStdExtras.cpp
+        (WTF::setCloseOnExec):
+        (WTF::dupCloseOnExec):
+
+2016-07-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Array.prototype.join() fails some conformance tests
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+
+        Reviewed by Saam Barati.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::number):
+        * wtf/text/AtomicString.h:
+
+2016-07-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203131.
+        https://bugs.webkit.org/show_bug.cgi?id=159698
+
+        This change caused an existing LayoutTest to time out on debug
+        testers (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Array.prototype.join() fails some conformance tests"
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+        http://trac.webkit.org/changeset/203131
+
+2016-07-12  Filip Pizlo  <fpizlo@apple.com>
+
+        platformUserPreferredLanguages on Mac should not try to put the region into the language
+        https://bugs.webkit.org/show_bug.cgi?id=159693
+
+        Rubber stamped by Alexey Proskuryakov.
+        
+        Currently, navigator.language is the thing that we use as the BCP-47 tag in our Intl code
+        when certain APIs are called without a locale argument.  That mostly makes sense, and is
+        deeply wired into our engine.
+
+        In r200105, we made Intl aware of the region as a separate thing from the language by having
+        platformUserPreferredLanguages() return something like a BCP-47 tag that was
+        <language>-<region>.  For example, if I told System Preferences that I want to speak English
+        but live in Poland then we'd get "en-pl".  This had the effect of making Intl APIs format
+        dates using Polish formatting, for example.
+
+        But this is an odd change, since that same function also feeds into navigator.language.
+        "en-pl" isn't what we want there, since my System Preferences settings aren't supposed to
+        mean that I want to speak Polish-style English.  There's no such thing.
+
+        It may be worthwhile to wire the region settings more elegantly into Intl, but if we do that,
+        it should be via a mechanism that is separate from navigator.language. So, this change simply
+        reverts r200105.
+
+        * wtf/PlatformUserPreferredLanguagesMac.mm:
+        (WTF::httpStyleLanguageCode):
+        (WTF::platformUserPreferredLanguages):
+        (WTF::isValidICUCountryCode): Deleted.
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix for build error when trying to version stamp dll.
+        https://bugs.webkit.org/show_bug.cgi?id=159692
+
+        Reviewed by Brent Fulgham.
+
+        Use correct path to version stamp script.
+
+        * wtf/CMakeLists.txt:
+
+2016-07-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Array.prototype.join() fails some conformance tests
+        https://bugs.webkit.org/show_bug.cgi?id=159657
+
+        Reviewed by Saam Barati.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::number):
+        * wtf/text/AtomicString.h:
+
+2016-07-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Relax ordering requirements on StringView::CodePoints iterator
+        https://bugs.webkit.org/show_bug.cgi?id=159609
+
+        Reviewed by Darin Adler.
+
+        Previously, there was a requirement where if you use a CodePoints
+        iterator, you couldn't dereference twice in a row or increment
+        twice in a row. This restriction is unnecessary.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::CodePoints::Iterator::Iterator):
+        (WTF::StringView::CodePoints::Iterator::advanceCurrentCodePoint):
+        (WTF::StringView::CodePoints::Iterator::operator*):
+        (WTF::StringView::CodePoints::Iterator::operator==):
+
+2016-07-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        JSCOnly bulidfix after r203078
+        https://bugs.webkit.org/show_bug.cgi?id=159669
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/text/jsconly/TextBreakIteratorInternalICUJSCOnly.cpp: Added.
+        (WTF::currentSearchLocaleID):
+        (WTF::currentTextBreakLocaleID):
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        Generate autoversion.h and run perl version stamp utility.
+
+        * wtf/CMakeLists.txt:
+
+2016-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement grapheme cluster iterator on StringView
+        https://bugs.webkit.org/show_bug.cgi?id=159598
+
+        Reviewed by Anders Carlsson.
+
+        This is in preparation for honoring the second argument to FontFaceSet.load().
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::GraphemeClusters::Iterator::Impl::Impl):
+        (WTF::StringView::GraphemeClusters::Iterator::Impl::operator++):
+        (WTF::StringView::GraphemeClusters::Iterator::Impl::operator*):
+        (WTF::StringView::GraphemeClusters::Iterator::Impl::operator==):
+        (WTF::StringView::GraphemeClusters::Iterator::Impl::computeIndexEnd):
+        (WTF::StringView::GraphemeClusters::Iterator::Iterator):
+        (WTF::StringView::GraphemeClusters::Iterator::~Iterator):
+        (WTF::StringView::GraphemeClusters::Iterator::operator*):
+        (WTF::StringView::GraphemeClusters::Iterator::operator==):
+        (WTF::StringView::GraphemeClusters::Iterator::operator!=):
+        * wtf/text/StringView.h:
+        (WTF::StringView::GraphemeClusters::GraphemeClusters):
+        * text/TextBreakIterator.cpp:
+        (WebCore::NonSharedCharacterBreakIterator::NonSharedCharacterBreakIterator):
+        * text/TextBreakIterator.h:
+
+2016-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Move breaking iterator code to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=159594
+
+        Reviewed by Alex Christensen.
+
+        This is in preparation for giving StringView a GraphemeClusters iterator.
+        Such an interator needs to be implemented on top of our breaking iterator
+        code.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * icu/unicode/ubrk.h: Added.
+        * icu/unicode/utext.h: Renamed from Source/WebCore/icu/unicode/utext.h.
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/TinyLRUCache.h:
+        * wtf/text/LineBreakIteratorPoolICU.h: Renamed from Source/WebCore/platform/text/LineBreakIteratorPoolICU.h.
+        (WTF::LineBreakIteratorPool::LineBreakIteratorPool):
+        (WTF::LineBreakIteratorPool::sharedPool):
+        (WTF::LineBreakIteratorPool::makeLocaleWithBreakKeyword):
+        (WTF::LineBreakIteratorPool::take):
+        (WTF::LineBreakIteratorPool::put):
+        * wtf/text/TextBreakIterator.cpp: Renamed from Source/WebCore/platform/text/TextBreakIterator.cpp.
+        (WTF::initializeIterator):
+        (WTF::initializeIteratorWithRules):
+        (WTF::setTextForIterator):
+        (WTF::setContextAwareTextForIterator):
+        (WTF::wordBreakIterator):
+        (WTF::sentenceBreakIterator):
+        (WTF::cursorMovementIterator):
+        (WTF::acquireLineBreakIterator):
+        (WTF::releaseLineBreakIterator):
+        (WTF::mapLineIteratorModeToRules):
+        (WTF::isCJKLocale):
+        (WTF::openLineBreakIterator):
+        (WTF::closeLineBreakIterator):
+        (WTF::compareAndSwapNonSharedCharacterBreakIterator):
+        (WTF::NonSharedCharacterBreakIterator::NonSharedCharacterBreakIterator):
+        (WTF::NonSharedCharacterBreakIterator::~NonSharedCharacterBreakIterator):
+        (WTF::textBreakFirst):
+        (WTF::textBreakLast):
+        (WTF::textBreakNext):
+        (WTF::textBreakPrevious):
+        (WTF::textBreakPreceding):
+        (WTF::textBreakFollowing):
+        (WTF::textBreakCurrent):
+        (WTF::isTextBreak):
+        (WTF::isWordTextBreak):
+        (WTF::numGraphemeClusters):
+        (WTF::numCharactersInGraphemeClusters):
+        * wtf/text/TextBreakIterator.h: Renamed from Source/WebCore/platform/text/TextBreakIterator.h.
+        (WTF::LazyLineBreakIterator::LazyLineBreakIterator):
+        (WTF::LazyLineBreakIterator::~LazyLineBreakIterator):
+        (WTF::LazyLineBreakIterator::string):
+        (WTF::LazyLineBreakIterator::isLooseCJKMode):
+        (WTF::LazyLineBreakIterator::lastCharacter):
+        (WTF::LazyLineBreakIterator::secondToLastCharacter):
+        (WTF::LazyLineBreakIterator::setPriorContext):
+        (WTF::LazyLineBreakIterator::updatePriorContext):
+        (WTF::LazyLineBreakIterator::resetPriorContext):
+        (WTF::LazyLineBreakIterator::priorContextLength):
+        (WTF::LazyLineBreakIterator::get):
+        (WTF::LazyLineBreakIterator::resetStringAndReleaseIterator):
+        (WTF::NonSharedCharacterBreakIterator::operator TextBreakIterator*):
+        * wtf/text/TextBreakIteratorInternalICU.h: Renamed from Source/WebCore/platform/text/TextBreakIteratorInternalICU.h.
+        * wtf/text/efl/TextBreakIteratorInternalICUEfl.cpp: Renamed from Source/WebCore/platform/text/efl/TextBreakIteratorInternalICUEfl.cpp.
+        (WebCore::currentSearchLocaleID):
+        (WebCore::currentTextBreakLocaleID):
+        * wtf/text/gtk/TextBreakIteratorInternalICUGtk.cpp: Renamed from Source/WebCore/platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp.
+        (WebCore::currentSearchLocaleID):
+        (WebCore::currentTextBreakLocaleID):
+        * wtf/text/icu/UTextProvider.cpp: Renamed from Source/WebCore/platform/text/icu/UTextProvider.cpp.
+        (WTF::fixPointer):
+        (WTF::uTextCloneImpl):
+        * wtf/text/icu/UTextProvider.h: Renamed from Source/WebCore/platform/text/icu/UTextProvider.h.
+        (WTF::uTextProviderContext):
+        (WTF::initializeContextAwareUTextProvider):
+        (WTF::uTextAccessPinIndex):
+        (WTF::uTextAccessInChunkOrOutOfRange):
+        * wtf/text/icu/UTextProviderLatin1.cpp: Renamed from Source/WebCore/platform/text/icu/UTextProviderLatin1.cpp.
+        (WTF::uTextLatin1Clone):
+        (WTF::uTextLatin1NativeLength):
+        (WTF::uTextLatin1Access):
+        (WTF::uTextLatin1Extract):
+        (WTF::uTextLatin1MapOffsetToNative):
+        (WTF::uTextLatin1MapNativeIndexToUTF16):
+        (WTF::uTextLatin1Close):
+        (WTF::openLatin1UTextProvider):
+        (WTF::textLatin1ContextAwareGetCurrentContext):
+        (WTF::textLatin1ContextAwareMoveInPrimaryContext):
+        (WTF::textLatin1ContextAwareSwitchToPrimaryContext):
+        (WTF::textLatin1ContextAwareMoveInPriorContext):
+        (WTF::textLatin1ContextAwareSwitchToPriorContext):
+        (WTF::uTextLatin1ContextAwareClone):
+        (WTF::uTextLatin1ContextAwareNativeLength):
+        (WTF::uTextLatin1ContextAwareAccess):
+        (WTF::uTextLatin1ContextAwareExtract):
+        (WTF::uTextLatin1ContextAwareClose):
+        (WTF::openLatin1ContextAwareUTextProvider):
+        * wtf/text/icu/UTextProviderLatin1.h: Renamed from Source/WebCore/platform/text/icu/UTextProviderLatin1.h.
+        * wtf/text/icu/UTextProviderUTF16.cpp: Renamed from Source/WebCore/platform/text/icu/UTextProviderUTF16.cpp.
+        (WTF::textUTF16ContextAwareGetCurrentContext):
+        (WTF::textUTF16ContextAwareMoveInPrimaryContext):
+        (WTF::textUTF16ContextAwareSwitchToPrimaryContext):
+        (WTF::textUTF16ContextAwareMoveInPriorContext):
+        (WTF::textUTF16ContextAwareSwitchToPriorContext):
+        (WTF::uTextUTF16ContextAwareClone):
+        (WTF::uTextUTF16ContextAwareNativeLength):
+        (WTF::uTextUTF16ContextAwareAccess):
+        (WTF::uTextUTF16ContextAwareExtract):
+        (WTF::uTextUTF16ContextAwareClose):
+        (WTF::openUTF16ContextAwareUTextProvider):
+        * wtf/text/icu/UTextProviderUTF16.h: Renamed from Source/WebCore/platform/text/icu/UTextProviderUTF16.h.
+        * wtf/text/mac/TextBreakIteratorInternalICUMac.mm: Renamed from Source/WebCore/platform/text/mac/TextBreakIteratorInternalICUMac.mm.
+        (WTF::textBreakLocalePreference):
+        (WTF::topLanguagePreference):
+        (WTF::getLocale):
+        (WTF::getSearchLocale):
+        (WTF::currentSearchLocaleID):
+        (WTF::getTextBreakLocale):
+        (WTF::currentTextBreakLocaleID):
+        * wtf/text/win/TextBreakIteratorInternalICUWin.cpp: Renamed from Source/WebCore/platform/text/win/TextBreakIteratorInternalICUWin.cpp.
+        (WebCore::currentSearchLocaleID):
+        (WebCore::currentTextBreakLocaleID):
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202799.
+        https://bugs.webkit.org/show_bug.cgi?id=159568
+
+        Caused build failure (Requested by perarne on #webkit).
+
+        Reverted changeset:
+
+        "[Win] DLLs are missing version information."
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+        http://trac.webkit.org/changeset/202799
+
+2016-07-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Define DYLD_MACOSX_VERSION_10_12
+        https://bugs.webkit.org/show_bug.cgi?id=159525
+        <rdar://problem/26250296>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2016-07-01  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r202641): Netflix playback stalls after a few seconds
+        https://bugs.webkit.org/show_bug.cgi?id=159365
+
+        Reviewed by Eric Carlson.
+
+        Add a isBetween() convenience method.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::isBetween):
+        * wtf/MediaTime.h:
+
+2016-07-03  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        Generate autoversion.h in the prebuild step.
+        Run the perl version stamp utility.
+
+        * wtf/CMakeLists.txt:
+
+2016-07-03  Saam Barati  <sbarati@apple.com>
+
+        BytecodeGenerator::getVariablesUnderTDZ is too conservative
+        https://bugs.webkit.org/show_bug.cgi?id=159387
+
+        Reviewed by Filip Pizlo.
+
+        I've templatized SmallPtrSet on its SmallArraySize instead
+        of it always being 8.  
+
+        * wtf/SmallPtrSet.h:
+        (WTF::SmallPtrSet::SmallPtrSet):
+        (WTF::SmallPtrSet::add):
+        (WTF::SmallPtrSet::iterator::operator!=):
+        (WTF::SmallPtrSet::bucket):
+
+2016-07-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Ugh. Once again, unreviewed, roll out unintentional commit in r202790.
+
+        * benchmarks/LockFairnessTest.cpp:
+        (main):
+
+2016-07-02  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        * wtf/Assertions.cpp:
+
+2016-07-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll back unintentional commit in r202778.
+
+        * benchmarks/LockFairnessTest.cpp:
+        (main):
+
+2016-07-01  Jer Noble  <jer.noble@apple.com>
+
+        Deadlock inside -[WebCoreNSURLSession dealloc]
+        https://bugs.webkit.org/show_bug.cgi?id=159331
+        <rdar://problem/27122716>
+
+        Reviewed by Alex Christensen.
+
+        A Function<> object can wrap any callable type, including a C++ lambda.
+
+        dispatchFunctionsFromMainThread() holds a lock while iterating over the functions in
+        functionQueue(), and during ths iteration, the previous callable object is destroyed by
+        assigning the result of functionQueue().takeFirst(). Because lambdas (and other callables,
+        like functors) can own objects, destroying this callable can have side effects, and if one
+        of those side effects is to call callOnMainThread(), this can deadlock.
+
+        Move this side-effect-having call outside the locked block by clearing the function object
+        immediately after calling it.
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+
+2016-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Adopt MediaRemote.
+        https://bugs.webkit.org/show_bug.cgi?id=159250
+
+        Reviewed by Eric Carlson.
+
+        Add USE_MEDIAREMOTE.
+
+        * wtf/Platform.h:
+
+2016-06-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202580.
+        https://bugs.webkit.org/show_bug.cgi?id=159245
+
+        Caused all WKTR tests to fail on GuardMalloc and Production
+        only for unknown reasons, investigating offline. (Requested by
+        brrian on #webkit).
+
+        Reverted changeset:
+
+        "RunLoop::Timer should use constructor templates instead of
+        class templates"
+        https://bugs.webkit.org/show_bug.cgi?id=159153
+        http://trac.webkit.org/changeset/202580
+
+2016-06-28  Brian Burg  <bburg@apple.com>
+
+        RunLoop::Timer should use constructor templates instead of class templates
+        https://bugs.webkit.org/show_bug.cgi?id=159153
+
+        Reviewed by Alex Christensen.
+
+        Refactor RunLoop::Timer to align with WebCore::Timer. Use a constructor
+        template instead of a class template. Store a bound std::function rather than
+        a templated member and function. Add a constructor that takes a std::function.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::Timer::Timer):
+        (WTF::RunLoop::Timer::fired):
+
+2016-06-28  Tomas Popela  <tpopela@redhat.com>
+
+        THUMB2 support not correctly detected on Fedora with GCC 6.1.
+        https://bugs.webkit.org/show_bug.cgi?id=159083
+
+        Reviewed by Carlos Garcia Campos.
+
+        On Fedora 24 with GCC 6.1. the __thumb2__ and __thumb__ are not
+        defined so the detection of THUMB2 support will fail. Look also
+        whether the __ARM_ARCH_ISA_THUMB is defined to fix the THUMB2
+        detection.
+
+        * wtf/Platform.h:
+
+2016-06-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove now unused WTF::findNextLineStart
+        https://bugs.webkit.org/show_bug.cgi?id=159157
+
+        Reviewed by Mark Lam.
+
+        Unused after r202498.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::findNextLineStart): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::findNextLineStart): Deleted.
+        * wtf/text/WTFString.h:
+        (WTF::String::findNextLineStart): Deleted.
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CrossThreadTask.h:
+        (WTF::CrossThreadTask::CrossThreadTask):
+        * wtf/Function.h: Renamed from Source/WTF/wtf/NoncopyableFunction.h.
+        * wtf/FunctionDispatcher.h:
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::WorkItem):
+        (TimerWorkItem::create):
+        (TimerWorkItem::TimerWorkItem):
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::WorkItemWin::WorkItemWin):
+        (WTF::WorkItemWin::create):
+        (WTF::HandleWorkItem::HandleWorkItem):
+        (WTF::HandleWorkItem::createByAdoptingHandle):
+        * wtf/win/WorkItemWin.h:
+        (WTF::WorkItemWin::function):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-06-23  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r202380): iOS 9.x internal builds are broken
+
+        Follow-up fix for: Enable window.open() for existing versions of Secret Society
+        <https://webkit.org/b/159049>
+        <rdar://problem/26528349>
+
+        * wtf/spi/darwin/dyldSPI.h: Define DYLD_IOS_VERSION_10_0 when
+        building on internal SDKs older than iOS 10.
+
+2016-06-23  John Wilander  <wilander@apple.com>
+
+        Enable window.open() for existing versions of Secret Society
+        https://bugs.webkit.org/show_bug.cgi?id=159049
+        <rdar://problem/26528349>
+        
+        Reviewed by Andy Estes.
+
+        The Secret Society Hidden Mystery app has a broken version check treating iOS 10
+        as iOS 1 on iPads. Therefore it believes it can use window.open() in a tap
+        handler. We should allow the existing versions of the app to do this to not break
+        them.
+
+        * wtf/spi/darwin/dyldSPI.h:
+            Added DYLD_IOS_VERSION_10_0.
+
+2016-06-21  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Add system tracing points for requestAnimationFrame() workflow
+        https://bugs.webkit.org/show_bug.cgi?id=158723
+
+        Reviewed by Simon Fraser.
+
+        Define new trace score codes for requestAnimationFrame().
+
+        * wtf/SystemTracing.h:
+        (WTF::TracePoint):
+        (WTF::TraceScope::TraceScope):
+        (WTF::TraceScope::~TraceScope):
+
+2016-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202136.
+        https://bugs.webkit.org/show_bug.cgi?id=158932
+
+        JSBench wasn't regressed by r202002 and r202111 on iOS after
+        all (Requested by rniwa_ on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r202002 and r202111."
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+        http://trac.webkit.org/changeset/202136
+
+2016-06-17  Chris Dumez  <cdumez@apple.com>
+
+        Optimize parseCacheHeader() by using StringView
+        https://bugs.webkit.org/show_bug.cgi?id=158891
+
+        Reviewed by Darin Adler.
+
+        Add a StringView::find() overload which takes a CharacterMatchFunction
+        to match the one on String.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::find):
+
+2016-06-17  Mark Lam  <mark.lam@apple.com>
+
+        OOM Assertion failure in JSON.stringify.
+        https://bugs.webkit.org/show_bug.cgi?id=158794
+        <rdar://problem/26826254>
+
+        Reviewed by Saam Barati.
+
+        The bug was actually in StringBuilder::appendQuotedJSONString() where it failed
+        to detect an imminent unsigned int overflow.  The fix is to use Checked<unsigned>
+        for the needed math, and RELEASE_ASSERT afterwards that we did not overflow.
+
+        I also added more assertions to detect sooner if any there are any problems with
+        StringBuilder's m_buffer or m_length being incorrectly sized.  These assertions
+        have been run on the JSC and layout tests without any issue.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::resize):
+        (WTF::StringBuilder::allocateBuffer):
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        (WTF::StringBuilder::reallocateBuffer<LChar>):
+        (WTF::StringBuilder::reallocateBuffer<UChar>):
+        (WTF::StringBuilder::reserveCapacity):
+        (WTF::StringBuilder::appendUninitializedSlow):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::swap):
+
+2016-06-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should be concurrent
+        https://bugs.webkit.org/show_bug.cgi?id=158755
+
+        Reviewed by Geoffrey Garen.
+        
+        The concurrent baseline JIT needs to be able to clone bytecode to get a consistent snapshot.
+        So, this adds such a method.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        (WTF::RefCountedArray::clone):
+
+2016-06-16  Chris Dumez  <cdumez@apple.com>
+
+        No need to ref connection in lambda inside NetworkResourceLoader::tryStoreAsCacheEntry()
+        https://bugs.webkit.org/show_bug.cgi?id=158862
+
+        Reviewed by Darin Adler.
+
+        Add NoncopyableFunction constructor that takes a nullptr_t in, in order
+        to match the std::function API and make porting from one to the other
+        easier.
+
+        * wtf/NoncopyableFunction.h:
+
+2016-06-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r202002 and r202111.
+
+        Ryosuke says this was a JSBench regression on iOS
+
+        Reverted changesets:
+
+        "Make HashMap and HashSet work with Refs"
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+        http://trac.webkit.org/changeset/202002
+
+        "Improve HashMap and HashSet support for Ref"
+        https://bugs.webkit.org/show_bug.cgi?id=158789
+        http://trac.webkit.org/changeset/202111
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        [Cocoa] Clean up / optimize ResourceResponse::platformLazyInit(InitLevel)
+        https://bugs.webkit.org/show_bug.cgi?id=158809
+
+        Reviewed by Darin Adler.
+
+        Add toAtomicString() method to StringView to avoid having to call toString()
+        and then atomizing the String at call sites.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::toAtomicString):
+
+2016-06-15  Sam Weinig  <sam@webkit.org>
+
+        Improve HashMap and HashSet support for Ref
+        https://bugs.webkit.org/show_bug.cgi?id=158789
+
+        Reviewed by Chris Dumez.
+
+        Tests: Add more cases to WTF_HashMap.Ref_Key, WTF_HashMap.Ref_Value and WTF_HashSet.Ref
+
+        * wtf/HashMap.h:
+        * wtf/HashSet.h:
+        Add a MappedTakeType typedef and rework the take functions to use it and HashTraits::take(...).
+
+        * wtf/HashTraits.h:
+        (WTF::GenericHashTraits::assignToEmpty):
+        Move to GenericHashTraits rather than GenericHashTraitsBase, since it is not different
+        between integral and non-integral HashTraits.
+
+        (WTF::GenericHashTraits::take):
+        Add a trait function for take that defaults as a forward. This allows us to override take
+        just like we do with get/peek.
+
+        (WTF::HashTraits<Ref<P>>::emptyValue):
+        Remove unnecessary explicit construction.
+
+        (WTF::HashTraits<Ref<P>>::peek):
+        Fix assertion that could happen if you did a HashMap.get() on an empty Ref value.
+
+        (WTF::HashTraits<Ref<P>>::take):
+        Make the TakeType of a Ref<P> be Optional<Ref<P>>, to avoid having empty
+        Refs returned from HashMap and HashSet. Implement an explicit take() function to
+        construct one.
+
+        (WTF::HashTraits<Ref<P>>::customDeleteBucket): Deleted.
+        Remove unnecessary customDeleteBucket implementation. Ref does not assign nullptr to
+        it's m_ptr in destruction, so there is no dead store to avoid here.
+
+        * wtf/Ref.h:
+        (WTF::Ref::ptrAllowingHashTableEmptyValue):
+        Add HashTrait helper to allow getting the value of m_ptr even when it is null. This
+        allows us to avoid a branch in HashTraits<Ref<P>>::peek().
+
+2016-06-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Only Mac port needs ObjC API for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=158780
+
+        Reviewed by Philippe Normand.
+
+        * wtf/FeatureDefines.h:
+
+2016-06-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow up patch for r202092
+        https://bugs.webkit.org/show_bug.cgi?id=158661
+
+        During checking Windows port on EWS, accidentally introduce the regression.
+
+        * wtf/Platform.h:
+
+2016-06-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Move calling convention flags to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=158661
+
+        Reviewed by Keith Miller.
+
+        * wtf/Platform.h:
+
 2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Honor bidi unicode codepoints
@@ -159,6 +1256,8 @@
 
         Make platformUserPreferredLanguages() thread safe on Windows. The
         Mac and Unix implementations are already thread-safe.
+
+        HAS_FASTCALL_CALLING_CONVENTION is changed to COMPILER_SUPPORTS(FASTCALL_CALLING_CONVENTION).
 
 2016-06-10  Alex Christensen  <achristensen@webkit.org>
 

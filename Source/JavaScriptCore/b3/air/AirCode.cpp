@@ -30,6 +30,7 @@
 
 #include "AirCCallSpecial.h"
 #include "B3BasicBlockUtils.h"
+#include "B3Procedure.h"
 #include "B3StackSlot.h"
 
 namespace JSC { namespace B3 { namespace Air {
@@ -80,11 +81,12 @@ CCallSpecial* Code::cCallSpecial()
 
 void Code::resetReachability()
 {
-    B3::resetReachability(
-        m_blocks,
-        [&] (BasicBlock*) {
-            // We don't have to do anything special for deleted blocks.
-        });
+    recomputePredecessors(m_blocks);
+    
+    for (auto& block : m_blocks) {
+        if (isBlockDead(block.get()))
+            block = nullptr;
+    }
 }
 
 void Code::dump(PrintStream& out) const
@@ -132,6 +134,11 @@ BasicBlock* Code::findNextBlock(BasicBlock* block) const
 void Code::addFastTmp(Tmp tmp)
 {
     m_fastTmps.add(tmp);
+}
+
+void* Code::addDataSection(size_t size)
+{
+    return m_proc.addDataSection(size);
 }
 
 unsigned Code::jsHash() const

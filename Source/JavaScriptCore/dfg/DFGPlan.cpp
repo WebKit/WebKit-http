@@ -238,6 +238,8 @@ void Plan::compileInThread(LongLivedState& longLivedState, ThreadData* threadDat
 
 Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
 {
+    cleanMustHandleValuesIfNecessary();
+    
     if (verboseCompilationEnabled(mode) && osrEntryBytecodeIndex != UINT_MAX) {
         dataLog("\n");
         dataLog("Compiler must handle OSR entry from bc#", osrEntryBytecodeIndex, " with values: ", mustHandleValues, "\n");
@@ -547,11 +549,6 @@ void Plan::notifyCompiling()
     stage = Compiling;
 }
 
-void Plan::notifyCompiled()
-{
-    stage = Compiled;
-}
-
 void Plan::notifyReady()
 {
     callback->compilationDidBecomeReadyAsynchronously(codeBlock, profiledDFGCodeBlock);
@@ -626,7 +623,8 @@ void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
 {
     if (!isKnownToBeLiveDuringGC())
         return;
-    
+
+    cleanMustHandleValuesIfNecessary();
     for (unsigned i = mustHandleValues.size(); i--;)
         visitor.appendUnbarrieredValue(&mustHandleValues[i]);
 
@@ -673,6 +671,29 @@ void Plan::cancel()
     transitions = DesiredTransitions();
     callback = nullptr;
     stage = Cancelled;
+}
+
+void Plan::cleanMustHandleValuesIfNecessary()
+{
+    LockHolder locker(mustHandleValueCleaningLock);
+    
+    if (!mustHandleValuesMayIncludeGarbage)
+        return;
+    
+    mustHandleValuesMayIncludeGarbage = false;
+    
+    if (!codeBlock)
+        return;
+    
+    if (!mustHandleValues.numberOfLocals())
+        return;
+    
+    FastBitVector liveness = codeBlock->alternative()->livenessAnalysis().getLivenessInfoAtBytecodeOffset(osrEntryBytecodeIndex);
+    
+    for (unsigned local = mustHandleValues.numberOfLocals(); local--;) {
+        if (!liveness.get(local))
+            mustHandleValues.local(local) = jsUndefined();
+    }
 }
 
 } } // namespace JSC::DFG

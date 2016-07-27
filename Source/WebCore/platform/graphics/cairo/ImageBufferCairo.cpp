@@ -199,12 +199,23 @@ void ImageBufferData::createCairoGLSurface()
 }
 #endif
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, ColorSpace, RenderingMode renderingMode, bool& success)
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode renderingMode, bool& success)
     : m_data(IntSize(size), renderingMode)
-    , m_size(size)
     , m_logicalSize(size)
+    , m_resolutionScale(resolutionScale)
 {
     success = false;  // Make early return mean error.
+
+    float scaledWidth = ceilf(m_resolutionScale * size.width());
+    float scaledHeight = ceilf(m_resolutionScale * size.height());
+
+    // FIXME: Should we automatically use a lower resolution?
+    if (!FloatSize(scaledWidth, scaledHeight).isExpressibleAsIntSize())
+        return;
+
+    m_size = IntSize(scaledWidth, scaledHeight);
+    m_data.m_size = m_size;
+
     if (m_size.isEmpty())
         return;
 
@@ -226,10 +237,12 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
 #else
     ASSERT(m_data.m_renderingMode != Accelerated);
 #endif
-        m_data.m_surface = adoptRef(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, size.width(), size.height()));
+        m_data.m_surface = adoptRef(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height()));
 
     if (cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
         return;  // create will notice we didn't set m_initialized and fail.
+
+    cairoSurfaceSetDeviceScale(m_data.m_surface.get(), m_resolutionScale, m_resolutionScale);
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(m_data.m_surface.get()));
     m_data.m_platformContext.setCr(cr.get());
@@ -240,6 +253,11 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
 
 ImageBuffer::~ImageBuffer()
 {
+}
+
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, const GraphicsContext& context)
+{
+    return createCompatibleBuffer(size, ColorSpaceSRGB, context);
 }
 
 GraphicsContext& ImageBuffer::context() const
@@ -254,6 +272,7 @@ RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffe
 
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
+    // copyCairoImageSurface inherits surface's device scale factor.
     if (copyBehavior == CopyBackingStore)
         return BitmapImage::create(copyCairoImageSurface(m_data.m_surface.get()));
 
@@ -306,7 +325,7 @@ void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
             *pixel = premultipliedARGBFromColor(pixelColor);
         }
     }
-    cairo_surface_mark_dirty_rectangle(m_data.m_surface.get(), 0, 0, m_size.width(), m_size.height());
+    cairo_surface_mark_dirty_rectangle(m_data.m_surface.get(), 0, 0, m_logicalSize.width(), m_logicalSize.height());
 }
 
 RefPtr<cairo_surface_t> copySurfaceToImageAndAdjustRect(cairo_surface_t* surface, IntRect& rect)
@@ -324,7 +343,7 @@ RefPtr<cairo_surface_t> copySurfaceToImageAndAdjustRect(cairo_surface_t* surface
 }
 
 template <Multiply multiplied>
-RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& data, const IntSize& size)
+RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const IntRect& logicalRect, const ImageBufferData& data, const IntSize& size, const IntSize& logicalSize, float resolutionScale)
 {
     RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
 
@@ -353,13 +372,17 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferDat
         endy = size.height();
     int numRows = endy - originy;
 
+    // The size of the derived surface is in BackingStoreCoordinateSystem.
+    // We need to set the device scale for the derived surface from this ImageBuffer.
     IntRect imageRect(originx, originy, numColumns, numRows);
     RefPtr<cairo_surface_t> imageSurface = copySurfaceToImageAndAdjustRect(data.m_surface.get(), imageRect);
+    cairoSurfaceSetDeviceScale(imageSurface.get(), resolutionScale, resolutionScale);
     originx = imageRect.x();
     originy = imageRect.y();
     if (imageSurface != data.m_surface.get()) {
-        IntRect area = intersection(rect, IntRect(0, 0, size.width(), size.height()));
-        copyRectFromOneSurfaceToAnother(data.m_surface.get(), imageSurface.get(), IntSize(-area.x(), -area.y()), IntRect(IntPoint(), area.size()), IntSize(), CAIRO_OPERATOR_SOURCE);
+        // This cairo surface operation is done in LogicalCoordinateSystem.
+        IntRect logicalArea = intersection(logicalRect, IntRect(0, 0, logicalSize.width(), logicalSize.height()));
+        copyRectFromOneSurfaceToAnother(data.m_surface.get(), imageSurface.get(), IntSize(-logicalArea.x(), -logicalArea.y()), IntRect(IntPoint(), logicalArea.size()), IntSize(), CAIRO_OPERATOR_SOURCE);
     }
 
     unsigned char* dataSrc = cairo_image_surface_get_data(imageSurface.get());
@@ -400,53 +423,91 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferDat
     return result.release();
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem) const
+template<typename Unit>
+inline Unit logicalUnit(const Unit& value, ImageBuffer::CoordinateSystem coordinateSystemOfValue, float resolutionScale)
 {
-    return getImageData<Unmultiplied>(rect, m_data, m_size);
+    if (coordinateSystemOfValue == ImageBuffer::LogicalCoordinateSystem || resolutionScale == 1.0)
+        return value;
+    Unit result(value);
+    result.scale(1.0 / resolutionScale);
+    return result;
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem) const
+template<typename Unit>
+inline Unit backingStoreUnit(const Unit& value, ImageBuffer::CoordinateSystem coordinateSystemOfValue, float resolutionScale)
 {
-    return getImageData<Premultiplied>(rect, m_data, m_size);
+    if (coordinateSystemOfValue == ImageBuffer::BackingStoreCoordinateSystem || resolutionScale == 1.0)
+        return value;
+    Unit result(value);
+    result.scale(resolutionScale);
+    return result;
 }
 
-void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
 {
+    IntRect logicalRect = logicalUnit(rect, coordinateSystem, m_resolutionScale);
+    IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+    return getImageData<Unmultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
+}
 
-    ASSERT(sourceRect.width() > 0);
-    ASSERT(sourceRect.height() > 0);
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+{
+    IntRect logicalRect = logicalUnit(rect, coordinateSystem, m_resolutionScale);
+    IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+    return getImageData<Premultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
+}
 
-    int originx = sourceRect.x();
-    int destx = destPoint.x() + sourceRect.x();
+void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem coordinateSystem)
+{
+    IntRect scaledSourceRect = backingStoreUnit(sourceRect, coordinateSystem, m_resolutionScale);
+    IntSize scaledSourceSize = backingStoreUnit(sourceSize, coordinateSystem, m_resolutionScale);
+    IntPoint scaledDestPoint = backingStoreUnit(destPoint, coordinateSystem, m_resolutionScale);
+    IntRect logicalSourceRect = logicalUnit(sourceRect, coordinateSystem, m_resolutionScale);
+    IntPoint logicalDestPoint = logicalUnit(destPoint, coordinateSystem, m_resolutionScale);
+
+    ASSERT(scaledSourceRect.width() > 0);
+    ASSERT(scaledSourceRect.height() > 0);
+
+    int originx = scaledSourceRect.x();
+    int destx = scaledDestPoint.x() + scaledSourceRect.x();
+    int logicalDestx = logicalDestPoint.x() + logicalSourceRect.x();
     ASSERT(destx >= 0);
     ASSERT(destx < m_size.width());
     ASSERT(originx >= 0);
-    ASSERT(originx <= sourceRect.maxX());
+    ASSERT(originx <= scaledSourceRect.maxX());
 
-    int endx = destPoint.x() + sourceRect.maxX();
+    int endx = scaledDestPoint.x() + scaledSourceRect.maxX();
+    int logicalEndx = logicalDestPoint.x() + logicalSourceRect.maxX();
     ASSERT(endx <= m_size.width());
 
     int numColumns = endx - destx;
+    int logicalNumColumns = logicalEndx - logicalDestx;
 
-    int originy = sourceRect.y();
-    int desty = destPoint.y() + sourceRect.y();
+    int originy = scaledSourceRect.y();
+    int desty = scaledDestPoint.y() + scaledSourceRect.y();
+    int logicalDesty = logicalDestPoint.y() + logicalSourceRect.y();
     ASSERT(desty >= 0);
     ASSERT(desty < m_size.height());
     ASSERT(originy >= 0);
-    ASSERT(originy <= sourceRect.maxY());
+    ASSERT(originy <= scaledSourceRect.maxY());
 
-    int endy = destPoint.y() + sourceRect.maxY();
+    int endy = scaledDestPoint.y() + scaledSourceRect.maxY();
+    int logicalEndy = logicalDestPoint.y() + logicalSourceRect.maxY();
     ASSERT(endy <= m_size.height());
     int numRows = endy - desty;
+    int logicalNumRows = logicalEndy - logicalDesty;
 
+    // The size of the derived surface is in BackingStoreCoordinateSystem.
+    // We need to set the device scale for the derived surface from this ImageBuffer.
     IntRect imageRect(destx, desty, numColumns, numRows);
     RefPtr<cairo_surface_t> imageSurface = copySurfaceToImageAndAdjustRect(m_data.m_surface.get(), imageRect);
+    cairoSurfaceSetDeviceScale(imageSurface.get(), m_resolutionScale, m_resolutionScale);
     destx = imageRect.x();
     desty = imageRect.y();
 
     unsigned char* pixelData = cairo_image_surface_get_data(imageSurface.get());
 
-    unsigned srcBytesPerRow = 4 * sourceSize.width();
+    unsigned srcBytesPerRow = 4 * scaledSourceSize.width();
     int stride = cairo_image_surface_get_stride(imageSurface.get());
 
     unsigned char* srcRows = source->data() + originy * srcBytesPerRow + originx * 4;
@@ -476,10 +537,13 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
         srcRows += srcBytesPerRow;
     }
 
-    cairo_surface_mark_dirty_rectangle(imageSurface.get(), destx, desty, numColumns, numRows);
+    // This cairo surface operation is done in LogicalCoordinateSystem.
+    cairo_surface_mark_dirty_rectangle(imageSurface.get(), logicalDestx, logicalDesty, logicalNumColumns, logicalNumRows);
 
-    if (imageSurface != m_data.m_surface.get())
-        copyRectFromOneSurfaceToAnother(imageSurface.get(), m_data.m_surface.get(), IntSize(), IntRect(0, 0, numColumns, numRows), IntSize(destPoint.x() + sourceRect.x(), destPoint.y() + sourceRect.y()), CAIRO_OPERATOR_SOURCE);
+    if (imageSurface != m_data.m_surface.get()) {
+        // This cairo surface operation is done in LogicalCoordinateSystem.
+        copyRectFromOneSurfaceToAnother(imageSurface.get(), m_data.m_surface.get(), IntSize(), IntRect(0, 0, logicalNumColumns, logicalNumRows), IntSize(logicalDestPoint.x() + logicalSourceRect.x(), logicalDestPoint.y() + logicalSourceRect.y()), CAIRO_OPERATOR_SOURCE);
+    }
 }
 
 #if !PLATFORM(GTK) && !PLATFORM(EFL)
@@ -559,6 +623,7 @@ void ImageBuffer::markBufferChanged()
 bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum target, Platform3DObject destinationTexture, GC3Denum internalformat, bool premultiplyAlpha, bool flipY)
 {
 #if ENABLE(ACCELERATED_2D_CANVAS)
+    ASSERT_WITH_MESSAGE(m_resolutionScale == 1.0, "Since the HiDPI Canvas feature is removed, the resolution factor here is always 1.");
     if (premultiplyAlpha || flipY)
         return false;
 

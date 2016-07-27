@@ -28,16 +28,20 @@
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
 #include "PlatformLayer.h"
-#include "TextureMapperGL.h"
-#include "TextureMapperPlatformLayer.h"
-#include "TextureMapperPlatformLayerProxy.h"
 #include <glib.h>
+#include <gst/gst.h>
 #include <wtf/Condition.h>
 #include <wtf/Forward.h>
 #include <wtf/RunLoop.h>
 
-typedef struct _GstBaseSink GstBaseSink;
-typedef struct _GstMessage GstMessage;
+#if USE(TEXTURE_MAPPER)
+#include "TextureMapperPlatformLayer.h"
+#include "TextureMapperPlatformLayerProxy.h"
+#if USE(TEXTURE_MAPPER_GL)
+#include "TextureMapperGL.h"
+#endif
+#endif
+
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
@@ -166,6 +170,8 @@ public:
     void clearCurrentBuffer();
 #endif
 
+    void setVideoSourceOrientation(const ImageOrientation&);
+
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
 
@@ -174,6 +180,8 @@ protected:
 #endif
 
 #if USE(GSTREAMER_GL)
+    static GstFlowReturn newSampleCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
+    static GstFlowReturn newPrerollCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
     GstElement* createVideoSinkGL();
 #endif
 
@@ -191,11 +199,6 @@ protected:
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
-    static void drainCallback(MediaPlayerPrivateGStreamerBase*);
-#endif
-
-#if USE(GSTREAMER_GL)
-    static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstBuffer*, GstPad*, GstBaseSink*);
 #endif
 
     void notifyPlayerOfVolumeChange();
@@ -213,6 +216,7 @@ protected:
 #if ENABLE(VIDEO_TRACK)
         TextChanged = 1 << 5,
 #endif
+        SizeChanged = 1 << 6
     };
 
     MainThreadNotifier<MainThreadNotification> m_notifier;
@@ -272,9 +276,8 @@ private:
 #endif
     VideoSourceRotation m_videoSourceRotation;
 #if USE(TEXTURE_MAPPER_GL)
-    TextureMapperGL::Flags m_textureMapperRotationFlag ;
+    TextureMapperGL::Flags m_textureMapperRotationFlag;
 #endif
-
 };
 }
 

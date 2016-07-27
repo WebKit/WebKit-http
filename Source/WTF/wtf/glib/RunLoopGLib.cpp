@@ -66,7 +66,9 @@ RunLoop::RunLoop()
         static_cast<RunLoop*>(userData)->performWork();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
+#if PLATFORM(WPE)
     g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
+#endif
     g_source_attach(m_source.get(), m_mainContext.get());
 }
 
@@ -125,7 +127,7 @@ void RunLoop::wakeUp()
 class DispatchAfterContext {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    DispatchAfterContext(NoncopyableFunction<void ()>&& function)
+    DispatchAfterContext(Function<void ()>&& function)
         : m_function(WTFMove(function))
     {
     }
@@ -136,10 +138,10 @@ public:
     }
 
 private:
-    NoncopyableFunction<void ()> m_function;
+    Function<void ()> m_function;
 };
 
-void RunLoop::dispatchAfter(std::chrono::nanoseconds duration, NoncopyableFunction<void ()>&& function)
+void RunLoop::dispatchAfter(std::chrono::nanoseconds duration, Function<void ()>&& function)
 {
     GRefPtr<GSource> source = adoptGRef(g_timeout_source_new(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()));
     g_source_set_name(source.get(), "[WebKit] RunLoop dispatchAfter");
@@ -165,7 +167,9 @@ RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
             timer->updateReadyTime();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
+#if PLATFORM(WPE)
     g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
+#endif
     g_source_attach(m_source.get(), m_runLoop.m_mainContext.get());
 }
 

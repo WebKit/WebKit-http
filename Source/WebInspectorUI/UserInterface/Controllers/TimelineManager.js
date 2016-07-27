@@ -42,6 +42,8 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         this._persistentNetworkTimeline = new WebInspector.NetworkTimeline;
 
         this._isCapturing = false;
+        this._initiatedByBackendStart = false;
+        this._initiatedByBackendStop = false;
         this._waitingForCapturingStartedEvent = false;
         this._isCapturingPageReload = false;
         this._autoCaptureOnPageLoad = false;
@@ -135,10 +137,15 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
     set autoCaptureOnPageLoad(autoCapture)
     {
+        autoCapture = !!autoCapture;
+
+        if (this._autoCaptureOnPageLoad === autoCapture)
+            return;
+
         this._autoCaptureOnPageLoad = autoCapture;
 
         if (window.TimelineAgent && TimelineAgent.setAutoCaptureEnabled)
-            TimelineAgent.setAutoCaptureEnabled(autoCapture);
+            TimelineAgent.setAutoCaptureEnabled(this._autoCaptureOnPageLoad);
     }
 
     get enabledTimelineTypes()
@@ -175,14 +182,14 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
         this.dispatchEventToListeners(WebInspector.TimelineManager.Event.CapturingWillStart);
 
-        this._activeRecording.start();
+        this._activeRecording.start(this._initiatedByBackendStart);
     }
 
     stopCapturing()
     {
         console.assert(this._isCapturing, "TimelineManager is not capturing.");
 
-        this._activeRecording.stop();
+        this._activeRecording.stop(this._initiatedByBackendStop);
 
         // NOTE: Always stop immediately instead of waiting for a Timeline.recordingStopped event.
         // This way the UI feels as responsive to a stop as possible.
@@ -258,24 +265,56 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         this._isCapturingPageReload = false;
         this._shouldSetAutoCapturingMainResource = false;
         this._mainResourceForAutoCapturing = null;
+        this._initiatedByBackendStart = false;
+        this._initiatedByBackendStop = false;
 
         this.dispatchEventToListeners(WebInspector.TimelineManager.Event.CapturingStopped, {endTime});
     }
 
-    autoCaptureStarted(startTime)
+    autoCaptureStarted()
     {
         // Called from WebInspector.TimelineObserver.
 
         if (this._isCapturing)
             this.stopCapturing();
 
+        this._initiatedByBackendStart = true;
+
         // We may already have an fresh TimelineRecording created if autoCaptureStarted is received
         // between sending the Timeline.start command and receiving Timeline.capturingStarted event.
         // In that case, there is no need to call startCapturing again. Reuse the fresh recording.
-        if (!this._waitingForCapturingStartedEvent)
-            this.startCapturing(true);
+        if (!this._waitingForCapturingStartedEvent) {
+            const createNewRecording = true;
+            this.startCapturing(createNewRecording);
+        }
 
         this._shouldSetAutoCapturingMainResource = true;
+    }
+
+    programmaticCaptureStarted()
+    {
+        // Called from WebInspector.TimelineObserver.
+
+        this._initiatedByBackendStart = true;
+
+        this._activeRecording.addScriptInstrumentForProgrammaticCapture();
+
+        const createNewRecording = false;
+        this.startCapturing(createNewRecording);
+    }
+
+    programmaticCaptureStopped()
+    {
+        // Called from WebInspector.TimelineObserver.
+
+        this._initiatedByBackendStop = true;
+
+        // FIXME: This is purely to avoid a noisy assert. Previously
+        // it was impossible to stop without stopping from the UI.
+        console.assert(!this._isCapturing);
+        this._isCapturing = true;
+
+        this.stopCapturing();
     }
 
     eventRecorded(recordPayload)
@@ -485,7 +524,8 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
         case TimelineAgent.EventType.ConsoleProfile:
             var profileData = recordPayload.data.profile;
-            console.assert(profileData);
+            // COMPATIBILITY (iOS 9): With the Sampling Profiler, profiles no longer include legacy profile data.
+            console.assert(profileData || TimelineAgent.setInstruments);
             return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.ConsoleProfileRecorded, startTime, endTime, callFrames, sourceCodeLocation, recordPayload.data.title, profileData);
 
         case TimelineAgent.EventType.TimerFire:
@@ -832,6 +872,24 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         case ScriptProfilerAgent.EventType.Other:
             return WebInspector.ScriptTimelineRecord.EventType.ScriptEvaluated;
         }
+    }
+
+    scriptProfilerProgrammaticCaptureStarted()
+    {
+        // FIXME: <https://webkit.org/b/158753> Generalize the concept of Instruments on the backend to work equally for JSContext and Web inspection
+        console.assert(WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript);
+        console.assert(!this._isCapturing);
+
+        this.programmaticCaptureStarted();
+    }
+
+    scriptProfilerProgrammaticCaptureStopped()
+    {
+        // FIXME: <https://webkit.org/b/158753> Generalize the concept of Instruments on the backend to work equally for JSContext and Web inspection
+        console.assert(WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript);
+        console.assert(this._isCapturing);
+
+        this.programmaticCaptureStopped();
     }
 
     scriptProfilerTrackingStarted(timestamp)

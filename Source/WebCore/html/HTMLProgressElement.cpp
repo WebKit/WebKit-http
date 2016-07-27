@@ -94,7 +94,7 @@ void HTMLProgressElement::didAttachRenderers()
 
 double HTMLProgressElement::value() const
 {
-    double value = parseToDoubleForNumberType(fastGetAttribute(valueAttr));
+    double value = parseToDoubleForNumberType(attributeWithoutSynchronization(valueAttr));
     return !std::isfinite(value) || value < 0 ? 0 : std::min(value, max());
 }
 
@@ -104,12 +104,12 @@ void HTMLProgressElement::setValue(double value, ExceptionCode& ec)
         ec = NOT_SUPPORTED_ERR;
         return;
     }
-    setAttribute(valueAttr, AtomicString::number(value >= 0 ? value : 0));
+    setAttributeWithoutSynchronization(valueAttr, AtomicString::number(value >= 0 ? value : 0));
 }
 
 double HTMLProgressElement::max() const
 {
-    double max = parseToDoubleForNumberType(fastGetAttribute(maxAttr));
+    double max = parseToDoubleForNumberType(attributeWithoutSynchronization(maxAttr));
     return !std::isfinite(max) || max <= 0 ? 1 : max;
 }
 
@@ -119,7 +119,7 @@ void HTMLProgressElement::setMax(double max, ExceptionCode& ec)
         ec = NOT_SUPPORTED_ERR;
         return;
     }
-    setAttribute(maxAttr, AtomicString::number(max > 0 ? max : 1));
+    setAttributeWithoutSynchronization(maxAttr, AtomicString::number(max > 0 ? max : 1));
 }
 
 double HTMLProgressElement::position() const
@@ -131,7 +131,7 @@ double HTMLProgressElement::position() const
 
 bool HTMLProgressElement::isDeterminate() const
 {
-    return fastHasAttribute(valueAttr);
+    return hasAttributeWithoutSynchronization(valueAttr);
 }
     
 void HTMLProgressElement::didElementStateChange()

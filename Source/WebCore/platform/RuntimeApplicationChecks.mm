@@ -170,6 +170,12 @@ bool IOSApplication::isMobileSafari()
     return isMobileSafari;
 }
 
+bool IOSApplication::isWebBookmarksD()
+{
+    static bool isWebBookmarksD = applicationBundleIsEqualTo("com.apple.webbookmarksd");
+    return isWebBookmarksD;
+}
+
 bool IOSApplication::isDumpRenderTree()
 {
     // We use a prefix match instead of strict equality since LayoutTestRelay may launch multiple instances of
@@ -235,24 +241,12 @@ bool IOSApplication::isIBooks()
     return isIBooks;
 }
 
-bool IOSApplication::isEcobee()
+bool IOSApplication::isTheSecretSocietyHiddenMystery()
 {
-    static bool isEcobee = applicationBundleIsEqualTo("com.ecobee.athenamobile");
-    return isEcobee;
+    static bool isTheSecretSocietyHiddenMystery = applicationBundleIsEqualTo("com.g5e.secretsociety");
+    return isTheSecretSocietyHiddenMystery;
 }
-
-bool IOSApplication::isQuora()
-{
-    static bool isQuora = applicationBundleIsEqualTo("com.quora.app.mobile");
-    return isQuora;
-}
-
-bool IOSApplication::isXtraMath()
-{
-    static bool isXtraMath = applicationBundleIsEqualTo("org.xtramath.mathfacts");
-    return isXtraMath;
-}
-
+    
 #endif
 
 } // namespace WebCore

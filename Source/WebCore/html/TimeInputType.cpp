@@ -80,11 +80,11 @@ StepRange TimeInputType::createStepRange(AnyStepHandling anyStepHandling) const
 {
     static NeverDestroyed<const StepRange::StepDescription> stepDescription(timeDefaultStep, timeDefaultStepBase, timeStepScaleFactor, StepRange::ScaledStepValueShouldBeInteger);
 
-    const Decimal stepBase = parseToNumber(element().fastGetAttribute(minAttr), 0);
-    const Decimal minimum = parseToNumber(element().fastGetAttribute(minAttr), Decimal::fromDouble(DateComponents::minimumTime()));
-    const Decimal maximum = parseToNumber(element().fastGetAttribute(maxAttr), Decimal::fromDouble(DateComponents::maximumTime()));
-    const Decimal step = StepRange::parseStep(anyStepHandling, stepDescription, element().fastGetAttribute(stepAttr));
-    return StepRange(stepBase, minimum, maximum, step, stepDescription);
+    const Decimal stepBase = parseToNumber(element().attributeWithoutSynchronization(minAttr), 0);
+    const Decimal minimum = parseToNumber(element().attributeWithoutSynchronization(minAttr), Decimal::fromDouble(DateComponents::minimumTime()));
+    const Decimal maximum = parseToNumber(element().attributeWithoutSynchronization(maxAttr), Decimal::fromDouble(DateComponents::maximumTime()));
+    const Decimal step = StepRange::parseStep(anyStepHandling, stepDescription, element().attributeWithoutSynchronization(stepAttr));
+    return StepRange(stepBase, RangeLimitations::Valid, minimum, maximum, step, stepDescription);
 }
 
 bool TimeInputType::parseToDateComponentsInternal(const UChar* characters, unsigned length, DateComponents* out) const

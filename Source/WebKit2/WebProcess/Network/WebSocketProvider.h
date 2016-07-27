@@ -30,6 +30,12 @@
 namespace WebKit {
 
 class WebSocketProvider final : public WebCore::SocketProvider {
+public:
+    static Ref<WebSocketProvider> create() { return adoptRef(*new WebSocketProvider); }
+#if ENABLE(WEB_SOCKETS)
+    Ref<WebCore::SocketStreamHandle> createSocketStreamHandle(const WebCore::URL&, WebCore::SocketStreamHandleClient&, WebCore::NetworkingContext&, WebCore::SessionID) final;
+#endif
+    virtual ~WebSocketProvider() { }
 };
 
 }

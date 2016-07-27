@@ -16,6 +16,7 @@
       <dep package="libsoup"/>
       <dep package="elementary"/>
       <dep package="libxml2"/>
+      <dep package="libxslt"/>
       <dep package="gstreamer"/>
       <dep package="gst-plugins-base"/>
       <dep package="gst-plugins-good"/>
@@ -201,6 +202,15 @@
             md5sum="9c0cfef285d5c4a5c80d00904ddab380"/>
   </autotools>
 
+  <autotools id="libxslt">
+    <branch module="/libxslt/libxslt-1.1.29.tar.gz" version="1.1.29"
+            repo="xmlsoft.org"
+            hash="sha256:b5976e3857837e7617b29f2249ebb5eeac34e249208d31f1fbf7a6ba7a4090ce"/>
+    <dependencies>
+      <dep package="libxml2"/>
+    </dependencies>
+  </autotools>
+
   <autotools id="orc" autogenargs="--disable-gtk-doc" autogen-sh="configure">
     <branch module="orc/orc-0.4.17.tar.gz" version="0.4.17"
             repo="gstreamer"
@@ -212,10 +222,10 @@
     <dependencies>
       <dep package="orc"/>
     </dependencies>
-    <branch module="gstreamer/gstreamer-1.6.3.tar.xz" version="1.6.3"
+    <branch module="gstreamer/gstreamer-1.8.0.tar.xz" version="1.8.0"
             repo="gstreamer"
-            hash="sha256:22f9568d67b87cf700a111f381144bd37cb93790a77e4e331db01fe854a37f24"
-            md5sum="b4cdeb2b9cb20dd6ac022a4f417eae0d"/>
+            hash="sha256:947a314a212b5d94985d89b43440dbe66b696e12bbdf9a2f78967b98d74abedc"
+            md5sum="6846d7289ec323c38c49b818171e955a"/>
   </autotools>
 
   <autotools id="gst-plugins-base"
@@ -224,10 +234,10 @@
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch module="gst-plugins-base/gst-plugins-base-1.6.3.tar.xz" version="1.6.3"
+    <branch module="gst-plugins-base/gst-plugins-base-1.8.0.tar.xz" version="1.8.0"
             repo="gstreamer"
-            hash="sha256:b6154f8fdba4877e95efd94610ef0ada4f0171cd12eb829a3c3c97345d9c7a75"
-            md5sum="3ddde0ad598ef69f58d6a2e87f8b460f">
+            hash="sha256:abc0acc1d15b4b9c97c65cd9689bd6400081853b9980ea428d3c8572dd791522"
+            md5sum="20cc8231609318310f2a55f64c86cbb4">
     </branch>
   </autotools>
 
@@ -235,11 +245,12 @@
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
-
-    <branch module="gst-plugins-good/gst-plugins-good-1.6.3.tar.xz" version="1.6.3"
+    <branch module="gst-plugins-good/gst-plugins-good-1.8.0.tar.xz" version="1.8.0"
             repo="gstreamer"
-            hash="sha256:24b19db70b2a83461ebddfe20033db432dadfdb5d4b54ffb1dfa0d830134a177"
-            md5sum="a1958df7aa498b42793e2f2048673815">
+            hash="sha256:c20c134d47dbc238d921707a3b66da709c2b4dd89f9d267cec13d1ddf16e9f4d"
+            md5sum="91ed4649c7c2e43a61f731d144f6f6d0">
+      <patch file="gst-plugins-good-use-the-tfdt-decode-time.patch" strip="1"/>
+      <patch file="gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch" strip="1"/>
     </branch>
   </autotools>
 
@@ -247,10 +258,10 @@
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="gst-plugins-bad/gst-plugins-bad-1.6.3.tar.xz" version="1.6.3"
+    <branch module="gst-plugins-bad/gst-plugins-bad-1.8.0.tar.xz" version="1.8.0"
             repo="gstreamer"
-            hash="sha256:971b29101d6a9c5e3fe94d99d977a227f58f0b2d29b6ca2c7f292052542b3a61"
-            md5sum="4857adcafe41e4b9b8805cf88303bd55">
+            hash="sha256:116376dd1085082422e0b21b0ecd3d1cb345c469c58e32463167d4675f4ca90e"
+            md5sum="1c2d797bb96a81e9ef570c7a0a37203e">
     </branch>
   </autotools>
 
@@ -258,10 +269,10 @@
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="gst-libav/gst-libav-1.6.3.tar.xz" version="1.6.3"
+    <branch module="gst-libav/gst-libav-1.8.0.tar.xz" version="1.8.0"
             repo="gstreamer"
-            hash="sha256:857b9c060a0337de38c6d26238c47352433c02eabf26c2f860c854dbc35bd4ab"
-            md5sum="cfe9a06913d4fd4067e9e47f6e05fac2">
+            hash="sha256:5a1ce28876aee93cb4f3d090f0e807915a5d9bc1325e3480dd302b85aeb4291c"
+            md5sum="361638fa45466c5050bcde6bfe10fa46">
       <patch file="gst-libav.patch" strip="1"/>
     </branch>
   </autotools>
@@ -299,9 +310,9 @@
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch repo="nice.freedesktop.org" module="releases/libnice-0.1.10.tar.gz" checkoutdir="libnice" version="0.1.10"
-            hash="sha256:1dbfb663b730889ae8cab13a2913fe557d581f70b513c918bbbd0b7d3eefebc9"
-            md5sum="27b62d0093ce29a39df1c6fcf0bb4396" size="903083">
+    <branch repo="nice.freedesktop.org" module="releases/libnice-0.1.13.tar.gz" checkoutdir="libnice" version="0.1.13"
+            hash="sha256:61112d9f3be933a827c8365f20551563953af6718057928f51f487bfe88419e1"
+            md5sum="3226faeaf48a9150ada00da2e2865959" size="912374">
     </branch>
   </autotools>
 
@@ -310,10 +321,9 @@
       <dep package="gst-plugins-openwebrtc"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc/archive/13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" checkoutdir="openwebrtc" version="13516c7f79a0c48bb411464f7613d4b426c70f5b"
-            hash="sha256:c849d36d97c17a198a5d9c180f13f14c7897c9236e2384ea11029e23b09b59ac"
-            md5sum="13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" size="258936">
-      <patch file="openwebrtc-clang-warning-fix.patch" strip="1"/>
+    <branch repo="github.com" module="EricssonResearch/openwebrtc/archive/f511ea1fa79a33fa3d52bfd1c0969c28084aeb35.tar.gz" checkoutdir="openwebrtc" version="f511ea1fa79a33fa3d52bfd1c0969c28084aeb35"
+            hash="sha256:af80b80512b5f5a6b82b4cf43afa28da9c94c86800f6fadd10762361079fb5e3"
+            md5sum="4555d20821af8f5334f74b4f0327f178" size="296143">
     </branch>
   </autotools>
 

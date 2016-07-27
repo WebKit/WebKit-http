@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,10 @@
 #include "CodeBlock.h"
 #include "CodeSpecializationKind.h"
 #include "ExceptionHelpers.h"
-#include "JSStackInlines.h"
 #include "SlowPathReturnType.h"
 #include "StackAlignment.h"
 #include "Symbol.h"
-#include "VM.h"
+#include "VMInlines.h"
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
@@ -52,7 +51,7 @@ struct ArityCheckData {
     void* thunkToCall;
 };
 
-ALWAYS_INLINE int arityCheckFor(ExecState* exec, JSStack* stack, CodeSpecializationKind kind)
+ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind kind)
 {
     JSFunction* callee = jsCast<JSFunction*>(exec->callee());
     ASSERT(!callee->isHostFunction());
@@ -60,12 +59,12 @@ ALWAYS_INLINE int arityCheckFor(ExecState* exec, JSStack* stack, CodeSpecializat
     int argumentCountIncludingThis = exec->argumentCountIncludingThis();
     
     ASSERT(argumentCountIncludingThis < newCodeBlock->numParameters());
-    int frameSize = argumentCountIncludingThis + JSStack::CallFrameHeaderSize;
+    int frameSize = argumentCountIncludingThis + CallFrame::headerSizeInRegisters;
     int alignedFrameSizeForParameters = WTF::roundUpToMultipleOf(stackAlignmentRegisters(),
-        newCodeBlock->numParameters() + JSStack::CallFrameHeaderSize);
+        newCodeBlock->numParameters() + CallFrame::headerSizeInRegisters);
     int paddedStackSpace = alignedFrameSizeForParameters - frameSize;
 
-    if (!stack->ensureCapacityFor(exec->registers() - paddedStackSpace % stackAlignmentRegisters()))
+    if (UNLIKELY(!vm.ensureStackCapacityFor(exec->registers() - paddedStackSpace % stackAlignmentRegisters())))
         return -1;
     return paddedStackSpace;
 }
@@ -104,6 +103,7 @@ inline void tryCachePutToScopeGlobal(
             ResolveType newResolveType = resolveType == UnresolvedProperty ? GlobalProperty : GlobalPropertyWithVarInjectionChecks;
             resolveType = newResolveType;
             getPutInfo = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode());
+            ConcurrentJITLocker locker(codeBlock->m_lock);
             pc[4].u.operand = getPutInfo.operand();
         } else if (scope->isGlobalLexicalEnvironment()) {
             JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(scope);
@@ -111,6 +111,7 @@ inline void tryCachePutToScopeGlobal(
             pc[4].u.operand = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode()).operand();
             SymbolTableEntry entry = globalLexicalEnvironment->symbolTable()->get(ident.impl());
             ASSERT(!entry.isNull());
+            ConcurrentJITLocker locker(codeBlock->m_lock);
             pc[5].u.watchpointSet = entry.watchpointSet();
             pc[6].u.pointer = static_cast<void*>(globalLexicalEnvironment->variableAt(entry.scopeOffset()).slot());
         }
@@ -146,13 +147,15 @@ inline void tryCacheGetFromScopeGlobal(
         if (scope->isGlobalObject()) {
             ResolveType newResolveType = resolveType == UnresolvedProperty ? GlobalProperty : GlobalPropertyWithVarInjectionChecks;
             resolveType = newResolveType; // Allow below caching mechanism to kick in.
+            ConcurrentJITLocker locker(exec->codeBlock()->m_lock);
             pc[4].u.operand = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode()).operand();
         } else if (scope->isGlobalLexicalEnvironment()) {
             JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(scope);
             ResolveType newResolveType = resolveType == UnresolvedProperty ? GlobalLexicalVar : GlobalLexicalVarWithVarInjectionChecks;
-            pc[4].u.operand = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode()).operand();
             SymbolTableEntry entry = globalLexicalEnvironment->symbolTable()->get(ident.impl());
             ASSERT(!entry.isNull());
+            ConcurrentJITLocker locker(exec->codeBlock()->m_lock);
+            pc[4].u.operand = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode()).operand();
             pc[5].u.watchpointSet = entry.watchpointSet();
             pc[6].u.pointer = static_cast<void*>(globalLexicalEnvironment->variableAt(entry.scopeOffset()).slot());
         }

@@ -55,7 +55,7 @@
 #define consumeOrFail(tokenType, ...) do { if (!consume(tokenType)) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
 #define consumeOrFailWithFlags(tokenType, flags, ...) do { if (!consume(tokenType, flags)) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
 #define matchOrFail(tokenType, ...) do { if (!match(tokenType)) { handleErrorToken(); internalFailWithMessage(true, __VA_ARGS__); } } while (0)
-#define failIfStackOverflow() do { if (!canRecurse()) failWithStackOverflow(); } while (0)
+#define failIfStackOverflow() do { if (UNLIKELY(!canRecurse())) failWithStackOverflow(); } while (0)
 #define semanticFail(...) do { internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define semanticFailIfTrue(cond, ...) do { if (cond) internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define semanticFailIfFalse(cond, ...) do { if (!(cond)) internalFailWithMessage(false, __VA_ARGS__); } while (0)
@@ -397,19 +397,18 @@ template <class TreeBuilder> TreeSourceElements Parser<LexerType>::parseSourceEl
 {
     const unsigned lengthOfUseStrictLiteral = 12; // "use strict".length
     TreeSourceElements sourceElements = context.createSourceElements();
-    bool seenNonDirective = false;
     const Identifier* directive = 0;
     unsigned directiveLiteralLength = 0;
     auto savePoint = createSavePoint();
-    bool hasSetStrict = false;
+    bool shouldCheckForUseStrict = mode == CheckForStrictMode;
     
     while (TreeStatement statement = parseStatementListItem(context, directive, &directiveLiteralLength)) {
-        if (mode == CheckForStrictMode && !seenNonDirective) {
+        if (shouldCheckForUseStrict) {
             if (directive) {
                 // "use strict" must be the exact literal without escape sequences or line continuation.
-                if (!hasSetStrict && directiveLiteralLength == lengthOfUseStrictLiteral && m_vm->propertyNames->useStrictIdentifier == *directive) {
+                if (directiveLiteralLength == lengthOfUseStrictLiteral && m_vm->propertyNames->useStrictIdentifier == *directive) {
                     setStrictMode();
-                    hasSetStrict = true;
+                    shouldCheckForUseStrict = false; // We saw "use strict", there is no need to keep checking for it.
                     if (!isValidStrictMode()) {
                         if (m_parserState.lastFunctionName) {
                             if (m_vm->propertyNames->arguments == *m_parserState.lastFunctionName)
@@ -421,6 +420,7 @@ template <class TreeBuilder> TreeSourceElements Parser<LexerType>::parseSourceEl
                             semanticFail("Cannot declare a variable named 'arguments' in strict mode");
                         if (hasDeclaredVariable(m_vm->propertyNames->eval))
                             semanticFail("Cannot declare a variable named 'eval' in strict mode");
+                        semanticFailIfTrue(currentScope()->hasNonSimpleParameterList(), "'use strict' directive not allowed inside a function with a non-simple parameter list");
                         semanticFailIfFalse(isValidStrictMode(), "Invalid parameters or function name in strict mode");
                     }
                     // Since strict mode is changed, restoring lexer state by calling next() may cause errors.
@@ -428,8 +428,16 @@ template <class TreeBuilder> TreeSourceElements Parser<LexerType>::parseSourceEl
                     propagateError();
                     continue;
                 }
-            } else
-                seenNonDirective = true;
+
+                // We saw a directive, but it wasn't "use strict". We reset our state to
+                // see if the next statement we parse is also a directive.
+                directive = nullptr;
+            } else {
+                // We saw a statement that wasn't in the form of a directive. The spec says that "use strict"
+                // is only allowed as the first statement, or after a sequence of directives before it, but
+                // not after non-directive statements.
+                shouldCheckForUseStrict = false;
+            }
         }
         context.appendStatement(sourceElements, statement);
     }
@@ -733,6 +741,8 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVariableDecl
             if (hasInitializer) {
                 next(TreeBuilder::DontBuildStrings); // consume '='
                 TreeExpression rhs = parseAssignmentExpression(context);
+                propagateError();
+                ASSERT(rhs);
                 node = context.createDestructuringAssignment(location, pattern, rhs);
                 lastInitializer = rhs;
             }
@@ -1171,7 +1181,8 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseForStatement(
         if (hasAnyAssignments) {
             if (isOfEnumeration)
                 internalFailWithMessage(false, "Cannot assign to the loop variable inside a for-of loop header");
-            internalFailWithMessage(false, "Cannot assign to the loop variable inside a for-in loop header");
+            if (strictMode() || (isLetDeclaration || isConstDeclaration) || !context.isBindingNode(forInTarget))
+                internalFailWithMessage(false, "Cannot assign to the loop variable inside a for-in loop header");
         }
         TreeExpression expr = parseExpression(context);
         failIfFalse(expr, "Expected expression to enumerate");
@@ -1599,7 +1610,6 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseStatement(Tre
 {
     DepthManager statementDepth(&m_statementDepth);
     m_statementDepth++;
-    directive = 0;
     int nonTrivialExpressionCount = 0;
     failIfStackOverflow();
     TreeStatement result = 0;
@@ -1718,7 +1728,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseStatement(Tre
     default:
         TreeStatement exprStatement = parseExpressionStatement(context);
         if (directive && nonTrivialExpressionCount != m_parserState.nonTrivialExpressionCount)
-            directive = 0;
+            directive = nullptr;
         result = exprStatement;
         break;
     }
@@ -1766,6 +1776,8 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFormalParameters(TreeB
             defaultValue = parseDefaultValueForDestructuringPattern(context);
         propagateError();
         failIfDuplicateIfViolation();
+        if (isRestParameter || defaultValue || hasDestructuringPattern)
+            currentScope()->setHasNonSimpleParameterList();
         context.appendParameter(list, parameter, defaultValue);
         if (!isRestParameter)
             parameterCount++;
@@ -1897,23 +1909,23 @@ template <class TreeBuilder> typename TreeBuilder::FormalParameterList Parser<Le
     JSTextPosition position = tokenStartPosition();
 
     // @generator
-    declareParameter(&m_vm->propertyNames->generatorPrivateName);
-    auto generator = context.createBindingLocation(location, m_vm->propertyNames->generatorPrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorPrivateName());
+    auto generator = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorPrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generator, 0);
 
     // @generatorState
-    declareParameter(&m_vm->propertyNames->generatorStatePrivateName);
-    auto generatorState = context.createBindingLocation(location, m_vm->propertyNames->generatorStatePrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorStatePrivateName());
+    auto generatorState = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorStatePrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generatorState, 0);
 
     // @generatorValue
-    declareParameter(&m_vm->propertyNames->generatorValuePrivateName);
-    auto generatorValue = context.createBindingLocation(location, m_vm->propertyNames->generatorValuePrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorValuePrivateName());
+    auto generatorValue = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorValuePrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generatorValue, 0);
 
     // @generatorResumeMode
-    declareParameter(&m_vm->propertyNames->generatorResumeModePrivateName);
-    auto generatorResumeMode = context.createBindingLocation(location, m_vm->propertyNames->generatorResumeModePrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorResumeModePrivateName());
+    auto generatorResumeMode = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorResumeModePrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generatorResumeMode, 0);
 
     return parameters;
@@ -2871,15 +2883,15 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclara
             TreeExpression expression = parseAssignmentExpression(context);
             failIfFalse(expression, "Cannot parse expression");
 
-            DeclarationResultMask declarationResult = declareVariable(&m_vm->propertyNames->starDefaultPrivateName, DeclarationType::ConstDeclaration);
+            DeclarationResultMask declarationResult = declareVariable(&m_vm->propertyNames->builtinNames().starDefaultPrivateName(), DeclarationType::ConstDeclaration);
             if (declarationResult & DeclarationResult::InvalidDuplicateDeclaration)
                 internalFailWithMessage(false, "Only one 'default' export is allowed");
 
-            TreeExpression assignment = context.createAssignResolve(location, m_vm->propertyNames->starDefaultPrivateName, expression, start, start, tokenEndPosition(), AssignmentContext::ConstDeclarationStatement);
+            TreeExpression assignment = context.createAssignResolve(location, m_vm->propertyNames->builtinNames().starDefaultPrivateName(), expression, start, start, tokenEndPosition(), AssignmentContext::ConstDeclarationStatement);
             result = context.createExprStatement(location, assignment, start, tokenEndPosition());
             if (!isFunctionOrClassDeclaration)
                 failIfFalse(autoSemiColon(), "Expected a ';' following a targeted export declaration");
-            localName = &m_vm->propertyNames->starDefaultPrivateName;
+            localName = &m_vm->propertyNames->builtinNames().starDefaultPrivateName();
         }
         failIfFalse(result, "Cannot parse the declaration");
 

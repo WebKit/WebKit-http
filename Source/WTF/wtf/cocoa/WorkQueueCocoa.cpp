@@ -28,24 +28,24 @@
 
 namespace WTF {
 
-void WorkQueue::dispatch(NoncopyableFunction<void ()>&& function)
+void WorkQueue::dispatch(Function<void ()>&& function)
 {
     ref();
-    auto* functionPtr = new NoncopyableFunction<void ()>(WTFMove(function));
+    auto* callable = function.leakCallable();
     dispatch_async(m_dispatchQueue, ^{
-        (*functionPtr)();
-        delete functionPtr;
+        auto function = Function<void ()>::adoptCallable(callable);
+        function();
         deref();
     });
 }
 
-void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, NoncopyableFunction<void ()>&& function)
+void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, Function<void ()>&& function)
 {
     ref();
-    auto* functionPtr = new NoncopyableFunction<void ()>(WTFMove(function));
+    auto* callable = function.leakCallable();
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration.count()), m_dispatchQueue, ^{
-        (*functionPtr)();
-        delete functionPtr;
+        auto function = Function<void ()>::adoptCallable(callable);
+        function();
         deref();
     });
 }

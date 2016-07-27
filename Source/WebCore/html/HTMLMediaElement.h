@@ -38,6 +38,7 @@
 #include "MediaElementSession.h"
 #include "MediaProducer.h"
 #include "PageThrottler.h"
+#include "UserInterfaceLayoutDirection.h"
 
 #if ENABLE(VIDEO_TRACK)
 #include "AudioTrack.h"
@@ -164,6 +165,9 @@ public:
     MediaStream* srcObject() const { return m_mediaStreamSrcObject.get(); }
     void setSrcObject(ScriptExecutionContext&, MediaStream*);
 #endif
+
+    void setCrossOrigin(const AtomicString&);
+    String crossOrigin() const;
 
 // network state
     using HTMLMediaElementEnums::NetworkState;
@@ -444,6 +448,7 @@ public:
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     void pageScaleFactorChanged();
+    void userInterfaceLayoutDirectionChanged();
     WEBCORE_EXPORT String getCurrentMediaControlsStatus();
 #endif
 
@@ -688,8 +693,10 @@ private:
     void beginProcessingMediaPlayerCallback() { ++m_processingMediaPlayerCallback; }
     void endProcessingMediaPlayerCallback() { ASSERT(m_processingMediaPlayerCallback); --m_processingMediaPlayerCallback; }
 
+    enum class UpdateState { Asynchronously, Synchronously };
+
+    void updatePlayState(UpdateState updateState = UpdateState::Synchronously);
     void updateVolume();
-    void updatePlayState();
     void setPlaying(bool);
     bool potentiallyPlaying() const;
     bool endedPlayback() const;
@@ -721,7 +728,7 @@ private:
 
     void changeNetworkStateFromLoadingToIdle();
 
-    void removeBehaviorsRestrictionsAfterFirstUserGesture();
+    void removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::BehaviorRestrictions mask = MediaElementSession::AllRestrictions);
 
     void updateMediaController();
     bool isBlocked() const;
@@ -768,18 +775,23 @@ private:
     void prepareForDocumentSuspension() final;
     void resumeFromDocumentSuspension() final;
 
-    enum class UpdateMediaState { Asynchronously, Synchronously };
-    void updateMediaState(UpdateMediaState updateState = UpdateMediaState::Synchronously);
+    void updateMediaState(UpdateState updateState = UpdateState::Synchronously);
     bool hasPlaybackTargetAvailabilityListeners() const { return m_hasPlaybackTargetAvailabilityListeners; }
 #endif
 
+    bool isVideoTooSmallForInlinePlayback();
     void isVisibleInViewportChanged() final;
     void updateShouldAutoplay();
 
     void pauseAfterDetachedTask();
     void updatePlaybackControlsManager();
+    void scheduleUpdatePlaybackControlsManager();
 
     void updateRenderer();
+
+    void updatePageScaleFactorJSProperty();
+    void updateUsesLTRUserInterfaceLayoutDirectionJSProperty();
+    void setControllerJSProperty(const char*, JSC::JSValue);
 
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
@@ -790,6 +802,7 @@ private:
     GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
     GenericTaskQueue<Timer> m_promiseTaskQueue;
     GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;
+    GenericTaskQueue<Timer> m_updatePlaybackControlsManagerQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 

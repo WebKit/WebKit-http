@@ -770,7 +770,7 @@ void JSObject::notifyPresenceOfIndexedAccessors(VM& vm)
     if (mayInterceptIndexedAccesses())
         return;
     
-    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), AddIndexedAccessors));
+    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AddIndexedAccessors));
     
     if (!vm.prototypeMap.isPrototype(this))
         return;
@@ -798,7 +798,7 @@ Butterfly* JSObject::createInitialUndecided(VM& vm, unsigned length)
 {
     DeferGC deferGC(vm.heap);
     Butterfly* newButterfly = createInitialIndexedStorage(vm, length, sizeof(EncodedJSValue));
-    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), AllocateUndecided);
+    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateUndecided);
     setStructureAndButterfly(vm, newStructure, newButterfly);
     return newButterfly;
 }
@@ -807,7 +807,7 @@ ContiguousJSValues JSObject::createInitialInt32(VM& vm, unsigned length)
 {
     DeferGC deferGC(vm.heap);
     Butterfly* newButterfly = createInitialIndexedStorage(vm, length, sizeof(EncodedJSValue));
-    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), AllocateInt32);
+    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateInt32);
     setStructureAndButterfly(vm, newStructure, newButterfly);
     return newButterfly->contiguousInt32();
 }
@@ -818,7 +818,7 @@ ContiguousDoubles JSObject::createInitialDouble(VM& vm, unsigned length)
     Butterfly* newButterfly = createInitialIndexedStorage(vm, length, sizeof(double));
     for (unsigned i = newButterfly->vectorLength(); i--;)
         newButterfly->contiguousDouble()[i] = PNaN;
-    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), AllocateDouble);
+    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateDouble);
     setStructureAndButterfly(vm, newStructure, newButterfly);
     return newButterfly->contiguousDouble();
 }
@@ -827,7 +827,7 @@ ContiguousJSValues JSObject::createInitialContiguous(VM& vm, unsigned length)
 {
     DeferGC deferGC(vm.heap);
     Butterfly* newButterfly = createInitialIndexedStorage(vm, length, sizeof(EncodedJSValue));
-    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), AllocateContiguous);
+    Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateContiguous);
     setStructureAndButterfly(vm, newStructure, newButterfly);
     return newButterfly->contiguous();
 }
@@ -862,7 +862,7 @@ ArrayStorage* JSObject::createInitialArrayStorage(VM& vm)
 ContiguousJSValues JSObject::convertUndecidedToInt32(VM& vm)
 {
     ASSERT(hasUndecided(indexingType()));
-    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), AllocateInt32));
+    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateInt32));
     return m_butterfly.get()->contiguousInt32();
 }
 
@@ -874,14 +874,14 @@ ContiguousDoubles JSObject::convertUndecidedToDouble(VM& vm)
     for (unsigned i = butterfly->vectorLength(); i--;)
         butterfly->contiguousDouble()[i] = PNaN;
     
-    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), AllocateDouble));
+    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateDouble));
     return m_butterfly.get()->contiguousDouble();
 }
 
 ContiguousJSValues JSObject::convertUndecidedToContiguous(VM& vm)
 {
     ASSERT(hasUndecided(indexingType()));
-    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), AllocateContiguous));
+    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateContiguous));
     return m_butterfly.get()->contiguous();
 }
 
@@ -946,7 +946,7 @@ ContiguousDoubles JSObject::convertInt32ToDouble(VM& vm)
         *currentAsDouble = v.asInt32();
     }
     
-    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), AllocateDouble));
+    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateDouble));
     return m_butterfly.get()->contiguousDouble();
 }
 
@@ -954,7 +954,7 @@ ContiguousJSValues JSObject::convertInt32ToContiguous(VM& vm)
 {
     ASSERT(hasInt32(indexingType()));
     
-    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), AllocateContiguous));
+    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateContiguous));
     return m_butterfly.get()->contiguous();
 }
 
@@ -1002,7 +1002,7 @@ ContiguousJSValues JSObject::convertDoubleToContiguous(VM& vm)
         currentAsValue->setWithoutWriteBarrier(v);
     }
     
-    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), AllocateContiguous));
+    setStructure(vm, Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::AllocateContiguous));
     return m_butterfly.get()->contiguous();
 }
 
@@ -1062,16 +1062,18 @@ ArrayStorage* JSObject::convertContiguousToArrayStorage(VM& vm)
 
 void JSObject::convertUndecidedForValue(VM& vm, JSValue value)
 {
-    if (value.isInt32()) {
+    IndexingType type = indexingTypeForValue(value);
+    if (type == Int32Shape) {
         convertUndecidedToInt32(vm);
         return;
     }
     
-    if (value.isDouble() && value.asNumber() == value.asNumber()) {
+    if (type == DoubleShape) {
         convertUndecidedToDouble(vm);
         return;
     }
-    
+
+    ASSERT(type == ContiguousShape);
     convertUndecidedToContiguous(vm);
 }
 
@@ -1288,24 +1290,24 @@ void JSObject::switchToSlowPutArrayStorage(VM& vm)
 {
     switch (indexingType()) {
     case ALL_UNDECIDED_INDEXING_TYPES:
-        convertUndecidedToArrayStorage(vm, AllocateSlowPutArrayStorage);
+        convertUndecidedToArrayStorage(vm, NonPropertyTransition::AllocateSlowPutArrayStorage);
         break;
         
     case ALL_INT32_INDEXING_TYPES:
-        convertInt32ToArrayStorage(vm, AllocateSlowPutArrayStorage);
+        convertInt32ToArrayStorage(vm, NonPropertyTransition::AllocateSlowPutArrayStorage);
         break;
         
     case ALL_DOUBLE_INDEXING_TYPES:
-        convertDoubleToArrayStorage(vm, AllocateSlowPutArrayStorage);
+        convertDoubleToArrayStorage(vm, NonPropertyTransition::AllocateSlowPutArrayStorage);
         break;
         
     case ALL_CONTIGUOUS_INDEXING_TYPES:
-        convertContiguousToArrayStorage(vm, AllocateSlowPutArrayStorage);
+        convertContiguousToArrayStorage(vm, NonPropertyTransition::AllocateSlowPutArrayStorage);
         break;
         
     case NonArrayWithArrayStorage:
     case ArrayWithArrayStorage: {
-        Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), SwitchToSlowPutArrayStorage);
+        Structure* newStructure = Structure::nonPropertyTransition(vm, structure(vm), NonPropertyTransition::SwitchToSlowPutArrayStorage);
         setStructure(vm, newStructure);
         break;
     }
@@ -1355,7 +1357,7 @@ bool JSObject::setPrototypeWithCycleCheck(VM& vm, ExecState* exec, JSValue proto
 
     if (!isExtensible) {
         if (shouldThrowIfCantSet)
-            throwVMError(exec, createTypeError(exec, StrictModeReadonlyPropertyWriteError));
+            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
         return false;
     }
 
@@ -1364,7 +1366,7 @@ bool JSObject::setPrototypeWithCycleCheck(VM& vm, ExecState* exec, JSValue proto
     while (nextPrototype && nextPrototype.isObject()) {
         if (nextPrototype == this) {
             if (shouldThrowIfCantSet)
-                vm.throwException(exec, createError(exec, ASCIILiteral("cyclic __proto__ value")));
+                throwTypeError(exec, ASCIILiteral("cyclic __proto__ value"));
             return false;
         }
         if (UNLIKELY(asObject(nextPrototype)->methodTable(vm)->getPrototype != defaultGetPrototype))
@@ -1638,7 +1640,7 @@ static ALWAYS_INLINE JSValue callToPrimitiveFunction(ExecState* exec, const JSOb
     if (exec->hadException())
         return exec->exception();
     if (result.isObject())
-        return mode == TypeHintMode::DoesNotTakeHint ? JSValue() : throwTypeError(exec, "Symbol.toPrimitive returned an object");
+        return mode == TypeHintMode::DoesNotTakeHint ? JSValue() : throwTypeError(exec, ASCIILiteral("Symbol.toPrimitive returned an object"));
     return result;
 }
 
@@ -1668,7 +1670,7 @@ JSValue JSObject::ordinaryToPrimitive(ExecState* exec, PreferredPrimitiveType hi
 
     ASSERT(!exec->hadException());
 
-    return exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("No default value")));
+    return throwTypeError(exec, ASCIILiteral("No default value"));
 }
 
 JSValue JSObject::defaultValue(const JSObject* object, ExecState* exec, PreferredPrimitiveType hint)
@@ -1754,7 +1756,7 @@ bool JSObject::defaultHasInstance(ExecState* exec, JSValue value, JSValue proto)
         return false;
 
     if (!proto.isObject()) {
-        exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("instanceof called on an object with an invalid prototype property.")));
+        throwTypeError(exec, ASCIILiteral("instanceof called on an object with an invalid prototype property."));
         return false;
     }
 
@@ -2941,7 +2943,7 @@ bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, Prope
         // Step 2.a
         if (!isExtensible) {
             if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to define property on object that is not extensible.")));
+                throwTypeError(exec, ASCIILiteral("Attempting to define property on object that is not extensible."));
             return false;
         }
         if (!object)
@@ -2964,12 +2966,12 @@ bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, Prope
     if (!current.configurable()) {
         if (descriptor.configurable()) {
             if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change configurable attribute of unconfigurable property.")));
+                throwTypeError(exec, ASCIILiteral("Attempting to change configurable attribute of unconfigurable property."));
             return false;
         }
         if (descriptor.enumerablePresent() && descriptor.enumerable() != current.enumerable()) {
             if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change enumerable attribute of unconfigurable property.")));
+                throwTypeError(exec, ASCIILiteral("Attempting to change enumerable attribute of unconfigurable property."));
             return false;
         }
     }
@@ -2989,7 +2991,7 @@ bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, Prope
     if (descriptor.isDataDescriptor() != current.isDataDescriptor()) {
         if (!current.configurable()) {
             if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral(UnconfigurablePropertyChangeAccessMechanismError)));
+                throwTypeError(exec, ASCIILiteral(UnconfigurablePropertyChangeAccessMechanismError));
             return false;
         }
 
@@ -3006,13 +3008,13 @@ bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, Prope
         if (!current.configurable()) {
             if (!current.writable() && descriptor.writable()) {
                 if (throwException)
-                    exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change writable attribute of unconfigurable property.")));
+                    throwTypeError(exec, ASCIILiteral("Attempting to change writable attribute of unconfigurable property."));
                 return false;
             }
             if (!current.writable()) {
                 if (descriptor.value() && !sameValue(exec, current.value(), descriptor.value())) {
                     if (throwException)
-                        exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change value of a readonly property.")));
+                        throwTypeError(exec, ASCIILiteral("Attempting to change value of a readonly property."));
                     return false;
                 }
             }
@@ -3031,17 +3033,17 @@ bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, Prope
     if (!current.configurable()) {
         if (descriptor.setterPresent() && !(current.setterPresent() && JSValue::strictEqual(exec, current.setter(), descriptor.setter()))) {
             if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change the setter of an unconfigurable property.")));
+                throwTypeError(exec, ASCIILiteral("Attempting to change the setter of an unconfigurable property."));
             return false;
         }
         if (descriptor.getterPresent() && !(current.getterPresent() && JSValue::strictEqual(exec, current.getter(), descriptor.getter()))) {
             if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change the getter of an unconfigurable property.")));
+                throwTypeError(exec, ASCIILiteral("Attempting to change the getter of an unconfigurable property."));
             return false;
         }
         if (current.attributes() & CustomAccessor) {
             if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral(UnconfigurablePropertyChangeAccessMechanismError)));
+                throwTypeError(exec, ASCIILiteral(UnconfigurablePropertyChangeAccessMechanismError));
             return false;
         }
     }
@@ -3054,9 +3056,14 @@ bool validateAndApplyPropertyDescriptor(ExecState* exec, JSObject* object, Prope
         return false;
     GetterSetter* getterSetter;
     bool getterSetterChanged = false;
-    if (accessor.isCustomGetterSetter())
+    if (accessor.isCustomGetterSetter()) {
         getterSetter = GetterSetter::create(exec->vm(), exec->lexicalGlobalObject());
-    else {
+        auto* customGetterSetter = jsCast<CustomGetterSetter*>(accessor);
+        if (customGetterSetter->setter())
+            getterSetter->setSetter(exec->vm(), exec->lexicalGlobalObject(), getCustomGetterSetterFunctionForGetterSetter(exec, propertyName, customGetterSetter, JSCustomGetterSetterFunction::Type::Setter));
+        if (customGetterSetter->getter())
+            getterSetter->setGetter(exec->vm(), exec->lexicalGlobalObject(), getCustomGetterSetterFunctionForGetterSetter(exec, propertyName, customGetterSetter, JSCustomGetterSetterFunction::Type::Getter));
+    } else {
         ASSERT(accessor.isGetterSetter());
         getterSetter = asGetterSetter(accessor);
     }

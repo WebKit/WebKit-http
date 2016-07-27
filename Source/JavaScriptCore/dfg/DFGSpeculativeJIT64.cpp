@@ -168,8 +168,8 @@ void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg
         usedRegisters.set(resultGPR, false);
     }
     JITGetByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters, JSValueRegs(baseGPR),
-        JSValueRegs(resultGPR), type);
+        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters, identifierUID(identifierNumber),
+        JSValueRegs(baseGPR), JSValueRegs(resultGPR), type);
     gen.generateFastPath(m_jit);
     
     JITCompiler::JumpList slowCases;
@@ -635,6 +635,7 @@ void SpeculativeJIT::emitCall(Node* node)
     bool isEmulatedTail = false;
     switch (node->op()) {
     case Call:
+    case CallEval:
         callType = CallLinkInfo::Call;
         break;
     case TailCall:
@@ -806,7 +807,7 @@ void SpeculativeJIT::emitCall(Node* node)
 
             shuffleData.setupCalleeSaveRegisters(m_jit.codeBlock());
         } else {
-            m_jit.store32(MacroAssembler::TrustedImm32(numPassedArgs), JITCompiler::calleeFramePayloadSlot(JSStack::ArgumentCount));
+            m_jit.store32(MacroAssembler::TrustedImm32(numPassedArgs), JITCompiler::calleeFramePayloadSlot(CallFrameSlot::argumentCount));
 
             for (int i = 0; i < numPassedArgs; i++) {
                 Edge argEdge = m_jit.graph().m_varArgChildren[node->firstChild() + 1 + i];
@@ -824,7 +825,7 @@ void SpeculativeJIT::emitCall(Node* node)
         JSValueOperand callee(this, calleeEdge);
         calleeGPR = callee.gpr();
         callee.use();
-        m_jit.store64(calleeGPR, JITCompiler::calleeFrameSlot(JSStack::Callee));
+        m_jit.store64(calleeGPR, JITCompiler::calleeFrameSlot(CallFrameSlot::callee));
 
         flushRegisters();
     }
@@ -838,8 +839,53 @@ void SpeculativeJIT::emitCall(Node* node)
     CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(dynamicOrigin, m_stream->size());
     m_jit.emitStoreCallSiteIndex(callSite);
     
-    CallLinkInfo* callLinkInfo = m_jit.codeBlock()->addCallLinkInfo();
+    auto setResultAndResetStack = [&] () {
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+        m_jit.move(GPRInfo::returnValueGPR, resultGPR);
 
+        jsValueResult(resultGPR, m_currentNode, DataFormatJS, UseChildrenCalledExplicitly);
+
+        // After the calls are done, we need to reestablish our stack
+        // pointer. We rely on this for varargs calls, calls with arity
+        // mismatch (the callframe is slided) and tail calls.
+        m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
+    };
+    
+    CallLinkInfo* callLinkInfo = m_jit.codeBlock()->addCallLinkInfo();
+    callLinkInfo->setUpCall(callType, m_currentNode->origin.semantic, calleeGPR);
+
+    if (node->op() == CallEval) {
+        // We want to call operationCallEval but we don't want to overwrite the parameter area in
+        // which we have created a prototypical eval call frame. This means that we have to
+        // subtract stack to make room for the call. Lucky for us, at this point we have the whole
+        // register file to ourselves.
+        
+        m_jit.addPtr(TrustedImm32(-static_cast<ptrdiff_t>(sizeof(CallerFrameAndPC))), JITCompiler::stackPointerRegister, GPRInfo::regT0);
+        m_jit.storePtr(GPRInfo::callFrameRegister, JITCompiler::Address(GPRInfo::regT0, CallFrame::callerFrameOffset()));
+        
+        // Now we need to make room for:
+        // - The caller frame and PC of a call to operationCallEval.
+        // - Potentially two arguments on the stack.
+        unsigned requiredBytes = sizeof(CallerFrameAndPC) + sizeof(ExecState*) * 2;
+        requiredBytes = WTF::roundUpToMultipleOf(stackAlignmentBytes(), requiredBytes);
+        m_jit.subPtr(TrustedImm32(requiredBytes), JITCompiler::stackPointerRegister);
+        m_jit.setupArgumentsWithExecState(GPRInfo::regT0);
+        prepareForExternalCall();
+        m_jit.appendCall(operationCallEval);
+        m_jit.exceptionCheck();
+        JITCompiler::Jump done = m_jit.branchTest64(JITCompiler::NonZero, GPRInfo::returnValueGPR);
+        
+        // This is the part where we meant to make a normal call. Oops.
+        m_jit.addPtr(TrustedImm32(requiredBytes), JITCompiler::stackPointerRegister);
+        m_jit.load64(JITCompiler::calleeFrameSlot(CallFrameSlot::callee), GPRInfo::regT0);
+        m_jit.emitDumbVirtualCall(callLinkInfo);
+        
+        done.link(&m_jit);
+        setResultAndResetStack();
+        return;
+    }
+    
     JITCompiler::DataLabelPtr targetToCheck;
     JITCompiler::Jump slowPath = m_jit.branchPtrWithPatch(MacroAssembler::NotEqual, calleeGPR, targetToCheck, MacroAssembler::TrustedImmPtr(0));
 
@@ -877,20 +923,9 @@ void SpeculativeJIT::emitCall(Node* node)
 
     if (isTail)
         m_jit.abortWithReason(JITDidReturnFromTailCall);
-    else {
-        GPRFlushedCallResult result(this);
-        GPRReg resultGPR = result.gpr();
-        m_jit.move(GPRInfo::returnValueGPR, resultGPR);
+    else
+        setResultAndResetStack();
 
-        jsValueResult(resultGPR, m_currentNode, DataFormatJS, UseChildrenCalledExplicitly);
-
-        // After the calls are done, we need to reestablish our stack
-        // pointer. We rely on this for varargs calls, calls with arity
-        // mismatch (the callframe is slided) and tail calls.
-        m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
-    }
-
-    callLinkInfo->setUpCall(callType, m_currentNode->origin.semantic, calleeGPR);
     m_jit.addJSCall(fastCall, slowCall, targetToCheck, callLinkInfo);
 }
 
@@ -2522,6 +2557,10 @@ void SpeculativeJIT::compile(Node* node)
         if (compileStrictEq(node))
             return;
         break;
+        
+    case CompareEqPtr:
+        compileCompareEqPtr(node);
+        break;
 
     case StringCharCodeAt: {
         compileGetCharCodeAt(node);
@@ -3520,23 +3559,57 @@ void SpeculativeJIT::compile(Node* node)
         
     case ToPrimitive: {
         DFG_ASSERT(m_jit.graph(), node, node->child1().useKind() == UntypedUse);
-        JSValueOperand op1(this, node->child1());
-        GPRTemporary result(this, Reuse, op1);
+        JSValueOperand argument(this, node->child1());
+        GPRTemporary result(this, Reuse, argument);
         
-        GPRReg op1GPR = op1.gpr();
+        GPRReg argumentGPR = argument.gpr();
         GPRReg resultGPR = result.gpr();
         
-        op1.use();
+        argument.use();
         
-        MacroAssembler::Jump alreadyPrimitive = m_jit.branchIfNotCell(JSValueRegs(op1GPR));
-        MacroAssembler::Jump notPrimitive = m_jit.branchIfObject(op1GPR);
+        MacroAssembler::Jump alreadyPrimitive = m_jit.branchIfNotCell(JSValueRegs(argumentGPR));
+        MacroAssembler::Jump notPrimitive = m_jit.branchIfObject(argumentGPR);
         
         alreadyPrimitive.link(&m_jit);
-        m_jit.move(op1GPR, resultGPR);
+        m_jit.move(argumentGPR, resultGPR);
         
         addSlowPathGenerator(
-            slowPathCall(notPrimitive, this, operationToPrimitive, resultGPR, op1GPR));
+            slowPathCall(notPrimitive, this, operationToPrimitive, resultGPR, argumentGPR));
         
+        jsValueResult(resultGPR, node, UseChildrenCalledExplicitly);
+        break;
+    }
+
+    case ToNumber: {
+        JSValueOperand argument(this, node->child1());
+        GPRTemporary result(this, Reuse, argument);
+
+        GPRReg argumentGPR = argument.gpr();
+        GPRReg resultGPR = result.gpr();
+
+        argument.use();
+
+        // We have several attempts to remove ToNumber. But ToNumber still exists.
+        // It means that converting non-numbers to numbers by this ToNumber is not rare.
+        // Instead of the slow path generator, we emit callOperation here.
+        if (!(m_state.forNode(node->child1()).m_type & SpecBytecodeNumber)) {
+            flushRegisters();
+            callOperation(operationToNumber, resultGPR, argumentGPR);
+            m_jit.exceptionCheck();
+        } else {
+            MacroAssembler::Jump notNumber = m_jit.branchIfNotNumber(argumentGPR);
+            m_jit.move(argumentGPR, resultGPR);
+            MacroAssembler::Jump done = m_jit.jump();
+
+            notNumber.link(&m_jit);
+            silentSpillAllRegisters(resultGPR);
+            callOperation(operationToNumber, resultGPR, argumentGPR);
+            silentFillAllRegisters(resultGPR);
+            m_jit.exceptionCheck();
+
+            done.link(&m_jit);
+        }
+
         jsValueResult(resultGPR, node, UseChildrenCalledExplicitly);
         break;
     }
@@ -3915,7 +3988,12 @@ void SpeculativeJIT::compile(Node* node)
         cellResult(result.gpr(), node);
         break;
     }
-        
+
+    case CallObjectConstructor: {
+        compileCallObjectConstructor(node);
+        break;
+    }
+
     case ToThis: {
         ASSERT(node->child1().useKind() == UntypedUse);
         JSValueOperand thisValue(this, node->child1());
@@ -4008,14 +4086,14 @@ void SpeculativeJIT::compile(Node* node)
 
     case GetCallee: {
         GPRTemporary result(this);
-        m_jit.loadPtr(JITCompiler::addressFor(JSStack::Callee), result.gpr());
+        m_jit.loadPtr(JITCompiler::addressFor(CallFrameSlot::callee), result.gpr());
         cellResult(result.gpr(), node);
         break;
     }
         
     case GetArgumentCountIncludingThis: {
         GPRTemporary result(this);
-        m_jit.load32(JITCompiler::payloadFor(JSStack::ArgumentCount), result.gpr());
+        m_jit.load32(JITCompiler::payloadFor(CallFrameSlot::argumentCount), result.gpr());
         int32Result(result.gpr(), node);
         break;
     }
@@ -4463,11 +4541,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case VarInjectionWatchpoint: {
-        noResult(node);
-        break;
-    }
-
     case CheckTypeInfoFlags: {
         compileCheckTypeInfoFlags(node);
         break;
@@ -4612,6 +4685,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case IsJSArray: {
+        compileIsJSArray(node);
+        break;
+    }
+
     case IsObject: {
         JSValueOperand value(this, node->child1());
         GPRTemporary result(this, Reuse, value);
@@ -4648,6 +4726,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case IsTypedArrayView: {
+        compileIsTypedArrayView(node);
+        break;
+    }
+
     case TypeOf: {
         compileTypeOf(node);
         break;
@@ -4668,6 +4751,7 @@ void SpeculativeJIT::compile(Node* node)
     case ConstructForwardVarargs:
     case TailCallForwardVarargs:
     case TailCallForwardVarargsInlinedCaller:
+    case CallEval:
         emitCall(node);
         break;
 

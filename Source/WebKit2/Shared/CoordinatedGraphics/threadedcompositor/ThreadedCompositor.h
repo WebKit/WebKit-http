@@ -95,6 +95,8 @@ public:
     void scrollTo(const WebCore::IntPoint&);
     void scrollBy(const WebCore::IntSize&);
 
+    void invalidate();
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID);
 #endif

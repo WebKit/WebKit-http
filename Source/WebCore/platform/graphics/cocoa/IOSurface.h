@@ -30,7 +30,6 @@
 
 #include "GraphicsContext.h"
 #include "IntSize.h"
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
@@ -46,10 +45,10 @@ public:
         RGB10A8,
     };
 
-    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, ColorSpace, Format = Format::RGBA);
-    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, IntSize contextSize, ColorSpace, Format = Format::RGBA);
-    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&, ColorSpace);
-    static std::unique_ptr<IOSurface> createFromSurface(IOSurfaceRef, ColorSpace);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, CGColorSpaceRef, Format = Format::RGBA);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, IntSize contextSize, CGColorSpaceRef, Format = Format::RGBA);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&, CGColorSpaceRef);
+    static std::unique_ptr<IOSurface> createFromSurface(IOSurfaceRef, CGColorSpaceRef);
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromImage(CGImageRef);
     
     static std::unique_ptr<IOSurface> createFromImageBuffer(std::unique_ptr<ImageBuffer>);
@@ -65,6 +64,7 @@ public:
     WEBCORE_EXPORT RetainPtr<CGImageRef> createImage();
     static RetainPtr<CGImageRef> sinkIntoImage(std::unique_ptr<IOSurface>);
 
+    id asLayerContents() const { return (id)(CFTypeRef)m_surface.get(); }
     IOSurfaceRef surface() const { return m_surface.get(); }
     WEBCORE_EXPORT GraphicsContext& ensureGraphicsContext();
     WEBCORE_EXPORT CGContextRef ensurePlatformContext();
@@ -85,7 +85,7 @@ public:
 
     IntSize size() const { return m_size; }
     size_t totalBytes() const { return m_totalBytes; }
-    ColorSpace colorSpace() const { return m_colorSpace; }
+    CGColorSpaceRef colorSpace() const { return m_colorSpace.get(); }
     WEBCORE_EXPORT Format format() const;
 
     WEBCORE_EXPORT bool isInUse() const;
@@ -100,15 +100,15 @@ public:
 #endif
 
 private:
-    IOSurface(IntSize, ColorSpace, Format);
-    IOSurface(IntSize, IntSize contextSize, ColorSpace, Format);
-    IOSurface(IOSurfaceRef, ColorSpace);
+    IOSurface(IntSize, CGColorSpaceRef, Format);
+    IOSurface(IntSize, IntSize contextSize, CGColorSpaceRef, Format);
+    IOSurface(IOSurfaceRef, CGColorSpaceRef);
 
-    static std::unique_ptr<IOSurface> surfaceFromPool(IntSize, IntSize contextSize, ColorSpace, Format);
+    static std::unique_ptr<IOSurface> surfaceFromPool(IntSize, IntSize contextSize, CGColorSpaceRef, Format);
     IntSize contextSize() const { return m_contextSize; }
     void setContextSize(IntSize);
 
-    ColorSpace m_colorSpace;
+    RetainPtr<CGColorSpaceRef> m_colorSpace;
     IntSize m_size;
     IntSize m_contextSize;
     size_t m_totalBytes;

@@ -61,9 +61,6 @@ public:
     String enctype() const { return m_attributes.encodingType(); }
     void setEnctype(const String&);
 
-    String encoding() const { return m_attributes.encodingType(); }
-    void setEncoding(const String& value) { setEnctype(value); }
-
     bool shouldAutocomplete() const;
 
     void setAutocomplete(const AtomicString&);
@@ -111,11 +108,12 @@ public:
     String method() const;
     void setMethod(const String&);
 
-    String target() const override;
+    String target() const final;
 
     bool wasUserSubmitted() const;
 
     HTMLFormControlElement* defaultButton() const;
+    void resetDefaultButton();
 
     bool checkValidity();
 
@@ -143,21 +141,21 @@ public:
 private:
     HTMLFormElement(const QualifiedName&, Document&);
 
-    bool rendererIsNeeded(const RenderStyle&) override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void removedFrom(ContainerNode&) override;
-    void finishParsingChildren() override;
+    bool rendererIsNeeded(const RenderStyle&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
+    void finishParsingChildren() final;
 
-    void handleLocalEvents(Event&) override;
+    void handleLocalEvents(Event&) final;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    bool isURLAttribute(const Attribute&) const override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isURLAttribute(const Attribute&) const final;
 
-    void resumeFromDocumentSuspension() override;
+    void resumeFromDocumentSuspension() final;
 
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document* oldDocument) final;
 
-    void copyNonAttributePropertiesFromElement(const Element&) override;
+    void copyNonAttributePropertiesFromElement(const Element&) final;
 
     void submit(Event*, bool activateSubmitButton, bool processingUserGesture, FormSubmissionTrigger);
 
@@ -177,8 +175,8 @@ private:
     void assertItemCanBeInPastNamesMap(FormNamedItem*) const;
     void removeFromPastNamesMap(FormNamedItem*);
 
-    bool matchesValidPseudoClass() const override;
-    bool matchesInvalidPseudoClass() const override;
+    bool matchesValidPseudoClass() const final;
+    bool matchesInvalidPseudoClass() const final;
 
     typedef HashMap<RefPtr<AtomicStringImpl>, FormNamedItem*> PastNamesMap;
 
@@ -186,6 +184,7 @@ private:
     std::unique_ptr<PastNamesMap> m_pastNamesMap;
 
     RadioButtonGroups m_radioButtonGroups;
+    mutable HTMLFormControlElement* m_defaultButton { nullptr };
 
     unsigned m_associatedElementsBeforeIndex;
     unsigned m_associatedElementsAfterIndex;

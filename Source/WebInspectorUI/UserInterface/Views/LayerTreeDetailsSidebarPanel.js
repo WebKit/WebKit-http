@@ -50,8 +50,6 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
 
         console.assert(this.parentSidebar);
 
-        this.needsRefresh();
-
         super.shown();
     }
 
@@ -62,7 +60,16 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         super.hidden();
     }
 
-    refresh()
+    // DOMDetailsSidebarPanel Overrides
+
+    supportsDOMNode(nodeToInspect)
+    {
+        return WebInspector.layerTreeManager.supported && nodeToInspect.nodeType() === Node.ELEMENT_NODE;
+    }
+
+    // Protected
+
+    layout()
     {
         if (!this.domNode)
             return;
@@ -73,18 +80,11 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         });
     }
 
-    // DOMDetailsSidebarPanel Overrides
-
-    supportsDOMNode(nodeToInspect)
-    {
-        return WebInspector.layerTreeManager.supported && nodeToInspect.nodeType() === Node.ELEMENT_NODE;
-    }
-
     // Private
 
     _layerTreeDidChange(event)
     {
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _showShadowDOMSettingChanged(event)
@@ -142,8 +142,9 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SortChanged, this._sortDataGrid, this);
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._selectedDataGridNodeChanged, this);
 
-        this.sortColumnIdentifierSetting = new WebInspector.Setting("layer-tree-details-sidebar-panel-sort", "memory");
-        this.sortOrderSetting = new WebInspector.Setting("layer-tree-details-sidebar-panel-sort-order", WebInspector.DataGrid.SortOrder.Descending);
+        this._dataGrid.sortColumnIdentifier = "memory";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Descending;
+        this._dataGrid.createSettings("layer-tree-details-sidebar-panel");
 
         var element = this._dataGrid.element;
         element.addEventListener("focus", this._dataGridGainedFocus.bind(this), false);

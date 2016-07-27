@@ -164,37 +164,49 @@ bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum, Platform3D
 }
 #endif
 
-std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, const GraphicsContext& context, bool hasAlpha)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, ColorSpace colorSpace, const GraphicsContext& context)
 {
     if (size.isEmpty())
         return nullptr;
 
-    FloatSize scaledSize = ImageBuffer::compatibleBufferSize(size, context);
+    IntSize scaledSize = ImageBuffer::compatibleBufferSize(size, context);
 
-    auto buffer = ImageBuffer::createCompatibleBuffer(expandedIntSize(scaledSize), 1, ColorSpaceSRGB, context, hasAlpha);
+    auto buffer = ImageBuffer::createCompatibleBuffer(scaledSize, 1, colorSpace, context);
     if (!buffer)
         return nullptr;
 
     // Set up a corresponding scale factor on the graphics context.
-    buffer->context().scale(context.scaleFactor());
+    buffer->context().scale(FloatSize(scaledSize.width() / size.width(), scaledSize.height() / size.height()));
     return buffer;
 }
 
-std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, float resolutionScale, ColorSpace colorSpace, const GraphicsContext& context, bool)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, float resolutionScale, ColorSpace colorSpace, const GraphicsContext& context)
 {
     return create(size, context.renderingMode(), resolutionScale, colorSpace);
 }
 
-FloatSize ImageBuffer::compatibleBufferSize(const FloatSize& size, const GraphicsContext& context)
+IntSize ImageBuffer::compatibleBufferSize(const FloatSize& size, const GraphicsContext& context)
 {
     // Enlarge the buffer size if the context's transform is scaling it so we need a higher
     // resolution than one pixel per unit.
-    return size * context.scaleFactor();
+    return expandedIntSize(size * context.scaleFactor());
 }
 
 bool ImageBuffer::isCompatibleWithContext(const GraphicsContext& context) const
 {
     return areEssentiallyEqual(context.scaleFactor(), this->context().scaleFactor());
 }
+
+#if !USE(IOSURFACE_CANVAS_BACKING_STORE)
+size_t ImageBuffer::memoryCost() const
+{
+    return 4 * internalSize().width() * internalSize().height();
+}
+
+size_t ImageBuffer::externalMemoryCost() const
+{
+    return 0;
+}
+#endif
 
 }

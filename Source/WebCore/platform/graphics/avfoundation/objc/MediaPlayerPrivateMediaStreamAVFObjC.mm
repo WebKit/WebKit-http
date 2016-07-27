@@ -404,7 +404,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::createPreviewLayers()
         m_videoBackgroundLayer.get().name = @"MediaPlayerPrivateMediaStreamAVFObjC preview background layer";
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-        m_videoFullscreenLayerManager->setVideoLayers(m_videoBackgroundLayer.get(), nil, snappedIntRect(m_player->client().mediaPlayerContentBoxRect()).size());
+        m_videoFullscreenLayerManager->setVideoLayer(m_videoBackgroundLayer.get(), snappedIntRect(m_player->client().mediaPlayerContentBoxRect()).size());
 #endif
     }
 
@@ -624,7 +624,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::setNetworkState(MediaPlayer::NetworkS
     m_player->networkStateChanged();
 }
 
-void MediaPlayerPrivateMediaStreamAVFObjC::scheduleDeferredTask(NoncopyableFunction<void ()>&& function)
+void MediaPlayerPrivateMediaStreamAVFObjC::scheduleDeferredTask(Function<void ()>&& function)
 {
     ASSERT(function);
     callOnMainThread([weakThis = createWeakPtr(), function = WTFMove(function)] {

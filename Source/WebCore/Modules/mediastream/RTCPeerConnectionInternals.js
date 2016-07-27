@@ -36,9 +36,6 @@ function enqueueOperation(peerConnection, operation)
 {
     "use strict";
 
-    if (!peerConnection.@operations)
-        peerConnection.@operations = [];
-
     const operations = peerConnection.@operations;
 
     function runNext() {
@@ -49,7 +46,7 @@ function enqueueOperation(peerConnection, operation)
 
     return new @Promise(function (resolve, reject) {
         operations.@push(function() {
-            operation().then(resolve, reject).then(runNext, runNext);
+            operation().@then(resolve, reject).@then(runNext, runNext);
         });
 
         if (operations.length == 1)
@@ -127,4 +124,11 @@ function callbacksAndDictionaryOverload(args, functionName, promiseMode, legacyM
         return @Promise.@reject(new @TypeError(`Argument 3 ('options') to RTCPeerConnection.${functionName} must be a Dictionary`));
 
     return legacyMode(successCallback, errorCallback, args[2]);
+}
+
+function isRTCPeerConnection(connection)
+{
+    "use strict";
+
+    return @isObject(connection) && !!connection.@operations;
 }

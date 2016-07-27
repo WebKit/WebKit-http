@@ -45,13 +45,13 @@ CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
 #endif
 }
 
-void CompositingRunLoop::performTask(NoncopyableFunction<void ()>&& function)
+void CompositingRunLoop::performTask(Function<void ()>&& function)
 {
     ASSERT(isMainThread());
     m_runLoop.dispatch(WTFMove(function));
 }
 
-void CompositingRunLoop::performTaskSync(NoncopyableFunction<void ()>&& function)
+void CompositingRunLoop::performTaskSync(Function<void ()>&& function)
 {
     ASSERT(isMainThread());
     LockHolder locker(m_dispatchSyncConditionMutex);

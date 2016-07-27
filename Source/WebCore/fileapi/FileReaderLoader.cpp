@@ -56,7 +56,7 @@ FileReaderLoader::FileReaderLoader(ReadType readType, FileReaderLoaderClient* cl
     : m_readType(readType)
     , m_client(client)
     , m_isRawDataConverted(false)
-    , m_stringResult("")
+    , m_stringResult(emptyString())
     , m_variableLength(false)
     , m_bytesLoaded(0)
     , m_totalBytes(0)
@@ -121,7 +121,7 @@ void FileReaderLoader::cleanup()
     // If we get any error, we do not need to keep a buffer around.
     if (m_errorCode) {
         m_rawData = nullptr;
-        m_stringResult = "";
+        m_stringResult = emptyString();
     }
 }
 

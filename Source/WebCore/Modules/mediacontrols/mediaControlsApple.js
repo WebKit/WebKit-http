@@ -25,6 +25,7 @@ function Controller(root, video, host)
     this.addVideoListeners();
     this.createBase();
     this.createControls();
+    this.createTimeClones();
     this.updateBase();
     this.updateControls();
     this.updateDuration();
@@ -117,6 +118,8 @@ Controller.prototype = {
         out: 'out',
         pictureInPictureButton: 'picture-in-picture-button',
         placeholderShowing: 'placeholder-showing',
+        usesLTRUserInterfaceLayoutDirection: 'uses-ltr-user-interface-layout-direction',
+        appleTV: 'appletv',
     },
     KeyCodes: {
         enter: 13,
@@ -131,7 +134,7 @@ Controller.prototype = {
         right: 39,
         down: 40
     },
-    MinimumTimelineWidth: 150,
+    MinimumTimelineWidth: 80,
     ButtonWidth: 32,
 
     extend: function(child)
@@ -299,13 +302,19 @@ Controller.prototype = {
         return this.shouldHaveControls() || (this.video.textTracks && this.video.textTracks.length) || this.currentPlaybackTargetIsWireless();
     },
 
-    shouldHaveControls: function()
+    shouldShowControls: function()
     {
         if (!this.isAudio() && !this.host.allowsInlineMediaPlayback)
             return true;
 
         return this.video.controls || this.isFullScreen();
     },
+
+    shouldHaveControls: function()
+    {
+        return this.shouldShowControls() || this.isFullScreen() || this.presentationMode() === 'picture-in-picture' || this.currentPlaybackTargetIsWireless();
+    },
+    
 
     setNeedsTimelineMetricsUpdate: function()
     {
@@ -526,6 +535,21 @@ Controller.prototype = {
             wirelessTargetPicker.classList.add(this.ClassNames.hidden);
     },
 
+    createTimeClones: function()
+    {
+        var currentTimeClone = this.currentTimeClone = document.createElement('div');
+        currentTimeClone.setAttribute('pseudo', '-webkit-media-controls-current-time-display');
+        currentTimeClone.setAttribute('aria-hidden', 'true');
+        currentTimeClone.classList.add('clone');
+        this.base.appendChild(currentTimeClone);
+
+        var remainingTimeClone = this.remainingTimeClone = document.createElement('div');
+        remainingTimeClone.setAttribute('pseudo', '-webkit-media-controls-time-remaining-display');
+        remainingTimeClone.setAttribute('aria-hidden', 'true');
+        remainingTimeClone.classList.add('clone');
+        this.base.appendChild(remainingTimeClone);
+    },
+
     setControlsType: function(type)
     {
         if (type === this.controlsType)
@@ -623,8 +647,10 @@ Controller.prototype = {
         this.controls.panel.appendChild(this.controls.seekForwardButton);
         this.controls.panel.appendChild(this.controls.wirelessTargetPicker);
         this.controls.panel.appendChild(this.controls.captionButton);
-        if (!this.isAudio())
+        if (!this.isAudio()) {
+            this.updatePictureInPictureButton();
             this.controls.panel.appendChild(this.controls.fullscreenButton);
+        }
         if (!this.isLive) {
             this.controls.panel.appendChild(this.controls.timelineBox);
             this.controls.timelineBox.appendChild(this.controls.currentTime);
@@ -648,7 +674,7 @@ Controller.prototype = {
         this.updateLayoutForDisplayedWidth();
         this.setNeedsTimelineMetricsUpdate();
 
-        if (this.shouldHaveControls()) {
+        if (this.shouldShowControls()) {
             this.controls.panel.classList.add(this.ClassNames.show);
             this.controls.panel.classList.remove(this.ClassNames.hidden);
             this.resetHideControlsTimer();
@@ -1272,29 +1298,32 @@ Controller.prototype = {
 
         this.setIsLive(duration === Number.POSITIVE_INFINITY);
 
-        // Reset existing style.
-        this.controls.currentTime.classList.remove(this.ClassNames.threeDigitTime);
-        this.controls.currentTime.classList.remove(this.ClassNames.fourDigitTime);
-        this.controls.currentTime.classList.remove(this.ClassNames.fiveDigitTime);
-        this.controls.currentTime.classList.remove(this.ClassNames.sixDigitTime);
-        this.controls.remainingTime.classList.remove(this.ClassNames.threeDigitTime);
-        this.controls.remainingTime.classList.remove(this.ClassNames.fourDigitTime);
-        this.controls.remainingTime.classList.remove(this.ClassNames.fiveDigitTime);
-        this.controls.remainingTime.classList.remove(this.ClassNames.sixDigitTime);
+        var timeControls = [this.controls.currentTime, this.controls.remainingTime, this.currentTimeClone, this.remainingTimeClone];
 
-        if (duration >= 60*60*10) {
-            this.controls.currentTime.classList.add(this.ClassNames.sixDigitTime);
-            this.controls.remainingTime.classList.add(this.ClassNames.sixDigitTime);
-        } else if (duration >= 60*60) {
-            this.controls.currentTime.classList.add(this.ClassNames.fiveDigitTime);
-            this.controls.remainingTime.classList.add(this.ClassNames.fiveDigitTime);
-        } else if (duration >= 60*10) {
-            this.controls.currentTime.classList.add(this.ClassNames.fourDigitTime);
-            this.controls.remainingTime.classList.add(this.ClassNames.fourDigitTime);
-        } else {
-            this.controls.currentTime.classList.add(this.ClassNames.threeDigitTime);
-            this.controls.remainingTime.classList.add(this.ClassNames.threeDigitTime);
+        function removeTimeClass(className) {
+            for (let element of timeControls)
+                element.classList.remove(className);
         }
+
+        function addTimeClass(className) {
+            for (let element of timeControls)
+                element.classList.add(className);
+        }
+
+        // Reset existing style.
+        removeTimeClass(this.ClassNames.threeDigitTime);
+        removeTimeClass(this.ClassNames.fourDigitTime);
+        removeTimeClass(this.ClassNames.fiveDigitTime);
+        removeTimeClass(this.ClassNames.sixDigitTime);
+
+        if (duration >= 60*60*10)
+            addTimeClass(this.ClassNames.sixDigitTime);
+        else if (duration >= 60*60)
+            addTimeClass(this.ClassNames.fiveDigitTime);
+        else if (duration >= 60*10)
+            addTimeClass(this.ClassNames.fourDigitTime);
+        else
+            addTimeClass(this.ClassNames.threeDigitTime);
     },
 
     progressFillStyle: function(context)
@@ -1620,8 +1649,11 @@ Controller.prototype = {
         // This tells us how much room we need in order to display every visible button.
         var visibleButtonWidth = this.ButtonWidth * visibleButtons.length;
 
+        var currentTimeWidth = this.currentTimeClone.getBoundingClientRect().width;
+        var remainingTimeWidth = this.remainingTimeClone.getBoundingClientRect().width;
+
         // Check if there is enough room for the scrubber.
-        var shouldDropTimeline = (visibleWidth - visibleButtonWidth) < this.MinimumTimelineWidth;
+        var shouldDropTimeline = (visibleWidth - visibleButtonWidth - currentTimeWidth - remainingTimeWidth) < this.MinimumTimelineWidth;
         this.controls.timeline.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
         this.controls.currentTime.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
         this.controls.thumbnailTrack.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
@@ -1675,9 +1707,9 @@ Controller.prototype = {
     {
         var currentTime = this.video.currentTime;
         var timeRemaining = currentTime - this.video.duration;
-        this.controls.currentTime.innerText = this.formatTime(currentTime);
+        this.currentTimeClone.innerText = this.controls.currentTime.innerText = this.formatTime(currentTime);
         this.controls.timeline.value = this.video.currentTime;
-        this.controls.remainingTime.innerText = this.formatTime(timeRemaining);
+        this.remainingTimeClone.innerText = this.controls.remainingTime.innerText = this.formatTime(timeRemaining);
     },
     
     updateControlsWhileScrubbing: function()
@@ -1687,8 +1719,8 @@ Controller.prototype = {
 
         var currentTime = (this.controls.timeline.value / this.controls.timeline.max) * this.video.duration;
         var timeRemaining = currentTime - this.video.duration;
-        this.controls.currentTime.innerText = this.formatTime(currentTime);
-        this.controls.remainingTime.innerText = this.formatTime(timeRemaining);
+        this.currentTimeClone.innerText = this.controls.currentTime.innerText = this.formatTime(currentTime);
+        this.remainingTimeClone.innerText = this.controls.remainingTime.innerText = this.formatTime(timeRemaining);
         this.drawTimelineBackground();
     },
 
@@ -2125,6 +2157,7 @@ Controller.prototype = {
             this.controls.inlinePlaybackPlaceholderTextTop.innerText = deviceType;
             this.controls.inlinePlaybackPlaceholderTextBottom.innerText = deviceName;
             this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', deviceType + ", " + deviceName);
+            this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.appleTV);
             this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
             this.controls.wirelessTargetPicker.classList.add(this.ClassNames.playing);
             if (!this.isFullScreen() && (this.video.offsetWidth <= 250 || this.video.offsetHeight <= 200)) {
@@ -2142,6 +2175,7 @@ Controller.prototype = {
             this.showControls();
         } else {
             this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
+            this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.appleTV);
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.playing);
             this.controls.volumeBox.classList.remove(this.ClassNames.hidden);
             this.controls.muteBox.classList.remove(this.ClassNames.hidden);
@@ -2236,6 +2270,11 @@ Controller.prototype = {
         this._pageScaleFactor = newScaleFactor;
     },
 
+    set usesLTRUserInterfaceLayoutDirection(usesLTRUserInterfaceLayoutDirection)
+    {
+        this.controls.volumeBox.classList.toggle(this.ClassNames.usesLTRUserInterfaceLayoutDirection, usesLTRUserInterfaceLayoutDirection);
+    },
+
     handleRootResize: function(event)
     {
         this.updateLayoutForDisplayedWidth();
@@ -2255,33 +2294,37 @@ Controller.prototype = {
             {
                 name: "Show Controls",
                 object: this.showControlsButton,
-                extraProperties: ["hidden"]
+                extraProperties: ["hidden"],
             },
             {
                 name: "Status Display",
                 object: this.controls.statusDisplay,
                 styleValues: ["display"],
-                extraProperties: ["textContent"]
+                extraProperties: ["textContent"],
             },
             {
                 name: "Play Button",
-                object: this.controls.playButton
+                object: this.controls.playButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Rewind Button",
-                object: this.controls.rewindButton
+                object: this.controls.rewindButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Timeline Box",
-                object: this.controls.timelineBox
+                object: this.controls.timelineBox,
             },
             {
                 name: "Mute Box",
-                object: this.controls.muteBox
+                object: this.controls.muteBox,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Fullscreen Button",
-                object: this.controls.fullscreenButton
+                object: this.controls.fullscreenButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "AppleTV Device Picker",
@@ -2292,15 +2335,49 @@ Controller.prototype = {
             {
                 name: "Picture-in-picture Button",
                 object: this.controls.pictureInPictureButton,
-                extraProperties: ["parentElement"],
+                extraProperties: ["parentElement", "hidden"],
+            },
+            {
+                name: "Caption Button",
+                object: this.controls.captionButton,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Timeline",
+                object: this.controls.timeline,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Current Time",
+                object: this.controls.currentTime,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Thumbnail Track",
+                object: this.controls.thumbnailTrack,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Time Remaining",
+                object: this.controls.remainingTime,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Track Menu",
-                object: this.captionMenu
+                object: this.captionMenu,
             },
             {
                 name: "Inline playback placeholder",
                 object: this.controls.inlinePlaybackPlaceholder,
+            },
+            {
+                name: "Media Controls Panel",
+                object: this.controls.panel,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Control Base Element",
+                object: this.base || null,
             },
         ];
 

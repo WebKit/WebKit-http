@@ -171,6 +171,8 @@ private:
     void showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext) override;
     Vector<String> dictationAlternatives(uint64_t dictationContext) override;
 #endif
+    void setEditableElementIsFocused(bool) override;
+
 #if USE(INSERTION_UNDO_GROUPING)
     void registerInsertionUndoGrouping() override;
 #endif
@@ -220,7 +222,7 @@ private:
     void startWindowDrag() override;
     NSWindow *platformWindow() override;
 
-    UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
 #if WK_API_ENABLED
     NSView *inspectorAttachmentView() override;

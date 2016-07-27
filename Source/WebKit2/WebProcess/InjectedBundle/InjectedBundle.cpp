@@ -66,6 +66,7 @@
 #include <WebCore/PageGroup.h>
 #include <WebCore/PrintContext.h>
 #include <WebCore/ResourceHandle.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityPolicy.h>
@@ -75,9 +76,6 @@
 #include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
 
-#if ENABLE(CSS_REGIONS) || ENABLE(CSS_COMPOSITING)
-#include <WebCore/RuntimeEnabledFeatures.h>
-#endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 #include "WebNotificationManager.h"
@@ -90,13 +88,13 @@ namespace WebKit {
 
 PassRefPtr<InjectedBundle> InjectedBundle::create(const WebProcessCreationParameters& parameters, API::Object* initializationUserData)
 {
-    RefPtr<InjectedBundle> bundle = adoptRef(new InjectedBundle(parameters));
+    auto bundle = adoptRef(*new InjectedBundle(parameters));
 
     bundle->m_sandboxExtension = SandboxExtension::create(parameters.injectedBundlePathExtensionHandle);
     if (!bundle->initialize(parameters, initializationUserData))
         return nullptr;
 
-    return bundle.release();
+    return WTFMove(bundle);
 }
 
 InjectedBundle::InjectedBundle(const WebProcessCreationParameters& parameters)
@@ -195,6 +193,9 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 
     if (preference == "WebKitShadowDOMEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enabled);
+
+    if (preference == "WebKitDOMIteratorEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled(enabled);
 
 #if ENABLE(CSS_GRID_LAYOUT)
     if (preference == "WebKitCSSGridLayoutEnabled")

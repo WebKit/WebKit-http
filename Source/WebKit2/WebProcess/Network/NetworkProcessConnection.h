@@ -54,11 +54,11 @@ public:
     }
     ~NetworkProcessConnection();
     
-    IPC::Connection* connection() const { return m_connection.get(); }
+    IPC::Connection& connection() { return m_connection.get(); }
 
     void didReceiveNetworkProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&);
 
-    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, NoncopyableFunction<void (const Vector<String>& filePaths)>&& completionHandler);
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler);
 
 private:
     NetworkProcessConnection(IPC::Connection::Identifier);
@@ -79,9 +79,9 @@ private:
 #endif
 
     // The connection from the web process to the network process.
-    RefPtr<IPC::Connection> m_connection;
+    Ref<IPC::Connection> m_connection;
 
-    HashMap<uint64_t, NoncopyableFunction<void (const Vector<String>&)>> m_writeBlobToFileCompletionHandlers;
+    HashMap<uint64_t, Function<void (const Vector<String>&)>> m_writeBlobToFileCompletionHandlers;
 };
 
 } // namespace WebKit

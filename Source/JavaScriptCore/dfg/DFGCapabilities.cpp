@@ -136,6 +136,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_is_boolean:
     case op_is_number:
     case op_is_string:
+    case op_is_jsarray:
     case op_is_object:
     case op_is_object_or_null:
     case op_is_function:
@@ -243,6 +244,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
 
     case op_new_regexp:
     case op_switch_string: // Don't inline because we don't want to copy string tables in the concurrent JIT.
+    case op_call_eval:
         return CanCompile;
 
     default:

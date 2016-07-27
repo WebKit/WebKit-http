@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -84,12 +84,12 @@ void NetworkBlobRegistry::registerBlobURL(NetworkConnectionToWebProcess* connect
     mapIterator->value.add(url);
 }
 
-void NetworkBlobRegistry::registerBlobURLOptionallyFileBacked(NetworkConnectionToWebProcess* connection, const URL& url, const URL& srcURL, const String& fileBackedPath)
+void NetworkBlobRegistry::registerBlobURLOptionallyFileBacked(NetworkConnectionToWebProcess* connection, const URL& url, const URL& srcURL, const String& fileBackedPath, const String& contentType)
 {
     auto fileReference = connection->getBlobDataFileReferenceForPath(fileBackedPath);
     ASSERT(fileReference);
 
-    blobRegistry().registerBlobURLOptionallyFileBacked(url, srcURL, WTFMove(fileReference));
+    blobRegistry().registerBlobURLOptionallyFileBacked(url, srcURL, WTFMove(fileReference), contentType);
 
     ASSERT(!m_blobsForConnection.get(connection).contains(url));
     BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(connection);
@@ -132,7 +132,7 @@ uint64_t NetworkBlobRegistry::blobSize(NetworkConnectionToWebProcess* connection
     return blobRegistry().blobSize(url);
 }
 
-void NetworkBlobRegistry::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, NoncopyableFunction<void(const Vector<String>&)>&& completionHandler)
+void NetworkBlobRegistry::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void(const Vector<String>&)>&& completionHandler)
 {
     blobRegistry().writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler));
 }

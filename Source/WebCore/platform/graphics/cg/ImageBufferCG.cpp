@@ -70,10 +70,51 @@ static FloatSize scaleSizeToUserSpace(const FloatSize& logicalSize, const IntSiz
     return FloatSize(logicalSize.width() * xMagnification, logicalSize.height() * yMagnification);
 }
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace imageColorSpace, RenderingMode renderingMode, bool& success)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, const GraphicsContext& context)
+{
+    if (size.isEmpty())
+        return nullptr;
+
+    IntSize scaledSize = ImageBuffer::compatibleBufferSize(size, context);
+    float resolutionScale = context.scaleFactor().width();
+    RetainPtr<CGColorSpaceRef> colorSpace;
+#if PLATFORM(COCOA)
+    CGContextRef cgContext = context.platformContext();
+    switch (CGContextGetType(cgContext)) {
+    case kCGContextTypeBitmap:
+        colorSpace = adoptCF(CGBitmapContextGetColorSpace(cgContext));
+        break;
+#if USE(IOSURFACE)
+    case kCGContextTypeIOSurface:
+        colorSpace = adoptCF(CGIOSurfaceContextGetColorSpace(cgContext));
+        break;
+#endif
+    default:
+        colorSpace = adoptCF(CGContextCopyDeviceColorSpace(cgContext));
+    }
+
+    if (!colorSpace)
+        colorSpace = sRGBColorSpaceRef();
+#else
+    colorSpace = sRGBColorSpaceRef();
+#endif
+    RenderingMode renderingMode = context.renderingMode();
+    bool success = false;
+    std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(scaledSize, resolutionScale, colorSpace.get(), renderingMode, success));
+
+    if (!success)
+        return nullptr;
+
+    // Set up a corresponding scale factor on the graphics context.
+    buffer->context().scale(FloatSize(scaledSize.width() / size.width(), scaledSize.height() / size.height()));
+    return buffer;
+}
+
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, CGColorSpaceRef colorSpace, RenderingMode renderingMode, bool& success)
     : m_logicalSize(size)
     , m_resolutionScale(resolutionScale)
 {
+    success = false; // Make early return mean failure.
     float scaledWidth = ceilf(resolutionScale * size.width());
     float scaledHeight = ceilf(resolutionScale * size.height());
 
@@ -84,7 +125,6 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     m_size = IntSize(scaledWidth, scaledHeight);
     m_data.backingStoreSize = m_size;
 
-    success = false;  // Make early return mean failure.
     bool accelerateRendering = renderingMode == Accelerated;
     if (m_size.width() <= 0 || m_size.height() <= 0)
         return;
@@ -108,13 +148,13 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     ASSERT(renderingMode == Unaccelerated);
 #endif
 
-    m_data.colorSpace = cachedCGColorSpace(imageColorSpace);
+    m_data.colorSpace = colorSpace;
 
     RetainPtr<CGContextRef> cgContext;
     if (accelerateRendering) {
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
         FloatSize userBounds = sizeForDestinationSize(FloatSize(width.unsafeGet(), height.unsafeGet()));
-        m_data.surface = IOSurface::create(m_data.backingStoreSize, IntSize(userBounds), imageColorSpace);
+        m_data.surface = IOSurface::create(m_data.backingStoreSize, IntSize(userBounds), colorSpace);
         cgContext = m_data.surface->ensurePlatformContext();
         if (cgContext)
             CGContextClearRect(cgContext.get(), FloatRect(FloatPoint(), userBounds));
@@ -151,6 +191,11 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     success = true;
 }
 
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace imageColorSpace, RenderingMode renderingMode, bool& success)
+    : ImageBuffer(size, resolutionScale, cachedCGColorSpace(imageColorSpace), renderingMode, success)
+{
+}
+
 ImageBuffer::~ImageBuffer()
 {
 }
@@ -159,6 +204,22 @@ FloatSize ImageBuffer::sizeForDestinationSize(FloatSize destinationSize) const
 {
     return scaleSizeToUserSpace(destinationSize, m_data.backingStoreSize, internalSize());
 }
+
+#if USE(IOSURFACE_CANVAS_BACKING_STORE)
+size_t ImageBuffer::memoryCost() const
+{
+    if (m_data.surface)
+        return m_data.surface->totalBytes();
+    return 4 * internalSize().width() * internalSize().height();
+}
+
+size_t ImageBuffer::externalMemoryCost() const
+{
+    if (m_data.surface)
+        return m_data.surface->totalBytes();
+    return 0;
+}
+#endif
 
 GraphicsContext& ImageBuffer::context() const
 {

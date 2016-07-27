@@ -36,8 +36,6 @@
 
 namespace JSC {
 
-class JSSymbolTableObject;
-
 class JSSymbolTableObject : public JSScope {
 public:
     typedef JSScope Base;
@@ -49,7 +47,9 @@ public:
     JS_EXPORT_PRIVATE static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     
     static ptrdiff_t offsetOfSymbolTable() { return OBJECT_OFFSETOF(JSSymbolTableObject, m_symbolTable); }
-    
+
+    DECLARE_EXPORT_INFO;
+
 protected:
     JSSymbolTableObject(VM& vm, Structure* structure, JSScope* scope)
         : Base(vm, structure, scope)
@@ -146,7 +146,7 @@ ALWAYS_INLINE void symbolTablePutTouchWatchpointSet(VM& vm, SymbolTableObjectTyp
 {
     reg->set(vm, object, value);
     if (set)
-        VariableWriteFireDetail::touch(set, object, propertyName);
+        VariableWriteFireDetail::touch(vm, set, object, propertyName);
 }
 
 template<typename SymbolTableObjectType>
@@ -154,7 +154,7 @@ ALWAYS_INLINE void symbolTablePutInvalidateWatchpointSet(VM& vm, SymbolTableObje
 {
     reg->set(vm, object, value);
     if (set)
-        set->invalidate(VariableWriteFireDetail(object, propertyName)); // Don't mess around - if we had found this statically, we would have invalidated it.
+        set->invalidate(vm, VariableWriteFireDetail(object, propertyName)); // Don't mess around - if we had found this statically, we would have invalidated it.
 }
 
 enum class SymbolTablePutMode {

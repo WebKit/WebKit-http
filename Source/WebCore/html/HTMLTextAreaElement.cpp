@@ -45,7 +45,7 @@
 #include "RenderTextControlMultiLine.h"
 #include "ShadowRoot.h"
 #include "Text.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextControlInnerElements.h"
 #include "TextIterator.h"
 #include "TextNodeTraversal.h"
@@ -223,7 +223,7 @@ bool HTMLTextAreaElement::appendFormData(FormDataList& encoding, bool)
     const String& text = (m_wrap == HardWrap) ? valueWithHardLineBreaks() : value();
     encoding.appendData(name(), text);
 
-    const AtomicString& dirnameAttrValue = fastGetAttribute(dirnameAttr);
+    const AtomicString& dirnameAttrValue = attributeWithoutSynchronization(dirnameAttr);
     if (!dirnameAttrValue.isNull())
         encoding.appendData(dirnameAttrValue, directionForFormData());
     return true;    
@@ -260,8 +260,8 @@ void HTMLTextAreaElement::updateFocusAppearance(SelectionRestorationMode restora
     } else
         restoreCachedSelection(Element::defaultFocusTextStateChangeIntent());
 
-    if (document().frame() && revealMode == SelectionRevealMode::Reveal)
-        document().frame()->selection().revealSelection();
+    if (document().frame())
+        document().frame()->selection().revealSelection(revealMode);
 }
 
 void HTMLTextAreaElement::defaultEventHandler(Event* event)

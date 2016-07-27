@@ -80,6 +80,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_langAttributeAwareFormControlUIEnabled(RuntimeEnabledFeatures::sharedFeatures().langAttributeAwareFormControlUIEnabled())
     , m_imagesEnabled(settings.areImagesEnabled())
     , m_preferMIMETypeForImages(settings.preferMIMETypeForImages())
+    , m_cachedPDFImageEnabled(settings.isCachedPDFImageEnabled())
     , m_minimumTimerInterval(settings.minimumDOMTimerInterval())
 #if ENABLE(VIDEO_TRACK)
     , m_shouldDisplaySubtitles(settings.shouldDisplaySubtitles())
@@ -159,6 +160,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     RuntimeEnabledFeatures::sharedFeatures().setLangAttributeAwareFormControlUIEnabled(m_langAttributeAwareFormControlUIEnabled);
     settings.setImagesEnabled(m_imagesEnabled);
     settings.setPreferMIMETypeForImages(m_preferMIMETypeForImages);
+    settings.setCachedPDFImageEnabled(m_cachedPDFImageEnabled);
     settings.setMinimumDOMTimerInterval(m_minimumTimerInterval);
 #if ENABLE(VIDEO_TRACK)
     settings.setShouldDisplaySubtitles(m_shouldDisplaySubtitles);
@@ -227,7 +229,7 @@ InternalSettings::InternalSettings(Page* page)
     , m_backup(page->settings())
 {
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    page->settings().setAllowsAirPlayForMediaPlayback(false);
+    setAllowsAirPlayForMediaPlayback(false);
 #endif
 }
 
@@ -238,7 +240,7 @@ void InternalSettings::resetToConsistentState()
     page()->setCanStartMedia(true);
     page()->settings().setForcePendingWebGLPolicy(false);
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    page()->settings().setAllowsAirPlayForMediaPlayback(false);
+    setAllowsAirPlayForMediaPlayback(false);
 #endif
 
     m_backup.restoreTo(*settings());
@@ -381,12 +383,12 @@ void InternalSettings::setCanStartMedia(bool enabled, ExceptionCode& ec)
     m_page->setCanStartMedia(enabled);
 }
 
-void InternalSettings::setWirelessPlaybackDisabled(bool available)
+void InternalSettings::setAllowsAirPlayForMediaPlayback(bool allows)
 {
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    m_page->settings().setAllowsAirPlayForMediaPlayback(available);
+    m_page->settings().setAllowsAirPlayForMediaPlayback(allows);
 #else
-    UNUSED_PARAM(available);
+    UNUSED_PARAM(allows);
 #endif
 }
 
@@ -481,6 +483,12 @@ void InternalSettings::setImagesEnabled(bool enabled, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
     settings()->setImagesEnabled(enabled);
+}
+
+void InternalSettings::setCachedPDFImageEnabled(bool enabled, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setCachedPDFImageEnabled(enabled);
 }
 
 void InternalSettings::setMinimumTimerInterval(double intervalInSeconds, ExceptionCode& ec)

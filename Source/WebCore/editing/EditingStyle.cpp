@@ -1050,7 +1050,7 @@ bool EditingStyle::elementIsStyledSpanOrHTMLEquivalent(const HTMLElement* elemen
     if (!elementIsSpanOrElementEquivalent && !matchedAttributes)
         return false; // element is not a span, a html element equivalent, or font element.
     
-    if (element->getAttribute(HTMLNames::classAttr) == AppleStyleSpanClass)
+    if (element->attributeWithoutSynchronization(HTMLNames::classAttr) == AppleStyleSpanClass)
         matchedAttributes++;
 
     if (element->hasAttribute(HTMLNames::styleAttr)) {
@@ -1248,9 +1248,9 @@ void EditingStyle::mergeStyle(const StyleProperties* style, CSSPropertyOverrideM
         if ((property.id() == CSSPropertyTextDecoration || property.id() == CSSPropertyWebkitTextDecorationsInEffect)
             && is<CSSValueList>(*property.value()) && value) {
             if (is<CSSValueList>(*value)) {
-                RefPtr<CSSValueList> newValue = downcast<CSSValueList>(*value).copy();
-                mergeTextDecorationValues(*newValue, downcast<CSSValueList>(*property.value()));
-                m_mutableStyle->setProperty(property.id(), newValue.release(), property.isImportant());
+                auto newValue = downcast<CSSValueList>(*value).copy();
+                mergeTextDecorationValues(newValue, downcast<CSSValueList>(*property.value()));
+                m_mutableStyle->setProperty(property.id(), WTFMove(newValue), property.isImportant());
                 continue;
             }
             value = nullptr; // text-decoration: none is equivalent to not having the property.
@@ -1307,8 +1307,8 @@ void EditingStyle::mergeStyleFromRulesForSerialization(StyledElement* element)
             if (!is<CSSPrimitiveValue>(*value))
                 continue;
             if (downcast<CSSPrimitiveValue>(*value).isPercentage()) {
-                if (RefPtr<CSSValue> computedPropertyValue = computedStyle.propertyValue(property.id()))
-                    fromComputedStyle->addParsedProperty(CSSProperty(property.id(), computedPropertyValue.release()));
+                if (auto computedPropertyValue = computedStyle.propertyValue(property.id()))
+                    fromComputedStyle->addParsedProperty(CSSProperty(property.id(), WTFMove(computedPropertyValue)));
             }
         }
     }

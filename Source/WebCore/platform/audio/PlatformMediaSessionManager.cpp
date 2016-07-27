@@ -36,7 +36,7 @@
 
 namespace WebCore {
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS) && !PLATFORM(MAC)
 static PlatformMediaSessionManager* platformMediaSessionManager = nullptr;
 
 PlatformMediaSessionManager& PlatformMediaSessionManager::sharedManager()
@@ -276,6 +276,15 @@ PlatformMediaSession* PlatformMediaSessionManager::currentSession()
         return nullptr;
 
     return m_sessions[0];
+}
+
+PlatformMediaSession* PlatformMediaSessionManager::currentSessionMatching(std::function<bool(const PlatformMediaSession &)> filter)
+{
+    for (auto& session : m_sessions) {
+        if (filter(*session))
+            return session;
+    }
+    return nullptr;
 }
     
 bool PlatformMediaSessionManager::sessionCanLoadMedia(const PlatformMediaSession& session) const

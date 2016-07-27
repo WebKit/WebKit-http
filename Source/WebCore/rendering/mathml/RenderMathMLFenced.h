@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLFenced_h
-#define RenderMathMLFenced_h
+#pragma once
 
 #if ENABLE(MATHML)
 
@@ -33,17 +32,17 @@
 #include "RenderMathMLRow.h"
 
 namespace WebCore {
-    
+
 class RenderMathMLFenced final : public RenderMathMLRow {
 public:
     RenderMathMLFenced(MathMLInlineContainerElement&, RenderStyle&&);
     MathMLInlineContainerElement& element() { return static_cast<MathMLInlineContainerElement&>(nodeForNonAnonymous()); }
-    
+
 private:
-    bool isRenderMathMLFenced() const override { return true; }
-    const char* renderName() const override { return "RenderMathMLFenced"; }
-    void addChild(RenderObject* child, RenderObject* beforeChild) override;
-    void updateFromElement() override;
+    bool isRenderMathMLFenced() const final { return true; }
+    const char* renderName() const final { return "RenderMathMLFenced"; }
+    void addChild(RenderObject* child, RenderObject* beforeChild) final;
+    void updateFromElement() final;
 
     RenderPtr<RenderMathMLOperator> createMathMLOperator(const String& operatorString, MathMLOperatorDictionary::Form, MathMLOperatorDictionary::Flag);
     void makeFences();
@@ -51,12 +50,10 @@ private:
     String m_open;
     String m_close;
     RefPtr<StringImpl> m_separators;
-    
+
     RenderMathMLOperator* m_closeFenceRenderer;
 };
-    
+
 }
 
 #endif // ENABLE(MATHML)
-
-#endif // RenderMathMLFenced_h

@@ -53,15 +53,18 @@ typedef enum FullScreenState : NSInteger FullScreenState;
     NSRect _initialFrame;
     NSRect _finalFrame;
     RetainPtr<NSTimer> _watchdogTimer;
+    RetainPtr<NSArray> _savedConstraints;
 
     FullScreenState _fullScreenState;
 
     double _savedScale;
     RefPtr<WebKit::VoidCallback> _repaintCallback;
+    float _savedTopContentInset;
 }
 
 @property (readonly) NSRect initialFrame;
 @property (readonly) NSRect finalFrame;
+@property (assign) NSArray *savedConstraints;
 
 - (id)initWithWindow:(NSWindow *)window webView:(NSView *)webView page:(WebKit::WebPageProxy&)page;
 

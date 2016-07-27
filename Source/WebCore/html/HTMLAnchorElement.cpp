@@ -276,22 +276,22 @@ bool HTMLAnchorElement::canStartSelection() const
 
 bool HTMLAnchorElement::draggable() const
 {
-    const AtomicString& value = fastGetAttribute(draggableAttr);
+    const AtomicString& value = attributeWithoutSynchronization(draggableAttr);
     if (equalLettersIgnoringASCIICase(value, "true"))
         return true;
     if (equalLettersIgnoringASCIICase(value, "false"))
         return false;
-    return hasAttribute(hrefAttr);
+    return hasAttributeWithoutSynchronization(hrefAttr);
 }
 
 URL HTMLAnchorElement::href() const
 {
-    return document().completeURL(stripLeadingAndTrailingHTMLSpaces(getAttribute(hrefAttr)));
+    return document().completeURL(stripLeadingAndTrailingHTMLSpaces(attributeWithoutSynchronization(hrefAttr)));
 }
 
 void HTMLAnchorElement::setHref(const AtomicString& value)
 {
-    setAttribute(hrefAttr, value);
+    setAttributeWithoutSynchronization(hrefAttr, value);
 }
 
 bool HTMLAnchorElement::hasRel(uint32_t relation) const
@@ -319,194 +319,12 @@ int HTMLAnchorElement::tabIndex() const
 
 String HTMLAnchorElement::target() const
 {
-    return getAttribute(targetAttr);
-}
-
-String HTMLAnchorElement::hash() const
-{
-    String fragmentIdentifier = href().fragmentIdentifier();
-    if (fragmentIdentifier.isEmpty())
-        return emptyString();
-    return AtomicString(String("#" + fragmentIdentifier));
-}
-
-void HTMLAnchorElement::setHash(const String& value)
-{
-    URL url = href();
-    if (value[0] == '#')
-        url.setFragmentIdentifier(value.substring(1));
-    else
-        url.setFragmentIdentifier(value);
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::host() const
-{
-    const URL& url = href();
-    if (url.hostEnd() == url.pathStart())
-        return url.host();
-    if (isDefaultPortForProtocol(url.port(), url.protocol()))
-        return url.host();
-    return url.host() + ":" + String::number(url.port());
-}
-
-void HTMLAnchorElement::setHost(const String& value)
-{
-    if (value.isEmpty())
-        return;
-    URL url = href();
-    if (!url.canSetHostOrPort())
-        return;
-
-    size_t separator = value.find(':');
-    if (!separator)
-        return;
-
-    if (separator == notFound)
-        url.setHostAndPort(value);
-    else {
-        unsigned portEnd;
-        unsigned port = parsePortFromStringPosition(value, separator + 1, portEnd);
-        if (!port) {
-            // http://dev.w3.org/html5/spec/infrastructure.html#url-decomposition-idl-attributes
-            // specifically goes against RFC 3986 (p3.2) and
-            // requires setting the port to "0" if it is set to empty string.
-            url.setHostAndPort(value.substring(0, separator + 1) + "0");
-        } else {
-            if (isDefaultPortForProtocol(port, url.protocol()))
-                url.setHostAndPort(value.substring(0, separator));
-            else
-                url.setHostAndPort(value.substring(0, portEnd));
-        }
-    }
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::username() const
-{
-    return href().encodedUser();
-}
-
-void HTMLAnchorElement::setUsername(const String& value)
-{
-    URL url = href();
-    url.setUser(value);
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::password() const
-{
-    return href().encodedPass();
-}
-
-void HTMLAnchorElement::setPassword(const String& value)
-{
-    URL url = href();
-    url.setPass(value);
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::hostname() const
-{
-    return href().host();
-}
-
-void HTMLAnchorElement::setHostname(const String& value)
-{
-    // Before setting new value:
-    // Remove all leading U+002F SOLIDUS ("/") characters.
-    unsigned i = 0;
-    unsigned hostLength = value.length();
-    while (value[i] == '/')
-        i++;
-
-    if (i == hostLength)
-        return;
-
-    URL url = href();
-    if (!url.canSetHostOrPort())
-        return;
-
-    url.setHost(value.substring(i));
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::pathname() const
-{
-    return href().path();
-}
-
-void HTMLAnchorElement::setPathname(const String& value)
-{
-    URL url = href();
-    if (!url.canSetPathname())
-        return;
-
-    if (value[0] == '/')
-        url.setPath(value);
-    else
-        url.setPath("/" + value);
-
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::port() const
-{
-    if (href().hasPort())
-        return String::number(href().port());
-
-    return emptyString();
-}
-
-void HTMLAnchorElement::setPort(const String& value)
-{
-    URL url = href();
-    if (!url.canSetHostOrPort())
-        return;
-
-    // http://dev.w3.org/html5/spec/infrastructure.html#url-decomposition-idl-attributes
-    // specifically goes against RFC 3986 (p3.2) and
-    // requires setting the port to "0" if it is set to empty string.
-    unsigned port = value.toUInt();
-    if (isDefaultPortForProtocol(port, url.protocol()))
-        url.removePort();
-    else
-        url.setPort(port);
-
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::protocol() const
-{
-    return href().protocol() + ":";
-}
-
-void HTMLAnchorElement::setProtocol(const String& value)
-{
-    URL url = href();
-    url.setProtocol(value);
-    setHref(url.string());
-}
-
-String HTMLAnchorElement::search() const
-{
-    String query = href().query();
-    return query.isEmpty() ? emptyString() : "?" + query;
+    return attributeWithoutSynchronization(targetAttr);
 }
 
 String HTMLAnchorElement::origin() const
 {
     return SecurityOrigin::create(href()).get().toString();
-}
-
-void HTMLAnchorElement::setSearch(const String& value)
-{
-    URL url = href();
-    String newSearch = (value[0] == '?') ? value.substring(1) : value;
-    // Make sure that '#' in the query does not leak to the hash.
-    url.setQuery(newSearch.replaceWithLiteral('#', "%23"));
-
-    setHref(url.string());
 }
 
 String HTMLAnchorElement::text()
@@ -531,10 +349,10 @@ bool HTMLAnchorElement::isLiveLink() const
 
 void HTMLAnchorElement::sendPings(const URL& destinationURL)
 {
-    if (!fastHasAttribute(pingAttr) || !document().settings() || !document().settings()->hyperlinkAuditingEnabled())
+    if (!hasAttributeWithoutSynchronization(pingAttr) || !document().settings() || !document().settings()->hyperlinkAuditingEnabled())
         return;
 
-    SpaceSplitString pingURLs(fastGetAttribute(pingAttr), false);
+    SpaceSplitString pingURLs(attributeWithoutSynchronization(pingAttr), false);
     for (unsigned i = 0; i < pingURLs.size(); i++)
         PingLoader::sendPing(*document().frame(), document().completeURL(pingURLs[i]), destinationURL);
 }
@@ -548,14 +366,14 @@ void HTMLAnchorElement::handleClick(Event* event)
         return;
 
     StringBuilder url;
-    url.append(stripLeadingAndTrailingHTMLSpaces(fastGetAttribute(hrefAttr)));
+    url.append(stripLeadingAndTrailingHTMLSpaces(attributeWithoutSynchronization(hrefAttr)));
     appendServerMapMousePosition(url, *event);
     URL kurl = document().completeURL(url.toString());
 
     auto downloadAttribute = nullAtom;
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     if (RuntimeEnabledFeatures::sharedFeatures().downloadAttributeEnabled())
-        downloadAttribute = fastGetAttribute(downloadAttr);
+        downloadAttribute = attributeWithoutSynchronization(downloadAttr);
 #endif
 
     frame->loader().urlSelected(kurl, target(), event, LockHistory::No, LockBackForwardList::No, hasRel(RelationNoReferrer) ? NeverSendReferrer : MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate(), downloadAttribute);

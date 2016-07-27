@@ -171,6 +171,7 @@ void computeUsesForBytecodeOffset(
     case op_is_boolean:
     case op_is_number:
     case op_is_string:
+    case op_is_jsarray:
     case op_is_object:
     case op_is_object_or_null:
     case op_is_function:
@@ -281,6 +282,8 @@ void computeUsesForBytecodeOffset(
         int lastArg = registerOffset + CallFrame::thisArgumentOffset();
         for (int i = 0; i < argCount; i++)
             functor(codeBlock, instruction, opcodeID, lastArg + i);
+        if (opcodeID == op_call_eval)
+            functor(codeBlock, instruction, opcodeID, codeBlock->scopeRegister().offset());
         return;
     }
     case op_save: {
@@ -415,6 +418,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_is_boolean:
     case op_is_number:
     case op_is_string:
+    case op_is_jsarray:
     case op_is_object:
     case op_is_object_or_null:
     case op_is_function:
@@ -476,6 +480,8 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     }
     case op_resume: {
         RELEASE_ASSERT(block->successors().size() == 1);
+        // FIXME: This is really dirty.
+        // https://bugs.webkit.org/show_bug.cgi?id=159281
         block->successors()[0]->in().forEachSetBit([&](unsigned local) {
             functor(codeBlock, instruction, opcodeID, virtualRegisterForLocal(local).offset());
         });

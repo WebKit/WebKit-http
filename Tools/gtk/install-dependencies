@@ -60,7 +60,6 @@ function installDependenciesWithBrew {
          flex \
          gettext \
          gobject-introspection \
-         icu4c \
          intltool \
          itstool \
          libcroco \
@@ -104,14 +103,11 @@ function installDependenciesWithApt {
         libgtk2.0-dev \
         libgtk-3-dev \
         libgudev-1.0-dev \
-        libharfbuzz-dev \
         libhyphen-dev \
-        libicu-dev \
         libjpeg-dev \
         libmpg123-dev \
         libnotify-dev \
         libopus-dev \
-        liborc-0.4-dev \
         libpango1.0-dev \
         libpng12-dev \
         libpulse-dev \
@@ -124,11 +120,11 @@ function installDependenciesWithApt {
         libvorbis-dev \
         libwebp-dev \
         libxcomposite-dev \
-        libxslt1-dev \
         libxt-dev \
         libxtst-dev \
         libwayland-dev \
         ninja-build \
+        patch \
         ruby \
         xfonts-utils"
 
@@ -138,38 +134,46 @@ function installDependenciesWithApt {
         curl \
         dbus-x11 \
         libapache2-mod-bw \
-        libapache2-mod-php5 \
         libgpg-error-dev \
         pulseaudio-utils \
         python-gi \
         ruby \
         ruby-json \
         ruby-highline \
+        weston \
         xvfb"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
         git \
         gobject-introspection \
+        gsettings-desktop-schemas-dev \
         icon-naming-utils \
         libcroco3-dev \
+        libdrm-dev \
         libegl1-mesa-dev \
         libepoxy-dev \
+        libevdev-dev \
+        libexpat1-dev \
+        libgbm-dev \
         libgcrypt11-dev \
+        libgles2-mesa-dev \
         libgpg-error-dev \
         libjson-glib-dev \
-        liborc-0.4-dev \
+        libinput-dev \
+        libmtdev-dev \
         libp11-kit-dev \
         libpciaccess-dev \
+        libproxy-dev \
         libssl-dev \
         libtiff5-dev \
         libv4l-dev \
+        libxcb-composite0-dev \
         libxcb-xfixes0-dev \
         libxfont-dev \
         libxkbfile-dev \
         libtool-bin \
-        llvm \
-        llvm-dev \
+        libudev-dev \
         python-dev \
         ragel \
         x11proto-bigreqs-dev \
@@ -191,7 +195,14 @@ function installDependenciesWithApt {
         git-svn \
         subversion"
 
+    if apt-cache show libapache2-mod-php7.0 &>/dev/null; then
+        packages="$packages libapache2-mod-php7.0"
+    else
+        packages="$packages libapache2-mod-php5"
+    fi
+
     apt-get install $packages
+
 }
 
 function installDependenciesWithPacman {
@@ -237,9 +248,6 @@ function installDependenciesWithPacman {
         gtk2 \
         gtk3 \
         libsystemd \
-        harfbuzz \
-        harfbuzz-icu \
-        icu \
         libjpeg-turbo \
         mpg123 \
         opus \
@@ -256,13 +264,11 @@ function installDependenciesWithPacman {
         libvorbis \
         libwebp \
         libxcomposite \
-        libxslt \
         libxt \
         libxtst \
         ninja \
         ruby \
         xorg-font-utils \
-        orc \
         wayland"
 
     # These are dependencies necessary for running tests.
@@ -279,25 +285,33 @@ function installDependenciesWithPacman {
         python-gobject \
         ruby \
         ruby-highline \
+        weston \
         xorg-server-xvfb"
 
     # These are dependencies necessary for building the jhbuild.
     # Note: Could not find libegl-mesa
     packages="$packages \
+        expat \
         git \
         gobject-introspection \
+        gsettings-desktop-schemas \
         icon-naming-utils \
         libcroco \
+        libdrm \
         libepoxy \
+        libevdev \
         libgcrypt \
         libgpg-error \
+        libinput \
         p11-kit \
         libpciaccess \
+        libproxy \
         libtiff \
         libxfixes \
         libxfont \
+        libxcb \
         libxkbfile \
-        llvm \
+        mtdev \
         python2 \
         python2-lxml \
         ragel \
@@ -337,11 +351,10 @@ function installDependenciesWithDnf {
         cmake \
         enchant-devel \
         flex \
-        fontconfig-devel \
-        freetype-devel \
         gcc-c++ \
         geoclue2-devel \
         gettext-devel \
+        gnutls-devel \
         gobject-introspection-devel \
         gperf \
         gstreamer1-devel \
@@ -349,36 +362,32 @@ function installDependenciesWithDnf {
         gtk-doc \
         gtk2-devel \
         gtk3-devel \
-        harfbuzz-devel \
         hyphen-devel \
-	json-glib-devel \
+        intltool \
+        json-glib-devel \
         libXt-devel \
         libXtst-devel \
         libedit-devel \
         libgudev1-devel \
-        libicu-devel \
         libjpeg-turbo-devel \
         libnotify-devel \
         libpng-devel \
         libsecret-devel \
         libsoup-devel \
-	libv4l-devel \
+        libv4l-devel \
         libwebp-devel \
         libwayland-client-devel \
         libwayland-server-devel \
-        libxslt-devel \
-        llvm \
-        llvm-devel \
-        llvm-static \
         mesa-libGL-devel \
         ninja-build \
-	openssl-devel \
+        openssl-devel \
+        patch \
         pcre-devel \
         perl-Switch \
         perl-version \
-	pulseaudio-libs-devel \
+        pulseaudio-libs-devel \
         python-devel \
-        orc-devel \
+        redhat-rpm-config \
         ruby \
         sqlite-devel"
 
@@ -398,27 +407,37 @@ function installDependenciesWithDnf {
         ruby \
         rubygem-json \
         rubygem-highline \
+        weston-devel \
         xorg-x11-server-Xvfb"
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
+        expat-devel \
         docbook-utils \
         docbook-utils-pdf \
         git \
         gobject-introspection \
+        gsettings-desktop-schemas-devel \
         icon-naming-utils \
         itstool \
         libXfont-devel \
         libcroco-devel \
+        libdrm-devel \
         libepoxy-devel \
+        libevdev-devel
         libgcrypt-devel \
         libgpg-error-devel \
+        libinput-devel \
         libp11-devel \
         libpciaccess-devel \
+        libproxy-devel \
         libtiff-devel \
+        libxcb-devel \
         libxkbfile-devel \
         mesa-libEGL-devel \
+        mtdev-devel \
         ragel \
+        systemd-devel \
         xorg-x11-font-utils \
         xorg-x11-proto-devel \
         xorg-x11-util-macros \

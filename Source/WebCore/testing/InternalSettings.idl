@@ -53,7 +53,7 @@
     [RaisesException] void setDefaultVideoPosterURL(DOMString poster);
     [RaisesException] void setTimeWithoutMouseMovementBeforeHidingControls(unrestricted double time);
     [RaisesException] void setMediaTypeOverride(DOMString mediaTypeOverride);
-    void setWirelessPlaybackDisabled(boolean available);
+    void setAllowsAirPlayForMediaPlayback(boolean available);
 
     [RaisesException] void setForcePendingWebGLPolicy(boolean forced);
 
@@ -68,6 +68,7 @@
     // Other switches
     [RaisesException] void setStorageBlockingPolicy(DOMString policy);
     [RaisesException] void setImagesEnabled(boolean enabled);
+    [RaisesException] void setCachedPDFImageEnabled(boolean enabled);
     [RaisesException] void setUseLegacyBackgroundSizeShorthandBehavior(boolean enabled);
     [RaisesException] void setAutoscrollForDragAndDropEnabled(boolean enabled);
     [RaisesException] void setBackgroundShouldExtendBeyondPage(boolean hasExtendedBackground);

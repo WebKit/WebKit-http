@@ -29,8 +29,9 @@
 #if ENABLE(B3_JIT)
 
 #include "B3ArgumentRegValue.h"
+#include "B3BasicBlockInlines.h"
+#include "B3BottomProvider.h"
 #include "B3CCallValue.h"
-#include "B3ControlValue.h"
 #include "B3MemoryValue.h"
 #include "B3OriginDump.h"
 #include "B3ProcedureInlines.h"
@@ -41,6 +42,7 @@
 #include "B3ValueKeyInlines.h"
 #include "B3VariableValue.h"
 #include <wtf/CommaPrinter.h>
+#include <wtf/ListDump.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC { namespace B3 {
@@ -60,7 +62,7 @@ void Value::replaceWithIdentity(Value* value)
     ASSERT(m_type == value->m_type);
 
     if (m_type == Void) {
-        replaceWithNop();
+        replaceWithNopIgnoringType();
         return;
     }
 
@@ -79,7 +81,18 @@ void Value::replaceWithIdentity(Value* value)
     this->m_index = index;
 }
 
+void Value::replaceWithBottom(InsertionSet& insertionSet, size_t index)
+{
+    replaceWithBottom(BottomProvider(insertionSet, index));
+}
+
 void Value::replaceWithNop()
+{
+    RELEASE_ASSERT(m_type == Void);
+    replaceWithNopIgnoringType();
+}
+
+void Value::replaceWithNopIgnoringType()
 {
     unsigned index = m_index;
     Origin origin = m_origin;
@@ -111,6 +124,50 @@ void Value::replaceWithPhi()
 
     this->owner = owner;
     this->m_index = index;
+}
+
+void Value::replaceWithJump(BasicBlock* owner, FrequentedBlock target)
+{
+    RELEASE_ASSERT(owner->last() == this);
+    
+    unsigned index = m_index;
+    Origin origin = m_origin;
+    
+    this->~Value();
+    
+    new (this) Value(Jump, Void, origin);
+    
+    this->owner = owner;
+    this->m_index = index;
+    
+    owner->setSuccessors(target);
+}
+
+void Value::replaceWithOops(BasicBlock* owner)
+{
+    RELEASE_ASSERT(owner->last() == this);
+    
+    unsigned index = m_index;
+    Origin origin = m_origin;
+    
+    this->~Value();
+    
+    new (this) Value(Oops, Void, origin);
+    
+    this->owner = owner;
+    this->m_index = index;
+    
+    owner->clearSuccessors();
+}
+
+void Value::replaceWithJump(FrequentedBlock target)
+{
+    replaceWithJump(owner, target);
+}
+
+void Value::replaceWithOops()
+{
+    replaceWithOops(owner);
 }
 
 void Value::dump(PrintStream& out) const
@@ -175,6 +232,19 @@ void Value::deepDump(const Procedure* proc, PrintStream& out) const
     }
 
     out.print(")");
+}
+
+void Value::dumpSuccessors(const BasicBlock* block, PrintStream& out) const
+{
+    // Note that this must not crash if we have the wrong number of successors, since someone
+    // debugging a number-of-successors bug will probably want to dump IR!
+    
+    if (opcode() == Branch && block->numSuccessors() == 2) {
+        out.print("Then:", block->taken(), ", Else:", block->notTaken());
+        return;
+    }
+    
+    out.print(listDump(block->successors()));
 }
 
 Value* Value::negConstant(Procedure&) const
@@ -633,25 +703,6 @@ void Value::dumpMeta(CommaPrinter&, PrintStream&) const
 {
 }
 
-#if !ASSERT_DISABLED
-void Value::checkOpcode(Opcode opcode)
-{
-    ASSERT(!ArgumentRegValue::accepts(opcode));
-    ASSERT(!CCallValue::accepts(opcode));
-    ASSERT(!CheckValue::accepts(opcode));
-    ASSERT(!Const32Value::accepts(opcode));
-    ASSERT(!Const64Value::accepts(opcode));
-    ASSERT(!ConstDoubleValue::accepts(opcode));
-    ASSERT(!ConstFloatValue::accepts(opcode));
-    ASSERT(!ControlValue::accepts(opcode));
-    ASSERT(!MemoryValue::accepts(opcode));
-    ASSERT(!PatchpointValue::accepts(opcode));
-    ASSERT(!SlotBaseValue::accepts(opcode));
-    ASSERT(!UpsilonValue::accepts(opcode));
-    ASSERT(!VariableValue::accepts(opcode));
-}
-#endif // !ASSERT_DISABLED
-
 Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
 {
     switch (opcode) {
@@ -720,6 +771,10 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
         }
         return Void;
     case Nop:
+    case Jump:
+    case Branch:
+    case Return:
+    case Oops:
         return Void;
     case Select:
         ASSERT(secondChild);
@@ -727,6 +782,12 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     default:
         RELEASE_ASSERT_NOT_REACHED();
     }
+}
+
+void Value::badOpcode(Opcode opcode, unsigned numArgs)
+{
+    dataLog("Bad opcode ", opcode, " with ", numArgs, " args.\n");
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 } } // namespace JSC::B3

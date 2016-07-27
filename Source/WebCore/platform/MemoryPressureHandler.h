@@ -37,7 +37,10 @@
 #include <wtf/Lock.h>
 #include <wtf/ThreadingPrimitives.h>
 #elif OS(LINUX)
-#include "Timer.h"
+#include <wtf/RunLoop.h>
+#if USE(GLIB)
+#include <wtf/glib/GRefPtr.h>
+#endif
 #endif
 
 namespace WebCore {
@@ -69,7 +72,9 @@ public:
         m_lowMemoryHandler = handler;
     }
 
-    bool isUnderMemoryPressure() const { return m_underMemoryPressure; }
+    void jettisonExpensiveObjectsOnTopLevelNavigation();
+
+    bool isUnderMemoryPressure() const { return m_underMemoryPressure || m_isSimulatingMemoryPressure; }
     void setUnderMemoryPressure(bool b) { m_underMemoryPressure = b; }
 
 #if PLATFORM(IOS)
@@ -80,8 +85,11 @@ public:
     WEBCORE_EXPORT bool shouldWaitForMemoryClearMessage();
     void respondToMemoryPressureIfNeeded();
 #elif OS(LINUX)
+#if 0 && NEED(QUIQUE)
     static void waitForMemoryPressureEvent(void*);
     static void pollMemoryPressure(void*);
+#endif
+    void setMemoryPressureMonitorHandle(int fd);
 #endif
 
     class ReliefLogger {
@@ -122,6 +130,9 @@ public:
 
     WEBCORE_EXPORT void releaseMemory(Critical, Synchronous = Synchronous::No);
 
+    WEBCORE_EXPORT void beginSimulatedMemoryPressure();
+    WEBCORE_EXPORT void endSimulatedMemoryPressure();
+
 private:
     void platformInitialize();
     void releaseNoncriticalMemory();
@@ -137,11 +148,32 @@ private:
     void respondToMemoryPressure(Critical, Synchronous = Synchronous::No);
     void platformReleaseMemory(Critical);
 
+#if OS(LINUX)
+    class EventFDPoller {
+        WTF_MAKE_NONCOPYABLE(EventFDPoller); WTF_MAKE_FAST_ALLOCATED;
+    public:
+        EventFDPoller(int fd, std::function<void ()>&& notifyHandler);
+        ~EventFDPoller();
+
+    private:
+        void readAndNotify() const;
+
+        Optional<int> m_fd;
+        std::function<void ()> m_notifyHandler;
+#if USE(GLIB)
+        GRefPtr<GSource> m_source;
+#else
+        ThreadIdentifier m_threadID;
+#endif
+    };
+#endif
+
     bool m_installed;
     time_t m_lastRespondTime;
     LowMemoryHandler m_lowMemoryHandler;
 
     std::atomic<bool> m_underMemoryPressure;
+    bool m_isSimulatingMemoryPressure { false };
 
 #if PLATFORM(IOS)
     uint32_t m_memoryPressureReason;
@@ -150,12 +182,13 @@ private:
     CFRunLoopObserverRef m_observer;
     Lock m_observerMutex;
 #elif OS(LINUX)
-    int m_eventFD;
-    int m_pressureLevelFD;
-    WTF::ThreadIdentifier m_threadID;
-    Timer m_holdOffTimer;
+    Optional<int> m_eventFD;
+    Optional<int> m_pressureLevelFD;
+    std::unique_ptr<EventFDPoller> m_eventFDPoller;
+    RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();
     void logErrorAndCloseFDs(const char* error);
+    bool tryEnsureEventFD();
 #endif
 };
 

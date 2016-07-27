@@ -74,6 +74,7 @@
        (home-literal "/Library/Preferences/com.apple.speech.voice.prefs.plist")
        (home-literal "/Library/Preferences/com.apple.systemsound.plist")
        (home-literal "/Library/Preferences/com.apple.universalaccess.plist")
+       (home-literal "/Library/Preferences/com.apple.lookup.shared.plist")
        (home-regex #"/Library/Preferences/com\.apple\.driver\.(AppleBluetoothMultitouch\.mouse|AppleBluetoothMultitouch\.trackpad|AppleHIDMouse)\.plist$")
        (home-literal "/.CFUserTextEncoding")
 
@@ -199,11 +200,17 @@
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
        (global-name "com.apple.nesessionmanager.flow-divert-token")
 #endif
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+       (global-name "com.apple.mediaremoted.xpc")
+#endif
 )
 
 ;; Security framework
 (allow mach-lookup
+       (global-name "com.apple.ctkd.token-client") 
        (global-name "com.apple.ocspd")
+       (global-name "com.apple.securityd.xpc") 
+       (global-name "com.apple.CoreAuthentication.agent.libxpc")
        (global-name "com.apple.SecurityServer"))
 (allow file-read* file-write* (home-subpath "/Library/Keychains")) ;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
 (allow file-read* file-write* (subpath "/private/var/db/mds/system")) ;; FIXME: This should be removed when <rdar://problem/9538414> is fixed.

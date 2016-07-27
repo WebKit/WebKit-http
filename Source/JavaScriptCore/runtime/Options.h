@@ -112,9 +112,9 @@ typedef const char* optionString;
     \
     v(bool, reportMustSucceedExecutableAllocations, false, Normal, nullptr) \
     \
-    v(unsigned, maxPerThreadStackUsage, 4 * MB, Normal, nullptr) \
-    v(unsigned, reservedZoneSize, 128 * KB, Normal, nullptr) \
-    v(unsigned, errorModeReservedZoneSize, 64 * KB, Normal, nullptr) \
+    v(unsigned, maxPerThreadStackUsage, 4 * MB, Normal, "Max allowed stack usage by the VM") \
+    v(unsigned, softReservedZoneSize, 128 * KB, Normal, "A buffer greater than reservedZoneSize that reserves space for stringifying exceptions.") \
+    v(unsigned, reservedZoneSize, 64 * KB, Normal, "The amount of stack space we guarantee to our clients (and to interal VM code that does not call out to clients).") \
     \
     v(bool, crashIfCantAllocateJITMemory, false, Normal, nullptr) \
     v(unsigned, jitMemoryReservationSize, 0, Normal, "Set this number to change the executable allocation size in ExecutableAllocatorFixedVMPool. (In bytes.)") \
@@ -300,6 +300,8 @@ typedef const char* optionString;
     v(double, minCopiedBlockUtilization, 0.9, Normal, nullptr) \
     v(double, minMarkedBlockUtilization, 0.9, Normal, nullptr) \
     v(unsigned, slowPathAllocsBetweenGCs, 0, Normal, "force a GC on every Nth slow path alloc, where N is specified by this option") \
+    v(bool, deferGCShouldCollectWithProbability, false, Normal, "If true, we perform a collection based on flipping a coin according the probability in the 'deferGCProbability' option when DeferGC is destructed.") \
+    v(double, deferGCProbability, 1.0, Normal, "Should be a number between 0 and 1. 1 means DeferGC always GCs when it's destructed and GCing is safe. 0.7 means we force GC 70% the time on DeferGC destruction.") \
     \
     v(double, percentCPUPerMBForFullTimer, 0.0003125, Normal, nullptr) \
     v(double, percentCPUPerMBForEdenTimer, 0.0025, Normal, nullptr) \
@@ -374,7 +376,8 @@ typedef const char* optionString;
     \
     v(bool, useSuperSampler, false, Normal, nullptr) \
     \
-    v(bool, reportLLIntStats, false, Configurable, "Reports LLInt statistics")
+    v(bool, reportLLIntStats, false, Configurable, "Reports LLInt statistics") \
+    v(optionString, llintStatsFile, nullptr, Configurable, "File to collect LLInt statistics in") \
 
 enum OptionEquivalence {
     SameOption,

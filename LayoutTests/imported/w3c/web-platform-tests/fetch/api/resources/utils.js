@@ -53,7 +53,7 @@ function stringToArray(str) {
 
 function validateBufferFromString(buffer, expectedValue, message)
 {
-  return assert_array_equals(new Uint8Array(buffer), stringToArray(expectedValue), message);
+  return assert_array_equals(new Uint8Array(buffer !== undefined ? buffer : []), stringToArray(expectedValue), message);
 }
 
 function validateStreamFromString(reader, expectedValue, retrievedArrayBuffer) {
@@ -70,5 +70,13 @@ function validateStreamFromString(reader, expectedValue, retrievedArrayBuffer) {
       return validateStreamFromString(reader, expectedValue, newBuffer);
     }
     validateBufferFromString(retrievedArrayBuffer, expectedValue, "Retrieve and verify stream");
+  });
+}
+
+// From streams tests
+function delay(milliseconds)
+{
+  return new Promise(function(resolve) {
+    step_timeout(resolve, milliseconds);
   });
 }

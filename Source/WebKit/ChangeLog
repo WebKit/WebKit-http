@@ -1,3 +1,157 @@
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=159774
+
+        Reviewed by Alex Christensen.
+
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix for build error when trying to version stamp dll.
+        https://bugs.webkit.org/show_bug.cgi?id=159692
+
+        Reviewed by Brent Fulgham.
+
+        Use correct path to version stamp script.
+
+        * CMakeLists.txt:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        Run perl version stamp utility.
+
+        * CMakeLists.txt:
+
+2016-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203064.
+        https://bugs.webkit.org/show_bug.cgi?id=159642
+
+        This change causes LayoutTest crashes on WK1 ASan (Requested
+        by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Use refs for ResourceLoaders"
+        https://bugs.webkit.org/show_bug.cgi?id=159592
+        http://trac.webkit.org/changeset/203064
+
+2016-07-08  Alex Christensen  <achristensen@webkit.org>
+
+        Use refs for ResourceLoaders
+        https://bugs.webkit.org/show_bug.cgi?id=159592
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (webResourceLoadScheduler):
+        (WebResourceLoadScheduler::hostForURL):
+        (WebResourceLoadScheduler::WebResourceLoadScheduler):
+        (WebResourceLoadScheduler::loadResource):
+        (WebResourceLoadScheduler::schedulePluginStreamLoad):
+        (WebResourceLoadScheduler::scheduleLoad):
+        (WebResourceLoadScheduler::remove):
+        (WebResourceLoadScheduler::setDefersLoading):
+        (WebResourceLoadScheduler::crossOriginRedirectReceived):
+        (WebResourceLoadScheduler::servePendingRequests):
+        (WebResourceLoadScheduler::resumePendingRequests):
+        (WebResourceLoadScheduler::HostInformation::priorityToIndex):
+        (WebResourceLoadScheduler::HostInformation::schedule):
+        (WebResourceLoadScheduler::HostInformation::addLoadInProgress):
+        (WebResourceLoadScheduler::HostInformation::remove):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+        (WebResourceLoadScheduler::HostInformation::name):
+        (WebResourceLoadScheduler::HostInformation::requestsPending):
+        m_nonHTTPProtocolHost used to be a leaked pointer, and now it's a member variable.
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202799.
+        https://bugs.webkit.org/show_bug.cgi?id=159568
+
+        Caused build failure (Requested by perarne on #webkit).
+
+        Reverted changeset:
+
+        "[Win] DLLs are missing version information."
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+        http://trac.webkit.org/changeset/202799
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create WebSocketChannels
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        Reviewed by Brent Fulgham.
+
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-03  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        WTF will generate autoversion.h in the prebuild step.
+        Run the perl version stamp utility.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * Storage/StorageSyncManager.cpp:
+        (WebCore::StorageSyncManager::dispatch):
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        * Storage/StorageThread.h:
+
+2016-06-22  Anders Carlsson  <andersca@apple.com>
+
+        Move the WebKitLegacy Apple Pay code to the open source repository
+        https://bugs.webkit.org/show_bug.cgi?id=159035
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-06-20  Keith Rollin  <krollin@apple.com>
+
+        Remove RefPtr::release() and change calls sites to use WTFMove()
+        https://bugs.webkit.org/show_bug.cgi?id=158369
+
+        Reviewed by Chris Dumez.
+
+        RefPtr::release() releases its managed pointer awkwardly. It's more
+        direct and clearer to use WTFMove to transfer ownership of the managed
+        pointer.
+
+        As part of this cleanup, also change a lot of explicit data types to
+        'auto'.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebCore::StorageAreaImpl::setItem):
+        (WebCore::StorageAreaImpl::removeItem):
+
 2016-06-13  Alex Christensen  <achristensen@webkit.org>
 
         Add WebSocketProvider stub

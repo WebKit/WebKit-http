@@ -80,6 +80,7 @@ public:
         bool m_langAttributeAwareFormControlUIEnabled;
         bool m_imagesEnabled;
         bool m_preferMIMETypeForImages;
+        bool m_cachedPDFImageEnabled;
         std::chrono::milliseconds m_minimumTimerInterval;
 #if ENABLE(VIDEO_TRACK)
         bool m_shouldDisplaySubtitles;
@@ -138,9 +139,10 @@ public:
     void setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode&);
     void setMediaTypeOverride(const String& mediaType, ExceptionCode&);
     void setCanStartMedia(bool, ExceptionCode&);
-    void setWirelessPlaybackDisabled(bool);
+    void setAllowsAirPlayForMediaPlayback(bool);
     void setEditingBehavior(const String&, ExceptionCode&);
     void setPreferMIMETypeForImages(bool, ExceptionCode&);
+    void setCachedPDFImageEnabled(bool, ExceptionCode&);
     void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
     bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);
     void setStorageBlockingPolicy(const String&, ExceptionCode&);

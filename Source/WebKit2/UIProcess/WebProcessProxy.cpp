@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -209,6 +209,8 @@ void WebProcessProxy::shutDown()
         webUserContentControllerProxy->removeProcess(*this);
     m_webUserContentControllerProxies.clear();
 
+    m_userInitiatedActionMap.clear();
+
     m_processPool->disconnectProcess(this);
 }
 
@@ -322,11 +324,19 @@ bool WebProcessProxy::hasAssumedReadAccessToURL(const URL& url) const
         return false;
 
     String path = url.fileSystemPath();
-    for (const String& assumedAccessPath : m_localPathsWithAssumedReadAccess) {
+    auto startsWithURLPath = [&path](const String& assumedAccessPath) {
         // There are no ".." components, because URL removes those.
-        if (path.startsWith(assumedAccessPath))
-            return true;
-    }
+        return path.startsWith(assumedAccessPath);
+    };
+
+    auto& platformPaths = platformPathsWithAssumedReadAccess();
+    auto platformPathsEnd = platformPaths.end();
+    if (std::find_if(platformPaths.begin(), platformPathsEnd, startsWithURLPath) != platformPathsEnd)
+        return true;
+
+    auto localPathsEnd = m_localPathsWithAssumedReadAccess.end();
+    if (std::find_if(m_localPathsWithAssumedReadAccess.begin(), localPathsEnd, startsWithURLPath) != localPathsEnd)
+        return true;
 
     return false;
 }
@@ -657,6 +667,21 @@ size_t WebProcessProxy::frameCountInPage(WebPageProxy* page) const
     return result;
 }
 
+RefPtr<API::UserInitiatedAction> WebProcessProxy::userInitiatedActivity(uint64_t identifier)
+{
+    if (!UserInitiatedActionMap::isValidKey(identifier) || !identifier)
+        return nullptr;
+
+    auto result = m_userInitiatedActionMap.ensure(identifier, [] { return API::UserInitiatedAction::create(); });
+    return result.iterator->value;
+}
+
+void WebProcessProxy::didDestroyUserGestureToken(uint64_t identifier)
+{
+    ASSERT(UserInitiatedActionMap::isValidKey(identifier));
+    m_userInitiatedActionMap.remove(identifier);
+}
+
 bool WebProcessProxy::canTerminateChildProcess()
 {
     if (!m_pageMap.isEmpty())
@@ -727,9 +752,11 @@ void WebProcessProxy::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteDat
 
     uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
+    LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is taking a background assertion because the Web process is fetching Website data", this);
 
-    m_pendingFetchWebsiteDataCallbacks.add(callbackID, [token, completionHandler](WebsiteData websiteData) {
+    m_pendingFetchWebsiteDataCallbacks.add(callbackID, [this, token, completionHandler, sessionID](WebsiteData websiteData) {
         completionHandler(WTFMove(websiteData));
+        LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is releasing a background assertion because the Web process is done fetching Website data", this);
     });
 
     send(Messages::WebProcess::FetchWebsiteData(sessionID, dataTypes, callbackID), 0);
@@ -741,9 +768,11 @@ void WebProcessProxy::deleteWebsiteData(SessionID sessionID, OptionSet<WebsiteDa
 
     uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
+    LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data", this);
 
-    m_pendingDeleteWebsiteDataCallbacks.add(callbackID, [token, completionHandler] {
+    m_pendingDeleteWebsiteDataCallbacks.add(callbackID, [this, token, completionHandler, sessionID] {
         completionHandler();
+        LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data", this);
     });
     send(Messages::WebProcess::DeleteWebsiteData(sessionID, dataTypes, modifiedSince, callbackID), 0);
 }
@@ -754,9 +783,11 @@ void WebProcessProxy::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet
 
     uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
+    LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data for several origins", this);
 
-    m_pendingDeleteWebsiteDataForOriginsCallbacks.add(callbackID, [token, completionHandler] {
+    m_pendingDeleteWebsiteDataForOriginsCallbacks.add(callbackID, [this, token, completionHandler, sessionID] {
         completionHandler();
+        LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data for several origins", this);
     });
 
     Vector<SecurityOriginData> originData;
@@ -959,6 +990,7 @@ void WebProcessProxy::didSetAssertionState(AssertionState state)
 
     switch (state) {
     case AssertionState::Suspended:
+        LOG_ALWAYS(true, "%p - WebProcessProxy::didSetAssertionState(Suspended) release all assertions for network process", this);
         m_foregroundTokenForNetworkProcess = nullptr;
         m_backgroundTokenForNetworkProcess = nullptr;
         for (auto& page : m_pageMap.values())
@@ -966,11 +998,13 @@ void WebProcessProxy::didSetAssertionState(AssertionState state)
         break;
 
     case AssertionState::Background:
+        LOG_ALWAYS(true, "%p - WebProcessProxy::didSetAssertionState(Background) taking background assertion for network process", this);
         m_backgroundTokenForNetworkProcess = processPool().ensureNetworkProcess().throttler().backgroundActivityToken();
         m_foregroundTokenForNetworkProcess = nullptr;
         break;
     
     case AssertionState::Foreground:
+        LOG_ALWAYS(true, "%p - WebProcessProxy::didSetAssertionState(Foreground) taking foreground assertion for network process", this);
         m_foregroundTokenForNetworkProcess = processPool().ensureNetworkProcess().throttler().foregroundActivityToken();
         m_backgroundTokenForNetworkProcess = nullptr;
         for (auto& page : m_pageMap.values())
@@ -987,11 +1021,14 @@ void WebProcessProxy::didSetAssertionState(AssertionState state)
 void WebProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
 {
     if (!isHoldingLockedFiles) {
+        LOG_ALWAYS(true, "UIProcess is releasing a background assertion because the WebContent process is no longer holding locked files");
         m_tokenForHoldingLockedFiles = nullptr;
         return;
     }
-    if (!m_tokenForHoldingLockedFiles)
+    if (!m_tokenForHoldingLockedFiles) {
+        LOG_ALWAYS(true, "UIProcess is taking a background assertion because the WebContent process is holding locked files");
         m_tokenForHoldingLockedFiles = m_throttler.backgroundActivityToken();
+    }
 }
 
 void WebProcessProxy::isResponsive(std::function<void(bool isWebProcessResponsive)> callback)
@@ -1022,5 +1059,13 @@ void WebProcessProxy::didReceiveMainThreadPing()
     for (auto& callback : isResponsiveCallbacks)
         callback(isWebProcessResponsive);
 }
+
+#if !PLATFORM(COCOA)
+const HashSet<String>& WebProcessProxy::platformPathsWithAssumedReadAccess()
+{
+    static NeverDestroyed<HashSet<String>> platformPathsWithAssumedReadAccess;
+    return platformPathsWithAssumedReadAccess;
+}
+#endif
 
 } // namespace WebKit

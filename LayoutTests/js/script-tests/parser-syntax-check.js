@@ -345,21 +345,21 @@ valid  ("for ((a, b) in c) break");
 invalid("for (a ? b : c in c) break");
 valid  ("for ((a ? b : c) in c) break");
 valid  ("for (var a in b in c) break");
-invalid("for (var a = 5 += 6 in b) break");
-invalid("for (var a = debug('should not be hit') in b) break");
+valid("for (var a = 5 += 6 in b) break");
+valid("for (var a = debug('should not be hit') in b) break");
 invalid("for (var a += 5 in b) break");
 invalid("for (var a = in b) break");
 invalid("for (var a, b in b) break");
 invalid("for (var a = -6, b in b) break");
 invalid("for (var a, b = 8 in b) break");
-invalid("for (var a = (b in c) in d) break");
+valid("for (var a = (b in c) in d) break");
 invalid("for (var a = (b in c in d) break");
 invalid("for (var (a) in b) { }");
 valid  ("for (var a = 7, b = c < d >= d ; f()[6]++ ; --i()[1]++ ) {}");
 invalid("for (var {a} = 20 in b) { }");
 invalid("for (var {a} = 20 of b) { }");
 invalid("for (var {a} = 20 in b) { }");
-invalid("for (var i = 20 in b) { }");
+valid("for (var i = 20 in b) { }");
 invalid("for (var i = 20 of b) { }");
 invalid("for (var {i} = 20 of b) { }");
 invalid("for (var [i] = 20 of b) { }");
@@ -657,6 +657,13 @@ invalid("1 % ++");
 invalid("1 % --");
 invalid("1 % \n++");
 invalid("1 % \n--");
+invalid('let {w} = (foo-=()), {} = ("a" ^= "b");');
+invalid('const {w} = (foo-=()), {} = ("a" ^= "b");');
+invalid('var {w} = (foo-=()), {} = ("a" ^= "b");');
+invalid('let {w} = ();');
+invalid('let {w} = 1234abc;');
+invalid('const {w} = 1234abc;');
+invalid('var {w} = 1234abc;');
 
 debug("Rest parameter");
 valid("function foo(...a) { }");
@@ -680,6 +687,54 @@ invalid("'use strict'; function foo(...let) { }");
 valid("function foo(...yield) { }");
 invalid("'use strict'; function foo(...yield) { }");
 invalid("function foo(...if) { }");
+
+debug("non-simple parameter list")
+invalid("function foo(...restParam) { 'use strict'; }");
+invalid("function foo(...restParam) { 'a'; 'use strict'; }");
+invalid("function foo({x}) { 'use strict'; }");
+invalid("function foo({x}) { 'a'; 'use strict'; }");
+invalid("function foo(a = 20) { 'use strict'; }");
+invalid("function foo(a = 20) { 'a'; 'use strict'; }");
+invalid("function foo({a} = 20) { 'use strict'; }");
+invalid("function foo({a} = 20) { 'a'; 'use strict'; }");
+invalid("function foo([a]) { 'use strict'; }");
+invalid("function foo([a]) { 'a'; 'use strict'; }");
+invalid("function foo(foo, bar, a = 25) { 'use strict'; }");
+invalid("function foo(foo, bar, a = 25) { 'a'; 'use strict'; }");
+invalid("function foo(foo, bar, baz, ...rest) { 'use strict'; }");
+invalid("function foo(foo, bar, baz, ...rest) { 'a'; 'use strict'; }");
+invalid("function foo(a = function() { }) { 'use strict'; a(); }");
+invalid("function foo(a = function() { }) { 'a'; 'use strict'; a(); }");
+invalid("let foo = (...restParam) => { 'use strict'; }");
+invalid("let foo = (...restParam) => { 'a'; 'use strict'; }");
+invalid("let foo = ({x}) => { 'use strict'; }");
+invalid("let foo = ({x}) => { 'a'; 'use strict'; }");
+invalid("let foo = (a = 20) => { 'use strict'; }");
+invalid("let foo = (a = 20) => { 'a'; 'use strict'; }");
+invalid("let foo = ({a} = 20) => { 'use strict'; }");
+invalid("let foo = ({a} = 20) => { 'a'; 'use strict'; }");
+invalid("let foo = ([a]) => { 'use strict'; }");
+invalid("let foo = ([a]) => { 'a'; 'use strict'; }");
+invalid("let foo = (foo, bar, a = 25) => { 'use strict'; }");
+invalid("let foo = (foo, bar, a = 25) => { 'a'; 'use strict'; }");
+invalid("let foo = (foo, bar, baz, ...rest) => { 'use strict'; }");
+invalid("let foo = (foo, bar, baz, ...rest) => { 'a'; 'use strict'; }");
+invalid("let foo = (a = function() { }) => { 'use strict'; a(); }");
+invalid("let foo = (a = function() { }) => { 'a'; 'use strict'; a(); }");
+valid("function outer() { 'use strict'; function foo(...restParam) {  } }");
+valid("function outer() { 'use strict'; function foo(a,b,c,...restParam) {  } }");
+valid("function outer() { 'use strict'; function foo(a = 20,b,c,...restParam) {  } }");
+valid("function outer() { 'use strict'; function foo(a = 20,{b},c,...restParam) {  } }");
+valid("function outer() { 'use strict'; function foo(a = 20,{b},[c] = 5,...restParam) {  } }");
+valid("function outer() { 'use strict'; function foo(a = 20) {  } }");
+valid("function outer() { 'use strict'; function foo(a,b,c,{d} = 20) {  } }");
+invalid("function outer() { 'use strict'; function foo(...restParam) { 'use strict';  } }");
+invalid("function outer() { 'use strict'; function foo(a,b,c,...restParam) {  'use strict'; } }");
+invalid("function outer() { 'use strict'; function foo(a = 20,b,c,...restParam) {  'use strict'; } }");
+invalid("function outer() { 'use strict'; function foo(a = 20,{b},c,...restParam) { 'use strict'; } }");
+invalid("function outer() { 'use strict'; function foo(a = 20,{b},[c] = 5,...restParam) { 'use strict'; } }");
+invalid("function outer() { 'use strict'; function foo(a = 20) {  'use strict';} }");
+invalid("function outer() { 'use strict'; function foo(a,b,c,{d} = 20) { 'use strict'; } }");
 
 debug("Arrow function");
 valid("var x = (x) => x;");
@@ -746,6 +801,11 @@ valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } 
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { x(y = (y = () => super.foo) => {return y()}) { return y(); } }");
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { constructor(x = () => super.foo) { super(); this._x_f = x; } x() { return this._x_f(); } }");
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { constructor(x = () => super()) { x(); } x() { return super.foo; } }");
+
+debug("Weird things that used to crash.");
+invalid(`or ([[{break //(elseifo (a=0;a<2;a++)n=
+        [[{aFYY sga=
+        [[{a=Yth FunctionRY&=Ylet 'a'}V a`)
 
 try { eval("a.b.c = {};"); } catch(e1) { e=e1; shouldBe("e.line", "1") }
 foo = 'FAIL';

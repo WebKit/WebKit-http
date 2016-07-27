@@ -295,6 +295,8 @@ void WebPreferences::initializeDefaultSettings()
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitShadowDOMEnabledPreferenceKey), kCFBooleanFalse);
 
+    CFDictionaryAddValue(defaults, CFSTR(WebKitCustomElementsEnabledPreferenceKey), kCFBooleanFalse);
+
     defaultSettings = defaults;
 }
 
@@ -1936,6 +1938,20 @@ HRESULT WebPreferences::setFetchAPIEnabled(BOOL enabled)
     return S_OK;
 }
 
+HRESULT WebPreferences::setDOMIteratorEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitDOMIteratorEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::domIteratorEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitDOMIteratorEnabledPreferenceKey);
+    return S_OK;
+}
+
 HRESULT WebPreferences::shadowDOMEnabled(_Out_ BOOL* enabled)
 {
     if (!enabled)
@@ -1947,5 +1963,19 @@ HRESULT WebPreferences::shadowDOMEnabled(_Out_ BOOL* enabled)
 HRESULT WebPreferences::setShadowDOMEnabled(BOOL enabled)
 {
     setBoolValue(WebKitShadowDOMEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::customElementsEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitCustomElementsEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setCustomElementsEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitCustomElementsEnabledPreferenceKey, enabled);
     return S_OK;
 }

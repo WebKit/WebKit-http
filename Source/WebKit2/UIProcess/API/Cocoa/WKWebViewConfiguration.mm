@@ -122,9 +122,10 @@ private:
     BOOL _imageControlsEnabled;
     BOOL _requiresUserActionForEditingControlsManager;
 #endif
+    BOOL _initialCapitalizationEnabled;
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewConfigurationIvars.mm>
+#if ENABLE(APPLE_PAY)
+    BOOL _applePayEnabled;
 #endif
 }
 
@@ -143,6 +144,7 @@ private:
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAudio;
     else
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAll;
+    _ignoresViewportScaleLimits = NO;
 #else
     _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     _mediaDataLoadsAutomatically = YES;
@@ -171,6 +173,7 @@ private:
     _imageControlsEnabled = NO;
     _requiresUserActionForEditingControlsManager = NO;
 #endif
+    _initialCapitalizationEnabled = YES;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     _allowsAirPlayForMediaPlayback = YES;
@@ -211,6 +214,7 @@ private:
     [coder encodeBool:self.mediaTypesRequiringUserActionForPlayback forKey:@"mediaTypesRequiringUserActionForPlayback"];
     [coder encodeInteger:self.selectionGranularity forKey:@"selectionGranularity"];
     [coder encodeBool:self.allowsPictureInPictureMediaPlayback forKey:@"allowsPictureInPictureMediaPlayback"];
+    [coder encodeBool:self.ignoresViewportScaleLimits forKey:@"ignoresViewportScaleLimits"];
 #else
     [coder encodeInteger:self.userInterfaceDirectionPolicy forKey:@"userInterfaceDirectionPolicy"];
 #endif
@@ -237,6 +241,7 @@ private:
     self.mediaTypesRequiringUserActionForPlayback = [coder decodeBoolForKey:@"mediaTypesRequiringUserActionForPlayback"];
     self.selectionGranularity = static_cast<WKSelectionGranularity>([coder decodeIntegerForKey:@"selectionGranularity"]);
     self.allowsPictureInPictureMediaPlayback = [coder decodeBoolForKey:@"allowsPictureInPictureMediaPlayback"];
+    self.ignoresViewportScaleLimits = [coder decodeBoolForKey:@"ignoresViewportScaleLimits"];
 #else
     auto userInterfaceDirectionPolicyCandidate = static_cast<WKUserInterfaceDirectionPolicy>([coder decodeIntegerForKey:@"userInterfaceDirectionPolicy"]);
     if (userInterfaceDirectionPolicyCandidate == WKUserInterfaceDirectionPolicyContent || userInterfaceDirectionPolicyCandidate == WKUserInterfaceDirectionPolicySystem)
@@ -278,6 +283,7 @@ private:
     configuration->_attachmentElementEnabled = self->_attachmentElementEnabled;
     configuration->_mediaTypesRequiringUserActionForPlayback = self->_mediaTypesRequiringUserActionForPlayback;
     configuration->_mainContentUserGestureOverrideEnabled = self->_mainContentUserGestureOverrideEnabled;
+    configuration->_initialCapitalizationEnabled = self->_initialCapitalizationEnabled;
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
@@ -286,6 +292,7 @@ private:
     configuration->_allowsPictureInPictureMediaPlayback = self->_allowsPictureInPictureMediaPlayback;
     configuration->_alwaysRunsAtForegroundPriority = _alwaysRunsAtForegroundPriority;
     configuration->_selectionGranularity = self->_selectionGranularity;
+    configuration->_ignoresViewportScaleLimits = self->_ignoresViewportScaleLimits;
 #endif
 #if PLATFORM(MAC)
     configuration->_userInterfaceDirectionPolicy = self->_userInterfaceDirectionPolicy;
@@ -300,9 +307,8 @@ private:
 #if ENABLE(WIRELESS_TARGET_PLAYBACK)
     configuration->_allowsAirPlayForMediaPlayback = self->_allowsAirPlayForMediaPlayback;
 #endif
-
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewConfigurationCopy.mm>
+#if ENABLE(APPLE_PAY)
+    configuration->_applePayEnabled = self->_applePayEnabled;
 #endif
 
     return configuration;
@@ -649,6 +655,16 @@ static NSString *defaultApplicationNameForUserAgent()
     _mainContentUserGestureOverrideEnabled = mainContentUserGestureOverrideEnabled;
 }
 
+- (BOOL)_initialCapitalizationEnabled
+{
+    return _initialCapitalizationEnabled;
+}
+
+- (void)_setInitialCapitalizationEnabled:(BOOL)initialCapitalizationEnabled
+{
+    _initialCapitalizationEnabled = initialCapitalizationEnabled;
+}
+
 #if PLATFORM(MAC)
 - (BOOL)_showsURLsInToolTips
 {
@@ -692,9 +708,21 @@ static NSString *defaultApplicationNameForUserAgent()
 
 #endif // PLATFORM(MAC)
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewConfigurationPrivateMethods.mm>
+- (BOOL)_applePayEnabled
+{
+#if ENABLE(APPLE_PAY)
+    return _applePayEnabled;
+#else
+    return NO;
 #endif
+}
+
+- (void)_setApplePayEnabled:(BOOL)applePayEnabled
+{
+#if ENABLE(APPLE_PAY)
+    _applePayEnabled = applePayEnabled;
+#endif
+}
 
 @end
 

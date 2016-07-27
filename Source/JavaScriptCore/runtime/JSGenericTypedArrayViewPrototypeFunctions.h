@@ -30,7 +30,6 @@
 #include "Error.h"
 #include "ExceptionHelpers.h"
 #include "JSArrayBufferViewInlines.h"
-#include "JSArrayIterator.h"
 #include "JSCBuiltins.h"
 #include "JSCJSValueInlines.h"
 #include "JSFunction.h"
@@ -42,8 +41,6 @@
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
-
-static const char* typedArrayBufferHasBeenDetachedErrorMessage = "Underlying ArrayBuffer has been detached from the view";
 
 // This implements 22.2.4.7 TypedArraySpeciesCreate
 // Note, that this function throws.
@@ -57,7 +54,7 @@ inline JSArrayBufferView* speciesConstruct(ExecState* exec, JSObject* exemplar, 
     if (constructor.isUndefined())
         return defaultConstructor();
     if (!constructor.isObject()) {
-        throwTypeError(exec, "constructor Property should not be null");
+        throwTypeError(exec, ASCIILiteral("constructor Property should not be null"));
         return nullptr;
     }
 
@@ -75,7 +72,7 @@ inline JSArrayBufferView* speciesConstruct(ExecState* exec, JSObject* exemplar, 
     if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(result))
         return view;
 
-    throwTypeError(exec, "species constructor did not return a TypedArray View");
+    throwTypeError(exec, ASCIILiteral("species constructor did not return a TypedArray View"));
     return nullptr;
 }
 
@@ -100,7 +97,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSet(ExecState* exec)
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
 
     if (!exec->argumentCount())
-        return throwVMError(exec, createTypeError(exec, "Expected at least one argument"));
+        return throwVMTypeError(exec, ASCIILiteral("Expected at least one argument"));
 
     unsigned offset;
     if (exec->argumentCount() >= 2) {
@@ -118,7 +115,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSet(ExecState* exec)
 
     JSObject* sourceArray = jsDynamicCast<JSObject*>(exec->uncheckedArgument(0));
     if (!sourceArray)
-        return throwVMError(exec, createTypeError(exec, "First argument should be an object"));
+        return throwVMTypeError(exec, ASCIILiteral("First argument should be an object"));
 
     unsigned length;
     if (isTypedView(sourceArray->classInfo()->typedArrayStorageType)) {
@@ -141,25 +138,29 @@ template<typename ViewClass>
 EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncCopyWithin(ExecState* exec)
 {
     // 22.2.3.5
+    VM& vm = exec->vm();
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
     if (thisObject->isNeutered())
         return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
-    if (exec->argumentCount() < 2)
-        return throwVMError(exec, createTypeError(exec, "Expected at least two arguments"));
-
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
     long length = thisObject->length();
     long to = argumentClampedIndexFromStartOrEnd(exec, 0, length);
+    if (vm.exception())
+        return encodedJSValue();
     long from = argumentClampedIndexFromStartOrEnd(exec, 1, length);
+    if (vm.exception())
+        return encodedJSValue();
     long final = argumentClampedIndexFromStartOrEnd(exec, 2, length, length);
+    if (vm.exception())
+        return encodedJSValue();
 
     if (final < from)
         return JSValue::encode(exec->thisValue());
 
     long count = std::min(length - std::max(to, from), final - from);
+
+    if (thisObject->isNeutered())
+        return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
     typename ViewClass::ElementType* array = thisObject->typedVector();
     memmove(array + to, array + from, count * thisObject->elementSize);
@@ -168,53 +169,81 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncCopyWithin(ExecState*
 }
 
 template<typename ViewClass>
-EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncFill(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncIncludes(ExecState* exec)
 {
-    // 22.2.3.8
+    VM& vm = exec->vm();
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
     if (thisObject->isNeutered())
         return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
-    JSValue valueToInsert = exec->argument(0);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
     unsigned length = thisObject->length();
-    unsigned begin = argumentClampedIndexFromStartOrEnd(exec, 1, length);
-    unsigned end = argumentClampedIndexFromStartOrEnd(exec, 2, length, length);
 
-    if (end < begin)
-        return JSValue::encode(exec->thisValue());
+    if (!length)
+        return JSValue::encode(jsBoolean(false));
 
-    if (!thisObject->setRangeToValue(exec, begin, end, valueToInsert))
+    JSValue valueToFind = exec->argument(0);
+
+    unsigned index = argumentClampedIndexFromStartOrEnd(exec, 1, length);
+    if (vm.exception())
         return JSValue::encode(jsUndefined());
 
-    return JSValue::encode(exec->thisValue());
+    if (thisObject->isNeutered())
+        return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
+
+    typename ViewClass::ElementType* array = thisObject->typedVector();
+    auto targetOption = ViewClass::toAdaptorNativeFromValueWithoutCoercion(valueToFind);
+    if (!targetOption)
+        return JSValue::encode(jsBoolean(false));
+
+    ASSERT(!vm.exception());
+    RELEASE_ASSERT(!thisObject->isNeutered());
+
+    if (std::isnan(static_cast<double>(*targetOption))) {
+        for (; index < length; ++index) {
+            if (std::isnan(static_cast<double>(array[index])))
+                return JSValue::encode(jsBoolean(true));
+        }
+    } else {
+        for (; index < length; ++index) {
+            if (array[index] == targetOption)
+                return JSValue::encode(jsBoolean(true));
+        }
+    }
+
+    return JSValue::encode(jsBoolean(false));
 }
 
 template<typename ViewClass>
 EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncIndexOf(ExecState* exec)
 {
     // 22.2.3.13
+    VM& vm = exec->vm();
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
     if (thisObject->isNeutered())
         return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
     if (!exec->argumentCount())
-        return throwVMError(exec, createTypeError(exec, "Expected at least one argument"));
+        return throwVMTypeError(exec, ASCIILiteral("Expected at least one argument"));
 
     unsigned length = thisObject->length();
 
     JSValue valueToFind = exec->argument(0);
     unsigned index = argumentClampedIndexFromStartOrEnd(exec, 1, length);
+    if (vm.exception())
+        return encodedJSValue();
+
+    if (thisObject->isNeutered())
+        return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
     typename ViewClass::ElementType* array = thisObject->typedVector();
-    typename ViewClass::ElementType target = ViewClass::toAdaptorNativeFromValue(exec, valueToFind);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    auto targetOption = ViewClass::toAdaptorNativeFromValueWithoutCoercion(valueToFind);
+    if (!targetOption)
+        return JSValue::encode(jsNumber(-1));
+    ASSERT(!vm.exception());
+    RELEASE_ASSERT(!thisObject->isNeutered());
 
     for (; index < length; ++index) {
-        if (array[index] == target)
+        if (array[index] == targetOption)
             return JSValue::encode(jsNumber(index));
     }
 
@@ -253,6 +282,9 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncJoin(ExecState* exec)
     JSString* separatorString = separatorValue.toString(exec);
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
+
+    if (thisObject->isNeutered())
+        return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
     return joinWithSeparator(separatorString->view(exec).get());
 }
 
@@ -260,12 +292,13 @@ template<typename ViewClass>
 EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncLastIndexOf(ExecState* exec)
 {
     // 22.2.3.16
+    VM& vm = exec->vm();
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
     if (thisObject->isNeutered())
         return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
     if (!exec->argumentCount())
-        return throwVMError(exec, createTypeError(exec, "Expected at least one argument"));
+        return throwVMTypeError(exec, ASCIILiteral("Expected at least one argument"));
 
     unsigned length = thisObject->length();
 
@@ -284,13 +317,22 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncLastIndexOf(ExecState
             index = static_cast<unsigned>(fromDouble);
     }
 
+    if (vm.exception())
+        return JSValue::encode(JSValue());
+
+    if (thisObject->isNeutered())
+        return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
+
+    auto targetOption = ViewClass::toAdaptorNativeFromValueWithoutCoercion(valueToFind);
+    if (!targetOption)
+        return JSValue::encode(jsNumber(-1));
+
     typename ViewClass::ElementType* array = thisObject->typedVector();
-    typename ViewClass::ElementType target = ViewClass::toAdaptorNativeFromValue(exec, valueToFind);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    ASSERT(!vm.exception());
+    RELEASE_ASSERT(!thisObject->isNeutered());
 
     for (; index >= 0; --index) {
-        if (array[index] == target)
+        if (array[index] == targetOption)
             return JSValue::encode(jsNumber(index));
     }
 
@@ -364,6 +406,7 @@ template<typename ViewClass>
 EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSlice(ExecState* exec)
 {
     // 22.2.3.26
+    VM& vm = exec->vm();
     JSFunction* callee = jsCast<JSFunction*>(exec->callee());
 
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
@@ -373,7 +416,14 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSlice(ExecState* exec
     unsigned thisLength = thisObject->length();
 
     unsigned begin = argumentClampedIndexFromStartOrEnd(exec, 0, thisLength);
+    if (vm.exception())
+        return encodedJSValue();
     unsigned end = argumentClampedIndexFromStartOrEnd(exec, 1, thisLength, thisLength);
+    if (vm.exception())
+        return encodedJSValue();
+
+    if (thisObject->isNeutered())
+        return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
     // Clamp end to begin.
     end = std::max(begin, end);
@@ -433,23 +483,30 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSlice(ExecState* exec
 }
 
 template<typename ViewClass>
-EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSubarray(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL genericTypedArrayViewPrivateFuncSubarrayCreate(ExecState* exec)
 {
     // 22.2.3.23
+    VM& vm = exec->vm();
     JSFunction* callee = jsCast<JSFunction*>(exec->callee());
 
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
     if (thisObject->isNeutered())
         return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
 
-    if (!exec->argumentCount())
-        return throwVMError(exec, createTypeError(exec, "Expected at least one argument"));
-
     // Get the length here; later assert that the length didn't change.
     unsigned thisLength = thisObject->length();
 
+    // I would assert that the arguments are integers here but that's not true since
+    // https://tc39.github.io/ecma262/#sec-tointeger allows the result of the operation
+    // to be +/- Infinity and -0.
+    ASSERT(exec->argument(0).isNumber());
+    ASSERT(exec->argument(1).isUndefined() || exec->argument(1).isNumber());
     unsigned begin = argumentClampedIndexFromStartOrEnd(exec, 0, thisLength);
+    ASSERT(!vm.exception());
     unsigned end = argumentClampedIndexFromStartOrEnd(exec, 1, thisLength, thisLength);
+    ASSERT(!vm.exception());
+
+    RELEASE_ASSERT(!thisObject->isNeutered());
 
     // Clamp end to begin.
     end = std::max(begin, end);
@@ -463,23 +520,31 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSubarray(ExecState* e
 
     unsigned newByteOffset = thisObject->byteOffset() + offset * ViewClass::elementSize;
 
+    JSObject* defaultConstructor = callee->globalObject()->typedArrayConstructor(ViewClass::TypedArrayStorageType);
+    JSValue species = exec->uncheckedArgument(2);
+    if (species == defaultConstructor) {
+        Structure* structure = callee->globalObject()->typedArrayStructure(ViewClass::TypedArrayStorageType);
+
+        return JSValue::encode(ViewClass::create(
+            exec, structure, arrayBuffer,
+            thisObject->byteOffset() + offset * ViewClass::elementSize,
+            length));
+    }
+
     MarkedArgumentBuffer args;
-    args.append(exec->vm().m_typedArrayController->toJS(exec, thisObject->globalObject(), thisObject->buffer()));
+    args.append(vm.m_typedArrayController->toJS(exec, thisObject->globalObject(), thisObject->buffer()));
     args.append(jsNumber(newByteOffset));
     args.append(jsNumber(length));
 
-    JSArrayBufferView* result = speciesConstruct(exec, thisObject, args, [&]() {
-        Structure* structure = callee->globalObject()->typedArrayStructure(ViewClass::TypedArrayStorageType);
-
-        return ViewClass::create(
-            exec, structure, arrayBuffer,
-            thisObject->byteOffset() + offset * ViewClass::elementSize,
-            length);
-    });
+    JSObject* result = construct(exec, species, args, "species is not a constructor");
     if (exec->hadException())
         return JSValue::encode(JSValue());
 
-    return JSValue::encode(result);
+    if (jsDynamicCast<JSArrayBufferView*>(result))
+        return JSValue::encode(result);
+
+    throwTypeError(exec, "species constructor did not return a TypedArray View");
+    return JSValue::encode(JSValue());
 }
 
 } // namespace JSC

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #include "Structure.h"
 #include <type_traits>
 #include <wtf/Assertions.h>
+#include <wtf/RandomNumber.h>
 
 namespace JSC {
 
@@ -142,33 +143,42 @@ inline void Heap::reportExtraMemoryVisited(CellState dataBeforeVisiting, size_t 
     }
 }
 
+#if ENABLE(RESOURCE_USAGE)
+inline void Heap::reportExternalMemoryVisited(CellState dataBeforeVisiting, size_t size)
+{
+    // We don't want to double-count the external memory that was reported in previous collections.
+    if (operationInProgress() == EdenCollection && dataBeforeVisiting == CellState::OldGrey)
+        return;
+
+    size_t* counter = &m_externalMemorySize;
+
+    for (;;) {
+        size_t oldSize = *counter;
+        if (WTF::weakCompareAndSwap(counter, oldSize, oldSize + size))
+            return;
+    }
+}
+#endif
+
 inline void Heap::deprecatedReportExtraMemory(size_t size)
 {
     if (size > minExtraMemory) 
         deprecatedReportExtraMemorySlowCase(size);
 }
 
-template<typename Functor> inline void Heap::forEachCodeBlock(Functor& functor)
+template<typename Functor> inline void Heap::forEachCodeBlock(const Functor& functor)
 {
     // We don't know the full set of CodeBlocks until compilation has terminated.
-    completeAllDFGPlans();
+    completeAllJITPlans();
 
     return m_codeBlocks.iterate<Functor>(functor);
 }
 
-template<typename Functor> inline typename Functor::ReturnType Heap::forEachProtectedCell(Functor& functor)
+template<typename Functor> inline void Heap::forEachProtectedCell(const Functor& functor)
 {
     for (auto& pair : m_protectedValues)
         functor(pair.key);
     m_handleSet.forEachStrongHandle(functor, m_protectedValues);
-
-    return functor.returnValue();
-}
-
-template<typename Functor> inline typename Functor::ReturnType Heap::forEachProtectedCell()
-{
-    Functor functor;
-    return forEachProtectedCell(functor);
 }
 
 inline void* Heap::allocateWithDestructor(size_t bytes)
@@ -294,10 +304,28 @@ inline bool Heap::collectIfNecessaryOrDefer()
     return true;
 }
 
+inline void Heap::collectAccordingToDeferGCProbability()
+{
+    if (isDeferred() || !m_isSafeToCollect || m_operationInProgress != NoOperation)
+        return;
+
+    if (randomNumber() < Options::deferGCProbability()) {
+        collect();
+        return;
+    }
+
+    // If our coin flip told us not to GC, we still might GC,
+    // but we GC according to our memory pressure markers.
+    collectIfNecessaryOrDefer();
+}
+
 inline void Heap::decrementDeferralDepthAndGCIfNeeded()
 {
     decrementDeferralDepth();
-    collectIfNecessaryOrDefer();
+    if (UNLIKELY(Options::deferGCShouldCollectWithProbability()))
+        collectAccordingToDeferGCProbability();
+    else
+        collectIfNecessaryOrDefer();
 }
 
 inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()

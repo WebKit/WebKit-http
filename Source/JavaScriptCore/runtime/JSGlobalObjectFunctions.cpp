@@ -706,17 +706,6 @@ EncodedJSValue JSC_HOST_CALL globalFuncParseFloat(ExecState* exec)
     return JSValue::encode(jsNumber(parseFloat(exec->argument(0).toString(exec)->view(exec).get())));
 }
 
-EncodedJSValue JSC_HOST_CALL globalFuncIsNaN(ExecState* exec)
-{
-    return JSValue::encode(jsBoolean(std::isnan(exec->argument(0).toNumber(exec))));
-}
-
-EncodedJSValue JSC_HOST_CALL globalFuncIsFinite(ExecState* exec)
-{
-    double n = exec->argument(0).toNumber(exec);
-    return JSValue::encode(jsBoolean(std::isfinite(n)));
-}
-
 EncodedJSValue JSC_HOST_CALL globalFuncDecodeURI(ExecState* exec)
 {
     static Bitmap<256> doNotUnescapeWhenDecodingURI = makeCharacterBitmap(
@@ -899,7 +888,7 @@ private:
 EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState* exec)
 {
     if (exec->thisValue().isUndefinedOrNull()) 
-        return throwVMError(exec, createTypeError(exec, "Can't convert undefined or null to object"));
+        return throwVMTypeError(exec, ASCIILiteral("Can't convert undefined or null to object"));
 
     JSObject* thisObject = jsDynamicCast<JSObject*>(exec->thisValue().toThis(exec, NotStrictMode));
 
@@ -956,7 +945,7 @@ bool checkProtoSetterAccessAllowed(ExecState* exec, JSObject* object)
 EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState* exec)
 {
     if (exec->thisValue().isUndefinedOrNull()) 
-        return throwVMError(exec, createTypeError(exec, "Can't convert undefined or null to object"));
+        return throwVMTypeError(exec, ASCIILiteral("Can't convert undefined or null to object"));
 
     JSValue value = exec->argument(0);
 

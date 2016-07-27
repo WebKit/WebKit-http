@@ -62,7 +62,7 @@ WebResourceLoader::~WebResourceLoader()
 
 IPC::Connection* WebResourceLoader::messageSenderConnection()
 {
-    return WebProcess::singleton().networkConnection()->connection();
+    return &WebProcess::singleton().networkConnection().connection();
 }
 
 uint64_t WebResourceLoader::messageSenderDestinationID()
@@ -208,15 +208,6 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
         return;
 
     m_coreLoader->didFinishLoading(finishTime);
-}
-#endif
-
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void WebResourceLoader::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace)
-{
-    bool result = m_coreLoader ? m_coreLoader->canAuthenticateAgainstProtectionSpace(protectionSpace) : false;
-
-    send(Messages::NetworkResourceLoader::ContinueCanAuthenticateAgainstProtectionSpace(result));
 }
 #endif
 

@@ -30,12 +30,12 @@
 #include "EventListener.h"
 #include "EventTarget.h"
 #include "ScriptExecutionContext.h"
+#include "URL.h"
 #include "WorkerEventQueue.h"
 #include "WorkerScriptController.h"
 #include <memory>
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
@@ -78,6 +78,10 @@ public:
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
     void stopIndexedDatabase();
+#endif
+
+#if ENABLE(WEB_SOCKETS)
+    SocketProvider* socketProvider() final;
 #endif
 
     bool shouldBypassMainWorldContentSecurityPolicy() const final { return m_shouldBypassMainWorldContentSecurityPolicy; }
@@ -146,7 +150,7 @@ public:
 #endif
 
 protected:
-    WorkerGlobalScope(const URL&, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, PassRefPtr<SecurityOrigin> topOrigin, IDBClient::IDBConnectionProxy*);
+    WorkerGlobalScope(const URL&, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, RefPtr<SecurityOrigin>&& topOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*);
     void applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders&);
 
     void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) override;
@@ -186,6 +190,9 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     RefPtr<IDBClient::IDBConnectionProxy> m_connectionProxy;
+#endif
+#if ENABLE(WEB_SOCKETS)
+    RefPtr<SocketProvider> m_socketProvider;
 #endif
 };
 

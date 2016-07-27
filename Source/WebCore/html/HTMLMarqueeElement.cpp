@@ -52,7 +52,7 @@ Ref<HTMLMarqueeElement> HTMLMarqueeElement::create(const QualifiedName& tagName,
 
 int HTMLMarqueeElement::minimumDelay() const
 {
-    if (!fastHasAttribute(truespeedAttr)) {
+    if (!hasAttributeWithoutSynchronization(truespeedAttr)) {
         // WinIE uses 60ms as the minimum delay by default.
         return 60;
     }
@@ -124,7 +124,7 @@ void HTMLMarqueeElement::stop()
 
 unsigned HTMLMarqueeElement::scrollAmount() const
 {
-    return limitToOnlyHTMLNonNegative(fastGetAttribute(scrollamountAttr), RenderStyle::initialMarqueeIncrement().intValue());
+    return limitToOnlyHTMLNonNegative(attributeWithoutSynchronization(scrollamountAttr), RenderStyle::initialMarqueeIncrement().intValue());
 }
     
 void HTMLMarqueeElement::setScrollAmount(unsigned scrollAmount)
@@ -134,7 +134,7 @@ void HTMLMarqueeElement::setScrollAmount(unsigned scrollAmount)
     
 unsigned HTMLMarqueeElement::scrollDelay() const
 {
-    return limitToOnlyHTMLNonNegative(fastGetAttribute(scrolldelayAttr), RenderStyle::initialMarqueeSpeed());
+    return limitToOnlyHTMLNonNegative(attributeWithoutSynchronization(scrolldelayAttr), RenderStyle::initialMarqueeSpeed());
 }
 
 void HTMLMarqueeElement::setScrollDelay(unsigned scrollDelay)
@@ -145,7 +145,7 @@ void HTMLMarqueeElement::setScrollDelay(unsigned scrollDelay)
 int HTMLMarqueeElement::loop() const
 {
     bool ok;
-    int loopValue = fastGetAttribute(loopAttr).toInt(&ok);
+    int loopValue = attributeWithoutSynchronization(loopAttr).toInt(&ok);
     return ok && loopValue > 0 ? loopValue : -1;
 }
     

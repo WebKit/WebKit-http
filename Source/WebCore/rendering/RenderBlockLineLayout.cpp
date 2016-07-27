@@ -1788,6 +1788,7 @@ void RenderBlockFlow::checkFloatsInCleanLine(RootInlineBox* line, Vector<FloatWi
 
     for (auto it = cleanLineFloats->begin(), end = cleanLineFloats->end(); it != end; ++it) {
         RenderBox* floatingBox = *it;
+        ASSERT_WITH_SECURITY_IMPLICATION(!floatingBox->style().deletionHasBegun());
         floatingBox->layoutIfNeeded();
         LayoutSize newSize(floatingBox->width() + floatingBox->horizontalMarginExtent(), floatingBox->height() + floatingBox->verticalMarginExtent());
         ASSERT_WITH_SECURITY_IMPLICATION(floatIndex < floats.size());
@@ -2302,6 +2303,10 @@ void RenderBlockFlow::marginCollapseLinesFromStart(LineLayoutState& layoutState,
     
     // Now that we've handled the top of the block, if the stopLine isn't an anonymous block, then we're done.
     if (!stopLine->hasAnonymousInlineBlock())
+        return;
+
+    // We already handled top of block with startLine.
+    if (stopLine == firstRootBox())
         return;
 
     // Re-run margin collapsing on the block sequence that stopLine is a part of.

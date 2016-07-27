@@ -550,7 +550,7 @@ sub SkipFunction
         return 1 if $param->isVariadic;
     }
 
-    return 1 if $function->signature->extendedAttributes->{"Private"};
+    return 1 if $function->signature->extendedAttributes->{"PrivateIdentifier"} and not $function->signature->extendedAttributes->{"PublicIdentifier"};
 
     return 0;
 }
@@ -1269,8 +1269,8 @@ sub GenerateImplementation
 
             my ($functionName, @arguments) = $codeGenerator->GetterExpression(\%implIncludes, $interfaceName, $attribute);
 
-            # To avoid bloating Obj-C bindings, we use getAttribute() instead of fastGetAttribute().
-            if ($functionName eq "fastGetAttribute") {
+            # To avoid bloating Obj-C bindings, we use getAttribute() instead of attributeWithoutSynchronization().
+            if ($functionName eq "attributeWithoutSynchronization") {
                 $functionName = "getAttribute";
             }
 

@@ -44,6 +44,7 @@
 #include "StatisticsData.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebPageProxyMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebsiteData.h"
 #include "WebsiteDataFetchOption.h"
@@ -192,7 +193,7 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
     WTF::releaseFastMallocFreeMemory();
 }
 
-void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
+void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
 {
     platformInitializeNetworkProcess(parameters);
 
@@ -201,6 +202,10 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
     if (!m_suppressMemoryPressureHandler) {
         auto& memoryPressureHandler = MemoryPressureHandler::singleton();
+#if OS(LINUX)
+        if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
+            memoryPressureHandler.setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
+#endif
         memoryPressureHandler.setLowMemoryHandler([this] (Critical critical, Synchronous) {
             lowMemoryHandler(critical);
         });
@@ -254,8 +259,8 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
 #if USE(UNIX_DOMAIN_SOCKETS)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
 
-    RefPtr<NetworkConnectionToWebProcess> connection = NetworkConnectionToWebProcess::create(socketPair.server);
-    m_webProcessConnections.append(connection.release());
+    auto connection = NetworkConnectionToWebProcess::create(socketPair.server);
+    m_webProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientSocket(socketPair.client);
     parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCreateNetworkConnectionToWebProcess(clientSocket), 0);
@@ -265,8 +270,8 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
 
     // Create a listening connection.
-    RefPtr<NetworkConnectionToWebProcess> connection = NetworkConnectionToWebProcess::create(IPC::Connection::Identifier(listeningPort));
-    m_webProcessConnections.append(connection.release());
+    auto connection = NetworkConnectionToWebProcess::create(IPC::Connection::Identifier(listeningPort));
+    m_webProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientPort(listeningPort, MACH_MSG_TYPE_MAKE_SEND);
     parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCreateNetworkConnectionToWebProcess(clientPort), 0);
@@ -278,7 +283,7 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
 void NetworkProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
-#if USE(NETWORK_SESSION) && !USE(CREDENTIAL_STORAGE_WITH_NETWORK_SESSION)
+#if USE(NETWORK_SESSION)
     NetworkSession::defaultSession().clearCredentials();
 #endif
 }
@@ -293,7 +298,7 @@ void NetworkProcess::destroyPrivateBrowsingSession(SessionID sessionID)
     SessionTracker::destroySession(sessionID);
 }
 
-void NetworkProcess::grantSandboxExtensionsToDatabaseProcessForBlobs(const Vector<String>& filenames, NoncopyableFunction<void ()>&& completionHandler)
+void NetworkProcess::grantSandboxExtensionsToDatabaseProcessForBlobs(const Vector<String>& filenames, Function<void ()>&& completionHandler)
 {
     static uint64_t lastRequestID;
 
@@ -308,7 +313,7 @@ void NetworkProcess::didGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t
         handler();
 }
 
-static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, NoncopyableFunction<void (Vector<WebsiteData::Entry>)>&& completionHandler)
+static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void (Vector<WebsiteData::Entry>)>&& completionHandler)
 {
 #if ENABLE(NETWORK_CACHE)
     if (NetworkCache::singleton().isEnabled()) {
@@ -352,7 +357,7 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
 void NetworkProcess::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, uint64_t callbackID)
 {
     struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
-        explicit CallbackAggregator(NoncopyableFunction<void (WebsiteData)>&& completionHandler)
+        explicit CallbackAggregator(Function<void (WebsiteData)>&& completionHandler)
             : m_completionHandler(WTFMove(completionHandler))
         {
         }
@@ -366,7 +371,7 @@ void NetworkProcess::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteData
             });
         }
 
-        NoncopyableFunction<void (WebsiteData)> m_completionHandler;
+        Function<void (WebsiteData)> m_completionHandler;
         WebsiteData m_websiteData;
     };
 
@@ -412,7 +417,7 @@ void NetworkProcess::deleteWebsiteData(SessionID sessionID, OptionSet<WebsiteDat
     completionHandler();
 }
 
-static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, NoncopyableFunction<void ()>&& completionHandler)
+static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, Function<void ()>&& completionHandler)
 {
 #if ENABLE(NETWORK_CACHE)
     if (NetworkCache::singleton().isEnabled()) {
@@ -480,8 +485,23 @@ void NetworkProcess::cancelDownload(DownloadID downloadID)
     downloadManager().cancelDownload(downloadID);
 }
     
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+void NetworkProcess::canAuthenticateAgainstProtectionSpace(NetworkResourceLoader& loader, const WebCore::ProtectionSpace& protectionSpace)
+{
+    static uint64_t lastLoaderID = 0;
+    uint64_t loaderID = ++lastLoaderID;
+    m_waitingNetworkResourceLoaders.set(lastLoaderID, loader);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::CanAuthenticateAgainstProtectionSpace(loaderID, loader.pageID(), loader.frameID(), protectionSpace), 0);
+}
+
+void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(uint64_t loaderID, bool canAuthenticate)
+{
+    m_waitingNetworkResourceLoaders.take(loaderID).value()->continueCanAuthenticateAgainstProtectionSpace(canAuthenticate);
+}
+#endif
+
 #if USE(NETWORK_SESSION)
-void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(DownloadID downloadID, bool canAuthenticate)
+void NetworkProcess::continueCanAuthenticateAgainstProtectionSpaceDownload(DownloadID downloadID, bool canAuthenticate)
 {
     downloadManager().continueCanAuthenticateAgainstProtectionSpace(downloadID, canAuthenticate);
 }
@@ -496,12 +516,12 @@ void NetworkProcess::pendingDownloadCanceled(DownloadID downloadID)
     downloadProxyConnection()->send(Messages::DownloadProxy::DidCancel({ }), downloadID.downloadID());
 }
 
-void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler completionHandler, const ResourceRequest& updatedRequest)
+void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler, const ResourceRequest& updatedRequest)
 {
     uint64_t destinationID = networkDataTask.pendingDownloadID().downloadID();
     downloadProxyConnection()->send(Messages::DownloadProxy::DidStart(updatedRequest, String()), destinationID);
 
-    downloadManager().willDecidePendingDownloadDestination(networkDataTask, completionHandler);
+    downloadManager().willDecidePendingDownloadDestination(networkDataTask, WTFMove(completionHandler));
     downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), networkDataTask.suggestedFilename()), destinationID);
 }
     
@@ -579,7 +599,10 @@ void NetworkProcess::processWillSuspendImminently(bool& handled)
 
 void NetworkProcess::prepareToSuspend()
 {
+    LOG_ALWAYS(true, "%p - NetworkProcess::prepareToSuspend()", this);
     lowMemoryHandler(Critical::Yes);
+
+    LOG_ALWAYS(true, "%p - NetworkProcess::prepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
     parentProcessConnection()->send(Messages::NetworkProcessProxy::ProcessReadyToSuspend(), 0);
 }
 
@@ -589,10 +612,12 @@ void NetworkProcess::cancelPrepareToSuspend()
     // we do not because prepareToSuspend() already replied with a NetworkProcessProxy::ProcessReadyToSuspend
     // message. And NetworkProcessProxy expects to receive either a NetworkProcessProxy::ProcessReadyToSuspend-
     // or NetworkProcessProxy::DidCancelProcessSuspension- message, but not both.
+    LOG_ALWAYS(true, "%p - NetworkProcess::cancelPrepareToSuspend()", this);
 }
 
 void NetworkProcess::processDidResume()
 {
+    LOG_ALWAYS(true, "%p - NetworkProcess::processDidResume()", this);
 }
 
 void NetworkProcess::prefetchDNS(const String& hostname)

@@ -23,6 +23,7 @@
 #include "CharacterData.h"
 
 #include "ElementTraversal.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FrameSelection.h"
 #include "InspectorInstrumentation.h"
@@ -32,8 +33,8 @@
 #include "ProcessingInstruction.h"
 #include "RenderText.h"
 #include "StyleInheritedData.h"
-#include "TextBreakIterator.h"
 #include <wtf/Ref.h>
+#include <wtf/text/TextBreakIterator.h>
 
 namespace WebCore {
 

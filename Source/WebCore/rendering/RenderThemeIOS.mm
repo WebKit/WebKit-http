@@ -625,7 +625,7 @@ void RenderThemeIOS::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& styl
     // Enforce some default styles in the case that this is a non-multiple <select> element,
     // or a date input. We don't force these if this is just an element with
     // "-webkit-appearance: menulist-button".
-    if (is<HTMLSelectElement>(*element) && !element->hasAttribute(HTMLNames::multipleAttr))
+    if (is<HTMLSelectElement>(*element) && !element->hasAttributeWithoutSynchronization(HTMLNames::multipleAttr))
         adjustSelectListButtonStyle(style, *element);
     else if (is<HTMLInputElement>(*element))
         adjustInputElementButtonStyle(style, downcast<HTMLInputElement>(*element));
@@ -1521,7 +1521,7 @@ void AttachmentInfo::buildSingleLine(const String& text, CTFontRef font, UIColor
 
 static BOOL getAttachmentProgress(const RenderAttachment& attachment, float& progress)
 {
-    String progressString = attachment.attachmentElement().fastGetAttribute(progressAttr);
+    String progressString = attachment.attachmentElement().attributeWithoutSynchronization(progressAttr);
     if (progressString.isEmpty())
         return NO;
     bool validProgress;
@@ -1587,8 +1587,8 @@ AttachmentInfo::AttachmentInfo(const RenderAttachment& attachment)
 
     hasProgress = getAttachmentProgress(attachment, progress);
 
-    String action = attachment.attachmentElement().fastGetAttribute(actionAttr);
-    String subtitle = attachment.attachmentElement().fastGetAttribute(subtitleAttr);
+    String action = attachment.attachmentElement().attributeWithoutSynchronization(actionAttr);
+    String subtitle = attachment.attachmentElement().attributeWithoutSynchronization(subtitleAttr);
 
     CGFloat yOffset = 0;
 

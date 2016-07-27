@@ -55,6 +55,7 @@
 #import <WebCore/Cursor.h>
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/DocumentLoader.h>
+#import <WebCore/EventNames.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FormState.h>
 #import <WebCore/Frame.h>
@@ -522,7 +523,7 @@ PDFPlugin::PDFPlugin(WebFrame* frame)
     if (supportsForms()) {
         Document* document = webFrame()->coreFrame()->document();
         m_annotationContainer = document->createElement(divTag, false);
-        m_annotationContainer->setAttribute(idAttr, "annotationContainer");
+        m_annotationContainer->setAttributeWithoutSynchronization(idAttr, AtomicString("annotationContainer", AtomicString::ConstructFromLiteral));
 
         auto annotationStyleElement = document->createElement(styleTag, false);
         annotationStyleElement->setTextContent(annotationStyle, ASSERT_NO_EXCEPTION);
@@ -650,7 +651,7 @@ const PluginView* PDFPlugin::pluginView() const
 
 PassRefPtr<Scrollbar> PDFPlugin::createScrollbar(ScrollbarOrientation orientation)
 {
-    RefPtr<Scrollbar> widget = Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
+    auto widget = Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
     if (orientation == HorizontalScrollbar) {
         m_horizontalScrollbarLayer = adoptNS([[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this]);
         [m_containerLayer addSublayer:m_horizontalScrollbarLayer.get()];
@@ -666,7 +667,7 @@ PassRefPtr<Scrollbar> PDFPlugin::createScrollbar(ScrollbarOrientation orientatio
         }
     }
     pluginView()->frame()->view()->addChild(widget.get());
-    return widget.release();
+    return widget;
 }
 
 void PDFPlugin::destroyScrollbar(ScrollbarOrientation orientation)

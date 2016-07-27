@@ -30,6 +30,7 @@
 
 #include "AirArg.h"
 #include "B3Effects.h"
+#include "B3FrequentedBlock.h"
 #include "B3Opcode.h"
 #include "B3Origin.h"
 #include "B3SparseCollection.h"
@@ -43,6 +44,7 @@ namespace JSC { namespace B3 {
 
 class BasicBlock;
 class CheckValue;
+class InsertionSet;
 class PhiChildren;
 class Procedure;
 
@@ -59,7 +61,8 @@ public:
 
     unsigned index() const { return m_index; }
     
-    // Note that the opcode is immutable, except for replacing values with Identity or Nop.
+    // Note that the opcode is immutable, except for replacing values with:
+    // Identity, Nop, Oops, Jump, and Phi. See below for replaceWithXXX() methods.
     Opcode opcode() const { return m_opcode; }
 
     Origin origin() const { return m_origin; }
@@ -83,12 +86,44 @@ public:
     AdjacencyList& children() { return m_children; } 
     const AdjacencyList& children() const { return m_children; }
 
+    // If you want to replace all uses of this value with a different value, then replace this
+    // value with Identity. Then do a pass of performSubstitution() on all of the values that use
+    // this one. Usually we do all of this in one pass in pre-order, which ensures that the
+    // X->replaceWithIdentity() calls happen before the performSubstitution() calls on X's users.
     void replaceWithIdentity(Value*);
+    
+    // It's often necessary to kill a value. It's tempting to replace the value with Nop or to
+    // just remove it. But unless you are sure that the value is Void, you will probably still
+    // have other values that use this one. Sure, you may kill those later, or you might not. This
+    // method lets you kill a value safely. It will replace Void values with Nop and non-Void
+    // values with Identities on bottom constants. For this reason, this takes a callback that is
+    // responsible for creating bottoms. There's a utility for this, see B3BottomProvider.h. You
+    // can also access that utility using replaceWithBottom(InsertionSet&, size_t).
+    template<typename BottomProvider>
+    void replaceWithBottom(const BottomProvider&);
+    
+    void replaceWithBottom(InsertionSet&, size_t index);
+
+    // Use this if you want to kill a value and you are sure that the value is Void.
     void replaceWithNop();
+    
+    // Use this if you want to kill a value and you are sure that nobody is using it anymore.
+    void replaceWithNopIgnoringType();
+    
     void replaceWithPhi();
+    
+    // These transformations are only valid for terminals.
+    void replaceWithJump(BasicBlock* owner, FrequentedBlock);
+    void replaceWithOops(BasicBlock* owner);
+    
+    // You can use this form if owners are valid. They're usually not valid.
+    void replaceWithJump(FrequentedBlock);
+    void replaceWithOops();
 
     void dump(PrintStream&) const;
     void deepDump(const Procedure*, PrintStream&) const;
+    
+    virtual void dumpSuccessors(const BasicBlock*, PrintStream&) const;
 
     // This is how you cast Values. For example, if you want to do something provided that we have a
     // ArgumentRegValue, you can do:
@@ -235,11 +270,75 @@ private:
     friend class SparseCollection<Value>;
 
     // Checks that this opcode is valid for use with B3::Value.
-#if ASSERT_DISABLED
-    static void checkOpcode(Opcode) { }
-#else
-    static void checkOpcode(Opcode);
-#endif
+    ALWAYS_INLINE static void checkOpcode(Opcode opcode, unsigned numArgs)
+    {
+        switch (opcode) {
+        case FramePointer:
+        case Nop:
+        case Phi:
+        case Jump:
+        case Oops:
+            if (UNLIKELY(numArgs))
+                badOpcode(opcode, numArgs);
+            break;
+        case Identity:
+        case Neg:
+        case Clz:
+        case Abs:
+        case Ceil:
+        case Floor:
+        case Sqrt:
+        case SExt8:
+        case SExt16:
+        case Trunc:
+        case SExt32:
+        case ZExt32:
+        case FloatToDouble:
+        case IToD:
+        case DoubleToFloat:
+        case IToF:
+        case BitwiseCast:
+        case Branch:
+        case Return:
+            if (UNLIKELY(numArgs != 1))
+                badOpcode(opcode, numArgs);
+            break;
+        case Add:
+        case Sub:
+        case Mul:
+        case Div:
+        case Mod:
+        case ChillDiv:
+        case ChillMod:
+        case BitAnd:
+        case BitOr:
+        case BitXor:
+        case Shl:
+        case SShr:
+        case ZShr:
+        case Equal:
+        case NotEqual:
+        case LessThan:
+        case GreaterThan:
+        case LessEqual:
+        case GreaterEqual:
+        case Above:
+        case Below:
+        case AboveEqual:
+        case BelowEqual:
+        case EqualOrUnordered:
+            if (UNLIKELY(numArgs != 2))
+                badOpcode(opcode, numArgs);
+            break;
+        case Select:
+            if (UNLIKELY(numArgs != 3))
+                badOpcode(opcode, numArgs);
+            break;
+        default:
+            badOpcode(opcode, numArgs);
+            break;
+        }
+    }
 
 protected:
     enum CheckedOpcodeTag { CheckedOpcode };
@@ -309,10 +408,34 @@ protected:
     // This is the constructor you end up actually calling, if you're instantiating Value
     // directly.
     template<typename... Arguments>
-    explicit Value(Opcode opcode, Arguments&&... arguments)
-        : Value(CheckedOpcode, opcode, std::forward<Arguments>(arguments)...)
+        explicit Value(Opcode opcode, Type type, Origin origin)
+        : Value(CheckedOpcode, opcode, type, origin)
     {
-        checkOpcode(opcode);
+        checkOpcode(opcode, 0);
+    }
+    template<typename... Arguments>
+        explicit Value(Opcode opcode, Type type, Origin origin, Value* firstChild, Arguments&&... arguments)
+        : Value(CheckedOpcode, opcode, type, origin, firstChild, std::forward<Arguments>(arguments)...)
+    {
+        checkOpcode(opcode, 1 + sizeof...(arguments));
+    }
+    template<typename... Arguments>
+        explicit Value(Opcode opcode, Type type, Origin origin, const AdjacencyList& children)
+        : Value(CheckedOpcode, opcode, type, origin, children)
+    {
+        checkOpcode(opcode, children.size());
+    }
+    template<typename... Arguments>
+        explicit Value(Opcode opcode, Type type, Origin origin, AdjacencyList&& children)
+        : Value(CheckedOpcode, opcode, type, origin, WTFMove(children))
+    {
+        checkOpcode(opcode, m_children.size());
+    }
+    template<typename... Arguments>
+        explicit Value(Opcode opcode, Origin origin, Arguments&&... arguments)
+        : Value(CheckedOpcode, opcode, origin, std::forward<Arguments>(arguments)...)
+    {
+        checkOpcode(opcode, sizeof...(arguments));
     }
 
 private:
@@ -329,6 +452,8 @@ private:
     
     Origin m_origin;
     AdjacencyList m_children;
+
+    JS_EXPORT_PRIVATE NO_RETURN_DUE_TO_CRASH static void badOpcode(Opcode, unsigned);
 
 public:
     BasicBlock* owner { nullptr }; // computed by Procedure::resetValueOwners().

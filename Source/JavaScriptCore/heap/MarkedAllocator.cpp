@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,6 +59,13 @@ bool MarkedAllocator::isPagedOut(double deadline)
     return false;
 }
 
+void MarkedAllocator::retire(MarkedBlock* block, MarkedBlock::FreeList& freeList)
+{
+    m_blockList.remove(block);
+    m_retiredBlocks.push(block);
+    block->didRetireBlock(freeList);
+}
+
 inline void* MarkedAllocator::tryAllocateHelper(size_t bytes)
 {
     if (m_currentBlock) {
@@ -76,9 +83,7 @@ inline void* MarkedAllocator::tryAllocateHelper(size_t bytes)
         double utilization = ((double)MarkedBlock::blockSize - (double)freeList.bytes) / (double)MarkedBlock::blockSize;
         if (utilization >= Options::minMarkedBlockUtilization()) {
             ASSERT(freeList.bytes || !freeList.head);
-            m_blockList.remove(block);
-            m_retiredBlocks.push(block);
-            block->didRetireBlock(freeList);
+            retire(block, freeList);
             continue;
         }
 
@@ -181,7 +186,10 @@ MarkedBlock* MarkedAllocator::allocateBlock(size_t bytes)
 
     size_t cellSize = m_cellSize ? m_cellSize : WTF::roundUpToMultipleOf<MarkedBlock::atomSize>(bytes);
 
-    return MarkedBlock::create(*m_heap, this, blockSize, cellSize, m_needsDestruction);
+    // FIXME: Support allocating storage in marked blocks. This would mean that allocateBlock()
+    // takes a HeapCell::Kind, or something like that.
+    // https://bugs.webkit.org/show_bug.cgi?id=159658
+    return MarkedBlock::create(*m_heap, this, blockSize, cellSize, m_needsDestruction, HeapCell::JSCell);
 }
 
 void MarkedAllocator::addBlock(MarkedBlock* block)
@@ -216,17 +224,25 @@ void MarkedAllocator::reset()
         m_blockList.append(m_retiredBlocks);
 
     m_nextBlockToSweep = m_blockList.head();
-}
 
-struct LastChanceToFinalize : MarkedBlock::VoidFunctor {
-    void operator()(MarkedBlock* block) { block->lastChanceToFinalize(); }
-};
+    if (UNLIKELY(Options::useImmortalObjects())) {
+        MarkedBlock* next;
+        for (MarkedBlock*& block = m_nextBlockToSweep; block; block = next) {
+            next = block->next();
+
+            MarkedBlock::FreeList freeList = block->sweep(MarkedBlock::SweepToFreeList);
+            retire(block, freeList);
+        }
+    }
+}
 
 void MarkedAllocator::lastChanceToFinalize()
 {
     m_blockList.append(m_retiredBlocks);
-    LastChanceToFinalize functor;
-    forEachBlock(functor);
+    forEachBlock(
+        [&] (MarkedBlock* block) {
+            block->lastChanceToFinalize();
+        });
 }
 
 } // namespace JSC

@@ -284,7 +284,7 @@ private:
         return;
 
     ASSERT(!_applicationStateTracker);
-    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationWillEnterForeground));
+    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationDidCreateWindowContext), @selector(_applicationDidFinishSnapshottingAfterEnteringBackground), @selector(_applicationWillEnterForeground));
 }
 
 - (WKBrowsingContextController *)browsingContextController
@@ -601,11 +601,20 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
 }
 
+- (void)_applicationDidCreateWindowContext
+{
+    if (auto drawingArea = _page->drawingArea())
+        drawingArea->hideContentUntilAnyUpdate();
+}
+
+- (void)_applicationDidFinishSnapshottingAfterEnteringBackground
+{
+    _page->applicationDidFinishSnapshottingAfterEnteringBackground();
+}
+
 - (void)_applicationWillEnterForeground
 {
     _page->applicationWillEnterForeground();
-    if (auto drawingArea = _page->drawingArea())
-        drawingArea->hideContentUntilAnyUpdate();
     _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow, true, WebPageProxy::ViewStateChangeDispatchMode::Immediate);
 }
 

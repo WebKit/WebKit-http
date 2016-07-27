@@ -93,6 +93,10 @@
 #include "WebSoupCustomProtocolRequestManager.h"
 #endif
 
+#if OS(LINUX)
+#include "MemoryPressureMonitor.h"
+#endif
+
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
 #endif
@@ -238,7 +242,7 @@ WebProcessPool::~WebProcessPool()
 
     m_iconDatabase->invalidate();
     m_iconDatabase->clearProcessPool();
-    WebIconDatabase* rawIconDatabase = m_iconDatabase.release().leakRef();
+    WebIconDatabase* rawIconDatabase = m_iconDatabase.leakRef();
     rawIconDatabase->derefWhenAppropriate();
 
     invalidateCallbackMap(m_dictionaryCallbacks, CallbackBase::Error::OwnerWasInvalidated);
@@ -368,6 +372,11 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess()
     String parentBundleDirectory = this->parentBundleDirectory();
     if (!parentBundleDirectory.isEmpty())
         SandboxExtension::createHandle(parentBundleDirectory, SandboxExtension::ReadOnly, parameters.parentBundleDirectoryExtensionHandle);
+#endif
+
+#if OS(LINUX)
+    if (MemoryPressureMonitor::isEnabled())
+        parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
 #endif
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
@@ -626,6 +635,8 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
 #if OS(LINUX)
     parameters.shouldEnableMemoryPressureReliefLogging = true;
+    if (MemoryPressureMonitor::isEnabled())
+        parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
 #endif
 
     parameters.resourceLoadStatisticsEnabled = resourceLoadStatisticsEnabled();
@@ -1100,7 +1111,6 @@ void WebProcessPool::clearCachedCredentials()
 void WebProcessPool::terminateDatabaseProcess()
 {
 #if ENABLE(DATABASE_PROCESS)
-    ASSERT(m_processes.isEmpty());
     if (!m_databaseProcess)
         return;
 

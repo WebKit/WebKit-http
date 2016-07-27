@@ -97,6 +97,7 @@
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/Settings.h>
+#include <WebCore/UserGestureIndicator.h>
 #include <unistd.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashCountedSet.h>
@@ -266,7 +267,9 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     ASSERT(m_pageMap.isEmpty());
 
 #if OS(LINUX)
-    WebCore::MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
+    if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
+        MemoryPressureHandler::singleton().setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
+    MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
 #endif
 
     platformInitializeWebProcess(WTFMove(parameters));
@@ -512,7 +515,7 @@ void WebProcess::destroyPrivateBrowsingSession(SessionID sessionID)
 
 void WebProcess::ensureLegacyPrivateBrowsingSessionInNetworkProcess()
 {
-    networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::EnsureLegacyPrivateBrowsingSession(), 0);
+    networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::EnsureLegacyPrivateBrowsingSession(), 0);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -536,7 +539,7 @@ void WebProcess::setCacheModel(uint32_t cm)
 void WebProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
-#if USE(NETWORK_SESSION) && !USE(CREDENTIAL_STORAGE_WITH_NETWORK_SESSION)
+#if USE(NETWORK_SESSION)
     NetworkSession::defaultSession().clearCredentials();
 #endif
 }
@@ -717,6 +720,33 @@ WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupDat
     }
 
     return result.iterator->value.get();
+}
+
+static uint64_t nextUserGestureTokenIdentifier()
+{
+    static uint64_t identifier = 1;
+    return identifier++;
+}
+
+uint64_t WebProcess::userGestureTokenIdentifier(RefPtr<UserGestureToken> token)
+{
+    if (!token || !token->processingUserGesture())
+        return 0;
+
+    auto result = m_userGestureTokens.ensure(token.get(), [] { return nextUserGestureTokenIdentifier(); });
+    if (result.isNewEntry) {
+        result.iterator->key->addDestructionObserver([] (UserGestureToken& tokenBeingDestroyed) {
+            WebProcess::singleton().userGestureTokenDestroyed(tokenBeingDestroyed);
+        });
+    }
+    
+    return result.iterator->value;
+}
+
+void WebProcess::userGestureTokenDestroyed(UserGestureToken& token)
+{
+    auto identifier = m_userGestureTokens.take(&token);
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidDestroyUserGestureToken(identifier), 0);
 }
 
 void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear)
@@ -1014,7 +1044,7 @@ void WebProcess::setInjectedBundleParameters(const IPC::DataReference& value)
     injectedBundle->setBundleParameters(value);
 }
 
-NetworkProcessConnection* WebProcess::networkConnection()
+NetworkProcessConnection& WebProcess::networkConnection()
 {
     // If we've lost our connection to the network process (e.g. it crashed) try to re-establish it.
     if (!m_networkProcessConnection)
@@ -1024,7 +1054,7 @@ NetworkProcessConnection* WebProcess::networkConnection()
     if (!m_networkProcessConnection)
         CRASH();
     
-    return m_networkProcessConnection.get();
+    return *m_networkProcessConnection;
 }
 
 void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connection)
@@ -1474,7 +1504,7 @@ void WebProcess::prefetchDNS(const String& hostname)
         return;
 
     if (m_dnsPrefetchedHosts.add(hostname).isNewEntry)
-        networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::PrefetchDNS(hostname), 0);
+        networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::PrefetchDNS(hostname), 0);
     // The DNS prefetched hosts cache is only to avoid asking for the same hosts too many times
     // in a very short period of time, producing a lot of IPC traffic. So we clear this cache after
     // some time of no DNS requests.

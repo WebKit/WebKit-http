@@ -1544,7 +1544,7 @@ CSSParser::SourceSize::SourceSize(MediaQueryExpression&& expression, Ref<CSSValu
 {
 }
 
-CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
+Optional<CSSParser::SourceSize> CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
 {
     RefPtr<CSSValue> value;
     if (isCalculation(parserValue)) {
@@ -1555,6 +1555,8 @@ CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, C
     if (!value)
         value = parserValue.createCSSValue();
     destroy(parserValue);
+    if (!value)
+        return Nullopt;
     // FIXME: Calling the constructor explicitly here to work around an MSVC bug.
     // For other compilers, we did not need to define the constructors and we could use aggregate initialization syntax.
     return SourceSize(WTFMove(expression), value.releaseNonNull());
@@ -1601,6 +1603,23 @@ Ref<ImmutableStyleProperties> CSSParser::createStyleProperties()
         results.remove(0, unusedEntries);
 
     return ImmutableStyleProperties::create(results.data(), results.size(), m_context.mode);
+}
+
+void CSSParser::addPropertyWithPrefixingVariant(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
+{
+    addProperty(propId, value.copyRef(), important, implicit);
+
+    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propId);
+    if (prefixingVariant == propId)
+        return;
+
+    if (m_currentShorthand) {
+        // We can't use ShorthandScope here as we can already be inside one (e.g we are parsing CSSTransition).
+        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
+        addProperty(prefixingVariant, WTFMove(value), important, implicit);
+        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
+    } else
+        addProperty(prefixingVariant, WTFMove(value), important, implicit);
 }
 
 void CSSParser::addProperty(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
@@ -1876,6 +1895,13 @@ RefPtr<CSSValue> CSSParser::parseVariableDependentValue(CSSPropertyID propID, co
     return nullptr;
 }
 
+#if ENABLE(CSS_IMAGE_SET)
+static bool isImageSetFunctionValue(const CSSParserValue& value)
+{
+    return value.unit == CSSParserValue::Function && (equalLettersIgnoringASCIICase(value.function->name, "image-set(") || equalLettersIgnoringASCIICase(value.function->name, "-webkit-image-set("));
+}
+#endif
+
 bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 {
     if (!m_valueList || !m_valueList->current())
@@ -2092,7 +2118,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                 if (!uri.isNull())
                     image = CSSImageValue::create(completeURL(uri));
 #if ENABLE(CSS_IMAGE_SET) && ENABLE(MOUSE_CURSOR_SCALE)
-            } else if (value->unit == CSSParserValue::Function && equalLettersIgnoringASCIICase(value->function->name, "-webkit-image-set(")) {
+            } else if (isImageSetFunctionValue(*value)) {
                 image = parseImageSet();
                 if (!image)
                     break;
@@ -2225,7 +2251,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                 return false;
         }
 #if ENABLE(CSS_IMAGE_SET)
-        else if (valueWithCalculation.value().unit == CSSParserValue::Function && equalLettersIgnoringASCIICase(valueWithCalculation.value().function->name, "-webkit-image-set(")) {
+        else if (isImageSetFunctionValue(valueWithCalculation.value())) {
             parsedValue = parseImageSet();
             if (!parsedValue)
                 return false;
@@ -2713,7 +2739,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         RefPtr<CSSValue> val;
         AnimationParseContext context;
         if (parseAnimationProperty(propId, val, context)) {
-            addProperty(propId, WTFMove(val), important);
+            addPropertyWithPrefixingVariant(propId, WTFMove(val), important);
             return true;
         }
         return false;
@@ -3946,7 +3972,7 @@ bool CSSParser::parseTransitionShorthand(CSSPropertyID propId, bool important)
 
     // Now add all of the properties we found.
     for (i = 0; i < numProperties; ++i)
-        addProperty(shorthand.properties()[i], WTFMove(values[i]), important);
+        addPropertyWithPrefixingVariant(shorthand.properties()[i], WTFMove(values[i]), important);
 
     return true;
 }
@@ -4254,7 +4280,7 @@ bool CSSParser::parseContent(CSSPropertyID propId, bool important)
                 if (!parsedValue)
                     return false;
 #if ENABLE(CSS_IMAGE_SET)
-            } else if (equalLettersIgnoringASCIICase(value->function->name, "-webkit-image-set(")) {
+            } else if (isImageSetFunctionValue(*value)) {
                 parsedValue = parseImageSet();
                 if (!parsedValue)
                     return false;
@@ -4352,7 +4378,7 @@ bool CSSParser::parseFillImage(CSSParserValueList& valueList, RefPtr<CSSValue>& 
         return parseGeneratedImage(valueList, value);
     
 #if ENABLE(CSS_IMAGE_SET)
-    if (valueList.current()->unit == CSSParserValue::Function && equalLettersIgnoringASCIICase(valueList.current()->function->name, "-webkit-image-set(")) {
+    if (isImageSetFunctionValue(*valueList.current())) {
         value = parseImageSet();
         if (value)
             return true;
@@ -5600,13 +5626,13 @@ bool CSSParser::parseGridGapShorthand(bool important)
     return true;
 }
 
-RefPtr<CSSValue> CSSParser::parseGridTemplateColumns()
+RefPtr<CSSValue> CSSParser::parseGridTemplateColumns(TrackListType trackListType)
 {
     ASSERT(isCSSGridLayoutEnabled());
 
     if (!(m_valueList->current() && isForwardSlashOperator(*m_valueList->current()) && m_valueList->next()))
         return nullptr;
-    if (auto columnsValue = parseGridTrackList()) {
+    if (auto columnsValue = parseGridTrackList(trackListType)) {
         if (m_valueList->current())
             return nullptr;
         return columnsValue;
@@ -5659,11 +5685,11 @@ bool CSSParser::parseGridTemplateRowsAndAreasAndColumns(bool important)
             trailingIdentWasAdded = parseGridLineNames(*m_valueList, templateRows);
     }
 
-    // [<track-list> /]?
+    // [/ <explicit-track-list> ]?
     RefPtr<CSSValue> templateColumns;
     if (m_valueList->current()) {
         ASSERT(isForwardSlashOperator(*m_valueList->current()));
-        templateColumns = parseGridTemplateColumns();
+        templateColumns = parseGridTemplateColumns(DisallowRepeat);
         if (!templateColumns)
             return false;
         // The template-columns <track-list> can't be 'none'.
@@ -5899,7 +5925,7 @@ static bool isGridTrackFixedSized(const CSSValue& value)
     return isGridTrackFixedSized(min) || isGridTrackFixedSized(max);
 }
 
-RefPtr<CSSValue> CSSParser::parseGridTrackList()
+RefPtr<CSSValue> CSSParser::parseGridTrackList(TrackListType trackListType)
 {
     ASSERT(isCSSGridLayoutEnabled());
 
@@ -5922,6 +5948,8 @@ RefPtr<CSSValue> CSSParser::parseGridTrackList()
         if (isForwardSlashOperator(*currentValue))
             break;
         if (currentValue->unit == CSSParserValue::Function && equalLettersIgnoringASCIICase(currentValue->function->name, "repeat(")) {
+            if (trackListType == DisallowRepeat)
+                return nullptr;
             bool isAutoRepeat;
             if (!parseGridTrackRepeatFunction(values, isAutoRepeat, allTracksAreFixedSized))
                 return nullptr;
@@ -8302,7 +8330,7 @@ bool CSSParser::parseBorderImage(CSSPropertyID propId, RefPtr<CSSValue>& result,
                 else
                     return false;
 #if ENABLE(CSS_IMAGE_SET)
-            } else if (currentValue->unit == CSSParserValue::Function && equalLettersIgnoringASCIICase(currentValue->function->name, "-webkit-image-set(")) {
+            } else if (isImageSetFunctionValue(*currentValue)) {
                 RefPtr<CSSValue> value = parseImageSet();
                 if (value)
                     context.commitImage(value.releaseNonNull());

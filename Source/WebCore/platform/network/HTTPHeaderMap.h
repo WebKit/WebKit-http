@@ -30,9 +30,6 @@
 #include <utility>
 #include <wtf/HashMap.h>
 #include <wtf/Optional.h>
-#include <wtf/Vector.h>
-#include <wtf/text/AtomicString.h>
-#include <wtf/text/AtomicStringHash.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
@@ -133,6 +130,13 @@ public:
     WEBCORE_EXPORT void add(const String& name, const String& value);
     WEBCORE_EXPORT bool contains(const String&) const;
     bool remove(const String&);
+
+#if USE(CF)
+    void set(CFStringRef name, const String& value);
+#ifdef __OBJC__
+    void set(NSString *name, const String& value) { set((__bridge CFStringRef)name, value); }
+#endif
+#endif
 
     WEBCORE_EXPORT String get(HTTPHeaderName) const;
     void set(HTTPHeaderName, const String& value);

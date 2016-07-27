@@ -26,6 +26,7 @@
 #ifndef JSGenericTypedArrayViewConstructorInlines_h
 #define JSGenericTypedArrayViewConstructorInlines_h
 
+#include "BuiltinNames.h"
 #include "Error.h"
 #include "IteratorOperations.h"
 #include "JSArrayBuffer.h"
@@ -48,11 +49,11 @@ void JSGenericTypedArrayViewConstructor<ViewClass>::finishCreation(VM& vm, JSGlo
 {
     Base::finishCreation(vm, name);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(3), DontEnum | DontDelete | ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontEnum | DontDelete | ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->BYTES_PER_ELEMENT, jsNumber(ViewClass::elementSize), DontEnum | ReadOnly | DontDelete);
 
     if (privateAllocator)
-        putDirectBuiltinFunction(vm, globalObject, vm.propertyNames->allocateTypedArrayPrivateName, privateAllocator, DontEnum | DontDelete | ReadOnly);
+        putDirectBuiltinFunction(vm, globalObject, vm.propertyNames->builtinNames().allocateTypedArrayPrivateName(), privateAllocator, DontEnum | DontDelete | ReadOnly);
 }
 
 template<typename ViewClass>
@@ -80,7 +81,7 @@ template<typename ViewClass>
 inline JSObject* constructGenericTypedArrayViewFromIterator(ExecState* exec, Structure* structure, JSValue iterator)
 {
     if (!iterator.isObject())
-        return throwTypeError(exec, "Symbol.Iterator for the first argument did not return an object.");
+        return throwTypeError(exec, ASCIILiteral("Symbol.Iterator for the first argument did not return an object."));
 
     MarkedArgumentBuffer storage;
     while (true) {
@@ -138,7 +139,7 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
     ASSERT(!offset && !lengthOpt);
     
     if (ViewClass::TypedArrayStorageType == TypeDataView)
-        return throwTypeError(exec, "Expected ArrayBuffer for the first argument.");
+        return throwTypeError(exec, ASCIILiteral("Expected ArrayBuffer for the first argument."));
     
     // For everything but DataView, we allow construction with any of:
     // - Another array. This creates a copy of the of that array.
@@ -173,7 +174,7 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
                     CallData callData;
                     CallType callType = getCallData(iteratorFunc, callData);
                     if (callType == CallType::None)
-                        return throwTypeError(exec, "Symbol.Iterator for the first argument cannot be called.");
+                        return throwTypeError(exec, ASCIILiteral("Symbol.Iterator for the first argument cannot be called."));
 
                     ArgList arguments;
                     JSValue iterator = call(exec, iteratorFunc, callType, callData, object, arguments);
@@ -205,11 +206,11 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
     if (firstValue.isInt32())
         length = firstValue.asInt32();
     else if (!firstValue.isNumber())
-        return throwTypeError(exec, "Invalid array length argument");
+        return throwTypeError(exec, ASCIILiteral("Invalid array length argument"));
     else {
         length = static_cast<int>(firstValue.asNumber());
         if (length != firstValue.asNumber())
-            return throwTypeError(exec, "Invalid array length argument (fractional lengths not allowed)");
+            return throwTypeError(exec, ASCIILiteral("Invalid array length argument (fractional lengths not allowed)"));
     }
 
     if (length < 0)
@@ -233,7 +234,7 @@ EncodedJSValue JSC_HOST_CALL constructGenericTypedArrayView(ExecState* exec)
 
     if (!argCount) {
         if (ViewClass::TypedArrayStorageType == TypeDataView)
-            return throwVMError(exec, createTypeError(exec, "DataView constructor requires at least one argument."));
+            return throwVMTypeError(exec, ASCIILiteral("DataView constructor requires at least one argument."));
 
         return JSValue::encode(ViewClass::create(exec, structure, 0));
     }

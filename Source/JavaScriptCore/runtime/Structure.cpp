@@ -435,9 +435,9 @@ bool Structure::needsSlowPutIndexing() const
 NonPropertyTransition Structure::suggestedArrayStorageTransition() const
 {
     if (needsSlowPutIndexing())
-        return AllocateSlowPutArrayStorage;
+        return NonPropertyTransition::AllocateSlowPutArrayStorage;
     
-    return AllocateArrayStorage;
+    return NonPropertyTransition::AllocateArrayStorage;
 }
 
 Structure* Structure::addPropertyTransition(VM& vm, Structure* structure, PropertyName propertyName, unsigned attributes, PropertyOffset& offset)
@@ -587,57 +587,19 @@ Structure* Structure::toUncacheableDictionaryTransition(VM& vm, Structure* struc
     return toDictionaryTransition(vm, structure, UncachedDictionaryKind);
 }
 
-// In future we may want to cache this transition.
 Structure* Structure::sealTransition(VM& vm, Structure* structure)
 {
-    Structure* transition = preventExtensionsTransition(vm, structure);
-
-    if (transition->propertyTable()) {
-        PropertyTable::iterator end = transition->propertyTable()->end();
-        for (PropertyTable::iterator iter = transition->propertyTable()->begin(); iter != end; ++iter)
-            iter->attributes |= DontDelete;
-    }
-
-    transition->checkOffsetConsistency();
-    return transition;
+    return nonPropertyTransition(vm, structure, NonPropertyTransition::Seal);
 }
 
-// In future we may want to cache this transition.
 Structure* Structure::freezeTransition(VM& vm, Structure* structure)
 {
-    Structure* transition = preventExtensionsTransition(vm, structure);
-
-    if (transition->propertyTable()) {
-        PropertyTable::iterator iter = transition->propertyTable()->begin();
-        PropertyTable::iterator end = transition->propertyTable()->end();
-        if (iter != end)
-            transition->setHasReadOnlyOrGetterSetterPropertiesExcludingProto(true);
-        for (; iter != end; ++iter)
-            iter->attributes |= iter->attributes & Accessor ? DontDelete : (DontDelete | ReadOnly);
-    }
-
-    ASSERT(transition->hasReadOnlyOrGetterSetterPropertiesExcludingProto() || !transition->classInfo()->hasStaticSetterOrReadonlyProperties());
-    ASSERT(transition->hasGetterSetterProperties() || !transition->classInfo()->hasStaticSetterOrReadonlyProperties());
-    transition->checkOffsetConsistency();
-    return transition;
+    return nonPropertyTransition(vm, structure, NonPropertyTransition::Freeze);
 }
 
-// In future we may want to cache this transition.
 Structure* Structure::preventExtensionsTransition(VM& vm, Structure* structure)
 {
-    Structure* transition = create(vm, structure);
-
-    // Don't set m_offset, as one cannot transition to this.
-
-    DeferGC deferGC(vm.heap);
-    structure->materializePropertyMapIfNecessary(vm, deferGC);
-    transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
-    transition->m_offset = structure->m_offset;
-    transition->setDidPreventExtensions(true);
-    transition->pin();
-
-    transition->checkOffsetConsistency();
-    return transition;
+    return nonPropertyTransition(vm, structure, NonPropertyTransition::PreventExtensions);
 }
 
 PropertyTable* Structure::takePropertyTableOrCloneIfPinned(VM& vm)
@@ -662,12 +624,14 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
     unsigned attributes = toAttributes(transitionKind);
     IndexingType indexingType = newIndexingType(structure->indexingTypeIncludingHistory(), transitionKind);
     
-    if (JSGlobalObject* globalObject = structure->m_globalObject.get()) {
-        if (globalObject->isOriginalArrayStructure(structure)) {
-            Structure* result = globalObject->originalArrayStructureForIndexingType(indexingType);
-            if (result->indexingTypeIncludingHistory() == indexingType) {
-                structure->didTransitionFromThisStructure();
-                return result;
+    if (changesIndexingType(transitionKind)) {
+        if (JSGlobalObject* globalObject = structure->m_globalObject.get()) {
+            if (globalObject->isOriginalArrayStructure(structure)) {
+                Structure* result = globalObject->originalArrayStructureForIndexingType(indexingType);
+                if (result->indexingTypeIncludingHistory() == indexingType) {
+                    structure->didTransitionFromThisStructure();
+                    return result;
+                }
             }
         }
     }
@@ -679,12 +643,44 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
         return existingTransition;
     }
     
+    DeferGC deferGC(vm.heap);
+    
     Structure* transition = create(vm, structure);
     transition->setAttributesInPrevious(attributes);
     transition->m_blob.setIndexingType(indexingType);
-    transition->propertyTable().set(vm, transition, structure->takePropertyTableOrCloneIfPinned(vm));
-    transition->m_offset = structure->m_offset;
-    checkOffset(transition->m_offset, transition->inlineCapacity());
+    
+    if (preventsExtensions(transitionKind))
+        transition->setDidPreventExtensions(true);
+    
+    unsigned additionalPropertyAttributes = 0;
+    if (setsDontDeleteOnAllProperties(transitionKind))
+        additionalPropertyAttributes |= DontDelete;
+    if (setsReadOnlyOnAllProperties(transitionKind))
+        additionalPropertyAttributes |= ReadOnly;
+    if (additionalPropertyAttributes) {
+        // We pin the property table on transitions that do wholesale editing of the property
+        // table, since our logic for walking the property transition chain to rematerialize the
+        // table doesn't know how to take into account such wholesale edits.
+        
+        structure->materializePropertyMapIfNecessary(vm, deferGC);
+        transition->propertyTable().set(vm, transition, structure->copyPropertyTableForPinning(vm));
+        transition->m_offset = structure->m_offset;
+        transition->pinForCaching();
+        
+        if (transition->propertyTable()) {
+            for (auto& entry : *transition->propertyTable().get())
+                entry.attributes |= additionalPropertyAttributes;
+        }
+    } else {
+        transition->propertyTable().set(vm, transition, structure->takePropertyTableOrCloneIfPinned(vm));
+        transition->m_offset = structure->m_offset;
+        checkOffset(transition->m_offset, transition->inlineCapacity());
+    }
+    
+    if (setsReadOnlyOnAllProperties(transitionKind)
+        && transition->propertyTable()
+        && !transition->propertyTable()->isEmpty())
+        transition->setHasReadOnlyOrGetterSetterPropertiesExcludingProto(true);
     
     if (structure->isDictionary())
         transition->pin();
@@ -692,6 +688,7 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
         ConcurrentJITLocker locker(structure->m_lock);
         structure->m_transitionTable.add(vm, transition);
     }
+
     transition->checkOffsetConsistency();
     return transition;
 }
@@ -817,6 +814,13 @@ void Structure::pin()
     m_nameInPrevious = nullptr;
 }
 
+void Structure::pinForCaching()
+{
+    ASSERT(propertyTable());
+    setIsPinnedPropertyTable(true);
+    m_nameInPrevious = nullptr;
+}
+
 void Structure::allocateRareData(VM& vm)
 {
     ASSERT(!hasRareData());
@@ -858,7 +862,7 @@ void Structure::startWatchingPropertyForReplacements(VM& vm, PropertyName proper
 
 void Structure::didCachePropertyReplacement(VM& vm, PropertyOffset offset)
 {
-    ensurePropertyReplacementWatchpointSet(vm, offset)->fireAll("Did cache property replacement");
+    ensurePropertyReplacementWatchpointSet(vm, offset)->fireAll(vm, "Did cache property replacement");
 }
 
 void Structure::startWatchingInternalProperties(VM& vm)
@@ -1075,7 +1079,7 @@ DeferredStructureTransitionWatchpointFire::DeferredStructureTransitionWatchpoint
 DeferredStructureTransitionWatchpointFire::~DeferredStructureTransitionWatchpointFire()
 {
     if (m_structure)
-        m_structure->transitionWatchpointSet().fireAll(StructureFireDetail(m_structure));
+        m_structure->transitionWatchpointSet().fireAll(*m_structure->vm(), StructureFireDetail(m_structure));
 }
 
 void DeferredStructureTransitionWatchpointFire::add(const Structure* structure)
@@ -1096,7 +1100,7 @@ void Structure::didTransitionFromThisStructure(DeferredStructureTransitionWatchp
     if (deferred)
         deferred->add(this);
     else
-        m_transitionWatchpointSet.fireAll(StructureFireDetail(this));
+        m_transitionWatchpointSet.fireAll(*vm(), StructureFireDetail(this));
 }
 
 JSValue Structure::prototypeForLookup(CodeBlock* codeBlock) const
@@ -1197,16 +1201,16 @@ PassRefPtr<StructureShape> Structure::toStructureShape(JSValue value)
         curShape->markAsFinal();
 
         if (curStructure->storedPrototypeStructure()) {
-            RefPtr<StructureShape> newShape = StructureShape::create();
-            curShape->setProto(newShape);
-            curShape = newShape.release();
+            auto newShape = StructureShape::create();
+            curShape->setProto(newShape.ptr());
+            curShape = WTFMove(newShape);
             curValue = curStructure->storedPrototype();
         }
 
         curStructure = curStructure->storedPrototypeStructure();
     }
     
-    return baseShape.release();
+    return WTFMove(baseShape);
 }
 
 bool Structure::canUseForAllocationsOf(Structure* other)

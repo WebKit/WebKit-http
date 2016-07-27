@@ -138,8 +138,6 @@ void Connection::platformInvalidate()
         m_exceptionPort = MACH_PORT_NULL;
     }
 #endif
-
-    m_xpcConnection = nullptr;
 }
     
 void Connection::terminateSoon(double intervalInSeconds)
@@ -523,7 +521,7 @@ void Connection::receiveSourceEventHandler()
             StringReference messageNameReference = decoder->messageName();
             String messageName(String(messageNameReference.data(), messageNameReference.size()));
 
-            m_clientRunLoop.dispatch([protectedThis = Ref<Connection>(*this), messageReceiverName = WTFMove(messageReceiverName), messageName = WTFMove(messageName)]() mutable {
+            RunLoop::main().dispatch([protectedThis = makeRef(*this), messageReceiverName = WTFMove(messageReceiverName), messageName = WTFMove(messageName)]() mutable {
                 protectedThis->dispatchDidReceiveInvalidMessage(messageReceiverName.utf8(), messageName.utf8());
             });
             return;

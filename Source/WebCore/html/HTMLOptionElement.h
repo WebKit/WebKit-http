@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2010, 2011, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -60,7 +60,7 @@ public:
 
     bool ownElementDisabled() const { return m_disabled; }
 
-    bool isDisabledFormControl() const override;
+    bool isDisabledFormControl() const final;
 
     String textIndentedToRespectGroupLabel() const;
 
@@ -69,17 +69,18 @@ public:
 private:
     HTMLOptionElement(const QualifiedName&, Document&);
 
-    bool isFocusable() const override;
-    bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool isFocusable() const final;
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
+    bool matchesDefaultPseudoClass() const final;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void accessKeyAction(bool) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void accessKeyAction(bool) final;
 
-    void childrenChanged(const ChildChange&) override;
+    void childrenChanged(const ChildChange&) final;
 
-    void willResetComputedStyle() override;
+    void willResetComputedStyle() final;
 
     String collectOptionInnerText() const;
 

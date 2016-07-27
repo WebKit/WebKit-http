@@ -41,6 +41,7 @@ private:
     // DrawingAreaProxy
     void deviceScaleFactorDidChange() override;
     void sizeDidChange() override;
+    void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) override;
 
     // IPC message handlers
     void update(uint64_t backingStoreStateID, const UpdateInfo&) override;

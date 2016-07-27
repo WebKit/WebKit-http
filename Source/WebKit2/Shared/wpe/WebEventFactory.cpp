@@ -101,7 +101,6 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_even
     WebMouseEvent::Button button = WebMouseEvent::NoButton;
     switch (event->type) {
     case wpe_input_pointer_event_type_motion:
-        break;
     case wpe_input_pointer_event_type_button:
         if (event->button == 1)
             button = WebMouseEvent::LeftButton;
@@ -114,10 +113,12 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_even
         ASSERT_NOT_REACHED();
     }
 
+    unsigned clickCount = (type == WebEvent::MouseDown) ? 1 : 0;
+
     // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
     WebCore::IntPoint position(event->x, event->y);
     return WebMouseEvent(type, button, position, position,
-        0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), event->time);
+        0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(0), event->time);
 }
 
 WebWheelEvent WebEventFactory::createWebWheelEvent(struct wpe_input_axis_event* event)

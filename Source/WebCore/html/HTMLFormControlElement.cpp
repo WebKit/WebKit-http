@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2016 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -77,7 +77,7 @@ HTMLFormControlElement::~HTMLFormControlElement()
 
 String HTMLFormControlElement::formEnctype() const
 {
-    const AtomicString& formEnctypeAttr = fastGetAttribute(formenctypeAttr);
+    const AtomicString& formEnctypeAttr = attributeWithoutSynchronization(formenctypeAttr);
     if (formEnctypeAttr.isNull())
         return emptyString();
     return FormSubmission::Attributes::parseEncodingType(formEnctypeAttr);
@@ -85,12 +85,12 @@ String HTMLFormControlElement::formEnctype() const
 
 void HTMLFormControlElement::setFormEnctype(const String& value)
 {
-    setAttribute(formenctypeAttr, value);
+    setAttributeWithoutSynchronization(formenctypeAttr, value);
 }
 
 String HTMLFormControlElement::formMethod() const
 {
-    const AtomicString& formMethodAttr = fastGetAttribute(formmethodAttr);
+    const AtomicString& formMethodAttr = attributeWithoutSynchronization(formmethodAttr);
     if (formMethodAttr.isNull())
         return emptyString();
     return FormSubmission::Attributes::methodString(FormSubmission::Attributes::parseMethodType(formMethodAttr));
@@ -98,17 +98,17 @@ String HTMLFormControlElement::formMethod() const
 
 void HTMLFormControlElement::setFormMethod(const String& value)
 {
-    setAttribute(formmethodAttr, value);
+    setAttributeWithoutSynchronization(formmethodAttr, value);
 }
 
 bool HTMLFormControlElement::formNoValidate() const
 {
-    return fastHasAttribute(formnovalidateAttr);
+    return hasAttributeWithoutSynchronization(formnovalidateAttr);
 }
 
 String HTMLFormControlElement::formAction() const
 {
-    const AtomicString& value = fastGetAttribute(formactionAttr);
+    const AtomicString& value = attributeWithoutSynchronization(formactionAttr);
     if (value.isEmpty())
         return document().url();
     return getURLAttribute(formactionAttr);
@@ -123,7 +123,7 @@ bool HTMLFormControlElement::computeIsDisabledByFieldsetAncestor() const
 {
     Element* previousAncestor = nullptr;
     for (Element* ancestor = parentElement(); ancestor; ancestor = ancestor->parentElement()) {
-        if (is<HTMLFieldSetElement>(*ancestor) && ancestor->fastHasAttribute(disabledAttr)) {
+        if (is<HTMLFieldSetElement>(*ancestor) && ancestor->hasAttributeWithoutSynchronization(disabledAttr)) {
             HTMLFieldSetElement& fieldSetAncestor = downcast<HTMLFieldSetElement>(*ancestor);
             bool isInFirstLegend = is<HTMLLegendElement>(previousAncestor) && previousAncestor == fieldSetAncestor.legend();
             return !isInFirstLegend;
@@ -196,7 +196,7 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
 {
     if (!element->renderer())
         return false;
-    if (!element->fastHasAttribute(autofocusAttr))
+    if (!element->hasAttributeWithoutSynchronization(autofocusAttr))
         return false;
     if (!element->inDocument() || !element->document().renderView())
         return false;
@@ -564,18 +564,13 @@ HTMLFormElement* HTMLFormControlElement::virtualForm() const
     return FormAssociatedElement::form();
 }
 
-bool HTMLFormControlElement::isDefaultButtonForForm() const
-{
-    return isSuccessfulSubmitButton() && form() && form()->defaultButton() == this;
-}
-
 #if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
 
 // FIXME: We should look to share this code with class HTMLFormElement instead of duplicating the logic.
 
 bool HTMLFormControlElement::autocorrect() const
 {
-    const AtomicString& autocorrectValue = fastGetAttribute(autocorrectAttr);
+    const AtomicString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
     if (!autocorrectValue.isEmpty())
         return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
     if (HTMLFormElement* form = this->form())
@@ -585,12 +580,12 @@ bool HTMLFormControlElement::autocorrect() const
 
 void HTMLFormControlElement::setAutocorrect(bool autocorrect)
 {
-    setAttribute(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
+    setAttributeWithoutSynchronization(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
 }
 
 WebAutocapitalizeType HTMLFormControlElement::autocapitalizeType() const
 {
-    WebAutocapitalizeType type = autocapitalizeTypeForAttributeValue(fastGetAttribute(autocapitalizeAttr));
+    WebAutocapitalizeType type = autocapitalizeTypeForAttributeValue(attributeWithoutSynchronization(autocapitalizeAttr));
     if (type == WebAutocapitalizeTypeDefault) {
         if (HTMLFormElement* form = this->form())
             return form->autocapitalizeType();
@@ -605,7 +600,7 @@ const AtomicString& HTMLFormControlElement::autocapitalize() const
 
 void HTMLFormControlElement::setAutocapitalize(const AtomicString& value)
 {
-    setAttribute(autocapitalizeAttr, value);
+    setAttributeWithoutSynchronization(autocapitalizeAttr, value);
 }
 
 #endif
@@ -626,7 +621,7 @@ String HTMLFormControlElement::autocomplete() const
 
 void HTMLFormControlElement::setAutocomplete(const String& value)
 {
-    setAttribute(autocompleteAttr, value);
+    setAttributeWithoutSynchronization(autocompleteAttr, value);
 }
 
 AutofillMantle HTMLFormControlElement::autofillMantle() const

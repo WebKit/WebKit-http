@@ -35,6 +35,10 @@
     height: 16px;
 }
 
+.timeline-overview-graph.heap-allocations > img.snapshot.invalid {
+    opacity: 0.7;
+}
+
 .timeline-overview-graph.heap-allocations > img.snapshot.selected {
     content: url(../Images/HeapSnapshotSelected.svg);
 }

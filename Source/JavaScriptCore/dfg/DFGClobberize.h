@@ -113,9 +113,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     // scan would read. That's what this does.
     for (InlineCallFrame* inlineCallFrame = node->origin.semantic.inlineCallFrame; inlineCallFrame; inlineCallFrame = inlineCallFrame->directCaller.inlineCallFrame) {
         if (inlineCallFrame->isClosureCall)
-            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + JSStack::Callee));
+            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + CallFrameSlot::callee));
         if (inlineCallFrame->isVarargs())
-            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + JSStack::ArgumentCount));
+            read(AbstractHeap(Stack, inlineCallFrame->stackOffset + CallFrameSlot::argumentCount));
     }
 
     // We don't want to specifically account which nodes can read from the scope
@@ -164,6 +164,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetGlobalObject:
     case StringCharCodeAt:
     case CompareStrictEq:
+    case CompareEqPtr:
+    case IsJSArray:
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
@@ -171,6 +173,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case IsString:
     case IsObject:
     case IsRegExpObject:
+    case IsTypedArrayView:
     case LogicalNot:
     case CheckInBounds:
     case DoubleRep:
@@ -205,7 +208,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(MathDotRandomState);
         write(MathDotRandomState);
         return;
-        
+
     case HasGenericProperty:
     case HasStructureProperty:
     case GetEnumerableLength:
@@ -420,16 +423,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
+    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
         read(MiscFields);
         read(HeapObjectCount);
         write(HeapObjectCount);
-        return;
-
-    case VarInjectionWatchpoint:
-        read(MiscFields);
-        def(HeapLocation(VarInjectionWatchpointLoc, MiscFields), LazyNode(node));
         return;
 
     case IsObjectOrNull:
@@ -480,6 +479,14 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(Heap);
         return;
 
+    case CallEval:
+        ASSERT(!node->origin.semantic.inlineCallFrame);
+        read(AbstractHeap(Stack, graph.m_codeBlock->scopeRegister()));
+        read(AbstractHeap(Stack, virtualRegisterForArgument(0)));
+        read(World);
+        write(Heap);
+        return;
+
     case TailCall:
     case TailCallVarargs:
     case TailCallForwardVarargs:
@@ -498,13 +505,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case GetCallee:
-        read(AbstractHeap(Stack, JSStack::Callee));
-        def(HeapLocation(StackLoc, AbstractHeap(Stack, JSStack::Callee)), LazyNode(node));
+        read(AbstractHeap(Stack, CallFrameSlot::callee));
+        def(HeapLocation(StackLoc, AbstractHeap(Stack, CallFrameSlot::callee)), LazyNode(node));
         return;
         
     case GetArgumentCountIncludingThis:
-        read(AbstractHeap(Stack, JSStack::ArgumentCount));
-        def(HeapLocation(StackPayloadLoc, AbstractHeap(Stack, JSStack::ArgumentCount)), LazyNode(node));
+        read(AbstractHeap(Stack, CallFrameSlot::argumentCount));
+        def(HeapLocation(StackPayloadLoc, AbstractHeap(Stack, CallFrameSlot::argumentCount)), LazyNode(node));
         return;
 
     case GetRestLength:
@@ -880,7 +887,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(JSObject_butterfly);
         AbstractHeap heap(NamedProperties, node->multiGetByOffsetData().identifierNumber);
         read(heap);
-        def(HeapLocation(NamedPropertyLoc, heap, node->child1()), LazyNode(node));
+        // FIXME: We cannot def() for MultiGetByOffset because CSE is not smart enough to decay it
+        // to a CheckStructure.
+        // https://bugs.webkit.org/show_bug.cgi?id=159859
         return;
     }
         
@@ -1170,6 +1179,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(World);
         write(Heap);
         return;
+
+    case ToNumber: {
+        read(World);
+        write(Heap);
+        return;
+    }
         
     case ToString:
     case CallStringConstructor:

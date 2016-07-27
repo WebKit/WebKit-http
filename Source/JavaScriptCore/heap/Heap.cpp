@@ -40,6 +40,7 @@
 #include "HeapVerifier.h"
 #include "IncrementalSweeper.h"
 #include "Interpreter.h"
+#include "JITWorklist.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSLock.h"
@@ -251,75 +252,13 @@ static inline bool isValidThreadState(VM* vm)
     return true;
 }
 
-struct MarkObject : public MarkedBlock::VoidFunctor {
-    inline void visit(JSCell* cell)
-    {
-        if (cell->isZapped())
-            return;
-        Heap::heap(cell)->setMarked(cell);
-    }
-    IterationStatus operator()(JSCell* cell)
-    {
-        visit(cell);
-        return IterationStatus::Continue;
-    }
-};
-
-struct Count : public MarkedBlock::CountFunctor {
-    void operator()(JSCell*) { count(1); }
-};
-
-struct CountIfGlobalObject : MarkedBlock::CountFunctor {
-    inline void visit(JSCell* cell)
-    {
-        if (!cell->isObject())
-            return;
-        if (!asObject(cell)->isGlobalObject())
-            return;
-        count(1);
-    }
-    IterationStatus operator()(JSCell* cell)
-    {
-        visit(cell);
-        return IterationStatus::Continue;
-    }
-};
-
-class RecordType {
-public:
-    typedef std::unique_ptr<TypeCountSet> ReturnType;
-
-    RecordType();
-    IterationStatus operator()(JSCell*);
-    ReturnType returnValue();
-
-private:
-    const char* typeName(JSCell*);
-    std::unique_ptr<TypeCountSet> m_typeCountSet;
-};
-
-inline RecordType::RecordType()
-    : m_typeCountSet(std::make_unique<TypeCountSet>())
+static inline void recordType(TypeCountSet& set, JSCell* cell)
 {
-}
-
-inline const char* RecordType::typeName(JSCell* cell)
-{
+    const char* typeName = "[unknown]";
     const ClassInfo* info = cell->classInfo();
-    if (!info || !info->className)
-        return "[unknown]";
-    return info->className;
-}
-
-inline IterationStatus RecordType::operator()(JSCell* cell)
-{
-    m_typeCountSet->add(typeName(cell));
-    return IterationStatus::Continue;
-}
-
-inline std::unique_ptr<TypeCountSet> RecordType::returnValue()
-{
-    return WTFMove(m_typeCountSet);
+    if (info && info->className)
+        typeName = info->className;
+    set.add(typeName);
 }
 
 } // anonymous namespace
@@ -446,22 +385,17 @@ void Heap::reportAbandonedObjectGraph()
 {
     // Our clients don't know exactly how much memory they
     // are abandoning so we just guess for them.
-    double abandonedBytes = 0.1 * m_sizeAfterLastCollect;
+    size_t abandonedBytes = static_cast<size_t>(0.1 * capacity());
 
     // We want to accelerate the next collection. Because memory has just 
     // been abandoned, the next collection has the potential to 
     // be more profitable. Since allocation is the trigger for collection, 
     // we hasten the next collection by pretending that we've allocated more memory. 
-    didAbandon(abandonedBytes);
-}
-
-void Heap::didAbandon(size_t bytes)
-{
     if (m_fullActivityCallback) {
         m_fullActivityCallback->didAllocate(
             m_sizeAfterLastCollect - m_sizeAfterLastFullCollect + m_bytesAllocatedThisCycle + m_bytesAbandonedSinceLastFullCollect);
     }
-    m_bytesAbandonedSinceLastFullCollect += bytes;
+    m_bytesAbandonedSinceLastFullCollect += abandonedBytes;
 }
 
 void Heap::protect(JSValue k)
@@ -505,11 +439,6 @@ void Heap::finalizeUnconditionalFinalizers()
     m_slotVisitor.finalizeUnconditionalFinalizers();
 }
 
-inline JSStack& Heap::stack()
-{
-    return m_vm->interpreter->stack();
-}
-
 void Heap::willStartIterating()
 {
     m_objectSpace.willStartIterating();
@@ -520,8 +449,11 @@ void Heap::didFinishIterating()
     m_objectSpace.didFinishIterating();
 }
 
-void Heap::completeAllDFGPlans()
+void Heap::completeAllJITPlans()
 {
+#if ENABLE(JIT)
+    JITWorklist::instance()->completeAllForVM(*m_vm);
+#endif // ENABLE(JIT)
 #if ENABLE(DFG_JIT)
     DFG::completeAllPlansForVM(*m_vm);
 #endif
@@ -697,7 +629,7 @@ void Heap::gatherJSStackRoots(ConservativeRoots& roots)
 {
 #if !ENABLE(JIT)
     GCPHASE(GatherJSStackRoots);
-    stack().gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks);
+    m_vm->interpreter->cloopStack().gatherConservativeRoots(roots, m_jitStubRoutines, m_codeBlocks);
 #else
     UNUSED_PARAM(roots);
 #endif
@@ -787,9 +719,12 @@ struct GatherHeapSnapshotData : MarkedBlock::CountFunctor {
     {
     }
 
-    IterationStatus operator()(JSCell* cell)
+    IterationStatus operator()(HeapCell* heapCell, HeapCell::Kind kind) const
     {
-        cell->methodTable()->heapSnapshot(cell, m_builder);
+        if (kind == HeapCell::JSCell) {
+            JSCell* cell = static_cast<JSCell*>(heapCell);
+            cell->methodTable()->heapSnapshot(cell, m_builder);
+        }
         return IterationStatus::Continue;
     }
 
@@ -812,9 +747,10 @@ struct RemoveDeadHeapSnapshotNodes : MarkedBlock::CountFunctor {
     {
     }
 
-    IterationStatus operator()(JSCell* cell)
+    IterationStatus operator()(HeapCell* cell, HeapCell::Kind kind) const
     {
-        m_snapshot.sweepCell(cell);
+        if (kind == HeapCell::JSCell)
+            m_snapshot.sweepCell(static_cast<JSCell*>(cell));
         return IterationStatus::Continue;
     }
 
@@ -1014,29 +950,64 @@ size_t Heap::capacity()
 
 size_t Heap::protectedGlobalObjectCount()
 {
-    return forEachProtectedCell<CountIfGlobalObject>();
+    size_t result = 0;
+    forEachProtectedCell(
+        [&] (JSCell* cell) {
+            if (cell->isObject() && asObject(cell)->isGlobalObject())
+                result++;
+        });
+    return result;
 }
 
 size_t Heap::globalObjectCount()
 {
     HeapIterationScope iterationScope(*this);
-    return m_objectSpace.forEachLiveCell<CountIfGlobalObject>(iterationScope);
+    size_t result = 0;
+    m_objectSpace.forEachLiveCell(
+        iterationScope,
+        [&] (HeapCell* heapCell, HeapCell::Kind kind) -> IterationStatus {
+            if (kind != HeapCell::JSCell)
+                return IterationStatus::Continue;
+            JSCell* cell = static_cast<JSCell*>(heapCell);
+            if (cell->isObject() && asObject(cell)->isGlobalObject())
+                result++;
+            return IterationStatus::Continue;
+        });
+    return result;
 }
 
 size_t Heap::protectedObjectCount()
 {
-    return forEachProtectedCell<Count>();
+    size_t result = 0;
+    forEachProtectedCell(
+        [&] (JSCell*) {
+            result++;
+        });
+    return result;
 }
 
 std::unique_ptr<TypeCountSet> Heap::protectedObjectTypeCounts()
 {
-    return forEachProtectedCell<RecordType>();
+    std::unique_ptr<TypeCountSet> result = std::make_unique<TypeCountSet>();
+    forEachProtectedCell(
+        [&] (JSCell* cell) {
+            recordType(*result, cell);
+        });
+    return result;
 }
 
 std::unique_ptr<TypeCountSet> Heap::objectTypeCounts()
 {
+    std::unique_ptr<TypeCountSet> result = std::make_unique<TypeCountSet>();
     HeapIterationScope iterationScope(*this);
-    return m_objectSpace.forEachLiveCell<RecordType>(iterationScope);
+    m_objectSpace.forEachLiveCell(
+        iterationScope,
+        [&] (HeapCell* cell, HeapCell::Kind kind) -> IterationStatus {
+            if (kind == HeapCell::JSCell)
+                recordType(*result, static_cast<JSCell*>(cell));
+            return IterationStatus::Continue;
+        });
+    return result;
 }
 
 void Heap::deleteAllCodeBlocks()
@@ -1046,7 +1017,7 @@ void Heap::deleteAllCodeBlocks()
     RELEASE_ASSERT(!m_vm->entryScope);
     ASSERT(m_operationInProgress == NoOperation);
 
-    completeAllDFGPlans();
+    completeAllJITPlans();
 
     for (ExecutableBase* executable : m_executables)
         executable->clearCode();
@@ -1141,6 +1112,13 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
         DeferGCForAWhile awhile(*this);
         vm()->typeProfilerLog()->processLogEntries(ASCIILiteral("GC"));
     }
+
+#if ENABLE(JIT)
+    {
+        DeferGCForAWhile awhile(*this);
+        JITWorklist::instance()->completeAllForVM(*m_vm);
+    }
+#endif // ENABLE(JIT)
 
     vm()->shadowChicken().update(*vm(), vm()->topCallFrame);
 
@@ -1244,6 +1222,9 @@ void Heap::willStartCollection(HeapOperation collectionType)
         m_sizeBeforeLastFullCollect = m_sizeAfterLastCollect + m_bytesAllocatedThisCycle;
         m_extraMemorySize = 0;
         m_deprecatedExtraMemorySize = 0;
+#if ENABLE(RESOURCE_USAGE)
+        m_externalMemorySize = 0;
+#endif
 
         if (m_fullActivityCallback)
             m_fullActivityCallback->willCollect();
@@ -1311,9 +1292,11 @@ struct MarkedBlockSnapshotFunctor : public MarkedBlock::VoidFunctor {
     {
     }
 
-    void operator()(MarkedBlock* block) { m_blocks[m_index++] = block; }
+    void operator()(MarkedBlock* block) const { m_blocks[m_index++] = block; }
 
-    size_t m_index;
+    // FIXME: This is a mutable field becaue this isn't a C++ lambda.
+    // https://bugs.webkit.org/show_bug.cgi?id=159644
+    mutable size_t m_index;
     Vector<MarkedBlock*>& m_blocks;
 };
 
@@ -1456,20 +1439,18 @@ void Heap::didFinishCollection(double gcStartTime)
     else
         m_lastEdenGCLength = gcEndTime - gcStartTime;
 
+#if ENABLE(RESOURCE_USAGE)
+    ASSERT(externalMemorySize() <= extraMemorySize());
+#endif
+
     if (Options::recordGCPauseTimes())
         HeapStatistics::recordGCPauseTime(gcStartTime, gcEndTime);
 
     if (Options::useZombieMode())
         zombifyDeadObjects();
 
-    if (Options::useImmortalObjects())
-        markDeadObjects();
-
     if (Options::dumpObjectStatistics())
         HeapStatistics::dumpObjectStatistics(this);
-
-    if (Options::logGC() == GCLogging::Verbose)
-        GCLogging::dumpObjectGraph(this);
 
     if (HeapProfiler* heapProfiler = m_vm->heapProfiler()) {
         gatherExtraHeapSnapshotData(*heapProfiler);
@@ -1491,12 +1472,6 @@ void Heap::resumeCompilerThreads()
         worklist->resumeAllThreads();
     m_suspendedCompilerWorklists.clear();
 #endif
-}
-
-void Heap::markDeadObjects()
-{
-    HeapIterationScope iterationScope(*this);
-    m_objectSpace.forEachDeadCell<MarkObject>(iterationScope);
 }
 
 void Heap::setFullActivityCallback(PassRefPtr<FullGCActivityCallback> activityCallback)
@@ -1592,7 +1567,7 @@ void Heap::collectAllGarbageIfNotDoneRecently()
 
 class Zombify : public MarkedBlock::VoidFunctor {
 public:
-    inline void visit(JSCell* cell)
+    inline void visit(HeapCell* cell) const
     {
         void** current = reinterpret_cast<void**>(cell);
 
@@ -1605,7 +1580,7 @@ public:
         for (; current < limit; current++)
             *current = zombifiedBits;
     }
-    IterationStatus operator()(JSCell* cell)
+    IterationStatus operator()(HeapCell* cell, HeapCell::Kind) const
     {
         visit(cell);
         return IterationStatus::Continue;
@@ -1617,7 +1592,7 @@ void Heap::zombifyDeadObjects()
     // Sweep now because destructors will crash once we're zombified.
     m_objectSpace.zombifySweep();
     HeapIterationScope iterationScope(*this);
-    m_objectSpace.forEachDeadCell<Zombify>(iterationScope);
+    m_objectSpace.forEachDeadCell(iterationScope, Zombify());
 }
 
 void Heap::flushWriteBarrierBuffer(JSCell* cell)

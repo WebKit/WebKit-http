@@ -368,7 +368,7 @@
 - (BOOL)reflectedBooleanAttr
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->fastHasAttribute(WebCore::HTMLNames::reflectedbooleanattrAttr);
+    return IMPL->hasAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedbooleanattrAttr);
 }
 
 - (void)setReflectedBooleanAttr:(BOOL)newReflectedBooleanAttr
@@ -416,7 +416,7 @@
 - (BOOL)reflectedCustomBooleanAttr
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->fastHasAttribute(WebCore::HTMLNames::customContentBooleanAttrAttr);
+    return IMPL->hasAttributeWithoutSynchronization(WebCore::HTMLNames::customContentBooleanAttrAttr);
 }
 
 - (void)setReflectedCustomBooleanAttr:(BOOL)newReflectedCustomBooleanAttr
@@ -1238,6 +1238,12 @@
 
 #endif
 
+- (NSString *)publicAndPrivateMethod:(NSString *)argument
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->publicAndPrivateMethod(argument);
+}
+
 - (void)addEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture
 {
     WebCore::JSMainThreadNullState state;
@@ -1322,6 +1328,18 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->withDocumentArgument();
+}
+
+- (void)withCallerDocumentArgument
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->withCallerDocumentArgument();
+}
+
+- (void)withCallerWindowArgument
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->withCallerWindowArgument();
 }
 
 - (void)methodWithOptionalArg:(int)opt

@@ -179,6 +179,12 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
 
         for (var script of WebInspector.debuggerManager.knownNonResourceScripts)
             this._addScript(script);
+
+        if (WebInspector.debuggerManager.paused)
+            this._debuggerDidPause(null);
+
+        if (WebInspector.timelineManager.isCapturing() && WebInspector.debuggerManager.breakpointsDisabledTemporarily)
+            this._timelineCapturingWillStart(null);
     }
 
     // Public
@@ -203,8 +209,8 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         var currentTreeElement = this._contentTreeOutline.children[0];
         while (currentTreeElement && !currentTreeElement.root) {
             if (currentTreeElement instanceof WebInspector.ResourceTreeElement || currentTreeElement instanceof WebInspector.ScriptTreeElement) {
-                this.showDefaultContentViewForTreeElement(currentTreeElement);
-                return;
+                if (this.showDefaultContentViewForTreeElement(currentTreeElement))
+                    return;
             }
 
             currentTreeElement = currentTreeElement.traverseNextTreeElement(false, null, true);

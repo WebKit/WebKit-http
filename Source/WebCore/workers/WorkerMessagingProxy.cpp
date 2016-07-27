@@ -79,10 +79,18 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     Document& document = downcast<Document>(*m_scriptExecutionContext);
 
 #if ENABLE(INDEXED_DATABASE)
-    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), document.idbConnectionProxy());
+    IDBClient::IDBConnectionProxy* proxy = document.idbConnectionProxy();
 #else
-    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), nullptr);
+    IDBClient::IDBConnectionProxy* proxy = nullptr;
 #endif
+
+#if ENABLE(WEB_SOCKETS)
+    SocketProvider* socketProvider = document.socketProvider();
+#else
+    SocketProvider* socketProvider = nullptr;
+#endif
+
+    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), proxy, socketProvider);
 
     workerThreadCreated(thread);
     thread->start();
@@ -120,14 +128,14 @@ void WorkerMessagingProxy::postMessageToWorkerGlobalScope(RefPtr<SerializedScrip
         m_queuedEarlyTasks.append(std::make_unique<ScriptExecutionContext::Task>(WTFMove(task)));
 }
 
-void WorkerMessagingProxy::postTaskToLoader(ScriptExecutionContext::Task task)
+void WorkerMessagingProxy::postTaskToLoader(ScriptExecutionContext::Task&& task)
 {
     // FIXME: In case of nested workers, this should go directly to the root Document context.
     ASSERT(m_scriptExecutionContext->isDocument());
     m_scriptExecutionContext->postTask(WTFMove(task));
 }
 
-bool WorkerMessagingProxy::postTaskForModeToWorkerGlobalScope(ScriptExecutionContext::Task task, const String& mode)
+bool WorkerMessagingProxy::postTaskForModeToWorkerGlobalScope(ScriptExecutionContext::Task&& task, const String& mode)
 {
     if (m_askedToTerminate)
         return false;

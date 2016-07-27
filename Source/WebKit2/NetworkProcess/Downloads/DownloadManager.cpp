@@ -54,7 +54,7 @@ void DownloadManager::startDownload(SessionID sessionID, DownloadID downloadID, 
     parameters.sessionID = sessionID;
     parameters.request = request;
     parameters.clientCredentialPolicy = AskClientForAllCredentials;
-    m_pendingDownloads.add(downloadID, std::make_unique<PendingDownload>(WTFMove(parameters), downloadID));
+    m_pendingDownloads.add(downloadID, std::make_unique<PendingDownload>(WTFMove(parameters), downloadID, *networkSession));
 #else
     auto download = std::make_unique<Download>(*this, downloadID, request, suggestedName);
     download->start();
@@ -95,7 +95,7 @@ void DownloadManager::continueWillSendRequest(DownloadID downloadID, WebCore::Re
         pendingDownload->continueWillSendRequest(WTFMove(request));
 }
 
-void DownloadManager::willDecidePendingDownloadDestination(NetworkDataTask& networkDataTask, ResponseCompletionHandler completionHandler)
+void DownloadManager::willDecidePendingDownloadDestination(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler)
 {
     auto downloadID = networkDataTask.pendingDownloadID();
     auto pendingDownload = m_pendingDownloads.take(downloadID);
@@ -107,8 +107,8 @@ void DownloadManager::willDecidePendingDownloadDestination(NetworkDataTask& netw
 void DownloadManager::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
 {
     auto pair = m_downloadsWaitingForDestination.take(downloadID);
-    auto networkDataTask = pair.first;
-    auto completionHandler = pair.second;
+    auto networkDataTask = WTFMove(pair.first);
+    auto completionHandler = WTFMove(pair.second);
     if (!networkDataTask || !completionHandler)
         return;
 

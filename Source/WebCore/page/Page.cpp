@@ -372,8 +372,11 @@ Ref<ClientRectList> Page::nonFastScrollableRects()
         document->updateLayout();
 
     Vector<IntRect> rects;
-    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        rects = scrollingCoordinator->absoluteEventTrackingRegions().synchronousDispatchRegion.rects();
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
+        const EventTrackingRegions& eventTrackingRegions = scrollingCoordinator->absoluteEventTrackingRegions();
+        for (const auto& synchronousEventRegion : eventTrackingRegions.eventSpecificSynchronousDispatchRegions)
+            rects.appendVector(synchronousEventRegion.value.rects());
+    }
 
     Vector<FloatQuad> quads(rects.size());
     for (size_t i = 0; i < rects.size(); ++i)
@@ -895,6 +898,21 @@ void Page::setDeviceScaleFactor(float scaleFactor)
     GraphicsContext::updateDocumentMarkerResources();
 
     mainFrame().pageOverlayController().didChangeDeviceScaleFactor();
+}
+
+void Page::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInterfaceLayoutDirection)
+{
+    if (m_userInterfaceLayoutDirection == userInterfaceLayoutDirection)
+        return;
+
+    m_userInterfaceLayoutDirection = userInterfaceLayoutDirection;
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (!frame->document())
+            continue;
+        frame->document()->userInterfaceLayoutDirectionChanged();
+    }
+#endif
 }
 
 void Page::setTopContentInset(float contentInset)

@@ -43,6 +43,7 @@
 #include "PlatformStrategies.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "StyleFontSizeFunctions.h"
 #include "StyleResolver.h"
 #include "Text.h"
 
@@ -63,6 +64,15 @@ static void ensurePlaceholderStyle(Document& document)
     placeholderStyle = RenderStyle::createPtr().release();
     placeholderStyle->setDisplay(NONE);
     placeholderStyle->setIsPlaceholderStyle();
+
+    FontCascadeDescription fontDescription;
+    fontDescription.setOneFamily(standardFamily);
+    fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
+    float size = Style::fontSizeForKeyword(CSSValueMedium, false, document);
+    fontDescription.setSpecifiedSize(size);
+    fontDescription.setComputedSize(size);
+    placeholderStyle->setFontDescription(fontDescription);
+
     placeholderStyle->fontCascade().update(&document.fontSelector());
 }
 
@@ -522,13 +532,13 @@ std::unique_ptr<Update> TreeResolver::resolve(Change change)
     return WTFMove(m_update);
 }
 
-static Vector<NoncopyableFunction<void ()>>& postResolutionCallbackQueue()
+static Vector<Function<void ()>>& postResolutionCallbackQueue()
 {
-    static NeverDestroyed<Vector<NoncopyableFunction<void ()>>> vector;
+    static NeverDestroyed<Vector<Function<void ()>>> vector;
     return vector;
 }
 
-void queuePostResolutionCallback(NoncopyableFunction<void ()>&& callback)
+void queuePostResolutionCallback(Function<void ()>&& callback)
 {
     postResolutionCallbackQueue().append(WTFMove(callback));
 }

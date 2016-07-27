@@ -947,7 +947,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
 
         jit.store32(
             CCallHelpers::TrustedImm32(state.callSiteIndexForExceptionHandlingOrOriginal().bits()),
-            CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+            CCallHelpers::tagFor(static_cast<VirtualRegister>(CallFrameSlot::argumentCount)));
 
         if (m_type == Getter || m_type == Setter) {
             // Create a JS call using a JS call inline cache. Assume that:
@@ -1002,7 +1002,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             CCallHelpers::Jump returnUndefined = jit.branchTestPtr(
                 CCallHelpers::Zero, loadedValueGPR);
 
-            unsigned numberOfRegsForCall = JSStack::CallFrameHeaderSize + numberOfParameters;
+            unsigned numberOfRegsForCall = CallFrame::headerSizeInRegisters + numberOfParameters;
 
             unsigned numberOfBytesForCall =
                 numberOfRegsForCall * sizeof(Register) - sizeof(CallerFrameAndPC);
@@ -1020,10 +1020,10 @@ void AccessCase::generateImpl(AccessGenerationState& state)
 
             jit.store32(
                 CCallHelpers::TrustedImm32(numberOfParameters),
-                calleeFrame.withOffset(JSStack::ArgumentCount * sizeof(Register) + PayloadOffset));
+                calleeFrame.withOffset(CallFrameSlot::argumentCount * sizeof(Register) + PayloadOffset));
 
             jit.storeCell(
-                loadedValueGPR, calleeFrame.withOffset(JSStack::Callee * sizeof(Register)));
+                loadedValueGPR, calleeFrame.withOffset(CallFrameSlot::callee * sizeof(Register)));
 
             jit.storeCell(
                 baseForGetGPR,
@@ -1260,7 +1260,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 jit.store32(
                     CCallHelpers::TrustedImm32(
                         state.callSiteIndexForExceptionHandlingOrOriginal().bits()),
-                    CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+                    CCallHelpers::tagFor(static_cast<VirtualRegister>(CallFrameSlot::argumentCount)));
                 
                 jit.makeSpaceOnStackForCCall();
                 
@@ -1551,11 +1551,7 @@ AccessGenerationResult PolymorphicAccess::regenerate(
     state.ident = &ident;
     
     state.baseGPR = static_cast<GPRReg>(stubInfo.patch.baseGPR);
-    state.valueRegs = JSValueRegs(
-#if USE(JSVALUE32_64)
-        static_cast<GPRReg>(stubInfo.patch.valueTagGPR),
-#endif
-        static_cast<GPRReg>(stubInfo.patch.valueGPR));
+    state.valueRegs = stubInfo.valueRegs();
 
     ScratchRegisterAllocator allocator(stubInfo.patch.usedRegisters);
     state.allocator = &allocator;
@@ -1753,14 +1749,11 @@ AccessGenerationResult PolymorphicAccess::regenerate(
         return AccessGenerationResult::GaveUp;
     }
 
-    CodeLocationLabel successLabel =
-        stubInfo.callReturnLocation.labelAtOffset(stubInfo.patch.deltaCallToDone);
+    CodeLocationLabel successLabel = stubInfo.doneLocation();
         
     linkBuffer.link(state.success, successLabel);
 
-    linkBuffer.link(
-        failure,
-        stubInfo.callReturnLocation.labelAtOffset(stubInfo.patch.deltaCallToSlowCase));
+    linkBuffer.link(failure, stubInfo.slowPathStartLocation());
     
     if (verbose)
         dataLog(*codeBlock, " ", stubInfo.codeOrigin, ": Generating polymorphic access stub for ", listDump(cases), "\n");

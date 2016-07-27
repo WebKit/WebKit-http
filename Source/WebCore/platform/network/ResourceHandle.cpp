@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/AtomicStringHash.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -92,13 +93,13 @@ RefPtr<ResourceHandle> ResourceHandle::create(NetworkingContext* context, const 
     if (protocolMapItem != builtinResourceHandleConstructorMap().end())
         return protocolMapItem->value(request, client);
 
-    RefPtr<ResourceHandle> newHandle(adoptRef(new ResourceHandle(context, request, client, defersLoading, shouldContentSniff)));
+    auto newHandle = adoptRef(*new ResourceHandle(context, request, client, defersLoading, shouldContentSniff));
 
     if (newHandle->d->m_scheduledFailureType != NoFailure)
-        return newHandle.release();
+        return WTFMove(newHandle);
 
     if (newHandle->start())
-        return newHandle.release();
+        return WTFMove(newHandle);
 
     return nullptr;
 }

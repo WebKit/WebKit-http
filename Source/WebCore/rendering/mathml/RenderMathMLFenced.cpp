@@ -37,9 +37,9 @@
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
-    
+
 using namespace MathMLNames;
-    
+
 static const char* gOpeningBraceChar = "(";
 static const char* gClosingBraceChar = ")";
 
@@ -52,16 +52,16 @@ RenderMathMLFenced::RenderMathMLFenced(MathMLInlineContainerElement& element, Re
 void RenderMathMLFenced::updateFromElement()
 {
     const auto& fenced = element();
- 
+
     // The open operator defaults to a left parenthesis.
-    AtomicString open = fenced.fastGetAttribute(MathMLNames::openAttr);
+    AtomicString open = fenced.attributeWithoutSynchronization(MathMLNames::openAttr);
     m_open = open.isNull() ? gOpeningBraceChar : open;
 
     // The close operator defaults to a right parenthesis.
-    AtomicString close = fenced.fastGetAttribute(MathMLNames::closeAttr);
+    AtomicString close = fenced.attributeWithoutSynchronization(MathMLNames::closeAttr);
     m_close = close.isNull() ? gClosingBraceChar : close;
 
-    AtomicString separators = fenced.fastGetAttribute(MathMLNames::separatorsAttr);
+    AtomicString separators = fenced.attributeWithoutSynchronization(MathMLNames::separatorsAttr);
     if (!separators.isNull()) {
         StringBuilder characters;
         for (unsigned int i = 0; i < separators.length(); i++) {
@@ -73,7 +73,7 @@ void RenderMathMLFenced::updateFromElement()
         // The separator defaults to a single comma.
         m_separators = StringImpl::create(",");
     }
-    
+
     if (isEmpty())
         makeFences();
     else {
@@ -85,7 +85,7 @@ void RenderMathMLFenced::updateFromElement()
 
 RenderPtr<RenderMathMLOperator> RenderMathMLFenced::createMathMLOperator(const String& operatorString, MathMLOperatorDictionary::Form form, MathMLOperatorDictionary::Flag flag)
 {
-    RenderPtr<RenderMathMLOperator> newOperator = createRenderer<RenderMathMLOperator>(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), FLEX), operatorString, form, flag);
+    RenderPtr<RenderMathMLOperator> newOperator = createRenderer<RenderMathMLOperator>(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK), operatorString, form, flag);
     newOperator->initializeStyle();
     return newOperator;
 }
@@ -105,9 +105,9 @@ void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild
     // make the fences if the render object is empty
     if (isEmpty())
         updateFromElement();
-    
+
     // FIXME: Adding or removing a child should possibly cause all later separators to shift places if they're different, as later child positions change by +1 or -1. This should also handle surrogate pairs. See https://bugs.webkit.org/show_bug.cgi?id=125938.
-    
+
     RenderPtr<RenderMathMLOperator> separatorRenderer;
     if (m_separators.get()) {
         unsigned int count = 0;
@@ -120,22 +120,22 @@ void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild
             --count;
         }
         // |count| is now the number of element children that will be before our new separator, i.e. it's the 1-based index of the separator.
-        
+
         if (count > 0) {
             UChar separator;
-            
+
             // Use the last separator if we've run out of specified separators.
             if (count > m_separators.get()->length())
                 separator = (*m_separators.get())[m_separators.get()->length() - 1];
             else
                 separator = (*m_separators.get())[count - 1];
-                
+
             StringBuilder builder;
             builder.append(separator);
             separatorRenderer = createMathMLOperator(builder.toString(), MathMLOperatorDictionary::Infix, MathMLOperatorDictionary::Separator);
         }
     }
-    
+
     if (beforeChild) {
         // Adding |x| before an existing |y| e.g. in element (y) - first insert our new child |x|, then its separator, to get (x, y).
         RenderMathMLRow::addChild(child, beforeChild);
@@ -149,6 +149,6 @@ void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild
     }
 }
 
-}    
+}
 
 #endif

@@ -88,7 +88,7 @@ ALWAYS_INLINE JSValue JIT::getConstantOperand(int src)
     return m_codeBlock->getConstant(src);
 }
 
-ALWAYS_INLINE void JIT::emitPutIntToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry entry)
+ALWAYS_INLINE void JIT::emitPutIntToCallFrameHeader(RegisterID from, int entry)
 {
 #if USE(JSVALUE32_64)
     store32(TrustedImm32(Int32Tag), intTagFor(entry, callFrameRegister));
@@ -142,7 +142,7 @@ ALWAYS_INLINE void JIT::updateTopCallFrame()
 #else
     uint32_t locationBits = CallSiteIndex(m_bytecodeOffset + 1).bits();
 #endif
-    store32(TrustedImm32(locationBits), intTagFor(JSStack::ArgumentCount));
+    store32(TrustedImm32(locationBits), intTagFor(CallFrameSlot::argumentCount));
     
     // FIXME: It's not clear that this is needed. JITOperations tend to update the top call frame on
     // the C++ side.
@@ -1353,6 +1353,12 @@ ALWAYS_INLINE void JIT::emitJumpSlowCaseIfNotNumber(RegisterID reg)
 ALWAYS_INLINE void JIT::emitTagBool(RegisterID reg)
 {
     or32(TrustedImm32(static_cast<int32_t>(ValueFalse)), reg);
+}
+
+inline Instruction* JIT::copiedInstruction(Instruction* inst)
+{
+    ASSERT(inst >= m_codeBlock->instructions().begin() && inst < m_codeBlock->instructions().end());
+    return m_instructions.begin() + (inst - m_codeBlock->instructions().begin());
 }
 
 #endif // USE(JSVALUE32_64)

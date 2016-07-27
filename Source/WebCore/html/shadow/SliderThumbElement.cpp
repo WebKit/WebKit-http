@@ -36,6 +36,7 @@
 #include "CSSValueKeywords.h"
 #include "Event.h"
 #include "EventHandler.h"
+#include "EventNames.h"
 #include "Frame.h"
 #include "HTMLInputElement.h"
 #include "HTMLParserIdioms.h"
@@ -549,7 +550,7 @@ void SliderThumbElement::registerForTouchEvents()
 
     ASSERT(shouldAcceptTouchEvents());
 
-    document().addTouchEventListener(this);
+    document().addTouchEventHandler(this);
     m_isRegisteredAsTouchEventListener = true;
 }
 
@@ -561,7 +562,7 @@ void SliderThumbElement::unregisterForTouchEvents()
     clearExclusiveTouchIdentifier();
     stopDragging();
 
-    document().removeTouchEventListener(this);
+    document().removeTouchEventHandler(this);
     m_isRegisteredAsTouchEventListener = false;
 }
 

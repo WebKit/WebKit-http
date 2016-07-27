@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006, 2007 Rob Buis
- * Copyright (C) 2008, 2013 Apple, Inc. All rights reserved.
+ * Copyright (C) 2008-2016 Apple, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -46,6 +46,8 @@ InlineStyleSheetOwner::InlineStyleSheetOwner(Document& document, bool createdByP
 
 InlineStyleSheetOwner::~InlineStyleSheetOwner()
 {
+    if (m_sheet)
+        clearSheet();
 }
 
 static AuthorStyleSheets& authorStyleSheetsForElement(Element& element)
@@ -109,7 +111,8 @@ void InlineStyleSheetOwner::createSheetFromTextContents(Element& element)
 void InlineStyleSheetOwner::clearSheet()
 {
     ASSERT(m_sheet);
-    m_sheet.release()->clearOwnerNode();
+    auto sheet = WTFMove(m_sheet);
+    sheet->clearOwnerNode();
 }
 
 inline bool isValidCSSContentType(Element& element, const AtomicString& type)
@@ -138,7 +141,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
 
     ASSERT(document.contentSecurityPolicy());
     const ContentSecurityPolicy& contentSecurityPolicy = *document.contentSecurityPolicy();
-    bool hasKnownNonce = contentSecurityPolicy.allowStyleWithNonce(element.fastGetAttribute(HTMLNames::nonceAttr), element.isInUserAgentShadowTree());
+    bool hasKnownNonce = contentSecurityPolicy.allowStyleWithNonce(element.attributeWithoutSynchronization(HTMLNames::nonceAttr), element.isInUserAgentShadowTree());
     if (!contentSecurityPolicy.allowInlineStyle(document.url(), m_startTextPosition.m_line, text, hasKnownNonce))
         return;
 

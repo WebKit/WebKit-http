@@ -57,6 +57,7 @@ function handleError(error) {
         lineNumber: error.line,
         columnNumber: error.column,
         stack: error.stack,
+        details: error.details,
     });
 }
 
@@ -66,7 +67,7 @@ function handleUncaughtException(event) {
         url: parseURL(event.filename).lastPathComponent,
         lineNumber: event.lineno,
         columnNumber: event.colno,
-        stack: typeof event.error === "object" ? event.error.stack : null,
+        stack: typeof event.error === "object" && event.error !== null ? event.error.stack : null,
     });
 }
 
@@ -150,22 +151,29 @@ function createErrorSheet() {
     }
 
     function formattedEntry(entry) {
-        let message = `${entry.message} (at ${entry.url}:${entry.lineNumber}:${entry.columnNumber})`;
-        if (!entry.stack)
-            return message;
-
         const indent = "    ";
-        let results = [];
-        let lines = entry.stack.split(/\n/g);
-        for (let line of lines) {
-            let atIndex = line.indexOf("@");
-            let slashIndex = Math.max(line.lastIndexOf("/"), atIndex);
-            let functionName = line.substring(0, atIndex) || "?";
-            let location = line.substring(slashIndex + 1, line.length);
-            results.push(`${indent}${functionName} @ ${location}`);
+        let lines = [`${entry.message} (at ${entry.url}:${entry.lineNumber}:${entry.columnNumber})`];
+        if (entry.stack) {
+            let stackLines = entry.stack.split(/\n/g);
+            for (let stackLine of stackLines) {
+                let atIndex = stackLine.indexOf("@");
+                let slashIndex = Math.max(stackLine.lastIndexOf("/"), atIndex);
+                let functionName = stackLine.substring(0, atIndex) || "?";
+                let location = stackLine.substring(slashIndex + 1, stackLine.length);
+                lines.push(`${indent}${functionName} @ ${location}`);
+            }
         }
 
-        return message + "\n" + results.join("\n");
+        if (entry.details) {
+            lines.push("");
+            lines.push("Additional Details:")
+            for (let key in entry.details) {
+                let value = entry.details[key];
+                lines.push(`${indent}${key} --> ${value}`);
+            }
+        }
+
+        return lines.join("\n");
     }
 
     let inspectedPageURL = null;
@@ -173,16 +181,46 @@ function createErrorSheet() {
         inspectedPageURL = WebInspector.frameResourceManager.mainFrame.url;
     } catch (e) { }
 
+    let topLevelItems = [
+        `Inspected URL:        ${inspectedPageURL || "(unknown)"}`,
+        `Loading completed:    ${!!loadCompleted}`,
+        `Frontend User Agent:  ${window.navigator.userAgent}`,
+    ];
+
+    function stringifyAndTruncateObject(object) {
+        let string = JSON.stringify(object);
+        return string.length > 500 ? string.substr(0, 500) + "…" : string;
+    }
+
+    if (InspectorBackend && InspectorBackend.currentDispatchState) {
+        let state = InspectorBackend.currentDispatchState;
+        if (state.event) {
+            topLevelItems.push("Dispatch Source:      Protocol Event");
+            topLevelItems.push("");
+            topLevelItems.push("Protocol Event:");
+            topLevelItems.push(stringifyAndTruncateObject(state.event));
+        }
+        if (state.response) {
+            topLevelItems.push("Dispatch Source:      Protocol Command Response");
+            topLevelItems.push("");
+            topLevelItems.push("Protocol Command Response:");
+            topLevelItems.push(stringifyAndTruncateObject(state.response));
+        }
+        if (state.request) {
+            topLevelItems.push("");
+            topLevelItems.push("Protocol Command Request:");
+            topLevelItems.push(stringifyAndTruncateObject(state.request));
+        }
+    }
+
     let formattedErrorDetails = window.__uncaughtExceptions.map((entry) => formattedEntry(entry));
     let detailsForBugReport = formattedErrorDetails.map((line) => ` - ${line}`).join("\n");
-    let encodedBugDescription = encodeURIComponent(`-------
-Auto-generated details:
+    topLevelItems.push("");
+    topLevelItems.push("Uncaught Exceptions:");
+    topLevelItems.push(detailsForBugReport);
 
-Inspected URL:        ${inspectedPageURL || "(unknown)"}
-Loading completed:    ${!!loadCompleted}
-Frontend User Agent:  ${window.navigator.userAgent}
-Uncaught exceptions:
-${detailsForBugReport}
+    let encodedBugDescription = encodeURIComponent(`-------
+${topLevelItems.join("\n")}
 -------
 
 * STEPS TO REPRODUCE
@@ -232,6 +270,6 @@ Document any additional information that might be useful in resolving the proble
 }
 
 window.addEventListener("error", handleUncaughtException);
-window.handlePromiseException = handleError;
+window.handlePromiseException = window.handleInternalException = handleError;
 
 })();

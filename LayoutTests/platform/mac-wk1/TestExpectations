@@ -56,12 +56,9 @@ webkit.org/b/152485 webaudio/audiocontext-state-interrupted.html [ Pass Crash ]
 
 webkit.org/b/152789 webarchive/adopt-attribute-styled-body-webarchive.html [ Pass Crash ]
 
-webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
-
 webkit.org/b/154297 [ Debug ] fast/events/keydown-1.html [ Pass Failure ]
 
-webkit.org/b/155196 media/video-with-blob-url-allowed-by-csp-media-src-star.html [ Skip ]
-webkit.org/b/155196 media/video-with-data-url-allowed-by-csp-media-src-star.html [ Skip ]
+webkit.org/b/155196 security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html [ Skip ]
 
 webkit.org/b/153143 [ Yosemite ] media/track/track-in-band-style.html [ Pass Crash ]
 
@@ -82,6 +79,9 @@ plugins/unavailable-plugin-indicator-obscurity.html
 # Color input is not yet implemented on Mac WK1. Currently, using it erroneously triggers an ASSERT_NOT_REACHED.
 webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Skip ]
 webkit.org/b/119094 fast/forms/color/color-suggestion-picker-crash-on-set-value.html [ Skip ]
+
+# DumpRenderTree doesn't support logging calls to runOpenPanel.
+fast/forms/file/open-file-panel.html [ Skip ]
 
 # WK1 and WK2 mousemove events are subtly different in ways that break this test on WK1.
 fast/events/ghostly-mousemoves-in-subframe.html [ Skip ]
@@ -147,6 +147,7 @@ storage/indexeddb/modern/exceed-open-file-limit.html
 
 # This test is WebKit2-only
 http/tests/contentfiltering/load-substitute-data-from-appcache.html
+fast/dom/Window/child-window-focus.html
 
 # Testing the system language declaratively only makes sense in WK2, because it's implemented in WebKitTestRunner by launching a new WebContent process.
 fast/text/international/system-language [ Pass Failure ImageOnlyFailure ]
@@ -180,6 +181,7 @@ inspector/script-profiler/event-type-API.html [ Skip ]
 inspector/heap/getPreview.html [ Skip ]
 inspector/heap/getRemoteObject.html [ Skip ]
 inspector/unit-tests/heap-snapshot.html [ Skip ]
+inspector/unit-tests/heap-snapshot-collection-event.html [ Skip ]
 
 # This test checks ScrollAnimator events only for main frame scrollbars that use native widgets in WK1.
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
@@ -211,3 +213,47 @@ webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ P
 fast/repaint/vertical-text-repaint.html [ Pass Failure ]
 
 webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
+
+# <rdar://problem/23421541>
+[ Sierra+ ] http/tests/navigation/forward-and-cancel.html [ Pass Failure ]
+
+# <rdar://problem/23431065>
+[ Sierra+ ] animations/animation-welcome-safari.html [ Pass Failure ]
+
+# <rdar://problem/23884199> Crashed in com.apple.WebKitLegacy: WebEditorClient::didCheckSucceed
+[ Sierra+ ] editing/spelling/spellcheck-attribute.html [ Pass Crash ]
+
+# <rdar://problem/24818712>
+[ Sierra+ ] editing/spelling/spelling-insert-html.html [ Pass Timeout ]
+
+# <rdar://problem/26399598>
+[ Sierra+ ] editing/spelling/spellcheck-async.html [ Failure ]
+[ Sierra+ ] editing/spelling/markers.html [ Failure ]
+[ Sierra+ ] editing/spelling/spelling-unified-emulation.html [ Failure ]
+
+# <rdar://problem/26050923> The result is probably still a pass, but we don't have a way
+# to have platform specific results that are different between WK1 and WK2.
+[ Sierra+ ] accessibility/mac/document-attributes.html [ Failure ]
+[ Sierra+ ] accessibility/parent-delete.html [ Failure ]
+
+# rdar://problem/26422051
+[ Sierra+ ] fast/html/marquee-scroll.html [ Failure ]
+[ Sierra+ ] fast/inline-block/003.html [ Failure ]
+
+# rdar://problem/26478296
+[ Sierra+ ] svg/hixie/text/003.html [ Failure ]
+
+# rdar://problem/26789221
+[ Sierra+ ] compositing/masks/compositing-clip-path-change-no-repaint.html [ Failure ]
+
+# rdar://problem/26422274
+[ Sierra+ ] fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
+
+# rdar://problem/26422407
+[ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html  [ ImageOnlyFailure ]
+
+[ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
+
+webkit.org/b/159893 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Pass Failure ]
+
+webkit.org/b/156070 storage/indexeddb/modern/abort-requests-cancelled.html [ Pass Timeout ]

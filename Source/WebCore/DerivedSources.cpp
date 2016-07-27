@@ -283,9 +283,7 @@
 #include "JSHTMLTableCaptionElement.cpp"
 #include "JSHTMLTableCellElement.cpp"
 #include "JSHTMLTableColElement.cpp"
-#include "JSHTMLTableDataCellElement.cpp"
 #include "JSHTMLTableElement.cpp"
-#include "JSHTMLTableHeaderCellElement.cpp"
 #include "JSHTMLTableRowElement.cpp"
 #include "JSHTMLTableSectionElement.cpp"
 #include "JSHTMLTemplateElement.cpp"
@@ -421,9 +419,7 @@
 #include "JSRTCTrackEvent.cpp"
 #include "JSScreen.cpp"
 #include "JSScriptProcessorNode.cpp"
-#if ENABLE(CSP_NEXT)
 #include "JSSecurityPolicyViolationEvent.cpp"
-#endif
 #include "JSSourceBuffer.cpp"
 #include "JSSourceBufferList.cpp"
 #include "JSSourceInfo.cpp"

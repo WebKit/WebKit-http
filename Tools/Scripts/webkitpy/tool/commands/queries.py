@@ -91,6 +91,7 @@ class PatchesInCommitQueue(Command):
 class PatchesToCommitQueue(Command):
     name = "patches-to-commit-queue"
     help_text = "Patches which should be added to the commit queue"
+
     def __init__(self):
         options = [
             make_option("--bugs", action="store_true", dest="bugs", help="Output bug links instead of patch links"),
@@ -99,7 +100,7 @@ class PatchesToCommitQueue(Command):
 
     @staticmethod
     def _needs_commit_queue(patch):
-        if patch.commit_queue() == "+": # If it's already cq+, ignore the patch.
+        if patch.commit_queue() == "+":  # If it's already cq+, ignore the patch.
             _log.info("%s already has cq=%s" % (patch.id(), patch.commit_queue()))
             return False
 
@@ -314,7 +315,7 @@ class FailureReason(Command):
     def _builder_to_explain(self):
         builder_statuses = self._tool.buildbot.builder_statuses()
         red_statuses = [status for status in builder_statuses if not status["is_green"]]
-        print "%s failing" % (pluralize("builder", len(red_statuses)))
+        print "%s failing" % (pluralize(len(red_statuses), "builder"))
         builder_choices = [status["name"] for status in red_statuses]
         # We could offer an "All" choice here.
         chosen_name = self._tool.user.prompt_with_list("Which builder to diagnose:", builder_choices)

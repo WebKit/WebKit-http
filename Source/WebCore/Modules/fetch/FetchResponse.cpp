@@ -31,9 +31,9 @@
 
 #if ENABLE(FETCH_API)
 
-#include "Dictionary.h"
 #include "ExceptionCode.h"
 #include "FetchRequest.h"
+#include "HTTPParsers.h"
 #include "JSFetchResponse.h"
 #include "ScriptExecutionContext.h"
 
@@ -42,11 +42,6 @@ namespace WebCore {
 static inline bool isRedirectStatus(int status)
 {
     return status == 301 || status == 302 || status == 303 || status == 307 || status == 308;
-}
-
-static inline bool isNullBodyStatus(int status)
-{
-    return status == 101 || status == 204 || status == 205 || status == 304;
 }
 
 Ref<FetchResponse> FetchResponse::error(ScriptExecutionContext& context)
@@ -65,7 +60,7 @@ RefPtr<FetchResponse> FetchResponse::redirect(ScriptExecutionContext& context, c
         return nullptr;
     }
     if (!isRedirectStatus(status)) {
-        ec = TypeError;
+        ec = RangeError;
         return nullptr;
     }
     auto redirectResponse = adoptRef(*new FetchResponse(context, { }, FetchHeaders::create(FetchHeaders::Guard::Immutable), { }));
@@ -74,41 +69,21 @@ RefPtr<FetchResponse> FetchResponse::redirect(ScriptExecutionContext& context, c
     return WTFMove(redirectResponse);
 }
 
-void FetchResponse::initializeWith(const Dictionary& init, ExceptionCode& ec)
+void FetchResponse::setStatus(int status, const String& statusText, ExceptionCode& ec)
 {
-    int status;
-    if (!init.get("status", status)) {
-        ec = TypeError;
-        return;
-    }
-    if (status < 200 || status > 599) {
-        ec = RangeError;
-        return;
-    }
-
-    // FIXME: Validate reason phrase (https://tools.ietf.org/html/rfc7230#section-3.1.2).
-    String statusText;
-    if (!init.get("statusText", statusText)) {
+    if (!isValidReasonPhrase(statusText)) {
         ec = TypeError;
         return;
     }
     m_response.setHTTPStatusCode(status);
     m_response.setHTTPStatusText(statusText);
+}
 
-    RefPtr<FetchHeaders> initialHeaders;
-    if (init.get("headers", initialHeaders))
-        m_headers->fill(initialHeaders.get());
-
-    JSC::JSValue body;
-    if (init.get("body", body)) {
-        if (isNullBodyStatus(status)) {
-            ec = TypeError;
-            return;
-        }
-        m_body = FetchBody::extract(*init.execState(), body);
-        if (m_headers->fastGet(HTTPHeaderName::ContentType).isEmpty() && !m_body.mimeType().isEmpty())
-            m_headers->fastSet(HTTPHeaderName::ContentType, m_body.mimeType());
-    }
+void FetchResponse::initializeWith(JSC::ExecState& execState, JSC::JSValue body)
+{
+    m_body = FetchBody::extract(execState, body);
+    if (m_headers->fastGet(HTTPHeaderName::ContentType).isEmpty() && !m_body.mimeType().isEmpty())
+        m_headers->fastSet(HTTPHeaderName::ContentType, m_body.mimeType());
 }
 
 FetchResponse::FetchResponse(ScriptExecutionContext& context, FetchBody&& body, Ref<FetchHeaders>&& headers, ResourceResponse&& response)
@@ -149,6 +124,13 @@ void FetchResponse::fetch(ScriptExecutionContext& context, FetchRequest& input, 
     }
     ASSERT(fetchRequest);
     startFetching(context, *fetchRequest, WTFMove(promise));
+}
+
+const String& FetchResponse::url() const
+{
+    if (m_responseURL.isNull())
+        m_responseURL = m_response.url().serialize(true);
+    return m_responseURL;
 }
 
 void FetchResponse::fetch(ScriptExecutionContext& context, const String& url, const Dictionary& dictionary, FetchPromise&& promise)
@@ -287,6 +269,13 @@ RefPtr<SharedBuffer> FetchResponse::BodyLoader::startStreaming()
     ASSERT(m_loader);
     return m_loader->startStreaming();
 }
+
+void FetchResponse::cancel()
+{
+    m_isDisturbed = true;
+    stop();
+}
+
 #endif
 
 void FetchResponse::stop()

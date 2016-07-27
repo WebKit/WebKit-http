@@ -43,7 +43,7 @@
 #include "Settings.h"
 #include "SimpleLineLayoutFunctions.h"
 #include "Text.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextResourceDecoder.h"
 #include "VisiblePosition.h"
 #include "break_lines.h"
@@ -1528,7 +1528,7 @@ int RenderText::previousOffsetForBackwardDeletion(int current) const
 #if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
     bool sawRegionalIndicator = false;
     bool sawEmojiGroupCandidate = false;
-    bool sawEmojiModifier = false;
+    bool sawEmojiFitzpatrickModifier = false;
     
     while (current > 0) {
         UChar32 character;
@@ -1544,8 +1544,8 @@ int RenderText::previousOffsetForBackwardDeletion(int current) const
             break;
         }
 
-        if (sawEmojiModifier) {
-            if (isEmojiModifier(character)) {
+        if (sawEmojiFitzpatrickModifier) {
+            if (isEmojiFitzpatrickModifier(character)) {
                 // Don't treat two emoji modifiers in a row as a group.
                 U16_FWD_1_UNSAFE(text, current);
                 break;
@@ -1573,8 +1573,8 @@ int RenderText::previousOffsetForBackwardDeletion(int current) const
             continue;
         }
         
-        if (isEmojiModifier(character)) {
-            sawEmojiModifier = true;
+        if (isEmojiFitzpatrickModifier(character)) {
+            sawEmojiFitzpatrickModifier = true;
             continue;
         }
 

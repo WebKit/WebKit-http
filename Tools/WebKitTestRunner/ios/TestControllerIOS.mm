@@ -29,13 +29,13 @@
 #import "PlatformWebView.h"
 #import "TestInvocation.h"
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <WebKit/WKPreferencesRefPrivate.h>
 #import <WebKit/WKProcessPoolPrivate.h>
 #import <WebKit/WKStringCF.h>
 #import <WebKit/WKUserContentControllerPrivate.h>
-#import <WebKit/WKWebView.h>
-#import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
+#import <WebKit/WKWebViewPrivate.h>
 #import <wtf/MainThread.h>
 
 namespace WTR {
@@ -46,10 +46,10 @@ void TestController::notifyDone()
 
 void TestController::platformInitialize()
 {
-    NSString *identifier = [[NSBundle mainBundle] bundleIdentifier];
-    const char *stdinPath = [[NSString stringWithFormat:@"/tmp/%@_IN", identifier] UTF8String];
-    const char *stdoutPath = [[NSString stringWithFormat:@"/tmp/%@_OUT", identifier] UTF8String];
-    const char *stderrPath = [[NSString stringWithFormat:@"/tmp/%@_ERROR", identifier] UTF8String];
+    const char* identifier = getenv("IPC_IDENTIFIER");
+    const char *stdinPath = [[NSString stringWithFormat:@"/tmp/%s_IN", identifier] UTF8String];
+    const char *stdoutPath = [[NSString stringWithFormat:@"/tmp/%s_OUT", identifier] UTF8String];
+    const char *stderrPath = [[NSString stringWithFormat:@"/tmp/%s_ERROR", identifier] UTF8String];
 
     int infd = open(stdinPath, O_RDWR);
     dup2(infd, STDIN_FILENO);
@@ -65,7 +65,7 @@ void TestController::platformDestroy()
 
 void TestController::initializeInjectedBundlePath()
 {
-    NSString *nsBundlePath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"WebKitTestRunnerInjectedBundle.bundle"];
+    NSString *nsBundlePath = [[NSBundle mainBundle].builtInPlugInsPath stringByAppendingPathComponent:@"WebKitTestRunnerInjectedBundle.bundle"];
     m_injectedBundlePath.adopt(WKStringCreateWithCFString((CFStringRef)nsBundlePath));
 }
 
@@ -83,6 +83,7 @@ void TestController::platformResetPreferencesToConsistentValues()
 void TestController::platformResetStateToConsistentValues()
 {
     cocoaResetStateToConsistentValues();
+    [mainWebView()->platformView() setForceIPadStyleZoomOnInputFocus:NO];
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation& test)

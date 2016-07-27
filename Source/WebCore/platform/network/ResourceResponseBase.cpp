@@ -39,11 +39,6 @@
 
 namespace WebCore {
 
-inline const ResourceResponse& ResourceResponseBase::asResourceResponse() const
-{
-    return *static_cast<const ResourceResponse*>(this);
-}
-
 ResourceResponseBase::ResourceResponseBase()
     : m_isNull(true)
     , m_expectedContentLength(0)
@@ -78,6 +73,7 @@ ResourceResponseBase::CrossThreadData ResourceResponseBase::crossThreadData() co
     data.httpHeaderFields = httpHeaderFields().isolatedCopy();
     data.resourceLoadTiming = m_resourceLoadTiming.isolatedCopy();
     data.type = m_type;
+    data.isRedirected = m_isRedirected;
 
     return data;
 }
@@ -98,6 +94,7 @@ ResourceResponse ResourceResponseBase::fromCrossThreadData(CrossThreadData&& dat
     response.m_httpHeaderFields = WTFMove(data.httpHeaderFields);
     response.m_resourceLoadTiming = data.resourceLoadTiming;
     response.m_type = data.type;
+    response.m_isRedirected = data.isRedirected;
 
     return response;
 }
@@ -191,6 +188,12 @@ void ResourceResponseBase::includeCertificateInfo() const
 String ResourceResponseBase::suggestedFilename() const
 {
     return static_cast<const ResourceResponse*>(this)->platformSuggestedFilename();
+}
+
+bool ResourceResponseBase::isSuccessful() const
+{
+    int code = httpStatusCode();
+    return code >= 200 && code < 300;
 }
 
 int ResourceResponseBase::httpStatusCode() const

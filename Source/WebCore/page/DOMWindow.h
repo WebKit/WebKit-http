@@ -35,6 +35,7 @@
 #include "Supplementable.h"
 #include <functional>
 #include <memory>
+#include <wtf/HashSet.h>
 #include <wtf/Optional.h>
 #include <wtf/WeakPtr.h>
 
@@ -162,7 +163,7 @@ namespace WebCore {
         Element* frameElement() const;
 
         WEBCORE_EXPORT void focus(bool allowFocus = false);
-        void focus(Document&);
+        void focus(DOMWindow& callerWindow);
         void blur();
         WEBCORE_EXPORT void close();
         void close(Document&);
@@ -315,6 +316,7 @@ namespace WebCore {
 #if ENABLE(WEB_TIMING)
         Performance* performance() const;
 #endif
+        double nowTimestamp() const;
 
 #if PLATFORM(IOS)
         void incrementScrollEventListenersCount();

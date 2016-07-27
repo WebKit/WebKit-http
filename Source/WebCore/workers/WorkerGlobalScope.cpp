@@ -43,6 +43,7 @@
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginPolicy.h"
+#include "SocketProvider.h"
 #include "URL.h"
 #include "WorkerLocation.h"
 #include "WorkerNavigator.h"
@@ -63,7 +64,7 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, PassRefPtr<SecurityOrigin> topOrigin, IDBClient::IDBConnectionProxy* connectionProxy)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, RefPtr<SecurityOrigin>&& topOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
     : m_url(url)
     , m_userAgent(userAgent)
     , m_script(std::make_unique<WorkerScriptController>(this))
@@ -75,10 +76,17 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, Wo
 #if ENABLE(INDEXED_DATABASE)
     , m_connectionProxy(connectionProxy)
 #endif
+#if ENABLE(WEB_SOCKETS)
+    , m_socketProvider(socketProvider)
+#endif
 {
 #if !ENABLE(INDEXED_DATABASE)
     UNUSED_PARAM(connectionProxy);
 #endif
+#if !ENABLE(WEB_SOCKETS)
+    UNUSED_PARAM(socketProvider);
+#endif
+
     auto origin = SecurityOrigin::create(url);
     if (m_topOrigin->hasUniversalAccess())
         origin->grantUniversalAccess();
@@ -122,6 +130,13 @@ void WorkerGlobalScope::disableEval(const String& errorMessage)
 {
     m_script->disableEval(errorMessage);
 }
+
+#if ENABLE(WEB_SOCKETS)
+SocketProvider* WorkerGlobalScope::socketProvider()
+{
+    return m_socketProvider.get();
+}
+#endif
 
 #if ENABLE(INDEXED_DATABASE)
 IDBClient::IDBConnectionProxy* WorkerGlobalScope::idbConnectionProxy()

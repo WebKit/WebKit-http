@@ -226,6 +226,11 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
 #if HAVE(TIMINGDATAOPTIONS)
     [propertyDictionary setObject:@{@"_kCFURLConnectionPropertyTimingDataOptions": @(_TimingDataOptionsEnableW3CNavigationTiming)} forKey:@"kCFURLConnectionURLConnectionProperties"];
 #endif
+
+    // This is used to signal that to CFNetwork that this connection should be considered
+    // web content for purposes of App Transport Security.
+    [propertyDictionary setObject:@{@"NSAllowsArbitraryLoadsInWebContent": @YES} forKey:@"_kCFURLConnectionPropertyATSFrameworkOverrides"];
+
     d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:usesCache maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
 }
 
@@ -615,16 +620,6 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
     }
 
     return false;
-}
-
-void ResourceHandle::didCancelAuthenticationChallenge(const AuthenticationChallenge& challenge)
-{
-    ASSERT(d->m_currentMacChallenge);
-    ASSERT(d->m_currentMacChallenge == challenge.nsURLAuthenticationChallenge());
-    ASSERT(!d->m_currentWebChallenge.isNull());
-
-    if (client())
-        client()->didCancelAuthenticationChallenge(this, challenge);
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)

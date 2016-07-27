@@ -29,7 +29,6 @@
 #if PLATFORM(IOS)
 
 #import "APIUIClient.h"
-#import "DataDetectorsUISPI.h"
 #import "EditingRange.h"
 #import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
@@ -65,6 +64,7 @@
 #import <WebCore/Color.h>
 #import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/DataDetectorsCoreSPI.h>
+#import <WebCore/DataDetectorsUISPI.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/Pasteboard.h>
 #import <WebCore/Path.h>
@@ -368,6 +368,10 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 - (void)invalidate
 {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    id <UITextInputSuggestionDelegate> suggestionDelegate = (id <UITextInputSuggestionDelegate>)_contentView.inputDelegate;
+    [suggestionDelegate setSuggestions:nil];
+#endif
     _contentView = nil;
 }
 
@@ -539,6 +543,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
     _twoFingerSingleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_twoFingerSingleTapGestureRecognized:)]);
     [_twoFingerSingleTapGestureRecognizer setAllowableMovement:60];
+    [_twoFingerSingleTapGestureRecognizer _setAllowableSeparation:150];
     [_twoFingerSingleTapGestureRecognizer setNumberOfTapsRequired:1];
     [_twoFingerSingleTapGestureRecognizer setNumberOfTouchesRequired:2];
     [_twoFingerSingleTapGestureRecognizer setDelaysTouchesEnded:NO];
@@ -1067,8 +1072,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
               maximumScale:_assistedNodeInformation.maximumScaleFactor
-              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && !UICurrentUserInterfaceIdiomIsPad())
-               forceScroll:[self requiresAccessoryView]];
+              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && (!UICurrentUserInterfaceIdiomIsPad() || _forceIPadStyleZoomOnInputFocus))
+               forceScroll:[self requiresAccessoryView:_forceIPadStyleZoomOnInputFocus]];
+
     _didAccessoryTabInitiateFocus = NO;
     [self _ensureFormAccessoryView];
     [self _updateAccessory];
@@ -1363,21 +1369,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (void)_twoFingerSingleTapGestureRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
-    _page->tapHighlightAtPosition(gestureRecognizer.centroid, ++_latestTapID);
     _isTapHighlightIDValid = YES;
-    RetainPtr<WKContentView> view = self;
-    WKWebView *webView = _webView;
-    _page->handleTwoFingerTapAtPoint(roundedIntPoint(gestureRecognizer.centroid), [view, webView](const String& string, CallbackBase::Error error) {
-        if (error != CallbackBase::Error::None)
-            return;
-        if (!string.isEmpty()) {
-            id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([webView UIDelegate]);
-            if ([uiDelegate respondsToSelector:@selector(_webView:alternateActionForURL:)])
-                [uiDelegate _webView:webView alternateActionForURL:[NSURL _web_URLWithWTFString:string]];
-            [view _finishInteraction];
-        } else
-            [view _cancelInteraction];
-    });
+    _isExpectingFastSingleTapCommit = YES;
+    _page->handleTwoFingerTapAtPoint(roundedIntPoint(gestureRecognizer.centroid), ++_latestTapID);
 }
 
 - (void)_longPressRecognized:(UILongPressGestureRecognizer *)gestureRecognizer
@@ -1579,7 +1573,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     [_textSelectionAssistant didEndScrollingOverflow];
 }
 
-- (BOOL)requiresAccessoryView
+- (BOOL)requiresAccessoryView:(BOOL)forceIPadBehavior
 {
     if ([_formInputSession accessoryViewShouldNotShow])
         return NO;
@@ -1595,10 +1589,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Phone:
     case InputType::Number:
     case InputType::NumberPad:
-        return !UICurrentUserInterfaceIdiomIsPad();
     case InputType::ContentEditable:
     case InputType::TextArea:
-        return !UICurrentUserInterfaceIdiomIsPad();
     case InputType::Select:
     case InputType::Date:
     case InputType::DateTime:
@@ -1606,7 +1598,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Month:
     case InputType::Week:
     case InputType::Time:
-        return !UICurrentUserInterfaceIdiomIsPad();
+        return !(UICurrentUserInterfaceIdiomIsPad() || forceIPadBehavior);
     }
 }
 
@@ -1621,7 +1613,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (UIView *)inputAccessoryView
 {
-    if (![self requiresAccessoryView])
+    if (![self requiresAccessoryView:NO])
         return nil;
 
     return self.formAccessoryView;
@@ -4111,6 +4103,21 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 @end
 
 #endif
+
+@implementation WKContentView (WKInteractionTesting)
+
+- (BOOL)forceIPadStyleZoomOnInputFocus
+{
+    return _forceIPadStyleZoomOnInputFocus;
+}
+
+- (void)setForceIPadStyleZoomOnInputFocus:(BOOL)forceIPadStyleZoom
+{
+    _forceIPadStyleZoomOnInputFocus = forceIPadStyleZoom;
+}
+
+@end
+
 
 // UITextRange, UITextPosition and UITextSelectionRect implementations for WK2
 

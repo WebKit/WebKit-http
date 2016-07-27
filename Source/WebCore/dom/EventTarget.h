@@ -32,7 +32,6 @@
 #define EventTarget_h
 
 #include "EventListenerMap.h"
-#include "EventNames.h"
 #include "EventTargetInterfaces.h"
 #include "ScriptWrappable.h"
 #include <memory>
@@ -149,7 +148,7 @@ public:
 
     virtual void removeAllEventListeners();
     virtual bool dispatchEvent(Event&);
-    bool dispatchEventForBindings(Event*, ExceptionCode&); // DOM API
+    bool dispatchEventForBindings(Event&, ExceptionCode&); // DOM API
     virtual void uncaughtExceptionInEventHandler();
 
     // Used for legacy "onEvent" attribute APIs.
@@ -168,8 +167,6 @@ public:
 
     void visitJSEventListeners(JSC::SlotVisitor&);
     void invalidateJSEventListeners(JSC::JSObject*);
-
-    bool hasActiveTouchEventListeners() const;
 
 protected:
     virtual ~EventTarget();

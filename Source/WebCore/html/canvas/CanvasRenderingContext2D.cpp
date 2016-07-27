@@ -786,7 +786,7 @@ void CanvasRenderingContext2D::transform(float m11, float m12, float m21, float 
 
     realizeSaves();
 
-    if (auto inverse = newTransform.inverse()) {
+    if (auto inverse = transform.inverse()) {
         modifiableState().transform = newTransform;
         c->concatCTM(transform);
         m_path.transform(inverse.value());
@@ -1398,7 +1398,7 @@ void CanvasRenderingContext2D::drawImage(HTMLImageElement& imageElement, const F
 
     if (image->isSVGImage()) {
         image->setImageObserver(nullptr);
-        image->setContainerSize(normalizedSrcRect.size());
+        image->setContainerSize(imageRect.size());
     }
 
     if (rectContainsCanvas(normalizedDstRect)) {
@@ -2036,8 +2036,17 @@ RefPtr<ImageData> CanvasRenderingContext2D::getImageData(ImageBuffer::Coordinate
         return createEmptyImageData(imageDataRect.size());
 
     RefPtr<Uint8ClampedArray> byteArray = buffer->getUnmultipliedImageData(imageDataRect, coordinateSystem);
-    if (!byteArray)
+    if (!byteArray) {
+        StringBuilder consoleMessage;
+        consoleMessage.appendLiteral("Unable to get image data from canvas. Requested size was ");
+        consoleMessage.appendNumber(imageDataRect.width());
+        consoleMessage.appendLiteral(" x ");
+        consoleMessage.appendNumber(imageDataRect.height());
+
+        canvas()->document().addConsoleMessage(MessageSource::Rendering, MessageLevel::Error, consoleMessage.toString());
+        ec = INVALID_STATE_ERR;
         return nullptr;
+    }
 
     return ImageData::create(imageDataRect.size(), byteArray.releaseNonNull());
 }
@@ -2472,7 +2481,7 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
             fontProxy.drawBidiText(*c, textRun, location + offset, FontCascade::UseFallbackIfFontNotReady);
         }
 
-        auto maskImage = ImageBuffer::createCompatibleBuffer(maskRect.size(), *c);
+        auto maskImage = ImageBuffer::createCompatibleBuffer(maskRect.size(), ColorSpaceSRGB, *c);
         if (!maskImage)
             return;
 

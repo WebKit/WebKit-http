@@ -95,12 +95,15 @@ const AtomicString& CachedResourceRequest::initiatorName() const
 
 void CachedResourceRequest::setAsPotentiallyCrossOrigin(const String& mode, Document& document)
 {
+    ASSERT(m_options.mode == FetchOptions::Mode::NoCors);
     if (mode.isNull())
         return;
-    m_options.setRequestOriginPolicy(PotentiallyCrossOriginEnabled);
+    m_options.mode = FetchOptions::Mode::Cors;
+    m_options.credentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
     m_options.setAllowCredentials(equalLettersIgnoringASCIICase(mode, "use-credentials") ? AllowStoredCredentials : DoNotAllowStoredCredentials);
 
-    updateRequestForAccessControl(m_resourceRequest, document.securityOrigin(), m_options.allowCredentials());
+    ASSERT(document.securityOrigin());
+    updateRequestForAccessControl(m_resourceRequest, *document.securityOrigin(), m_options.allowCredentials());
 }
 
 } // namespace WebCore

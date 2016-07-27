@@ -1,6 +1,6 @@
 # Copyright (C) 2010 Google Inc. All rights reserved.
 # Copyright (C) 2010 Gabor Rapcsanyi (rgabor@inf.u-szeged.hu), University of Szeged
-# Copyright (C) 2011 Apple Inc. All rights reserved.
+# Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -74,6 +74,10 @@ def main(argv, stdout, stderr):
         return EXCEPTIONAL_EXIT_STATUS
 
     try:
+        # Force all tests to use a smaller stack so that stack overflow tests can run faster.
+        stackSizeInBytes = int(1.5 * 1024 * 1024)
+        options.additional_env_var.append('JSC_maxPerThreadStackUsage=' + str(stackSizeInBytes))
+        options.additional_env_var.append('__XPC_JSC_maxPerThreadStackUsage=' + str(stackSizeInBytes))
         run_details = run(port, options, args, stderr)
         if run_details.exit_code != -1 and not run_details.initial_results.keyboard_interrupted:
             bot_printer = buildbot_results.BuildBotPrinter(stdout, options.debug_rwt_logging)
@@ -282,6 +286,8 @@ def parse_args(args):
         optparse.make_option("--profiler", action="store",
             help="Output per-test profile information, using the specified profiler."),
         optparse.make_option("--no-timeout", action="store_true", default=False, help="Disable test timeouts"),
+        optparse.make_option("--wayland",  action="store_true", default=False,
+            help="Run the layout tests inside a (virtualized) weston compositor (GTK only)."),
     ]))
 
     option_group_definitions.append(("iOS Simulator Options", [

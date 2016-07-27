@@ -88,6 +88,8 @@ enum class CopyType {
     Unobservable,
 };
 
+static const char* typedArrayBufferHasBeenDetachedErrorMessage = "Underlying ArrayBuffer has been detached from the view";
+
 template<typename Adaptor>
 class JSGenericTypedArrayView : public JSArrayBufferView {
 public:
@@ -160,6 +162,7 @@ public:
     
     void setIndexQuickly(unsigned i, JSValue value)
     {
+        ASSERT(!value.isObject());
         setIndexQuicklyToNativeValue(i, toNativeFromValue<Adaptor>(value));
     }
     
@@ -168,6 +171,11 @@ public:
         typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
         if (exec->hadException())
             return false;
+
+        if (isNeutered()) {
+            throwTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
+            return false;
+        }
 
         if (i >= m_length)
             return false;
@@ -178,24 +186,11 @@ public:
 
     static ElementType toAdaptorNativeFromValue(ExecState* exec, JSValue jsValue) { return toNativeFromValue<Adaptor>(exec, jsValue); }
 
-    bool setRangeToValue(ExecState* exec, unsigned start, unsigned end, JSValue jsValue)
-    {
-        ASSERT(0 <= start && start <= end && end <= m_length);
-
-        typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
-        if (exec->hadException())
-            return false;
-
-        // We might want to do something faster here (e.g. SIMD) if this is too slow.
-        typename Adaptor::Type* array = typedVector();
-        for (unsigned i = start; i < end; ++i)
-            array[i] = value;
-
-        return true;
-    }
+    static Optional<ElementType> toAdaptorNativeFromValueWithoutCoercion(JSValue jsValue) { return toNativeFromValueWithoutCoercion<Adaptor>(jsValue); }
 
     void sort()
     {
+        RELEASE_ASSERT(!isNeutered());
         switch (Adaptor::typeValue) {
         case TypeFloat32:
             sortFloat<int32_t>();
@@ -269,9 +264,11 @@ public:
     ArrayBuffer* existingBuffer();
 
     static const TypedArrayType TypedArrayStorageType = Adaptor::typeValue;
-    
+
 protected:
     friend struct TypedArrayClassInfos;
+
+    static EncodedJSValue throwNeuteredTypedArrayTypeError(ExecState*, EncodedJSValue, PropertyName);
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);

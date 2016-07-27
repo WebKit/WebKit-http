@@ -31,6 +31,7 @@
 #include "SerializedScriptValue.h"
 #include "WebKitDOMDictionaryPrivate.h"
 #include "WebKitDOMDocumentPrivate.h"
+#include "WebKitDOMNodePrivate.h"
 #include "WebKitDOMPrivate.h"
 #include "WebKitDOMSVGPointPrivate.h"
 #include "WebKitDOMTestDictionaryPrivate.h"
@@ -1494,6 +1495,17 @@ void webkit_dom_test_obj_method_with_exception_with_message(WebKitDOMTestObj* se
     item->methodWithExceptionWithMessage();
 }
 
+gchar* webkit_dom_test_obj_public_and_private_method(WebKitDOMTestObj* self, const gchar* argument)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
+    g_return_val_if_fail(argument, 0);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedArgument = WTF::String::fromUTF8(argument);
+    gchar* result = convertToUTF8String(item->publicAndPrivateMethod(convertedArgument));
+    return result;
+}
+
 void webkit_dom_test_obj_with_script_state_void(WebKitDOMTestObj* self)
 {
     WebCore::JSMainThreadNullState state;
@@ -1586,6 +1598,22 @@ void webkit_dom_test_obj_with_document_argument(WebKitDOMTestObj* self)
     g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
     WebCore::TestObj* item = WebKit::core(self);
     item->withDocumentArgument();
+}
+
+void webkit_dom_test_obj_with_caller_document_argument(WebKitDOMTestObj* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->withCallerDocumentArgument();
+}
+
+void webkit_dom_test_obj_with_caller_window_argument(WebKitDOMTestObj* self)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->withCallerWindowArgument();
 }
 
 void webkit_dom_test_obj_method_with_optional_arg(WebKitDOMTestObj* self, glong opt)
@@ -1991,6 +2019,53 @@ gboolean webkit_dom_test_obj_strict_function_with_array(WebKitDOMTestObj* self, 
     return result;
 }
 
+void webkit_dom_test_obj_variadic_string_method(WebKitDOMTestObj* self, const gchar* head, ...)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(head);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedHead = WTF::String::fromUTF8(head);
+    va_list variadicParameterList;
+    Vector<WTF::String> convertedTail;
+    va_start(variadicParameterList, head);
+    while (gchar* variadicParameter = va_arg(variadicParameterList, gchar*))
+        convertedTail.append(WTF::String::fromUTF8(variadicParameter));
+    va_end(variadicParameterList);
+    item->variadicStringMethod(convertedHead, WTFMove(convertedTail));
+}
+
+void webkit_dom_test_obj_variadic_double_method(WebKitDOMTestObj* self, gdouble head, guint n_tail, ...)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    va_list variadicParameterList;
+    Vector<gdouble> convertedTail;
+    va_start(variadicParameterList, head);
+    convertedTail.reserveInitialCapacity(n_tail);
+    for (unsigned i = 0; i < n_tail; ++i) {
+        convertedTail.uncheckedAppend(va_arg(variadicParameterList, gdouble));
+    va_end(variadicParameterList);
+    item->variadicDoubleMethod(head, WTFMove(convertedTail));
+}
+
+void webkit_dom_test_obj_variadic_node_method(WebKitDOMTestObj* self, WebKitDOMNode* head, ...)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(WEBKIT_DOM_IS_NODE(head));
+    WebCore::TestObj* item = WebKit::core(self);
+    WebCore::Node* convertedHead = WebKit::core(head);
+    va_list variadicParameterList;
+    Vector<WebCore::Node*> convertedTail;
+    va_start(variadicParameterList, head);
+    while (WebKitDOMNode* variadicParameter = va_arg(variadicParameterList, WebKitDOMNode*))
+        convertedTail.append(WebKit::core(variadicParameter));
+    va_end(variadicParameterList);
+    item->variadicNodeMethod(*convertedHead, WTFMove(convertedTail));
+}
+
 void webkit_dom_test_obj_any(WebKitDOMTestObj* self, gfloat a, glong b)
 {
     WebCore::JSMainThreadNullState state;
@@ -2334,7 +2409,7 @@ gchar* webkit_dom_test_obj_get_reflected_string_attr(WebKitDOMTestObj* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     WebCore::TestObj* item = WebKit::core(self);
-    gchar* result = convertToUTF8String(item->fastGetAttribute(WebCore::HTMLNames::reflectedstringattrAttr));
+    gchar* result = convertToUTF8String(item->attributeWithoutSynchronization(WebCore::HTMLNames::reflectedstringattrAttr));
     return result;
 }
 
@@ -2387,7 +2462,7 @@ gboolean webkit_dom_test_obj_get_reflected_boolean_attr(WebKitDOMTestObj* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), FALSE);
     WebCore::TestObj* item = WebKit::core(self);
-    gboolean result = item->fastHasAttribute(WebCore::HTMLNames::reflectedbooleanattrAttr);
+    gboolean result = item->hasAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedbooleanattrAttr);
     return result;
 }
 
@@ -2423,7 +2498,7 @@ gchar* webkit_dom_test_obj_get_reflected_string_attr(WebKitDOMTestObj* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
     WebCore::TestObj* item = WebKit::core(self);
-    gchar* result = convertToUTF8String(item->fastGetAttribute(WebCore::HTMLNames::customContentStringAttrAttr));
+    gchar* result = convertToUTF8String(item->attributeWithoutSynchronization(WebCore::HTMLNames::customContentStringAttrAttr));
     return result;
 }
 
@@ -2459,7 +2534,7 @@ gboolean webkit_dom_test_obj_get_reflected_custom_boolean_attr(WebKitDOMTestObj*
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), FALSE);
     WebCore::TestObj* item = WebKit::core(self);
-    gboolean result = item->fastHasAttribute(WebCore::HTMLNames::customContentBooleanAttrAttr);
+    gboolean result = item->hasAttributeWithoutSynchronization(WebCore::HTMLNames::customContentBooleanAttrAttr);
     return result;
 }
 

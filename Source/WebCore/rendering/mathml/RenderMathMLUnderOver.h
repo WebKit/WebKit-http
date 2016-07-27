@@ -24,44 +24,40 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLUnderOver_h
-#define RenderMathMLUnderOver_h
+#pragma once
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLBlock.h"
+#include "RenderMathMLScripts.h"
 
 namespace WebCore {
-    
-class RenderMathMLUnderOver final : public RenderMathMLBlock {
+
+class RenderMathMLUnderOver final : public RenderMathMLScripts {
 public:
     RenderMathMLUnderOver(Element&, RenderStyle&&);
-    
-    RenderMathMLOperator* unembellishedOperator() override;
 
-    Optional<int> firstLineBaseline() const override;
+private:
+    bool isRenderMathMLScripts() const final { return false; }
+    bool isRenderMathMLUnderOver() const final { return true; }
+    const char* renderName() const final { return "RenderMathMLUnderOver"; }
 
     void computePreferredLogicalWidths() final;
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
-    void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) final;
-
-private:
-    bool isRenderMathMLUnderOver() const override { return true; }
-    const char* renderName() const override { return "RenderMathMLUnderOver"; }
 
     void computeOperatorsHorizontalStretch();
     bool isValid() const;
+    bool shouldMoveLimits();
     RenderBox& base() const;
     RenderBox& under() const;
     RenderBox& over() const;
     LayoutUnit horizontalOffset(const RenderBox&) const;
-
-    enum UnderOverType { Under, Over, UnderOver };
-    UnderOverType m_scriptType;
+    bool hasAccent(bool accentUnder = false) const;
+    bool hasAccentUnder() const { return hasAccent(true); };
+    bool getVerticalParameters(LayoutUnit& underGapMin, LayoutUnit& overGapMin, LayoutUnit& underShiftMin, LayoutUnit& overShiftMin, LayoutUnit& underExtraDescender, LayoutUnit& overExtraAscender, LayoutUnit& accentBaseHeight) const;
 };
-    
+
 }
 
-#endif // ENABLE(MATHML)
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLUnderOver, isRenderMathMLUnderOver())
 
-#endif // RenderMathMLUnderOver_h
+#endif // ENABLE(MATHML)

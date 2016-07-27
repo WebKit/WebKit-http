@@ -58,7 +58,7 @@ Position InsertTextCommand::positionInsideTextNode(const Position& p)
 {
     Position pos = p;
     if (isTabSpanTextNode(pos.anchorNode())) {
-        RefPtr<Node> textNode = document().createEditingTextNode("");
+        RefPtr<Node> textNode = document().createEditingTextNode(emptyString());
         insertNodeAtTabSpanPosition(textNode.get(), pos);
         return firstPositionInNode(textNode.get());
     }
@@ -66,7 +66,7 @@ Position InsertTextCommand::positionInsideTextNode(const Position& p)
     // Prepare for text input by looking at the specified position.
     // It may be necessary to insert a text node to receive characters.
     if (!pos.containerNode()->isTextNode()) {
-        RefPtr<Node> textNode = document().createEditingTextNode("");
+        RefPtr<Node> textNode = document().createEditingTextNode(emptyString());
         insertNodeAt(textNode.get(), pos);
         return firstPositionInNode(textNode.get());
     }
@@ -120,7 +120,7 @@ bool InsertTextCommand::performOverwrite(const String& text, bool selectInserted
 
     replaceTextInNode(textNode, start.offsetInContainerNode(), count, text);
 
-    Position endPosition = Position(textNode.release(), start.offsetInContainerNode() + text.length());
+    Position endPosition = Position(WTFMove(textNode), start.offsetInContainerNode() + text.length());
     setEndingSelectionWithoutValidation(start, endPosition);
     if (!selectInsertedText)
         setEndingSelection(VisibleSelection(endingSelection().visibleEnd(), endingSelection().isDirectional()));
@@ -245,7 +245,7 @@ Position InsertTextCommand::insertTab(const Position& pos)
     if (isTabSpanTextNode(node)) {
         RefPtr<Text> textNode = downcast<Text>(node);
         insertTextIntoNode(textNode, offset, "\t");
-        return Position(textNode.release(), offset + 1);
+        return Position(WTFMove(textNode), offset + 1);
     }
     
     // create new tab span

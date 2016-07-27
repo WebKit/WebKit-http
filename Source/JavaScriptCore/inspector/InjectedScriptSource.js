@@ -251,7 +251,7 @@ InjectedScript.prototype = {
         return result;
     },
 
-    _getProperties: function(objectId, collectionMode, generatePreview)
+    _getProperties: function(objectId, collectionMode, generatePreview, nativeGettersAsValues)
     {
         var parsedObjectId = this._parseObjectId(objectId);
         var object = this._objectForId(parsedObjectId);
@@ -263,7 +263,7 @@ InjectedScript.prototype = {
         if (isSymbol(object))
             return false;
 
-        var descriptors = this._propertyDescriptors(object, collectionMode);
+        var descriptors = this._propertyDescriptors(object, collectionMode, nativeGettersAsValues);
 
         // Go over properties, wrap object values.
         for (var i = 0; i < descriptors.length; ++i) {
@@ -287,14 +287,16 @@ InjectedScript.prototype = {
 
     getProperties: function(objectId, ownProperties, generatePreview)
     {
+        var nativeGettersAsValues = false;
         var collectionMode = ownProperties ? InjectedScript.CollectionMode.OwnProperties : InjectedScript.CollectionMode.AllProperties;
-        return this._getProperties(objectId, collectionMode, generatePreview);
+        return this._getProperties(objectId, collectionMode, generatePreview, nativeGettersAsValues);
     },
 
     getDisplayableProperties: function(objectId, generatePreview)
     {
+        var nativeGettersAsValues = true;
         var collectionMode = InjectedScript.CollectionMode.OwnProperties | InjectedScript.CollectionMode.NativeGetterProperties;
-        return this._getProperties(objectId, collectionMode, generatePreview);
+        return this._getProperties(objectId, collectionMode, generatePreview, nativeGettersAsValues);
     },
 
     getInternalProperties: function(objectId, generatePreview)
@@ -570,7 +572,7 @@ InjectedScript.prototype = {
         return descriptors;
     },
 
-    _propertyDescriptors: function(object, collectionMode)
+    _propertyDescriptors: function(object, collectionMode, nativeGettersAsValues)
     {
         var descriptors = [];
         var nameProcessed = new Set;
@@ -612,11 +614,7 @@ InjectedScript.prototype = {
 
             // Native Getter properties.
             if (collectionMode & InjectedScript.CollectionMode.NativeGetterProperties) {
-                // FIXME: <https://webkit.org/b/140575> Web Inspector: Native Bindings Descriptors are Incomplete
-                // if (descriptor.hasOwnProperty("get") && descriptor.get && isNativeFunction(descriptor.get)) { ... }
-
                 if (possibleNativeBindingGetter) {
-                    // Possible getter property in the prototype chain.
                     descriptors.push(descriptor);
                     return;
                 }
@@ -644,15 +642,14 @@ InjectedScript.prototype = {
                     continue;
                 }
 
-                if (endsWith(String(descriptor.get), "[native code]\n}") ||
-                     (!descriptor.get && descriptor.hasOwnProperty("get") && !descriptor.set && descriptor.hasOwnProperty("set"))) {
-                    // FIXME: Some Native Bindings Descriptors are Incomplete
-                    // <https://webkit.org/b/141585> Some IDL attributes appear on the instances instead of on prototypes
-                    // Developers may create such a descriptors, so we should be resilient:
-                    // var x = {}; Object.defineProperty(x, "p", {get:undefined}); Object.getOwnPropertyDescriptor(x, "p")
-                    var fakeDescriptor = createFakeValueDescriptor(name, symbol, descriptor, isOwnProperty, true);
-                    processDescriptor(fakeDescriptor, isOwnProperty, true);
-                    continue;
+                if (nativeGettersAsValues) {
+                    if (endsWith(String(descriptor.get), "[native code]\n}") || (!descriptor.get && descriptor.hasOwnProperty("get") && !descriptor.set && descriptor.hasOwnProperty("set"))) {
+                        // Developers may create such a descriptor, so we should be resilient:
+                        // var x = {}; Object.defineProperty(x, "p", {get:undefined}); Object.getOwnPropertyDescriptor(x, "p")
+                        var fakeDescriptor = createFakeValueDescriptor(name, symbol, descriptor, isOwnProperty, true);
+                        processDescriptor(fakeDescriptor, isOwnProperty, true);
+                        continue;
+                    }
                 }
 
                 descriptor.name = name;
@@ -666,7 +663,7 @@ InjectedScript.prototype = {
 
         function arrayIndexPropertyNames(o, length)
         {
-            var array = new Array(length);
+            var array = [];
             for (var i = 0; i < length; ++i) {
                 if (i in o)
                     array.push("" + i);
@@ -676,16 +673,16 @@ InjectedScript.prototype = {
 
         // FIXME: <https://webkit.org/b/143589> Web Inspector: Better handling for large collections in Object Trees
         // For array types with a large length we attempt to skip getOwnPropertyNames and instead just sublist of indexes.
-        var isArrayTypeWithLargeLength = false;
+        var isArrayLike = false;
         try {
-            isArrayTypeWithLargeLength = injectedScript._subtype(object) === "array" && isFinite(object.length) && object.length > 100;
+            isArrayLike = injectedScript._subtype(object) === "array" && isFinite(object.length);
         } catch(e) {}
 
         for (var o = object; this._isDefined(o); o = o.__proto__) {
             var isOwnProperty = o === object;
 
-            if (isArrayTypeWithLargeLength && isOwnProperty)
-                processProperties(o, arrayIndexPropertyNames(o, 100), isOwnProperty);
+            if (isArrayLike && isOwnProperty)
+                processProperties(o, arrayIndexPropertyNames(o, Math.min(object.length, 100)), isOwnProperty);
             else {
                 processProperties(o, Object.getOwnPropertyNames(o), isOwnProperty);
                 if (Object.getOwnPropertySymbols)
@@ -1043,7 +1040,8 @@ InjectedScript.RemoteObject.prototype = {
                 return preview;
 
             // Properties.
-            var descriptors = injectedScript._propertyDescriptors(object, InjectedScript.CollectionMode.AllProperties);
+            var nativeGettersAsValues = true;
+            var descriptors = injectedScript._propertyDescriptors(object, InjectedScript.CollectionMode.AllProperties, nativeGettersAsValues);
             this._appendPropertyPreviews(object, preview, descriptors, false, propertiesThreshold, firstLevelKeys, secondLevelKeys);
             if (propertiesThreshold.indexes < 0 || propertiesThreshold.properties < 0)
                 return preview;
@@ -1306,9 +1304,11 @@ InjectedScript.CallFrameProxy.prototype = {
     _wrapScopeChain: function(callFrame)
     {
         var scopeChain = callFrame.scopeChain;
+        var scopeDescriptions = callFrame.scopeDescriptions();
+
         var scopeChainProxy = [];
         for (var i = 0; i < scopeChain.length; i++)
-            scopeChainProxy[i] = InjectedScript.CallFrameProxy._createScopeJson(callFrame.scopeType(i), scopeChain[i], "backtrace");
+            scopeChainProxy[i] = InjectedScript.CallFrameProxy._createScopeJson(scopeChain[i], scopeDescriptions[i], "backtrace");
         return scopeChainProxy;
     }
 }
@@ -1321,14 +1321,21 @@ InjectedScript.CallFrameProxy._scopeTypeNames = {
     4: "functionName", // FUNCTION_NAME_SCOPE
     5: "globalLexicalEnvironment", // GLOBAL_LEXICAL_ENVIRONMENT_SCOPE
     6: "nestedLexical", // NESTED_LEXICAL_SCOPE
-}
+};
 
-InjectedScript.CallFrameProxy._createScopeJson = function(scopeTypeCode, scopeObject, groupId)
+InjectedScript.CallFrameProxy._createScopeJson = function(object, {name, type, location}, groupId)
 {
-    return {
-        object: injectedScript._wrapObject(scopeObject, groupId),
-        type: InjectedScript.CallFrameProxy._scopeTypeNames[scopeTypeCode]
+    var scope = {
+        object: injectedScript._wrapObject(object, groupId),
+        type: InjectedScript.CallFrameProxy._scopeTypeNames[type],
     };
+
+    if (name)
+        scope.name = name;
+    if (location)
+        scope.location = location;
+
+    return scope;
 }
 
 

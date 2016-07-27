@@ -1423,6 +1423,7 @@ struct Node {
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -1439,6 +1440,7 @@ struct Node {
         case GetGlobalLexicalVariable:
         case StringReplace:
         case StringReplaceRegExp:
+        case ToNumber:
             return true;
         default:
             return false;
@@ -1466,6 +1468,7 @@ struct Node {
         case NewGeneratorFunction:
         case CreateActivation:
         case MaterializeCreateActivation:
+        case CompareEqPtr:
             return true;
         default:
             return false;

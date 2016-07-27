@@ -138,14 +138,16 @@ public:
     virtual void updateGeometry(const WebCore::IntSize& viewSize, const WebCore::IntSize& layerPosition, bool flushSynchronously, const WebCore::MachSendRight& fencePort) { }
 #endif
 
+    virtual void layerHostDidFlushLayers() { };
+
 protected:
     DrawingArea(DrawingAreaType, WebPage&);
 
     DrawingAreaType m_type;
     WebPage& m_webPage;
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK)
-    uint64_t m_nativeSurfaceHandleForCompositing;
+#if PLATFORM(GTK) && USE(TEXTURE_MAPPER)
+    uint64_t m_nativeSurfaceHandleForCompositing { 0 };
 #endif
 
 private:

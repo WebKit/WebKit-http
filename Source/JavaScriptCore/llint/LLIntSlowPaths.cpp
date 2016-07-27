@@ -40,12 +40,12 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITExceptions.h"
+#include "JITWorklist.h"
 #include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
-#include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
 #include "LLIntCommon.h"
@@ -326,6 +326,8 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         return false;
     }
     
+    JITWorklist::instance()->poll(vm);
+    
     switch (codeBlock->jitType()) {
     case JITCode::BaselineJIT: {
         if (Options::verboseOSR())
@@ -334,24 +336,8 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         return true;
     }
     case JITCode::InterpreterThunk: {
-        CompilationResult result = JIT::compile(&vm, codeBlock, JITCompilationCanFail);
-        switch (result) {
-        case CompilationFailed:
-            CODEBLOCK_LOG_EVENT(codeBlock, "delayJITCompile", ("compilation failed"));
-            if (Options::verboseOSR())
-                dataLogF("    JIT compilation failed.\n");
-            codeBlock->dontJITAnytimeSoon();
-            return false;
-        case CompilationSuccessful:
-            if (Options::verboseOSR())
-                dataLogF("    JIT compilation successful.\n");
-            codeBlock->ownerScriptExecutable()->installCode(codeBlock);
-            codeBlock->jitSoon();
-            return true;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return false;
-        }
+        JITWorklist::instance()->compileLater(codeBlock);
+        return codeBlock->jitType() == JITCode::BaselineJIT;
     }
     default:
         dataLog("Unexpected code block in LLInt: ", *codeBlock, "\n");
@@ -479,17 +465,26 @@ LLINT_SLOW_PATH_DECL(replace)
 
 LLINT_SLOW_PATH_DECL(stack_check)
 {
-    LLINT_BEGIN();
+    VM& vm = exec->vm();
+    VMEntryFrame* vmEntryFrame = vm.topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
+    if (!callerFrame) {
+        callerFrame = exec;
+        vmEntryFrame = vm.topVMEntryFrame;
+    }
+    NativeCallFrameTracerWithRestore tracer(&vm, vmEntryFrame, callerFrame);
+
+    LLINT_SET_PC_FOR_STUBS();
+
 #if LLINT_SLOW_PATH_TRACING
     dataLogF("Checking stack height with exec = %p.\n", exec);
     dataLogF("CodeBlock = %p.\n", exec->codeBlock());
     dataLogF("Num callee registers = %u.\n", exec->codeBlock()->m_numCalleeLocals);
     dataLogF("Num vars = %u.\n", exec->codeBlock()->m_numVars);
 
-#if ENABLE(JIT)
-    dataLogF("Current end is at %p.\n", exec->vm().stackLimit());
-#else
-    dataLogF("Current end is at %p.\n", exec->vm().jsStackLimit());
+    dataLogF("Current OS stack end is at %p.\n", exec->vm().softStackLimit());
+#if !ENABLE(JIT)
+    dataLogF("Current C Loop stack end is at %p.\n", exec->vm().cloopStackLimit());
 #endif
 
 #endif
@@ -501,15 +496,14 @@ LLINT_SLOW_PATH_DECL(stack_check)
     // Hence, if we get here, then we know a stack overflow is imminent. So, just
     // throw the StackOverflowError unconditionally.
 #if !ENABLE(JIT)
-    ASSERT(!vm.interpreter->stack().containsAddress(exec->topOfFrame()));
-    if (LIKELY(vm.interpreter->stack().ensureCapacityFor(exec->topOfFrame())))
+    ASSERT(!vm.interpreter->cloopStack().containsAddress(exec->topOfFrame()));
+    if (LIKELY(vm.ensureStackCapacityFor(exec->topOfFrame())))
         LLINT_RETURN_TWO(pc, 0);
 #endif
 
-    vm.topCallFrame = exec;
     ErrorHandlingScope errorScope(vm);
-    vm.throwException(exec, createStackOverflowError(exec));
-    pc = returnToThrow(exec);
+    throwStackOverflowError(callerFrame);
+    pc = returnToThrow(callerFrame);
     LLINT_RETURN_TWO(pc, exec);
 }
 
@@ -542,7 +536,7 @@ LLINT_SLOW_PATH_DECL(slow_path_new_regexp)
     LLINT_BEGIN();
     RegExp* regExp = exec->codeBlock()->regexp(pc[2].u.operand);
     if (!regExp->isValid())
-        LLINT_THROW(createSyntaxError(exec, "Invalid flag supplied to RegExp constructor."));
+        LLINT_THROW(createSyntaxError(exec, regExp->errorMessage()));
     LLINT_RETURN(RegExpObject::create(vm, exec->lexicalGlobalObject()->regExpStructure(), regExp));
 }
 
@@ -588,6 +582,9 @@ static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc,
     Structure* structure = baseCell->structure();
 
     if (structure->typeInfo().prohibitsPropertyCaching())
+        return;
+    
+    if (structure->needImpurePropertyWatchpoint())
         return;
 
     if (structure->isDictionary()) {
@@ -1327,7 +1324,7 @@ inline SlowPathReturnType genericCall(ExecState* exec, Instruction* pc, CodeSpec
     ExecState* execCallee = exec - pc[4].u.operand;
     
     execCallee->setArgumentCountIncludingThis(pc[3].u.operand);
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
+    execCallee->uncheckedR(CallFrameSlot::callee) = calleeAsValue;
     execCallee->setCallerFrame(exec);
     
     ASSERT(pc[5].u.callLinkInfo);
@@ -1353,7 +1350,7 @@ LLINT_SLOW_PATH_DECL(slow_path_size_frame_for_varargs)
     // - Set up a call frame while respecting the variable arguments.
     
     unsigned numUsedStackSlots = -pc[5].u.operand;
-    unsigned length = sizeFrameForVarargs(exec, &vm.interpreter->stack(),
+    unsigned length = sizeFrameForVarargs(exec, vm,
         LLINT_OP_C(4).jsValue(), numUsedStackSlots, pc[6].u.operand);
     LLINT_CALL_CHECK_EXCEPTION(exec, exec);
     
@@ -1372,7 +1369,7 @@ LLINT_SLOW_PATH_DECL(slow_path_size_frame_for_forward_arguments)
 
     unsigned numUsedStackSlots = -pc[5].u.operand;
 
-    unsigned arguments = sizeFrameForForwardArguments(exec, &vm.interpreter->stack(), numUsedStackSlots);
+    unsigned arguments = sizeFrameForForwardArguments(exec, vm, numUsedStackSlots);
     LLINT_CALL_CHECK_EXCEPTION(exec, exec);
 
     ExecState* execCallee = calleeFrameForVarargs(exec, numUsedStackSlots, arguments + 1);
@@ -1406,7 +1403,7 @@ inline SlowPathReturnType varargsSetup(ExecState* exec, Instruction* pc, CodeSpe
         setupForwardArgumentsFrameAndSetThis(exec, execCallee, LLINT_OP_C(3).jsValue(), vm.varargsLength);
 
     execCallee->setCallerFrame(exec);
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
+    execCallee->uncheckedR(CallFrameSlot::callee) = calleeAsValue;
     exec->setCurrentVPC(pc);
 
     return setUpCall(execCallee, pc, kind, calleeAsValue);
@@ -1437,7 +1434,7 @@ LLINT_SLOW_PATH_DECL(slow_path_call_eval)
     
     execCallee->setArgumentCountIncludingThis(pc[3].u.operand);
     execCallee->setCallerFrame(exec);
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
+    execCallee->uncheckedR(CallFrameSlot::callee) = calleeAsValue;
     execCallee->setReturnPC(LLInt::getCodePtr(llint_generic_return_point));
     execCallee->setCodeBlock(0);
     exec->setCurrentVPC(pc);
@@ -1555,7 +1552,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
         // to have already changed the value of the variable. Otherwise we might watch and constant-fold
         // to the Undefined value from before the assignment.
         if (WatchpointSet* set = pc[5].u.watchpointSet)
-            set->touch("Executed op_put_scope<LocalClosureVar>");
+            set->touch(vm, "Executed op_put_scope<LocalClosureVar>");
         LLINT_END();
     }
 
@@ -1630,7 +1627,7 @@ extern "C" SlowPathReturnType llint_throw_stack_overflow_error(VM* vm, ProtoCall
 #if !ENABLE(JIT)
 extern "C" SlowPathReturnType llint_stack_check_at_vm_entry(VM* vm, Register* newTopOfStack)
 {
-    bool success = vm->interpreter->stack().ensureCapacityFor(newTopOfStack);
+    bool success = vm->ensureStackCapacityFor(newTopOfStack);
     return encodeResult(reinterpret_cast<void*>(success), 0);
 }
 #endif
@@ -1652,6 +1649,13 @@ LLINT_SLOW_PATH_DECL(count_opcode)
 {
     OpcodeID opcodeID = exec->vm().interpreter->getOpcodeID(pc[0].u.opcode);
     Data::opcodeStats(opcodeID).count++;
+    LLINT_END_IMPL();
+}
+
+LLINT_SLOW_PATH_DECL(count_opcode_slow_path)
+{
+    OpcodeID opcodeID = exec->vm().interpreter->getOpcodeID(pc[0].u.opcode);
+    Data::opcodeStats(opcodeID).slowPathCount++;
     LLINT_END_IMPL();
 }
 

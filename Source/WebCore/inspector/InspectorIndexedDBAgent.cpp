@@ -41,6 +41,7 @@
 #include "Document.h"
 #include "Event.h"
 #include "EventListener.h"
+#include "EventNames.h"
 #include "EventTarget.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
@@ -329,7 +330,7 @@ static RefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
     } else
         return nullptr;
 
-    return idbKey.release();
+    return idbKey;
 }
 
 static RefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(const InspectorObject* keyRange)

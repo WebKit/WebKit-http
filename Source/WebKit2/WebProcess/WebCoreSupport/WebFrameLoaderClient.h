@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameLoaderClient_h
-#define WebFrameLoaderClient_h
+#pragma once
 
 #include <WebCore/FrameLoaderClient.h>
 
@@ -69,7 +68,6 @@ private:
     void dispatchWillSendRequest(WebCore::DocumentLoader*, unsigned long identifier, WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse) override;
     bool shouldUseCredentialStorage(WebCore::DocumentLoader*, unsigned long identifier) override;
     void dispatchDidReceiveAuthenticationChallenge(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::AuthenticationChallenge&) override;
-    void dispatchDidCancelAuthenticationChallenge(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::AuthenticationChallenge&) override;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     bool canAuthenticateAgainstProtectionSpace(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::ProtectionSpace&) override;
 #endif
@@ -150,6 +148,9 @@ private:
     WebCore::ResourceError blockedByContentBlockerError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError cannotShowURLError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError interruptedForPolicyChangeError(const WebCore::ResourceRequest&) override;
+#if ENABLE(CONTENT_FILTERING)
+    WebCore::ResourceError blockedByContentFilterError(const WebCore::ResourceRequest&) override;
+#endif
     
     WebCore::ResourceError cannotShowMIMETypeError(const WebCore::ResourceResponse&) override;
     WebCore::ResourceError fileDoesNotExistError(const WebCore::ResourceResponse&) override;
@@ -222,6 +223,8 @@ private:
     RemoteAXObjectRef accessibilityRemoteObject() override;
     
     NSCachedURLResponse* willCacheResponse(WebCore::DocumentLoader*, unsigned long identifier, NSCachedURLResponse*) const override;
+
+    NSDictionary *dataDetectionContext() override;
 #endif
 
     bool shouldAlwaysUsePluginDocument(const String& /*mimeType*/) const override;
@@ -269,5 +272,3 @@ inline WebFrameLoaderClient* toWebFrameLoaderClient(WebCore::FrameLoaderClient& 
 }
 
 } // namespace WebKit
-
-#endif // WebFrameLoaderClient_h

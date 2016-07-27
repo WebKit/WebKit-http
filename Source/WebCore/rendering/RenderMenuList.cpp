@@ -469,7 +469,7 @@ String RenderMenuList::itemAccessibilityText(unsigned listIndex) const
     const Vector<HTMLElement*>& listItems = selectElement().listItems();
     if (listIndex >= listItems.size())
         return String();
-    return listItems[listIndex]->fastGetAttribute(aria_labelAttr);
+    return listItems[listIndex]->attributeWithoutSynchronization(aria_labelAttr);
 }
     
 String RenderMenuList::itemToolTip(unsigned listIndex) const
@@ -578,7 +578,7 @@ PassRefPtr<Scrollbar> RenderMenuList::createScrollbar(ScrollableArea& scrollable
         widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &selectElement());
     else
         widget = Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
-    return widget.release();
+    return WTFMove(widget);
 }
 
 int RenderMenuList::clientInsetLeft() const

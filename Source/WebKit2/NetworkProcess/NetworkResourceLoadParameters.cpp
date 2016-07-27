@@ -34,21 +34,6 @@ using namespace WebCore;
 
 namespace WebKit {
 
-NetworkResourceLoadParameters::NetworkResourceLoadParameters()
-    : identifier(0)
-    , webPageID(0)
-    , webFrameID(0)
-    , sessionID(SessionID::emptySessionID())
-    , contentSniffingPolicy(SniffContent)
-    , allowStoredCredentials(DoNotAllowStoredCredentials)
-    , clientCredentialPolicy(DoNotAskClientForAnyCredentials)
-    , shouldClearReferrerOnHTTPSToHTTPRedirect(true)
-    , defersLoading(false)
-    , needsCertificateInfo(false)
-    , maximumBufferingTime(0ms)
-{
-}
-
 void NetworkResourceLoadParameters::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << identifier;
@@ -127,8 +112,8 @@ bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, Networ
         if (!decoder.decode(requestBodySandboxExtensionHandles))
             return false;
         for (size_t i = 0; i < requestBodySandboxExtensionHandles.size(); ++i) {
-            if (RefPtr<SandboxExtension> extension = SandboxExtension::create(requestBodySandboxExtensionHandles[i]))
-                result.requestBodySandboxExtensions.append(extension.release());
+            if (auto extension = SandboxExtension::create(requestBodySandboxExtensionHandles[i]))
+                result.requestBodySandboxExtensions.append(WTFMove(extension));
         }
     }
 

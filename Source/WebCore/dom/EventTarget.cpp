@@ -32,6 +32,7 @@
 #include "config.h"
 #include "EventTarget.h"
 
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "InspectorInstrumentation.h"
 #include "NoEventDispatchAssertion.h"
@@ -157,16 +158,11 @@ bool EventTarget::clearAttributeEventListener(const AtomicString& eventType)
     return removeEventListener(eventType, *listener, false);
 }
 
-bool EventTarget::dispatchEventForBindings(Event* event, ExceptionCode& ec)
+bool EventTarget::dispatchEventForBindings(Event& event, ExceptionCode& ec)
 {
-    if (!event) {
-        ec = TypeError;
-        return false;
-    }
+    event.setUntrusted();
 
-    event->setUntrusted();
-
-    if (!event->isInitialized() || event->isBeingDispatched()) {
+    if (!event.isInitialized() || event.isBeingDispatched()) {
         ec = INVALID_STATE_ERR;
         return false;
     }
@@ -174,7 +170,7 @@ bool EventTarget::dispatchEventForBindings(Event* event, ExceptionCode& ec)
     if (!scriptExecutionContext())
         return false;
 
-    return dispatchEvent(*event);
+    return dispatchEvent(event);
 }
 
 bool EventTarget::dispatchEvent(Event& event)
@@ -240,16 +236,6 @@ bool EventTarget::fireEventListeners(Event& event)
     }
 
     return !event.defaultPrevented();
-}
-
-bool EventTarget::hasActiveTouchEventListeners() const
-{
-    const EventNames& names = eventNames();
-    return hasActiveEventListeners(names.touchstartEvent)
-        || hasActiveEventListeners(names.touchmoveEvent)
-        || hasActiveEventListeners(names.touchendEvent)
-        || hasActiveEventListeners(names.touchcancelEvent)
-        || hasActiveEventListeners(names.touchforcechangeEvent);
 }
 
 void EventTarget::fireEventListeners(Event& event, EventTargetData* d, EventListenerVector& entry)

@@ -36,6 +36,8 @@
 
 namespace JSC {
 class ArrayBuffer;
+class ExecState;
+class JSValue;
 };
 
 namespace WebCore {
@@ -58,13 +60,15 @@ public:
     static void fetch(ScriptExecutionContext&, FetchRequest&, const Dictionary&, FetchPromise&&);
     static void fetch(ScriptExecutionContext&, const String&, const Dictionary&, FetchPromise&&);
 
-    void initializeWith(const Dictionary&, ExceptionCode&);
+
+    void setStatus(int, const String&, ExceptionCode&);
+    void initializeWith(JSC::ExecState&, JSC::JSValue);
 
     Type type() const { return m_response.type(); }
-    const String& url() const { return m_response.url().string(); }
+    const String& url() const;
     bool redirected() const { return m_response.isRedirected(); }
     int status() const { return m_response.httpStatusCode(); }
-    bool ok() const { return status() >= 200 && status() <= 299; }
+    bool ok() const { return m_response.isSuccessful(); }
     const String& statusText() const { return m_response.httpStatusText(); }
 
     FetchHeaders& headers() { return m_headers; }
@@ -73,6 +77,7 @@ public:
 #if ENABLE(STREAMS_API)
     ReadableStreamSource* createReadableStreamSource();
     void consumeBodyAsStream();
+    void cancel();
 #endif
 
 private:
@@ -112,6 +117,7 @@ private:
     ResourceResponse m_response;
     Ref<FetchHeaders> m_headers;
     Optional<BodyLoader> m_bodyLoader;
+    mutable String m_responseURL;
 };
 
 } // namespace WebCore

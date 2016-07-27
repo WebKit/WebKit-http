@@ -26,19 +26,21 @@
 #include "config.h"
 #include "PlatformWebView.h"
 
+#include "HeadlessViewBackend.h"
 #include <WebKit/WKImageCairo.h>
 #include <cairo.h>
 #include <cstdio>
 #include <glib.h>
+#include <wtf/RunLoop.h>
 
 namespace WTR {
 
 PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const TestOptions& options)
-    : m_view(WKViewCreate(configuration))
-    , m_window(nullptr)
-    , m_windowIsKey(true)
+    : m_windowIsKey(true)
     , m_options(options)
 {
+    m_window = new HeadlessViewBackend;
+    m_view = WKViewCreateWithViewBackend(m_window->backend(), configuration);
 }
 
 PlatformWebView::~PlatformWebView()
@@ -90,8 +92,23 @@ void PlatformWebView::makeWebViewFirstResponder()
 
 WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
 {
-    cairo_surface_t* imageSurface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 800, 600);
-    WKRetainPtr<WKImageRef> wkImage = adoptWK(WKImageCreateFromCairoSurface(imageSurface, 0 /* options */));
+    {
+        struct TimeoutTimer {
+            TimeoutTimer()
+                : timer(RunLoop::main(), this, &TimeoutTimer::fired)
+            {
+                timer.startOneShot(1.0 / 60);
+            }
+
+            void fired() { RunLoop::main().stop(); }
+            RunLoop::Timer<TimeoutTimer> timer;
+        } timeoutTimer;
+
+        RunLoop::main().run();
+    }
+
+    cairo_surface_t* imageSurface = m_window->createSnapshot();
+    WKRetainPtr<WKImageRef> wkImage = adoptWK(WKImageCreateFromCairoSurface(imageSurface, kWKImageOptionsShareable));
     cairo_surface_destroy(imageSurface);
     return wkImage;
 }

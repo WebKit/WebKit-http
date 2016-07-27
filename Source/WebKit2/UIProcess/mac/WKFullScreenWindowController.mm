@@ -43,6 +43,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/WebCoreFullScreenPlaceholderView.h>
 #import <WebCore/WebCoreFullScreenWindow.h>
+#import <wtf/BlockObjCExceptions.h>
 
 using namespace WebKit;
 using namespace WebCore;
@@ -152,6 +153,16 @@ static void makeResponderFirstResponderIfDescendantOfView(NSWindow *window, NSRe
     return _webViewPlaceholder.get();
 }
 
+- (void)setSavedConstraints:(NSArray *)savedConstraints
+{
+    _savedConstraints = savedConstraints;
+}
+
+- (NSArray *)savedConstraints
+{
+    return _savedConstraints.get();
+}
+
 #pragma mark -
 #pragma mark NSWindowController overrides
 
@@ -220,6 +231,8 @@ static RetainPtr<CGImageRef> createImageWithCopiedData(CGImageRef sourceImage)
 
     NSResponder *webWindowFirstResponder = [[_webView window] firstResponder];
     [self _manager]->saveScrollPosition();
+    _savedTopContentInset = _page->topContentInset();
+    _page->setTopContentInset(0);
     [[self window] setFrame:screenFrame display:NO];
 
     // Painting is normally suspended when the WKView is removed from the window, but this is
@@ -235,14 +248,13 @@ static RetainPtr<CGImageRef> createImageWithCopiedData(CGImageRef sourceImage)
     }
     [_webViewPlaceholder setTarget:nil];
     [_webViewPlaceholder setContents:(id)webViewContents.get()];
+    self.savedConstraints = _webView.superview.constraints;
     [self _replaceView:_webView with:_webViewPlaceholder.get()];
     
     // Then insert the WebView into the full screen window
     NSView *contentView = [[self window] contentView];
     [_clipView addSubview:_webView positioned:NSWindowBelow relativeTo:nil];
-    NSRect contentViewBounds = contentView.bounds;
-    contentViewBounds.size.height += _page->topContentInset();
-    _webView.frame = contentViewBounds;
+    _webView.frame = NSInsetRect(contentView.bounds, 0, -_page->topContentInset());
 
     makeResponderFirstResponderIfDescendantOfView(self.window, webWindowFirstResponder, _webView);
 
@@ -299,11 +311,16 @@ static const float minVideoWidth = 480 + 20 + 20; // Note: Keep in sync with med
 
         NSResponder *firstResponder = [[self window] firstResponder];
         [self _replaceView:_webViewPlaceholder.get() with:_webView];
+        BEGIN_BLOCK_OBJC_EXCEPTIONS
+        [NSLayoutConstraint activateConstraints:self.savedConstraints];
+        END_BLOCK_OBJC_EXCEPTIONS
+        self.savedConstraints = nil;
         makeResponderFirstResponderIfDescendantOfView(_webView.window, firstResponder, _webView);
         [[_webView window] makeKeyAndOrderFront:self];
 
         _page->scalePage(_savedScale, IntPoint());
         [self _manager]->restoreScrollPosition();
+        _page->setTopContentInset(_savedTopContentInset);
         [self _manager]->didExitFullScreen();
         [self _manager]->setAnimatingFullScreen(false);
     }
@@ -387,6 +404,10 @@ static const float minVideoWidth = 480 + 20 + 20; // Note: Keep in sync with med
 
     NSResponder *firstResponder = [[self window] firstResponder];
     [self _replaceView:_webViewPlaceholder.get() with:_webView];
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
+    [NSLayoutConstraint activateConstraints:self.savedConstraints];
+    END_BLOCK_OBJC_EXCEPTIONS
+    self.savedConstraints = nil;
     makeResponderFirstResponderIfDescendantOfView(_webView.window, firstResponder, _webView);
 
     [[_webView window] makeKeyAndOrderFront:self];

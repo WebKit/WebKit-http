@@ -42,31 +42,10 @@
 
 #ifndef WK_FRAMEWORK_HEADER_POSTPROCESSING_ENABLED
 
-#define WK_AVAILABLE(_mac, _ios)
-#define WK_CLASS_AVAILABLE(_mac, _ios) __attribute__((visibility ("default")))
-#define WK_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...) __attribute__((deprecated(__VA_ARGS__)))
-#define WK_CLASS_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...) __attribute__((visibility("default"))) __attribute__((deprecated(__VA_ARGS__)))
-#define WK_ENUM_AVAILABLE(_mac, _ios)
-#define WK_ENUM_AVAILABLE_IOS(_ios)
-#define WK_ENUM_DEPRECATED(_macIntro, _macDep, _iosIntro, _iosDep, ...) __attribute__((deprecated(__VA_ARGS__)))
-
-#if __has_feature(objc_generics) && (!defined(__MAC_OS_X_VERSION_MAX_ALLOWED) || __MAC_OS_X_VERSION_MAX_ALLOWED >= 101100)
-
-#define WK_ARRAY(_objectType) NSArray<_objectType>
-#define WK_DICTIONARY(_keyType, _valueType) NSDictionary<_keyType, _valueType>
-#define WK_SET(_objectType) NSSet<_objectType>
-
-#else
-
-#define WK_ARRAY(...) NSArray
-#define WK_DICTIONARY(...) NSDictionary
-#define WK_SET(...) NSSet
+#define WK_API_AVAILABLE(...)
+#define WK_CLASS_AVAILABLE(...) __attribute__((visibility("default"))) WK_API_AVAILABLE(__VA_ARGS__)
+#define WK_API_DEPRECATED(_message, ...) __attribute__((deprecated(_message)))
+#define WK_API_DEPRECATED_WITH_REPLACEMENT(_replacement, ...) __attribute__((deprecated("use " #_replacement)))
+#define WK_CLASS_DEPRECATED_WITH_REPLACEMENT(_replacement, ...) __attribute__((visibility("default"))) __attribute__((deprecated("use " #_replacement)))
 
 #endif
-
-#ifdef __OBJC__
-#define WK_NULLABLE_SPECIFIER __nullable
-#endif
-
-#endif
-

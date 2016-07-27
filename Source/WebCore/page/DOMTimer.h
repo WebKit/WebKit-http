@@ -28,6 +28,7 @@
 #define DOMTimer_h
 
 #include "SuspendableTimer.h"
+#include "UserGestureIndicator.h"
 #include <memory>
 #include <wtf/RefCounted.h>
 
@@ -46,9 +47,9 @@ class DOMTimer final : public RefCounted<DOMTimer>, public SuspendableTimer {
 public:
     virtual ~DOMTimer();
 
-    static std::chrono::milliseconds defaultMinimumInterval() { return std::chrono::milliseconds(4); }
-    static std::chrono::milliseconds defaultAlignmentInterval() { return std::chrono::milliseconds::zero(); }
-    static std::chrono::milliseconds hiddenPageAlignmentInterval() { return std::chrono::milliseconds(1000); }
+    static std::chrono::milliseconds defaultMinimumInterval() { return 4ms; }
+    static std::chrono::milliseconds defaultAlignmentInterval() { return 0ms; }
+    static std::chrono::milliseconds hiddenPageAlignmentInterval() { return 1000ms; }
 
     // Creates a new timer owned by specified ScriptExecutionContext, starts it
     // and returns its Id.
@@ -90,7 +91,7 @@ private:
     std::chrono::milliseconds m_originalInterval;
     TimerThrottleState m_throttleState;
     std::chrono::milliseconds m_currentTimerInterval;
-    bool m_shouldForwardUserGesture;
+    RefPtr<UserGestureToken> m_userGestureTokenToForward;
 };
 
 } // namespace WebCore

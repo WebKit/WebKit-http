@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@ void emitSetVarargsFrame(CCallHelpers& jit, GPRReg lengthGPR, bool lengthInclude
     jit.andPtr(CCallHelpers::TrustedImm32(~(stackAlignmentRegisters() - 1)), resultGPR);
 
     jit.addPtr(lengthGPR, resultGPR);
-    jit.addPtr(CCallHelpers::TrustedImm32(JSStack::CallFrameHeaderSize + (lengthIncludesThis? 0 : 1)), resultGPR);
+    jit.addPtr(CCallHelpers::TrustedImm32(CallFrame::headerSizeInRegisters + (lengthIncludesThis? 0 : 1)), resultGPR);
     
     // resultGPR now has the required frame size in Register units
     // Round resultGPR to next multiple of stackAlignmentRegisters()
@@ -82,10 +82,10 @@ void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GP
     
     emitSetVarargsFrame(jit, scratchGPR1, true, numUsedSlotsGPR, scratchGPR2);
 
-    slowCase.append(jit.branchPtr(CCallHelpers::Above, CCallHelpers::AbsoluteAddress(jit.vm()->addressOfStackLimit()), scratchGPR2));
+    slowCase.append(jit.branchPtr(CCallHelpers::Above, CCallHelpers::AbsoluteAddress(jit.vm()->addressOfSoftStackLimit()), scratchGPR2));
 
     // Initialize ArgumentCount.
-    jit.store32(scratchGPR1, CCallHelpers::Address(scratchGPR2, JSStack::ArgumentCount * static_cast<int>(sizeof(Register)) + PayloadOffset));
+    jit.store32(scratchGPR1, CCallHelpers::Address(scratchGPR2, CallFrameSlot::argumentCount * static_cast<int>(sizeof(Register)) + PayloadOffset));
 
     // Copy arguments.
     jit.signExtend32ToPtr(scratchGPR1, scratchGPR1);
@@ -131,7 +131,7 @@ void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GP
             firstArgumentReg = VirtualRegister(0);
     } else {
         argumentCountRecovery = ValueRecovery::displacedInJSStack(
-            VirtualRegister(JSStack::ArgumentCount), DataFormatInt32);
+            VirtualRegister(CallFrameSlot::argumentCount), DataFormatInt32);
         firstArgumentReg = VirtualRegister(CallFrame::argumentOffset(0));
     }
     emitSetupVarargsFrameFastCase(jit, numUsedSlotsGPR, scratchGPR1, scratchGPR2, scratchGPR3, argumentCountRecovery, firstArgumentReg, firstVarArgOffset, slowCase);

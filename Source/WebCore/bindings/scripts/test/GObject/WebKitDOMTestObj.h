@@ -394,6 +394,18 @@ WEBKIT_API void
 webkit_dom_test_obj_method_with_exception_with_message(WebKitDOMTestObj* self);
 
 /**
+ * webkit_dom_test_obj_public_and_private_method:
+ * @self: A #WebKitDOMTestObj
+ * @argument: A #gchar
+ *
+ * Returns: A #gchar
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API gchar*
+webkit_dom_test_obj_public_and_private_method(WebKitDOMTestObj* self, const gchar* argument);
+
+/**
  * webkit_dom_test_obj_with_script_state_void:
  * @self: A #WebKitDOMTestObj
  *
@@ -484,6 +496,24 @@ webkit_dom_test_obj_with_script_execution_context_and_script_state_with_spaces(W
 **/
 WEBKIT_API void
 webkit_dom_test_obj_with_document_argument(WebKitDOMTestObj* self);
+
+/**
+ * webkit_dom_test_obj_with_caller_document_argument:
+ * @self: A #WebKitDOMTestObj
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_with_caller_document_argument(WebKitDOMTestObj* self);
+
+/**
+ * webkit_dom_test_obj_with_caller_window_argument:
+ * @self: A #WebKitDOMTestObj
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_with_caller_window_argument(WebKitDOMTestObj* self);
 
 /**
  * webkit_dom_test_obj_method_with_optional_arg:
@@ -897,6 +927,40 @@ webkit_dom_test_obj_strict_function(WebKitDOMTestObj* self, const gchar* str, gf
 **/
 WEBKIT_API gboolean
 webkit_dom_test_obj_strict_function_with_array(WebKitDOMTestObj* self, WebKitDOMTestObj* objArg, glong array, GError** error);
+
+/**
+ * webkit_dom_test_obj_variadic_string_method:
+ * @self: A #WebKitDOMTestObj
+ * @head: A #gchar
+ * @...: list of #gchar ended by %NULL.
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_variadic_string_method(WebKitDOMTestObj* self, const gchar* head, ...);
+
+/**
+ * webkit_dom_test_obj_variadic_double_method:
+ * @self: A #WebKitDOMTestObj
+ * @head: A #gdouble
+ * @n_tail: number of tail that will be passed
+ * @...: list of #gdouble
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_variadic_double_method(WebKitDOMTestObj* self, gdouble head, guint n_tail, ...);
+
+/**
+ * webkit_dom_test_obj_variadic_node_method:
+ * @self: A #WebKitDOMTestObj
+ * @head: A #WebKitDOMNode
+ * @...: list of #WebKitDOMNode ended by %NULL.
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_variadic_node_method(WebKitDOMTestObj* self, WebKitDOMNode* head, ...);
 
 /**
  * webkit_dom_test_obj_any:

@@ -37,6 +37,7 @@
 #include "EXTShaderTextureLOD.h"
 #include "EXTTextureFilterAnisotropic.h"
 #include "EXTsRGB.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "Extensions3D.h"
 #include "Frame.h"
@@ -803,6 +804,9 @@ void WebGLRenderingContextBase::reshape(int width, int height)
 
 int WebGLRenderingContextBase::drawingBufferWidth() const
 {
+    if (isContextLost())
+        return 0;
+
     if (m_isPendingPolicyResolution && !m_hasRequestedPolicyResolution)
         return 0;
 
@@ -811,6 +815,9 @@ int WebGLRenderingContextBase::drawingBufferWidth() const
 
 int WebGLRenderingContextBase::drawingBufferHeight() const
 {
+    if (isContextLost())
+        return 0;
+
     if (m_isPendingPolicyResolution && !m_hasRequestedPolicyResolution)
         return 0;
 
@@ -1754,6 +1761,11 @@ bool WebGLRenderingContextBase::validateVertexAttributes(unsigned elementCount, 
     if (elementCount && !sawEnabledAttrib && !m_currentProgram->isUsingVertexAttrib0())
         return false;
 
+    if (elementCount && sawEnabledAttrib) {
+        if (!m_boundArrayBuffer && !m_boundVertexArrayObject->getElementArrayBuffer())
+            return false;
+    }
+    
     return true;
 }
 
@@ -4728,7 +4740,7 @@ void WebGLRenderingContextBase::restoreStatesAfterVertexAttrib0Simulation()
 
 void WebGLRenderingContextBase::dispatchContextLostEvent()
 {
-    Ref<WebGLContextEvent> event = WebGLContextEvent::create(eventNames().webglcontextlostEvent, false, true, "");
+    Ref<WebGLContextEvent> event = WebGLContextEvent::create(eventNames().webglcontextlostEvent, false, true, emptyString());
     canvas()->dispatchEvent(event);
     m_restoreAllowed = event->defaultPrevented();
     if (m_contextLostMode == RealLostContext && m_restoreAllowed)
@@ -4809,7 +4821,7 @@ void WebGLRenderingContextBase::maybeRestoreContext()
     setupFlags();
     initializeNewContext();
     initializeVertexArrayObjects();
-    canvas()->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextrestoredEvent, false, true, ""));
+    canvas()->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextrestoredEvent, false, true, emptyString()));
 }
 
 String WebGLRenderingContextBase::ensureNotNull(const String& text) const

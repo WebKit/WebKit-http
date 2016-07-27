@@ -25,7 +25,9 @@
 
 #include "config.h"
 #include "CommonSlowPaths.h"
+
 #include "ArrayConstructor.h"
+#include "BuiltinNames.h"
 #include "CallFrame.h"
 #include "ClonedArguments.h"
 #include "CodeProfiling.h"
@@ -176,7 +178,7 @@ static CommonSlowPaths::ArityCheckData* setupArityCheckData(VM& vm, int slotsToA
 SLOW_PATH_DECL(slow_path_call_arityCheck)
 {
     BEGIN();
-    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, &vm.interpreter->stack(), CodeForCall);
+    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, vm, CodeForCall);
     if (slotsToAdd < 0) {
         exec = exec->callerFrame();
         ErrorHandlingScope errorScope(exec->vm());
@@ -189,7 +191,7 @@ SLOW_PATH_DECL(slow_path_call_arityCheck)
 SLOW_PATH_DECL(slow_path_construct_arityCheck)
 {
     BEGIN();
-    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, &vm.interpreter->stack(), CodeForConstruct);
+    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, vm, CodeForConstruct);
     if (slotsToAdd < 0) {
         exec = exec->callerFrame();
         ErrorHandlingScope errorScope(exec->vm());
@@ -344,12 +346,6 @@ SLOW_PATH_DECL(slow_path_dec)
     RETURN(jsNumber(OP(1).jsValue().toNumber(exec) - 1));
 }
 
-SLOW_PATH_DECL(slow_path_to_number)
-{
-    BEGIN();
-    RETURN(jsNumber(OP_C(2).jsValue().toNumber(exec)));
-}
-
 SLOW_PATH_DECL(slow_path_to_string)
 {
     BEGIN();
@@ -395,6 +391,14 @@ static void updateResultProfileForBinaryArithOp(ExecState* exec, Instruction* pc
 #else
 static void updateResultProfileForBinaryArithOp(ExecState*, Instruction*, JSValue, JSValue, JSValue) { }
 #endif
+
+SLOW_PATH_DECL(slow_path_to_number)
+{
+    BEGIN();
+    JSValue argument = OP_C(2).jsValue();
+    JSValue result = jsNumber(argument.toNumber(exec));
+    RETURN_PROFILED(op_to_number, result);
+}
 
 SLOW_PATH_DECL(slow_path_add)
 {
@@ -720,7 +724,7 @@ SLOW_PATH_DECL(slow_path_profile_type_clear_log)
 SLOW_PATH_DECL(slow_path_assert)
 {
     BEGIN();
-    ASSERT_WITH_MESSAGE(OP(1).jsValue().asBoolean(), "JS assertion failed at line %d in:\n%s\n", pc[2].u.operand, exec->codeBlock()->sourceCodeForTools().data());
+    RELEASE_ASSERT_WITH_MESSAGE(OP(1).jsValue().asBoolean(), "JS assertion failed at line %d in:\n%s\n", pc[2].u.operand, exec->codeBlock()->sourceCodeForTools().data());
     END();
 }
 
@@ -731,7 +735,7 @@ SLOW_PATH_DECL(slow_path_save)
     BEGIN();
     JSValue generator = OP(1).jsValue();
     GeneratorFrame* frame = nullptr;
-    JSValue value = generator.get(exec, exec->propertyNames().generatorFramePrivateName);
+    JSValue value = generator.get(exec, exec->propertyNames().builtinNames().generatorFramePrivateName());
     if (!value.isNull())
         frame = jsCast<GeneratorFrame*>(value);
     else {
@@ -739,7 +743,7 @@ SLOW_PATH_DECL(slow_path_save)
         // https://bugs.webkit.org/show_bug.cgi?id=151545
         frame = GeneratorFrame::create(exec->vm(),  exec->codeBlock()->numCalleeLocals());
         PutPropertySlot slot(generator, true, PutPropertySlot::PutById);
-        asObject(generator)->methodTable(exec->vm())->put(asObject(generator), exec, exec->propertyNames().generatorFramePrivateName, frame, slot);
+        asObject(generator)->methodTable(exec->vm())->put(asObject(generator), exec, exec->propertyNames().builtinNames().generatorFramePrivateName(), frame, slot);
     }
     unsigned liveCalleeLocalsIndex = pc[2].u.unsignedValue;
     frame->save(exec, exec->codeBlock()->liveCalleeLocalsAtYield(liveCalleeLocalsIndex));
@@ -750,7 +754,7 @@ SLOW_PATH_DECL(slow_path_resume)
 {
     BEGIN();
     JSValue generator = OP(1).jsValue();
-    GeneratorFrame* frame = jsCast<GeneratorFrame*>(generator.get(exec, exec->propertyNames().generatorFramePrivateName));
+    GeneratorFrame* frame = jsCast<GeneratorFrame*>(generator.get(exec, exec->propertyNames().builtinNames().generatorFramePrivateName()));
     unsigned liveCalleeLocalsIndex = pc[2].u.unsignedValue;
     frame->resume(exec, exec->codeBlock()->liveCalleeLocalsAtYield(liveCalleeLocalsIndex));
     END();
@@ -797,6 +801,7 @@ SLOW_PATH_DECL(slow_path_resolve_scope)
         if (resolvedScope->isGlobalObject()) {
             JSGlobalObject* globalObject = jsCast<JSGlobalObject*>(resolvedScope);
             if (globalObject->hasProperty(exec, ident)) {
+                ConcurrentJITLocker locker(exec->codeBlock()->m_lock);
                 if (resolveType == UnresolvedProperty)
                     pc[4].u.operand = GlobalProperty;
                 else
@@ -806,6 +811,7 @@ SLOW_PATH_DECL(slow_path_resolve_scope)
             }
         } else if (resolvedScope->isGlobalLexicalEnvironment()) {
             JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(resolvedScope);
+            ConcurrentJITLocker locker(exec->codeBlock()->m_lock);
             if (resolveType == UnresolvedProperty)
                 pc[4].u.operand = GlobalLexicalVar;
             else

@@ -65,6 +65,11 @@ enum AutoFillButtonType {
     "AutoFillButtonTypeCredentials"
 };
 
+enum UserInterfaceLayoutDirection {
+    "LTR",
+    "RTL"
+};
+
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
@@ -252,6 +257,10 @@ enum AutoFillButtonType {
 
     [RaisesException] void insertAuthorCSS(DOMString css);
     [RaisesException] void insertUserCSS(DOMString css);
+
+    readonly attribute boolean isUnderMemoryPressure;
+    void beginSimulatedMemoryPressure();
+    void endSimulatedMemoryPressure();
 
 #if defined(ENABLE_BATTERY_STATUS) && ENABLE_BATTERY_STATUS
     [RaisesException] void setBatteryStatus(DOMString eventType, boolean charging, unrestricted double chargingTime, unrestricted double dischargingTime, unrestricted double level);
@@ -441,7 +450,6 @@ enum AutoFillButtonType {
 
     DOMString composedTreeAsText(Node parent);
 
-    void setViewportForceAlwaysUserScalable(boolean scalable);
     void setLinkPreloadSupport(boolean scalable);
 
 #if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
@@ -458,4 +466,6 @@ enum AutoFillButtonType {
     boolean isProcessingUserGesture();
 
     GCObservation observeGC(any observed);
+
+    void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInterfaceLayoutDirection);
 };

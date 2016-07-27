@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -63,7 +63,7 @@ FormAssociatedElement::~FormAssociatedElement()
 void FormAssociatedElement::didMoveToNewDocument(Document* oldDocument)
 {
     HTMLElement& element = asHTMLElement();
-    if (oldDocument && element.fastHasAttribute(formAttr))
+    if (oldDocument && element.hasAttributeWithoutSynchronization(formAttr))
         resetFormAttributeTargetObserver();
 }
 
@@ -75,10 +75,13 @@ void FormAssociatedElement::insertedInto(ContainerNode& insertionPoint)
         m_formSetByParser = nullptr;
     }
 
+    if (m_form && element.rootElement() != m_form->rootElement())
+        setForm(nullptr);
+
     if (!insertionPoint.inDocument())
         return;
 
-    if (element.fastHasAttribute(formAttr))
+    if (element.hasAttributeWithoutSynchronization(formAttr))
         resetFormAttributeTargetObserver();
 }
 
@@ -96,7 +99,7 @@ static Node* computeRootNode(Node& node)
 void FormAssociatedElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement& element = asHTMLElement();
-    if (insertionPoint.inDocument() && element.fastHasAttribute(formAttr))
+    if (insertionPoint.inDocument() && element.hasAttributeWithoutSynchronization(formAttr))
         m_formAttributeTargetObserver = nullptr;
     // If the form and element are both in the same tree, preserve the connection to the form.
     // Otherwise, null out our form and remove ourselves from the form's list of elements.
@@ -106,7 +109,7 @@ void FormAssociatedElement::removedFrom(ContainerNode& insertionPoint)
 
 HTMLFormElement* FormAssociatedElement::findAssociatedForm(const HTMLElement* element, HTMLFormElement* currentAssociatedForm)
 {
-    const AtomicString& formId(element->fastGetAttribute(formAttr));
+    const AtomicString& formId(element->attributeWithoutSynchronization(formAttr));
     if (!formId.isNull() && element->inDocument()) {
         // The HTML5 spec says that the element should be associated with
         // the first element in the document to have an ID that equal to
@@ -175,7 +178,7 @@ void FormAssociatedElement::resetFormOwner()
 void FormAssociatedElement::formAttributeChanged()
 {
     HTMLElement& element = asHTMLElement();
-    if (!element.fastHasAttribute(formAttr)) {
+    if (!element.hasAttributeWithoutSynchronization(formAttr)) {
         // The form attribute removed. We need to reset form owner here.
         HTMLFormElement* originalForm = m_form;
         setForm(HTMLFormElement::findClosestFormAncestor(element));
@@ -258,7 +261,7 @@ void FormAssociatedElement::setCustomValidity(const String& error)
 
 void FormAssociatedElement::resetFormAttributeTargetObserver()
 {
-    m_formAttributeTargetObserver = std::make_unique<FormAttributeTargetObserver>(asHTMLElement().fastGetAttribute(formAttr), *this);
+    m_formAttributeTargetObserver = std::make_unique<FormAttributeTargetObserver>(asHTMLElement().attributeWithoutSynchronization(formAttr), *this);
 }
 
 void FormAssociatedElement::formAttributeTargetChanged()

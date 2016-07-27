@@ -33,6 +33,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Document.h"
+#include "EventNames.h"
 #include "Frame.h"
 #include "HTMLImageLoader.h"
 #include "HTMLNames.h"
@@ -137,7 +138,7 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
 #if PLATFORM(IOS) && ENABLE(WIRELESS_PLAYBACK_TARGET)
         if (name == webkitairplayAttr) {
             bool disabled = false;
-            if (equalLettersIgnoringASCIICase(fastGetAttribute(HTMLNames::webkitairplayAttr), "deny"))
+            if (equalLettersIgnoringASCIICase(attributeWithoutSynchronization(HTMLNames::webkitairplayAttr), "deny"))
                 disabled = true;
             mediaSession().setWirelessVideoPlaybackDisabled(*this, disabled);
         }
@@ -148,9 +149,8 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
 
 bool HTMLVideoElement::supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode) const
 {
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/HTMLVideoElementSupportsFullscreenAdditions.cpp>
-#endif
+    if (videoFullscreenMode == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture && !mediaSession().allowsPictureInPicture(*this))
+        return false;
 
     Page* page = document().page();
     if (!page) 
@@ -213,7 +213,7 @@ bool HTMLVideoElement::isURLAttribute(const Attribute& attribute) const
 
 const AtomicString& HTMLVideoElement::imageSourceURL() const
 {
-    const AtomicString& url = getAttribute(posterAttr);
+    const AtomicString& url = attributeWithoutSynchronization(posterAttr);
     if (!stripLeadingAndTrailingHTMLSpaces(url).isEmpty())
         return url;
     return m_defaultPosterURL;

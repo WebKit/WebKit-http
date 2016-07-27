@@ -253,7 +253,6 @@ messages -> WebPageProxy {
 #endif
 
     # Authentication messages
-    CanAuthenticateAgainstProtectionSpaceInFrame(uint64_t frameID, WebCore::ProtectionSpace protectionSpace) -> (bool canAuthenticate)
     DidReceiveAuthenticationChallenge(uint64_t frameID, WebCore::AuthenticationChallenge challenge, uint64_t challengeID)
 
     # Database messages
@@ -343,6 +342,8 @@ messages -> WebPageProxy {
     DismissCorrectionPanel(int32_t reason)
     DismissCorrectionPanelSoon(int32_t reason) -> (String result)
     RecordAutocorrectionResponse(int32_t responseType, String replacedString, String replacementString);
+
+    SetEditableElementIsFocused(bool editableElementIsFocused)
 #endif
 
 #if USE(DICTATION_ALTERNATIVES)

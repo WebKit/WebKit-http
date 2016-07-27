@@ -685,7 +685,8 @@ void NavigationState::NavigationClient::processDidCrash(WebKit::WebPageProxy& pa
         return;
     }
 
-    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webViewWebProcessDidCrash:m_navigationState.m_webView];
+    if (m_navigationState.m_navigationDelegateMethods.webViewWebProcessDidCrash)
+        [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webViewWebProcessDidCrash:m_navigationState.m_webView];
 }
 
 void NavigationState::NavigationClient::processDidBecomeResponsive(WebKit::WebPageProxy& page)
@@ -821,10 +822,13 @@ void NavigationState::willChangeIsLoading()
 void NavigationState::didChangeIsLoading()
 {
 #if PLATFORM(IOS)
-    if (m_webView->_page->pageLoadState().isLoading())
+    if (m_webView->_page->pageLoadState().isLoading()) {
+        LOG_ALWAYS(m_webView->_page->isAlwaysOnLoggingAllowed(), "UIProcess is taking a background assertion because a page load started");
         m_activityToken = m_webView->_page->process().throttler().backgroundActivityToken();
-    else
+    } else {
+        LOG_ALWAYS(m_webView->_page->isAlwaysOnLoggingAllowed(), "UIProcess is releasing a background assertion because a page load completed");
         m_activityToken = nullptr;
+    }
 #endif
 
     [m_webView didChangeValueForKey:@"loading"];

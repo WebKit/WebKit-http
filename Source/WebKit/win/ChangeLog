@@ -1,3 +1,242 @@
+2016-07-19  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test fast/scrolling/overflow-scroll-past-max.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=159342
+
+        Reviewed by Darin Adler.
+
+        * WebFrame.h: Link fix. 
+
+2016-07-17  Sam Weinig  <sam@webkit.org>
+
+        [WebKit API] Add SPI to track multiple navigations caused by a single user gesture
+        <rdar://problem/26554137>
+        https://bugs.webkit.org/show_bug.cgi?id=159856
+
+        Reviewed by Dan Bernstein.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::performRequest):
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::searchWithGoogle):
+        Update for new UserGestureIndicator interface.
+
+2016-07-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename fastGetAttribute to attributeWithoutSynchronization
+        https://bugs.webkit.org/show_bug.cgi?id=159852
+
+        Reviewed by Darin Adler.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::idName):
+
+2016-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Use fastGetAttribute() / setAttributeWithoutSynchronization() when possible
+        https://bugs.webkit.org/show_bug.cgi?id=159793
+
+        Reviewed by Ryosuke Niwa.
+
+        Use fastGetAttribute() / setAttributeWithoutSynchronization() when possible, for performance.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::idName):
+
+2016-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Use emptyString() instead of "" when possible
+        https://bugs.webkit.org/show_bug.cgi?id=159789
+
+        Reviewed by Alex Christensen.
+
+        Use emptyString() instead of "" when possible to reduce String allocations.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::parseRFC822HeaderFields):
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=159774
+
+        Reviewed by Brady Eidson.
+
+        * WebSocketProvider.cpp: Removed.
+        * WebSocketProvider.h: Removed.
+        * WebView.cpp: Replaced WebSocketProvider with SocketProvider as we did in WebCore.
+
+2016-07-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(WEB_SOCKETS) build after r202930
+        https://bugs.webkit.org/show_bug.cgi?id=159768
+
+        Reviewed by Alex Christensen.
+
+        * WebSocketProvider.h:
+
+2016-07-11  Enrica Casucci  <enrica@apple.com>
+
+        Build fix.
+
+        Unreviewed.
+
+        * WebDropSource.cpp:
+        (generateMouseEvent):
+
+2016-07-11  Enrica Casucci  <enrica@apple.com>
+
+        Add synthetic click origin to WKNavigationAction.
+        https://bugs.webkit.org/show_bug.cgi?id=159584
+        rdar://problem/25610422
+
+        Reviewed by Tim Horton.
+
+        * WebDropSource.cpp:
+        (generateMouseEvent):
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r202930.
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create WebSocketChannels
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        Reviewed by Brent Fulgham.
+
+        * WebSocketProvider.cpp: Copied from Source/WebCore/Modules/websockets/ThreadableWebSocketChannel.cpp.
+        (WebSocketProvider::createWebSocketChannel):
+        (WebCore::ThreadableWebSocketChannel::create): Deleted.
+        * WebSocketProvider.h:
+
+2016-07-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Add null pointer check in gesture handling.
+        https://bugs.webkit.org/show_bug.cgi?id=159454
+
+        Reviewed by Brent Fulgham.
+
+        * WebView.cpp:
+        (WebView::gesture):
+
+2016-07-01  Per Arne Vollan  <pvollan@apple.com>
+
+        ASSERTION FAILED: info.bmBitsPixel == 32
+        https://bugs.webkit.org/show_bug.cgi?id=17737
+
+        Reviewed by Brent Fulgham.
+
+        The ::SelectObject call will fail if m_backingStoreBitmap is already selected into a device context.
+        This happens when this method is called indirectly from WebView::updateBackingStore during normal
+        painting. There is no point continuing, since we would just be scrolling a 1x1 bitmap which is
+        selected into the device context by default. We can just scroll by repainting the scroll rectangle.
+
+        * WebView.cpp:
+        (WebView::scrollBackingStore): Invalidate the scroll rectangle if the ::SelectObject call fails.
+
+2016-07-01  Youenn Fablet  <youennf@gmail.com>
+
+        Add a runtime flag for DOM iterators
+        https://bugs.webkit.org/show_bug.cgi?id=159300
+
+        Reviewed by Alex Christensen.
+
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::domIteratorEnabled):
+        (WebPreferences::setDOMIteratorEnabled):
+        (WebView::notifyPreferencesChanged):
+        * WebPreferencesreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-06-28  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Custom elements tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=159139
+
+        Reviewed by Alex Christensen.
+
+        Add preference for enabling custom element API.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::customElementsEnabled):
+        (WebPreferences::setCustomElementsEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-06-23  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test accessibility/aria-labelledby-overrides-label.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=159057
+
+        Reviewed by Brent Fulgham.
+
+        The test expects the label to have a static text role, but currently it has a
+        group role.
+ 
+        * AccessibleBase.cpp:
+        (MSAARole): Change the role of labels to static text.
+
+2016-06-23  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused didCancelAuthenticationChallenge
+        https://bugs.webkit.org/show_bug.cgi?id=158819
+
+        Reviewed by David Kilzer.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidCancelAuthenticationChallenge): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2016-06-22  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test storage/indexeddb/modern/handle-user-delete.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=158934
+
+        Reviewed by Brent Fulgham.
+
+        Add a method to delete all indexed databases.
+
+        * Interfaces/IWebDatabaseManager.idl:
+        * WebDatabaseManager.cpp:
+        (WebDatabaseManager::QueryInterface):
+        (WebDatabaseManager::deleteAllIndexedDatabases):
+        * WebDatabaseManager.h:
+
+2016-06-17  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Rendering is not scaled correctly if process is DPI aware.
+        https://bugs.webkit.org/show_bug.cgi?id=158781
+
+        Reviewed by Brent Fulgham.
+
+        Scale the root graphics layer with the device scale factor.
+
+        * WebView.cpp:
+        (WebView::setAcceleratedCompositing):
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Drop some unnecessary header includes
+        https://bugs.webkit.org/show_bug.cgi?id=158788
+
+        Reviewed by Alexey Proskuryakov.
+
+        Drop some unnecessary header includes in headers to speed up build time.
+
+        * Plugins/PluginView.cpp:
+
 2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
 
         Enabling Shadow DOM for all platforms

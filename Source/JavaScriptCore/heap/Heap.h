@@ -66,7 +66,6 @@ class HeapVerifier;
 class IncrementalSweeper;
 class JITStubRoutine;
 class JSCell;
-class JSStack;
 class JSValue;
 class LLIntOffsetsExtractor;
 class MarkedArgumentBuffer;
@@ -170,14 +169,21 @@ public:
     bool shouldCollect();
     JS_EXPORT_PRIVATE void collect(HeapOperation collectionType = AnyCollection);
     bool collectIfNecessaryOrDefer(); // Returns true if it did collect.
+    void collectAccordingToDeferGCProbability();
 
-    void completeAllDFGPlans();
+    void completeAllJITPlans();
     
     // Use this API to report non-GC memory referenced by GC objects. Be sure to
     // call both of these functions: Calling only one may trigger catastropic
     // memory growth.
     void reportExtraMemoryAllocated(size_t);
     void reportExtraMemoryVisited(CellState cellStateBeforeVisiting, size_t);
+
+#if ENABLE(RESOURCE_USAGE)
+    // Use this API to report the subset of extra memory that lives outside this process.
+    void reportExternalMemoryVisited(CellState cellStateBeforeVisiting, size_t);
+    size_t externalMemorySize() { return m_externalMemorySize; }
+#endif
 
     // Use this API to report non-GC memory if you can't use the better API above.
     void deprecatedReportExtraMemory(size_t);
@@ -199,9 +205,8 @@ public:
 
     HashSet<MarkedArgumentBuffer*>& markListSet();
     
-    template<typename Functor> typename Functor::ReturnType forEachProtectedCell(Functor&);
-    template<typename Functor> typename Functor::ReturnType forEachProtectedCell();
-    template<typename Functor> void forEachCodeBlock(Functor&);
+    template<typename Functor> void forEachProtectedCell(const Functor&);
+    template<typename Functor> void forEachCodeBlock(const Functor&);
 
     HandleSet* handleSet() { return &m_handleSet; }
     HandleStack* handleStack() { return &m_handleStack; }
@@ -222,8 +227,6 @@ public:
     void deleteAllUnlinkedCodeBlocks();
 
     void didAllocate(size_t);
-    void didAbandon(size_t);
-
     bool isPagedOut(double deadline);
     
     const JITStubRoutineSet& jitStubRoutines() { return m_jitStubRoutines; }
@@ -342,7 +345,6 @@ private:
     void didFinishCollection(double gcStartTime);
     void resumeCompilerThreads();
     void zombifyDeadObjects();
-    void markDeadObjects();
     void gatherExtraHeapSnapshotData(HeapProfiler&);
     void removeDeadHeapSnapshotNodes(HeapProfiler&);
 
@@ -351,8 +353,6 @@ private:
 
     bool shouldDoFullCollection(HeapOperation requestedCollectionType) const;
 
-    JSStack& stack();
-    
     void incrementDeferralDepth();
     void decrementDeferralDepth();
     void decrementDeferralDepthAndGCIfNeeded();
@@ -464,6 +464,7 @@ private:
 
 #if ENABLE(RESOURCE_USAGE)
     size_t m_blockBytesAllocated { 0 };
+    size_t m_externalMemorySize { 0 };
 #endif
 };
 

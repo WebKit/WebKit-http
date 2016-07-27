@@ -32,6 +32,7 @@
 #include "Frame.h"
 #include "LayoutRect.h"
 #include "PaintPhase.h"
+#include "RenderObjectEnums.h"
 #include "RenderStyle.h"
 #include "ScrollBehavior.h"
 #include "StyleImage.h"
@@ -72,48 +73,6 @@ class SelectionRect;
 #endif
 
 struct PaintInfo;
-
-enum CursorDirective {
-    SetCursorBasedOnStyle,
-    SetCursor,
-    DoNotSetCursor
-};
-
-enum HitTestFilter {
-    HitTestAll,
-    HitTestSelf,
-    HitTestDescendants
-};
-
-enum HitTestAction {
-    HitTestBlockBackground,
-    HitTestChildBlockBackground,
-    HitTestChildBlockBackgrounds,
-    HitTestFloat,
-    HitTestForeground
-};
-
-// Sides used when drawing borders and outlines. The values should run clockwise from top.
-enum BoxSide {
-    BSTop,
-    BSRight,
-    BSBottom,
-    BSLeft
-};
-
-enum MarkingBehavior {
-    MarkOnlyThis,
-    MarkContainingBlockChain,
-};
-
-enum class ScheduleRelayout { No, Yes };
-
-enum MapCoordinatesMode {
-    IsFixed             = 1 << 0,
-    UseTransforms       = 1 << 1,
-    ApplyContainerFlip  = 1 << 2
-};
-typedef unsigned MapCoordinatesFlags;
 
 #if PLATFORM(IOS)
 const int caretWidth = 2; // This value should be kept in sync with UIKit. See <rdar://problem/15580601>.
@@ -196,7 +155,7 @@ public:
     WEBCORE_EXPORT RenderLayer* enclosingLayer() const;
 
     // Scrolling is a RenderBox concept, however some code just cares about recursively scrolling our enclosing ScrollableArea(s).
-    WEBCORE_EXPORT bool scrollRectToVisible(const LayoutRect&, const ScrollAlignment& alignX = ScrollAlignment::alignCenterIfNeeded, const ScrollAlignment& alignY = ScrollAlignment::alignCenterIfNeeded);
+    WEBCORE_EXPORT bool scrollRectToVisible(SelectionRevealMode, const LayoutRect&, const ScrollAlignment& alignX = ScrollAlignment::alignCenterIfNeeded, const ScrollAlignment& alignY = ScrollAlignment::alignCenterIfNeeded);
 
     // Convenience function for getting to the nearest enclosing box of a RenderObject.
     RenderBox& enclosingBox() const;
@@ -378,18 +337,16 @@ public:
     virtual bool isRenderMathMLBlock() const { return false; }
     virtual bool isRenderMathMLTable() const { return false; }
     virtual bool isRenderMathMLOperator() const { return false; }
-    virtual bool isRenderMathMLRadicalOperator() const { return false; }
     virtual bool isRenderMathMLRow() const { return false; }
     virtual bool isRenderMathMLMath() const { return false; }
     virtual bool isRenderMathMLMenclose() const { return false; }
     virtual bool isRenderMathMLFenced() const { return false; }
     virtual bool isRenderMathMLFraction() const { return false; }
+    virtual bool isRenderMathMLPadded() const { return false; }
     virtual bool isRenderMathMLRoot() const { return false; }
-    virtual bool isRenderMathMLRootWrapper() const { return false; }
     virtual bool isRenderMathMLSpace() const { return false; }
     virtual bool isRenderMathMLSquareRoot() const { return false; }
     virtual bool isRenderMathMLScripts() const { return false; }
-    virtual bool isRenderMathMLScriptsWrapper() const { return false; }
     virtual bool isRenderMathMLToken() const { return false; }
     virtual bool isRenderMathMLUnderOver() const { return false; }
 #endif // ENABLE(MATHML)

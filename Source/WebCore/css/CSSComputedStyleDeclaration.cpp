@@ -62,6 +62,7 @@
 #include "RenderBox.h"
 #include "RenderStyle.h"
 #include "SVGElement.h"
+#include "ShapeValue.h"
 #include "StyleInheritedData.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
@@ -78,10 +79,6 @@
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
 #include "RenderGrid.h"
-#endif
-
-#if ENABLE(CSS_SHAPES)
-#include "ShapeValue.h"
 #endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -3951,6 +3948,8 @@ unsigned CSSComputedStyleDeclaration::length() const
     if (!node)
         return 0;
 
+    updateStyleIfNeededForNode(*node);
+
     auto* style = node->computedStyle(m_pseudoElementSpecifier);
     if (!style)
         return 0;
@@ -4059,9 +4058,9 @@ Ref<MutableStyleProperties> ComputedStyleExtractor::copyPropertiesInSet(const CS
     Vector<CSSProperty, 256> list;
     list.reserveInitialCapacity(length);
     for (unsigned i = 0; i < length; ++i) {
-        RefPtr<CSSValue> value = propertyValue(set[i]);
+        auto value = propertyValue(set[i]);
         if (value)
-            list.append(CSSProperty(set[i], value.release(), false));
+            list.append(CSSProperty(set[i], WTFMove(value), false));
     }
     return MutableStyleProperties::create(list.data(), list.size());
 }

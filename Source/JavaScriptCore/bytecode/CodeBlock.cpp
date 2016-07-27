@@ -238,6 +238,8 @@ void CodeBlock::dumpAssumingJITType(PrintStream& out, JITCode::JITType jitType) 
         out.print(" (DidTryToEnterInLoop)");
     if (ownerScriptExecutable()->isStrictMode())
         out.print(" (StrictMode)");
+    if (m_didFailJITCompilation)
+        out.print(" (JITFail)");
     if (this->jitType() == JITCode::BaselineJIT && m_didFailFTLCompilation)
         out.print(" (FTLFail)");
     if (this->jitType() == JITCode::BaselineJIT && m_hasBeenCompiledWithFTL)
@@ -439,6 +441,9 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
         case CacheType::Unset:
             out.printf("unset");
             break;
+        case CacheType::ArrayLength:
+            out.printf("ArrayLength");
+            break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
             break;
@@ -524,7 +529,8 @@ void CodeBlock::printCallOp(PrintStream& out, ExecState* exec, int location, con
     int argCount = (++it)->u.operand;
     int registerOffset = (++it)->u.operand;
     printLocationAndOp(out, exec, location, it, op);
-    out.printf("%s, %s, %d, %d", registerName(dst).data(), registerName(func).data(), argCount, registerOffset);
+    out.print(registerName(dst), ", ", registerName(func), ", ", argCount, ", ", registerOffset);
+    out.print(" (this at ", virtualRegisterForArgument(0, -registerOffset), ")");
     if (cacheDumpMode == DumpCaches) {
         LLIntCallLinkInfo* callLinkInfo = it[1].u.callLinkInfo;
         if (callLinkInfo->lastSeenCallee) {
@@ -604,6 +610,7 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         static_cast<unsigned long>(instructions().size()),
         static_cast<unsigned long>(instructions().size() * sizeof(Instruction)),
         m_numParameters, m_numCalleeLocals, m_numVars);
+    out.print("; scope at ", scopeRegister());
     out.printf("\n");
     
     StubInfoMap stubInfos;
@@ -987,6 +994,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_to_number: {
             printUnaryOp(out, exec, location, it, "to_number");
+            dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_to_string: {
@@ -1099,6 +1107,10 @@ void CodeBlock::dumpBytecode(
         }
         case op_is_string: {
             printUnaryOp(out, exec, location, it, "is_string");
+            break;
+        }
+        case op_is_jsarray: {
+            printUnaryOp(out, exec, location, it, "is_jsarray");
             break;
         }
         case op_is_object: {
@@ -1301,6 +1313,7 @@ void CodeBlock::dumpBytecode(
             int offset = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "jneq_ptr");
             out.printf("%s, %d (%p), %d(->%d)", registerName(r0).data(), pointer, m_globalObject->actualPointerFor(pointer), offset, location + offset);
+            ++it;
             break;
         }
         case op_jless: {
@@ -1656,7 +1669,9 @@ void CodeBlock::dumpBytecode(
             int generator = (++it)->u.operand;
             unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
             int offset = (++it)->u.operand;
-            const FastBitVector& liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
+            FastBitVector liveness;
+            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
+                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
             printLocationAndOp(out, exec, location, it, "save");
             out.printf("%s, ", registerName(generator).data());
             liveness.dump(out);
@@ -1666,7 +1681,9 @@ void CodeBlock::dumpBytecode(
         case op_resume: {
             int generator = (++it)->u.operand;
             unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
-            const FastBitVector& liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
+            FastBitVector liveness;
+            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
+                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
             printLocationAndOp(out, exec, location, it, "resume");
             out.printf("%s, ", registerName(generator).data());
             liveness.dump(out);
@@ -1751,7 +1768,10 @@ void CodeBlock::dumpBytecode(
     }
 
     dumpRareCaseProfile(out, "rare case: ", rareCaseProfileForBytecodeOffset(location), hasPrintedProfiling);
-    dumpResultProfile(out, resultProfileForBytecodeOffset(location), hasPrintedProfiling);
+    {
+        ConcurrentJITLocker locker(m_lock);
+        dumpResultProfile(out, resultProfileForBytecodeOffset(locker, location), hasPrintedProfiling);
+    }
     
 #if ENABLE(DFG_JIT)
     Vector<DFG::FrequentExitSite> exitSites = exitProfile().exitSitesFor(location);
@@ -1832,6 +1852,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, CodeBlock
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
 #endif
+    , m_didFailJITCompilation(false)
     , m_didFailFTLCompilation(false)
     , m_hasBeenCompiledWithFTL(false)
     , m_isConstructor(other.m_isConstructor)
@@ -1897,6 +1918,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
 #endif
+    , m_didFailJITCompilation(false)
     , m_didFailFTLCompilation(false)
     , m_hasBeenCompiledWithFTL(false)
     , m_isConstructor(unlinkedCodeBlock->isConstructor())
@@ -2079,7 +2101,8 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         }
         case op_get_direct_pname:
         case op_get_by_id:
-        case op_get_from_arguments: {
+        case op_get_from_arguments:
+        case op_to_number: {
             ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
             ASSERT(profile->m_bytecodeOffset == -1);
             profile->m_bytecodeOffset = i;
@@ -2226,7 +2249,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 instructions[i + 5].u.watchpointSet = op.watchpointSet;
             else if (op.type == ClosureVar || op.type == ClosureVarWithVarInjectionChecks) {
                 if (op.watchpointSet)
-                    op.watchpointSet->invalidate(PutToScopeFireDetail(this, ident));
+                    op.watchpointSet->invalidate(vm, PutToScopeFireDetail(this, ident));
             } else if (op.structure)
                 instructions[i + 5].u.structure.set(vm, this, op.structure);
             instructions[i + 6].u.pointer = reinterpret_cast<void*>(op.operand);
@@ -2388,6 +2411,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, WebAssemblyExecutable* ownerE
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CannotCompile)
 #endif
+    , m_didFailJITCompilation(false)
     , m_didFailFTLCompilation(false)
     , m_hasBeenCompiledWithFTL(false)
     , m_isConstructor(false)
@@ -2418,7 +2442,10 @@ CodeBlock::~CodeBlock()
 {
     if (m_vm->m_perBytecodeProfiler)
         m_vm->m_perBytecodeProfiler->notifyDestruction(this);
-    
+
+    if (unlinkedCodeBlock()->didOptimize() == MixedTriState)
+        unlinkedCodeBlock()->setDidOptimize(FalseTriState);
+
 #if ENABLE(VERBOSE_VALUE_PROFILE)
     dumpValueProfiles();
 #endif
@@ -2459,7 +2486,12 @@ void CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& consta
                     ConcurrentJITLocker locker(symbolTable->m_lock);
                     symbolTable->prepareForTypeProfiling(locker);
                 }
-                constant = symbolTable->cloneScopePart(*m_vm);
+
+                SymbolTable* clone = symbolTable->cloneScopePart(*m_vm);
+                if (wasCompiledWithDebuggingOpcodes())
+                    clone->setRareDataCodeBlock(this);
+
+                constant = clone;
             }
         }
 
@@ -2917,7 +2949,8 @@ void CodeBlock::UnconditionalFinalizer::finalizeUnconditionally()
 void CodeBlock::getStubInfoMap(const ConcurrentJITLocker&, StubInfoMap& result)
 {
 #if ENABLE(JIT)
-    toHashMap(m_stubInfos, getStructureStubInfoCodeOrigin, result);
+    if (JITCode::isJIT(jitType()))
+        toHashMap(m_stubInfos, getStructureStubInfoCodeOrigin, result);
 #else
     UNUSED_PARAM(result);
 #endif
@@ -2932,7 +2965,8 @@ void CodeBlock::getStubInfoMap(StubInfoMap& result)
 void CodeBlock::getCallLinkInfoMap(const ConcurrentJITLocker&, CallLinkInfoMap& result)
 {
 #if ENABLE(JIT)
-    toHashMap(m_callLinkInfos, getCallLinkInfoCodeOrigin, result);
+    if (JITCode::isJIT(jitType()))
+        toHashMap(m_callLinkInfos, getCallLinkInfoCodeOrigin, result);
 #else
     UNUSED_PARAM(result);
 #endif
@@ -2947,8 +2981,10 @@ void CodeBlock::getCallLinkInfoMap(CallLinkInfoMap& result)
 void CodeBlock::getByValInfoMap(const ConcurrentJITLocker&, ByValInfoMap& result)
 {
 #if ENABLE(JIT)
-    for (auto* byValInfo : m_byValInfos)
-        result.add(CodeOrigin(byValInfo->bytecodeIndex), byValInfo);
+    if (JITCode::isJIT(jitType())) {
+        for (auto* byValInfo : m_byValInfos)
+            result.add(CodeOrigin(byValInfo->bytecodeIndex), byValInfo);
+    }
 #else
     UNUSED_PARAM(result);
 #endif
@@ -2995,6 +3031,29 @@ CallLinkInfo* CodeBlock::getCallLinkInfoForBytecodeIndex(unsigned index)
             return *iter;
     }
     return nullptr;
+}
+
+void CodeBlock::resetJITData()
+{
+    RELEASE_ASSERT(!JITCode::isJIT(jitType()));
+    ConcurrentJITLocker locker(m_lock);
+    
+    // We can clear these because no other thread will have references to any stub infos, call
+    // link infos, or by val infos if we don't have JIT code. Attempts to query these data
+    // structures using the concurrent API (getStubInfoMap and friends) will return nothing if we
+    // don't have JIT code.
+    m_stubInfos.clear();
+    m_callLinkInfos.clear();
+    m_byValInfos.clear();
+    
+    // We can clear this because the DFG's queries to these data structures are guarded by whether
+    // there is JIT code.
+    m_rareCaseProfiles.clear();
+    
+    // We can clear these because the DFG only accesses members of this data structure when
+    // holding the lock or after querying whether we have JIT code.
+    m_resultProfiles.clear();
+    m_bytecodeOffsetToResultProfileIndexMap = nullptr;
 }
 #endif
 
@@ -3221,6 +3280,8 @@ bool CodeBlock::hasOpDebugForLineAndColumn(unsigned line, unsigned column)
 
 void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
 {
+    ConcurrentJITLocker locker(m_lock);
+
     m_rareCaseProfiles.shrinkToFit();
     m_resultProfiles.shrinkToFit();
     
@@ -3389,7 +3450,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         // This accomplishes (1), and does its own book-keeping about whether it has already happened.
         if (!jitCode()->dfgCommon()->invalidate()) {
             // We've already been invalidated.
-            RELEASE_ASSERT(this != replacement());
+            RELEASE_ASSERT(this != replacement() || (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable())));
             return;
         }
     }
@@ -3418,6 +3479,11 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     if (reason != Profiler::JettisonDueToOldAge)
         tallyFrequentExitSites();
 #endif // ENABLE(DFG_JIT)
+
+    // Jettison can happen during GC. We don't want to install code to a dead executable
+    // because that would add a dead object to the remembered set.
+    if (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable()))
+        return;
 
     // This accomplishes (2).
     ownerScriptExecutable()->installCode(
@@ -3878,7 +3944,7 @@ bool CodeBlock::shouldReoptimizeFromLoopNow()
 }
 #endif
 
-ArrayProfile* CodeBlock::getArrayProfile(unsigned bytecodeOffset)
+ArrayProfile* CodeBlock::getArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset)
 {
     for (unsigned i = 0; i < m_arrayProfiles.size(); ++i) {
         if (m_arrayProfiles[i].bytecodeOffset() == bytecodeOffset)
@@ -3887,12 +3953,36 @@ ArrayProfile* CodeBlock::getArrayProfile(unsigned bytecodeOffset)
     return 0;
 }
 
-ArrayProfile* CodeBlock::getOrAddArrayProfile(unsigned bytecodeOffset)
+ArrayProfile* CodeBlock::getArrayProfile(unsigned bytecodeOffset)
 {
-    ArrayProfile* result = getArrayProfile(bytecodeOffset);
+    ConcurrentJITLocker locker(m_lock);
+    return getArrayProfile(locker, bytecodeOffset);
+}
+
+ArrayProfile* CodeBlock::addArrayProfile(const ConcurrentJITLocker&, unsigned bytecodeOffset)
+{
+    m_arrayProfiles.append(ArrayProfile(bytecodeOffset));
+    return &m_arrayProfiles.last();
+}
+
+ArrayProfile* CodeBlock::addArrayProfile(unsigned bytecodeOffset)
+{
+    ConcurrentJITLocker locker(m_lock);
+    return addArrayProfile(locker, bytecodeOffset);
+}
+
+ArrayProfile* CodeBlock::getOrAddArrayProfile(const ConcurrentJITLocker& locker, unsigned bytecodeOffset)
+{
+    ArrayProfile* result = getArrayProfile(locker, bytecodeOffset);
     if (result)
         return result;
-    return addArrayProfile(bytecodeOffset);
+    return addArrayProfile(locker, bytecodeOffset);
+}
+
+ArrayProfile* CodeBlock::getOrAddArrayProfile(unsigned bytecodeOffset)
+{
+    ConcurrentJITLocker locker(m_lock);
+    return getOrAddArrayProfile(locker, bytecodeOffset);
 }
 
 #if ENABLE(DFG_JIT)
@@ -4255,6 +4345,12 @@ void CodeBlock::setSteppingMode(CodeBlock::SteppingMode mode)
         jettison(Profiler::JettisonDueToDebuggerStepping);
 }
 
+RareCaseProfile* CodeBlock::addRareCaseProfile(int bytecodeOffset)
+{
+    m_rareCaseProfiles.append(RareCaseProfile(bytecodeOffset));
+    return &m_rareCaseProfiles.last();
+}
+
 RareCaseProfile* CodeBlock::rareCaseProfileForBytecodeOffset(int bytecodeOffset)
 {
     return tryBinarySearch<RareCaseProfile, int>(
@@ -4270,12 +4366,6 @@ unsigned CodeBlock::rareCaseProfileCountForBytecodeOffset(int bytecodeOffset)
     return 0;
 }
 
-ResultProfile* CodeBlock::resultProfileForBytecodeOffset(int bytecodeOffset)
-{
-    ConcurrentJITLocker locker(m_lock);
-    return resultProfileForBytecodeOffset(locker, bytecodeOffset);
-}
-
 ResultProfile* CodeBlock::resultProfileForBytecodeOffset(const ConcurrentJITLocker&, int bytecodeOffset)
 {
     if (!m_bytecodeOffsetToResultProfileIndexMap)
@@ -4286,6 +4376,27 @@ ResultProfile* CodeBlock::resultProfileForBytecodeOffset(const ConcurrentJITLock
     return &m_resultProfiles[iterator->value];
 }
 
+unsigned CodeBlock::specialFastCaseProfileCountForBytecodeOffset(int bytecodeOffset)
+{
+    ConcurrentJITLocker locker(m_lock);
+    return specialFastCaseProfileCountForBytecodeOffset(locker, bytecodeOffset);
+}
+
+unsigned CodeBlock::specialFastCaseProfileCountForBytecodeOffset(const ConcurrentJITLocker& locker, int bytecodeOffset)
+{
+    ResultProfile* profile = resultProfileForBytecodeOffset(locker, bytecodeOffset);
+    if (!profile)
+        return 0;
+    return profile->specialFastPathCount();
+}
+
+bool CodeBlock::couldTakeSpecialFastCase(int bytecodeOffset)
+{
+    if (!hasBaselineJITProfiling())
+        return false;
+    unsigned specialFastCaseCount = specialFastCaseProfileCountForBytecodeOffset(bytecodeOffset);
+    return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount();
+}
 
 ResultProfile* CodeBlock::ensureResultProfile(int bytecodeOffset)
 {
@@ -4433,6 +4544,30 @@ Optional<unsigned> CodeBlock::bytecodeOffsetFromCallSiteIndex(CallSiteIndex call
     }
 
     return bytecodeOffset;
+}
+
+int32_t CodeBlock::thresholdForJIT(int32_t threshold)
+{
+    switch (unlinkedCodeBlock()->didOptimize()) {
+    case MixedTriState:
+        return threshold;
+    case FalseTriState:
+        return threshold * 4;
+    case TrueTriState:
+        return threshold / 2;
+    }
+    ASSERT_NOT_REACHED();
+    return threshold;
+}
+
+void CodeBlock::jitAfterWarmUp()
+{
+    m_llintExecuteCounter.setNewThreshold(thresholdForJIT(Options::thresholdForJITAfterWarmUp()), this);
+}
+
+void CodeBlock::jitSoon()
+{
+    m_llintExecuteCounter.setNewThreshold(thresholdForJIT(Options::thresholdForJITSoon()), this);
 }
 
 } // namespace JSC

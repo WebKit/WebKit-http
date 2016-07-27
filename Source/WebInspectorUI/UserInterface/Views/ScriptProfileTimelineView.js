@@ -39,6 +39,10 @@ WebInspector.ScriptProfileTimelineView = class ScriptProfileTimelineView extends
         this._lastLayoutStartTime = undefined;
         this._lastLayoutEndTime = undefined;
 
+        this._sharedProfileViewData = {
+            selectedNodeHash: null,
+        };
+
         if (!WebInspector.ScriptProfileTimelineView.profileOrientationSetting)
             WebInspector.ScriptProfileTimelineView.profileOrientationSetting = new WebInspector.Setting("script-profile-timeline-view-profile-orientation-setting", WebInspector.ScriptProfileTimelineView.ProfileOrientation.TopDown);
         if (!WebInspector.ScriptProfileTimelineView.profileTypeSetting)
@@ -142,7 +146,7 @@ WebInspector.ScriptProfileTimelineView = class ScriptProfileTimelineView extends
             newOrientation = WebInspector.ScriptProfileTimelineView.ProfileOrientation.TopDown;
 
         WebInspector.ScriptProfileTimelineView.profileOrientationSetting.value = newOrientation;
-        this._showProfileViewForOrientation(newOrientation, WebInspector.ScriptProfileTimelineView.profileTypeSetting);
+        this._showProfileViewForOrientation(newOrientation, WebInspector.ScriptProfileTimelineView.profileTypeSetting.value);
 
         this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
 
@@ -179,7 +183,7 @@ WebInspector.ScriptProfileTimelineView = class ScriptProfileTimelineView extends
         }
 
         let callingContextTree = this._callingContextTreeForOrientation(profileOrientation, profileViewType);
-        this._profileView = new WebInspector.ProfileView(callingContextTree);
+        this._profileView = new WebInspector.ProfileView(callingContextTree, this._sharedProfileViewData);
         this._profileView.addEventListener(WebInspector.ContentView.Event.SelectionPathComponentsDidChange, this._profileViewSelectionPathComponentsDidChange, this);
 
         this.addSubview(this._profileView);

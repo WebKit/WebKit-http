@@ -29,11 +29,8 @@ function match(regexp)
 {
     "use strict";
 
-    if (this == null) {
-        if (this === null)
-            throw new @TypeError("String.prototype.match requires that |this| not be null");
-        throw new @TypeError("String.prototype.match requires that |this| not be undefined");
-    }
+    if (this == null)
+        throw new @TypeError("String.prototype.match requires that |this| not be null or undefined");
 
     if (regexp != null) {
         var matcher = regexp.@matchSymbol;
@@ -46,45 +43,37 @@ function match(regexp)
     return createdRegExp.@matchSymbol(thisString);
 }
 
+@globalPrivate
 function repeatSlowPath(string, count)
 {
     "use strict";
 
-    var repeatCount = @toInteger(count);
-    if (repeatCount < 0 || repeatCount === @Infinity)
-        throw new @RangeError("String.prototype.repeat argument must be greater than or equal to 0 and not be infinity");
-
     // Return an empty string.
-    if (repeatCount === 0 || string.length === 0)
+    if (count === 0 || string.length === 0)
         return "";
 
     // Return the original string.
-    if (repeatCount === 1)
+    if (count === 1)
         return string;
 
-    if (string.length * repeatCount > @MAX_STRING_LENGTH)
+    if (string.length * count > @MAX_STRING_LENGTH)
         throw new @Error("Out of memory");
 
-    if (string.length === 1) {
-        // Here, |repeatCount| is always Int32.
-        return @repeatCharacter(string, repeatCount);
-    }
-
-    // Bit operation onto |repeatCount| is safe because |repeatCount| should be within Int32 range,
+    // Bit operation onto |count| is safe because |count| should be within Int32 range,
     // Repeat log N times to generate the repeated string rope.
     var result = "";
     var operand = string;
     while (true) {
-        if (repeatCount & 1)
+        if (count & 1)
             result += operand;
-        repeatCount >>= 1;
-        if (!repeatCount)
+        count >>= 1;
+        if (!count)
             return result;
         operand += operand;
     }
 }
 
-
+@globalPrivate
 function repeatCharactersSlowPath(string, count)
 {
     "use strict";
@@ -112,14 +101,15 @@ function repeat(count)
 {
     "use strict";
 
-    if (this == null) {
-        var message = "String.prototype.repeat requires that |this| not be undefined";
-        if (this === null)
-            message = "String.prototype.repeat requires that |this| not be null";
-        throw new @TypeError(message);
-    }
+    if (this == null)
+        throw new @TypeError("String.prototype.repeat requires that |this| not be null or undefined");
 
     var string = @toString(this);
+    count = @toInteger(count);
+
+    if (count < 0 || count === @Infinity)
+        throw new @RangeError("String.prototype.repeat argument must be greater than or equal to 0 and not be Infinity");
+
     if (string.length === 1) {
         var result = @repeatCharacter(string, count);
         if (result !== null)
@@ -133,28 +123,28 @@ function padStart(maxLength/*, fillString*/)
 {
     "use strict";
 
-    if (this === null)
-        throw new @TypeError("String.prototype.padStart requires that |this| not be null");
-    
-    if (this === @undefined)
-        throw new @TypeError("String.prototype.padStart requires that |this| not be undefined");
+    if (this == null)
+        throw new @TypeError("String.prototype.padStart requires that |this| not be null or undefined");
 
     var string = @toString(this);
     maxLength = @toLength(maxLength);
-    var fillString = arguments[1];
 
     var stringLength = string.length;
     if (maxLength <= stringLength)
         return string;
 
     var filler;
-    if (arguments[1] === @undefined)
+    var fillString = arguments[1];
+    if (fillString === @undefined)
         filler = " ";
     else {
-        filler = @toString(arguments[1]);
+        filler = @toString(fillString);
         if (filler === "")
             return string;
     }
+
+    if (maxLength > @MAX_STRING_LENGTH)
+        throw new @Error("Out of memory");
 
     var fillLength = maxLength - stringLength;
     var truncatedStringFiller;
@@ -170,11 +160,8 @@ function padEnd(maxLength/*, fillString*/)
 {
     "use strict";
 
-    if (this === null)
-        throw new @TypeError("String.prototype.padEnd requires that |this| not be null");
-    
-    if (this === @undefined)
-        throw new @TypeError("String.prototype.padEnd requires that |this| not be undefined");
+    if (this == null)
+        throw new @TypeError("String.prototype.padEnd requires that |this| not be null or undefined");
 
     var string = @toString(this);
     maxLength = @toLength(maxLength);
@@ -184,13 +171,17 @@ function padEnd(maxLength/*, fillString*/)
         return string;
 
     var filler;
-    if (arguments[1] === @undefined)
+    var fillString = arguments[1];
+    if (fillString === @undefined)
         filler = " ";
     else {
-        filler = @toString(arguments[1]);
+        filler = @toString(fillString);
         if (filler === "")
             return string;
     }
+
+    if (maxLength > @MAX_STRING_LENGTH)
+        throw new @Error("Out of memory");
 
     var fillLength = maxLength - stringLength;
     var truncatedStringFiller;
@@ -202,6 +193,7 @@ function padEnd(maxLength/*, fillString*/)
     return string + truncatedStringFiller;
 }
 
+@globalPrivate
 function hasObservableSideEffectsForStringReplace(regexp, replacer) {
     if (replacer !== @regExpPrototypeSymbolReplace)
         return true;
@@ -226,11 +218,8 @@ function replace(search, replace)
 {
     "use strict";
 
-    if (this == null) {
-        if (this === null)
-            throw new @TypeError("String.prototype.replace requires that |this| not be null");
-        throw new @TypeError("String.prototype.replace requires that |this| not be undefined");
-    }
+    if (this == null)
+        throw new @TypeError("String.prototype.replace requires that |this| not be null or undefined");
 
     if (search != null) {
         let replacer = search.@replaceSymbol;
@@ -254,11 +243,8 @@ function localeCompare(that/*, locales, options */)
     // http://ecma-international.org/publications/standards/Ecma-402.htm
 
     // 1. Let O be RequireObjectCoercible(this value).
-    if (this === null)
-        throw new @TypeError("String.prototype.localeCompare requires that |this| not be null");
-    
-    if (this === @undefined)
-        throw new @TypeError("String.prototype.localeCompare requires that |this| not be undefined");
+    if (this == null)
+        throw new @TypeError("String.prototype.localeCompare requires that |this| not be null or undefined");
 
     // 2. Let S be ToString(O).
     // 3. ReturnIfAbrupt(S).
@@ -284,11 +270,8 @@ function search(regexp)
 {
     "use strict";
 
-    if (this == null) {
-        if (this === null)
-            throw new @TypeError("String.prototype.search requires that |this| not be null");
-        throw new @TypeError("String.prototype.search requires that |this| not be undefined");
-    }
+    if (this == null)
+        throw new @TypeError("String.prototype.search requires that |this| not be null or undefined");
 
     if (regexp != null) {
         var searcher = regexp.@searchSymbol;
@@ -305,11 +288,8 @@ function split(separator, limit)
 {
     "use strict";
     
-    if (this == null) {
-        if (this === null)
-            throw new @TypeError("String.prototype.split requires that |this| not be null");
-        throw new @TypeError("String.prototype.split requires that |this| not be undefined");
-    }
+    if (this == null)
+        throw new @TypeError("String.prototype.split requires that |this| not be null or undefined");
     
     if (separator != null) {
         var splitter = separator.@splitSymbol;

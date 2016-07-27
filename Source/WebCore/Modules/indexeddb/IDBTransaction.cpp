@@ -31,6 +31,7 @@
 #include "DOMError.h"
 #include "DOMWindow.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "EventQueue.h"
 #include "IDBCursorWithValue.h"
 #include "IDBDatabase.h"
@@ -966,7 +967,7 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
         return;
     }
 
-    value->writeBlobsToDiskForIndexedDB([protectedThis = Ref<IDBTransaction>(*this), this, protectedOperation = Ref<IDBClient::TransactionOperation>(operation), keyData = IDBKeyData(key.get()).isolatedCopy(), overwriteMode](const IDBValue& idbValue) mutable {
+    value->writeBlobsToDiskForIndexedDB([protectedThis = makeRef(*this), this, protectedOperation = Ref<IDBClient::TransactionOperation>(operation), keyData = IDBKeyData(key.get()).isolatedCopy(), overwriteMode](const IDBValue& idbValue) mutable {
         ASSERT(currentThread() == originThreadID());
         ASSERT(isMainThread());
         if (idbValue.data().data()) {

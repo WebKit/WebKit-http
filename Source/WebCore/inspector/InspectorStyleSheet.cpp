@@ -246,7 +246,7 @@ static void fillMediaListChain(CSSRule* rule, Array<Inspector::Protocol::CSS::CS
             if (sourceURL.isEmpty())
                 sourceURL = InspectorDOMAgent::documentURLString(parentStyleSheet->ownerDocument());
         } else
-            sourceURL = "";
+            sourceURL = emptyString();
 
         if (mediaList && mediaList->length())
             mediaArray.addItem(buildMediaObject(mediaList, isMediaRule ? MediaListSourceMediaRule : MediaListSourceImportRule, sourceURL));
@@ -264,7 +264,7 @@ static void fillMediaListChain(CSSRule* rule, Array<Inspector::Protocol::CSS::CS
                     else if (!styleSheet->contents().baseURL().isEmpty())
                         sourceURL = styleSheet->contents().baseURL();
                     else
-                        sourceURL = "";
+                        sourceURL = emptyString();
                     mediaArray.addItem(buildMediaObject(mediaList, styleSheet->ownerNode() ? MediaListSourceLinkedSheet : MediaListSourceInlineSheet, sourceURL));
                 }
                 parentRule = styleSheet->ownerRule();
@@ -357,7 +357,7 @@ static String lowercasePropertyName(const String& name)
     return name.convertToASCIILowercase();
 }
 
-bool InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* result) const
+void InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* result) const
 {
     HashSet<String> sourcePropertyNames;
 
@@ -380,8 +380,6 @@ bool InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* resul
         if (sourcePropertyNames.add(lowercasePropertyName(name)))
             result->append(InspectorStyleProperty(CSSPropertySourceData(name, m_style->getPropertyValue(name), !m_style->getPropertyPriority(name).isEmpty(), true, SourceRange()), false, false));
     }
-
-    return true;
 }
 
 Ref<Inspector::Protocol::CSS::CSSStyle> InspectorStyle::styleWithProperties() const
@@ -638,7 +636,7 @@ String InspectorStyleSheet::ruleSelector(const InspectorCSSId& id, ExceptionCode
     CSSStyleRule* rule = ruleForId(id);
     if (!rule) {
         ec = NOT_FOUND_ERR;
-        return "";
+        return emptyString();
     }
     return rule->selectorText();
 }
@@ -925,7 +923,7 @@ Ref<Inspector::Protocol::CSS::SelectorList> InspectorStyleSheet::buildObjectForS
             selectors->addItem(buildObjectForSelector(selector, element));
     }
     auto result = Inspector::Protocol::CSS::SelectorList::create()
-        .setSelectors(selectors.release())
+        .setSelectors(WTFMove(selectors))
         .setText(selectorText)
         .release();
     if (sourceData)

@@ -1,3 +1,590 @@
+2016-06-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Generators violate bytecode liveness validation
+        https://bugs.webkit.org/show_bug.cgi?id=159279
+
+        Reviewed by Yusuke Suzuki.
+
+        Add Basic to our test harness.
+
+        Also made some cosmetic changes to the benchmark harness.
+
+        * ES6SampleBench/Basic/basic-tests.yaml: Added.
+        * ES6SampleBench/Basic/stress-test.js: Added.
+        (preciseTime):
+        * ES6SampleBench/driver.js:
+        (Driver):
+        (Driver.prototype.start):
+        (Driver.prototype.reportError):
+        * ES6SampleBench/glue.js:
+        * ES6SampleBench/index.html:
+
+2016-06-28  Filip Pizlo  <fpizlo@apple.com>
+
+        ES6SampleBench should have a harness
+        https://bugs.webkit.org/show_bug.cgi?id=159246
+
+        Reviewed by Saam Barati.
+        
+        This adds a simple web harness for ES6SampleBench. It runs Air and Basic 10 times for 200
+        iterations each and reports three metrics:
+        
+        First iteration: the time it takes for the first iteration to run. This is the first
+        iteration after the benchmark is loaded into the iframe, so it's representative of what
+        would happen if one of these workloads only ran for a short time.
+        
+        Worst 2%: of the last 199 iterations, the average of the worst 2% iterations. If code like
+        any of these workloads was used in an important event handler, you'd want that code to run
+        well in the worst case in addition to having great throughput.
+        
+        Steady state: the total of the last 199 iterations. This is representative of what would
+        happen if you ran code like this for a long time.
+        
+        The total score is the geomean of the firstIteration/worstCase/steadyState numbers of the
+        two benchmarks.
+        
+        The harness does statistics using Student's T-distribution confidence intervals.
+
+        * ES6SampleBench/Basic/benchmark.js:
+        (Benchmark):
+        * ES6SampleBench/air_benchmark.js: Added.
+        * ES6SampleBench/basic_benchmark.js: Added.
+        * ES6SampleBench/driver.js: Added.
+        (Driver):
+        (Driver.prototype.addBenchmark):
+        (Driver.prototype.start):
+        (Driver.prototype.reportResult):
+        (Driver.prototype.reportError):
+        (Driver.prototype._recomputeSummary.Geomean):
+        (Driver.prototype._recomputeSummary.Geomean.prototype.add):
+        (Driver.prototype._recomputeSummary.Geomean.prototype.get result):
+        (Driver.prototype._recomputeSummary):
+        (Driver.prototype._iterate):
+        (Driver.prototype._updateIterations):
+        * ES6SampleBench/glue.js: Added.
+        * ES6SampleBench/index.html: Added.
+        * ES6SampleBench/results.js: Added.
+        (Results):
+        (Results.prototype.get benchmark):
+        (Results.prototype.reset):
+        (Results.prototype.reportRunning):
+        (Results.prototype.reportDone):
+        (Results.prototype.reportResult.averageAbovePercentile):
+        (Results.prototype.reportResult):
+        (Results.prototype.reportError):
+        * ES6SampleBench/stats.js: Added.
+        (Stats):
+        (Stats.prototype.reset):
+        (Stats.prototype.add):
+        (Stats.prototype.get numIterations):
+        (Stats.prototype.valueForIteration):
+        (Stats.get result.tDist):
+        (Stats.prototype.get result):
+        (Stats.prototype.toString):
+        (Stats.prototype._update):
+        * ES6SampleBench/style.css: Added.
+        (body):
+        (body, th, tr):
+        (h1, h2, h3, h4):
+        (h1):
+        (h2):
+        (h3):
+        (hr):
+        (address):
+        (img):
+        (.underline):
+        (ol.loweralpha):
+        (ol.upperalpha):
+        (ol.lowerroman):
+        (ol.upperroman):
+        (ol.arabic):
+        (.banner-link:link, .banner-link:visited):
+        (:link, :visited):
+        (h4 :link, h4 :visited, h5 :link, h5 :visited, h6 :link, h6 :visited):
+        (.anchor:link, .anchor:visited):
+        (* > .anchor:link, * > .anchor:visited):
+        (span:hover .anchor):
+        (a.forbidden, span.forbidden):
+        (a.missing:hover):
+        (a.closed:link, a.closed:visited, span.closed):
+        (pre):
+        (div.code):
+        (div.code pre):
+        (dt):
+        (dd):
+        (dd:last-child):
+        (.site-logo):
+        (.site-logo .tagline):
+        (table):
+        (#contents):
+        (p):
+        (p:last-child):
+        (th):
+        (td):
+
+2016-06-28  Jon Lee  <jonlee@apple.com>
+
+        Update focus test
+        https://bugs.webkit.org/show_bug.cgi?id=159242
+        rdar://problem/27070007
+
+        Reviewed by Dean Jackson.
+        Provisionally reviewed by Said Abou-Hallawa.
+
+        Move previous test to dom suite, and update the test for better reporting of frame rate, although
+        it uses a different rendering path.
+
+        * Animometer/resources/debug-runner/tests.js: Add to dom suite.
+        * Animometer/tests/dom/focus.html: Copied from PerformanceTests/Animometer/tests/master/focus.html.
+        * Animometer/tests/dom/resources/focus.js: Copied from PerformanceTests/Animometer/tests/master/resources/focus.js.
+        * Animometer/tests/master/focus.html: Remove center element.
+        * Animometer/tests/master/resources/focus.js: Use narrower size range with smaller particles. Remove the
+        container elements. Inline getBlurValue and getOpacityValue since they are only called once.
+
+2016-06-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Move Air.js and Basic into ES6SampleBench
+
+        Rubber stamped by Geoffrey Garen.
+        
+        We want to group our ES6 benchmarks together, and eventually, we want to give them a
+        common harness.
+
+        * Air.js: Removed.
+        * Air.js/README.md: Removed.
+        * Air.js/airjs-tests.yaml: Removed.
+        * Air.js/all.js: Removed.
+        * Air.js/allocate_stack.js: Removed.
+        * Air.js/arg.js: Removed.
+        * Air.js/basic_block.js: Removed.
+        * Air.js/benchmark.js: Removed.
+        * Air.js/code.js: Removed.
+        * Air.js/custom.js: Removed.
+        * Air.js/frequented_block.js: Removed.
+        * Air.js/insertion_set.js: Removed.
+        * Air.js/inst.js: Removed.
+        * Air.js/liveness.js: Removed.
+        * Air.js/make_dist.sh: Removed.
+        * Air.js/opcode.js: Removed.
+        * Air.js/payload-airjs-ACLj8C.js: Removed.
+        * Air.js/payload-gbemu-executeIteration.js: Removed.
+        * Air.js/payload-imaging-gaussian-blur-gaussianBlur.js: Removed.
+        * Air.js/payload-typescript-scanIdentifier.js: Removed.
+        * Air.js/reg.js: Removed.
+        * Air.js/stack_slot.js: Removed.
+        * Air.js/stress-test.js: Removed.
+        * Air.js/strip-hash.rb: Removed.
+        * Air.js/symbols.js: Removed.
+        * Air.js/test.html: Removed.
+        * Air.js/test.js: Removed.
+        * Air.js/tmp.js: Removed.
+        * Air.js/tmp_base.js: Removed.
+        * Air.js/util.js: Removed.
+        * Basic: Removed.
+        * Basic/ast.js: Removed.
+        * Basic/basic.js: Removed.
+        * Basic/benchmark.js: Removed.
+        * Basic/caseless_map.js: Removed.
+        * Basic/lexer.js: Removed.
+        * Basic/number.js: Removed.
+        * Basic/parser.js: Removed.
+        * Basic/random.js: Removed.
+        * Basic/state.js: Removed.
+        * Basic/test.html: Removed.
+        * Basic/test.js: Removed.
+        * Basic/util.js: Removed.
+        * ES6SampleBench: Added.
+        * ES6SampleBench/Air: Copied from PerformanceTests/Air.js.
+        * ES6SampleBench/Basic: Copied from PerformanceTests/Basic.
+        * Skipped:
+
+2016-06-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Add a ES6 generator benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=159101
+
+        Rubber stamped by Keith Miller.
+        
+        This adds a Basic interpreter loosely based on ECMA-55:
+        
+        http://www.ecma-international.org/publications/files/ECMA-ST-WITHDRAWN/ECMA-55,%201st%20Edition,%20January%201978.pdf
+        
+        It includes a lexer that is a generator, a parser that uses regular expressions, and an AST
+        walk interpreter where the walking functions for statements are generators that call each
+        other with yield*. This enables the interpreter to look like an AST walk even though it can
+        yield at INPUT and PRINT statements.
+        
+        This also uses for-of, classes, Map, and WeakMap. It also uses deprecated-but-awesome RegExp
+        features like RegExp.lastMatch and RegExp.rightContext. I did it that way because this is
+        how I've always written lexers in dynamic languages; see offlineasm's lex() method in
+        parser.rb for example.
+        
+        The benchmark runs a handful of simple Basic programs. The longest-running one computes
+        prime numbers.
+        
+        Includes a command-line and web harness. On my machine it runs in 2-3 seconds.
+
+        * Basic: Added.
+        * Basic/ast.js: Added.
+        (Basic.NumberApply):
+        (Basic.Variable):
+        (Basic.Const):
+        (Basic.NumberPow):
+        (Basic.NumberMul):
+        (Basic.NumberDiv):
+        (Basic.NumberNeg):
+        (Basic.NumberAdd):
+        (Basic.NumberSub):
+        (Basic.StringVar):
+        (Basic.Equals):
+        (Basic.NotEquals):
+        (Basic.LessThan):
+        (Basic.GreaterThan):
+        (Basic.LessEqual):
+        (Basic.GreaterEqual):
+        (Basic.GoTo):
+        (Basic.GoSub):
+        (Basic.Def):
+        (Basic.Let):
+        (Basic.If):
+        (Basic.Return):
+        (Basic.Stop):
+        (Basic.On):
+        (sideState.shouldStop):
+        (Basic.For):
+        (Basic.Next):
+        (Basic.Print):
+        (Basic.Input):
+        (Basic.Read):
+        (Basic.Restore):
+        (Basic.Dim):
+        (Basic.Randomize):
+        (Basic.End):
+        (Basic.Program):
+        * Basic/basic.js: Added.
+        (prepare):
+        (simulate):
+        * Basic/benchmark.js: Added.
+        (Benchmark):
+        (Benchmark.prototype.runIteration.expect):
+        (Benchmark.prototype.runIteration):
+        (runBenchmark):
+        * Basic/caseless_map.js: Added.
+        (CaselessMap):
+        * Basic/lexer.js: Added.
+        (lex.consumeWhitespace):
+        (lex.consume):
+        (lex):
+        * Basic/lexer_test.js: Added.
+        * Basic/number.js: Added.
+        (NumberValue):
+        (NumberValue.prototype.get value):
+        (NumberValue.prototype.apply):
+        (NumberValue.prototype.leftApply):
+        (NumberValue.prototype.assign):
+        (NumberArray.):
+        (NumberArray):
+        (NumberArray.prototype.apply):
+        (NumberArray.prototype.leftApply):
+        (NumberFunction):
+        (NumberFunction.prototype.apply):
+        (NumberFunction.prototype.leftApply):
+        (NativeFunction):
+        (NativeFunction.prototype.apply):
+        (NativeFunction.prototype.leftApply):
+        * Basic/parser.js: Added.
+        (parse):
+        (parse.pushToken):
+        (parse.peekToken):
+        (parse.consumeKind):
+        (parse.consumeToken):
+        (parse.parseVariable):
+        (parse.parseNumericExpression.parsePrimary):
+        (parse.parseNumericExpression.parseFactor):
+        (parse.parseNumericExpression.parseTerm):
+        (parse.parseNumericExpression):
+        (parse.parseConstant):
+        (parse.parseStringExpression):
+        (parse.isStringExpression):
+        (parse.parseRelationalExpression):
+        (parse.parseNonNegativeInteger):
+        (parse.parseGoToStatement):
+        (parse.parseGoSubStatement):
+        (parse.parseStatement):
+        (parse.parseStatements):
+        * Basic/random.js: Added.
+        (createRNG):
+        (createRNGWithFixedSeed):
+        (createRNGWithRandomSeed):
+        * Basic/state.js: Added.
+        (State):
+        (State.prototype.getValue):
+        (State.prototype.getSideState):
+        (State.prototype.abort):
+        (State.prototype.validate):
+        * Basic/test.html: Added.
+        * Basic/test.js: Added.
+        * Basic/util.js: Added.
+        (this.performance.performance.now.currentTime):
+        (else.this.preciseTime.currentTime):
+        (else.currentTime):
+        * Skipped: Make sure that we don't run Basic yet.
+
+2016-06-21  Jon Lee  <jonlee@apple.com>
+
+        Update canvas size when benchmark begins
+        https://bugs.webkit.org/show_bug.cgi?id=159010
+
+        Reviewed by Dean Jackson.
+
+        Previously we would evaluate the media queries and assign the canvas size to the test
+        on body.onload. Instead, do it once the user starts the benchmark.
+
+        * Animometer/resources/debug-runner/animometer.js: Move benchmarkController.determineCanvasSize()
+        to benchmarkController._startBenchmark.
+        * Animometer/resources/runner/animometer.js: Ditto.
+
+2016-06-21  Jon Lee  <jonlee@apple.com>
+
+        Add new timestamp option
+        https://bugs.webkit.org/show_bug.cgi?id=159006
+
+        Reviewed by Dean Jackson.
+
+        Add a new option to take timestamps from the rAF callback.
+
+        * Animometer/developer.html: Added option.
+        * Animometer/tests/resources/main.js:
+        (Benchmark): Fall back to using the rAF timestamp if performance.now()
+        is not available.
+        (Benchmark._animateLoop): Update how timestamp is set. Prefer to use
+        local var instead of accessing private var.
+
+2016-06-21  Jon Lee  <jonlee@apple.com>
+
+        Improvements to Animometer benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=157738
+
+        Reviewed by Dean Jackson.
+        Provisionally reviewed by Said Abou-Hallawa.
+
+        Update tests.
+
+        * Animometer/tests/master/text.html: Ensure only three text sizes for
+        the three canvases.
+        * Animometer/tests/master/focus.html: Reduce the text size to fit with smaller
+        particle sizes.
+        * Animometer/tests/master/resources/focus.js: Remove the quadratic distribution for
+        particle sizes, and make it linear. Reduce the size variance. Shuffle the math to
+        reduce some calculations per frame. Fix the placement of the particles which might
+        otherwise be culled.
+        * Animometer/tests/master/resources/image-data.js: Reduce the particle size
+        to encourage larger scores.
+
+2016-06-21  Jon Lee  <jonlee@apple.com>
+
+        Improvements to Animometer benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=157738
+
+        Reviewed by Dean Jackson.
+        Provisionally reviewed by Said Abou-Hallawa.
+
+        Include confidence interval for the final score, and store the canvas
+        size in the serialization so that it is accurately shown in results.
+
+        * Animometer/developer.html: Add a "confidence" div.
+        * Animometer/index.html: Ditto. Convert "mean" to "confidence".
+        * Animometer/resources/debug-runner/animometer.js: Look at options, and
+        if the configuration is included, update the body class based on it
+        (similar to what we do when we first load the page). That way, if you
+        drag-and-drop previous results in, that configuration is reflected in
+        the dashboard. Show the full confidence interval.
+
+        * Animometer/resources/debug-runner/animometer.css:
+        * Animometer/resources/debug-runner/animometer.js: Style update.
+        * Animometer/resources/runner/animometer.css:
+
+        * Animometer/resources/runner/animometer.js:
+        (_processData): Propagate the confidence interval values out and calculate
+        the lower and upper bounds. For now, shortcut the aggregate calculation,
+        since we only go through one iteration.
+        (this._processData.calculateScore): Propagate the confidence interval out
+        to be next to the score. Depending on the controller these values are
+        calculated differently.
+        (this._processData._getResultsProperty): Convenience function.
+        (this._processData.get score): Refactor.
+        (this._processData.get scoreLowerBound): Get the aggregate lower bound.
+        (this._processData.get scoreUpperBound): Get the aggregate upper bound.
+        (window.sectionsManager.setSectionScore):
+        (window.benchmarkController._startBenchmark): When the benchmark starts, note
+        the canvas size and add it to options. That way it will be automatically be
+        serialized.
+        (window.benchmarkController.showResults): Include the maximum deviation
+        percentage.
+        * Animometer/resources/runner/lines.svg: Make the background line up with the
+        skew.
+        * Animometer/resources/runner/tests.js:
+        (Headers.details.text): Refactor.
+        * Animometer/resources/statistics.js:
+        (Statistics.largestDeviationPercentage): Convenience function to calculate
+        the deviation percentage on either end and return the largest deviation.
+        * Animometer/resources/strings.js:
+
+        Allow specifying a regression profile to use instead of taking the one
+        with the lowest error.
+
+        Address an issue in the focus test when the regression calculated ends
+        up overestimating the change point, causing a cascade of tougher
+        ramps. The reason behind this is that at max complexity of an initial
+        ramp, the frame length is very high, and it influences the second
+        segment of the piecewise regression strongly, causing it to be very
+        steep. As a result, the first segment, expected to be flat, ends up
+        covering a higher range of complexity. That makes the change point
+        much higher than it should be. To avoid this, we will add a sanity
+        check on the maximum value of the ramp. If the regression's projected
+        value at the maximum complexity of the current ramp is very slow (less
+        than 20 fps), 1) reduce the maximum complexity by 20%, and 2) do not
+        include the regression's change point in the change point estimator.
+        That estimator is used as the midpoint of the next ramp, and including
+        the change point from a poor regression can bake in the error. The
+        controller already knows how to adjust for ramps that are too easy for
+        the system.
+
+        * Animometer/resources/runner/animometer.js:
+        (this._processData.findRegression): Takes a preferred profile and gives that to
+        Regression.
+        (this._processData.calculateScore): With the ramp controller, take the profile
+        of the ramp that was used the most when calculating the ramp's regression. That
+        profile is what is used for the test's score.
+        * Animometer/resources/statistics.js:
+        (Regression.Utilities.createClass): Update to take an options object which can
+        specify a profile to calculate with. Otherwise it will continue to use both and
+        select the one with the lower error.
+        (_calculateRegression): Fix an issue where we claim 0 error if the regression
+        calculation fails due to divide-by-zero. Instead reject that regression calculation
+        by giving it Number.MAX_VALUE.
+        * Animometer/resources/strings.js: New strings for marking a regression as flat
+        or slope.
+        * Animometer/tests/resources/main.js:
+        (RampController): Rename the thresholds for clarity. Add a threshold that, if
+        exceeded, will lower the maximum complexity of the next ramp.
+        (tune): Relax the cdf check to consider whether the interval definitely falls in
+        the desired frame length threshold.
+        (processSamples): Include the profile in the ramp.
+
+        Update ramp controller test. Increase the length of the test to 30 seconds, and extend
+        the interval to 120 ms during sampling. Improve the estimation of the ramp parameters.
+
+        * Animometer/developer.html: Change default to 30 seconds, and don't show the progress bar
+        by default.
+        * Animometer/resources/runner/animometer.js: Change default to 30 seconds.
+        * Animometer/tests/resources/main.js: A number of improvements to the ramp controller, in
+        the order in which they appear in the patch:
+
+        - With a longer test length use longer ramps with longer intervals to get more data at each
+        complexity. Keep the 100 ms interval length during the ramp up phase since we don't need to
+        spend more time there to find the right order of magnitude, but increase it during the
+        ramps to 120 ms.
+        - The ramp linearly interpolates the complexity to render based on its timestamp, but it would
+        never sample the minimum complexity. Instead of lerping max to min complexity from time
+        0 to t where t is the ramp length, instead lerp from 0 to (t - intervalSampleLength) so that
+        we can have at least one interval sample at the min complexity for that ramp.
+        - Some regression calculations only come out with one line segment rather than the two
+        we expect. This could be due to a noisy ramp or the ramp's range is too narrow. If that's the
+        case, influence the minimum complexity of the next ramp towards the lowest bound of 1, so that
+        we ensure that at least part of the ramp is covering a complexity range that the system can
+        handle at full 60.
+        - Remove an assignment to interpolatedFrameLength since that is never subsequently used.
+
+        Update the format used to serialize the results for analysis.
+
+        Each data point used to have named properties for fields like complexity and frame rate.
+        In addition the serialized numbers had rounding errors that took up many characters.
+        Update the format by introducing a new data container called SampleData, which contains a
+        field map. The map maps a string to an array index. Each data point is an array, so, to
+        get a stat, use the field map to get the array index into the data point. This allows future
+        versions to track other data, and reduces the size of the output string by two-thirds.
+
+        * Animometer/resources/extensions.js:
+        (Utilities.toFixedNumber): Add convenience function that truncates the number to a fixed
+        precision, and converts it back to a number.
+        (SampleData): New class that contains sample data and a field map that maps properties to
+        an array index.
+        (get length): Number of data points.
+        (addField): Add a field to the field map.
+        (push): Add a data point.
+        (sort): Sort the data.
+        (slice): Return new SampleData object with sliced data.
+        (forEach): Iterate over the data with provided function.
+        (createDatum):
+        (getFieldInDatum): Returns the data point associated with the field name by looking it up
+        in the field map in the datum provided, which can be the datum object itself (an array) or
+        an index into the data member variable.
+        (setFieldInDatum): Sets the data point associated with the field name.
+        (at): Returns the data point at the provided index.
+        (toArray): Serializes the data where the field map serves as property names for each point.
+
+        * Animometer/resources/debug-runner/graph.js:
+        (updateGraphData): Remove unused _testData. Convert the data to the old array format for the
+        graph to use, since the old format was much easier to work with when displaying the graphs.
+        (onGraphTypeChanged): For some controllers, no alternative score or mean is provided.
+        * Animometer/resources/runner/animometer.css:
+        * Animometer/resources/runner/animometer.js: Refactor to use SampleData. Update JSON output
+        to only go to 3 digits of precision for purposes of reducing the data size.
+        * Animometer/resources/strings.js: Add new strings to put into the field maps.
+        * Animometer/tests/resources/main.js: Refactor to use SampleData.
+
+        * Animometer/developer.html:
+        * Animometer/index.html: Restructure results table for both pages. Add charset attribute to
+        tests.js include.
+        * Animometer/resources/debug-runner/animometer.css: Clear out styles from release runner.
+        * Animometer/resources/debug-runner/graph.js:
+        (onGraphTypeChanged): Update score and mean if bootstrap results are available from the
+        controller, since not all controllers do bootstrapping.
+        * Animometer/resources/debug-runner/tests.js: Update header text.
+        * Animometer/resources/runner/animometer.css: Include confidence interval in results.
+        * Animometer/resources/runner/animometer.js:
+        (ResultsTable._addHeader): Header contents can be HTML, so use innerHTML instead.
+        (ResultsTable._addBody): Add tbody element.
+        (ResultsTable._addTest): Allow a data cell to invoke a JS function to get its contents.
+        (window.benchmarkController.showResults): Add table that includes tests' confidence intervals.
+        * Animometer/resources/runner/tests.js:
+        (Headers.details.text): Add new details table that includes bootstrap confidence interval.
+        The interval can be asymmetric, but for simplicity, report the maximum deviation percentage
+        on either side of the bootstrap median.
+        * Animometer/resources/statistics.js:
+        (bootstrap): Include the confidence percentage in the return object.
+
+        Report canvas size in results.
+
+        * Animometer/developer.html: Add markup to indicate whether a small, medium, or large
+        canvas was used.
+        * Animometer/index.html: Ditto.
+        * Animometer/resources/debug-runner/animometer.js: Call determineCanvasSize().
+        * Animometer/resources/runner/animometer.css: Update styles to set the canvas based on the
+        body class size.
+        * Animometer/resources/runner/animometer.js:
+        (window.benchmarkController.initialize): Update styles to set the canvas based on the
+        body class size.
+        (window.benchmarkController.determineCanvasSize): Run various media queries and set the body
+        class based on the size of the device.
+
+        * Animometer/developer.html: Refactor to include the main CSS file, and redo
+        the layout so that it doesn't rely on flexbox.
+        * Animometer/resources/debug-runner/animometer.css:
+        * Animometer/resources/debug-runner/animometer.js:
+        (updateDisplay): Since various parts of the script alter the body class, we can't
+        replace the className directly. Instead, remove all display-based values and then add
+        the one that was selected.
+        * Animometer/resources/debug-runner/graph.js:
+        (updateGraphData): To set the size of the graph, use window.innerHeight.
+        * Animometer/resources/runner/animometer.js:
+        (window.sectionsManager.showSection): Since various parts of the script alter the body
+        class, we can't replace the className directly. Remove all of the section classes
+        individually and then add the one desired.
+        * Animometer/tests/resources/stage.css: Remove -apple-system as a font to use in the
+        stage.
+
 2016-06-12  Filip Pizlo  <fpizlo@apple.com>
 
         Fix round-down goof in Air.js's ShuffleCustom.forEachArg

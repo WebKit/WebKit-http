@@ -170,14 +170,12 @@ private:
     bool canSaveMediaData() const override;
 
 protected:
-    void cacheDuration();
-
     bool m_buffering;
     int m_bufferingPercentage;
     mutable float m_cachedPosition;
     bool m_downloadFinished;
     bool m_errorOccured;
-    mutable gfloat m_mediaDuration;
+    mutable gfloat m_durationAtEOS;
     bool m_paused;
     float m_playbackRate;
     GstState m_requestedState;
@@ -232,7 +230,6 @@ protected:
     float m_maxTimeLoaded;
     MediaPlayer::Preload m_preload;
     bool m_delayingLoad;
-    bool m_mediaDurationKnown;
     mutable float m_maxTimeLoadedAtLastDidLoadingProgress;
     bool m_hasVideo;
     bool m_hasAudio;

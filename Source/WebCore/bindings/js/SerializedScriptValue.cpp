@@ -1569,7 +1569,7 @@ private:
 
     void throwValidationError()
     {
-        m_exec->vm().throwException(m_exec, createTypeError(m_exec, "Unable to deserialize data."));
+        throwTypeError(m_exec, ASCIILiteral("Unable to deserialize data."));
     }
 
     bool isValid() const { return m_version <= CurrentVersion; }
@@ -2354,7 +2354,7 @@ private:
                 fail();
                 return JSValue();
             }
-            JSValue result = JSArrayBuffer::create(m_exec->vm(), m_globalObject->arrayBufferStructure(), arrayBuffer.release());
+            JSValue result = JSArrayBuffer::create(m_exec->vm(), m_globalObject->arrayBufferStructure(), WTFMove(arrayBuffer));
             m_gcBuffer.append(result);
             return result;
         }
@@ -2763,7 +2763,7 @@ void SerializedScriptValue::maybeThrowExceptionIfSerializationFailed(ExecState* 
         exec->vm().throwException(exec, createStackOverflowError(exec));
         break;
     case ValidationError:
-        exec->vm().throwException(exec, createTypeError(exec, "Unable to deserialize data."));
+        throwTypeError(exec, ASCIILiteral("Unable to deserialize data."));
         break;
     case DataCloneError:
         setDOMException(exec, DATA_CLONE_ERR);
@@ -2798,7 +2798,7 @@ Vector<String> SerializedScriptValue::blobURLsIsolatedCopy() const
     return result;
 }
 
-void SerializedScriptValue::writeBlobsToDiskForIndexedDB(NoncopyableFunction<void (const IDBValue&)>&& completionHandler)
+void SerializedScriptValue::writeBlobsToDiskForIndexedDB(WTF::Function<void (const IDBValue&)>&& completionHandler)
 {
     ASSERT(isMainThread());
     ASSERT(hasBlobURLs());

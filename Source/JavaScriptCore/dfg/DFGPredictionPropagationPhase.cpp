@@ -704,6 +704,7 @@ private:
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -712,7 +713,8 @@ private:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case GetClosureVar:
-        case GetFromArguments: {
+        case GetFromArguments:
+        case ToNumber: {
             setPrediction(m_currentNode->getHeapPrediction());
             break;
         }
@@ -780,9 +782,11 @@ private:
         case CompareGreaterEq:
         case CompareEq:
         case CompareStrictEq:
+        case CompareEqPtr:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
+        case IsJSArray:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:
@@ -791,7 +795,8 @@ private:
         case IsObject:
         case IsObjectOrNull:
         case IsFunction:
-        case IsRegExpObject: {
+        case IsRegExpObject:
+        case IsTypedArrayView: {
             setPrediction(SpecBoolean);
             break;
         }
@@ -808,6 +813,10 @@ private:
             break;
         }
 
+        case CallObjectConstructor: {
+            setPrediction(SpecObject);
+            break;
+        }
         case SkipScope:
         case GetGlobalObject: {
             setPrediction(SpecObjectOther);
@@ -1039,7 +1048,6 @@ private:
         case CheckIdent:
         case CheckBadCell:
         case PutStructure:
-        case VarInjectionWatchpoint:
         case Phantom:
         case Check:
         case PutGlobalVariable:

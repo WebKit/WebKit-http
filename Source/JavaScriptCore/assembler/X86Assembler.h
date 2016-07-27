@@ -1983,6 +1983,11 @@ public:
         m_formatter.oneByteOp(OP_GROUP5_Ev, GROUP5_OP_JMPN, base, offset);
     }
     
+    void jmp_m(int offset, RegisterID base, RegisterID index, int scale)
+    {
+        m_formatter.oneByteOp(OP_GROUP5_Ev, GROUP5_OP_JMPN, base, index, scale, offset);
+    }
+    
 #if !CPU(X86_64)
     void jmp_m(const void* address)
     {
@@ -2946,8 +2951,9 @@ public:
         m_formatter.oneByteOp(OP_NOP);
     }
 
-    static void fillNops(void* base, size_t size)
+    static void fillNops(void* base, size_t size, bool isCopyingToExecutableMemory)
     {
+        UNUSED_PARAM(isCopyingToExecutableMemory);
 #if CPU(X86_64)
         static const uint8_t nops[10][10] = {
             // nop

@@ -44,11 +44,6 @@ RenderMathMLRow::RenderMathMLRow(Element& element, RenderStyle&& style)
 {
 }
 
-RenderMathMLRow::RenderMathMLRow(Document& document, RenderStyle&& style)
-    : RenderMathMLBlock(document, WTFMove(style))
-{
-}
-
 void RenderMathMLRow::updateOperatorProperties()
 {
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
@@ -63,7 +58,7 @@ void RenderMathMLRow::updateOperatorProperties()
 
 Optional<int> RenderMathMLRow::firstLineBaseline() const
 {
-    RenderBox* baselineChild = firstChildBox();
+    auto* baselineChild = firstChildBox();
     if (!baselineChild)
         return Optional<int>();
 
@@ -72,7 +67,7 @@ Optional<int> RenderMathMLRow::firstLineBaseline() const
 
 void RenderMathMLRow::computeLineVerticalStretch(LayoutUnit& ascent, LayoutUnit& descent)
 {
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (is<RenderMathMLBlock>(child)) {
             auto* renderOperator = downcast<RenderMathMLBlock>(child)->unembellishedOperator();
             if (renderOperator && renderOperator->hasOperatorFlag(MathMLOperatorDictionary::Stretchy))
@@ -102,7 +97,7 @@ void RenderMathMLRow::computePreferredLogicalWidths()
     m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = 0;
 
     LayoutUnit preferredWidth = 0;
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox())
+    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox())
         preferredWidth += child->maxPreferredLogicalWidth() + child->marginLogicalWidth();
 
     m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = preferredWidth + borderAndPaddingLogicalWidth();
@@ -115,7 +110,7 @@ void RenderMathMLRow::layoutRowItems(LayoutUnit& ascent, LayoutUnit& descent)
     // We first stretch the vertical operators.
     // For inline formulas, we can then calculate the logical width.
     LayoutUnit width = borderAndPaddingStart();
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (child->isOutOfFlowPositioned())
             continue;
 
@@ -131,16 +126,14 @@ void RenderMathMLRow::layoutRowItems(LayoutUnit& ascent, LayoutUnit& descent)
     }
 
     width += borderEnd() + paddingEnd();
-    // FIXME: RenderMathMLRoot classes should also recalculate the exact logical width instead of using the preferred width.
-    // See http://webkit.org/b/153987
-    if ((!isRenderMathMLMath() || style().display() == INLINE) && !isRenderMathMLRoot())
+    if ((!isRenderMathMLMath() || style().display() == INLINE))
         setLogicalWidth(width);
 
     LayoutUnit verticalOffset = borderTop() + paddingTop();
     LayoutUnit maxAscent = 0, maxDescent = 0; // Used baseline alignment.
     LayoutUnit horizontalOffset = borderAndPaddingStart();
     bool shouldFlipHorizontal = !style().isLeftToRightDirection();
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (child->isOutOfFlowPositioned()) {
             child->containingBlock()->insertPositionedObject(*child);
             continue;
@@ -163,14 +156,13 @@ void RenderMathMLRow::layoutRowItems(LayoutUnit& ascent, LayoutUnit& descent)
     }
 
     LayoutUnit centerBlockOffset = 0;
-    // FIXME: Remove the FLEX when it is not required by the css.
-    if (style().display() == BLOCK || style().display() == FLEX)
+    if (style().display() == BLOCK)
         centerBlockOffset = std::max<LayoutUnit>(0, (logicalWidth() - (horizontalOffset + borderEnd() + paddingEnd())) / 2);
 
     if (shouldFlipHorizontal && centerBlockOffset > 0)
         centerBlockOffset = -centerBlockOffset;
 
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         LayoutUnit ascent = ascentForChild(*child);
         LayoutUnit startOffset = maxAscent - ascent;
         child->setLocation(child->location() + LayoutPoint(centerBlockOffset, startOffset));
@@ -200,14 +192,6 @@ void RenderMathMLRow::layoutBlock(bool relayoutChildren, LayoutUnit)
     updateLogicalHeight();
 
     clearNeedsLayout();
-}
-
-void RenderMathMLRow::paintChildren(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintInfo& paintInfoForChild, bool usePrintRect)
-{
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (!paintChild(*child, paintInfo, paintOffset, paintInfoForChild, usePrintRect, PaintAsInlineBlock))
-            return;
-    }
 }
 
 }

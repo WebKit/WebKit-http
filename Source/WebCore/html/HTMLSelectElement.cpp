@@ -262,14 +262,8 @@ String HTMLSelectElement::value() const
     return emptyString();
 }
 
-void HTMLSelectElement::setValue(const String &value)
+void HTMLSelectElement::setValue(const String& value)
 {
-    // We clear the previously selected option(s) when needed, to guarantee calling setSelectedIndex() only once.
-    if (value.isNull()) {
-        setSelectedIndex(-1);
-        return;
-    }
-
     // Find the option with value() matching the given parameter and make it the current selection.
     unsigned optionIndex = 0;
     for (auto* item : listItems()) {
@@ -405,7 +399,7 @@ void HTMLSelectElement::setMultiple(bool multiple)
 {
     bool oldMultiple = this->multiple();
     int oldSelectedIndex = selectedIndex();
-    setAttribute(multipleAttr, multiple ? "" : 0);
+    setAttributeWithoutSynchronization(multipleAttr, multiple ? emptyAtom : nullAtom);
 
     // Restore selectedIndex after changing the multiple flag to preserve
     // selection as single-line and multi-line has different defaults.
@@ -1062,7 +1056,7 @@ void HTMLSelectElement::reset()
             continue;
 
         HTMLOptionElement& option = downcast<HTMLOptionElement>(*element);
-        if (option.fastHasAttribute(selectedAttr)) {
+        if (option.hasAttributeWithoutSynchronization(selectedAttr)) {
             if (selectedOption && !m_multiple)
                 selectedOption->setSelectedState(false);
             option.setSelectedState(true);
@@ -1269,7 +1263,10 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
 
 void HTMLSelectElement::updateSelectedState(int listIndex, bool multi, bool shift)
 {
-    ASSERT(listIndex >= 0);
+    auto& items = listItems();
+    int listSize = static_cast<int>(items.size());
+    if (listIndex < 0 || listIndex >= listSize)
+        return;
 
     // Save the selection so it can be compared to the new selection when
     // dispatching change events during mouseup, or after autoscroll finishes.
@@ -1280,7 +1277,7 @@ void HTMLSelectElement::updateSelectedState(int listIndex, bool multi, bool shif
     bool shiftSelect = m_multiple && shift;
     bool multiSelect = m_multiple && multi && !shift;
 
-    auto& clickedElement = *listItems()[listIndex];
+    auto& clickedElement = *items[listIndex];
     if (is<HTMLOptionElement>(clickedElement)) {
         // Keep track of whether an active selection (like during drag
         // selection), should select or deselect.

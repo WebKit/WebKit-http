@@ -3,6 +3,10 @@ Testing of NodeList iterable capacities.
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
 
+PASS nodeList.entries === entriesFunction is true
+PASS nodeList.forEach === forEachFunction is true
+PASS nodeList.keys === keysFunction is true
+PASS nodeList.values === valuesFunction is true
 PASS nodeList.length is 2
 PASS item is children[index++]
 PASS item is children[index++]
@@ -11,11 +15,17 @@ PASS pair[1] is children[1]
 PASS forEachContainer is nodeList
 PASS forEachIndex is index
 PASS node is children[index++]
+PASS thisValue is window
 PASS forEachContainer is nodeList
 PASS forEachIndex is index
 PASS node is children[index++]
-PASS iterator.next().value is children[0]
-PASS iterator.next().value is children[1]
+PASS thisValue is window
+PASS thisValue is window
+PASS thisValue is window
+PASS thisValue is givenThisValue
+PASS thisValue is givenThisValue
+PASS iterator.next().value is 0
+PASS iterator.next().value is 1
 PASS end.done is true
 PASS end.value is undefined
 PASS iterator.next().value is children[0]
@@ -32,6 +42,15 @@ PASS end.done is true
 PASS end.value is undefined
 PASS end.done is true
 PASS end.value is undefined
+PASS descriptor.configurable is true
+PASS descriptor.writable is true
+PASS descriptor.enumerable is false
+PASS NodeList.prototype[Symbol.iterator] = valuesFunction; did not throw exception.
+PASS a instanceof Node is true
+PASS a instanceof Node is true
+PASS a instanceof Node is true
+PASS a instanceof Node is true
+PASS counter is 4
 PASS successfullyParsed is true
 
 TEST COMPLETE

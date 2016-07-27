@@ -631,8 +631,10 @@ void InspectorCSSAgent::getInlineStylesForNode(ErrorString& errorString, int nod
         return;
 
     inlineStyle = styleSheet->buildObjectForStyle(element->cssomStyle());
-    RefPtr<Inspector::Protocol::CSS::CSSStyle> attributes = buildObjectForAttributesStyle(element);
-    attributesStyle = attributes ? attributes.release() : nullptr;
+    if (auto attributes = buildObjectForAttributesStyle(element))
+        attributesStyle = WTFMove(attributes);
+    else
+        attributesStyle = nullptr;
 }
 
 void InspectorCSSAgent::getComputedStyleForNode(ErrorString& errorString, int nodeId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSComputedStyleProperty>>& style)
@@ -777,7 +779,7 @@ InspectorStyleSheet* InspectorCSSAgent::createInspectorStyleSheetForDocument(Doc
         return nullptr;
 
     Ref<Element> styleElement = document.createElement(HTMLNames::styleTag, false);
-    styleElement->setAttribute(HTMLNames::typeAttr, "text/css");
+    styleElement->setAttributeWithoutSynchronization(HTMLNames::typeAttr, AtomicString("text/css", AtomicString::ConstructFromLiteral));
 
     ContainerNode* targetNode;
     // HEAD is absent in ImageDocuments, for example.

@@ -79,7 +79,7 @@ void MemoryPressureHandler::platformReleaseMemory(Critical critical)
     }
 #endif
 
-    if (critical == Critical::Yes && !isUnderMemoryPressure()) {
+    if (critical == Critical::Yes && (!isUnderMemoryPressure() || m_isSimulatingMemoryPressure)) {
         // libcache listens to OS memory notifications, but for process suspension
         // or memory pressure simulation, we need to prod it manually:
         ReliefLogger log("Purging libcache caches");
@@ -142,14 +142,9 @@ void MemoryPressureHandler::install()
 #if ENABLE(FMW_FOOTPRINT_COMPARISON)
         auto footprintBefore = pagesPerVMTag();
 #endif
-
-        bool wasUnderMemoryPressure = m_underMemoryPressure;
-        m_underMemoryPressure = true;
-
-        MemoryPressureHandler::singleton().respondToMemoryPressure(Critical::Yes, Synchronous::Yes);
+        beginSimulatedMemoryPressure();
 
         WTF::releaseFastMallocFreeMemory();
-
         malloc_zone_pressure_relief(nullptr, 0);
 
 #if ENABLE(FMW_FOOTPRINT_COMPARISON)
@@ -157,9 +152,8 @@ void MemoryPressureHandler::install()
         logFootprintComparison(footprintBefore, footprintAfter);
 #endif
 
-        // Since this is a simulation, unset the "under memory pressure" flag on next runloop.
         dispatch_async(dispatch_get_main_queue(), ^{
-            MemoryPressureHandler::singleton().setUnderMemoryPressure(wasUnderMemoryPressure);
+            endSimulatedMemoryPressure();
         });
     });
 

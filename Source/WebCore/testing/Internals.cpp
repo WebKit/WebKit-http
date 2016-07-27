@@ -88,6 +88,7 @@
 #include "MediaPlayer.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
+#include "MemoryPressureHandler.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
@@ -209,16 +210,6 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include "MediaPlaybackTargetContext.h"
-#endif
-
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-#if __has_include(<AccessibilitySupport.h>)
-#include <AccessibilitySupport.h>
-#else
-extern "C" {
-void _AXSSetForceAllowWebScaling(Boolean);
-}
-#endif
 #endif
 
 using JSC::CallData;
@@ -415,10 +406,6 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.setShowAllPlugins(false);
-    
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    _AXSSetForceAllowWebScaling(false);
-#endif
 }
 
 Internals::Internals(Document& document)
@@ -442,6 +429,7 @@ Internals::Internals(Document& document)
     if (document.page())
         document.page()->setMockMediaPlaybackTargetPickerEnabled(true);
 #endif
+    RuntimeEnabledFeatures::sharedFeatures().reset();
 }
 
 Document* Internals::contextDocument() const
@@ -1468,7 +1456,7 @@ RefPtr<NodeList> Internals::nodesFromRect(Document& document, int centerX, int c
             matches.uncheckedAppend(*node);
     }
 
-    return StaticNodeList::adopt(matches);
+    return StaticNodeList::create(WTFMove(matches));
 }
 
 class GetCallerCodeBlockFunctor {
@@ -2042,6 +2030,21 @@ void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
         return;
     }
     document->cachedResourceLoader().garbageCollectDocumentResources();
+}
+
+bool Internals::isUnderMemoryPressure()
+{
+    return MemoryPressureHandler::singleton().isUnderMemoryPressure();
+}
+
+void Internals::beginSimulatedMemoryPressure()
+{
+    MemoryPressureHandler::singleton().beginSimulatedMemoryPressure();
+}
+
+void Internals::endSimulatedMemoryPressure()
+{
+    MemoryPressureHandler::singleton().endSimulatedMemoryPressure();
 }
 
 void Internals::insertAuthorCSS(const String& css, ExceptionCode& ec) const
@@ -2768,6 +2771,8 @@ void Internals::beginMediaSessionInterruption(const String& interruptionString, 
         interruption = PlatformMediaSession::SystemSleep;
     else if (equalLettersIgnoringASCIICase(interruptionString, "enteringbackground"))
         interruption = PlatformMediaSession::EnteringBackground;
+    else if (equalLettersIgnoringASCIICase(interruptionString, "suspendedunderlock"))
+        interruption = PlatformMediaSession::SuspendedUnderLock;
     else {
         ec = INVALID_ACCESS_ERR;
         return;
@@ -3288,15 +3293,6 @@ String Internals::composedTreeAsText(Node& node)
     return WebCore::composedTreeAsText(downcast<ContainerNode>(node));
 }
 
-void Internals::setViewportForceAlwaysUserScalable(bool scalable)
-{
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    _AXSSetForceAllowWebScaling(scalable);
-#else
-    UNUSED_PARAM(scalable);
-#endif
-}
-
 void Internals::setLinkPreloadSupport(bool enable)
 {
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(enable);
@@ -3337,6 +3333,19 @@ RefPtr<GCObservation> Internals::observeGC(JSC::JSValue value)
         return nullptr;
 
     return GCObservation::create(value.getObject());
+}
+
+void Internals::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInterfaceLayoutDirection)
+{
+    Document* document = contextDocument();
+    if (!document)
+        return;
+
+    Page* page = document->page();
+    if (!page)
+        return;
+
+    page->setUserInterfaceLayoutDirection(userInterfaceLayoutDirection == UserInterfaceLayoutDirection::LTR ? WebCore::UserInterfaceLayoutDirection::LTR : WebCore::UserInterfaceLayoutDirection::RTL);
 }
 
 } // namespace WebCore

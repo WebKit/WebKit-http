@@ -80,15 +80,15 @@ void UserMediaRequest::start(Document* document, const Dictionary& options, Medi
         return;
     }
 
-    RefPtr<MediaConstraints> audioConstraints = parseOptions(options, AtomicString("audio", AtomicString::ConstructFromLiteral));
-    RefPtr<MediaConstraints> videoConstraints = parseOptions(options, AtomicString("video", AtomicString::ConstructFromLiteral));
+    auto audioConstraints = parseOptions(options, AtomicString("audio", AtomicString::ConstructFromLiteral));
+    auto videoConstraints = parseOptions(options, AtomicString("video", AtomicString::ConstructFromLiteral));
 
     if (!audioConstraints && !videoConstraints) {
         ec = NOT_SUPPORTED_ERR;
         return;
     }
 
-    Ref<UserMediaRequest> request = adoptRef(*new UserMediaRequest(document, userMedia, audioConstraints.release(), videoConstraints.release(), WTFMove(promise)));
+    auto request = adoptRef(*new UserMediaRequest(document, userMedia, WTFMove(audioConstraints), WTFMove(videoConstraints), WTFMove(promise)));
     request->start();
 }
 
@@ -135,7 +135,7 @@ void UserMediaRequest::constraintsValidated(const Vector<RefPtr<RealtimeMediaSou
     for (auto& videoTrack : videoTracks)
         m_videoDeviceUIDs.append(videoTrack->persistentID());
 
-    callOnMainThread([protectedThis = Ref<UserMediaRequest>(*this)]() mutable {
+    callOnMainThread([protectedThis = makeRef(*this)]() mutable {
         // 2 - The constraints are valid, ask the user for access to media.
         if (UserMediaController* controller = protectedThis->m_controller)
             controller->requestUserMediaAccess(protectedThis.get());
@@ -147,7 +147,7 @@ void UserMediaRequest::userMediaAccessGranted(const String& audioDeviceUID, cons
     m_allowedVideoDeviceUID = videoDeviceUID;
     m_audioDeviceUIDAllowed = audioDeviceUID;
 
-    callOnMainThread([protectedThis = Ref<UserMediaRequest>(*this), audioDeviceUID, videoDeviceUID]() mutable {
+    callOnMainThread([protectedThis = makeRef(*this), audioDeviceUID, videoDeviceUID]() mutable {
         // 3 - the user granted access, ask platform to create the media stream descriptors.
         RealtimeMediaSourceCenter::singleton().createMediaStream(protectedThis.ptr(), audioDeviceUID, videoDeviceUID);
     });

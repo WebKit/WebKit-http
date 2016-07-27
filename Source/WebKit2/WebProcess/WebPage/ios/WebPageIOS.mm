@@ -101,16 +101,6 @@
 #import <wtf/MathExtras.h>
 #import <wtf/TemporaryChange.h>
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-#if __has_include(<AccessibilitySupport.h>) 
-#include <AccessibilitySupport.h>
-#else
-extern "C" {
-Boolean _AXSForceAllowWebScaling();
-}
-#endif
-#endif
-
 using namespace WebCore;
 
 namespace WebKit {
@@ -527,7 +517,7 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
 
     WKBeginObservingContentChanges(true);
 
-    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0, WebCore::ForceAtClick));
+    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0, WebCore::ForceAtClick, WebCore::NoTap));
     mainframe.document()->updateStyleIfNeeded();
 
     WKStopObservingContentChanges();
@@ -545,7 +535,7 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
         m_pendingSyntheticClickLocation = location;
         return;
     case WKContentNoChange:
-        completeSyntheticClick(nodeRespondingToClick, location);
+        completeSyntheticClick(nodeRespondingToClick, location, WebCore::OneFingerTap);
         return;
     }
     ASSERT_NOT_REACHED();
@@ -557,13 +547,13 @@ void WebPage::completePendingSyntheticClickForContentChangeObserver()
         return;
     // Only dispatch the click if the document didn't get changed by any timers started by the move event.
     if (WKObservedContentChange() == WKContentNoChange)
-        completeSyntheticClick(m_pendingSyntheticClickNode.get(), m_pendingSyntheticClickLocation);
+        completeSyntheticClick(m_pendingSyntheticClickNode.get(), m_pendingSyntheticClickLocation, WebCore::OneFingerTap);
 
     m_pendingSyntheticClickNode = nullptr;
     m_pendingSyntheticClickLocation = FloatPoint();
 }
 
-void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location)
+void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location, SyntheticClickType syntheticClickType)
 {
     IntPoint roundedAdjustedPoint = roundedIntPoint(location);
     Frame& mainframe = m_page->mainFrame();
@@ -574,8 +564,8 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
 
     bool tapWasHandled = false;
     m_lastInteractionLocation = roundedAdjustedPoint;
-    tapWasHandled |= mainframe.eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 1, false, false, false, false, 0, WebCore::ForceAtClick));
-    tapWasHandled |= mainframe.eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 1, false, false, false, false, 0, WebCore::ForceAtClick));
+    tapWasHandled |= mainframe.eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 1, false, false, false, false, 0, WebCore::ForceAtClick, syntheticClickType));
+    tapWasHandled |= mainframe.eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 1, false, false, false, false, 0, WebCore::ForceAtClick, syntheticClickType));
 
     RefPtr<Frame> newFocusedFrame = m_page->focusController().focusedFrame();
     RefPtr<Element> newFocusedElement = newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr;
@@ -647,15 +637,20 @@ void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
 #endif
 }
 
-void WebPage::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, uint64_t callbackID)
+void WebPage::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, uint64_t requestID)
 {
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(point, adjustedPoint);
-    Element* element = (nodeRespondingToClick && is<Element>(*nodeRespondingToClick)) ? downcast<Element>(nodeRespondingToClick) : nullptr;
-    String url;
-    if (element && element->isLink())
-        url = [(NSURL *)element->document().completeURL(stripLeadingAndTrailingHTMLSpaces(element->getAttribute(HTMLNames::hrefAttr))) absoluteString];
-    send(Messages::WebPageProxy::StringCallback(url, callbackID));
+    if (!nodeRespondingToClick || !nodeRespondingToClick->renderer()) {
+        send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(adjustedPoint)));
+        return;
+    }
+    sendTapHighlightForNodeIfNecessary(requestID, nodeRespondingToClick);
+    if (is<Element>(*nodeRespondingToClick) && DataDetection::shouldCancelDefaultAction(downcast<Element>(*nodeRespondingToClick))) {
+        requestPositionInformation(roundedIntPoint(adjustedPoint));
+        send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(adjustedPoint)));
+    } else
+        completeSyntheticClick(nodeRespondingToClick, adjustedPoint, WebCore::TwoFingerTap);
 }
 
 void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint& position)
@@ -732,7 +727,7 @@ void WebPage::inspectorNodeSearchMovedToPosition(const FloatPoint& position)
     IntPoint adjustedPoint = roundedIntPoint(position);
     Frame& mainframe = m_page->mainFrame();
 
-    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(adjustedPoint, adjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0, 0));
+    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(adjustedPoint, adjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0, 0, WebCore::NoTap));
     mainframe.document()->updateStyleIfNeeded();
 }
 
@@ -803,13 +798,10 @@ void WebPage::disableInspectorNodeSearch()
     send(Messages::WebPageProxy::DisableInspectorNodeSearch());
 }
 
-void WebPage::updateForceAlwaysUserScalable()
+void WebPage::setForceAlwaysUserScalable(bool userScalable)
 {
-    bool forceAlwaysUserScalable = m_forceAlwaysUserScalable;
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    forceAlwaysUserScalable |= _AXSForceAllowWebScaling();
-#endif
-    m_viewportConfiguration.setForceAlwaysUserScalable(forceAlwaysUserScalable);
+    m_forceAlwaysUserScalable = userScalable;
+    m_viewportConfiguration.setForceAlwaysUserScalable(userScalable);
 }
 
 static FloatQuad innerFrameQuad(const Frame& frame, const Node& assistedNode)
@@ -2191,12 +2183,12 @@ static void computeAutocorrectionContext(Frame& frame, String& contextBefore, St
     if (frame.selection().isRange())
         selectedText = plainTextReplacingNoBreakSpace(frame.selection().selection().toNormalizedRange().get());
 
-    if (frame.editor().hasComposition()) {
-        range = Range::create(*frame.document(), frame.editor().compositionRange()->startPosition(), startPosition);
+    if (auto compositionRange = frame.editor().compositionRange()) {
+        range = Range::create(*frame.document(), compositionRange->startPosition(), startPosition);
         String markedTextBefore;
         if (range)
             markedTextBefore = plainTextReplacingNoBreakSpace(range.get());
-        range = Range::create(*frame.document(), endPosition, frame.editor().compositionRange()->endPosition());
+        range = Range::create(*frame.document(), endPosition, compositionRange->endPosition());
         String markedTextAfter;
         if (range)
             markedTextAfter = plainTextReplacingNoBreakSpace(range.get());
@@ -2368,7 +2360,7 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
             }
             if (linkElement)
                 info.url = [(NSURL *)linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr))) absoluteString];
-            info.title = element->fastGetAttribute(HTMLNames::titleAttr).string();
+            info.title = element->attributeWithoutSynchronization(HTMLNames::titleAttr).string();
             if (linkElement && info.title.isEmpty())
                 info.title = element->innerText();
             if (element->renderer())
@@ -2444,11 +2436,11 @@ void WebPage::performActionOnElement(uint32_t action)
         if (is<RenderImage>(*element.renderer())) {
             Element* linkElement = containingLinkElement(&element);
             if (!linkElement)
-                m_interactionNode->document().frame()->editor().writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), element, downcast<RenderImage>(*element.renderer()).cachedImage()->url(), String());
+                m_interactionNode->document().frame()->editor().writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), element, URL(), String());
             else
-                m_interactionNode->document().frame()->editor().copyURL(linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->fastGetAttribute(HTMLNames::hrefAttr))), linkElement->textContent());
+                m_interactionNode->document().frame()->editor().copyURL(linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->attributeWithoutSynchronization(HTMLNames::hrefAttr))), linkElement->textContent());
         } else if (element.isLink()) {
-            m_interactionNode->document().frame()->editor().copyURL(element.document().completeURL(stripLeadingAndTrailingHTMLSpaces(element.fastGetAttribute(HTMLNames::hrefAttr))), element.textContent());
+            m_interactionNode->document().frame()->editor().copyURL(element.document().completeURL(stripLeadingAndTrailingHTMLSpaces(element.attributeWithoutSynchronization(HTMLNames::hrefAttr))), element.textContent());
         }
     } else if (static_cast<SheetAction>(action) == SheetAction::SaveImage) {
         if (!is<RenderImage>(*element.renderer()))
@@ -2516,9 +2508,8 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 {
     layoutIfNeeded();
 
-    // FIXME: This should return the selection rect, but when this is called at focus time
+    // FIXME: information.selectionRect should be set to the actual selection rect, but when this is called at focus time
     // we don't have a selection yet. Using the last interaction location is a reasonable approximation for now.
-    // FIXME: should the selection rect always be inside the elementRect?
     information.selectionRect = IntRect(m_lastInteractionLocation, IntSize(1, 1));
 
     if (RenderObject* renderer = m_assistedNode->renderer()) {
@@ -2538,8 +2529,12 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             information.elementRect = frameView->contentsToRootView(renderer->absoluteBoundingBoxRect());
             frameView->setCustomFixedPositionLayoutRect(currentFixedPositionRect);
             
-            if (!information.elementRect.contains(information.selectionRect))
+            if (!information.elementRect.contains(m_lastInteractionLocation))
                 information.selectionRect.setLocation(information.elementRect.location());
+        } else {
+            // Don't use the selection rect if interaction was outside the element rect.
+            if (!information.elementRect.contains(m_lastInteractionLocation))
+                information.selectionRect = IntRect();
         }
     } else
         information.elementRect = IntRect();
@@ -2564,11 +2559,11 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             HTMLElement* item = items[i];
             if (is<HTMLOptionElement>(*item)) {
                 HTMLOptionElement& option = downcast<HTMLOptionElement>(*item);
-                information.selectOptions.append(OptionItem(option.text(), false, parentGroupID, option.selected(), option.fastHasAttribute(WebCore::HTMLNames::disabledAttr)));
+                information.selectOptions.append(OptionItem(option.text(), false, parentGroupID, option.selected(), option.hasAttributeWithoutSynchronization(WebCore::HTMLNames::disabledAttr)));
             } else if (is<HTMLOptGroupElement>(*item)) {
                 HTMLOptGroupElement& group = downcast<HTMLOptGroupElement>(*item);
                 parentGroupID++;
-                information.selectOptions.append(OptionItem(group.groupLabelText(), true, 0, false, group.fastHasAttribute(WebCore::HTMLNames::disabledAttr)));
+                information.selectOptions.append(OptionItem(group.groupLabelText(), true, 0, false, group.hasAttributeWithoutSynchronization(WebCore::HTMLNames::disabledAttr)));
             }
         }
         information.selectedIndex = element.selectedIndex();
@@ -2613,13 +2608,13 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         else if (element.isURLField())
             information.elementType = InputType::URL;
         else if (element.isText()) {
-            const AtomicString& pattern = element.fastGetAttribute(HTMLNames::patternAttr);
+            const AtomicString& pattern = element.attributeWithoutSynchronization(HTMLNames::patternAttr);
             if (pattern == "\\d*" || pattern == "[0-9]*")
                 information.elementType = InputType::NumberPad;
             else {
                 information.elementType = InputType::Text;
                 if (!information.formAction.isEmpty()
-                    && (element.getNameAttribute().contains("search") || element.getIdAttribute().contains("search") || element.fastGetAttribute(HTMLNames::titleAttr).contains("search")))
+                    && (element.getNameAttribute().contains("search") || element.getIdAttribute().contains("search") || element.attributeWithoutSynchronization(HTMLNames::titleAttr).contains("search")))
                     information.elementType = InputType::Search;
             }
         }
@@ -2634,50 +2629,6 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.isAutocorrect = true;   // FIXME: Should we look at the attribute?
         information.autocapitalizeType = WebAutocapitalizeTypeSentences; // FIXME: Should we look at the attribute?
         information.isReadOnly = false;
-    }
-}
-
-void WebPage::resetAssistedNodeForFrame(WebFrame* frame)
-{
-    if (!m_assistedNode)
-        return;
-    if (m_assistedNode->document().frame() == frame->coreFrame()) {
-        send(Messages::WebPageProxy::StopAssistingNode());
-        m_assistedNode = nullptr;
-    }
-}
-
-void WebPage::elementDidFocus(WebCore::Node* node)
-{
-    if (m_assistedNode == node && m_hasFocusedDueToUserInteraction)
-        return;
-
-    if (node->hasTagName(WebCore::HTMLNames::selectTag) || node->hasTagName(WebCore::HTMLNames::inputTag) || node->hasTagName(WebCore::HTMLNames::textareaTag) || node->hasEditableStyle()) {
-        m_assistedNode = node;
-        m_hasFocusedDueToUserInteraction |= m_userIsInteracting;
-        AssistedNodeInformation information;
-        getAssistedNodeInformation(information);
-        RefPtr<API::Object> userData;
-
-        m_formClient->willBeginInputSession(this, downcast<Element>(node), WebFrame::fromCoreFrame(*node->document().frame()), userData, m_userIsInteracting);
-
-        send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, m_hasPendingBlurNotification, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
-        m_hasPendingBlurNotification = false;
-    }
-}
-
-void WebPage::elementDidBlur(WebCore::Node* node)
-{
-    if (m_assistedNode == node) {
-        m_hasPendingBlurNotification = true;
-        RefPtr<WebPage> protectedThis(this);
-        dispatch_async(dispatch_get_main_queue(), [protectedThis] {
-            if (protectedThis->m_hasPendingBlurNotification)
-                protectedThis->send(Messages::WebPageProxy::StopAssistingNode());
-            protectedThis->m_hasPendingBlurNotification = false;
-        });
-        m_hasFocusedDueToUserInteraction = false;
-        m_assistedNode = nullptr;
     }
 }
 
@@ -2975,6 +2926,10 @@ void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 
     m_isSuspendedUnderLock = isSuspendedUnderLock;
     setLayerTreeStateIsFrozen(true);
+}
+
+void WebPage::applicationDidFinishSnapshottingAfterEnteringBackground()
+{
     markLayersVolatile();
 }
 
@@ -3021,15 +2976,16 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     m_isInStableState = visibleContentRectUpdateInfo.inStableState();
 
     double scaleNoiseThreshold = 0.005;
-    double filteredScale = visibleContentRectUpdateInfo.scale();
-    double currentScale = m_page->pageScaleFactor();
-    if (!m_isInStableState && fabs(filteredScale - m_page->pageScaleFactor()) < scaleNoiseThreshold) {
+    float filteredScale = visibleContentRectUpdateInfo.scale();
+    float currentScale = m_page->pageScaleFactor();
+
+    if (!m_isInStableState && fabs(filteredScale - currentScale) < scaleNoiseThreshold) {
         // Tiny changes of scale during interactive zoom cause content to jump by one pixel, creating
         // visual noise. We filter those useless updates.
         filteredScale = currentScale;
     }
 
-    double boundedScale = std::min(m_viewportConfiguration.maximumScale(), std::max(m_viewportConfiguration.minimumScale(), filteredScale));
+    float boundedScale = std::min<float>(m_viewportConfiguration.maximumScale(), std::max<float>(m_viewportConfiguration.minimumScale(), filteredScale));
 
     // Skip progressively redrawing tiles if pinch-zooming while the system is under memory pressure.
     if (boundedScale != currentScale && !m_isInStableState && MemoryPressureHandler::singleton().isUnderMemoryPressure())
@@ -3048,21 +3004,20 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredContentRect().location());
 
-    float floatBoundedScale = boundedScale;
     bool hasSetPageScale = false;
-    if (floatBoundedScale != currentScale) {
+    if (boundedScale != currentScale) {
         m_scaleWasSetByUIProcess = true;
         m_hasStablePageScaleFactor = m_isInStableState;
 
         m_dynamicSizeUpdateHistory.clear();
 
-        m_page->setPageScaleFactor(floatBoundedScale, scrollPosition, m_isInStableState);
+        m_page->setPageScaleFactor(boundedScale, scrollPosition, m_isInStableState);
         hasSetPageScale = true;
-        send(Messages::WebPageProxy::PageScaleFactorDidChange(floatBoundedScale));
+        send(Messages::WebPageProxy::PageScaleFactorDidChange(boundedScale));
     }
 
     if (!hasSetPageScale && m_isInStableState) {
-        m_page->setPageScaleFactor(floatBoundedScale, scrollPosition, true);
+        m_page->setPageScaleFactor(boundedScale, scrollPosition, true);
         hasSetPageScale = true;
     }
 

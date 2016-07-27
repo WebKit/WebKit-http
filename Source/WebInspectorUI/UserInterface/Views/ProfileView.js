@@ -25,7 +25,7 @@
 
 WebInspector.ProfileView = class ProfileView extends WebInspector.ContentView
 {
-    constructor(callingContextTree)
+    constructor(callingContextTree, extraArguments)
     {
         super(callingContextTree);
 
@@ -65,8 +65,13 @@ WebInspector.ProfileView = class ProfileView extends WebInspector.ContentView
         this._dataGrid.element.addEventListener("mouseover", this._mouseOverDataGrid.bind(this));
         this._dataGrid.element.addEventListener("mouseleave", this._mouseLeaveDataGrid.bind(this));
         this._dataGrid.indentWidth = 20;
-        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("profile-view-sort", "totalTime");
-        this._dataGrid.sortOrderSetting = new WebInspector.Setting("profile-view-sort-order", WebInspector.DataGrid.SortOrder.Descending);
+        this._dataGrid.sortColumnIdentifier = "totalTime";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Descending;
+        this._dataGrid.createSettings("profile-view");
+
+        // Currently we create a new ProfileView for each CallingContextTree, so
+        // to share state between them, use a common shared data object.
+        this._sharedData = extraArguments;
 
         this.addSubview(this._dataGrid);
     }
@@ -150,8 +155,24 @@ WebInspector.ProfileView = class ProfileView extends WebInspector.ContentView
     _repopulateDataGridFromTree()
     {
         this._dataGrid.removeChildren();
+
         for (let child of this._profileDataGridTree.children)
             this._dataGrid.appendChild(child);
+
+        this._restoreSharedState();
+    }
+
+    _restoreSharedState()
+    {
+        const skipHidden = false;
+        const stayWithin = this._dataGrid;
+        const dontPopulate = true;
+
+        if (this._sharedData.selectedNodeHash) {
+            let nodeToSelect = this._dataGrid.findNode((node) => node.callingContextTreeNode.hash === this._sharedData.selectedNodeHash, skipHidden, stayWithin, dontPopulate);
+            if (nodeToSelect)
+                nodeToSelect.revealAndSelect();
+        }
     }
 
     _pathComponentClicked(event)
@@ -200,6 +221,8 @@ WebInspector.ProfileView = class ProfileView extends WebInspector.ContentView
         if (newSelectedNode) {
             this._removeGuidanceElement(WebInspector.ProfileView.GuidanceType.Selected, newSelectedNode);
             newSelectedNode.forEachChildInSubtree((node) => this._appendGuidanceElement(WebInspector.ProfileView.GuidanceType.Selected, node, newSelectedNode));
+
+            this._sharedData.selectedNodeHash = newSelectedNode.callingContextTreeNode.hash;
         }
     }
 

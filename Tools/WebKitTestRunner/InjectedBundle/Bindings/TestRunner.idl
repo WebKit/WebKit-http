@@ -79,6 +79,7 @@ interface TestRunner {
     void setPrinting();
     void setShouldDecideNavigationPolicyAfterDelay(boolean value);
     void setNavigationGesturesEnabled(boolean value);
+    void setIgnoresViewportScaleLimits(boolean value);
 
     // Special DOM functions.
     void clearBackForwardList();
@@ -199,6 +200,7 @@ interface TestRunner {
 
     // Authentication
     void setHandlesAuthenticationChallenges(boolean value);
+    void setShouldLogCanAuthenticateAgainstProtectionSpace(boolean value);
     void setAuthenticationUsername(DOMString username);
     void setAuthenticationPassword(DOMString password);
 

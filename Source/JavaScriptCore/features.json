@@ -4,11 +4,20 @@
         "name": "ES6",
         "url": "http://wiki.ecmascript.org/doku.php?id=harmony:specification_drafts",
         "keywords": ["es6", "es2015", "ecmascript"],
-        "contact": {
-            "name": "Saam Barati",
-            "email": "sbarati@apple.com",
-            "twitter": "@saambarati"
-        }
+        "status": {
+            "status": "Done"
+        },
+        "contact": [
+            {
+                "name": "Saam Barati",
+                "email": "sbarati@apple.com",
+                "twitter": "@saambarati"
+            },
+            {
+                "name": "Keith Miller",
+                "email": "keith_miller@apple.com"
+            }
+        ]
     },
     {
         "name": "ES7",
@@ -18,43 +27,13 @@
     {
         "name": "Internationalization API",
         "status": {
-            "status": "In Development"
+            "status": "Done"
         },
         "url": "http://ecma-international.org/publications/standards/Ecma-402.htm",
         "documentation-url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=90906",
         "description": "The Internationalization API provides language sensitive operations for  string, number, and date.",
         "keywords": ["Intl", "Collator", "ECMA-402"]
-    },
-    {
-        "name": "Resource Timing",
-        "status": {
-            "status": "In Development",
-            "enabled-by-default": false
-        },
-        "url": "http://www.w3.org/TR/resource-timing/",
-        "webkit-url": "https://webkit.org/b/61138",
-        "keywords": ["resourcetiming","resource timing","rsrc"], 
-        "description": "Provides detailed timing information to JavaScript for sub-resources loaded by the page.",
-        "contact": {
-            "name": "Jonathan Davis",
-            "email": "web-evangelist@apple.com",
-            "twitter": "@jonathandavis"
-        }
-    },
-    {
-        "name": "Web Animations",
-        "status": {
-            "status": "Under Consideration"
-        },
-        "url": "https://www.w3.org/TR/web-animations-1/",
-        "keywords": ["web animations"],
-        "description": "An API to synchronize with the timing for presentation changes of a web page.",
-        "contact": {
-            "name": "Jonathan Davis",
-            "email": "web-evangelist@apple.com",
-            "twitter": "@jonathandavis"
-        }
     },
     {
         "name": "WebAssembly",
@@ -113,7 +92,7 @@
     {
         "name": "Arrow Functions",
         "status": {
-            "status": "In Development",
+            "status": "Done",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-arrow-function-definitions",
@@ -124,7 +103,7 @@
     {
         "name": "Block Scoping",
         "status": {
-            "status": "In Development",
+            "status": "Done",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-let-and-const-declarations",
@@ -203,7 +182,8 @@
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-modules",
         "documentation-url": "https://hacks.mozilla.org/2015/08/es6-in-depth-modules/",
         "description": "Modules make modularizing code and splitting it across different files easy because the syntax and semantics are now standard in the JavaScript langauge.",
-        "specification": "ES6"
+        "specification": "ES6",
+        "comment": "ES6 work is done, however, this feature is still listed as \"In Development\" because the module loading specification has yet to be finalized <a href=\"https:\/\/whatwg.github.io\/loader\/\"><\/a>. It is possible to use Modules with the jsc command line tool by passing the -m flag, although it is primarily intended for testing."
     },
     {
         "name": "Number Object Extensions",
@@ -243,7 +223,7 @@
     {
         "name": "Proxy Objects",
         "status": {
-            "status": "In Development"
+            "status": "Done"
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-proxy-objects",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=35731",
@@ -258,7 +238,7 @@
     {
         "name": "Reflect API",
         "status": {
-            "status": "In Development",
+            "status": "Done",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-reflect-object",

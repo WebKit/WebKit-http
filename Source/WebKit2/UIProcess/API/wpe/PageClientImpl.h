@@ -119,7 +119,7 @@ private:
 
     virtual void didRestoreScrollPosition() override;
 
-    virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
+    virtual WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
 #if ENABLE(FULLSCREEN_API)
     virtual WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() final;

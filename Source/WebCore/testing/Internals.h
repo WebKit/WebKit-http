@@ -266,6 +266,10 @@ public:
 
     void garbageCollectDocumentResources(ExceptionCode&) const;
 
+    void beginSimulatedMemoryPressure();
+    void endSimulatedMemoryPressure();
+    bool isUnderMemoryPressure();
+
     void insertAuthorCSS(const String&, ExceptionCode&) const;
     void insertUserCSS(const String&, ExceptionCode&) const;
 
@@ -469,7 +473,6 @@ public:
 
     String composedTreeAsText(Node&);
     
-    void setViewportForceAlwaysUserScalable(bool);
     void setLinkPreloadSupport(bool);
     void setResourceTimingSupport(bool);
 
@@ -485,6 +488,9 @@ public:
     bool isProcessingUserGesture();
 
     RefPtr<GCObservation> observeGC(JSC::JSValue);
+
+    enum class UserInterfaceLayoutDirection { LTR, RTL };
+    void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection);
 
 private:
     explicit Internals(Document&);

@@ -80,6 +80,7 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "NoEventDispatchAssertion.h"
 #include "OverflowEvent.h"
 #include "OverlapTestRequestClient.h"
@@ -2187,7 +2188,7 @@ void RenderLayer::registerAsTouchEventListenerForScrolling()
     if (!renderer().element() || m_registeredAsTouchEventListenerForScrolling)
         return;
     
-    renderer().document().addTouchEventListener(renderer().element());
+    renderer().document().addTouchEventHandler(renderer().element());
     m_registeredAsTouchEventListenerForScrolling = true;
 }
 
@@ -2196,7 +2197,7 @@ void RenderLayer::unregisterAsTouchEventListenerForScrolling()
     if (!renderer().element() || !m_registeredAsTouchEventListenerForScrolling)
         return;
 
-    renderer().document().removeTouchEventListener(renderer().element());
+    renderer().document().removeTouchEventHandler(renderer().element());
     m_registeredAsTouchEventListenerForScrolling = false;
 }
 #endif // ENABLE(IOS_TOUCH_EVENTS)
@@ -2490,7 +2491,7 @@ bool RenderLayer::allowsCurrentScroll() const
     return box->hasHorizontalOverflow() || box->hasVerticalOverflow();
 }
 
-void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignment& alignX, const ScrollAlignment& alignY)
+void RenderLayer::scrollRectToVisible(SelectionRevealMode revealMode, const LayoutRect& rect, const ScrollAlignment& alignX, const ScrollAlignment& alignY)
 {
     LOG_WITH_STREAM(Scrolling, stream << "Layer " << this << " scrollRectToVisible " << rect);
 
@@ -2550,6 +2551,9 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
                     parentLayer = nullptr;
             }
         } else {
+            if (revealMode == SelectionRevealMode::RevealUpToMainFrame && frameView.frame().isMainFrame())
+                return;
+
 #if !PLATFORM(IOS)
             LayoutRect viewRect = frameView.visibleContentRect();
             LayoutRect visibleRectRelativeToDocument = viewRect;
@@ -2574,7 +2578,7 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
     }
     
     if (parentLayer)
-        parentLayer->scrollRectToVisible(newRect, alignX, alignY);
+        parentLayer->scrollRectToVisible(revealMode, newRect, alignX, alignY);
 }
 
 void RenderLayer::updateCompositingLayersAfterScroll()
@@ -2667,7 +2671,7 @@ LayoutRect RenderLayer::getRectToExpose(const LayoutRect &visibleRect, const Lay
 void RenderLayer::autoscroll(const IntPoint& position)
 {
     IntPoint currentDocumentPosition = renderer().view().frameView().windowToContents(position);
-    scrollRectToVisible(LayoutRect(currentDocumentPosition, LayoutSize(1, 1)), ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+    scrollRectToVisible(SelectionRevealMode::Reveal, LayoutRect(currentDocumentPosition, LayoutSize(1, 1)), ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
 }
 
 bool RenderLayer::canResize() const
@@ -3116,7 +3120,7 @@ PassRefPtr<Scrollbar> RenderLayer::createScrollbar(ScrollbarOrientation orientat
         }
     }
     renderer().view().frameView().addChild(widget.get());
-    return widget.release();
+    return WTFMove(widget);
 }
 
 void RenderLayer::destroyScrollbar(ScrollbarOrientation orientation)

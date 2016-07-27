@@ -31,6 +31,7 @@
 
 #include "Logging.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <malloc.h>
@@ -41,6 +42,10 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/WTFString.h>
+
+#if USE(GLIB)
+#include <glib-unix.h>
+#endif
 
 namespace WebCore {
 
@@ -65,6 +70,102 @@ static const char* s_memInfo = "/proc/meminfo";
 static const char* s_cmdline = "/proc/self/cmdline";
 
 
+#if USE(GLIB)
+typedef struct {
+    GSource source;
+    gpointer fdTag;
+    GIOCondition condition;
+} EventFDSource;
+
+static const unsigned eventFDSourceCondition = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+
+static GSourceFuncs eventFDSourceFunctions = {
+    nullptr, // prepare
+    nullptr, // check
+    // dispatch
+    [](GSource* source, GSourceFunc callback, gpointer userData) -> gboolean
+    {
+        EventFDSource* eventFDSource = reinterpret_cast<EventFDSource*>(source);
+        unsigned events = g_source_query_unix_fd(source, eventFDSource->fdTag) & eventFDSourceCondition;
+        if (events & G_IO_HUP || events & G_IO_ERR || events & G_IO_NVAL)
+            return G_SOURCE_REMOVE;
+
+        gboolean returnValue = G_SOURCE_CONTINUE;
+        if (events & G_IO_IN)
+            returnValue = callback(userData);
+        g_source_set_ready_time(source, -1);
+        return returnValue;
+    },
+    nullptr, // finalize
+    nullptr, // closure_callback
+    nullptr, // closure_marshall
+};
+#endif
+
+MemoryPressureHandler::EventFDPoller::EventFDPoller(int fd, std::function<void ()>&& notifyHandler)
+    : m_fd(fd)
+    , m_notifyHandler(WTFMove(notifyHandler))
+{
+#if USE(GLIB)
+    m_source = adoptGRef(g_source_new(&eventFDSourceFunctions, sizeof(EventFDSource)));
+    g_source_set_name(m_source.get(), "WebCore: MemoryPressureHandler");
+    if (!g_unix_set_fd_nonblocking(m_fd.value(), TRUE, nullptr)) {
+        LOG(MemoryPressure, "Failed to set eventfd nonblocking");
+        return;
+    }
+
+    EventFDSource* eventFDSource = reinterpret_cast<EventFDSource*>(m_source.get());
+    eventFDSource->fdTag = g_source_add_unix_fd(m_source.get(), m_fd.value(), static_cast<GIOCondition>(eventFDSourceCondition));
+    g_source_set_callback(m_source.get(), [](gpointer userData) -> gboolean {
+        static_cast<EventFDPoller*>(userData)->readAndNotify();
+        return G_SOURCE_REMOVE;
+    }, this, nullptr);
+    g_source_attach(m_source.get(), nullptr);
+#else
+    m_threadID = createThread("WebCore: MemoryPressureHandler", [this] { readAndNotify(); }
+#endif
+}
+
+MemoryPressureHandler::EventFDPoller::~EventFDPoller()
+{
+    m_fd = Nullopt;
+#if USE(GLIB)
+    g_source_destroy(m_source.get());
+#else
+    detachThread(m_threadID);
+#endif
+}
+
+static inline bool isFatalReadError(int error)
+{
+#if USE(GLIB)
+    // We don't really need to read the buffer contents, if the poller
+    // notified us, but read would block or is no longer available, is
+    // enough to trigger the memory pressure handler.
+    return error != EAGAIN && error != EWOULDBLOCK;
+#else
+    return true;
+#endif
+}
+
+void MemoryPressureHandler::EventFDPoller::readAndNotify() const
+{
+    if (!m_fd) {
+        LOG(MemoryPressure, "Invalidate eventfd.");
+        return;
+    }
+
+    uint64_t buffer;
+    if (read(m_fd.value(), &buffer, sizeof(buffer)) == -1) {
+        if (isFatalReadError(errno)) {
+            LOG(MemoryPressure, "Failed to read eventfd.");
+            return;
+        }
+    }
+
+    m_notifyHandler();
+}
+
 static inline String nextToken(FILE* file)
 {
     if (!file)
@@ -86,34 +187,7 @@ static inline String nextToken(FILE* file)
     return String(buffer);
 }
 
-void MemoryPressureHandler::waitForMemoryPressureEvent(void*)
-{
-    ASSERT(!isMainThread());
-    int eventFD = MemoryPressureHandler::singleton().m_eventFD;
-    if (!eventFD) {
-        LOG(MemoryPressure, "Invalidate eventfd.");
-        return;
-    }
-
-    uint64_t buffer;
-    if (read(eventFD, &buffer, sizeof(buffer)) <= 0) {
-        LOG(MemoryPressure, "Failed to read eventfd.");
-        return;
-    }
-
-    // FIXME: Current memcg does not provide any way for users to know how serious the memory pressure is.
-    // So we assume all notifications from memcg are critical for now. If memcg had better inferfaces
-    // to get a detailed memory pressure level in the future, we should update here accordingly.
-    bool critical = true;
-    if (ReliefLogger::loggingEnabled())
-        LOG(MemoryPressure, "Got memory pressure notification (%s)", critical ? "critical" : "non-critical");
-
-    MemoryPressureHandler::singleton().setUnderMemoryPressure(critical);
-    callOnMainThread([critical] {
-        MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
-    });
-}
-
+#if 0 && NEED(QUIQUE)
 size_t readToken(const char* filename, const char* key, size_t fileUnits)
 {
     size_t result = static_cast<size_t>(-1);
@@ -224,6 +298,7 @@ void MemoryPressureHandler::pollMemoryPressure(void*)
         MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
     });
 }
+#endif
 
 inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
 {
@@ -231,20 +306,21 @@ inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
         LOG(MemoryPressure, "%s, error : %m", log);
 
     if (m_eventFD) {
-        close(m_eventFD);
-        m_eventFD = 0;
+        close(m_eventFD.value());
+        m_eventFD = Nullopt;
     }
     if (m_pressureLevelFD) {
-        close(m_pressureLevelFD);
-        m_pressureLevelFD = 0;
+        close(m_pressureLevelFD.value());
+        m_pressureLevelFD = Nullopt;
     }
 }
 
-void MemoryPressureHandler::install()
+bool MemoryPressureHandler::tryEnsureEventFD()
 {
-    if (m_installed)
-        return;
+    if (m_eventFD)
+        return true;
 
+#if 0 && NEED(QUIQUE)
     bool cgroupsPressureHandlerOk = false;
 
     do {
@@ -300,10 +376,63 @@ void MemoryPressureHandler::install()
             LOG(MemoryPressure, "Vmstat memory pressure handler installed.");
             vmstatPressureHandlerOk = true;
         } while (false);
+#endif
+
+    // Try to use cgroups instead.
+    int fd = eventfd(0, EFD_CLOEXEC);
+    if (fd == -1) {
+        LOG(MemoryPressure, "eventfd() failed: %m");
+        return false;
+    }
+    m_eventFD = fd;
+
+    fd = open(s_cgroupMemoryPressureLevel, O_CLOEXEC | O_RDONLY);
+    if (fd == -1) {
+        logErrorAndCloseFDs("Failed to open memory.pressure_level");
+        return false;
+    }
+    m_pressureLevelFD = fd;
+
+    fd = open(s_cgroupEventControl, O_CLOEXEC | O_WRONLY);
+    if (fd == -1) {
+        logErrorAndCloseFDs("Failed to open cgroup.event_control");
+        return false;
     }
 
-    if (!cgroupsPressureHandlerOk && !vmstatPressureHandlerOk)
+    char line[128] = {0, };
+    if (snprintf(line, sizeof(line), "%d %d low", m_eventFD.value(), m_pressureLevelFD.value()) < 0
+        || write(fd, line, strlen(line) + 1) < 0) {
+        logErrorAndCloseFDs("Failed to write cgroup.event_control");
+        close(fd);
+        return false;
+    }
+
+    return true;
+}
+
+void MemoryPressureHandler::install()
+{
+    if (m_installed || m_holdOffTimer.isActive())
         return;
+
+    if (!tryEnsureEventFD())
+        return;
+
+    m_eventFDPoller = std::make_unique<EventFDPoller>(m_eventFD.value(), [this] {
+        // FIXME: Current memcg does not provide any way for users to know how serious the memory pressure is.
+        // So we assume all notifications from memcg are critical for now. If memcg had better inferfaces
+        // to get a detailed memory pressure level in the future, we should update here accordingly.
+        bool critical = true;
+        if (ReliefLogger::loggingEnabled())
+            LOG(MemoryPressure, "Got memory pressure notification (%s)", critical ? "critical" : "non-critical");
+
+        setUnderMemoryPressure(critical);
+        if (isMainThread())
+            respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
+        else
+            RunLoop::main().dispatch([this, critical] { respondToMemoryPressure(critical ? Critical::Yes : Critical::No); });
+    });
+>>>>>>> 1ff09855f68f2e89e57a7a13e21364ea38cc81b2
 
     if (ReliefLogger::loggingEnabled() && isUnderMemoryPressure())
         LOG(MemoryPressure, "System is no longer under memory pressure.");
@@ -317,12 +446,20 @@ void MemoryPressureHandler::uninstall()
     if (!m_installed)
         return;
 
-    if (m_threadID) {
-        detachThread(m_threadID);
-        m_threadID = 0;
+    m_holdOffTimer.stop();
+    m_eventFDPoller = nullptr;
+
+    if (m_pressureLevelFD) {
+        close(m_pressureLevelFD.value());
+        m_pressureLevelFD = Nullopt;
+
+        // Only close the eventFD used for cgroups.
+        if (m_eventFD) {
+            close(m_eventFD.value());
+            m_eventFD = Nullopt;
+        }
     }
 
-    logErrorAndCloseFDs(nullptr);
     m_installed = false;
 }
 
@@ -372,6 +509,12 @@ size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
     fclose(file);
 
     return vmSize;
+}
+
+void MemoryPressureHandler::setMemoryPressureMonitorHandle(int fd)
+{
+    ASSERT(!m_eventFD);
+    m_eventFD = fd;
 }
 
 } // namespace WebCore

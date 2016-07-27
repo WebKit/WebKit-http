@@ -190,7 +190,7 @@ EVisibility RenderSearchField::visibilityForCancelButton() const
 
 const AtomicString& RenderSearchField::autosaveName() const
 {
-    return inputElement().fastGetAttribute(autosaveAttr);
+    return inputElement().attributeWithoutSynchronization(autosaveAttr);
 }
 
 // PopupMenuClient methods
@@ -354,7 +354,7 @@ PassRefPtr<Scrollbar> RenderSearchField::createScrollbar(ScrollableArea& scrolla
         widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &inputElement());
     else
         widget = Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
-    return widget.release();
+    return WTFMove(widget);
 }
 
 LayoutUnit RenderSearchField::computeLogicalHeightLimit() const

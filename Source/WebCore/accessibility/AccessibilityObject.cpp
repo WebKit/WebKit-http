@@ -920,7 +920,7 @@ bool AccessibilityObject::press()
     if (hitTestElement && hitTestElement->isDescendantOf(pressElement))
         pressElement = hitTestElement;
     
-    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture, document);
+    UserGestureIndicator gestureIndicator(ProcessingUserGesture, document);
     
     bool dispatchedTouchEvent = dispatchTouchEvent();
     if (!dispatchedTouchEvent)
@@ -1597,7 +1597,7 @@ bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
     if (!element)
         return false;
     
-    const AtomicString& contentEditableValue = element->fastGetAttribute(contenteditableAttr);
+    const AtomicString& contentEditableValue = element->attributeWithoutSynchronization(contenteditableAttr);
     if (contentEditableValue.isNull())
         return false;
     
@@ -1993,13 +1993,13 @@ bool AccessibilityObject::hasAttribute(const QualifiedName& attribute) const
     if (!is<Element>(node))
         return false;
     
-    return downcast<Element>(*node).fastHasAttribute(attribute);
+    return downcast<Element>(*node).hasAttributeWithoutSynchronization(attribute);
 }
     
 const AtomicString& AccessibilityObject::getAttribute(const QualifiedName& attribute) const
 {
     if (Element* element = this->element())
-        return element->fastGetAttribute(attribute);
+        return element->attributeWithoutSynchronization(attribute);
     return nullAtom;
 }
     
@@ -2217,7 +2217,7 @@ bool AccessibilityObject::supportsPressAction() const
             // Search within for immediate descendants that are static text. If we find more than one
             // then this is an event delegator actionElement and we should expose the press action.
             Vector<AccessibilitySearchKey> keys({ StaticTextSearchKey, ControlSearchKey, GraphicSearchKey, HeadingSearchKey, LinkSearchKey });
-            AccessibilitySearchCriteria criteria(axObj, SearchDirectionNext, "", 2, false, false);
+            AccessibilitySearchCriteria criteria(axObj, SearchDirectionNext, emptyString(), 2, false, false);
             criteria.searchKeys = keys;
             axObj->findMatchingObjects(&criteria, results);
             if (results.size() > 1)
@@ -2498,7 +2498,7 @@ AccessibilityButtonState AccessibilityObject::checkboxOrRadioValue() const
         return ButtonStateMixed;
     }
     
-    if (equalLettersIgnoringASCIICase(getAttribute(indeterminateAttr), "true"))
+    if (isIndeterminate())
         return ButtonStateMixed;
     
     return ButtonStateOff;

@@ -37,7 +37,7 @@
 #include "MediaEndpointSessionDescription.h"
 #include "NotImplemented.h"
 #include "PeerConnectionBackend.h"
-#include <wtf/NoncopyableFunction.h>
+#include <wtf/Function.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -73,17 +73,19 @@ public:
 
     void getStats(MediaStreamTrack*, PeerConnection::StatsPromise&&) override;
 
+    Vector<RefPtr<MediaStream>> getRemoteStreams() const override;
+
     RefPtr<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) override;
     void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, PeerConnection::VoidPromise&&) override;
 
     void stop() override;
 
-    bool isNegotiationNeeded() const override { return false; };
-    void markAsNeedingNegotiation() override;
-    void clearNegotiationNeededState() override { notImplemented(); };
+    bool isNegotiationNeeded() const override { return m_negotiationNeeded; };
+    void markAsNeedingNegotiation();
+    void clearNegotiationNeededState() override { m_negotiationNeeded = false; };
 
 private:
-    void runTask(NoncopyableFunction<void ()>&&);
+    void runTask(Function<void ()>&&);
     void startRunningTasks();
 
     void createOfferTask(RTCOfferOptions&, PeerConnection::SessionDescriptionPromise&);
@@ -107,12 +109,11 @@ private:
     void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) override;
     void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&) override;
     void doneGatheringCandidates(unsigned mdescIndex) override;
-    void gotRemoteSource(unsigned mdescIndex, RefPtr<RealtimeMediaSource>&&) override;
 
     PeerConnectionBackendClient* m_client;
     std::unique_ptr<MediaEndpoint> m_mediaEndpoint;
 
-    NoncopyableFunction<void ()> m_initialDeferredTask;
+    Function<void ()> m_initialDeferredTask;
 
     std::unique_ptr<SDPProcessor> m_sdpProcessor;
 

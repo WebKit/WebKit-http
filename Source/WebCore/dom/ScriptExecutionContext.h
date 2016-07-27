@@ -29,13 +29,12 @@
 
 #include "ActiveDOMObject.h"
 #include "DOMTimer.h"
-#include "ResourceRequest.h"
 #include "SecurityContext.h"
 #include "Supplementable.h"
 #include <runtime/ConsoleTypes.h>
 #include <wtf/CrossThreadTask.h>
+#include <wtf/Function.h>
 #include <wtf/HashSet.h>
-#include <wtf/NoncopyableFunction.h>
 
 namespace Deprecated {
 class ScriptValue;
@@ -59,7 +58,9 @@ class EventQueue;
 class EventTarget;
 class MessagePort;
 class PublicURLManager;
+class ResourceRequest;
 class SecurityOrigin;
+class SocketProvider;
 class URL;
 
 namespace IDBClient {
@@ -86,6 +87,9 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     virtual IDBClient::IDBConnectionProxy* idbConnectionProxy() = 0;
+#endif
+#if ENABLE(WEB_SOCKETS)
+    virtual SocketProvider* socketProvider() = 0;
 #endif
 
     bool sanitizeScriptError(String& errorMessage, int& lineNumber, int& columnNumber, String& sourceURL, Deprecated::ScriptValue& error, CachedScript* = nullptr);
@@ -138,29 +142,23 @@ public:
     public:
         enum CleanupTaskTag { CleanupTask };
 
-        template<typename T, typename = typename std::enable_if<!std::is_base_of<Task, T>::value && std::is_convertible<T, NoncopyableFunction<void (ScriptExecutionContext&)>>::value>::type>
+        template<typename T, typename = typename std::enable_if<!std::is_base_of<Task, T>::value && std::is_convertible<T, WTF::Function<void (ScriptExecutionContext&)>>::value>::type>
         Task(T task)
             : m_task(WTFMove(task))
             , m_isCleanupTask(false)
         {
         }
 
-        Task(NoncopyableFunction<void ()>&& task)
+        Task(WTF::Function<void ()>&& task)
             : m_task([task = WTFMove(task)](ScriptExecutionContext&) { task(); })
             , m_isCleanupTask(false)
         {
         }
 
-        template<typename T, typename = typename std::enable_if<std::is_convertible<T, NoncopyableFunction<void (ScriptExecutionContext&)>>::value>::type>
+        template<typename T, typename = typename std::enable_if<std::is_convertible<T, WTF::Function<void (ScriptExecutionContext&)>>::value>::type>
         Task(CleanupTaskTag, T task)
             : m_task(WTFMove(task))
             , m_isCleanupTask(true)
-        {
-        }
-
-        Task(Task&& other)
-            : m_task(WTFMove(other.m_task))
-            , m_isCleanupTask(other.m_isCleanupTask)
         {
         }
 
@@ -168,7 +166,7 @@ public:
         bool isCleanupTask() const { return m_isCleanupTask; }
 
     protected:
-        NoncopyableFunction<void (ScriptExecutionContext&)> m_task;
+        WTF::Function<void (ScriptExecutionContext&)> m_task;
         bool m_isCleanupTask;
     };
 

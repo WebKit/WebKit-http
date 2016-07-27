@@ -309,7 +309,7 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingRelease)
 
     DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
-    map.add(ptr.release(), 0);
+    map.add(WTFMove(ptr), 0);
 
     EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
 }
@@ -373,7 +373,7 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingReleaseKeyAlreadyPresent)
 
     {
         RefPtr<RefLogger> ptr2(&a);
-        auto addResult = map.add(ptr2.release(), 0);
+        auto addResult = map.add(WTFMove(ptr2), 0);
         EXPECT_FALSE(addResult.isNewEntry);
     }
 
@@ -419,7 +419,7 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingRelease)
 
     DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
-    map.set(ptr.release(), 0);
+    map.set(WTFMove(ptr), 0);
 
     EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
 }
@@ -481,7 +481,7 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingReleaseKeyAlreadyPresent)
 
     {
         RefPtr<RefLogger> ptr2(&a);
-        auto addResult = map.set(ptr2.release(), 1);
+        auto addResult = map.set(WTFMove(ptr2), 1);
         EXPECT_FALSE(addResult.isNewEntry);
         EXPECT_EQ(1, map.get(ptr.get()));
     }
@@ -833,10 +833,18 @@ TEST(WTF_HashMap, Ref_Value)
         Ref<RefLogger> ref(a);
         map.add(1, WTFMove(ref));
         
-        ASSERT_EQ(map.get(1), &a);
+        auto aGet = map.get(1);
+        ASSERT_EQ(aGet, &a);
     }
 
     ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+        
+        auto emptyGet = map.get(1);
+        ASSERT_TRUE(emptyGet == nullptr);
+    }
 
     {
         HashMap<int, Ref<RefLogger>> map;
@@ -845,10 +853,19 @@ TEST(WTF_HashMap, Ref_Value)
         Ref<RefLogger> ref(a);
         map.add(1, WTFMove(ref));
         
-        Ref<RefLogger> aOut = map.take(1);
+        auto aOut = map.take(1);
+        ASSERT_TRUE(static_cast<bool>(aOut));
+        ASSERT_EQ(&a, aOut.value().ptr());
     }
 
     ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+        
+        auto emptyTake = map.take(1);
+        ASSERT_FALSE(static_cast<bool>(emptyTake));
+    }
 
     {
         HashMap<int, Ref<RefLogger>> map;

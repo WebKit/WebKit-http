@@ -26,6 +26,7 @@
 #include "config.h"
 #include "DFGOperations.h"
 
+#include "ArrayConstructor.h"
 #include "ButterflyInlines.h"
 #include "ClonedArguments.h"
 #include "CodeBlock.h"
@@ -47,6 +48,7 @@
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JSCInlines.h"
+#include "JSGenericTypedArrayViewConstructorInlines.h"
 #include "JSLexicalEnvironment.h"
 #include "ObjectConstructor.h"
 #include "Repatch.h"
@@ -184,6 +186,19 @@ JSCell* JIT_OPERATION operationCreateThis(ExecState* exec, JSObject* constructor
     if (proto.isObject())
         return constructEmptyObject(exec, asObject(proto));
     return constructEmptyObject(exec);
+}
+
+JSCell* JIT_OPERATION operationObjectConstructor(ExecState* exec, JSGlobalObject* globalObject, EncodedJSValue encodedTarget)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    JSValue value = JSValue::decode(encodedTarget);
+    ASSERT(!value.isObject());
+
+    if (value.isUndefinedOrNull())
+        return constructEmptyObject(exec, globalObject->objectPrototype());
+    return value.toObject(exec, globalObject);
 }
 
 EncodedJSValue JIT_OPERATION operationValueBitAnd(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
@@ -714,6 +729,14 @@ EncodedJSValue JIT_OPERATION operationToPrimitive(ExecState* exec, EncodedJSValu
     NativeCallFrameTracer tracer(vm, exec);
     
     return JSValue::encode(JSValue::decode(value).toPrimitive(exec));
+}
+
+EncodedJSValue JIT_OPERATION operationToNumber(ExecState* exec, EncodedJSValue value)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return JSValue::encode(jsNumber(JSValue::decode(value).toNumber(exec)));
 }
 
 EncodedJSValue JIT_OPERATION operationGetByIdWithThis(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedThis, UniquedStringImpl* impl)
@@ -1430,7 +1453,7 @@ void JIT_OPERATION operationNotifyWrite(ExecState* exec, WatchpointSet* set)
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    set->touch("Executed NotifyWrite");
+    set->touch(vm, "Executed NotifyWrite");
 }
 
 void JIT_OPERATION operationThrowStackOverflowForVarargs(ExecState* exec)
@@ -1803,7 +1826,7 @@ void JIT_OPERATION triggerTierUpNow(ExecState* exec)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    DeferGC deferGC(vm->heap);
+    DeferGCForAWhile deferGC(vm->heap);
     CodeBlock* codeBlock = exec->codeBlock();
     
     if (codeBlock->jitType() != JITCode::DFGJIT) {
@@ -1985,7 +2008,7 @@ void JIT_OPERATION triggerTierUpNowInLoop(ExecState* exec, unsigned bytecodeInde
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    DeferGC deferGC(vm->heap);
+    DeferGCForAWhile deferGC(vm->heap);
     CodeBlock* codeBlock = exec->codeBlock();
 
     if (codeBlock->jitType() != JITCode::DFGJIT) {
@@ -2019,7 +2042,7 @@ char* JIT_OPERATION triggerOSREntryNow(ExecState* exec, unsigned bytecodeIndex)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    DeferGC deferGC(vm->heap);
+    DeferGCForAWhile deferGC(vm->heap);
     CodeBlock* codeBlock = exec->codeBlock();
 
     if (codeBlock->jitType() != JITCode::DFGJIT) {

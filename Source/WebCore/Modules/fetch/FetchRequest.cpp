@@ -47,8 +47,8 @@ static bool setReferrerPolicy(FetchOptions& options, const String& referrerPolic
         options.referrerPolicy = FetchOptions::ReferrerPolicy::NoReferrer;
     else if (referrerPolicy == "no-referrer-when-downgrade")
         options.referrerPolicy = FetchOptions::ReferrerPolicy::NoReferrerWhenDowngrade;
-    else if (referrerPolicy == "origin-only")
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::OriginOnly;
+    else if (referrerPolicy == "origin")
+        options.referrerPolicy = FetchOptions::ReferrerPolicy::Origin;
     else if (referrerPolicy == "origin-when-cross-origin")
         options.referrerPolicy = FetchOptions::ReferrerPolicy::OriginWhenCrossOrigin;
     else if (referrerPolicy == "unsafe-url")
@@ -308,6 +308,13 @@ String FetchRequest::referrer() const
     if (m_internalRequest.referrer == "client")
         return ASCIILiteral("about:client");
     return m_internalRequest.referrer;
+}
+
+const String& FetchRequest::url() const
+{
+    if (m_requestURL.isNull())
+        m_requestURL = m_internalRequest.request.url().serialize();
+    return m_requestURL;
 }
 
 ResourceRequest FetchRequest::internalRequest() const

@@ -56,6 +56,9 @@ fast/history/page-cache-closed-audiocontext.html
 fast/history/page-cache-running-audiocontext.html
 fast/history/page-cache-suspended-audiocontext.html
 
+# WebRTC tests are skipped on iOS for now.
+fast/events/constructors/media-stream-event-constructor.html
+
 # No mousewheel events on iOS
 fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
@@ -254,7 +257,16 @@ fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
 fast/events/prevent-default-prevents-interaction-with-scrollbars.html [ Skip ]
 fast/text/text-disappear-on-deselect.html [ ImageOnlyFailure ]
-
+fast/css/pseudo-active-on-labeled-control-without-renderer.html [ Skip ]
+fast/css/pseudo-active-on-labeled-element-not-canceled-by-focus.html [ Skip ]
+fast/css/pseudo-active-style-sharing-1.html [ Skip ]
+fast/css/pseudo-active-style-sharing-2.html [ Skip ]
+fast/css/pseudo-active-style-sharing-3.html [ Skip ]
+fast/css/pseudo-active-style-sharing-4.html [ Skip ]
+fast/css/pseudo-active-style-sharing-5.html [ Skip ]
+fast/css/pseudo-active-style-sharing-6.html [ Skip ]
+fast/css/pseudo-active-with-programmatic-focus.html [ Skip ]
+http/tests/security/history-username-password.html [ Skip ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 
@@ -264,6 +276,7 @@ fast/shadow-dom/focus-navigation-across-slots.html [ Failure ]
 fast/shadow-dom/focus-on-iframe.html [ Failure ]
 fast/shadow-dom/negative-tabindex-on-shadow-host.html [ Failure ]
 webkit.org/b/116046 fast/events/sequential-focus-navigation-starting-point.html [ Skip ]
+webkit.org/b/159240 fast/events/remove-focus-navigation-starting-point-crash.html [ Skip ]
 
 webkit.org/b/150225 fast/custom-elements [ Pass ]
 
@@ -648,21 +661,32 @@ pageoverlay/overlay-large-document-scrolled.html [ Failure ]
 pageoverlay/overlay-large-document.html [ Failure ]
 webkit.org/b/153337 pageoverlay/overlay-installation.html [ Pass Failure ]
 
+# These tests require an OpenType MATH font on the Apple bots.
+mathml/opentype/vertical.html [ Skip ]
+mathml/opentype/large-operators.html [ Skip ]
+mathml/opentype/horizontal.html [ Skip ]
+mathml/opentype/horizontal-munderover.html [ Skip ]
+
 # These tests require the Latin Modern Math font.
-mathml/opentype/fraction-line.html [ Pass ImageOnlyFailure ]
-mathml/presentation/fractions-linethickness.html [ Pass ImageOnlyFailure ]
-mathml/opentype/large-operators-italic-correction.html [ Pass Failure ]
-mathml/presentation/multiscripts-positions.html [ Pass ImageOnlyFailure ]
-mathml/presentation/scripts-subsup.html [ Pass ImageOnlyFailure ]
+mathml/opentype/fraction-line.html [ Skip ]
+mathml/presentation/fractions-linethickness.html [ Skip ]
+mathml/opentype/large-operators-italic-correction.html [ Skip ]
 
-# MathML tests that fail:
-mathml/opentype/horizontal.html [ Failure ]
-mathml/opentype/opentype-stretchy-horizontal.html [ Failure ]
-mathml/mathml-in-dashboard.html [ Failure ]
-mathml/presentation/scripts-height.html [ ImageOnlyFailure ]
+# These reftests require a font with Mathematical Alphanumeric Symbols.
+mathml/presentation/attributes-mathvariant.html [ Skip ]
+mathml/presentation/tokenElements-mathvariant.html [ Skip ]
+mathml/presentation/mathvariant-inheritance.html [ Skip ]
+mathml/presentation/mathvariant-tokens.html [ Skip ]
 
-# <rdar://problem/19221067> ASSERT(m_stretchyData.top().glyph) fails in RenderMathMLOperator.cpp
-mathml/presentation/style-changed.html
+# This test fails because the USE_TYPO_METRICS flag is ignored for non-math font
+webkit.org/b/150394 imported/mathml-in-html5/mathml/relations/text-and-math/use-typo-metrics-1.html [ ImageOnlyFailure ]
+
+# The web font loading & relayout seems to be performed too late.
+imported/mathml-in-html5/mathml/relations/css-styling/mathvariant-transforms-1.html [ Pass ImageOnlyFailure ]
+
+# These tests use key navigation to test MathML links but do not seem to work on iOS simulator.
+webkit.org/b/159662 mathml/presentation/href-enter.html [ Skip ]
+webkit.org/b/159662 mathml/presentation/href-style.html [ Skip ]
 
 # <rdar://problem/19215305> ASSERT(m_cgFont.get()) fails in FontPlatformData::ctFont()
 svg/text/svg-fallback-font-crash.html
@@ -1388,6 +1412,7 @@ fast/canvas/draw-focus-if-needed.html [ Failure ]
 fast/clip/clip-when-rect-has-fractional-pixel-value.html [ ImageOnlyFailure ]
 fast/css-generated-content/table-parts-before-and-after.html [ Failure ]
 fast/css/absolute-child-with-percent-height-inside-relative-parent.html [ Failure ]
+fast/css/ancestor-of-hovered-element-removed.html [ Failure ]
 fast/css/background-image-with-baseurl.html [ Failure ]
 fast/css/button-height.html [ Failure ]
 fast/css/caption-width-absolute-position-offset-top.htm [ Failure ]
@@ -1453,19 +1478,6 @@ fast/css/sticky/sticky-top.html [ ImageOnlyFailure ]
 fast/css/sticky/sticky-writing-mode-horizontal-bt.html [ ImageOnlyFailure ]
 fast/css/sticky/sticky-writing-mode-vertical-lr.html [ ImageOnlyFailure ]
 fast/css/sticky/sticky-writing-mode-vertical-rl.html [ ImageOnlyFailure ]
-fast/css/style-scoped/basic-attribute.html [ Failure ]
-fast/css/style-scoped/registering-shadowroot.html [ Failure ]
-fast/css/style-scoped/registering.html [ Failure ]
-fast/css/style-scoped/style-scoped-apply-author-styles.html [ Failure ]
-fast/css/style-scoped/style-scoped-attach.html [ Failure ]
-fast/css/style-scoped/style-scoped-basic.html [ Failure ]
-fast/css/style-scoped/style-scoped-change-scoped-in-shadow.html [ Failure ]
-fast/css/style-scoped/style-scoped-detach.html [ Failure ]
-fast/css/style-scoped/style-scoped-in-shadow.html [ Failure ]
-fast/css/style-scoped/style-scoped-nested.html [ Failure ]
-fast/css/style-scoped/style-scoped-remove-scoped.html [ Failure ]
-fast/css/style-scoped/style-scoped-set-scoped.html [ Failure ]
-fast/css/style-scoped/style-scoped-with-important-rule.html [ Failure ]
 fast/css/user-drag-none.html [ Failure ]
 fast/css/vertical-align-baseline-rowspan-010.html [ ImageOnlyFailure ]
 fast/css/vertical-align-block-elements.html [ ImageOnlyFailure ]
@@ -1758,9 +1770,9 @@ fast/forms/onselect-textarea.html [ Failure ]
 fast/forms/onselect-textfield.html [ Failure ]
 fast/forms/option-mouseevents.html [ Failure ]
 fast/forms/password-doubleclick-selection.html [ Failure ]
-fast/forms/password-placeholder-text-security.html [ ImageOnlyFailure ]
+fast/forms/password-placeholder-text-security.html [ Pass ImageOnlyFailure ]
 fast/forms/placeholder-position.html [ Failure ]
-fast/forms/radio/indeterminate-radio.html [ Failure ]
+fast/forms/radio/indeterminate-radio.html [ Pass Failure ]
 fast/forms/range/range-drag-when-toggled-disabled.html [ Failure ]
 fast/forms/range/range-drag.html [ Failure ]
 fast/forms/range/range-hit-test-with-padding.html [ Failure ]
@@ -2457,7 +2469,6 @@ http/tests/misc/slow-loading-image-in-pattern.html [ Failure ]
 http/tests/misc/slow-loading-mask.html [ Failure ]
 http/tests/uri/css-href.php [ Failure ]
 ietestcenter/css3/bordersbackgrounds/background-attachment-local-scrolling.htm [ Failure ]
-mathml/presentation/mo-stretch.html [ Failure ]
 svg/W3C-SVG-1.1/animate-elem-04-t.svg [ Failure ]
 svg/W3C-SVG-1.1/animate-elem-07-t.svg [ Failure ]
 svg/W3C-SVG-1.1/animate-elem-15-t.svg [ Failure ]
@@ -2687,8 +2698,6 @@ platform/ios-simulator/ios/accessibility/set-value.html [ Failure ]
 platform/ios-simulator/ios/fast/css/webkit-overflow-scrolling-parsing.html [ Failure ]
 svg/custom/bug78807.svg [ Failure ]
 
-css3/line-break-language-sensitive/line-break-loose-hyphens.html [ ImageOnlyFailure ]
-css3/line-break-language-sensitive/line-break-normal-hyphens.html [ ImageOnlyFailure ]
 fast/filter-image/background-filter-image.html [ ImageOnlyFailure ]
 fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
 fast/text/han-generic-font-families.html [ ImageOnlyFailure ]
@@ -2757,10 +2766,12 @@ webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nes
 
 # Flaky tests ( these tests were affected by https://bugs.webkit.org/show_bug.cgi?id=149320 )
 
-css3/line-break-language-sensitive/line-break-loose-centered.html [ ImageOnlyFailure Pass ]
-css3/line-break-language-sensitive/line-break-loose-postfixes.html [ ImageOnlyFailure Pass ]
-css3/line-break-language-sensitive/line-break-loose-sound-marks.html [ ImageOnlyFailure Pass ]
-css3/line-break-language-sensitive/line-break-normal-sound-marks.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-loose-hyphens.html [ ImageOnlyFailure ]
+css3/line-break/line-break-normal-hyphens.html [ ImageOnlyFailure ]
+css3/line-break/line-break-loose-centered.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-loose-postfixes.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-loose-sound-marks.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-normal-sound-marks.html [ ImageOnlyFailure Pass ]
 
 # Enable "aria-current" test for iOS
 webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
@@ -2831,19 +2842,6 @@ imported/blink/svg/text/text-outline-2.html [ ImageOnlyFailure Pass ]
 imported/blink/svg/text/tspan-outline-crash.html [ ImageOnlyFailure Pass ]
 imported/blink/transitions/transition-shape-outside-crash.html [ Pass Timeout ]
 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirks-mode.html [ ImageOnlyFailure ]
-
-webkit.org/b/152134 fast/events/ios/clicking-document-should-not-trigger-focus.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/focused-input-should-assist-on-touch.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/input-value-after-oninput.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/keyboard-should-not-trigger-resize.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/single-tap-generates-click.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/unscalable-viewport-clicks-on-doubletap.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/viewport-device-width-at-initial-scale-fast-clicks.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/viewport-no-width-value-allows-double-tap.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/fast-click-double-tap-sends-click.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/fast-click-double-tap-zooms-on-text.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/fast-click-double-tap-zooms-on-image.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/no-fast-click-double-tap-causes-zoom.html  [ Pass Timeout ]
 
 # Failing tests related to picture element
 webkit.org/b/152141 fast/picture/image-picture-1x.html [ Skip ]
@@ -2953,7 +2951,7 @@ fast/css3-text/css3-text-decoration/text-decoration-line-through-mispositioned.h
 fast/forms/select-size.html [ ImageOnlyFailure ]
 fast/inline/inline-with-outline-offset.html [ ImageOnlyFailure ]
 fast/inline/outline-corners-with-offset.html [ ImageOnlyFailure ]
-fast/overflow/overflow-hidden-scroll-into-view.html [ ImageOnlyFailure ]
+fast/overflow/overflow-hidden-scroll-into-view.html [ Pass ImageOnlyFailure ]
 fast/regions/layers/region-removed-during-animation.html [ ImageOnlyFailure ]
 fast/sub-pixel/table-with-subpixel-cell-size.html [ ImageOnlyFailure ]
 svg/text/tspan-multiple-outline.svg [ ImageOnlyFailure ]
@@ -2968,8 +2966,6 @@ webkit.org/b/155372 [ Debug ] css3/masking/mask-svg-script-none-to-png.html [ Pa
 
 webkit.org/b/155339 [ Debug ] imported/blink/fast/multicol/dynamic/multicol-with-abspos-svg-with-foreignobject-with-multicol-crash.html [ Pass Crash ]
 webkit.org/b/155339 [ Debug ] imported/blink/fast/multicol/dynamic/relayout-abspos-in-relpos-spanner.html [ Pass Crash ]
-
-webkit.org/b/155565 [ Debug ] mathml/very-large-stretchy-operators.html [ Skip ]
 
 # RTL Scrollbars are not implemented on iOS.
 fast/scrolling/rtl-scrollbars-sticky-document-2.html [ ImageOnlyFailure ]
@@ -2986,9 +2982,13 @@ fast/forms/listbox-top-padding-do-not-clip-items.html [ Failure ]
 fast/images/image-map-outline-in-positioned-container.html [ Pass ImageOnlyFailure ]
 fast/images/image-map-outline-with-paint-root-offset.html [ Pass ImageOnlyFailure ]
 fast/images/image-map-outline-with-scale-transform.html [ Pass ImageOnlyFailure ]
+fast/dom/Window/child-window-focus.html
 
 # iOS does not allow you to scroll by dragging the scrollbar thumb.
 webkit.org/b/157201 fast/scrolling/rtl-drag-vertical-scroller.html [ Failure ]
+
+# DumpRenderTree doesn't support logging calls to runOpenPanel and iOS's WebKitTestRunner doesn't support eventSender.mouseDown.
+fast/forms/file/open-file-panel.html [ Skip ]
 
 # Tests that are failing after bug 157170 (WPT test sync). These tests may just need rebasing.
 imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly.html [ Failure ]
@@ -3004,3 +3004,19 @@ webkit.org/b/158618 fast/hidpi/hidpi-3x-device-pixel-ratio.html [ Failure ]
 
 # These tests hardcode platform-specific font aliases.
 webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
+
+
+webkit.org/b/159214 fast/multicol/fixed-stack.html [ ImageOnlyFailure ]
+
+webkit.org/b/157592 fast/images/composited-animated-gif-outside-viewport.html [ Pass Timeout ]
+
+webkit.org/b/156561 perf/rel-list-remove.html [ Pass Timeout Failure ]
+
+webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Pass Failure ]
+
+webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
+
+webkit.org/b/142969 editing/spelling/copy-paste-crash.html
+
+# This test is iPad only
+platform/ios-simulator/media/video-interruption-suspendunderlock.html [ Skip ]

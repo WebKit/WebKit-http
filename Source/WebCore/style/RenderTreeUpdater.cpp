@@ -93,6 +93,8 @@ void RenderTreeUpdater::commit(std::unique_ptr<Style::Update> styleUpdate)
     if (!m_document.shouldCreateRenderers() || !m_document.renderView())
         return;
 
+    Style::PostResolutionCallbackDisabler callbackDisabler(m_document);
+
     m_styleUpdate = WTFMove(styleUpdate);
 
     for (auto* root : findRenderingRoots(*m_styleUpdate))
@@ -240,7 +242,7 @@ static bool pseudoStyleCacheIsInvalid(RenderElement* renderer, RenderStyle* newS
 
 void RenderTreeUpdater::updateElementRenderer(Element& element, Style::ElementUpdate& update)
 {
-    bool shouldTearDownRenderers = update.change == Style::Detach && (element.renderer() || element.isNamedFlowContentNode());
+    bool shouldTearDownRenderers = update.change == Style::Detach && (element.renderer() || element.isNamedFlowContentElement());
     if (shouldTearDownRenderers)
         tearDownRenderers(element, TeardownType::KeepHoverAndActive);
 
@@ -518,16 +520,16 @@ void RenderTreeUpdater::tearDownRenderers(Element& root, TeardownType teardownTy
     auto push = [&] (Element& element) {
         if (element.hasCustomStyleResolveCallbacks())
             element.willDetachRenderers();
-        if (teardownType != TeardownType::KeepHoverAndActive)
-            element.clearHoverAndActiveStatusBeforeDetachingRenderer();
-        element.clearStyleDerivedDataBeforeDetachingRenderer();
-
         teardownStack.append(&element);
     };
 
     auto pop = [&] (unsigned depth) {
         while (teardownStack.size() > depth) {
             auto& element = *teardownStack.takeLast();
+
+            if (teardownType != TeardownType::KeepHoverAndActive)
+                element.clearHoverAndActiveStatusBeforeDetachingRenderer();
+            element.clearStyleDerivedDataBeforeDetachingRenderer();
 
             if (auto* renderer = element.renderer()) {
                 renderer->destroyAndCleanupAnonymousWrappers();

@@ -29,6 +29,7 @@
 VPATH = \
     $(WebCore) \
     $(WebCore)/Modules/airplay \
+    $(WebCore)/Modules/applepay \
     $(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/fetch \
     $(WebCore)/Modules/gamepad \
@@ -76,6 +77,12 @@ VPATH = \
 
 NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayPaymentAuthorizedEvent.idl \
+    $(WebCore)/Modules/applepay/ApplePayPaymentMethodSelectedEvent.idl \
+    $(WebCore)/Modules/applepay/ApplePaySession.idl \
+    $(WebCore)/Modules/applepay/ApplePayShippingContactSelectedEvent.idl \
+    $(WebCore)/Modules/applepay/ApplePayShippingMethodSelectedEvent.idl \
+    $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyNeededEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
@@ -327,6 +334,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
     $(WebCore)/dom/SecurityPolicyViolationEvent.idl \
     $(WebCore)/dom/ShadowRoot.idl \
+    $(WebCore)/dom/Slotable.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
     $(WebCore)/dom/TextEvent.idl \
@@ -418,9 +426,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLTableCaptionElement.idl \
     $(WebCore)/html/HTMLTableCellElement.idl \
     $(WebCore)/html/HTMLTableColElement.idl \
-    $(WebCore)/html/HTMLTableDataCellElement.idl \
     $(WebCore)/html/HTMLTableElement.idl \
-    $(WebCore)/html/HTMLTableHeaderCellElement.idl \
     $(WebCore)/html/HTMLTableRowElement.idl \
     $(WebCore)/html/HTMLTableSectionElement.idl \
     $(WebCore)/html/HTMLTemplateElement.idl \
@@ -1278,6 +1284,7 @@ WebReplayInputs.h : $(INPUT_GENERATOR_SPECIFICATIONS) $(INPUT_GENERATOR_SCRIPTS)
 
 WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/fetch/FetchHeaders.js \
+    $(WebCore)/Modules/fetch/FetchInternals.js \
     $(WebCore)/Modules/fetch/FetchResponse.js \
     $(WebCore)/Modules/mediastream/MediaDevices.js \
     $(WebCore)/Modules/mediastream/NavigatorUserMedia.js \
@@ -1303,21 +1310,26 @@ BUILTINS_GENERATOR_SCRIPTS = \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_combined_implementation.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_separate_header.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_separate_implementation.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_internals_wrapper_header.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_internals_wrapper_implementation.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_wrapper_header.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_wrapper_implementation.py \
     $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py \
     $(JavaScriptCore_SCRIPTS_DIR)/lazywriter.py \
 #
 
 # Adding/removing scripts should trigger regeneration, but changing which builtins are
 # generated should not affect other builtins when not passing '--combined' to the generator.
+# WebCore_BUILTINS_SOURCE_LIST = $(shell echo $(WebCore_BUILTINS_SOURCES) | perl -e 'print " " . join(" -I", split(" ", <>));')
 
 .PHONY: force
 WebCore_BUILTINS_DEPENDENCIES_LIST : $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py force
 	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py '$(BUILTINS_GENERATOR_SCRIPTS)' $@
 
-%Builtins.h: %.js $(BUILTINS_GENERATOR_SCRIPTS) WebCore_BUILTINS_DEPENDENCIES_LIST
-	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py --output-directory . --framework WebCore $<
+	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py --wrappers --output-directory . --framework WebCore $(WebCore_BUILTINS_SOURCES)
 
-all : $(notdir $(WebCore_BUILTINS_SOURCES:%.js=%Builtins.h))
+
+all : WebCore_BUILTINS_DEPENDENCIES_LIST
 
 # ------------------------
 
