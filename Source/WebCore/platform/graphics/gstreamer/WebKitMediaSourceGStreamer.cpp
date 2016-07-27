@@ -46,7 +46,7 @@
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/MainThread.h>
 
-// To make LOG_MEDIA_MESSAGE() work outside the WebCore namespace.
+// To make GST_DEBUG() work outside the WebCore namespace.
 #if !LOG_DISABLED
 using WebCore::LogMedia;
 #endif
@@ -609,7 +609,7 @@ static void webKitMediaSrcCheckAllTracksConfigured(WebKitMediaSrc* webKitMediaSr
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
     if (allTracksConfigured) {
-        LOG_MEDIA_MESSAGE("All tracks attached. Completing async state change operation.");
+        GST_DEBUG("All tracks attached. Completing async state change operation.");
         gst_element_no_more_pads(GST_ELEMENT(webKitMediaSrc));
         webKitMediaSrcDoAsyncDone(webKitMediaSrc);
     }
@@ -738,7 +738,7 @@ static gboolean seekNeedsDataMainThread (gpointer user_data)
     WebKitMediaSrc* webKitMediaSrc = static_cast<WebKitMediaSrc*>(user_data);
     ASSERT(WEBKIT_IS_MEDIA_SRC(webKitMediaSrc));
 
-    LOG_MEDIA_MESSAGE("Buffering needed before seek");
+    GST_DEBUG("Buffering needed before seek");
 
     ASSERT(WTF::isMainThread());
 
@@ -783,7 +783,7 @@ static void app_src_need_data (GstAppSrc *src, guint length, gpointer user_data)
             appSrcStream->appSrcNeedDataFlag = true;
         }
         if (webKitMediaSrc->priv->appSrcSeekDataCount == numAppSrcs && webKitMediaSrc->priv->appSrcNeedDataCount == numAppSrcs) {
-            LOG_MEDIA_MESSAGE("All need_datas completed");
+            GST_DEBUG("All need_datas completed");
             allAppSrcsNeedDataAfterSeek = true;
             webKitMediaSrc->priv->appSrcSeekDataCount = 0;
             webKitMediaSrc->priv->appSrcNeedDataCount = 0;
@@ -798,7 +798,7 @@ static void app_src_need_data (GstAppSrc *src, guint length, gpointer user_data)
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
     if (allAppSrcsNeedDataAfterSeek) {
-        LOG_MEDIA_MESSAGE("All expected app_src_seek_data() and app_src_need_data() calls performed. Running next action (%d)", static_cast<int>(appSrcSeekDataNextAction));
+        GST_DEBUG("All expected app_src_seek_data() and app_src_need_data() calls performed. Running next action (%d)", static_cast<int>(appSrcSeekDataNextAction));
 
         switch (appSrcSeekDataNextAction) {
         case MediaSourceSeekToTime:
@@ -902,7 +902,7 @@ PlaybackPipeline::~PlaybackPipeline()
 
 void PlaybackPipeline::setWebKitMediaSrc(WebKitMediaSrc* webKitMediaSrc)
 {
-    LOG_MEDIA_MESSAGE("webKitMediaSrc=%p", webKitMediaSrc);
+    GST_DEBUG("webKitMediaSrc=%p", webKitMediaSrc);
     if (webKitMediaSrc)
         gst_object_ref(webKitMediaSrc);
 
@@ -1159,7 +1159,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
 
 void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate)
 {
-    LOG_MEDIA_MESSAGE("Re-attaching track");
+    GST_DEBUG("Re-attaching track");
 
     // TODO: Maybe remove this method.
     // Now the caps change is managed by gst_appsrc_push_sample()
@@ -1182,12 +1182,12 @@ void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> source
     const gchar* mediaType = gst_structure_get_name(gst_caps_get_structure(appsrccaps, 0));
 
     if (!gst_caps_is_equal(oldAppsrccaps, appsrccaps)) {
-        LOG_MEDIA_MESSAGE("Caps have changed, but reconstructing the sequence of elements is not supported yet");
+        GST_DEBUG("Caps have changed, but reconstructing the sequence of elements is not supported yet");
 
         gchar* stroldcaps = gst_caps_to_string(oldAppsrccaps);
         gchar* strnewcaps = gst_caps_to_string(appsrccaps);
-        LOG_MEDIA_MESSAGE("oldcaps: %s", stroldcaps);
-        LOG_MEDIA_MESSAGE("newcaps: %s", strnewcaps);
+        GST_DEBUG("oldcaps: %s", stroldcaps);
+        GST_DEBUG("newcaps: %s", strnewcaps);
         g_free(stroldcaps);
         g_free(strnewcaps);
     }
@@ -1262,12 +1262,12 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
     ASSERT(WTF::isMainThread());
 
     if (samples.size() == 0) {
-        LOG_MEDIA_MESSAGE("No samples, trackId unknown");
+        GST_DEBUG("No samples, trackId unknown");
         return;
     }
 
     AtomicString trackId = samples[0]->trackID();
-    LOG_MEDIA_MESSAGE("flushAndEnqueueNonDisplayingSamples: trackId=%s PTS[0]=%f ... PTS[n]=%f", trackId.string().utf8().data(), samples[0]->presentationTime().toFloat(), samples[samples.size()-1]->presentationTime().toFloat());
+    GST_DEBUG("flushAndEnqueueNonDisplayingSamples: trackId=%s PTS[0]=%f ... PTS[n]=%f", trackId.string().utf8().data(), samples[0]->presentationTime().toFloat(), samples[samples.size()-1]->presentationTime().toFloat());
 
     GST_DEBUG_OBJECT(m_webKitMediaSrc.get(), "Flushing and re-enqueing %d samples for stream %s", samples.size(), trackId.string().utf8().data());
 
@@ -1280,7 +1280,7 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
     }
 
     if (!stream->sourceBuffer->isReadyForMoreSamples(trackId)) {
-        LOG_MEDIA_MESSAGE("flushAndEnqueueNonDisplayingSamples: skip adding new sample for trackId=%s, SB is not ready yet", trackId.string().utf8().data());
+        GST_DEBUG("flushAndEnqueueNonDisplayingSamples: skip adding new sample for trackId=%s, SB is not ready yet", trackId.string().utf8().data());
         GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
         return;
     }
@@ -1290,7 +1290,7 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     if (!m_webKitMediaSrc->priv->mediaPlayerPrivate->seeking()) {
-        LOG_MEDIA_MESSAGE("flushAndEnqueueNonDisplayingSamples: trackId=%s pipeline needs flushing.", trackId.string().utf8().data());
+        GST_DEBUG("flushAndEnqueueNonDisplayingSamples: trackId=%s pipeline needs flushing.", trackId.string().utf8().data());
     }
 
     for (Vector<RefPtr<MediaSample> >::iterator it = samples.begin(); it != samples.end(); ++it) {
@@ -1319,20 +1319,20 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     RefPtr<MediaSample> rsample = prsample;
     AtomicString trackId = rsample->trackID();
 
-    TRACE_MEDIA_MESSAGE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT " duration: %" GST_TIME_FORMAT, trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height(), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->presentationTime().toDouble())), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->duration().toDouble())));
+    GST_TRACE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT " duration: %" GST_TIME_FORMAT, trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height(), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->presentationTime().toDouble())), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->duration().toDouble())));
     ASSERT(WTF::isMainThread());
 
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
     Stream* stream = getStreamByTrackId(m_webKitMediaSrc.get(), trackId);
 
     if (!stream) {
-        WARN_MEDIA_MESSAGE("No stream!");
+        GST_WARNING("No stream!");
         GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
         return;
     }
 
     if (!stream->sourceBuffer->isReadyForMoreSamples(trackId)) {
-        LOG_MEDIA_MESSAGE("enqueueSample: skip adding new sample for trackId=%s, SB is not ready yet", trackId.string().utf8().data());
+        GST_DEBUG("enqueueSample: skip adding new sample for trackId=%s, SB is not ready yet", trackId.string().utf8().data());
         GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
         return;
     }

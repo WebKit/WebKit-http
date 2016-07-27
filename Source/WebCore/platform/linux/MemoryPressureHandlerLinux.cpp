@@ -187,7 +187,7 @@ static inline String nextToken(FILE* file)
     return String(buffer);
 }
 
-#if 0 && NEED(QUIQUE)
+#if 0 && ENABLE(QUIQUE)
 size_t readToken(const char* filename, const char* key, size_t fileUnits)
 {
     size_t result = static_cast<size_t>(-1);
@@ -320,7 +320,7 @@ bool MemoryPressureHandler::tryEnsureEventFD()
     if (m_eventFD)
         return true;
 
-#if 0 && NEED(QUIQUE)
+#if 0 && ENABLE(QUIQUE)
     bool cgroupsPressureHandlerOk = false;
 
     do {
@@ -432,7 +432,6 @@ void MemoryPressureHandler::install()
         else
             RunLoop::main().dispatch([this, critical] { respondToMemoryPressure(critical ? Critical::Yes : Critical::No); });
     });
->>>>>>> 1ff09855f68f2e89e57a7a13e21364ea38cc81b2
 
     if (ReliefLogger::loggingEnabled() && isUnderMemoryPressure())
         LOG(MemoryPressure, "System is no longer under memory pressure.");

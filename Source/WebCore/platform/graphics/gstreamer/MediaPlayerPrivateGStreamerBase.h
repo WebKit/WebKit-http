@@ -68,13 +68,6 @@ class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
 {
 
 public:
-    enum VideoSourceRotation {
-        NoVideoSourceRotation,
-        VideoSourceRotation90,
-        VideoSourceRotation180,
-        VideoSourceRotation270
-    };
-
     virtual ~MediaPlayerPrivateGStreamerBase();
 
     FloatSize naturalSize() const override;
@@ -162,8 +155,6 @@ public:
     static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType);
 
     GstElement* pipeline() const { return m_pipeline.get(); }
-
-    void setVideoSourceRotation(VideoSourceRotation rotation);
 
 #if USE(GSTREAMER_GL)
     NativeImagePtr nativeImageForCurrentTime() override;
@@ -274,7 +265,7 @@ private:
     std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
     CDMSession* m_cdmSession;
 #endif
-    VideoSourceRotation m_videoSourceRotation;
+    ImageOrientation m_videoSourceOrientation;
 #if USE(TEXTURE_MAPPER_GL)
     TextureMapperGL::Flags m_textureMapperRotationFlag;
 #endif

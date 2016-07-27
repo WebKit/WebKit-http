@@ -403,9 +403,4 @@ void Heap::deallocateLarge(std::lock_guard<StaticMutex>&, void* object)
     m_scavenger.run();
 }
 
-void Heap::heapDestructor()
-{
-    PerProcess<Heap>::get()->m_scavenger.stop();
-}
-
 } // namespace bmalloc

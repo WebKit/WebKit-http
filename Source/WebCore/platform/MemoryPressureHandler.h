@@ -85,7 +85,7 @@ public:
     WEBCORE_EXPORT bool shouldWaitForMemoryClearMessage();
     void respondToMemoryPressureIfNeeded();
 #elif OS(LINUX)
-#if 0 && NEED(QUIQUE)
+#if 0 && ENABLE(QUIQUE)
     static void waitForMemoryPressureEvent(void*);
     static void pollMemoryPressure(void*);
 #endif

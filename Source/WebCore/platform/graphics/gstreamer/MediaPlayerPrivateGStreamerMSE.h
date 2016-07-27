@@ -154,6 +154,7 @@ public:
     MediaTime decodeTime() const { return m_dts; }
     MediaTime duration() const { return m_duration; }
     AtomicString trackID() const { return m_trackID; }
+    void setTrackID(const String&) { }
     size_t sizeInBytes() const { return m_size; }
     GstSample* sample() const { return m_sample; }
     FloatSize presentationSize() const { return m_presentationSize; }

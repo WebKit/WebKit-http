@@ -45,7 +45,7 @@ public:
         virtual void removeUpdateAtlas(uint32_t /* id */) = 0;
     };
 
-    UpdateAtlas(Client&, const IntSize&, WebCore::CoordinatedSurface::Flags);
+    UpdateAtlas(Client&, const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
     ~UpdateAtlas();
 
     inline WebCore::IntSize size() const { return m_surface->size(); }

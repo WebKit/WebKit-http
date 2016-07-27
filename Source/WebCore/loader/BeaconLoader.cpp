@@ -5,6 +5,7 @@
 #include "File.h"
 #include "runtime/ArrayBufferView.h"
 #include "DOMFormData.h"
+#include "ResourceRequest.h"
 #include "SecurityOrigin.h"
 
 namespace WebCore {

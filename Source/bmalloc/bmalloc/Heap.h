@@ -77,7 +77,6 @@ private:
     };
 
     ~Heap() = delete;
-    static void heapDestructor() __attribute__((destructor));
     
     void initializeLineMetadata();
     void initializePageMetadata();

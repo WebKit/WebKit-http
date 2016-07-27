@@ -32,8 +32,8 @@
 #include "TextureMapper.h"
 #include "TransformationMatrix.h"
 #include <wtf/Condition.h>
+#include <wtf/Function.h>
 #include <wtf/Lock.h>
-#include <wtf/NoncopyableFunction.h>
 #include <wtf/RunLoop.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
@@ -81,7 +81,7 @@ public:
     void swapBuffer();
     void dropCurrentBufferWhilePreservingTexture();
 
-    bool scheduleUpdateOnCompositorThread(NoncopyableFunction<void()>&&);
+    bool scheduleUpdateOnCompositorThread(Function<void()>&&);
 
 private:
     void scheduleReleaseUnusedBuffers();
@@ -104,7 +104,7 @@ private:
 
     void compositorThreadUpdateTimerFired();
     std::unique_ptr<RunLoop::Timer<TextureMapperPlatformLayerProxy>> m_compositorThreadUpdateTimer;
-    NoncopyableFunction<void()> m_compositorThreadUpdateFunction;
+    Function<void()> m_compositorThreadUpdateFunction;
 };
 
 } // namespace WebCore

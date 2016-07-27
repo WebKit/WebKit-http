@@ -482,10 +482,6 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
     GST_DEBUG("Original video size: %dx%d", originalSize.width(), originalSize.height());
     GST_DEBUG("Pixel aspect ratio: %d/%d", pixelAspectRatioNumerator, pixelAspectRatioDenominator);
 
-    // If the video is tagged as rotated 90 or 270 degrees, swap width and height
-    if (m_videoSourceRotation == VideoSourceRotation90 || m_videoSourceRotation == VideoSourceRotation270)
-        originalSize = originalSize.transposedSize();
-
     // Calculate DAR based on PAR and video size.
     int displayWidth = originalSize.width() * pixelAspectRatioNumerator;
     int displayHeight = originalSize.height() * pixelAspectRatioDenominator;
@@ -779,22 +775,6 @@ GstFlowReturn MediaPlayerPrivateGStreamerBase::newPrerollCallback(GstElement* si
     GRefPtr<GstSample> sample = adoptGRef(gst_app_sink_pull_preroll(GST_APP_SINK(sink)));
     player->triggerRepaint(sample.get());
     return GST_FLOW_OK;
-}
-
-void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
-{
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    m_sample.clear();
-
-    LockHolder holder(m_platformLayerProxy->lock());
-
-    if (!m_platformLayerProxy->isActive())
-        return;
-
-    // FIXME: Remove this black frame while drain or flush event
-    // we can make a copy current frame to the temporal texture,
-    // or make the decoder's buffer pool more flexible.
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, 0));
 }
 
 void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
@@ -1429,37 +1409,6 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(
     UNUSED_PARAM(parameters);
 #endif
     return result;
-}
-
-void MediaPlayerPrivateGStreamerBase::setVideoSourceRotation(VideoSourceRotation rotation)
-{
-    if (m_videoSourceRotation == rotation)
-            return;
-
-    m_videoSourceRotation = rotation;
-
-    switch (m_videoSourceRotation) {
-    case NoVideoSourceRotation:
-#if USE(TEXTURE_MAPPER_GL)
-        m_textureMapperRotationFlag = 0;
-#endif
-        break;
-    case VideoSourceRotation90:
-#if USE(TEXTURE_MAPPER_GL)
-        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture90;
-#endif
-        break;
-    case VideoSourceRotation180:
-#if USE(TEXTURE_MAPPER_GL)
-        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture180;
-#endif
-        break;
-    case VideoSourceRotation270:
-#if USE(TEXTURE_MAPPER_GL)
-        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture270;
-#endif
-        break;
-    }
 }
 
 }

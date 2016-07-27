@@ -1046,22 +1046,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
 
     GST_TRACE("Message %s received from element %s", GST_MESSAGE_TYPE_NAME(message), GST_MESSAGE_SRC_NAME(message));
     switch (GST_MESSAGE_TYPE(message)) {
-    case GST_MESSAGE_TAG:
-        {
-            GstTagList *tags = NULL;
-            GUniqueOutPtr<gchar> tag;
-            gst_message_parse_tag (message, &tags);
-            if (gst_tag_list_get_string(tags, GST_TAG_IMAGE_ORIENTATION, &tag.outPtr())) {
-                if (g_strcmp0(tag.get(), "rotate-90") == 0)
-                    setVideoSourceRotation(VideoSourceRotation90);
-                else if (g_strcmp0(tag.get(), "rotate-180") == 0)
-                    setVideoSourceRotation(VideoSourceRotation180);
-                else if (g_strcmp0(tag.get(), "rotate-270") == 0)
-                    setVideoSourceRotation(VideoSourceRotation270);
-            }
-            gst_tag_list_unref (tags);
-            break;
-        }
     case GST_MESSAGE_ERROR:
         if (m_resetPipeline)
             break;
