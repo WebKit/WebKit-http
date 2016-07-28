@@ -291,7 +291,7 @@ void WebPage::javaScriptConsoleMessage(const QString& message, int lineNumber, c
     if (!message.isEmpty()) {
         newMessage = message;
 
-        size_t fileProtocol = newMessage.indexOf(QLatin1String("file://"));
+        int fileProtocol = newMessage.indexOf(QLatin1String("file://"));
         if (fileProtocol != -1) {
             newMessage = newMessage.left(fileProtocol) + urlSuitableForTestResult(newMessage.mid(fileProtocol));
         }
