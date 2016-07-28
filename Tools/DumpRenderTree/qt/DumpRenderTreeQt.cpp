@@ -867,19 +867,25 @@ static QString dumpHistoryItem(const QWebHistoryItem& item, int indent, bool cur
     for (int i = start; i < indent; i++)
         result.append(' ');
 
-    QString url = item.url().toString();
-    if (url.contains("file://")) {
+    QUrl url = item.url();
+    QString urlString;
+    if (url.scheme() == "data")
+        urlString = url.toString(QUrl::DecodeReserved);
+    else
+        urlString = url.toString();
+
+    if (urlString.contains("file://")) {
         static QString layoutTestsString("/LayoutTests/");
         static QString fileTestString("(file test):");
 
-        QString res = url.mid(url.indexOf(layoutTestsString) + layoutTestsString.length());
+        QString res = urlString.mid(urlString.indexOf(layoutTestsString) + layoutTestsString.length());
         if (res.isEmpty())
             return result;
 
         result.append(fileTestString);
         result.append(res);
     } else {
-        result.append(url);
+        result.append(urlString);
     }
 
     QString target = DumpRenderTreeSupportQt::historyItemTarget(item);
