@@ -612,6 +612,7 @@ Effects Value::effects() const
     case Switch:
     case Return:
     case Oops:
+    case EntrySwitch:
         result.terminal = true;
         break;
     }
@@ -699,6 +700,21 @@ void Value::performSubstitution()
     }
 }
 
+bool Value::isFree() const
+{
+    switch (opcode()) {
+    case Const32:
+    case Const64:
+    case ConstDouble:
+    case ConstFloat:
+    case Identity:
+    case Nop:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void Value::dumpMeta(CommaPrinter&, PrintStream&) const
 {
 }
@@ -775,6 +791,7 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     case Branch:
     case Return:
     case Oops:
+    case EntrySwitch:
         return Void;
     case Select:
         ASSERT(secondChild);

@@ -31,6 +31,10 @@
 #include "IDBIndexInfo.h"
 #include "IDBRequest.h"
 
+namespace JSC {
+class ExecState;
+}
+
 namespace WebCore {
 
 class IDBKeyRange;
@@ -44,28 +48,26 @@ public:
     virtual ~IDBIndex();
 
     const String& name() const;
-    RefPtr<IDBObjectStore> objectStore();
+    IDBObjectStore& objectStore();
     const IDBKeyPath& keyPath() const;
     bool unique() const;
     bool multiEntry() const;
 
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> openCursor(JSC::ExecState&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> openCursor(JSC::ExecState&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
 
-    RefPtr<IDBRequest> count(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> count(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> count(JSC::ExecState&, IDBKeyRange*, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> count(JSC::ExecState&, JSC::JSValue key, ExceptionCodeWithMessage&);
 
-    RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> openKeyCursor(JSC::ExecState&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> openKeyCursor(JSC::ExecState&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
 
-    RefPtr<IDBRequest> get(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> get(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> getKey(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> getKey(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> get(JSC::ExecState&, IDBKeyRange*, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> get(JSC::ExecState&, JSC::JSValue key, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> getKey(JSC::ExecState&, IDBKeyRange*, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> getKey(JSC::ExecState&, JSC::JSValue key, ExceptionCodeWithMessage&);
 
     const IDBIndexInfo& info() const { return m_info; }
-
-    IDBObjectStore& modernObjectStore() { return m_objectStore; }
 
     void markAsDeleted();
     bool isDeleted() const { return m_deleted; }
@@ -73,10 +75,12 @@ public:
     void ref();
     void deref();
 
+    void* objectStoreAsOpaqueRoot() { return &m_objectStore; }
+
 private:
-    RefPtr<IDBRequest> doCount(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> doGet(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> doGetKey(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> doCount(JSC::ExecState&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> doGet(JSC::ExecState&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
+    RefPtr<IDBRequest> doGetKey(JSC::ExecState&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;

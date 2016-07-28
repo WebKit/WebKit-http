@@ -151,7 +151,7 @@ void RenderTableSection::addChild(RenderObject* child, RenderObject* beforeChild
             return;
         }
 
-        RenderTableRow* row = RenderTableRow::createAnonymousWithParentRenderer(this);
+        auto* row = RenderTableRow::createAnonymousWithParentRenderer(*this).release();
         addChild(row, beforeChild);
         row->addChild(child);
         return;
@@ -1419,27 +1419,27 @@ unsigned RenderTableSection::numColumns() const
     return result + 1;
 }
 
-const BorderValue& RenderTableSection::borderAdjoiningStartCell(const RenderTableCell* cell) const
+const BorderValue& RenderTableSection::borderAdjoiningStartCell(const RenderTableCell& cell) const
 {
-    ASSERT(cell->isFirstOrLastCellInRow());
-    return hasSameDirectionAs(cell) ? style().borderStart() : style().borderEnd();
+    ASSERT(cell.isFirstOrLastCellInRow());
+    return isDirectionSame(this, &cell) ? style().borderStart() : style().borderEnd();
 }
 
-const BorderValue& RenderTableSection::borderAdjoiningEndCell(const RenderTableCell* cell) const
+const BorderValue& RenderTableSection::borderAdjoiningEndCell(const RenderTableCell& cell) const
 {
-    ASSERT(cell->isFirstOrLastCellInRow());
-    return hasSameDirectionAs(cell) ? style().borderEnd() : style().borderStart();
+    ASSERT(cell.isFirstOrLastCellInRow());
+    return isDirectionSame(this, &cell) ? style().borderEnd() : style().borderStart();
 }
 
 const RenderTableCell* RenderTableSection::firstRowCellAdjoiningTableStart() const
 {
-    unsigned adjoiningStartCellColumnIndex = hasSameDirectionAs(table()) ? 0 : table()->lastColumnIndex();
+    unsigned adjoiningStartCellColumnIndex = isDirectionSame(this, table()) ? 0 : table()->lastColumnIndex();
     return cellAt(0, adjoiningStartCellColumnIndex).primaryCell();
 }
 
 const RenderTableCell* RenderTableSection::firstRowCellAdjoiningTableEnd() const
 {
-    unsigned adjoiningEndCellColumnIndex = hasSameDirectionAs(table()) ? table()->lastColumnIndex() : 0;
+    unsigned adjoiningEndCellColumnIndex = isDirectionSame(this, table()) ? table()->lastColumnIndex() : 0;
     return cellAt(0, adjoiningEndCellColumnIndex).primaryCell();
 }
 
@@ -1577,11 +1577,16 @@ CollapsedBorderValue RenderTableSection::cachedCollapsedBorder(const RenderTable
     return it->value;
 }
 
-RenderTableSection* RenderTableSection::createAnonymousWithParentRenderer(const RenderObject* parent)
+std::unique_ptr<RenderTableSection> RenderTableSection::createTableSectionWithStyle(Document& document, const RenderStyle& style)
 {
-    auto section = new RenderTableSection(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_ROW_GROUP));
+    auto section = std::make_unique<RenderTableSection>(document, RenderStyle::createAnonymousStyleWithDisplay(style, TABLE_ROW_GROUP));
     section->initializeStyle();
     return section;
+}
+
+std::unique_ptr<RenderTableSection> RenderTableSection::createAnonymousWithParentRenderer(const RenderTable& parent)
+{
+    return RenderTableSection::createTableSectionWithStyle(parent.document(), parent.style());
 }
 
 void RenderTableSection::setLogicalPositionForCell(RenderTableCell* cell, unsigned effectiveColumn) const

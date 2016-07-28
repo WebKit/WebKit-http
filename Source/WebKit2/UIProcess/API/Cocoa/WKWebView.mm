@@ -35,6 +35,7 @@
 #import "DiagnosticLoggingClient.h"
 #import "FindClient.h"
 #import "LegacySessionStateCoding.h"
+#import "Logging.h"
 #import "NavigationState.h"
 #import "ObjCObjectGraph.h"
 #import "RemoteLayerTreeScrollingPerformanceData.h"
@@ -89,6 +90,7 @@
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
+#import <WebCore/TextStream.h>
 #import <WebCore/WritingMode.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
@@ -456,6 +458,8 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackAfterFullscreenKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsInlineMediaPlaybackAfterFullscreen]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _inlineMediaPlaybackRequiresPlaysInlineAttribute]));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackWithPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsInlineMediaPlaybackWithPlaysInlineAttribute]));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackWithWebKitPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback()));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::userInterfaceDirectionPolicyKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::UserInterfaceDirectionPolicy::Content)));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::LTR)));
@@ -1387,13 +1391,16 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 #if USE(IOSURFACE)
     WebCore::IOSurface::Format snapshotFormat = WebCore::screenSupportsExtendedColor() ? WebCore::IOSurface::Format::RGB10 : WebCore::IOSurface::Format::RGBA;
     auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(snapshotSize), WebCore::sRGBColorSpaceRef(), snapshotFormat);
+    if (!surface)
+        return nullptr;
     CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform);
 
     WebCore::IOSurface::Format compressedFormat = WebCore::IOSurface::Format::YUV422;
     if (WebCore::IOSurface::allowConversionFromFormatToFormat(snapshotFormat, compressedFormat)) {
         RefPtr<WebKit::ViewSnapshot> viewSnapshot = WebKit::ViewSnapshot::create(nullptr);
         WebCore::IOSurface::convertToFormat(WTFMove(surface), WebCore::IOSurface::Format::YUV422, [viewSnapshot](std::unique_ptr<WebCore::IOSurface> convertedSurface) {
-            viewSnapshot->setSurface(WTFMove(convertedSurface));
+            if (convertedSurface)
+                viewSnapshot->setSurface(WTFMove(convertedSurface));
         });
 
         return viewSnapshot;
@@ -1913,7 +1920,10 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (CGRect)_visibleContentRect
 {
-    CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:self.bounds toView:_contentView.get()];
+    if (_frozenVisibleContentRect)
+        return _frozenVisibleContentRect.value();
+
+    CGRect visibleRectInContentCoordinates = [self convertRect:self.bounds toView:_contentView.get()];
     
     if (UIScrollView *enclosingScroller = [self _scroller]) {
         CGRect viewVisibleRect = [self _visibleRectInEnclosingScrollView:enclosingScroller];
@@ -2072,7 +2082,7 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
         }
     }
 #endif
-    
+
     [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates
         unobscuredRect:unobscuredRectInContentCoordinates
         unobscuredRectInScrollViewCoordinates:unobscuredRect
@@ -2221,6 +2231,8 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
 
     _frozenVisibleContentRect = [self convertRect:fullViewRect toView:_contentView.get()];
     _frozenUnobscuredContentRect = [self convertRect:unobscuredRect toView:_contentView.get()];
+    
+    LOG_WITH_STREAM(VisibleRects, stream << "_navigationGestureDidBegin: freezing visibleContentRect " << _frozenVisibleContentRect.value() << " UnobscuredContentRect " << _frozenUnobscuredContentRect.value());
 }
 
 - (void)_navigationGestureDidEnd
@@ -4231,6 +4243,10 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
     if (CADisplay *display = self.window.screen._display) {
         auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::sRGBColorSpaceRef());
+        if (!surface) {
+            completionHandler(nullptr);
+            return;
+        }
         CGFloat imageScaleInViewCoordinates = imageWidth / rectInViewCoordinates.size.width;
         CATransform3D transform = CATransform3DMakeScale(imageScaleInViewCoordinates, imageScaleInViewCoordinates, 1);
         transform = CATransform3DTranslate(transform, -rectInViewCoordinates.origin.x, -rectInViewCoordinates.origin.y, 0);

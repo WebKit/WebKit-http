@@ -35,6 +35,7 @@
 #include "JSReadableStreamController.h"
 #include <runtime/JSCJSValue.h>
 #include <runtime/JSCJSValueInlines.h>
+#include <runtime/TypedArrays.h>
 
 namespace WebCore {
 
@@ -46,8 +47,7 @@ public:
 
     static JSC::JSValue invoke(JSC::ExecState&, JSC::JSObject&, const char*, JSC::JSValue);
 
-    template<class ResolveResultType>
-    void enqueue(const ResolveResultType&);
+    bool enqueue(RefPtr<JSC::ArrayBuffer>&&);
 
     template<class ResolveResultType>
     void error(const ResolveResultType&);
@@ -66,25 +66,27 @@ private:
     JSReadableStreamController* m_jsController { nullptr };
 };
 
-JSC::JSValue createReadableStream(JSC::ExecState&, JSDOMGlobalObject*, ReadableStreamSource*);
-JSC::JSValue getReadableStreamReader(JSC::ExecState&, JSC::JSValue);
-
 inline JSDOMGlobalObject* ReadableStreamController::globalObject() const
 {
     ASSERT(m_jsController);
     return static_cast<JSDOMGlobalObject*>(m_jsController->globalObject());
 }
 
-template<>
-inline void ReadableStreamController::enqueue<RefPtr<JSC::ArrayBuffer>>(const RefPtr<JSC::ArrayBuffer>& result)
+inline bool ReadableStreamController::enqueue(RefPtr<JSC::ArrayBuffer>&& buffer)
 {
     JSC::ExecState& state = *globalObject()->globalExec();
     JSC::JSLockHolder locker(&state);
 
-    if (result)
-        enqueue(state, toJS(&state, globalObject(), result.get()));
-    else
+    if (!buffer) {
         error(state, createOutOfMemoryError(&state));
+        return false;
+    }
+    auto length = buffer->byteLength();
+    auto chunk = JSC::Uint8Array::create(WTFMove(buffer), 0, length);
+    ASSERT(chunk);
+    enqueue(state, toJS(&state, globalObject(), chunk.get()));
+    ASSERT(!state.hadException());
+    return true;
 }
 
 template<>

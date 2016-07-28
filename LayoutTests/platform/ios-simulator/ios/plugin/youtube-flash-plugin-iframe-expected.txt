@@ -8,27 +8,20 @@ Test transforming youtube flash plugin to youtube iFrame based player. < rdar://
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
 
-PASS successfullyParsed is true
-
-TEST COMPLETE
 PASS normalEmbed.tagName is "EMBED"
 PASS elinkEmbed.tagName is "EMBED"
 PASS objectEmbed.tagName is "EMBED"
 PASS objectNoEmbed.tagName is "OBJECT"
 PASS document.querySelectorAll("iframe").length is 1
-PASS internals.shadowPseudoId(normalEmbedShadowRoot.firstChild) is "-apple-youtube-shadow-iframe"
+PASS internals.shadowPseudoId(normalEmbedShadowRoot.firstChild) is "-webkit-plugin-replacement"
 PASS normalEmbedShadowRoot.firstChild.firstChild.tagName is "IFRAME"
-PASS internals.shadowPseudoId(objectEmbedShadowRoot.firstChild) is "-apple-youtube-shadow-iframe"
+PASS internals.shadowPseudoId(objectEmbedShadowRoot.firstChild) is "-webkit-plugin-replacement"
 PASS objectEmbedShadowRoot.firstChild.firstChild.tagName is "IFRAME"
-PASS internals.shadowPseudoId(objectNoEmbedShadowRoot.firstChild) is "-apple-youtube-shadow-iframe"
+PASS internals.shadowPseudoId(objectNoEmbedShadowRoot.firstChild) is "-webkit-plugin-replacement"
 PASS objectNoEmbedShadowRoot.firstChild.firstChild.tagName is "IFRAME"
-Normal Embed:
+PASS internals.shadowPseudoId(normalEmbedInIframeShadowRoot.firstChild) is "-webkit-plugin-replacement"
+PASS normalEmbedInIframeShadowRoot.firstChild.firstChild.tagName is "IFRAME"
+PASS successfullyParsed is true
 
-E-link Embed:
-
-Object with embed:
-
-Object without embed:
-
-Embed inside iframe:
+TEST COMPLETE
 

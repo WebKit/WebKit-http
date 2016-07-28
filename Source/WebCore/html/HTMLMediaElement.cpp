@@ -443,6 +443,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToAutoplayToExternalDevice);
 #endif
     m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager);
+    m_mediaSession->addBehaviorRestriction(MediaElementSession::RequirePlaybackToControlControlsManager);
 
     Settings* settings = document.settings();
 #if PLATFORM(IOS)
@@ -3156,7 +3157,7 @@ void HTMLMediaElement::pause()
         return;
 
     if (ScriptController::processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture();
+        removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::RequireUserGestureToControlControlsManager);
 
     pauseInternal();
 }
@@ -4411,6 +4412,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
             if (!m_sentEndEvent) {
                 m_sentEndEvent = true;
                 scheduleEvent(eventNames().endedEvent);
+                m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager | MediaElementSession::RequirePlaybackToControlControlsManager);
             }
             // If the media element has a current media controller, then report the controller state
             // for the media element's current media controller.
@@ -4431,6 +4433,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
             if (!m_sentEndEvent && m_player && m_player->ended()) {
                 m_sentEndEvent = true;
                 scheduleEvent(eventNames().endedEvent);
+                m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager | MediaElementSession::RequirePlaybackToControlControlsManager);
                 m_paused = true;
                 setPlaying(false);
             }
@@ -4936,6 +4939,9 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
 
 void HTMLMediaElement::setPlaying(bool playing)
 {
+    if (playing && m_mediaSession)
+        m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequirePlaybackToControlControlsManager);
+
     if (m_playing == playing)
         return;
 

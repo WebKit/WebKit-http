@@ -2,6 +2,7 @@
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2010 François Sausset (sausset@gmail.com). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -397,16 +398,16 @@ int MathMLElement::tabIndex() const
     return Element::tabIndex();
 }
 
-static inline StringView skipLeadingAndTrailingWhitespace(const String& string)
+static inline StringView skipLeadingAndTrailingWhitespace(const StringView& stringView)
 {
-    unsigned start = 0, stringLength = string.length();
-    while (stringLength > 0 && isHTMLSpace(string[start])) {
+    unsigned start = 0, stringLength = stringView.length();
+    while (stringLength > 0 && isHTMLSpace(stringView[start])) {
         start++;
         stringLength--;
     }
-    while (stringLength > 0 && isHTMLSpace(string[start + stringLength - 1]))
+    while (stringLength > 0 && isHTMLSpace(stringView[start + stringLength - 1]))
         stringLength--;
-    return string.substring(start, stringLength);
+    return stringView.substring(start, stringLength);
 }
 
 MathMLElement::Length MathMLElement::parseNumberAndUnit(const StringView& string)
@@ -523,6 +524,85 @@ const MathMLElement::Length& MathMLElement::cachedMathMLLength(const QualifiedNa
         length.dirty = false;
     }
     return length;
+}
+
+const MathMLElement::BooleanValue& MathMLElement::cachedBooleanAttribute(const QualifiedName& name, BooleanAttribute& attribute)
+{
+    if (!attribute.dirty)
+        return attribute.value;
+
+    // In MathML, attribute values are case-sensitive.
+    const AtomicString& value = attributeWithoutSynchronization(name);
+    if (value == "true")
+        attribute.value = BooleanValue::True;
+    else if (value == "false")
+        attribute.value = BooleanValue::False;
+    else
+        attribute.value = BooleanValue::Default;
+    attribute.dirty = false;
+
+    return attribute.value;
+}
+
+MathMLElement::MathVariant MathMLElement::parseMathVariantAttribute(const AtomicString& attributeValue)
+{
+    // The mathvariant attribute values is case-sensitive.
+    if (attributeValue == "normal")
+        return MathVariant::Normal;
+    if (attributeValue == "bold")
+        return MathVariant::Bold;
+    if (attributeValue == "italic")
+        return MathVariant::Italic;
+    if (attributeValue == "bold-italic")
+        return MathVariant::BoldItalic;
+    if (attributeValue == "double-struck")
+        return MathVariant::DoubleStruck;
+    if (attributeValue == "bold-fraktur")
+        return MathVariant::BoldFraktur;
+    if (attributeValue == "script")
+        return MathVariant::Script;
+    if (attributeValue == "bold-script")
+        return MathVariant::BoldScript;
+    if (attributeValue == "fraktur")
+        return MathVariant::Fraktur;
+    if (attributeValue == "sans-serif")
+        return MathVariant::SansSerif;
+    if (attributeValue == "bold-sans-serif")
+        return MathVariant::BoldSansSerif;
+    if (attributeValue == "sans-serif-italic")
+        return MathVariant::SansSerifItalic;
+    if (attributeValue == "sans-serif-bold-italic")
+        return MathVariant::SansSerifBoldItalic;
+    if (attributeValue == "monospace")
+        return MathVariant::Monospace;
+    if (attributeValue == "initial")
+        return MathVariant::Initial;
+    if (attributeValue == "tailed")
+        return MathVariant::Tailed;
+    if (attributeValue == "looped")
+        return MathVariant::Looped;
+    if (attributeValue == "stretched")
+        return MathVariant::Stretched;
+    return MathVariant::None;
+}
+
+Optional<bool> MathMLElement::specifiedDisplayStyle()
+{
+    if (!acceptsDisplayStyleAttribute())
+        return Optional<bool>();
+    const MathMLElement::BooleanValue& specifiedDisplayStyle = cachedBooleanAttribute(displaystyleAttr, m_displayStyle);
+    return specifiedDisplayStyle == BooleanValue::Default ? Optional<bool>() : Optional<bool>(specifiedDisplayStyle == BooleanValue::True);
+}
+
+Optional<MathMLElement::MathVariant> MathMLElement::specifiedMathVariant()
+{
+    if (!acceptsMathVariantAttribute())
+        return Optional<MathVariant>();
+    if (m_mathVariant.dirty) {
+        m_mathVariant.value = parseMathVariantAttribute(attributeWithoutSynchronization(mathvariantAttr));
+        m_mathVariant.dirty = false;
+    }
+    return m_mathVariant.value == MathVariant::None ? Optional<MathVariant>() : Optional<MathVariant>(m_mathVariant.value);
 }
 
 }

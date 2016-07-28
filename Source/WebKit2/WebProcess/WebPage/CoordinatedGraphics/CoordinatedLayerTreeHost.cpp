@@ -111,7 +111,7 @@ void CoordinatedLayerTreeHost::invalidate()
 {
     cancelPendingLayerFlush();
 
-    m_coordinator.clearRootLayer();
+    m_coordinator.invalidate();
     LayerTreeHost::invalidate();
 }
 
@@ -162,11 +162,6 @@ void CoordinatedLayerTreeHost::renderNextFrame()
         m_layerFlushTimer.stop();
         layerFlushTimerFired();
     }
-}
-
-void CoordinatedLayerTreeHost::purgeBackingStores()
-{
-    m_coordinator.purgeBackingStores();
 }
 
 void CoordinatedLayerTreeHost::didFlushRootLayer(const FloatRect& visibleContentRect)

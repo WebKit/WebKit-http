@@ -62,6 +62,7 @@
 #include "JITDivGenerator.h"
 #include "JITInlineCacheGenerator.h"
 #include "JITLeftShiftGenerator.h"
+#include "JITMathIC.h"
 #include "JITMulGenerator.h"
 #include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
@@ -1535,10 +1536,107 @@ private:
         m_out.appendTo(continuation, lastNext);
         setJSValue(m_out.phi(Int64, fastResult, slowResult));
     }
-    
+
     void compileValueAdd()
     {
-        emitBinarySnippet<JITAddGenerator>(operationValueAdd);
+        JITAddIC* addIC = codeBlock()->addJITAddIC();
+        auto repatchingFunction = operationValueAddOptimize;
+        auto nonRepatchingFunction = operationValueAdd;
+        compileMathIC(addIC, repatchingFunction, nonRepatchingFunction);
+    }
+
+    template <typename Generator>
+    void compileMathIC(JITMathIC<Generator>* mathIC, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
+    {
+        Node* node = m_node;
+        
+        LValue left = lowJSValue(node->child1());
+        LValue right = lowJSValue(node->child2());
+
+        SnippetOperand leftOperand(m_state.forNode(node->child1()).resultType());
+        SnippetOperand rightOperand(m_state.forNode(node->child2()).resultType());
+            
+        PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        patchpoint->appendSomeRegister(left);
+        patchpoint->appendSomeRegister(right);
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
+        patchpoint->numGPScratchRegisters = 1;
+        patchpoint->numFPScratchRegisters = 2;
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        State* state = &m_ftlState;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
+#if ENABLE(MATH_IC_STATS)
+                auto inlineStart = jit.label();
+#endif
+
+                Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
+                ArithProfile* arithProfile = state->graph.baselineCodeBlockFor(node->origin.semantic)->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+                mathIC->m_generator = Generator(leftOperand, rightOperand, JSValueRegs(params[0].gpr()),
+                    JSValueRegs(params[1].gpr()), JSValueRegs(params[2].gpr()), params.fpScratch(0),
+                    params.fpScratch(1), params.gpScratch(0), InvalidFPRReg, arithProfile);
+
+                bool shouldEmitProfiling = false;
+                bool generatedInline = mathIC->generateInline(jit, *mathICGenerationState, shouldEmitProfiling);
+
+                if (generatedInline) {
+                    ASSERT(!mathICGenerationState->slowPathJumps.empty());
+                    auto done = jit.label();
+                    params.addLatePath([=] (CCallHelpers& jit) {
+                        AllowMacroScratchRegisterUsage allowScratch(jit);
+                        mathICGenerationState->slowPathJumps.link(&jit);
+                        mathICGenerationState->slowPathStart = jit.label();
+#if ENABLE(MATH_IC_STATS)
+                        auto slowPathStart = jit.label();
+#endif
+
+                        if (mathICGenerationState->shouldSlowPathRepatch) {
+                            SlowPathCall call = callOperation(*state, params.unavailableRegisters(), jit, node->origin.semantic, exceptions.get(),
+                                repatchingFunction, params[0].gpr(), params[1].gpr(), params[2].gpr(), CCallHelpers::TrustedImmPtr(mathIC));
+                            mathICGenerationState->slowPathCall = call.call();
+                        } else {
+                            SlowPathCall call = callOperation(*state, params.unavailableRegisters(), jit, node->origin.semantic,
+                                exceptions.get(), nonRepatchingFunction, params[0].gpr(), params[1].gpr(), params[2].gpr());
+                            mathICGenerationState->slowPathCall = call.call();
+                        }
+                        jit.jump().linkTo(done, &jit);
+
+                        jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                            mathIC->finalizeInlineCode(*mathICGenerationState, linkBuffer);
+                        });
+
+#if ENABLE(MATH_IC_STATS)
+                        auto slowPathEnd = jit.label();
+                        jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                            size_t size = static_cast<char*>(linkBuffer.locationOf(slowPathEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(slowPathStart).executableAddress());
+                            mathIC->m_generatedCodeSize += size;
+                        });
+#endif
+                    });
+                } else {
+                    callOperation(
+                        *state, params.unavailableRegisters(), jit, node->origin.semantic, exceptions.get(),
+                        nonRepatchingFunction, params[0].gpr(), params[1].gpr(), params[2].gpr());
+                }
+
+#if ENABLE(MATH_IC_STATS)
+                auto inlineEnd = jit.label();
+                jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                    size_t size = static_cast<char*>(linkBuffer.locationOf(inlineEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(inlineStart).executableAddress());
+                    mathIC->m_generatedCodeSize += size;
+                });
+#endif
+            });
+
+        setJSValue(patchpoint);
     }
     
     void compileStrCat()
@@ -1696,7 +1794,10 @@ private:
         }
 
         case UntypedUse: {
-            emitBinarySnippet<JITMulGenerator>(operationValueMul);
+            JITMulIC* mulIC = codeBlock()->addJITMulIC();
+            auto repatchingFunction = operationValueMulOptimize;
+            auto nonRepatchingFunction = operationValueMul;
+            compileMathIC(mulIC, repatchingFunction, nonRepatchingFunction);
             break;
         }
 
@@ -2380,8 +2481,7 @@ private:
     {
         UniquedStringImpl* uid = m_node->uidOperand();
         if (uid->isSymbol()) {
-            LValue symbol = lowSymbol(m_node->child1());
-            LValue stringImpl = m_out.loadPtr(symbol, m_heaps.Symbol_privateName);
+            LValue stringImpl = lowSymbolUID(m_node->child1());
             speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
         } else {
             LValue string = lowStringIdent(m_node->child1());
@@ -4939,11 +5039,46 @@ private:
         }
 
         if (m_node->isBinaryUseKind(SymbolUse)) {
-            LValue left = lowSymbol(m_node->child1());
-            LValue right = lowSymbol(m_node->child2());
-            LValue leftStringImpl = m_out.loadPtr(left, m_heaps.Symbol_privateName);
-            LValue rightStringImpl = m_out.loadPtr(right, m_heaps.Symbol_privateName);
+            LValue leftStringImpl = lowSymbolUID(m_node->child1());
+            LValue rightStringImpl = lowSymbolUID(m_node->child2());
             setBoolean(m_out.equal(leftStringImpl, rightStringImpl));
+            return;
+        }
+        
+        if (m_node->isBinaryUseKind(SymbolUse, UntypedUse)
+            || m_node->isBinaryUseKind(UntypedUse, SymbolUse)) {
+            Edge symbolEdge = m_node->child1();
+            Edge untypedEdge = m_node->child2();
+            if (symbolEdge.useKind() != SymbolUse)
+                std::swap(symbolEdge, untypedEdge);
+            
+            LValue leftStringImpl = lowSymbolUID(symbolEdge);
+            LValue untypedValue = lowJSValue(untypedEdge);
+            
+            LBasicBlock isCellCase = m_out.newBlock();
+            LBasicBlock isSymbolCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+            
+            ValueFromBlock notSymbolResult = m_out.anchor(m_out.booleanFalse);
+            m_out.branch(
+                isCell(untypedValue, provenType(untypedEdge)),
+                unsure(isCellCase), unsure(continuation));
+            
+            LBasicBlock lastNext = m_out.appendTo(isCellCase, isSymbolCase);
+            m_out.branch(
+                isSymbol(untypedValue, provenType(untypedEdge)),
+                unsure(isSymbolCase), unsure(continuation));
+            
+            m_out.appendTo(isSymbolCase, continuation);
+            ValueFromBlock symbolResult =
+                m_out.anchor(
+                    m_out.equal(
+                        m_out.loadPtr(untypedValue, m_heaps.Symbol_privateName),
+                        leftStringImpl));
+            m_out.jump(continuation);
+            
+            m_out.appendTo(continuation, lastNext);
+            setBoolean(m_out.phi(Int32, notSymbolResult, symbolResult));
             return;
         }
         
@@ -8108,6 +8243,7 @@ private:
         if (scratchFPRUsage == NeedScratchFPR)
             patchpoint->numFPScratchRegisters++;
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        patchpoint->resultConstraint = ValueRep::SomeEarlyRegister;
         State* state = &m_ftlState;
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
@@ -8170,6 +8306,7 @@ private:
             preparePatchpointForExceptions(patchpoint);
         patchpoint->numGPScratchRegisters = 1;
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        patchpoint->resultConstraint = ValueRep::SomeEarlyRegister;
         State* state = &m_ftlState;
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
@@ -8225,6 +8362,7 @@ private:
         patchpoint->numGPScratchRegisters = 1;
         patchpoint->numFPScratchRegisters = 1;
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        patchpoint->resultConstraint = ValueRep::SomeEarlyRegister;
         State* state = &m_ftlState;
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
@@ -9733,6 +9871,16 @@ private:
         speculateSymbol(edge, result);
         return result;
     }
+    
+    LValue lowSymbolUID(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
+    {
+        if (Symbol* symbol = edge->dynamicCastConstant<Symbol*>())
+            return m_out.constIntPtr(symbol->privateName().uid());
+        LValue symbol = lowSymbol(edge, mode);
+        // FIXME: We could avoid this load if we had hash-consed Symbols.
+        // https://bugs.webkit.org/show_bug.cgi?id=158908
+        return m_out.loadPtr(symbol, m_heaps.Symbol_privateName);
+    }
 
     LValue lowNonNullObject(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
@@ -10282,6 +10430,15 @@ private:
         if (LValue proven = isProvenValue(type & SpecCell, ~SpecSymbol))
             return proven;
         return m_out.notEqual(
+            m_out.load32(cell, m_heaps.JSCell_structureID),
+            m_out.constInt32(vm().symbolStructure->id()));
+    }
+    
+    LValue isSymbol(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, SpecSymbol))
+            return proven;
+        return m_out.equal(
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().symbolStructure->id()));
     }

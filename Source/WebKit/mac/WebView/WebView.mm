@@ -151,7 +151,7 @@
 #import <WebCore/JSElement.h>
 #import <WebCore/JSNodeList.h>
 #import <WebCore/JSNotification.h>
-#import <WebCore/Logging.h>
+#import <WebCore/LogInitialization.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MemoryCache.h>
@@ -958,8 +958,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
     if (!didOneTimeInitialization) {
 #if !LOG_DISABLED
-        WebKitInitializeLoggingChannelsIfNecessary();
-        WebCore::initializeLoggingChannelsIfNecessary();
+        WebKitInitializeLogChannelsIfNecessary();
+        WebCore::initializeLogChannelsIfNecessary();
 #endif // !LOG_DISABLED
 
         // Initialize our platform strategies first before invoking the rest
@@ -2349,6 +2349,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
     settings.setAllowsInlineMediaPlaybackAfterFullscreen([preferences allowsInlineMediaPlaybackAfterFullscreen]);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute([preferences inlineMediaPlaybackRequiresPlaysInlineAttribute]);
+    settings.setAllowsInlineMediaPlaybackWithPlaysInlineAttribute([preferences allowsInlineMediaPlaybackWithPlaysInlineAttribute]);
+    settings.setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute([preferences allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute]);
     settings.setInvisibleAutoplayNotPermitted([preferences invisibleAutoplayNotPermitted]);
     settings.setAllowsPictureInPictureMediaPlayback([preferences allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback());
     settings.setMediaControlsScaleWithPageZoom([preferences mediaControlsScaleWithPageZoom]);

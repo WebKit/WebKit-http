@@ -375,6 +375,9 @@ void Internals::resetToConsistentState(Page& page)
         page.setTopContentInset(0);
         mainFrameView->setUseFixedLayout(false);
         mainFrameView->setFixedLayoutSize(IntSize());
+#if USE(COORDINATED_GRAPHICS)
+        mainFrameView->setFixedVisibleContentRect(IntRect());
+#endif
     }
 
     WebCore::overrideUserPreferredLanguages(Vector<String>());
@@ -783,10 +786,10 @@ bool Internals::hasPausedImageAnimations(Element& element)
     return element.renderer() && element.renderer()->hasPausedImageAnimations();
 }
 
-RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Node& node) const
+RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Element& element) const
 {
     bool allowVisitedStyle = true;
-    return CSSComputedStyleDeclaration::create(&node, allowVisitedStyle);
+    return CSSComputedStyleDeclaration::create(element, allowVisitedStyle);
 }
 
 Node* Internals::ensureShadowRoot(Element& host, ExceptionCode& ec)

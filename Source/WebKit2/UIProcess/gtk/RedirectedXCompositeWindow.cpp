@@ -29,6 +29,7 @@
 
 #if USE(REDIRECTED_XCOMPOSITE_WINDOW)
 
+#include "WebPageProxy.h"
 #include <WebCore/CairoUtilities.h>
 #include <WebCore/PlatformDisplayX11.h>
 #include <X11/Xlib.h>
@@ -55,7 +56,7 @@ public:
     {
     }
 
-    void add(Window window, std::function<void()> notifyFunction)
+    void add(Window window, std::function<void()>&& notifyFunction)
     {
         if (m_notifyFunctions.isEmpty())
             gdk_window_add_filter(nullptr, reinterpret_cast<GdkFilterFunc>(&filterXDamageEvent), this);
@@ -130,21 +131,26 @@ static bool supportsXDamageAndXComposite(GdkWindow* window)
     return true;
 }
 
-std::unique_ptr<RedirectedXCompositeWindow> RedirectedXCompositeWindow::create(GdkWindow* parentWindow, std::function<void()> damageNotify)
+std::unique_ptr<RedirectedXCompositeWindow> RedirectedXCompositeWindow::create(WebPageProxy& webPage, const IntSize& initialSize, std::function<void()>&& damageNotify)
 {
+    GdkWindow* parentWindow = gtk_widget_get_parent_window(webPage.viewWidget());
     ASSERT(GDK_IS_WINDOW(parentWindow));
-    return supportsXDamageAndXComposite(parentWindow) ? std::unique_ptr<RedirectedXCompositeWindow>(new RedirectedXCompositeWindow(parentWindow, damageNotify)) : nullptr;
+    if (!supportsXDamageAndXComposite(parentWindow))
+        return nullptr;
+    return std::unique_ptr<RedirectedXCompositeWindow>(new RedirectedXCompositeWindow(webPage, initialSize, WTFMove(damageNotify)));
 }
 
-RedirectedXCompositeWindow::RedirectedXCompositeWindow(GdkWindow* parentWindow, std::function<void()> damageNotify)
-    : m_display(GDK_DISPLAY_XDISPLAY(gdk_window_get_display(parentWindow)))
-    , m_needsNewPixmapAfterResize(false)
-    , m_deviceScale(1)
+RedirectedXCompositeWindow::RedirectedXCompositeWindow(WebPageProxy& webPage, const IntSize& initialSize, std::function<void()>&& damageNotify)
+    : m_webPage(webPage)
+    , m_display(GDK_DISPLAY_XDISPLAY(gdk_window_get_display(gtk_widget_get_parent_window(webPage.viewWidget()))))
+    , m_size(initialSize)
 {
+    m_size.scale(m_webPage.deviceScaleFactor());
+
     ASSERT(downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native() == m_display);
     Screen* screen = DefaultScreenOfDisplay(m_display);
 
-    GdkVisual* visual = gdk_window_get_visual(parentWindow);
+    GdkVisual* visual = gdk_window_get_visual(gtk_widget_get_parent_window(webPage.viewWidget()));
     XUniqueColormap colormap(XCreateColormap(m_display, RootWindowOfScreen(screen), GDK_VISUAL_XVISUAL(visual), AllocNone));
 
     // This is based on code from Chromium: src/content/common/gpu/image_transport_surface_linux.cc
@@ -193,6 +199,8 @@ RedirectedXCompositeWindow::RedirectedXCompositeWindow(GdkWindow* parentWindow, 
     }
     XSelectInput(m_display, m_window.get(), NoEventMask);
     XCompositeRedirectWindow(m_display, m_window.get(), CompositeRedirectManual);
+    if (!m_size.isEmpty())
+        createNewPixampAndPixampSurface();
     m_damage = XDamageCreate(m_display, m_window.get(), XDamageReportNonEmpty);
 }
 
@@ -214,8 +222,7 @@ RedirectedXCompositeWindow::~RedirectedXCompositeWindow()
 void RedirectedXCompositeWindow::resize(const IntSize& size)
 {
     IntSize scaledSize(size);
-    scaledSize.scale(m_deviceScale);
-
+    scaledSize.scale(m_webPage.deviceScaleFactor());
     if (scaledSize == m_size)
         return;
 
@@ -224,9 +231,10 @@ void RedirectedXCompositeWindow::resize(const IntSize& size)
     XFlush(m_display);
 
     m_size = scaledSize;
-    m_needsNewPixmapAfterResize = true;
     if (m_size.isEmpty())
         cleanupPixmapAndPixmapSurface();
+    else
+        createNewPixampAndPixampSurface();
 }
 
 void RedirectedXCompositeWindow::cleanupPixmapAndPixmapSurface()
@@ -238,33 +246,30 @@ void RedirectedXCompositeWindow::cleanupPixmapAndPixmapSurface()
     m_pixmap.reset();
 }
 
-cairo_surface_t* RedirectedXCompositeWindow::surface()
+void RedirectedXCompositeWindow::createNewPixampAndPixampSurface()
 {
     // This should never be called with an empty size (not in Accelerated Compositing mode).
     ASSERT(!m_size.isEmpty());
-
-    if (!m_needsNewPixmapAfterResize && m_surface)
-        return m_surface.get();
-
-    m_needsNewPixmapAfterResize = false;
-
     XUniquePixmap newPixmap(XCompositeNameWindowPixmap(m_display, m_window.get()));
     if (!newPixmap) {
         cleanupPixmapAndPixmapSurface();
-        return nullptr;
+        return;
     }
 
     XWindowAttributes windowAttributes;
     if (!XGetWindowAttributes(m_display, m_window.get(), &windowAttributes)) {
         cleanupPixmapAndPixmapSurface();
-        return nullptr;
+        return;
     }
 
     RefPtr<cairo_surface_t> newSurface = adoptRef(cairo_xlib_surface_create(m_display, newPixmap.get(), windowAttributes.visual, m_size.width(), m_size.height()));
-    cairoSurfaceSetDeviceScale(newSurface.get(), m_deviceScale, m_deviceScale);
+    cairoSurfaceSetDeviceScale(newSurface.get(), m_webPage.deviceScaleFactor(), m_webPage.deviceScaleFactor());
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(newSurface.get()));
-    cairo_set_source_rgb(cr.get(), 1, 1, 1);
+    if (!m_webPage.drawsBackground())
+        cairo_set_operator(cr.get(), CAIRO_OPERATOR_CLEAR);
+    else
+        setSourceRGBAFromColor(cr.get(), m_webPage.backgroundColor());
     cairo_paint(cr.get());
 
     // Nvidia drivers seem to prepare their redirected window pixmap asynchronously, so for a few fractions
@@ -272,14 +277,14 @@ cairo_surface_t* RedirectedXCompositeWindow::surface()
     // pixmap window-backings), the pixmap memory is uninitialized. To work around this issue, paint the old
     // pixmap to the new one to properly initialize it.
     if (m_surface) {
+        cairo_set_operator(cr.get(), CAIRO_OPERATOR_OVER);
         cairo_set_source_surface(cr.get(), m_surface.get(), 0, 0);
         cairo_paint(cr.get());
     }
 
     cleanupPixmapAndPixmapSurface();
     m_pixmap = WTFMove(newPixmap);
-    m_surface = newSurface;
-    return m_surface.get();
+    m_surface = WTFMove(newSurface);
 }
 
 } // namespace WebCore

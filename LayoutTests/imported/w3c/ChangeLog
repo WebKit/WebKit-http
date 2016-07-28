@@ -1,3 +1,607 @@
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to Document.execCommand() / queryCommand*() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160258
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-26  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Response constructor should be able to take a ReadableStream as body
+        https://bugs.webkit.org/show_bug.cgi?id=159804
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/response/response-consume-empty-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume.html: Updating test to exercice Response coonstructor with a ReadableStream.
+
+2016-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Move 'dir' attribute from HTMLDocument to Document
+        https://bugs.webkit.org/show_bug.cgi?id=160231
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Second parameter to History.pushState() / replaceState() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160230
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Align Node.isEqualNode() with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=160224
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that one more check is passing. We are now
+        passing all the checks in this test like Firefox and Chrome.
+
+        * web-platform-tests/dom/nodes/Node-isEqualNode-expected.txt:
+
+2016-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Range.prototype.compareBoundaryPoints.length should be 2
+        https://bugs.webkit.org/show_bug.cgi?id=160217
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to CustomEvent.initCustomEvent() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160205
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Second parameter to Range.isPointInRange() / comparePoint() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160202
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-07-26  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Add support for fetch mode, in particular cors
+        https://bugs.webkit.org/show_bug.cgi?id=156753
+
+        Reviewed by Darin Adler.
+
+        Rebasing tests.
+
+        * web-platform-tests/fetch/api/basic/integrity-expected.txt:
+        * web-platform-tests/fetch/api/basic/integrity-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-filtering-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-filtering-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt:
+        * web-platform-tests/fetch/api/credentials/authentication-basic-worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-expected.txt:
+
+2016-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Align NamedNodeMap with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=160204
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-07-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203719.
+        https://bugs.webkit.org/show_bug.cgi?id=160200
+
+        It is breaking win build (Requested by youenn on #webkit).
+
+        Reverted changeset:
+
+        "[Fetch API] Response constructor should be able to take a
+        ReadableStream as body"
+        https://bugs.webkit.org/show_bug.cgi?id=159804
+        http://trac.webkit.org/changeset/203719
+
+2016-07-26  Youenn Fablet  <youenn@apple.com>
+
+        Remove ClientCredentialPolicy cross-origin option from ResourceLoaderOptions
+        https://bugs.webkit.org/show_bug.cgi?id=159413
+
+        Reviewed by Alex Christensen.
+
+        Below test changes as ResourceLoader is now computing whether to request credentials to clients if:
+        - request is authorized to request credentials (DocumentThreadableLoader only allows same-origin to make such thing)
+        - credential policy is Include or Same-Origin and request is same-origin.
+        This test changes as current fetch loader sets the credential mode to Omit, thus disabling credential request.
+
+        To be noted that only fetch API is allowing to disable credentials sending for same-origin request using "Omit"
+        credential mode.
+
+        * web-platform-tests/fetch/api/credentials/authentication-basic-expected.txt: Rebasing test.
+
+2016-07-26  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Response constructor should be able to take a ReadableStream as body
+        https://bugs.webkit.org/show_bug.cgi?id=159804
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/response/response-consume-empty-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume.html: Updating test to exercice Response coonstructor with a ReadableStream.
+
+2016-07-25  Chris Dumez  <cdumez@apple.com>
+
+        Second parameter to Range.setStart() / setEnd() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160184
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-07-25  Chris Dumez  <cdumez@apple.com>
+
+        DOMTokenList.prototype.toString should be enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=160182
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-07-25  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to DOMImplementation.createDocumentType() should be mandatory and non-nullable
+        https://bugs.webkit.org/show_bug.cgi?id=160167
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline a W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2016-07-24  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Request should be created with any HeadersInit data
+        https://bugs.webkit.org/show_bug.cgi?id=159672
+
+        Reviewed by Sam Weinig.
+
+        * imported/w3c/web-platform-tests/fetch/api/credentials/authentication-basic-expected.txt: Test was previously
+        failing due to lack of support for HeadersInit data in Request constructor.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/credentials/authentication-basic-expected.txt: Removed.
+        * web-platform-tests/fetch/api/request/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/request/request-headers.html: Adding new test.
+
+2016-07-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203641.
+        https://bugs.webkit.org/show_bug.cgi?id=160116
+
+        It broke make-based builds (Requested by youenn on #webkit).
+
+        Reverted changeset:
+
+        "[Fetch API] Request should be created with any HeadersInit
+        data"
+        https://bugs.webkit.org/show_bug.cgi?id=159672
+        http://trac.webkit.org/changeset/203641
+
+2016-07-23  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Request should be created with any HeadersInit data
+        https://bugs.webkit.org/show_bug.cgi?id=159672
+
+        Reviewed by Sam Weinig.
+
+        * imported/w3c/web-platform-tests/fetch/api/credentials/authentication-basic-expected.txt: Test was previously
+        failing due to lack of support for HeadersInit data in Request constructor.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/credentials/authentication-basic-expected.txt: Removed.
+        * web-platform-tests/fetch/api/request/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/request/request-headers.html: Adding new test.
+
+2016-07-23  Youenn Fablet  <youenn@apple.com>
+
+        WPT stash server should be kept running when launching wpt server
+        https://bugs.webkit.org/show_bug.cgi?id=160052
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic-setrequestheader-and-arguments-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/cross_origin_parentage-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/same_origin_parentage-expected.txt:
+
+2016-07-23  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Fetch response stream should enqueue Uint8Array
+        https://bugs.webkit.org/show_bug.cgi?id=160083
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/fetch/api/resources/utils.js:
+
+2016-07-22  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to HTMLCollection.item() / namedItem() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160099
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-22  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to Node.replaceChild() / insertBefore() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160091
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-22  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to Node.contains() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160084
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-22  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to getElementById() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160087
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-22  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to Node.lookupPrefix() / lookupNamespaceURI() / isDefaultNamespace() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160086
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-22  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to Node.compareDocumentPosition() should be mandatory and non-nullable
+        https://bugs.webkit.org/show_bug.cgi?id=160071
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to Node.isSameNode() / isEqualNode() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160070
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to Document.createEvent() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160065
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Make parameters to Element.getElementsBy*() operations mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160060
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Make parameters mandatory for attribute-related API on Element
+        https://bugs.webkit.org/show_bug.cgi?id=160059
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Make parameters to Document.getElementsBy*() operations mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160050
+
+        Reviewed by Daniel Bates.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Make parameters mandatory for Document.create*() operations
+        https://bugs.webkit.org/show_bug.cgi?id=160047
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling of HTMLFontElement.color
+        https://bugs.webkit.org/show_bug.cgi?id=160036
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-obsolete-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling for several HTMLTableElement attributes
+        https://bugs.webkit.org/show_bug.cgi?id=160041
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling for HTMLObjectElement.border
+        https://bugs.webkit.org/show_bug.cgi?id=160040
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling for td.bgColor / tr.bgColor
+        https://bugs.webkit.org/show_bug.cgi?id=160043
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling for several HTMLBodyElement attributes
+        https://bugs.webkit.org/show_bug.cgi?id=160044
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-sections-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling for HTMLIFrameElement.marginWidth / marginHeight
+        https://bugs.webkit.org/show_bug.cgi?id=160037
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling for HTMLImageElement.border
+        https://bugs.webkit.org/show_bug.cgi?id=160039
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+
+2016-07-21  Chris Dumez  <cdumez@apple.com>
+
+        The 2 first parameters to DOMImplementation.createDocument() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160030
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument-expected.txt:
+
+2016-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Fix timeout of imported/w3c/WebCryptoAPI/idlharness.html
+        https://bugs.webkit.org/show_bug.cgi?id=159979
+
+        Reviewed by Alex Christensen.
+
+        Add missing resources.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+        * WebCryptoAPI/idlharness.html:
+        * resources/WebIDLParser.js: Added.
+        (tokenise):
+        (WebIDLParseError):
+        (WebIDLParseError.prototype.toString):
+        (error):
+        (consume):
+        (ws):
+        (all_ws):
+        (integer_type):
+        (float_type):
+        (primitive_type):
+        (const_value):
+        (type_suffix):
+        (single_type):
+        (union_type):
+        (type):
+        (argument):
+        (argument_list):
+        (type_pair):
+        (simple_extended_attr):
+        (extended_attrs):
+        (default_):
+        (const_):
+        (inheritance):
+        (operation_rest):
+        (callback):
+        (attribute):
+        (return_type):
+        (operation):
+        (identifiers):
+        (serialiser):
+        (iterable_type):
+        (readonly_iterable_type):
+        (iterable):
+        (interface_):
+        (partial):
+        (dictionary):
+        (exception):
+        (enum_):
+        (parse):
+        * resources/idlharness.js: Added.
+        (constValue):
+        (minOverloadLength):
+        (throwOrReject):
+        (awaitNCallbacks):
+        (return.fround):
+        (fround):
+        (self.IdlArray):
+        (IdlArray.prototype.add_idls):
+        (IdlArray.prototype.add_untested_idls):
+        (IdlArray.prototype.internal_add_idls):
+        (IdlArray.prototype.add_objects):
+        (IdlArray.prototype.prevent_multiple_testing):
+        (IdlArray.prototype.recursively_get_implements):
+        (exposed_in):
+        (IdlArray.prototype.test):
+        (IdlArray.prototype.assert_type_is):
+        (IdlObject):
+        (IdlObject.prototype.test):
+        (IdlObject.prototype.has_extended_attribute):
+        (IdlInterface):
+        (IdlInterface.prototype.is_callback):
+        (IdlInterface.prototype.has_constants):
+        (IdlInterface.prototype.is_global):
+        (IdlInterface.prototype.test):
+        (IdlInterface.prototype.test_self):
+        (IdlInterface.prototype.test_member_const):
+        (IdlInterface.prototype.test_member_attribute):
+        (IdlInterface.prototype.test_member_operation):
+        (IdlInterface.prototype.do_member_operation_asserts):
+        (IdlInterface.prototype.test_member_stringifier):
+        (IdlInterface.prototype.test_members):
+        (IdlInterface.prototype.test_object):
+        (IdlInterface.prototype.test_primary_interface_of):
+        (IdlInterface.prototype.test_interface_of):
+        (IdlInterface.prototype.has_stringifier):
+        (IdlInterface.prototype.do_interface_attribute_asserts):
+        (IdlInterfaceMember):
+        (create_suitable_object):
+        (IdlEnum):
+        (IdlTypedef):
+
+2016-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Fix null handling of HTMLFrameElement.marginWidth / marginHeight
+        https://bugs.webkit.org/show_bug.cgi?id=159987
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/html/dom/reflection-obsolete-expected.txt:
+
 2016-07-20  Chris Dumez  <cdumez@apple.com>
 
         Fix null handling of HTMLMediaElement.mediaGroup

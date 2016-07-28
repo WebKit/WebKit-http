@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +37,6 @@
 #include "RenderMathMLMenclose.h"
 #include "RenderMathMLRoot.h"
 #include "RenderMathMLRow.h"
-#include "RenderMathMLUnderOver.h"
 
 namespace WebCore {
 
@@ -65,8 +65,6 @@ RenderPtr<RenderElement> MathMLInlineContainerElement::createElementRenderer(Ren
 {
     if (hasTagName(annotation_xmlTag) || hasTagName(merrorTag) || hasTagName(mphantomTag) || hasTagName(mrowTag) || hasTagName(mstyleTag))
         return createRenderer<RenderMathMLRow>(*this, WTFMove(style));
-    if (hasTagName(moverTag) || hasTagName(munderTag) || hasTagName(munderoverTag))
-        return createRenderer<RenderMathMLUnderOver>(*this, WTFMove(style));
     if (hasTagName(msqrtTag) || hasTagName(mrootTag))
         return createRenderer<RenderMathMLRoot>(*this, WTFMove(style));
     if (hasTagName(mfencedTag))
@@ -77,10 +75,24 @@ RenderPtr<RenderElement> MathMLInlineContainerElement::createElementRenderer(Ren
     return createRenderer<RenderMathMLBlock>(*this, WTFMove(style));
 }
 
+bool MathMLInlineContainerElement::acceptsDisplayStyleAttribute()
+{
+    return hasTagName(mstyleTag) || hasTagName(mtableTag);
+}
+
+bool MathMLInlineContainerElement::acceptsMathVariantAttribute()
+{
+    return hasTagName(mstyleTag);
+}
+
 void MathMLInlineContainerElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    bool displayStyleAttribute = (name == displaystyleAttr && (hasTagName(mstyleTag) || hasTagName(mtableTag)));
-    bool mathVariantAttribute = (name == mathvariantAttr && (hasTagName(mathTag) || hasTagName(mstyleTag)));
+    bool displayStyleAttribute = name == displaystyleAttr && acceptsDisplayStyleAttribute();
+    bool mathVariantAttribute = name == mathvariantAttr && acceptsMathVariantAttribute();
+    if (displayStyleAttribute)
+        m_displayStyle.dirty = true;
+    if (mathVariantAttribute)
+        m_mathVariant.dirty = true;
     if ((displayStyleAttribute || mathVariantAttribute) && renderer())
         MathMLStyle::resolveMathMLStyleTree(renderer());
 

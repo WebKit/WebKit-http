@@ -401,7 +401,7 @@ my @features = (
       define => "USE_SYSTEM_MALLOC", default => 0, value => \$systemMallocSupport },
 
     { option => "threaded-compositor", desc => "Toggle threaded compositor support",
-      define => "ENABLE_THREADED_COMPOSITOR", default => isWPE(), value => \$threadedCompositorSupport },
+      define => "ENABLE_THREADED_COMPOSITOR", default => (isGtk() || isWPE()), value => \$threadedCompositorSupport },
 
     { option => "text-autosizing", desc => "Toggle Text Autosizing support",
       define => "ENABLE_TEXT_AUTOSIZING", default => 0, value => \$textAutosizingSupport },

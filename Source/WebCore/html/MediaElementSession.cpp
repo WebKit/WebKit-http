@@ -51,6 +51,7 @@
 #if PLATFORM(IOS)
 #include "AudioSession.h"
 #include "RuntimeApplicationChecks.h"
+#include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
 namespace WebCore {
@@ -243,6 +244,11 @@ bool MediaElementSession::canControlControlsManager() const
         return true;
     }
 
+    if (hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !m_element.isPlaying()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Needs to be playing");
+        return false;
+    }
+
     if (m_element.muted()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Muted");
         return false;
@@ -252,6 +258,11 @@ bool MediaElementSession::canControlControlsManager() const
         if (!m_element.renderer()) {
             LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No renderer");
             return false;
+        }
+
+        if (m_element.document().isMediaDocument()) {
+            LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is media document");
+            return true;
         }
 
         if (!m_element.hasVideo()) {
@@ -455,7 +466,14 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
     if (!settings || !settings->allowsInlineMediaPlayback())
         return true;
 
-    return settings->inlineMediaPlaybackRequiresPlaysInlineAttribute() && !(element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr) || element.hasAttributeWithoutSynchronization(HTMLNames::playsinlineAttr));
+    if (!settings->inlineMediaPlaybackRequiresPlaysInlineAttribute())
+        return false;
+
+#if PLATFORM(IOS)
+    if (dyld_get_program_sdk_version() < DYLD_IOS_VERSION_10_0)
+        return !element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr);
+#endif
+    return !element.hasAttributeWithoutSynchronization(HTMLNames::playsinlineAttr);
 }
 
 bool MediaElementSession::allowsAutomaticMediaDataLoading(const HTMLMediaElement& element) const

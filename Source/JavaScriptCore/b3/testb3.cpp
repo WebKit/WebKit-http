@@ -25,6 +25,9 @@
 
 #include "config.h"
 
+#include "AirCode.h"
+#include "AirInstInlines.h"
+#include "AirValidate.h"
 #include "AllowMacroScratchRegisterUsage.h"
 #include "B3ArgumentRegValue.h"
 #include "B3BasicBlockInlines.h"
@@ -34,6 +37,8 @@
 #include "B3Const32Value.h"
 #include "B3ConstPtrValue.h"
 #include "B3Effects.h"
+#include "B3Generate.h"
+#include "B3LowerToAir.h"
 #include "B3MathExtras.h"
 #include "B3MemoryValue.h"
 #include "B3Procedure.h"
@@ -94,6 +99,16 @@ StaticLock crashLock;
         CRASH();                                                        \
     } while (false)
 
+#define CHECK_EQ(x, y) do { \
+        auto __x = (x); \
+        auto __y = (y); \
+        if (__x == __y) \
+            break; \
+        crashLock.lock(); \
+        WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, toCString(#x " == " #y, " (" #x " == ", __x, ", " #y " == ", __y, ")").data()); \
+        CRASH(); \
+    } while (false)
+
 VM* vm;
 
 std::unique_ptr<Compilation> compile(Procedure& procedure, unsigned optLevel = 1)
@@ -102,10 +117,16 @@ std::unique_ptr<Compilation> compile(Procedure& procedure, unsigned optLevel = 1
 }
 
 template<typename T, typename... Arguments>
+T invoke(MacroAssemblerCodePtr ptr, Arguments... arguments)
+{
+    T (*function)(Arguments...) = bitwise_cast<T(*)(Arguments...)>(ptr.executableAddress());
+    return function(arguments...);
+}
+
+template<typename T, typename... Arguments>
 T invoke(const Compilation& code, Arguments... arguments)
 {
-    T (*function)(Arguments...) = bitwise_cast<T(*)(Arguments...)>(code.code().executableAddress());
-    return function(arguments...);
+    return invoke<T>(code.code(), arguments...);
 }
 
 template<typename T, typename... Arguments>
@@ -12377,6 +12398,419 @@ void testResetReachabilityDanglingReference()
     validate(proc);
 }
 
+void testEntrySwitchSimple()
+{
+    Procedure proc;
+    proc.setNumEntrypoints(3);
+    
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* one = proc.addBlock();
+    BasicBlock* two = proc.addBlock();
+    BasicBlock* three = proc.addBlock();
+    
+    root->appendNew<Value>(proc, EntrySwitch, Origin());
+    root->appendSuccessor(FrequentedBlock(one));
+    root->appendSuccessor(FrequentedBlock(two));
+    root->appendSuccessor(FrequentedBlock(three));
+    
+    one->appendNew<Value>(
+        proc, Return, Origin(),
+        one->appendNew<Value>(
+            proc, Add, Origin(),
+            one->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+            one->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+    
+    two->appendNew<Value>(
+        proc, Return, Origin(),
+        two->appendNew<Value>(
+            proc, Sub, Origin(),
+            two->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+            two->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+    
+    three->appendNew<Value>(
+        proc, Return, Origin(),
+        three->appendNew<Value>(
+            proc, Mul, Origin(),
+            three->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+            three->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+    
+    prepareForGeneration(proc);
+    
+    CCallHelpers jit(vm);
+    generate(proc, jit);
+    LinkBuffer linkBuffer(*vm, jit, nullptr);
+    CodeLocationLabel labelOne = linkBuffer.locationOf(proc.entrypointLabel(0));
+    CodeLocationLabel labelTwo = linkBuffer.locationOf(proc.entrypointLabel(1));
+    CodeLocationLabel labelThree = linkBuffer.locationOf(proc.entrypointLabel(2));
+    
+    MacroAssemblerCodeRef codeRef = FINALIZE_CODE(linkBuffer, ("testb3 compilation"));
+    
+    CHECK(invoke<int>(labelOne, 1, 2) == 3);
+    CHECK(invoke<int>(labelTwo, 1, 2) == -1);
+    CHECK(invoke<int>(labelThree, 1, 2) == 2);
+    CHECK(invoke<int>(labelOne, -1, 2) == 1);
+    CHECK(invoke<int>(labelTwo, -1, 2) == -3);
+    CHECK(invoke<int>(labelThree, -1, 2) == -2);
+}
+
+void testEntrySwitchNoEntrySwitch()
+{
+    Procedure proc;
+    proc.setNumEntrypoints(3);
+    
+    BasicBlock* root = proc.addBlock();
+    
+    root->appendNew<Value>(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, Add, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)));
+    
+    prepareForGeneration(proc);
+    
+    CCallHelpers jit(vm);
+    generate(proc, jit);
+    LinkBuffer linkBuffer(*vm, jit, nullptr);
+    CodeLocationLabel labelOne = linkBuffer.locationOf(proc.entrypointLabel(0));
+    CodeLocationLabel labelTwo = linkBuffer.locationOf(proc.entrypointLabel(1));
+    CodeLocationLabel labelThree = linkBuffer.locationOf(proc.entrypointLabel(2));
+    
+    MacroAssemblerCodeRef codeRef = FINALIZE_CODE(linkBuffer, ("testb3 compilation"));
+    
+    CHECK_EQ(invoke<int>(labelOne, 1, 2), 3);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2), 3);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2), 3);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2), 1);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2), 1);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2), 1);
+}
+
+void testEntrySwitchWithCommonPaths()
+{
+    Procedure proc;
+    proc.setNumEntrypoints(3);
+    
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* one = proc.addBlock();
+    BasicBlock* two = proc.addBlock();
+    BasicBlock* three = proc.addBlock();
+    BasicBlock* end = proc.addBlock();
+    
+    root->appendNew<Value>(proc, EntrySwitch, Origin());
+    root->appendSuccessor(FrequentedBlock(one));
+    root->appendSuccessor(FrequentedBlock(two));
+    root->appendSuccessor(FrequentedBlock(three));
+    
+    UpsilonValue* upsilonOne = one->appendNew<UpsilonValue>(
+        proc, Origin(),
+        one->appendNew<Value>(
+            proc, Add, Origin(),
+            one->appendNew<Value>(
+                proc, Trunc, Origin(),
+                one->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)),
+            one->appendNew<Value>(
+                proc, Trunc, Origin(),
+                one->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1))));
+    one->appendNew<Value>(proc, Jump, Origin());
+    one->setSuccessors(FrequentedBlock(end));
+    
+    UpsilonValue* upsilonTwo = two->appendNew<UpsilonValue>(
+        proc, Origin(),
+        two->appendNew<Value>(
+            proc, Sub, Origin(),
+            two->appendNew<Value>(
+                proc, Trunc, Origin(),
+                two->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)),
+            two->appendNew<Value>(
+                proc, Trunc, Origin(),
+                two->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1))));
+    two->appendNew<Value>(proc, Jump, Origin());
+    two->setSuccessors(FrequentedBlock(end));
+    
+    UpsilonValue* upsilonThree = three->appendNew<UpsilonValue>(
+        proc, Origin(),
+        three->appendNew<Value>(
+            proc, Mul, Origin(),
+            three->appendNew<Value>(
+                proc, Trunc, Origin(),
+                three->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)),
+            three->appendNew<Value>(
+                proc, Trunc, Origin(),
+                three->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1))));
+    three->appendNew<Value>(proc, Jump, Origin());
+    three->setSuccessors(FrequentedBlock(end));
+    
+    Value* phi = end->appendNew<Value>(proc, Phi, Int32, Origin());
+    upsilonOne->setPhi(phi);
+    upsilonTwo->setPhi(phi);
+    upsilonThree->setPhi(phi);
+    
+    end->appendNew<Value>(
+        proc, Return, Origin(),
+        end->appendNew<Value>(
+            proc, ChillMod, Origin(),
+            phi, end->appendNew<Value>(
+                proc, Trunc, Origin(),
+                end->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2))));
+    
+    prepareForGeneration(proc);
+    
+    CCallHelpers jit(vm);
+    generate(proc, jit);
+    LinkBuffer linkBuffer(*vm, jit, nullptr);
+    CodeLocationLabel labelOne = linkBuffer.locationOf(proc.entrypointLabel(0));
+    CodeLocationLabel labelTwo = linkBuffer.locationOf(proc.entrypointLabel(1));
+    CodeLocationLabel labelThree = linkBuffer.locationOf(proc.entrypointLabel(2));
+    
+    MacroAssemblerCodeRef codeRef = FINALIZE_CODE(linkBuffer, ("testb3 compilation"));
+    
+    CHECK_EQ(invoke<int>(labelOne, 1, 2, 10), 3);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2, 10), -1);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2, 10), 2);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2, 10), 1);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2, 10), -3);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2, 10), -2);
+    CHECK_EQ(invoke<int>(labelOne, 1, 2, 2), 1);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2, 2), -1);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2, 2), 0);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2, 2), 1);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2, 2), -1);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2, 2), 0);
+    CHECK_EQ(invoke<int>(labelOne, 1, 2, 0), 0);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2, 0), 0);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2, 0), 0);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2, 0), 0);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2, 0), 0);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2, 0), 0);
+}
+
+void testEntrySwitchWithCommonPathsAndNonTrivialEntrypoint()
+{
+    Procedure proc;
+    proc.setNumEntrypoints(3);
+    
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* negate = proc.addBlock();
+    BasicBlock* dispatch = proc.addBlock();
+    BasicBlock* one = proc.addBlock();
+    BasicBlock* two = proc.addBlock();
+    BasicBlock* three = proc.addBlock();
+    BasicBlock* end = proc.addBlock();
+
+    UpsilonValue* upsilonBase = root->appendNew<UpsilonValue>(
+        proc, Origin(), root->appendNew<Value>(
+            proc, Trunc, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+    root->appendNew<Value>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, BitAnd, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR3),
+            root->appendNew<ConstPtrValue>(proc, Origin(), 0xff)));
+    root->setSuccessors(FrequentedBlock(negate), FrequentedBlock(dispatch));
+    
+    UpsilonValue* upsilonNegate = negate->appendNew<UpsilonValue>(
+        proc, Origin(),
+        negate->appendNew<Value>(
+            proc, Neg, Origin(),
+            negate->appendNew<Value>(
+                proc, Trunc, Origin(),
+                negate->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0))));
+    negate->appendNew<Value>(proc, Jump, Origin());
+    negate->setSuccessors(FrequentedBlock(dispatch));
+    
+    Value* arg0 = dispatch->appendNew<Value>(proc, Phi, Int32, Origin());
+    upsilonBase->setPhi(arg0);
+    upsilonNegate->setPhi(arg0);
+    dispatch->appendNew<Value>(proc, EntrySwitch, Origin());
+    dispatch->appendSuccessor(FrequentedBlock(one));
+    dispatch->appendSuccessor(FrequentedBlock(two));
+    dispatch->appendSuccessor(FrequentedBlock(three));
+    
+    UpsilonValue* upsilonOne = one->appendNew<UpsilonValue>(
+        proc, Origin(),
+        one->appendNew<Value>(
+            proc, Add, Origin(),
+            arg0, one->appendNew<Value>(
+                proc, Trunc, Origin(),
+                one->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1))));
+    one->appendNew<Value>(proc, Jump, Origin());
+    one->setSuccessors(FrequentedBlock(end));
+    
+    UpsilonValue* upsilonTwo = two->appendNew<UpsilonValue>(
+        proc, Origin(),
+        two->appendNew<Value>(
+            proc, Sub, Origin(),
+            arg0, two->appendNew<Value>(
+                proc, Trunc, Origin(),
+                two->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1))));
+    two->appendNew<Value>(proc, Jump, Origin());
+    two->setSuccessors(FrequentedBlock(end));
+    
+    UpsilonValue* upsilonThree = three->appendNew<UpsilonValue>(
+        proc, Origin(),
+        three->appendNew<Value>(
+            proc, Mul, Origin(),
+            arg0, three->appendNew<Value>(
+                proc, Trunc, Origin(),
+                three->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1))));
+    three->appendNew<Value>(proc, Jump, Origin());
+    three->setSuccessors(FrequentedBlock(end));
+    
+    Value* phi = end->appendNew<Value>(proc, Phi, Int32, Origin());
+    upsilonOne->setPhi(phi);
+    upsilonTwo->setPhi(phi);
+    upsilonThree->setPhi(phi);
+    
+    end->appendNew<Value>(
+        proc, Return, Origin(),
+        end->appendNew<Value>(
+            proc, ChillMod, Origin(),
+            phi, end->appendNew<Value>(
+                proc, Trunc, Origin(),
+                end->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2))));
+    
+    prepareForGeneration(proc);
+    
+    CCallHelpers jit(vm);
+    generate(proc, jit);
+    LinkBuffer linkBuffer(*vm, jit, nullptr);
+    CodeLocationLabel labelOne = linkBuffer.locationOf(proc.entrypointLabel(0));
+    CodeLocationLabel labelTwo = linkBuffer.locationOf(proc.entrypointLabel(1));
+    CodeLocationLabel labelThree = linkBuffer.locationOf(proc.entrypointLabel(2));
+    
+    MacroAssemblerCodeRef codeRef = FINALIZE_CODE(linkBuffer, ("testb3 compilation"));
+    
+    CHECK_EQ(invoke<int>(labelOne, 1, 2, 10, false), 3);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2, 10, false), -1);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2, 10, false), 2);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2, 10, false), 1);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2, 10, false), -3);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2, 10, false), -2);
+    CHECK_EQ(invoke<int>(labelOne, 1, 2, 10, true), 1);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2, 10, true), -3);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2, 10, true), -2);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2, 10, true), 3);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2, 10, true), -1);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2, 10, true), 2);
+    CHECK_EQ(invoke<int>(labelOne, 1, 2, 2, false), 1);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2, 2, false), -1);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2, 2, false), 0);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2, 2, false), 1);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2, 2, false), -1);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2, 2, false), 0);
+    CHECK_EQ(invoke<int>(labelOne, 1, 2, 0, false), 0);
+    CHECK_EQ(invoke<int>(labelTwo, 1, 2, 0, false), 0);
+    CHECK_EQ(invoke<int>(labelThree, 1, 2, 0, false), 0);
+    CHECK_EQ(invoke<int>(labelOne, -1, 2, 0, false), 0);
+    CHECK_EQ(invoke<int>(labelTwo, -1, 2, 0, false), 0);
+    CHECK_EQ(invoke<int>(labelThree, -1, 2, 0, false), 0);
+}
+
+void testEntrySwitchLoop()
+{
+    // This is a completely absurd use of EntrySwitch, where it impacts the loop condition. This
+    // should cause duplication of either nearly the entire Procedure. At time of writing, we ended
+    // up duplicating all of it, which is fine. It's important to test this case, to make sure that
+    // the duplication algorithm can handle interesting control flow.
+    
+    Procedure proc;
+    proc.setNumEntrypoints(2);
+    
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* loopHeader = proc.addBlock();
+    BasicBlock* loopFooter = proc.addBlock();
+    BasicBlock* end = proc.addBlock();
+
+    UpsilonValue* initialValue = root->appendNew<UpsilonValue>(
+        proc, Origin(), root->appendNew<Value>(
+            proc, Trunc, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0)));
+    root->appendNew<Value>(proc, Jump, Origin());
+    root->setSuccessors(loopHeader);
+    
+    Value* valueInLoop = loopHeader->appendNew<Value>(proc, Phi, Int32, Origin());
+    initialValue->setPhi(valueInLoop);
+    Value* newValue = loopHeader->appendNew<Value>(
+        proc, Add, Origin(), valueInLoop,
+        loopHeader->appendNew<Const32Value>(proc, Origin(), 1));
+    loopHeader->appendNew<Value>(proc, EntrySwitch, Origin());
+    loopHeader->appendSuccessor(end);
+    loopHeader->appendSuccessor(loopFooter);
+    
+    loopFooter->appendNew<UpsilonValue>(proc, Origin(), newValue, valueInLoop);
+    loopFooter->appendNew<Value>(
+        proc, Branch, Origin(),
+        loopFooter->appendNew<Value>(
+            proc, LessThan, Origin(), newValue,
+            loopFooter->appendNew<Const32Value>(proc, Origin(), 100)));
+    loopFooter->setSuccessors(loopHeader, end);
+    
+    end->appendNew<Value>(proc, Return, Origin(), newValue);
+    
+    prepareForGeneration(proc);
+    
+    CCallHelpers jit(vm);
+    generate(proc, jit);
+    LinkBuffer linkBuffer(*vm, jit, nullptr);
+    CodeLocationLabel labelOne = linkBuffer.locationOf(proc.entrypointLabel(0));
+    CodeLocationLabel labelTwo = linkBuffer.locationOf(proc.entrypointLabel(1));
+    
+    MacroAssemblerCodeRef codeRef = FINALIZE_CODE(linkBuffer, ("testb3 compilation"));
+
+    CHECK(invoke<int>(labelOne, 0) == 1);
+    CHECK(invoke<int>(labelOne, 42) == 43);
+    CHECK(invoke<int>(labelOne, 1000) == 1001);
+    
+    CHECK(invoke<int>(labelTwo, 0) == 100);
+    CHECK(invoke<int>(labelTwo, 42) == 100);
+    CHECK(invoke<int>(labelTwo, 1000) == 1001);
+}
+
+void testSomeEarlyRegister()
+{
+    auto run = [&] (bool succeed) {
+        Procedure proc;
+        
+        BasicBlock* root = proc.addBlock();
+        
+        PatchpointValue* patchpoint = root->appendNew<PatchpointValue>(proc, Int32, Origin());
+        patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
+        bool ranFirstPatchpoint = false;
+        patchpoint->setGenerator(
+            [&] (CCallHelpers&, const StackmapGenerationParams& params) {
+                CHECK(params[0].gpr() == GPRInfo::returnValueGPR);
+                ranFirstPatchpoint = true;
+            });
+        
+        Value* arg = patchpoint;
+        
+        patchpoint = root->appendNew<PatchpointValue>(proc, Int32, Origin());
+        patchpoint->appendSomeRegister(arg);
+        if (succeed)
+            patchpoint->resultConstraint = ValueRep::SomeEarlyRegister;
+        bool ranSecondPatchpoint = false;
+        patchpoint->setGenerator(
+            [&] (CCallHelpers&, const StackmapGenerationParams& params) {
+                if (succeed)
+                    CHECK(params[0].gpr() != params[1].gpr());
+                else
+                    CHECK(params[0].gpr() == params[1].gpr());
+                ranSecondPatchpoint = true;
+            });
+        
+        root->appendNew<Value>(proc, Return, Origin(), patchpoint);
+        
+        compile(proc);
+        CHECK(ranFirstPatchpoint);
+        CHECK(ranSecondPatchpoint);
+    };
+    
+    run(true);
+    run(false);
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -12387,8 +12821,6 @@ double negativeZero()
 {
     return -zero();
 }
-
-
 
 #define RUN(test) do {                          \
         if (!shouldRun(#test))                  \
@@ -13783,7 +14215,15 @@ void run(const char* filter)
     RUN(testInterpreter());
     RUN(testReduceStrengthCheckBottomUseInAnotherBlock());
     RUN(testResetReachabilityDanglingReference());
+    
+    RUN(testEntrySwitchSimple());
+    RUN(testEntrySwitchNoEntrySwitch());
+    RUN(testEntrySwitchWithCommonPaths());
+    RUN(testEntrySwitchWithCommonPathsAndNonTrivialEntrypoint());
+    RUN(testEntrySwitchLoop());
 
+    RUN(testSomeEarlyRegister());
+    
     if (tasks.isEmpty())
         usage();
 

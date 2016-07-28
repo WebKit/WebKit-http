@@ -2193,6 +2193,7 @@ private:
                 case ValueRep::ColdAny:
                 case ValueRep::LateColdAny:
                 case ValueRep::SomeRegister:
+                case ValueRep::SomeEarlyRegister:
                     inst.args.append(tmp(patchpointValue));
                     break;
                 case ValueRep::Register: {
@@ -2443,6 +2444,11 @@ private:
 
         case B3::Oops: {
             append(Air::Oops);
+            return;
+        }
+            
+        case B3::EntrySwitch: {
+            append(Air::EntrySwitch);
             return;
         }
 

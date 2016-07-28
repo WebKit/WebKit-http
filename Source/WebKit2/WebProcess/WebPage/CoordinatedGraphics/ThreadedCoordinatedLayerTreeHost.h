@@ -54,11 +54,15 @@ private:
     void scrollNonCompositedContents(const WebCore::IntRect& scrollRect) override;
     void sizeDidChange(const WebCore::IntSize&) override;
     void deviceOrPageScaleFactorChanged() override;
+    void pageBackgroundTransparencyChanged() override;
 
     void contentsSizeChanged(const WebCore::IntSize&) override;
     void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
 
     void invalidate() override;
+
+    void forceRepaint() override;
+    bool forceRepaintAsync(uint64_t callbackID) override { return false; }
 
 #if PLATFORM(GTK)
     void setNativeSurfaceHandleForCompositing(uint64_t) override;
@@ -76,11 +80,6 @@ private:
         void setVisibleContentsRect(const WebCore::FloatRect& rect, const WebCore::FloatPoint& trajectoryVector, float scale) override
         {
             m_layerTreeHost.setVisibleContentsRect(rect, trajectoryVector, scale);
-        }
-
-        void purgeBackingStores() override
-        {
-            m_layerTreeHost.purgeBackingStores();
         }
 
         void renderNextFrame() override

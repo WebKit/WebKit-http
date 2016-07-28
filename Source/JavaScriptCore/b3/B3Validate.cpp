@@ -337,6 +337,7 @@ public:
                     switch (value->as<PatchpointValue>()->resultConstraint.kind()) {
                     case ValueRep::WarmAny:
                     case ValueRep::SomeRegister:
+                    case ValueRep::SomeEarlyRegister:
                     case ValueRep::Register:
                     case ValueRep::StackArgument:
                         break;
@@ -345,7 +346,7 @@ public:
                         break;
                     }
                     
-                    validateStackmapConstraint(value, ConstrainedValue(value, value->as<PatchpointValue>()->resultConstraint));
+                    validateStackmapConstraint(value, ConstrainedValue(value, value->as<PatchpointValue>()->resultConstraint), ConstraintRole::Def);
                 }
                 validateStackmap(value);
                 break;
@@ -413,7 +414,13 @@ public:
                 for (unsigned i = 1; i < caseValues.size(); ++i)
                     VALIDATE(caseValues[i - 1] != caseValues[i], ("At ", *value, ", caseValue = ", caseValues[i]));
                 break;
-            } }
+            }
+            case EntrySwitch:
+                VALIDATE(!value->numChildren(), ("At ", *value));
+                VALIDATE(value->type() == Void, ("At ", *value));
+                VALIDATE(valueOwner.get(value)->numSuccessors() == m_procedure.numEntrypoints(), ("At ", *value));
+                break;
+            }
 
             VALIDATE(!(value->effects().writes && value->key()), ("At ", *value));
         }
@@ -432,7 +439,11 @@ private:
             validateStackmapConstraint(stackmap, child);
     }
     
-    void validateStackmapConstraint(Value* context, const ConstrainedValue& value)
+    enum class ConstraintRole {
+        Use,
+        Def
+    };
+    void validateStackmapConstraint(Value* context, const ConstrainedValue& value, ConstraintRole role = ConstraintRole::Use)
     {
         switch (value.rep().kind()) {
         case ValueRep::WarmAny:
@@ -440,6 +451,9 @@ private:
         case ValueRep::LateColdAny:
         case ValueRep::SomeRegister:
         case ValueRep::StackArgument:
+            break;
+        case ValueRep::SomeEarlyRegister:
+            VALIDATE(role == ConstraintRole::Def, ("At ", *context, ": ", value));
             break;
         case ValueRep::Register:
         case ValueRep::LateRegister:

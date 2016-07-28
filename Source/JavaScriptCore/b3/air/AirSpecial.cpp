@@ -60,6 +60,11 @@ bool Special::isTerminal(Inst&)
     return false;
 }
 
+bool Special::hasNonArgEffects(Inst&)
+{
+    return true;
+}
+
 bool Special::hasNonArgNonControlEffects(Inst&)
 {
     return true;

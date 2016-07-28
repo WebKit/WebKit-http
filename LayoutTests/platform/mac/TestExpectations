@@ -513,9 +513,6 @@ plugins/npruntime/invoke-failure.html
 
 webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
 
-# ENABLE(CUSTOM_ELEMENTS) is disabled.
-fast/dom/custom
-
 # CSS image-resolution is not yet enabled.
 webkit.org/b/85262 fast/css/image-resolution
 
@@ -804,6 +801,7 @@ mathml/opentype/horizontal-munderover.html [ Skip ]
 mathml/opentype/fraction-line.html [ Skip ]
 mathml/presentation/fractions-linethickness.html [ Skip ]
 mathml/opentype/large-operators-italic-correction.html [ Skip ]
+mathml/presentation/bug159513.html [ Skip ]
 
 # These tests use key navigation to test MathML links but do not seem to work on Mac.
 webkit.org/b/159662 mathml/presentation/href-enter.html [ Skip ]
@@ -1026,8 +1024,7 @@ webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Failure ]
 webkit.org/b/116266 media/video-controls-toggling.html [ Timeout ]
 
 # --- End media tests ---
-# See also rdar://problem/27353750
-webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Timeout Failure ]
+webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 
 webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pass Timeout ]
 
@@ -1201,6 +1198,8 @@ webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.h
 # This test tests a particular system font, which is only on iOS and El Capitan.
 webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]
 
+webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
+webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/createStyleSheet.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/get-system-fonts.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
@@ -1211,7 +1210,6 @@ webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node
 webkit.org/b/148636 inspector/css/pseudo-element-matches.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
-webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-nodes.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-removal.html [ Pass Timeout ]
@@ -1454,3 +1452,8 @@ webkit.org/b/128312 media/video-load-preload-metadata.html [ Pass Failure ]
 
 # rdar://problem/27434307
 [ Sierra+ ] http/tests/misc/bad-charset-alias.html [ Failure ]
+
+# rdar://problem/27475162
+[ Sierra+ ] compositing/video/poster.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/160056 imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight.html [ Pass Failure ]

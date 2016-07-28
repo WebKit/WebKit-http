@@ -68,8 +68,6 @@ public:
     RenderObject* firstChild() const { return m_firstChild; }
     RenderObject* lastChild() const { return m_lastChild; }
 
-    bool isEmpty() const override { return !firstChild(); }
-
     bool canContainFixedPositionObjects() const;
     bool canContainAbsolutelyPositionedObjects() const;
 
@@ -259,11 +257,6 @@ protected:
     bool renderInlineAlwaysCreatesLineBoxes() const { return m_renderInlineAlwaysCreatesLineBoxes; }
 
     void setHasContinuation(bool b) { m_hasContinuation = b; }
-
-    static bool hasControlStatesForRenderer(const RenderObject*);
-    static ControlStates* controlStatesForRenderer(const RenderObject*);
-    static void removeControlStatesForRenderer(const RenderObject*);
-    static void addControlStatesForRenderer(const RenderObject*, ControlStates*);
 
     void setRenderBlockHasMarginBeforeQuirk(bool b) { m_renderBlockHasMarginBeforeQuirk = b; }
     void setRenderBlockHasMarginAfterQuirk(bool b) { m_renderBlockHasMarginAfterQuirk = b; }

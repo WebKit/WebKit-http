@@ -1216,23 +1216,60 @@ bool Node::isEqualNode(Node* other) const
     if (nodeType != other->nodeType())
         return false;
     
-    if (nodeName() != other->nodeName())
-        return false;
-    
-    if (localName() != other->localName())
-        return false;
-    
-    if (namespaceURI() != other->namespaceURI())
-        return false;
-    
-    if (prefix() != other->prefix())
-        return false;
-    
-    if (nodeValue() != other->nodeValue())
-        return false;
-    
-    if (is<Element>(*this) && !downcast<Element>(*this).hasEquivalentAttributes(downcast<Element>(other)))
-        return false;
+    switch (nodeType) {
+    case Node::DOCUMENT_TYPE_NODE: {
+        auto& thisDocType = downcast<DocumentType>(*this);
+        auto& otherDocType = downcast<DocumentType>(*other);
+        if (thisDocType.name() != otherDocType.name())
+            return false;
+        if (thisDocType.publicId() != otherDocType.publicId())
+            return false;
+        if (thisDocType.systemId() != otherDocType.systemId())
+            return false;
+        if (thisDocType.internalSubset() != otherDocType.internalSubset())
+            return false;
+        break;
+        }
+    case Node::ELEMENT_NODE: {
+        auto& thisElement = downcast<Element>(*this);
+        auto& otherElement = downcast<Element>(*other);
+        if (thisElement.tagQName() != otherElement.tagQName())
+            return false;
+        if (!thisElement.hasEquivalentAttributes(&otherElement))
+            return false;
+        break;
+        }
+    case Node::PROCESSING_INSTRUCTION_NODE: {
+        auto& thisProcessingInstruction = downcast<ProcessingInstruction>(*this);
+        auto& otherProcessingInstruction = downcast<ProcessingInstruction>(*other);
+        if (thisProcessingInstruction.target() != otherProcessingInstruction.target())
+            return false;
+        if (thisProcessingInstruction.data() != otherProcessingInstruction.data())
+            return false;
+        break;
+        }
+    case Node::CDATA_SECTION_NODE:
+    case Node::TEXT_NODE:
+    case Node::COMMENT_NODE: {
+        auto& thisCharacterData = downcast<CharacterData>(*this);
+        auto& otherCharacterData = downcast<CharacterData>(*other);
+        if (thisCharacterData.data() != otherCharacterData.data())
+            return false;
+        break;
+        }
+    case Node::ATTRIBUTE_NODE: {
+        auto& thisAttribute = downcast<Attr>(*this);
+        auto& otherAttribute = downcast<Attr>(*other);
+        if (thisAttribute.qualifiedName() != otherAttribute.qualifiedName())
+            return false;
+        if (thisAttribute.value() != otherAttribute.value())
+            return false;
+        break;
+        }
+    case Node::DOCUMENT_NODE:
+    case Node::DOCUMENT_FRAGMENT_NODE:
+        break;
+    }
     
     Node* child = firstChild();
     Node* otherChild = other->firstChild();
@@ -1247,22 +1284,6 @@ bool Node::isEqualNode(Node* other) const
     
     if (otherChild)
         return false;
-    
-    if (nodeType == DOCUMENT_TYPE_NODE) {
-        const DocumentType* documentTypeThis = static_cast<const DocumentType*>(this);
-        const DocumentType* documentTypeOther = static_cast<const DocumentType*>(other);
-        
-        if (documentTypeThis->publicId() != documentTypeOther->publicId())
-            return false;
-
-        if (documentTypeThis->systemId() != documentTypeOther->systemId())
-            return false;
-
-        if (documentTypeThis->internalSubset() != documentTypeOther->internalSubset())
-            return false;
-
-        // FIXME: We don't compare entities or notations because currently both are always empty.
-    }
     
     return true;
 }
@@ -1509,7 +1530,7 @@ static SHA1::Digest hashPointer(void* pointer)
     return digest;
 }
 
-static inline unsigned short compareDetachedElementsPosition(Node* firstNode, Node* secondNode)
+static inline unsigned short compareDetachedElementsPosition(Node& firstNode, Node& secondNode)
 {
     // If the 2 nodes are not in the same tree, return the result of adding DOCUMENT_POSITION_DISCONNECTED,
     // DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC, and either DOCUMENT_POSITION_PRECEDING or
@@ -1517,33 +1538,29 @@ static inline unsigned short compareDetachedElementsPosition(Node* firstNode, No
     // DOCUMENT_POSITION_PRECEDING or DOCUMENT_POSITION_FOLLOWING is implemented by comparing cryptographic
     // hashes of Node pointers.
     // See step 3 in https://dom.spec.whatwg.org/#dom-node-comparedocumentposition
-    SHA1::Digest firstHash = hashPointer(firstNode);
-    SHA1::Digest secondHash = hashPointer(secondNode);
+    SHA1::Digest firstHash = hashPointer(&firstNode);
+    SHA1::Digest secondHash = hashPointer(&secondNode);
 
     unsigned short direction = memcmp(firstHash.data(), secondHash.data(), SHA1::hashSize) > 0 ? Node::DOCUMENT_POSITION_PRECEDING : Node::DOCUMENT_POSITION_FOLLOWING;
 
     return Node::DOCUMENT_POSITION_DISCONNECTED | Node::DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC | direction;
 }
 
-unsigned short Node::compareDocumentPosition(Node* otherNode)
+unsigned short Node::compareDocumentPosition(Node& otherNode)
 {
-    // It is not clear what should be done if |otherNode| is nullptr.
-    if (!otherNode)
-        return DOCUMENT_POSITION_DISCONNECTED;
-
-    if (otherNode == this)
+    if (&otherNode == this)
         return DOCUMENT_POSITION_EQUIVALENT;
     
     Attr* attr1 = is<Attr>(*this) ? downcast<Attr>(this) : nullptr;
-    Attr* attr2 = is<Attr>(*otherNode) ? downcast<Attr>(otherNode) : nullptr;
+    Attr* attr2 = is<Attr>(otherNode) ? &downcast<Attr>(otherNode) : nullptr;
     
     Node* start1 = attr1 ? attr1->ownerElement() : this;
-    Node* start2 = attr2 ? attr2->ownerElement() : otherNode;
+    Node* start2 = attr2 ? attr2->ownerElement() : &otherNode;
     
     // If either of start1 or start2 is null, then we are disconnected, since one of the nodes is
     // an orphaned attribute node.
     if (!start1 || !start2)
-        return compareDetachedElementsPosition(this, otherNode);
+        return compareDetachedElementsPosition(*this, otherNode);
 
     Vector<Node*, 16> chain1;
     Vector<Node*, 16> chain2;
@@ -1576,7 +1593,7 @@ unsigned short Node::compareDocumentPosition(Node* otherNode)
     // If the nodes have different owning documents, they must be disconnected.  Note that we avoid
     // comparing Attr nodes here, since they return false from inDocument() all the time (which seems like a bug).
     if (start1->inDocument() != start2->inDocument() || &start1->treeScope() != &start2->treeScope())
-        return compareDetachedElementsPosition(this, otherNode);
+        return compareDetachedElementsPosition(*this, otherNode);
 
     // We need to find a common ancestor container, and then compare the indices of the two immediate children.
     Node* current;
@@ -1590,7 +1607,7 @@ unsigned short Node::compareDocumentPosition(Node* otherNode)
 
     // If the two elements don't have a common root, they're not in the same tree.
     if (chain1[index1 - 1] != chain2[index2 - 1])
-        return compareDetachedElementsPosition(this, otherNode);
+        return compareDetachedElementsPosition(*this, otherNode);
 
     // Walk the two chains backwards and look for the first difference.
     for (unsigned i = std::min(index1, index2); i; --i) {
