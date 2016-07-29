@@ -1,3 +1,24 @@
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Add support for Element.getAttributeNames()
+        https://bugs.webkit.org/show_bug.cgi?id=160327
+
+        Reviewed by Alex Christensen.
+
+        Add support for Element.getAttributeNames():
+        - https://dom.spec.whatwg.org/#dom-element-getattributenames
+
+        Firefox already supports this, Chrome 52 does not yet.
+
+        Test: fast/dom/Element/getAttributeNames.html
+
+        * bindings/js/JSDOMBinding.h:
+        (WebCore::JSValueTraits<AtomicString>::arrayJSValue):
+        * dom/Element.cpp:
+        (WebCore::Element::getAttributeNames):
+        * dom/Element.h:
+        * dom/Element.idl:
+
 2016-07-21  John Wilander  <wilander@apple.com>
 
         Block mixed content synchronous XHR

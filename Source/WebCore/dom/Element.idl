@@ -109,6 +109,8 @@
     void blur();
     void scrollIntoView(optional boolean alignWithTop);
 
+    sequence<DOMString> getAttributeNames();
+
     // WebKit extensions
 
     void scrollIntoViewIfNeeded(optional boolean centerIfNeeded);
