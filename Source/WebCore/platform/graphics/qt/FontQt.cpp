@@ -72,13 +72,20 @@ void Font::platformInit()
     float xHeight = rawFont.xHeight();
     float lineSpacing = ascent + descent + rawFont.leading();
 
-    QVector<quint32> indexes = rawFont.glyphIndexesForString(QLatin1String(" "));
+    QVector<quint32> indexes = rawFont.glyphIndexesForString(QStringLiteral(" "));
     QVector<QPointF> advances = rawFont.advancesForGlyphIndexes(indexes);
     float spaceWidth = advances.at(0).x();
 
-    indexes = rawFont.glyphIndexesForString(QLatin1String("0"));
+    indexes = rawFont.glyphIndexesForString(QStringLiteral("0"));
     advances = rawFont.advancesForGlyphIndexes(indexes);
     float zeroWidth = advances.at(0).x();
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 8, 0)
+    indexes = rawFont.glyphIndexesForString(QStringLiteral("H"));
+    float capHeight = rawFont.boundingRect(indexes.at(0)).height();
+#else
+    float capHeight = rawFont.capHeight();
+#endif
 
     // The line spacing should always be >= (ascent + descent), but this
     // may be false in some cases due to misbehaving platform libraries.
@@ -91,6 +98,7 @@ void Font::platformInit()
     float lineGap = lineSpacing - ascent - descent;
 
     m_fontMetrics.setAscent(ascent);
+    m_fontMetrics.setCapHeight(capHeight);
     // WebKit expects the descent to be positive.
     m_fontMetrics.setDescent(qAbs(descent));
     m_fontMetrics.setLineSpacing(lineSpacing);
