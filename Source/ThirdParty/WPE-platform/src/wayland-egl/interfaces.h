@@ -25,8 +25,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef stm_interfaces_h
-#define stm_interfaces_h
+#ifndef wayland_egl_interfaces_h
+#define wayland_egl_interfaces_h
 
 #include <wpe/renderer-backend-egl.h>
 #include <wpe/view-backend.h>
@@ -35,14 +35,14 @@
 extern "C" {
 #endif
 
-extern struct wpe_renderer_backend_egl_interface stm_renderer_backend_egl_interface;
-extern struct wpe_renderer_backend_egl_target_interface stm_renderer_backend_egl_target_interface;
-extern struct wpe_renderer_backend_egl_offscreen_target_interface stm_renderer_backend_egl_offscreen_target_interface;
+extern struct wpe_renderer_backend_egl_interface wayland_egl_renderer_backend_egl_interface;
+extern struct wpe_renderer_backend_egl_target_interface wayland_egl_renderer_backend_egl_target_interface;
+extern struct wpe_renderer_backend_egl_offscreen_target_interface wayland_egl_renderer_backend_egl_offscreen_target_interface;
 
-extern struct wpe_view_backend_interface stm_view_backend_interface;
+extern struct wpe_view_backend_interface wayland_egl_view_backend_interface;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // stm_interfaces_h
+#endif // wayland_egl_interfaces_h

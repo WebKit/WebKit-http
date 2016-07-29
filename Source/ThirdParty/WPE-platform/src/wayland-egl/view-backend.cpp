@@ -25,29 +25,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <wpe/renderer-backend-egl.h>
+#include <wpe/view-backend.h>
 
 extern "C" {
 
-struct wpe_renderer_backend_egl_interface stm_renderer_backend_egl_interface = {
+struct wpe_view_backend_interface wayland_egl_view_backend_interface = {
     // create
-    []() -> void*
-    {
-        return nullptr;
-    },
-    // destroy
-    [](void* data)
-    {
-    },
-    // get_native_display
-    [](void* data) -> EGLNativeDisplayType
-    {
-    },
-};
-
-struct wpe_renderer_backend_egl_target_interface stm_renderer_backend_egl_target_interface = {
-    // create
-    [](struct wpe_renderer_backend_egl_target* target, int host_fd) -> void*
+    [](void*, struct wpe_view_backend* backend) -> void*
     {
         return nullptr;
     },
@@ -56,45 +40,13 @@ struct wpe_renderer_backend_egl_target_interface stm_renderer_backend_egl_target
     {
     },
     // initialize
-    [](void* data, void* backend_data, uint32_t width, uint32_t height)
-    {
-    },
-    // get_native_window
-    [](void* data) -> EGLNativeWindowType
-    {
-    },
-    // resize
-    [](void* data, uint32_t width, uint32_t height)
-    {
-    },
-    // frame_will_render
     [](void* data)
     {
     },
-    // frame_rendered
-    [](void* data)
+    // get_renderer_host_fd
+    [](void* data) -> int
     {
-    },
-};
-
-struct wpe_renderer_backend_egl_offscreen_target_interface stm_renderer_backend_egl_offscreen_target_interface = {
-    // create
-    []() -> void*
-    {
-        return nullptr;
-    },
-    // destroy
-    [](void* data)
-    {
-    },
-    // initialize
-    [](void* data, void* backend_data)
-    {
-    },
-    // get_native_window
-    [](void* data) -> EGLNativeWindowType
-    {
-        return nullptr;
+        return -1;
     },
 };
 
