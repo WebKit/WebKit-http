@@ -82,7 +82,7 @@ public:
     QSize viewportSize() const override;
     QWebPageAdapter* createWindow(bool /*dialog*/) override;
     QObject* handle() override { return q; }
-    void javaScriptConsoleMessage(const QString& message, int lineNumber, const QString& sourceID) override;
+    void consoleMessageReceived(MessageSource source, MessageLevel level, const QString& message, int lineNumber, const QString& sourceID) override;
     void javaScriptAlert(QWebFrameAdapter*, const QString& msg) override;
     bool javaScriptConfirm(QWebFrameAdapter*, const QString& msg) override;
     bool javaScriptPrompt(QWebFrameAdapter*, const QString& msg, const QString& defaultValue, QString* result) override;

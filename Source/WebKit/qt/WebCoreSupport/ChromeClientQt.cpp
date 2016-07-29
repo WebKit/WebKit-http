@@ -303,12 +303,44 @@ void ChromeClientQt::setResizable(bool)
     notImplemented();
 }
 
-void ChromeClientQt::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID)
+static inline QWebPageAdapter::MessageSource convertSource(MessageSource source)
+{
+    switch (source) {
+    case MessageSource::XML:                return QWebPageAdapter::XmlMessageSource;
+    case MessageSource::JS:                 return QWebPageAdapter::JSMessageSource;
+    case MessageSource::Network:            return QWebPageAdapter::NetworkMessageSource;
+    case MessageSource::ConsoleAPI:         return QWebPageAdapter::ConsoleAPIMessageSource;
+    case MessageSource::Storage:            return QWebPageAdapter::StorageMessageSource;
+    case MessageSource::AppCache:           return QWebPageAdapter::AppCacheMessageSource;
+    case MessageSource::Rendering:          return QWebPageAdapter::RenderingMessageSource;
+    case MessageSource::CSS:                return QWebPageAdapter::CSSMessageSource;
+    case MessageSource::Security:           return QWebPageAdapter::SecurityMessageSource;
+    case MessageSource::ContentBlocker:     return QWebPageAdapter::ContentBlockerMessageSource;
+    case MessageSource::Other:              return QWebPageAdapter::OtherMessageSource;
+    }
+    Q_UNREACHABLE();
+    return QWebPageAdapter::OtherMessageSource;
+}
+
+static inline QWebPageAdapter::MessageLevel convertLevel(MessageLevel level)
+{
+    switch (level) {
+    case MessageLevel::Log:         return QWebPageAdapter::LogMessageLevel;
+    case MessageLevel::Warning:     return QWebPageAdapter::WarningMessageLevel;
+    case MessageLevel::Error:       return QWebPageAdapter::ErrorMessageLevel;
+    case MessageLevel::Debug:       return QWebPageAdapter::DebugMessageLevel;
+    case MessageLevel::Info:        return QWebPageAdapter::InfoMessageLevel;
+    }
+    Q_UNREACHABLE();
+    return QWebPageAdapter::LogMessageLevel;
+}
+
+void ChromeClientQt::addMessageToConsole(MessageSource source, MessageLevel level, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID)
 {
     QString x = message;
     QString y = sourceID;
     UNUSED_PARAM(columnNumber);
-    m_webPage->javaScriptConsoleMessage(x, lineNumber, y);
+    m_webPage->consoleMessageReceived(convertSource(source), convertLevel(level), x, lineNumber, y);
 }
 
 void ChromeClientQt::chromeDestroyed()

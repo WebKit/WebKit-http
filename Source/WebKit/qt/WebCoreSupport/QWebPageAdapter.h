@@ -146,6 +146,30 @@ public:
         VisibilityStateUnloaded
     };
 
+    // Must match with values of QWebPage::MessageSource enum.
+    enum MessageSource {
+        XmlMessageSource,
+        JSMessageSource,
+        NetworkMessageSource,
+        ConsoleAPIMessageSource,
+        StorageMessageSource,
+        AppCacheMessageSource,
+        RenderingMessageSource,
+        CSSMessageSource,
+        SecurityMessageSource,
+        ContentBlockerMessageSource,
+        OtherMessageSource,
+    };
+
+    // Must match with values of QWebPage::MessageLevel enum.
+    enum MessageLevel {
+        LogMessageLevel = 1,
+        WarningMessageLevel = 2,
+        ErrorMessageLevel = 3,
+        DebugMessageLevel = 4,
+        InfoMessageLevel = 5,
+    };
+
     QWebPageAdapter();
     virtual ~QWebPageAdapter();
 
@@ -164,7 +188,7 @@ public:
     virtual QSize viewportSize() const = 0;
     virtual QWebPageAdapter* createWindow(bool /*dialog*/) = 0;
     virtual QObject* handle() = 0;
-    virtual void javaScriptConsoleMessage(const QString& message, int lineNumber, const QString& sourceID) = 0;
+    virtual void consoleMessageReceived(MessageSource, MessageLevel, const QString& message, int lineNumber, const QString& sourceID) = 0;
     virtual void javaScriptAlert(QWebFrameAdapter*, const QString& msg) = 0;
     virtual bool javaScriptConfirm(QWebFrameAdapter*, const QString& msg) = 0;
     virtual bool javaScriptPrompt(QWebFrameAdapter*, const QString& msg, const QString& defaultValue, QString* result) = 0;
