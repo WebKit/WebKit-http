@@ -83,6 +83,11 @@
 #include <gtk/gtk.h>
 #endif
 
+#if PLATFORM(QT)
+#include "QWebPageClient.h"
+#include <QWindow>
+#endif
+
 static inline HWND windowHandleForPageClient(PlatformPageClient client)
 {
 #if PLATFORM(GTK)
@@ -90,6 +95,12 @@ static inline HWND windowHandleForPageClient(PlatformPageClient client)
         return 0;
     if (GdkWindow* window = gtk_widget_get_window(client))
         return static_cast<HWND>(GDK_WINDOW_HWND(window));
+    return 0;
+#elif PLATFORM(QT)
+    if (!client)
+        return 0;
+    if (QWindow* window = client->ownerWindow())
+        return reinterpret_cast<HWND>(window->winId());
     return 0;
 #else
     return client;
@@ -271,7 +282,7 @@ static bool registerPluginView()
 
     haveRegisteredWindowClass = true;
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(QT)
     WebCore::setInstanceHandle((HINSTANCE)(GetModuleHandle(0)));
 #endif
 
@@ -316,12 +327,25 @@ static bool isWindowsMessageUserGesture(UINT message)
 
 static inline IntPoint contentsToNativeWindow(FrameView* view, const IntPoint& point)
 {
+#if PLATFORM(QT)
+    // Our web view's QWidget isn't necessarily a native window itself. Map the position
+    // all the way up to the QWidget associated with the HWND returned as NPNVnetscapeWindow.
+    PlatformPageClient client = view->hostWindow()->platformPageClient();
+    return client->mapToOwnerWindow(view->contentsToWindow(point));
+#else
     return view->contentsToWindow(point);
+#endif
 }
 
 static inline IntRect contentsToNativeWindow(FrameView* view, const IntRect& rect)
 {
+#if PLATFORM(QT)
+    // This only handles translation of the rect.
+    ASSERT(view->contentsToWindow(rect).size() == rect.size());
+    return IntRect(contentsToNativeWindow(view, rect.location()), rect.size());
+#else
     return view->contentsToWindow(rect);
+#endif
 }
 
 LRESULT
@@ -597,7 +621,7 @@ void PluginView::paint(GraphicsContext& context, const IntRect& rect)
 
     // In the GTK and Qt ports we draw in an offscreen buffer and don't want to use the window
     // coordinates.
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(QT)
     IntRect rectInWindow(rect);
     rectInWindow.intersect(frameRect());
 #else
@@ -609,7 +633,7 @@ void PluginView::paint(GraphicsContext& context, const IntRect& rect)
     // of the window and the plugin expects that the passed in DC has window coordinates.
     // In the GTK and Qt ports we always draw in an offscreen buffer and therefore need
     // to preserve the translation set in getWindowsContext.
-#if !PLATFORM(GTK)
+#if !PLATFORM(QT)
     if (context.hdc() == windowsContext.hdc()) {
         XFORM transform;
         GetWorldTransform(windowsContext.hdc(), &transform);
@@ -714,7 +738,7 @@ void PluginView::handleMouseEvent(MouseEvent* event)
     if (dispatchNPEvent(npEvent))
         event->setDefaultHandled();
 
-#if !PLATFORM(GTK)
+#if !PLATFORM(QT)
     // Currently, Widget::setCursor is always called after this function in EventHandler.cpp
     // and since we don't want that we set ignoreNextSetCursor to true here to prevent that.
     ignoreNextSetCursor = true;
@@ -766,7 +790,7 @@ void PluginView::setNPWindowRect(const IntRect& rect)
 
     // In the GTK port we draw in an offscreen buffer and don't want to use the window
     // coordinates.
-# if PLATFORM(GTK)
+# if PLATFORM(GTK) || PLATFORM(QT)
     IntPoint p = rect.location();
 # else
     IntPoint p = downcast<FrameView>(*parent()).contentsToWindow(rect.location());
@@ -940,7 +964,7 @@ bool PluginView::platformStart()
         HWND window = ::CreateWindowEx(0, kWebPluginViewClassName, 0, flags,
                                        0, 0, 0, 0, parentWindowHandle, 0, WebCore::instanceHandle(), 0);
 
-#if OS(WINDOWS) && PLATFORM(GTK)
+#if OS(WINDOWS) && (PLATFORM(GTK) || PLATFORM(QT))
         m_window = window;
 #else
         setPlatformWidget(window);

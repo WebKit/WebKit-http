@@ -831,7 +831,7 @@ PluginView::PluginView(Frame* parentFrame, const IntSize& size, PluginPackage* p
     , m_wmPrintHDC(0)
     , m_haveUpdatedPluginWidget(false)
 #endif
-#if PLATFORM(EFL)
+#if PLATFORM(QT) && OS(WINDOWS)
     , m_window(0)
 #endif
 #if defined(XP_MACOSX)
@@ -843,6 +843,9 @@ PluginView::PluginView(Frame* parentFrame, const IntSize& size, PluginPackage* p
     , m_visual(0)
     , m_colormap(0)
     , m_pluginDisplay(0)
+#endif
+#if PLATFORM(QT) && defined(MOZ_PLATFORM_MAEMO) && (MOZ_PLATFORM_MAEMO >= 5)
+    , m_renderToImage(false)
 #endif
     , m_loadManually(loadManually)
     , m_manualStream(0)

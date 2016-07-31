@@ -46,11 +46,21 @@
 #include "npruntime_internal.h"
 #endif
 
-#if OS(WINDOWS) && PLATFORM(GTK)
+#if OS(WINDOWS) && (PLATFORM(GTK) || PLATFORM(QT))
 typedef struct HWND__* HWND;
 typedef HWND PlatformPluginWidget;
 #else
 typedef PlatformWidget PlatformPluginWidget;
+#endif
+#if PLATFORM(QT)
+#if USE(TEXTURE_MAPPER)
+#include "TextureMapperPlatformLayer.h"
+#endif
+
+#include <QImage>
+QT_BEGIN_NAMESPACE
+class QPainter;
+QT_END_NAMESPACE
 #endif
 #if PLATFORM(GTK)
 typedef struct _GtkSocket GtkSocket;
@@ -244,6 +254,11 @@ namespace WebCore {
         static Window getRootWindow(Frame* parentFrame);
 #endif
 
+#if PLATFORM(QT) && ENABLE(NETSCAPE_PLUGIN_API) && defined(XP_UNIX)
+        // PluginViewQt (X11) needs a few workarounds when running under DRT
+        static void setIsRunningUnderDRT(bool flag) { s_isRunningUnderDRT = flag; }
+#endif
+
     private:
         PluginView(Frame* parentFrame, const IntSize&, PluginPackage*, HTMLPlugInElement*, const URL&, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually);
 
@@ -366,7 +381,7 @@ namespace WebCore {
         bool m_haveUpdatedPluginWidget;
 #endif
 
-#if (PLATFORM(GTK) && OS(WINDOWS)) || PLATFORM(EFL)
+#if PLATFORM(QT) && OS(WINDOWS)
         // On Mac OSX and Qt/Windows the plugin does not have its own native widget,
         // but is using the containing window as its reference for positioning/painting.
         PlatformPluginWidget m_window;
@@ -399,6 +414,15 @@ private:
 
         void initXEvent(XEvent* event);
 #endif
+
+#if PLATFORM(QT)
+#if defined(XP_UNIX) && ENABLE(NETSCAPE_PLUGIN_API)
+        static bool s_isRunningUnderDRT;
+        static void setXKeyEventSpecificFields(XEvent*, KeyboardEvent*);
+        void paintUsingXPixmap(QPainter* painter, const QRect &exposedRect);
+        QWebPageClient* platformPageClient() const;
+#endif
+#endif // PLATFORM(QT)
 
 #if PLATFORM(GTK)
         static gboolean plugRemovedCallback(GtkSocket*, PluginView*);
