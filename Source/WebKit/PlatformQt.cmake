@@ -252,8 +252,8 @@ endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
     list(APPEND WebKit_SOURCES
-        win/Plugins/npapi.cpp
         win/Plugins/PluginMainThreadScheduler.cpp
+        win/Plugins/npapi.cpp
     )
 
     if (UNIX AND NOT APPLE)
@@ -272,8 +272,8 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
     if (WIN32)
         list(APPEND WebKit_SOURCES
             win/Plugins/PluginDatabaseWin.cpp
-            win/Plugins/PluginPackageWin.cpp
             win/Plugins/PluginMessageThrottlerWin.cpp
+            win/Plugins/PluginPackageWin.cpp
             win/Plugins/PluginViewWin.cpp
         )
     endif ()

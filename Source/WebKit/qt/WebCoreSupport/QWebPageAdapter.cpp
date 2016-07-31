@@ -937,9 +937,10 @@ static void extractContentTypeFromHash(const HashSet<String, ASCIICaseInsensitiv
 
 static void extractContentTypeFromPluginVector(const Vector<PluginPackage*>& plugins, QStringList& list)
 {
-    for (auto* plugin : plugins)
+    for (auto* plugin : plugins) {
         for (auto& mimeToDescription :  plugin->mimeToDescriptions().keys())
             list << mimeToDescription;
+    }
 }
 
 QStringList QWebPageAdapter::supportedContentTypes() const
