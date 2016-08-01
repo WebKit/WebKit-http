@@ -104,6 +104,10 @@ void EGLTarget::initialize(Backend& backend, uint32_t width, uint32_t height)
     m_backend = &backend;
 
     m_surface = wl_compositor_create_surface(m_backend->display.interfaces().compositor);
+    if (!m_surface) {
+        fprintf(stderr, "EGLTarget: unable to create wayland surface\n");
+        return;
+    }
 
     if (m_backend->display.interfaces().shell) {
         m_shellSurface = wl_shell_get_shell_surface(m_backend->display.interfaces().shell, m_surface);
@@ -121,9 +125,7 @@ void EGLTarget::initialize(Backend& backend, uint32_t width, uint32_t height)
                    height);
     wl_surface_set_opaque_region(m_surface, region);
 
-    if (m_surface) {
-        m_window = wl_egl_window_create(m_surface, width, height);
-    }
+    m_window = wl_egl_window_create(m_surface, width, height);
 }
 
 EGLTarget::~EGLTarget()
