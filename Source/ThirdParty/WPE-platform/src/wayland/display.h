@@ -49,7 +49,7 @@ struct xdg_shell;
 
 typedef struct _GSource GSource;
 
-namespace BCMNexusWL {
+namespace Wayland {
 
 class Display {
 public:
@@ -132,6 +132,6 @@ private:
     GSource* m_eventSource;
 };
 
-} // namespace BCMNexusWL
+} // namespace Wayland
 
 #endif // wpe_view_backend_wayland_display_h

@@ -40,7 +40,7 @@
 #include <wpe/input.h>
 #include <wpe/view-backend.h>
 
-namespace BCMNexusWL {
+namespace Wayland {
 
 class EventSource {
 public:
@@ -579,4 +579,4 @@ void Display::unregisterInputClient(struct wl_surface* surface)
     m_seatData.inputClients.erase(it);
 }
 
-} // namespace BCMNexusWL
+} // namespace Wayland
