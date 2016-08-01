@@ -361,14 +361,10 @@ void Path::addEllipse(const FloatRect& r)
 
 void Path::addPath(const Path& path, const AffineTransform& transform)
 {
-    if (!m_path.elementCount())
-        return;
-
     if (!transform.isInvertible())
         return;
 
     QTransform qTransform(transform);
-    // FIXME: Need to check result
     m_path.addPath(qTransform.map(path.platformPath()));
 }
 
