@@ -39,7 +39,9 @@ struct wpe_view_backend;
 struct wl_compositor;
 struct wl_display;
 struct wl_keyboard;
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
 struct wl_nsc;
+#endif
 struct wl_pointer;
 struct wl_registry;
 struct wl_seat;
@@ -61,7 +63,9 @@ public:
 
     struct Interfaces {
         struct wl_compositor* compositor;
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
         struct wl_nsc* nsc;
+#endif
         struct wl_seat* seat;
         struct xdg_shell* xdg;
     };

@@ -26,7 +26,9 @@
 
 #include "display.h"
 
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
 #include "nsc-client-protocol.h"
+#endif
 #include "xdg-shell-client-protocol.h"
 #include <cassert>
 #include <cstring>
@@ -100,8 +102,10 @@ const struct wl_registry_listener g_registryListener = {
         if (!std::strcmp(interface, "wl_compositor"))
             interfaces.compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
 
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
         if (!std::strcmp(interface, "wl_nsc"))
             interfaces.nsc = static_cast<struct wl_nsc*>(wl_registry_bind(registry, name, &wl_nsc_interface, version));
+#endif
 
         if (!std::strcmp(interface, "wl_seat"))
             interfaces.seat = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 4));
@@ -524,11 +528,20 @@ Display::~Display()
         wl_compositor_destroy(m_interfaces.compositor);
     if (m_interfaces.seat)
         wl_seat_destroy(m_interfaces.seat);
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
     if (m_interfaces.nsc)
         wl_nsc_destroy(m_interfaces.nsc);
+#endif
     if (m_interfaces.xdg)
         xdg_shell_destroy(m_interfaces.xdg);
-    m_interfaces = { nullptr, nullptr, nullptr, nullptr };
+    m_interfaces = {
+        nullptr,
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
+        nullptr,
+#endif
+        nullptr,
+        nullptr,
+    };
 
     if (m_registry)
         wl_registry_destroy(m_registry);
