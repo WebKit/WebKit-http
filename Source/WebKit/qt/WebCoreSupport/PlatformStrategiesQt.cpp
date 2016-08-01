@@ -177,8 +177,9 @@ void PlatformStrategiesQt::getPluginInfo(const WebCore::Page* page, Vector<WebCo
 
 }
 
-void PlatformStrategiesQt::getWebVisiblePluginInfo(const Page*, Vector<PluginInfo>&)
+void PlatformStrategiesQt::getWebVisiblePluginInfo(const Page* page, Vector<PluginInfo>& outPlugins)
 {
+    getPluginInfo(page, outPlugins);
 }
 
 BlobRegistry* PlatformStrategiesQt::createBlobRegistry()
