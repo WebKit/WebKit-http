@@ -45,7 +45,6 @@
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
 #include "HostWindow.h"
-#include "IFrameShimSupport.h"
 #include "Image.h"
 #include "JSDOMBinding.h"
 #include "JSDOMWindowBase.h"
@@ -129,8 +128,8 @@ void PluginView::updatePluginWidget()
     if (!parent())
         return;
 
-    ASSERT(parent()->isFrameView());
-    FrameView* frameView = toFrameView(parent());
+    ASSERT(is<FrameView>(parent()));
+    FrameView* frameView = downcast<FrameView>(parent());
 
     IntRect oldWindowRect = m_windowRect;
     IntRect oldClipRect = m_clipRect;
@@ -219,14 +218,14 @@ void PluginView::paintUsingXPixmap(QPainter* painter, const QRect &exposedRect)
     XDestroyImage(xImage);
 }
 
-void PluginView::paint(GraphicsContext* context, const IntRect& rect)
+void PluginView::paint(GraphicsContext& context, const IntRect& rect)
 {
     if (!m_isStarted) {
         paintMissingPluginIcon(context, rect);
         return;
     }
 
-    if (context->paintingDisabled())
+    if (context.paintingDisabled())
         return;
 
     setNPWindowIfNeeded();
@@ -237,7 +236,7 @@ void PluginView::paint(GraphicsContext* context, const IntRect& rect)
     if (!m_drawable)
         return;
 
-    QPainter* painter = context->platformContext();
+    QPainter* painter = context.platformContext();
     IntRect exposedRect(rect);
     exposedRect.intersect(frameRect());
     exposedRect.move(-frameRect().x(), -frameRect().y());
@@ -673,7 +672,7 @@ void PluginView::forceRedraw()
     invalidate();
 }
 
-static Display *getPluginDisplay()
+static Display* getPluginDisplayQt()
 {
     // The plugin toolkit might run using a different X connection. At the moment, we only
     // support gdk based plugins (like flash) that use a different X connection.
@@ -749,7 +748,7 @@ bool PluginView::platformStart()
     if (m_isWindowed)
         return false;
     setPlatformWidget(0);
-    m_pluginDisplay = getPluginDisplay();
+    m_pluginDisplay = getPluginDisplayQt();
 
     // If the width and the height are not zero we show the PluginView.
     if (!frameRect().isEmpty())
@@ -794,6 +793,26 @@ void PluginView::platformDestroy()
 
     if (m_colormap)
         XFreeColormap(x11Display(), m_colormap);
+}
+
+// Copied from PluginViewWin.cpp
+float PluginView::deviceScaleFactor() const
+{
+    float scaleFactor = 1.0f;
+
+    if (!parent() || !parent()->isFrameView())
+        return scaleFactor;
+
+    // For windowless plugins, the device scale factor will be applied as for other page elements.
+    if (!m_isWindowed)
+        return scaleFactor;
+
+    FrameView& frameView = downcast<FrameView>(*parent());
+
+    if (frameView.frame().document())
+        scaleFactor = frameView.frame().document()->deviceScaleFactor();
+
+    return scaleFactor;
 }
 
 } // namespace WebCore

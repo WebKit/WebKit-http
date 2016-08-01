@@ -204,6 +204,7 @@ list(APPEND WebKit_SOURCES
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
     ${Qt5Network_INCLUDE_DIRS}
     ${Qt5Positioning_INCLUDE_DIRS}
 )
@@ -214,6 +215,9 @@ list(APPEND WebKit_LIBRARIES
     PRIVATE
         ${ICU_LIBRARIES}
         ${Qt5Positioning_LIBRARIES}
+        ${X11_X11_LIB}
+        ${X11_Xcomposite_LIB}
+        ${X11_Xrender_LIB}
     PUBLIC
         ${Qt5Core_LIBRARIES}
         ${Qt5Gui_LIBRARIES}

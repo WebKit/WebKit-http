@@ -80,10 +80,10 @@ bool PluginPackage::fetchInfo()
 
 void PluginPackage::setMIMEDescription(const String& mimeDescription)
 {
-    m_fullMIMEDescription = mimeDescription.lower();
+    m_fullMIMEDescription = mimeDescription.convertToASCIILowercase();
 
     Vector<String> types;
-    mimeDescription.lower().split(UChar(';'), false, types);
+    mimeDescription.convertToASCIILowercase().split(UChar(';'), false, types);
     for (unsigned i = 0; i < types.size(); ++i) {
         Vector<String> mime;
         types[i].split(UChar(':'), true, mime);
