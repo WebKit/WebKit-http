@@ -30,6 +30,7 @@
 #include "nsc-client-protocol.h"
 #endif
 #include "xdg-shell-client-protocol.h"
+#include "wayland-client-protocol.h"
 #include <cassert>
 #include <cstring>
 #include <glib.h>
@@ -112,6 +113,9 @@ const struct wl_registry_listener g_registryListener = {
 
         if (!std::strcmp(interface, "xdg_shell"))
             interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
+
+        if (!std::strcmp(interface, "wl_shell"))
+            interfaces.shell = static_cast<struct wl_shell*>(wl_registry_bind(registry, name, &wl_shell_interface, 1));
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
@@ -534,11 +538,14 @@ Display::~Display()
 #endif
     if (m_interfaces.xdg)
         xdg_shell_destroy(m_interfaces.xdg);
+    if (m_interfaces.shell)
+        wl_shell_destroy(m_interfaces.shell);
     m_interfaces = {
         nullptr,
 #ifdef BACKEND_BCM_NEXUS_WAYLAND
         nullptr,
 #endif
+        nullptr,
         nullptr,
         nullptr,
     };
