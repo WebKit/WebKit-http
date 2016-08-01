@@ -30,6 +30,7 @@
 #include <wtf/Vector.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/text/WTFString.h>
+#include "Proxy.h"
 
 typedef struct _SoupCache SoupCache;
 typedef struct _SoupCookieJar SoupCookieJar;
@@ -66,6 +67,8 @@ public:
     SSLPolicy sslPolicy() const;
 
     void setupHTTPProxyFromEnvironment();
+
+    void setProxies(const Vector<WebCore::Proxy>&);
 
     void setAcceptLanguages(const Vector<String>&);
 

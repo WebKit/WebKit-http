@@ -30,6 +30,7 @@ messages -> NetworkProcess LegacyReceiver {
 #if USE(SOUP)
     SetIgnoreTLSErrors(bool ignoreTLSErrors)
     UserPreferredLanguagesChanged(Vector<String> languages)
+    SetProxies(WebCore::SessionID sessionID, Vector<WebCore::Proxy> proxies);
 #endif
 
     ClearCachedCredentials()

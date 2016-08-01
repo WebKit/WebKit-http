@@ -158,6 +158,7 @@ public:
         WebsiteDataRecord,
         WebsiteDataStore,
         WindowFeatures,
+        WebProxy,
 
 #if ENABLE(MEDIA_SESSION)
         MediaSessionFocusManager,

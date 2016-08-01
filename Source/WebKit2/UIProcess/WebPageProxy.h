@@ -75,6 +75,7 @@
 #include <WebCore/TextGranularity.h>
 #include <WebCore/ViewState.h>
 #include <WebCore/VisibleSelection.h>
+#include <WebCore/Proxy.h>
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -634,6 +635,8 @@ public:
     void setCustomUserAgent(const String&);
     const String& customUserAgent() const { return m_customUserAgent; }
     static String standardUserAgent(const String& applicationName = String());
+
+    void setProxies(const Vector<WebCore::Proxy>& proxies);
 
     bool supportsTextEncoding() const;
     void setCustomTextEncodingName(const String&);
