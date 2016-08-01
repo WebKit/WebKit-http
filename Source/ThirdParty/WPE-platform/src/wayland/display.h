@@ -39,17 +39,20 @@ struct wpe_view_backend;
 struct wl_compositor;
 struct wl_display;
 struct wl_keyboard;
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
 struct wl_nsc;
+#endif
 struct wl_pointer;
 struct wl_registry;
 struct wl_seat;
 struct wl_surface;
 struct wl_touch;
 struct xdg_shell;
+struct wl_shell;
 
 typedef struct _GSource GSource;
 
-namespace BCMNexusWL {
+namespace Wayland {
 
 class Display {
 public:
@@ -61,9 +64,12 @@ public:
 
     struct Interfaces {
         struct wl_compositor* compositor;
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
         struct wl_nsc* nsc;
+#endif
         struct wl_seat* seat;
         struct xdg_shell* xdg;
+        struct wl_shell* shell;
     };
     const Interfaces& interfaces() const { return m_interfaces; }
 
@@ -132,6 +138,6 @@ private:
     GSource* m_eventSource;
 };
 
-} // namespace BCMNexusWL
+} // namespace Wayland
 
 #endif // wpe_view_backend_wayland_display_h

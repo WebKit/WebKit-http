@@ -68,7 +68,7 @@ public:
     };
 
 private:
-    Display& m_display;
+    Wayland::Display& m_display;
     struct wpe_view_backend* m_backend;
 
     struct wl_surface* m_surface;
@@ -147,7 +147,7 @@ static const struct wl_nsc_listener g_nscListener = {
 };
 
 ViewBackend::ViewBackend(struct wpe_view_backend* backend)
-    : m_display(Display::singleton())
+    : m_display(Wayland::Display::singleton())
     , m_backend(backend)
 {
     m_ipcHost.initialize(*this);

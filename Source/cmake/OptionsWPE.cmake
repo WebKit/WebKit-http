@@ -90,11 +90,6 @@ if (USE_WPE_BACKEND_BCM_RPI)
     find_package(BCMHost REQUIRED)
 endif ()
 
-if (USE_WPE_BACKEND_STM)
-    find_package(Wayland REQUIRED)
-    find_package(WaylandEGL REQUIRED)
-endif(USE_WPE_BACKEND_STM)
-
 if (USE_WPE_BACKEND_WESTEROS)
     find_package(Wayland REQUIRED)
     find_package(WaylandEGL REQUIRED)

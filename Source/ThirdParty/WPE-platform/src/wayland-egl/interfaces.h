@@ -25,77 +25,24 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef wayland_egl_interfaces_h
+#define wayland_egl_interfaces_h
+
 #include <wpe/renderer-backend-egl.h>
+#include <wpe/view-backend.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
-struct wpe_renderer_backend_egl_interface stm_renderer_backend_egl_interface = {
-    // create
-    []() -> void*
-    {
-        return nullptr;
-    },
-    // destroy
-    [](void* data)
-    {
-    },
-    // get_native_display
-    [](void* data) -> EGLNativeDisplayType
-    {
-    },
-};
+extern struct wpe_renderer_backend_egl_interface wayland_egl_renderer_backend_egl_interface;
+extern struct wpe_renderer_backend_egl_target_interface wayland_egl_renderer_backend_egl_target_interface;
+extern struct wpe_renderer_backend_egl_offscreen_target_interface wayland_egl_renderer_backend_egl_offscreen_target_interface;
 
-struct wpe_renderer_backend_egl_target_interface stm_renderer_backend_egl_target_interface = {
-    // create
-    [](struct wpe_renderer_backend_egl_target* target, int host_fd) -> void*
-    {
-        return nullptr;
-    },
-    // destroy
-    [](void* data)
-    {
-    },
-    // initialize
-    [](void* data, void* backend_data, uint32_t width, uint32_t height)
-    {
-    },
-    // get_native_window
-    [](void* data) -> EGLNativeWindowType
-    {
-    },
-    // resize
-    [](void* data, uint32_t width, uint32_t height)
-    {
-    },
-    // frame_will_render
-    [](void* data)
-    {
-    },
-    // frame_rendered
-    [](void* data)
-    {
-    },
-};
+extern struct wpe_view_backend_interface wayland_egl_view_backend_interface;
 
-struct wpe_renderer_backend_egl_offscreen_target_interface stm_renderer_backend_egl_offscreen_target_interface = {
-    // create
-    []() -> void*
-    {
-        return nullptr;
-    },
-    // destroy
-    [](void* data)
-    {
-    },
-    // initialize
-    [](void* data, void* backend_data)
-    {
-    },
-    // get_native_window
-    [](void* data) -> EGLNativeWindowType
-    {
-        return nullptr;
-    },
-};
-
+#ifdef __cplusplus
 }
+#endif
+
+#endif // wayland_egl_interfaces_h
