@@ -1,3 +1,210 @@
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the Windows debug build.
+        
+        WebResourceLoadScheduler's logging was a holdover from it being in WebCore,
+        and prior to r203749 WebKit was actually using a WebCore log channel.
+        
+        For some reason this doesn't build on Windows debug, so just remove
+        this logging for now.
+
+        * Misc/WebKitLogging.h:
+
+2016-07-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iPhone] Playing a video on tudou.com plays only sound, no video
+        https://bugs.webkit.org/show_bug.cgi?id=160178
+        <rdar://problem/27535468>
+
+        Reviewed by Eric Carlson and Dan Bernstein.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences inlineMediaPlaybackRequiresPlaysInlineAttribute]):
+        (-[WebPreferences setInlineMediaPlaybackRequiresPlaysInlineAttribute:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow LOG macros to be used outside the namespace, and other logging cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=160216
+
+        Reviewed by Anders Carlsson.
+
+        Fix some issues with the LOG macros.
+        
+        First, they were not usable outside the WebKit namespace in WebKit2 code. Fix by moving
+        its log channels outside of the namespace (they are protected by a unique prefix anyway).
+        
+        Second, allow LOG_WITH_STREAM to be used in WebKit2 by moving that and a helper macro
+        into LogMacros.h, which is exported from WebCore as a private header.
+        
+        Third, split the Logging.h header into two. Logging.h remains for framework-internal
+        log channels and log macros. Add LogInitialization.h which is external, and used to
+        initialize the channels.
+        
+        Finally unify "initializeLogChannels" and "initializeLoggingChannels" terminology everywhere.
+
+        * Misc/WebKitLogging.h:
+        * Misc/WebKitLogging.m:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2016-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove support for deprecated SPI inlineMediaPlaybackRequiresPlaysInlineAttribute
+        https://bugs.webkit.org/show_bug.cgi?id=160066
+
+        Reviewed by Dean Jackson.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Deleted.
+        (-[WebPreferences inlineMediaPlaybackRequiresPlaysInlineAttribute]): Deleted.
+        (-[WebPreferences setInlineMediaPlaybackRequiresPlaysInlineAttribute:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Deleted.
+
+2016-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iPhone] Playing a video on tudou.com plays only sound, no video
+        https://bugs.webkit.org/show_bug.cgi?id=159967
+        <rdar://problem/26964090>
+
+        Reviewed by Jon Lee, Jeremy Jones, and Anders Carlsson.
+
+        Add the two preferences to WebPreferences.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences allowsInlineMediaPlaybackWithPlaysInlineAttribute]):
+        (-[WebPreferences setAllowsInlineMediaPlaybackWithPlaysInlineAttribute:]):
+        (-[WebPreferences allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute]):
+        (-[WebPreferences setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-07-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203471.
+        https://bugs.webkit.org/show_bug.cgi?id=160003
+
+        many iOS-simulator tests are failing (Requested by litherum on
+        #webkit).
+
+        Reverted changeset:
+
+        "[iPhone] Playing a video on tudou.com plays only sound, no
+        video"
+        https://bugs.webkit.org/show_bug.cgi?id=159967
+        http://trac.webkit.org/changeset/203471
+
+2016-07-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iPhone] Playing a video on tudou.com plays only sound, no video
+        https://bugs.webkit.org/show_bug.cgi?id=159967
+        <rdar://problem/26964090>
+
+        Reviewed by Jon Lee.
+
+        Add the two preferences to WebPreferences.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences allowsInlineMediaPlaybackWithPlaysInlineAttribute]):
+        (-[WebPreferences setAllowsInlineMediaPlaybackWithPlaysInlineAttribute:]):
+        (-[WebPreferences allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute]):
+        (-[WebPreferences setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-07-19  Andy Estes  <aestes@apple.com>
+
+        Move WebKitErrorFrameLoadBlockedByContentFilter from WebKitErrors.h to WebKitErrorsPrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=159956
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebKitErrors.h: Moved definition of WebKitErrorFrameLoadBlockedByContentFilter from here ...
+        * Misc/WebKitErrorsPrivate.h: to here.
+
+2016-07-18  Anders Carlsson  <andersca@apple.com>
+
+        WebKit nightly fails to build on macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=159902
+        rdar://problem/27365672
+
+        Reviewed by Tim Horton.
+
+        * icu/unicode/ucurr.h: Added.
+        Add ucurr.h from ICU.
+
+2016-07-17  Sam Weinig  <sam@webkit.org>
+
+        [WebKit API] Add SPI to track multiple navigations caused by a single user gesture
+        <rdar://problem/26554137>
+        https://bugs.webkit.org/show_bug.cgi?id=159856
+
+        Reviewed by Dan Bernstein.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::evaluate):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView sendEvent:isDrawRect:]):
+        Update for new UserGestureIndicator interface.
+
+2016-07-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename fastGetAttribute to attributeWithoutSynchronization
+        https://bugs.webkit.org/show_bug.cgi?id=159852
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (matchLabelsAgainstElement):
+
+2016-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Use fastGetAttribute() / setAttributeWithoutSynchronization() when possible
+        https://bugs.webkit.org/show_bug.cgi?id=159793
+
+        Reviewed by Ryosuke Niwa.
+
+        Use fastGetAttribute() / setAttributeWithoutSynchronization() when possible, for performance.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (matchLabelsAgainstElement):
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=159774
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebSocketProvider.h: Removed.
+        * Misc/WebSocketProvider.mm: Removed.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-07-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(WEB_SOCKETS) build after r202930
+        https://bugs.webkit.org/show_bug.cgi?id=159768
+
+        Reviewed by Alex Christensen.
+
+        * Misc/WebSocketProvider.h:
+
 2016-07-13  Beth Dakin  <bdakin@apple.com>
 
         Add more candidate tests

@@ -176,7 +176,7 @@ public:
         SourceSize(MediaQueryExpression&&, Ref<CSSValue>&&);
     };
     Vector<SourceSize> parseSizesAttribute(StringView);
-    SourceSize sourceSize(MediaQueryExpression&&, CSSParserValue&);
+    Optional<SourceSize> sourceSize(MediaQueryExpression&&, CSSParserValue&);
 
     bool parseFillImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
@@ -235,15 +235,15 @@ public:
     bool isCSSGridLayoutEnabled() const;
     RefPtr<CSSValue> parseGridPosition();
     bool parseGridItemPositionShorthand(CSSPropertyID, bool important);
-    enum TrackListType { AllowRepeat, DisallowRepeat };
-    RefPtr<CSSValue> parseGridTemplateColumns(TrackListType = AllowRepeat);
+    enum TrackListType { GridTemplate, GridTemplateNoRepeat, GridAuto };
+    RefPtr<CSSValue> parseGridTemplateColumns(TrackListType = GridTemplate);
     bool parseGridTemplateRowsAndAreasAndColumns(bool important);
     bool parseGridTemplateShorthand(bool important);
     bool parseGridShorthand(bool important);
     bool parseGridAreaShorthand(bool important);
     bool parseGridGapShorthand(bool important);
     bool parseSingleGridAreaLonghand(RefPtr<CSSValue>&);
-    RefPtr<CSSValue> parseGridTrackList(TrackListType = AllowRepeat);
+    RefPtr<CSSValue> parseGridTrackList(TrackListType);
     bool parseGridTrackRepeatFunction(CSSValueList&, bool& isAutoRepeat, bool& allTracksAreFixedSized);
     RefPtr<CSSValue> parseGridTrackSize(CSSParserValueList& inputList);
     RefPtr<CSSPrimitiveValue> parseGridBreadth(CSSParserValue&);

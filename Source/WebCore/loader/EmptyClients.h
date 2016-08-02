@@ -350,7 +350,7 @@ public:
     bool canShowMIMEType(const String&) const override { return false; }
     bool canShowMIMETypeAsHTML(const String&) const override { return false; }
     bool representationExistsForURLScheme(const String&) const override { return false; }
-    String generatedMIMETypeForURLScheme(const String&) const override { return ""; }
+    String generatedMIMETypeForURLScheme(const String&) const override { return emptyString(); }
 
     void frameLoadCompleted() override { }
     void restoreViewState() override { }
@@ -362,7 +362,7 @@ public:
     void updateCachedDocumentLoader(DocumentLoader&) override { }
     void setTitle(const StringWithDirection&, const URL&) override { }
 
-    String userAgent(const URL&) override { return ""; }
+    String userAgent(const URL&) override { return emptyString(); }
 
     void savePlatformDataToCachedFrame(CachedFrame*) override { }
     void transitionToCommittedFromCachedFrame(CachedFrame*) override { }
@@ -644,13 +644,6 @@ class EmptyDiagnosticLoggingClient final : public DiagnosticLoggingClient {
     void logDiagnosticMessage(const String&, const String&, ShouldSample) override { }
     void logDiagnosticMessageWithResult(const String&, const String&, DiagnosticLoggingResultType, ShouldSample) override { }
     void logDiagnosticMessageWithValue(const String&, const String&, const String&, ShouldSample) override { }
-};
-
-class EmptySocketProvider final : public SocketProvider {
-public:
-    virtual ~EmptySocketProvider() { }
-    static Ref<EmptySocketProvider> create() { return adoptRef(*new EmptySocketProvider); }
-    RefPtr<ThreadableWebSocketChannel> createWebSocketChannel(ScriptExecutionContext&, WebSocketChannelClient&) override;
 };
 
 void fillWithEmptyClients(PageConfiguration&);

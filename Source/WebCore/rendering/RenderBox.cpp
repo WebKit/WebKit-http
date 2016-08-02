@@ -28,6 +28,7 @@
 #include "CSSFontSelector.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ControlStates.h"
 #include "Document.h"
 #include "EventHandler.h"
 #include "FloatQuad.h"
@@ -109,6 +110,25 @@ static OverrideSizeMap* gExtraBlockOffsetMap = nullptr;
 static const int autoscrollBeltSize = 20;
 static const unsigned backgroundObscurationTestMaxDepth = 4;
 
+using ControlStatesRendererMap = HashMap<const RenderObject*, std::unique_ptr<ControlStates>>;
+static ControlStatesRendererMap& controlStatesRendererMap()
+{
+    static NeverDestroyed<ControlStatesRendererMap> map;
+    return map;
+}
+
+static ControlStates* controlStatesForRenderer(const RenderBox& renderer)
+{
+    return controlStatesRendererMap().ensure(&renderer, [] {
+        return std::make_unique<ControlStates>();
+    }).iterator->value.get();
+}
+
+static void removeControlStatesForRenderer(const RenderBox& renderer)
+{
+    controlStatesRendererMap().remove(&renderer);
+}
+
 bool RenderBox::s_hadOverflowClip = false;
 
 static bool skipBodyBackground(const RenderBox* bodyElementRenderer)
@@ -158,8 +178,7 @@ RenderBox::~RenderBox()
 #endif
 
     view().unscheduleLazyRepaint(*this);
-    if (hasControlStatesForRenderer(this))
-        removeControlStatesForRenderer(this);
+    removeControlStatesForRenderer(*this);
 }
 
 RenderRegion* RenderBox::clampToStartAndEndRegions(RenderRegion* region) const
@@ -401,6 +420,8 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
                 rootStyleChanged = true;
             }
             setNeedsLayoutAndPrefWidthsRecalc();
+
+            view().frameView().topContentDirectionDidChange();
         }
 
         if (viewStyle.writingMode() != newStyle.writingMode() && (isDocElementRenderer || !documentElementRenderer->style().hasExplicitlySetWritingMode())) {
@@ -1349,15 +1370,9 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
 
     // If we have a native theme appearance, paint that before painting our background.
     // The theme will tell us whether or not we should also paint the CSS background.
-    ControlStates* controlStates = nullptr;
     bool borderOrBackgroundPaintingIsNeeded = true;
     if (style().hasAppearance()) {
-        if (hasControlStatesForRenderer(this))
-            controlStates = controlStatesForRenderer(this);
-        else {
-            controlStates = new ControlStates();
-            addControlStatesForRenderer(this, controlStates);
-        }
+        ControlStates* controlStates = controlStatesForRenderer(*this);
         borderOrBackgroundPaintingIsNeeded = theme().paint(*this, *controlStates, paintInfo, paintRect);
         if (controlStates->needsRepaint())
             view().scheduleLazyRepaint(*this);
@@ -2408,19 +2423,20 @@ void RenderBox::computeLogicalWidthInRegion(LogicalExtentComputedValues& compute
         return;
     }
 
+    LayoutUnit containerWidthInInlineDirection = containerLogicalWidth;
+    if (hasPerpendicularContainingBlock)
+        containerWidthInInlineDirection = perpendicularContainingBlockLogicalHeight();
+
     // Width calculations
     if (treatAsReplaced) {
         computedValues.m_extent = logicalWidthLength.value() + borderAndPaddingLogicalWidth();
 #if ENABLE(CSS_GRID_LAYOUT)
-    } else if (parent()->isRenderGrid() && style().logicalWidth().isAuto() && style().logicalMinWidth().isAuto() && style().overflowX() == OVISIBLE && containerLogicalWidth < minPreferredLogicalWidth()) {
+    } else if (parent()->isRenderGrid() && style().logicalWidth().isAuto() && style().logicalMinWidth().isAuto() && style().overflowX() == OVISIBLE && containerWidthInInlineDirection < minPreferredLogicalWidth()) {
         // TODO (lajava) Move this logic to the LayoutGrid class.
         // Implied minimum size of Grid items.
-        computedValues.m_extent = constrainLogicalWidthInRegionByMinMax(minPreferredLogicalWidth(), containerLogicalWidth, cb);
+        computedValues.m_extent = constrainLogicalWidthInRegionByMinMax(minPreferredLogicalWidth(), containerWidthInInlineDirection, cb);
 #endif
     } else {
-        LayoutUnit containerWidthInInlineDirection = containerLogicalWidth;
-        if (hasPerpendicularContainingBlock)
-            containerWidthInInlineDirection = perpendicularContainingBlockLogicalHeight();
         LayoutUnit preferredWidth = computeLogicalWidthInRegionUsing(MainOrPreferredSize, styleToUse.logicalWidth(), containerWidthInInlineDirection, cb, region);
         computedValues.m_extent = constrainLogicalWidthInRegionByMinMax(preferredWidth, containerWidthInInlineDirection, cb, region);
     }
@@ -5114,7 +5130,7 @@ RenderObject* RenderBox::splitAnonymousBoxesAroundChild(RenderObject* beforeChil
 
             // We have to split the parent box into two boxes and move children
             // from |beforeChild| to end into the new post box.
-            RenderBox* postBox = boxToSplit.createAnonymousBoxWithSameTypeAs(this);
+            auto* postBox = boxToSplit.createAnonymousBoxWithSameTypeAs(*this).release();
             postBox->setChildrenInline(boxToSplit.childrenInline());
             RenderBox* parentBox = downcast<RenderBox>(boxToSplit.parent());
             // We need to invalidate the |parentBox| before inserting the new node

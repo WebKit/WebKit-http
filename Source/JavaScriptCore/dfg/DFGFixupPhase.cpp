@@ -590,6 +590,14 @@ private:
                 fixEdge<ObjectUse>(node->child2());
                 break;
             }
+            if (node->child1()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child1());
+                break;
+            }
+            if (node->child2()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateMisc()) {
                 fixEdge<MiscUse>(node->child1());
                 break;
@@ -620,7 +628,7 @@ private:
             }
             break;
         }
-
+            
         case StringFromCharCode:
             if (node->child1()->shouldSpeculateInt32())
                 fixEdge<Int32Use>(node->child1());
@@ -1535,12 +1543,12 @@ private:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case NotifyWrite:
-        case VarInjectionWatchpoint:
         case Call:
         case CheckTypeInfoFlags:
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -1589,6 +1597,7 @@ private:
         case PutByIdWithThis:
         case PutByValWithThis:
         case GetByValWithThis:
+        case CompareEqPtr:
             break;
             
             break;

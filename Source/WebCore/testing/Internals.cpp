@@ -88,6 +88,7 @@
 #include "MediaPlayer.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
+#include "MemoryPressureHandler.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
@@ -374,6 +375,9 @@ void Internals::resetToConsistentState(Page& page)
         page.setTopContentInset(0);
         mainFrameView->setUseFixedLayout(false);
         mainFrameView->setFixedLayoutSize(IntSize());
+#if USE(COORDINATED_GRAPHICS)
+        mainFrameView->setFixedVisibleContentRect(IntRect());
+#endif
     }
 
     WebCore::overrideUserPreferredLanguages(Vector<String>());
@@ -782,10 +786,10 @@ bool Internals::hasPausedImageAnimations(Element& element)
     return element.renderer() && element.renderer()->hasPausedImageAnimations();
 }
 
-RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Node& node) const
+RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Element& element) const
 {
     bool allowVisitedStyle = true;
-    return CSSComputedStyleDeclaration::create(&node, allowVisitedStyle);
+    return CSSComputedStyleDeclaration::create(element, allowVisitedStyle);
 }
 
 Node* Internals::ensureShadowRoot(Element& host, ExceptionCode& ec)
@@ -1455,7 +1459,7 @@ RefPtr<NodeList> Internals::nodesFromRect(Document& document, int centerX, int c
             matches.uncheckedAppend(*node);
     }
 
-    return StaticNodeList::adopt(matches);
+    return StaticNodeList::create(WTFMove(matches));
 }
 
 class GetCallerCodeBlockFunctor {
@@ -2029,6 +2033,21 @@ void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
         return;
     }
     document->cachedResourceLoader().garbageCollectDocumentResources();
+}
+
+bool Internals::isUnderMemoryPressure()
+{
+    return MemoryPressureHandler::singleton().isUnderMemoryPressure();
+}
+
+void Internals::beginSimulatedMemoryPressure()
+{
+    MemoryPressureHandler::singleton().beginSimulatedMemoryPressure();
+}
+
+void Internals::endSimulatedMemoryPressure()
+{
+    MemoryPressureHandler::singleton().endSimulatedMemoryPressure();
 }
 
 void Internals::insertAuthorCSS(const String& css, ExceptionCode& ec) const
@@ -2755,6 +2774,8 @@ void Internals::beginMediaSessionInterruption(const String& interruptionString, 
         interruption = PlatformMediaSession::SystemSleep;
     else if (equalLettersIgnoringASCIICase(interruptionString, "enteringbackground"))
         interruption = PlatformMediaSession::EnteringBackground;
+    else if (equalLettersIgnoringASCIICase(interruptionString, "suspendedunderlock"))
+        interruption = PlatformMediaSession::SuspendedUnderLock;
     else {
         ec = INVALID_ACCESS_ERR;
         return;

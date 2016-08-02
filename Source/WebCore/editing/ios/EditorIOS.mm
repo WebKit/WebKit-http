@@ -26,9 +26,10 @@
 #include "config.h"
 #include "Editor.h"
 
-#include "CachedImage.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPrimitiveValueMappings.h"
+#include "CachedImage.h"
+#include "CachedResourceLoader.h"
 #include "DOMRangeInternal.h"
 #include "DataTransfer.h"
 #include "DocumentFragment.h"
@@ -166,7 +167,7 @@ void Editor::setTextAlignmentForChangedBaseWritingDirection(WritingDirection dir
             || downcast<HTMLInputElement>(*focusedElement).isSearchField())))) {
         if (direction == NaturalWritingDirection)
             return;
-        downcast<HTMLElement>(*focusedElement).setAttribute(alignAttr, newValue);
+        downcast<HTMLElement>(*focusedElement).setAttributeWithoutSynchronization(alignAttr, newValue);
         m_frame.document()->updateStyleIfNeeded();
         return;
     }
@@ -490,7 +491,7 @@ bool Editor::WebContentReader::readURL(const URL& url, const String&)
         }
     } else {
         auto anchor = frame.document()->createElement(HTMLNames::aTag, false);
-        anchor->setAttribute(HTMLNames::hrefAttr, url.string());
+        anchor->setAttributeWithoutSynchronization(HTMLNames::hrefAttr, url.string());
         anchor->appendChild(frame.document()->createTextNode([[(NSURL *)url absoluteString] precomposedStringWithCanonicalMapping]));
 
         auto newFragment = frame.document()->createDocumentFragment();
@@ -549,15 +550,21 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, Ma
 
 RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedString *string)
 {
-    if (!m_frame.page() || !m_frame.document() || !m_frame.document()->isHTMLDocument())
+    if (!m_frame.page() || !m_frame.document())
         return nullptr;
 
-    if (!string)
+    auto& document = *m_frame.document();
+    if (!document.isHTMLDocument() || !string)
         return nullptr;
 
     bool wasDeferringCallbacks = m_frame.page()->defersLoading();
     if (!wasDeferringCallbacks)
         m_frame.page()->setDefersLoading(true);
+
+    auto& cachedResourceLoader = document.cachedResourceLoader();
+    bool wasImagesEnabled = cachedResourceLoader.imagesEnabled();
+    if (wasImagesEnabled)
+        cachedResourceLoader.setImagesEnabled(false);
 
     Vector<RefPtr<ArchiveResource>> resources;
     RefPtr<DocumentFragment> fragment = client()->documentFragmentFromAttributedString(string, resources);
@@ -569,6 +576,8 @@ RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedStrin
         }
     }
 
+    if (wasImagesEnabled)
+        cachedResourceLoader.setImagesEnabled(true);
     if (!wasDeferringCallbacks)
         m_frame.page()->setDefersLoading(false);
     

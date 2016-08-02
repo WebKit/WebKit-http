@@ -1544,7 +1544,7 @@ CSSParser::SourceSize::SourceSize(MediaQueryExpression&& expression, Ref<CSSValu
 {
 }
 
-CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
+Optional<CSSParser::SourceSize> CSSParser::sourceSize(MediaQueryExpression&& expression, CSSParserValue& parserValue)
 {
     RefPtr<CSSValue> value;
     if (isCalculation(parserValue)) {
@@ -1552,12 +1552,11 @@ CSSParser::SourceSize CSSParser::sourceSize(MediaQueryExpression&& expression, C
         if (args && args->size())
             value = CSSCalcValue::create(parserValue.function->name, *args, CalculationRangeNonNegative);
     }
-    if (!value) {
+    if (!value)
         value = parserValue.createCSSValue();
-        if (!value)
-            value = CSSPrimitiveValue::create(0, CSSPrimitiveValue::CSS_UNKNOWN);
-    }
     destroy(parserValue);
+    if (!value)
+        return Nullopt;
     // FIXME: Calling the constructor explicitly here to work around an MSVC bug.
     // For other compilers, we did not need to define the constructors and we could use aggregate initialization syntax.
     return SourceSize(WTFMove(expression), value.releaseNonNull());
@@ -1604,6 +1603,23 @@ Ref<ImmutableStyleProperties> CSSParser::createStyleProperties()
         results.remove(0, unusedEntries);
 
     return ImmutableStyleProperties::create(results.data(), results.size(), m_context.mode);
+}
+
+void CSSParser::addPropertyWithPrefixingVariant(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
+{
+    addProperty(propId, value.copyRef(), important, implicit);
+
+    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propId);
+    if (prefixingVariant == propId)
+        return;
+
+    if (m_currentShorthand) {
+        // We can't use ShorthandScope here as we can already be inside one (e.g we are parsing CSSTransition).
+        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
+        addProperty(prefixingVariant, WTFMove(value), important, implicit);
+        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
+    } else
+        addProperty(prefixingVariant, WTFMove(value), important, implicit);
 }
 
 void CSSParser::addProperty(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
@@ -1879,10 +1895,12 @@ RefPtr<CSSValue> CSSParser::parseVariableDependentValue(CSSPropertyID propID, co
     return nullptr;
 }
 
+#if ENABLE(CSS_IMAGE_SET)
 static bool isImageSetFunctionValue(const CSSParserValue& value)
 {
     return value.unit == CSSParserValue::Function && (equalLettersIgnoringASCIICase(value.function->name, "image-set(") || equalLettersIgnoringASCIICase(value.function->name, "-webkit-image-set("));
 }
+#endif
 
 bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 {
@@ -2721,7 +2739,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         RefPtr<CSSValue> val;
         AnimationParseContext context;
         if (parseAnimationProperty(propId, val, context)) {
-            addProperty(propId, WTFMove(val), important);
+            addPropertyWithPrefixingVariant(propId, WTFMove(val), important);
             return true;
         }
         return false;
@@ -2741,14 +2759,14 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyGridAutoRows:
         if (!isCSSGridLayoutEnabled())
             return false;
-        parsedValue = parseGridTrackSize(*m_valueList);
+        parsedValue = parseGridTrackList(GridAuto);
         break;
 
     case CSSPropertyGridTemplateColumns:
     case CSSPropertyGridTemplateRows:
         if (!isCSSGridLayoutEnabled())
             return false;
-        parsedValue = parseGridTrackList();
+        parsedValue = parseGridTrackList(GridTemplate);
         break;
 
     case CSSPropertyGridColumnStart:
@@ -3815,39 +3833,16 @@ bool CSSParser::parseAnimationShorthand(CSSPropertyID propId, bool important)
             return false;
     }
 
-    // Fill in any remaining properties with the initial value.
     for (i = 0; i < numProperties; ++i) {
+        // If we didn't find the property, set an intial value.
         if (!parsedProperty[i])
             addAnimationValue(values[i], cssValuePool.createImplicitInitialValue());
-    }
 
-    // Now add all of the properties we found.
-    // In this case we have to explicitly set the variant form as well,
-    // to make sure that a shorthand clears all existing prefixed and
-    // unprefixed values.
-    for (i = 0; i < numProperties; ++i)
-        addPropertyWithPrefixingVariant(shorthand.properties()[i], WTFMove(values[i]), important);
+        addProperty(shorthand.properties()[i], WTFMove(values[i]), important);
+    }
 
     return true;
 }
-
-void CSSParser::addPropertyWithPrefixingVariant(CSSPropertyID propId, RefPtr<CSSValue>&& value, bool important, bool implicit)
-{
-    addProperty(propId, value.copyRef(), important, implicit);
-
-    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propId);
-    if (prefixingVariant == propId)
-        return;
-
-    if (m_currentShorthand) {
-        // We can't use ShorthandScope here as we can already be inside one (e.g we are parsing CSSTransition).
-        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
-        addProperty(prefixingVariant, WTFMove(value), important, implicit);
-        m_currentShorthand = prefixingVariantForPropertyId(m_currentShorthand);
-    } else
-        addProperty(prefixingVariant, WTFMove(value), important, implicit);
-}
-
 
 RefPtr<CSSPrimitiveValue> CSSParser::parseColumnWidth()
 {
@@ -3976,9 +3971,6 @@ bool CSSParser::parseTransitionShorthand(CSSPropertyID propId, bool important)
     }
 
     // Now add all of the properties we found.
-    // In this case we have to explicitly set the variant form as well,
-    // to make sure that a shorthand clears all existing prefixed and
-    // unprefixed values.
     for (i = 0; i < numProperties; ++i)
         addPropertyWithPrefixingVariant(shorthand.properties()[i], WTFMove(values[i]), important);
 
@@ -5697,7 +5689,7 @@ bool CSSParser::parseGridTemplateRowsAndAreasAndColumns(bool important)
     RefPtr<CSSValue> templateColumns;
     if (m_valueList->current()) {
         ASSERT(isForwardSlashOperator(*m_valueList->current()));
-        templateColumns = parseGridTemplateColumns(DisallowRepeat);
+        templateColumns = parseGridTemplateColumns(GridTemplateNoRepeat);
         if (!templateColumns)
             return false;
         // The template-columns <track-list> can't be 'none'.
@@ -5741,7 +5733,7 @@ bool CSSParser::parseGridTemplateShorthand(bool important)
     if (firstValueIsNone)
         rowsValue = CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
     else
-        rowsValue = parseGridTrackList();
+        rowsValue = parseGridTrackList(GridTemplate);
 
     if (rowsValue) {
         auto columnsValue = parseGridTemplateColumns();
@@ -5791,13 +5783,13 @@ bool CSSParser::parseGridShorthand(bool important)
     RefPtr<CSSValue> autoRowsValue;
 
     if (m_valueList->current()) {
-        autoRowsValue = parseGridTrackSize(*m_valueList);
+        autoRowsValue = parseGridTrackList(GridAuto);
         if (!autoRowsValue)
             return false;
         if (m_valueList->current()) {
             if (!isForwardSlashOperator(*m_valueList->current()) || !m_valueList->next())
                 return false;
-            autoColumnsValue = parseGridTrackSize(*m_valueList);
+            autoColumnsValue = parseGridTrackList(GridAuto);
             if (!autoColumnsValue)
                 return false;
         }
@@ -5939,6 +5931,8 @@ RefPtr<CSSValue> CSSParser::parseGridTrackList(TrackListType trackListType)
 
     CSSParserValue* value = m_valueList->current();
     if (value->id == CSSValueNone) {
+        if (trackListType == GridAuto)
+            return nullptr;
         m_valueList->next();
         return CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
     }
@@ -5946,17 +5940,22 @@ RefPtr<CSSValue> CSSParser::parseGridTrackList(TrackListType trackListType)
     auto values = CSSValueList::createSpaceSeparated();
     // Handle leading  <custom-ident>*.
     value = m_valueList->current();
-    if (value && value->unit == CSSParserValue::ValueList)
+    bool allowGridLineNames = trackListType != GridAuto;
+    if (value && value->unit == CSSParserValue::ValueList) {
+        if (!allowGridLineNames)
+            return nullptr;
         parseGridLineNames(*m_valueList, values);
+    }
 
     bool seenTrackSizeOrRepeatFunction = false;
     bool seenAutoRepeat = false;
     bool allTracksAreFixedSized = true;
+    bool repeatAllowed = trackListType == GridTemplate;
     while (CSSParserValue* currentValue = m_valueList->current()) {
         if (isForwardSlashOperator(*currentValue))
             break;
         if (currentValue->unit == CSSParserValue::Function && equalLettersIgnoringASCIICase(currentValue->function->name, "repeat(")) {
-            if (trackListType == DisallowRepeat)
+            if (!repeatAllowed)
                 return nullptr;
             bool isAutoRepeat;
             if (!parseGridTrackRepeatFunction(values, isAutoRepeat, allTracksAreFixedSized))
@@ -5979,8 +5978,11 @@ RefPtr<CSSValue> CSSParser::parseGridTrackList(TrackListType trackListType)
 
         // This will handle the trailing <custom-ident>* in the grammar.
         value = m_valueList->current();
-        if (value && value->unit == CSSParserValue::ValueList)
+        if (value && value->unit == CSSParserValue::ValueList) {
+            if (!allowGridLineNames)
+                return nullptr;
             parseGridLineNames(*m_valueList, values);
+        }
     }
 
     if (!seenTrackSizeOrRepeatFunction)
@@ -6020,9 +6022,6 @@ bool CSSParser::parseGridTrackRepeatFunction(CSSValueList& list, bool& isAutoRep
 
     unsigned numberOfTracks = 0;
     while (arguments->current()) {
-        if (isAutoRepeat && numberOfTracks)
-            return false;
-
         RefPtr<CSSValue> trackSize = parseGridTrackSize(*arguments);
         if (!trackSize)
             return false;

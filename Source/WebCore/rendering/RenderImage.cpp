@@ -58,6 +58,11 @@
 #include "SelectionRect.h"
 #endif
 
+#if USE(CG)
+#include "PDFDocumentImage.h"
+#include "Settings.h"
+#endif
+
 namespace WebCore {
 
 #if PLATFORM(IOS)
@@ -545,6 +550,11 @@ void RenderImage::paintIntoRect(GraphicsContext& context, const FloatRect& rect)
     Image* image = imageResource().image().get();
     InterpolationQuality interpolation = image ? chooseInterpolationQuality(context, *image, image, LayoutSize(rect.size())) : InterpolationDefault;
 
+#if USE(CG)
+    if (is<PDFDocumentImage>(image))
+        downcast<PDFDocumentImage>(*image).setCachedPDFImageEnabled(frame().settings().isCachedPDFImageEnabled());
+#endif
+
     ImageOrientationDescription orientationDescription(shouldRespectImageOrientation(), style().imageOrientation());
     context.drawImage(*img, rect, ImagePaintingOptions(compositeOperator, BlendModeNormal, orientationDescription, interpolation));
 }
@@ -605,7 +615,7 @@ LayoutUnit RenderImage::minimumReplacedHeight() const
 HTMLMapElement* RenderImage::imageMap() const
 {
     HTMLImageElement* image = is<HTMLImageElement>(element()) ? downcast<HTMLImageElement>(element()) : nullptr;
-    return image ? image->treeScope().getImageMap(image->fastGetAttribute(usemapAttr)) : nullptr;
+    return image ? image->treeScope().getImageMap(image->attributeWithoutSynchronization(usemapAttr)) : nullptr;
 }
 
 bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)

@@ -196,6 +196,22 @@
         }
     },
     {
+        "name": "Preload",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "http://w3c.github.io/preload/",
+        "webkit-url": "https://webkit.org/b/158720",
+        "keywords": ["preload"],
+        "description": "Provides a declarative fetch primitive that initiates an early fetch and separates fetching from resource execution.",
+        "contact": {
+            "name": "Yoav Weiss",
+            "email": "yoav@yoav.ws",
+            "twitter": "@yoavweiss"
+        }
+    },
+    {
         "name": "Resource Timing",
         "status": {
             "status": "In Development",
@@ -203,7 +219,7 @@
         },
         "url": "http://www.w3.org/TR/resource-timing/",
         "webkit-url": "https://webkit.org/b/61138",
-        "keywords": ["resourcetiming","resource timing","rsrc"], 
+        "keywords": ["resourcetiming","resource timing","rsrc"],
         "description": "Provides detailed timing information to JavaScript for sub-resources loaded by the page.",
         "contact": {
             "name": "Jonathan Davis",
@@ -638,6 +654,22 @@
         "comment": "The feature is prefixed with <em>-webkit-</em>. There are some remaining issues to resolve in the specification."
     },
     {
+        "name": "Preload",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "http://w3c.github.io/preload/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=158720",
+        "specification": "Preload",
+        "description": "Provides a declarative fetch primitive that initiates an early fetch and separates fetching from resource execution.",
+        "contact": {
+            "name": "Yoav Weiss",
+            "twitter": "@yoavweiss",
+            "email": "yoav@yoav.ws"
+        }
+    },
+    {
         "name": "Readable Streams",
         "status": {
             "status": "In Development",
@@ -646,7 +678,7 @@
         "url": "https://streams.spec.whatwg.org/#rs",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=138967",
         "specification": "Streams",
-        "comment": "The ReadableStream and ReadableStreamReader interfaces are available but not functional."
+        "comment": "The implementation does not support ReadableStreamBYOBReader."
     },
     {
         "name": "Shadow DOM",

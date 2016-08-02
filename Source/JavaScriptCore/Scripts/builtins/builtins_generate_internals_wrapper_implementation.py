@@ -83,7 +83,8 @@ class BuiltinsInternalsWrapperImplementationGenerator(BuiltinsGenerator):
         lines = []
 
         lines.append(self.generate_constructor())
-        lines.append(self.generate_methods())
+        lines.append(self.generate_visit_method())
+        lines.append(self.generate_initialize_method())
         return '\n'.join(lines)
 
     def accessor_name(self, object):
@@ -96,12 +97,15 @@ class BuiltinsInternalsWrapperImplementationGenerator(BuiltinsGenerator):
         return WK_ucfirst(object.object_name) + "BuiltinFunctions"
 
     def generate_constructor(self):
+        guards = set([object.annotations.get('conditional') for object in self.internals if 'conditional' in object.annotations])
         lines = ["JSBuiltinInternalFunctions::JSBuiltinInternalFunctions(JSC::VM& vm)",
-                 "    : m_vm(vm)"]
+                 BuiltinsGenerator.wrap_with_guard(" || ".join(guards), "    : m_vm(vm)")]
         for object in self.internals:
             initializer = "    , %s(m_vm)" % self.member_name(object)
             lines.append(BuiltinsGenerator.wrap_with_guard(object.annotations.get('conditional'), initializer))
-        lines.append("{\n}\n")
+        lines.append("{")
+        lines.append("    UNUSED_PARAM(vm);")
+        lines.append("}\n")
         return '\n'.join(lines)
 
     def property_macro(self, object):
@@ -113,26 +117,38 @@ class BuiltinsInternalsWrapperImplementationGenerator(BuiltinsGenerator):
         lines.append("#undef DECLARE_GLOBAL_STATIC")
         return '\n'.join(lines)
 
-    def generate_methods(self):
+    def generate_visit_method(self):
         lines = ["void JSBuiltinInternalFunctions::visit(JSC::SlotVisitor& visitor)",
                  "{"]
         for object in self.internals:
             visit = "    %s.visit(visitor);" % self.member_name(object)
             lines.append(BuiltinsGenerator.wrap_with_guard(object.annotations.get('conditional'), visit))
-        lines.append("    UNUSED_PARAM(visitor);\n}")
+        lines.append("    UNUSED_PARAM(visitor);")
+        lines.append("}\n")
+        return '\n'.join(lines)
 
-        lines.append("void JSBuiltinInternalFunctions::initialize(JSDOMGlobalObject& globalObject)")
-        lines.append("{")
-        for object in self.internals:
-            init = "    %s.init(globalObject);" % self.member_name(object)
-            lines.append(BuiltinsGenerator.wrap_with_guard(object.annotations.get('conditional'), init))
-
-        lines.append("    JSVMClientData& clientData = *static_cast<JSVMClientData*>(m_vm.clientData);")
-        lines.append("    JSDOMGlobalObject::GlobalPropertyInfo staticGlobals[] = {")
+    def _generate_initialize_static_globals(self):
+        lines = ["    JSVMClientData& clientData = *static_cast<JSVMClientData*>(m_vm.clientData);",
+                 "    JSDOMGlobalObject::GlobalPropertyInfo staticGlobals[] = {"]
         for object in self.internals:
             lines.append(BuiltinsGenerator.wrap_with_guard(object.annotations.get('conditional'), self.property_macro(object)))
         lines.append("    };")
         lines.append("    globalObject.addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));")
         lines.append("    UNUSED_PARAM(clientData);")
+        return '\n'.join(lines)
+
+    def generate_initialize_method(self):
+        lines = ["void JSBuiltinInternalFunctions::initialize(JSDOMGlobalObject& globalObject)",
+                "{",
+                "    UNUSED_PARAM(globalObject);"]
+
+        for object in self.internals:
+            init = "    %s.init(globalObject);" % self.member_name(object)
+            lines.append(BuiltinsGenerator.wrap_with_guard(object.annotations.get('conditional'), init))
+        lines.append("")
+
+        guards = set([object.annotations.get('conditional') for object in self.internals if 'conditional' in object.annotations])
+        lines.append(BuiltinsGenerator.wrap_with_guard(" || ".join(guards), self._generate_initialize_static_globals()))
+
         lines.append("}")
         return '\n'.join(lines)

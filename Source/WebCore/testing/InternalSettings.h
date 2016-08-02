@@ -80,6 +80,7 @@ public:
         bool m_langAttributeAwareFormControlUIEnabled;
         bool m_imagesEnabled;
         bool m_preferMIMETypeForImages;
+        bool m_cachedPDFImageEnabled;
         std::chrono::milliseconds m_minimumTimerInterval;
 #if ENABLE(VIDEO_TRACK)
         bool m_shouldDisplaySubtitles;
@@ -107,6 +108,8 @@ public:
         bool m_allowsInlineMediaPlayback;
         bool m_allowsInlineMediaPlaybackAfterFullscreen;
         bool m_inlineMediaPlaybackRequiresPlaysInlineAttribute;
+        bool m_allowsInlineMediaPlaybackWithPlaysInlineAttribute;
+        bool m_allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute;
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
         bool m_indexedDBWorkersEnabled;
 #endif
@@ -141,6 +144,7 @@ public:
     void setAllowsAirPlayForMediaPlayback(bool);
     void setEditingBehavior(const String&, ExceptionCode&);
     void setPreferMIMETypeForImages(bool, ExceptionCode&);
+    void setCachedPDFImageEnabled(bool, ExceptionCode&);
     void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
     bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);
     void setStorageBlockingPolicy(const String&, ExceptionCode&);
@@ -161,6 +165,8 @@ public:
     void setAllowsInlineMediaPlayback(bool, ExceptionCode&);
     void setAllowsInlineMediaPlaybackAfterFullscreen(bool, ExceptionCode&);
     void setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool, ExceptionCode&);
+    void setAllowsInlineMediaPlaybackWithPlaysInlineAttribute(bool, ExceptionCode&);
+    void setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute(bool, ExceptionCode&);
     void setIndexedDBWorkersEnabled(bool, ExceptionCode&);
     String userInterfaceDirectionPolicy(ExceptionCode&);
     void setUserInterfaceDirectionPolicy(const String& policy, ExceptionCode&);

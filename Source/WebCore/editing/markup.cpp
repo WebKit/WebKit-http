@@ -540,7 +540,7 @@ static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterch
         // the structure and appearance of the copied markup.
         specialCommonAncestor = ancestorToRetainStructureAndAppearance(commonAncestor);
 
-        if (auto* parentListNode = downcast<Element>(enclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isListItem))) {
+        if (auto* parentListNode = enclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isListItem)) {
             if (!editingIgnoresContent(*parentListNode) && WebCore::areRangesEqual(VisibleSelection::selectionFromContentsOfNode(parentListNode).toNormalizedRange().get(), range)) {
                 specialCommonAncestor = parentListNode->parentNode();
                 while (specialCommonAncestor && !isListHTMLElement(specialCommonAncestor))
@@ -629,7 +629,7 @@ static String createMarkupInternal(Document& document, const Range& range, Vecto
                 // Bring the background attribute over, but not as an attribute because a background attribute on a div
                 // appears to have no effect.
                 if ((!fullySelectedRootStyle || !fullySelectedRootStyle->style() || !fullySelectedRootStyle->style()->getPropertyCSSValue(CSSPropertyBackgroundImage))
-                    && fullySelectedRoot->hasAttribute(backgroundAttr))
+                    && fullySelectedRoot->hasAttributeWithoutSynchronization(backgroundAttr))
                     fullySelectedRootStyle->style()->setProperty(CSSPropertyBackgroundImage, "url('" + fullySelectedRoot->getAttribute(backgroundAttr) + "')");
 
                 if (fullySelectedRootStyle->style()) {
@@ -690,7 +690,7 @@ Ref<DocumentFragment> createFragmentFromMarkup(Document& document, const String&
         attachments.append(attachment);
 
     for (auto& attachment : attachments) {
-        attachment->setFile(File::create(attachment->fastGetAttribute(webkitattachmentpathAttr)).ptr());
+        attachment->setFile(File::create(attachment->attributeWithoutSynchronization(webkitattachmentpathAttr)).ptr());
         attachment->removeAttribute(webkitattachmentpathAttr);
     }
 #endif
@@ -796,7 +796,7 @@ Ref<DocumentFragment> createFragmentFromText(Range& context, const String& text)
         fragment->appendChild(document.createTextNode(string), ASSERT_NO_EXCEPTION);
         if (string.endsWith('\n')) {
             auto element = HTMLBRElement::create(document);
-            element->setAttribute(classAttr, AppleInterchangeNewline);            
+            element->setAttributeWithoutSynchronization(classAttr, AppleInterchangeNewline);
             fragment->appendChild(element, ASSERT_NO_EXCEPTION);
         }
         return fragment;
@@ -828,7 +828,7 @@ Ref<DocumentFragment> createFragmentFromText(Range& context, const String& text)
         if (s.isEmpty() && i + 1 == numLines) {
             // For last line, use the "magic BR" rather than a P.
             element = HTMLBRElement::create(document);
-            element->setAttribute(classAttr, AppleInterchangeNewline);
+            element->setAttributeWithoutSynchronization(classAttr, AppleInterchangeNewline);
         } else if (useLineBreak) {
             element = HTMLBRElement::create(document);
             fillContainerFromString(fragment, s);

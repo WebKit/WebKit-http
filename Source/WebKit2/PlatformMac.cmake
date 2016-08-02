@@ -30,6 +30,7 @@ list(APPEND WebKit2_SOURCES
 
     NetworkProcess/Downloads/mac/DownloadMac.mm
 
+    NetworkProcess/cache/NetworkCacheCodersCocoa.cpp
     NetworkProcess/cache/NetworkCacheDataCocoa.mm
     NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm
 
@@ -212,6 +213,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/_WKUserContentExtensionStore.mm
     UIProcess/API/Cocoa/_WKUserContentFilter.mm
     UIProcess/API/Cocoa/_WKUserContentWorld.mm
+    UIProcess/API/Cocoa/_WKUserInitiatedAction.mm
     UIProcess/API/Cocoa/_WKUserStyleSheet.mm
     UIProcess/API/Cocoa/_WKVisitedLinkProvider.mm
     UIProcess/API/Cocoa/_WKVisitedLinkStore.mm

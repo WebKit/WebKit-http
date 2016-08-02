@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,32 +25,32 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MathMLTextElement_h
-#define MathMLTextElement_h
+#pragma once
 
 #if ENABLE(MATHML)
 #include "MathMLElement.h"
 
 namespace WebCore {
 
-class MathMLTextElement final : public MathMLElement {
+class MathMLTextElement : public MathMLElement {
 public:
     static Ref<MathMLTextElement> create(const QualifiedName& tagName, Document&);
-    void didAttachRenderers() override;
+    bool acceptsMathVariantAttribute() final { return true; }
 
-    bool isPresentationMathML() const override { return true; }
+protected:
+    MathMLTextElement(const QualifiedName& tagName, Document&);
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
 
 private:
-    MathMLTextElement(const QualifiedName& tagName, Document&);
-
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    bool childShouldCreateRenderer(const Node&) const override;
+    bool childShouldCreateRenderer(const Node&) const final;
 
-    void childrenChanged(const ChildChange&) override;
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void childrenChanged(const ChildChange&) final;
+    void didAttachRenderers() final;
+
+    bool isPresentationMathML() const final { return true; }
 };
 
 }
 
 #endif // ENABLE(MATHML)
-#endif // MathMLTextElement_h

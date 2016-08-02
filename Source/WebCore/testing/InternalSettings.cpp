@@ -80,6 +80,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_langAttributeAwareFormControlUIEnabled(RuntimeEnabledFeatures::sharedFeatures().langAttributeAwareFormControlUIEnabled())
     , m_imagesEnabled(settings.areImagesEnabled())
     , m_preferMIMETypeForImages(settings.preferMIMETypeForImages())
+    , m_cachedPDFImageEnabled(settings.isCachedPDFImageEnabled())
     , m_minimumTimerInterval(settings.minimumDOMTimerInterval())
 #if ENABLE(VIDEO_TRACK)
     , m_shouldDisplaySubtitles(settings.shouldDisplaySubtitles())
@@ -107,6 +108,8 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_allowsInlineMediaPlayback(settings.allowsInlineMediaPlayback())
     , m_allowsInlineMediaPlaybackAfterFullscreen(settings.allowsInlineMediaPlaybackAfterFullscreen())
     , m_inlineMediaPlaybackRequiresPlaysInlineAttribute(settings.inlineMediaPlaybackRequiresPlaysInlineAttribute())
+    , m_allowsInlineMediaPlaybackWithPlaysInlineAttribute(settings.allowsInlineMediaPlaybackWithPlaysInlineAttribute())
+    , m_allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute(settings.allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute())
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
 #endif
@@ -159,6 +162,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     RuntimeEnabledFeatures::sharedFeatures().setLangAttributeAwareFormControlUIEnabled(m_langAttributeAwareFormControlUIEnabled);
     settings.setImagesEnabled(m_imagesEnabled);
     settings.setPreferMIMETypeForImages(m_preferMIMETypeForImages);
+    settings.setCachedPDFImageEnabled(m_cachedPDFImageEnabled);
     settings.setMinimumDOMTimerInterval(m_minimumTimerInterval);
 #if ENABLE(VIDEO_TRACK)
     settings.setShouldDisplaySubtitles(m_shouldDisplaySubtitles);
@@ -182,6 +186,8 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setAllowsInlineMediaPlayback(m_allowsInlineMediaPlayback);
     settings.setAllowsInlineMediaPlaybackAfterFullscreen(m_allowsInlineMediaPlaybackAfterFullscreen);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(m_inlineMediaPlaybackRequiresPlaysInlineAttribute);
+    settings.setAllowsInlineMediaPlaybackWithPlaysInlineAttribute(m_allowsInlineMediaPlaybackWithPlaysInlineAttribute);
+    settings.setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute(m_allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute);
     RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
@@ -483,6 +489,12 @@ void InternalSettings::setImagesEnabled(bool enabled, ExceptionCode& ec)
     settings()->setImagesEnabled(enabled);
 }
 
+void InternalSettings::setCachedPDFImageEnabled(bool enabled, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setCachedPDFImageEnabled(enabled);
+}
+
 void InternalSettings::setMinimumTimerInterval(double intervalInSeconds, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
@@ -570,6 +582,18 @@ void InternalSettings::setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool r
 {
     InternalSettingsGuardForSettings();
     settings()->setInlineMediaPlaybackRequiresPlaysInlineAttribute(requires);
+}
+
+void InternalSettings::setAllowsInlineMediaPlaybackWithPlaysInlineAttribute(bool requires, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setAllowsInlineMediaPlaybackWithPlaysInlineAttribute(requires);
+}
+
+void InternalSettings::setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute(bool requires, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute(requires);
 }
 
 void InternalSettings::setIndexedDBWorkersEnabled(bool enabled, ExceptionCode&)

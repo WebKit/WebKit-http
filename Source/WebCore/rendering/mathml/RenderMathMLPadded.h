@@ -23,8 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLPadded_h
-#define RenderMathMLPadded_h
 #pragma once
 
 #if ENABLE(MATHML)
@@ -36,7 +34,7 @@ namespace WebCore {
 
 class RenderMathMLPadded final : public RenderMathMLRow {
 public:
-    RenderMathMLPadded(Element&, RenderStyle&&);
+    RenderMathMLPadded(MathMLPaddedElement&, RenderStyle&&);
 
 private:
     const char* renderName() const final { return "RenderMathMLPadded"; }
@@ -61,4 +59,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLPadded, isRenderMathMLPadded())
 
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLPadded_h

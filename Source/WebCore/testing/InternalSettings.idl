@@ -68,6 +68,7 @@
     // Other switches
     [RaisesException] void setStorageBlockingPolicy(DOMString policy);
     [RaisesException] void setImagesEnabled(boolean enabled);
+    [RaisesException] void setCachedPDFImageEnabled(boolean enabled);
     [RaisesException] void setUseLegacyBackgroundSizeShorthandBehavior(boolean enabled);
     [RaisesException] void setAutoscrollForDragAndDropEnabled(boolean enabled);
     [RaisesException] void setBackgroundShouldExtendBeyondPage(boolean hasExtendedBackground);
@@ -77,6 +78,8 @@
     [RaisesException] void setAllowsInlineMediaPlayback(boolean allows);
     [RaisesException] void setAllowsInlineMediaPlaybackAfterFullscreen(boolean allows);
     [RaisesException] void setInlineMediaPlaybackRequiresPlaysInlineAttribute(boolean requires);
+    [RaisesException] void setAllowsInlineMediaPlaybackWithPlaysInlineAttribute(boolean requires);
+    [RaisesException] void setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute(boolean requires);
 
     [RaisesException] void setIndexedDBWorkersEnabled(boolean requires);
 

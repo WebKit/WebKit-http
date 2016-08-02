@@ -59,7 +59,7 @@
 #import <JavaScriptCore/HeapStatistics.h>
 #import <JavaScriptCore/LLIntData.h>
 #import <JavaScriptCore/Options.h>
-#import <WebCore/Logging.h>
+#import <WebCore/LogInitialization.h>
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMExtensions.h>
 #import <WebKit/DOMRange.h>
@@ -1018,6 +1018,8 @@ static void setDefaultsToConsistentValuesForTesting()
         WebKitFullScreenEnabledPreferenceKey: @YES,
         WebKitAllowsInlineMediaPlaybackPreferenceKey: @YES,
         WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey: @NO,
+        WebKitAllowsInlineMediaPlaybackWithPlaysInlineAttributeKey: @NO,
+        WebKitAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttributeKey: @NO,
         @"UseWebKitWebInspector": @YES,
 #if !PLATFORM(IOS)
         @"NSPreferredSpellServerLanguage": @"en_US",
@@ -1887,7 +1889,7 @@ static void resetWebViewToConsistentStateBeforeTesting()
     [mainFrame _clearOpener];
 
     resetAccumulatedLogs();
-    WebCoreTestSupport::initializeLoggingChannelsIfNecessary();
+    WebCoreTestSupport::initializeLogChannelsIfNecessary();
 }
 
 #if PLATFORM(IOS)

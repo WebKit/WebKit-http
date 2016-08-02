@@ -246,7 +246,7 @@ static void fillMediaListChain(CSSRule* rule, Array<Inspector::Protocol::CSS::CS
             if (sourceURL.isEmpty())
                 sourceURL = InspectorDOMAgent::documentURLString(parentStyleSheet->ownerDocument());
         } else
-            sourceURL = "";
+            sourceURL = emptyString();
 
         if (mediaList && mediaList->length())
             mediaArray.addItem(buildMediaObject(mediaList, isMediaRule ? MediaListSourceMediaRule : MediaListSourceImportRule, sourceURL));
@@ -264,7 +264,7 @@ static void fillMediaListChain(CSSRule* rule, Array<Inspector::Protocol::CSS::CS
                     else if (!styleSheet->contents().baseURL().isEmpty())
                         sourceURL = styleSheet->contents().baseURL();
                     else
-                        sourceURL = "";
+                        sourceURL = emptyString();
                     mediaArray.addItem(buildMediaObject(mediaList, styleSheet->ownerNode() ? MediaListSourceLinkedSheet : MediaListSourceInlineSheet, sourceURL));
                 }
                 parentRule = styleSheet->ownerRule();
@@ -636,7 +636,7 @@ String InspectorStyleSheet::ruleSelector(const InspectorCSSId& id, ExceptionCode
     CSSStyleRule* rule = ruleForId(id);
     if (!rule) {
         ec = NOT_FOUND_ERR;
-        return "";
+        return emptyString();
     }
     return rule->selectorText();
 }

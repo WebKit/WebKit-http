@@ -96,12 +96,12 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
 
     ASSERT_WITH_SECURITY_IMPLICATION(isAllowedByContentSecurityPolicy(request.url()));
 
-    if (m_sameOriginRequest || m_options.crossOriginRequestPolicy == AllowCrossOriginRequests) {
+    if (m_sameOriginRequest || m_options.mode == FetchOptions::Mode::NoCors) {
         loadRequest(request, DoSecurityCheck);
         return;
     }
 
-    if (m_options.crossOriginRequestPolicy == DenyCrossOriginRequests) {
+    if (m_options.mode == FetchOptions::Mode::SameOrigin) {
         m_client->didFail(ResourceError(errorDomainWebKitInternal, 0, request.url(), "Cross origin requests are not supported."));
         return;
     }
@@ -111,7 +111,7 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
 
 void DocumentThreadableLoader::makeCrossOriginAccessRequest(const ResourceRequest& request)
 {
-    ASSERT(m_options.crossOriginRequestPolicy == UseAccessControl);
+    ASSERT(m_options.mode == FetchOptions::Mode::Cors);
 
     auto crossOriginRequest = request;
     updateRequestForAccessControl(crossOriginRequest, securityOrigin(), m_options.allowCredentials());
@@ -222,7 +222,7 @@ void DocumentThreadableLoader::redirectReceived(CachedResource* resource, Resour
     // When using access control, only simple cross origin requests are allowed to redirect. The new request URL must have a supported
     // scheme and not contain the userinfo production. In addition, the redirect response must pass the access control check if the
     // original request was not same-origin.
-    if (m_options.crossOriginRequestPolicy == UseAccessControl) {
+    if (m_options.mode == FetchOptions::Mode::Cors) {
         bool allowRedirect = false;
         if (m_simpleRequest) {
             String accessControlErrorDescription;
@@ -276,7 +276,7 @@ void DocumentThreadableLoader::didReceiveResponse(unsigned long identifier, cons
     ASSERT(m_client);
 
     String accessControlErrorDescription;
-    if (!m_sameOriginRequest && m_options.crossOriginRequestPolicy == UseAccessControl) {
+    if (!m_sameOriginRequest && m_options.mode == FetchOptions::Mode::Cors) {
         if (!passesAccessControlCheck(response, m_options.allowCredentials(), securityOrigin(), accessControlErrorDescription)) {
             m_client->didFail(ResourceError(errorDomainWebKitInternal, 0, response.url(), accessControlErrorDescription, ResourceError::Type::AccessControl));
             return;
@@ -354,7 +354,10 @@ void DocumentThreadableLoader::loadRequest(const ResourceRequest& request, Secur
 
     if (m_async) {
         ThreadableLoaderOptions options = m_options;
-        options.setClientCredentialPolicy(DoNotAskClientForCrossOriginCredentials);
+        options.clientCredentialPolicy = m_sameOriginRequest ? ClientCredentialPolicy::MayAskClientForCredentials : ClientCredentialPolicy::CannotAskClientForCredentials;
+
+        // Set to NoCors as CORS checks are done in DocumentThreadableLoader
+        options.mode = FetchOptions::Mode::NoCors;
 
         CachedResourceRequest newRequest(request, options);
         if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
@@ -372,8 +375,12 @@ void DocumentThreadableLoader::loadRequest(const ResourceRequest& request, Secur
     ResourceError error;
     ResourceResponse response;
     unsigned long identifier = std::numeric_limits<unsigned long>::max();
-    if (m_document.frame())
-        identifier = m_document.frame()->loader().loadResourceSynchronously(request, m_options.allowCredentials(), m_options.clientCredentialPolicy(), error, response, data);
+    if (m_document.frame()) {
+        auto& frameLoader = m_document.frame()->loader();
+        if (!frameLoader.mixedContentChecker().canRunInsecureContent(m_document.securityOrigin(), requestURL))
+            return;
+        identifier = frameLoader.loadResourceSynchronously(request, m_options.allowCredentials(), m_options.clientCredentialPolicy, error, response, data);
+    }
 
     if (!error.isNull() && response.httpStatusCode() <= 0) {
         if (requestURL.isLocalFile()) {
@@ -430,7 +437,7 @@ bool DocumentThreadableLoader::isAllowedByContentSecurityPolicy(const URL& url, 
 
 bool DocumentThreadableLoader::isAllowedRedirect(const URL& url)
 {
-    if (m_options.crossOriginRequestPolicy == AllowCrossOriginRequests)
+    if (m_options.mode == FetchOptions::Mode::NoCors)
         return true;
 
     return m_sameOriginRequest && securityOrigin().canRequest(url);

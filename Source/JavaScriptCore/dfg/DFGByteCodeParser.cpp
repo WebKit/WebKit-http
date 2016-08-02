@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "ArithProfile.h"
 #include "ArrayConstructor.h"
 #include "BasicBlockLocation.h"
 #include "CallLinkStatus.h"
@@ -455,7 +456,7 @@ private:
             ArgumentPosition* argumentPosition = findArgumentPositionForLocal(operand);
             if (argumentPosition)
                 flushDirect(operand, argumentPosition);
-            else if (m_hasDebuggerEnabled && operand == m_codeBlock->scopeRegister())
+            else if (m_graph.needsScopeRegister() && operand == m_codeBlock->scopeRegister())
                 flush(operand);
         }
 
@@ -511,10 +512,12 @@ private:
 
         // Always flush arguments, except for 'this'. If 'this' is created by us,
         // then make sure that it's never unboxed.
-        if (argument) {
+        if (argument || m_graph.needsFlushedThis()) {
             if (setMode != ImmediateNakedSet)
                 flushDirect(operand);
-        } else if (m_codeBlock->specializationKind() == CodeForConstruct)
+        }
+        
+        if (!argument && m_codeBlock->specializationKind() == CodeForConstruct)
             variableAccessData->mergeShouldNeverUnbox(true);
         
         variableAccessData->mergeStructureCheckHoistingFailed(
@@ -604,7 +607,9 @@ private:
             numArguments = inlineStackEntry->m_codeBlock->numParameters();
         for (unsigned argument = numArguments; argument-- > 1;)
             flushDirect(inlineStackEntry->remapOperand(virtualRegisterForArgument(argument)));
-        if (m_hasDebuggerEnabled)
+        if (!inlineStackEntry->m_inlineCallFrame && m_graph.needsFlushedThis())
+            flushDirect(virtualRegisterForArgument(0));
+        if (m_graph.needsScopeRegister())
             flush(m_codeBlock->scopeRegister());
     }
 
@@ -910,29 +915,28 @@ private:
             return node;
 
         {
-            ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
-            ResultProfile* resultProfile = m_inlineStackTop->m_profiledBlock->resultProfileForBytecodeOffset(locker, m_currentIndex);
-            if (resultProfile) {
+            ArithProfile* arithProfile = m_inlineStackTop->m_profiledBlock->arithProfileForBytecodeOffset(m_currentIndex);
+            if (arithProfile) {
                 switch (node->op()) {
                 case ArithAdd:
                 case ArithSub:
                 case ValueAdd:
-                    if (resultProfile->didObserveDouble())
+                    if (arithProfile->didObserveDouble())
                         node->mergeFlags(NodeMayHaveDoubleResult);
-                    if (resultProfile->didObserveNonNumber())
+                    if (arithProfile->didObserveNonNumber())
                         node->mergeFlags(NodeMayHaveNonNumberResult);
                     break;
                 
                 case ArithMul: {
-                    if (resultProfile->didObserveInt52Overflow())
+                    if (arithProfile->didObserveInt52Overflow())
                         node->mergeFlags(NodeMayOverflowInt52);
-                    if (resultProfile->didObserveInt32Overflow() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
+                    if (arithProfile->didObserveInt32Overflow() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
                         node->mergeFlags(NodeMayOverflowInt32InBaseline);
-                    if (resultProfile->didObserveNegZeroDouble() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
+                    if (arithProfile->didObserveNegZeroDouble() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
                         node->mergeFlags(NodeMayNegZeroInBaseline);
-                    if (resultProfile->didObserveDouble())
+                    if (arithProfile->didObserveDouble())
                         node->mergeFlags(NodeMayHaveDoubleResult);
-                    if (resultProfile->didObserveNonNumber())
+                    if (arithProfile->didObserveNonNumber())
                         node->mergeFlags(NodeMayHaveNonNumberResult);
                     break;
                 }
@@ -3815,6 +3819,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_mod);
         }
 
+        case op_pow: {
+            // FIXME: ArithPow(Untyped, Untyped) should be supported as the same to ArithMul, ArithSub etc.
+            // https://bugs.webkit.org/show_bug.cgi?id=160012
+            Node* op1 = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* op2 = get(VirtualRegister(currentInstruction[3].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(ArithPow, op1, op2));
+            NEXT_OPCODE(op_pow);
+        }
+
         case op_div: {
             Node* op1 = get(VirtualRegister(currentInstruction[2].u.operand));
             Node* op2 = get(VirtualRegister(currentInstruction[3].u.operand));
@@ -4564,17 +4577,32 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_construct_varargs);
         }
             
-        case op_jneq_ptr:
-            // Statically speculate for now. It makes sense to let speculate-only jneq_ptr
-            // support simmer for a while before making it more general, since it's
-            // already gnarly enough as it is.
-            ASSERT(pointerIsFunction(currentInstruction[2].u.specialPointer));
-            addToGraph(
-                CheckCell,
-                OpInfo(m_graph.freeze(static_cast<JSCell*>(actualPointerFor(
-                    m_inlineStackTop->m_codeBlock, currentInstruction[2].u.specialPointer)))),
-                get(VirtualRegister(currentInstruction[1].u.operand)));
+        case op_call_eval: {
+            int result = currentInstruction[1].u.operand;
+            int callee = currentInstruction[2].u.operand;
+            int argumentCountIncludingThis = currentInstruction[3].u.operand;
+            int registerOffset = -currentInstruction[4].u.operand;
+            addCall(result, CallEval, OpInfo(), get(VirtualRegister(callee)), argumentCountIncludingThis, registerOffset, getPrediction());
+            NEXT_OPCODE(op_call_eval);
+        }
+            
+        case op_jneq_ptr: {
+            Special::Pointer specialPointer = currentInstruction[2].u.specialPointer;
+            ASSERT(pointerIsCell(specialPointer));
+            JSCell* actualPointer = static_cast<JSCell*>(
+                actualPointerFor(m_inlineStackTop->m_codeBlock, specialPointer));
+            FrozenValue* frozenPointer = m_graph.freeze(actualPointer);
+            int operand = currentInstruction[1].u.operand;
+            unsigned relativeOffset = currentInstruction[3].u.operand;
+            Node* child = get(VirtualRegister(operand));
+            if (currentInstruction[4].u.operand) {
+                Node* condition = addToGraph(CompareEqPtr, OpInfo(frozenPointer), child);
+                addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jneq_ptr), m_currentIndex + relativeOffset)), condition);
+                LAST_OPCODE(op_jneq_ptr);
+            }
+            addToGraph(CheckCell, OpInfo(frozenPointer), child);
             NEXT_OPCODE(op_jneq_ptr);
+        }
 
         case op_resolve_scope: {
             int dst = currentInstruction[1].u.operand;
@@ -4590,7 +4618,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
             // get_from_scope and put_to_scope depend on this watchpoint forcing OSR exit, so they don't add their own watchpoints.
             if (needsVarInjectionChecks(resolveType))
-                addToGraph(VarInjectionWatchpoint);
+                m_graph.watchpoints().addLazily(m_inlineStackTop->m_codeBlock->globalObject()->varInjectionWatchpoint());
 
             switch (resolveType) {
             case GlobalProperty:

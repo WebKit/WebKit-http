@@ -441,13 +441,13 @@ void HTMLInputElement::handleBlurEvent()
 
 void HTMLInputElement::setType(const AtomicString& type)
 {
-    setAttribute(typeAttr, type);
+    setAttributeWithoutSynchronization(typeAttr, type);
 }
 
 void HTMLInputElement::updateType()
 {
     ASSERT(m_inputType);
-    auto newType = InputType::create(*this, fastGetAttribute(typeAttr));
+    auto newType = InputType::create(*this, attributeWithoutSynchronization(typeAttr));
     bool hadType = m_hasType;
     m_hasType = true;
     if (m_inputType->formControlType() == newType->formControlType())
@@ -456,7 +456,7 @@ void HTMLInputElement::updateType()
     if (hadType && !newType->canChangeFromAnotherType()) {
         // Set the attribute back to the old value.
         // Useful in case we were called from inside parseAttribute.
-        setAttribute(typeAttr, type());
+        setAttributeWithoutSynchronization(typeAttr, type());
         return;
     }
 
@@ -478,11 +478,11 @@ void HTMLInputElement::updateType()
     bool willStoreValue = m_inputType->storesValueSeparateFromAttribute();
 
     if (didStoreValue && !willStoreValue && hasDirtyValue()) {
-        setAttribute(valueAttr, m_valueIfDirty);
+        setAttributeWithoutSynchronization(valueAttr, m_valueIfDirty);
         m_valueIfDirty = String();
     }
     if (!didStoreValue && willStoreValue) {
-        AtomicString valueString = fastGetAttribute(valueAttr);
+        AtomicString valueString = attributeWithoutSynchronization(valueAttr);
         m_valueIfDirty = sanitizeValue(valueString);
     } else
         updateValueIfNeeded();
@@ -623,7 +623,7 @@ inline void HTMLInputElement::initializeInputType()
     ASSERT(m_parsingInProgress);
     ASSERT(!m_inputType);
 
-    const AtomicString& type = fastGetAttribute(typeAttr);
+    const AtomicString& type = attributeWithoutSynchronization(typeAttr);
     if (type.isNull()) {
         m_inputType = InputType::createText(*this);
         ensureUserAgentShadowRoot();
@@ -761,7 +761,7 @@ void HTMLInputElement::finishParsingChildren()
     ASSERT(m_inputType);
     HTMLTextFormControlElement::finishParsingChildren();
     if (!m_stateRestored) {
-        bool checked = fastHasAttribute(checkedAttr);
+        bool checked = hasAttributeWithoutSynchronization(checkedAttr);
         if (checked)
             setChecked(checked);
         m_reflectsCheckedAttribute = true;
@@ -805,12 +805,12 @@ String HTMLInputElement::altText() const
     // http://www.w3.org/TR/1998/REC-html40-19980424/appendix/notes.html#altgen
     // also heavily discussed by Hixie on bugzilla
     // note this is intentionally different to HTMLImageElement::altText()
-    String alt = fastGetAttribute(altAttr);
+    String alt = attributeWithoutSynchronization(altAttr);
     // fall back to title attribute
     if (alt.isNull())
-        alt = getAttribute(titleAttr);
+        alt = attributeWithoutSynchronization(titleAttr);
     if (alt.isNull())
-        alt = fastGetAttribute(valueAttr);
+        alt = attributeWithoutSynchronization(valueAttr);
     if (alt.isEmpty())
         alt = inputElementAltText();
     return alt;
@@ -828,7 +828,7 @@ bool HTMLInputElement::matchesDefaultPseudoClass() const
     ASSERT(m_inputType);
     if (m_inputType->canBeSuccessfulSubmitButton())
         return !isDisabledFormControl() && form() && form()->defaultButton() == this;
-    return m_inputType->isCheckable() && fastHasAttribute(checkedAttr);
+    return m_inputType->isCheckable() && hasAttributeWithoutSynchronization(checkedAttr);
 }
 
 bool HTMLInputElement::isActivatedSubmit() const
@@ -852,7 +852,7 @@ void HTMLInputElement::reset()
         setValue(String());
 
     setAutoFilled(false);
-    setChecked(fastHasAttribute(checkedAttr));
+    setChecked(hasAttributeWithoutSynchronization(checkedAttr));
     m_reflectsCheckedAttribute = true;
 }
 
@@ -957,7 +957,7 @@ String HTMLInputElement::value() const
     if (!value.isNull())
         return value;
 
-    AtomicString valueString = fastGetAttribute(valueAttr);
+    AtomicString valueString = attributeWithoutSynchronization(valueAttr);
     value = sanitizeValue(valueString);
     if (!value.isNull())
         return value;
@@ -1202,12 +1202,12 @@ bool HTMLInputElement::isURLAttribute(const Attribute& attribute) const
 
 String HTMLInputElement::defaultValue() const
 {
-    return fastGetAttribute(valueAttr);
+    return attributeWithoutSynchronization(valueAttr);
 }
 
 void HTMLInputElement::setDefaultValue(const String &value)
 {
-    setAttribute(valueAttr, value);
+    setAttributeWithoutSynchronization(valueAttr, value);
 }
 
 static inline bool isRFC2616TokenCharacter(UChar ch)
@@ -1256,22 +1256,22 @@ static Vector<String> parseAcceptAttribute(const String& acceptString, bool (*pr
 
 Vector<String> HTMLInputElement::acceptMIMETypes()
 {
-    return parseAcceptAttribute(fastGetAttribute(acceptAttr), isValidMIMEType);
+    return parseAcceptAttribute(attributeWithoutSynchronization(acceptAttr), isValidMIMEType);
 }
 
 Vector<String> HTMLInputElement::acceptFileExtensions()
 {
-    return parseAcceptAttribute(fastGetAttribute(acceptAttr), isValidFileExtension);
+    return parseAcceptAttribute(attributeWithoutSynchronization(acceptAttr), isValidFileExtension);
 }
 
 String HTMLInputElement::accept() const
 {
-    return fastGetAttribute(acceptAttr);
+    return attributeWithoutSynchronization(acceptAttr);
 }
 
 String HTMLInputElement::alt() const
 {
-    return fastGetAttribute(altAttr);
+    return attributeWithoutSynchronization(altAttr);
 }
 
 unsigned HTMLInputElement::effectiveMaxLength() const
@@ -1282,7 +1282,7 @@ unsigned HTMLInputElement::effectiveMaxLength() const
 
 bool HTMLInputElement::multiple() const
 {
-    return fastHasAttribute(multipleAttr);
+    return hasAttributeWithoutSynchronization(multipleAttr);
 }
 
 void HTMLInputElement::setSize(unsigned size)
@@ -1300,7 +1300,7 @@ void HTMLInputElement::setSize(unsigned size, ExceptionCode& ec)
 
 URL HTMLInputElement::src() const
 {
-    return document().completeURL(fastGetAttribute(srcAttr));
+    return document().completeURL(attributeWithoutSynchronization(srcAttr));
 }
 
 void HTMLInputElement::setAutoFilled(bool autoFilled)
@@ -1578,7 +1578,7 @@ HTMLDataListElement* HTMLInputElement::dataList() const
     if (!m_inputType->shouldRespectListAttribute())
         return nullptr;
 
-    Element* element = treeScope().getElementById(fastGetAttribute(listAttr));
+    Element* element = treeScope().getElementById(attributeWithoutSynchronization(listAttr));
     if (!is<HTMLDataListElement>(element))
         return nullptr;
 
@@ -1588,7 +1588,7 @@ HTMLDataListElement* HTMLInputElement::dataList() const
 void HTMLInputElement::resetListAttributeTargetObserver()
 {
     if (inDocument())
-        m_listAttributeTargetObserver = std::make_unique<ListAttributeTargetObserver>(fastGetAttribute(listAttr), this);
+        m_listAttributeTargetObserver = std::make_unique<ListAttributeTargetObserver>(attributeWithoutSynchronization(listAttr), this);
     else
         m_listAttributeTargetObserver = nullptr;
 }
@@ -1798,7 +1798,7 @@ bool HTMLInputElement::shouldAppearIndeterminate() const
 #if ENABLE(MEDIA_CAPTURE)
 bool HTMLInputElement::shouldUseMediaCapture() const
 {
-    return isFileUpload() && fastHasAttribute(captureAttr);
+    return isFileUpload() && hasAttributeWithoutSynchronization(captureAttr);
 }
 #endif
 

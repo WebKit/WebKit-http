@@ -147,9 +147,7 @@
 		598AD9281201CF3200ABAE4E /* WebDeviceOrientationProviderMock.mm in Sources */ = {isa = PBXBuildFile; fileRef = 598AD9271201CF3200ABAE4E /* WebDeviceOrientationProviderMock.mm */; };
 		598AD92A1201CF3B00ABAE4E /* WebDeviceOrientationProviderMockInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = 598AD9291201CF3B00ABAE4E /* WebDeviceOrientationProviderMockInternal.h */; };
 		598ADA461202275000ABAE4E /* WebDeviceOrientationProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 598ADA451202275000ABAE4E /* WebDeviceOrientationProvider.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		5C7706701D111B020012700F /* WebSocketProvider.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C77066F1D111B020012700F /* WebSocketProvider.mm */; };
 		5C7706721D111B220012700F /* QuickDrawCompatibility.h in Headers */ = {isa = PBXBuildFile; fileRef = 5C7706711D111B220012700F /* QuickDrawCompatibility.h */; };
-		5C7C88DA1D0F3BF2009D2F6D /* WebSocketProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 5C7C88D91D0F3BF2009D2F6D /* WebSocketProvider.h */; };
 		5D7BF8140C2A1D90008CE06D /* WebInspector.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D7BF8120C2A1D90008CE06D /* WebInspector.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		5D7BF8150C2A1D90008CE06D /* WebInspector.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5D7BF8130C2A1D90008CE06D /* WebInspector.mm */; };
 		5DE83A7A0D0F7F9400CAD12A /* WebJavaScriptTextInputPanel.nib in Resources */ = {isa = PBXBuildFile; fileRef = 5DE83A740D0F7F9400CAD12A /* WebJavaScriptTextInputPanel.nib */; };
@@ -651,9 +649,7 @@
 		598AD9271201CF3200ABAE4E /* WebDeviceOrientationProviderMock.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebDeviceOrientationProviderMock.mm; sourceTree = "<group>"; };
 		598AD9291201CF3B00ABAE4E /* WebDeviceOrientationProviderMockInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebDeviceOrientationProviderMockInternal.h; sourceTree = "<group>"; };
 		598ADA451202275000ABAE4E /* WebDeviceOrientationProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebDeviceOrientationProvider.h; sourceTree = "<group>"; };
-		5C77066F1D111B020012700F /* WebSocketProvider.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebSocketProvider.mm; sourceTree = "<group>"; };
 		5C7706711D111B220012700F /* QuickDrawCompatibility.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QuickDrawCompatibility.h; sourceTree = "<group>"; };
-		5C7C88D91D0F3BF2009D2F6D /* WebSocketProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebSocketProvider.h; sourceTree = "<group>"; };
 		5D7BF8120C2A1D90008CE06D /* WebInspector.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = WebInspector.h; sourceTree = "<group>"; };
 		5D7BF8130C2A1D90008CE06D /* WebInspector.mm */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.objcpp; path = WebInspector.mm; sourceTree = "<group>"; };
 		5DE83A750D0F7F9400CAD12A /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/WebJavaScriptTextInputPanel.nib; sourceTree = SOURCE_ROOT; };
@@ -1097,12 +1093,10 @@
 		254DC334016E1D3F0ECA149E /* Misc */ = {
 			isa = PBXGroup;
 			children = (
-				5C7706711D111B220012700F /* QuickDrawCompatibility.h */,
-				5C77066F1D111B020012700F /* WebSocketProvider.mm */,
-				5C7C88D91D0F3BF2009D2F6D /* WebSocketProvider.h */,
 				A10C1D2018202FAF0036883A /* ios */,
 				1CCFFD120B1F81F2002EE926 /* OldWebAssertions.c */,
 				29AEF95D134C755400FE5096 /* OutlookQuirksUserScript.js */,
+				5C7706711D111B220012700F /* QuickDrawCompatibility.h */,
 				5241ADF30B1BC48A004012BD /* WebCache.h */,
 				5241ADF40B1BC48A004012BD /* WebCache.mm */,
 				F59EAE3E0253C7EE018635CA /* WebCoreStatistics.h */,
@@ -1729,6 +1723,7 @@
 				7C01CB85173435C900C5D807 /* PopupMenuMac.h in Headers */,
 				1A2DBE9F0F251E3A0036F8A6 /* ProxyInstance.h in Headers */,
 				E169836211346D1B00894115 /* ProxyRuntimeObject.h in Headers */,
+				5C7706721D111B220012700F /* QuickDrawCompatibility.h in Headers */,
 				A10C1D621820300E0036883A /* SearchPopupMenuIOS.h in Headers */,
 				7C01CB87173435C900C5D807 /* SearchPopupMenuMac.h in Headers */,
 				1A6B31321A51F3A900422975 /* StorageAreaImpl.h in Headers */,
@@ -1806,7 +1801,6 @@
 				939810530824BF01008DF038 /* WebFrame.h in Headers */,
 				9398109C0824BF01008DF038 /* WebFrameInternal.h in Headers */,
 				A10C1D6B1820300E0036883A /* WebFrameIOS.h in Headers */,
-				5C7C88DA1D0F3BF2009D2F6D /* WebSocketProvider.h in Headers */,
 				A10C1D6D1820300E0036883A /* WebFrameIPhone.h in Headers */,
 				9398105B0824BF01008DF038 /* WebFrameLoadDelegate.h in Headers */,
 				C0B88E8B10A08F3D00FBB3F5 /* WebFrameLoadDelegatePrivate.h in Headers */,
@@ -1874,7 +1868,6 @@
 				A10C1D721820300E0036883A /* WebMIMETypeRegistry.h in Headers */,
 				5185F62610712B80007AA393 /* WebNavigationData.h in Headers */,
 				1AEA66D40DC6B1FF003D12BF /* WebNetscapePluginEventHandler.h in Headers */,
-				1AB1F76E1D1B260B007C9BD1 /* WebPaymentCoordinatorClient.h in Headers */,
 				1AEA66D80DC6B209003D12BF /* WebNetscapePluginEventHandlerCarbon.h in Headers */,
 				1AEA6A500DC8CE2F003D12BF /* WebNetscapePluginEventHandlerCocoa.h in Headers */,
 				939810310824BF01008DF038 /* WebNetscapePluginPackage.h in Headers */,
@@ -1905,6 +1898,7 @@
 				939810250824BF01008DF038 /* WebNSWindowExtras.h in Headers */,
 				A58A5799143E727000125F50 /* WebOpenPanelResultListener.h in Headers */,
 				9398102A0824BF01008DF038 /* WebPanelAuthenticationHandler.h in Headers */,
+				1AB1F76E1D1B260B007C9BD1 /* WebPaymentCoordinatorClient.h in Headers */,
 				37B6FB4E1063530C000FDB3B /* WebPDFDocumentExtras.h in Headers */,
 				939810A50824BF01008DF038 /* WebPDFRepresentation.h in Headers */,
 				939810A40824BF01008DF038 /* WebPDFView.h in Headers */,
@@ -1964,7 +1958,6 @@
 				939810150824BF01008DF038 /* WebURLsWithTitles.h in Headers */,
 				C0C5B3EE1177A4A0002B0AEF /* WebUserContentURLPattern.h in Headers */,
 				070F549B17F1E42B00169E04 /* WebUserMediaClient.h in Headers */,
-				5C7706721D111B220012700F /* QuickDrawCompatibility.h in Headers */,
 				939810700824BF01008DF038 /* WebView.h in Headers */,
 				BC2E464D0FD8A96800A9D9DE /* WebViewData.h in Headers */,
 				1430C12D1B2C5DF700DEA01D /* WebViewGroup.h in Headers */,
@@ -2214,6 +2207,7 @@
 				511F3FD50CECC88F00852565 /* WebDatabaseManager.mm in Sources */,
 				511F3FD80CECC88F00852565 /* WebDatabaseManagerClient.mm in Sources */,
 				1AA83F831A5C4AE400026EC6 /* WebDatabaseProvider.cpp in Sources */,
+				512BDB531C471591006494DF /* WebDatabaseProvider.mm in Sources */,
 				A5DEFC1011D5343E00885273 /* WebDatabaseQuotaManager.mm in Sources */,
 				939810ED0824BF01008DF038 /* WebDataSource.mm in Sources */,
 				939810EF0824BF01008DF038 /* WebDefaultContextMenuDelegate.mm in Sources */,
@@ -2254,7 +2248,6 @@
 				1AAF5FC00EDE3A92008D883D /* WebHostedNetscapePluginView.mm in Sources */,
 				939810F30824BF01008DF038 /* WebHTMLRepresentation.mm in Sources */,
 				939810F40824BF01008DF038 /* WebHTMLView.mm in Sources */,
-				1AB1F76F1D1B260B007C9BD1 /* WebPaymentCoordinatorClient.mm in Sources */,
 				939810C10824BF01008DF038 /* WebIconDatabase.mm in Sources */,
 				51494CD70C7EBDE0004178C5 /* WebIconDatabaseClient.mm in Sources */,
 				9321D5941A391DF9008052BE /* WebImmediateActionController.mm in Sources */,
@@ -2278,7 +2271,6 @@
 				1C0D40880AC1C8F40009C113 /* WebKitVersionChecks.m in Sources */,
 				ED5B9524111B725A00472298 /* WebLocalizableStrings.mm in Sources */,
 				BC42D34D131ED3880075FA4B /* WebLocalizableStringsInternal.mm in Sources */,
-				5C7706701D111B020012700F /* WebSocketProvider.mm in Sources */,
 				072E5F461ABF88750003B164 /* WebMediaPlaybackTargetPicker.mm in Sources */,
 				A10C1D731820300E0036883A /* WebMIMETypeRegistry.mm in Sources */,
 				5185F62810712B97007AA393 /* WebNavigationData.mm in Sources */,
@@ -2301,7 +2293,6 @@
 				939810C70824BF01008DF038 /* WebNSImageExtras.m in Sources */,
 				934C4A910F01406C009372C0 /* WebNSObjectExtras.mm in Sources */,
 				939810C80824BF01008DF038 /* WebNSPasteboardExtras.mm in Sources */,
-				512BDB531C471591006494DF /* WebDatabaseProvider.mm in Sources */,
 				939811190824BF01008DF038 /* WebNSPrintOperationExtras.m in Sources */,
 				A10C1D3B18202FC50036883A /* WebNSStringExtrasIOS.m in Sources */,
 				939811120824BF01008DF038 /* WebNSURLExtras.mm in Sources */,
@@ -2311,6 +2302,7 @@
 				939810CA0824BF01008DF038 /* WebNSWindowExtras.m in Sources */,
 				A58A579A143E727000125F50 /* WebOpenPanelResultListener.mm in Sources */,
 				939810D00824BF01008DF038 /* WebPanelAuthenticationHandler.m in Sources */,
+				1AB1F76F1D1B260B007C9BD1 /* WebPaymentCoordinatorClient.mm in Sources */,
 				37B6FB4F1063530C000FDB3B /* WebPDFDocumentExtras.mm in Sources */,
 				9398111F0824BF01008DF038 /* WebPDFRepresentation.mm in Sources */,
 				9398111E0824BF01008DF038 /* WebPDFView.mm in Sources */,

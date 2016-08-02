@@ -563,6 +563,15 @@ webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Crash 
 # Need a new baseline for EFL port. It was added by r72173.
 Bug(EFL) fast/css/line-height-determined-by-primary-font.html [ Failure ]
 
+security/contentSecurityPolicy/object-src-none-blocks-quicktime-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/object-src-none-blocks-youtube-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-allows-quicktime-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-allows-youtube-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-quicktime-plugin-replacement-without-mime-type.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-quicktime-plugin-replacement.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-youtube-plugin-replacement-without-mime-type.html [ Skip ]
+security/contentSecurityPolicy/plugins-types-blocks-youtube-plugin-replacement.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -640,7 +649,6 @@ webkit.org/b/155875 svg/W3C-SVG-1.1/pservers-grad-01-b.svg [ Crash ]
 Bug(EFL) fast/dom/Window/property-access-on-cached-window-after-frame-removed.html [ Crash ]
 Bug(EFL) fast/selectors/querySelector-in-range-crash.html [ Crash ]
 Bug(EFL) http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Crash ]
-Bug(EFL) imported/blink/svg/custom/svg-image-layers-crash.html [ Crash ]
 Bug(EFL) webaudio/decode-audio-data-basic.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1754,9 +1762,6 @@ webkit.org/b/83869 media/video-no-audio.html [ Failure ]
 
 webkit.org/b/109950 fast/dom/Window/webkitConvertPoint.html [ Failure ]
 
-# CUSTOM_ELEMENTS is not enabled.
-webkit.org/b/110958 fast/dom/custom [ Skip ]
-
 # New test
 webkit.org/b/110654 css3/flexbox/button.html [ Failure ]
 
@@ -1815,6 +1820,7 @@ webkit.org/b/119782 fast/forms/search-styled.html [ Failure ]
 # crypto.subtle is not yet enabled, but digest algorithms are already implemented
 # and their tests are whitelisted
 webkit.org/b/133122 crypto/subtle [ Skip ]
+webkit.org/b/133122 crypto/webkitSubtle [ Skip ]
 webkit.org/b/133319 crypto/subtle/sha-1.html [ Pass ]
 webkit.org/b/133319 crypto/subtle/sha-224.html [ Pass ]
 webkit.org/b/133319 crypto/subtle/sha-256.html [ Pass ]
@@ -2608,3 +2614,5 @@ webkit.org/b/158412 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 # These tests hardcode platform-specific font aliases.
 webkit.org/b/158649 fast/text/chinese-font-name-aliases.html [ ImageOnlyFailure ]
 webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
+
+webkit.org/b/159754 workers/bomb.html [ Slow ]

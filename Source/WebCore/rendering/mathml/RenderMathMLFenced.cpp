@@ -54,14 +54,14 @@ void RenderMathMLFenced::updateFromElement()
     const auto& fenced = element();
 
     // The open operator defaults to a left parenthesis.
-    AtomicString open = fenced.fastGetAttribute(MathMLNames::openAttr);
+    AtomicString open = fenced.attributeWithoutSynchronization(MathMLNames::openAttr);
     m_open = open.isNull() ? gOpeningBraceChar : open;
 
     // The close operator defaults to a right parenthesis.
-    AtomicString close = fenced.fastGetAttribute(MathMLNames::closeAttr);
+    AtomicString close = fenced.attributeWithoutSynchronization(MathMLNames::closeAttr);
     m_close = close.isNull() ? gClosingBraceChar : close;
 
-    AtomicString separators = fenced.fastGetAttribute(MathMLNames::separatorsAttr);
+    AtomicString separators = fenced.attributeWithoutSynchronization(MathMLNames::separatorsAttr);
     if (!separators.isNull()) {
         StringBuilder characters;
         for (unsigned int i = 0; i < separators.length(); i++) {
@@ -74,7 +74,7 @@ void RenderMathMLFenced::updateFromElement()
         m_separators = StringImpl::create(",");
     }
 
-    if (isEmpty())
+    if (!firstChild())
         makeFences();
     else {
         // FIXME: The mfenced element fails to update dynamically when its open, close and separators attributes are changed (https://bugs.webkit.org/show_bug.cgi?id=57696).
@@ -103,7 +103,7 @@ void RenderMathMLFenced::makeFences()
 void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild)
 {
     // make the fences if the render object is empty
-    if (isEmpty())
+    if (!firstChild())
         updateFromElement();
 
     // FIXME: Adding or removing a child should possibly cause all later separators to shift places if they're different, as later child positions change by +1 or -1. This should also handle surrogate pairs. See https://bugs.webkit.org/show_bug.cgi?id=125938.

@@ -115,7 +115,7 @@ int MathMLSelectElement::getSelectedActionChildAndIndex(Element*& selectedChild)
     if (!selectedChild)
         return 1;
 
-    int selection = fastGetAttribute(MathMLNames::selectionAttr).toInt();
+    int selection = attributeWithoutSynchronization(MathMLNames::selectionAttr).toInt();
     int i;
     for (i = 1; i < selection; i++) {
         auto* nextChild = selectedChild->nextElementSibling();
@@ -136,7 +136,7 @@ Element* MathMLSelectElement::getSelectedActionChild()
         return child;
 
     // The value of the actiontype attribute is case-sensitive.
-    const AtomicString& actiontype = fastGetAttribute(MathMLNames::actiontypeAttr);
+    const AtomicString& actiontype = attributeWithoutSynchronization(MathMLNames::actiontypeAttr);
     if (actiontype == "statusline")
         // FIXME: implement user interaction for the "statusline" action type (http://wkbug/124922).
         { }
@@ -174,7 +174,7 @@ Element* MathMLSelectElement::getSelectedSemanticsChild()
 
         if (child->hasTagName(MathMLNames::annotationTag)) {
             // If the <annotation> element has an src attribute then it is a reference to arbitrary binary data and it is not clear whether we can display it. Hence we just ignore the annotation.
-            if (child->hasAttribute(MathMLNames::srcAttr))
+            if (child->hasAttributeWithoutSynchronization(MathMLNames::srcAttr))
                 continue;
             // Otherwise, we assume it is a text annotation that can always be displayed and we stop here.
             return child;
@@ -182,10 +182,10 @@ Element* MathMLSelectElement::getSelectedSemanticsChild()
 
         if (child->hasTagName(MathMLNames::annotation_xmlTag)) {
             // If the <annotation-xml> element has an src attribute then it is a reference to arbitrary binary data and it is not clear whether we can display it. Hence we just ignore the annotation.
-            if (child->hasAttribute(MathMLNames::srcAttr))
+            if (child->hasAttributeWithoutSynchronization(MathMLNames::srcAttr))
                 continue;
             // If the <annotation-xml> element has an encoding attribute describing presentation MathML, SVG or HTML we assume the content can be displayed and we stop here.
-            const AtomicString& value = child->fastGetAttribute(MathMLNames::encodingAttr);
+            const AtomicString& value = child->attributeWithoutSynchronization(MathMLNames::encodingAttr);
             if (isMathMLEncoding(value) || isSVGEncoding(value) || isHTMLEncoding(value))
                 return child;
         }
@@ -212,7 +212,7 @@ void MathMLSelectElement::updateSelectedChild()
 void MathMLSelectElement::defaultEventHandler(Event* event)
 {
     if (event->type() == eventNames().clickEvent) {
-        if (fastGetAttribute(MathMLNames::actiontypeAttr) == "toggle") {
+        if (attributeWithoutSynchronization(MathMLNames::actiontypeAttr) == "toggle") {
             toggle();
             event->setDefaultHandled();
             return;
@@ -224,7 +224,7 @@ void MathMLSelectElement::defaultEventHandler(Event* event)
 
 bool MathMLSelectElement::willRespondToMouseClickEvents()
 {
-    return fastGetAttribute(MathMLNames::actiontypeAttr) == "toggle" || MathMLInlineContainerElement::willRespondToMouseClickEvents();
+    return attributeWithoutSynchronization(MathMLNames::actiontypeAttr) == "toggle" || MathMLInlineContainerElement::willRespondToMouseClickEvents();
 }
 
 void MathMLSelectElement::toggle()
@@ -238,7 +238,7 @@ void MathMLSelectElement::toggle()
 
     // We update the attribute value of the selection attribute.
     // This will also call MathMLSelectElement::attributeChanged to update the selected child.
-    setAttribute(MathMLNames::selectionAttr, AtomicString::number(newSelectedChildIndex));
+    setAttributeWithoutSynchronization(MathMLNames::selectionAttr, AtomicString::number(newSelectedChildIndex));
 }
 
 }

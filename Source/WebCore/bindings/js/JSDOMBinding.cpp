@@ -103,13 +103,6 @@ JSValue jsStringOrUndefined(ExecState* exec, const URL& url)
     return jsStringWithCache(exec, url.string());
 }
 
-String valueToStringWithNullCheck(ExecState* exec, JSValue value)
-{
-    if (value.isNull())
-        return String();
-    return value.toString(exec)->value(exec);
-}
-
 String valueToStringTreatingNullAsEmptyString(ExecState* exec, JSValue value)
 {
     if (value.isNull())
@@ -200,7 +193,7 @@ void reportException(ExecState* exec, Exception* exception, CachedScript* cached
     String errorMessage;
     JSValue exceptionValue = exception->value();
     if (ExceptionBase* exceptionBase = toExceptionBase(exceptionValue))
-        errorMessage = exceptionBase->message() + ": "  + exceptionBase->description();
+        errorMessage = exceptionBase->toString();
     else {
         // FIXME: <http://webkit.org/b/115087> Web Inspector: WebCore::reportException should not evaluate JavaScript handling exceptions
         // If this is a custom exception object, call toString on it to try and get a nice string representation for the exception.
@@ -273,11 +266,24 @@ static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const Strin
 
     JSValue errorObject;
     switch (description.type) {
-        DOM_EXCEPTION_INTERFACES_FOR_EACH(TRY_TO_CREATE_EXCEPTION)
+    case DOMCoreExceptionType:
 #if ENABLE(INDEXED_DATABASE)
     case IDBDatabaseExceptionType:
-        errorObject = toJS(exec, globalObject, DOMCoreException::createWithDescriptionAsMessage(description));
 #endif
+        errorObject = toJS(exec, globalObject, DOMCoreException::create(description));
+        break;
+    case FileExceptionType:
+        errorObject = toJS(exec, globalObject, FileException::create(description));
+        break;
+    case SQLExceptionType:
+        errorObject = toJS(exec, globalObject, SQLException::create(description));
+        break;
+    case SVGExceptionType:
+        errorObject = toJS(exec, globalObject, SVGException::create(description));
+        break;
+    case XPathExceptionType:
+        errorObject = toJS(exec, globalObject, XPathException::create(description));
+        break;
     }
     
     ASSERT(errorObject);
@@ -827,11 +833,6 @@ JSC::EncodedJSValue throwConstructorDocumentUnavailableError(JSC::ExecState& sta
     return throwVMError(&state, createReferenceError(&state, makeString(interfaceName, " constructor associated document is unavailable")));
 }
 
-JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName)
-{
-    return throwVMTypeError(&state, makeString("The ", interfaceName, '.', attributeName, " getter can only be used on instances of ", interfaceName));
-}
-
 void throwSequenceTypeError(JSC::ExecState& state)
 {
     throwTypeError(state, ASCIILiteral("Value is not a sequence"));
@@ -842,15 +843,30 @@ void throwNonFiniteTypeError(ExecState& state)
     throwTypeError(&state, ASCIILiteral("The provided value is non-finite"));
 }
 
+String makeGetterTypeErrorMessage(const char* interfaceName, const char* attributeName)
+{
+    return makeString("The ", interfaceName, '.', attributeName, " getter can only be used on instances of ", interfaceName);
+}
+
+JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName)
+{
+    return throwVMTypeError(&state, makeGetterTypeErrorMessage(interfaceName, attributeName));
+}
+
 bool throwSetterTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName)
 {
     throwTypeError(state, makeString("The ", interfaceName, '.', attributeName, " setter can only be used on instances of ", interfaceName));
     return false;
 }
 
+String makeThisTypeErrorMessage(const char* interfaceName, const char* functionName)
+{
+    return makeString("Can only call ", interfaceName, '.', functionName, " on instances of ", interfaceName);
+}
+
 EncodedJSValue throwThisTypeError(JSC::ExecState& state, const char* interfaceName, const char* functionName)
 {
-    return throwVMTypeError(&state, makeString("Can only call ", interfaceName, '.', functionName, " on instances of ", interfaceName));
+    return throwTypeError(state, makeThisTypeErrorMessage(interfaceName, functionName));
 }
 
 void callFunctionWithCurrentArguments(JSC::ExecState& state, JSC::JSObject& thisObject, JSC::JSFunction& function)

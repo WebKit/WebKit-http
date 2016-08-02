@@ -51,7 +51,7 @@
 #include "WebsiteDataType.h"
 #include <WebCore/DNS.h>
 #include <WebCore/DiagnosticLoggingClient.h>
-#include <WebCore/Logging.h>
+#include <WebCore/LogInitialization.h>
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
@@ -193,7 +193,7 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
     WTF::releaseFastMallocFreeMemory();
 }
 
-void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
+void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
 {
     platformInitializeNetworkProcess(parameters);
 
@@ -202,6 +202,10 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
     if (!m_suppressMemoryPressureHandler) {
         auto& memoryPressureHandler = MemoryPressureHandler::singleton();
+#if OS(LINUX)
+        if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
+            memoryPressureHandler.setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
+#endif
         memoryPressureHandler.setLowMemoryHandler([this] (Critical critical, Synchronous) {
             lowMemoryHandler(critical);
         });

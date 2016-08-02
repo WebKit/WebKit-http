@@ -380,7 +380,7 @@ bool SVGImage::dataChanged(bool allDataReceived)
         return true;
 
     if (allDataReceived) {
-        PageConfiguration pageConfiguration(makeUniqueRef<EmptyEditorClient>(), EmptySocketProvider::create());
+        PageConfiguration pageConfiguration(makeUniqueRef<EmptyEditorClient>(), SocketProvider::create());
         fillWithEmptyClients(pageConfiguration);
         m_chromeClient = std::make_unique<SVGImageChromeClient>(this);
         pageConfiguration.chromeClient = m_chromeClient.get();
@@ -395,6 +395,7 @@ bool SVGImage::dataChanged(bool allDataReceived)
         m_page->settings().setMediaEnabled(false);
         m_page->settings().setScriptEnabled(false);
         m_page->settings().setPluginsEnabled(false);
+        m_page->settings().setAcceleratedCompositingEnabled(false);
 
         Frame& frame = m_page->mainFrame();
         frame.setView(FrameView::create(frame));

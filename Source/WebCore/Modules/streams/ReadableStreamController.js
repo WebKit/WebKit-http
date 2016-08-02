@@ -30,14 +30,15 @@ function enqueue(chunk)
     "use strict";
 
     if (!@isReadableStreamController(this))
-        throw new @TypeError("Function should be called on a ReadableStreamController");
+        throw @makeThisTypeError("ReadableStreamController", "enqueue");
 
     const stream = this.@controlledReadableStream;
-    if (stream.@state === @streamErrored)
-        throw stream.@storedError;
 
     if (stream.@closeRequested)
         throw new @TypeError("ReadableStream is requested to close");
+
+    if (stream.@state !== @streamReadable)
+        throw new @TypeError("ReadableStream is not readable");
 
     return @enqueueInReadableStream(stream, chunk);
 }
@@ -47,7 +48,7 @@ function error(error)
     "use strict";
 
     if (!@isReadableStreamController(this))
-        throw new @TypeError("Function should be called on a ReadableStreamController");
+        throw @makeThisTypeError("ReadableStreamController", "error");
 
     const stream = this.@controlledReadableStream;
     if (stream.@state !== @streamReadable)
@@ -61,14 +62,14 @@ function close()
     "use strict";
 
     if (!@isReadableStreamController(this))
-        throw new @TypeError("Function should be called on a ReadableStreamController");
+        throw @makeThisTypeError("ReadableStreamController", "close");
 
     const stream = this.@controlledReadableStream;
     if (stream.@closeRequested)
         throw new @TypeError("ReadableStream is already requested to close");
 
-    if (stream.@state === @streamErrored)
-        throw new @TypeError("ReadableStream is already errored");
+    if (stream.@state !== @streamReadable)
+        throw new @TypeError("ReadableStream is not readable");
 
     @closeReadableStream(stream);
 }
@@ -78,7 +79,7 @@ function desiredSize()
     "use strict";
 
     if (!@isReadableStreamController(this))
-        throw new @TypeError("Function should be called on a ReadableStreamController");
+        throw @makeGetterTypeError("ReadableStreamController", "desiredSize");
 
     return @getReadableStreamDesiredSize(this.@controlledReadableStream);
 }

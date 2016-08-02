@@ -266,6 +266,7 @@ fast/css/pseudo-active-style-sharing-4.html [ Skip ]
 fast/css/pseudo-active-style-sharing-5.html [ Skip ]
 fast/css/pseudo-active-style-sharing-6.html [ Skip ]
 fast/css/pseudo-active-with-programmatic-focus.html [ Skip ]
+http/tests/security/history-username-password.html [ Skip ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 
@@ -670,12 +671,16 @@ mathml/opentype/horizontal-munderover.html [ Skip ]
 mathml/opentype/fraction-line.html [ Skip ]
 mathml/presentation/fractions-linethickness.html [ Skip ]
 mathml/opentype/large-operators-italic-correction.html [ Skip ]
+mathml/presentation/bug159513.html [ Skip ]
 
 # These reftests require a font with Mathematical Alphanumeric Symbols.
 mathml/presentation/attributes-mathvariant.html [ Skip ]
 mathml/presentation/tokenElements-mathvariant.html [ Skip ]
 mathml/presentation/mathvariant-inheritance.html [ Skip ]
 mathml/presentation/mathvariant-tokens.html [ Skip ]
+
+# This test fails because the USE_TYPO_METRICS flag is ignored for non-math font
+webkit.org/b/150394 imported/mathml-in-html5/mathml/relations/text-and-math/use-typo-metrics-1.html [ ImageOnlyFailure ]
 
 # The web font loading & relayout seems to be performed too late.
 imported/mathml-in-html5/mathml/relations/css-styling/mathvariant-transforms-1.html [ Pass ImageOnlyFailure ]
@@ -1408,7 +1413,6 @@ fast/canvas/draw-focus-if-needed.html [ Failure ]
 fast/clip/clip-when-rect-has-fractional-pixel-value.html [ ImageOnlyFailure ]
 fast/css-generated-content/table-parts-before-and-after.html [ Failure ]
 fast/css/absolute-child-with-percent-height-inside-relative-parent.html [ Failure ]
-fast/css/ancestor-of-hovered-element-detached.html [ Failure ]
 fast/css/ancestor-of-hovered-element-removed.html [ Failure ]
 fast/css/background-image-with-baseurl.html [ Failure ]
 fast/css/button-height.html [ Failure ]
@@ -1532,17 +1536,6 @@ fast/dom/attr_dead_doc.html [ Failure ]
 fast/dom/client-width-height-quirks.html [ Failure ]
 fast/dom/client-width-height.html [ Failure ]
 fast/dom/comment-not-documentElement.html [ Failure ]
-fast/dom/custom/document-register-basic.html [ Failure ]
-fast/dom/custom/document-register-namespace.html [ Failure ]
-fast/dom/custom/document-register-reentrant-null-constructor.html [ Failure ]
-fast/dom/custom/document-register-reentrant-returning-fake.html [ Failure ]
-fast/dom/custom/document-register-type-extensions.html [ Failure ]
-fast/dom/custom/lifecycle-ready-createElement-recursion.html [ Failure ]
-fast/dom/custom/lifecycle-ready-createElement-reentrancy.html [ Failure ]
-fast/dom/custom/lifecycle-ready-creation-api.html [ Failure ]
-fast/dom/custom/lifecycle-ready-innerHTML.html [ Failure ]
-fast/dom/custom/lifecycle-ready-parser-only.html [ ImageOnlyFailure ]
-fast/dom/custom/lifecycle-ready-parser-script.html [ Failure ]
 fast/dom/horizontal-scrollbar-in-rtl.html [ Failure ]
 fast/dom/horizontal-scrollbar-when-dir-change.html [ Failure ]
 fast/dom/jsDevicePixelRatio.html [ Failure ]
@@ -2553,8 +2546,6 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 # iOS tests that assert:
 platform/ios-simulator/ios/fast/text/combining-enclosing-keycap.html
-platform/ios-simulator/ios/plugin/youtube-flash-plugin-iframe-no-height-or-width.html
-platform/ios-simulator/ios/plugin/youtube-flash-plugin-iframe.html
 
 # Kerning, Ligatures, and Printer Fonts caused these tests to fail.
 # The following tests are reftests (and also fail on Mac):
@@ -2646,7 +2637,6 @@ editing/style/apply-through-end-of-document.html [ Skip ]
 editing/style/font-family-with-space.html [ Skip ]
 editing/style/non-inheritable-styles.html [ Skip ]
 editing/undo/undo-paste-when-caret-is-not-in-range.html [ Skip ]
-fast/dom/custom/lifecycle-ready-paste.html [ Skip ]
 http/tests/misc/copy-resolves-urls.html [ Skip ]
 editing/inserting/insert-3907422-fix.html [ Skip ]
 fast/forms/textarea-paste-newline.html [ Skip ]
@@ -3002,6 +2992,7 @@ webkit.org/b/158618 fast/hidpi/hidpi-3x-device-pixel-ratio.html [ Failure ]
 # These tests hardcode platform-specific font aliases.
 webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
 
+
 webkit.org/b/159214 fast/multicol/fixed-stack.html [ ImageOnlyFailure ]
 
 webkit.org/b/157592 fast/images/composited-animated-gif-outside-viewport.html [ Pass Timeout ]
@@ -3011,3 +3002,11 @@ webkit.org/b/156561 perf/rel-list-remove.html [ Pass Timeout Failure ]
 webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Pass Failure ]
 
 webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
+
+webkit.org/b/142969 editing/spelling/copy-paste-crash.html
+
+# This test is iPad only
+platform/ios-simulator/media/video-interruption-suspendunderlock.html [ Skip ]
+
+# System font on iOS 9 cannot be bold and italic.
+fast/text/system-font-weight-italic.html [ Failure ]

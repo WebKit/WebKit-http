@@ -155,7 +155,6 @@ public:
             }
 
             // Make sure that the successors are set up correctly.
-            ASSERT(block->successors().size() <= 2);
             for (B3::FrequentedBlock successor : block->successors()) {
                 m_blockToBlock[block]->successors().append(
                     Air::FrequentedBlock(m_blockToBlock[successor.block()], successor.frequency()));
@@ -2194,6 +2193,7 @@ private:
                 case ValueRep::ColdAny:
                 case ValueRep::LateColdAny:
                 case ValueRep::SomeRegister:
+                case ValueRep::SomeEarlyRegister:
                     inst.args.append(tmp(patchpointValue));
                     break;
                 case ValueRep::Register: {
@@ -2444,6 +2444,11 @@ private:
 
         case B3::Oops: {
             append(Air::Oops);
+            return;
+        }
+            
+        case B3::EntrySwitch: {
+            append(Air::EntrySwitch);
             return;
         }
 

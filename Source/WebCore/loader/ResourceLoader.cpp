@@ -439,14 +439,14 @@ void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
         if (!m_documentLoader->response().isHttpVersion0_9()) {
             String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 and the document was loaded with a different HTTP version.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error("", 0, url, message);
+            ResourceError error(emptyString(), 0, url, message);
             didFail(error);
             return;
         }
         if (!isDefaultPortForProtocol(url.port(), url.protocol())) {
             String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error("", 0, url, message);
+            ResourceError error(emptyString(), 0, url, message);
             didFail(error);
             return;
         }
@@ -687,7 +687,9 @@ bool ResourceLoader::shouldUseCredentialStorage()
 
 bool ResourceLoader::isAllowedToAskUserForCredentials() const
 {
-    return m_options.clientCredentialPolicy() == AskClientForAllCredentials || (m_options.clientCredentialPolicy() == DoNotAskClientForCrossOriginCredentials && m_frame->document()->securityOrigin()->canRequest(originalRequest().url()));
+    if (m_options.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials)
+        return false;
+    return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin()->canRequest(originalRequest().url()));
 }
 
 void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)

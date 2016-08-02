@@ -123,6 +123,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_negate:
     case op_mul:
     case op_mod:
+    case op_pow:
     case op_div:
     case op_debug:
     case op_profile_type:
@@ -244,6 +245,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
 
     case op_new_regexp:
     case op_switch_string: // Don't inline because we don't want to copy string tables in the concurrent JIT.
+    case op_call_eval:
         return CanCompile;
 
     default:

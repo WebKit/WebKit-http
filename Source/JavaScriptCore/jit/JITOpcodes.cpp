@@ -91,7 +91,9 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
     RegisterID scratchReg = regT2;
 
     move(TrustedImmPtr(allocator), allocatorReg);
-    emitAllocateJSObject(allocatorReg, TrustedImmPtr(structure), resultReg, scratchReg);
+    JumpList slowCases;
+    emitAllocateJSObject(resultReg, allocatorReg, TrustedImmPtr(structure), TrustedImmPtr(0), scratchReg, slowCases);
+    addSlowCase(slowCases);
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }
 
@@ -421,7 +423,10 @@ void JIT::emit_op_jneq_ptr(Instruction* currentInstruction)
     unsigned target = currentInstruction[3].u.operand;
     
     emitGetVirtualRegister(src, regT0);
-    addJump(branchPtr(NotEqual, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr))), target);
+    CCallHelpers::Jump equal = branchPtr(Equal, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr)));
+    store32(TrustedImm32(1), &currentInstruction[4].u.operand);
+    addJump(jump(), target);
+    equal.link(this);
 }
 
 void JIT::emit_op_eq(Instruction* currentInstruction)
@@ -767,7 +772,9 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     addSlowCase(branchPtr(NotEqual, calleeReg, cachedFunctionReg));
     hasSeenMultipleCallees.link(this);
 
-    emitAllocateJSObject(allocatorReg, structureReg, resultReg, scratchReg);
+    JumpList slowCases;
+    emitAllocateJSObject(resultReg, allocatorReg, structureReg, TrustedImmPtr(0), scratchReg, slowCases);
+    addSlowCase(slowCases);
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }
 

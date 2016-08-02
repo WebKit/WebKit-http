@@ -29,8 +29,7 @@
 #if ENABLE(APPLE_PAY)
 
 #import "WebPaymentCoordinatorProxy.h"
-#import <PassKit/PKPaymentAuthorizationViewController_Private.h>
-#import <PassKitCore/PKPaymentMerchantSession.h>
+#import <WebCore/PassKitSPI.h>
 #import <WebCore/PaymentAuthorizationStatus.h>
 #import <WebCore/PaymentHeaders.h>
 #import <WebCore/SoftLinking.h>
@@ -41,13 +40,6 @@
 SOFT_LINK_PRIVATE_FRAMEWORK(PassKit)
 #else
 SOFT_LINK_FRAMEWORK(PassKit)
-#endif
-
-#if PLATFORM(MAC)
-// FIXME: Once <rdar://problem/26074851> has been fixed we no longer
-// have to fall back to PKInAppPaymentService.
-#import <PassKitCore/PKInAppPaymentService.h>
-SOFT_LINK_CLASS(PassKit, PKInAppPaymentService)
 #endif
 
 SOFT_LINK_CLASS(PassKit, PKPaymentAuthorizationViewController);
@@ -133,7 +125,7 @@ SOFT_LINK_FUNCTION_MAY_FAIL_FOR_SOURCE(WebKit, PassKit, PKCanMakePaymentsWithMer
     if (!_webPaymentCoordinatorProxy)
         return;
 
-    if (!_authorized)
+    if (!_didReachFinalState)
         _webPaymentCoordinatorProxy->didCancelPayment();
 
     _webPaymentCoordinatorProxy->hidePaymentUI();
@@ -410,7 +402,7 @@ void WebPaymentCoordinatorProxy::platformCompletePaymentSession(WebCore::Payment
     ASSERT(m_paymentAuthorizationViewController);
     ASSERT(m_paymentAuthorizationViewControllerDelegate);
 
-    m_paymentAuthorizationViewControllerDelegate->_authorized = YES;
+    m_paymentAuthorizationViewControllerDelegate->_didReachFinalState = WebCore::isFinalStateStatus(status);
     m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion(toPKPaymentAuthorizationStatus(status));
     m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion = nullptr;
 }

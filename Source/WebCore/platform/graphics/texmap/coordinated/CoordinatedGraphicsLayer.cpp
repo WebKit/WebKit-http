@@ -21,17 +21,14 @@
  */
 
 #include "config.h"
-
-#if USE(COORDINATED_GRAPHICS)
 #include "CoordinatedGraphicsLayer.h"
 
+#if USE(COORDINATED_GRAPHICS)
+
 #include "FloatQuad.h"
-#include "Frame.h"
-#include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "GraphicsLayerFactory.h"
-#include "Page.h"
 #include "ScrollableArea.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/HashMap.h>
@@ -55,14 +52,13 @@ static CoordinatedLayerID toCoordinatedLayerID(GraphicsLayer* layer)
     return is<CoordinatedGraphicsLayer>(layer) ? downcast<CoordinatedGraphicsLayer>(*layer).id() : 0;
 }
 
-bool CoordinatedGraphicsLayer::notifyFlushRequired()
+void CoordinatedGraphicsLayer::notifyFlushRequired()
 {
     ASSERT(m_coordinator);
-    if (!m_coordinator->isFlushingLayerChanges()) {
-        client().notifyFlushRequired(this);
-        return true;
-    }
-    return false;
+    if (m_coordinator->isFlushingLayerChanges())
+        return;
+
+    client().notifyFlushRequired(this);
 }
 
 void CoordinatedGraphicsLayer::didChangeLayerState()
@@ -588,9 +584,6 @@ void CoordinatedGraphicsLayer::setFixedToViewport(bool isFixed)
 
 void CoordinatedGraphicsLayer::flushCompositingState(const FloatRect& rect, bool viewportIsStable)
 {
-    if (notifyFlushRequired())
-        return;
-
     if (CoordinatedGraphicsLayer* mask = downcast<CoordinatedGraphicsLayer>(maskLayer()))
         mask->flushCompositingStateForThisLayerOnly(viewportIsStable);
 
@@ -787,8 +780,6 @@ void CoordinatedGraphicsLayer::createPlatformLayerIfNeeded()
 
 void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly(bool)
 {
-    ASSERT(m_coordinator->isFlushingLayerChanges());
-
     // When we have a transform animation, we need to update visible rect every frame to adjust the visible rect of a backing store.
     bool hasActiveTransformAnimation = selfOrAncestorHasActiveTransformAnimation();
     if (hasActiveTransformAnimation)

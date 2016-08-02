@@ -1,3 +1,60 @@
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the Windows debug build.
+        
+        WebResourceLoadScheduler's logging was a holdover from it being in WebCore,
+        and prior to r203749 WebKit was actually using a WebCore log channel.
+        
+        For some reason this doesn't build on Windows debug, so just remove
+        this logging for now.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleLoad): Deleted.
+        (WebResourceLoadScheduler::servePendingRequests): Deleted.
+        (WebResourceLoadScheduler::scheduleServePendingRequests): Deleted.
+        (WebResourceLoadScheduler::requestTimerFired): Deleted.
+        (WebResourceLoadScheduler::HostInformation::addLoadInProgress): Deleted.
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Sort the project files.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow LOG macros to be used outside the namespace, and other logging cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=160216
+
+        Reviewed by Anders Carlsson.
+
+        Fix some issues with the LOG macros.
+        
+        First, they were not usable outside the WebKit namespace in WebKit2 code. Fix by moving
+        its log channels outside of the namespace (they are protected by a unique prefix anyway).
+        
+        Second, allow LOG_WITH_STREAM to be used in WebKit2 by moving that and a helper macro
+        into LogMacros.h, which is exported from WebCore as a private header.
+        
+        Third, split the Logging.h header into two. Logging.h remains for framework-internal
+        log channels and log macros. Add LogInitialization.h which is external, and used to
+        initialize the channels.
+        
+        Finally unify "initializeLogChannels" and "initializeLoggingChannels" terminology everywhere.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=159774
+
+        Reviewed by Alex Christensen.
+
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
 2016-07-12  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] Fix for build error when trying to version stamp dll.

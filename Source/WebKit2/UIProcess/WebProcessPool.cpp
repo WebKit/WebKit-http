@@ -35,7 +35,7 @@
 #include "CustomProtocolManagerMessages.h"
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
-#include "Logging.h"
+#include "LogInitialization.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
 #include "NetworkProcessProxy.h"
@@ -63,7 +63,7 @@
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/Language.h>
 #include <WebCore/LinkHash.h>
-#include <WebCore/Logging.h>
+#include <WebCore/LogInitialization.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SessionID.h>
 #include <runtime/JSCInlines.h>
@@ -91,6 +91,10 @@
 
 #if USE(SOUP)
 #include "WebSoupCustomProtocolRequestManager.h"
+#endif
+
+#if OS(LINUX)
+#include "MemoryPressureMonitor.h"
 #endif
 
 #ifndef NDEBUG
@@ -201,7 +205,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     addLanguageChangeObserver(this, languageChanged);
 
 #if !LOG_DISABLED
-    WebCore::initializeLoggingChannelsIfNecessary();
+    WebCore::initializeLogChannelsIfNecessary();
     WebKit::initializeLogChannelsIfNecessary();
 #endif // !LOG_DISABLED
 
@@ -368,6 +372,11 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess()
     String parentBundleDirectory = this->parentBundleDirectory();
     if (!parentBundleDirectory.isEmpty())
         SandboxExtension::createHandle(parentBundleDirectory, SandboxExtension::ReadOnly, parameters.parentBundleDirectoryExtensionHandle);
+#endif
+
+#if OS(LINUX)
+    if (MemoryPressureMonitor::isEnabled())
+        parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
 #endif
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
@@ -626,6 +635,8 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
 #if OS(LINUX)
     parameters.shouldEnableMemoryPressureReliefLogging = true;
+    if (MemoryPressureMonitor::isEnabled())
+        parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
 #endif
 
     parameters.resourceLoadStatisticsEnabled = resourceLoadStatisticsEnabled();

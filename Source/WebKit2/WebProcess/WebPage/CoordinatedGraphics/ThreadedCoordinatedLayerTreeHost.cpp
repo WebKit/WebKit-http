@@ -58,6 +58,18 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage& webP
 {
 }
 
+void ThreadedCoordinatedLayerTreeHost::invalidate()
+{
+    m_compositor->invalidate();
+    CoordinatedLayerTreeHost::invalidate();
+}
+
+void ThreadedCoordinatedLayerTreeHost::forceRepaint()
+{
+    CoordinatedLayerTreeHost::forceRepaint();
+    m_compositor->forceRepaint();
+}
+
 void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const WebCore::IntRect& rect)
 {
     m_compositor->scrollTo(rect.location());
@@ -73,6 +85,12 @@ void ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
 {
     CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged();
     m_compositor->setDeviceScaleFactor(m_webPage.deviceScaleFactor());
+}
+
+void ThreadedCoordinatedLayerTreeHost::pageBackgroundTransparencyChanged()
+{
+    CoordinatedLayerTreeHost::pageBackgroundTransparencyChanged();
+    m_compositor->setDrawsBackground(m_webPage.drawsBackground());
 }
 
 void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const IntSize& size)

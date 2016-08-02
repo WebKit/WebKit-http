@@ -396,7 +396,7 @@ void HTMLFormElement::reset()
 
 bool HTMLFormElement::autocorrect() const
 {
-    const AtomicString& autocorrectValue = fastGetAttribute(autocorrectAttr);
+    const AtomicString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
     if (!autocorrectValue.isEmpty())
         return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
     if (HTMLFormElement* form = this->form())
@@ -406,12 +406,12 @@ bool HTMLFormElement::autocorrect() const
 
 void HTMLFormElement::setAutocorrect(bool autocorrect)
 {
-    setAttribute(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
+    setAttributeWithoutSynchronization(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
 }
 
 WebAutocapitalizeType HTMLFormElement::autocapitalizeType() const
 {
-    return autocapitalizeTypeForAttributeValue(fastGetAttribute(autocapitalizeAttr));
+    return autocapitalizeTypeForAttributeValue(attributeWithoutSynchronization(autocapitalizeAttr));
 }
 
 const AtomicString& HTMLFormElement::autocapitalize() const
@@ -421,7 +421,7 @@ const AtomicString& HTMLFormElement::autocapitalize() const
 
 void HTMLFormElement::setAutocapitalize(const AtomicString& value)
 {
-    setAttribute(autocapitalizeAttr, value);
+    setAttributeWithoutSynchronization(autocapitalizeAttr, value);
 }
 
 #endif
@@ -529,7 +529,7 @@ unsigned HTMLFormElement::formElementIndexWithFormAttribute(Element* element, un
     while (left != right) {
         unsigned middle = left + ((right - left) / 2);
         ASSERT(middle < m_associatedElementsBeforeIndex || middle >= m_associatedElementsAfterIndex);
-        position = element->compareDocumentPosition(&m_associatedElements[middle]->asHTMLElement());
+        position = element->compareDocumentPosition(m_associatedElements[middle]->asHTMLElement());
         if (position & DOCUMENT_POSITION_FOLLOWING)
             right = middle;
         else
@@ -537,7 +537,7 @@ unsigned HTMLFormElement::formElementIndexWithFormAttribute(Element* element, un
     }
     
     ASSERT(left < m_associatedElementsBeforeIndex || left >= m_associatedElementsAfterIndex);
-    position = element->compareDocumentPosition(&m_associatedElements[left]->asHTMLElement());
+    position = element->compareDocumentPosition(m_associatedElements[left]->asHTMLElement());
     if (position & DOCUMENT_POSITION_FOLLOWING)
         return left;
     return left + 1;
@@ -551,8 +551,8 @@ unsigned HTMLFormElement::formElementIndex(FormAssociatedElement* associatedElem
 
     // Treats separately the case where this element has the form attribute
     // for performance consideration.
-    if (associatedHTMLElement.fastHasAttribute(formAttr)) {
-        unsigned short position = compareDocumentPosition(&associatedHTMLElement);
+    if (associatedHTMLElement.hasAttributeWithoutSynchronization(formAttr)) {
+        unsigned short position = compareDocumentPosition(associatedHTMLElement);
         if (position & DOCUMENT_POSITION_PRECEDING) {
             ++m_associatedElementsBeforeIndex;
             ++m_associatedElementsAfterIndex;
@@ -674,7 +674,7 @@ String HTMLFormElement::name() const
 
 bool HTMLFormElement::noValidate() const
 {
-    return fastHasAttribute(novalidateAttr);
+    return hasAttributeWithoutSynchronization(novalidateAttr);
 }
 
 // FIXME: This function should be removed because it does not do the same thing as the
@@ -682,17 +682,17 @@ bool HTMLFormElement::noValidate() const
 // (Darin Adler) removed this, someone added it back, so I am leaving it in for now.
 String HTMLFormElement::action() const
 {
-    return fastGetAttribute(actionAttr);
+    return attributeWithoutSynchronization(actionAttr);
 }
 
 void HTMLFormElement::setAction(const String &value)
 {
-    setAttribute(actionAttr, value);
+    setAttributeWithoutSynchronization(actionAttr, value);
 }
 
 void HTMLFormElement::setEnctype(const String &value)
 {
-    setAttribute(enctypeAttr, value);
+    setAttributeWithoutSynchronization(enctypeAttr, value);
 }
 
 String HTMLFormElement::method() const
@@ -702,12 +702,12 @@ String HTMLFormElement::method() const
 
 void HTMLFormElement::setMethod(const String &value)
 {
-    setAttribute(methodAttr, value);
+    setAttributeWithoutSynchronization(methodAttr, value);
 }
 
 String HTMLFormElement::target() const
 {
-    return getAttribute(targetAttr);
+    return attributeWithoutSynchronization(targetAttr);
 }
 
 bool HTMLFormElement::wasUserSubmitted() const
@@ -879,7 +879,7 @@ void HTMLFormElement::didMoveToNewDocument(Document* oldDocument)
 
 bool HTMLFormElement::shouldAutocomplete() const
 {
-    return !equalLettersIgnoringASCIICase(fastGetAttribute(autocompleteAttr), "off");
+    return !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(autocompleteAttr), "off");
 }
 
 void HTMLFormElement::finishParsingChildren()
@@ -909,7 +909,7 @@ const AtomicString& HTMLFormElement::autocomplete() const
     static NeverDestroyed<AtomicString> on("on", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<AtomicString> off("off", AtomicString::ConstructFromLiteral);
 
-    return equalIgnoringASCIICase(fastGetAttribute(autocompleteAttr), "off") ? off : on;
+    return equalIgnoringASCIICase(attributeWithoutSynchronization(autocompleteAttr), "off") ? off : on;
 }
 
 } // namespace

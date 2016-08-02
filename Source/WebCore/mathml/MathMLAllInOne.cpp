@@ -26,11 +26,15 @@
 // This all-in-one cpp file cuts down on template bloat to allow us to build our Windows release build.
 
 #include "MathMLElement.cpp"
+#include "MathMLFractionElement.cpp"
 #include "MathMLInlineContainerElement.cpp"
 #include "MathMLMathElement.cpp"
 #include "MathMLMencloseElement.cpp"
 #include "MathMLOperatorDictionary.cpp"
+#include "MathMLOperatorElement.cpp"
 #include "MathMLPaddedElement.cpp"
+#include "MathMLScriptsElement.cpp"
 #include "MathMLSelectElement.cpp"
 #include "MathMLTextElement.cpp"
+#include "MathMLUnderOverElement.cpp"
 

@@ -272,6 +272,7 @@ public:
     void updateFontPanelIfNeeded();
     void changeFontFromFontPanel();
     bool validateUserInterfaceItem(id <NSValidatedUserInterfaceItem>);
+    void setEditableElementIsFocused(bool);
 
     void startSpeaking();
     void stopSpeaking(id);
@@ -559,6 +560,7 @@ private:
     RetainPtr<WKViewLayoutStrategy> m_layoutStrategy;
     WKLayoutMode m_lastRequestedLayoutMode { kWKLayoutModeViewSize };
     CGFloat m_lastRequestedViewScale { 1 };
+    CGSize m_lastRequestedFixedLayoutSize { 0, 0 };
 
     bool m_inSecureInputState { false };
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
@@ -646,6 +648,7 @@ private:
     NSRange m_softSpaceRange { NSNotFound, 0 };
     bool m_isHandlingAcceptedCandidate { false };
     bool m_requiresUserActionForEditingControlsManager { false };
+    bool m_editableElementIsFocused { false };
 };
     
 } // namespace WebKit

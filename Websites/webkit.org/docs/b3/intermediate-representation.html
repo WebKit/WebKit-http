@@ -43,7 +43,7 @@
     <p>The act of compiling the Procedure changes it in-place, making it unsuitable for
       compiling again.  Always create a new Procedure every time you want to compile
       something.</p>
-
+    
     <h2>Types</h2>
 
     <p>B3 has a trivial type system with only five types:</p>
@@ -130,8 +130,15 @@
     <h2>Control flow</h2>
 
     <p>B3 represents control flow using basic blocks.  Each basic block may have zero or more
-      predecessors.  Each basic block may have zero or more successors.  The successors are
-      controlled by the basic block's last Value, which must be a ControlValue instance.</p>
+      predecessors.  Each basic block may have zero or more successors.  The meaning of the
+      successors is determined by the basic block's last Value, which must be a terminal. A
+      value is terminal if:</p>
+    
+    <pre><code>value-&gt;effects().terminal</code></pre>
+    
+    <p>Some opcodes are definitely terminal, like Jump, Branch, Oops, Return, and Switch. But a
+      value with the Patchpoint opcode may or may not be terminal. In general it's necessary to
+      check the <code>terminal</code> bit as shown above.</p>
 
     <p>Each basic block contains a Vector&lt;Value*&gt; as the contents of the block. Control
       flow inside the block is implicit based on the order of Values in the vector.</p>
@@ -458,6 +465,17 @@ patchpoint->setGenerator(
           patchpoint will take some exit state as part of its arguments, and it will manipulate
           the call frame in place to make it look like another execution engine's call frame.
           This is called OSR, and JavaScriptCore does it a lot.</p>
+        
+        <p>A patchpoint can be used as a terminal. Simply set the <code>terminal</code> bit:</p>
+        
+        <pre><code>patchpoint-&gt;effects.terminal = true;</code></pre>
+        
+        <p>The generator can determine where to branch by using the StackmapGenerationParams to
+          get the set of labels for all successors. You're guaranteed that the number of
+          successors of the patchpoint's basic block will be the same as when you created it.
+          However, like any value, a patchpoint may be cloned. This means, for example, that if
+          you use this to implement a table jump then the jump table must be created inside the
+          generator, so that you get one jump table per clone.</p>
  
         <p>Must use the PatchpointValue class with the Patchpoint opcode.</p>
       </dd>
@@ -523,32 +541,69 @@ patchpoint->setGenerator(
         with Upsilon.</dd>
 
       <dt>Void Jump(takenBlock)</dt>
-      <dd>Jumps to takenBlock.  This is a ControlValue, so it must appear at the end of the
-        basic block.</dd>
+      <dd>Jumps to takenBlock.  This must appear at the end of the basic block. The basic block
+        must have exactly one successor.</dd>
 
       <dt>Void Branch(T, takenBlock, notTakenBlock)</dt>
       <dd>Works for T = Int32 or T = Int64.  Branches on the child.  If the child is non-zero,
-        it branches to the takenBlock.  Otherwise it branches to the notTakenBlock.  Must use
-        the ControlValue class.  Must appear at the end of the basic block.</dd>
+        it branches to the takenBlock.  Otherwise it branches to the notTakenBlock.  Must appear
+        at the end of the basic block. The block must have exactly two successors.</dd>
 
       <dt>Void Switch(T, cases...)</dt>
       <dd>Works for T = Int32 or T = Int64.  Switches on the child.  Contains a list of switch
         cases.  Each switch case has an integer constant and a target block.  The switch value
         also contains a fall-through target in case the child has a value that wasn't mentioned
         in the cases list.  Must use the SwitchValue class.  Must appear at the end of the basic
-        block.</dd>
+        block. The block must have one successor for each case, plus a successor for the
+        fall-through (default) case. You can manage the successors of a block containing a Switch
+        using API in SwitchValue, like SwitchValue::appendCase() and
+        SwitchValue::setFallThrough().</dd>
+      
+      <dt>Void EntrySwitch()</dt>
+      <dd>
+        <p>B3 supports multiple procedure entrypoints. The way you create multiple entrypoints is
+          by placing an EntrySwitch at the end of the root block. The root block must then have a
+          successor for each entrypoint. Additionally, you must tell the Procedure how many
+          entrypoints you want. For example:</p>
+        <pre><code>Procedure proc;
+proc.setNumEntrypoints(3);
+BasicBlock* root = proc.addBlock();
+BasicBlock* firstEntrypoint = proc.addBlock();
+BasicBlock* secondEntrypoint = proc.addBlock();
+BasicBlock* thirdEntrypoint = proc.addBlock();
+root->appendNew&lt;Value&gt;(proc, EntrySwitch, Origin());
+root->appendSuccessor(firstEntrypoint);
+root->appendSuccessor(secondEntrypoint);
+root->appendSuccessor(thirdEntrypoint);</code></pre>
+        <p>This is the canonical way to use EntrySwitch, however the semantics are flexible enough
+          to allow its use anywhere in the control flow graph. You can have an arbitrary number of
+          EntrySwitches. This flexibility ensures that EntrySwitch works even when B3 does
+          transformations that move code above the EntrySwitch, duplicate the EntrySwitch itself,
+          or do any number of other unexpected things.</p>
+        <p>EntrySwitch behaves as if each Procedure has a variable called Entry. Each physical
+          entrypoint sets Entry to the index of that entrypoint (so 0, 1, or 2, above) and jumps to
+          the root block. EntrySwitch is just a switch on the Entry variable. Transformations over
+          code that uses EntrySwitch are valid so long as they don't change the procedure's
+          behavior under these semantics.</p>
+        <p>EntrySwitch is implemented without any actual variables or switching. Instead, all code
+          that lies on some path from the root block to some EntrySwitch is cloned for each
+          entrypoint. This lowering is done as a very late phase in Air, so most of the compiler
+          does not have to know anything about entrypoints. Most of the compiler treats EntrySwitch
+          as an opaque control flow construct. EntrySwitch lowering is allowed to clone an
+          arbitrary amount of code. However, normal uses of EntrySwitch will place it at the end of
+          an empty root block and B3 will only hoist a handful of things above EntrySwitch. This
+          leads to only a small amount of cloned code in practice.</p>
+      </dd>
 
       <dt>Void Return(T)</dt>
       <dd>Works for any type except Void.  Returns the given value and terminates the procedure.
-        This is a ControlValue, but it must have an empty successors list.  Must appear at the
-        end of the basic block.</dd>
+        Must appear at the end of the basic block. The block must have zero successors.</dd>
 
       <dt>Void Oops()</dt>
       <dd>Indicates unreachable code.  This may be implemented as either a trap or as a bare
-        fall-through, since B3 is allowed to assume that this will never be reached.  This is a
-        ControlValue, but it must have an empty successors list.  Must appear at the end of the
-        basic block.  Note that we also use the Oops opcode to mean "no such opcode" in some B3
-        transformations.</dd>
+        fall-through, since B3 is allowed to assume that this will never be reached.  Must appear
+        at the end of the basic block.  The block must have zero successors. Note that we also use
+        the Oops opcode to mean "no such opcode" in some B3 transformations.</dd>
     </dl>
 
   </div>

@@ -1522,6 +1522,18 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
+    case CompareEqPtr: {
+        Node* childNode = node->child1().node();
+        JSValue childValue = forNode(childNode).value();
+        if (childValue) {
+            setConstant(node, jsBoolean(childValue.isCell() && childValue.asCell() == node->cellOperand()->cell()));
+            break;
+        }
+        
+        forNode(node).setType(SpecBoolean);
+        break;
+    }
+        
     case StringCharCodeAt:
         forNode(node).setType(SpecInt32Only);
         break;
@@ -2789,7 +2801,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(m_graph, SpecObject);
         break;
         
-    case VarInjectionWatchpoint:
     case PutGlobalVariable:
     case NotifyWrite:
         break;
@@ -2835,6 +2846,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ConstructVarargs:
     case ConstructForwardVarargs:
     case TailCallForwardVarargsInlinedCaller:
+    case CallEval:
         clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).makeHeapTop();
         break;

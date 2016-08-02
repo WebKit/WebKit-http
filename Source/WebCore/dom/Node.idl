@@ -96,14 +96,12 @@
     // FIXME: the spec says this can also raise on retrieval.
     [SetterRaisesException] attribute DOMString? textContent;
 
-    // FIXME: other should not be optional.
-    boolean            isSameNode(optional Node? other = null);
-    // FIXME: other should not be optional.
-    boolean            isEqualNode(optional Node? other = null);
+    boolean isSameNode(Node? other);
+    boolean isEqualNode(Node? other);
 
-    DOMString?         lookupPrefix(optional DOMString? namespaceURI = null);
-    boolean            isDefaultNamespace(optional DOMString? namespaceURI = null);
-    DOMString?         lookupNamespaceURI(optional DOMString? prefix = null);
+    DOMString? lookupPrefix(DOMString? namespaceURI);
+    DOMString? lookupNamespaceURI(DOMString? prefix);
+    boolean isDefaultNamespace(DOMString? namespaceURI);
 
     // DocumentPosition
     const unsigned short      DOCUMENT_POSITION_DISCONNECTED = 0x01;
@@ -113,12 +111,10 @@
     const unsigned short      DOCUMENT_POSITION_CONTAINED_BY = 0x10;
     const unsigned short      DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20;
 
-    // FIXME: other should be neither optional nor nullable.
-    unsigned short     compareDocumentPosition(optional Node? other = null);
+    unsigned short compareDocumentPosition(Node other);
 
     // Introduced in DOM4
-    // FIXME: other should not be optional.
-    boolean contains(optional Node? other = null);
+    boolean contains(Node? other);
 
     [EnabledAtRuntime=ShadowDOM, ImplementedAs=inDocument] readonly attribute boolean isConnected;
 

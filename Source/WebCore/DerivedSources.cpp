@@ -99,7 +99,7 @@
 #include "JSWebGLRenderingContextBase.cpp"
 #include "JSWebGLSampler.cpp"
 #include "JSWebGLShader.cpp"
-#include "JSWebGLShaderPrecisionFormat.cpp" 
+#include "JSWebGLShaderPrecisionFormat.cpp"
 #include "JSWebGLSync.cpp"
 #include "JSWebGLTexture.cpp"
 #include "JSWebGLTransformFeedback.cpp"
@@ -396,7 +396,7 @@
 #if ENABLE(STREAMS_API)
 #include "JSReadableStream.cpp"
 #include "JSReadableStreamController.cpp"
-#include "JSReadableStreamReader.cpp"
+#include "JSReadableStreamDefaultReader.cpp"
 #include "JSWritableStream.cpp"
 #endif
 #include "JSRect.cpp"
@@ -427,7 +427,6 @@
 #include "JSSpeechSynthesisEvent.cpp"
 #include "JSSpeechSynthesisUtterance.cpp"
 #include "JSSpeechSynthesisVoice.cpp"
-#include "JSSubtleCrypto.cpp"
 #include "JSSQLError.cpp"
 #include "JSSQLException.cpp"
 #include "JSSQLResultSet.cpp"
@@ -646,6 +645,7 @@
 #include "JSWebKitNamespace.cpp"
 #include "JSWebKitPlaybackTargetAvailabilityEvent.cpp"
 #include "JSWebKitPoint.cpp"
+#include "JSWebKitSubtleCrypto.cpp"
 #include "JSWebKitTransitionEvent.cpp"
 #include "JSWebSocket.cpp"
 #include "JSWheelEvent.cpp"

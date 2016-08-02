@@ -33,7 +33,9 @@
 #include "AirSpecial.h"
 #include "AirStackSlot.h"
 #include "AirTmp.h"
+#include "B3IndexMap.h"
 #include "B3SparseCollection.h"
+#include "CCallHelpers.h"
 #include "RegisterAtOffsetList.h"
 #include "StackAlignment.h"
 
@@ -116,6 +118,32 @@ public:
     void setFrameSize(unsigned frameSize)
     {
         m_frameSize = frameSize;
+    }
+
+    // Note that this is not the same thing as proc().numEntrypoints(). This value here may be zero
+    // until we lower EntrySwitch.
+    unsigned numEntrypoints() const { return m_entrypoints.size(); }
+    const Vector<FrequentedBlock>& entrypoints() const { return m_entrypoints; }
+    const FrequentedBlock& entrypoint(unsigned index) const { return m_entrypoints[index]; }
+    bool isEntrypoint(BasicBlock*) const;
+    
+    // This is used by lowerEntrySwitch().
+    template<typename Vector>
+    void setEntrypoints(Vector&& vector)
+    {
+        m_entrypoints = std::forward<Vector>(vector);
+    }
+    
+    CCallHelpers::Label entrypointLabel(unsigned index) const
+    {
+        return m_entrypointLabels[index];
+    }
+    
+    // This is used by generate().
+    template<typename Vector>
+    void setEntrypointLabels(Vector&& vector)
+    {
+        m_entrypointLabels = std::forward<Vector>(vector);
     }
 
     const RegisterAtOffsetList& calleeSaveRegisters() const { return m_calleeSaveRegisters; }
@@ -203,6 +231,8 @@ public:
     void addFastTmp(Tmp);
     bool isFastTmp(Tmp tmp) const { return m_fastTmps.contains(tmp); }
     
+    void* addDataSection(size_t);
+    
     // The name has to be a string literal, since we don't do any memory management for the string.
     void setLastPhaseName(const char* name)
     {
@@ -232,6 +262,8 @@ private:
     unsigned m_frameSize { 0 };
     unsigned m_callArgAreaSize { 0 };
     RegisterAtOffsetList m_calleeSaveRegisters;
+    Vector<FrequentedBlock> m_entrypoints; // This is empty until after lowerEntrySwitch().
+    Vector<CCallHelpers::Label> m_entrypointLabels; // This is empty until code generation.
     const char* m_lastPhaseName;
 };
 

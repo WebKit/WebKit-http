@@ -171,9 +171,8 @@ String XMLHttpRequest::responseText(ExceptionCode& ec)
     return responseTextIgnoringResponseType();
 }
 
-void XMLHttpRequest::didCacheResponseJSON()
+void XMLHttpRequest::didCacheResponse()
 {
-    ASSERT(m_responseType == ResponseType::Json);
     ASSERT(doneWithoutErrors());
     m_responseCacheIsValid = true;
     m_responseBuilder.clear();
@@ -218,42 +217,30 @@ Document* XMLHttpRequest::responseXML(ExceptionCode& ec)
     return m_responseDocument.get();
 }
 
-Blob* XMLHttpRequest::responseBlob()
+Ref<Blob> XMLHttpRequest::createResponseBlob()
 {
     ASSERT(m_responseType == ResponseType::Blob);
     ASSERT(doneWithoutErrors());
 
-    if (!m_responseBlob) {
-        if (m_binaryResponseBuilder) {
-            // FIXME: We just received the data from NetworkProcess, and are sending it back. This is inefficient.
-            Vector<uint8_t> data;
-            data.append(m_binaryResponseBuilder->data(), m_binaryResponseBuilder->size());
-            String normalizedContentType = Blob::normalizedContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
-            m_responseBlob = Blob::create(WTFMove(data), normalizedContentType);
-            m_binaryResponseBuilder = nullptr;
-        } else {
-            // If we errored out or got no data, we still return a blob, just an empty one.
-            m_responseBlob = Blob::create();
-        }
-    }
+    if (!m_binaryResponseBuilder)
+        return Blob::create();
 
-    return m_responseBlob.get();
+    // FIXME: We just received the data from NetworkProcess, and are sending it back. This is inefficient.
+    Vector<uint8_t> data;
+    data.append(m_binaryResponseBuilder->data(), m_binaryResponseBuilder->size());
+    m_binaryResponseBuilder = nullptr;
+    String normalizedContentType = Blob::normalizedContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
+    return Blob::create(WTFMove(data), normalizedContentType);
 }
 
-ArrayBuffer* XMLHttpRequest::responseArrayBuffer()
+RefPtr<ArrayBuffer> XMLHttpRequest::createResponseArrayBuffer()
 {
     ASSERT(m_responseType == ResponseType::Arraybuffer);
     ASSERT(doneWithoutErrors());
 
-    if (!m_responseArrayBuffer) {
-        if (m_binaryResponseBuilder)
-            m_responseArrayBuffer = m_binaryResponseBuilder->createArrayBuffer();
-        else
-            m_responseArrayBuffer = ArrayBuffer::create(nullptr, 0);
-        m_binaryResponseBuilder = nullptr;
-    }
-
-    return m_responseArrayBuffer.get();
+    auto result = m_binaryResponseBuilder ? m_binaryResponseBuilder->createArrayBuffer() : ArrayBuffer::create(nullptr, 0);
+    m_binaryResponseBuilder = nullptr;
+    return result;
 }
 
 void XMLHttpRequest::setTimeout(unsigned timeout, ExceptionCode& ec)
@@ -421,9 +408,10 @@ bool XMLHttpRequest::isAllowedHTTPHeader(const String& name)
     return true;
 }
 
-void XMLHttpRequest::open(const String& method, const URL& url, ExceptionCode& ec)
+void XMLHttpRequest::open(const String& method, const String& url, ExceptionCode& ec)
 {
-    open(method, url, true, ec);
+    // If the async argument is omitted, set async to true.
+    return open(method, scriptExecutionContext()->completeURL(url), true, ec);
 }
 
 void XMLHttpRequest::open(const String& method, const URL& url, bool async, ExceptionCode& ec)
@@ -495,19 +483,14 @@ void XMLHttpRequest::open(const String& method, const URL& url, bool async, Exce
         m_state = OPENED;
 }
 
-void XMLHttpRequest::open(const String& method, const URL& url, bool async, const String& user, ExceptionCode& ec)
+void XMLHttpRequest::open(const String& method, const String& url, bool async, const String& user, const String& password, ExceptionCode& ec)
 {
-    URL urlWithCredentials(url);
-    urlWithCredentials.setUser(user);
-
-    open(method, urlWithCredentials, async, ec);
-}
-
-void XMLHttpRequest::open(const String& method, const URL& url, bool async, const String& user, const String& password, ExceptionCode& ec)
-{
-    URL urlWithCredentials(url);
-    urlWithCredentials.setUser(user);
-    urlWithCredentials.setPass(password);
+    URL urlWithCredentials = scriptExecutionContext()->completeURL(url);
+    if (!user.isNull()) {
+        urlWithCredentials.setUser(user);
+        if (!password.isNull())
+            urlWithCredentials.setPass(password);
+    }
 
     open(method, urlWithCredentials, async, ec);
 }
@@ -714,7 +697,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.preflightPolicy = uploadEvents ? ForcePreflight : ConsiderPreflight;
     options.setAllowCredentials((m_sameOriginRequest || m_includeCredentials) ? AllowStoredCredentials : DoNotAllowStoredCredentials);
     options.credentials = m_includeCredentials ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
-    options.crossOriginRequestPolicy = UseAccessControl;
+    options.mode = FetchOptions::Mode::Cors;
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
 
@@ -823,9 +806,7 @@ void XMLHttpRequest::clearResponseBuffers()
     m_responseEncoding = String();
     m_createdDocument = false;
     m_responseDocument = nullptr;
-    m_responseBlob = nullptr;
     m_binaryResponseBuilder = nullptr;
-    m_responseArrayBuffer = nullptr;
     m_responseCacheIsValid = false;
 }
 

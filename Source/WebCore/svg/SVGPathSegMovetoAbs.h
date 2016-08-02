@@ -26,7 +26,7 @@
 
 namespace WebCore {
 
-class SVGPathSegMovetoAbs : public SVGPathSegSingleCoordinate {
+class SVGPathSegMovetoAbs final : public SVGPathSegSingleCoordinate {
 public:
     static Ref<SVGPathSegMovetoAbs> create(const SVGPathElement& element, SVGPathSegRole role, float x, float y)
     {
@@ -39,8 +39,8 @@ private:
     {
     }
 
-    unsigned short pathSegType() const override { return PATHSEG_MOVETO_ABS; }
-    String pathSegTypeAsLetter() const override { return "M"; }
+    unsigned short pathSegType() const final { return PATHSEG_MOVETO_ABS; }
+    String pathSegTypeAsLetter() const final { return "M"; }
 };
 
 } // namespace WebCore

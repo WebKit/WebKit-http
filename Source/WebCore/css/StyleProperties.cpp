@@ -640,15 +640,14 @@ bool MutableStyleProperties::removeShorthandProperty(CSSPropertyID propertyID)
     if (!shorthand.length())
         return false;
 
-    bool propertiesWereRemoved = removePropertiesInSet(shorthand.properties(), shorthand.length());
+    bool ret = removePropertiesInSet(shorthand.properties(), shorthand.length());
 
     CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propertyID);
     if (prefixingVariant == propertyID)
-        return propertiesWereRemoved;
+        return ret;
 
     StylePropertyShorthand shorthandPrefixingVariant = shorthandForProperty(prefixingVariant);
-    bool prefixedVariantPropertiesWereRemoved = removePropertiesInSet(shorthandPrefixingVariant.properties(), shorthandPrefixingVariant.length());
-    return propertiesWereRemoved || prefixedVariantPropertiesWereRemoved;
+    return removePropertiesInSet(shorthandPrefixingVariant.properties(), shorthandPrefixingVariant.length());
 }
 
 bool MutableStyleProperties::removeProperty(CSSPropertyID propertyID, String* returnText)
@@ -656,14 +655,14 @@ bool MutableStyleProperties::removeProperty(CSSPropertyID propertyID, String* re
     if (removeShorthandProperty(propertyID)) {
         // FIXME: Return an equivalent shorthand when possible.
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return true;
     }
 
     int foundPropertyIndex = findPropertyIndex(propertyID);
     if (foundPropertyIndex == -1) {
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return false;
     }
 
@@ -673,6 +672,8 @@ bool MutableStyleProperties::removeProperty(CSSPropertyID propertyID, String* re
     // A more efficient removal strategy would involve marking entries as empty
     // and sweeping them when the vector grows too big.
     m_propertyVector.remove(foundPropertyIndex);
+
+    removePrefixedOrUnprefixedProperty(propertyID);
 
     return true;
 }
@@ -682,7 +683,7 @@ bool MutableStyleProperties::removeCustomProperty(const String& propertyName, St
     int foundPropertyIndex = findCustomPropertyIndex(propertyName);
     if (foundPropertyIndex == -1) {
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return false;
     }
 
@@ -694,6 +695,14 @@ bool MutableStyleProperties::removeCustomProperty(const String& propertyName, St
     m_propertyVector.remove(foundPropertyIndex);
 
     return true;
+}
+
+void MutableStyleProperties::removePrefixedOrUnprefixedProperty(CSSPropertyID propertyID)
+{
+    int foundPropertyIndex = findPropertyIndex(prefixingVariantForPropertyId(propertyID));
+    if (foundPropertyIndex == -1)
+        return;
+    m_propertyVector.remove(foundPropertyIndex);
 }
 
 bool StyleProperties::propertyIsImportant(CSSPropertyID propertyID) const
@@ -792,12 +801,40 @@ bool MutableStyleProperties::setProperty(const CSSProperty& property, CSSPropert
                 return false;
 
             *toReplace = property;
+            setPrefixingVariantProperty(property);
             return true;
         }
     }
 
+    return appendPrefixingVariantProperty(property);
+}
+
+static unsigned getIndexInShorthandVectorForPrefixingVariant(const CSSProperty& property, CSSPropertyID prefixingVariant)
+{
+    if (!property.isSetFromShorthand())
+        return 0;
+
+    CSSPropertyID prefixedShorthand = prefixingVariantForPropertyId(property.shorthandID());
+    return indexOfShorthandForLonghand(prefixedShorthand, matchingShorthandsForLonghand(prefixingVariant));
+}
+
+bool MutableStyleProperties::appendPrefixingVariantProperty(const CSSProperty& property)
+{
     m_propertyVector.append(property);
+    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(property.id());
+    if (prefixingVariant == property.id())
+        return true;
+
+    m_propertyVector.append(CSSProperty(prefixingVariant, property.value(), property.isImportant(), property.isSetFromShorthand(), getIndexInShorthandVectorForPrefixingVariant(property, prefixingVariant), property.metadata().m_implicit));
     return true;
+}
+
+void MutableStyleProperties::setPrefixingVariantProperty(const CSSProperty& property)
+{
+    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(property.id());
+    CSSProperty* toReplace = findCSSPropertyWithID(prefixingVariant);
+    if (toReplace && prefixingVariant != property.id())
+        *toReplace = CSSProperty(prefixingVariant, property.value(), property.isImportant(), property.isSetFromShorthand(), getIndexInShorthandVectorForPrefixingVariant(property, prefixingVariant), property.metadata().m_implicit);
 }
 
 bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, CSSValueID identifier, bool important)
@@ -846,12 +883,7 @@ bool MutableStyleProperties::addParsedProperty(const CSSProperty& property)
             return setProperty(property);
         return false;
     }
-    
-    // Only add properties that have no !important counterpart present
-    if (!propertyIsImportant(property.id()) || property.isImportant())
-        return setProperty(property);
-    
-    return false;
+    return setProperty(property);
 }
 
 String StyleProperties::asText() const
@@ -888,7 +920,6 @@ String StyleProperties::asText() const
             case CSSPropertyAnimationIterationCount:
             case CSSPropertyAnimationDirection:
             case CSSPropertyAnimationFillMode:
-            case CSSPropertyAnimationPlayState:
                 shorthandPropertyID = CSSPropertyAnimation;
                 break;
             case CSSPropertyBackgroundPositionX:
@@ -988,7 +1019,6 @@ String StyleProperties::asText() const
             case CSSPropertyWebkitAnimationIterationCount:
             case CSSPropertyWebkitAnimationDirection:
             case CSSPropertyWebkitAnimationFillMode:
-            case CSSPropertyWebkitAnimationPlayState:
                 shorthandPropertyID = CSSPropertyWebkitAnimation;
                 break;
             case CSSPropertyFlexDirection:

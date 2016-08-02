@@ -83,6 +83,10 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, Wo
 #if !ENABLE(INDEXED_DATABASE)
     UNUSED_PARAM(connectionProxy);
 #endif
+#if !ENABLE(WEB_SOCKETS)
+    UNUSED_PARAM(socketProvider);
+#endif
+
     auto origin = SecurityOrigin::create(url);
     if (m_topOrigin->hasUniversalAccess())
         origin->grantUniversalAccess();
@@ -232,7 +236,7 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode&
         }
 
         Ref<WorkerScriptLoader> scriptLoader = WorkerScriptLoader::create();
-        scriptLoader->loadSynchronously(scriptExecutionContext(), url, AllowCrossOriginRequests, shouldBypassMainWorldContentSecurityPolicy ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceScriptSrcDirective);
+        scriptLoader->loadSynchronously(scriptExecutionContext(), url, FetchOptions::Mode::NoCors, shouldBypassMainWorldContentSecurityPolicy ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceScriptSrcDirective);
 
         // If the fetching attempt failed, throw a NETWORK_ERR exception and abort all these steps.
         if (scriptLoader->failed()) {

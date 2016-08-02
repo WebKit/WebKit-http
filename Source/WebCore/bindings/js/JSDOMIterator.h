@@ -27,6 +27,7 @@
 #define JSDOMIterator_h
 
 #include "JSDOMBinding.h"
+#include <runtime/IteratorPrototype.h>
 #include <runtime/JSDestructibleObject.h>
 #include <type_traits>
 
@@ -97,7 +98,7 @@ public:
     static JSDOMIteratorPrototype<JSWrapper>* createPrototype(JSC::VM& vm, JSC::JSGlobalObject* globalObject)
     {
         return JSDOMIteratorPrototype<JSWrapper>::create(vm, globalObject,
-            JSDOMIteratorPrototype<JSWrapper>::createStructure(vm, globalObject, globalObject->objectPrototype()));
+            JSDOMIteratorPrototype<JSWrapper>::createStructure(vm, globalObject, globalObject->iteratorPrototype()));
     }
 
     JSC::JSValue next(JSC::ExecState&);
@@ -119,7 +120,6 @@ private:
 
     Optional<typename DOMWrapped::Iterator> m_iterator;
     IterationKind m_kind;
-    size_t m_index { 0 };
 };
 
 template<typename JSWrapper>
@@ -157,11 +157,11 @@ JSDOMIterator<JSWrapper>::asJS(JSC::ExecState& state, IteratorValue& value)
     if (m_kind != IterationKind::KeyValue)
         return result;
 
-    return jsPair(state, globalObject(), JSC::jsNumber(m_index++), result);
+    return jsPair(state, globalObject(), result, result);
 }
 
 template<typename IteratorValue> typename std::enable_if<IteratorInspector<IteratorValue>::isMap, void>::type
-appendForEachArguments(JSC::ExecState& state, JSDOMGlobalObject* globalObject, JSC::MarkedArgumentBuffer& arguments, IteratorValue& value, size_t&)
+appendForEachArguments(JSC::ExecState& state, JSDOMGlobalObject* globalObject, JSC::MarkedArgumentBuffer& arguments, IteratorValue& value)
 {
     ASSERT(value);
     arguments.append(toJS(&state, globalObject, value->value));
@@ -169,12 +169,12 @@ appendForEachArguments(JSC::ExecState& state, JSDOMGlobalObject* globalObject, J
 }
 
 template<typename IteratorValue> typename std::enable_if<IteratorInspector<IteratorValue>::isSet, void>::type
-appendForEachArguments(JSC::ExecState& state, JSDOMGlobalObject* globalObject, JSC::MarkedArgumentBuffer& arguments, IteratorValue& value, size_t& index)
+appendForEachArguments(JSC::ExecState& state, JSDOMGlobalObject* globalObject, JSC::MarkedArgumentBuffer& arguments, IteratorValue& value)
 {
     ASSERT(value);
     JSC::JSValue argument = toJS(&state, globalObject, *value);
     arguments.append(argument);
-    arguments.append(JSC::jsNumber(index++));
+    arguments.append(argument);
 }
 
 template<typename JSWrapper>
@@ -192,11 +192,10 @@ JSC::EncodedJSValue iteratorForEach(JSC::ExecState& state, const char* propertyN
     if (callType == JSC::CallType::None)
         return throwVMTypeError(&state);
 
-    size_t index = 0;
     auto iterator = wrapper->wrapped().createIterator();
     while (auto value = iterator.next()) {
         JSC::MarkedArgumentBuffer arguments;
-        appendForEachArguments(state, wrapper->globalObject(), arguments, value, index);
+        appendForEachArguments(state, wrapper->globalObject(), arguments, value);
         arguments.append(wrapper);
         JSC::call(&state, callback, callType, callData, thisValue, arguments);
         if (state.hadException())
@@ -240,7 +239,7 @@ void JSDOMIteratorPrototype<JSWrapper>::finishCreation(JSC::VM& vm, JSC::JSGloba
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
 
-    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, next, JSC::DontEnum, 0, JSC::NoIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, next, 0, 0, JSC::NoIntrinsic);
 }
 
 }

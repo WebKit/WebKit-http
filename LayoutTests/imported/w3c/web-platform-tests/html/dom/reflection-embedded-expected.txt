@@ -1842,8 +1842,8 @@ PASS img.border: IDL set to "\0" should not throw
 PASS img.border: IDL set to "\0" followed by getAttribute() 
 PASS img.border: IDL set to "\0" followed by IDL get 
 PASS img.border: IDL set to null should not throw 
-FAIL img.border: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL img.border: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS img.border: IDL set to null followed by getAttribute() 
+PASS img.border: IDL set to null followed by IDL get 
 PASS img.border: IDL set to object "test-toString" should not throw 
 PASS img.border: IDL set to object "test-toString" followed by getAttribute() 
 PASS img.border: IDL set to object "test-toString" followed by IDL get 
@@ -3391,8 +3391,8 @@ PASS iframe.marginHeight: IDL set to "\0" should not throw
 PASS iframe.marginHeight: IDL set to "\0" followed by getAttribute() 
 PASS iframe.marginHeight: IDL set to "\0" followed by IDL get 
 PASS iframe.marginHeight: IDL set to null should not throw 
-FAIL iframe.marginHeight: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL iframe.marginHeight: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS iframe.marginHeight: IDL set to null followed by getAttribute() 
+PASS iframe.marginHeight: IDL set to null followed by IDL get 
 PASS iframe.marginHeight: IDL set to object "test-toString" should not throw 
 PASS iframe.marginHeight: IDL set to object "test-toString" followed by getAttribute() 
 PASS iframe.marginHeight: IDL set to object "test-toString" followed by IDL get 
@@ -3468,8 +3468,8 @@ PASS iframe.marginWidth: IDL set to "\0" should not throw
 PASS iframe.marginWidth: IDL set to "\0" followed by getAttribute() 
 PASS iframe.marginWidth: IDL set to "\0" followed by IDL get 
 PASS iframe.marginWidth: IDL set to null should not throw 
-FAIL iframe.marginWidth: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL iframe.marginWidth: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS iframe.marginWidth: IDL set to null followed by getAttribute() 
+PASS iframe.marginWidth: IDL set to null followed by IDL get 
 PASS iframe.marginWidth: IDL set to object "test-toString" should not throw 
 PASS iframe.marginWidth: IDL set to object "test-toString" followed by getAttribute() 
 PASS iframe.marginWidth: IDL set to object "test-toString" followed by IDL get 
@@ -6574,8 +6574,8 @@ PASS object.border: IDL set to "\0" should not throw
 PASS object.border: IDL set to "\0" followed by getAttribute() 
 PASS object.border: IDL set to "\0" followed by IDL get 
 PASS object.border: IDL set to null should not throw 
-FAIL object.border: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL object.border: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS object.border: IDL set to null followed by getAttribute() 
+PASS object.border: IDL set to null followed by IDL get 
 PASS object.border: IDL set to object "test-toString" should not throw 
 PASS object.border: IDL set to object "test-toString" followed by getAttribute() 
 PASS object.border: IDL set to object "test-toString" followed by IDL get 
@@ -8596,8 +8596,8 @@ PASS video.mediaGroup: IDL set to "\0" should not throw
 PASS video.mediaGroup: IDL set to "\0" followed by getAttribute() 
 PASS video.mediaGroup: IDL set to "\0" followed by IDL get 
 PASS video.mediaGroup: IDL set to null should not throw 
-FAIL video.mediaGroup: IDL set to null followed by getAttribute() assert_equals: expected (string) "null" but got (object) null
-FAIL video.mediaGroup: IDL set to null followed by IDL get assert_equals: expected "null" but got ""
+PASS video.mediaGroup: IDL set to null followed by getAttribute() 
+PASS video.mediaGroup: IDL set to null followed by IDL get 
 PASS video.mediaGroup: IDL set to object "test-toString" should not throw 
 PASS video.mediaGroup: IDL set to object "test-toString" followed by getAttribute() 
 PASS video.mediaGroup: IDL set to object "test-toString" followed by IDL get 
@@ -10227,8 +10227,8 @@ PASS audio.mediaGroup: IDL set to "\0" should not throw
 PASS audio.mediaGroup: IDL set to "\0" followed by getAttribute() 
 PASS audio.mediaGroup: IDL set to "\0" followed by IDL get 
 PASS audio.mediaGroup: IDL set to null should not throw 
-FAIL audio.mediaGroup: IDL set to null followed by getAttribute() assert_equals: expected (string) "null" but got (object) null
-FAIL audio.mediaGroup: IDL set to null followed by IDL get assert_equals: expected "null" but got ""
+PASS audio.mediaGroup: IDL set to null followed by getAttribute() 
+PASS audio.mediaGroup: IDL set to null followed by IDL get 
 PASS audio.mediaGroup: IDL set to object "test-toString" should not throw 
 PASS audio.mediaGroup: IDL set to object "test-toString" followed by getAttribute() 
 PASS audio.mediaGroup: IDL set to object "test-toString" followed by IDL get 

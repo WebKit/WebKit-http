@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2011, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,9 @@
 #ifndef MarkedBlock_h
 #define MarkedBlock_h
 
+#include "AllocatorAttributes.h"
+#include "DestructionMode.h"
+#include "HeapCell.h"
 #include "HeapOperation.h"
 #include "IterationStatus.h"
 #include "WeakSet.h"
@@ -53,8 +56,6 @@ namespace JSC {
 
     typedef uintptr_t Bits;
 
-    bool isZapped(const JSCell*);
-    
     // A marked block is a page-aligned container for heap-allocated objects.
     // Objects are allocated within cells of the marked block. For a given
     // marked block, all cells have the same size. Objects smaller than the
@@ -99,14 +100,16 @@ namespace JSC {
             typedef size_t ReturnType;
 
             CountFunctor() : m_count(0) { }
-            void count(size_t count) { m_count += count; }
-            ReturnType returnValue() { return m_count; }
+            void count(size_t count) const { m_count += count; }
+            ReturnType returnValue() const { return m_count; }
 
         private:
-            ReturnType m_count;
+            // FIXME: This is mutable because we're using a functor rather than C++ lambdas.
+            // https://bugs.webkit.org/show_bug.cgi?id=159644
+            mutable ReturnType m_count;
         };
 
-        static MarkedBlock* create(Heap&, MarkedAllocator*, size_t capacity, size_t cellSize, bool needsDestruction);
+        static MarkedBlock* create(Heap&, MarkedAllocator*, size_t capacity, size_t cellSize, const AllocatorAttributes&);
         static void destroy(Heap&, MarkedBlock*);
 
         static bool isAtomAligned(const void*);
@@ -146,17 +149,20 @@ namespace JSC {
         bool isEmpty();
 
         size_t cellSize();
+        const AllocatorAttributes& attributes() const;
+        DestructionMode destruction() const;
         bool needsDestruction() const;
+        HeapCell::Kind cellKind() const;
 
         size_t size();
         size_t capacity();
 
         bool isMarked(const void*);
         bool testAndSetMarked(const void*);
-        bool isLive(const JSCell*);
+        bool isLive(const HeapCell*);
         bool isLiveCell(const void*);
         bool isAtom(const void*);
-        bool isMarkedOrNewlyAllocated(const JSCell*);
+        bool isMarkedOrNewlyAllocated(const HeapCell*);
         void setMarked(const void*);
         void clearMarked(const void*);
 
@@ -170,9 +176,9 @@ namespace JSC {
         void didRetireBlock(const FreeList&);
         void willRemoveBlock();
 
-        template <typename Functor> IterationStatus forEachCell(Functor&);
-        template <typename Functor> IterationStatus forEachLiveCell(Functor&);
-        template <typename Functor> IterationStatus forEachDeadCell(Functor&);
+        template <typename Functor> IterationStatus forEachCell(const Functor&);
+        template <typename Functor> IterationStatus forEachLiveCell(const Functor&);
+        template <typename Functor> IterationStatus forEachDeadCell(const Functor&);
 
     private:
         static const size_t atomAlignmentMask = atomSize - 1;
@@ -182,10 +188,10 @@ namespace JSC {
 
         typedef char Atom[atomSize];
 
-        MarkedBlock(MarkedAllocator*, size_t capacity, size_t cellSize, bool needsDestruction);
+        MarkedBlock(MarkedAllocator*, size_t capacity, size_t cellSize, const AllocatorAttributes&);
         Atom* atoms();
         size_t atomNumber(const void*);
-        void callDestructor(JSCell*);
+        void callDestructor(HeapCell*);
         template<BlockState, SweepMode, bool callDestructors> FreeList specializedSweep();
         
         MarkedBlock* m_prev;
@@ -197,7 +203,7 @@ namespace JSC {
         std::unique_ptr<WTF::Bitmap<atomsPerBlock>> m_newlyAllocated;
 
         size_t m_capacity;
-        bool m_needsDestruction;
+        AllocatorAttributes m_attributes;
         MarkedAllocator* m_allocator;
         BlockState m_state;
         WeakSet m_weakSet;
@@ -298,9 +304,24 @@ namespace JSC {
         return m_atomsPerCell * atomSize;
     }
 
+    inline const AllocatorAttributes& MarkedBlock::attributes() const
+    {
+        return m_attributes;
+    }
+
     inline bool MarkedBlock::needsDestruction() const
     {
-        return m_needsDestruction;
+        return m_attributes.destruction == NeedsDestruction;
+    }
+
+    inline DestructionMode MarkedBlock::destruction() const
+    {
+        return m_attributes.destruction;
+    }
+
+    inline HeapCell::Kind MarkedBlock::cellKind() const
+    {
+        return m_attributes.cellKind;
     }
 
     inline size_t MarkedBlock::size()
@@ -363,13 +384,13 @@ namespace JSC {
         return false;
     }
 
-    inline bool MarkedBlock::isMarkedOrNewlyAllocated(const JSCell* cell)
+    inline bool MarkedBlock::isMarkedOrNewlyAllocated(const HeapCell* cell)
     {
         ASSERT(m_state == Retired || m_state == Marked);
         return m_marks.get(atomNumber(cell)) || (m_newlyAllocated && isNewlyAllocated(cell));
     }
 
-    inline bool MarkedBlock::isLive(const JSCell* cell)
+    inline bool MarkedBlock::isLive(const HeapCell* cell)
     {
         switch (m_state) {
         case Allocated:
@@ -407,40 +428,43 @@ namespace JSC {
     {
         if (!isAtom(p))
             return false;
-        return isLive(static_cast<const JSCell*>(p));
+        return isLive(static_cast<const HeapCell*>(p));
     }
 
-    template <typename Functor> inline IterationStatus MarkedBlock::forEachCell(Functor& functor)
+    template <typename Functor> inline IterationStatus MarkedBlock::forEachCell(const Functor& functor)
     {
+        HeapCell::Kind kind = m_attributes.cellKind;
         for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
-            JSCell* cell = reinterpret_cast_ptr<JSCell*>(&atoms()[i]);
-            if (functor(cell) == IterationStatus::Done)
+            HeapCell* cell = reinterpret_cast_ptr<HeapCell*>(&atoms()[i]);
+            if (functor(cell, kind) == IterationStatus::Done)
                 return IterationStatus::Done;
         }
         return IterationStatus::Continue;
     }
 
-    template <typename Functor> inline IterationStatus MarkedBlock::forEachLiveCell(Functor& functor)
+    template <typename Functor> inline IterationStatus MarkedBlock::forEachLiveCell(const Functor& functor)
     {
+        HeapCell::Kind kind = m_attributes.cellKind;
         for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
-            JSCell* cell = reinterpret_cast_ptr<JSCell*>(&atoms()[i]);
+            HeapCell* cell = reinterpret_cast_ptr<HeapCell*>(&atoms()[i]);
             if (!isLive(cell))
                 continue;
 
-            if (functor(cell) == IterationStatus::Done)
+            if (functor(cell, kind) == IterationStatus::Done)
                 return IterationStatus::Done;
         }
         return IterationStatus::Continue;
     }
 
-    template <typename Functor> inline IterationStatus MarkedBlock::forEachDeadCell(Functor& functor)
+    template <typename Functor> inline IterationStatus MarkedBlock::forEachDeadCell(const Functor& functor)
     {
+        HeapCell::Kind kind = m_attributes.cellKind;
         for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
-            JSCell* cell = reinterpret_cast_ptr<JSCell*>(&atoms()[i]);
+            HeapCell* cell = reinterpret_cast_ptr<HeapCell*>(&atoms()[i]);
             if (isLive(cell))
                 continue;
 
-            if (functor(cell) == IterationStatus::Done)
+            if (functor(cell, kind) == IterationStatus::Done)
                 return IterationStatus::Done;
         }
         return IterationStatus::Continue;

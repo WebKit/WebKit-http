@@ -74,7 +74,7 @@ public:
 
     void jettisonExpensiveObjectsOnTopLevelNavigation();
 
-    bool isUnderMemoryPressure() const { return m_underMemoryPressure; }
+    bool isUnderMemoryPressure() const { return m_underMemoryPressure || m_isSimulatingMemoryPressure; }
     void setUnderMemoryPressure(bool b) { m_underMemoryPressure = b; }
 
 #if PLATFORM(IOS)
@@ -84,6 +84,8 @@ public:
     WEBCORE_EXPORT void clearMemoryPressure();
     WEBCORE_EXPORT bool shouldWaitForMemoryClearMessage();
     void respondToMemoryPressureIfNeeded();
+#elif OS(LINUX)
+    void setMemoryPressureMonitorHandle(int fd);
 #endif
 
     class ReliefLogger {
@@ -123,6 +125,9 @@ public:
     };
 
     WEBCORE_EXPORT void releaseMemory(Critical, Synchronous = Synchronous::No);
+
+    WEBCORE_EXPORT void beginSimulatedMemoryPressure();
+    WEBCORE_EXPORT void endSimulatedMemoryPressure();
 
 private:
     void platformInitialize();
@@ -164,7 +169,7 @@ private:
     LowMemoryHandler m_lowMemoryHandler;
 
     std::atomic<bool> m_underMemoryPressure;
-    bool m_isSimulatedMemoryPressure { false };
+    bool m_isSimulatingMemoryPressure { false };
 
 #if PLATFORM(IOS)
     uint32_t m_memoryPressureReason;
@@ -179,6 +184,7 @@ private:
     RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();
     void logErrorAndCloseFDs(const char* error);
+    bool tryEnsureEventFD();
 #endif
 };
 

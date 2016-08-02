@@ -30,6 +30,7 @@
 
 #include "AirArg.h"
 #include "B3Effects.h"
+#include "B3FrequentedBlock.h"
 #include "B3Opcode.h"
 #include "B3Origin.h"
 #include "B3SparseCollection.h"
@@ -60,7 +61,8 @@ public:
 
     unsigned index() const { return m_index; }
     
-    // Note that the opcode is immutable, except for replacing values with Identity or Nop.
+    // Note that the opcode is immutable, except for replacing values with:
+    // Identity, Nop, Oops, Jump, and Phi. See below for replaceWithXXX() methods.
     Opcode opcode() const { return m_opcode; }
 
     Origin origin() const { return m_origin; }
@@ -109,9 +111,19 @@ public:
     void replaceWithNopIgnoringType();
     
     void replaceWithPhi();
+    
+    // These transformations are only valid for terminals.
+    void replaceWithJump(BasicBlock* owner, FrequentedBlock);
+    void replaceWithOops(BasicBlock* owner);
+    
+    // You can use this form if owners are valid. They're usually not valid.
+    void replaceWithJump(FrequentedBlock);
+    void replaceWithOops();
 
     void dump(PrintStream&) const;
     void deepDump(const Procedure*, PrintStream&) const;
+    
+    virtual void dumpSuccessors(const BasicBlock*, PrintStream&) const;
 
     // This is how you cast Values. For example, if you want to do something provided that we have a
     // ArgumentRegValue, you can do:
@@ -176,7 +188,7 @@ public:
     virtual TriState aboveEqualConstant(const Value* other) const;
     virtual TriState belowEqualConstant(const Value* other) const;
     virtual TriState equalOrUnorderedConstant(const Value* other) const;
-
+    
     // If the value is a comparison then this returns the inverted form of that comparison, if
     // possible. It can be impossible for double comparisons, where for example LessThan and
     // GreaterEqual behave differently. If this returns a value, it is a new value, which must be
@@ -233,6 +245,11 @@ public:
     // repoint it at the Identity's child. For simplicity, this will follow arbitrarily long chains
     // of Identity's.
     void performSubstitution();
+    
+    // Free values are those whose presence is guaranteed not to hurt code. We consider constants,
+    // Identities, and Nops to be free. Constants are free because we hoist them to an optimal place.
+    // Identities and Nops are free because we remove them.
+    bool isFree() const;
 
     // Walk the ancestors of this value (i.e. the graph of things it transitively uses). This
     // either walks phis or not, depending on whether PhiChildren is null. Your callback gets
@@ -264,6 +281,9 @@ private:
         case FramePointer:
         case Nop:
         case Phi:
+        case Jump:
+        case Oops:
+        case EntrySwitch:
             if (UNLIKELY(numArgs))
                 badOpcode(opcode, numArgs);
             break;
@@ -284,6 +304,8 @@ private:
         case DoubleToFloat:
         case IToF:
         case BitwiseCast:
+        case Branch:
+        case Return:
             if (UNLIKELY(numArgs != 1))
                 badOpcode(opcode, numArgs);
             break;

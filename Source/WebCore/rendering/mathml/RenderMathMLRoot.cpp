@@ -203,7 +203,7 @@ void RenderMathMLRoot::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     // Stretch the radical operator to cover the base height.
     // We can then determine the metrics of the radical operator + the base.
-    m_radicalOperator.stretchTo(style(), baseAscent, baseDescent);
+    m_radicalOperator.stretchTo(style(), baseAscent + baseDescent);
     LayoutUnit radicalOperatorHeight = m_radicalOperator.ascent() + m_radicalOperator.descent();
     LayoutUnit indexBottomRaise = m_degreeBottomRaisePercent * radicalOperatorHeight;
     LayoutUnit radicalAscent = baseAscent + m_verticalGap + m_ruleThickness + m_extraAscender;
@@ -251,7 +251,7 @@ void RenderMathMLRoot::paint(PaintInfo& info, const LayoutPoint& paintOffset)
 {
     RenderMathMLRow::paint(info, paintOffset);
 
-    if (isEmpty() || info.context().paintingDisabled() || style().visibility() != VISIBLE || !isValid())
+    if (!firstChild() || info.context().paintingDisabled() || style().visibility() != VISIBLE || !isValid())
         return;
 
     // We draw the radical operator.

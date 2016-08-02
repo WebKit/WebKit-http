@@ -34,6 +34,7 @@
 #include "MarshallingHelpers.h"
 #include "PluginDatabase.h"
 #include "PluginView.h"
+#include "SocketProvider.h"
 #include "SoftLinking.h"
 #include "SubframeLoader.h"
 #include "TextIterator.h"
@@ -69,7 +70,6 @@
 #include "WebPreferences.h"
 #include "WebResourceLoadScheduler.h"
 #include "WebScriptWorld.h"
-#include "WebSocketProvider.h"
 #include "WebStorageNamespaceProvider.h"
 #include "WebViewGroup.h"
 #include "WebVisitedLinkStore.h"
@@ -122,6 +122,7 @@
 #include <WebCore/IntRect.h>
 #include <WebCore/JSElement.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/LogInitialization.h>
 #include <WebCore/Logging.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MainFrame.h>
@@ -769,7 +770,9 @@ HRESULT WebView::close()
         m_webInspector->inspectedWebViewClosed();
 
     delete m_page;
-    m_page = 0;
+    m_page = nullptr;
+
+    m_mainFrame = nullptr;
 
     registerForIconNotification(false);
     IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
@@ -2903,7 +2906,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     static bool didOneTimeInitialization;
     if (!didOneTimeInitialization) {
 #if !LOG_DISABLED
-        initializeLoggingChannelsIfNecessary();
+        initializeLogChannelsIfNecessary();
 #endif // !LOG_DISABLED
 
         // Initialize our platform strategies first before invoking the rest
@@ -2923,7 +2926,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
 
     m_inspectorClient = new WebInspectorClient(this);
 
-    PageConfiguration configuration(makeUniqueRef<WebEditorClient>(this), WebSocketProvider::create());
+    PageConfiguration configuration(makeUniqueRef<WebEditorClient>(this), SocketProvider::create());
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
     configuration.dragClient = new WebDragClient(this);

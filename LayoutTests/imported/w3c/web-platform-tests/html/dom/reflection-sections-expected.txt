@@ -663,8 +663,8 @@ PASS body.text: IDL set to "\0" should not throw
 PASS body.text: IDL set to "\0" followed by getAttribute() 
 PASS body.text: IDL set to "\0" followed by IDL get 
 PASS body.text: IDL set to null should not throw 
-FAIL body.text: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.text: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.text: IDL set to null followed by getAttribute() 
+PASS body.text: IDL set to null followed by IDL get 
 PASS body.text: IDL set to object "test-toString" should not throw 
 PASS body.text: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.text: IDL set to object "test-toString" followed by IDL get 
@@ -740,8 +740,8 @@ PASS body.link: IDL set to "\0" should not throw
 PASS body.link: IDL set to "\0" followed by getAttribute() 
 PASS body.link: IDL set to "\0" followed by IDL get 
 PASS body.link: IDL set to null should not throw 
-FAIL body.link: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.link: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.link: IDL set to null followed by getAttribute() 
+PASS body.link: IDL set to null followed by IDL get 
 PASS body.link: IDL set to object "test-toString" should not throw 
 PASS body.link: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.link: IDL set to object "test-toString" followed by IDL get 
@@ -817,8 +817,8 @@ PASS body.vLink: IDL set to "\0" should not throw
 PASS body.vLink: IDL set to "\0" followed by getAttribute() 
 PASS body.vLink: IDL set to "\0" followed by IDL get 
 PASS body.vLink: IDL set to null should not throw 
-FAIL body.vLink: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.vLink: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.vLink: IDL set to null followed by getAttribute() 
+PASS body.vLink: IDL set to null followed by IDL get 
 PASS body.vLink: IDL set to object "test-toString" should not throw 
 PASS body.vLink: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.vLink: IDL set to object "test-toString" followed by IDL get 
@@ -894,8 +894,8 @@ PASS body.aLink: IDL set to "\0" should not throw
 PASS body.aLink: IDL set to "\0" followed by getAttribute() 
 PASS body.aLink: IDL set to "\0" followed by IDL get 
 PASS body.aLink: IDL set to null should not throw 
-FAIL body.aLink: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.aLink: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.aLink: IDL set to null followed by getAttribute() 
+PASS body.aLink: IDL set to null followed by IDL get 
 PASS body.aLink: IDL set to object "test-toString" should not throw 
 PASS body.aLink: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.aLink: IDL set to object "test-toString" followed by IDL get 
@@ -971,8 +971,8 @@ PASS body.bgColor: IDL set to "\0" should not throw
 PASS body.bgColor: IDL set to "\0" followed by getAttribute() 
 PASS body.bgColor: IDL set to "\0" followed by IDL get 
 PASS body.bgColor: IDL set to null should not throw 
-FAIL body.bgColor: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.bgColor: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.bgColor: IDL set to null followed by getAttribute() 
+PASS body.bgColor: IDL set to null followed by IDL get 
 PASS body.bgColor: IDL set to object "test-toString" should not throw 
 PASS body.bgColor: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.bgColor: IDL set to object "test-toString" followed by IDL get 
@@ -10012,7 +10012,7 @@ PASS #document.fgColor (<body text>): IDL set to "\0" should not throw
 PASS #document.fgColor (<body text>): IDL set to "\0" followed by getAttribute() 
 PASS #document.fgColor (<body text>): IDL set to "\0" followed by IDL get 
 PASS #document.fgColor (<body text>): IDL set to null should not throw 
-FAIL #document.fgColor (<body text>): IDL set to null followed by getAttribute() assert_equals: expected (string) "" but got (object) null
+PASS #document.fgColor (<body text>): IDL set to null followed by getAttribute() 
 PASS #document.fgColor (<body text>): IDL set to null followed by IDL get 
 PASS #document.fgColor (<body text>): IDL set to object "test-toString" should not throw 
 PASS #document.fgColor (<body text>): IDL set to object "test-toString" followed by getAttribute() 
@@ -10089,7 +10089,7 @@ PASS #document.linkColor (<body link>): IDL set to "\0" should not throw
 PASS #document.linkColor (<body link>): IDL set to "\0" followed by getAttribute() 
 PASS #document.linkColor (<body link>): IDL set to "\0" followed by IDL get 
 PASS #document.linkColor (<body link>): IDL set to null should not throw 
-FAIL #document.linkColor (<body link>): IDL set to null followed by getAttribute() assert_equals: expected (string) "" but got (object) null
+PASS #document.linkColor (<body link>): IDL set to null followed by getAttribute() 
 PASS #document.linkColor (<body link>): IDL set to null followed by IDL get 
 PASS #document.linkColor (<body link>): IDL set to object "test-toString" should not throw 
 PASS #document.linkColor (<body link>): IDL set to object "test-toString" followed by getAttribute() 
@@ -10166,7 +10166,7 @@ PASS #document.vlinkColor (<body vlink>): IDL set to "\0" should not throw
 PASS #document.vlinkColor (<body vlink>): IDL set to "\0" followed by getAttribute() 
 PASS #document.vlinkColor (<body vlink>): IDL set to "\0" followed by IDL get 
 PASS #document.vlinkColor (<body vlink>): IDL set to null should not throw 
-FAIL #document.vlinkColor (<body vlink>): IDL set to null followed by getAttribute() assert_equals: expected (string) "" but got (object) null
+PASS #document.vlinkColor (<body vlink>): IDL set to null followed by getAttribute() 
 PASS #document.vlinkColor (<body vlink>): IDL set to null followed by IDL get 
 PASS #document.vlinkColor (<body vlink>): IDL set to object "test-toString" should not throw 
 PASS #document.vlinkColor (<body vlink>): IDL set to object "test-toString" followed by getAttribute() 
@@ -10243,7 +10243,7 @@ PASS #document.alinkColor (<body alink>): IDL set to "\0" should not throw
 PASS #document.alinkColor (<body alink>): IDL set to "\0" followed by getAttribute() 
 PASS #document.alinkColor (<body alink>): IDL set to "\0" followed by IDL get 
 PASS #document.alinkColor (<body alink>): IDL set to null should not throw 
-FAIL #document.alinkColor (<body alink>): IDL set to null followed by getAttribute() assert_equals: expected (string) "" but got (object) null
+PASS #document.alinkColor (<body alink>): IDL set to null followed by getAttribute() 
 PASS #document.alinkColor (<body alink>): IDL set to null followed by IDL get 
 PASS #document.alinkColor (<body alink>): IDL set to object "test-toString" should not throw 
 PASS #document.alinkColor (<body alink>): IDL set to object "test-toString" followed by getAttribute() 
@@ -10320,7 +10320,7 @@ PASS #document.bgColor (<body bgcolor>): IDL set to "\0" should not throw
 PASS #document.bgColor (<body bgcolor>): IDL set to "\0" followed by getAttribute() 
 PASS #document.bgColor (<body bgcolor>): IDL set to "\0" followed by IDL get 
 PASS #document.bgColor (<body bgcolor>): IDL set to null should not throw 
-FAIL #document.bgColor (<body bgcolor>): IDL set to null followed by getAttribute() assert_equals: expected (string) "" but got (object) null
+PASS #document.bgColor (<body bgcolor>): IDL set to null followed by getAttribute() 
 PASS #document.bgColor (<body bgcolor>): IDL set to null followed by IDL get 
 PASS #document.bgColor (<body bgcolor>): IDL set to object "test-toString" should not throw 
 PASS #document.bgColor (<body bgcolor>): IDL set to object "test-toString" followed by getAttribute() 

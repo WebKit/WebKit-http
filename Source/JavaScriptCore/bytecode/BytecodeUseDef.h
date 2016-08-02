@@ -208,6 +208,7 @@ void computeUsesForBytecodeOffset(
     case op_div:
     case op_mod:
     case op_sub:
+    case op_pow:
     case op_lshift:
     case op_rshift:
     case op_urshift:
@@ -282,6 +283,8 @@ void computeUsesForBytecodeOffset(
         int lastArg = registerOffset + CallFrame::thisArgumentOffset();
         for (int i = 0; i < argCount; i++)
             functor(codeBlock, instruction, opcodeID, lastArg + i);
+        if (opcodeID == op_call_eval)
+            functor(codeBlock, instruction, opcodeID, codeBlock->scopeRegister().offset());
         return;
     }
     case op_save: {
@@ -429,6 +432,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_div:
     case op_mod:
     case op_sub:
+    case op_pow:
     case op_lshift:
     case op_rshift:
     case op_urshift:

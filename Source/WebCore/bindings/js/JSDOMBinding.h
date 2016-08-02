@@ -125,6 +125,9 @@ WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentMustBeEnumError(JSC::ExecState&,
 JSC::EncodedJSValue throwArgumentMustBeFunctionError(JSC::ExecState&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName);
 WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentTypeError(JSC::ExecState&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedType);
 JSC::EncodedJSValue throwConstructorDocumentUnavailableError(JSC::ExecState&, const char* interfaceName);
+
+String makeGetterTypeErrorMessage(const char* interfaceName, const char* attributeName);
+String makeThisTypeErrorMessage(const char* interfaceName, const char* attributeName);
 WEBCORE_EXPORT JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
 WEBCORE_EXPORT JSC::EncodedJSValue throwThisTypeError(JSC::ExecState&, const char* interfaceName, const char* functionName);
 
@@ -195,9 +198,6 @@ JSC::JSValue jsOwnedStringOrNull(JSC::ExecState*, const String&);
 String propertyNameToString(JSC::PropertyName);
 
 AtomicString propertyNameToAtomicString(JSC::PropertyName);
-
-// FIXME: This is only used by legacy code and should go away. Use valueToStringTreatingNullAsEmptyString() instead.
-String valueToStringWithNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null
 
 String valueToStringTreatingNullAsEmptyString(JSC::ExecState*, JSC::JSValue);
 String valueToStringWithUndefinedOrNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null or undefined

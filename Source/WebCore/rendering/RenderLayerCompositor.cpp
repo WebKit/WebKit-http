@@ -1847,7 +1847,7 @@ String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
     // Dump an empty layer tree only if the only composited layer is the main frame's tiled backing,
     // so that tests expecting us to drop out of accelerated compositing when there are no layers succeed.
     if (!hasAnyAdditionalCompositedLayers(rootRenderLayer()) && documentUsesTiledBacking() && !(layerTreeBehavior & LayerTreeAsTextIncludeTileCaches))
-        layerTreeText = "";
+        layerTreeText = emptyString();
 
     // The true root layer is not included in the dump, so if we want to report
     // its repaint rects, they must be included here.
@@ -3013,8 +3013,10 @@ bool RenderLayerCompositor::shouldCompositeOverflowControls() const
     if (documentUsesTiledBacking())
         return true;
 
+#if !USE(COORDINATED_GRAPHICS_THREADED)
     if (!frameView.hasOverlayScrollbars())
         return false;
+#endif
 
     return true;
 }

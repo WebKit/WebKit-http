@@ -51,6 +51,7 @@
 #if PLATFORM(IOS)
 #include "AudioSession.h"
 #include "RuntimeApplicationChecks.h"
+#include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
 namespace WebCore {
@@ -243,6 +244,11 @@ bool MediaElementSession::canControlControlsManager() const
         return true;
     }
 
+    if (hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !m_element.isPlaying()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Needs to be playing");
+        return false;
+    }
+
     if (m_element.muted()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Muted");
         return false;
@@ -252,6 +258,11 @@ bool MediaElementSession::canControlControlsManager() const
         if (!m_element.renderer()) {
             LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No renderer");
             return false;
+        }
+
+        if (m_element.document().isMediaDocument()) {
+            LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is media document");
+            return true;
         }
 
         if (!m_element.hasVideo()) {
@@ -314,13 +325,13 @@ bool MediaElementSession::wirelessVideoPlaybackDisabled(const HTMLMediaElement& 
         return true;
     }
 
-    if (element.fastHasAttribute(HTMLNames::webkitwirelessvideoplaybackdisabledAttr)) {
+    if (element.hasAttributeWithoutSynchronization(HTMLNames::webkitwirelessvideoplaybackdisabledAttr)) {
         LOG(Media, "MediaElementSession::wirelessVideoPlaybackDisabled - returning TRUE because of attribute");
         return true;
     }
 
 #if PLATFORM(IOS)
-    String legacyAirplayAttributeValue = element.fastGetAttribute(HTMLNames::webkitairplayAttr);
+    String legacyAirplayAttributeValue = element.attributeWithoutSynchronization(HTMLNames::webkitairplayAttr);
     if (equalLettersIgnoringASCIICase(legacyAirplayAttributeValue, "deny")) {
         LOG(Media, "MediaElementSession::wirelessVideoPlaybackDisabled - returning TRUE because of legacy attribute");
         return true;
@@ -455,7 +466,14 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
     if (!settings || !settings->allowsInlineMediaPlayback())
         return true;
 
-    return settings->inlineMediaPlaybackRequiresPlaysInlineAttribute() && !(element.fastHasAttribute(HTMLNames::webkit_playsinlineAttr) || element.fastHasAttribute(HTMLNames::playsinlineAttr));
+    if (!settings->inlineMediaPlaybackRequiresPlaysInlineAttribute())
+        return false;
+
+#if PLATFORM(IOS)
+    if (dyld_get_program_sdk_version() < DYLD_IOS_VERSION_10_0)
+        return !element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr);
+#endif
+    return !element.hasAttributeWithoutSynchronization(HTMLNames::playsinlineAttr);
 }
 
 bool MediaElementSession::allowsAutomaticMediaDataLoading(const HTMLMediaElement& element) const

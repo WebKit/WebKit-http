@@ -35,9 +35,8 @@
     attribute FileList? files;
     attribute DOMString formAction;
 
-    // FIXME: These should not use [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString formEnctype;
-    [TreatNullAs=LegacyNullString] attribute DOMString formMethod;
+    attribute DOMString formEnctype;
+    attribute DOMString formMethod;
 
     [Reflect] attribute boolean formNoValidate;
     [Reflect] attribute DOMString formTarget;
@@ -127,8 +126,7 @@
 
     [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
 
-    // FIXME: This should not use TreatNullAs=LegacyNullString.
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=LegacyNullString] attribute DOMString autocapitalize;
+    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=EmptyString] attribute DOMString autocapitalize;
 
     // See http://www.w3.org/TR/html-media-capture/
     [Conditional=MEDIA_CAPTURE, Reflect] attribute boolean capture;

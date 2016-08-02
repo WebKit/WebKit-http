@@ -748,7 +748,7 @@ void Document::buildAccessKeyMap(TreeScope* scope)
 {
     ASSERT(scope);
     for (auto& element : descendantsOfType<Element>(scope->rootNode())) {
-        const AtomicString& accessKey = element.fastGetAttribute(accesskeyAttr);
+        const AtomicString& accessKey = element.attributeWithoutSynchronization(accesskeyAttr);
         if (!accessKey.isEmpty())
             m_elementsByAccessKey.set(accessKey.impl(), &element);
 
@@ -847,7 +847,7 @@ DOMImplementation& Document::implementation()
 
 bool Document::hasManifest() const
 {
-    return documentElement() && documentElement()->hasTagName(htmlTag) && documentElement()->fastHasAttribute(manifestAttr);
+    return documentElement() && documentElement()->hasTagName(htmlTag) && documentElement()->hasAttributeWithoutSynchronization(manifestAttr);
 }
 
 DocumentType* Document::doctype() const
@@ -1141,7 +1141,7 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
 #if ENABLE(MATHML)
     const auto& annotationXmlLocalName = MathMLNames::annotation_xmlTag.localName();
 #else
-    static NeverDestroyed<const AtomicString> annotationXmlLocalName(ASCIILiteral("annotation-xml"));
+    static NeverDestroyed<const AtomicString> annotationXmlLocalName("annotation-xml", AtomicString::ConstructFromLiteral);
 #endif
 
     if (localName == SVGNames::color_profileTag.localName()
@@ -2043,7 +2043,7 @@ std::unique_ptr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets
     ASSERT(&element.document() == this);
 
     // On iOS request delegates called during styleForElement may result in re-entering WebKit and killing the style resolver.
-    ResourceLoadSuspender suspender;
+    Style::PostResolutionCallbackDisabler disabler(*this);
 
     TemporaryChange<bool> change(m_ignorePendingStylesheets, true);
     auto elementStyle = element.resolveStyle(parentStyle);
@@ -3031,7 +3031,7 @@ void Document::processBaseElement()
     auto baseDescendants = descendantsOfType<HTMLBaseElement>(*this);
     for (auto& base : baseDescendants) {
         if (!href) {
-            const AtomicString& value = base.fastGetAttribute(hrefAttr);
+            const AtomicString& value = base.attributeWithoutSynchronization(hrefAttr);
             if (!value.isNull()) {
                 href = &value;
                 if (target)
@@ -3039,7 +3039,7 @@ void Document::processBaseElement()
             }
         }
         if (!target) {
-            const AtomicString& value = base.fastGetAttribute(targetAttr);
+            const AtomicString& value = base.attributeWithoutSynchronization(targetAttr);
             if (!value.isNull()) {
                 target = &value;
                 if (href)
@@ -7083,6 +7083,21 @@ void Document::addViewportDependentPicture(HTMLPictureElement& picture)
 void Document::removeViewportDependentPicture(HTMLPictureElement& picture)
 {
     m_viewportDependentPictures.remove(&picture);
+}
+
+const AtomicString& Document::dir() const
+{
+    auto* documentElement = this->documentElement();
+    if (!is<HTMLHtmlElement>(documentElement))
+        return nullAtom;
+    return downcast<HTMLHtmlElement>(*documentElement).dir();
+}
+
+void Document::setDir(const AtomicString& value)
+{
+    auto* documentElement = this->documentElement();
+    if (is<HTMLHtmlElement>(documentElement))
+        downcast<HTMLHtmlElement>(*documentElement).setDir(value);
 }
 
 } // namespace WebCore

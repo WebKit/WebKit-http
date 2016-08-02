@@ -559,6 +559,7 @@ sub WK_lcfirst
 {
     my ($object, $param) = @_;
     my $ret = lcfirst($param);
+    $ret =~ s/dOM/dom/ if $ret =~ /^dOM/;
     $ret =~ s/hTML/html/ if $ret =~ /^hTML/;
     $ret =~ s/uRL/url/ if $ret =~ /^uRL/;
     $ret =~ s/jS/js/ if $ret =~ /^jS/;
@@ -654,7 +655,7 @@ sub GetterExpression
     if ($attribute->signature->extendedAttributes->{"URL"}) {
         $functionName = "getURLAttribute";
     } elsif ($attributeType eq "boolean") {
-        $functionName = "fastHasAttribute";
+        $functionName = "hasAttributeWithoutSynchronization";
     } elsif ($attributeType eq "long") {
         $functionName = "getIntegralAttribute";
     } elsif ($attributeType eq "unsigned long") {
@@ -669,7 +670,7 @@ sub GetterExpression
         } elsif ($generator->IsSVGAnimatedType($attributeType)) {
             $functionName = "getAttribute";
         } else {
-            $functionName = "fastGetAttribute";
+            $functionName = "attributeWithoutSynchronization";
         }
     }
 

@@ -1,3 +1,85 @@
+2016-07-24  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should support multiple entrypoints
+        https://bugs.webkit.org/show_bug.cgi?id=159391
+
+        Reviewed by Saam Barati.
+        
+        Update some statements about ControlValue (which doesn't exist anymore) and add a blurb
+        about EntrySwitch.
+
+        * docs/b3/index.html:
+        * docs/b3/intermediate-representation.html:
+
+2016-07-20  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed, new demo files for an up-coming blog post.
+
+        * demos/mathml/demo2016/LICENSE-amiri.txt: Added.
+        * demos/mathml/demo2016/LICENSE-latinmodern-math.txt: Added.
+        * demos/mathml/demo2016/LICENSE-libertinusmath.txt: Added.
+        * demos/mathml/demo2016/README.txt: Added.
+        * demos/mathml/demo2016/amiri-regular.woff: Added.
+        * demos/mathml/demo2016/index.html: Added.
+        * demos/mathml/demo2016/latinmodern-math.woff: Added.
+        * demos/mathml/demo2016/libertinusmath-regular.woff: Added.
+        * demos/mathml/demo2016/webfonts.css: Added.
+        (@namespace url('http://www.w3.org/1999/xhtml');):
+        (@font-face):
+        (m|math, m|mtext):
+        (m|math.libertinus):
+        (m|math.arabic):
+
+2016-07-19  Jon Davis  <jond@apple.com>
+
+        Adjust margins for first-line floating elements and add preset floating video sizing
+        https://bugs.webkit.org/show_bug.cgi?id=159898
+
+        Reviewed by Benjamin Poulain.
+
+        * wp-content/themes/webkit/style.css:
+        (article video.alignright):
+        (article .alignright:first-child):
+        (@media only screen and (max-width: 690px)):
+            (article .alignright:first-child):
+        (@media only screen and (max-width: 415px)):
+            (article video.alignright):
+            (article .alignright:first-child):
+
+2016-07-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Implement table-based switches in B3/Air
+        https://bugs.webkit.org/show_bug.cgi?id=151141
+
+        Reviewed by Benjamin Poulain.
+        
+        Update documentation to reflect Patchpoint's new powers.
+
+        * docs/b3/intermediate-representation.html:
+
+2016-07-15  Jon Davis  <jond@apple.com>
+
+        Fixed content overflow and missing build information behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=159820
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/nightly-start.php:
+
+2016-07-14  Jon Davis  <jond@apple.com>
+
+        Improved WebKit Nightly start page design.
+        https://bugs.webkit.org/show_bug.cgi?id=159780
+
+        Reviewed by Timothy Hatcher.
+
+        Added better 404 handling, improved presentation of the 
+        start page and new Apache rewrites for the P1 bug list.
+
+        * .htaccess:
+        * wp-content/themes/webkit/functions.php:
+        * wp-content/themes/webkit/nightly-start.php:
+
 2016-07-01  Jon Davis  <jond@apple.com>
 
         Added a colorful new image and fixed the Open Graph attribute.
