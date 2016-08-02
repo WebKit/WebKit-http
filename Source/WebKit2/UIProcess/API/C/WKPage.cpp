@@ -71,6 +71,8 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include "WebProtectionSpace.h"
+#include "WKProxy.h"
+#include "WKType.h"
 #include <WebCore/Page.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/WindowFeatures.h>
@@ -396,7 +398,7 @@ void WKPageSetProxies(WKPageRef pageRef, WKArrayRef proxies)
     for (size_t i = 0; i < size; ++i)
     {
         WKTypeRef proxy = WKArrayGetItemAtIndex(proxies, i);
-        ASSERT(WKGetType(proxy) == WKProxyGetTypeID());
+        ASSERT(WKGetTypeID(proxy) == WKProxyGetTypeID());
         passProxies[i] = toImpl(static_cast<WKProxyRef>(proxy))->proxy();
     }
     toImpl(pageRef)->setProxies(passProxies);
