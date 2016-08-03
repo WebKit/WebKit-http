@@ -667,6 +667,11 @@ bool WKPageBackgroundExtendsBeyondPage(WKPageRef pageRef)
     return toImpl(pageRef)->backgroundExtendsBeyondPage();
 }
 
+void WKPageSetDrawsBackground(WKPageRef pageRef, bool drawsBackground)
+{
+    toImpl(pageRef)->setDrawsBackground(drawsBackground);
+}
+
 void WKPageSetPaginationMode(WKPageRef pageRef, WKPaginationMode paginationMode)
 {
     Pagination::Mode mode;

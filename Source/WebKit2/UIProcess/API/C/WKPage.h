@@ -203,6 +203,8 @@ WK_EXPORT void WKPageSetEnableHorizontalRubberBanding(WKPageRef, bool enableHori
 WK_EXPORT void WKPageSetBackgroundExtendsBeyondPage(WKPageRef, bool backgroundExtendsBeyondPage);
 WK_EXPORT bool WKPageBackgroundExtendsBeyondPage(WKPageRef);
 
+WK_EXPORT void WKPageSetDrawsBackground(WKPageRef, bool drawsBackground);
+
 WK_EXPORT bool WKPageCanDelete(WKPageRef page);
 WK_EXPORT bool WKPageHasSelectedRange(WKPageRef page);
 WK_EXPORT bool WKPageIsContentEditable(WKPageRef page);
