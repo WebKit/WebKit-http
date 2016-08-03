@@ -75,11 +75,6 @@ enum XMLHttpRequestSendArrayBufferOrView {
     XMLHttpRequestSendArrayBufferOrViewMax,
 };
 
-static bool isSetCookieHeader(const String& name)
-{
-    return equalLettersIgnoringASCIICase(name, "set-cookie") || equalLettersIgnoringASCIICase(name, "set-cookie2");
-}
-
 static void replaceCharsetInMediaType(String& mediaType, const String& charsetValue)
 {
     unsigned pos = 0, len = 0;
@@ -692,10 +687,8 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
         request.setHTTPHeaderFields(m_requestHeaders);
 
     ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
+    options.sendLoadCallbacks = SendCallbacks;
     options.preflightPolicy = uploadEvents ? ForcePreflight : ConsiderPreflight;
-    options.setAllowCredentials((m_sameOriginRequest || m_includeCredentials) ? AllowStoredCredentials : DoNotAllowStoredCredentials);
     options.credentials = m_includeCredentials ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
     options.mode = FetchOptions::Mode::Cors;
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
@@ -720,7 +713,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
         // ThreadableLoader::create can return null here, for example if we're no longer attached to a page or if a content blocker blocks the load.
         // This is true while running onunload handlers.
         // FIXME: Maybe we need to be able to send XMLHttpRequests from onunload, <http://bugs.webkit.org/show_bug.cgi?id=10904>.
-        m_loader = ThreadableLoader::create(scriptExecutionContext(), this, request, options);
+        m_loader = ThreadableLoader::create(*scriptExecutionContext(), *this, WTFMove(request), options);
 
         // Neither this object nor the JavaScript wrapper should be deleted while
         // a request is in progress because we need to keep the listeners alive,
@@ -733,7 +726,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
         }
     } else {
         InspectorInstrumentation::willLoadXHRSynchronously(scriptExecutionContext());
-        ThreadableLoader::loadResourceSynchronously(scriptExecutionContext(), request, *this, options);
+        ThreadableLoader::loadResourceSynchronously(*scriptExecutionContext(), WTFMove(request), *this, options);
         InspectorInstrumentation::didLoadXHRSynchronously(scriptExecutionContext());
     }
 
@@ -906,22 +899,7 @@ String XMLHttpRequest::getAllResponseHeaders() const
 
     StringBuilder stringBuilder;
 
-    HTTPHeaderSet accessControlExposeHeaderSet;
-    parseAccessControlExposeHeadersAllowList(m_response.httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), accessControlExposeHeaderSet);
-    
     for (const auto& header : m_response.httpHeaderFields()) {
-        // Hide Set-Cookie header fields from the XMLHttpRequest client for these reasons:
-        //     1) If the client did have access to the fields, then it could read HTTP-only
-        //        cookies; those cookies are supposed to be hidden from scripts.
-        //     2) There's no known harm in hiding Set-Cookie header fields entirely; we don't
-        //        know any widely used technique that requires access to them.
-        //     3) Firefox has implemented this policy.
-        if (isSetCookieHeader(header.key) && !securityOrigin()->canLoadLocalResources())
-            continue;
-
-        if (!m_sameOriginRequest && !isOnAccessControlResponseHeaderWhitelist(header.key) && !accessControlExposeHeaderSet.contains(header.key))
-            continue;
-
         stringBuilder.append(header.key);
         stringBuilder.append(':');
         stringBuilder.append(' ');
@@ -938,19 +916,6 @@ String XMLHttpRequest::getResponseHeader(const String& name) const
     if (m_state < HEADERS_RECEIVED || m_error)
         return String();
 
-    // See comment in getAllResponseHeaders above.
-    if (isSetCookieHeader(name) && !securityOrigin()->canLoadLocalResources()) {
-        logConsoleError(scriptExecutionContext(), "Refused to get unsafe header \"" + name + "\"");
-        return String();
-    }
-
-    HTTPHeaderSet accessControlExposeHeaderSet;
-    parseAccessControlExposeHeadersAllowList(m_response.httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), accessControlExposeHeaderSet);
-
-    if (!m_sameOriginRequest && !isOnAccessControlResponseHeaderWhitelist(name) && !accessControlExposeHeaderSet.contains(name)) {
-        logConsoleError(scriptExecutionContext(), "Refused to get unsafe header \"" + name + "\"");
-        return String();
-    }
     return m_response.httpHeaderField(name);
 }
 

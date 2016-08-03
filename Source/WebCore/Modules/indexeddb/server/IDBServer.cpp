@@ -259,7 +259,7 @@ void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& ke
     transaction->putOrAdd(requestData, keyData, value, overwriteMode);
 }
 
-void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
+void IDBServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordData& getRecordData)
 {
     LOG(IndexedDB, "IDBServer::getRecord");
 
@@ -267,7 +267,7 @@ void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeDa
     if (!transaction)
         return;
 
-    transaction->getRecord(requestData, keyRangeData);
+    transaction->getRecord(requestData, getRecordData);
 }
 
 void IDBServer::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
@@ -543,10 +543,7 @@ static void removeAllDatabasesForOriginPath(const String& originPath, std::chron
     for (auto& databasePath : databasePaths) {
         String databaseFile = pathByAppendingComponent(databasePath, "IndexedDB.sqlite3");
 
-        if (!fileExists(databaseFile))
-            continue;
-
-        if (modifiedSince > std::chrono::system_clock::time_point::min()) {
+        if (modifiedSince > std::chrono::system_clock::time_point::min() && fileExists(databaseFile)) {
             time_t modificationTime;
             if (!getFileModificationTime(databaseFile, modificationTime))
                 continue;

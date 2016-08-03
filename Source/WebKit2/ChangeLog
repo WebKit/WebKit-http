@@ -1,3 +1,496 @@
+2016-08-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Document how to initialize WebKitFaviconDatabase
+        https://bugs.webkit.org/show_bug.cgi?id=160391
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitFaviconDatabase.cpp:
+
+2016-08-02  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r203385): Frequent RELEASE_ASSERT in WebKit::RemoteLayerTreeDrawingArea::flushLayers()
+        https://bugs.webkit.org/show_bug.cgi?id=160481
+        <rdar://problem/27534205>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateViewState):
+        If the UI process sends a didUpdate message while the Web process is in
+        the middle of flushing on a background thread, the drawing area will
+        allow another commit to start on the main thread, which then (rightfully)
+        causes the RELEASE_ASSERT.
+
+        This is normally not a problem, because didRefreshDisplay (which sends the didUpdate)
+        bails if m_didUpdateMessageState is anything other than NotSent, and m_didUpdateMessageState
+        is only NotSent if the Web process has sent a commit (and thus will not commit again until
+        it gets a didUpdate). This is the fundamental mechanism that avoids multiple commits being
+        in flight at once.
+
+        In r203385, I added a path where didRefreshDisplay could be called
+        before the first commit arrived (by way of
+        _applicationWillEnterForeground -> viewStateDidChange -> waitForDidUpdateViewState).
+
+        This caused trouble because m_didUpdateMessageState is initialized to NotSent,
+        which means that we could end up sending a didUpdate immediately, before the first
+        commit arrives - even worse, while the first commit is being flushed on a background thread,
+        leading the aforementioned RELEASE_ASSERT to fire.
+
+        Instead, initialize it to Sent (which I've renamed to DoesNotNeedDidUpdate), so that
+        we won't send a didUpdate until after the first commit arrives (at which point
+        the two processes are in agreement about the order of things).
+
+        It's not currently possible to API test this for multiple reasons, though it is fairly
+        easy to write a test app that reproduces reliably (by simulating suspend/resume notifications
+        inside the didFinishNavigation: callback).
+
+2016-08-02  Enrica Casucci  <enrica@apple.com>
+
+        Allow building with content filtering disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=160454
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<KeypressCommand>::decode):
+        (IPC::ArgumentCoder<ContentFilterUnblockHandler>::encode):
+        (IPC::ArgumentCoder<ContentFilterUnblockHandler>::decode):
+        * WebProcess/WebCoreSupport/mac/WebErrorsMac.mm:
+        (WebKit::blockedByContentFilterError):
+
+2016-08-02  Brady Eidson  <beidson@apple.com>
+
+        Refactor data passed along for a "GetRecord" request.
+        https://bugs.webkit.org/show_bug.cgi?id=160352
+
+        Reviewed by Tim Horton.
+
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::getRecord):
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.h:
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.messages.in:
+
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::getRecord):
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+
+2016-08-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move the redirected XComposite window to the web process
+        https://bugs.webkit.org/show_bug.cgi?id=160389
+
+        Reviewed by Žan Doberšek.
+
+        In the current code, the UI process creates the redirected window that the web process uses to render
+        accelerated contents. The redirected window is sent to the web process as native surface handle, and using
+        XDamage extension the UI process takes a pixmap of the redirected window to render into the widget when there
+        are updates. This requires several points of synchronization between UI and web processes. When the web view is
+        resized, the UI process first resizes the redirected window and then sends a new backing store ID to the web
+        process. The time between the redirected window is resized and the web process renders the new contents the UI
+        process keeps rendering the previous contents with the previous size in the new window with the new size. This
+        makes the resize process slow, and it produces rendering artifacts quite often. The redirected window is created
+        when the web view is realized, to be able to inherit the XVisual from the parent window, and the native window
+        handle is sent to the web process. The time until the window is realized, the web process doesn't have a context
+        to render into, so the UI process simply renders an empty page. When the web view is unrealized, for example if
+        the web view is reparented, the redirected window is destroyed, and a sync message is sent to the web process to
+        destroy the current gl context and stop drawing. This needs to happen synchronously, because the UI process
+        can't remove the redirected window until the web process has stopped rendering into it. This makes also the
+        reparenting process quite unstable and risky.
+        To all those synchronization points we now have to add the synchronization with the compositing thread when
+        using the threaded compositor. The threaded compositor made resizing, reparenting, etc. even worse. We can't
+        avoid the synchronization with the threaded compositor, but we can reduce the synchronization points and improve
+        the current ones by moving the redirected window to the web process. In this case is web process who creates the
+        redirected window, so we can be sure that it always has a valid native surface handle to render into. This means
+        we no longer need the IPC message to send the native surface handle from the UI process to the web process, nor
+        the sync message to destroy it either. This also means we no longer need to wait until the view is realized to
+        start rendering accelerated contents, and we don't need to stop when it's unrealized either. We don't really
+        need to inherit the XVisual from the parent window if the redirected window always uses always a RGBA visual
+        when available. That way we always render into a transparent window that is composed into the web view
+        widget. And when the web view is resized, we no longer need to destroy the GL context either, because we use the
+        same redirected window as the native handle, but create a new pixmap that is what we send to the UI process as
+        layer tree context ID. The layer tree context ID is already sent to the UI process by the drawing area as part
+        of the backing store update process, so we don't need any new IPC message for this. When the web view is
+        resized, the UI process sends a backing store state update message to the web process that updates its size,
+        relayouts and then renders the new contents, so that when the update backing store state reply gets to the UI
+        process, we already have a new pixmap with the new contents updated. This makes resizing smooth again, and
+        avoids flickering and rendering artifacts. And finally all this also prevents several race conditions that were
+        causing X errors and web process crashes.
+
+        * PlatformGTK.cmake:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::create): Make it possible to optionally pass a native surface handle for
+        compositing to the ThreadedCompositor contructor.
+        (WebKit::ThreadedCompositor::ThreadedCompositor): Initialize the native surface handle and make the scene active
+        after the thread initialization if we already have a valid handle.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::enterAcceleratedCompositingMode): Pass the layer tree context ID to the web view.
+        (WebKit::PageClientImpl::updateAcceleratedCompositingMode): Notify the web view about the update.
+        (WebKit::PageClientImpl::willEnterAcceleratedCompositingMode): Deleted.
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseSetAcceleratedCompositingPixmap): Helper function to update the pixmap used to render the
+        accelerated contents.
+        (webkitWebViewBaseRealize): Remove the code to create the redirected window.
+        (webkitWebViewBaseUnrealize): Remove the code to destroy the redirected window.
+        (webkitWebViewBaseDispose): Reset the accelerated compositing pixmap.
+        (webkitWebViewRenderAcceleratedCompositingResults): Use the accelerated compositing pixmap surface.
+        (webkitWebViewBaseSizeAllocate): Remove the code to resize the redirected window.
+        (webkitWebViewBaseEnterAcceleratedCompositingMode): Update the accelerated compositing pixmap.
+        (webkitWebViewBaseUpdateAcceleratedCompositingMode): Ditto.
+        (webkitWebViewBaseExitAcceleratedCompositingMode): Reset the accelerated compositing pixmap.
+        (webkitWebViewBaseDidRelaunchWebProcess): Remove the code to send native surface handle to the web process.
+        (webkitWebViewBasePageClosed): Reset the accelerated compositing pixmap.
+        (_WebKitWebViewBasePrivate::updateViewStateTimerFired): Deleted.
+        * UIProcess/API/gtk/WebKitWebViewBasePrivate.h:
+        * UIProcess/DrawingAreaProxy.h:
+        * UIProcess/DrawingAreaProxy.messages.in:
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        (WebKit::DrawingAreaProxyImpl::didUpdateBackingStoreState): Handle the case when the layer tree context ID
+        changes without leaving the accelerated compositing mode, calling updateAcceleratedCompositingMode().
+        (WebKit::DrawingAreaProxyImpl::exitAcceleratedCompositingMode): Let the web view know we are leaving accelerated
+        compositing mode even when it's forced, since in case of web process crash we need to leave the accelerated
+        compositing mode in the UI process.
+        (WebKit::DrawingAreaProxyImpl::willEnterAcceleratedCompositingMode): This message was added only to prepare the
+        redirected window when the web process was about to enter accelerated compositing mode, so it's no longer needed.
+        (WebKit::DrawingAreaProxyImpl::setNativeSurfaceHandleForCompositing): This is now only used when building
+        without redirected XComposite window support.
+        * UIProcess/DrawingAreaProxyImpl.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::willEnterAcceleratedCompositingMode): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/efl/WebView.h:
+        * UIProcess/gtk/RedirectedXCompositeWindow.cpp: Removed.
+        * UIProcess/gtk/XDamageNotifier.cpp: Helper class to be notified about XDamage events.
+        (WebKit::XDamageNotifier::singleton):
+        (WebKit::XDamageNotifier::XDamageNotifier):
+        (WebKit::XDamageNotifier::add):
+        (WebKit::XDamageNotifier::remove):
+        (WebKit::XDamageNotifier::filterXDamageEvent):
+        (WebKit::XDamageNotifier::notify):
+        * UIProcess/gtk/XDamageNotifier.h: Added.
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::willEnterAcceleratedCompositingMode): Deleted.
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::willEnterAcceleratedCompositingMode): Deleted.
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::enterAcceleratedCompositingMode): Remove code to send
+        WillEnterAcceleratedCompositingMode message.
+        (WebKit::AcceleratedDrawingArea::setNativeSurfaceHandleForCompositing): This is now only used when building
+        without redirected XComposite window support.
+        * WebProcess/WebPage/AcceleratedDrawingArea.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost): Create a redirected window and
+        pass the window ID as native surface handle to the threaded compositor. Use the redirected window pixmap as
+        layer tree context.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::invalidate): Destroy the redirected window.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged): Resize the redirected window and
+        update the layer tree context.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::sizeDidChange): Ditto.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/DrawingArea.h:
+        * WebProcess/WebPage/DrawingArea.messages.in:
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp:
+        (WebKit::LayerTreeHostGtk::LayerTreeHostGtk): Create a redirected window and texture mapper that uses the window
+        ID as native surface handle. Use the redirected window pixmap as layer tree context.
+        (WebKit::LayerTreeHostGtk::makeContextCurrent): Use the redirected window as native handle.
+        (WebKit::LayerTreeHostGtk::invalidate): Destroy the redirected window.
+        (WebKit::LayerTreeHostGtk::sizeDidChange): Resize the redirected window and update the layer tree context.
+        (WebKit::LayerTreeHostGtk::deviceOrPageScaleFactorChanged): Ditto.
+        (WebKit::LayerTreeHostGtk::createTextureMapper): Helper function to create the texture mapper.
+        (WebKit::LayerTreeHostGtk::setNativeSurfaceHandleForCompositing): Use createTextureMapper().
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.h:
+        * WebProcess/WebPage/gtk/RedirectedXCompositeWindow.cpp: Added.
+        (WebKit::RedirectedXCompositeWindow::create):
+        (WebKit::RedirectedXCompositeWindow::RedirectedXCompositeWindow):
+        (WebKit::RedirectedXCompositeWindow::~RedirectedXCompositeWindow):
+        (WebKit::RedirectedXCompositeWindow::resize):
+        * WebProcess/WebPage/gtk/RedirectedXCompositeWindow.h: Renamed from Source/WebKit2/UIProcess/gtk/RedirectedXCompositeWindow.h.
+        (WebKit::RedirectedXCompositeWindow::window):
+        (WebKit::RedirectedXCompositeWindow::pixmap):
+
+2016-08-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Database Process: ASSERTION FAILED: filePaths.size() == result.handles().size() with SANDBOX_EXTENSIONS disabled
+        https://bugs.webkit.org/show_bug.cgi?id=160398
+
+        Reviewed by Brady Eidson.
+
+        Same assert as in bug #160188, but this time in preregisterSandboxExtensionsIfNecessary.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        * DatabaseProcess/DatabaseProcess.h:
+        * DatabaseProcess/DatabaseProcess.messages.in:
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::handleGetResult):
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::preregisterSandboxExtensionsForOptionallyFileBackedBlob):
+        * UIProcess/Databases/DatabaseProcessProxy.cpp:
+        * UIProcess/Databases/DatabaseProcessProxy.h:
+        * UIProcess/Databases/DatabaseProcessProxy.messages.in:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::preregisterSandboxExtensionsIfNecessary):
+
+2016-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        _WKDownloadDelegate.didReceiveResponse should be called before decideDestinationWithSuggestedFilename
+        https://bugs.webkit.org/show_bug.cgi?id=160437
+        <rdar://problem/27578272>
+
+        Reviewed by Brady Eidson.
+
+        This preserves the behavior of the NSURLConnection/NSURLDownload code path.
+        decideDestinationWithSuggestedFilename might need some information from the didReceiveResponse callback
+        in order to decide what the suggested filename should be.
+
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::didReceiveAuthenticationChallenge):
+        (WebKit::Download::didReceiveResponse):
+        (WebKit::Download::didReceiveData):
+        * NetworkProcess/Downloads/Download.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::convertMainResourceLoadToDownload):
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::convertTaskToDownload):
+        (WebKit::NetworkLoad::setPendingDownloadID):
+        (WebKit::NetworkLoad::didReceiveResponseNetworkSession):
+        * NetworkProcess/NetworkLoad.h:
+        (WebKit::NetworkLoad::pendingDownloadID):
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::pendingDownloadCanceled):
+        (WebKit::NetworkProcess::findPendingDownloadLocation):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didBecomeDownloadTask:]):
+
+2016-07-31  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][Unix] Implement missing WebKit::SharedMemory::create() function
+        https://bugs.webkit.org/show_bug.cgi?id=160364
+
+        Reviewed by Carlos Garcia Campos.
+
+        The WebKit::SharedMemory::create() function is missing for the Unix
+        platform, which is also used by the GTK+ port. The latter is going
+        to need this in place to use the common content filtering code.
+
+        * Platform/unix/SharedMemoryUnix.cpp:
+        (WebKit::accessModeMMap): Added helper function to convert a
+        SharedMemory::Protection value into flags useable with mmap().
+        (WebKit::SharedMemory::create): Added. Implementation reuses code
+        existing in the SharedMemory::allocate() function.
+        (WebKit::SharedMemory::allocate): Reimplemented in terms of
+        SharedMemory::create().
+
+2016-07-30  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] WebKit.framework is touched on incremental build even if nothing’s changed
+        https://bugs.webkit.org/show_bug.cgi?id=160383
+
+        Reviewed by Tim Horton.
+
+        * WebKit2.xcodeproj/project.pbxproj: Removed the output files listed under the
+          Copy iOS Sandbox Profiles for Manual Sandboxing script build phase, because it doesn’t
+          produce those files on macOS. With no outputs listed, the script will still run every
+          time, but the fact that it has run won’t trigger touching the framework.
+
+2016-07-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash with an Invalid Web Process IPC Message ID: WebPageProxy.AttributedStringForCharacterRangeCallback
+        https://bugs.webkit.org/show_bug.cgi?id=160334
+        <rdar://problem/27078089>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The crash is most likely caused by an MESSAGE_CHECK failure in WebPageProxy::attributedStringForCharacterRangeCallback
+        which marks the currently dispatching message was invalid inside the macro.
+
+        Make sure we never fail this check by sending an empty EditingRange in attributedSubstringForCharacterRangeAsync when
+        the editing range we're about to send to the UIProcess is invalid in WebProcess.
+
+        Unfortunately, no new tests since we don't have any reproduction and I couldn't spot any code path in which we end up
+        with an invalid EditingRage here with multiple inspection of the relevant code.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::attributedSubstringForCharacterRangeAsync):
+
+2016-07-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Split calculateCacheSizes in two methods
+        https://bugs.webkit.org/show_bug.cgi?id=160237
+
+        Reviewed by Darin Adler.
+
+        It's used to calculate memory and disk cache sizes, but only the web process is interested in memory caches, and
+        the network process in disk cache. We can also avoid a lot of duplicated code between ports to set the cache model.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::setCacheModel): Use calculateURLCacheSizes to set the disk cache size and call
+        platformSetURLCacheSize if not set to allow ports to setup platform specific cache.
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::platformSetURLCacheSize): Remove common code that is now in cross-platform file.
+        (WebKit::volumeFreeSize): Deleted.
+        (WebKit::NetworkProcess::platformSetCacheModel): Renamed to platformSetURLCacheSize().
+        * NetworkProcess/soup/NetworkProcessSoup.cpp:
+        (WebKit::NetworkProcess::platformSetURLCacheSize): Remove common code that is now in cross-platform file.
+        (WebKit::getCacheDiskFreeSize): Deleted.
+        (WebKit::NetworkProcess::platformSetCacheModel): Renamed to platformSetURLCacheSize().
+        * Shared/CacheModel.cpp:
+        (WebKit::calculateMemoryCacheSizes): Calculate the memory and page cache sizes.
+        (WebKit::calculateURLCacheSizes): Calculate the disk cache size.
+        (WebKit::calculateCacheSizes): Deleted.
+        * Shared/CacheModel.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess): Tell the page cache to clear backing stores for GTK+ port too. This was done before when
+        setting the cache model.
+        (WebKit::WebProcess::setCacheModel): Use calculateMemoryCacheSizes to setup memory caches and call
+        platformSetCacheModel to allow ports do more setup according to the cache model.
+        (WebKit::WebProcess::clearResourceCaches): Deleted.
+        * WebProcess/WebProcess.h:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformSetCacheModel): Remove common code that is now in cross-platform file.
+        (WebKit::volumeFreeSize): Deleted.
+        (WebKit::WebProcess::platformClearResourceCaches): Deleted.
+        * WebProcess/soup/WebProcessSoup.cpp:
+        (WebKit::WebProcess::platformSetCacheModel): Remove common code that is now in cross-platform file.
+        (WebKit::WebProcess::platformInitializeWebProcess):
+        (WebKit::WebProcess::platformClearResourceCaches): Deleted.
+
+2016-07-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Database Process: ASSERTION FAILED: paths.size() == handles.size() with SANDBOX_EXTENSIONS disabled
+        https://bugs.webkit.org/show_bug.cgi?id=160188
+
+        Reviewed by Sergio Villar Senin.
+
+        This happens in ports with sandbox extensions disabled, and it's making several tests to crash in debug
+        builds. The SandboxExtension implementation is empty in case of building with sandbox extensions disabled, so
+        that we are actually allocating no extensions at all in
+        NetworkProcessProxy::grantSandboxExtensionsToDatabaseProcessForBlobs(). When the message arrives to database
+        process, we have a list of paths, but an empty list of hanldes which causes the assertion. We can just avoid
+        that message entirely in case of building without sandbox extensions.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        * DatabaseProcess/DatabaseProcess.h:
+        * DatabaseProcess/DatabaseProcess.messages.in:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::grantSandboxExtensionsToDatabaseProcessForBlobs):
+
+2016-07-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove deprecated SPI for video inline / fullscreen controls
+        https://bugs.webkit.org/show_bug.cgi?id=160318
+
+        Reviewed by Tim Horton.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetAllowsInlineMediaPlaybackWithPlaysInlineAttribute): Deleted.
+        (WKPreferencesGetAllowsInlineMediaPlaybackWithPlaysInlineAttribute): Deleted.
+        (WKPreferencesSetAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute): Deleted.
+        (WKPreferencesGetAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]): Deleted.
+        (-[WKWebViewConfiguration copyWithZone:]): Deleted.
+        (-[WKWebViewConfiguration _allowsInlineMediaPlaybackWithPlaysInlineAttribute]): Deleted.
+        (-[WKWebViewConfiguration _setAllowsInlineMediaPlaybackWithPlaysInlineAttribute:]): Deleted.
+        (-[WKWebViewConfiguration _allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute]): Deleted.
+        (-[WKWebViewConfiguration _setAllowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Deleted.
+
+2016-07-28  Tim Horton  <timothy_horton@apple.com>
+
+        Frequent animation lags when interacting with Safari (sidebar, tab switching, etc.)
+        https://bugs.webkit.org/show_bug.cgi?id=160289
+        <rdar://problem/27553464>
+
+        Reviewed by Simon Fraser.
+
+        API Tests: WebKit2.AnimatedResizeDoesNotHang, WebKit2.ResizeWithHiddenContentDoesNotHang
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        Avoid calling _endAnimatedResize when a commit comes in when we haven't yet received
+        a dynamic viewport update reply (and thus don't have a transaction ID to wait on).
+        Previously, in this case, _resizeAnimationTransformTransactionID would be 0,
+        and *any* commit would cause _endAnimatedResize to be called, causing us to always
+        fall into the worst-case sync wait.
+        
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::synchronizeDynamicViewportUpdate):
+        Make use of waitForDidUpdateViewState instead of having a separate waitForAndDispatchImmediately
+        here, because it knows to do things like dispatch the didUpdate message if it's still
+        pending. This also shortens the sync wait timeout from 1s to 500ms, which makes it
+        consistent with e.g. the newly-parented-view timeout duration, and should be nothing
+        but positive.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::timeoutRespectingIgnoreTimeoutsForTesting):
+        (IPC::Connection::waitForMessage):
+        (IPC::Connection::sendSyncMessageFromSecondaryThread):
+        (IPC::Connection::waitForSyncReply):
+        * Platform/IPC/Connection.h:
+        (IPC::Connection::ignoreTimeoutsForTesting):
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration ignoreSynchronousMessagingTimeoutsForTesting]):
+        (-[_WKProcessPoolConfiguration setIgnoreSynchronousMessagingTimeoutsForTesting:]):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::processDidFinishLaunching):
+        Add a mechanism for clients to cause all synchronous message timeouts to be effectively infinite.
+        The new API tests use this to ensure that the test will time out if they ever enter
+        the bad state (otherwise, the shorter sync wait timeout could make the test still pass).
+
+2016-07-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Add WKUIDelegate SPI for specifying that an attachment list is from a managed source
+        https://bugs.webkit.org/show_bug.cgi?id=160280
+        <rdar://problem/27471815>
+
+        Reviewed by Dan Bernstein.
+
+        * Platform/spi/ios/UIKitSPI.h: Declared
+        UIPreviewItemTypeAttachment, UIPreviewDataAttachmentList, and UIPreviewDataAttachmentIndex.
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h: Declared -_attachmentListForWebView:sourceIsManaged:.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]): Used UIPreviewItemTypeAttachment,
+        UIPreviewDataAttachmentList, and UIPreviewDataAttachmentIndex. If uiDelegate responds to
+        -_attachmentListForWebView:sourceIsManaged:, called it instead of -_attachmentListForWebView:.
+        Set sourceIsManaged as the value for the UIPreviewDataAttachmentListSourceIsManaged key in dataForPreview.
+
+2016-07-27  Chelsea Pugh  <cpugh@apple.com>
+
+        [iOS] Remove unused textContentType SPI from _WKFormInputSession
+        https://bugs.webkit.org/show_bug.cgi?id=160260
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/_WKFormInputSession.h: Remove unused SPI.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView textInputTraits]): Set textContentType of _traits to whatever we classify it as based
+        on the assisted node info. The default textContentType is nil, and that is our fallback in our method
+        for determining textContentType.
+        (-[WKFormInputSession textContentType]): Deleted.
+        (-[WKFormInputSession setTextContentType:]): Deleted.
+
 2016-07-27  Chris Dumez  <cdumez@apple.com>
 
         Fix m_isInBackground initialization for Safari View Services

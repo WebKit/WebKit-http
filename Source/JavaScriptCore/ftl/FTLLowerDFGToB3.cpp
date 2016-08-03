@@ -602,8 +602,8 @@ private:
         case CheckBadCell:
             compileCheckBadCell();
             break;
-        case CheckIdent:
-            compileCheckIdent();
+        case CheckStringIdent:
+            compileCheckStringIdent();
             break;
         case GetExecutable:
             compileGetExecutable();
@@ -1710,7 +1710,10 @@ private:
                 break;
             }
 
-            emitBinarySnippet<JITSubGenerator>(operationValueSub);
+            JITSubIC* subIC = codeBlock()->addJITSubIC();
+            auto repatchingFunction = operationValueSubOptimize;
+            auto nonRepatchingFunction = operationValueSub;
+            compileMathIC(subIC, repatchingFunction, nonRepatchingFunction);
             break;
         }
 
@@ -2477,17 +2480,12 @@ private:
         speculate(TDZFailure, noValue(), nullptr, m_out.isZero64(lowJSValue(m_node->child1())));
     }
 
-    void compileCheckIdent()
+    void compileCheckStringIdent()
     {
         UniquedStringImpl* uid = m_node->uidOperand();
-        if (uid->isSymbol()) {
-            LValue stringImpl = lowSymbolUID(m_node->child1());
-            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
-        } else {
-            LValue string = lowStringIdent(m_node->child1());
-            LValue stringImpl = m_out.loadPtr(string, m_heaps.JSString_value);
-            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
-        }
+        LValue string = lowStringIdent(m_node->child1());
+        LValue stringImpl = m_out.loadPtr(string, m_heaps.JSString_value);
+        speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
     }
 
     void compileGetExecutable()
@@ -5039,9 +5037,9 @@ private:
         }
 
         if (m_node->isBinaryUseKind(SymbolUse)) {
-            LValue leftStringImpl = lowSymbolUID(m_node->child1());
-            LValue rightStringImpl = lowSymbolUID(m_node->child2());
-            setBoolean(m_out.equal(leftStringImpl, rightStringImpl));
+            LValue leftSymbol = lowSymbol(m_node->child1());
+            LValue rightSymbol = lowSymbol(m_node->child2());
+            setBoolean(m_out.equal(leftSymbol, rightSymbol));
             return;
         }
         
@@ -5052,33 +5050,10 @@ private:
             if (symbolEdge.useKind() != SymbolUse)
                 std::swap(symbolEdge, untypedEdge);
             
-            LValue leftStringImpl = lowSymbolUID(symbolEdge);
+            LValue leftSymbol = lowSymbol(symbolEdge);
             LValue untypedValue = lowJSValue(untypedEdge);
-            
-            LBasicBlock isCellCase = m_out.newBlock();
-            LBasicBlock isSymbolCase = m_out.newBlock();
-            LBasicBlock continuation = m_out.newBlock();
-            
-            ValueFromBlock notSymbolResult = m_out.anchor(m_out.booleanFalse);
-            m_out.branch(
-                isCell(untypedValue, provenType(untypedEdge)),
-                unsure(isCellCase), unsure(continuation));
-            
-            LBasicBlock lastNext = m_out.appendTo(isCellCase, isSymbolCase);
-            m_out.branch(
-                isSymbol(untypedValue, provenType(untypedEdge)),
-                unsure(isSymbolCase), unsure(continuation));
-            
-            m_out.appendTo(isSymbolCase, continuation);
-            ValueFromBlock symbolResult =
-                m_out.anchor(
-                    m_out.equal(
-                        m_out.loadPtr(untypedValue, m_heaps.Symbol_privateName),
-                        leftStringImpl));
-            m_out.jump(continuation);
-            
-            m_out.appendTo(continuation, lastNext);
-            setBoolean(m_out.phi(Int32, notSymbolResult, symbolResult));
+
+            setBoolean(m_out.equal(leftSymbol, untypedValue));
             return;
         }
         
@@ -9872,16 +9847,6 @@ private:
         return result;
     }
     
-    LValue lowSymbolUID(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
-    {
-        if (Symbol* symbol = edge->dynamicCastConstant<Symbol*>())
-            return m_out.constIntPtr(symbol->privateName().uid());
-        LValue symbol = lowSymbol(edge, mode);
-        // FIXME: We could avoid this load if we had hash-consed Symbols.
-        // https://bugs.webkit.org/show_bug.cgi?id=158908
-        return m_out.loadPtr(symbol, m_heaps.Symbol_privateName);
-    }
-
     LValue lowNonNullObject(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
         ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == ObjectUse);
@@ -11320,17 +11285,6 @@ private:
 
         // Doubles and Int52 have been converted by ValueRep()
         DFG_CRASH(m_graph, m_node, toCString("Cannot find value for node: ", node).data());
-    }
-    
-    bool doesKill(Edge edge)
-    {
-        if (edge.doesNotKill())
-            return false;
-        
-        if (edge->hasConstant())
-            return false;
-        
-        return true;
     }
 
     void addAvailableRecovery(

@@ -1,3 +1,456 @@
+2016-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Refresh wpt tests up to d686014
+        https://bugs.webkit.org/show_bug.cgi?id=160446
+
+        Reviewed by Alex Christensen.
+
+        * resources/ImportExpectations:
+        * resources/TestRepositories:
+        * resources/web-platform-tests-modules.json:
+        * web-platform-tests/XMLHttpRequest/FormData-append.html:
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.any.js: Added.
+        (test):
+        (string_appeared_here.test):
+        (string_appeared_here.async_test):
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.html: Removed.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.js: Removed.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.worker.js: Removed.
+        * web-platform-tests/XMLHttpRequest/headers-normalize-response-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/headers-normalize-response.htm: Added.
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window.htm:
+        * web-platform-tests/XMLHttpRequest/resources/last-modified.py:
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/parse-headers.py: Added.
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/w3c-import.log:
+        * web-platform-tests/XMLHttpRequest/responsexml-document-properties-expected.txt:
+        * web-platform-tests/XMLHttpRequest/responsexml-document-properties.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-document-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-empty-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-empty.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head-async-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head-async.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-none-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-none.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-content-type-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm:
+        * web-platform-tests/XMLHttpRequest/w3c-import.log:
+        * web-platform-tests/dom/events/AddEventListenerOptions-once-expected.txt: Added.
+        * web-platform-tests/dom/events/AddEventListenerOptions-once.html: Added.
+        * web-platform-tests/dom/events/w3c-import.log:
+        * web-platform-tests/dom/lists/DOMTokenList-iteration-expected.txt: Added.
+        * web-platform-tests/dom/lists/DOMTokenList-iteration.html: Added.
+        * web-platform-tests/dom/lists/w3c-import.log:
+        * web-platform-tests/dom/nodes/Node-childNodes-expected.txt:
+        * web-platform-tests/dom/nodes/Node-childNodes.html:
+        * web-platform-tests/domparsing/insert_adjacent_html-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers.js:
+        * web-platform-tests/fetch/api/basic/request-referrer-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer.html: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer.js: Added.
+        (testReferrer):
+        * web-platform-tests/fetch/api/basic/w3c-import.log:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer.html.headers:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer.js.headers:
+        * web-platform-tests/fetch/api/policies/referrer-origin-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-expected.txt.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-worker-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-expected.txt.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-worker.html: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.html: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.html.headers: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.js: Added.
+        (promise_test):
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.js.headers: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin.html.headers:
+        * web-platform-tests/fetch/api/policies/referrer-origin.js.headers:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url.html.headers:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url.js.headers:
+        * web-platform-tests/fetch/api/policies/w3c-import.log:
+        * web-platform-tests/fetch/api/request/request-cache-expected.txt:
+        * web-platform-tests/fetch/api/request/resources/get-host-info.sub.js: Removed.
+        * web-platform-tests/fetch/nosniff/resources/image.py:
+        (main):
+        * web-platform-tests/fetch/nosniff/stylesheet-expected.txt:
+        * web-platform-tests/fetch/nosniff/stylesheet.html:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen.html:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/viewport-change-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li.html:
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-open-expected.txt: Added.
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-open.html: Added.
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/w3c-import.log:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-charset-03-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-charset-03.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/w3c-import.log:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/caption-methods-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/caption-methods.html:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/remove-row-expected.txt: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/remove-row.html: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/w3c-import.log:
+        * web-platform-tests/lint.whitelist:
+        * web-platform-tests/service-workers/tools/blink-import.py:
+        (main):
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Drop custom bindings code for HTMLOptionsCollection.remove()
+        https://bugs.webkit.org/show_bug.cgi?id=160475
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Drop custom bindings for FormData.append()
+        https://bugs.webkit.org/show_bug.cgi?id=160466
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Named / Indexed properties should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=160457
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/Document-getElementsByTagName-expected.txt:
+        * web-platform-tests/dom/nodes/Element-getElementsByTagName-expected.txt:
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        HTMLCollection's named getter should only do 'name' attribute matching for HTMLElements
+        https://bugs.webkit.org/show_bug.cgi?id=160456
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/dom/nodes/Document-getElementsByTagName-expected.txt:
+        Rebaseline. We are still failing but on the next check.
+
+        * web-platform-tests/dom/nodes/Element-children-expected.txt:
+        Rebaseline now that one more check is passing.
+
+2016-08-02  Youenn Fablet  <youenn@apple.com>
+
+        Skip fetch API worker tests in Debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=160448
+
+        Unreviewed.
+
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt: Rebasing
+
+2016-08-02  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Fetch promises should not reject or resolve when ActiveDOMObjects are being stopped
+        https://bugs.webkit.org/show_bug.cgi?id=160420
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/cors/cors-preflight-redirect-worker-expected.txt: Added.
+        * web-platform-tests/fetch/nosniff/worker-expected.txt: Added.
+
+2016-08-02  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Add support to ReferrerPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=160404
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/basic/referrer-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/referrer-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/referrer-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/referrer.html: Added.
+        * web-platform-tests/fetch/api/basic/referrer.js: Added.
+        (runTest):
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer.js:
+        (corsPreflightReferrer): fix infrastructure bug in test and fix expected referrer policy in default case.
+        * web-platform-tests/fetch/api/cors/cors-preflight-worker-expected.txt:
+
+2016-08-01  Youenn Fablet  <youenn@apple.com>
+
+        Make wpt server generate its certificates in layout test results folder
+        https://bugs.webkit.org/show_bug.cgi?id=160422
+
+        Reviewed by Chris Dumez.
+
+        * resources/_wpt_certs/.gitignore: Removed.
+        * resources/_wpt_certs/localhost.key: Removed.
+        * resources/_wpt_certs/localhost.pem: Removed.
+        * resources/config.json:
+
+2016-07-30  Chris Dumez  <cdumez@apple.com>
+
+        Enable strict type checking for Window dictionary members
+        https://bugs.webkit.org/show_bug.cgi?id=160356
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/events/Event-subclasses-constructors-expected.txt:
+
+2016-07-30  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Enable strict type checking for operations' nullable parameters of wrapper types
+        https://bugs.webkit.org/show_bug.cgi?id=160374
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument-expected.txt:
+
+2016-07-29  Chris Dumez  <cdumez@apple.com>
+
+        Window's named properties should be exposed on a WindowProperties object in its prototype
+        https://bugs.webkit.org/show_bug.cgi?id=160354
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-29  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Activate credentials mode
+        https://bugs.webkit.org/show_bug.cgi?id=160292
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/cors/cors-cookies-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies.js: Fixin otherRemote computation.
+        (corsCookies): ensuring cookie clean-up is done in case of error before going to the next test.
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt:
+        * web-platform-tests/fetch/api/credentials/cookies-expected.txt:
+        * web-platform-tests/fetch/api/credentials/cookies-worker-expected.txt:
+
+2016-07-29  Youenn Fablet  <youenn@apple.com>
+
+        CrossOrigin preflight checker should compute the right Access-Control-Request-Headers value
+        https://bugs.webkit.org/show_bug.cgi?id=160028
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/cors/cors-no-preflight-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-no-preflight-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-no-preflight.js:
+        (corsNoPreflight): fixing bugs in that test and adding new test to cover mime type checking that should ignore case.
+        * web-platform-tests/fetch/api/cors/cors-preflight-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight.js:
+        (corsPreflight): Adding safe headers to the request and checking more precisely sent Access-Control-Request-Headers header value.
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Add support for Element.getAttributeNames()
+        https://bugs.webkit.org/show_bug.cgi?id=160327
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/attributes-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        window.open.length should be 0
+        https://bugs.webkit.org/show_bug.cgi?id=160323
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to Event.initEvent() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160320
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        2 first parameters to window.postMessage() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160319
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to canvas.getContext() / probablySupportsContext() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160312
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/context.arguments.missing-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to table.deleteRow() / body.deleteRow() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160307
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        2 first parameters to input.setSelectionRange() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160310
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to tr.deleteCell() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160308
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        [Bindings] "length" value of overloaded operations may be wrong
+        https://bugs.webkit.org/show_bug.cgi?id=160303
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to CanvasGradient.addColorStop() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160297
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Youenn Fablet  <youenn@apple.com>
+
+        Compute fetch response type in case of cross-origin requests
+        https://bugs.webkit.org/show_bug.cgi?id=158565
+
+        Reviewed by Alex Christensen.
+
+        Rebasing fetch API tests as filtering is now done.
+        Rebasing XHR tests as console messages are no longer available when trying to access non-exposed headers.
+
+        * web-platform-tests/XMLHttpRequest/getresponseheader-cookies-and-more-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-filtering-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to HTMLMediaElement.canPlayType() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160275
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline w3c test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to setTimeout() / setInterval() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160277
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to named property getter should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160269
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to Range.createContextualFragment() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160266
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/domparsing/createContextualFragment-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to indexed property getters should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160259
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
 2016-07-27  Chris Dumez  <cdumez@apple.com>
 
         First parameter to Document.execCommand() / queryCommand*() should be mandatory

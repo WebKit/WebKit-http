@@ -49,13 +49,14 @@ using namespace WebCore;
 
 namespace WebKit {
 
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client, WebPage& webPage)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client, WebPage& webPage, uint64_t nativeSurfaceHandle)
 {
-    return adoptRef(*new ThreadedCompositor(client, webPage));
+    return adoptRef(*new ThreadedCompositor(client, webPage, nativeSurfaceHandle));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
+ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage, uint64_t nativeSurfaceHandle)
     : m_client(client)
+    , m_nativeSurfaceHandle(nativeSurfaceHandle)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(adoptRef(new WebKit::DisplayRefreshMonitor(*this)))
 #endif
@@ -69,6 +70,9 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
         m_scene = adoptRef(new CoordinatedGraphicsScene(this));
         m_viewportController = std::make_unique<SimpleViewportController>(this);
+#if PLATFORM(GTK)
+        m_scene->setActive(!!m_nativeSurfaceHandle);
+#endif
     });
 }
 

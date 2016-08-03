@@ -888,8 +888,8 @@ PASS HTMLAllCollection interface object name
 PASS HTMLAllCollection interface: existence and properties of interface prototype object 
 PASS HTMLAllCollection interface: existence and properties of interface prototype object's "constructor" property 
 PASS HTMLAllCollection interface: attribute length 
-FAIL HTMLAllCollection interface: operation item(unsigned long) assert_equals: property has wrong .length expected 1 but got 0
-FAIL HTMLAllCollection interface: operation item(DOMString) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLAllCollection interface: operation item(unsigned long) 
+PASS HTMLAllCollection interface: operation item(DOMString) 
 PASS HTMLAllCollection interface: operation namedItem(DOMString) 
 FAIL HTMLAllCollection must be primary interface of document.all assert_equals: wrong typeof object expected "function" but got "undefined"
 FAIL Stringification of document.all assert_equals: wrong typeof object expected "function" but got "undefined"
@@ -928,7 +928,7 @@ PASS HTMLOptionsCollection interface: existence and properties of interface prot
 PASS HTMLOptionsCollection interface: existence and properties of interface prototype object's "constructor" property 
 PASS HTMLOptionsCollection interface: attribute length 
 PASS HTMLOptionsCollection interface: operation add([object Object],[object Object],[object Object],[object Object]) 
-FAIL HTMLOptionsCollection interface: operation remove(long) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLOptionsCollection interface: operation remove(long) 
 PASS HTMLOptionsCollection interface: attribute selectedIndex 
 FAIL HTMLOptionsCollection must be primary interface of document.createElement("select").options assert_equals: wrong typeof object expected "function" but got "object"
 FAIL Stringification of document.createElement("select").options assert_equals: wrong typeof object expected "function" but got "object"
@@ -1149,7 +1149,7 @@ PASS Element interface: document.createElement("noscript") must inherit property
 PASS Element interface: document.createElement("noscript") must inherit property "classList" with the proper type (6) 
 PASS Element interface: document.createElement("noscript") must inherit property "hasAttributes" with the proper type (7) 
 PASS Element interface: document.createElement("noscript") must inherit property "attributes" with the proper type (8) 
-FAIL Element interface: document.createElement("noscript") must inherit property "getAttributeNames" with the proper type (9) assert_inherits: property "getAttributeNames" not found in prototype chain
+PASS Element interface: document.createElement("noscript") must inherit property "getAttributeNames" with the proper type (9) 
 PASS Element interface: document.createElement("noscript") must inherit property "getAttribute" with the proper type (10) 
 PASS Element interface: calling getAttribute(DOMString) on document.createElement("noscript") with too few arguments must throw TypeError 
 PASS Element interface: document.createElement("noscript") must inherit property "getAttributeNS" with the proper type (11) 
@@ -1850,9 +1850,7 @@ PASS HTMLMediaElement interface: document.createElement("video") must inherit pr
 PASS HTMLMediaElement interface: document.createElement("video") must inherit property "buffered" with the proper type (10) 
 PASS HTMLMediaElement interface: document.createElement("video") must inherit property "load" with the proper type (11) 
 PASS HTMLMediaElement interface: document.createElement("video") must inherit property "canPlayType" with the proper type (12) 
-FAIL HTMLMediaElement interface: calling canPlayType(DOMString) on document.createElement("video") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLMediaElement interface: calling canPlayType(DOMString) on document.createElement("video") with too few arguments must throw TypeError 
 PASS HTMLMediaElement interface: document.createElement("video") must inherit property "HAVE_NOTHING" with the proper type (13) 
 PASS HTMLMediaElement interface: document.createElement("video") must inherit property "HAVE_METADATA" with the proper type (14) 
 PASS HTMLMediaElement interface: document.createElement("video") must inherit property "HAVE_CURRENT_DATA" with the proper type (15) 
@@ -1906,9 +1904,7 @@ PASS HTMLMediaElement interface: document.createElement("audio") must inherit pr
 PASS HTMLMediaElement interface: document.createElement("audio") must inherit property "buffered" with the proper type (10) 
 PASS HTMLMediaElement interface: document.createElement("audio") must inherit property "load" with the proper type (11) 
 PASS HTMLMediaElement interface: document.createElement("audio") must inherit property "canPlayType" with the proper type (12) 
-FAIL HTMLMediaElement interface: calling canPlayType(DOMString) on document.createElement("audio") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLMediaElement interface: calling canPlayType(DOMString) on document.createElement("audio") with too few arguments must throw TypeError 
 PASS HTMLMediaElement interface: document.createElement("audio") must inherit property "HAVE_NOTHING" with the proper type (13) 
 PASS HTMLMediaElement interface: document.createElement("audio") must inherit property "HAVE_METADATA" with the proper type (14) 
 PASS HTMLMediaElement interface: document.createElement("audio") must inherit property "HAVE_CURRENT_DATA" with the proper type (15) 
@@ -1957,9 +1953,7 @@ PASS HTMLMediaElement interface: new Audio() must inherit property "preload" wit
 PASS HTMLMediaElement interface: new Audio() must inherit property "buffered" with the proper type (10) 
 PASS HTMLMediaElement interface: new Audio() must inherit property "load" with the proper type (11) 
 PASS HTMLMediaElement interface: new Audio() must inherit property "canPlayType" with the proper type (12) 
-FAIL HTMLMediaElement interface: calling canPlayType(DOMString) on new Audio() with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLMediaElement interface: calling canPlayType(DOMString) on new Audio() with too few arguments must throw TypeError 
 PASS HTMLMediaElement interface: new Audio() must inherit property "HAVE_NOTHING" with the proper type (13) 
 PASS HTMLMediaElement interface: new Audio() must inherit property "HAVE_METADATA" with the proper type (14) 
 PASS HTMLMediaElement interface: new Audio() must inherit property "HAVE_CURRENT_DATA" with the proper type (15) 
@@ -2064,7 +2058,7 @@ PASS HTMLMediaElement interface: attribute networkState
 PASS HTMLMediaElement interface: attribute preload 
 PASS HTMLMediaElement interface: attribute buffered 
 PASS HTMLMediaElement interface: operation load() 
-FAIL HTMLMediaElement interface: operation canPlayType(DOMString) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLMediaElement interface: operation canPlayType(DOMString) 
 PASS HTMLMediaElement interface: constant HAVE_NOTHING on interface object 
 PASS HTMLMediaElement interface: constant HAVE_NOTHING on interface prototype object 
 PASS HTMLMediaElement interface: constant HAVE_METADATA on interface object 
@@ -2374,9 +2368,7 @@ PASS Event interface: new TrackEvent("addtrack", {track:document.createElement("
 PASS Event interface: new TrackEvent("addtrack", {track:document.createElement("track").track}) must have own property "isTrusted" 
 PASS Event interface: new TrackEvent("addtrack", {track:document.createElement("track").track}) must inherit property "timeStamp" with the proper type (15) 
 PASS Event interface: new TrackEvent("addtrack", {track:document.createElement("track").track}) must inherit property "initEvent" with the proper type (16) 
-FAIL Event interface: calling initEvent(DOMString,boolean,boolean) on new TrackEvent("addtrack", {track:document.createElement("track").track}) with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS Event interface: calling initEvent(DOMString,boolean,boolean) on new TrackEvent("addtrack", {track:document.createElement("track").track}) with too few arguments must throw TypeError 
 PASS HTMLMapElement interface: existence and properties of interface object 
 PASS HTMLMapElement interface object length 
 PASS HTMLMapElement interface object name 
@@ -2455,7 +2447,7 @@ PASS HTMLTableElement interface: attribute tBodies
 PASS HTMLTableElement interface: operation createTBody() 
 PASS HTMLTableElement interface: attribute rows 
 PASS HTMLTableElement interface: operation insertRow(long) 
-FAIL HTMLTableElement interface: operation deleteRow(long) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLTableElement interface: operation deleteRow(long) 
 FAIL HTMLTableElement interface: attribute sortable assert_true: The prototype object must have a property "sortable" expected true got false
 FAIL HTMLTableElement interface: operation stopSorting() assert_own_property: interface prototype object missing non-static operation expected property "stopSorting" missing
 PASS HTMLTableElement interface: attribute align 
@@ -2484,9 +2476,7 @@ PASS HTMLTableElement interface: document.createElement("table") must inherit pr
 PASS HTMLTableElement interface: document.createElement("table") must inherit property "insertRow" with the proper type (12) 
 PASS HTMLTableElement interface: calling insertRow(long) on document.createElement("table") with too few arguments must throw TypeError 
 PASS HTMLTableElement interface: document.createElement("table") must inherit property "deleteRow" with the proper type (13) 
-FAIL HTMLTableElement interface: calling deleteRow(long) on document.createElement("table") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "IndexSizeError (DOM Exception 1): The index is not in the..." ("IndexSizeError") expected object "TypeError" ("TypeError")
+PASS HTMLTableElement interface: calling deleteRow(long) on document.createElement("table") with too few arguments must throw TypeError 
 FAIL HTMLTableElement interface: document.createElement("table") must inherit property "sortable" with the proper type (14) assert_inherits: property "sortable" not found in prototype chain
 FAIL HTMLTableElement interface: document.createElement("table") must inherit property "stopSorting" with the proper type (15) assert_inherits: property "stopSorting" not found in prototype chain
 PASS HTMLTableElement interface: document.createElement("table") must inherit property "align" with the proper type (16) 
@@ -2541,7 +2531,7 @@ PASS HTMLTableSectionElement interface: existence and properties of interface pr
 PASS HTMLTableSectionElement interface: existence and properties of interface prototype object's "constructor" property 
 PASS HTMLTableSectionElement interface: attribute rows 
 PASS HTMLTableSectionElement interface: operation insertRow(long) 
-FAIL HTMLTableSectionElement interface: operation deleteRow(long) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLTableSectionElement interface: operation deleteRow(long) 
 PASS HTMLTableSectionElement interface: attribute align 
 PASS HTMLTableSectionElement interface: attribute ch 
 PASS HTMLTableSectionElement interface: attribute chOff 
@@ -2552,9 +2542,7 @@ PASS HTMLTableSectionElement interface: document.createElement("tbody") must inh
 PASS HTMLTableSectionElement interface: document.createElement("tbody") must inherit property "insertRow" with the proper type (1) 
 PASS HTMLTableSectionElement interface: calling insertRow(long) on document.createElement("tbody") with too few arguments must throw TypeError 
 PASS HTMLTableSectionElement interface: document.createElement("tbody") must inherit property "deleteRow" with the proper type (2) 
-FAIL HTMLTableSectionElement interface: calling deleteRow(long) on document.createElement("tbody") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "IndexSizeError (DOM Exception 1): The index is not in the..." ("IndexSizeError") expected object "TypeError" ("TypeError")
+PASS HTMLTableSectionElement interface: calling deleteRow(long) on document.createElement("tbody") with too few arguments must throw TypeError 
 PASS HTMLTableSectionElement interface: document.createElement("tbody") must inherit property "align" with the proper type (3) 
 PASS HTMLTableSectionElement interface: document.createElement("tbody") must inherit property "ch" with the proper type (4) 
 PASS HTMLTableSectionElement interface: document.createElement("tbody") must inherit property "chOff" with the proper type (5) 
@@ -2565,9 +2553,7 @@ PASS HTMLTableSectionElement interface: document.createElement("thead") must inh
 PASS HTMLTableSectionElement interface: document.createElement("thead") must inherit property "insertRow" with the proper type (1) 
 PASS HTMLTableSectionElement interface: calling insertRow(long) on document.createElement("thead") with too few arguments must throw TypeError 
 PASS HTMLTableSectionElement interface: document.createElement("thead") must inherit property "deleteRow" with the proper type (2) 
-FAIL HTMLTableSectionElement interface: calling deleteRow(long) on document.createElement("thead") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "IndexSizeError (DOM Exception 1): The index is not in the..." ("IndexSizeError") expected object "TypeError" ("TypeError")
+PASS HTMLTableSectionElement interface: calling deleteRow(long) on document.createElement("thead") with too few arguments must throw TypeError 
 PASS HTMLTableSectionElement interface: document.createElement("thead") must inherit property "align" with the proper type (3) 
 PASS HTMLTableSectionElement interface: document.createElement("thead") must inherit property "ch" with the proper type (4) 
 PASS HTMLTableSectionElement interface: document.createElement("thead") must inherit property "chOff" with the proper type (5) 
@@ -2578,9 +2564,7 @@ PASS HTMLTableSectionElement interface: document.createElement("tfoot") must inh
 PASS HTMLTableSectionElement interface: document.createElement("tfoot") must inherit property "insertRow" with the proper type (1) 
 PASS HTMLTableSectionElement interface: calling insertRow(long) on document.createElement("tfoot") with too few arguments must throw TypeError 
 PASS HTMLTableSectionElement interface: document.createElement("tfoot") must inherit property "deleteRow" with the proper type (2) 
-FAIL HTMLTableSectionElement interface: calling deleteRow(long) on document.createElement("tfoot") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "IndexSizeError (DOM Exception 1): The index is not in the..." ("IndexSizeError") expected object "TypeError" ("TypeError")
+PASS HTMLTableSectionElement interface: calling deleteRow(long) on document.createElement("tfoot") with too few arguments must throw TypeError 
 PASS HTMLTableSectionElement interface: document.createElement("tfoot") must inherit property "align" with the proper type (3) 
 PASS HTMLTableSectionElement interface: document.createElement("tfoot") must inherit property "ch" with the proper type (4) 
 PASS HTMLTableSectionElement interface: document.createElement("tfoot") must inherit property "chOff" with the proper type (5) 
@@ -2594,7 +2578,7 @@ PASS HTMLTableRowElement interface: attribute rowIndex
 PASS HTMLTableRowElement interface: attribute sectionRowIndex 
 PASS HTMLTableRowElement interface: attribute cells 
 PASS HTMLTableRowElement interface: operation insertCell(long) 
-FAIL HTMLTableRowElement interface: operation deleteCell(long) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLTableRowElement interface: operation deleteCell(long) 
 PASS HTMLTableRowElement interface: attribute align 
 PASS HTMLTableRowElement interface: attribute ch 
 PASS HTMLTableRowElement interface: attribute chOff 
@@ -2608,9 +2592,7 @@ PASS HTMLTableRowElement interface: document.createElement("tr") must inherit pr
 PASS HTMLTableRowElement interface: document.createElement("tr") must inherit property "insertCell" with the proper type (3) 
 PASS HTMLTableRowElement interface: calling insertCell(long) on document.createElement("tr") with too few arguments must throw TypeError 
 PASS HTMLTableRowElement interface: document.createElement("tr") must inherit property "deleteCell" with the proper type (4) 
-FAIL HTMLTableRowElement interface: calling deleteCell(long) on document.createElement("tr") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "IndexSizeError (DOM Exception 1): The index is not in the..." ("IndexSizeError") expected object "TypeError" ("TypeError")
+PASS HTMLTableRowElement interface: calling deleteCell(long) on document.createElement("tr") with too few arguments must throw TypeError 
 PASS HTMLTableRowElement interface: document.createElement("tr") must inherit property "align" with the proper type (5) 
 PASS HTMLTableRowElement interface: document.createElement("tr") must inherit property "ch" with the proper type (6) 
 PASS HTMLTableRowElement interface: document.createElement("tr") must inherit property "chOff" with the proper type (7) 
@@ -2784,7 +2766,7 @@ PASS HTMLInputElement interface: attribute selectionEnd
 PASS HTMLInputElement interface: attribute selectionDirection 
 PASS HTMLInputElement interface: operation setRangeText(DOMString) 
 PASS HTMLInputElement interface: operation setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) 
-FAIL HTMLInputElement interface: operation setSelectionRange(unsigned long,unsigned long,DOMString) assert_equals: property has wrong .length expected 2 but got 0
+PASS HTMLInputElement interface: operation setSelectionRange(unsigned long,unsigned long,DOMString) 
 PASS HTMLInputElement interface: attribute align 
 PASS HTMLInputElement interface: attribute useMap 
 PASS HTMLInputElement must be primary interface of document.createElement("input") 
@@ -2850,9 +2832,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on document.cre
 PASS HTMLInputElement interface: document.createElement("input") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on document.createElement("input") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: document.createElement("input") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on document.createElement("input") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on document.createElement("input") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: document.createElement("input") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: document.createElement("input") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("text") 
@@ -2918,9 +2898,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("text") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("text") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("text") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("text") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("text") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("text") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("text") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("hidden") 
@@ -3052,9 +3030,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("search") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("search") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("search") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("search") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("search") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("search") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("search") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("tel") 
@@ -3120,9 +3096,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("tel") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("tel") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("tel") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("tel") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("tel") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("tel") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("tel") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("url") 
@@ -3188,9 +3162,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("url") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("url") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("url") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("url") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("url") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("url") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("url") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("email") 
@@ -3256,9 +3228,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("email") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("email") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("email") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("email") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("email") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("email") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("email") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("password") 
@@ -3324,9 +3294,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("password") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("password") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("password") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("password") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("password") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("password") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("password") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("date") 
@@ -3392,9 +3360,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("date") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("date") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("date") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("date") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("date") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("date") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("date") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("month") 
@@ -3460,9 +3426,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("month") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("month") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("month") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("month") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("month") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("month") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("month") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("week") 
@@ -3528,9 +3492,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("week") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("week") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("week") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("week") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("week") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("week") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("week") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("time") 
@@ -3596,9 +3558,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("time") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("time") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("time") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("time") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("time") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("time") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("time") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("datetime-local") 
@@ -3664,9 +3624,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("datetime-local") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("datetime-local") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("datetime-local") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("datetime-local") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("datetime-local") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("datetime-local") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("datetime-local") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("number") 
@@ -3732,9 +3690,7 @@ PASS HTMLInputElement interface: calling setRangeText(DOMString) on createInput(
 PASS HTMLInputElement interface: createInput("number") must inherit property "setRangeText" with the proper type (54) 
 PASS HTMLInputElement interface: calling setRangeText(DOMString,unsigned long,unsigned long,SelectionMode) on createInput("number") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("number") must inherit property "setSelectionRange" with the proper type (55) 
-FAIL HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("number") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLInputElement interface: calling setSelectionRange(unsigned long,unsigned long,DOMString) on createInput("number") with too few arguments must throw TypeError 
 PASS HTMLInputElement interface: createInput("number") must inherit property "align" with the proper type (56) 
 PASS HTMLInputElement interface: createInput("number") must inherit property "useMap" with the proper type (57) 
 PASS HTMLInputElement must be primary interface of createInput("range") 
@@ -4394,7 +4350,7 @@ PASS HTMLSelectElement interface: attribute type
 PASS HTMLSelectElement interface: attribute options 
 PASS HTMLSelectElement interface: attribute length 
 PASS HTMLSelectElement interface: operation item(unsigned long) 
-FAIL HTMLSelectElement interface: operation namedItem(DOMString) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLSelectElement interface: operation namedItem(DOMString) 
 PASS HTMLSelectElement interface: operation add([object Object],[object Object],[object Object],[object Object]) 
 PASS HTMLSelectElement interface: operation remove() 
 PASS HTMLSelectElement interface: operation remove(long) 
@@ -4424,9 +4380,7 @@ PASS HTMLSelectElement interface: document.createElement("select") must inherit 
 PASS HTMLSelectElement interface: document.createElement("select") must inherit property "item" with the proper type (11) 
 PASS HTMLSelectElement interface: calling item(unsigned long) on document.createElement("select") with too few arguments must throw TypeError 
 PASS HTMLSelectElement interface: document.createElement("select") must inherit property "namedItem" with the proper type (12) 
-FAIL HTMLSelectElement interface: calling namedItem(DOMString) on document.createElement("select") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLSelectElement interface: calling namedItem(DOMString) on document.createElement("select") with too few arguments must throw TypeError 
 PASS HTMLSelectElement interface: document.createElement("select") must inherit property "add" with the proper type (13) 
 PASS HTMLSelectElement interface: calling add([object Object],[object Object],[object Object],[object Object]) on document.createElement("select") with too few arguments must throw TypeError 
 PASS HTMLSelectElement interface: document.createElement("select") must inherit property "remove" with the proper type (14) 
@@ -4847,8 +4801,8 @@ PASS HTMLCanvasElement interface: existence and properties of interface prototyp
 PASS HTMLCanvasElement interface: existence and properties of interface prototype object's "constructor" property 
 PASS HTMLCanvasElement interface: attribute width 
 PASS HTMLCanvasElement interface: attribute height 
-FAIL HTMLCanvasElement interface: operation getContext(DOMString,any) assert_equals: property has wrong .length expected 1 but got 0
-FAIL HTMLCanvasElement interface: operation probablySupportsContext(DOMString,any) assert_equals: property has wrong .length expected 1 but got 0
+PASS HTMLCanvasElement interface: operation getContext(DOMString,any) 
+PASS HTMLCanvasElement interface: operation probablySupportsContext(DOMString,any) 
 FAIL HTMLCanvasElement interface: operation setContext(RenderingContext) assert_own_property: interface prototype object missing non-static operation expected property "setContext" missing
 FAIL HTMLCanvasElement interface: operation transferControlToProxy() assert_own_property: interface prototype object missing non-static operation expected property "transferControlToProxy" missing
 PASS HTMLCanvasElement interface: operation toDataURL(DOMString,any) 
@@ -4858,13 +4812,9 @@ PASS Stringification of document.createElement("canvas")
 PASS HTMLCanvasElement interface: document.createElement("canvas") must inherit property "width" with the proper type (0) 
 PASS HTMLCanvasElement interface: document.createElement("canvas") must inherit property "height" with the proper type (1) 
 PASS HTMLCanvasElement interface: document.createElement("canvas") must inherit property "getContext" with the proper type (2) 
-FAIL HTMLCanvasElement interface: calling getContext(DOMString,any) on document.createElement("canvas") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLCanvasElement interface: calling getContext(DOMString,any) on document.createElement("canvas") with too few arguments must throw TypeError 
 PASS HTMLCanvasElement interface: document.createElement("canvas") must inherit property "probablySupportsContext" with the proper type (3) 
-FAIL HTMLCanvasElement interface: calling probablySupportsContext(DOMString,any) on document.createElement("canvas") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS HTMLCanvasElement interface: calling probablySupportsContext(DOMString,any) on document.createElement("canvas") with too few arguments must throw TypeError 
 FAIL HTMLCanvasElement interface: document.createElement("canvas") must inherit property "setContext" with the proper type (4) assert_inherits: property "setContext" not found in prototype chain
 FAIL HTMLCanvasElement interface: calling setContext(RenderingContext) on document.createElement("canvas") with too few arguments must throw TypeError assert_inherits: property "setContext" not found in prototype chain
 FAIL HTMLCanvasElement interface: document.createElement("canvas") must inherit property "transferControlToProxy" with the proper type (5) assert_inherits: property "transferControlToProxy" not found in prototype chain
@@ -4912,23 +4862,23 @@ PASS CanvasRenderingContext2D interface: operation clearRect(unrestricted double
 PASS CanvasRenderingContext2D interface: operation fillRect(unrestricted double,unrestricted double,unrestricted double,unrestricted double) 
 PASS CanvasRenderingContext2D interface: operation strokeRect(unrestricted double,unrestricted double,unrestricted double,unrestricted double) 
 PASS CanvasRenderingContext2D interface: operation beginPath() 
-FAIL CanvasRenderingContext2D interface: operation fill(CanvasFillRule) assert_equals: property has wrong .length expected 0 but got 1
-FAIL CanvasRenderingContext2D interface: operation fill(Path2D,CanvasFillRule) assert_equals: property has wrong .length expected 0 but got 1
-FAIL CanvasRenderingContext2D interface: operation stroke() assert_equals: property has wrong .length expected 0 but got 1
-FAIL CanvasRenderingContext2D interface: operation stroke(Path2D) assert_equals: property has wrong .length expected 0 but got 1
+PASS CanvasRenderingContext2D interface: operation fill(CanvasFillRule) 
+PASS CanvasRenderingContext2D interface: operation fill(Path2D,CanvasFillRule) 
+PASS CanvasRenderingContext2D interface: operation stroke() 
+PASS CanvasRenderingContext2D interface: operation stroke(Path2D) 
 FAIL CanvasRenderingContext2D interface: operation drawSystemFocusRing(Element) assert_own_property: interface prototype object missing non-static operation expected property "drawSystemFocusRing" missing
 FAIL CanvasRenderingContext2D interface: operation drawSystemFocusRing(Path2D,Element) assert_own_property: interface prototype object missing non-static operation expected property "drawSystemFocusRing" missing
 FAIL CanvasRenderingContext2D interface: operation drawCustomFocusRing(Element) assert_own_property: interface prototype object missing non-static operation expected property "drawCustomFocusRing" missing
 FAIL CanvasRenderingContext2D interface: operation drawCustomFocusRing(Path2D,Element) assert_own_property: interface prototype object missing non-static operation expected property "drawCustomFocusRing" missing
 FAIL CanvasRenderingContext2D interface: operation scrollPathIntoView() assert_own_property: interface prototype object missing non-static operation expected property "scrollPathIntoView" missing
 FAIL CanvasRenderingContext2D interface: operation scrollPathIntoView(Path2D) assert_own_property: interface prototype object missing non-static operation expected property "scrollPathIntoView" missing
-FAIL CanvasRenderingContext2D interface: operation clip(CanvasFillRule) assert_equals: property has wrong .length expected 0 but got 1
-FAIL CanvasRenderingContext2D interface: operation clip(Path2D,CanvasFillRule) assert_equals: property has wrong .length expected 0 but got 1
+PASS CanvasRenderingContext2D interface: operation clip(CanvasFillRule) 
+PASS CanvasRenderingContext2D interface: operation clip(Path2D,CanvasFillRule) 
 FAIL CanvasRenderingContext2D interface: operation resetClip() assert_own_property: interface prototype object missing non-static operation expected property "resetClip" missing
-FAIL CanvasRenderingContext2D interface: operation isPointInPath(unrestricted double,unrestricted double,CanvasFillRule) assert_equals: property has wrong .length expected 2 but got 3
-FAIL CanvasRenderingContext2D interface: operation isPointInPath(Path2D,unrestricted double,unrestricted double,CanvasFillRule) assert_equals: property has wrong .length expected 2 but got 3
-FAIL CanvasRenderingContext2D interface: operation isPointInStroke(unrestricted double,unrestricted double) assert_equals: property has wrong .length expected 2 but got 3
-FAIL CanvasRenderingContext2D interface: operation isPointInStroke(Path2D,unrestricted double,unrestricted double) assert_equals: property has wrong .length expected 2 but got 3
+PASS CanvasRenderingContext2D interface: operation isPointInPath(unrestricted double,unrestricted double,CanvasFillRule) 
+PASS CanvasRenderingContext2D interface: operation isPointInPath(Path2D,unrestricted double,unrestricted double,CanvasFillRule) 
+PASS CanvasRenderingContext2D interface: operation isPointInStroke(unrestricted double,unrestricted double) 
+PASS CanvasRenderingContext2D interface: operation isPointInStroke(Path2D,unrestricted double,unrestricted double) 
 PASS CanvasRenderingContext2D interface: operation fillText(DOMString,unrestricted double,unrestricted double,unrestricted double) 
 PASS CanvasRenderingContext2D interface: operation strokeText(DOMString,unrestricted double,unrestricted double,unrestricted double) 
 PASS CanvasRenderingContext2D interface: operation measureText(DOMString) 
@@ -5098,7 +5048,7 @@ PASS CanvasGradient interface object length
 PASS CanvasGradient interface object name 
 PASS CanvasGradient interface: existence and properties of interface prototype object 
 PASS CanvasGradient interface: existence and properties of interface prototype object's "constructor" property 
-FAIL CanvasGradient interface: operation addColorStop(double,DOMString) assert_equals: property has wrong .length expected 2 but got 0
+PASS CanvasGradient interface: operation addColorStop(double,DOMString) 
 PASS CanvasPattern interface: existence and properties of interface object 
 PASS CanvasPattern interface object length 
 PASS CanvasPattern interface object name 
@@ -5209,7 +5159,7 @@ FAIL DragEvent interface: attribute dataTransfer assert_own_property: self does 
 PASS Window interface: existence and properties of interface object 
 PASS Window interface object length 
 PASS Window interface object name 
-FAIL Window interface: existence and properties of interface prototype object assert_equals: Class name for prototype of Window.prototype is not "WindowProperties" expected "[object WindowProperties]" but got "[object EventTargetPrototype]"
+PASS Window interface: existence and properties of interface prototype object 
 PASS Window interface: existence and properties of interface prototype object's "constructor" property 
 PASS Window interface: attribute self 
 PASS Window interface: attribute name 
@@ -5231,7 +5181,7 @@ PASS Window interface: attribute length
 PASS Window interface: attribute opener 
 PASS Window interface: attribute parent 
 PASS Window interface: attribute frameElement 
-FAIL Window interface: operation open(DOMString,DOMString,DOMString,boolean) assert_equals: property has wrong .length expected 0 but got 2
+PASS Window interface: operation open(DOMString,DOMString,DOMString,boolean) 
 PASS Window interface: attribute navigator 
 FAIL Window interface: attribute external assert_own_property: The global object must have a property "external" expected property "external" missing
 PASS Window interface: attribute applicationCache 
@@ -5370,9 +5320,7 @@ PASS Window interface: window must inherit property "print" with the proper type
 PASS Window interface: window must inherit property "showModalDialog" with the proper type (34) 
 PASS Window interface: calling showModalDialog(DOMString,any) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "postMessage" with the proper type (35) 
-FAIL Window interface: calling postMessage(any,DOMString,[object Object]) on window with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" threw object "SyntaxError (DOM Exception 12): The string did not match ..." ("SyntaxError") expected object "TypeError" ("TypeError")
+PASS Window interface: calling postMessage(any,DOMString,[object Object]) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "captureEvents" with the proper type (36) 
 PASS Window interface: window must inherit property "releaseEvents" with the proper type (37) 
 PASS Window interface: window must inherit property "onabort" with the proper type (38) 
@@ -5456,23 +5404,15 @@ PASS Window interface: calling btoa(DOMString) on window with too few arguments 
 PASS Window interface: window must inherit property "atob" with the proper type (115) 
 PASS Window interface: calling atob(DOMString) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "setTimeout" with the proper type (116) 
-FAIL Window interface: calling setTimeout(Function,long,any) on window with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS Window interface: calling setTimeout(Function,long,any) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "setTimeout" with the proper type (117) 
-FAIL Window interface: calling setTimeout(DOMString,long,any) on window with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS Window interface: calling setTimeout(DOMString,long,any) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "clearTimeout" with the proper type (118) 
 PASS Window interface: calling clearTimeout(long) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "setInterval" with the proper type (119) 
-FAIL Window interface: calling setInterval(Function,long,any) on window with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS Window interface: calling setInterval(Function,long,any) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "setInterval" with the proper type (120) 
-FAIL Window interface: calling setInterval(DOMString,long,any) on window with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS Window interface: calling setInterval(DOMString,long,any) on window with too few arguments must throw TypeError 
 PASS Window interface: window must inherit property "clearInterval" with the proper type (121) 
 PASS Window interface: calling clearInterval(long) on window with too few arguments must throw TypeError 
 FAIL Window interface: window must inherit property "createImageBitmap" with the proper type (122) assert_own_property: expected property "createImageBitmap" missing
@@ -5565,9 +5505,7 @@ PASS Event interface: new PopStateEvent("popstate", { data: {} }) must inherit p
 PASS Event interface: new PopStateEvent("popstate", { data: {} }) must have own property "isTrusted" 
 PASS Event interface: new PopStateEvent("popstate", { data: {} }) must inherit property "timeStamp" with the proper type (15) 
 PASS Event interface: new PopStateEvent("popstate", { data: {} }) must inherit property "initEvent" with the proper type (16) 
-FAIL Event interface: calling initEvent(DOMString,boolean,boolean) on new PopStateEvent("popstate", { data: {} }) with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS Event interface: calling initEvent(DOMString,boolean,boolean) on new PopStateEvent("popstate", { data: {} }) with too few arguments must throw TypeError 
 PASS HashChangeEvent interface: existence and properties of interface object 
 PASS HashChangeEvent interface object length 
 PASS HashChangeEvent interface object name 
@@ -5677,9 +5615,7 @@ PASS Navigator interface: attribute cookieEnabled
 FAIL Navigator interface: operation yieldForStorageUpdates() assert_own_property: interface prototype object missing non-static operation expected property "yieldForStorageUpdates" missing
 PASS Navigator interface: attribute plugins 
 PASS Navigator interface: attribute mimeTypes 
-FAIL Navigator interface: attribute javaEnabled assert_throws: getting property on prototype object must throw TypeError function "function () {
-    [native code]
-}" did not throw
+PASS Navigator interface: operation javaEnabled() 
 PASS Navigator must be primary interface of window.navigator 
 PASS Stringification of window.navigator 
 PASS Navigator interface: window.navigator must inherit property "appCodeName" with the proper type (0) 
@@ -5708,7 +5644,7 @@ PASS Navigator interface: window.navigator must inherit property "cookieEnabled"
 FAIL Navigator interface: window.navigator must inherit property "yieldForStorageUpdates" with the proper type (17) assert_inherits: property "yieldForStorageUpdates" not found in prototype chain
 PASS Navigator interface: window.navigator must inherit property "plugins" with the proper type (18) 
 PASS Navigator interface: window.navigator must inherit property "mimeTypes" with the proper type (19) 
-FAIL Navigator interface: window.navigator must inherit property "javaEnabled" with the proper type (20) assert_equals: expected "boolean" but got "function"
+PASS Navigator interface: window.navigator must inherit property "javaEnabled" with the proper type (20) 
 PASS PluginArray interface: existence and properties of interface object 
 PASS PluginArray interface object length 
 PASS PluginArray interface object name 
@@ -5716,16 +5652,16 @@ PASS PluginArray interface: existence and properties of interface prototype obje
 PASS PluginArray interface: existence and properties of interface prototype object's "constructor" property 
 PASS PluginArray interface: operation refresh(boolean) 
 PASS PluginArray interface: attribute length 
-FAIL PluginArray interface: operation item(unsigned long) assert_equals: property has wrong .length expected 1 but got 0
-FAIL PluginArray interface: operation namedItem(DOMString) assert_equals: property has wrong .length expected 1 but got 0
+PASS PluginArray interface: operation item(unsigned long) 
+PASS PluginArray interface: operation namedItem(DOMString) 
 PASS MimeTypeArray interface: existence and properties of interface object 
 PASS MimeTypeArray interface object length 
 PASS MimeTypeArray interface object name 
 PASS MimeTypeArray interface: existence and properties of interface prototype object 
 PASS MimeTypeArray interface: existence and properties of interface prototype object's "constructor" property 
 PASS MimeTypeArray interface: attribute length 
-FAIL MimeTypeArray interface: operation item(unsigned long) assert_equals: property has wrong .length expected 1 but got 0
-FAIL MimeTypeArray interface: operation namedItem(DOMString) assert_equals: property has wrong .length expected 1 but got 0
+PASS MimeTypeArray interface: operation item(unsigned long) 
+PASS MimeTypeArray interface: operation namedItem(DOMString) 
 PASS Plugin interface: existence and properties of interface object 
 PASS Plugin interface object length 
 PASS Plugin interface object name 
@@ -5735,8 +5671,8 @@ PASS Plugin interface: attribute name
 PASS Plugin interface: attribute description 
 PASS Plugin interface: attribute filename 
 PASS Plugin interface: attribute length 
-FAIL Plugin interface: operation item(unsigned long) assert_equals: property has wrong .length expected 1 but got 0
-FAIL Plugin interface: operation namedItem(DOMString) assert_equals: property has wrong .length expected 1 but got 0
+PASS Plugin interface: operation item(unsigned long) 
+PASS Plugin interface: operation namedItem(DOMString) 
 PASS MimeType interface: existence and properties of interface object 
 PASS MimeType interface object length 
 PASS MimeType interface object name 
@@ -5885,9 +5821,7 @@ PASS Event interface: new CloseEvent("close") must inherit property "defaultPrev
 PASS Event interface: new CloseEvent("close") must have own property "isTrusted" 
 PASS Event interface: new CloseEvent("close") must inherit property "timeStamp" with the proper type (15) 
 PASS Event interface: new CloseEvent("close") must inherit property "initEvent" with the proper type (16) 
-FAIL Event interface: calling initEvent(DOMString,boolean,boolean) on new CloseEvent("close") with too few arguments must throw TypeError assert_throws: Called with 0 arguments function "function () {
-            fn.apply(obj, args);
-        }" did not throw
+PASS Event interface: calling initEvent(DOMString,boolean,boolean) on new CloseEvent("close") with too few arguments must throw TypeError 
 PASS MessageChannel interface: existence and properties of interface object 
 PASS MessageChannel interface object length 
 PASS MessageChannel interface object name 

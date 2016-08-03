@@ -1,3 +1,157 @@
+2016-08-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Lacking support on a arm-traditional disassembler.
+        https://bugs.webkit.org/show_bug.cgi?id=123717
+
+        Reviewed by Mark Lam.
+
+        * wtf/Platform.h:
+
+2016-08-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update breaking rules to match ICU 57
+        https://bugs.webkit.org/show_bug.cgi?id=160488
+        <rdar://problem/25856238>
+
+        Reviewed by Darin Adler.
+
+        This patch fixes a typo in the uax14AssignmentsAfter rules which
+        was causing flag emoji to have line breaking opportunities in their
+        middles. It also fixes significant language issues for languages
+        such as Hebrew, and adds correct breaking opportunities around
+        hyphens.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::cursorMovementIterator):
+        (WTF::uax14AssignmentsAfter):
+        (WTF::uax14Forward):
+        (WTF::uax14Reverse):
+
+2016-08-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Simplify the initialization of AbstractValue in the AbstractInterpreter
+        https://bugs.webkit.org/show_bug.cgi?id=160370
+
+        Reviewed by Saam Barati.
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::isThin):
+        (WTF::TinyPtrSet::set):
+
+2016-08-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Clean up some useless AtomicString atoms
+        https://bugs.webkit.org/show_bug.cgi?id=160471
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringStatics.cpp:
+        (WTF::AtomicString::init): Deleted.
+
+2016-08-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC][ARM64] Fix branchTest32/64 taking an immediate as mask
+        https://bugs.webkit.org/show_bug.cgi?id=160439
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/MathExtras.h:
+        (getLSBSet):
+        This was not working at all for MacroAssembler.
+        Since TrustedImm32/64 are signed integers, the arithmetic shift would
+        never get rid of the top bit and we get an infinite loop.
+
+2016-07-29  Mark Lam  <mark.lam@apple.com>
+
+        Make StringView capable of being passed or returned in only 2 registers.
+        https://bugs.webkit.org/show_bug.cgi?id=160344
+
+        Reviewed by Geoffrey Garen.
+
+        We just need to #if out copy and move constructors and assignment operators.
+
+        After this change, the following test code:
+
+            JS_EXPORT_PRIVATE StringView returnStringView(StringView sv)
+            {
+                return sv;
+            }
+
+        ... compiles to the following for x86_64:
+
+            __ZN3JSC16returnStringViewEN3WTF10StringViewE:
+            000000000093fb20        pushq   %rbp
+            000000000093fb21        movq    %rsp, %rbp
+            000000000093fb24        movq    %rdi, %rax // Copy from arg word 0 to ret word 0.
+            000000000093fb27        movq    %rsi, %rdx // Copy from arg word 1 to ret word 1.
+            000000000093fb2a        popq    %rbp
+            000000000093fb2b        retq
+
+        ... and this for arm64:
+
+            __ZN3JSC16returnStringViewEN3WTF10StringViewE:
+            0000000000818504        ret // arg word 0 and 1 are in the same regs as ret word 0 and 1.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::StringView):
+        (WTF::StringView::~StringView):
+        (WTF::StringView::operator=):
+
+2016-07-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove PassRef.h after r177259
+        https://bugs.webkit.org/show_bug.cgi?id=160348
+
+        Reviewed by Andreas Kling.
+
+        * wtf/PassRef.h: Removed.
+
+2016-07-28  Mark Lam  <mark.lam@apple.com>
+
+        StringView should have an explicit m_is8Bit field.
+        https://bugs.webkit.org/show_bug.cgi?id=160282
+        <rdar://problem/27327943>
+
+        Reviewed by Benjamin Poulain.
+
+        The current implementation reserves 1 bit in the 32-bit m_length field as an
+        is16Bit flag.  As a result, a StringView is incapable of handling strings that
+        have a length of 32-bit in size.  This results in a mismatch with the
+        expectations of String, StringImpl, and JavaScriptCore's JSString which all
+        support a 32-bit unsigned length.
+
+        This patch fixes this issue by introducing an explicit m_is8Bit field, thereby
+        allowing m_length to be a full 32-bit again.
+
+        We also introduced a clear() convenience method to set the fields of StringView
+        to empty values.  Previously, we were duplicating the code for clearing those
+        fields.  We now call clear() in all those places instead.
+
+        Note: in clear(), we set m_is8Bit to true because we want an empty StringView
+        to be 8-bit rather than 16-bit.  This is consistent with what the empty() method
+        returns.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::setUnderlyingString):
+        (WTF::StringView::StringView):
+        (WTF::StringView::operator=):
+        (WTF::StringView::initialize):
+        (WTF::StringView::clear):
+        (WTF::StringView::empty):
+        (WTF::StringView::length):
+        (WTF::StringView::operator bool):
+        (WTF::StringView::is8Bit):
+        (WTF::StringView::substring):
+        (WTF::StringView::getCharactersWithUpconvert):
+        (WTF::StringView::toString):
+        (WTF::StringView::toAtomicString):
+        (WTF::StringView::toFloat):
+        (WTF::StringView::toInt):
+        (WTF::StringView::toIntStrict):
+        (WTF::StringView::toStringWithoutCopying):
+        (WTF::StringView::find):
+
 2016-07-24  Filip Pizlo  <fpizlo@apple.com>
 
         B3 should support multiple entrypoints

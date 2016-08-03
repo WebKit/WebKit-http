@@ -358,6 +358,15 @@ sub IsNumericType
     return 0;
 }
 
+sub IsStringOrEnumType
+{
+    my ($object, $type) = @_;
+    
+    return 1 if $type eq "DOMString";
+    return 1 if $object->IsEnumType($type);
+    return 0;
+}
+
 sub IsIntegerType
 {
     my ($object, $type) = @_;
@@ -604,6 +613,13 @@ sub LinkOverloadedFunctions
         push(@{$nameToFunctionsMap{$name}}, $function);
         $function->{overloads} = $nameToFunctionsMap{$name};
         $function->{overloadIndex} = @{$nameToFunctionsMap{$name}};
+    }
+
+    my $index = 1;
+    foreach my $constructor (@{$interface->constructors}) {
+        $constructor->{overloads} = $interface->constructors;
+        $constructor->{overloadIndex} = $index;
+        $index++;
     }
 }
 

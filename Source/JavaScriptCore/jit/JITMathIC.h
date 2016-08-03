@@ -32,6 +32,7 @@
 #include "JITAddGenerator.h"
 #include "JITMathICInlineResult.h"
 #include "JITMulGenerator.h"
+#include "JITSubGenerator.h"
 #include "LinkBuffer.h"
 #include "Repatch.h"
 #include "SnippetOperand.h"
@@ -63,6 +64,13 @@ public:
 
     bool generateInline(CCallHelpers& jit, MathICGenerationState& state, bool shouldEmitProfiling = true)
     {
+#if CPU(ARM_TRADITIONAL)
+        // FIXME: Remove this workaround once the proper fixes are landed.
+        // [ARM] Disable Inline Caching on ARMv7 traditional until proper fix
+        // https://bugs.webkit.org/show_bug.cgi?id=159759
+        return false;
+#endif
+
         state.fastPathStart = jit.label();
         size_t startSize = jit.m_assembler.buffer().codeSize();
 
@@ -240,6 +248,7 @@ public:
 
 typedef JITMathIC<JITAddGenerator> JITAddIC;
 typedef JITMathIC<JITMulGenerator> JITMulIC;
+typedef JITMathIC<JITSubGenerator> JITSubIC;
 
 } // namespace JSC
 

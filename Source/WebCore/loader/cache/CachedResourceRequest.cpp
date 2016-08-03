@@ -44,8 +44,8 @@ CachedResourceRequest::CachedResourceRequest(const ResourceRequest& resourceRequ
 {
 }
 
-CachedResourceRequest::CachedResourceRequest(const ResourceRequest& resourceRequest, const ResourceLoaderOptions& options)
-    : m_resourceRequest(resourceRequest)
+CachedResourceRequest::CachedResourceRequest(ResourceRequest&& resourceRequest, const ResourceLoaderOptions& options)
+    : m_resourceRequest(WTFMove(resourceRequest))
     , m_options(options)
     , m_forPreload(false)
     , m_defer(NoDefer)
@@ -77,11 +77,6 @@ void CachedResourceRequest::setInitiator(const AtomicString& name)
     m_initiatorName = name;
 }
 
-void CachedResourceRequest::setInitiator(DocumentLoader& documentLoader)
-{
-    m_initiatingDocumentLoader = &documentLoader;
-}
-
 const AtomicString& CachedResourceRequest::initiatorName() const
 {
     if (m_initiatorElement)
@@ -100,10 +95,10 @@ void CachedResourceRequest::setAsPotentiallyCrossOrigin(const String& mode, Docu
         return;
     m_options.mode = FetchOptions::Mode::Cors;
     m_options.credentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
-    m_options.setAllowCredentials(equalLettersIgnoringASCIICase(mode, "use-credentials") ? AllowStoredCredentials : DoNotAllowStoredCredentials);
+    m_options.allowCredentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? AllowStoredCredentials : DoNotAllowStoredCredentials;
 
     ASSERT(document.securityOrigin());
-    updateRequestForAccessControl(m_resourceRequest, *document.securityOrigin(), m_options.allowCredentials());
+    updateRequestForAccessControl(m_resourceRequest, *document.securityOrigin(), m_options.allowCredentials);
 }
 
 } // namespace WebCore

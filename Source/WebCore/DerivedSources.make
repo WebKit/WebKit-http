@@ -75,7 +75,7 @@ VPATH = \
     $(WebCore)/websockets \
 #
 
-NON_SVG_BINDING_IDLS = \
+JS_AND_OBJC_BINDING_IDLS = \
     $(WebCore)/Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl \
 	$(WebCore)/Modules/applepay/ApplePayPaymentAuthorizedEvent.idl \
     $(WebCore)/Modules/applepay/ApplePayPaymentMethodSelectedEvent.idl \
@@ -185,7 +185,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.idl \
     $(WebCore)/Modules/streams/CountQueuingStrategy.idl \
     $(WebCore)/Modules/streams/ReadableStream.idl \
-    $(WebCore)/Modules/streams/ReadableStreamController.idl \
+    $(WebCore)/Modules/streams/ReadableStreamDefaultController.idl \
     $(WebCore)/Modules/streams/ReadableStreamDefaultReader.idl \
     $(WebCore)/Modules/streams/ReadableStreamSource.idl \
     $(WebCore)/Modules/streams/WritableStream.idl \
@@ -236,45 +236,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/crypto/CryptoKey.idl \
     $(WebCore)/crypto/CryptoKeyPair.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
-    $(WebCore)/css/CSSCharsetRule.idl \
-    $(WebCore)/css/CSSFontFaceLoadEvent.idl \
-    $(WebCore)/css/CSSFontFaceRule.idl \
-    $(WebCore)/css/CSSImportRule.idl \
-    $(WebCore)/css/CSSMediaRule.idl \
-    $(WebCore)/css/CSSPageRule.idl \
-    $(WebCore)/css/CSSPrimitiveValue.idl \
-    $(WebCore)/css/CSSRule.idl \
-    $(WebCore)/css/CSSRuleList.idl \
-    $(WebCore)/css/CSSStyleDeclaration.idl \
-    $(WebCore)/css/CSSStyleRule.idl \
-    $(WebCore)/css/CSSStyleSheet.idl \
-    $(WebCore)/css/CSSSupportsRule.idl \
-    $(WebCore)/css/CSSUnknownRule.idl \
-    $(WebCore)/css/CSSValue.idl \
-    $(WebCore)/css/CSSValueList.idl \
-    $(WebCore)/css/Counter.idl \
-    $(WebCore)/css/DOMCSSNamespace.idl \
-    $(WebCore)/css/FontFace.idl \
-    $(WebCore)/css/FontFaceSet.idl \
-    $(WebCore)/css/MediaList.idl \
-    $(WebCore)/css/MediaQueryList.idl \
-    $(WebCore)/css/MediaQueryListListener.idl \
-    $(WebCore)/css/RGBColor.idl \
-    $(WebCore)/css/Rect.idl \
-    $(WebCore)/css/StyleMedia.idl \
-    $(WebCore)/css/StyleSheet.idl \
-    $(WebCore)/css/StyleSheetList.idl \
-    $(WebCore)/css/WebKitCSSFilterValue.idl \
-    $(WebCore)/css/CSSKeyframeRule.idl \
-    $(WebCore)/css/CSSKeyframesRule.idl \
-    $(WebCore)/css/WebKitCSSMatrix.idl \
-    $(WebCore)/css/WebKitCSSRegionRule.idl \
-    $(WebCore)/css/WebKitCSSTransformValue.idl \
-    $(WebCore)/css/WebKitCSSViewportRule.idl \
-    $(WebCore)/dom/AnimationEvent.idl \
     $(WebCore)/dom/Attr.idl \
-    $(WebCore)/dom/AutocompleteErrorEvent.idl \
-    $(WebCore)/dom/BeforeLoadEvent.idl \
     $(WebCore)/dom/BeforeUnloadEvent.idl \
     $(WebCore)/dom/CDATASection.idl \
     $(WebCore)/dom/CharacterData.idl \
@@ -301,152 +263,41 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/dom/Entity.idl \
     $(WebCore)/dom/EntityReference.idl \
     $(WebCore)/dom/ErrorEvent.idl \
-    $(WebCore)/dom/Event.idl \
-    $(WebCore)/dom/EventListener.idl \
-    $(WebCore)/dom/EventTarget.idl \
     $(WebCore)/dom/FocusEvent.idl \
     $(WebCore)/dom/GlobalEventHandlers.idl \
     $(WebCore)/dom/HashChangeEvent.idl \
-    $(WebCore)/dom/KeyboardEvent.idl \
     $(WebCore)/dom/MessageChannel.idl \
-    $(WebCore)/dom/MessageEvent.idl \
-    $(WebCore)/dom/MessagePort.idl \
-    $(WebCore)/dom/MouseEvent.idl \
-    $(WebCore)/dom/MutationEvent.idl \
     $(WebCore)/dom/MutationObserver.idl \
     $(WebCore)/dom/MutationRecord.idl \
-    $(WebCore)/dom/DOMNamedFlowCollection.idl \
     $(WebCore)/dom/NamedNodeMap.idl \
     $(WebCore)/dom/Node.idl \
-    $(WebCore)/dom/NodeFilter.idl \
-    $(WebCore)/dom/NodeIterator.idl \
     $(WebCore)/dom/NodeList.idl \
     $(WebCore)/dom/NonElementParentNode.idl \
     $(WebCore)/dom/NonDocumentTypeChildNode.idl \
-    $(WebCore)/dom/OverflowEvent.idl \
-    $(WebCore)/dom/PageTransitionEvent.idl \
     $(WebCore)/dom/ParentNode.idl \
     $(WebCore)/dom/PopStateEvent.idl \
     $(WebCore)/dom/ProcessingInstruction.idl \
-    $(WebCore)/dom/ProgressEvent.idl \
-    $(WebCore)/dom/ProgressEvent.idl \
-    $(WebCore)/dom/Range.idl \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
     $(WebCore)/dom/SecurityPolicyViolationEvent.idl \
     $(WebCore)/dom/ShadowRoot.idl \
     $(WebCore)/dom/Slotable.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
-    $(WebCore)/dom/TextEvent.idl \
-    $(WebCore)/dom/TransitionEvent.idl \
     $(WebCore)/dom/TreeWalker.idl \
-    $(WebCore)/dom/UIEvent.idl \
-    $(WebCore)/dom/WebKitAnimationEvent.idl \
-    $(WebCore)/dom/WebKitNamedFlow.idl \
-    $(WebCore)/dom/WebKitTransitionEvent.idl \
-    $(WebCore)/dom/WheelEvent.idl \
     $(WebCore)/dom/XMLDocument.idl \
-    $(WebCore)/fileapi/Blob.idl \
-    $(WebCore)/fileapi/File.idl \
-    $(WebCore)/fileapi/FileError.idl \
     $(WebCore)/fileapi/FileException.idl \
-    $(WebCore)/fileapi/FileList.idl \
     $(WebCore)/fileapi/FileReader.idl \
     $(WebCore)/fileapi/FileReaderSync.idl \
     $(WebCore)/html/DOMFormData.idl \
     $(WebCore)/html/DOMSettableTokenList.idl \
-    $(WebCore)/html/DOMTokenList.idl \
     $(WebCore)/html/DOMURL.idl \
-    $(WebCore)/html/HTMLAllCollection.idl \
-    $(WebCore)/html/HTMLAnchorElement.idl \
-    $(WebCore)/html/HTMLAppletElement.idl \
-    $(WebCore)/html/HTMLAreaElement.idl \
-    $(WebCore)/html/HTMLAttachmentElement.idl \
-    $(WebCore)/html/HTMLAudioElement.idl \
-    $(WebCore)/html/HTMLBRElement.idl \
-    $(WebCore)/html/HTMLBaseElement.idl \
-    $(WebCore)/html/HTMLBaseFontElement.idl \
-    $(WebCore)/html/HTMLBodyElement.idl \
-    $(WebCore)/html/HTMLButtonElement.idl \
-    $(WebCore)/html/HTMLCanvasElement.idl \
-    $(WebCore)/html/HTMLCollection.idl \
-    $(WebCore)/html/HTMLDListElement.idl \
-    $(WebCore)/html/HTMLDataElement.idl \
-    $(WebCore)/html/HTMLDataListElement.idl \
-    $(WebCore)/html/HTMLDetailsElement.idl \
-    $(WebCore)/html/HTMLDirectoryElement.idl \
-    $(WebCore)/html/HTMLDivElement.idl \
-    $(WebCore)/html/HTMLDocument.idl \
-    $(WebCore)/html/HTMLElement.idl \
-    $(WebCore)/html/HTMLEmbedElement.idl \
-    $(WebCore)/html/HTMLFieldSetElement.idl \
-    $(WebCore)/html/HTMLFontElement.idl \
-    $(WebCore)/html/HTMLFormControlsCollection.idl \
-    $(WebCore)/html/HTMLFormElement.idl \
-    $(WebCore)/html/HTMLFrameElement.idl \
-    $(WebCore)/html/HTMLFrameSetElement.idl \
-    $(WebCore)/html/HTMLHRElement.idl \
-    $(WebCore)/html/HTMLHeadElement.idl \
-    $(WebCore)/html/HTMLHeadingElement.idl \
-    $(WebCore)/html/HTMLHtmlElement.idl \
-    $(WebCore)/html/HTMLHyperlinkElementUtils.idl \
-    $(WebCore)/html/HTMLIFrameElement.idl \
-    $(WebCore)/html/HTMLImageElement.idl \
-    $(WebCore)/html/HTMLInputElement.idl \
-    $(WebCore)/html/HTMLKeygenElement.idl \
-    $(WebCore)/html/HTMLLIElement.idl \
-    $(WebCore)/html/HTMLLabelElement.idl \
-    $(WebCore)/html/HTMLLegendElement.idl \
-    $(WebCore)/html/HTMLLinkElement.idl \
-    $(WebCore)/html/HTMLMapElement.idl \
-    $(WebCore)/html/HTMLMarqueeElement.idl \
-    $(WebCore)/html/HTMLMediaElement.idl \
-    $(WebCore)/html/HTMLMenuElement.idl \
-    $(WebCore)/html/HTMLMetaElement.idl \
-    $(WebCore)/html/HTMLMeterElement.idl \
-    $(WebCore)/html/HTMLModElement.idl \
-    $(WebCore)/html/HTMLOListElement.idl \
-    $(WebCore)/html/HTMLObjectElement.idl \
-    $(WebCore)/html/HTMLOptGroupElement.idl \
-    $(WebCore)/html/HTMLOptionElement.idl \
-    $(WebCore)/html/HTMLOptionsCollection.idl \
-    $(WebCore)/html/HTMLOutputElement.idl \
-    $(WebCore)/html/HTMLParagraphElement.idl \
-    $(WebCore)/html/HTMLParamElement.idl \
-	$(WebCore)/html/HTMLPictureElement.idl \
-    $(WebCore)/html/HTMLPreElement.idl \
-    $(WebCore)/html/HTMLProgressElement.idl \
-    $(WebCore)/html/HTMLQuoteElement.idl \
-    $(WebCore)/html/HTMLScriptElement.idl \
-    $(WebCore)/html/HTMLSelectElement.idl \
-    $(WebCore)/html/HTMLSlotElement.idl \
-    $(WebCore)/html/HTMLSourceElement.idl \
-    $(WebCore)/html/HTMLSpanElement.idl \
-    $(WebCore)/html/HTMLStyleElement.idl \
-    $(WebCore)/html/HTMLTableCaptionElement.idl \
-    $(WebCore)/html/HTMLTableCellElement.idl \
-    $(WebCore)/html/HTMLTableColElement.idl \
-    $(WebCore)/html/HTMLTableElement.idl \
-    $(WebCore)/html/HTMLTableRowElement.idl \
-    $(WebCore)/html/HTMLTableSectionElement.idl \
-    $(WebCore)/html/HTMLTemplateElement.idl \
-    $(WebCore)/html/HTMLTextAreaElement.idl \
-    $(WebCore)/html/HTMLTimeElement.idl \
-    $(WebCore)/html/HTMLTitleElement.idl \
-    $(WebCore)/html/HTMLTrackElement.idl \
-    $(WebCore)/html/HTMLUListElement.idl \
-    $(WebCore)/html/HTMLUnknownElement.idl \
-    $(WebCore)/html/HTMLVideoElement.idl \
     $(WebCore)/html/ImageData.idl \
     $(WebCore)/html/MediaController.idl \
-    $(WebCore)/html/MediaError.idl \
     $(WebCore)/html/MediaKeyError.idl \
     $(WebCore)/html/MediaKeyEvent.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \
-    $(WebCore)/html/TimeRanges.idl \
     $(WebCore)/html/URLUtils.idl \
-    $(WebCore)/html/ValidityState.idl \
     $(WebCore)/html/VoidCallback.idl \
     $(WebCore)/html/canvas/ANGLEInstancedArrays.idl \
     $(WebCore)/html/canvas/CanvasGradient.idl \
@@ -563,16 +414,160 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/xml/XMLHttpRequestProgressEvent.idl \
     $(WebCore)/xml/XMLHttpRequestUpload.idl \
     $(WebCore)/xml/XMLSerializer.idl \
-    $(WebCore)/xml/XPathEvaluator.idl \
-    $(WebCore)/xml/XPathException.idl \
-    $(WebCore)/xml/XPathExpression.idl \
-    $(WebCore)/xml/XPathNSResolver.idl \
-    $(WebCore)/xml/XPathResult.idl \
     $(WebCore)/xml/XSLTProcessor.idl \
     InternalSettingsGenerated.idl
 #
 
-SVG_BINDING_IDLS = \
+JS_ONLY_BINDING_IDLS = \
+	$(WebCore)/css/CSSCharsetRule.idl \
+	$(WebCore)/css/CSSFontFaceLoadEvent.idl \
+	$(WebCore)/css/CSSFontFaceRule.idl \
+	$(WebCore)/css/CSSImportRule.idl \
+	$(WebCore)/css/CSSKeyframeRule.idl \
+	$(WebCore)/css/CSSKeyframesRule.idl \
+	$(WebCore)/css/CSSMediaRule.idl \
+	$(WebCore)/css/CSSPageRule.idl \
+	$(WebCore)/css/CSSPrimitiveValue.idl \
+	$(WebCore)/css/CSSRule.idl \
+	$(WebCore)/css/CSSRuleList.idl \
+	$(WebCore)/css/CSSStyleDeclaration.idl \
+	$(WebCore)/css/CSSStyleRule.idl \
+	$(WebCore)/css/CSSStyleSheet.idl \
+	$(WebCore)/css/CSSSupportsRule.idl \
+	$(WebCore)/css/CSSUnknownRule.idl \
+	$(WebCore)/css/CSSValue.idl \
+	$(WebCore)/css/CSSValueList.idl \
+	$(WebCore)/css/Counter.idl \
+	$(WebCore)/css/DOMCSSNamespace.idl \
+	$(WebCore)/css/FontFace.idl \
+	$(WebCore)/css/FontFaceSet.idl \
+	$(WebCore)/css/MediaList.idl \
+	$(WebCore)/css/MediaQueryList.idl \
+	$(WebCore)/css/MediaQueryListListener.idl \
+	$(WebCore)/css/RGBColor.idl \
+	$(WebCore)/css/Rect.idl \
+	$(WebCore)/css/StyleMedia.idl \
+	$(WebCore)/css/StyleSheet.idl \
+	$(WebCore)/css/StyleSheetList.idl \
+    $(WebCore)/css/WebKitCSSFilterValue.idl \
+    $(WebCore)/css/WebKitCSSMatrix.idl \
+    $(WebCore)/css/WebKitCSSRegionRule.idl \
+    $(WebCore)/css/WebKitCSSTransformValue.idl \
+    $(WebCore)/css/WebKitCSSViewportRule.idl \
+	$(WebCore)/dom/AnimationEvent.idl \
+	$(WebCore)/dom/AutocompleteErrorEvent.idl \
+	$(WebCore)/dom/BeforeLoadEvent.idl \
+	$(WebCore)/dom/DOMNamedFlowCollection.idl \
+	$(WebCore)/dom/MessageEvent.idl \
+	$(WebCore)/dom/MessagePort.idl \
+	$(WebCore)/dom/NodeFilter.idl \
+	$(WebCore)/dom/NodeIterator.idl \
+	$(WebCore)/dom/PageTransitionEvent.idl \
+	$(WebCore)/dom/Range.idl \
+	$(WebCore)/dom/TransitionEvent.idl \
+	$(WebCore)/dom/WebKitAnimationEvent.idl \
+	$(WebCore)/dom/WebKitNamedFlow.idl \
+	$(WebCore)/dom/WebKitTransitionEvent.idl \
+    $(WebCore)/dom/Event.idl \
+    $(WebCore)/dom/EventListener.idl \
+    $(WebCore)/dom/EventTarget.idl \
+    $(WebCore)/dom/KeyboardEvent.idl \
+    $(WebCore)/dom/MouseEvent.idl \
+    $(WebCore)/dom/MutationEvent.idl \
+    $(WebCore)/dom/OverflowEvent.idl \
+    $(WebCore)/dom/ProgressEvent.idl \
+    $(WebCore)/dom/ProgressEvent.idl \
+    $(WebCore)/dom/TextEvent.idl \
+    $(WebCore)/dom/UIEvent.idl \
+    $(WebCore)/dom/WheelEvent.idl \
+	$(WebCore)/fileapi/Blob.idl \
+	$(WebCore)/fileapi/File.idl \
+	$(WebCore)/fileapi/FileError.idl \
+	$(WebCore)/fileapi/FileList.idl \
+	$(WebCore)/html/DOMTokenList.idl \
+	$(WebCore)/html/HTMLAnchorElement.idl \
+	$(WebCore)/html/HTMLAppletElement.idl \
+	$(WebCore)/html/HTMLAreaElement.idl \
+	$(WebCore)/html/HTMLBRElement.idl \
+	$(WebCore)/html/HTMLBaseElement.idl \
+	$(WebCore)/html/HTMLBaseFontElement.idl \
+	$(WebCore)/html/HTMLBodyElement.idl \
+	$(WebCore)/html/HTMLButtonElement.idl \
+	$(WebCore)/html/HTMLCanvasElement.idl \
+	$(WebCore)/html/HTMLCollection.idl \
+	$(WebCore)/html/HTMLDListElement.idl \
+	$(WebCore)/html/HTMLDataElement.idl \
+	$(WebCore)/html/HTMLPictureElement.idl \
+    $(WebCore)/html/HTMLAllCollection.idl \
+    $(WebCore)/html/HTMLAttachmentElement.idl \
+    $(WebCore)/html/HTMLAudioElement.idl \
+    $(WebCore)/html/HTMLDataListElement.idl \
+    $(WebCore)/html/HTMLDetailsElement.idl \
+    $(WebCore)/html/HTMLDirectoryElement.idl \
+    $(WebCore)/html/HTMLDivElement.idl \
+    $(WebCore)/html/HTMLDocument.idl \
+    $(WebCore)/html/HTMLElement.idl \
+    $(WebCore)/html/HTMLEmbedElement.idl \
+    $(WebCore)/html/HTMLFieldSetElement.idl \
+    $(WebCore)/html/HTMLFontElement.idl \
+    $(WebCore)/html/HTMLFormControlsCollection.idl \
+    $(WebCore)/html/HTMLFormElement.idl \
+    $(WebCore)/html/HTMLFrameElement.idl \
+    $(WebCore)/html/HTMLFrameSetElement.idl \
+    $(WebCore)/html/HTMLHRElement.idl \
+    $(WebCore)/html/HTMLHeadElement.idl \
+    $(WebCore)/html/HTMLHeadingElement.idl \
+    $(WebCore)/html/HTMLHtmlElement.idl \
+    $(WebCore)/html/HTMLHyperlinkElementUtils.idl \
+    $(WebCore)/html/HTMLIFrameElement.idl \
+    $(WebCore)/html/HTMLImageElement.idl \
+    $(WebCore)/html/HTMLInputElement.idl \
+    $(WebCore)/html/HTMLKeygenElement.idl \
+    $(WebCore)/html/HTMLLIElement.idl \
+    $(WebCore)/html/HTMLLabelElement.idl \
+    $(WebCore)/html/HTMLLegendElement.idl \
+    $(WebCore)/html/HTMLLinkElement.idl \
+    $(WebCore)/html/HTMLMapElement.idl \
+    $(WebCore)/html/HTMLMarqueeElement.idl \
+    $(WebCore)/html/HTMLMediaElement.idl \
+    $(WebCore)/html/HTMLMenuElement.idl \
+    $(WebCore)/html/HTMLMetaElement.idl \
+    $(WebCore)/html/HTMLMeterElement.idl \
+    $(WebCore)/html/HTMLModElement.idl \
+    $(WebCore)/html/HTMLOListElement.idl \
+    $(WebCore)/html/HTMLObjectElement.idl \
+    $(WebCore)/html/HTMLOptGroupElement.idl \
+    $(WebCore)/html/HTMLOptionElement.idl \
+    $(WebCore)/html/HTMLOptionsCollection.idl \
+    $(WebCore)/html/HTMLOutputElement.idl \
+    $(WebCore)/html/HTMLParagraphElement.idl \
+    $(WebCore)/html/HTMLParamElement.idl \
+    $(WebCore)/html/HTMLPreElement.idl \
+    $(WebCore)/html/HTMLProgressElement.idl \
+    $(WebCore)/html/HTMLQuoteElement.idl \
+    $(WebCore)/html/HTMLScriptElement.idl \
+    $(WebCore)/html/HTMLSelectElement.idl \
+    $(WebCore)/html/HTMLSlotElement.idl \
+    $(WebCore)/html/HTMLSourceElement.idl \
+    $(WebCore)/html/HTMLSpanElement.idl \
+    $(WebCore)/html/HTMLStyleElement.idl \
+    $(WebCore)/html/HTMLTableCaptionElement.idl \
+    $(WebCore)/html/HTMLTableCellElement.idl \
+    $(WebCore)/html/HTMLTableColElement.idl \
+    $(WebCore)/html/HTMLTableElement.idl \
+    $(WebCore)/html/HTMLTableRowElement.idl \
+    $(WebCore)/html/HTMLTableSectionElement.idl \
+    $(WebCore)/html/HTMLTemplateElement.idl \
+    $(WebCore)/html/HTMLTextAreaElement.idl \
+    $(WebCore)/html/HTMLTimeElement.idl \
+    $(WebCore)/html/HTMLTitleElement.idl \
+    $(WebCore)/html/HTMLTrackElement.idl \
+    $(WebCore)/html/HTMLUListElement.idl \
+    $(WebCore)/html/HTMLUnknownElement.idl \
+    $(WebCore)/html/HTMLVideoElement.idl \
+    $(WebCore)/html/MediaError.idl \
+    $(WebCore)/html/TimeRanges.idl \
+    $(WebCore)/html/ValidityState.idl \
     $(WebCore)/svg/SVGAElement.idl \
     $(WebCore)/svg/SVGAltGlyphDefElement.idl \
     $(WebCore)/svg/SVGAltGlyphElement.idl \
@@ -719,7 +714,12 @@ SVG_BINDING_IDLS = \
     $(WebCore)/svg/SVGViewElement.idl \
     $(WebCore)/svg/SVGViewSpec.idl \
     $(WebCore)/svg/SVGZoomAndPan.idl \
-    $(WebCore)/svg/SVGZoomEvent.idl
+    $(WebCore)/svg/SVGZoomEvent.idl \
+    $(WebCore)/xml/XPathEvaluator.idl \
+    $(WebCore)/xml/XPathException.idl \
+    $(WebCore)/xml/XPathExpression.idl \
+    $(WebCore)/xml/XPathNSResolver.idl \
+    $(WebCore)/xml/XPathResult.idl \
 #
 
 PYTHON = python
@@ -791,7 +791,7 @@ ADDITIONAL_EVENT_TARGET_FACTORY =
 
 -include WebCoreDerivedSourcesAdditions.make
 
-NON_SVG_BINDING_IDLS += $(ADDITIONAL_BINDING_IDLS)
+JS_ONLY_BINDING_IDLS += $(ADDITIONAL_BINDING_IDLS)
 
 all : $(ADDITIONAL_BINDING_IDLS:%.idl=JS%.h)
 
@@ -803,7 +803,7 @@ $(ADDITIONAL_BINDING_IDLS) : % : WebKitAdditions/%
 endif # MACOS
 
 ifneq ($(WTF_PLATFORM_IOS), 1)
-NON_SVG_BINDING_IDLS += \
+JS_ONLY_BINDING_IDLS += \
     $(WebCore)/dom/Touch.idl \
     $(WebCore)/dom/TouchEvent.idl \
     $(WebCore)/dom/TouchList.idl
@@ -811,9 +811,9 @@ endif
 
 .PHONY : all
 
-BINDING_IDLS = $(NON_SVG_BINDING_IDLS) $(SVG_BINDING_IDLS)
+JS_BINDING_IDLS = $(JS_AND_OBJC_BINDING_IDLS) $(JS_ONLY_BINDING_IDLS)
 
-JS_DOM_CLASSES=$(basename $(notdir $(BINDING_IDLS)))
+JS_DOM_CLASSES=$(basename $(notdir $(JS_BINDING_IDLS)))
 
 JS_DOM_HEADERS=$(filter-out JSEventListener.h, $(JS_DOM_CLASSES:%=JS%.h))
 
@@ -1234,8 +1234,8 @@ define NL
 
 endef
 
-$(SUPPLEMENTAL_MAKEFILE_DEPS) : $(PREPROCESS_IDLS_SCRIPTS) $(BINDING_IDLS) $(PLATFORM_FEATURE_DEFINES) DerivedSources.make
-	$(foreach f,$(BINDING_IDLS),@echo $(f)>>$(IDL_FILES_TMP)$(NL))
+$(SUPPLEMENTAL_MAKEFILE_DEPS) : $(PREPROCESS_IDLS_SCRIPTS) $(JS_BINDING_IDLS) $(PLATFORM_FEATURE_DEFINES) DerivedSources.make
+	$(foreach f,$(JS_BINDING_IDLS),@echo $(f)>>$(IDL_FILES_TMP)$(NL))
 	$(call preprocess_idls_script, $(PREPROCESS_IDLS_SCRIPTS)) --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --idlFilesList $(IDL_FILES_TMP) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) --windowConstructorsFile $(WINDOW_CONSTRUCTORS_FILE) --workerGlobalScopeConstructorsFile $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --dedicatedWorkerGlobalScopeConstructorsFile $(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --supplementalMakefileDeps $@
 	$(DELETE) $(IDL_FILES_TMP)
 
@@ -1296,7 +1296,7 @@ WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \
     $(WebCore)/Modules/streams/CountQueuingStrategy.js \
     $(WebCore)/Modules/streams/ReadableStream.js \
-    $(WebCore)/Modules/streams/ReadableStreamController.js \
+    $(WebCore)/Modules/streams/ReadableStreamDefaultController.js \
     $(WebCore)/Modules/streams/ReadableStreamInternals.js \
     $(WebCore)/Modules/streams/ReadableStreamDefaultReader.js \
     $(WebCore)/Modules/streams/StreamInternals.js \
@@ -1352,7 +1352,7 @@ all : $(notdir $(WebCore_BUILTINS_SOURCES:%.js=%Builtins.h)) $(firstword $(WebCo
 
 ifeq ($(OS),MACOS)
 
-OBJC_DOM_CLASSES=$(basename $(notdir $(NON_SVG_BINDING_IDLS)))
+OBJC_DOM_CLASSES=$(basename $(notdir $(JS_AND_OBJC_BINDING_IDLS)))
 
 OBJC_DOM_HEADERS=$(filter-out DOMDOMWindow.h DOMDOMMimeType.h DOMDOMPlugin.h,$(OBJC_DOM_CLASSES:%=DOM%.h))
 

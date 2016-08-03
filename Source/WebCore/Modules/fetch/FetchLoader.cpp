@@ -32,6 +32,7 @@
 #if ENABLE(FETCH_API)
 
 #include "BlobURL.h"
+#include "CachedResourceRequestInitiators.h"
 #include "FetchBody.h"
 #include "FetchLoaderClient.h"
 #include "FetchRequest.h"
@@ -59,35 +60,24 @@ void FetchLoader::start(ScriptExecutionContext& context, Blob& blob)
     request.setHTTPMethod("GET");
 
     ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
-    options.setDataBufferingPolicy(DoNotBufferData);
+    options.sendLoadCallbacks = SendCallbacks;
+    options.dataBufferingPolicy = DoNotBufferData;
     options.preflightPolicy = ConsiderPreflight;
-    options.setAllowCredentials(AllowStoredCredentials);
+    options.credentials = FetchOptions::Credentials::Include;
     options.mode = FetchOptions::Mode::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
 
-    m_loader = ThreadableLoader::create(&context, this, request, options);
+    m_loader = ThreadableLoader::create(context, *this, WTFMove(request), options);
     m_isStarted = m_loader;
 }
 
 void FetchLoader::start(ScriptExecutionContext& context, const FetchRequest& request)
 {
-    ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
-    options.setDataBufferingPolicy(DoNotBufferData);
-    options.preflightPolicy = ConsiderPreflight;
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
+    ThreadableLoaderOptions options(request.fetchOptions(), ConsiderPreflight, ContentSecurityPolicyEnforcement::DoNotEnforce, String(cachedResourceRequestInitiators().fetch));
+    options.sendLoadCallbacks = SendCallbacks;
+    options.dataBufferingPolicy = DoNotBufferData;
 
-    // FIXME: Pass directly all fetch options to loader options.
-    options.redirect = request.fetchOptions().redirect;
-    options.mode = request.fetchOptions().mode;
-    if (options.mode == FetchOptions::Mode::Cors)
-        options.setAllowCredentials(DoNotAllowStoredCredentials);
-
-    m_loader = ThreadableLoader::create(&context, this, request.internalRequest(), options);
+    m_loader = ThreadableLoader::create(context, *this, request.internalRequest(), options);
     m_isStarted = m_loader;
 }
 

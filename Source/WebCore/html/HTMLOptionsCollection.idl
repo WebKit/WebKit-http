@@ -27,19 +27,27 @@
     [CustomSetter, SetterRaisesException] attribute unsigned long length;
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    getter Node namedItem(optional DOMString name);
+    getter Node namedItem(DOMString name);
 #else
     getter HTMLOptionElement? item(unsigned long index);
     getter HTMLOptionElement? namedItem(DOMString name);
 #endif
 
 #if (!defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C) && (!defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT)
-    [RaisesException] void add(HTMLElement element, optional HTMLElement? before = null);
-    [RaisesException] void add(HTMLElement element, optional long index = 0);
+    // FIXME: Should be:
+    // void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
+    [RaisesException] void add(HTMLElement element);
+    [RaisesException] void add(HTMLElement element, HTMLElement? before);
+    [RaisesException] void add(HTMLElement element, long index);
 #else
     [RaisesException] void add(HTMLOptionElement option, unsigned long index);
 #endif
-    [Custom] void remove(optional unsigned long index);
+
+    void remove(long index);
+#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+    // FIXME: This overload is not in the specification and has been dropped in Blink.
+    void remove(HTMLOptionElement option);
+#endif
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     Node item(unsigned long index);

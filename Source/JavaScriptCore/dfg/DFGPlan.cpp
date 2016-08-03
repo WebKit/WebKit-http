@@ -170,7 +170,7 @@ bool Plan::reportCompileTimes() const
         || (Options::reportFTLCompileTimes() && isFTL(mode));
 }
 
-void Plan::compileInThread(LongLivedState& longLivedState, ThreadData* threadData)
+void Plan::compileInThread(ThreadData* threadData)
 {
     this->threadData = threadData;
     
@@ -186,7 +186,7 @@ void Plan::compileInThread(LongLivedState& longLivedState, ThreadData* threadDat
     if (logCompilationChanges(mode))
         dataLog("DFG(Plan) compiling ", *codeBlock, " with ", mode, ", number of instructions = ", codeBlock->instructionCount(), "\n");
 
-    CompilationPath path = compileInThreadImpl(longLivedState);
+    CompilationPath path = compileInThreadImpl();
 
     RELEASE_ASSERT(path == CancelPath || finalizer);
     RELEASE_ASSERT((path == CancelPath) == (stage == Cancelled));
@@ -236,7 +236,7 @@ void Plan::compileInThread(LongLivedState& longLivedState, ThreadData* threadDat
     }
 }
 
-Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
+Plan::CompilationPath Plan::compileInThreadImpl()
 {
     cleanMustHandleValuesIfNecessary();
     
@@ -246,7 +246,7 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         dataLog("\n");
     }
     
-    Graph dfg(*vm, *this, longLivedState);
+    Graph dfg(*vm, *this);
     
     if (!parse(dfg)) {
         finalizer = std::make_unique<FailedFinalizer>(*this);
@@ -428,6 +428,8 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         // wrong with running LICM earlier, if we wanted to put other CFG transforms above this point.
         // Alternatively, we could run loop pre-header creation after SSA conversion - but if we did that
         // then we'd need to do some simple SSA fix-up.
+        performLivenessAnalysis(dfg);
+        performCFA(dfg);
         performLICM(dfg);
 
         // FIXME: Currently: IntegerRangeOptimization *must* be run after LICM.
