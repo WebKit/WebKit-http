@@ -695,7 +695,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
 
     if (m_responseType == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING"))
-        options.setDataBufferingPolicy(DoNotBufferData);
+        options.dataBufferingPolicy = DoNotBufferData;
 
     if (m_timeoutMilliseconds) {
         if (!m_async)

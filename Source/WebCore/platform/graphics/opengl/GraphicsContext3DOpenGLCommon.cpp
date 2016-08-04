@@ -241,8 +241,8 @@ void GraphicsContext3D::prepareTexture()
 #endif
     std::swap(m_texture, m_compositorTexture);
     std::swap(m_texture, m_intermediateTexture);
-    ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
-    ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_texture, 0);
+    ::glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_fbo);
+    ::glFramebufferTexture2DEXT(GraphicsContext3D::FRAMEBUFFER, GraphicsContext3D::COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_texture, 0);
     glFlush();
 
     if (m_state.boundFBO != m_fbo)

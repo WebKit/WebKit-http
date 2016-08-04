@@ -53,7 +53,6 @@ public:
     void scheduleUpdate();
     void stopUpdates();
 
-    RunLoop& runLoop() { return m_runLoop; }
     void updateCompleted();
     void run();
     void stop();
