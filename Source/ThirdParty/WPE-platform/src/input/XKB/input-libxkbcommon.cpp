@@ -30,6 +30,7 @@
 #ifdef KEY_INPUT_HANDLING_XKB
 
 #include "WindowsKeyboardCodes.h"
+#include "TvKeyboardCodes.h"
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 extern "C" {
@@ -136,7 +137,13 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
             case XKB_KEY_Tab:
                 return "U+0009";
 
+            // UI Keys
+            case XKB_KEY_Cancel:
+                return "Cancel";
+
             // Device Keys
+            case XKB_KEY_XF86PowerOff:
+                return "Power"; // the spec also mentions "PowerOff"
             case XKB_KEY_XF86Sleep:
                 return "Standby";
 
@@ -145,6 +152,10 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
                 return "MediaFastForward";
             case XKB_KEY_XF86AudioPause:
                 return "MediaPause";
+            case XKB_KEY_XF86AudioPlay:
+                return "MediaPlay";
+            case XKB_KEY_XF86AudioRecord:
+                return "MediaRecord";
             case XKB_KEY_XF86AudioRewind:
                 return "MediaRewind";
             case XKB_KEY_XF86AudioStop:
@@ -181,6 +192,22 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
                 return "BrowserSearch";
             case XKB_KEY_XF86Stop:
                 return "BrowserStop";
+
+            // Media Controller Keys
+            case XKB_KEY_XF86Red:
+                return "ColorF0Red";
+            case XKB_KEY_XF86Green:
+                return "ColorF1Green";
+            case XKB_KEY_XF86Yellow:
+                return "ColorF2Yellow";
+            case XKB_KEY_XF86Blue:
+                return "ColorF3Blue";
+            case XKB_KEY_XF86Display:
+                return "DisplaySwap";
+            case XKB_KEY_XF86Video:
+                return "OnDemand";
+            case XKB_KEY_XF86Subtitle:
+                return "Subtitle";
 
             default:
                 return nullptr;
@@ -573,6 +600,31 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
                 return VK_F1 + (event->keyCode - XKB_KEY_F1);
             case XKB_KEY_VoidSymbol:
                 return VK_PROCESSKEY;
+
+            // TV keycodes from HAVi / DASE / OCAP / CE-HTML standards
+            case XKB_KEY_Cancel:
+                return VK_DASE_CANCEL;
+            case XKB_KEY_XF86Red:
+                return VK_HAVI_COLORED_KEY_0;
+            case XKB_KEY_XF86Green:
+                return VK_HAVI_COLORED_KEY_1;
+            case XKB_KEY_XF86Yellow:
+                return VK_HAVI_COLORED_KEY_2;
+            case XKB_KEY_XF86Blue:
+                return VK_HAVI_COLORED_KEY_3;
+            case XKB_KEY_XF86PowerOff:
+                return VK_HAVI_POWER;
+            case XKB_KEY_XF86AudioPlay:
+                return VK_HAVI_PLAY;
+            case XKB_KEY_XF86AudioRecord:
+                return VK_HAVI_RECORD;
+            case XKB_KEY_XF86Display:
+                return VK_HAVI_DISPLAY_SWAP;
+            case XKB_KEY_XF86Subtitle:
+                return VK_HAVI_SUBTITLE;
+            case XKB_KEY_XF86Video:
+                return VK_OCAP_ON_DEMAND;
+
             default:
                 return 0;
         }
