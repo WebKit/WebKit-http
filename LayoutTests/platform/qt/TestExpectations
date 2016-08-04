@@ -224,6 +224,10 @@ fast/attachment/attachment-type-attribute.html [ Pass ]
 
 webkit.org/b/49142 fast/css/style-scoped
 
+# 3d transforms are coming soon
+fast/media/mq-transform-02.html [ ImageOnlyFailure ]
+fast/media/mq-transform-03.html [ ImageOnlyFailure ]
+
 #207 border-image-repeat: space and -webkit-mask-repeat: space
 css3/masking/mask-repeat-one-copy.html [ ImageOnlyFailure ]
 css3/masking/mask-repeat-space-border.html [ ImageOnlyFailure ]
@@ -842,6 +846,9 @@ webkit.org/b/139493 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure 
 
 # Unsorted timeouts (FIXME)
 
+fast/spatial-navigation/qt/ensure-scrolls-with-scrollbars-disabled-by-webkit.html [ Skip ]
+fast/spatial-navigation/qt/snav-ensure-scrolls-with-scrollbars-disabled-by-webkit.html [ Skip ]
+
 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
 fast/animation/request-animation-frame-throttle-subframe.html [ Skip ]
@@ -893,7 +900,6 @@ fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
 fast/scrolling/rtl-point-in-iframe.html [ Skip ]
 
-platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled-by-webkit.html
 
 # Unsorted
 
@@ -906,8 +912,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/block/float/001.html [ Failure ]
   fast/block/float/4145535Crash.html [ Failure ]
   fast/block/float/br-with-clear.html [ Failure ]
-  fast/block/float/float-not-removed-from-next-sibling.html [ Failure ]
-  fast/block/float/float-not-removed-from-next-sibling2.html [ Failure ]
   fast/block/float/float-not-removed-from-next-sibling3.html [ Failure ]
   fast/block/float/intruding-float-remove-from-sibling-block-on-absolute-position.html [ Failure ]
   fast/block/float/intruding-float-remove-from-sibling-block-on-absolute-position2.html [ Failure ]
@@ -930,7 +934,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/canvas/canvas-lineDash.html [ Failure ]
   fast/canvas/canvas-negative-lineDashOffset.html [ Failure ]
   fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
-  fast/canvas/fallback-content.html [ Failure ]
   fast/canvas/fillText-shadow.html [ Failure ]
   fast/css-generated-content/nested-tables-with-before-after-content-crash.html [ Failure ]
   fast/css/font-shorthand-from-longhands.html [ Failure ]
@@ -939,7 +942,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/css/getComputedStyle/computed-style-font.html [ Failure ]
   fast/css/line-height-text-autosizing.html [ Failure ]
   fast/css/rtl-to-viewport.html [ Failure ]
-  fast/css/vertical-align-lengths.html [ Failure ]
   fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last-inherited.html [ Failure ]
   fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html [ Failure ]
   fast/css3-text/css3-text-decoration/text-underline-position/underline-visual-overflow-with-subpixel-position.html [ Failure ]
@@ -956,7 +958,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/dom/HTMLHeadElement/textInHead3.html [ Failure ]
   fast/dom/HTMLHeadElement/textInHead4.html [ Failure ]
   fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Failure ]
-  fast/dom/Orientation/create-event-orientationchange.html [ Failure ]
   fast/dom/Range/getClientRects.html [ Failure ]
   fast/dom/Window/mozilla-focus-blur.html [ Failure ]
   fast/dom/Window/new-window-opener.html [ Failure ]
@@ -965,7 +966,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html [ Failure ]
   fast/dom/Window/slow-unload-handler.html [ Failure ]
   fast/dom/Window/webkitConvertPoint.html [ Failure ]
-  fast/dom/Window/window-properties-performance.html [ Failure ]
   fast/dom/Window/window-property-invalid-characters-ignored.html [ Failure ]
   fast/dom/adopt-attribute-crash.svg [ Failure ]
   fast/dom/adopt-node-crash-2.html [ Failure ]
@@ -1007,7 +1007,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/forms/listbox-visible-size.html [ Failure ]
   fast/forms/number/number-validation-message.html [ Failure ]
   fast/forms/radio/input-radio-checked-tab.html [ Failure ]
-  fast/forms/range/slider-thumb-stylability.html [ Failure ]
   fast/forms/range/slider-zoomed.html [ Failure ]
   fast/forms/select-empty-option-height.html [ Failure ]
   fast/forms/select-multiple-elements-with-mouse-drag-with-options-less-than-size.html [ Failure ]
@@ -1057,7 +1056,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/invalid/005.html [ Failure ]
   fast/invalid/020.xml [ Failure ]
   fast/line-grid/line-align-left-edges.html [ Failure ]
-  fast/lists/list-marker-before-content-table.html [ Failure ]
   fast/lists/ol-start-dynamic.html [ Failure ]
   fast/loader/main-document-url-for-non-http-loads.html [ Failure ]
   fast/loader/stop-provisional-loads.html [ Failure ]
@@ -1159,17 +1157,11 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/table/percent-widths-stretch-vertical.html [ Failure ]
   fast/table/percent-widths-stretch.html [ Failure ]
   fast/table/simple_paint.html [ Failure ]
-  fast/table/table-before-child-style-update.html [ Failure ]
   fast/table/table-cell-before-after-content-around-table-block.html [ Failure ]
   fast/table/table-cell-before-after-content-around-table-row.html [ Failure ]
   fast/table/table-cell-before-after-content-around-table.html [ Failure ]
   fast/table/table-row-before-after-content-around-block.html [ Failure ]
   fast/table/table-row-before-after-content-around-table.html [ Failure ]
-  fast/table/table-row-before-child-style-update.html [ Failure ]
-  fast/table/table-row-style-not-updated-with-after-content.html [ Failure ]
-  fast/table/table-row-style-not-updated-with-before-content.html [ Failure ]
-  fast/table/table-row-style-not-updated.html [ Failure ]
-  fast/table/table-style-not-updated.html [ Failure ]
   fast/text/emphasis-overlap.html [ Failure ]
   fast/text/international/cjk-segmentation.html [ Failure ]
   fast/text/international/spaces-combined-in-vertical-text.html [ Failure ]
@@ -1177,7 +1169,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/text/justify-nbsp.html [ Failure ]
   fast/text/simple-line-layout-text-stroke-width.html [ Failure ]
   fast/text/trak-optimizeLegibility.html [ Failure ]
-  fast/url/anchor.html [ Failure ]
   fast/viewport/viewport-legacy-handheldfriendly.html [ Failure ]
   fast/viewport/viewport-legacy-mobileoptimized-2.html [ Failure ]
   fast/viewport/viewport-legacy-mobileoptimized-3.html [ Failure ]
@@ -1186,7 +1177,7 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/viewport/viewport-legacy-ordering-6.html [ Failure ]
   fast/viewport/viewport-legacy-xhtmlmp-remove-and-add.html [ Failure ]
   fast/viewport/viewport-legacy-xhtmlmp.html [ Failure ]
-  platform/qt/fast/history/back-to-unreachable-url-then-forward.html [ Failure ]
+  fast/history/qt/back-to-unreachable-url-then-forward.html [ Failure ]
 
 # Regressions: Unexpected image-only failures (22)
   fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
@@ -1195,8 +1186,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/css3-text/css3-text-decoration/repaint/repaint-text-decoration-line.html [ ImageOnlyFailure ]
   fast/images/embed-image.html [ ImageOnlyFailure ]
   fast/images/object-image.html [ ImageOnlyFailure ]
-  fast/repaint/fixed-after-scroll.html [ ImageOnlyFailure ]
-  fast/repaint/fixed-scroll-simple.html [ ImageOnlyFailure ]
   fast/repaint/inline-overflow.html [ ImageOnlyFailure ]
   fast/repaint/inline-vertical-lr-overflow.html [ ImageOnlyFailure ]
   fast/repaint/inline-vertical-rl-overflow.html [ ImageOnlyFailure ]
@@ -1270,7 +1259,6 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/canvas/canvas-resize-after-paint-without-layout.html [ Missing ]
   fast/canvas/canvas-toDataURL-webp.html [ Missing ]
   fast/css/dumpAsText/xml-stylesheet-pi-not-in-prolog.xml [ Missing ]
-  fast/css/read-write.html [ Missing ]
   fast/css/rect-shadow-tiled.html [ Missing ]
   fast/css/viewport-units-dynamic.html [ Missing ]
   fast/css3-text/css3-text-decoration/repaint/repaint-text-decoration-style.html [ Missing ]
@@ -1387,5 +1375,3 @@ platform/qt/fast/spatial-navigation/snav-ensure-scrolls-with-scrollbars-disabled
   fast/writing-mode/japanese-lr-selection.html [ Missing ]
   fast/writing-mode/japanese-rl-selection.html [ Missing ]
   fast/xsl/xslt_unicode.xml [ Missing ]
-  platform/qt/fast/forms/button-line-break.html [ Missing ]
-  platform/qt/fast/forms/range/slider-crash-on-input.html [ Missing ]
