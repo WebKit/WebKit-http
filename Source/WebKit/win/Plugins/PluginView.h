@@ -46,7 +46,20 @@
 #include "npruntime_internal.h"
 #endif
 
+#if OS(WINDOWS) && PLATFORM(GTK)
+typedef struct HWND__* HWND;
+typedef HWND PlatformPluginWidget;
+#else
 typedef PlatformWidget PlatformPluginWidget;
+#endif
+#if PLATFORM(GTK)
+typedef struct _GtkSocket GtkSocket;
+#endif
+
+#if PLATFORM(X11)
+typedef unsigned long Window;
+typedef struct _XDisplay Display;
+#endif
 
 namespace JSC {
     namespace Bindings {
@@ -62,7 +75,7 @@ namespace WebCore {
     class KeyboardEvent;
     class MouseEvent;
     class URL;
-#if ENABLE(NETSCAPE_PLUGIN_API)
+#if OS(WINDOWS) && ENABLE(NETSCAPE_PLUGIN_API)
     class PluginMessageThrottlerWin;
 #endif
     class PluginPackage;
@@ -201,7 +214,11 @@ namespace WebCore {
         const String& mimeType() const { return m_mimeType; }
         const URL& url() const { return m_url; }
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
+#if defined(XP_MACOSX) && ENABLE(NETSCAPE_PLUGIN_API)
+        bool popUpContextMenu(NPMenu*);
+#endif
+
+#if OS(WINDOWS) && ENABLE(NETSCAPE_PLUGIN_API)
         static LRESULT CALLBACK PluginViewWndProc(HWND, UINT, WPARAM, LPARAM);
         LRESULT wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
         WNDPROC pluginWndProc() const { return m_pluginWndProc; }
@@ -249,7 +266,7 @@ namespace WebCore {
 
         virtual void mediaCanStart();
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
+#if OS(WINDOWS) && ENABLE(NETSCAPE_PLUGIN_API)
         void paintWindowedPluginIntoContext(GraphicsContext&, const IntRect&);
         static HDC WINAPI hookedBeginPaint(HWND, PAINTSTRUCT*);
         static BOOL WINAPI hookedEndPaint(HWND, const PAINTSTRUCT*);
@@ -284,12 +301,25 @@ namespace WebCore {
 #if ENABLE(NETSCAPE_PLUGIN_API)
         bool dispatchNPEvent(NPEvent&);
 #endif
+#if defined(XP_MACOSX) && ENABLE(NETSCAPE_PLUGIN_API)
+        int16_t dispatchNPCocoaEvent(NPCocoaEvent&);
+        bool m_updatedCocoaTextInputRequested;
+        bool m_keyDownSent;
+        uint16_t m_disregardKeyUpCounter;
+#endif
 
+#if defined(XP_MACOSX)
+        void handleWheelEvent(WheelEvent*);
+#endif
         void updatePluginWidget();
         void paintMissingPluginIcon(GraphicsContext&, const IntRect&);
 
         void handleKeyboardEvent(KeyboardEvent*);
         void handleMouseEvent(MouseEvent*);
+#if defined(XP_UNIX) && ENABLE(NETSCAPE_PLUGIN_API)
+        void handleFocusInEvent();
+        void handleFocusOutEvent();
+#endif
 
 #if OS(WINDOWS)
         void paintIntoTransformedContext(HDC);
@@ -323,7 +353,11 @@ namespace WebCore {
         bool m_haveInitialized;
         bool m_isWaitingToStart;
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
+#if defined(XP_UNIX)
+        bool m_needsXEmbed;
+#endif
+
+#if OS(WINDOWS) && ENABLE(NETSCAPE_PLUGIN_API)
         std::unique_ptr<PluginMessageThrottlerWin> m_messageThrottler;
         WNDPROC m_pluginWndProc;
         unsigned m_lastMessage;
@@ -332,11 +366,48 @@ namespace WebCore {
         bool m_haveUpdatedPluginWidget;
 #endif
 
+#if (PLATFORM(GTK) && OS(WINDOWS)) || PLATFORM(EFL)
+        // On Mac OSX and Qt/Windows the plugin does not have its own native widget,
+        // but is using the containing window as its reference for positioning/painting.
+        PlatformPluginWidget m_window;
+public:
+        PlatformPluginWidget platformPluginWidget() const { return m_window; }
+        void setPlatformPluginWidget(PlatformPluginWidget widget) { m_window = widget; }
+#else
 public:
         void setPlatformPluginWidget(PlatformPluginWidget widget) { setPlatformWidget(widget); }
         PlatformPluginWidget platformPluginWidget() const { return platformWidget(); }
+#endif
 
 private:
+
+#if defined(XP_UNIX) || PLATFORM(GTK)
+        void setNPWindowIfNeeded();
+#elif defined(XP_MACOSX)
+        NP_CGContext m_npCgContext;
+        CGContextRef m_contextRef;
+
+        void setNPWindowIfNeeded();
+#endif
+
+#if defined(XP_UNIX) && ENABLE(NETSCAPE_PLUGIN_API)
+        bool m_hasPendingGeometryChange;
+        Pixmap m_drawable;
+        Visual* m_visual;
+        Colormap m_colormap;
+        Display* m_pluginDisplay;
+
+        void initXEvent(XEvent* event);
+#endif
+
+#if PLATFORM(GTK)
+        static gboolean plugRemovedCallback(GtkSocket*, PluginView*);
+        static void plugAddedCallback(GtkSocket*, PluginView*);
+        void updateWidgetAllocationAndClip();
+        bool m_plugAdded;
+        IntRect m_delayedAllocation;
+#endif
+
         IntRect m_clipRect; // The clip rect to apply to a windowed plug-in
         IntRect m_windowRect; // Our window rect.
 
