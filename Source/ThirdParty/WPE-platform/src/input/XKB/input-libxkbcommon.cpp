@@ -135,6 +135,53 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
             case XKB_KEY_3270_BackTab:
             case XKB_KEY_Tab:
                 return "U+0009";
+
+            // Device Keys
+            case XKB_KEY_XF86Sleep:
+                return "Standby";
+
+            // Multimedia Keys
+            case XKB_KEY_XF86AudioForward:
+                return "MediaFastForward";
+            case XKB_KEY_XF86AudioPause:
+                return "MediaPause";
+            case XKB_KEY_XF86AudioRewind:
+                return "MediaRewind";
+            case XKB_KEY_XF86AudioStop:
+                return "MediaStop";
+            case XKB_KEY_XF86AudioPrev:
+                return "MediaTrackPrevious";
+            case XKB_KEY_XF86AudioNext:
+                return "MediaTrackNext";
+
+            // Audio Keys
+            case XKB_KEY_XF86AudioLowerVolume:
+                return "AudioVolumeDown";
+            case XKB_KEY_XF86AudioRaiseVolume:
+                return "AudioVolumeUp";
+            case XKB_KEY_XF86AudioMute:
+                return "AudioVolumeMute";
+
+            // Application Keys
+            case XKB_KEY_XF86AudioMedia:
+                return "LaunchMediaPlayer";
+
+            // Browser Keys
+            case XKB_KEY_XF86Back:
+                return "BrowserBack";
+            case XKB_KEY_XF86Favorites:
+                return "BrowserFavorites";
+            case XKB_KEY_XF86Forward:
+                return "BrowserForward";
+            case XKB_KEY_XF86HomePage:
+                return "BrowserHome";
+            case XKB_KEY_XF86Refresh:
+                return "BrowserRefresh";
+            case XKB_KEY_XF86Search:
+                return "BrowserSearch";
+            case XKB_KEY_XF86Stop:
+                return "BrowserStop";
+
             default:
                 return nullptr;
         }
@@ -213,6 +260,7 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
                 // VK_MENU (12) ALT key
 
             case XKB_KEY_Pause:
+            case XKB_KEY_XF86AudioPause:
                 return VK_PAUSE; // (13) PAUSE key
             case XKB_KEY_Caps_Lock:
                 return VK_CAPITAL; // (14) CAPS LOCK key
@@ -377,7 +425,8 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
                 return VK_LWIN; // (5B) Left Windows key (Microsoft Natural keyboard)
             case XKB_KEY_Meta_R:
                 return VK_RWIN; // (5C) Right Windows key (Natural keyboard)
-                // VK_SLEEP (5F) Computer Sleep key
+            case XKB_KEY_XF86Sleep:
+                return VK_SLEEP; // (5F) Computer Sleep key
                 // VK_SEPARATOR (6C) Separator key
                 // VK_SUBTRACT (6D) Subtract key
                 // VK_DECIMAL (6E) Decimal key
@@ -403,22 +452,36 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
             case XKB_KEY_Alt_R:
                 return VK_RMENU; // (A5) Right MENU key
 
-                // VK_BROWSER_BACK (A6) Windows 2000/XP: Browser Back key
-                // VK_BROWSER_FORWARD (A7) Windows 2000/XP: Browser Forward key
-                // VK_BROWSER_REFRESH (A8) Windows 2000/XP: Browser Refresh key
-                // VK_BROWSER_STOP (A9) Windows 2000/XP: Browser Stop key
-                // VK_BROWSER_SEARCH (AA) Windows 2000/XP: Browser Search key
-                // VK_BROWSER_FAVORITES (AB) Windows 2000/XP: Browser Favorites key
-                // VK_BROWSER_HOME (AC) Windows 2000/XP: Browser Start and Home key
-                // VK_VOLUME_MUTE (AD) Windows 2000/XP: Volume Mute key
-                // VK_VOLUME_DOWN (AE) Windows 2000/XP: Volume Down key
-                // VK_VOLUME_UP (AF) Windows 2000/XP: Volume Up key
-                // VK_MEDIA_NEXT_TRACK (B0) Windows 2000/XP: Next Track key
-                // VK_MEDIA_PREV_TRACK (B1) Windows 2000/XP: Previous Track key
-                // VK_MEDIA_STOP (B2) Windows 2000/XP: Stop Media key
+            case XKB_KEY_XF86Back:
+                return VK_BROWSER_BACK; // VK_BROWSER_BACK (A6) Windows 2000/XP: Browser Back key
+            case XKB_KEY_XF86Forward:
+                return VK_BROWSER_FORWARD; // (A7) Windows 2000/XP: Browser Forward key
+            case XKB_KEY_XF86Refresh:
+                return VK_BROWSER_REFRESH; // (A8) Windows 2000/XP: Browser Refresh key
+            case XKB_KEY_XF86Stop:
+                return VK_BROWSER_STOP; // (A9) Windows 2000/XP: Browser Stop key
+            case XKB_KEY_XF86Search:
+                return VK_BROWSER_SEARCH; // (AA) Windows 2000/XP: Browser Search key
+            case XKB_KEY_XF86Favorites:
+                return VK_BROWSER_FAVORITES; // (AB) Windows 2000/XP: Browser Favorites key
+            case XKB_KEY_XF86HomePage:
+                return VK_BROWSER_HOME; // (AC) Windows 2000/XP: Browser Start and Home key
+            case XKB_KEY_XF86AudioMute:
+                return VK_VOLUME_MUTE; // (AD) Windows 2000/XP: Volume Mute key
+            case XKB_KEY_XF86AudioLowerVolume:
+                return VK_VOLUME_DOWN; // (AE) Windows 2000/XP: Volume Down key
+            case XKB_KEY_XF86AudioRaiseVolume:
+                return VK_VOLUME_UP; // (AF) Windows 2000/XP: Volume Up key
+            case XKB_KEY_XF86AudioNext:
+                return VK_MEDIA_NEXT_TRACK; // (B0) Windows 2000/XP: Next Track key
+            case XKB_KEY_XF86AudioPrev:
+                return VK_MEDIA_PREV_TRACK; // (B1) Windows 2000/XP: Previous Track key
+            case XKB_KEY_XF86AudioStop:
+                return VK_MEDIA_STOP; // (B2) Windows 2000/XP: Stop Media key
                 // VK_MEDIA_PLAY_PAUSE (B3) Windows 2000/XP: Play/Pause Media key
                 // VK_LAUNCH_MAIL (B4) Windows 2000/XP: Start Mail key
-                // VK_LAUNCH_MEDIA_SELECT (B5) Windows 2000/XP: Select Media key
+            case XKB_KEY_XF86AudioMedia:
+                return VK_MEDIA_LAUNCH_MEDIA_SELECT; // (B5) Windows 2000/XP: Select Media key
                 // VK_LAUNCH_APP1 (B6) Windows 2000/XP: Start Application 1 key
                 // VK_LAUNCH_APP2 (B7) Windows 2000/XP: Start Application 2 key
 
@@ -468,6 +531,10 @@ struct wpe_input_key_mapper_interface libxkbcommon_input_key_mapper_interface = 
                 return VK_OEM_7; // case '\'': case '"': return 0xDE;
                 // VK_OEM_8 (DF) Used for miscellaneous characters; it can vary by keyboard.
                 // VK_OEM_102 (E2) Windows 2000/XP: Either the angle bracket key or the backslash key on the RT 102-key keyboard
+            case XKB_KEY_XF86AudioRewind:
+                return 0xE3; // (E3) Android/GoogleTV: Rewind media key (Windows: VK_ICO_HELP Help key on 1984 Olivetti M24 deluxe keyboard)
+            case XKB_KEY_XF86AudioForward:
+                return 0xE4; // (E4) Android/GoogleTV: Fast forward media key  (Windows: VK_ICO_00 '00' key on 1984 Olivetti M24 deluxe keyboard)
                 // VK_PROCESSKEY (E5) Windows 95/98/Me, Windows NT 4.0, Windows 2000/XP: IME PROCESS key
                 // VK_PACKET (E7) Windows 2000/XP: Used to pass Unicode characters as if they were keystrokes. The VK_PACKET key is the low word of a 32-bit Virtual Key value used for non-keyboard input methods. For more information, see Remark in KEYBDINPUT,SendInput, WM_KEYDOWN, and WM_KEYUP
                 // VK_ATTN (F6) Attn key
