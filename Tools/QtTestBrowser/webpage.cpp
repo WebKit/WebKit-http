@@ -77,13 +77,16 @@ void WebPage::applyProxy()
 
 bool WebPage::supportsExtension(QWebPage::Extension extension) const
 {
-    if (extension == QWebPage::ErrorPageExtension)
+    if (extension == ChooseMultipleFilesExtension || extension == QWebPage::ErrorPageExtension)
         return true;
     return false;
 }
 
 bool WebPage::extension(Extension extension, const ExtensionOption* option, ExtensionReturn* output)
 {
+    if (extension == ChooseMultipleFilesExtension)
+        return QWebPage::extension(extension, option, output);
+
     const QWebPage::ErrorPageExtensionOption* info = static_cast<const QWebPage::ErrorPageExtensionOption*>(option);
     QWebPage::ErrorPageExtensionReturn* errorPage = static_cast<QWebPage::ErrorPageExtensionReturn*>(output);
 
