@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2005, 2006, 2008, 2011, 2014 Apple Inc. All rights reserved.
- * Copyright (C) 2016 Konstantin Tokavev <annulen@yandex.ru>
+ * Copyright (C) 2016 Konstantin Tokarev <annulen@yandex.ru>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
