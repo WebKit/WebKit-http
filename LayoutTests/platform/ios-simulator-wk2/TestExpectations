@@ -35,15 +35,11 @@ compositing/geometry/limit-layer-bounds-opacity-transition.html [ Failure ]
 webkit.org/b/157105 compositing/contents-scale/incremental-change.html [ Pass ImageOnlyFailure ]
 
 # Compositing test that time out:
-compositing/animation/animation-compositing.html
-compositing/backing/backface-visibility-flip.html
 compositing/checkerboard.html
 compositing/contents-scale/animating.html
 compositing/layer-creation/animation-overlap-with-children.html
-compositing/overflow/overflow-compositing-descendant.html
 compositing/overflow/scroll-ancestor-update.html
 compositing/visible-rect/animated.html
-compositing/video/video-border-radius.html
 
 # CSS tests that fail:
 css3/blending/blend-mode-simple-composited.html [ Failure ]
@@ -53,18 +49,6 @@ css3/flexbox/flexbox-baseline-margins.html [ Failure ]
 css3/flexbox/flexbox-baseline.html [ Failure ]
 css3/masking/mask-base64.html [ ImageOnlyFailure ]
 css3/viewport-percentage-lengths/vh-resize.html [ ImageOnlyFailure ]
-
-# CSS tests that time out:
-css3/filters/composited-during-animation.html
-css3/filters/crash-filter-animation-invalid-url.html
-css3/filters/filter-animation-from-none-hw.html
-css3/filters/filter-animation-from-none-multi.html
-css3/filters/filter-animation-from-none.html
-css3/filters/filter-animation-hw.html
-css3/filters/filter-animation-multi-hw.html
-css3/filters/filter-animation-multi.html
-css3/filters/filter-animation.html
-css3/masking/clip-path-animation.html
 
 # jquery test that time out:
 jquery/manipulation.html
@@ -1810,7 +1794,7 @@ fast/forms/onchange-select-check-validity.html [ Failure ]
 fast/replaced/border-radius-clip.html [ Failure ]
 fast/writing-mode/japanese-lr-selection.html [ Failure ]
 fast/writing-mode/japanese-rl-selection.html [ Failure ]
-platform/ios-simulator/ios/accessibility/press-fires-touch-events.html [ Failure ]
+accessibility/ios-simulator/press-fires-touch-events.html [ Skip ]
 
 fast/text/combining-character-sequence-vertical.html [ ImageOnlyFailure ]
 fast/text/vertical-quotation-marks.html [ ImageOnlyFailure ]
@@ -1914,3 +1898,10 @@ webkit.org/b/159840 [ Release ] http/tests/cache/disk-cache/disk-cache-request-m
 webkit.org/b/159884 [ Debug ] http/tests/loading/basic-auth-resend-wrong-credentials.html [ Pass Failure ]
 
 webkit.org/b/159881 [ Release ] fast/shapes/shape-outside-floats/shape-outside-big-box-border-radius-002.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]
+
+webkit.org/b/160368 [ Release ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
+
+webkit.org/b/160367 media/track/media-element-enqueue-event-crash.html [ Pass Crash ]
+webkit.org/b/160367 media/track/track-remove-crash.html [ Skip ]

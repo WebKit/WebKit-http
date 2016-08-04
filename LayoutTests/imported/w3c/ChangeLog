@@ -1,3 +1,684 @@
+2016-08-03  Chris Dumez  <cdumez@apple.com>
+
+        Fix logging in W3C tests
+        https://bugs.webkit.org/show_bug.cgi?id=160513
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline W3C tests.
+
+        * web-platform-tests/XMLHttpRequest/open-url-about-blank-window-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-javascript-window-2-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-javascript-window-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-4-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-5-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-content-type-string-expected.txt:
+        * web-platform-tests/dom/collections/domstringmap-supported-property-names-expected.txt:
+        * web-platform-tests/dom/collections/namednodemap-supported-property-names-expected.txt:
+        * web-platform-tests/dom/nodes/Comment-constructor-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_bmp-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_css-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_datauri_01-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_datauri_02-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_gif-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_html-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_javascripturi-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_jpg-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_mimeheader_01-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_mimeheader_02-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_png-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_txt-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_xml-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElement-null-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElement-null-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-dynamic-add-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-dynamic-add-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-dynamic-remove-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-dynamic-remove-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-nochild-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-nochild-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-childElementCount-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-children-expected.txt:
+        * web-platform-tests/dom/nodes/Element-firstElementChild-entity-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-firstElementChild-expected.txt:
+        * web-platform-tests/dom/nodes/Element-firstElementChild-namespace-expected.txt:
+        * web-platform-tests/dom/nodes/Element-firstElementChild-namespace-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-firstElementChild-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-insertAdjacentElement-expected.txt:
+        * web-platform-tests/dom/nodes/Element-insertAdjacentText-expected.txt:
+        * web-platform-tests/dom/nodes/Element-lastElementChild-expected.txt:
+        * web-platform-tests/dom/nodes/Element-lastElementChild-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-nextElementSibling-expected.txt:
+        * web-platform-tests/dom/nodes/Element-nextElementSibling-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-previousElementSibling-expected.txt:
+        * web-platform-tests/dom/nodes/Element-previousElementSibling-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Element-siblingElement-null-expected.txt:
+        * web-platform-tests/dom/nodes/Element-siblingElement-null-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Node-appendChild-expected.txt:
+        * web-platform-tests/dom/nodes/Node-contains-xml-expected.txt:
+        * web-platform-tests/dom/nodes/Node-isEqualNode-xhtml-expected.txt:
+        * web-platform-tests/dom/nodes/Node-removeChild-expected.txt:
+        * web-platform-tests/dom/nodes/Text-constructor-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-19-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-20-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-21-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-22-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-23-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-24-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-25-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-26-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-27-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-28-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-29-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-30-expected.txt:
+        * web-platform-tests/dom/nodes/getElementsByClassName-31-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-acceptNode-filter-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-basic-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-currentNode-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-previousNodeLastChildReject-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-previousSiblingLastChildSkip-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-traversal-reject-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-traversal-skip-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-traversal-skip-most-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-walking-outside-a-tree-expected.txt:
+        * web-platform-tests/domparsing/innerhtml-05-expected.txt:
+        * web-platform-tests/fetch/nosniff/image-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.forms-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-namespace-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-namespace-xhtml-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-newelements-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-newelements-xhtml-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-param-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-param-xhtml-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.images-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-01-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-02-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-06-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-write/049-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-write/050-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-write/051-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-write/document.write-02-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-writeln/document.writeln-02-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-writeln/document.writeln-03-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/001-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/004-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/005-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/006-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/007-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/008-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/009-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/011-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/012-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/013-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/014-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/015-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/016-expected.txt:
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/document.open-03-expected.txt:
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * web-platform-tests/html/dom/reflection-grouping-expected.txt:
+        * web-platform-tests/html/dom/reflection-metadata-expected.txt:
+        * web-platform-tests/html/dom/reflection-misc-expected.txt:
+        * web-platform-tests/html/dom/reflection-obsolete-expected.txt:
+        * web-platform-tests/html/dom/reflection-sections-expected.txt:
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+        * web-platform-tests/html/dom/reflection-text-expected.txt:
+        * web-platform-tests/html/semantics/disabled-elements/disabledElement-expected.txt:
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_multiple-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrack/activeCues-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrack/addCue-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrack/removeCue-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/endTime-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/id-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/pauseOnExit-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/startTime-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/track-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/getCueById-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/getter-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/length-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/video_008-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/video_volume_check-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-dimension-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_01-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/current-pixel-density/basic-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/current-pixel-density/error-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/viewport-change-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/parse-a-srcset-attribute-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/select-an-image-source-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/update-media-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/update-the-source-set-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/object-attributes-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/object-handler-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-video-element/video-tabindex-expected.txt:
+        * web-platform-tests/html/semantics/forms/attributes-common-to-form-controls/dirname-ltr-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-checkValidity-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-reportValidity-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-customError-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-patternMismatch-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-rangeOverflow-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-rangeUnderflow-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-stepMismatch-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-tooLong-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-tooShort-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-typeMismatch-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-valid-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validity-valueMissing-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * web-platform-tests/html/semantics/forms/form-control-infrastructure/form-expected.txt:
+        * web-platform-tests/html/semantics/forms/textfieldselection/selection-expected.txt:
+        * web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setSelectionRange-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-button-element/button-validation-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-datalist-element/datalistoptions-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-fieldset-element/disabled-001-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-fieldset-element/disabled-002-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-autocomplete-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-elements-matches-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-elements-nameditem-01-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-elements-nameditem-02-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-elements-sameobject-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-indexed-element-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-nameditem-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/button-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/checkbox-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/radio-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/radio-groupname-case-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/reset-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-option-element/option-text-backslash-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-output-element/output-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-progress-element/progress-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection-namedItem-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-select-element/select-named-getter-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-expected.txt:
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-close-expected.txt:
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-showModal-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_003-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_004-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_005-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_006-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_007-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_008-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/async_010-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-noembed-noframes-iframe-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/checked-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/default-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/dir-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/dir01-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/disabled-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/enabled-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/focus-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/indeterminate-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/inrange-outofrange-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/required-optional-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/valid-invalid-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/caption-methods-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/tBodies-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-tbody-element/insertRow-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/cells-expected.txt:
+        * web-platform-tests/html/semantics/text-level-semantics/the-a-element/a.text-getter-01-expected.txt:
+        * web-platform-tests/html/semantics/text-level-semantics/the-a-element/a.text-setter-01-expected.txt:
+
+2016-08-03  Youenn Fablet  <youenn@apple.com>
+
+        Refresh wpt tests up to d686014
+        https://bugs.webkit.org/show_bug.cgi?id=160446
+
+        Reviewed by Alex Christensen.
+
+        * resources/ImportExpectations:
+        * resources/TestRepositories:
+        * resources/web-platform-tests-modules.json:
+        * web-platform-tests/XMLHttpRequest/FormData-append.html:
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.any.js: Added.
+        (test):
+        (string_appeared_here.test):
+        (string_appeared_here.async_test):
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.html: Removed.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.js: Removed.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.worker.js: Removed.
+        * web-platform-tests/XMLHttpRequest/headers-normalize-response-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/headers-normalize-response.htm: Added.
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window.htm:
+        * web-platform-tests/XMLHttpRequest/resources/last-modified.py:
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/parse-headers.py: Added.
+        (main):
+        * web-platform-tests/XMLHttpRequest/resources/w3c-import.log:
+        * web-platform-tests/XMLHttpRequest/responsexml-document-properties-expected.txt:
+        * web-platform-tests/XMLHttpRequest/responsexml-document-properties.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-document-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-empty-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-empty.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head-async-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head-async.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-none-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-none.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-content-type-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm:
+        * web-platform-tests/XMLHttpRequest/w3c-import.log:
+        * web-platform-tests/dom/events/AddEventListenerOptions-once-expected.txt: Added.
+        * web-platform-tests/dom/events/AddEventListenerOptions-once.html: Added.
+        * web-platform-tests/dom/events/w3c-import.log:
+        * web-platform-tests/dom/lists/DOMTokenList-iteration-expected.txt: Added.
+        * web-platform-tests/dom/lists/DOMTokenList-iteration.html: Added.
+        * web-platform-tests/dom/lists/w3c-import.log:
+        * web-platform-tests/dom/nodes/Node-childNodes-expected.txt:
+        * web-platform-tests/dom/nodes/Node-childNodes.html:
+        * web-platform-tests/domparsing/insert_adjacent_html-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers.js:
+        * web-platform-tests/fetch/api/basic/request-referrer-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer.html: Added.
+        * web-platform-tests/fetch/api/basic/request-referrer.js: Added.
+        (testReferrer):
+        * web-platform-tests/fetch/api/basic/w3c-import.log:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer.html.headers:
+        * web-platform-tests/fetch/api/policies/referrer-no-referrer.js.headers:
+        * web-platform-tests/fetch/api/policies/referrer-origin-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-expected.txt.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-worker-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-expected.txt.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-worker.html: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.html: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.html.headers: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.js: Added.
+        (promise_test):
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin.js.headers: Added.
+        * web-platform-tests/fetch/api/policies/referrer-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin.html.headers:
+        * web-platform-tests/fetch/api/policies/referrer-origin.js.headers:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url-worker-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url.html.headers:
+        * web-platform-tests/fetch/api/policies/referrer-unsafe-url.js.headers:
+        * web-platform-tests/fetch/api/policies/w3c-import.log:
+        * web-platform-tests/fetch/api/request/request-cache-expected.txt:
+        * web-platform-tests/fetch/api/request/resources/get-host-info.sub.js: Removed.
+        * web-platform-tests/fetch/nosniff/resources/image.py:
+        (main):
+        * web-platform-tests/fetch/nosniff/stylesheet-expected.txt:
+        * web-platform-tests/fetch/nosniff/stylesheet.html:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen.html:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/viewport-change-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li.html:
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-open-expected.txt: Added.
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-open.html: Added.
+        * web-platform-tests/html/semantics/interactive-elements/the-dialog-element/w3c-import.log:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-charset-03-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/script-charset-03.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/w3c-import.log:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/caption-methods-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/caption-methods.html:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/remove-row-expected.txt: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/remove-row.html: Added.
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/w3c-import.log:
+        * web-platform-tests/lint.whitelist:
+        * web-platform-tests/service-workers/tools/blink-import.py:
+        (main):
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Drop custom bindings code for HTMLOptionsCollection.remove()
+        https://bugs.webkit.org/show_bug.cgi?id=160475
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Drop custom bindings for FormData.append()
+        https://bugs.webkit.org/show_bug.cgi?id=160466
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        Named / Indexed properties should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=160457
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/Document-getElementsByTagName-expected.txt:
+        * web-platform-tests/dom/nodes/Element-getElementsByTagName-expected.txt:
+
+2016-08-02  Chris Dumez  <cdumez@apple.com>
+
+        HTMLCollection's named getter should only do 'name' attribute matching for HTMLElements
+        https://bugs.webkit.org/show_bug.cgi?id=160456
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/dom/nodes/Document-getElementsByTagName-expected.txt:
+        Rebaseline. We are still failing but on the next check.
+
+        * web-platform-tests/dom/nodes/Element-children-expected.txt:
+        Rebaseline now that one more check is passing.
+
+2016-08-02  Youenn Fablet  <youenn@apple.com>
+
+        Skip fetch API worker tests in Debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=160448
+
+        Unreviewed.
+
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt: Rebasing
+
+2016-08-02  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Fetch promises should not reject or resolve when ActiveDOMObjects are being stopped
+        https://bugs.webkit.org/show_bug.cgi?id=160420
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/cors/cors-preflight-redirect-worker-expected.txt: Added.
+        * web-platform-tests/fetch/nosniff/worker-expected.txt: Added.
+
+2016-08-02  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Add support to ReferrerPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=160404
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/basic/referrer-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/referrer-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/basic/referrer-worker.html: Added.
+        * web-platform-tests/fetch/api/basic/referrer.html: Added.
+        * web-platform-tests/fetch/api/basic/referrer.js: Added.
+        (runTest):
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight-referrer.js:
+        (corsPreflightReferrer): fix infrastructure bug in test and fix expected referrer policy in default case.
+        * web-platform-tests/fetch/api/cors/cors-preflight-worker-expected.txt:
+
+2016-08-01  Youenn Fablet  <youenn@apple.com>
+
+        Make wpt server generate its certificates in layout test results folder
+        https://bugs.webkit.org/show_bug.cgi?id=160422
+
+        Reviewed by Chris Dumez.
+
+        * resources/_wpt_certs/.gitignore: Removed.
+        * resources/_wpt_certs/localhost.key: Removed.
+        * resources/_wpt_certs/localhost.pem: Removed.
+        * resources/config.json:
+
+2016-07-30  Chris Dumez  <cdumez@apple.com>
+
+        Enable strict type checking for Window dictionary members
+        https://bugs.webkit.org/show_bug.cgi?id=160356
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/events/Event-subclasses-constructors-expected.txt:
+
+2016-07-30  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Enable strict type checking for operations' nullable parameters of wrapper types
+        https://bugs.webkit.org/show_bug.cgi?id=160374
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument-expected.txt:
+
+2016-07-29  Chris Dumez  <cdumez@apple.com>
+
+        Window's named properties should be exposed on a WindowProperties object in its prototype
+        https://bugs.webkit.org/show_bug.cgi?id=160354
+
+        Reviewed by Gavin Barraclough.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-29  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Activate credentials mode
+        https://bugs.webkit.org/show_bug.cgi?id=160292
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/cors/cors-cookies-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies.js: Fixin otherRemote computation.
+        (corsCookies): ensuring cookie clean-up is done in case of error before going to the next test.
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt:
+        * web-platform-tests/fetch/api/credentials/cookies-expected.txt:
+        * web-platform-tests/fetch/api/credentials/cookies-worker-expected.txt:
+
+2016-07-29  Youenn Fablet  <youenn@apple.com>
+
+        CrossOrigin preflight checker should compute the right Access-Control-Request-Headers value
+        https://bugs.webkit.org/show_bug.cgi?id=160028
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/cors/cors-no-preflight-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-no-preflight-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-no-preflight.js:
+        (corsNoPreflight): fixing bugs in that test and adding new test to cover mime type checking that should ignore case.
+        * web-platform-tests/fetch/api/cors/cors-preflight-worker.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight.html:
+        * web-platform-tests/fetch/api/cors/cors-preflight.js:
+        (corsPreflight): Adding safe headers to the request and checking more precisely sent Access-Control-Request-Headers header value.
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Add support for Element.getAttributeNames()
+        https://bugs.webkit.org/show_bug.cgi?id=160327
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/attributes-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        window.open.length should be 0
+        https://bugs.webkit.org/show_bug.cgi?id=160323
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to Event.initEvent() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160320
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        2 first parameters to window.postMessage() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160319
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to canvas.getContext() / probablySupportsContext() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160312
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/context.arguments.missing-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to table.deleteRow() / body.deleteRow() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160307
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        2 first parameters to input.setSelectionRange() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160310
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to tr.deleteCell() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160308
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        [Bindings] "length" value of overloaded operations may be wrong
+        https://bugs.webkit.org/show_bug.cgi?id=160303
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to CanvasGradient.addColorStop() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160297
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-28  Youenn Fablet  <youenn@apple.com>
+
+        Compute fetch response type in case of cross-origin requests
+        https://bugs.webkit.org/show_bug.cgi?id=158565
+
+        Reviewed by Alex Christensen.
+
+        Rebasing fetch API tests as filtering is now done.
+        Rebasing XHR tests as console messages are no longer available when trying to access non-exposed headers.
+
+        * web-platform-tests/XMLHttpRequest/getresponseheader-cookies-and-more-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-no-cors-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-no-cors-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-filtering-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to HTMLMediaElement.canPlayType() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160275
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline w3c test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to setTimeout() / setInterval() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160277
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to named property getter should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160269
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to Range.createContextualFragment() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160266
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/domparsing/createContextualFragment-expected.txt:
+
+2016-07-27  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to indexed property getters should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160259
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
 2016-07-27  Chris Dumez  <cdumez@apple.com>
 
         First parameter to Document.execCommand() / queryCommand*() should be mandatory

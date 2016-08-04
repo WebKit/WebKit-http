@@ -712,46 +712,46 @@ private:
     Node* addToGraph(NodeType op, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentNodeOrigin(), Edge(child1), Edge(child2),
+            op, currentNodeOrigin(), Edge(child1), Edge(child2),
             Edge(child3));
         return addToGraph(result);
     }
     Node* addToGraph(NodeType op, Edge child1, Edge child2 = Edge(), Edge child3 = Edge())
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentNodeOrigin(), child1, child2, child3);
+            op, currentNodeOrigin(), child1, child2, child3);
         return addToGraph(result);
     }
     Node* addToGraph(NodeType op, OpInfo info, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentNodeOrigin(), info, Edge(child1), Edge(child2),
+            op, currentNodeOrigin(), info, Edge(child1), Edge(child2),
             Edge(child3));
         return addToGraph(result);
     }
     Node* addToGraph(NodeType op, OpInfo info, Edge child1, Edge child2 = Edge(), Edge child3 = Edge())
     {
-        Node* result = m_graph.addNode(SpecNone, op, currentNodeOrigin(), info, child1, child2, child3);
+        Node* result = m_graph.addNode(op, currentNodeOrigin(), info, child1, child2, child3);
         return addToGraph(result);
     }
     Node* addToGraph(NodeType op, OpInfo info1, OpInfo info2, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentNodeOrigin(), info1, info2,
+            op, currentNodeOrigin(), info1, info2,
             Edge(child1), Edge(child2), Edge(child3));
         return addToGraph(result);
     }
     Node* addToGraph(NodeType op, OpInfo info1, OpInfo info2, Edge child1, Edge child2 = Edge(), Edge child3 = Edge())
     {
         Node* result = m_graph.addNode(
-            SpecNone, op, currentNodeOrigin(), info1, info2, child1, child2, child3);
+            op, currentNodeOrigin(), info1, info2, child1, child2, child3);
         return addToGraph(result);
     }
     
     Node* addToGraph(Node::VarArgTag, NodeType op, OpInfo info1, OpInfo info2)
     {
         Node* result = m_graph.addNode(
-            SpecNone, Node::VarArg, op, currentNodeOrigin(), info1, info2,
+            Node::VarArg, op, currentNodeOrigin(), info1, info2,
             m_graph.m_varArgChildren.size() - m_numPassedVarArgs, m_numPassedVarArgs);
         addToGraph(result);
         
@@ -4063,12 +4063,18 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                 // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                 // At that time, there is no information.
-                if (byValInfo && byValInfo->stubInfo && !byValInfo->tookSlowPath && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent)) {
+                if (byValInfo && byValInfo->stubInfo && !byValInfo->tookSlowPath && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent) && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
                     compiledAsGetById = true;
                     identifierNumber = m_graph.identifiers().ensure(byValInfo->cachedId.impl());
                     UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
 
-                    addToGraph(CheckIdent, OpInfo(uid), property);
+                    if (Symbol* symbol = byValInfo->cachedSymbol.get()) {
+                        FrozenValue* frozen = m_graph.freezeStrong(symbol);
+                        addToGraph(CheckCell, OpInfo(frozen), property);
+                    } else {
+                        ASSERT(!uid->isSymbol());
+                        addToGraph(CheckStringIdent, OpInfo(uid), property);
+                    }
 
                     getByIdStatus = GetByIdStatus::computeForStubInfo(
                         locker, m_inlineStackTop->m_profiledBlock,
@@ -4110,12 +4116,18 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                 // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                 // At that time, there is no information.
-                if (byValInfo && byValInfo->stubInfo && !byValInfo->tookSlowPath && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent)) {
+                if (byValInfo && byValInfo->stubInfo && !byValInfo->tookSlowPath && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent) && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
                     compiledAsPutById = true;
                     unsigned identifierNumber = m_graph.identifiers().ensure(byValInfo->cachedId.impl());
                     UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
 
-                    addToGraph(CheckIdent, OpInfo(uid), property);
+                    if (Symbol* symbol = byValInfo->cachedSymbol.get()) {
+                        FrozenValue* frozen = m_graph.freezeStrong(symbol);
+                        addToGraph(CheckCell, OpInfo(frozen), property);
+                    } else {
+                        ASSERT(!uid->isSymbol());
+                        addToGraph(CheckStringIdent, OpInfo(uid), property);
+                    }
 
                     PutByIdStatus putByIdStatus = PutByIdStatus::computeForStubInfo(
                         locker, m_inlineStackTop->m_profiledBlock,

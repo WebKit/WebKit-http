@@ -652,12 +652,8 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
     if (preventsExtensions(transitionKind))
         transition->setDidPreventExtensions(true);
     
-    unsigned additionalPropertyAttributes = 0;
-    if (setsDontDeleteOnAllProperties(transitionKind))
-        additionalPropertyAttributes |= DontDelete;
-    if (setsReadOnlyOnAllProperties(transitionKind))
-        additionalPropertyAttributes |= ReadOnly;
-    if (additionalPropertyAttributes) {
+    if (setsDontDeleteOnAllProperties(transitionKind)
+        || setsReadOnlyOnNonAccessorProperties(transitionKind)) {
         // We pin the property table on transitions that do wholesale editing of the property
         // table, since our logic for walking the property transition chain to rematerialize the
         // table doesn't know how to take into account such wholesale edits.
@@ -668,8 +664,12 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
         transition->pinForCaching();
         
         if (transition->propertyTable()) {
-            for (auto& entry : *transition->propertyTable().get())
-                entry.attributes |= additionalPropertyAttributes;
+            for (auto& entry : *transition->propertyTable().get()) {
+                if (setsDontDeleteOnAllProperties(transitionKind))
+                    entry.attributes |= DontDelete;
+                if (setsReadOnlyOnNonAccessorProperties(transitionKind) && !(entry.attributes & Accessor))
+                    entry.attributes |= ReadOnly;
+            }
         }
     } else {
         transition->propertyTable().set(vm, transition, structure->takePropertyTableOrCloneIfPinned(vm));
@@ -677,7 +677,7 @@ Structure* Structure::nonPropertyTransition(VM& vm, Structure* structure, NonPro
         checkOffset(transition->m_offset, transition->inlineCapacity());
     }
     
-    if (setsReadOnlyOnAllProperties(transitionKind)
+    if (setsReadOnlyOnNonAccessorProperties(transitionKind)
         && transition->propertyTable()
         && !transition->propertyTable()->isEmpty())
         transition->setHasReadOnlyOrGetterSetterPropertiesExcludingProto(true);
@@ -995,7 +995,7 @@ PropertyOffset Structure::add(VM& vm, PropertyName propertyName, unsigned attrib
     ASSERT(!JSC::isValidOffset(get(vm, propertyName)));
 
     checkConsistency();
-    if (attributes & DontEnum)
+    if (attributes & DontEnum || propertyName.isSymbol())
         setIsQuickPropertyAccessAllowedForEnumeration(false);
 
     auto rep = propertyName.uid();
@@ -1055,6 +1055,7 @@ void Structure::getPropertyNamesFromStructure(VM& vm, PropertyNameArray& propert
     PropertyTable::iterator end = propertyTable()->end();
     for (PropertyTable::iterator iter = propertyTable()->begin(); iter != end; ++iter) {
         ASSERT(!isQuickPropertyAccessAllowedForEnumeration() || !(iter->attributes & DontEnum));
+        ASSERT(!isQuickPropertyAccessAllowedForEnumeration() || !iter->key->isSymbol());
         if (!(iter->attributes & DontEnum) || mode.includeDontEnumProperties()) {
             if (iter->key->isSymbol() && !propertyNames.includeSymbolProperties())
                 continue;
@@ -1346,6 +1347,7 @@ void Structure::checkConsistency()
         PropertyTable::iterator end = propertyTable()->end();
         for (PropertyTable::iterator iter = propertyTable()->begin(); iter != end; ++iter) {
             ASSERT(!(iter->attributes & DontEnum));
+            ASSERT(!iter->key->isSymbol());
         }
     }
 

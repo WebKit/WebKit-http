@@ -235,7 +235,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     uint64_t _firstPaintAfterCommitLoadTransactionID;
     DynamicViewportUpdateMode _dynamicViewportUpdateMode;
     CATransform3D _resizeAnimationTransformAdjustments;
-    uint64_t _resizeAnimationTransformTransactionID;
+    Optional<uint64_t> _resizeAnimationTransformTransactionID;
     RetainPtr<UIView> _resizeAnimationView;
     CGFloat _lastAdjustmentForScroller;
     Optional<CGRect> _frozenVisibleContentRect;
@@ -458,8 +458,6 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackAfterFullscreenKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsInlineMediaPlaybackAfterFullscreen]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _inlineMediaPlaybackRequiresPlaysInlineAttribute]));
-    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackWithPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsInlineMediaPlaybackWithPlaysInlineAttribute]));
-    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackWithWebKitPlaysInlineAttributeKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsInlineMediaPlaybackWithWebKitPlaysInlineAttribute]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback()));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::userInterfaceDirectionPolicyKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::UserInterfaceDirectionPolicy::Content)));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::LTR)));
@@ -1236,7 +1234,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         return;
 
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
-        if (layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID) {
+        if (_resizeAnimationTransformTransactionID && layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID.value()) {
+            _resizeAnimationTransformTransactionID = Nullopt;
             [_resizeAnimationView layer].sublayerTransform = _resizeAnimationTransformAdjustments;
             if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::ResizingWithDocumentHidden) {
                 [_contentView setHidden:NO];

@@ -1511,8 +1511,7 @@ void DocumentLoader::startLoadingMainResource()
     request.makeUnconditional();
 
     static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, SkipSecurityCheck, FetchOptions::Mode::NoCors, IncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching);
-    CachedResourceRequest cachedResourceRequest(request, mainResourceLoadOptions);
-    cachedResourceRequest.setInitiator(*this);
+    CachedResourceRequest cachedResourceRequest(ResourceRequest(request), mainResourceLoadOptions);
     m_mainResource = m_cachedResourceLoader->requestMainResource(cachedResourceRequest);
 
 #if ENABLE(CONTENT_EXTENSIONS)

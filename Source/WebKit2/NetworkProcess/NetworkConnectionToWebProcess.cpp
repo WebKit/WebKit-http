@@ -209,7 +209,7 @@ void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(SessionID 
     }
 
 #if USE(NETWORK_SESSION)
-    loader->networkLoad()->convertTaskToDownload(downloadID, request);
+    loader->networkLoad()->convertTaskToDownload(downloadID, request, response);
 #else
     networkProcess.downloadManager().convertHandleToDownload(downloadID, loader->networkLoad()->handle(), request, response);
 
@@ -274,10 +274,15 @@ void NetworkConnectionToWebProcess::registerBlobURLFromURL(const URL& url, const
 
 void NetworkConnectionToWebProcess::preregisterSandboxExtensionsForOptionallyFileBackedBlob(const Vector<String>& filePaths, const SandboxExtension::HandleArray& handles)
 {
+#if ENABLE(SANDBOX_EXTENSIONS)
     ASSERT(filePaths.size() == handles.size());
 
     for (size_t i = 0; i < filePaths.size(); ++i)
         m_blobDataFileReferences.add(filePaths[i], BlobDataFileReferenceWithSandboxExtension::create(filePaths[i], SandboxExtension::create(handles[i])));
+#else
+    for (size_t i = 0; i < filePaths.size(); ++i)
+        m_blobDataFileReferences.add(filePaths[i], BlobDataFileReferenceWithSandboxExtension::create(filePaths[i], nullptr));
+#endif
 }
 
 RefPtr<WebCore::BlobDataFileReference> NetworkConnectionToWebProcess::getBlobDataFileReferenceForPath(const String& path)

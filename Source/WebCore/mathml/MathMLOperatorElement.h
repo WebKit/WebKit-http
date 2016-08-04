@@ -26,6 +26,7 @@
 #pragma once
 
 #if ENABLE(MATHML)
+#include "MathMLOperatorDictionary.h"
 #include "MathMLTextElement.h"
 
 namespace WebCore {
@@ -33,10 +34,53 @@ namespace WebCore {
 class MathMLOperatorElement final : public MathMLTextElement {
 public:
     static Ref<MathMLOperatorElement> create(const QualifiedName& tagName, Document&);
+    struct OperatorChar {
+        UChar character { 0 };
+        bool isVertical { true };
+    };
+    static OperatorChar parseOperatorChar(const String&);
+    const OperatorChar& operatorChar();
+    void setOperatorFormDirty() { m_dictionaryProperty = Nullopt; }
+    MathMLOperatorDictionary::Form form() { return dictionaryProperty().form; }
+    bool hasProperty(MathMLOperatorDictionary::Flag);
+    Length defaultLeadingSpace();
+    Length defaultTrailingSpace();
+    const Length& leadingSpace();
+    const Length& trailingSpace();
+    const Length& minSize();
+    const Length& maxSize();
+
 private:
     MathMLOperatorElement(const QualifiedName& tagName, Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+    void childrenChanged(const ChildChange&) final;
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
+
+    Optional<OperatorChar> m_operatorChar;
+
+    struct DictionaryProperty {
+        MathMLOperatorDictionary::Form form;
+        // Default leading and trailing spaces are "thickmathspace".
+        unsigned short leadingSpaceInMathUnit { 5 };
+        unsigned short trailingSpaceInMathUnit { 5 };
+        // Default operator properties are all set to "false".
+        unsigned short flags { 0 };
+    };
+    Optional<DictionaryProperty> m_dictionaryProperty;
+    DictionaryProperty computeDictionaryProperty();
+    const DictionaryProperty& dictionaryProperty();
+
+    struct OperatorProperties {
+        unsigned short flags;
+        unsigned short dirtyFlags { MathMLOperatorDictionary::allFlags };
+    };
+    OperatorProperties m_properties;
+    void computeOperatorFlag(MathMLOperatorDictionary::Flag);
+
+    Optional<Length> m_leadingSpace;
+    Optional<Length> m_trailingSpace;
+    Optional<Length> m_minSize;
+    Optional<Length> m_maxSize;
 };
 
 }

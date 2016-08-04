@@ -312,7 +312,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLazyJSValue.cpp
     dfg/DFGLazyNode.cpp
     dfg/DFGLivenessAnalysisPhase.cpp
-    dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMaximalFlushInsertionPhase.cpp
     dfg/DFGMayExit.cpp
@@ -384,6 +383,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGWorklist.cpp
 
     disassembler/ARM64Disassembler.cpp
+    disassembler/ARMLLVMDisassembler.cpp
     disassembler/ARMv7Disassembler.cpp
     disassembler/Disassembler.cpp
     disassembler/UDis86Disassembler.cpp
@@ -894,6 +894,7 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
 set(JavaScriptCore_LIBRARIES
     WTF${DEBUG_SUFFIX}
     ${ICU_I18N_LIBRARIES}
+    ${LLVM_LIBRARIES}
 )
 
 set(JavaScriptCore_SCRIPTS_SOURCES_DIR "${JAVASCRIPTCORE_DIR}/Scripts")

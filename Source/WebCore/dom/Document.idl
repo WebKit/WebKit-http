@@ -170,7 +170,7 @@
 
     [GetterRaisesException, SetterRaisesException] attribute DOMString cookie;
 
-    [SetterRaisesException, ImplementedAs=bodyOrFrameset, StrictTypeChecking] attribute HTMLElement? body;
+    [SetterRaisesException, ImplementedAs=bodyOrFrameset] attribute HTMLElement? body;
 
     readonly attribute HTMLHeadElement? head;
     readonly attribute HTMLCollection images;
@@ -260,11 +260,10 @@
     [Conditional=POINTER_LOCK] void exitPointerLock();
     [Conditional=POINTER_LOCK] readonly attribute Element? pointerLockElement;
 
+#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     readonly attribute FontFaceSet fonts;
-#endif
 
 #if defined(ENABLE_IOS_TOUCH_EVENTS) && ENABLE_IOS_TOUCH_EVENTS
 #include <WebKitAdditions/DocumentIOS.idl>
@@ -283,7 +282,6 @@
     [NewObject, Custom] TouchList createTouchList(Touch... touches);
 #endif
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [Custom, RaisesException, Conditional=CUSTOM_ELEMENTS, EnabledAtRuntime=CustomElements]
     void defineElement(DOMString localName, Function constructor);
 #endif

@@ -239,12 +239,19 @@ struct BasicBlock : RefCounted<BasicBlock> {
     struct SSAData {
         WTF_MAKE_FAST_ALLOCATED;
     public:
+        void invalidate()
+        {
+            liveAtTail.clear();
+            liveAtHead.clear();
+            valuesAtHead.clear();
+            valuesAtTail.clear();
+        }
+
         AvailabilityMap availabilityAtHead;
         AvailabilityMap availabilityAtTail;
-        
-        bool liveAtTailIsDirty { false };
-        HashSet<Node*> liveAtTail;
-        HashSet<Node*> liveAtHead;
+
+        Vector<Node*> liveAtHead;
+        Vector<Node*> liveAtTail;
         struct NodeAbstractValuePair {
             Node* node;
             AbstractValue value;

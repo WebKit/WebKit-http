@@ -1125,12 +1125,12 @@ public:
 
     void zeroExtend16To32(RegisterID src, RegisterID dest)
     {
-        m_assembler.uxth<64>(dest, src);
+        m_assembler.uxth<32>(dest, src);
     }
 
     void signExtend16To32(RegisterID src, RegisterID dest)
     {
-        m_assembler.sxth<64>(dest, src);
+        m_assembler.sxth<32>(dest, src);
     }
 
     void load8(ImplicitAddress address, RegisterID dest)
@@ -1190,12 +1190,12 @@ public:
 
     void zeroExtend8To32(RegisterID src, RegisterID dest)
     {
-        m_assembler.uxtb<64>(dest, src);
+        m_assembler.uxtb<32>(dest, src);
     }
 
     void signExtend8To32(RegisterID src, RegisterID dest)
     {
-        m_assembler.sxtb<64>(dest, src);
+        m_assembler.sxtb<32>(dest, src);
     }
 
     void store64(RegisterID src, ImplicitAddress address)
@@ -2520,8 +2520,24 @@ public:
 
     Jump branchTest64(ResultCondition cond, RegisterID reg, TrustedImm64 mask)
     {
-        move(mask, getCachedDataTempRegisterIDAndInvalidate());
-        return branchTest64(cond, reg, dataTempRegister);
+        if (mask.m_value == -1) {
+            if ((cond == Zero) || (cond == NonZero))
+                return Jump(makeCompareAndBranch<64>(static_cast<ZeroCondition>(cond), reg));
+            m_assembler.tst<64>(reg, reg);
+        } else if (hasOneBitSet(mask.m_value) && ((cond == Zero) || (cond == NonZero)))
+            return Jump(makeTestBitAndBranch(reg, getLSBSet(mask.m_value), static_cast<ZeroCondition>(cond)));
+        else {
+            LogicalImmediate logicalImm = LogicalImmediate::create64(mask.m_value);
+
+            if (logicalImm.isValid()) {
+                m_assembler.tst<64>(reg, logicalImm);
+                return Jump(makeBranch(cond));
+            }
+
+            move(mask, getCachedDataTempRegisterIDAndInvalidate());
+            m_assembler.tst<64>(reg, dataTempRegister);
+        }
+        return Jump(makeBranch(cond));
     }
 
     Jump branchTest64(ResultCondition cond, Address address, RegisterID mask)

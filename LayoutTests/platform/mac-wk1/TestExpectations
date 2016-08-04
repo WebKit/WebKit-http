@@ -214,15 +214,6 @@ fast/repaint/vertical-text-repaint.html [ Pass Failure ]
 
 webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 
-# <rdar://problem/23421541>
-[ Sierra+ ] http/tests/navigation/forward-and-cancel.html [ Pass Failure ]
-
-# <rdar://problem/23431065>
-[ Sierra+ ] animations/animation-welcome-safari.html [ Pass Failure ]
-
-# <rdar://problem/23884199> Crashed in com.apple.WebKitLegacy: WebEditorClient::didCheckSucceed
-[ Sierra+ ] editing/spelling/spellcheck-attribute.html [ Pass Crash ]
-
 # <rdar://problem/24818712>
 [ Sierra+ ] editing/spelling/spelling-insert-html.html [ Pass Timeout ]
 
@@ -245,9 +236,6 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 
 # rdar://problem/26789221
 [ Sierra+ ] compositing/masks/compositing-clip-path-change-no-repaint.html [ Failure ]
-
-# rdar://problem/26422274
-[ Sierra+ ] fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
 
 # rdar://problem/26422407
 [ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html  [ ImageOnlyFailure ]

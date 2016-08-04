@@ -22,6 +22,7 @@ fast/viewport/ios [ Skip ]
 fast/events/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
 fast/scrolling/ios [ Skip ]
+fast/content-observation [ Skip ]
 media/mac [ Skip ]
 
 fast/forms/attributed-strings.html [ Skip ]
@@ -56,6 +57,9 @@ fast/harness/concurrent-ui-side-scripts.html [ Skip ]
 
 # This test only makes sense on Mac
 fast/attachment/attachment-subtitle-resize.html
+
+# This test only makes sense on iOS
+fast/attachment/attachment-wrapping-action.html
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -333,30 +337,32 @@ imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-cors.htm [ Skip 
 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-non-cors.htm [ Skip ]
 # Failing assertion with dynamic message
 imported/w3c/web-platform-tests/XMLHttpRequest/responsexml-document-properties.htm [ Failure ]
-# Fetch Worker tests skipped until bug 156737 is resolved
-imported/w3c/web-platform-tests/fetch/api/cors/cors-basic-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-cookies-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-filtering-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-multiple-origins-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-origin-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-redirect-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-referrer-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-status-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/credentials/authentication-basic-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/credentials/cookies-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/policies/csp-blocked-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode-worker.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/nosniff/worker.html [ Skip ]
+
+imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Skip ]
+[ Release ] imported/w3c/web-platform-tests/fetch/api/cors/cors-cookies-worker.html [ Failure Pass ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-basic-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-cookies-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-filtering-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-multiple-origins-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-origin-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-redirect-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-referrer-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-status-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/credentials/authentication-basic-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/credentials/cookies-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/policies/csp-blocked-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/worker.html [ Skip ]
 
 webkit.org/b/157068 imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Skip ]
 webkit.org/b/157145 imported/w3c/web-platform-tests/fetch/nosniff/stylesheet.html [ Failure Pass ]
@@ -977,6 +983,7 @@ fast/scrolling/rtl-scrollbars-positioned-intersect-scrollbars.html [ ImageOnlyFa
 fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement.html [ Skip ]
 fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement-2.html [ ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html [ ImageOnlyFailure ]
+fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
 
 # <a download> does not support Blobs
 webkit.org/b/156099 http/tests/security/anchor-download-allow-blob.html [ Failure ]

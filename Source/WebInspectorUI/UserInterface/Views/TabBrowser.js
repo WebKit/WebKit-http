@@ -43,6 +43,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         if (this._detailsSidebar) {
             this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.CollapsedStateDidChange, this._sidebarCollapsedStateDidChange, this);
             this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.SidebarPanelSelected, this._sidebarPanelSelected, this);
+            this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.WidthDidChange, this._detailsSidebarWidthDidChange, this);
         }
 
         this._contentViewContainer = new WebInspector.ContentViewContainer;
@@ -198,6 +199,17 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         return true;
     }
 
+    // Protected
+
+    layout()
+    {
+        if (this.layoutReason !== WebInspector.View.LayoutReason.Resize)
+            return;
+
+        for (let tabContentView of this._recentTabContentViews)
+            tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol] = tabContentView !== this.selectedTabContentView;
+    }
+
     // Private
 
     _tabBarItemSelected(event)
@@ -221,6 +233,12 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
 
         this._showNavigationSidebarPanelForTabContentView(tabContentView);
         this._showDetailsSidebarPanelsForTabContentView(tabContentView);
+
+        // If the tab browser was resized prior to showing the tab, the new tab needs to perform a resize layout.
+        if (tabContentView && tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol]) {
+            tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol] = false;
+            tabContentView.updateLayout(WebInspector.View.LayoutReason.Resize);
+        }
 
         this.dispatchEventToListeners(WebInspector.TabBrowser.Event.SelectedTabContentViewDidChange);
     }
@@ -275,6 +293,19 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
             tabContentView.detailsSidebarCollapsedSetting.value = this._detailsSidebar.collapsed;
     }
 
+    _detailsSidebarWidthDidChange(event)
+    {
+        if (this._ignoreSidebarEvents)
+            return;
+
+        let tabContentView = this.selectedTabContentView;
+        if (!tabContentView)
+            return;
+
+        if (event.target === this._detailsSidebar && event.data)
+            tabContentView.detailsSidebarWidthSetting.value = event.data.newWidth;
+    }
+
     _showNavigationSidebarPanelForTabContentView(tabContentView)
     {
         if (!this._navigationSidebar)
@@ -322,6 +353,9 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
             this._ignoreSidebarEvents = false;
             return;
         }
+
+        if (tabContentView.detailsSidebarWidthSetting.value)
+            this._detailsSidebar.width = tabContentView.detailsSidebarWidthSetting.value;
 
         if (tabContentView.managesDetailsSidebarPanels) {
             tabContentView.showDetailsSidebarPanels();
@@ -376,6 +410,8 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         event.preventDefault();
     }
 };
+
+WebInspector.TabBrowser.NeedsResizeLayoutSymbol = Symbol("needs-resize-layout");
 
 WebInspector.TabBrowser.Event = {
     SelectedTabContentViewDidChange: "tab-browser-selected-tab-content-view-did-change"

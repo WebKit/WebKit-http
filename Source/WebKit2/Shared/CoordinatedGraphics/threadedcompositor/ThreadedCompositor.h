@@ -77,7 +77,7 @@ public:
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
     };
 
-    static Ref<ThreadedCompositor> create(Client*, WebPage&);
+    static Ref<ThreadedCompositor> create(Client*, WebPage&, uint64_t nativeSurfaceHandle = 0);
     virtual ~ThreadedCompositor();
 
     void setNativeSurfaceHandleForCompositing(uint64_t);
@@ -101,7 +101,7 @@ public:
 #endif
 
 private:
-    ThreadedCompositor(Client*, WebPage&);
+    ThreadedCompositor(Client*, WebPage&, uint64_t nativeSurfaceHandle);
 
     // CoordinatedGraphicsSceneClient
     void renderNextFrame() override;
@@ -135,7 +135,7 @@ private:
     WebCore::IntSize m_viewportSize;
     float m_deviceScaleFactor { 1 };
     bool m_drawsBackground { true };
-    uint64_t m_nativeSurfaceHandle { 0 };
+    uint64_t m_nativeSurfaceHandle;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     friend class DisplayRefreshMonitor;
