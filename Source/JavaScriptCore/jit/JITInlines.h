@@ -416,9 +416,33 @@ ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(V_JITOperation_ECIZC opera
     return appendCallWithExceptionCheck(operation);
 }
 
-inline MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJRp operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2, ResultProfile* resultProfile)
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJ operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2)
 {
-    setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(resultProfile));
+    setupArgumentsWithExecState(arg1, arg2);
+    Call call = appendCallWithExceptionCheck(operation);
+    setupResults(result);
+    return call;
+}
+
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJArp operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2, ArithProfile* arithProfile)
+{
+    setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(arithProfile));
+    Call call = appendCallWithExceptionCheck(operation);
+    setupResults(result);
+    return call;
+}
+
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJArpMic operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2, ArithProfile* arithProfile, TrustedImmPtr mathIC)
+{
+    setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(arithProfile), mathIC);
+    Call call = appendCallWithExceptionCheck(operation);
+    setupResults(result);
+    return call;
+}
+
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJMic operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2, TrustedImmPtr mathIC)
+{
+    setupArgumentsWithExecState(arg1, arg2, mathIC);
     Call call = appendCallWithExceptionCheck(operation);
     setupResults(result);
     return call;
@@ -915,27 +939,6 @@ ALWAYS_INLINE void JIT::sampleCodeBlock(CodeBlock* codeBlock)
 ALWAYS_INLINE bool JIT::isOperandConstantChar(int src)
 {
     return m_codeBlock->isConstantRegisterIndex(src) && getConstantOperand(src).isString() && asString(getConstantOperand(src).asCell())->length() == 1;
-}
-
-template<typename StructureType>
-inline void JIT::emitAllocateJSObject(RegisterID allocator, StructureType structure, RegisterID result, RegisterID scratch)
-{
-    if (Options::forceGCSlowPaths())
-        addSlowCase(jump());
-    else {
-        loadPtr(Address(allocator, MarkedAllocator::offsetOfFreeListHead()), result);
-        addSlowCase(branchTestPtr(Zero, result));
-    }
-
-    // remove the object from the free list
-    loadPtr(Address(result), scratch);
-    storePtr(scratch, Address(allocator, MarkedAllocator::offsetOfFreeListHead()));
-
-    // initialize the object's property storage pointer
-    storePtr(TrustedImmPtr(0), Address(result, JSObject::butterflyOffset()));
-
-    // initialize the object's structure
-    emitStoreStructureWithTypeInfo(structure, result, scratch);
 }
 
 inline void JIT::emitValueProfilingSite(ValueProfile* valueProfile)

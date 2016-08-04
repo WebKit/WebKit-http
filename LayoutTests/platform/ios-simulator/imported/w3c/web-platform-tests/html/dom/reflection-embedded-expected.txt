@@ -8,8 +8,6 @@ Blocked access to external URL http://site.example/
 Blocked access to external URL http://site.example/path???@#l
 Implementers looking to fix bugs might want to use the original version of this suite's test framework, which conveniently aggregates similar errors and only reports failures. This file is (part of) the authoritative conformance test suite, and is suitable for incorporation into automated test suites.
 
-(Note: missing tests for types tokenlist, settable tokenlist.)
-
 
 PASS img.title: typeof IDL attribute 
 PASS img.title: IDL get with DOM attribute unset 
@@ -1842,8 +1840,8 @@ PASS img.border: IDL set to "\0" should not throw
 PASS img.border: IDL set to "\0" followed by getAttribute() 
 PASS img.border: IDL set to "\0" followed by IDL get 
 PASS img.border: IDL set to null should not throw 
-FAIL img.border: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL img.border: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS img.border: IDL set to null followed by getAttribute() 
+PASS img.border: IDL set to null followed by IDL get 
 PASS img.border: IDL set to object "test-toString" should not throw 
 PASS img.border: IDL set to object "test-toString" followed by getAttribute() 
 PASS img.border: IDL set to object "test-toString" followed by IDL get 
@@ -3391,8 +3389,8 @@ PASS iframe.marginHeight: IDL set to "\0" should not throw
 PASS iframe.marginHeight: IDL set to "\0" followed by getAttribute() 
 PASS iframe.marginHeight: IDL set to "\0" followed by IDL get 
 PASS iframe.marginHeight: IDL set to null should not throw 
-FAIL iframe.marginHeight: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL iframe.marginHeight: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS iframe.marginHeight: IDL set to null followed by getAttribute() 
+PASS iframe.marginHeight: IDL set to null followed by IDL get 
 PASS iframe.marginHeight: IDL set to object "test-toString" should not throw 
 PASS iframe.marginHeight: IDL set to object "test-toString" followed by getAttribute() 
 PASS iframe.marginHeight: IDL set to object "test-toString" followed by IDL get 
@@ -3468,8 +3466,8 @@ PASS iframe.marginWidth: IDL set to "\0" should not throw
 PASS iframe.marginWidth: IDL set to "\0" followed by getAttribute() 
 PASS iframe.marginWidth: IDL set to "\0" followed by IDL get 
 PASS iframe.marginWidth: IDL set to null should not throw 
-FAIL iframe.marginWidth: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL iframe.marginWidth: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS iframe.marginWidth: IDL set to null followed by getAttribute() 
+PASS iframe.marginWidth: IDL set to null followed by IDL get 
 PASS iframe.marginWidth: IDL set to object "test-toString" should not throw 
 PASS iframe.marginWidth: IDL set to object "test-toString" followed by getAttribute() 
 PASS iframe.marginWidth: IDL set to object "test-toString" followed by IDL get 
@@ -6574,8 +6572,8 @@ PASS object.border: IDL set to "\0" should not throw
 PASS object.border: IDL set to "\0" followed by getAttribute() 
 PASS object.border: IDL set to "\0" followed by IDL get 
 PASS object.border: IDL set to null should not throw 
-FAIL object.border: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL object.border: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS object.border: IDL set to null followed by getAttribute() 
+PASS object.border: IDL set to null followed by IDL get 
 PASS object.border: IDL set to object "test-toString" should not throw 
 PASS object.border: IDL set to object "test-toString" followed by getAttribute() 
 PASS object.border: IDL set to object "test-toString" followed by IDL get 
@@ -15324,4 +15322,4 @@ PASS area.noHref: IDL set to object "test-toString" followed by IDL get
 PASS area.noHref: IDL set to object "test-valueOf" should not throw 
 PASS area.noHref: IDL set to object "test-valueOf" followed by hasAttribute() 
 PASS area.noHref: IDL set to object "test-valueOf" followed by IDL get 
-
+(Note: missing tests for types tokenlist, settable tokenlist.)

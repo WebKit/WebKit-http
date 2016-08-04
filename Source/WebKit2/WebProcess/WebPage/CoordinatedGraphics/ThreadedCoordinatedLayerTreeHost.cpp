@@ -38,6 +38,10 @@
 #include "DrawingAreaWPE.h"
 #endif
 
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#include "RedirectedXCompositeWindow.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -54,14 +58,32 @@ ThreadedCoordinatedLayerTreeHost::~ThreadedCoordinatedLayerTreeHost()
 ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage& webPage)
     : CoordinatedLayerTreeHost(webPage)
     , m_compositorClient(*this)
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    , m_redirectedWindow(RedirectedXCompositeWindow::create(webPage))
+    , m_compositor(ThreadedCompositor::create(&m_compositorClient, webPage, m_redirectedWindow ? m_redirectedWindow->window() : 0))
+#else
     , m_compositor(ThreadedCompositor::create(&m_compositorClient, webPage))
+#endif
 {
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (m_redirectedWindow)
+        m_layerTreeContext.contextID = m_redirectedWindow->pixmap();
+#endif
 }
 
 void ThreadedCoordinatedLayerTreeHost::invalidate()
 {
     m_compositor->invalidate();
     CoordinatedLayerTreeHost::invalidate();
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    m_redirectedWindow = nullptr;
+#endif
+}
+
+void ThreadedCoordinatedLayerTreeHost::forceRepaint()
+{
+    CoordinatedLayerTreeHost::forceRepaint();
+    m_compositor->forceRepaint();
 }
 
 void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const WebCore::IntRect& rect)
@@ -77,12 +99,31 @@ void ThreadedCoordinatedLayerTreeHost::contentsSizeChanged(const WebCore::IntSiz
 
 void ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
 {
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (m_redirectedWindow) {
+        m_redirectedWindow->resize(m_webPage.size());
+        m_layerTreeContext.contextID = m_redirectedWindow->pixmap();
+    }
+#endif
+
     CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged();
     m_compositor->setDeviceScaleFactor(m_webPage.deviceScaleFactor());
 }
 
+void ThreadedCoordinatedLayerTreeHost::pageBackgroundTransparencyChanged()
+{
+    CoordinatedLayerTreeHost::pageBackgroundTransparencyChanged();
+    m_compositor->setDrawsBackground(m_webPage.drawsBackground());
+}
+
 void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const IntSize& size)
 {
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (m_redirectedWindow) {
+        m_redirectedWindow->resize(size);
+        m_layerTreeContext.contextID = m_redirectedWindow->pixmap();
+    }
+#endif
     CoordinatedLayerTreeHost::sizeDidChange(size);
     m_compositor->didChangeViewportSize(size);
 }
@@ -97,7 +138,7 @@ void ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged(float scale, const 
     m_webPage.scalePage(scale, origin);
 }
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
 void ThreadedCoordinatedLayerTreeHost::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
     m_layerTreeContext.contextID = handle;

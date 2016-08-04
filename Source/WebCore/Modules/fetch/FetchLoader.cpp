@@ -32,6 +32,7 @@
 #if ENABLE(FETCH_API)
 
 #include "BlobURL.h"
+#include "CachedResourceRequestInitiators.h"
 #include "FetchBody.h"
 #include "FetchLoaderClient.h"
 #include "FetchRequest.h"
@@ -59,54 +60,47 @@ void FetchLoader::start(ScriptExecutionContext& context, Blob& blob)
     request.setHTTPMethod("GET");
 
     ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
-    options.setDataBufferingPolicy(DoNotBufferData);
+    options.sendLoadCallbacks = SendCallbacks;
+    options.dataBufferingPolicy = DoNotBufferData;
     options.preflightPolicy = ConsiderPreflight;
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.crossOriginRequestPolicy = DenyCrossOriginRequests;
+    options.credentials = FetchOptions::Credentials::Include;
+    options.mode = FetchOptions::Mode::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
 
-    m_loader = ThreadableLoader::create(&context, this, request, options);
+    m_loader = ThreadableLoader::create(context, *this, WTFMove(request), options);
     m_isStarted = m_loader;
 }
 
 void FetchLoader::start(ScriptExecutionContext& context, const FetchRequest& request)
 {
-    ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
-    options.setDataBufferingPolicy(DoNotBufferData);
-    options.preflightPolicy = ConsiderPreflight;
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.crossOriginRequestPolicy = DenyCrossOriginRequests;
-    options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
+    ThreadableLoaderOptions options(request.fetchOptions(), ConsiderPreflight, ContentSecurityPolicyEnforcement::DoNotEnforce, String(cachedResourceRequestInitiators().fetch));
+    options.sendLoadCallbacks = SendCallbacks;
+    options.dataBufferingPolicy = DoNotBufferData;
 
-    // FIXME: Pass directly all fetch options to loader options.
-    options.redirect = request.fetchOptions().redirect;
-
-    m_loader = ThreadableLoader::create(&context, this, request.internalRequest(), options);
+    m_loader = ThreadableLoader::create(context, *this, request.internalRequest(), options);
     m_isStarted = m_loader;
 }
 
-FetchLoader::FetchLoader(Type type, FetchLoaderClient& client)
-    : m_type(type)
-    , m_client(client)
+FetchLoader::FetchLoader(FetchLoaderClient& client, FetchBodyConsumer* consumer)
+    : m_client(client)
+    , m_consumer(consumer)
 {
 }
 
 void FetchLoader::stop()
 {
-    m_data = nullptr;
+    if (m_consumer)
+        m_consumer->clean();
     if (m_loader)
         m_loader->cancel();
 }
 
 RefPtr<SharedBuffer> FetchLoader::startStreaming()
 {
-    ASSERT(m_type == Type::ArrayBuffer);
-    m_type = Type::Stream;
-    return WTFMove(m_data);
+    ASSERT(m_consumer);
+    auto firstChunk = m_consumer->takeData();
+    m_consumer = nullptr;
+    return firstChunk;
 }
 
 void FetchLoader::didReceiveResponse(unsigned long, const ResourceResponse& response)
@@ -114,29 +108,17 @@ void FetchLoader::didReceiveResponse(unsigned long, const ResourceResponse& resp
     m_client.didReceiveResponse(response);
 }
 
-// FIXME: We should make text and blob creation more efficient.
-// We might also want to merge this class with FileReaderLoader.
 void FetchLoader::didReceiveData(const char* value, int size)
 {
-    if (m_type == Type::Stream) {
+    if (!m_consumer) {
         m_client.didReceiveData(value, size);
         return;
     }
-    if (!m_data) {
-        m_data = SharedBuffer::create(value, size);
-        return;
-    }
-    m_data->append(value, size);
+    m_consumer->append(value, size);
 }
 
 void FetchLoader::didFinishLoading(unsigned long, double)
 {
-    if (m_type == Type::ArrayBuffer)
-        m_client.didFinishLoadingAsArrayBuffer(m_data ? m_data->createArrayBuffer() : ArrayBuffer::tryCreate(nullptr, 0));
-    else if (m_type == Type::Text)
-        m_client.didFinishLoadingAsText(m_data ? TextResourceDecoder::create(ASCIILiteral("text/plain"), "UTF-8")->decodeAndFlush(m_data->data(), m_data->size()): String());
-    m_data = nullptr;
-
     m_client.didSucceed();
 }
 

@@ -41,6 +41,7 @@ struct CoordinatedGraphicsState;
 
 namespace WebKit {
 
+class RedirectedXCompositeWindow;
 class WebPage;
 
 class ThreadedCoordinatedLayerTreeHost final : public CoordinatedLayerTreeHost {
@@ -54,13 +55,17 @@ private:
     void scrollNonCompositedContents(const WebCore::IntRect& scrollRect) override;
     void sizeDidChange(const WebCore::IntSize&) override;
     void deviceOrPageScaleFactorChanged() override;
+    void pageBackgroundTransparencyChanged() override;
 
     void contentsSizeChanged(const WebCore::IntSize&) override;
     void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
 
     void invalidate() override;
 
-#if PLATFORM(GTK)
+    void forceRepaint() override;
+    bool forceRepaintAsync(uint64_t callbackID) override { return false; }
+
+#if PLATFORM(GTK) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     void setNativeSurfaceHandleForCompositing(uint64_t) override;
 #endif
 
@@ -76,11 +81,6 @@ private:
         void setVisibleContentsRect(const WebCore::FloatRect& rect, const WebCore::FloatPoint& trajectoryVector, float scale) override
         {
             m_layerTreeHost.setVisibleContentsRect(rect, trajectoryVector, scale);
-        }
-
-        void purgeBackingStores() override
-        {
-            m_layerTreeHost.purgeBackingStores();
         }
 
         void renderNextFrame() override
@@ -108,11 +108,14 @@ private:
     virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) override;
 #endif
 
-    WebCore::IntPoint m_prevScrollPosition;
     CompositorClient m_compositorClient;
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    std::unique_ptr<RedirectedXCompositeWindow> m_redirectedWindow;
+#endif
     RefPtr<ThreadedCompositor> m_compositor;
 
     float m_lastScaleFactor { 1 };
+    WebCore::IntPoint m_prevScrollPosition;
     WebCore::IntPoint m_lastScrollPosition;
 };
 

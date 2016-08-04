@@ -164,10 +164,9 @@ TextBreakIterator* sentenceBreakIterator(StringView string)
 
 TextBreakIterator* cursorMovementIterator(StringView string)
 {
-    // FIXME: These rules need to be updated for additional gender-based emoji support.
 #if !PLATFORM(IOS)
-    // This rule set is based on character-break iterator rules of ICU 4.0
-    // <http://source.icu-project.org/repos/icu/icu/tags/release-4-0/source/data/brkitr/char.txt>.
+    // This rule set is based on character-break iterator rules of ICU 57
+    // <http://source.icu-project.org/repos/icu/icu/tags/release-57-1/source/data/brkitr/>.
     // The major differences from the original ones are listed below:
     // * Replaced '[\p{Grapheme_Cluster_Break = SpacingMark}]' with '[\p{General_Category = Spacing Mark} - $Extend]' for ICU 3.8 or earlier;
     // * Removed rules that prevent a cursor from moving after prepend characters (Bug 24342);
@@ -214,7 +213,7 @@ TextBreakIterator* cursorMovementIterator(StringView string)
         "$ZWJ     = \\u200D;" // Zero width joiner
         "$EmojiVar = [\\uFE0F];" // Emoji-style variation selector
 #if ADDITIONAL_EMOJI_SUPPORT
-        "$EmojiForSeqs = [\\u2764 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F48B \\U0001F5E8];" // Emoji that participate in ZWJ sequences
+        "$EmojiForSeqs = [\\u2640 \\u2642 \\u26F9 \\u2764 \\U0001F308 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA-\\U0001F3CC \\U0001F3F3 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F46F \\U0001F471 \\U0001F473 \\U0001F477 \\U0001F481-\\U0001F482 \\U0001F486-\\U0001F487 \\U0001F48B \\U0001F575 \\U0001F5E8 \\U0001F645-\\U0001F647 \\U0001F64B \\U0001F64D-\\U0001F64E \\U0001F6A3 \\U0001F6B4-\\U0001F6B6];" // Emoji that participate in ZWJ sequences
         "$EmojiForMods = [\\u261D \\u26F9 \\u270A-\\u270D \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA \\U0001F3CB \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F575 \\U0001F590 \\U0001F595 \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0 \\U0001F918] ;" // Emoji that take Fitzpatrick modifiers
 #else
         "$EmojiForSeqs = [\\u2764 \\U0001F466-\\U0001F469 \\U0001F48B];" // Emoji that participate in ZWJ sequences
@@ -447,7 +446,7 @@ static const char* uax14AssignmentsAfter =
     "$ZWJ = \\u200D;"
     "$EmojiVar = \\uFE0F;"
 #if ADDITIONAL_EMOJI_SUPPORT
-    "$EmojiForSeqs = [\\u2764 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F48B \\U0001F5E8];"
+    "$EmojiForSeqs = [\\u2640 \\u2642 \\u26F9 \\u2764 \\U0001F308 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA-\\U0001F3CC \\U0001F3F3 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F46F \\U0001F471 \\U0001F473 \\U0001F477 \\U0001F481-\\U0001F482 \\U0001F486-\\U0001F487 \\U0001F48B \\U0001F575 \\U0001F5E8 \\U0001F645-\\U0001F647 \\U0001F64B \\U0001F64D-\\U0001F64E \\U0001F6A3 \\U0001F6B4-\\U0001F6B6];" // Emoji that participate in ZWJ sequences
     "$EmojiForMods = [\\u261D \\u26F9 \\u270A-\\u270D \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA \\U0001F3CB \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F575 \\U0001F590 \\U0001F595 \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0 \\U0001F918] ;" // Emoji that take Fitzpatrick modifiers
 #else
     "$EmojiForSeqs = [\\u2764 \\U0001F466-\\U0001F469 \\U0001F48B];"
@@ -480,7 +479,7 @@ static const char* uax14AssignmentsAfter =
     "$POcm = $PO $CM*;"
     "$PRcm = $PR $CM*;"
     "$QUcm = $QU $CM*;"
-    "$RIcm = $QU $CM*;"
+    "$RIcm = $RI $CM*;"
     "$SYcm = $SY $CM*;"
     "$WJcm = $WJ $CM*;";
 
@@ -522,6 +521,7 @@ static const char* uax14Forward =
     "$PO $CM+;"
     "$PR $CM+;"
     "$QU $CM+;"
+    "$RI $CM+;"
     "$SY $CM+;"
     "$WJ $CM+;"
     "$CR $LF {100};"
@@ -572,8 +572,10 @@ static const char* uax14Forward =
     "$BBcm [^$CB];"
     "$BBcm $LB20NonBreaks $CM*;"
     "$HLcm ($HYcm | $BAcm) [^$CB]?;"
+    "$SYcm $HLcm;"
     "($ALcm | $HLcm) $INcm;"
     "$CM+ $INcm;"
+    "$EXcm $INcm;"
     "$IDcm $INcm;"
     "$INcm $INcm;"
     "$NUcm $INcm;"
@@ -680,7 +682,9 @@ static const char* uax14Reverse =
     "$CM* [$LB20NonBreaks-$CM] $CM* $BB;"
     "[^$CB] $CM* $BB;"
     "[^$CB] $CM* ($HY | $BA) $CM* $HL;"
+    "$CM* $HL $CM* $SY;"
     "$CM* $IN $CM* ($ALPlus | $HL);"
+    "$CM* $IN $CM* $EX;"
     "$CM* $IN $CM* $ID;"
     "$CM* $IN $CM* $IN;"
     "$CM* $IN $CM* $NU;"

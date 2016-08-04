@@ -675,23 +675,24 @@ Branch32 U:G:32, U:G:32, U:G:32 /branch
     x86: RelCond, Index, Tmp
 
 BranchTest8 U:G:32, U:G:8, U:G:8 /branch
-    x86: ResCond, Addr, Imm
-    x86: ResCond, Index, Imm
+    x86: ResCond, Addr, BitImm
+    x86: ResCond, Index, BitImm
 
 BranchTest32 U:G:32, U:G:32, U:G:32 /branch
     ResCond, Tmp, Tmp
     ResCond, Tmp, BitImm
-    x86: ResCond, Addr, Imm
-    x86: ResCond, Index, Imm
+    x86: ResCond, Addr, BitImm
+    x86: ResCond, Index, BitImm
 
 # Warning: forms that take an immediate will sign-extend their immediate. You probably want
 # BranchTest32 in most cases where you use an immediate.
 64: BranchTest64 U:G:32, U:G:64, U:G:64 /branch
     ResCond, Tmp, Tmp
-    ResCond, Tmp, BitImm64
-    x86: ResCond, Addr, Imm
+    arm64: ResCond, Tmp, BitImm64
+    x86: ResCond, Tmp, BitImm
+    x86: ResCond, Addr, BitImm
     x86: ResCond, Addr, Tmp
-    x86: ResCond, Index, Imm
+    x86: ResCond, Index, BitImm
 
 BranchDouble U:G:32, U:F:64, U:F:64 /branch
     DoubleCond, Tmp, Tmp
@@ -848,6 +849,10 @@ RetDouble U:F:64 /return
     Tmp
 
 Oops /terminal
+
+# This is a terminal but we express it as a Custom because we don't want it to have a code
+# generator.
+custom EntrySwitch
 
 # A Shuffle is a multi-source, multi-destination move. It simultaneously does multiple moves at once.
 # The moves are specified as triplets of src, dst, and width. For example you can request a swap this

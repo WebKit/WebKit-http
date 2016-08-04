@@ -44,6 +44,7 @@ enum ObjSize { "small", "much-much-larger" };
 enum TestConfidence { "high", "kinda-low" };
 
 [
+    ConstructorCallWith=Document,
     Constructor(TestCallback testCallback, TestCallbackFunction testCallbackFunction),
     InterfaceName=TestObject
 ] interface TestObj {
@@ -134,9 +135,6 @@ enum TestConfidence { "high", "kinda-low" };
     [SetterRaisesExceptionWithMessage] attribute long attrWithSetterExceptionWithMessage;
     [GetterRaisesException] attribute DOMString stringAttrWithGetterException;
     [SetterRaisesException] attribute DOMString stringAttrWithSetterException;
-
-    // Strict type checking.
-    [StrictTypeChecking] attribute TestObj? strictTypeCheckingAttribute;
 
     // 'Custom' extended attribute
     [Custom] attribute long            customAttr;
@@ -253,9 +251,9 @@ enum TestConfidence { "high", "kinda-low" };
 
 #if defined(TESTING_JS)
     // Overloads
-    void    overloadedMethod(TestObj? objArg, [StrictTypeChecking] DOMString strArg);
+    void    overloadedMethod(TestObj? objArg, DOMString strArg);
     void    overloadedMethod(TestObj? objArg, optional long longArg);
-    void    overloadedMethod([StrictTypeChecking] DOMString strArg);
+    void    overloadedMethod(DOMString strArg);
     void    overloadedMethod(long longArg);
     void    overloadedMethod(TestCallback callback);
     void    overloadedMethod(DOMStringList? listArg);
@@ -268,7 +266,7 @@ enum TestConfidence { "high", "kinda-low" };
     // FIXME: Implement support for overloaded functions with variadic arguments.
     void    overloadedMethod(Blob... blobArgs);
 
-    void overloadedMethodWithOptionalParameter(TestObj? objArg1, optional TestObj? objArg2 = null);
+    void overloadedMethodWithOptionalParameter(DOMString strArg, optional TestObj? objArg = null);
     void overloadedMethodWithOptionalParameter(TestObj? objArg, optional long longArg);
 #endif
 
@@ -279,7 +277,7 @@ enum TestConfidence { "high", "kinda-low" };
 
     // Static method with conditional on overloaded methods
     [Conditional=Condition1] static void overloadedMethod1(long arg);
-    [Conditional=Condition1] static void overloadedMethod1([StrictTypeChecking] DOMString type);
+    [Conditional=Condition1] static void overloadedMethod1(DOMString type);
 
     void classMethodWithClamp([Clamp] unsigned short objArgsShort, [Clamp] unsigned long objArgsLong);
     void classMethodWithEnforceRange([EnforceRange] unsigned short objArgsShort, [EnforceRange] unsigned long objArgsLong);
@@ -310,12 +308,6 @@ enum TestConfidence { "high", "kinda-low" };
 
     [ImplementedAs=banana] void orange();
     [ImplementedAs=blueberry] attribute long strawberry;
-
-    [StrictTypeChecking] attribute unrestricted float strictFloat;
-    [StrictTypeChecking, RaisesException] boolean strictFunction(DOMString str, unrestricted float a, long b);
-
-    [StrictTypeChecking, RaisesException] boolean strictFunctionWithSequence(TestObj? objArg, sequence<unsigned long> a);
-    [StrictTypeChecking, RaisesException] boolean strictFunctionWithArray(TestObj objArg, long[] array);
 
     // ObjectiveC reserved words.
     readonly attribute long      description;

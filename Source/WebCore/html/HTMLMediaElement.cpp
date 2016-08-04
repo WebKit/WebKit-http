@@ -443,6 +443,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToAutoplayToExternalDevice);
 #endif
     m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager);
+    m_mediaSession->addBehaviorRestriction(MediaElementSession::RequirePlaybackToControlControlsManager);
 
     Settings* settings = document.settings();
 #if PLATFORM(IOS)
@@ -508,22 +509,12 @@ HTMLMediaElement::~HTMLMediaElement()
     unregisterWithDocument(document());
 
 #if ENABLE(VIDEO_TRACK)
-    if (m_audioTracks) {
+    if (m_audioTracks)
         m_audioTracks->clearElement();
-        for (unsigned i = 0; i < m_audioTracks->length(); ++i)
-            m_audioTracks->item(i)->clearClient();
-    }
     if (m_textTracks)
         m_textTracks->clearElement();
-    if (m_textTracks) {
-        for (unsigned i = 0; i < m_textTracks->length(); ++i)
-            m_textTracks->item(i)->clearClient();
-    }
-    if (m_videoTracks) {
+    if (m_videoTracks)
         m_videoTracks->clearElement();
-        for (unsigned i = 0; i < m_videoTracks->length(); ++i)
-            m_videoTracks->item(i)->clearClient();
-    }
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -3067,8 +3058,10 @@ void HTMLMediaElement::play(PlayPromise&& promise)
     if (ScriptController::processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
 
-    if (!playInternal())
+    if (!playInternal()) {
         promise.reject(NotAllowedError);
+        return;
+    }
 
     m_pendingPlayPromises.append(WTFMove(promise));
 }
@@ -3091,7 +3084,7 @@ bool HTMLMediaElement::playInternal()
     
     if (!m_mediaSession->clientWillBeginPlayback()) {
         LOG(Media, "  returning because of interruption");
-        return false;
+        return true; // Treat as success because we will begin playback on cessation of the interruption.
     }
 
     // 4.8.10.9. Playing the media resource
@@ -3156,7 +3149,7 @@ void HTMLMediaElement::pause()
         return;
 
     if (ScriptController::processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture();
+        removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::RequireUserGestureToControlControlsManager);
 
     pauseInternal();
 }
@@ -4411,6 +4404,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
             if (!m_sentEndEvent) {
                 m_sentEndEvent = true;
                 scheduleEvent(eventNames().endedEvent);
+                m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager | MediaElementSession::RequirePlaybackToControlControlsManager);
             }
             // If the media element has a current media controller, then report the controller state
             // for the media element's current media controller.
@@ -4431,6 +4425,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
             if (!m_sentEndEvent && m_player && m_player->ended()) {
                 m_sentEndEvent = true;
                 scheduleEvent(eventNames().endedEvent);
+                m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager | MediaElementSession::RequirePlaybackToControlControlsManager);
                 m_paused = true;
                 setPlaying(false);
             }
@@ -4822,6 +4817,8 @@ MediaTime HTMLMediaElement::maxTimeSeekable() const
     
 void HTMLMediaElement::updateVolume()
 {
+    if (!m_player)
+        return;
 #if PLATFORM(IOS)
     // Only the user can change audio volume so update the cached volume and post the changed event.
     float volume = m_player->volume();
@@ -4830,9 +4827,6 @@ void HTMLMediaElement::updateVolume()
         scheduleEvent(eventNames().volumechangeEvent);
     }
 #else
-    if (!m_player)
-        return;
-
     // Avoid recursion when the player reports volume changes.
     if (!processingMediaPlayerCallback()) {
         Page* page = document().page();
@@ -4945,6 +4939,9 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
 
 void HTMLMediaElement::setPlaying(bool playing)
 {
+    if (playing && m_mediaSession)
+        m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequirePlaybackToControlControlsManager);
+
     if (m_playing == playing)
         return;
 
@@ -5091,7 +5088,7 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
     if (m_videoFullscreenMode != VideoFullscreenModeNone)
         exitFullscreen();
 
-    setPreparedForInline(true);
+    setPreparedToReturnVideoLayerToInline(true);
 
     updatePlaybackControlsManager();
     m_inActiveDocument = false;
@@ -5465,19 +5462,29 @@ void HTMLMediaElement::exitFullscreen()
 #endif
     if (hasMediaControls())
         mediaControls()->exitedFullscreen();
-    if (document().page() && is<HTMLVideoElement>(*this)) {
-        if (m_mediaSession->requiresFullscreenForVideoPlayback(*this) && (!document().settings() || !document().settings()->allowsInlineMediaPlaybackAfterFullscreen() || isVideoTooSmallForInlinePlayback()))
+
+    if (!document().page() || !is<HTMLVideoElement>(*this))
+        return;
+
+    if (!paused() && m_mediaSession->requiresFullscreenForVideoPlayback(*this)) {
+        if (!document().settings() || !document().settings()->allowsInlineMediaPlaybackAfterFullscreen() || isVideoTooSmallForInlinePlayback())
             pauseInternal();
+        else {
+            // Allow inline playback, but set 'playsinline' so pausing and starting again (e.g. when scrubbing) won't go back to fullscreen.
+            // Also set the controls attribute so the user will be able to control playback.
+            setBooleanAttribute(HTMLNames::playsinlineAttr, true);
+            setControls(true);
+        }
+    }
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-        if (document().activeDOMObjectsAreSuspended() || document().activeDOMObjectsAreStopped())
-            document().page()->chrome().client().exitVideoFullscreenToModeWithoutAnimation(downcast<HTMLVideoElement>(*this), VideoFullscreenModeNone);
-        else
+    if (document().activeDOMObjectsAreSuspended() || document().activeDOMObjectsAreStopped())
+        document().page()->chrome().client().exitVideoFullscreenToModeWithoutAnimation(downcast<HTMLVideoElement>(*this), VideoFullscreenModeNone);
+    else
 #endif
-        if (document().page()->chrome().client().supportsVideoFullscreen(oldVideoFullscreenMode)) {
-            document().page()->chrome().client().exitVideoFullscreenForVideoElement(downcast<HTMLVideoElement>(*this));
-            scheduleEvent(eventNames().webkitendfullscreenEvent);
-        }
+    if (document().page()->chrome().client().supportsVideoFullscreen(oldVideoFullscreenMode)) {
+        document().page()->chrome().client().exitVideoFullscreenForVideoElement(downcast<HTMLVideoElement>(*this));
+        scheduleEvent(eventNames().webkitendfullscreenEvent);
     }
 }
 
@@ -5531,7 +5538,7 @@ PlatformLayer* HTMLMediaElement::platformLayer() const
     return m_player ? m_player->platformLayer() : nullptr;
 }
 
-void HTMLMediaElement::setPreparedForInline(bool value)
+void HTMLMediaElement::setPreparedToReturnVideoLayerToInline(bool value)
 {
     m_preparedForInline = value;
     if (m_preparedForInline && m_preparedForInlineCompletionHandler) {
@@ -6839,7 +6846,7 @@ String HTMLMediaElement::mediaSessionTitle() const
     return m_currentSrc;
 }
 
-void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType command)
+void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType command, const PlatformMediaSession::RemoteCommandArgument* argument)
 {
     LOG(Media, "HTMLMediaElement::didReceiveRemoteControlCommand(%p) - %i", this, static_cast<int>(command));
 
@@ -6848,6 +6855,7 @@ void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::Remo
     case PlatformMediaSession::PlayCommand:
         play();
         break;
+    case PlatformMediaSession::StopCommand:
     case PlatformMediaSession::PauseCommand:
         pause();
         break;
@@ -6864,9 +6872,19 @@ void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::Remo
     case PlatformMediaSession::EndSeekingForwardCommand:
         endScanning();
         break;
+    case PlatformMediaSession::SeekToPlaybackPositionCommand:
+        ASSERT(argument);
+        if (argument)
+            fastSeek(argument->asDouble);
+        break;
     default:
         { } // Do nothing
     }
+}
+
+bool HTMLMediaElement::supportsSeeking() const 
+{
+    return !isLiveStream();
 }
 
 bool HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType type) const

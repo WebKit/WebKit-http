@@ -128,7 +128,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckCell:
     case CheckBadCell:
     case CheckNotEmpty:
-    case CheckIdent:
+    case CheckStringIdent:
     case CheckWatchdogTimer:
     case StringCharCodeAt:
     case StringFromCharCode:
@@ -410,6 +410,10 @@ inline CapabilityLevel canCompile(Node* node)
         if (node->isBinaryUseKind(UntypedUse))
             break;
         if (node->isBinaryUseKind(SymbolUse))
+            break;
+        if (node->isBinaryUseKind(SymbolUse, UntypedUse))
+            break;
+        if (node->isBinaryUseKind(UntypedUse, SymbolUse))
             break;
         if (node->isBinaryUseKind(MiscUse, UntypedUse))
             break;

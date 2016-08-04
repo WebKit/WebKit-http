@@ -89,6 +89,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirIteratedRegisterCoalescing.cpp
     b3/air/AirLogRegisterPressure.cpp
     b3/air/AirLowerAfterRegAlloc.cpp
+    b3/air/AirLowerEntrySwitch.cpp
     b3/air/AirLowerMacros.cpp
     b3/air/AirOptimizeBlockOrder.cpp
     b3/air/AirPhaseScope.cpp
@@ -128,6 +129,7 @@ set(JavaScriptCore_SOURCES
     b3/B3FrequencyClass.cpp
     b3/B3Generate.cpp
     b3/B3HeapRange.cpp
+    b3/B3InferSwitches.cpp
     b3/B3InsertionSet.cpp
     b3/B3LegalizeMemoryOffsets.cpp
     b3/B3LowerMacros.cpp
@@ -175,6 +177,7 @@ set(JavaScriptCore_SOURCES
     builtins/BuiltinExecutableCreator.cpp
 
     bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp
+    bytecode/ArithProfile.cpp
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
@@ -309,7 +312,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLazyJSValue.cpp
     dfg/DFGLazyNode.cpp
     dfg/DFGLivenessAnalysisPhase.cpp
-    dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMaximalFlushInsertionPhase.cpp
     dfg/DFGMayExit.cpp
@@ -381,6 +383,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGWorklist.cpp
 
     disassembler/ARM64Disassembler.cpp
+    disassembler/ARMLLVMDisassembler.cpp
     disassembler/ARMv7Disassembler.cpp
     disassembler/Disassembler.cpp
     disassembler/UDis86Disassembler.cpp
@@ -432,12 +435,14 @@ set(JavaScriptCore_SOURCES
     ftl/FTLThunks.cpp
     ftl/FTLValueRange.cpp
 
+    heap/AllocatorAttributes.cpp
     heap/CodeBlockSet.cpp
     heap/ConservativeRoots.cpp
     heap/CopiedBlock.cpp
     heap/CopiedSpace.cpp
     heap/CopyVisitor.cpp
     heap/DeferGC.cpp
+    heap/DestructionMode.cpp
     heap/EdenGCActivityCallback.cpp
     heap/FullGCActivityCallback.cpp
     heap/GCActivityCallback.cpp
@@ -889,6 +894,7 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
 set(JavaScriptCore_LIBRARIES
     WTF${DEBUG_SUFFIX}
     ${ICU_I18N_LIBRARIES}
+    ${LLVM_LIBRARIES}
 )
 
 set(JavaScriptCore_SCRIPTS_SOURCES_DIR "${JAVASCRIPTCORE_DIR}/Scripts")

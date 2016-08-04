@@ -865,6 +865,9 @@ public:
     String title() const { return m_title.string(); }
     void setTitle(const String&, ExceptionCode&);
 
+    const AtomicString& dir() const;
+    void setDir(const AtomicString&);
+
     void titleElementAdded(Element& titleElement);
     void titleElementRemoved(Element& titleElement);
     void titleElementTextChanged(Element& titleElement);
@@ -1418,7 +1421,7 @@ private:
     void setCachedDOMCookies(const String&);
     bool isDOMCookieCacheValid() const { return m_cookieCacheExpiryTimer.isActive(); }
     void invalidateDOMCookieCache();
-    void didLoadResourceSynchronously(const ResourceRequest&) final;
+    void didLoadResourceSynchronously() final;
 
     void checkViewportDependentPictures();
 

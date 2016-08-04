@@ -43,10 +43,10 @@
 #include "Interpreter.h"
 #include "JITDisassembler.h"
 #include "JITInlineCacheGenerator.h"
+#include "JITMathIC.h"
 #include "JSInterfaceJIT.h"
 #include "Opcode.h"
 #include "PCToCodeOriginMap.h"
-#include "ResultType.h"
 #include "UnusedPointer.h"
 
 namespace JSC {
@@ -342,9 +342,6 @@ namespace JSC {
         void emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode);
         void emitWriteBarrier(JSCell* owner);
 
-        template<typename StructureType> // StructureType can be RegisterID or ImmPtr.
-        void emitAllocateJSObject(RegisterID allocator, StructureType, RegisterID result, RegisterID scratch);
-        
         // This assumes that the value to profile is in regT0 and that regT3 is available for
         // scratch.
         void emitValueProfilingSite(ValueProfile*);
@@ -398,10 +395,10 @@ namespace JSC {
         JumpList emitFloatTypedArrayPutByVal(Instruction*, PatchableJump& badType, TypedArrayType);
 
         // Identifier check helper for GetByVal and PutByVal.
-        void emitIdentifierCheck(RegisterID cell, RegisterID scratch, const Identifier&, JumpList& slowCases);
+        void emitByValIdentifierCheck(ByValInfo*, RegisterID cell, RegisterID scratch, const Identifier&, JumpList& slowCases);
 
-        JITGetByIdGenerator emitGetByValWithCachedId(Instruction*, const Identifier&, Jump& fastDoneCase, Jump& slowDoneCase, JumpList& slowCases);
-        JITPutByIdGenerator emitPutByValWithCachedId(Instruction*, PutKind, const Identifier&, JumpList& doneCases, JumpList& slowCases);
+        JITGetByIdGenerator emitGetByValWithCachedId(ByValInfo*, Instruction*, const Identifier&, Jump& fastDoneCase, Jump& slowDoneCase, JumpList& slowCases);
+        JITPutByIdGenerator emitPutByValWithCachedId(ByValInfo*, Instruction*, PutKind, const Identifier&, JumpList& doneCases, JumpList& slowCases);
 
         enum FinalObjectMode { MayBeFinal, KnownNotFinal };
 
@@ -435,7 +432,6 @@ namespace JSC {
         void compileGetByIdHotPath(const Identifier*);
 
         // Arithmetic opcode helpers
-        void emitSub32Constant(int dst, int op, int32_t constant, ResultType opType);
         void emitBinaryDoubleOp(OpcodeID, int dst, int op1, int op2, OperandTypes, JumpList& notInt32Op1, JumpList& notInt32Op2, bool op1IsInRegisters = true, bool op2IsInRegisters = true);
 
 #else // USE(JSVALUE32_64)
@@ -566,6 +562,7 @@ namespace JSC {
         void emit_op_nstricteq(Instruction*);
         void emit_op_dec(Instruction*);
         void emit_op_inc(Instruction*);
+        void emit_op_pow(Instruction*);
         void emit_op_profile_type(Instruction*);
         void emit_op_profile_control_flow(Instruction*);
         void emit_op_push_with_scope(Instruction*);
@@ -711,6 +708,12 @@ namespace JSC {
         bool isOperandConstantInt(int src);
         bool isOperandConstantChar(int src);
 
+        template <typename Generator, typename ProfiledFunction, typename NonProfiledFunction>
+        void emitMathICFast(JITMathIC<Generator>*, Instruction*, ProfiledFunction, NonProfiledFunction);
+
+        template <typename Generator, typename ProfiledRepatchFunction, typename ProfiledFunction, typename RepatchFunction>
+        void emitMathICSlow(JITMathIC<Generator>*, Instruction*, ProfiledRepatchFunction, ProfiledFunction, RepatchFunction);
+
         Jump getSlowCase(Vector<SlowCaseEntry>::iterator& iter)
         {
             return iter++->from;
@@ -763,7 +766,10 @@ namespace JSC {
 #endif
         MacroAssembler::Call callOperation(J_JITOperation_EJI, int, GPRReg, UniquedStringImpl*);
         MacroAssembler::Call callOperation(J_JITOperation_EJJ, int, GPRReg, GPRReg);
-        MacroAssembler::Call callOperation(J_JITOperation_EJJRp, JSValueRegs, JSValueRegs, JSValueRegs, ResultProfile*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJArp, JSValueRegs, JSValueRegs, JSValueRegs, ArithProfile*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJ, JSValueRegs, JSValueRegs, JSValueRegs);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJArpMic, JSValueRegs, JSValueRegs, JSValueRegs, ArithProfile*, TrustedImmPtr);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJMic, JSValueRegs, JSValueRegs, JSValueRegs, TrustedImmPtr);
         MacroAssembler::Call callOperation(J_JITOperation_EJJAp, int, GPRReg, GPRReg, ArrayProfile*);
         MacroAssembler::Call callOperation(J_JITOperation_EJJBy, int, GPRReg, GPRReg, ByValInfo*);
         MacroAssembler::Call callOperation(Z_JITOperation_EJOJ, GPRReg, GPRReg, GPRReg);
@@ -952,6 +958,9 @@ namespace JSC {
         static CodeRef stringGetByValStubGenerator(VM*);
 
         PCToCodeOriginMapBuilder m_pcToCodeOriginMapBuilder;
+
+        HashMap<Instruction*, void*> m_instructionToMathIC;
+        HashMap<Instruction*, MathICGenerationState> m_instructionToMathICGenerationState;
 
         bool m_canBeOptimized;
         bool m_canBeOptimizedOrInlined;

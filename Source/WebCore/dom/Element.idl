@@ -29,26 +29,22 @@
 
     readonly attribute DOMString? tagName;
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    DOMString? getAttribute(optional DOMString name = "undefined");
+    DOMString? getAttribute(DOMString name);
 
     [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    void setAttribute(optional DOMString name = "undefined", optional DOMString value = "undefined");
+    void setAttribute(DOMString name, DOMString value);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [InvokesCustomElementLifecycleCallbacks] void removeAttribute(optional DOMString name = "undefined");
-    Attr getAttributeNode(optional DOMString name = "undefined");
+    [InvokesCustomElementLifecycleCallbacks] void removeAttribute(DOMString name);
+    Attr? getAttributeNode(DOMString name);
 
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr setAttributeNode(Attr newAttr);
+    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr? setAttributeNode(Attr newAttr);
     [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr removeAttributeNode(Attr oldAttr);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ImplementedAs=getElementsByTagNameForObjC] NodeList getElementsByTagName(optional DOMString name);
+    [ImplementedAs=getElementsByTagNameForObjC] NodeList getElementsByTagName(DOMString name);
 #else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByTagName(optional DOMString name = "undefined");
+    HTMLCollection getElementsByTagName(DOMString name);
 #endif
 
 #if !defined(LANGUAGE_OBJECTIVE_C)
@@ -59,29 +55,25 @@
 
     // DOM Level 2 Core
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] DOMString? getAttributeNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
+    [ObjCLegacyUnnamedParameters] DOMString? getAttributeNS(DOMString? namespaceURI, DOMString localName);
 
     [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    void setAttributeNS(optional DOMString? namespaceURI = null, optional DOMString qualifiedName = "undefined", optional DOMString value = "undefined");
+    void setAttributeNS(DOMString? namespaceURI, DOMString qualifiedName, DOMString value);
 
     [ObjCLegacyUnnamedParameters, InvokesCustomElementLifecycleCallbacks] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS(optional DOMString namespaceURI, optional DOMString localName);
+    [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
 #else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByTagNameNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
+    HTMLCollection getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
 #endif
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] Attr getAttributeNodeNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr setAttributeNodeNS(Attr newAttr);
+    [ObjCLegacyUnnamedParameters] Attr? getAttributeNodeNS(DOMString? namespaceURI, DOMString localName);
+    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr? setAttributeNodeNS(Attr newAttr);
     boolean hasAttribute(DOMString name);
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] boolean hasAttributeNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
+
+    [ObjCLegacyUnnamedParameters] boolean hasAttributeNS(DOMString? namespaceURI, DOMString localName);
 
     [ImplementedAs=cssomStyle] readonly attribute CSSStyleDeclaration style;
 
@@ -126,6 +118,8 @@
 
     void scrollIntoView(optional boolean alignWithTop = true);
 
+    sequence<DOMString> getAttributeNames();
+
     // WebKit extensions
 
     void scrollIntoViewIfNeeded(optional boolean centerIfNeeded = true);
@@ -134,10 +128,9 @@
 
     // HTML 5
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ImplementedAs=getElementsByClassNameForObjC] NodeList getElementsByClassName(optional DOMString name);
+    [ImplementedAs=getElementsByClassNameForObjC] NodeList getElementsByClassName(DOMString name);
 #else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByClassName(optional DOMString name = "undefined");
+    HTMLCollection getElementsByClassName(DOMString name);
 #endif
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString innerHTML;
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString outerHTML;

@@ -1,0 +1,100 @@
+2016-08-03  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r203368): broke some test262 tests
+        https://bugs.webkit.org/show_bug.cgi?id=160479
+
+        Reviewed by Mark Lam.
+        
+        Added a stress test for this case, since we don't always run test262.
+
+        * stress/freeze-setter.js: Added.
+        (let.o.set foo):
+
+2016-08-03  Saam Barati  <sbarati@apple.com>
+
+        Implement nested rest destructuring w.r.t the ES7 spec
+        https://bugs.webkit.org/show_bug.cgi?id=160423
+
+        Reviewed by Filip Pizlo.
+
+        * stress/destructuring-rest-element.js: Added.
+        (assert):
+        (test):
+        (arr):
+        (eq):
+        (gen):
+        (fakeGen.return.Symbol.iterator):
+        (fakeGen):
+        * stress/rest-elements.js:
+        (testSyntaxError.String.raw):
+        * stress/rest-parameter-is-destructuring.js: Added.
+        (assert):
+        (test):
+        (foo):
+        (bar):
+        * test262.yaml:
+
+2016-08-02  Saam Barati  <sbarati@apple.com>
+
+        Rename Changelog to ChangeLog
+
+        Rubber stamped by Keith Miller.
+
+        * Changelog: Removed.
+
+2016-08-02  Saam Barati  <sbarati@apple.com>
+
+        update a class extending null w.r.t the ES7 spec
+        https://bugs.webkit.org/show_bug.cgi?id=160417
+
+        Reviewed by Keith Miller.
+
+        * Changelog:
+        * stress/class-derived-from-null.js: Added.
+        (assert):
+        (test):
+        (test1.C):
+        (test1):
+        (jsNull):
+        (test2.C):
+        (test2):
+        (test3.C):
+        (test3.D):
+        (test3.E):
+        (test3):
+        (test4.E):
+        (test4):
+        (test5.E):
+        (test5):
+        (test6.Base):
+        (test6.D):
+        (test6.E):
+        (test6.F):
+        (test6.G):
+        (test6):
+        * test262.yaml:
+
+2016-08-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Rationalize varargs stack overflow checks
+        https://bugs.webkit.org/show_bug.cgi?id=160425
+
+        Reviewed by Michael Saboff.
+
+        * stress/arity-check-ftl-throw-more-args.js: Added.
+        (catch):
+
+2016-08-01  Keith Miller  <keith_miller@apple.com>
+
+        We should not keep the JavaScript tests inside the Source/JavaScriptCore/ directory.
+        https://bugs.webkit.org/show_bug.cgi?id=160372
+
+        Rubber stamped by Geoffrey Garen.
+
+        This patch moves all the JavaScript tests from Source/JavaScriptCore/tests to
+        a new top level directory, JSTests. Having the tests in the Source directory
+        was both confusing an inconvenient for people that just want to checkout the
+        source code of WebKit. Since there is no other obvious place to put all the
+        JavaScript tests a new top level directory seemed the most sensible.
+
+        * tests/: Deleted.

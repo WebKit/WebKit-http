@@ -60,6 +60,12 @@ CompositingCoordinator::~CompositingCoordinator()
         registeredLayer->setCoordinator(nullptr);
 }
 
+void CompositingCoordinator::invalidate()
+{
+    m_rootLayer = nullptr;
+    purgeBackingStores();
+}
+
 void CompositingCoordinator::setRootCompositingLayer(GraphicsLayer* graphicsLayer)
 {
     if (m_rootCompositingLayer == graphicsLayer)

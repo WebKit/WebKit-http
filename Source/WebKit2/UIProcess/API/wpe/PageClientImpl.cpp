@@ -227,10 +227,6 @@ void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext&)
 {
 }
 
-void PageClientImpl::willEnterAcceleratedCompositingMode()
-{
-}
-
 void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&)
 {
 }

@@ -63,8 +63,10 @@ ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind 
     int alignedFrameSizeForParameters = WTF::roundUpToMultipleOf(stackAlignmentRegisters(),
         newCodeBlock->numParameters() + CallFrame::headerSizeInRegisters);
     int paddedStackSpace = alignedFrameSizeForParameters - frameSize;
+    
+    Register* newStack = exec->registers() - WTF::roundUpToMultipleOf(stackAlignmentRegisters(), paddedStackSpace);
 
-    if (UNLIKELY(!vm.ensureStackCapacityFor(exec->registers() - paddedStackSpace % stackAlignmentRegisters())))
+    if (UNLIKELY(!vm.ensureStackCapacityFor(newStack)))
         return -1;
     return paddedStackSpace;
 }
@@ -219,6 +221,7 @@ SLOW_PATH_HIDDEN_DECL(slow_path_mul);
 SLOW_PATH_HIDDEN_DECL(slow_path_sub);
 SLOW_PATH_HIDDEN_DECL(slow_path_div);
 SLOW_PATH_HIDDEN_DECL(slow_path_mod);
+SLOW_PATH_HIDDEN_DECL(slow_path_pow);
 SLOW_PATH_HIDDEN_DECL(slow_path_lshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_rshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_urshift);

@@ -36,3 +36,6 @@ To run under a specific Weston instance:
 
     $ weston --socket=wpe-test
     $ WAYLAND_DISPLAY=wpe-test Tools/Scripts/run-wpe
+
+Note: Careful with running Weston with WAYLAND_DISPLAY active as it
+will try to use it to set it up itself and might result in failure.

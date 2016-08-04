@@ -48,8 +48,106 @@ function initializeFetchResponse(body, init)
     if (body !== @undefined && body !== null) {
         if (status == 101 || status == 204 || status == 205 || status == 304)
             throw new @TypeError("Response cannot have a body with the given status");
+
+        // FIXME: Use @isReadableStream once it is no longer guarded by STREAMS_API guard.
+        let isBodyReadableStream = (@isObject(body) && !!body.@underlyingSource);
+        if (isBodyReadableStream)
+          this.@body = body;
+
         this.@initializeWith(body);
     }
 
     return this;
+}
+
+function body()
+{
+    if (!(this instanceof @Response))
+        throw @makeGetterTypeError("Response", "body");
+
+    if (!this.@body) {
+        if (@Response.prototype.@isDisturbed.@call(this)) {
+            this.@body = new @ReadableStream();
+            // Get reader to lock it.
+            new @ReadableStreamDefaultReader(this.@body);
+        } else {
+            var source = @Response.prototype.@createReadableStreamSource.@call(this);
+            this.@body = source ? new @ReadableStream(source) : null;
+        }
+    }
+    return this.@body;
+}
+
+function clone()
+{
+    if (!(this instanceof @Response))
+        throw @makeThisTypeError("Response", "clone");
+
+    if (@Response.prototype.@isDisturbed.@call(this))
+        throw new @TypeError("Cannot clone a disturbed Response");
+
+    var cloned = @Response.prototype.@cloneForJS.@call(this);
+    if (this.@body) {
+        var teedReadableStreams = @teeReadableStream(this.@body, false);
+        this.@body = teedReadableStreams[0];
+        cloned.@body = teedReadableStreams[1];
+    }
+    return cloned;
+}
+
+// consume and consumeStream single parameter should be kept in sync with FetchBodyConsumer::Type.
+function arrayBuffer()
+{
+    if (!(this instanceof @Response))
+        return @Promise.@reject(@makeThisTypeError("Response", "arrayBuffer"));
+
+    const arrayBufferConsumerType = 1;
+    if (!this.@body)
+        return @Response.prototype.@consume.@call(this, arrayBufferConsumerType);
+
+    return @consumeStream(this, arrayBufferConsumerType);
+}
+
+function blob()
+{
+    if (!(this instanceof @Response))
+        return @Promise.@reject(@makeThisTypeError("Response", "blob"));
+
+    const blobConsumerType = 2;
+    if (!this.@body)
+        return @Response.prototype.@consume.@call(this, blobConsumerType);
+
+    return @consumeStream(this, blobConsumerType);
+}
+
+function formData()
+{
+    if (!(this instanceof @Response))
+        return @Promise.@reject(@makeThisTypeError("Response", "formData"));
+
+    return @Promise.@reject("Not implemented");
+}
+
+function json()
+{
+    if (!(this instanceof @Response))
+        return @Promise.@reject(@makeThisTypeError("Response", "json"));
+
+    const jsonConsumerType = 3;
+    if (!this.@body)
+        return @Response.prototype.@consume.@call(this, jsonConsumerType);
+
+    return @consumeStream(this, jsonConsumerType);
+}
+
+function text()
+{
+    if (!(this instanceof @Response))
+        return @Promise.@reject(@makeThisTypeError("Response", "text"));
+
+    const textConsumerType = 4;
+    if (!this.@body)
+        return @Response.prototype.@consume.@call(this, textConsumerType);
+
+    return @consumeStream(this, textConsumerType);
 }

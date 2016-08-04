@@ -33,8 +33,14 @@
     readonly attribute boolean collapsed;
     readonly attribute Node commonAncestorContainer;
 
-    [ObjCLegacyUnnamedParameters, RaisesException] void setStart(Node refNode, optional long offset = 0);
-    [ObjCLegacyUnnamedParameters, RaisesException] void setEnd(Node refNode, optional long offset = 0);
+#if defined(LANGUAGE_JAVASCRIPT) || LANGUAGE_JAVASCRIPT
+    [RaisesException] void setStart(Node refNode, unsigned long offset);
+    [RaisesException] void setEnd(Node refNode, unsigned long offset);
+#else
+    [ObjCLegacyUnnamedParameters, RaisesException] void setStart(Node refNode, long offset);
+    [ObjCLegacyUnnamedParameters, RaisesException] void setEnd(Node refNode, long offset);
+#endif
+
     [RaisesException] void setStartBefore(Node refNode);
     [RaisesException] void setStartAfter(Node refNode);
     [RaisesException] void setEndBefore(Node refNode);
@@ -49,7 +55,7 @@
     const unsigned short END_TO_END     = 2;
     const unsigned short END_TO_START   = 3;
 
-    [ObjCLegacyUnnamedParameters, RaisesException, ImplementedAs=compareBoundaryPointsForBindings] short compareBoundaryPoints(optional unsigned short how = 0, Range sourceRange);
+    [ObjCLegacyUnnamedParameters, RaisesException, ImplementedAs=compareBoundaryPointsForBindings] short compareBoundaryPoints(unsigned short how, Range sourceRange);
 
     [RaisesException] void deleteContents();
     [RaisesException, NewObject] DocumentFragment extractContents();
@@ -70,8 +76,7 @@
 
     // extensions
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] DocumentFragment createContextualFragment(optional DOMString html = "undefined");
+    [RaisesException, NewObject] DocumentFragment createContextualFragment(DOMString html);
 
     // WebKit extensions
 
@@ -83,9 +88,15 @@
     const unsigned short NODE_BEFORE_AND_AFTER = 2;
     const unsigned short NODE_INSIDE           = 3;
 
-    [RaisesException] short comparePoint(Node refNode, optional long offset = 0);
     [RaisesException] boolean intersectsNode(Node refNode);
-    [RaisesException] boolean isPointInRange(Node refNode, optional long offset = 0);
+
+#if defined(LANGUAGE_JAVASCRIPT) || LANGUAGE_JAVASCRIPT
+    [RaisesException] short comparePoint(Node refNode, unsigned long offset);
+    [RaisesException] boolean isPointInRange(Node refNode, unsigned long offset);
+#else
+    [RaisesException] short comparePoint(Node refNode, long offset);
+    [RaisesException] boolean isPointInRange(Node refNode, long offset);
+#endif
 
     // FIXME: Using "undefined" as default parameter value is wrong.
     [RaisesException] void expand(optional DOMString unit = "undefined");

@@ -28,6 +28,7 @@
 
 #if ENABLE(JIT)
 
+#include "ArithProfile.h"
 #include "ArrayConstructor.h"
 #include "CommonSlowPaths.h"
 #include "DFGCompilationMode.h"
@@ -611,7 +612,7 @@ static OptimizationResult tryPutByValOptimize(ExecState* exec, JSValue baseValue
 
     if (baseValue.isObject() && isStringOrSymbol(subscript)) {
         const Identifier propertyName = subscript.toPropertyKey(exec);
-        if (!subscript.isString() || !parseIndex(propertyName)) {
+        if (subscript.isSymbol() || !parseIndex(propertyName)) {
             ASSERT(exec->bytecodeOffset());
             ASSERT(!byValInfo->stubRoutine);
             if (byValInfo->seen) {
@@ -623,8 +624,12 @@ static OptimizationResult tryPutByValOptimize(ExecState* exec, JSValue baseValue
                     optimizationResult = OptimizationResult::GiveUp;
                 }
             } else {
+                CodeBlock* codeBlock = exec->codeBlock();
+                ConcurrentJITLocker locker(codeBlock->m_lock);
                 byValInfo->seen = true;
                 byValInfo->cachedId = propertyName;
+                if (subscript.isSymbol())
+                    byValInfo->cachedSymbol.set(vm, codeBlock, asSymbol(subscript));
                 optimizationResult = OptimizationResult::SeenOnce;
             }
         }
@@ -689,9 +694,7 @@ static OptimizationResult tryDirectPutByValOptimize(ExecState* exec, JSObject* o
             optimizationResult = OptimizationResult::GiveUp;
     } else if (isStringOrSymbol(subscript)) {
         const Identifier propertyName = subscript.toPropertyKey(exec);
-        Optional<uint32_t> index = parseIndex(propertyName);
-
-        if (!subscript.isString() || !index) {
+        if (subscript.isSymbol() || !parseIndex(propertyName)) {
             ASSERT(exec->bytecodeOffset());
             ASSERT(!byValInfo->stubRoutine);
             if (byValInfo->seen) {
@@ -703,8 +706,12 @@ static OptimizationResult tryDirectPutByValOptimize(ExecState* exec, JSObject* o
                     optimizationResult = OptimizationResult::GiveUp;
                 }
             } else {
+                CodeBlock* codeBlock = exec->codeBlock();
+                ConcurrentJITLocker locker(codeBlock->m_lock);
                 byValInfo->seen = true;
                 byValInfo->cachedId = propertyName;
+                if (subscript.isSymbol())
+                    byValInfo->cachedSymbol.set(vm, codeBlock, asSymbol(subscript));
                 optimizationResult = OptimizationResult::SeenOnce;
             }
         }
@@ -1685,7 +1692,7 @@ static OptimizationResult tryGetByValOptimize(ExecState* exec, JSValue baseValue
 
     if (baseValue.isObject() && isStringOrSymbol(subscript)) {
         const Identifier propertyName = subscript.toPropertyKey(exec);
-        if (!subscript.isString() || !parseIndex(propertyName)) {
+        if (subscript.isSymbol() || !parseIndex(propertyName)) {
             ASSERT(exec->bytecodeOffset());
             ASSERT(!byValInfo->stubRoutine);
             if (byValInfo->seen) {
@@ -1697,11 +1704,14 @@ static OptimizationResult tryGetByValOptimize(ExecState* exec, JSValue baseValue
                     optimizationResult = OptimizationResult::GiveUp;
                 }
             } else {
+                CodeBlock* codeBlock = exec->codeBlock();
+                ConcurrentJITLocker locker(codeBlock->m_lock);
                 byValInfo->seen = true;
                 byValInfo->cachedId = propertyName;
+                if (subscript.isSymbol())
+                    byValInfo->cachedSymbol.set(vm, codeBlock, asSymbol(subscript));
                 optimizationResult = OptimizationResult::SeenOnce;
             }
-
         }
     }
 
@@ -2172,7 +2182,7 @@ void JIT_OPERATION lookupExceptionHandler(VM* vm, ExecState* exec)
 
 void JIT_OPERATION lookupExceptionHandlerFromCallerFrame(VM* vm, ExecState* exec)
 {
-    NativeCallFrameTracer tracer(vm, exec);
+    vm->topCallFrame = exec->callerFrame();
     genericUnwind(vm, exec, UnwindFromCallerFrame);
     ASSERT(vm->targetMachinePCForThrow);
 }
@@ -2247,7 +2257,7 @@ JSCell* JIT_OPERATION operationToIndexString(ExecState* exec, int32_t index)
     return jsString(exec, Identifier::from(exec, index).string());
 }
 
-EncodedJSValue JIT_OPERATION operationValueAdd(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+ALWAYS_INLINE static EncodedJSValue unprofiledAdd(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
@@ -2258,7 +2268,82 @@ EncodedJSValue JIT_OPERATION operationValueAdd(ExecState* exec, EncodedJSValue e
     return JSValue::encode(jsAdd(exec, op1, op2));
 }
 
-EncodedJSValue JIT_OPERATION operationValueAddProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile* resultProfile)
+ALWAYS_INLINE static EncodedJSValue profiledAdd(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    ASSERT(arithProfile);
+    arithProfile->observeLHSAndRHS(op1, op2);
+
+    JSValue result = jsAdd(exec, op1, op2);
+    arithProfile->observeResult(result);
+
+    return JSValue::encode(result);
+}
+
+EncodedJSValue JIT_OPERATION operationValueAdd(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+{
+    return unprofiledAdd(exec, encodedOp1, encodedOp2);
+}
+
+EncodedJSValue JIT_OPERATION operationValueAddProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile)
+{
+    return profiledAdd(exec, encodedOp1, encodedOp2, arithProfile);
+}
+
+EncodedJSValue JIT_OPERATION operationValueAddProfiledOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, JITAddIC* addIC)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    ASSERT(arithProfile);
+    arithProfile->observeLHSAndRHS(op1, op2);
+    auto nonOptimizeVariant = operationValueAddProfiledNoOptimize;
+    addIC->generateOutOfLine(*vm, exec->codeBlock(), nonOptimizeVariant);
+
+#if ENABLE(MATH_IC_STATS)
+    exec->codeBlock()->dumpMathICStats();
+#endif
+    
+    JSValue result = jsAdd(exec, op1, op2);
+    arithProfile->observeResult(result);
+
+    return JSValue::encode(result);
+}
+
+EncodedJSValue JIT_OPERATION operationValueAddProfiledNoOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, JITAddIC*)
+{
+    return profiledAdd(exec, encodedOp1, encodedOp2, arithProfile);
+}
+
+EncodedJSValue JIT_OPERATION operationValueAddOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITAddIC* addIC)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    auto nonOptimizeVariant = operationValueAddNoOptimize;
+    if (ArithProfile* arithProfile = addIC->m_generator.arithProfile())
+        arithProfile->observeLHSAndRHS(op1, op2);
+    addIC->generateOutOfLine(*vm, exec->codeBlock(), nonOptimizeVariant);
+
+#if ENABLE(MATH_IC_STATS)
+    exec->codeBlock()->dumpMathICStats();
+#endif
+
+    return JSValue::encode(jsAdd(exec, op1, op2));
+}
+
+EncodedJSValue JIT_OPERATION operationValueAddNoOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITAddIC*)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
@@ -2267,15 +2352,12 @@ EncodedJSValue JIT_OPERATION operationValueAddProfiled(ExecState* exec, EncodedJ
     JSValue op2 = JSValue::decode(encodedOp2);
     
     JSValue result = jsAdd(exec, op1, op2);
-    resultProfile->detectNumericness(result);
+
     return JSValue::encode(result);
 }
 
-EncodedJSValue JIT_OPERATION operationValueMul(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+ALWAYS_INLINE static EncodedJSValue unprofiledMul(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
 {
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-
     JSValue op1 = JSValue::decode(encodedOp1);
     JSValue op2 = JSValue::decode(encodedOp2);
 
@@ -2284,27 +2366,89 @@ EncodedJSValue JIT_OPERATION operationValueMul(ExecState* exec, EncodedJSValue e
     return JSValue::encode(jsNumber(a * b));
 }
 
-EncodedJSValue JIT_OPERATION operationValueMulProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile* resultProfile)
+ALWAYS_INLINE static EncodedJSValue profiledMul(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, bool shouldObserveLHSAndRHSTypes = true)
 {
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-
     JSValue op1 = JSValue::decode(encodedOp1);
     JSValue op2 = JSValue::decode(encodedOp2);
+
+    if (shouldObserveLHSAndRHSTypes)
+        arithProfile->observeLHSAndRHS(op1, op2);
 
     double a = op1.toNumber(exec);
     double b = op2.toNumber(exec);
     
     JSValue result = jsNumber(a * b);
-    resultProfile->detectNumericness(result);
+    arithProfile->observeResult(result);
     return JSValue::encode(result);
 }
 
-EncodedJSValue JIT_OPERATION operationValueSub(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+EncodedJSValue JIT_OPERATION operationValueMul(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    
+
+    return unprofiledMul(exec, encodedOp1, encodedOp2);
+}
+
+EncodedJSValue JIT_OPERATION operationValueMulNoOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITMulIC*)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return unprofiledMul(exec, encodedOp1, encodedOp2);
+}
+
+EncodedJSValue JIT_OPERATION operationValueMulOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITMulIC* mulIC)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    auto nonOptimizeVariant = operationValueMulNoOptimize;
+    if (ArithProfile* arithProfile = mulIC->m_generator.arithProfile())
+        arithProfile->observeLHSAndRHS(JSValue::decode(encodedOp1), JSValue::decode(encodedOp2));
+    mulIC->generateOutOfLine(*vm, exec->codeBlock(), nonOptimizeVariant);
+
+#if ENABLE(MATH_IC_STATS)
+    exec->codeBlock()->dumpMathICStats();
+#endif
+
+    return unprofiledMul(exec, encodedOp1, encodedOp2);
+}
+
+EncodedJSValue JIT_OPERATION operationValueMulProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return profiledMul(exec, encodedOp1, encodedOp2, arithProfile);
+}
+
+EncodedJSValue JIT_OPERATION operationValueMulProfiledOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, JITMulIC* mulIC)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    arithProfile->observeLHSAndRHS(JSValue::decode(encodedOp1), JSValue::decode(encodedOp2));
+    auto nonOptimizeVariant = operationValueMulProfiledNoOptimize;
+    mulIC->generateOutOfLine(*vm, exec->codeBlock(), nonOptimizeVariant);
+
+#if ENABLE(MATH_IC_STATS)
+    exec->codeBlock()->dumpMathICStats();
+#endif
+
+    return profiledMul(exec, encodedOp1, encodedOp2, arithProfile, false);
+}
+
+EncodedJSValue JIT_OPERATION operationValueMulProfiledNoOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, JITMulIC*)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return profiledMul(exec, encodedOp1, encodedOp2, arithProfile);
+}
+
+ALWAYS_INLINE static EncodedJSValue unprofiledSub(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+{
     JSValue op1 = JSValue::decode(encodedOp1);
     JSValue op2 = JSValue::decode(encodedOp2);
 
@@ -2313,20 +2457,84 @@ EncodedJSValue JIT_OPERATION operationValueSub(ExecState* exec, EncodedJSValue e
     return JSValue::encode(jsNumber(a - b));
 }
 
-EncodedJSValue JIT_OPERATION operationValueSubProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile* resultProfile)
+ALWAYS_INLINE static EncodedJSValue profiledSub(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, bool shouldObserveLHSAndRHSTypes = true)
 {
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-    
     JSValue op1 = JSValue::decode(encodedOp1);
     JSValue op2 = JSValue::decode(encodedOp2);
+
+    if (shouldObserveLHSAndRHSTypes)
+        arithProfile->observeLHSAndRHS(op1, op2);
 
     double a = op1.toNumber(exec);
     double b = op2.toNumber(exec);
     
     JSValue result = jsNumber(a - b);
-    resultProfile->detectNumericness(result);
+    arithProfile->observeResult(result);
     return JSValue::encode(result);
+}
+
+EncodedJSValue JIT_OPERATION operationValueSub(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    return unprofiledSub(exec, encodedOp1, encodedOp2);
+}
+
+EncodedJSValue JIT_OPERATION operationValueSubProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return profiledSub(exec, encodedOp1, encodedOp2, arithProfile);
+}
+
+EncodedJSValue JIT_OPERATION operationValueSubOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITSubIC* subIC)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    auto nonOptimizeVariant = operationValueSubNoOptimize;
+    if (ArithProfile* arithProfile = subIC->m_generator.arithProfile())
+        arithProfile->observeLHSAndRHS(JSValue::decode(encodedOp1), JSValue::decode(encodedOp2));
+    subIC->generateOutOfLine(*vm, exec->codeBlock(), nonOptimizeVariant);
+
+#if ENABLE(MATH_IC_STATS)
+    exec->codeBlock()->dumpMathICStats();
+#endif
+
+    return unprofiledSub(exec, encodedOp1, encodedOp2);
+}
+
+EncodedJSValue JIT_OPERATION operationValueSubNoOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITSubIC*)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return unprofiledSub(exec, encodedOp1, encodedOp2);
+}
+
+EncodedJSValue JIT_OPERATION operationValueSubProfiledOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, JITSubIC* subIC)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    arithProfile->observeLHSAndRHS(JSValue::decode(encodedOp1), JSValue::decode(encodedOp2));
+    auto nonOptimizeVariant = operationValueSubProfiledNoOptimize;
+    subIC->generateOutOfLine(*vm, exec->codeBlock(), nonOptimizeVariant);
+
+#if ENABLE(MATH_IC_STATS)
+    exec->codeBlock()->dumpMathICStats();
+#endif
+
+    return profiledSub(exec, encodedOp1, encodedOp2, arithProfile, false);
+}
+
+EncodedJSValue JIT_OPERATION operationValueSubProfiledNoOptimize(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile* arithProfile, JITSubIC*)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return profiledSub(exec, encodedOp1, encodedOp2, arithProfile);
 }
 
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState* exec)

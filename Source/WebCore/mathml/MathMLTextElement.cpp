@@ -31,14 +31,13 @@
 #include "MathMLTextElement.h"
 
 #include "MathMLNames.h"
-#include "RenderMathMLOperator.h"
 #include "RenderMathMLToken.h"
 
 namespace WebCore {
 
 using namespace MathMLNames;
 
-inline MathMLTextElement::MathMLTextElement(const QualifiedName& tagName, Document& document)
+MathMLTextElement::MathMLTextElement(const QualifiedName& tagName, Document& document)
     : MathMLElement(tagName, document)
 {
     setHasCustomStyleResolveCallbacks();
@@ -65,22 +64,17 @@ void MathMLTextElement::childrenChanged(const ChildChange& change)
 
 void MathMLTextElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (name == stretchyAttr || name == lspaceAttr || name == rspaceAttr || name == movablelimitsAttr) {
-        if (is<RenderMathMLOperator>(renderer()))
-            downcast<RenderMathMLOperator>(*renderer()).updateFromElement();
-        return;
+    if (name == mathvariantAttr) {
+        m_mathVariant = Nullopt;
+        if (renderer())
+            MathMLStyle::resolveMathMLStyleTree(renderer());
     }
-
-    if (name == mathvariantAttr && renderer())
-        MathMLStyle::resolveMathMLStyleTree(renderer());
 
     MathMLElement::parseAttribute(name, value);
 }
 
 RenderPtr<RenderElement> MathMLTextElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
-    if (hasTagName(MathMLNames::moTag))
-        return createRenderer<RenderMathMLOperator>(*this, WTFMove(style));
     if (hasTagName(MathMLNames::annotationTag))
         return MathMLElement::createElementRenderer(WTFMove(style), insertionPosition);
 

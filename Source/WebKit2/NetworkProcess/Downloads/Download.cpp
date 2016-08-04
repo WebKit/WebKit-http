@@ -35,10 +35,6 @@
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/NotImplemented.h>
 
-#if !USE(NETWORK_SESSION)
-#include "DownloadAuthenticationClient.h"
-#endif
-
 using namespace WebCore;
 
 #define DOWNLOAD_LOG_ALWAYS(...) LOG_ALWAYS(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
@@ -86,7 +82,6 @@ void Download::didReceiveAuthenticationChallenge(const AuthenticationChallenge& 
 {
     m_downloadManager.downloadsAuthenticationManager().didReceiveAuthenticationChallenge(*this, authenticationChallenge);
 }
-#endif
 
 void Download::didReceiveResponse(const ResourceResponse& response)
 {
@@ -94,6 +89,7 @@ void Download::didReceiveResponse(const ResourceResponse& response)
 
     send(Messages::DownloadProxy::DidReceiveResponse(response));
 }
+#endif
 
 void Download::didReceiveData(uint64_t length)
 {

@@ -4869,6 +4869,10 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
         if (!m_keyEventQueue.isEmpty())
             m_process->send(Messages::WebPage::KeyEvent(m_keyEventQueue.first()), m_pageID);
+        else {
+            if (auto* automationSession = process().processPool().automationSession())
+                automationSession->keyboardEventsFlushedForPage(*this);
+        }
 
         // The call to doneWithKeyEvent may close this WebPage.
         // Protect against this being destroyed.
@@ -5471,11 +5475,6 @@ void WebPageProxy::exitAcceleratedCompositingMode()
 void WebPageProxy::updateAcceleratedCompositingMode(const LayerTreeContext& layerTreeContext)
 {
     m_pageClient.updateAcceleratedCompositingMode(layerTreeContext);
-}
-
-void WebPageProxy::willEnterAcceleratedCompositingMode()
-{
-    m_pageClient.willEnterAcceleratedCompositingMode();
 }
 
 void WebPageProxy::backForwardClear()

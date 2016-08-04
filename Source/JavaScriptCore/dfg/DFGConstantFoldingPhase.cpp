@@ -71,6 +71,7 @@ public:
             // It's now possible to simplify basic blocks by placing an Unreachable terminator right
             // after anything that invalidates AI.
             bool didClipBlock = false;
+            Vector<Node*> nodesToDelete;
             for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
                 m_state.beginBasicBlock(block);
                 for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
@@ -83,7 +84,7 @@ public:
                     if (!m_state.isValid()) {
                         NodeOrigin origin = block->at(nodeIndex)->origin;
                         for (unsigned killIndex = nodeIndex; killIndex < block->size(); ++killIndex)
-                            m_graph.m_allocator.free(block->at(killIndex));
+                            nodesToDelete.append(block->at(killIndex));
                         block->resize(nodeIndex);
                         block->appendNode(m_graph, SpecNone, Unreachable, origin);
                         didClipBlock = true;
@@ -96,6 +97,12 @@ public:
 
             if (didClipBlock) {
                 changed = true;
+
+                m_graph.invalidateNodeLiveness();
+
+                for (Node* node : nodesToDelete)
+                    m_graph.deleteNode(node);
+
                 m_graph.invalidateCFG();
                 m_graph.resetReachability();
                 m_graph.killUnreachableBlocks();
@@ -245,25 +252,20 @@ private:
                 break;
             }
 
-            case CheckIdent: {
+            case CheckStringIdent: {
                 UniquedStringImpl* uid = node->uidOperand();
                 const UniquedStringImpl* constantUid = nullptr;
 
                 JSValue childConstant = m_state.forNode(node->child1()).value();
                 if (childConstant) {
-                    if (uid->isSymbol()) {
-                        if (childConstant.isSymbol())
-                            constantUid = asSymbol(childConstant)->privateName().uid();
-                    } else {
-                        if (childConstant.isString()) {
-                            if (const auto* impl = asString(childConstant)->tryGetValueImpl()) {
-                                // Edge filtering requires that a value here should be StringIdent.
-                                // However, a constant value propagated in DFG is not filtered.
-                                // So here, we check the propagated value is actually an atomic string.
-                                // And if it's not, we just ignore.
-                                if (impl->isAtomic())
-                                    constantUid = static_cast<const UniquedStringImpl*>(impl);
-                            }
+                    if (childConstant.isString()) {
+                        if (const auto* impl = asString(childConstant)->tryGetValueImpl()) {
+                            // Edge filtering requires that a value here should be StringIdent.
+                            // However, a constant value propagated in DFG is not filtered.
+                            // So here, we check the propagated value is actually an atomic string.
+                            // And if it's not, we just ignore.
+                            if (impl->isAtomic())
+                                constantUid = static_cast<const UniquedStringImpl*>(impl);
                         }
                     }
                 }

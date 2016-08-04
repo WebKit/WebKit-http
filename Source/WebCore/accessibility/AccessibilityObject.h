@@ -31,6 +31,7 @@
 #define AccessibilityObject_h
 
 #include "FloatQuad.h"
+#include "HTMLTextFormControlElement.h"
 #include "LayoutRect.h"
 #include "Path.h"
 #include "Range.h"
@@ -904,6 +905,7 @@ public:
     virtual String passwordFieldValue() const { return String(); }
     bool isValueAutofilled() const;
     bool isValueAutofillAvailable() const;
+    AutoFillButtonType valueAutofillButtonType() const;
     
     // Used by an ARIA tree to get all its rows.
     void ariaTreeRows(AccessibilityChildrenVector&);
@@ -1038,6 +1040,7 @@ public:
 
 #if PLATFORM(IOS)
     int accessibilityPasswordFieldLength();
+    bool hasTouchEventListener() const;
 #endif
     
     // allows for an AccessibilityObject to update its render tree or perform

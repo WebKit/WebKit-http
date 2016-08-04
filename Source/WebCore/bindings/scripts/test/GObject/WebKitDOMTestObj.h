@@ -900,35 +900,6 @@ WEBKIT_API void
 webkit_dom_test_obj_orange(WebKitDOMTestObj* self);
 
 /**
- * webkit_dom_test_obj_strict_function:
- * @self: A #WebKitDOMTestObj
- * @str: A #gchar
- * @a: A #gfloat
- * @b: A #glong
- * @error: #GError
- *
- * Returns: A #gboolean
- *
- * Stability: Unstable
-**/
-WEBKIT_API gboolean
-webkit_dom_test_obj_strict_function(WebKitDOMTestObj* self, const gchar* str, gfloat a, glong b, GError** error);
-
-/**
- * webkit_dom_test_obj_strict_function_with_array:
- * @self: A #WebKitDOMTestObj
- * @objArg: A #WebKitDOMTestObj
- * @array: A #glong
- * @error: #GError
- *
- * Returns: A #gboolean
- *
- * Stability: Unstable
-**/
-WEBKIT_API gboolean
-webkit_dom_test_obj_strict_function_with_array(WebKitDOMTestObj* self, WebKitDOMTestObj* objArg, glong array, GError** error);
-
-/**
  * webkit_dom_test_obj_variadic_string_method:
  * @self: A #WebKitDOMTestObj
  * @head: A #gchar
@@ -1704,27 +1675,6 @@ WEBKIT_API void
 webkit_dom_test_obj_set_string_attr_with_setter_exception(WebKitDOMTestObj* self, const gchar* value, GError** error);
 
 /**
- * webkit_dom_test_obj_get_strict_type_checking_attribute:
- * @self: A #WebKitDOMTestObj
- *
- * Returns: (transfer none): A #WebKitDOMTestObj
- *
- * Stability: Unstable
-**/
-WEBKIT_API WebKitDOMTestObj*
-webkit_dom_test_obj_get_strict_type_checking_attribute(WebKitDOMTestObj* self);
-
-/**
- * webkit_dom_test_obj_set_strict_type_checking_attribute:
- * @self: A #WebKitDOMTestObj
- * @value: A #WebKitDOMTestObj
- *
- * Stability: Unstable
-**/
-WEBKIT_API void
-webkit_dom_test_obj_set_strict_type_checking_attribute(WebKitDOMTestObj* self, WebKitDOMTestObj* value);
-
-/**
  * webkit_dom_test_obj_get_with_script_state_attribute:
  * @self: A #WebKitDOMTestObj
  *
@@ -1972,27 +1922,6 @@ webkit_dom_test_obj_get_strawberry(WebKitDOMTestObj* self);
 **/
 WEBKIT_API void
 webkit_dom_test_obj_set_strawberry(WebKitDOMTestObj* self, glong value);
-
-/**
- * webkit_dom_test_obj_get_strict_float:
- * @self: A #WebKitDOMTestObj
- *
- * Returns: A #gfloat
- *
- * Stability: Unstable
-**/
-WEBKIT_API gfloat
-webkit_dom_test_obj_get_strict_float(WebKitDOMTestObj* self);
-
-/**
- * webkit_dom_test_obj_set_strict_float:
- * @self: A #WebKitDOMTestObj
- * @value: A #gfloat
- *
- * Stability: Unstable
-**/
-WEBKIT_API void
-webkit_dom_test_obj_set_strict_float(WebKitDOMTestObj* self, gfloat value);
 
 /**
  * webkit_dom_test_obj_get_description:

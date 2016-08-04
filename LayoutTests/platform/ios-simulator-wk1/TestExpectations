@@ -530,6 +530,7 @@ editing/unsupported-content/table-delete-001.html [ Failure Pass ]
 editing/unsupported-content/table-delete-003.html [ Failure Pass ]
 
 # Compositing tests that fail:
+compositing/backing/backface-visibility-flip.html [ Failure ]
 compositing/backing/child-layer-no-backing.html [ Failure ]
 compositing/backing/inline-block-no-backing.html [ Failure ]
 compositing/backing/no-backing-for-clip-overhang.html [ Failure ]
@@ -598,6 +599,7 @@ compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Fa
 compositing/overflow/composited-scrolling-paint-phases.html [ Failure ]
 compositing/overflow/content-gains-scrollbars.html [ Failure ]
 compositing/overflow/overflow-scrollbar-layers.html [ Failure ]
+compositing/overflow/scroll-ancestor-update.html [ Failure ]
 compositing/repaint/fixed-background-scroll.html [ Failure ]
 compositing/repaint/invalidations-on-composited-layers.html [ Failure ]
 compositing/repaint/resize-repaint.html [ Failure ]
@@ -1005,7 +1007,9 @@ animations/suspend-resume-animation-events.html [ Pass Failure ]
 storage/indexeddb
 imported/w3c/IndexedDB-private-browsing
 imported/w3c/web-platform-tests/IndexedDB
+crypto/subtle/rsa-indexeddb-non-exportable-private.html
 crypto/subtle/rsa-indexeddb-non-exportable.html
+crypto/subtle/rsa-indexeddb-private.html
 crypto/subtle/rsa-indexeddb.html
 fast/history/page-cache-indexed-closed-db.html
 fast/history/page-cache-indexed-opened-db.html
@@ -1375,3 +1379,6 @@ fast/loader/iframe-src-invalid-url.html [ Skip ]
 webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ Pass Timeout ]
 
 webkit.org/b/158237 fast/scrolling/scroll-container-horizontally.html [ Timeout ]
+
+# FIXME: Many media tests fail
+media

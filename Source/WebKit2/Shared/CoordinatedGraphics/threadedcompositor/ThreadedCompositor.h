@@ -28,14 +28,12 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "CompositingRunLoop.h"
 #include "CoordinatedGraphicsScene.h"
 #include "SimpleViewportController.h"
 #include <WebCore/IntSize.h>
-#include <WebCore/TransformationMatrix.h>
 #include <wtf/Atomics.h>
-#include <wtf/Condition.h>
 #include <wtf/FastMalloc.h>
-#include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -59,7 +57,6 @@ class GLContext;
 
 namespace WebKit {
 
-class CompositingRunLoop;
 class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 class DisplayRefreshMonitor;
@@ -76,16 +73,16 @@ public:
     class Client {
     public:
         virtual void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&, float) = 0;
-        virtual void purgeBackingStores() = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
     };
 
-    static Ref<ThreadedCompositor> create(Client*, WebPage&);
+    static Ref<ThreadedCompositor> create(Client*, WebPage&, uint64_t nativeSurfaceHandle = 0);
     virtual ~ThreadedCompositor();
 
     void setNativeSurfaceHandleForCompositing(uint64_t);
     void setDeviceScaleFactor(float);
+    void setDrawsBackground(bool);
 
     void updateSceneState(const WebCore::CoordinatedGraphicsState&);
 
@@ -97,18 +94,22 @@ public:
 
     void invalidate();
 
+    void forceRepaint();
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID);
 #endif
 
 private:
-    ThreadedCompositor(Client*, WebPage&);
+    ThreadedCompositor(Client*, WebPage&, uint64_t nativeSurfaceHandle);
 
     // CoordinatedGraphicsSceneClient
-    void purgeBackingStores() override;
     void renderNextFrame() override;
     void updateViewport() override;
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
+
+    // SimpleViewportController::Client.
+    void didChangeVisibleRect() override;
 
 #if PLATFORM(WPE)
     // WebCore::PlatformDisplayWPE::Surface::Client
@@ -117,17 +118,11 @@ private:
 
     void renderLayerTree();
     void scheduleDisplayImmediately();
-    void didChangeVisibleRect() override;
 
     bool tryEnsureGLContext();
     WebCore::GLContext* glContext();
 
-    void createCompositingThread();
-    void runCompositingThread();
-    void terminateCompositingThread();
-    static void compositingThreadEntry(void*);
-
-    Client* m_client;
+    Client* m_client { nullptr };
     RefPtr<CoordinatedGraphicsScene> m_scene;
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
@@ -139,13 +134,8 @@ private:
 
     WebCore::IntSize m_viewportSize;
     float m_deviceScaleFactor { 1 };
-    uint64_t m_nativeSurfaceHandle { 0 };
-
-    ThreadIdentifier m_threadIdentifier { 0 };
-    Condition m_initializeRunLoopCondition;
-    Lock m_initializeRunLoopConditionLock;
-    Condition m_terminateRunLoopCondition;
-    Lock m_terminateRunLoopConditionLock;
+    bool m_drawsBackground { true };
+    uint64_t m_nativeSurfaceHandle;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     friend class DisplayRefreshMonitor;

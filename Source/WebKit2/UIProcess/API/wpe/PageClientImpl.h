@@ -92,7 +92,6 @@ private:
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     virtual void exitAcceleratedCompositingMode() override;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
-    virtual void willEnterAcceleratedCompositingMode() override;
 
     virtual void didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&) override;
 

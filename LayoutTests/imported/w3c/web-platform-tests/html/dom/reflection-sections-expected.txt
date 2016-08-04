@@ -1,7 +1,5 @@
 Implementers looking to fix bugs might want to use the original version of this suite's test framework, which conveniently aggregates similar errors and only reports failures. This file is (part of) the authoritative conformance test suite, and is suitable for incorporation into automated test suites.
 
-(Note: missing tests for types tokenlist.)
-
 
 PASS body.title: typeof IDL attribute 
 PASS body.title: IDL get with DOM attribute unset 
@@ -663,8 +661,8 @@ PASS body.text: IDL set to "\0" should not throw
 PASS body.text: IDL set to "\0" followed by getAttribute() 
 PASS body.text: IDL set to "\0" followed by IDL get 
 PASS body.text: IDL set to null should not throw 
-FAIL body.text: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.text: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.text: IDL set to null followed by getAttribute() 
+PASS body.text: IDL set to null followed by IDL get 
 PASS body.text: IDL set to object "test-toString" should not throw 
 PASS body.text: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.text: IDL set to object "test-toString" followed by IDL get 
@@ -740,8 +738,8 @@ PASS body.link: IDL set to "\0" should not throw
 PASS body.link: IDL set to "\0" followed by getAttribute() 
 PASS body.link: IDL set to "\0" followed by IDL get 
 PASS body.link: IDL set to null should not throw 
-FAIL body.link: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.link: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.link: IDL set to null followed by getAttribute() 
+PASS body.link: IDL set to null followed by IDL get 
 PASS body.link: IDL set to object "test-toString" should not throw 
 PASS body.link: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.link: IDL set to object "test-toString" followed by IDL get 
@@ -817,8 +815,8 @@ PASS body.vLink: IDL set to "\0" should not throw
 PASS body.vLink: IDL set to "\0" followed by getAttribute() 
 PASS body.vLink: IDL set to "\0" followed by IDL get 
 PASS body.vLink: IDL set to null should not throw 
-FAIL body.vLink: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.vLink: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.vLink: IDL set to null followed by getAttribute() 
+PASS body.vLink: IDL set to null followed by IDL get 
 PASS body.vLink: IDL set to object "test-toString" should not throw 
 PASS body.vLink: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.vLink: IDL set to object "test-toString" followed by IDL get 
@@ -894,8 +892,8 @@ PASS body.aLink: IDL set to "\0" should not throw
 PASS body.aLink: IDL set to "\0" followed by getAttribute() 
 PASS body.aLink: IDL set to "\0" followed by IDL get 
 PASS body.aLink: IDL set to null should not throw 
-FAIL body.aLink: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.aLink: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.aLink: IDL set to null followed by getAttribute() 
+PASS body.aLink: IDL set to null followed by IDL get 
 PASS body.aLink: IDL set to object "test-toString" should not throw 
 PASS body.aLink: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.aLink: IDL set to object "test-toString" followed by IDL get 
@@ -971,8 +969,8 @@ PASS body.bgColor: IDL set to "\0" should not throw
 PASS body.bgColor: IDL set to "\0" followed by getAttribute() 
 PASS body.bgColor: IDL set to "\0" followed by IDL get 
 PASS body.bgColor: IDL set to null should not throw 
-FAIL body.bgColor: IDL set to null followed by getAttribute() assert_equals: expected "" but got "null"
-FAIL body.bgColor: IDL set to null followed by IDL get assert_equals: expected "" but got "null"
+PASS body.bgColor: IDL set to null followed by getAttribute() 
+PASS body.bgColor: IDL set to null followed by IDL get 
 PASS body.bgColor: IDL set to object "test-toString" should not throw 
 PASS body.bgColor: IDL set to object "test-toString" followed by getAttribute() 
 PASS body.bgColor: IDL set to object "test-toString" followed by IDL get 
@@ -10328,4 +10326,4 @@ PASS #document.bgColor (<body bgcolor>): IDL set to object "test-toString" follo
 PASS #document.bgColor (<body bgcolor>): IDL set to object "test-valueOf" should not throw 
 PASS #document.bgColor (<body bgcolor>): IDL set to object "test-valueOf" followed by getAttribute() 
 PASS #document.bgColor (<body bgcolor>): IDL set to object "test-valueOf" followed by IDL get 
-
+(Note: missing tests for types tokenlist.)

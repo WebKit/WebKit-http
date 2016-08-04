@@ -51,7 +51,7 @@
 #include "WebsiteDataType.h"
 #include <WebCore/DNS.h>
 #include <WebCore/DiagnosticLoggingClient.h>
-#include <WebCore/Logging.h>
+#include <WebCore/LogInitialization.h>
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
@@ -516,10 +516,11 @@ void NetworkProcess::pendingDownloadCanceled(DownloadID downloadID)
     downloadProxyConnection()->send(Messages::DownloadProxy::DidCancel({ }), downloadID.downloadID());
 }
 
-void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler, const ResourceRequest& updatedRequest)
+void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler, const ResourceRequest& updatedRequest, const ResourceResponse& response)
 {
     uint64_t destinationID = networkDataTask.pendingDownloadID().downloadID();
     downloadProxyConnection()->send(Messages::DownloadProxy::DidStart(updatedRequest, String()), destinationID);
+    downloadProxyConnection()->send(Messages::DownloadProxy::DidReceiveResponse(response), destinationID);
 
     downloadManager().willDecidePendingDownloadDestination(networkDataTask, WTFMove(completionHandler));
     downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), networkDataTask.suggestedFilename()), destinationID);
@@ -538,11 +539,34 @@ void NetworkProcess::setCacheModel(uint32_t cm)
 {
     CacheModel cacheModel = static_cast<CacheModel>(cm);
 
-    if (!m_hasSetCacheModel || cacheModel != m_cacheModel) {
-        m_hasSetCacheModel = true;
-        m_cacheModel = cacheModel;
-        platformSetCacheModel(cacheModel);
+    if (m_hasSetCacheModel && (cacheModel == m_cacheModel))
+        return;
+
+    m_hasSetCacheModel = true;
+    m_cacheModel = cacheModel;
+
+    unsigned urlCacheMemoryCapacity = 0;
+    uint64_t urlCacheDiskCapacity = 0;
+    uint64_t diskFreeSize = 0;
+    if (WebCore::getVolumeFreeSpace(m_diskCacheDirectory, diskFreeSize)) {
+        // As a fudge factor, use 1000 instead of 1024, in case the reported byte
+        // count doesn't align exactly to a megabyte boundary.
+        diskFreeSize /= KB * 1000;
+        calculateURLCacheSizes(cacheModel, diskFreeSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
     }
+
+    if (m_diskCacheSizeOverride >= 0)
+        urlCacheDiskCapacity = m_diskCacheSizeOverride;
+
+#if ENABLE(NETWORK_CACHE)
+    auto& networkCache = NetworkCache::singleton();
+    if (networkCache.isEnabled()) {
+        networkCache.setCapacity(urlCacheDiskCapacity);
+        return;
+    }
+#endif
+
+    platformSetURLCacheSize(urlCacheMemoryCapacity, urlCacheDiskCapacity);
 }
 
 void NetworkProcess::setCanHandleHTTPSServerTrustEvaluation(bool value)

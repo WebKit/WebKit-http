@@ -35,13 +35,11 @@
     [NewObject, RaisesException, ImplementedAs=createElementForBindings] Element createElement(DOMString tagName);
     [NewObject] DocumentFragment   createDocumentFragment();
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [NewObject] Text createTextNode(optional DOMString data = "undefined");
-    [NewObject] Comment createComment(optional DOMString data = "undefined");
-    [NewObject, RaisesException] CDATASection createCDATASection(optional DOMString data = "undefined");
-    [ObjCLegacyUnnamedParameters, NewObject, RaisesException] ProcessingInstruction createProcessingInstruction(optional DOMString target = "undefined",
-                                                                                 optional DOMString data = "undefined");
-    [NewObject, RaisesException] Attr createAttribute(optional DOMString name = "undefined");
+    [NewObject] Text createTextNode(DOMString data);
+    [NewObject] Comment createComment(DOMString data);
+    [NewObject, RaisesException] CDATASection createCDATASection(DOMString data);
+    [ObjCLegacyUnnamedParameters, NewObject, RaisesException] ProcessingInstruction createProcessingInstruction(DOMString target, DOMString data);
+    [NewObject, RaisesException] Attr createAttribute(DOMString name);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     [RaisesException] EntityReference createEntityReference(optional DOMString name);
@@ -50,8 +48,7 @@
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     [ImplementedAs=getElementsByTagNameForObjC] NodeList getElementsByTagName(optional DOMString tagname);
 #else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByTagName(optional DOMString tagname = "undefined");
+    HTMLCollection getElementsByTagName(DOMString tagname);
 #endif
 
     // Introduced in DOM Level 2:
@@ -64,8 +61,7 @@
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS(optional DOMString namespaceURI, optional DOMString localName);
 #else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByTagNameNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
+    HTMLCollection getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
 #endif
 
     // DOM Level 3 Core
@@ -90,8 +86,7 @@
 
     // DOM Level 2 Events (DocumentEvents interface)
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException, NewObject] Event createEvent(optional DOMString eventType = "undefined");
+    [RaisesException, NewObject] Event createEvent(DOMString eventType);
 
     // DOM Level 2 Tranversal and Range (DocumentRange interface)
 
@@ -145,43 +140,37 @@
                                                   optional XPathResult? inResult);
 
     // Common extensions
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    boolean execCommand(optional DOMString command = "undefined",
-                        optional boolean userInterface = false,
-                        optional DOMString? value = null);
+    // FIXME: The default value for the last parameter should be the empty string.
+    boolean execCommand(DOMString command, optional boolean userInterface = false, optional DOMString? value = null);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     // FIXME: remove the these two versions once optional is implemented for Objective-C.
-    boolean            execCommand(DOMString command,
-                                   boolean userInterface);
-    boolean            execCommand(DOMString command);
+    boolean execCommand(DOMString command, boolean userInterface);
+    boolean execCommand(DOMString command);
 #endif
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    boolean            queryCommandEnabled(optional DOMString command = "undefined");
-    boolean            queryCommandIndeterm(optional DOMString command = "undefined");
-    boolean            queryCommandState(optional DOMString command = "undefined");
-    boolean            queryCommandSupported(optional DOMString command = "undefined");
-    DOMString          queryCommandValue(optional DOMString command = "undefined");
+    boolean queryCommandEnabled(DOMString command);
+    boolean queryCommandIndeterm(DOMString command);
+    boolean queryCommandState(DOMString command);
+    boolean queryCommandSupported(DOMString command);
+    DOMString queryCommandValue(DOMString command);
 
     // Moved down from HTMLDocument
 
-    // FIXME: Should not have [TreatNullAs=EmptyString].
-    [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString title;
+    [SetterRaisesException] attribute DOMString title;
+    attribute DOMString dir;
 
     readonly attribute DOMString referrer;
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // FIXME: Should not have [TreatNullAs=EmptyString].
-    [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString domain;
+    [SetterRaisesException] attribute DOMString domain;
 #else
     readonly attribute DOMString domain;
 #endif
     [ImplementedAs=urlForBindings] readonly attribute DOMString URL;
 
-    // FIXME: Should not have [TreatNullAs=EmptyString].
-    [TreatNullAs=EmptyString, GetterRaisesException, SetterRaisesException] attribute DOMString cookie;
+    [GetterRaisesException, SetterRaisesException] attribute DOMString cookie;
 
-    [SetterRaisesException, ImplementedAs=bodyOrFrameset, StrictTypeChecking] attribute HTMLElement? body;
+    [SetterRaisesException, ImplementedAs=bodyOrFrameset] attribute HTMLElement? body;
 
     readonly attribute HTMLHeadElement? head;
     readonly attribute HTMLCollection images;
@@ -191,8 +180,7 @@
     readonly attribute HTMLCollection anchors;
     readonly attribute DOMString lastModified;
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    NodeList getElementsByName([AtomicString] optional DOMString elementName = "undefined");
+    NodeList getElementsByName([AtomicString] DOMString elementName);
 
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [PutForwards=href, Unforgeable] readonly attribute Location? location;
@@ -228,8 +216,7 @@
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     // DOM Level 2 Style Interface
-    [ObjCLegacyUnnamedParameters, ObjCUseDefaultView] CSSStyleDeclaration getComputedStyle(Element? element,
-                                                                  DOMString pseudoElement);
+    [ObjCLegacyUnnamedParameters, ObjCUseDefaultView] CSSStyleDeclaration getComputedStyle(Element element, DOMString pseudoElement);
 
     // WebKit extension
     // FIXME: remove the first version once optional is implemented for Objective-C.
@@ -249,8 +236,7 @@
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     [ImplementedAs=getElementsByClassNameForObjC] NodeList getElementsByClassName(optional DOMString classNames);
 #else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByClassName(optional DOMString classNames = "undefined");
+    HTMLCollection getElementsByClassName(DOMString classNames);
 #endif
 
     readonly attribute Element? activeElement;
@@ -274,11 +260,10 @@
     [Conditional=POINTER_LOCK] void exitPointerLock();
     [Conditional=POINTER_LOCK] readonly attribute Element? pointerLockElement;
 
+#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     readonly attribute FontFaceSet fonts;
-#endif
 
 #if defined(ENABLE_IOS_TOUCH_EVENTS) && ENABLE_IOS_TOUCH_EVENTS
 #include <WebKitAdditions/DocumentIOS.idl>
@@ -297,7 +282,6 @@
     [NewObject, Custom] TouchList createTouchList(Touch... touches);
 #endif
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [Custom, RaisesException, Conditional=CUSTOM_ELEMENTS, EnabledAtRuntime=CustomElements]
     void defineElement(DOMString localName, Function constructor);
 #endif

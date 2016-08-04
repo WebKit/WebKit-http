@@ -34,10 +34,12 @@
     [RaisesException] void remove(DOMString... tokens);
     [RaisesException] boolean toggle(DOMString token, optional boolean force);
 
+    iterable<DOMString>;
+
     attribute DOMString value;
 
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [NotEnumerable] DOMString toString();
+    DOMString toString();
 #endif
 };
 

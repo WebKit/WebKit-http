@@ -2,6 +2,7 @@
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2010 François Sausset (sausset@gmail.com). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -206,7 +207,7 @@ unsigned MathMLElement::colSpan() const
 {
     if (!hasTagName(mtdTag))
         return 1u;
-    const AtomicString& colSpanValue = attributeWithoutSynchronization(columnspanAttr);
+    auto& colSpanValue = attributeWithoutSynchronization(columnspanAttr);
     return std::max(1u, limitToOnlyHTMLNonNegative(colSpanValue, 1u));
 }
 
@@ -214,7 +215,7 @@ unsigned MathMLElement::rowSpan() const
 {
     if (!hasTagName(mtdTag))
         return 1u;
-    const AtomicString& rowSpanValue = attributeWithoutSynchronization(rowspanAttr);
+    auto& rowSpanValue = attributeWithoutSynchronization(rowspanAttr);
     static const unsigned maxRowspan = 8190; // This constant comes from HTMLTableCellElement.
     return std::max(1u, std::min(limitToOnlyHTMLNonNegative(rowSpanValue, 1u), maxRowspan));
 }
@@ -279,7 +280,7 @@ void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& na
 bool MathMLElement::childShouldCreateRenderer(const Node& child) const
 {
     if (hasTagName(annotation_xmlTag)) {
-        const AtomicString& value = attributeWithoutSynchronization(MathMLNames::encodingAttr);
+        auto& value = attributeWithoutSynchronization(MathMLNames::encodingAttr);
 
         // See annotation-xml.model.mathml, annotation-xml.model.svg and annotation-xml.model.xhtml in the HTML5 RelaxNG schema.
 
@@ -329,10 +330,10 @@ void MathMLElement::defaultEventHandler(Event* event)
             return;
         }
         if (MouseEvent::canTriggerActivationBehavior(*event)) {
-            const AtomicString& href = attributeWithoutSynchronization(hrefAttr);
-            String url = stripLeadingAndTrailingHTMLSpaces(href);
+            auto& href = attributeWithoutSynchronization(hrefAttr);
+            const auto& url = stripLeadingAndTrailingHTMLSpaces(href);
             event->setDefaultHandled();
-            if (Frame* frame = document().frame())
+            if (auto* frame = document().frame())
                 frame->loader().urlSelected(document().completeURL(url), "_self", event, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate());
             return;
         }
@@ -397,16 +398,16 @@ int MathMLElement::tabIndex() const
     return Element::tabIndex();
 }
 
-static inline StringView skipLeadingAndTrailingWhitespace(const String& string)
+static inline StringView skipLeadingAndTrailingWhitespace(const StringView& stringView)
 {
-    unsigned start = 0, stringLength = string.length();
-    while (stringLength > 0 && isHTMLSpace(string[start])) {
+    unsigned start = 0, stringLength = stringView.length();
+    while (stringLength > 0 && isHTMLSpace(stringView[start])) {
         start++;
         stringLength--;
     }
-    while (stringLength > 0 && isHTMLSpace(string[start + stringLength - 1]))
+    while (stringLength > 0 && isHTMLSpace(stringView[start + stringLength - 1]))
         stringLength--;
-    return string.substring(start, stringLength);
+    return stringView.substring(start, stringLength);
 }
 
 MathMLElement::Length MathMLElement::parseNumberAndUnit(const StringView& string)
@@ -516,13 +517,88 @@ MathMLElement::Length MathMLElement::parseMathMLLength(const String& string)
     return parseNamedSpace(stringView);
 }
 
-const MathMLElement::Length& MathMLElement::cachedMathMLLength(const QualifiedName& name, Length& length)
+const MathMLElement::Length& MathMLElement::cachedMathMLLength(const QualifiedName& name, Optional<Length>& length)
 {
-    if (length.dirty) {
-        length = parseMathMLLength(attributeWithoutSynchronization(name));
-        length.dirty = false;
-    }
-    return length;
+    if (length)
+        return length.value();
+    length = parseMathMLLength(attributeWithoutSynchronization(name));
+    return length.value();
+}
+
+const MathMLElement::BooleanValue& MathMLElement::cachedBooleanAttribute(const QualifiedName& name, Optional<BooleanValue>& attribute)
+{
+    if (attribute)
+        return attribute.value();
+
+    // In MathML, attribute values are case-sensitive.
+    const AtomicString& value = attributeWithoutSynchronization(name);
+    if (value == "true")
+        attribute = BooleanValue::True;
+    else if (value == "false")
+        attribute = BooleanValue::False;
+    else
+        attribute = BooleanValue::Default;
+
+    return attribute.value();
+}
+
+MathMLElement::MathVariant MathMLElement::parseMathVariantAttribute(const AtomicString& attributeValue)
+{
+    // The mathvariant attribute values is case-sensitive.
+    if (attributeValue == "normal")
+        return MathVariant::Normal;
+    if (attributeValue == "bold")
+        return MathVariant::Bold;
+    if (attributeValue == "italic")
+        return MathVariant::Italic;
+    if (attributeValue == "bold-italic")
+        return MathVariant::BoldItalic;
+    if (attributeValue == "double-struck")
+        return MathVariant::DoubleStruck;
+    if (attributeValue == "bold-fraktur")
+        return MathVariant::BoldFraktur;
+    if (attributeValue == "script")
+        return MathVariant::Script;
+    if (attributeValue == "bold-script")
+        return MathVariant::BoldScript;
+    if (attributeValue == "fraktur")
+        return MathVariant::Fraktur;
+    if (attributeValue == "sans-serif")
+        return MathVariant::SansSerif;
+    if (attributeValue == "bold-sans-serif")
+        return MathVariant::BoldSansSerif;
+    if (attributeValue == "sans-serif-italic")
+        return MathVariant::SansSerifItalic;
+    if (attributeValue == "sans-serif-bold-italic")
+        return MathVariant::SansSerifBoldItalic;
+    if (attributeValue == "monospace")
+        return MathVariant::Monospace;
+    if (attributeValue == "initial")
+        return MathVariant::Initial;
+    if (attributeValue == "tailed")
+        return MathVariant::Tailed;
+    if (attributeValue == "looped")
+        return MathVariant::Looped;
+    if (attributeValue == "stretched")
+        return MathVariant::Stretched;
+    return MathVariant::None;
+}
+
+Optional<bool> MathMLElement::specifiedDisplayStyle()
+{
+    if (!acceptsDisplayStyleAttribute())
+        return Nullopt;
+    const MathMLElement::BooleanValue& specifiedDisplayStyle = cachedBooleanAttribute(displaystyleAttr, m_displayStyle);
+    return toOptionalBool(specifiedDisplayStyle);
+}
+
+Optional<MathMLElement::MathVariant> MathMLElement::specifiedMathVariant()
+{
+    if (!acceptsMathVariantAttribute())
+        return Nullopt;
+    if (!m_mathVariant)
+        m_mathVariant = parseMathVariantAttribute(attributeWithoutSynchronization(mathvariantAttr));
+    return m_mathVariant.value() == MathVariant::None ? Nullopt : m_mathVariant;
 }
 
 }

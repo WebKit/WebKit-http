@@ -65,18 +65,18 @@
     void print();
     void stop();
 
-    [Custom] DOMWindow open(DOMString url,
-                            DOMString name,
-                            optional DOMString options);
+    [Custom] DOMWindow open(optional DOMString url = "about:blank", optional DOMString target = "_blank", [TreatNullAs=EmptyString] optional DOMString features = "");
 
     [Custom] any showModalDialog(DOMString url,
                                        optional any dialogArgs,
                                        optional DOMString featureArgs);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    void alert(optional DOMString message = "undefined");
-    boolean confirm(optional DOMString message = "undefined");
-    DOMString? prompt(optional DOMString message = "undefined", optional DOMString? defaultValue = null);
+#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+    void alert();
+#endif
+    void alert(DOMString message);
+    boolean confirm(optional DOMString message = "");
+    DOMString? prompt(optional DOMString message = "", optional DOMString defaultValue = "");
 
     // FIXME: Using "undefined" as default parameter value is wrong.
     boolean find(optional DOMString string = "undefined",
@@ -149,7 +149,7 @@
     readonly attribute StyleMedia styleMedia;
 
     // DOM Level 2 Style Interface
-    CSSStyleDeclaration getComputedStyle(optional Element? element = null, optional DOMString? pseudoElement = null);
+    [NewObject] CSSStyleDeclaration getComputedStyle(Element element, optional DOMString? pseudoElement = null);
 
     // WebKit extensions
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT

@@ -1749,7 +1749,7 @@ void Document::allowsMediaDocumentInlinePlaybackChanged()
 
 String Document::nodeName() const
 {
-    return "#document";
+    return ASCIILiteral("#document");
 }
 
 Node::NodeType Document::nodeType() const
@@ -6874,7 +6874,7 @@ void Document::invalidateDOMCookieCache()
     m_cachedDOMCookies = String();
 }
 
-void Document::didLoadResourceSynchronously(const ResourceRequest&)
+void Document::didLoadResourceSynchronously()
 {
     // Synchronous resources loading can set cookies so we invalidate the cookies cache
     // in this case, to be safe.
@@ -7083,6 +7083,21 @@ void Document::addViewportDependentPicture(HTMLPictureElement& picture)
 void Document::removeViewportDependentPicture(HTMLPictureElement& picture)
 {
     m_viewportDependentPictures.remove(&picture);
+}
+
+const AtomicString& Document::dir() const
+{
+    auto* documentElement = this->documentElement();
+    if (!is<HTMLHtmlElement>(documentElement))
+        return nullAtom;
+    return downcast<HTMLHtmlElement>(*documentElement).dir();
+}
+
+void Document::setDir(const AtomicString& value)
+{
+    auto* documentElement = this->documentElement();
+    if (is<HTMLHtmlElement>(documentElement))
+        downcast<HTMLHtmlElement>(*documentElement).setDir(value);
 }
 
 } // namespace WebCore

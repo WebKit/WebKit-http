@@ -52,7 +52,7 @@ function initializeReadableStream(underlyingSource, strategy)
     this.@reader = @undefined;
     this.@storedError = @undefined;
     this.@disturbed = false;
-    this.@controller = new @ReadableStreamController(this);
+    this.@controller = new @ReadableStreamDefaultController(this);
     this.@strategy = @validateAndNormalizeQueuingStrategy(strategy.size, strategy.highWaterMark);
 
     @promiseInvokeOrNoopNoCatch(underlyingSource, "start", [this.@controller]).@then(() => {
@@ -71,7 +71,7 @@ function cancel(reason)
     "use strict";
 
     if (!@isReadableStream(this))
-        return @Promise.@reject(new @TypeError("Function should be called on a ReadableStream"));
+        return @Promise.@reject(@makeThisTypeError("ReadableStream", "cancel"));
 
     if (@isReadableStreamLocked(this))
         return @Promise.@reject(new @TypeError("ReadableStream is locked"));
@@ -84,9 +84,9 @@ function getReader()
     "use strict";
 
     if (!@isReadableStream(this))
-        throw new @TypeError("Function should be called on a ReadableStream");
+        throw @makeThisTypeError("ReadableStream", "getReader");
 
-    return new @ReadableStreamReader(this);
+    return new @ReadableStreamDefaultReader(this);
 }
 
 function pipeThrough(streams, options)
@@ -186,7 +186,7 @@ function pipeTo(destination)
     );
 
     doPipe();
-    
+
     return promiseCapability.@promise;
 }
 
@@ -195,7 +195,7 @@ function tee()
     "use strict";
 
     if (!@isReadableStream(this))
-        throw new @TypeError("Function should be called on a ReadableStream");
+        throw @makeThisTypeError("ReadableStream", "tee");
 
     return @teeReadableStream(this, false);
 }
@@ -205,7 +205,7 @@ function locked()
     "use strict";
 
     if (!@isReadableStream(this))
-        throw new @TypeError("Function should be called on a ReadableStream");
+        throw @makeGetterTypeError("ReadableStream", "locked");
 
     return @isReadableStreamLocked(this);
 }

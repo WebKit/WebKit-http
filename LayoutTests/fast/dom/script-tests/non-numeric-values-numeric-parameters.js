@@ -200,22 +200,22 @@ shouldBe("nonNumericPolicy('createCSSMediaRule().deleteRule(x)')", "'any type al
 
 // CSSRuleList
 
-shouldBe("nonNumericPolicy('createCSSRuleList().item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createCSSRuleList().item(x)')", "'any type allowed (but not omitted)'");
 
 // CSSStyleDeclaration
 
-shouldBe("nonNumericPolicy('createCSSStyleDeclaration().item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createCSSStyleDeclaration().item(x)')", "'any type allowed (but not omitted)'");
 
 // CSSStyleSheet
 
 shouldBe("nonNumericPolicy('createCSSStyleSheet().insertRule(ruleText, x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('createCSSStyleSheet().deleteRule(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createCSSStyleSheet().deleteRule(x)')", "'any type allowed (but not omitted)'");
 shouldBe("nonNumericPolicy('createCSSStyleSheet().addRule(selector, styleText, x)')", "'any type allowed'");
 shouldBe("nonNumericPolicy('createCSSStyleSheet().removeRule(x)')", "'any type allowed'");
 
 // CSSValueList
 
-shouldBe("nonNumericPolicy('createCSSValueList().item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createCSSValueList().item(x)')", "'any type allowed (but not omitted)'");
 
 // Document
 
@@ -235,17 +235,17 @@ shouldBe("nonNumericPolicy('document.body.scrollTop = x')", "'any type allowed'"
 
 // HTMLCollection
 
-shouldBe("nonNumericPolicy('document.images.item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('document.images.item(x)')", "'any type allowed (but not omitted)'");
 
 // HTMLInputElement
 
 shouldBe("nonNumericPolicy('document.createElement(\"input\").setSelectionRange(x, 0)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('document.createElement(\"input\").setSelectionRange(0, x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('document.createElement(\"input\").setSelectionRange(0, x)')", "'any type allowed (but not omitted)'");
 
 // HTMLOptionsCollection
 
 shouldBe("nonNumericPolicy('createHTMLOptionsCollection().add(document.createElement(\"option\"), x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('createHTMLOptionsCollection().remove(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createHTMLOptionsCollection().remove(x)')", "'any type allowed (but not omitted)'");
 
 // HTMLSelectElement
 
@@ -255,17 +255,17 @@ shouldBe("nonNumericPolicy('createHTMLSelectElement().item(x)')", "'any type all
 // HTMLTableElement
 
 shouldBe("nonNumericPolicy('createHTMLTableElement().insertRow(x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('createHTMLTableElement().deleteRow(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createHTMLTableElement().deleteRow(x)')", "'any type allowed (but not omitted)'");
 
 // HTMLTableRowElement
 
 shouldBe("nonNumericPolicy('createHTMLTableRowElement().insertCell(x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('createHTMLTableRowElement().deleteCell(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createHTMLTableRowElement().deleteCell(x)')", "'any type allowed (but not omitted)'");
 
 // HTMLTableSectionElement
 
 shouldBe("nonNumericPolicy('createHTMLTableSectionElement().insertRow(x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('createHTMLTableSectionElement().deleteRow(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createHTMLTableSectionElement().deleteRow(x)')", "'any type allowed (but not omitted)'");
 
 // HTMLInputElement
 
@@ -278,7 +278,7 @@ shouldBe("nonNumericPolicy('document.createEvent(\"KeyboardEvent\").initKeyboard
 
 // MediaList
 
-shouldBe("nonNumericPolicy('createMediaList().item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('createMediaList().item(x)')", "'any type allowed (but not omitted)'");
 
 // MouseEvent
 
@@ -291,7 +291,7 @@ shouldBe("nonNumericPolicy('document.createEvent(\"MouseEvent\").initMouseEvent(
 
 // NamedNodeMap
 
-shouldBe("nonNumericPolicy('document.body.attributes.item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('document.body.attributes.item(x)')", "'any type allowed (but not omitted)'");
 
 // NodeIterator
 
@@ -303,10 +303,10 @@ shouldBe("nonNumericPolicy('document.getElementsByTagName(\"div\").item(x)')", "
 
 // Range
 
-shouldBe("nonNumericPolicy('document.createRange().setStart(document, x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('document.createRange().setEnd(document, x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('document.createRange().comparePoint(document, x)')", "'any type allowed'");
-shouldBe("nonNumericPolicy('document.createRange().isPointInRange(document, x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('document.createRange().setStart(document, x)')", "'any type allowed (but not omitted)'");
+shouldBe("nonNumericPolicy('document.createRange().setEnd(document, x)')", "'any type allowed (but not omitted)'");
+shouldBe("nonNumericPolicy('document.createRange().comparePoint(document, x)')", "'any type allowed (but not omitted)'");
+shouldBe("nonNumericPolicy('document.createRange().isPointInRange(document, x)')", "'any type allowed (but not omitted)'");
 
 // Selection
 
@@ -323,7 +323,7 @@ shouldBe("nonNumericPolicy('getSelection().getRangeAt(x)')", "'any type allowed'
 
 // StyleSheetList
 
-shouldBe("nonNumericPolicy('document.styleSheets.item(x)')", "'any type allowed'");
+shouldBe("nonNumericPolicy('document.styleSheets.item(x)')", "'any type allowed (but not omitted)'");
 
 // Text
 

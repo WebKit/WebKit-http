@@ -1,3 +1,352 @@
+2016-08-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Don't set `width:calc(100% - 0px); left:0px` on console messages
+        https://bugs.webkit.org/show_bug.cgi?id=160428
+        <rdar://problem/27646033>
+
+        Reviewed by Timothy Hatcher.
+
+        Console messages inside console.group() are indented. Console messages outside of
+        console.group() aren't and there is no reason to set inline styles that do nothing
+        on each one of them.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+
+2016-08-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Grid column resizer elements positioned incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=160311
+        <rdar://problem/27595586>
+
+        Reviewed by Brian Burg.
+
+        Perform a resize layout on a newly shown tab content view if the tab
+        browser was resized before showing the tab.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype.layout):
+        Mark all recent tab content views (except for the current view)
+        as needing a resize layout.
+
+        (WebInspector.TabBrowser.prototype._tabBarItemSelected):
+        If the tab browser was resized while the view was hidden, update the
+        view's layout for the new content view container size.
+
+2016-08-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Waterfall graph in Network tab shows too much whitespace/dead time
+        https://bugs.webkit.org/show_bug.cgi?id=160373
+
+        Reviewed by Timothy Hatcher.
+
+        Track the start and end time separate from the ruler to remove
+        leading/trailing whitespace in the graph. Also prevent network
+        record bars from being clipped.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        (WebInspector.NetworkGridContentView.prototype.get zeroTime):
+        Set equal to the ruler start time.
+        (WebInspector.NetworkGridContentView.prototype.reset):
+        Reset start and end time.
+        (WebInspector.NetworkGridContentView.prototype.layout):
+        Set the initial values for ruler start/zero time if needed.
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        Set the start time if needed.
+        Reduce debounce from 250ms to 150ms. This prevents the current time from
+        exceeding the end time by as wide a margin, while keeping the current
+        time "timer" from being restarted too frequently.
+
+        (WebInspector.NetworkGridContentView.prototype._stopUpdatingCurrentTime):
+        Update the ruler end time and schedule a layout.
+        Add padding equal to the time needed to draw a network bar at minimum width
+        to prevent bars from being clipped.
+
+2016-07-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Inactive/active network bar segments overlap when latency is zero
+        https://bugs.webkit.org/show_bug.cgi?id=160147
+        <rdar://problem/27516007>
+
+        Reviewed by Joseph Pecoraro.
+
+        TimelineRecordBar should hide the inactive segment when its duration
+        is less than the minimum displayable size. The active segment can
+        assume the whole width of the bar.
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WebInspector.TimelineOverviewGraph.prototype.get secondsPerPixel):
+        Make secondsPerPixel available during TimelineRecordBars.refresh.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.prototype.refresh):
+        Check inactive duration against the minimum display size,
+        and add/remove DOM nodes and bar styles as needed.
+
+2016-07-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r195456): Web Inspector: Changing tabs in Styles sidebar shouldn't change sidebar's width
+        https://bugs.webkit.org/show_bug.cgi?id=159646
+        <rdar://problem/27286338>
+
+        Reviewed by Brian Burg.
+
+        Remember sidebar width on per tab basis. For example, Node, Styles, and Layers sidebar panels in
+        Elements tab should all have the same width, but Resource sidebar panel in Debugger tab should NOT
+        share its width Element tab's sidebar.
+
+        TabContentView stores the width but TabBrowser manages saving and restoring it.
+        The same way collapsed sidebar state is handled.
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.set collapsed):
+        Don't change sidebar's width when sidebar panels change.
+
+        (WebInspector.Sidebar.prototype._recalculateWidth):
+        (WebInspector.Sidebar.prototype.set selectedSidebarPanel): Deleted.
+        Pass newWidth as an argument so it can be saved in TabBrowser.
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WebInspector.SidebarPanel): Deleted.
+        (WebInspector.SidebarPanel.prototype.get savedWidth): Deleted.
+        (WebInspector.SidebarPanel.prototype.sizeDidChange): Deleted.
+        Remove the per sidebar panel width setting that was added in r195456.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype._detailsSidebarWidthDidChange):
+        (WebInspector.TabBrowser.prototype._showDetailsSidebarPanelsForTabContentView):
+        * UserInterface/Views/TabContentView.js:
+        (WebInspector.TabContentView):
+        (WebInspector.TabContentView.prototype.get detailsSidebarWidthSetting):
+        Store details sidebar width on TabContentView.
+
+2016-07-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Assertion in NetworkGridContentView when updating data grid for the first time
+        https://bugs.webkit.org/show_bug.cgi?id=160330
+        <rdar://problem/27600905>
+
+        Reviewed by Brian Burg.
+
+        When the first grid node is added, a view layout and current time update
+        are scheduled. A view layout occurring before the current time is updated
+        should be skipped, since the ruler end time hasn't been set.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView.prototype.layout):
+        Skip layout until current time is updated.
+        (WebInspector.NetworkGridContentView.prototype._update):
+        Remove unused variables `startTime` and `endTime`. Don't force a layout
+        if the elapsed time is zero.
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameters to Event.initEvent() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160320
+
+        Reviewed by Darin Adler.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        First parameter to canvas.getContext() / probablySupportsContext() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160312
+
+        Reviewed by Darin Adler.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Hiding a column which contains a TimelineRuler as the headerview, doesn't hide the headerView
+        https://bugs.webkit.org/show_bug.cgi?id=160093
+        <rdar://problem/27499300>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._positionHeaderViews):
+        Remove early return so that a header view in a hidden column will have
+        its width resized to zero, matching the column.
+
+2016-07-28  Johan K. Jensen  <johan_jensen@apple.com>
+
+        Web Inspector: Waterfall view should be visible in Network tab and Network Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=160061
+
+        Reviewed by Joseph Pecoraro.
+
+        Adds a Timeline-column (waterfall) to the Network tab and Network Timeline.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Add "Timeline" localized string.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        Add the Timeline-column with a TimelineRuler as the headerview,
+        and properties for updating current time.
+
+        (WebInspector.NetworkGridContentView.prototype.get secondsPerPixel):
+        (WebInspector.NetworkGridContentView.prototype.get startTime):
+        (WebInspector.NetworkGridContentView.prototype.get currentTime):
+        (WebInspector.NetworkGridContentView.prototype.get endTime):
+        Acting as a graphDataSource used by TimelineDataGridNode.
+
+        (WebInspector.NetworkGridContentView.prototype.shown):
+        (WebInspector.NetworkGridContentView.prototype.reset):
+        (WebInspector.NetworkGridContentView.prototype.layout):
+        Refresh graphs and update the TimelineRuler on layout changes.
+
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        Add listeners for when resources are finished to stop the timer.
+
+        (WebInspector.NetworkGridContentView.prototype._update):
+        (WebInspector.NetworkGridContentView.prototype._startUpdatingCurrentTime):
+        (WebInspector.NetworkGridContentView.prototype._stopUpdatingCurrentTime):
+        Adding a timer which updates the TimelineRuler and the layout
+        if any non-finished requests are running.
+
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        Add the Timeline-column with a TimelineRuler as the headerview.
+
+        (WebInspector.NetworkTimelineView.prototype.get secondsPerPixel):
+        (WebInspector.NetworkTimelineView.prototype.layout):
+        Refresh graphs on layout changes.
+
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.tree-outline.timeline-data-grid .item:hover .subtitle):
+        (.data-grid.timeline th):
+        (.data-grid.timeline th.graph-column > .timeline-ruler):
+        (.data-grid.timeline td.graph-column):
+        (.data-grid.timeline td.graph-column > .cell-content):
+        (.data-grid.timeline td.graph-column .timeline-record-bar):
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to table.deleteRow() / body.deleteRow() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160307
+
+        Reviewed by Ryosuke Niwa.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        2 first parameters to input.setSelectionRange() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160310
+
+        Reviewed by Alex Christensen.
+
+        Update WebInspector accordingly.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to tr.deleteCell() should be mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=160308
+
+        Reviewed by Ryosuke Niwa.
+
+        Report tr.deleteCell() parameter as mandatory.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-07-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Visual Styles Sidebar should have only one column when it's narrow
+        https://bugs.webkit.org/show_bug.cgi?id=159905
+        <rdar://problem/27413248>
+
+        Reviewed by Joseph Pecoraro.
+
+        Many CSS values often get clipped in the two colunm layout. Change the layout to one colunm
+        when visual style rows get too narrow.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .metric-section-row):
+        Wrap all rows except for position/padding/margin controls.
+
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row > .visual-style-property-container:not(.layout-reversed):last-child): Deleted.
+        Margin between the first and the second column doesn't make sense one column layout.
+        Set the margin in .visual-style-property-container instead.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateMetricSectionRows):
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container):
+
+2016-07-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] Web Inspector: CodeMirror-based editor bindings for Home and End don't match system behavior
+        https://bugs.webkit.org/show_bug.cgi?id=160267
+        <rdar://problem/27575553>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CodeMirrorEditor.js:
+        (WebInspector.CodeMirrorEditor.create):
+        (WebInspector.CodeMirrorEditor):
+        Add some key map overrides for Home and End to better match system Mac
+        behavior. This scrolls to the start or end of a document and does not
+        change the cursor position.
+
+2016-07-27  Brian Burg  <bburg@apple.com>
+
+        Regression(r203535): Uncaught Exception: TypeError: Not enough arguments at LayerTreeDataGridNode.js:47
+        https://bugs.webkit.org/show_bug.cgi?id=160187
+        <rdar://problem/27540435>
+
+        Reviewed by Eric Carlson.
+
+        After r203535, document.createTextNode() requires an argument.
+
+        * UserInterface/Views/LayerTreeDataGridNode.js:
+        (WebInspector.LayerTreeDataGridNode.prototype.createCellContent):
+        Since this use-site is for creating a cell in an unknown column,
+        initialize it to '–'. Previously it would have been the string
+        "undefined" or empty.
+
+2016-07-24  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Filtering is broken in the Overview timeline view
+        https://bugs.webkit.org/show_bug.cgi?id=160152
+        <rdar://problem/27517481>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SourceCodeTimelineTimelineDataGridNode.js:
+        (WebInspector.SourceCodeTimelineTimelineDataGridNode.prototype.filterableDataForColumn):
+        Non-resource nodes should be filtered based on their display name.
+
+2016-07-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r202876): Web Inspector: Switching away from Console tab with a lot of messages is slow
+        https://bugs.webkit.org/show_bug.cgi?id=160112
+
+        Reviewed by Joseph Pecoraro.
+
+        Showing NavigationSidebar before removing previous TabContentView can be very slow when
+        TabContentView is ConsoleTabContentView with a lot of messages. The order of operations
+        (show sidebar, change content view, show sidebar) caused more forced layouts. This patch
+        reduces the number of forced layouts by changes the order to: show content view, show sidebar,
+        show sidebar.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser.prototype._tabBarItemSelected):
+
 2016-07-20  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Pausing when Debugger tab is closed opens tab in wrong state

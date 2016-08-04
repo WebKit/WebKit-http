@@ -590,6 +590,14 @@ private:
                 fixEdge<ObjectUse>(node->child2());
                 break;
             }
+            if (node->child1()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child1());
+                break;
+            }
+            if (node->child2()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateMisc()) {
                 fixEdge<MiscUse>(node->child1());
                 break;
@@ -1206,12 +1214,8 @@ private:
             break;
         }
 
-        case CheckIdent: {
-            UniquedStringImpl* uid = node->uidOperand();
-            if (uid->isSymbol())
-                fixEdge<SymbolUse>(node->child1());
-            else
-                fixEdge<StringIdentUse>(node->child1());
+        case CheckStringIdent: {
+            fixEdge<StringIdentUse>(node->child1());
             break;
         }
             

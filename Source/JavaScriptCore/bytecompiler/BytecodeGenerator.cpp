@@ -31,6 +31,7 @@
 #include "config.h"
 #include "BytecodeGenerator.h"
 
+#include "ArithProfile.h"
 #include "BuiltinExecutables.h"
 #include "BytecodeLivenessAnalysis.h"
 #include "Interpreter.h"
@@ -559,9 +560,18 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         if (SourceParseMode::ArrowFunctionMode != parseMode) {
             if (isConstructor()) {
                 emitMove(m_newTargetRegister, &m_thisRegister);
-                if (constructorKind() == ConstructorKind::Derived)
+                if (constructorKind() == ConstructorKind::Extends) {
+                    RefPtr<Label> isDerived = newLabel();
+                    RefPtr<Label> done = newLabel();
+                    m_isDerivedConstuctor = addVar();
+                    emitGetById(m_isDerivedConstuctor, &m_calleeRegister, propertyNames().builtinNames().isDerivedConstructorPrivateName());
+                    emitJumpIfTrue(m_isDerivedConstuctor, isDerived.get());
+                    emitCreateThis(&m_thisRegister);
+                    emitJump(done.get());
+                    emitLabel(isDerived.get());
                     emitMoveEmptyValue(&m_thisRegister);
-                else
+                    emitLabel(done.get());
+                } else
                     emitCreateThis(&m_thisRegister);
             } else if (constructorKind() != ConstructorKind::None)
                 emitThrowTypeError("Cannot call a class constructor without |new|");
@@ -947,7 +957,7 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
             functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().newTargetLocalPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
         
-        if (isConstructor() && constructorKind() == ConstructorKind::Derived && isSuperUsedInInnerArrowFunction()) {
+        if (isConstructor() && constructorKind() == ConstructorKind::Extends && isSuperUsedInInnerArrowFunction()) {
             offset = functionSymbolTable->takeNextScopeOffset(NoLockingNecessary);
             functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().derivedConstructorPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
@@ -969,7 +979,7 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
         addTarget.iterator->value.setIsLet();
     }
 
-    if (isConstructor() && constructorKind() == ConstructorKind::Derived && isSuperUsedInInnerArrowFunction()) {
+    if (isConstructor() && constructorKind() == ConstructorKind::Extends && isSuperUsedInInnerArrowFunction()) {
         auto derivedConstructor = environment.add(propertyNames().builtinNames().derivedConstructorPrivateName());
         derivedConstructor.iterator->value.setIsCaptured();
         derivedConstructor.iterator->value.setIsLet();
@@ -1600,7 +1610,7 @@ RegisterID* BytecodeGenerator::emitBinaryOp(OpcodeID opcodeID, RegisterID* dst, 
 
     if (opcodeID == op_bitor || opcodeID == op_bitand || opcodeID == op_bitxor ||
         opcodeID == op_add || opcodeID == op_mul || opcodeID == op_sub || opcodeID == op_div)
-        instructions().append(types.toInt());
+        instructions().append(ArithProfile(types.first(), types.second()).bits());
 
     return dst;
 }
@@ -3264,24 +3274,28 @@ void BytecodeGenerator::emitCallDefineProperty(RegisterID* newObj, RegisterID* p
 RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
 {
     if (isConstructor()) {
-        bool derived = constructorKind() == ConstructorKind::Derived;
+        bool mightBeDerived = constructorKind() == ConstructorKind::Extends;
         bool srcIsThis = src->index() == m_thisRegister.index();
 
-        if (derived && srcIsThis)
+        if (mightBeDerived && srcIsThis)
             emitTDZCheck(src);
 
         if (!srcIsThis) {
             RefPtr<Label> isObjectLabel = newLabel();
             emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectLabel.get());
 
-            if (derived) {
+            if (mightBeDerived) {
+                ASSERT(m_isDerivedConstuctor);
+                RefPtr<Label> returnThis = newLabel();
+                emitJumpIfFalse(m_isDerivedConstuctor, returnThis.get());
+                // Else, we're a derived constructor here.
                 RefPtr<Label> isUndefinedLabel = newLabel();
                 emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isUndefinedLabel.get());
                 emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
                 emitLabel(isUndefinedLabel.get());
                 emitTDZCheck(&m_thisRegister);
+                emitLabel(returnThis.get());
             }
-
             emitUnaryNoDstOp(op_ret, &m_thisRegister);
             emitLabel(isObjectLabel.get());
         }
@@ -3410,13 +3424,9 @@ void BytecodeGenerator::emitPopWithScope()
 
 void BytecodeGenerator::emitDebugHook(DebugHookID debugHookID, unsigned line, unsigned charOffset, unsigned lineStart)
 {
-#if ENABLE(DEBUG_WITH_BREAKPOINT)
-    if (debugHookID != DidReachBreakpoint)
-        return;
-#else
     if (!m_shouldEmitDebugHooks)
         return;
-#endif
+
     JSTextPosition divot(line, charOffset, lineStart);
     emitExpressionInfo(divot, divot, divot);
     emitOpcode(op_debug);
@@ -4288,7 +4298,7 @@ void BytecodeGenerator::popIndexedForInScope(RegisterID* localRegister)
 
 RegisterID* BytecodeGenerator::emitLoadArrowFunctionLexicalEnvironment(const Identifier& identifier)
 {
-    ASSERT(m_codeBlock->isArrowFunction() || m_codeBlock->isArrowFunctionContext() || constructorKind() == ConstructorKind::Derived || m_codeType == EvalCode);
+    ASSERT(m_codeBlock->isArrowFunction() || m_codeBlock->isArrowFunctionContext() || constructorKind() == ConstructorKind::Extends || m_codeType == EvalCode);
 
     return emitResolveScope(nullptr, variable(identifier, ThisResolutionType::Scoped));
 }
@@ -4314,10 +4324,10 @@ RegisterID* BytecodeGenerator::emitLoadDerivedConstructorFromArrowFunctionLexica
 
 RegisterID* BytecodeGenerator::ensureThis()
 {
-    if (constructorKind() == ConstructorKind::Derived && needsToUpdateArrowFunctionContext() && isSuperCallUsedInInnerArrowFunction())
+    if (constructorKind() == ConstructorKind::Extends && needsToUpdateArrowFunctionContext() && isSuperCallUsedInInnerArrowFunction())
         emitLoadThisFromArrowFunctionLexicalEnvironment();
 
-    if (constructorKind() == ConstructorKind::Derived || isDerivedConstructorContext())
+    if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())
         emitTDZCheck(thisRegister());
 
     return thisRegister();
@@ -4360,7 +4370,7 @@ void BytecodeGenerator::emitPutNewTargetToArrowFunctionContextScope()
     
 void BytecodeGenerator::emitPutDerivedConstructorToArrowFunctionContextScope()
 {
-    if ((isConstructor() && constructorKind() == ConstructorKind::Derived) || m_codeBlock->isClassContext()) {
+    if ((isConstructor() && constructorKind() == ConstructorKind::Extends) || m_codeBlock->isClassContext()) {
         if (isSuperUsedInInnerArrowFunction()) {
             ASSERT(m_arrowFunctionContextLexicalEnvironmentRegister);
             

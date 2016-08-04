@@ -48,7 +48,7 @@ public:
 
     bool hasReceivedFirstUpdate() const { return m_hasReceivedFirstUpdate; }
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK)
+#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     void setNativeSurfaceHandleForCompositing(uint64_t);
     void destroyNativeSurfaceHandleForCompositing();
 #endif
@@ -69,7 +69,6 @@ private:
     void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
     void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
     void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-    void willEnterAcceleratedCompositingMode(uint64_t backingStoreStateID) override;
 
     void incorporateUpdate(const UpdateInfo&);
 
@@ -109,6 +108,10 @@ private:
     std::unique_ptr<BackingStore> m_backingStore;
 
     RunLoop::Timer<DrawingAreaProxyImpl> m_discardBackingStoreTimer;
+
+#if USE(TEXTURE_MAPPER) && PLATFORM(GTK)
+    uint64_t m_pendingNativeSurfaceHandleForCompositing { 0 };
+#endif
 };
 
 } // namespace WebKit

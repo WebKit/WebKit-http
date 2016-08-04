@@ -68,7 +68,6 @@ class ResourceResponse;
 
 namespace WebKit {
 
-class DownloadAuthenticationClient;
 class DownloadManager;
 class NetworkSession;
 class WebPage;
@@ -97,8 +96,8 @@ public:
 #else
     void didStart();
     void didReceiveAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
-#endif
     void didReceiveResponse(const WebCore::ResourceResponse&);
+#endif
     void didReceiveData(uint64_t length);
     bool shouldDecodeSourceDataOfMIMEType(const String& mimeType);
 #if !USE(NETWORK_SESSION)
@@ -109,10 +108,6 @@ public:
     void platformDidFinish();
     void didFail(const WebCore::ResourceError&, const IPC::DataReference& resumeData);
     void didCancel(const IPC::DataReference& resumeData);
-
-#if USE(CFNETWORK)
-    DownloadAuthenticationClient* authenticationClient();
-#endif
 
 private:
     // IPC::MessageSender
@@ -142,7 +137,6 @@ private:
 #endif
 #if USE(CFNETWORK)
     RetainPtr<CFURLDownloadRef> m_download;
-    RefPtr<DownloadAuthenticationClient> m_authenticationClient;
 #endif
 #if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
     std::unique_ptr<WebCore::ResourceHandleClient> m_downloadClient;

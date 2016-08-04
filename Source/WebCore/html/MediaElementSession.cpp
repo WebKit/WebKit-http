@@ -51,6 +51,7 @@
 #if PLATFORM(IOS)
 #include "AudioSession.h"
 #include "RuntimeApplicationChecks.h"
+#include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
 namespace WebCore {
@@ -243,6 +244,11 @@ bool MediaElementSession::canControlControlsManager() const
         return true;
     }
 
+    if (hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !m_element.isPlaying()) {
+        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Needs to be playing");
+        return false;
+    }
+
     if (m_element.muted()) {
         LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Muted");
         return false;
@@ -252,6 +258,11 @@ bool MediaElementSession::canControlControlsManager() const
         if (!m_element.renderer()) {
             LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No renderer");
             return false;
+        }
+
+        if (m_element.document().isMediaDocument()) {
+            LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is media document");
+            return true;
         }
 
         if (!m_element.hasVideo()) {
@@ -455,7 +466,14 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
     if (!settings || !settings->allowsInlineMediaPlayback())
         return true;
 
-    return settings->inlineMediaPlaybackRequiresPlaysInlineAttribute() && !(element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr) || element.hasAttributeWithoutSynchronization(HTMLNames::playsinlineAttr));
+    if (!settings->inlineMediaPlaybackRequiresPlaysInlineAttribute())
+        return false;
+
+#if PLATFORM(IOS)
+    if (dyld_get_program_sdk_version() < DYLD_IOS_VERSION_10_0)
+        return !element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr);
+#endif
+    return !element.hasAttributeWithoutSynchronization(HTMLNames::playsinlineAttr);
 }
 
 bool MediaElementSession::allowsAutomaticMediaDataLoading(const HTMLMediaElement& element) const
@@ -581,11 +599,32 @@ static bool isMainContent(const HTMLMediaElement& element)
     return true;
 }
 
+static bool isElementLargeRelativeToMainFrame(const HTMLMediaElement& element)
+{
+    static const double minimumPercentageOfMainFrameAreaForMainContent = 0.9;
+    auto* renderer = element.renderer();
+    if (!renderer)
+        return false;
+
+    auto* documentFrame = element.document().frame();
+    if (!documentFrame)
+        return false;
+
+    if (!documentFrame->mainFrame().view())
+        return false;
+
+    auto& mainFrameView = *documentFrame->mainFrame().view();
+    auto maxVisibleClientWidth = std::min(renderer->clientWidth().toInt(), mainFrameView.visibleWidth());
+    auto maxVisibleClientHeight = std::min(renderer->clientHeight().toInt(), mainFrameView.visibleHeight());
+
+    return maxVisibleClientWidth * maxVisibleClientHeight > minimumPercentageOfMainFrameAreaForMainContent * mainFrameView.visibleWidth() * mainFrameView.visibleHeight();
+}
+
 static bool isElementLargeEnoughForMainContent(const HTMLMediaElement& element)
 {
     static const double elementMainContentAreaMinimum = 400 * 300;
     static const double maximumAspectRatio = 1.8; // Slightly larger than 16:9.
-    static const double minimumAspectRatio = .5; // Slightly smaller than 16:9.
+    static const double minimumAspectRatio = .5; // Slightly smaller than 9:16.
 
     // Elements which have not yet been laid out, or which are not yet in the DOM, cannot be main content.
     auto* renderer = element.renderer();
@@ -596,7 +635,14 @@ static bool isElementLargeEnoughForMainContent(const HTMLMediaElement& element)
     double height = renderer->clientHeight();
     double area = width * height;
     double aspectRatio = width / height;
-    return area >= elementMainContentAreaMinimum && aspectRatio >= minimumAspectRatio && aspectRatio <= maximumAspectRatio;
+
+    if (area < elementMainContentAreaMinimum)
+        return false;
+
+    if (aspectRatio >= minimumAspectRatio && aspectRatio <= maximumAspectRatio)
+        return true;
+
+    return isElementLargeRelativeToMainFrame(element);
 }
 
 void MediaElementSession::mainContentCheckTimerFired()

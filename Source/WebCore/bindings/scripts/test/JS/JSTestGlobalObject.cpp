@@ -33,6 +33,10 @@
 #include <runtime/JSString.h>
 #include <wtf/GetPtr.h>
 
+#if ENABLE(TEST_FEATURE)
+#include "TestGlobalObjectBuiltins.h"
+#endif
+
 using namespace JSC;
 
 namespace WebCore {
@@ -42,6 +46,9 @@ namespace WebCore {
 JSC::EncodedJSValue JSC_HOST_CALL jsTestGlobalObjectInstanceFunctionRegularOperation(JSC::ExecState*);
 #if ENABLE(TEST_FEATURE)
 JSC::EncodedJSValue JSC_HOST_CALL jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeOperation(JSC::ExecState*);
+#endif
+#if ENABLE(TEST_FEATURE)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestGlobalObjectInstanceFunctionTestPrivateFunction(JSC::ExecState*);
 #endif
 
 // Attributes
@@ -153,6 +160,14 @@ void JSTestGlobalObject::finishCreation(VM& vm, JSProxy* proxy)
 #if ENABLE(TEST_FEATURE)
     if (RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())
         putDirectNativeFunction(vm, this, vm.propertyNames->enabledAtRuntimeOperation, 1, jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeOperation, NoIntrinsic, attributesForStructure(JSC::Function));
+#endif
+#if ENABLE(TEST_FEATURE)
+    if (RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())
+        putDirectNativeFunction(vm, this, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().testPrivateFunctionPrivateName(), 0, jsTestGlobalObjectInstanceFunctionTestPrivateFunction, NoIntrinsic, attributesForStructure(JSC::Function));
+#endif
+#if ENABLE(TEST_FEATURE)
+    if (RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())
+        putDirectBuiltinFunction(vm, this, vm.propertyNames->testJSBuiltinFunction, testGlobalObjectTestJSBuiltinFunctionCodeGenerator(vm), attributesForStructure(JSC::Builtin));
 #endif
 }
 
@@ -383,20 +398,33 @@ static inline EncodedJSValue jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeO
 EncodedJSValue JSC_HOST_CALL jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeOperation(ExecState* state)
 {
     size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
 #if ENABLE(TEST_FEATURE)
-    if (argsCount == 1)
+        if (distinguishingArg.isNumber())
+            return jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeOperation2(state);
+#endif
+#if ENABLE(TEST_FEATURE)
         return jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeOperation1(state);
 #endif
+    }
+    return argsCount < 1 ? throwVMError(state, createNotEnoughArgumentsError(state)) : throwVMTypeError(state);
+}
 
 #if ENABLE(TEST_FEATURE)
-    if (argsCount == 1)
-        return jsTestGlobalObjectInstanceFunctionEnabledAtRuntimeOperation2(state);
-#endif
-
-    if (UNLIKELY(argsCount < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    return throwVMTypeError(state);
+EncodedJSValue JSC_HOST_CALL jsTestGlobalObjectInstanceFunctionTestPrivateFunction(ExecState* state)
+{
+    JSValue thisValue = state->thisValue();
+    auto castedThis = jsDynamicCast<JSTestGlobalObject*>(thisValue);
+    if (UNLIKELY(!castedThis))
+        return throwThisTypeError(*state, "TestGlobalObject", "testPrivateFunction");
+    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestGlobalObject::info());
+    auto& impl = castedThis->wrapped();
+    impl.testPrivateFunction();
+    return JSValue::encode(jsUndefined());
 }
+
+#endif
 
 bool JSTestGlobalObjectOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {

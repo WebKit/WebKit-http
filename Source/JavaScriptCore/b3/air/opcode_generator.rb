@@ -490,7 +490,7 @@ writeH("Opcode") {
     
     outp.puts "namespace WTF {"
     outp.puts "class PrintStream;"
-    outp.puts "void printInternal(PrintStream&, JSC::B3::Air::Opcode);"
+    outp.puts "JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Opcode);"
     outp.puts "} // namespace WTF"
 }
 
@@ -1046,7 +1046,7 @@ writeH("OpcodeGenerated") {
         | opcode |
         if opcode.custom
             outp.puts "case #{opcode.name}:"
-            outp.puts "return #{opcode.name}Custom::hasNonArgNonControlEffects(*this);"
+            outp.puts "return #{opcode.name}Custom::hasNonArgEffects(*this);"
         end
     }
     outp.puts "default:"

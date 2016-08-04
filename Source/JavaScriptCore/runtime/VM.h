@@ -108,6 +108,7 @@ class Structure;
 #if ENABLE(REGEXP_TRACING)
 class RegExp;
 #endif
+class Symbol;
 class UnlinkedCodeBlock;
 class UnlinkedEvalCodeBlock;
 class UnlinkedFunctionExecutable;
@@ -119,11 +120,6 @@ class Watchdog;
 class Watchpoint;
 class WatchpointSet;
 
-#if ENABLE(DFG_JIT)
-namespace DFG {
-class LongLivedState;
-}
-#endif // ENABLE(DFG_JIT)
 #if ENABLE(FTL_JIT)
 namespace FTL {
 class Thunks;
@@ -271,14 +267,14 @@ public:
     // destructed after all the objects that reference it.
     Heap heap;
 
-#if ENABLE(DFG_JIT)
-    std::unique_ptr<DFG::LongLivedState> dfgState;
-#endif // ENABLE(DFG_JIT)
-
     VMType vmType;
     ClientData* clientData;
     VMEntryFrame* topVMEntryFrame;
-    ExecState* topCallFrame;
+    // NOTE: When throwing an exception while rolling back the call frame, this may be equal to
+    // topVMEntryFrame.
+    // FIXME: This should be a void*, because it might not point to a CallFrame.
+    // https://bugs.webkit.org/show_bug.cgi?id=160441
+    ExecState* topCallFrame; 
     Strong<Structure> structureStructure;
     Strong<Structure> structureRareDataStructure;
     Strong<Structure> terminatedExecutionErrorStructure;
@@ -344,6 +340,8 @@ public:
 
     AtomicStringTable* atomicStringTable() const { return m_atomicStringTable; }
     WTF::SymbolRegistry& symbolRegistry() { return m_symbolRegistry; }
+
+    WeakGCMap<SymbolImpl*, Symbol, PtrHash<SymbolImpl*>> symbolImplToSymbolMap;
 
     enum class DeletePropertyMode {
         // Default behaviour of deleteProperty, matching the spec.

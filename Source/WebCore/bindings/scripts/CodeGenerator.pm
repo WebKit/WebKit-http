@@ -358,6 +358,15 @@ sub IsNumericType
     return 0;
 }
 
+sub IsStringOrEnumType
+{
+    my ($object, $type) = @_;
+    
+    return 1 if $type eq "DOMString";
+    return 1 if $object->IsEnumType($type);
+    return 0;
+}
+
 sub IsIntegerType
 {
     my ($object, $type) = @_;
@@ -559,6 +568,7 @@ sub WK_lcfirst
 {
     my ($object, $param) = @_;
     my $ret = lcfirst($param);
+    $ret =~ s/dOM/dom/ if $ret =~ /^dOM/;
     $ret =~ s/hTML/html/ if $ret =~ /^hTML/;
     $ret =~ s/uRL/url/ if $ret =~ /^uRL/;
     $ret =~ s/jS/js/ if $ret =~ /^jS/;
@@ -603,6 +613,13 @@ sub LinkOverloadedFunctions
         push(@{$nameToFunctionsMap{$name}}, $function);
         $function->{overloads} = $nameToFunctionsMap{$name};
         $function->{overloadIndex} = @{$nameToFunctionsMap{$name}};
+    }
+
+    my $index = 1;
+    foreach my $constructor (@{$interface->constructors}) {
+        $constructor->{overloads} = $interface->constructors;
+        $constructor->{overloadIndex} = $index;
+        $index++;
     }
 }
 

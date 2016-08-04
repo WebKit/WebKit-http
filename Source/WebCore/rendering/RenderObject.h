@@ -175,9 +175,6 @@ public:
 
     RenderNamedFlowFragment* currentRenderNamedFlowFragment() const;
 
-    // FIXME: The meaning of this function is unclear.
-    virtual bool isEmpty() const { return !firstChildSlow(); }
-
 #ifndef NDEBUG
     void setHasAXObject(bool flag) { m_hasAXObject = flag; }
     bool hasAXObject() const { return m_hasAXObject; }
@@ -341,6 +338,7 @@ public:
     virtual bool isRenderMathMLMath() const { return false; }
     virtual bool isRenderMathMLMenclose() const { return false; }
     virtual bool isRenderMathMLFenced() const { return false; }
+    virtual bool isRenderMathMLFencedOperator() const { return false; }
     virtual bool isRenderMathMLFraction() const { return false; }
     virtual bool isRenderMathMLPadded() const { return false; }
     virtual bool isRenderMathMLRoot() const { return false; }

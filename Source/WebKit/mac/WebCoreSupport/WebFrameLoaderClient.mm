@@ -113,6 +113,7 @@
 #import <WebCore/ResourceError.h>
 #import <WebCore/ResourceHandle.h>
 #import <WebCore/ResourceRequest.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/ScriptController.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SubresourceLoader.h>
@@ -149,7 +150,6 @@
 #import <WebCore/FileSystemIOS.h>
 #import <WebCore/NSFileManagerSPI.h>
 #import <WebCore/QuickLook.h>
-#import <WebCore/RuntimeApplicationChecks.h>
 #endif
 
 #if HAVE(APP_LINKS)
@@ -333,8 +333,8 @@ void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identi
     WebView *webView = getWebView(m_webFrame.get());
     WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
 
-    id object = nil;
-    BOOL shouldRelease = NO;
+    RetainPtr<id> object;
+
 #if PLATFORM(IOS)
     if (implementations->webThreadIdentifierForRequestFunc) {
         object = CallResourceLoadDelegateInWebThread(implementations->webThreadIdentifierForRequestFunc, webView, @selector(webThreadWebView:identifierForInitialRequest:fromDataSource:), request.nsURLRequest(UpdateHTTPBody), dataSource(loader));
@@ -342,15 +342,10 @@ void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identi
 #endif
     if (implementations->identifierForRequestFunc)
         object = CallResourceLoadDelegate(implementations->identifierForRequestFunc, webView, @selector(webView:identifierForInitialRequest:fromDataSource:), request.nsURLRequest(UpdateHTTPBody), dataSource(loader));
-    else {
-        object = [[NSObject alloc] init];
-        shouldRelease = YES;
-    }
+    else
+        object = adoptNS([[NSObject alloc] init]);
 
-    [webView _addObject:object forIdentifier:identifier];
-
-    if (shouldRelease)
-        [object release];
+    [webView _addObject:object.get() forIdentifier:identifier];
 }
 
 void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsigned long identifier, ResourceRequest& request, const ResourceResponse& redirectResponse)
@@ -362,6 +357,14 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsig
         static_cast<WebDocumentLoaderMac*>(loader)->increaseLoadCount(identifier);
 
     NSURLRequest *currentURLRequest = request.nsURLRequest(UpdateHTTPBody);
+
+#if PLATFORM(MAC)
+    if (MacApplication::isAppleMail() && loader->substituteData().isValid()) {
+        // Mail.app checks for this property to detect data / archive loads.
+        [NSURLProtocol setProperty:@"" forKey:@"WebDataRequest" inRequest:(NSMutableURLRequest *)currentURLRequest];
+    }
+#endif
+
     NSURLRequest *newURLRequest = currentURLRequest;
 #if PLATFORM(IOS)
     if (implementations->webThreadWillSendRequestFunc) {
@@ -1145,10 +1148,12 @@ ResourceError WebFrameLoaderClient::interruptedForPolicyChangeError(const Resour
     return [NSError _webKitErrorWithDomain:WebKitErrorDomain code:WebKitErrorFrameLoadInterruptedByPolicyChange URL:request.url()];
 }
 
+#if ENABLE(CONTENT_FILTERING)
 ResourceError WebFrameLoaderClient::blockedByContentFilterError(const ResourceRequest& request)
 {
     return [NSError _webKitErrorWithDomain:WebKitErrorDomain code:WebKitErrorFrameLoadBlockedByContentFilter URL:request.url()];
 }
+#endif
 
 ResourceError WebFrameLoaderClient::cannotShowMIMETypeError(const ResourceResponse& response)
 {

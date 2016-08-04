@@ -1,3 +1,895 @@
+2016-08-03  Tim Horton  <timothy_horton@apple.com>
+
+        Revise a TestWebKitAPI comment to mention the actual underlying problem
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AnimatedResize.mm:
+        Note that this is because of https://bugs.webkit.org/show_bug.cgi?id=160516
+
+2016-08-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Benchmark test content-animation timeouts always
+        https://bugs.webkit.org/show_bug.cgi?id=160057
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitpy/benchmark_runner/data/plans/Skipped: Added.
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        (start):
+
+2016-08-02  Nan Wang  <n_wang@apple.com>
+
+        AX: Simulated touch events are not working on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=160395
+        <rdar://problem/27633597>
+
+        Reviewed by Chris Fleizach.
+
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::press):
+        (WTR::AccessibilityUIElement::setSelectedChild):
+
+2016-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        run-javascriptcore-tests should accept multiple --extra-tests
+        https://bugs.webkit.org/show_bug.cgi?id=160486
+
+        Reviewed by Saam Barati.
+        
+        We want to be able to pass --extra-tests multiple times, to supply an arbitrary number of extra
+        test suites. This does it by using GetOpt::Long's array support.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-08-02  Enrica Casucci  <enrica@apple.com>
+
+        Allow building with content filtering disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=160454
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2016-08-02  Brady Eidson  <beidson@apple.com>
+
+        Removing IndexedDB WebsiteData can fail for some users.
+        https://bugs.webkit.org/show_bug.cgi?id=160463
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/StoreBlobThenDelete.mm:
+
+2016-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        _WKDownloadDelegate.didReceiveResponse should be called before decideDestinationWithSuggestedFilename
+        https://bugs.webkit.org/show_bug.cgi?id=160437
+        <rdar://problem/27578272>
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[DownloadDelegate _download:didReceiveResponse:]):
+        (-[DownloadDelegate _download:decideDestinationWithSuggestedFilename:allowOverwrite:]):
+        (runTest):
+        Add a boolean to make sure that didReceiveResponse is called before decideDestinationWithSuggestedFilename.
+
+2016-08-01  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [Tools] The GDB backtrace report tool don't checks the gdb return code.
+        https://bugs.webkit.org/show_bug.cgi?id=160414
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/port/linux_get_crash_log.py:
+        (GDBCrashLogGenerator._wait_for_corefile):
+
+2016-08-01  Youenn Fablet  <youenn@apple.com>
+
+        Make wpt server generate its certificates in layout test results folder
+        https://bugs.webkit.org/show_bug.cgi?id=160422
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._copy_webkit_test_files): Setting certificate folder to layout tests results directory.
+
+2016-08-01  Jonathan Bedard  <jbedard@apple.com>
+
+        Function Call on NULL Object
+        https://bugs.webkit.org/show_bug.cgi?id=160325
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage): Changed removeAllWebNotificationPermissions() call to static function call.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h: Made all web-notification functions static.
+
+2016-08-01  Keith Miller  <keith_miller@apple.com>
+
+        We should not keep the JavaScript tests inside the Source/JavaScriptCore/ directory.
+        https://bugs.webkit.org/show_bug.cgi?id=160372
+
+        Rubber stamped by Geoffrey Garen.
+
+        This patch moves all the JavaScript tests from Source/JavaScriptCore/tests to
+        a new top level directory, JSTests. Having the tests in the Source directory
+        was both confusing an inconvenient for people that just want to checkout the
+        source code of WebKit. Since there is no other obvious place to put all the
+        JavaScript tests a new top level directory seemed the most sensible.
+
+        * Scripts/import-test262-tests:
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/update-javascriptcore-test-res:
+
+2016-07-31  Nan Wang  <n_wang@apple.com>
+
+        AX: Add a check for touch event listener on iOS accessibility object
+        https://bugs.webkit.org/show_bug.cgi?id=160388
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::boolAttributeValue):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+
+2016-07-30  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Unreviewed: add myself to the reviewers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-07-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Undo r203939, and copy over a rule that clips the logos.
+
+        Sierra wasn't the only logo without transparency.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Sierra.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Sierra@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+
+2016-07-29  Alan Sien Wei Hshieh  <hshieh@apple.com>
+
+        The Sierra asset at build.webkit.org/dashboard/images/Sierra*.png has a white background
+        https://bugs.webkit.org/show_bug.cgi?id=160377
+
+        Reviewed by Brian Weinstein.
+
+        Update assets to remove the white background and use a transparent background instead.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Sierra.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Sierra@2x.png:
+
+2016-07-29  David Kilzer  <ddkilzer@apple.com>
+
+        Ignore most check-webkit-style checks for ANGLE project
+        <https://webkit.org/b/160333>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/style/checker.py: Ignore all checkers except:
+        - No tabs.
+        - No spaces at the end of lines.
+        - No carriage returns (DOS line endings).
+
+2016-07-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Media controls are not displayed for some autoplaying videos at certain browser dimensions
+        https://bugs.webkit.org/show_bug.cgi?id=160360
+        <rdar://problem/27179484>
+
+        Reviewed by Myles C. Maxfield.
+
+        Adds two tests verifying that videos may be considered main content as long as they
+        are large enough and cover a majority of the mainframe's viewport.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/full-size-autoplaying-video-with-audio.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/skinny-autoplaying-video-with-audio.html: Added.
+
+2016-07-29  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: removed unused variable.
+
+        Not reviewed.
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-07-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add TestWebKitAPI support for interacting with media controls
+        https://bugs.webkit.org/show_bug.cgi?id=160342
+        <rdar://problem/27610246>
+
+        Reviewed by Beth Dakin.
+
+        Adds support for testing interaction with some media controls, as well as a basic test
+        verifying that media control teardown after interaction does not result in a crash.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (-[WKWebView mouseDownAtPoint:]):
+        (-[WKWebView performAfterLoading:]):
+        (TestWebKitAPI::TEST):
+
+2016-07-29  Jonathan Bedard  <jbedard@apple.com>
+
+        Crash Log Clobbering on Unbound Crashes
+        https://bugs.webkit.org/show_bug.cgi?id=160198
+        <rdar://problem/27472618>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs): Fix header order.
+        * Scripts/webkitpy/layout_tests/controllers/test_result_writer.py:
+        (TestResultWriter.output_filename): Only remove file extension if it is clearly a file extension.
+
+2016-07-29  Tibor Meszaros  <tmeszaros.u-szeged@partner.samsung.com>
+
+        Update for contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=160294
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-07-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove deprecated SPI for video inline / fullscreen controls
+        https://bugs.webkit.org/show_bug.cgi?id=160318
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RequiresUserActionForPlayback.mm:
+        (RequiresUserActionForPlaybackTest::SetUp): Deleted.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues): Deleted.
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration): Deleted.
+
+2016-07-28  Daniel Bates  <dabates@apple.com>
+
+        [iOS] TestWebKitAPI bundle targets are not code signed
+        https://bugs.webkit.org/show_bug.cgi?id=160328
+        <rdar://problem/27409246>
+
+        Reviewed by Andy Estes.
+
+        Workaround <rdar://problem/27459890> by explicitly defining Xcode build settings
+        CODE_SIGNING_ALLOWED and AD_HOC_CODE_SIGNING_ALLOWED to be YES so as to allow the
+        the TestWebKitAPI bundle targets to be code signed when building for the iOS simulator.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+
+2016-07-28  Tim Horton  <timothy_horton@apple.com>
+
+        Disable WebKit2.ResizeWithHiddenContentDoesNotHang for now
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AnimatedResize.mm:
+        (animatedResizeWebView):
+        (TEST):
+        This test times out only when run in the WebKit Testing simulator environment,
+        but not in a fresh simulator. Disabling to keep the bots green while under investigation.
+
+2016-07-28  Tim Horton  <timothy_horton@apple.com>
+
+        Frequent animation lags when interacting with Safari (sidebar, tab switching, etc.)
+        https://bugs.webkit.org/show_bug.cgi?id=160289
+        <rdar://problem/27553464>
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AnimatedResize.mm: Added.
+        (-[AnimatedResizeNavigationDelegate _webView:renderingProgressDidChange:]):
+        (-[AnimatedResizeWebView _endAnimatedResize]):
+        (animatedResizeWebView):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/blinking-div.html: Added.
+        Add two tests that ensure that hidden-content and animated resizes
+        don't cause unnecessary synchronous waits. Only the hidden-content
+        one fails before my patch, but it seemed reasonable to add both anyway.
+
+2016-07-28  David Kilzer  <ddkilzer@apple.com>
+
+        webkit-patch upload --suggest-reviewers shouldn't break in the presence of deleted or moved files
+        <https://webkit.org/b/83342>
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.revisions_changing_file): Remove code to raise an exception
+        when the file doesn't exist.  If a file was moved or renamed,
+        then this caused the script to terminate, which was very
+        frustrating when you wanted a list of reviewers.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (SCMTest._shared_test_revisions_changing_file): Update test
+        expectation to return an empty list of revisions.
+        (test_create_patch_is_full_patch): Drive-by fix when running all
+        webkitpy tests (including scm tests).
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.revisions_changing_file): Catch ScriptError exceptions and
+        return an empty array of revisions if this occurs.
+
+2016-07-28  Aakash Jain  <aakash_jain@apple.com>
+
+        EWS error message "Error: * did not process patch" should include explanation
+        https://bugs.webkit.org/show_bug.cgi?id=159903
+        <rdar://problem/27410788>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * QueueStatusServer/handlers/statusbubble.py:
+        (StatusBubble._build_bubble): Display more detailed error message on bubbles when patch
+        is not processed.
+        * QueueStatusServer/handlers/processingtimesjson.py:
+        (ProcessingTimesJSON._resultFromFinalStatus): Updated error message to match with rest
+        of the code.
+        * Scripts/webkitpy/tool/bot/commitqueuetask.py:
+        (CommitQueueTask.validate): Add more information about validation failure.
+        (CommitQueueTask.run): Pass the error details in the PatchIsNotValid exception.
+        * Scripts/webkitpy/tool/bot/earlywarningsystemtask.py:
+        (EarlyWarningSystemTask.validate): Add more information about validation failure.
+        (EarlyWarningSystemTask.run): Pass the error details in the PatchIsNotValid exception.
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        (PatchIsNotValid.__init__): Add the failure_message argument.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.review_patch): Re-word the error message and include
+        failure details.
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (CommitQueue.process_work_item): Same.
+        (StyleQueue.review_patch): Same.
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        (test_non_valid_patch): Updated test-cases messages to match the above changes.
+
+2016-07-27  Alexey Proskuryakov  <ap@apple.com>
+
+        LayoutTestRelay should wait for WebKitTestRunnerApp installation to complete
+        https://bugs.webkit.org/show_bug.cgi?id=160262
+
+        Reviewed by Daniel Bates.
+
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        (-[LTRelayController installApp]):
+
+2016-07-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable WebCoreNSURLSessionTest API tests on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=160225
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm:
+
+2016-07-27  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] Fix some video/canvas tests that should be passing
+        https://bugs.webkit.org/show_bug.cgi?id=160023
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a platform identifier to the TestRunner's page user agent when the tests are run on the
+        EFL or GTK platforms.
+
+        * WebKitTestRunner/efl/TestControllerEfl.cpp:
+        (WTR::TestController::platformConfigureViewForTest):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformConfigureViewForTest):
+
+2016-07-27  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [Tools] The built product doesn't contains the dwo files when DEBUG_FISSION is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=160247
+
+        Reviewed by Michael Catanzaro.
+
+        * BuildSlaveSupport/built-product-archive:
+        (createZip):
+        (dirContainsdwo):
+        (archiveBuiltProduct):
+
+2016-07-26  Alex Christensen  <achristensen@webkit.org>
+
+        Fix tests after r203743.
+        https://bugs.webkit.org/show_bug.cgi?id=156947
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        Reset the new boolean m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges.
+
+2016-07-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iPhone] Playing a video on tudou.com plays only sound, no video
+        https://bugs.webkit.org/show_bug.cgi?id=160178
+        <rdar://problem/27535468>
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RequiresUserActionForPlayback.mm:
+        (RequiresUserActionForPlaybackTest::SetUp):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow LOG macros to be used outside the namespace, and other logging cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=160216
+
+        Reviewed by Anders Carlsson.
+        
+        initializeLoggingChannelsIfNecessary -> initializeLogChannelsIfNecessary
+
+        * DumpRenderTree/TestRunner.cpp:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting):
+
+2016-07-26  David Kilzer <ddkilzer@apple.com>
+
+        Networking process crash due to missing -[WebCoreAuthenticationClientAsChallengeSender performDefaultHandlingForAuthenticationChallenge:] implementation
+        https://bugs.webkit.org/show_bug.cgi?id=156947
+        <rdar://problem/23325160>
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::TestRunner):
+        (setRejectsProtectionSpaceAndContinueForAuthenticationChallengesCallback):
+        * DumpRenderTree/TestRunner.h:
+        (TestRunner::rejectsProtectionSpaceAndContinueForAuthenticationChallenges):
+        (TestRunner::setRejectsProtectionSpaceAndContinueForAuthenticationChallenges):
+        * DumpRenderTree/mac/ResourceLoadDelegate.mm:
+        (-[ResourceLoadDelegate webView:resource:didReceiveAuthenticationChallenge:fromDataSource:]):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::queueNonLoadingScript):
+        (WTR::TestRunner::setRejectsProtectionSpaceAndContinueForAuthenticationChallenges):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::didReceiveAuthenticationChallenge):
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::setRejectsProtectionSpaceAndContinueForAuthenticationChallenges):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        Add TestRunner.setRejectsProtectionSpaceAndContinueForAuthenticationChallenges to use for testing.
+
+2016-07-26  David Kilzer  <ddkilzer@apple.com>
+
+        check-for-exit-time-destructors should be usable outside Xcode
+        <https://webkit.org/b/160195>
+
+        Reviewed by Darin Adler.
+
+        * Scripts/check-for-exit-time-destructors: Update to parse
+        -h|--help switch, or to take one argument to a binary to check
+        for exit time destructors on the command-line.  The clang
+        compiler will find these at compile-time with the
+        -Wexit-time-destructors switch, but this script will check for
+        them after-the-fact.
+
+2016-07-26  Lucas Forschler  <lforschler@apple.com>
+
+        Test svn.webkit.org functionality after maintenance.
+
+2016-07-25  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Make sure IndexedDB works from file:// url documents by default
+        https://bugs.webkit.org/show_bug.cgi?id=153783
+
+        Reviewed by Alex Christensen.
+
+        Previously, to grant IndexedDB access to file:// urls for testing purposes, 
+        we had to call the SPI [WKWebViewConfiguration _setAllowUniversalAccessFromFileURLs:].
+        
+        As of https://trac.webkit.org/changeset/203695 this is no longer required.
+        
+        Change the relevant API tests to make sure this continues to be no longer required.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBDatabaseProcessKill.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBPersistence.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/StoreBlobThenDelete.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebProcessKillIDBCleanup.mm:
+
+2016-07-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Media controls should not be displayed for a video until it starts playing
+        https://bugs.webkit.org/show_bug.cgi?id=160092
+        <rdar://problem/26986673>
+
+        Reviewed by Beth Dakin.
+
+        Verify that multiple videos do or don't show the media controller depending on whether videos
+        are playing. Also tweaks an existing API test (VideoControlsManagerSingleLargeVideo) that was
+        passing because we were always showing media controls for large videos with audio, even if they
+        had not played back yet. This change ensures that large videos with audio show media controls
+        only after they begin to play back, and not by virtue of being large enough for main content.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-video-with-audio.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-videos-with-audio-autoplay.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-videos-with-audio.html: Added.
+
+2016-07-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Media controls on apple.com don't disappear when movie finishes playing
+        https://bugs.webkit.org/show_bug.cgi?id=160068
+        <rdar://problem/26668526>
+
+        Reviewed by Darin Adler.
+
+        Adds new API tests. Please see WebCore ChangeLog for more details.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (-[MediaPlaybackMessageHandler initWithWKWebView:finalMessageString:]):
+        (-[MediaPlaybackMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::TEST):
+        (-[DidPlayMessageHandler initWithWKWebView:]): Deleted.
+        (-[DidPlayMessageHandler userContentController:didReceiveScriptMessage:]): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-video-hides-controls-after-seek-to-end.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-video-seek-after-ending.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/large-video-seek-to-beginning-and-play-after-ending.html: Added.
+
+2016-07-25  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, fix test-webkitpy after r203674.
+
+        * Scripts/webkitpy/port/linux_get_crash_log_unittest.py:
+        (GDBCrashLogGeneratorTest.test_generate_crash_log):
+
+2016-07-24  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, forgot to commit this file in r203674.
+
+        * Scripts/process-linux-coredump: Added.
+        (main):
+
+2016-07-25  Philippe Normand  <pnormand@igalia.com>
+
+        Improve GDB backtrace generation for GTK/EFL
+        https://bugs.webkit.org/show_bug.cgi?id=128928
+
+        Reviewed by Carlos Garcia Campos.
+
+        The PID of the crashed process is now correctly supplied to the
+        crash log reporter. The kernel core_pattern needs to be updated
+        after this change to something like:
+
+        echo "|/home/phil/WebKit/Tools/Scripts/process-linux-coredump /tmp/core-pid_%p.dump" > /proc/sys/kernel/core_pattern
+
+        * Scripts/process-linux-coredump: Added.
+        (main): Minimal python script reading coredump data on stdin and writing it to a file in /tmp/.
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort._get_crash_log): Supply path of the process-linux-coredump script.
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._get_crash_log): Ditto.
+        * Scripts/webkitpy/port/linux_get_crash_log.py:
+        (GDBCrashLogGenerator.__init__): New argument for supplying the path of a coredump processor script.
+        (GDBCrashLogGenerator.generate_crash_log): Update error message, the core_pattern should now be set to pipe coredumps to a script.
+        (GDBCrashLogGenerator): Deleted.
+        * Scripts/webkitpy/port/linux_get_crash_log_unittest.py:
+        (GDBCrashLogGeneratorTest.test_generate_crash_log): Update test expectations.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::networkProcessDidCrash): Supply PID of crash process.
+        (WTR::TestController::databaseProcessDidCrash): Ditto.
+        (WTR::TestController::processDidCrash): Ditto.
+
+2016-07-23  Youenn Fablet  <youenn@apple.com>
+
+        WPT stash server should be kept running when launching wpt server
+        https://bugs.webkit.org/show_bug.cgi?id=160052
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        (main): waiting to read stdin while stash server is started.
+
+2016-07-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Media controls should be displayed for media in media documents
+        https://bugs.webkit.org/show_bug.cgi?id=160104
+        <rdar://problem/27438936>
+
+        Reviewed by Myles C. Maxfield.
+
+        Verifies that even a small video with audio in a media document gets media controls.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (TestWebKitAPI::TEST):
+
+2016-07-22  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(203616): no FTL testing was inadvertently removed
+        https://bugs.webkit.org/show_bug.cgi?id=160100
+
+        Rubber-stamped by Filip Pizlo.
+
+        Added runNoFTL back into the set of tests we run on FTL enabled platforms.
+        Renamed runLayoutTestNoFTL to runLayoutTestDefault.  Restructured the test
+        logic for the runLayout and runNoisy variants to match the run test logic,
+        that is we always invoke runXXXDefault and invoke runXXXNoFTL for FTL
+        enabled platforms.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-07-22  Brady Eidson  <beidson@apple.com>
+
+        Removing IndexedDatabases that have stored blobs doesn't remove the blob files.
+        https://bugs.webkit.org/show_bug.cgi?id=160089
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/StoreBlobThenDelete.mm: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/StoreBlobToBeDeleted.html: Added.
+
+2016-07-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [GTK] Improved exclusion patterns in make-dist.py manifest.
+        https://bugs.webkit.org/show_bug.cgi?id=160094
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/manifest.txt.in:
+        Exclude Platform*.cmake files for more ports.
+        Removed obsolete .gyp and .pro.user patterns.
+        Exclude 'Configurations' and 'spi' directories.
+        Exclude CMakeLists.txt.user (Qt Creator IDE).
+
+2016-07-22  Michael Saboff  <msaboff@apple.com>
+
+        Don't run FTL related JSC stress tests on non-FTL platforms
+        https://bugs.webkit.org/show_bug.cgi?id=160033
+
+        Reviewed by Mark Lam.
+
+        Added check for running tests on platforms that don't enable FTL to not run FTL tests.
+        Refactored several of the runXXX test methods to always runXXXDefault and made those
+        runXXXDefault to pass FTL_OPTIONS.  For platforms that don't enable the FTL, FTL_OPTIONS
+        doesn't cause a problem.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-07-22  Per Arne Vollan  <pvollan@apple.com>
+
+        IWebView::mainFrame crashes if called after IWebView::close
+        https://bugs.webkit.org/show_bug.cgi?id=32868
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WebKit/win/WebViewDestruction.cpp:
+        (TestWebKitAPI::TEST_F): Added test.
+
+2016-07-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable threaded compositor by default
+        https://bugs.webkit.org/show_bug.cgi?id=160079
+
+        Reviewed by Žan Doberšek.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-07-22  Youenn Fablet  <youenn@apple.com>
+
+        run-builtins-generator-tests should be able to test WebCore builtins wrapper with more than one file
+        https://bugs.webkit.org/show_bug.cgi?id=159921
+
+        Reviewed by Brian Burg.
+
+        Updated builtin generator test runner to generate WebCore wrapper files based on all WebCore valid separate files.
+
+        * Scripts/webkitpy/codegen/main.py:
+        (BuiltinsGeneratorTests.generate_from_js_builtins): Passing a list of builtin files to the script.
+        (BuiltinsGeneratorTests):
+        (BuiltinsGeneratorTests.single_builtin_test): Added to handle the case of single builtin generation.
+        (BuiltinsGeneratorTests.wrappers_builtin_test): Added to handle the case of WebCore wrappers builtin generation.
+        (BuiltinsGeneratorTests.run_test): Helper routine to run a test in reset mode or normal check mode.
+        (BuiltinsGeneratorTests.run_tests): Updated to add WebCore wrappers builtin generation test.
+
+2016-07-21  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] webkitdirs.pm contains unused code to support outdated OS X and Xcode versions
+        https://bugs.webkit.org/show_bug.cgi?id=160072
+
+        Reviewed by Andy Estes.
+
+        * Scripts/webkitdirs.pm:
+        (readXcodeUserDefault): Changed to take a defaults key rather than a suffix. Removed support
+          for old Xcode versions.
+        (determineBaseProductDir): Removed support for old Xcode versions. Updated for the change
+          to readXcodeUserDefault.
+        (debugger): Deleted. This was only used for Darwin, where LLDB is now the only supported
+          debugger.
+        (determineDebugger): Ditto.
+        (checkRequiredSystemConfig): Updated to require at least OS X Yosemite v10.10.5 and Xcode
+          7.0.
+        (printHelpAndExitForRunAndDebugWebKitAppIfNeeded): Removed --use-gdb and --use-lldb
+          switches.
+        (execMacWebKitAppForDebugging): Removed support for GDB.
+
+2016-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove support for deprecated SPI inlineMediaPlaybackRequiresPlaysInlineAttribute
+        https://bugs.webkit.org/show_bug.cgi?id=160066
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RequiresUserActionForPlayback.mm:
+        (RequiresUserActionForPlaybackTest::SetUp): Deleted.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues): Deleted.
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration): Deleted.
+
+2016-07-21  Chelsea Pugh  <cpugh@apple.com>
+
+        [iOS] Apps using WKWebView will crash if they set the scroll view's delegate and don't nil it out later
+        https://bugs.webkit.org/show_bug.cgi?id=159980
+        rdar://problem/27450825
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/WKScrollViewDelegateCrash.mm: Added.
+        (-[TestDelegateForScrollView dealloc]): Update delegateIsDeallocated to true so that we can tell
+        when our delegate has hit -dealloc.
+        (TestWebKitAPI::TEST): Ensure that after an object has been set as the scroll view's delegate,
+        and has then been deallocated, that the scroll view's delegate is nil and the deallocated delegate
+        will not be messaged.
+
+2016-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Follow-up patch to r203520
+        https://bugs.webkit.org/show_bug.cgi?id=159967
+        <rdar://problem/26964090>
+
+        Unreviewed.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2016-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iPhone] Playing a video on tudou.com plays only sound, no video
+        https://bugs.webkit.org/show_bug.cgi?id=159967
+        <rdar://problem/26964090>
+
+        Reviewed by Jon Lee, Jeremy Jones, and Anders Carlsson.
+
+        Migrate tests to use new SPI.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RequiresUserActionForPlayback.mm:
+        (RequiresUserActionForPlaybackTest::SetUp):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2016-07-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Clarify testing mode names in run-jsc-stress-tests
+        https://bugs.webkit.org/show_bug.cgi?id=160021
+
+        Reviewed by Mark Lam.
+
+        Default should mean really default, not default with disabled FTL, renamed
+        - runMozillaTestDefault to runMozillaTestNoFTL
+        - runMozillaTestDefaultFTL to runMozillaTestDefault
+        - runDefault to runNoFTL
+        - runDefaultFTL to runDefault
+        - runLayoutTestDefault to runLayoutTestNoFTL
+        - runLayoutTestDefaultFTL to runLayoutTestDefault
+        - runNoisyTestDefault to runNoisyTestNoFTL
+        - runNoisyTestDefaultFTL to runNoisyTestDefault
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-07-21  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        WebBackForwardList's currentIndex could get out of bounds when filtering items.
+        https://bugs.webkit.org/show_bug.cgi?id=159986
+
+        Add a test to verify filtering out 2 items from a 3-item list will set the currentIndex
+        to 0.
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/WKBackForwardList.mm: Added.
+        (-[WKBackForwardListTestNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+
+2016-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Web view background colors don't work in accelerated compositing mode
+        https://bugs.webkit.org/show_bug.cgi?id=159455
+
+        Reviewed by Michael Catanzaro.
+
+        Set always RGBA visual to the view widget when setting a background color.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browser_window_set_background_color):
+
+2016-07-20  Youenn Fablet  <youenn@apple.com>
+
+        Bots should run built-ins generator tests
+        https://bugs.webkit.org/show_bug.cgi?id=159971
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunBuiltinsTests): New step to run built-in generator tests.
+        (TestFactory.__init__): Adding an additional step for bultin generator tests.
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Rebasing expectations.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js: Adding additional step for proper display.
+
+2016-07-20  Aakash Jain  <aakash_jain@apple.com>
+
+        Revert temporary fix r203417
+        https://bugs.webkit.org/show_bug.cgi?id=160001
+
+        Reviewed by Alexey Proskuryakov.
+
+        * EWSTools/start-queue-mac.sh: Revert the temporary fix.
+
+2016-07-20  Aakash Jain  <aakash_jain@apple.com>
+
+        REGRESSION(r148588): ews classes might get garbage collected
+        https://bugs.webkit.org/show_bug.cgi?id=159990
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/tool/commands/__init__.py: Store the loaded ews classes
+        in a variable so that they do not get garbage collected.
+
+2016-07-20  Jeremy Jones  <jeremyj@apple.com>
+
+        Add API test for layout constraints after exit fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=159900
+
+        Reviewed by Jon Lee.
+
+        Added Fullscreen.LaytoutConstraints API test. 
+        Tests fix from https://bugs.webkit.org/show_bug.cgi?id=159731
+
+        This test compares layout constraints on the web view before and after fullscreen to make sure 
+        they are preserved.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenLayoutConstraints.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenLayoutConstraints.mm: Added.
+        (-[FullscreenStateChangeMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::TEST):
+
+2016-07-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable two failing API tests.
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/mac/CandidateTests.mm:
+        (TestWebKitAPI::TEST):
+
+2016-07-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed iOS build fix.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm: Only import Carbon.h on Mac.
+
 2016-07-20  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         Media controls don't appear when pausing a small autoplaying video
