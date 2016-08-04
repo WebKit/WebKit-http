@@ -32,6 +32,7 @@
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/SessionID.h>
+#include <WebCore/Proxy.h>
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
@@ -194,6 +195,7 @@ private:
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);
     void userPreferredLanguagesChanged(const Vector<String>&);
+    void setProxies(WebCore::SessionID, const Vector<WebCore::Proxy>& proxies);
 #endif
 
     // Platform Helpers

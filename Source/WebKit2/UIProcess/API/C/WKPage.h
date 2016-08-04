@@ -126,6 +126,8 @@ WK_EXPORT void WKPageSetApplicationNameForUserAgent(WKPageRef page, WKStringRef 
 WK_EXPORT WKStringRef WKPageCopyCustomUserAgent(WKPageRef page);
 WK_EXPORT void WKPageSetCustomUserAgent(WKPageRef page, WKStringRef userAgent);
 
+WK_EXPORT void WKPageSetProxies(WKPageRef page, WKArrayRef proxies);
+
 WK_EXPORT void WKPageSetUserContentExtensionsEnabled(WKPageRef, bool);
     
 WK_EXPORT bool WKPageSupportsTextEncoding(WKPageRef page);
@@ -200,6 +202,8 @@ WK_EXPORT void WKPageSetEnableHorizontalRubberBanding(WKPageRef, bool enableHori
     
 WK_EXPORT void WKPageSetBackgroundExtendsBeyondPage(WKPageRef, bool backgroundExtendsBeyondPage);
 WK_EXPORT bool WKPageBackgroundExtendsBeyondPage(WKPageRef);
+
+WK_EXPORT void WKPageSetDrawsBackground(WKPageRef, bool drawsBackground);
 
 WK_EXPORT bool WKPageCanDelete(WKPageRef page);
 WK_EXPORT bool WKPageHasSelectedRange(WKPageRef page);

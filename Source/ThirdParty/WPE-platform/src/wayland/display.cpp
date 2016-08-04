@@ -26,8 +26,11 @@
 
 #include "display.h"
 
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
 #include "nsc-client-protocol.h"
+#endif
 #include "xdg-shell-client-protocol.h"
+#include "wayland-client-protocol.h"
 #include <cassert>
 #include <cstring>
 #include <glib.h>
@@ -40,7 +43,7 @@
 #include <wpe/input.h>
 #include <wpe/view-backend.h>
 
-namespace BCMNexusWL {
+namespace Wayland {
 
 class EventSource {
 public:
@@ -100,14 +103,19 @@ const struct wl_registry_listener g_registryListener = {
         if (!std::strcmp(interface, "wl_compositor"))
             interfaces.compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
 
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
         if (!std::strcmp(interface, "wl_nsc"))
             interfaces.nsc = static_cast<struct wl_nsc*>(wl_registry_bind(registry, name, &wl_nsc_interface, version));
+#endif
 
         if (!std::strcmp(interface, "wl_seat"))
             interfaces.seat = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 4));
 
         if (!std::strcmp(interface, "xdg_shell"))
             interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
+
+        if (!std::strcmp(interface, "wl_shell"))
+            interfaces.shell = static_cast<struct wl_shell*>(wl_registry_bind(registry, name, &wl_shell_interface, 1));
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
@@ -524,11 +532,23 @@ Display::~Display()
         wl_compositor_destroy(m_interfaces.compositor);
     if (m_interfaces.seat)
         wl_seat_destroy(m_interfaces.seat);
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
     if (m_interfaces.nsc)
         wl_nsc_destroy(m_interfaces.nsc);
+#endif
     if (m_interfaces.xdg)
         xdg_shell_destroy(m_interfaces.xdg);
-    m_interfaces = { nullptr, nullptr, nullptr, nullptr };
+    if (m_interfaces.shell)
+        wl_shell_destroy(m_interfaces.shell);
+    m_interfaces = {
+        nullptr,
+#ifdef BACKEND_BCM_NEXUS_WAYLAND
+        nullptr,
+#endif
+        nullptr,
+        nullptr,
+        nullptr,
+    };
 
     if (m_registry)
         wl_registry_destroy(m_registry);
@@ -579,4 +599,4 @@ void Display::unregisterInputClient(struct wl_surface* surface)
     m_seatData.inputClients.erase(it);
 }
 
-} // namespace BCMNexusWL
+} // namespace Wayland

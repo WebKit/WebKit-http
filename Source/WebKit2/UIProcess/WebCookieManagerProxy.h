@@ -73,6 +73,10 @@ public:
     void setHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy);
     void getHTTPCookieAcceptPolicy(std::function<void (HTTPCookieAcceptPolicy, CallbackBase::Error)>);
 
+    void setCookies(const Vector<String>& cookies);
+    void getCookies(std::function<void (API::Array*, CallbackBase::Error)>);
+    void didGetCookies(Vector<String> cookies,  uint64_t callbackID);
+
     void startObservingCookieChanges();
     void stopObservingCookieChanges();
 

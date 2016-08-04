@@ -40,6 +40,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
+#include <gwildcardproxyresolver.h>
 
 namespace WebCore {
 
@@ -246,6 +247,29 @@ void SoupNetworkSession::setHTTPProxy(const char* httpProxy, const char* httpPro
 #else
     UNUSED_PARAM(httpProxy);
     UNUSED_PARAM(httpProxyExceptions);
+#endif
+}
+
+void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
+{
+#if PLATFORM(WPE)
+    const char* httpProxy = getenv("http_proxy");
+    GProxyResolver* resolver = g_wildcard_proxy_resolver_new(httpProxy);
+
+    GWildcardProxyResolver* w_resolver = G_WILDCARD_PROXY_RESOLVER(resolver);
+
+    GPtrArray* array = g_ptr_array_sized_new(proxies.size());
+    for (size_t i = 0; i < proxies.size(); ++i)
+    {
+        Proxy* p = g_new(Proxy, 1);
+        p->pattern = g_strdup(proxies[i].pattern.utf8().data());
+        p->proxy = g_strdup(proxies[i].proxy.utf8().data());
+        g_ptr_array_add(array, p);
+    }
+    g_wildcard_proxy_resolver_set_proxies(w_resolver, array);
+    g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver, nullptr);
+#else
+    UNUSED_PARAM(proxies);
 #endif
 }
 

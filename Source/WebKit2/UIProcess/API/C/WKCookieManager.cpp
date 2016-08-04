@@ -28,6 +28,7 @@
 
 #include "WKAPICast.h"
 #include "WebCookieManagerProxy.h"
+#include "WKArray.h"
 
 using namespace WebKit;
 
@@ -72,6 +73,25 @@ void WKCookieManagerSetHTTPCookieAcceptPolicy(WKCookieManagerRef cookieManager, 
 void WKCookieManagerGetHTTPCookieAcceptPolicy(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetHTTPCookieAcceptPolicyFunction callback)
 {
     toImpl(cookieManager)->getHTTPCookieAcceptPolicy(toGenericCallbackFunction<WKHTTPCookieAcceptPolicy, HTTPCookieAcceptPolicy>(context, callback));
+}
+
+void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cookies)
+{
+    size_t size = cookies ? WKArrayGetSize(cookies) : 0;
+    if (!size)
+        return;
+    Vector<String> passCookies(size);
+    for (size_t i = 0; i < size; ++i)
+    {
+        WKTypeRef cookie = WKArrayGetItemAtIndex(cookies, i);
+        passCookies[i] = toWTFString(static_cast<WKStringRef>(cookie));
+    }
+    toImpl(cookieManager)->setCookies(passCookies);
+}
+
+void WKCookieManagerGetCookies(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetCookiesFunction callback)
+{
+    toImpl(cookieManager)->getCookies(toGenericCallbackFunction(context, callback));
 }
 
 void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager)

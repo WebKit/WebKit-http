@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Vector.h>
 
 #if USE(SOUP)
 #include "SoupCookiePersistentStorageType.h"
@@ -71,6 +72,9 @@ private:
     void platformSetHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy);
     void getHTTPCookieAcceptPolicy(uint64_t callbackID);
     HTTPCookieAcceptPolicy platformGetHTTPCookieAcceptPolicy();
+
+    void setCookies(const Vector<String>& cookies);
+    void getCookies(uint64_t callbackID);
 
     void startObservingCookieChanges();
     void stopObservingCookieChanges();
