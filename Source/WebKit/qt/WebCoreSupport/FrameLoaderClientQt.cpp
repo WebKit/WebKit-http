@@ -408,9 +408,6 @@ void FrameLoaderClientQt::dispatchDidReplaceStateWithinPage()
 
 void FrameLoaderClientQt::dispatchDidPopStateWithinPage()
 {
-    if (dumpFrameLoaderCallbacks)
-        printf("%s - dispatchDidPopStateWithinPage\n", qPrintable(drtDescriptionSuitableForTestResult(m_frame)));
-
     // No need to call dispatchDidNavigateWithinPage here, it's already been done in loadInSameDocument().
 }
 
