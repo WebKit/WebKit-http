@@ -274,6 +274,10 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
     endif ()
 
     if (WIN32)
+        list(APPEND WebKit_INCLUDE_DIRECTORIES
+            ${WEBCORE_DIR}/platform/win
+        )
+
         list(APPEND WebKit_SOURCES
             win/Plugins/PluginDatabaseWin.cpp
             win/Plugins/PluginMessageThrottlerWin.cpp

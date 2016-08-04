@@ -177,8 +177,13 @@ endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API AND WIN32)
     list(APPEND WebCore_SOURCES
+        platform/graphics/win/TransformationMatrixWin.cpp
         platform/win/BitmapInfo.cpp
         platform/win/WebCoreInstanceHandle.cpp
+    )
+    list(APPEND WebCore_LIBRARIES
+        Shlwapi
+        version
     )
 endif ()
 
