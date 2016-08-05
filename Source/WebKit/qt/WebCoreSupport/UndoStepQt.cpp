@@ -29,6 +29,8 @@ static QString undoNameForEditAction(const EditAction editAction)
     switch (editAction) {
     case EditActionUnspecified:
         return QString();
+    case EditActionInsert:
+        return QObject::tr("Insert");
     case EditActionSetColor:
         return QObject::tr("Set Color");
     case EditActionSetBackgroundColor:
@@ -87,6 +89,10 @@ static QString undoNameForEditAction(const EditAction editAction)
         return QObject::tr("Cut");
     case EditActionPaste:
         return QObject::tr("Paste");
+    case EditActionDelete:
+        return QObject::tr("Delete");
+    case EditActionDictation:
+        return QObject::tr("Dictation");
     case EditActionPasteFont:
         return QObject::tr("Paste Font");
     case EditActionPasteRuler:
