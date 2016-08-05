@@ -169,7 +169,7 @@ class QtPort(Port):
 
     def setup_environ_for_server(self, server_name=None):
         clean_env = super(QtPort, self).setup_environ_for_server(server_name)
-        clean_env['QTWEBKIT_PLUGIN_PATH'] = self._build_path('lib/plugins')
+        clean_env['QTWEBKIT_PLUGIN_PATH'] = self._build_path('lib')
         self._copy_value_from_environ_if_set(clean_env, 'QT_DRT_WEBVIEW_MODE')
         self._copy_value_from_environ_if_set(clean_env, 'DYLD_IMAGE_SUFFIX')
         self._copy_value_from_environ_if_set(clean_env, 'QT_WEBKIT_LOG')

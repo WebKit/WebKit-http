@@ -110,10 +110,6 @@ fast/css/cursor-parsing-image-set.html
 # accessibility support
 accessibility
 
-# ENABLE(NETSCAPE_PLUGIN_API) is disabled
-plugins
-fast/dom/Window/Plug-ins.html
-
 # Encrypted Media Extensions are not enabled.
 media/encrypted-media/
 
@@ -846,6 +842,8 @@ webkit.org/b/139493 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure 
 
 # Unsorted timeouts (FIXME)
 
+fast/history/go-back-to-iframe-with-plugin.html [ Skip ]
+
 fast/spatial-navigation/qt/ensure-scrolls-with-scrollbars-disabled-by-webkit.html [ Skip ]
 fast/spatial-navigation/qt/snav-ensure-scrolls-with-scrollbars-disabled-by-webkit.html [ Skip ]
 
@@ -1184,8 +1182,6 @@ fast/scrolling/rtl-point-in-iframe.html [ Skip ]
   fast/canvas/canvas-incremental-repaint-2.html [ ImageOnlyFailure ]
   fast/canvas/setWidthResetAfterForcedRender.html [ ImageOnlyFailure ]
   fast/css3-text/css3-text-decoration/repaint/repaint-text-decoration-line.html [ ImageOnlyFailure ]
-  fast/images/embed-image.html [ ImageOnlyFailure ]
-  fast/images/object-image.html [ ImageOnlyFailure ]
   fast/repaint/inline-overflow.html [ ImageOnlyFailure ]
   fast/repaint/inline-vertical-lr-overflow.html [ ImageOnlyFailure ]
   fast/repaint/inline-vertical-rl-overflow.html [ ImageOnlyFailure ]
