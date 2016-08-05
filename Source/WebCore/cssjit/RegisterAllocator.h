@@ -79,14 +79,19 @@ static const JSC::MacroAssembler::RegisterID callerSavedRegisters[] = {
     JSC::X86Registers::eax,
     JSC::X86Registers::ecx,
     JSC::X86Registers::edx,
+#if !OS(WINDOWS)
     JSC::X86Registers::esi,
     JSC::X86Registers::edi,
+#endif
     JSC::X86Registers::r8,
     JSC::X86Registers::r9,
     JSC::X86Registers::r10,
     JSC::X86Registers::r11
 };
 static const JSC::MacroAssembler::RegisterID calleeSavedRegisters[] = {
+#if OS(WINDOWS)
+    JSC::X86Registers::edi,
+#endif
     JSC::X86Registers::r12,
     JSC::X86Registers::r13,
     JSC::X86Registers::r14,
