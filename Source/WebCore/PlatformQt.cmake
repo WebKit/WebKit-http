@@ -176,6 +176,11 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
 endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API AND WIN32)
+    set(WebCore_FORWARDING_HEADERS_FILES
+        platform/graphics/win/LocalWindowsContext.h
+        platform/win/BitmapInfo.h
+        platform/win/WebCoreInstanceHandle.h
+    )
     list(APPEND WebCore_SOURCES
         platform/graphics/win/TransformationMatrixWin.cpp
         platform/win/BitmapInfo.cpp
@@ -396,6 +401,9 @@ if (WIN32)
     file(WRITE "${WebCore_PRE_BUILD_COMMAND}" "@xcopy /y /s /d /f \"${WEBCORE_DIR}/ForwardingHeaders/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore\" >nul 2>nul\n")
     foreach (_directory ${WebCore_FORWARDING_HEADERS_DIRECTORIES})
         file(APPEND "${WebCore_PRE_BUILD_COMMAND}" "@xcopy /y /d /f \"${WEBCORE_DIR}/${_directory}/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore\" >nul 2>nul\n")
+    endforeach ()
+    foreach (_file ${WebCore_FORWARDING_HEADERS_FILES})
+        file(APPEND "${WebCore_PRE_BUILD_COMMAND}" "@xcopy /y /d /f \"${WEBCORE_DIR}/${_file}\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore\" >nul 2>nul\n")
     endforeach ()
 
     set(WebCore_POST_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/WebCore/postBuild.cmd")
