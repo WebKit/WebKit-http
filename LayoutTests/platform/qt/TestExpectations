@@ -400,8 +400,6 @@ fast/css/named-images.html [ WontFix ]
 # -apple-system-* colors
 fast/css/apple-system-colors.html [ WontFix ]
 
-#119
-fast/css/direct-adjacent-style-update-optimization.html [ Failure ]
 
 ##120
 #fast/css/getComputedStyle/computed-style-font.html [ Failure ]
