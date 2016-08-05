@@ -257,6 +257,8 @@ void LauncherWindow::createChrome()
     editMenu->addAction(page()->action(QWebPage::Copy));
     editMenu->addAction(page()->action(QWebPage::Paste));
     editMenu->addSeparator();
+    editMenu->addAction(page()->action(QWebPage::SelectAll));
+    editMenu->addSeparator();
 #ifndef QT_NO_LINEEDIT
     editMenu->addAction("&Find", this, SLOT(showFindBar()), QKeySequence(Qt::CTRL | Qt::Key_F));
     editMenu->addSeparator();
