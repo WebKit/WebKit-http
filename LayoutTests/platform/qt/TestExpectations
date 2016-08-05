@@ -54,6 +54,12 @@ fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
 fast/sub-pixel/input-caret-on-subpixel-bound.html [ Pass ]
 
 # =========================================================================== #
+# Crashes                                                                     #
+# =========================================================================== #
+
+[ Debug ] fast/history/back-from-page-with-focused-iframe.html [ Crash ]
+
+# =========================================================================== #
 #       Permanently Skipped Tests.                                            #
 # =========================================================================== #
 
@@ -373,6 +379,7 @@ fast/notifications/request-notification-permission-while-reloading.html [ Failur
 fast/workers/worker-context-gc.html [ Crash Pass ]
 fast/filter-image/filter-image-animation.html [ Failure Pass ]
 fast/loader/javascript-url-in-embed.html [ Failure Pass ]
+fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFailure Pass ]
 
 #255
 fast/parser/adoption-agency-crash-02.html [ Pass Missing ]
@@ -538,14 +545,19 @@ fast/text/justify-ideograph-leading-expansion.html [ Missing ]
 #251
 fast/text/wide-zero-width-space.html [ Missing ]
 
-
+#260
+[ Release ]  fast/forms/datalist/datalist-child-validation.html [ Failure ]
+[  Debug  ]  fast/forms/datalist/datalist-child-validation.html [ Crash ]
 
 # Failing reftests
 webkit.org/b/103424 fast/backgrounds/background-opaque-images-over-color.html [ ImageOnlyFailure ]
 # Fails on ios-simulator as well
 fast/animation/height-auto-transition-computed-value.html [ ImageOnlyFailure ]
+
 #217
-fast/block/nested-renderers.html [ ImageOnlyFailure ]
+[ Release ] fast/block/nested-renderers.html [ ImageOnlyFailure ]
+[ Debug ]   fast/block/nested-renderers.html [ Crash ]
+
 webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
 #85
 fast/forms/datalist/update-range-with-datalist.html [ ImageOnlyFailure ]
@@ -982,7 +994,6 @@ fast/scrolling/rtl-point-in-iframe.html [ Skip ]
   fast/dynamic/staticY.html [ Failure ]
   fast/encoding/idn-security.html [ Failure ]
   fast/files/filereader-zip-bundle.html [ Failure ]
-  fast/forms/datalist/datalist-child-validation.html [ Failure ]
   fast/forms/datalist/input-list.html [ Failure ]
   fast/forms/drag-into-textarea.html [ Failure ]
   fast/forms/drag-out-of-textarea.html [ Failure ]
