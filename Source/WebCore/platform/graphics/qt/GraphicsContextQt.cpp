@@ -314,6 +314,7 @@ void GraphicsContext::platformInit(QPainter* painter)
     QPen pen(painter->pen());
     pen.setColor(strokeColor());
     pen.setJoinStyle(toQtLineJoin(MiterJoin));
+    pen.setCapStyle(Qt::FlatCap);
     painter->setPen(pen);
 }
 
