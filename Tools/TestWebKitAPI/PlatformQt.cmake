@@ -8,6 +8,7 @@ include_directories(
 )
 
 include_directories(SYSTEM
+    ${ICU_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
 )
 

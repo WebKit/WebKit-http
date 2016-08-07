@@ -32,6 +32,7 @@ qt5_add_resources(DumpRenderTree_SOURCES
 )
 
 list(APPEND DumpRenderTree_SYSTEM_INCLUDE_DIRECTORIES
+    ${ICU_INCLUDE_DIRS}
     ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
 )
