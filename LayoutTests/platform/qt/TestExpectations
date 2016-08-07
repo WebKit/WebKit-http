@@ -201,7 +201,6 @@ webkit.org/b/89052 fast/css/image-orientation
   fast/css3-text/css3-text-decoration/text-decoration-skip/glyph-inside-underline.html [ ImageOnlyFailure ]
   fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-svg.html [ ImageOnlyFailure ]
   fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink.html [ ImageOnlyFailure ]
-  fast/css3-text/css3-text-decoration/text-decoration-style-double-space-scales.html [ ImageOnlyFailure ]
   fast/css3-text/css3-text-justify/text-justify-none.html [ ImageOnlyFailure ]
 #webkit.org/b/99945 fast/css3-text/css3-text-justify [ Failure ]
 #webkit.org/b/112755 fast/css3-text/css3-text-indent [ ImageOnlyFailure ]
@@ -401,13 +400,11 @@ fast/css/named-images.html [ WontFix ]
 fast/css/apple-system-colors.html [ WontFix ]
 
 
-##120
-#fast/css/getComputedStyle/computed-style-font.html [ Failure ]
-#fast/css/font-shorthand-from-longhands.html [ Failure ]
-#fast/css/font-shorthand-line-height.html [ Failure ]
-#fast/css/getComputedStyle/computed-style-without-renderer.html [ Failure ]
-#fast/css/getComputedStyle/computed-style.html [ Failure ]
-#fast/css/line-height-text-autosizing.html [ Failure ]
+#120
+fast/css/getComputedStyle/computed-style-font.html [ Failure ]
+fast/css/font-shorthand-from-longhands.html [ Failure ]
+fast/css/font-shorthand-line-height.html [ Failure ]
+fast/css/line-height-text-autosizing.html [ Failure ]
 
 #122
 fast/css/pseudo-visited-background-color-on-input.html [ ImageOnlyFailure ]
@@ -473,18 +470,6 @@ fast/replaced/width100percent-searchfield.html [ Failure ]
 fast/replaced/width100percent-textarea.html [ Failure ]
 fast/replaced/width100percent-textfield.html [ Failure ]
 
-#174
-fast/borders/borderRadiusDashed04.html [ ImageOnlyFailure ]
-fast/borders/borderRadiusDashed05.html [ ImageOnlyFailure ]
-fast/box-shadow/inset.html [ Failure ]
-fast/borders/borderRadiusAllStylesAllCorners.html [ Missing ]
-fast/borders/borderRadiusDashed01.html [ Missing ]
-fast/borders/borderRadiusDashed02.html [ Missing ]
-fast/borders/borderRadiusDashed03.html [ Missing ]
-fast/borders/borderRadiusDotted01.html [ Missing ]
-fast/borders/borderRadiusDotted02.html [ Missing ]
-fast/borders/borderRadiusDotted03.html [ Missing ]
-
 #160 - ???
 fast/frames/inline-object-inside-frameset.html [ Failure ]
 
@@ -524,6 +509,9 @@ fast/gradients/css3-radial-gradients.html [ Missing ]
 fast/gradients/css3-radial-gradients3.html [ Missing ]
 fast/gradients/css3-repeating-radial-gradients.html [ Missing ]
 fast/gradients/unprefixed-radial-gradients.html [ Missing ]
+#267
+fast/borders/border-image-omit-right-slice.html [ Missing ]
+
 #242
 fast/forms/menulist-narrow-width.html [ Missing ]
 #243
@@ -546,6 +534,9 @@ fast/text/wide-zero-width-space.html [ Missing ]
 #260
 [ Release ]  fast/forms/datalist/datalist-child-validation.html [ Failure ]
 [  Debug  ]  fast/forms/datalist/datalist-child-validation.html [ Crash ]
+
+#265
+fast/borders/empty-outline-border-assert.html [ Failure ]
 
 # Failing reftests
 webkit.org/b/103424 fast/backgrounds/background-opaque-images-over-color.html [ ImageOnlyFailure ]
@@ -642,6 +633,9 @@ webkit.org/b/160248 fast/text/synthetic-bold-transformed.html [ ImageOnlyFailure
 webkit.org/b/160248 fast/text/trailing-word.html [ ImageOnlyFailure ]
 
 webkit.org/b/139493 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure ]
+
+#266
+fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
 
 # Failing regions tests
   fast/regions/absolute-pos-elem-in-region.html [ ImageOnlyFailure ]
@@ -930,9 +924,6 @@ fast/scrolling/rtl-point-in-iframe.html [ Skip ]
   fast/block/positioning/negative-rel-position.html [ Failure ]
   fast/block/positioning/pref-width-change.html [ Failure ]
   fast/block/positioning/relative-positioned-inline-container.html [ Failure ]
-  fast/borders/borderRadiusArcs01.html [ Failure ]
-  fast/borders/borderRadiusSolid03.html [ Failure ]
-  fast/borders/empty-outline-border-assert.html [ Failure ]
   fast/canvas/canvas-blend-image.html [ Failure ]
   fast/canvas/canvas-composite-canvas.html [ Failure ]
   fast/canvas/canvas-composite-image.html [ Failure ]
@@ -940,15 +931,10 @@ fast/scrolling/rtl-point-in-iframe.html [ Skip ]
   fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
   fast/canvas/canvas-imageSmoothingQuality.html [ Failure ]
   fast/canvas/canvas-lineDash.html [ Failure ]
-  fast/canvas/canvas-negative-lineDashOffset.html [ Failure ]
   fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
   fast/canvas/fillText-shadow.html [ Failure ]
   fast/css-generated-content/nested-tables-with-before-after-content-crash.html [ Failure ]
-  fast/css/font-shorthand-from-longhands.html [ Failure ]
-  fast/css/font-shorthand-line-height.html [ Failure ]
   fast/css/font-weight-1.html [ Failure ]
-  fast/css/getComputedStyle/computed-style-font.html [ Failure ]
-  fast/css/line-height-text-autosizing.html [ Failure ]
   fast/css/rtl-to-viewport.html [ Failure ]
   fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last-inherited.html [ Failure ]
   fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html [ Failure ]
@@ -1186,7 +1172,6 @@ fast/scrolling/rtl-point-in-iframe.html [ Skip ]
   fast/history/qt/back-to-unreachable-url-then-forward.html [ Failure ]
 
 # Regressions: Unexpected image-only failures (22)
-  fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
   fast/canvas/canvas-incremental-repaint-2.html [ ImageOnlyFailure ]
   fast/canvas/setWidthResetAfterForcedRender.html [ ImageOnlyFailure ]
   fast/css3-text/css3-text-decoration/repaint/repaint-text-decoration-line.html [ ImageOnlyFailure ]
@@ -1250,14 +1235,6 @@ fast/scrolling/rtl-point-in-iframe.html [ Skip ]
   fast/attachment/attachment-title.html [ Missing ]
   fast/autoresize/autoresize-with-iframe.html [ Missing ]
   fast/backgrounds/gradient-background-leakage-2.html [ Missing ]
-  fast/borders/border-image-omit-right-slice.html [ Missing ]
-  fast/borders/border-left-right-same-bottom-different-color.html [ Missing ]
-  fast/borders/border-radius-percent.html [ Missing ]
-  fast/borders/border-radius-wide-border-05.html [ Missing ]
-  fast/borders/border-radius-with-box-shadow-01.html [ Missing ]
-  fast/borders/border-radius-with-box-shadow.html [ Missing ]
-  fast/borders/border-shadow-large-radius.html [ Missing ]
-  fast/borders/mixed-border-style2.html [ Missing ]
   fast/canvas/canvas-composite-fill-repaint.html [ Missing ]
   fast/canvas/canvas-empty-image-pattern.html [ Missing ]
   fast/canvas/canvas-resize-after-paint-without-layout.html [ Missing ]
