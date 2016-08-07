@@ -902,6 +902,45 @@ fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
 fast/scrolling/rtl-point-in-iframe.html [ Skip ]
 
+# ============================================================================= #
+# Failed canvas tests from http://philip.html5.org/tests/canvas/suite/tests/
+# ============================================================================= #
+canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
+canvas/philip/tests/2d.composite.operation.darker.html [ Failure ]
+canvas/philip/tests/2d.drawImage.broken.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.behind.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.beside.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.bottom.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.cylinder.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.shape2.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.cone.top.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.touch1.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.touch2.html [ Failure ]
+canvas/philip/tests/2d.gradient.radial.touch3.html [ Failure ]
+canvas/philip/tests/2d.line.cap.open.html [ Failure ]
+canvas/philip/tests/2d.line.join.open.html [ Failure ]
+canvas/philip/tests/2d.missingargs.html [ Failure ]
+canvas/philip/tests/2d.path.quadraticCurveTo.shape.html [ Failure ]
+canvas/philip/tests/2d.path.quadraticCurveTo.scaled.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.bottom.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.hanging.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.ideographic.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.middle.html [ Failure ]
+canvas/philip/tests/2d.text.draw.baseline.top.html [ Failure ]
+canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.end.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.other.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.space.html [ Failure ]
+canvas/philip/tests/2d.text.draw.space.collapse.start.html [ Failure ]
+canvas/philip/tests/2d.text.measure.width.space.html [ Failure ]
+
+# Failing tests after sync with Philip Taylor's upstream tests
+canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html [ Failure ]
+canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
+
+# Failing tests after WebKit update
+webkit.org/b/143471 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
+webkit.org/b/65709  canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure ]
 
 # Unsorted
 
