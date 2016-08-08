@@ -1,0 +1,15 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x576
+      RenderBlock {DIV} at (0,0) size 784x17
+        RenderText {#text} at (0,0) size 51x17
+          text run at (0,0) width 51: "Test for "
+        RenderInline {A} at (0,0) size 611x17 [color=#0000EE]
+          RenderText {#text} at (51,0) size 611x17
+            text run at (51,0) width 611: "Bug 22466: REGRESSION (35867): Many resources missing when saving webarchive of webkit.org"
+        RenderText {#text} at (0,0) size 0x0
+      RenderBlock {P} at (0,33) size 784x17
+        RenderText {#text} at (0,0) size 406x17
+          text run at (0,0) width 406: "Some resources are missing when saving this page as a webarchive."

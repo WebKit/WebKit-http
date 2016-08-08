@@ -52,12 +52,58 @@
 # Tests that have failure expectation in global file
 fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
 fast/sub-pixel/input-caret-on-subpixel-bound.html [ Pass ]
+http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-media-src-star.html [ Pass ]
 
 # =========================================================================== #
 # Crashes                                                                     #
 # =========================================================================== #
 
 [ Debug ] fast/history/back-from-page-with-focused-iframe.html [ Crash ]
+[ Debug ]  http/tests/local/fileapi/upload-zip-bundle-as-blob.html [ Crash ]
+[ Debug ]  http/tests/media/hls/video-controls-live-stream.html [ Crash ]
+[ Debug ]  http/tests/media/hls/video-cookie.html [ Crash ]
+[ Debug ]  http/tests/security/contentSecurityPolicy/worker-set-timeout-blocked.html [ Crash Pass ]
+[ Release ]  http/tests/security/contentSecurityPolicy/worker-set-timeout-blocked.html [ Failure Pass ]
+[ Debug ]  http/tests/websocket/tests/hybi/bad-handshake-crash.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/broken-utf8.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/close-code-and-reason.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/closed-when-entering-page-cache.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/compressed-control-frame.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/deflate-frame-invalid-parameter.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/extensions.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/fragmented-control-frame.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-error.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-extensions-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-invalid-http-version.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-maxlength.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-mismatch-protocol-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-more-accept-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-more-extensions-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-more-protocol-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-no-accept-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-no-connection-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-no-cr.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-no-upgrade-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-accept.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-extensions.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-protocol.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-status-line.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-null-char-in-status.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-prepended-null.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/handshake-fail-by-wrong-accept-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/interleaved-fragments.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/invalid-continuation.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/invalid-encode-length.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/invalid-masked-frames-from-server.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/long-control-frame.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/long-invalid-header.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/reserved-bits.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/reserved-opcodes.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/too-long-payload.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Crash ]
+[ Debug ]  http/tests/websocket/tests/hybi/workers/close.html [ Crash Pass ]
+[ Debug ]  http/tests/xmlhttprequest/post-blob-content-type-async.html [ Crash ]
 
 js/dom/cross-frame-bad-time.html [ Pass Crash ]
   js/for-in-modify-in-loop.html [ Crash ]
@@ -73,6 +119,10 @@ js/dom/cross-frame-bad-time.html [ Pass Crash ]
 
 [ Release ] js/regress/v8-raytrace-with-empty-try-catch.html [ Pass Crash ]
 
+  http/tests/ssl/referer-301.html [ Crash ]
+  http/tests/websocket/tests/hybi/workers/worker-reload.html [ Pass Crash ]
+
+[ Release ]  http/tests/xmlhttprequest/onabort-response-getters.html [ Crash ]
 
 # =========================================================================== #
 #       Permanently Skipped Tests.                                            #
@@ -116,6 +166,8 @@ http/tests/security/webgl-remote-read-remote-image-allowed.html
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
 webgl/
+http/tests/webgl
+compositing/backface-visibility/backface-visibility-webgl.html [ Failure ]
 
 # ENABLE(DASHBOARD_SUPPORT) is disabled
 http/tests/xmlhttprequest/default-content-type-dashboard.html
@@ -132,11 +184,16 @@ fast/css/cursor-parsing-image-set.html
 accessibility
 
 # Encrypted Media Extensions are not enabled.
-media/encrypted-media/
+webkit.org/b/99024 media/encrypted-media [ Skip ]
+webkit.org/b/99024 fast/events/constructors/media-key-event-constructor.html [ Timeout ]
 
 # ENABLE(MEDIA_STREAM) is disabled
 fast/mediastream
 fast/events/constructors/media-stream-event-constructor.html
+http/tests/media/media-stream
+
+# MEDIA_SOURCE is enabled, but off by default
+http/tests/media/media-source
 
 # ENBALE(SPEECH_SYNTHESIS) is disabled
 fast/speechsynthesis
@@ -233,6 +290,18 @@ fast/attachment/attachment-icon-from-file-extension.html [ Pass ]
 fast/attachment/attachment-label-highlight.html [ Pass ]
 fast/attachment/attachment-type-attribute.html [ Pass ]
 
+# ENABLE(POINTER_LOCK) is disabled
+pointer-lock
+http/tests/pointer-lock
+
+# we do not enable legacy notifications
+http/tests/notifications/legacy/window-show-on-click.html
+http/tests/notifications/legacy/request.html
+http/tests/notifications/legacy/request-no-callback.html
+http/tests/notifications/legacy/events.html
+http/tests/notifications/legacy/show.html
+http/tests/notifications/legacy/double-show.html
+http/tests/notifications/legacy/notification-request-permission-then-navigate.html
 
 # =========================================================================== #
 #       Feature not yet supported.                                            #
@@ -265,6 +334,55 @@ fast/images/exif-orientation.html [ Missing ]
 fast/images/exif-orientation-css.html [ Missing ]
 fast/images/exif-orientation-composited.html [ Missing ]
 fast/images/exif-orientation-image-document.html [ Missing ]
+
+# Tests for MediaSource API. Feature is not totally functional.
+webkit.org/b/99065 http/tests/media/media-source/mediasource-append-buffer.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-append-stream.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-appendwindow.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-buffered.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-a-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-av-audio-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-av-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-av-video-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-v-framerate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-mp4-v-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-a-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-av-audio-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-av-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-av-video-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-v-bitrate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-v-framerate.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-config-change-webm-v-framesize.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-duration.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-getvideoplaybackquality.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-is-type-supported.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-play.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-play-then-seek-back.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-redundant-seek.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-remove.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-seek-beyond-duration.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-seek-during-pending-seek.html [ Skip ]
+webkit.org/b/99065 http/tests/media/media-source/mediasource-sourcebuffer-mode.html [ Skip ]
+
+webkit.org/b/99065 media/media-source/media-source-append-failed.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-multiple-initialization-segments.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-append-nonsync-sample-after-abort.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-duplicate-seeked.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-canplaythrough.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-duration-after-append.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-end-of-stream-buffered.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-end-of-stream.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-fudge-factor.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-monitor-source-buffers.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-overlapping-append.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-overlapping-decodetime.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-play.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-remove.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-seek-complete.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-track-enabled.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-tracks.html [ Skip ]
+webkit.org/b/99065 media/media-source/media-source-video-playback-quality.html [ Skip ]
 
 # =========================================================================== #
 #       Drag and Drop Support in DRT.                                         #
@@ -395,6 +513,49 @@ fast/workers/worker-terminate.html [ Crash Pass ]
 fast/filter-image/filter-image-animation.html [ Failure Pass ]
 fast/loader/javascript-url-in-embed.html [ Failure Pass ]
 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFailure Pass ]
+
+http/tests/loading/multiple-prioritization.html [ Failure Missing Pass ]
+
+[ Debug ] http/tests/media/video-useragent.html [ Timeout Pass ]
+
+  http/tests/media/video-buffered-range-contains-currentTime.html [ Timeout Missing ]
+  http/tests/navigation/ping-attribute/anchor-cross-origin-from-https.html [ Timeout Pass ]
+http/tests/navigation/anchor-basic.html [ Timeout Pass ]
+http/tests/navigation/page-cache-pending-image-load-cache-partition.html [ Missing Pass ]
+
+  http/tests/loading/307-after-303-after-post.html [ Failure Pass Missing ]
+  http/tests/local/link-stylesheet-load-order-preload.html [ Failure Pass ]
+  http/tests/local/link-stylesheet-load-order.html [ Failure Pass ]
+  http/tests/misc/window-dot-stop.html [ Failure Timeout Pass ]
+  http/tests/security/contentSecurityPolicy/1.1/plugintypes-mismatched-data.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/1.1/plugintypes-notype-url.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/1.1/plugintypes-nourl-allowed.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/1.1/report-uri-effective-directive.php [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/eval-allowed-in-report-only-mode.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/javascript-url-blocked.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-applet-archive-codebase.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-param-src-blocked2.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-url-allowed.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-url-blocked.html [ Failure Pass ]
+  http/tests/security/isolatedWorld/bypass-worker-csp-for-xhr-redirect-cross-origin.html [ Failure Pass ]
+  http/tests/security/mixedContent/insecure-script-in-iframe.html [ Failure Pass ]
+  http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition.html [ Failure Pass ]
+  http/tests/xmlhttprequest/interactive-state.html [ Failure Pass ]
+  http/tests/xmlhttprequest/xmlhttprequest-open-method-case-insensitive.html [ Failure Pass ]
+  http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-content-type-header.html [ Failure Pass ]
+http/tests/media/video-buffered.html [ Failure Timeout Pass ]
+  http/tests/loading/server-redirect-for-provisional-load-caching.html [ Failure Pass Missing ]
+  http/tests/security/contentSecurityPolicy/1.1/child-src/worker-blocked.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-param-code-blocked.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html [ Failure Pass ]
+  http/tests/security/contentSecurityPolicy/report-only-from-header.php [ Failure Pass ]
+  http/tests/mime/mime-type-sniff.html [ Timeout Pass ]
+
+http/tests/websocket/construct-in-detached-frame.html [ Failure Pass ]
+
+fast/text/trailing-white-space.html [ ImageOnlyFailure Pass ]
 
 #255
 fast/parser/adoption-agency-crash-02.html [ Pass Missing ]
@@ -862,6 +1023,79 @@ fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
 
 # Unsorted timeouts (FIXME)
 
+http/tests/messaging/cross-domain-message-event-dispatch.html
+http/tests/messaging/cross-domain-message-send.html
+
+http/tests/media/remove-while-loading.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer.html [ Skip ]
+http/tests/local/formdata/send-form-data-with-empty-blob-filename.html [ Skip ]
+http/tests/local/blob/send-data-blob.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-when-downgrade.html [ Skip ]
+http/tests/inspector/dom/disconnect-dom-tree-after-main-frame-navigation.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html [ Skip ]
+http/tests/inspector/console/cross-domain-inspected-node-access.html [ Skip ]
+http/tests/fileapi/xhr-send-form-data-mimetype-normalization.html [ Skip ]
+http/tests/fullscreen/fullscreenelement-same-origin.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html [ Skip ]
+http/tests/fullscreen/fullscreenelement-different-origin.html [ Skip ]
+http/tests/fileapi/xhr-send-form-data-filename-escaping.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html [ Skip ]
+http/tests/local/blob/send-hybrid-blob.html [ Skip ]
+http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Skip ]
+http/tests/local/formdata/send-form-data-with-sliced-file.html [ Skip ]
+  http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Skip ]
+  http/tests/local/blob/send-sliced-data-blob.html [ Skip ]
+  http/tests/media/clearkey/clear-key-hls-aes128.html [ Skip ]
+  http/tests/media/hls/hls-accessiblity-describes-video.html [ Skip ]
+  http/tests/media/hls/hls-audio-tracks-has-audio.html [ Skip ]
+  http/tests/media/track-in-band-hls-metadata.html [ Skip ]
+  http/tests/media/video-play-stall-seek.html [ Skip ]
+  http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Skip ]
+  http/tests/media/hls/hls-audio-tracks.html [ Skip ]
+  http/tests/media/hls/hls-video-resize.html [ Skip ]
+  http/tests/media/hls/hls-progress.html [ Skip ]
+  http/tests/media/video-play-waiting.html [ Skip ]
+  http/tests/media/video-redirect.html [ Skip ]
+  http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url.html [ Skip ]
+  http/tests/multipart/invalid-image-data-standalone.html [ Skip ]
+  http/tests/multipart/invalid-image-data.html [ Skip ]
+  http/tests/notifications/window-show-on-click.html [ Skip ]
+  http/tests/media/hls/video-controller-getStartDate.html [ Skip ]
+  http/tests/multipart/multipart-image.html [ Skip ]
+  http/tests/multipart/stop-crash.html [ Skip ]
+  http/tests/navigation/ping-attribute/anchor-cookie.html [ Skip ]
+  http/tests/navigation/scrollstate-after-http-equiv-refresh.html [ Skip ]
+  http/tests/navigation/scrollstate-after-location-reload.html [ Skip ]
+  http/tests/plugins/create-v8-script-objects.html [ Skip ]
+http/tests/plugins/third-party-cookie-accept-policy.html [ Skip ]
+http/tests/plugins/plugin-document-has-focus.html
+http/tests/plugins/get-url.html
+http/tests/plugins/post-url-file.html
+http/tests/plugins/interrupted-get-url.html
+http/tests/plugins/plugin-javascript-access.html
+http/tests/plugins/local-geturl-from-remote.html
+http/tests/plugins/get-url-beforeunload-destroys-plugin.html
+http/tests/plugins/cross-frame-object-access.html
+http/tests/plugins/get-url-redirect.html
+http/tests/plugins/get-url-redirect-notify.html
+http/tests/plugins/npapi-response-headers.html
+
+http/tests/security/inactive-document-with-empty-security-origin.html
+http/tests/security/contentSecurityPolicy/media-src-allowed.html
+http/tests/security/frameNavigation/xss-DENIED-plugin-navigation.html
+http/tests/security/isolatedWorld/cross-origin-xhr.html
+
+http/tests/storage/callbacks-are-called-in-correct-context.html
+http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_cached.html
+http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_connection_reuse.html
+
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_iframe_self_navigation.html [ Skip ]
+  http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
+  http/tests/webgl/1.0.2/texImage2DHTML.html [ Skip ]
+  http/tests/webgl/1.0.2/texSubImage2DHTML.html [ Skip ]
+  http/tests/xmlhttprequest/post-blob-content-type-sync.html [ Skip ]
+
   js/dom/callback-function-with-handle-event.html [ Timeout ]
   js/dom/exceptions-thrown-in-callbacks.html [ Timeout ]
 
@@ -962,6 +1196,79 @@ canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
 # Failing tests after WebKit update
 webkit.org/b/143471 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
 webkit.org/b/65709  canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure ]
+
+# ============================================================================= #
+# Failing http Tests
+# ============================================================================= #
+
+# No authentication challenge handling
+http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html [ Skip ]
+http/tests/loading/basic-credentials-sent-automatically.html [ Failure ]
+http/tests/loading/basic-auth-resend-wrong-credentials.html [ Failure ]
+http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin.html [ Failure Timeout Pass ]
+http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin.html [ Failure Timeout ]
+http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials.html [ Failure ]
+
+# New http/tests/loading/post-in-iframe-with-back-navigation.html introduced in r116473 fails
+# https://bugs.webkit.org/show_bug.cgi?id=85969
+http/tests/loading/post-in-iframe-with-back-navigation.html [ Failure ]
+
+# Fails with a mysterious unrelated whitespace difference
+# We should find out what dumpAsText() is doing wrong
+http/tests/security/cross-frame-access-callback-explicit-domain-ALLOW.html [ Failure ]
+
+# --- Failing navigation tests
+#CONSOLE MESSAGE: line 1: ReferenceError: Can't find variable: fillTestForm
+#CONSOLE MESSAGE: line 1: ReferenceError: Can't find variable: scrollDocDown
+http/tests/navigation/javascriptlink-goback.html [ Skip ]
+http/tests/navigation/metaredirect-goback.html [ Failure ]
+http/tests/navigation/timerredirect-goback.html [ Skip ]
+
+# Advanced credential handling
+http/tests/security/401-logout/401-logout.php [ Skip ]
+http/tests/xmlhttprequest/remember-bad-password.html [ Failure ]
+
+# new test introduced in r94828, but fails on Qt.
+# https://bugs.webkit.org/show_bug.cgi?id=66588
+http/tests/security/xssAuditor/script-tag-with-16bit-unicode4.html [ Failure ]
+
+# Fails on non-Chromium bots
+# https://bugs.webkit.org/show_bug.cgi?id=68278
+http/tests/history/back-with-fragment-change.php [ Failure ]
+
+# Needs custom policy delegate enhancement to log downloads
+  http/tests/download/basic-ascii.html [ Failure ]
+  http/tests/download/default-encoding.html [ Failure ]
+  http/tests/download/inherited-encoding-form-submission-result.html [ Failure ]
+  http/tests/download/inherited-encoding.html [ Failure ]
+  http/tests/download/literal-utf-8.html [ Failure ]
+
+# We cannot implement FrameLoaderClient::canHandleRequest() since QNAM doesn't know
+# whether or not a given scheme is supported prior to createRequest().
+# This means we will never reach FrameLoaderClient::dispatchUnableToImplementPolicy()
+# due to spaceballs:// being an unhandled scheme, and thus the expected warning
+# will not be in the output.
+http/tests/misc/redirect-to-external-url.html [ Failure ]
+
+# [Qt] http/tests/cookies/js-get-and-set-http-only-cookie.html failing since introduction in r119947
+# https://bugs.webkit.org/show_bug.cgi?id=87208
+http/tests/cookies/js-get-and-set-http-only-cookie.html [ Failure ]
+
+# https://bugs.webkit.org/show_bug.cgi?id=109799
+webkit.org/b/90007 http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Failure ]
+
+# =========================================================================== #
+#       Failing xmlhttprequest tests                                          #
+# =========================================================================== #
+
+# Skip xmlhttprequest tests - NETWORK_ERR: XMLHttpRequest Exception 101: A network error occured in synchronous requests.
+http/tests/xmlhttprequest/logout.html [ Failure ]
+
+http/tests/xmlhttprequest/cache-override.html [ Failure ]
+
+# [Qt] New http/tests/xmlhttprequest/xmlhttprequest-check-get-readystate-for-404-without-body.htm times out
+# https://bugs.webkit.org/show_bug.cgi?id=86606
+http/tests/xmlhttprequest/xmlhttprequest-check-get-readystate-for-404-without-body.html [ Skip ]
 
 # ============================================================================= #
 # Failing js Tests
@@ -1221,7 +1528,6 @@ js/date-constructor.html [ Failure ]
   compositing/repaint/newly-composited-repaint-rect.html [ ImageOnlyFailure ]
 
 # Regressions: Unexpected image and text failures (5)
-  compositing/backface-visibility/backface-visibility-webgl.html [ Failure ]
   compositing/geometry/ancestor-overflow-change.html [ Failure ]
   compositing/iframes/iframe-content-flipping.html [ Failure ]
   compositing/tiling/backface-preserve-3d-tiled.html [ Failure ]
@@ -1821,3 +2127,202 @@ js/date-constructor.html [ Failure ]
   fast/writing-mode/japanese-lr-selection.html [ Missing ]
   fast/writing-mode/japanese-rl-selection.html [ Missing ]
   fast/xsl/xslt_unicode.xml [ Missing ]
+
+# ============================================================================= #
+# http
+# ============================================================================= #
+
+[ Release ]  http/tests/local/fileapi/upload-zip-bundle-as-blob.html [ Failure ]
+[ Release ]  http/tests/media/hls/video-cookie.html [ Failure ]
+[ Release ]  http/tests/xmlhttprequest/post-blob-content-type-async.html [ Failure ]
+[ Release ]  http/tests/media/hls/video-controls-live-stream.html [ Missing ]
+
+# Regressions: Unexpected text-only failures (184)
+  http/tests/appcache/origin-delete.html [ Failure ]
+  http/tests/appcache/origin-usage.html [ Failure ]
+  http/tests/appcache/origins-with-appcache.html [ Failure ]
+  http/tests/cache/cancel-multiple-post-xhrs.html [ Failure ]
+  http/tests/cache/iframe-304-crash.html [ Failure ]
+  http/tests/cache/partitioned-cache-iframe.html [ Failure ]
+  http/tests/cache/partitioned-cache.html [ Failure ]
+  http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
+  http/tests/contentdispositionattachmentsandbox/at-import-stylesheets-disabled.html [ Failure ]
+  http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled.html [ Failure ]
+  http/tests/contentdispositionattachmentsandbox/external-stylesheets-disabled.html [ Failure ]
+  http/tests/contentdispositionattachmentsandbox/form-submission-disabled.html [ Failure ]
+  http/tests/contentdispositionattachmentsandbox/http-equiv-disabled.html [ Failure ]
+  http/tests/contentdispositionattachmentsandbox/scripts-disabled.html [ Failure ]
+  http/tests/contentdispositionattachmentsandbox/xml-stylesheet-processing-instructions-disabled.html [ Failure ]
+  http/tests/cookies/double-quoted-value-with-semi-colon.html [ Failure ]
+  http/tests/cookies/third-party-cookie-relaxing.html [ Failure ]
+  http/tests/globalhistory/history-delegate-basic-refresh-redirect.html [ Failure ]
+  http/tests/globalhistory/history-delegate-basic-visited-links.html [ Failure ]
+  http/tests/globalhistory/history-delegate-pushstate.html [ Failure ]
+  http/tests/globalhistory/history-delegate-replacestate.html [ Failure ]
+  http/tests/loading/bad-scheme-subframe.html [ Failure ]
+  http/tests/loading/basic-auth-load-URL-with-consecutive-slashes.html [ Failure ]
+  http/tests/loading/hidpi-preload-picture-sizes.html [ Failure ]
+  http/tests/loading/main-resource-delegates-on-back-navigation.html [ Failure ]
+  http/tests/loading/pdf-commit-load-callbacks.html [ Failure ]
+  http/tests/loading/promote-img-preload-priority.html [ Failure ]
+  http/tests/loading/redirect-methods.html [ Failure ]
+  http/tests/loading/sizes/preload-image-sizes-2x.html [ Failure ]
+  http/tests/local/drag-over-remote-content.html [ Failure ]
+  http/tests/local/fileapi/file-last-modified-after-delete.html [ Failure ]
+  http/tests/local/fileapi/file-last-modified.html [ Failure ]
+  http/tests/local/fileapi/send-dragged-file.html [ Failure ]
+  http/tests/local/fileapi/send-sliced-dragged-file.html [ Failure ]
+  http/tests/media/video-accept-encoding.html [ Failure ]
+  http/tests/media/video-auth.html [ Failure ]
+  http/tests/media/video-play-stall.html [ Failure ]
+  http/tests/misc/401-alternative-content.php [ Failure ]
+  http/tests/misc/bubble-drag-events.html [ Failure ]
+  http/tests/misc/drag-over-iframe-invalid-source-crash.html [ Failure ]
+  http/tests/misc/favicon-loads-with-icon-loading-override.html [ Failure ]
+  http/tests/misc/favicon-loads-with-images-disabled.html [ Failure ]
+  http/tests/misc/iframe-invalid-source-crash.html [ Failure ]
+  http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
+  http/tests/misc/submit-post-keygen.html [ Failure ]
+  http/tests/misc/webtiming-ssl.php [ Failure ]
+  http/tests/misc/will-send-request-returns-null-on-redirect.html [ Failure ]
+  http/tests/multipart/multipart-html.php [ Failure ]
+  http/tests/multipart/multipart-replace-non-html-content.php [ Failure ]
+  http/tests/multipart/policy-ignore-crash.php [ Failure ]
+  http/tests/navigation/forward-and-cancel.html [ Failure ]
+  http/tests/navigation/post-308-response.html [ Failure ]
+  http/tests/navigation/post-frames-goback1-uncached.html [ Failure ]
+  http/tests/navigation/postredirect-frames.html [ Failure ]
+  http/tests/navigation/postredirect-goback2.html [ Failure ]
+  http/tests/navigation/redirect-to-invalid-url.html [ Failure ]
+  http/tests/notifications/events.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-allowall.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-deny.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-in-body.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-allow.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-invalid.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow.html [ Failure ]
+  http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny.html [ Failure ]
+  http/tests/security/appcache-switching-private-browsing.html [ Failure ]
+  http/tests/security/blocked-on-redirect.html [ Failure ]
+  http/tests/security/clipboard/clipboard-file-access.html [ Failure ]
+  http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child.html [ Failure ]
+  http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid.html [ Failure ]
+  http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01.html [ Failure ]
+  http/tests/security/contentSecurityPolicy/embed-src-url-blocked.html [ Failure ]
+  http/tests/security/contentSecurityPolicy/object-src-none-allowed.html [ Failure ]
+  http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.php [ Failure ]
+  http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.php [ Failure ]
+  http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.php [ Failure ]
+  http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.php [ Failure ]
+  http/tests/security/contentSecurityPolicy/source-list-parsing-paths-01.html [ Failure ]
+  http/tests/security/contentTypeOptions/nosniff-script-blocked.html [ Failure ]
+  http/tests/security/contentTypeOptions/nosniff-script-without-content-type-blocked.html [ Failure ]
+  http/tests/security/cors-post-redirect-301.html [ Failure ]
+  http/tests/security/cors-post-redirect-302.html [ Failure ]
+  http/tests/security/cors-post-redirect-303.html [ Failure ]
+  http/tests/security/cors-post-redirect-307.html [ Failure ]
+  http/tests/security/cors-post-redirect-308.html [ Failure ]
+  http/tests/security/cross-frame-access-private-browsing.html [ Failure ]
+  http/tests/security/cross-origin-local-storage-allowed.html [ Failure ]
+  http/tests/security/cross-origin-local-storage-wk1.html [ Failure ]
+  http/tests/security/cross-origin-local-storage.html [ Failure ]
+  http/tests/security/cross-origin-plugin-allowed.html [ Failure ]
+  http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html [ Failure ]
+  http/tests/security/cross-origin-plugin-private-browsing-toggled.html [ Failure ]
+  http/tests/security/cross-origin-plugin.html [ Failure ]
+  http/tests/security/cross-origin-websql-allowed.html [ Failure ]
+  http/tests/security/cross-origin-websql.html [ Failure ]
+  http/tests/security/drag-drop-local-file.html [ Failure ]
+  http/tests/security/drag-drop-same-unique-origin.html [ Failure ]
+  http/tests/security/drag-over-remote-content-iframe.html [ Failure ]
+  http/tests/security/isolatedWorld/didClearWindowObject.html [ Failure ]
+  http/tests/security/isolatedWorld/world-reuse.html [ Failure ]
+  http/tests/security/mixedContent/insecure-plugin-in-iframe.html [ Failure ]
+  http/tests/security/private-browsing-http-auth.html [ Failure ]
+  http/tests/security/storage-blocking-loosened-plugin.html [ Failure ]
+  http/tests/security/storage-blocking-loosened-private-browsing-plugin.html [ Failure ]
+  http/tests/security/storage-blocking-loosened-websql.html [ Failure ]
+  http/tests/security/storage-blocking-strengthened-plugin.html [ Failure ]
+  http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Failure ]
+  http/tests/security/storage-blocking-strengthened-websql.html [ Failure ]
+  http/tests/security/xss-DENIED-xsl-document-redirect.xml [ Failure ]
+  http/tests/security/xss-DENIED-xsl-external-entity-redirect.xml [ Failure ]
+  http/tests/security/xssAuditor/script-tag-Big5-char-twice-url-encode-16bit-unicode.html [ Failure ]
+  http/tests/security/xssAuditor/script-tag-with-16bit-unicode-surrogate-pair.html [ Failure ]
+  http/tests/security/xssAuditor/script-tag-with-16bit-unicode2.html [ Failure ]
+  http/tests/security/xssAuditor/script-tag-with-16bit-unicode5.html [ Failure ]
+  http/tests/security/xssAuditor/script-tag-with-fancy-unicode.html [ Failure ]
+  http/tests/security/xssAuditor/script-tag-with-invalid-url-encoding.html [ Failure ]
+  http/tests/svg/svg-use-external.html [ Failure ]
+  http/tests/uri/curly-braces-escaping.html [ Failure ]
+  http/tests/w3c/webperf/approved/navigation-timing/html/test_timing_xserver_redirect.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_attribute_order.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_dynamic_insertion.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_frame_initiator_type.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_ignore_data_url.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_ignore_failures.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_initiator_types.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_redirects.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_reparenting.html [ Failure ]
+  http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_script_types.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_buffer_full_when_populate_entries.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_buffer_full_when_shrink_buffer_size.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_buffer_size_restriction.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_clear_resource_timing_functionality.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_cross_origin_resource_request.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_on_shrink_buffer_size.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_store_and_clear_during_callback.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/resource-timing/test_resource_timing_timing_allow_cross_origin_resource_request.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_clearMarks.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_clearMeasures.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_entry_type.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_mark.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_mark_exception.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_measure.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_measure_associate_with_navigation_timing.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_measure_exception.html [ Failure ]
+  http/tests/w3c/webperf/submission/Intel/user-timing/test_user_timing_method_exist.html [ Failure ]
+  http/tests/websocket/tests/hybi/handshake-ok-with-http-version-beyond-1_1.html [ Failure ]
+  http/tests/xmlhttprequest/abort-should-cancel-load.html [ Failure ]
+  http/tests/xmlhttprequest/basic-auth-responseURL.html [ Failure ]
+  http/tests/xmlhttprequest/failed-auth.html [ Failure ]
+  http/tests/xmlhttprequest/if-modified-since-0.html [ Failure ]
+  http/tests/xmlhttprequest/methods-async.html [ Failure ]
+  http/tests/xmlhttprequest/methods.html [ Failure ]
+  http/tests/xmlhttprequest/redirect-credentials-responseURL.html [ Failure ]
+  http/tests/xmlhttprequest/response-special-characters.html [ Failure ]
+  http/tests/xmlhttprequest/workers/methods-async.html [ Failure ]
+  http/tests/xmlhttprequest/workers/methods.html [ Failure ]
+
+# Regressions: Unexpected image-only failures (4)
+  http/tests/contentdispositionattachmentsandbox/plugins-disabled.html [ ImageOnlyFailure ]
+  http/tests/contentfiltering/block-after-redirect.html [ ImageOnlyFailure ]
+  http/tests/contentfiltering/modify-redirect-request-url.html [ ImageOnlyFailure ]
+  http/tests/images/png-partial-load-no-alpha.html [ ImageOnlyFailure ]
+
+# Regressions: Unexpected missing results (22)
+  http/tests/contentfiltering/load-substitute-data-from-appcache.html [ Missing ]
+  http/tests/incremental/slow-utf8-text.pl [ Missing ]
+  http/tests/multipart/load-last-non-html-frame.php [ Missing ]
+  http/tests/plugins/geturlnotify-from-npp-destroystream.html [ Missing ]
+  http/tests/security/contentSecurityPolicy/report-multiple-violations-01.html [ Missing ]
+  http/tests/security/contentSecurityPolicy/report-multiple-violations-02.html [ Missing ]
+  http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header-inherited-by-subframe.php [ Missing ]
+  http/tests/security/contentSecurityPolicy/sandbox-empty-in-http-header.php [ Missing ]
+  http/tests/security/contentSecurityPolicy/xsl-blocked.php [ Missing ]
+  http/tests/xmlviewer/dumpAsText/css-stylesheet.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/existing-tree-element-crash.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/mathml.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/svg.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/xlink.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/xmlviewer-charset-cp1251.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/xmlviewer-charset-utf8.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/xmlviewer.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/xsl-stylesheet.xml [ Missing ]
+  http/tests/xmlviewer/dumpAsText/xul.xml [ Missing ]
