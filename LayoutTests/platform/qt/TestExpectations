@@ -59,6 +59,21 @@ fast/sub-pixel/input-caret-on-subpixel-bound.html [ Pass ]
 
 [ Debug ] fast/history/back-from-page-with-focused-iframe.html [ Crash ]
 
+js/dom/cross-frame-bad-time.html [ Pass Crash ]
+  js/for-in-modify-in-loop.html [ Crash ]
+  js/regress/array-prototype-every.html [ Crash ]
+  js/regress/array-prototype-forEach.html [ Crash ]
+  js/regress/array-prototype-reduce.html [ Crash ]
+  js/regress/array-prototype-reduceRight.html [ Crash ]
+  js/regress/array-prototype-some.html [ Crash ]
+  js/regress/call-spread-apply.html [ Crash ]
+  js/regress/call-spread-call.html [ Crash ]
+  js/regress/method-on-number.html [ Crash ]
+  js/slow-stress/array-prototype-filter.html [ Pass Crash ]
+
+[ Release ] js/regress/v8-raytrace-with-empty-try-catch.html [ Pass Crash ]
+
+
 # =========================================================================== #
 #       Permanently Skipped Tests.                                            #
 # =========================================================================== #
@@ -376,6 +391,7 @@ fast/workers/worker-exception-during-navigation.html [ Crash Timeout Pass ]
 fast/notifications/notifications-constructor-without-permission.html [ Failure Pass ]
 fast/notifications/request-notification-permission-while-reloading.html [ Failure Pass ]
 fast/workers/worker-context-gc.html [ Crash Pass ]
+fast/workers/worker-terminate.html [ Crash Pass ]
 fast/filter-image/filter-image-animation.html [ Failure Pass ]
 fast/loader/javascript-url-in-embed.html [ Failure Pass ]
 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFailure Pass ]
@@ -846,6 +862,9 @@ fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
 
 # Unsorted timeouts (FIXME)
 
+  js/dom/callback-function-with-handle-event.html [ Timeout ]
+  js/dom/exceptions-thrown-in-callbacks.html [ Timeout ]
+
 compositing/fixed-with-fixed-layout.html [ Skip ]
 
 fast/history/go-back-to-iframe-with-plugin.html [ Skip ]
@@ -943,6 +962,14 @@ canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
 # Failing tests after WebKit update
 webkit.org/b/143471 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
 webkit.org/b/65709  canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure ]
+
+# ============================================================================= #
+# Failing js Tests
+# ============================================================================= #
+
+#271
+js/date-constructor.html [ Failure ]
+
 
 # Unsorted
 
