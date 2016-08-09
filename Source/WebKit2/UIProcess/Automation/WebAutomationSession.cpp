@@ -118,11 +118,10 @@ void WebAutomationSession::dispatchMessageFromRemote(const String& message)
 void WebAutomationSession::connect(Inspector::FrontendChannel* channel, bool isAutomaticConnection)
 {
     UNUSED_PARAM(isAutomaticConnection);
-
     m_remoteChannel = channel;
     m_frontendRouter->connectFrontend(channel);
 
- #if ENABLE(REMOTE_INSPECTOR)
+#if ENABLE(REMOTE_INSPECTOR)
     setIsPaired(true);
 #endif
 }
@@ -130,7 +129,6 @@ void WebAutomationSession::connect(Inspector::FrontendChannel* channel, bool isA
 void WebAutomationSession::disconnect(Inspector::FrontendChannel* channel)
 {
     ASSERT(channel == m_remoteChannel);
-
     m_remoteChannel = nullptr;
     m_frontendRouter->disconnectFrontend(channel);
 

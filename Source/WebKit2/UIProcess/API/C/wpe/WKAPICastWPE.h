@@ -31,15 +31,18 @@
 #endif
 
 #include "WKView.h"
+#include "WKWebAutomation.h"
 #include <WebCore/ViewState.h>
 
 namespace WKWPE {
 class View;
+class WebAutomation;
 }
 
 namespace WebKit {
 
 WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
+WK_ADD_API_MAPPING(WKWebAutomationSessionRef, WKWPE::WebAutomation)
 
 inline WebCore::ViewState::Flags toViewStateFlags(WKViewState wkViewState)
 {
