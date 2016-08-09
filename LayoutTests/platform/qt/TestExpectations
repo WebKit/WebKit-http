@@ -516,8 +516,7 @@ fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFa
 
 http/tests/loading/multiple-prioritization.html [ Failure Missing Pass ]
 
-[ Debug ] http/tests/media/video-useragent.html [ Timeout Pass ]
-
+http/tests/media/video-useragent.html [ Timeout Pass ]
   http/tests/media/video-buffered-range-contains-currentTime.html [ Timeout Missing ]
   http/tests/navigation/ping-attribute/anchor-cross-origin-from-https.html [ Timeout Pass ]
 http/tests/navigation/anchor-basic.html [ Timeout Pass ]
@@ -567,6 +566,9 @@ fast/parser/adoption-agency-crash-02.html [ Pass Missing ]
 # These tests are actually pixel-tests and have Mac-only expectations
 fast/borders/border-painting-correctness-dashed.html [ ImageOnlyFailure ]
 fast/borders/border-painting-correctness-dotted.html [ ImageOnlyFailure ]
+
+#274
+fast/css/user-drag-none.html [ Timeout ]
 
 #273
 fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml [ Failure ]
