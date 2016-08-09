@@ -1126,15 +1126,15 @@ void WebProcessPool::setAutomationSession(RefPtr<WebAutomationSession>&& automat
 {
     m_automationSession = WTFMove(automationSession);
 
-#if ENABLE(REMOTE_INSPECTOR)
     if (m_automationSession) {
+#if ENABLE(REMOTE_INSPECTOR)
         m_automationSession->init();
+#endif
         m_automationSession->setProcessPool(this);
 
         sendToAllProcesses(Messages::WebProcess::EnsureAutomationSessionProxy(m_automationSession->sessionIdentifier()));
     } else
         sendToAllProcesses(Messages::WebProcess::DestroyAutomationSessionProxy());
-#endif
 }
 
 void WebProcessPool::setHTTPPipeliningEnabled(bool enabled)

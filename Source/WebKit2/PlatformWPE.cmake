@@ -106,11 +106,16 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/wpe/WKView.cpp
 
+    UIProcess/API/C/wpe/WKWebAutomation.cpp
+
     UIProcess/API/wpe/CompositingManagerProxy.cpp
     UIProcess/API/wpe/DrawingAreaProxyWPE.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/API/wpe/WPEViewClient.cpp
+
+    UIProcess/API/wpe/WPEWebAutomation.cpp
+    UIProcess/API/wpe/WPEWebAutomationClient.cpp
 
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
@@ -477,7 +482,7 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/WKProxy.h
     
     ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKView.h
-
+    ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKWebAutomation.h
     ${WEBKIT2_DIR}/UIProcess/API/C/soup/WKCookieManagerSoup.h
 )
 
