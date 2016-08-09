@@ -568,6 +568,9 @@ fast/parser/adoption-agency-crash-02.html [ Pass Missing ]
 fast/borders/border-painting-correctness-dashed.html [ ImageOnlyFailure ]
 fast/borders/border-painting-correctness-dotted.html [ ImageOnlyFailure ]
 
+#273
+fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml [ Failure ]
+
 #198
 fast/forms/select-initial-position.html [ Failure ]
 
