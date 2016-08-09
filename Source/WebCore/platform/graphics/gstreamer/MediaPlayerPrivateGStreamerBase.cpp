@@ -1215,6 +1215,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
         // XXX: use nextMessage here and send a new keyMessage is ack is needed?
         emitSession();
 
+        m_player->keyAdded(keySystem, sessionID);
+
         return MediaPlayer::NoError;
     }
 #endif
@@ -1225,6 +1227,9 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
     dispatchDecryptionKey(buffer);
     gst_buffer_unref(buffer);
+
+    m_player->keyAdded(keySystem, sessionID);
+
     return MediaPlayer::NoError;
 }
 
