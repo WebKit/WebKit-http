@@ -43,7 +43,7 @@ load_impl_library()
         abort();
     }
 #else
-    static const char library_name[] = "libWPE-platform.so.so";
+    static const char library_name[] = "libWPE-platform.so";
 
     // Get the impl library from an environment variable.
     char* env_library_name = getenv("WPE_BACKEND_LIBRARY");
