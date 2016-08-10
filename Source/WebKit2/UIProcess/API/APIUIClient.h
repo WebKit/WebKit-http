@@ -168,6 +168,9 @@ public:
     virtual void didClickAutoFillButton(WebKit::WebPageProxy&, API::Object*) { }
 
     virtual void imageOrMediaDocumentSizeChanged(const WebCore::IntSize&) { }
+
+    virtual void willAddDetailedMessageToConsole( WebKit::WebPageProxy* page, const WTF::String& source, const WTF::String& level,
+            uint64_t line, uint64_t col, const WTF::String& message, const WTF::String& url) { }
 };
 
 } // namespace API

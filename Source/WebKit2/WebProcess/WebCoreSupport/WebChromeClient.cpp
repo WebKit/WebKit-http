@@ -73,6 +73,7 @@
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/Settings.h>
+#include <JavaScriptCore/ConsoleTypes.h>
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #include "WebPlaybackSessionManager.h"
@@ -327,6 +328,48 @@ void WebChromeClient::addMessageToConsole(MessageSource source, MessageLevel lev
 {
     // Notify the bundle client.
     m_page->injectedBundleUIClient().willAddMessageToConsole(m_page, source, level, message, lineNumber, columnNumber, sourceID);
+
+    String src;
+    switch(source) {
+        case JSC::MessageSource::XML:
+            src = "XML"; break;
+        case JSC::MessageSource::JS:
+            src = "JS"; break;
+        case JSC::MessageSource::Network:
+            src = "Network"; break;
+        case JSC::MessageSource::ConsoleAPI:
+            src = "ConsoleAPI"; break;
+        case JSC::MessageSource::Storage:
+            src = "Storage"; break;
+        case JSC::MessageSource::AppCache:
+            src = "AppCache"; break;
+        case JSC::MessageSource::Rendering:
+            src = "Rendering"; break;
+        case JSC::MessageSource::CSS:
+            src = "CSS"; break;
+        case JSC::MessageSource::Security:
+            src = "Security"; break;
+        case JSC::MessageSource::ContentBlocker:
+            src = "ContentBlocker"; break;
+        case JSC::MessageSource::Other:
+            src = "Other"; break;
+    }
+
+    String lvl;
+    switch (level) {
+        case JSC::MessageLevel::Log:
+            lvl = "Log"; break;
+        case JSC::MessageLevel::Warning:
+            lvl = "Warning"; break;
+        case JSC::MessageLevel::Error:
+            lvl = "Error"; break;
+        case JSC::MessageLevel::Debug:
+            lvl = "Debug"; break;
+        case JSC::MessageLevel::Info:
+            lvl = "Info"; break;
+    }
+
+    m_page->send(Messages::WebPageProxy::WillAddDetailedMessageToConsole(src, lvl, lineNumber, columnNumber, message, sourceID));
 }
 
 bool WebChromeClient::canRunBeforeUnloadConfirmPanel()
