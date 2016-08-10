@@ -1335,8 +1335,8 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(
         return result;
 
     // If keySystem contains an unrecognized or unsupported Key System, return the empty string
-    if (supportsKeySystem(parameters.keySystem, emptyString()))
-        result = MediaPlayer::IsSupported;
+    if (!supportsKeySystem(parameters.keySystem, emptyString()))
+        result = MediaPlayer::IsNotSupported;
 #else
     UNUSED_PARAM(parameters);
 #endif
