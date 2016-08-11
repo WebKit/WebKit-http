@@ -762,9 +762,6 @@ static inline void drawRepeatPattern(QPainter* p, PassRefPtr<Pattern> pattern, c
     if (p->hasClipping())
         oldClip = p->clipRegion();
 
-    // The only type of transforms supported for the brush are translations.
-    ASSERT(!brush.transform().isRotating());
-
     QRectF clip = targetRect;
     QRectF patternRect = brush.transform().mapRect(QRectF(0, 0, w, h));
     if (!repeatX) {
