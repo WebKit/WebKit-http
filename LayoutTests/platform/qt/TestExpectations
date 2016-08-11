@@ -161,7 +161,7 @@ http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-me
 #Probably 281 as well:
 perf/array-nested-loop.html [ Crash ]
 perf/array-push-pop.html [ Crash Pass ]
-[ Release ] perf/document-contains.html [ Crash ]
+[ Release ] perf/document-contains.html [ Crash Pass ]
 [ Release ] perf/htmlcollection-backwards-iteration.html [ Crash ]
 perf/htmlcollection-last-item.html [ Crash Pass ]
 perf/rel-list-remove.html [ Crash Pass ]
@@ -583,6 +583,9 @@ fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
 # ============================================================================= #
 # Fluctuating/flakey tests
 # ============================================================================= #
+
+  perf/clone-with-focus.html [ Failure Pass ]
+  perf/show-hide-table-rows.html [ Failure Pass ]
 
 fast/regions/repaint/hover-border-radius.html [ Failure Pass ]
 fast/repaint/4776765.html [ Failure Pass ]
@@ -4215,7 +4218,7 @@ css2.1/20110323/word-spacing-remove-space-006.htm [ Pass ]
 
 # perf
   perf/accessibility-title-ui-element.html [ Failure ]
-[ Release ]  perf/adding-radio-buttons.html [ Failure ]
+[ Release ]  perf/adding-radio-buttons.html [ Failure Pass ]
 
 # printing
   printing/compositing-layer-printing.html [ Missing ]
