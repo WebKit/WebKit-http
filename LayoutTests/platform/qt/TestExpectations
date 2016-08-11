@@ -560,6 +560,7 @@ http/tests/media/video-buffered.html [ Failure Timeout Pass ]
   http/tests/security/contentSecurityPolicy/report-only-from-header.php [ Failure Pass ]
   http/tests/mime/mime-type-sniff.html [ Timeout Pass ]
 
+http/tests/webarchive/cross-origin-stylesheet-crash.html [ Failure Pass ]
 http/tests/websocket/construct-in-detached-frame.html [ Failure Pass ]
 
 fast/text/trailing-white-space.html [ ImageOnlyFailure Pass ]
@@ -1131,6 +1132,7 @@ http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_conn
 
   js/dom/callback-function-with-handle-event.html [ Timeout ]
   js/dom/exceptions-thrown-in-callbacks.html [ Timeout ]
+js/regress/getter-richards-try-catch.html [ Timeout Pass ]
 
 compositing/fixed-with-fixed-layout.html [ Skip ]
 
