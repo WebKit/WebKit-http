@@ -56,40 +56,30 @@ contentfiltering
 crypto
 css1 [ Missing ]
 css2.1 [ Missing ]
-cssom
 displaylists
-dom
 editing
 fonts
 fullscreen
 gamepad
-html5lib
 ietestcenter
 imported
 inspector
-jquery
 loader
 mathml
 media
-mhtml
 pageoverlay
-perf
 plugins
-printing
 proximity
 quicklook
 scrollbars
 scrollingcoordinator
 security
-sputnik
 storage
 streams
 swipe
-tables
+tables [ Missing ]
 tiled-drawing
-transforms
 transitions
-traversal
 userscripts
 vibration
 webarchive
@@ -165,8 +155,29 @@ http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-me
   js/regress/call-spread-call.html [ Crash ]
   js/regress/method-on-number.html [ Crash ]
   js/slow-stress/array-prototype-filter.html [ Pass Crash ]
-  css3/shapes/shape-outside/values/shape-outside-ellipse-004.html [ Crash ]
-  css3/shapes/shape-outside/values/shape-outside-circle-004.html [ Crash ]
+  css3/shapes/shape-outside/values/shape-outside-ellipse-004.html [ Crash Failure ]
+  css3/shapes/shape-outside/values/shape-outside-circle-004.html [ Crash Failure ]
+
+#Probably 281 as well:
+perf/array-nested-loop.html [ Crash ]
+perf/array-push-pop.html [ Crash ]
+perf/document-contains.html [ Crash ]
+perf/htmlcollection-backwards-iteration.html [ Crash ]
+perf/htmlcollection-last-item.html [ Crash ]
+perf/rel-list-remove.html [ Crash ]
+perf/table-rows-length-caching.html [ Crash ]
+  sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A6.html [ Crash ]
+  sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.2_parseInt/S15.1.2.2_A8.html [ Crash ]
+  sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.1_decodeURI/S15.1.3.1_A2.1_T1.html [ Crash ]
+  sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.1_decodeURI/S15.1.3.1_A2.4_T1.html [ Crash ]
+  sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.2_decodeURIComponent/S15.1.3.2_A2.4_T1.html [ Crash ]
+  sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.3_encodeURI/S15.1.3.3_A2.3_T1.html [ Crash ]
+  sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.3_encodeURI/S15.1.3.3_A2.5_T1.html [ Crash ]
+  sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.4_encodeURIComponent/S15.1.3.4_A2.3_T1.html [ Crash ]
+  sputnik/Unicode/Unicode_218/S7.6_A5.3_T1.html [ Crash ]
+  sputnik/Unicode/Unicode_218/S7.6_A5.3_T2.html [ Crash ]
+  sputnik/Unicode/Unicode_320/S7.6_A5.3_T1.html [ Crash ]
+  sputnik/Unicode/Unicode_320/S7.6_A5.3_T2.html [ Crash ]
 
 
 [ Release ] js/regress/v8-raytrace-with-empty-try-catch.html [ Pass Crash ]
@@ -4184,3 +4195,89 @@ css2.1/20110323/word-spacing-remove-space-006.htm [ Pass ]
   css1/units/rounding.html [ Pass ]
   css1/units/zero-duration-without-units.html [ Pass ]
 
+# dom
+  dom/xhtml/level3/core/nodecomparedocumentposition03.xhtml [ Failure ]
+  dom/xhtml/level3/core/nodecomparedocumentposition05.xhtml [ Failure ]
+  dom/xhtml/level3/core/nodecomparedocumentposition16.xhtml [ Failure ]
+  dom/xhtml/level3/core/nodecomparedocumentposition33.xhtml [ Failure ]
+  dom/xhtml/level3/core/nodecomparedocumentposition38.xhtml [ Failure ]
+
+# perf
+  perf/accessibility-title-ui-element.html [ Failure ]
+  perf/adding-radio-buttons.html [ Failure ]
+
+# printing
+  printing/compositing-layer-printing.html [ Missing ]
+  printing/iframe-print.html [ Missing ]
+  printing/media-queries-print.html [ Missing ]
+  printing/page-count-relayout-shrink.html [ Missing ]
+  printing/page-rule-in-media-query.html [ Missing ]
+  printing/return-from-printing-mode.html [ Missing ]
+  printing/setPrinting.html [ Missing ]
+  printing/simultaneous-position-float-change.html [ Missing ]
+  printing/single-line-must-not-be-split-into-two-pages.html [ Missing ]
+  printing/width-overflow.html [ Missing ]
+
+# sputnik
+  sputnik/Unicode/Unicode_320/S7.6_A2.2_T2.html [ Failure ]
+  sputnik/Unicode/Unicode_320/S7.6_A5.2_T8.html [ Failure ]
+  sputnik/Unicode/Unicode_510/S7.6_A3.1.html [ Failure ]
+  sputnik/Unicode/Unicode_510/S7.6_A3.2.html [ Failure ]
+  sputnik/Unicode/Unicode_510/S7.6_A5.3_T1.html [ Failure ]
+  sputnik/Unicode/Unicode_510/S7.6_A5.3_T2.html [ Failure ]
+
+# tables
+  tables/colspan-with-large-value-crash.html [ Pass ]
+  tables/hittesting/filltable-emptycells.html [ Pass ]
+  tables/hittesting/filltable-levels.html [ Pass ]
+  tables/hittesting/filltable-outline.html [ Pass ]
+  tables/hittesting/filltable-rtl.html [ Pass ]
+  tables/hittesting/filltable-stress.html [ Pass ]
+  tables/mozilla/bugs/bug12908-2.html [ Pass ]
+  tables/mozilla/bugs/bug1818-6.html [ Pass ]
+  tables/mozilla/bugs/bug196870.html [ Pass ]
+  tables/mozilla/bugs/bug222336.html [ Pass ]
+  tables/mozilla/bugs/bug222467.html [ Pass ]
+  tables/mozilla/bugs/bug269566.html [ Pass ]
+  tables/mozilla/bugs/bug277062.html [ Pass ]
+  tables/mozilla/bugs/bug28933.html [ Pass ]
+  tables/mozilla/bugs/bug8032-2.html [ Pass ]
+  tables/mozilla/bugs/bug9024.html [ Pass ]
+  tables/mozilla/core/col_widths_fix_autoFixPer.html [ Pass ]
+  tables/mozilla_expected_failures/bugs/bug128876.html [ Pass ]
+  tables/mozilla_expected_failures/bugs/bug3517.html [ Pass ]
+  tables/table-section-overflow-clip-crash.html [ Pass ]
+
+# transforms
+#Regressions: Unexpected text-only failures (4)
+  transforms/3d/hit-testing/overlapping-layers-hit-test.html [ Failure ]
+  transforms/3d/hit-testing/perspective-clipped.html [ Failure ]
+  transforms/3d/hit-testing/rotated-hit-test.html [ Failure ]
+  transforms/3d/hit-testing/rotated-hit-test2.html [ Failure ]
+
+#Regressions: Unexpected image-only failures (4)
+  transforms/3d/general/background-visibility-layers.html [ ImageOnlyFailure ]
+  transforms/3d/general/matrix-with-zoom-3d.html [ ImageOnlyFailure ]
+  transforms/3d/general/transform-origin-z-change.html [ ImageOnlyFailure ]
+  transforms/hittest-translated-content-off-to-infinity-and-back.html [ ImageOnlyFailure ]
+
+#Regressions: Unexpected missing results (19)
+  transforms/2d/compound-transforms-vs-containers.html [ Missing ]
+  transforms/2d/hindi-rotated.html [ Missing ]
+  transforms/2d/transform-borderbox.html [ Missing ]
+  transforms/2d/transform-fixed-container.html [ Missing ]
+  transforms/2d/transform-origin-borderbox.html [ Missing ]
+  transforms/2d/zoom-menulist.html [ Missing ]
+  transforms/3d/general/perspective-non-layer.html [ Missing ]
+  transforms/3d/general/perspective-units.html [ Missing ]
+  transforms/3d/hit-testing/backface-hit-test.html [ Missing ]
+  transforms/3d/hit-testing/backface-no-transform-hit-test.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping-2.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping-3.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping-coplanar.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping-deep.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping-origins.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping-overlapping.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping-preserve-3d.html [ Missing ]
+  transforms/3d/point-mapping/3d-point-mapping.html [ Missing ]
+  transforms/svg-vs-css.xhtml [ Missing ]
