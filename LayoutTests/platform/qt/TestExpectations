@@ -49,6 +49,54 @@
 # - new tests without expected results
 # - Regressions occured after Qt version update
 
+# This tests have not been activated yet
+animations
+batterystatus
+contentfiltering
+crypto
+css1
+css2.1
+css3
+cssom
+displaylists
+dom
+editing
+fonts
+fullscreen
+gamepad
+html5lib
+ietestcenter
+imported
+inspector
+jquery
+loader
+mathml
+media
+mhtml
+pageoverlay
+perf
+plugins
+printing
+proximity
+quicklook
+scrollbars
+scrollingcoordinator
+security
+sputnik
+storage
+streams
+swipe
+tables
+tiled-drawing
+transforms
+transitions
+traversal
+userscripts
+vibration
+webarchive
+webaudio
+
+
 # Tests that have failure expectation in global file
 fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
 fast/sub-pixel/input-caret-on-subpixel-bound.html [ Pass ]
@@ -287,7 +335,7 @@ webkit.org/b/89052 fast/css/image-orientation
 fast/css3-text/css3-text-indent/text-indent-each-line-hanging.html [ ImageOnlyFailure ]
 
 # CURSOR_VISIBILITY is not enabled in qt
-webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html [ Failure ]
+webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html # [ Failure ]
 
 # ENABLE(ATTACHMENT_ELEMENT) is disabled
 fast/attachment [ Failure ]
