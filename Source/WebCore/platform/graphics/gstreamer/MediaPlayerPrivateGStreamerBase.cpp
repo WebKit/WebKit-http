@@ -1290,6 +1290,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
         // XXX: use nextMessage here and send a new keyMessage is ack is needed?
         emitSession();
 
+        m_player->keyAdded(keySystem, sessionID);
+
         return MediaPlayer::NoError;
     }
 #endif
@@ -1300,6 +1302,9 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
     dispatchDecryptionKey(buffer);
     gst_buffer_unref(buffer);
+
+    m_player->keyAdded(keySystem, sessionID);
+
     return MediaPlayer::NoError;
 }
 
@@ -1405,8 +1410,8 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(
         return result;
 
     // If keySystem contains an unrecognized or unsupported Key System, return the empty string
-    if (supportsKeySystem(parameters.keySystem, emptyString()))
-        result = MediaPlayer::IsSupported;
+    if (!supportsKeySystem(parameters.keySystem, emptyString()))
+        result = MediaPlayer::IsNotSupported;
 #else
     UNUSED_PARAM(parameters);
 #endif
