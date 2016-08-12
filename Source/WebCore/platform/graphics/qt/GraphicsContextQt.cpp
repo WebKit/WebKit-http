@@ -1587,7 +1587,7 @@ void GraphicsContext::setURLForRect(const URL& url, const IntRect& rect)
 
     QPainter* p = m_data->p();
     if (p->paintEngine()->type() == QPaintEngine::Pdf)
-        static_cast<QPdfEngine *>(p->paintEngine())->drawHyperlink(p->worldTransform().mapRect(QRectF(rect.x(), rect.y(), rect.width(), rect.height())), QUrl(url.string()));
+        static_cast<QPdfEngine *>(p->paintEngine())->drawHyperlink(p->worldTransform().mapRect(rect), url);
 #else
     notImplemented();
 #endif
