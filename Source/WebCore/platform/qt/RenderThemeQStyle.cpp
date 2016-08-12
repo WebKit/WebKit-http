@@ -168,10 +168,11 @@ QRectF RenderThemeQStyle::inflateButtonRect(const QRectF& originalRect) const
     return originalRect;
 }
 
-int extendFixedPadding(Length oldPadding, int padding) {
-    if (oldPadding.isFixed()) {
+static int extendFixedPadding(Length oldPadding, int padding)
+{
+    if (oldPadding.isFixed())
         return std::max(oldPadding.intValue(), padding);
-    }
+
     return padding;
 }
 
