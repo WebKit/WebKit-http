@@ -207,6 +207,11 @@ perf/table-rows-length-caching.html [ Crash Pass ]
 css3/masking/mask-svg-script-none-to-png.html [ Crash ]
 css3/masking/mask-luminance-png.html [ Crash ]
 
+#285
+fast/events/right-click-focus.html [ Crash Pass ]
+
+#fast/events/onunload-back-to-page-cache.html [ Crash ]
+
 # =========================================================================== #
 #       Permanently Skipped Tests.                                            #
 # =========================================================================== #
@@ -268,11 +273,11 @@ accessibility
 
 # Encrypted Media Extensions are not enabled.
 webkit.org/b/99024 media/encrypted-media [ Skip ]
-webkit.org/b/99024 fast/events/constructors/media-key-event-constructor.html [ Timeout ]
+webkit.org/b/99024 fast/events/constructors/media-key-event-constructor.html [ Skip ]
 
 # ENABLE(MEDIA_STREAM) is disabled
 fast/mediastream
-fast/events/constructors/media-stream-event-constructor.html
+fast/events/constructors/media-stream-event-constructor.html [ Failure ]
 http/tests/media/media-stream
 
 # MEDIA_SOURCE is enabled, but off by default
@@ -280,14 +285,6 @@ http/tests/media/media-source
 
 # ENBALE(SPEECH_SYNTHESIS) is disabled
 fast/speechsynthesis
-
-# ENABLE(DOM4_EVENTS_CONSTRUCTOR) is disabled.
-fast/events/constructors/ui-event-constructor.html
-fast/events/constructors/mouse-event-constructor.html
-fast/events/constructors/composition-event-constructor.html
-fast/events/constructors/wheel-event-constructor.html
-fast/events/constructors/keyboard-event-constructor.html
-fast/events/constructors/focus-event-constructor.html
 
 # No woff2 yet
 fast/text/woff2.html [ ImageOnlyFailure ]
@@ -482,9 +479,6 @@ fast/lists/drag-into-marker.html [ Missing ]
 #            Missing features in our DumpRenderTree implementation              #
 # ============================================================================= #
 
-# Skip fast/events for now, causes a lot of timeouts
-fast/events
-
 # DumpRenderTree code to enable Java is currently a no-op
 java
 fast/replaced/applet-display-none.html
@@ -582,6 +576,10 @@ fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
 # ============================================================================= #
 # Fluctuating/flakey tests
 # ============================================================================= #
+
+fast/events/touch/moved-touch-target.html [ Timeout Pass ]
+fast/events/touch/touch-inside-iframe.html [ Timeout Pass ]
+fast/events/onunload-back-to-page-cache.html [ Missing Pass ]
 
   perf/clone-with-focus.html [ Failure Pass ]
   perf/show-hide-table-rows.html [ Failure Pass ]
@@ -1135,6 +1133,57 @@ fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
   fast/regions/writing-mode/invalid-first-region-with-writing-mode.html [ ImageOnlyFailure ]
 
 # Unsorted timeouts (FIXME)
+
+  fast/events/5056619.html [ Skip ]
+  fast/events/cancelled-force-click-link-navigation.html [ Skip ]
+  fast/events/clipboard-dataTransferItemList.html [ Skip ]
+  fast/events/contextmenu-on-scrollbars.html [ Skip ]
+  fast/events/domactivate-sets-underlying-click-event-as-handled.html [ Skip ]
+  fast/events/drag-and-drop-autoscroll-inner-frame.html [ Skip ]
+  fast/events/drag-and-drop-subframe-dataTransfer.html [ Skip ]
+  fast/events/drag-customData.html [ Skip ]
+  fast/events/drag-dataTransferItemList-file-handling.html [ Skip ]
+  fast/events/drag-dataTransferItemList.html [ Skip ]
+  fast/events/drag-image-filename.html [ Skip ]
+  fast/events/drag-in-frames.html [ Skip ]
+  fast/events/drag-parent-node.html [ Skip ]
+  fast/events/drag-text-with-clear.html [ Skip ]
+  fast/events/event-view-toString.html [ Skip ]
+  fast/events/force-click-link-selection-behavior.html [ Skip ]
+  fast/events/force-click-on-link-navigation.html [ Skip ]
+  fast/events/force-click-text-selection-behavior.html [ Skip ]
+  fast/events/ios/clicking-document-should-not-trigger-focus.html [ Skip ]
+  fast/events/ios/double-tap-zoom.html [ Skip ]
+  fast/events/ios/focused-input-should-assist-on-touch.html [ Skip ]
+  fast/events/ios/input-value-after-oninput.html [ Skip ]
+  fast/events/ios/keyboard-scrolling-distance.html [ Skip ]
+  fast/events/ios/keyboard-scrolling-repeat.html [ Skip ]
+  fast/events/ios/keyboard-should-not-trigger-resize.html [ Skip ]
+  fast/events/ios/single-tap-generates-click.html [ Skip ]
+  fast/events/ios/unscalable-viewport-clicks-on-doubletap.html [ Skip ]
+  fast/events/ios/viewport-device-width-allows-double-tap-zoom-out.html [ Skip ]
+  fast/events/ios/viewport-device-width-at-initial-scale-fast-clicks.html [ Skip ]
+  fast/events/ios/viewport-no-width-value-allows-double-tap.html [ Skip ]
+  fast/events/ios/viewport-zooms-from-element-to-initial-scale.html [ Skip ]
+  fast/events/mouse-cursor-image-set.html [ Skip ]
+  fast/events/mouse-force-changed.html [ Skip ]
+  fast/events/mouse-force-down.html [ Skip ]
+  fast/events/mouse-force-up.html [ Skip ]
+  fast/events/mousedown-inside-dragstart-should-not-cause-crash.html [ Skip ]
+  fast/events/standalone-image-drag-to-editable.html [ Skip ]
+  fast/events/touch/gesture/gesture-scroll.html [ Skip ]
+  fast/events/touch/gesture/gesture-tap-active-state-iframe.html [ Skip ]
+  fast/events/touch/gesture/long-press-on-draggable-element-in-iframe-triggers-drag.html [ Skip ]
+  fast/events/touch/gesture/long-press-on-draggable-element-in-nested-iframes-triggers-drag.html [ Skip ]
+  fast/events/touch/inserted-fragment-touch-target.html [ Skip ]
+  fast/events/touch/ios/touch-event-in-scaled-document.html [ Skip ]
+  fast/events/touch/ios/touch-event-rtl.html [ Skip ]
+  fast/events/touch/ios/touch-event.html [ Skip ]
+  fast/events/touch/touch-active-state.html [ Skip ]
+  fast/events/touch/touch-inside-iframe-scrolled.html [ Skip ]
+  fast/events/touch/zoomed-touch-event-pageXY.html [ Skip ]
+  fast/events/wheel-event-destroys-frame.html [ Skip ]
+
 
   css3/filters/backdrop/animation.html [ Skip ]
   css3/scroll-snap/improper-snap-points-crash.html [ Skip ]
@@ -2259,6 +2308,102 @@ js/date-constructor.html [ Failure ]
   fast/writing-mode/japanese-lr-selection.html [ Missing ]
   fast/writing-mode/japanese-rl-selection.html [ Missing ]
   fast/xsl/xslt_unicode.xml [ Missing ]
+
+# Regressions: Unexpected missing results (10)
+  fast/events/ghostly-mousemoves-in-subframe.html [ Missing ]
+  fast/events/onload-re-entry.html [ Missing ]
+  fast/events/overflow-viewport-renderer-deleted.html [ Missing ]
+  fast/events/touch/gesture/context-menu-on-long-press.html [ Missing ]
+  fast/events/touch/gesture/context-menu-on-long-tap.html [ Missing ]
+  fast/events/touch/gesture/context-menu-on-two-finger-tap.html [ Missing ]
+  fast/events/touch/gesture/long-press-on-draggable-element-triggers-drag.html [ Missing ]
+  fast/events/touch/gesture/right-click-gestures-set-cursor-at-correct-position.html [ Missing ]
+  fast/events/touch/scroll-without-mouse-lacks-mousemove-events.html [ Missing ]
+  fast/events/updateLayoutForHitTest.html [ Missing ]
+
+# Regressions: Unexpected text-only failures (83)
+  fast/events/attempt-scroll-with-no-scrollbars.html [ Failure ]
+  fast/events/autoscroll-in-textarea.html [ Failure ]
+  fast/events/before-unload-returnValue.html [ Failure ]
+  fast/events/bogus-dropEffect-effectAllowed.html [ Failure ]
+  fast/events/can-click-element-on-page-with-active-pseudo-class-and-search-field.html [ Failure ]
+  fast/events/clear-drag-state.html [ Failure ]
+  fast/events/click-count.html [ Failure ]
+  fast/events/click-over-descendant-elements.html [ Failure ]
+  fast/events/clientXY-in-zoom-and-scroll.html [ Failure ]
+  fast/events/constructors/device-proximity-event-constructor.html [ Failure ]
+  fast/events/constructors/webgl-context-event-constructor.html [ Failure ]
+  fast/events/content-changed-during-drop.html [ Failure ]
+  fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Failure ]
+  fast/events/crash-on-mutate-during-drop.html [ Failure ]
+  fast/events/dont-loose-last-event.html [ Failure ]
+  fast/events/drag-and-drop-autoscroll.html [ Failure ]
+  fast/events/drag-and-drop-dataTransfer-types-nocrash.html [ Failure ]
+  fast/events/drag-and-drop-fire-drag-dragover.html [ Failure ]
+  fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
+  fast/events/drag-and-drop-link.html [ Failure ]
+  fast/events/drag-and-drop.html [ Failure ]
+  fast/events/dropzone-001.html [ Failure ]
+  fast/events/dropzone-002.html [ Failure ]
+  fast/events/dropzone-003.html [ Failure ]
+  fast/events/dropzone-004.html [ Failure ]
+  fast/events/dropzone-005.html [ Failure ]
+  fast/events/event-attribute.html [ Failure ]
+  fast/events/ime-composition-events-001.html [ Failure ]
+  fast/events/input-element-display-none-in-dragleave-crash.html [ Failure ]
+  fast/events/js-keyboard-event-creation.html [ Failure ]
+  fast/events/key-events-in-input-button.html [ Failure ]
+  fast/events/keydown-leftright-keys.html [ Failure ]
+  fast/events/keypress-insert-tab.html [ Failure ]
+  fast/events/moving-text-should-fire-drop-and-dragend-events-2.html [ Failure ]
+  fast/events/moving-text-should-fire-drop-and-dragend-events.html [ Failure ]
+  fast/events/offsetX-offsetY.html [ Failure ]
+  fast/events/ondragenter.html [ Failure ]
+  fast/events/ondrop-text-html.html [ Failure ]
+  fast/events/only-valid-drop-targets-receive-file-drop.html [ Failure ]
+  fast/events/platform-wheelevent-in-scrolling-div.html [ Failure ]
+  fast/events/platform-wheelevent-paging-x-in-scrolling-div.html [ Failure ]
+  fast/events/platform-wheelevent-paging-x-in-scrolling-page.html [ Failure ]
+  fast/events/platform-wheelevent-paging-xy-in-scrolling-div.html [ Failure ]
+  fast/events/platform-wheelevent-paging-xy-in-scrolling-page.html [ Failure ]
+  fast/events/platform-wheelevent-paging-y-in-scrolling-div.html [ Failure ]
+  fast/events/platform-wheelevent-paging-y-in-scrolling-page.html [ Failure ]
+  fast/events/prevent-drag-to-navigate.html [ Failure ]
+  fast/events/remove-target-in-mouseup-deep.html [ Failure ]
+  fast/events/remove-target-in-mouseup.html [ Failure ]
+  fast/events/remove-target-with-shadow-in-drag.html [ Failure ]
+  fast/events/selectstart-by-double-triple-clicks.html [ Failure ]
+  fast/events/selectstart-by-drag.html [ Failure ]
+  fast/events/shadow-event-path.html [ Failure ]
+  fast/events/shift-drag-selection-on-image-triggers-drag-n-drop.html [ Failure ]
+  fast/events/shift-drag-selection-on-link-triggers-drag-n-drop.html [ Failure ]
+  fast/events/tabindex-focus-blur-all.html [ Failure ]
+  fast/events/touch/basic-single-touch-events.html [ Failure ]
+  fast/events/touch/document-create-touch-list-ios.html [ Failure ]
+  fast/events/touch/emulate-touch-events.html [ Failure ]
+  fast/events/touch/frame-hover-update.html [ Failure ]
+  fast/events/touch/gesture-event-basic.html [ Failure ]
+  fast/events/touch/gesture/gesture-dblclick.html [ Failure ]
+  fast/events/touch/gesture/gesture-scrollbar.html [ Failure ]
+  fast/events/touch/gesture/pad-gesture-cancel.html [ Failure ]
+  fast/events/touch/gesture/touch-gesture-scroll-div-not-propagated.html [ Failure ]
+  fast/events/touch/gesture/touch-gesture-scroll-div-propagated.html [ Failure ]
+  fast/events/touch/gesture/touch-gesture-scroll-div-twice-propagated.html [ Failure ]
+  fast/events/touch/gesture/touch-gesture-scroll-iframe-editable.html [ Failure ]
+  fast/events/touch/gesture/touch-gesture-scroll-page-not-propagated.html [ Failure ]
+  fast/events/touch/gesture/touch-gesture-scroll-page-propagated.html [ Failure ]
+  fast/events/touch/gesture/touch-gesture-scroll-sideways.html [ Failure ]
+  fast/events/touch/multi-touch-some-without-handlers.html [ Failure ]
+  fast/events/touch/ontouchstart-active-selector.html [ Failure ]
+  fast/events/touch/page-scaled-touch-gesture-click.html [ Failure ]
+  fast/events/touch/touch-event-frames.html [ Failure ]
+  fast/events/touch/touch-event-pageXY.html [ Failure ]
+  fast/events/touch/touch-input-element-change-documents.html [ Failure ]
+  fast/events/touch/touch-slider-no-js-touch-listener.html [ Failure ]
+  fast/events/touch/touch-slider.html [ Failure ]
+  fast/events/wheelevent-basic.html [ Failure ]
+  fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Failure ]
+  fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Failure ]
 
 # ============================================================================= #
 # http
