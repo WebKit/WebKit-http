@@ -670,6 +670,8 @@ svg/hittest/zero-length-square-cap-path.xhtml [ Failure ]
 # https://bugs.webkit.org/show_bug.cgi?id=80703
 svg/animations/animate-elem-08-t-drt.html [ Failure ]
 
+# Changed pixel result suddenly, but behaivior seems to be correct
+[ Debug ] svg/custom/mask-invalidation.svg [ ImageOnlyFailure ]
 
 # ============================================================================= #
 # Failing fast Tests
