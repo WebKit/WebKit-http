@@ -651,6 +651,9 @@ fast/text/trailing-white-space.html [ ImageOnlyFailure Pass ]
 #255
 fast/parser/adoption-agency-crash-02.html [ Pass Missing ]
 
+#289
+http/tests/misc/script-async.html [ Failure Pass ]
+
 # ============================================================================= #
 # Failing SVG Tests
 # ============================================================================= #
