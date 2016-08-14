@@ -44,7 +44,7 @@ exclude \.xcconfig$
 exclude \.xcodeproj$
 
 # Exclude directories from other ports
-exclude .*\/(Configurations|mac|ios|spi|cf|cg|cocoa|Cocoa|objc|avfoundation|ca|curl|efl|win|gtk|cairo|soup|gnutls)\/.*$
+exclude .*\/(Configurations|mac|ios|cf|cg|cocoa|Cocoa|objc|avfoundation|ca|curl|efl|win|gtk|cairo|soup|gnutls)\/.*$
 
 directory Source
 exclude Source/JavaScriptCore/tests
@@ -67,6 +67,9 @@ exclude Source/WebKit2/Resources
 file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
 
 # Windows-specific code
+file Source/WTF/wtf/win/GDIObject.h
+file Source/WebCore/platform/graphics/win/LocalWindowsContext.h
+file Source/WebCore/platform/graphics/win/TransformationMatrixWin.cpp
 file Source/WebCore/platform/win/BitmapInfo.cpp
 file Source/WebCore/platform/win/BitmapInfo.h
 file Source/WebCore/platform/win/SystemInfo.cpp
@@ -118,8 +121,12 @@ exclude Tools/WebKitTestRunner/fonts/
 file CMakeLists.txt
 file Tools/CMakeLists.txt
 file Tools/Scripts/VCSUtils.pm
+file Tools/Scripts/build-webkit
 file Tools/Scripts/run-gtk-tests
+file Tools/Scripts/update-qtwebkit-win-libs
+file Tools/Scripts/update-webkit-dependency
 file Tools/Scripts/webkit-build-directory
 file Tools/Scripts/webkitdirs.pm
+file Tools/Scripts/webkitperl/FeatureList.pm
 file Tools/jhbuild/jhbuildutils.py
 
