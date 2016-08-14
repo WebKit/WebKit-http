@@ -2,6 +2,12 @@ include(ECMGenerateHeaders)
 include(ECMGeneratePkgConfigFile)
 include(ECMGeneratePriFile)
 
+macro(generate_header _file _var _content)
+    file(GENERATE OUTPUT ${_file} CONTENT ${_content})
+    list(APPEND ${_var} ${_file})
+    set_source_files_properties(${_file} PROPERTIES GENERATED TRUE)
+endmacro()
+
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${DERIVED_SOURCES_DIR}"
@@ -336,6 +342,30 @@ set(WebKit_PUBLIC_HEADERS
     ${QtWebKit_FORWARDING_HEADERS}
 )
 
+generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit/qtwebkitversion.h"
+    WebKit_PUBLIC_HEADERS
+    "#ifndef QT_QTWEBKIT_VERSION_H
+#define QT_QTWEBKIT_VERSION_H
+
+#define QTWEBKIT_VERSION_STR \"${PROJECT_VERSION_STRING}\"
+#define QTWEBKIT_VERSION 0x05f00${PROJECT_VERSION_MICRO}
+
+#endif
+")
+
+generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit/QtWebKitVersion"
+    WebKit_PUBLIC_HEADERS
+    "#include \"qtwebkitversion.h\"")
+
+generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKit/QtWebKitDepends"
+    WebKit_PUBLIC_HEADERS
+    "#ifdef __cplusplus /* create empty PCH in C mode */
+#include <QtCore/QtCore>
+#include <QtGui/QtGui>
+#include <QtNetwork/QtNetwork>
+#endif
+")
+
 install(
     FILES
         ${WebKit_PUBLIC_HEADERS}
@@ -458,6 +488,32 @@ set(WebKitWidgets_PUBLIC_HEADERS
     ${QtWebKitWidgets_HEADERS}
     ${QtWebKitWidgets_FORWARDING_HEADERS}
 )
+
+generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets/qtwebkitwidgetsversion.h"
+    WebKitWidgets_PUBLIC_HEADERS
+    "#ifndef QT_QTWEBKITWIDGETS_VERSION_H
+#define QT_QTWEBKITWIDGETS_VERSION_H
+
+#define QTWEBKITWIDGETS_VERSION_STR \"${PROJECT_VERSION_STRING}\"
+#define QTWEBKITWIDGETS_VERSION 0x05f00${PROJECT_VERSION_MICRO}
+
+#endif
+")
+
+generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets/QtWebKitWidgetsVersion"
+    WebKitWidgets_PUBLIC_HEADERS
+    "#include \"qtwebkitwidgetsversion.h\"")
+
+generate_header("${DERIVED_SOURCES_DIR}/ForwardingHeaders/QtWebKitWidgets/QtWebKitWidgetsDepends"
+    WebKitWidgets_PUBLIC_HEADERS
+    "#ifdef __cplusplus /* create empty PCH in C mode */
+#include <QtCore/QtCore>
+#include <QtGui/QtGui>
+#include <QtWidgets/QtWidgets>
+#include <QtNetwork/QtNetwork>
+#include <QtWebKit/QtWebKit>
+#endif
+")
 
 install(
     FILES
