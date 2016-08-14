@@ -457,7 +457,7 @@ void PluginView::updatePluginWidget()
         }
 
         if (!m_haveUpdatedPluginWidget || m_windowRect != oldWindowRect) {
-            IntRect nativeWindowRect = contentsToNativeWindow(frameView, frameRect());
+            IntRect nativeWindowRect = contentsToNativeWindow(&frameView, frameRect());
             ::MoveWindow(platformPluginWidget(), nativeWindowRect.x(), nativeWindowRect.y(), nativeWindowRect.width(), nativeWindowRect.height(), TRUE);
         }
 
@@ -970,7 +970,8 @@ bool PluginView::platformStart()
         setUpOffscreenPaintingHooks(hookedBeginPaint, hookedEndPaint);
 
         DWORD flags = WS_CHILD;
-        if (isSelfVisible() && isWebViewVisible(toFrameView(parent())))
+        auto* frameView = downcast<FrameView>(parent());
+        if (isSelfVisible() && isWebViewVisible(frameView))
             flags |= WS_VISIBLE;
 
         HWND parentWindowHandle = windowHandleForPageClient(m_parentFrame->view()->hostWindow()->platformPageClient());
