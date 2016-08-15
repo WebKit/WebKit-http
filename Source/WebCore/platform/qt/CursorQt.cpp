@@ -174,28 +174,28 @@ void Cursor::ensurePlatformCursor() const
         m_platformCursor = new QCursor(Qt::ArrowCursor);
         break;
     case VerticalText:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/verticalTextCursor.png")), 7, 7);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/verticalTextCursor.png")), 7, 7);
         break;
     case Cell:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/cellCursor.png")), 7, 7);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/cellCursor.png")), 7, 7);
         break;
     case ContextMenu:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/contextMenuCursor.png")), 3, 2);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/contextMenuCursor.png")), 3, 2);
         break;
     case Alias:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/aliasCursor.png")), 11, 3);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/aliasCursor.png")), 11, 3);
         break;
     case Progress:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/progressCursor.png")), 3, 2);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/progressCursor.png")), 3, 2);
         break;
     case Copy:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/copyCursor.png")), 3, 2);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/copyCursor.png")), 3, 2);
         break;
     case ZoomIn:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/zoomInCursor.png")), 7, 7);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/zoomInCursor.png")), 7, 7);
         break;
     case ZoomOut:
-        m_platformCursor = new QCursor(QPixmap(QLatin1String(":/webkit/resources/zoomOutCursor.png")), 7, 7);
+        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/zoomOutCursor.png")), 7, 7);
         break;
     case Custom:
         m_platformCursor = createCustomCursor(m_image.get(), m_hotSpot);

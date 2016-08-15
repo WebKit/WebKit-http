@@ -78,13 +78,13 @@ static WebGraphicHash* graphics()
         qAddPostRoutine(earlyClearGraphics);
 
         // QWebSettings::MissingImageGraphic
-        hash->insert("missingImage", QPixmap(QLatin1String(":webkit/resources/missingImage.png")));
+        hash->insert("missingImage", QPixmap(QStringLiteral(":webkit/resources/missingImage.png")));
         // QWebSettings::MissingPluginGraphic
-        hash->insert("nullPlugin", QPixmap(QLatin1String(":webkit/resources/nullPlugin.png")));
+        hash->insert("nullPlugin", QPixmap(QStringLiteral(":webkit/resources/nullPlugin.png")));
         // QWebSettings::DefaultFrameIconGraphic
-        hash->insert("urlIcon", QPixmap(QLatin1String(":webkit/resources/urlIcon.png")));
+        hash->insert("urlIcon", QPixmap(QStringLiteral(":webkit/resources/urlIcon.png")));
         // QWebSettings::TextAreaSizeGripCornerGraphic
-        hash->insert("textAreaResizeCorner", QPixmap(QLatin1String(":webkit/resources/textAreaResizeCorner.png")));
+        hash->insert("textAreaResizeCorner", QPixmap(QStringLiteral(":webkit/resources/textAreaResizeCorner.png")));
     }
 
     return hash;

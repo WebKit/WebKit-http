@@ -58,24 +58,24 @@ String UserAgentQt::standardUserAgent(const String &applicationNameForUserAgent,
 
     if (ua.isNull()) {
 
-        ua = QLatin1String("Mozilla/5.0 (%1%2%3) AppleWebKit/%4 (KHTML, like Gecko) %99 Version/9.0 Safari/%5");
+        ua = QStringLiteral("Mozilla/5.0 (%1%2%3) AppleWebKit/%4 (KHTML, like Gecko) %99 Version/9.0 Safari/%5");
 
         // Platform.
-        ua = ua.arg(QLatin1String(
+        ua = ua.arg(
 #if OS(MAC_OS_X)
-            "Macintosh; "
+            QStringLiteral("Macintosh; ")
 #elif OS(WINDOWS)
-            ""
+            QStringLiteral("")
 #else
-            (QGuiApplication::platformName() == QLatin1String("xcb")) ? "X11; " : "Unknown; "
+            (QGuiApplication::platformName() == QLatin1String("xcb")) ? QStringLiteral("X11; ") : QStringLiteral("Unknown; ")
 #endif
-        ));
+        );
 
 
         // Security strength.
         QString securityStrength;
 #if defined(QT_NO_SSL)
-        securityStrength = QLatin1String("N; ");
+        securityStrength = QStringLiteral("N; ");
 #endif
         ua = ua.arg(securityStrength);
 
@@ -138,7 +138,7 @@ String UserAgentQt::standardUserAgent(const String &applicationNameForUserAgent,
             appName.append(QLatin1Char('/') + appVer);
     } else {
         // Qt version.
-        appName = QLatin1String("Qt/") + QLatin1String(qVersion());
+        appName = QStringLiteral("Qt/") + QLatin1String(qVersion());
     }
 
     return ua.arg(appName);
