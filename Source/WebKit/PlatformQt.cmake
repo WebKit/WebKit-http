@@ -370,7 +370,7 @@ install(
     FILES
         ${WebKit_PUBLIC_HEADERS}
     DESTINATION
-        ${CMAKE_INSTALL_PREFIX}/include/QtWebKit
+        ${KDE_INSTALL_INCLUDEDIR}/QtWebKit
 )
 
 file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h)
@@ -378,12 +378,11 @@ install(
     FILES
         ${WebKit_PRIVATE_HEADERS}
     DESTINATION
-        ${CMAKE_INSTALL_PREFIX}/include/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
+        ${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
 )
 
 ecm_generate_pkgconfig_file(
     BASE_NAME Qt5WebKit
-    LIB_INSTALL_DIR "lib"
     DEPS "Qt5Core Qt5Gui Qt5Network"
     FILENAME_VAR WebKit_PKGCONFIG_FILENAME
     INSTALL
@@ -392,8 +391,8 @@ ecm_generate_pkgconfig_file(
 ecm_generate_pri_file(
     BASE_NAME webkit
     LIB_NAME QtWebKit
-    INCLUDE_INSTALL_DIR "include"
-    INCLUDE_INSTALL_DIR2 "include/QtWebKit"
+    INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
+    INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
     DEPS "core gui network"
     RUNTIME_DEPS "sensors positioning qml quick webchannel sql core_private gui_private"
     DEFINES QT_WEBKIT_LIB
@@ -519,7 +518,7 @@ install(
     FILES
         ${WebKitWidgets_PUBLIC_HEADERS}
     DESTINATION
-        ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets
+        ${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets
 )
 
 file(GLOB WebKitWidgets_PRIVATE_HEADERS qt/WidgetApi/*_p.h)
@@ -527,12 +526,11 @@ install(
     FILES
         ${WebKitWidgets_PRIVATE_HEADERS}
     DESTINATION
-        ${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets/private
+        ${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets/private
 )
 
 ecm_generate_pkgconfig_file(
     BASE_NAME Qt5WebKitWidgets
-    LIB_INSTALL_DIR "lib"
     DEPS "Qt5Core Qt5Gui Qt5Network Qt5Widgets Qt5WebKit"
     FILENAME_VAR WebKitWidgets_PKGCONFIG_FILENAME
     INSTALL
@@ -541,8 +539,8 @@ ecm_generate_pkgconfig_file(
 ecm_generate_pri_file(
     BASE_NAME webkitwidgets
     LIB_NAME QtWebKitWidgets
-    INCLUDE_INSTALL_DIR "include"
-    INCLUDE_INSTALL_DIR2 "include/QtWebKitWidgets"
+    INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
+    INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
     DEPS "core gui network widgets webkit"
     RUNTIME_DEPS "sensors positioning widgets_private printsupport opengl sql core_private gui_private"
     DEFINES QT_WEBKITWIDGETS_LIB
@@ -611,7 +609,7 @@ add_dependencies(WebKitWidgets WebKit)
 set_target_properties(WebKitWidgets PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 install(TARGETS WebKitWidgets EXPORT Qt5WebKitWidgetsTargets
         DESTINATION "${LIB_INSTALL_DIR}"
-        INCLUDES DESTINATION "${CMAKE_INSTALL_PREFIX}/include/QtWebKitWidgets"
+        INCLUDES DESTINATION "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
 )
 
 if (USE_LINKER_VERSION_SCRIPT)

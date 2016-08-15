@@ -2,6 +2,9 @@ include(FeatureSummary)
 include(ECMPackageConfigHelpers)
 include(ECMQueryQmake)
 
+set(ECM_MODULE_DIR ${CMAKE_MODULE_PATH})
+include(KDEInstallDirs)
+
 macro(macro_process_qtbase_prl_file qt_target_component)
     if (TARGET ${qt_target_component})
         get_target_property(_lib_name ${qt_target_component} NAME)

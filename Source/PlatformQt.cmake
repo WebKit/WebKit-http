@@ -10,18 +10,16 @@ endif ()
 
 # Installation
 
-target_include_directories(WebKit INTERFACE $<INSTALL_INTERFACE:include/QtWebKit>)
-target_include_directories(WebKitWidgets INTERFACE $<INSTALL_INTERFACE:include/QtWebKitWidgets>)
-
-set(CMAKECONFIG_INSTALL_DIR "lib/cmake")
+target_include_directories(WebKit INTERFACE $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKit>)
+target_include_directories(WebKitWidgets INTERFACE $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets>)
 
 ecm_configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/Qt5WebKitConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfig.cmake"
-    INSTALL_DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKit"
+    INSTALL_DESTINATION "${KDE_INSTALL_CMAKEPACKAGEDIR}/Qt5WebKit"
 )
 ecm_configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/Qt5WebKitWidgetsConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsConfig.cmake"
-    INSTALL_DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKitWidgets"
+    INSTALL_DESTINATION "${KDE_INSTALL_CMAKEPACKAGEDIR}/Qt5WebKitWidgets"
 )
 
 write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfigVersion.cmake"
@@ -34,23 +32,23 @@ write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsCo
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitConfigVersion.cmake"
-    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKit"
+    DESTINATION "${KDE_INSTALL_CMAKEPACKAGEDIR}/Qt5WebKit"
 )
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsConfig.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/Qt5WebKitWidgetsConfigVersion.cmake"
-    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKitWidgets"
+    DESTINATION "${KDE_INSTALL_CMAKEPACKAGEDIR}/Qt5WebKitWidgets"
 )
 
 install(EXPORT WebKitTargets
     FILE WebKitTargets.cmake
     NAMESPACE Qt5::
-    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKit"
+    DESTINATION "${KDE_INSTALL_CMAKEPACKAGEDIR}/Qt5WebKit"
 )
 install(EXPORT Qt5WebKitWidgetsTargets
     FILE Qt5WebKitWidgetsTargets.cmake
     NAMESPACE Qt5::
-    DESTINATION "${CMAKECONFIG_INSTALL_DIR}/Qt5WebKitWidgets"
+    DESTINATION "${KDE_INSTALL_CMAKEPACKAGEDIR}/Qt5WebKitWidgets"
 )
 
 # Documentation
@@ -77,7 +75,7 @@ query_qmake(QT_INSTALL_DOCS QT_INSTALL_DOCS)
 #set(QDOC_CONFIG "${DERIVED_SOURCES_DIR}/qtwebkit.qdocconf")
 set(QDOC_CONFIG "${CMAKE_SOURCE_DIR}/Source/qtwebkit.qdocconf")
 set(DOC_OUTPUT_DIR "${CMAKE_BINARY_DIR}/doc")
-set(DOC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/doc")
+set(DOC_INSTALL_DIR "doc")
 set(PROJECT_VERSION_TAG ${PROJECT_VERSION_MAJOR}${PROJECT_VERSION_MINOR}${PROJECT_VERSION_MICRO})
 #configure_file(qtwebkit.qdocconf.in ${QDOC_CONFIG} @ONLY)
 
