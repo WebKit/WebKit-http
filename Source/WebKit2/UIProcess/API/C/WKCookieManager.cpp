@@ -78,9 +78,9 @@ void WKCookieManagerGetHTTPCookieAcceptPolicy(WKCookieManagerRef cookieManager, 
 void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cookies)
 {
     size_t size = cookies ? WKArrayGetSize(cookies) : 0;
-    if (!size)
-        return;
+
     Vector<String> passCookies(size);
+
     for (size_t i = 0; i < size; ++i)
     {
         WKTypeRef cookie = WKArrayGetItemAtIndex(cookies, i);

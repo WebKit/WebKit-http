@@ -85,6 +85,7 @@
 #include <WebKit/WKContext.h>
 #include <WebKit/WKCredential.h>
 #include <WebKit/WKCredentialTypes.h>
+#include <WebKit/WKCookieManager.h>
 #include <WebKit/WKFrame.h>
 #include <WebKit/WKFrameInfoRef.h>
 #include <WebKit/WKFramePolicyListener.h>
@@ -97,6 +98,7 @@
 #include <WebKit/WKPageGroup.h>
 #include <WebKit/WKPage.h>
 #include <WebKit/WKPreferencesRef.h>
+#include <WebKit/WKProxy.h>
 #include <WebKit/WKSessionRef.h>
 #include <WebKit/WKSessionStateRef.h>
 #include <WebKit/WKUserContentControllerRef.h>
