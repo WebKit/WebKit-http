@@ -348,7 +348,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_alwaysRunsAtForegroundPriority(m_configuration->alwaysRunsAtForegroundPriority())
 #endif
     , m_backForwardList(WebBackForwardList::create(*this))
-    , m_loadStateAtProcessExit(FrameLoadState::LoadStateFinished)
     , m_maintainsInactiveSelection(false)
     , m_isEditable(false)
     , m_textZoomFactor(1)
@@ -5137,10 +5136,8 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     m_editorState = EditorState();
 
-    if (m_mainFrame) {
+    if (m_mainFrame)
         m_urlAtProcessExit = m_mainFrame->url();
-        m_loadStateAtProcessExit = m_mainFrame->loadState();
-    }
 
     m_pageClient.processDidExit();
 

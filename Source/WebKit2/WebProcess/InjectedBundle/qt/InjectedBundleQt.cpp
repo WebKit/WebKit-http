@@ -54,8 +54,4 @@ bool InjectedBundle::load(APIObject* initializationUserData)
     return true;
 }
 
-void InjectedBundle::activateMacFontAscentHack()
-{
-}
-
 } // namespace WebKit

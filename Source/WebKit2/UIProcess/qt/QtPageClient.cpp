@@ -226,11 +226,6 @@ PassRefPtr<WebColorPicker> QtPageClient::createColorPicker(WebPageProxy* webPage
 }
 #endif
 
-void QtPageClient::flashBackingStoreUpdates(const Vector<IntRect>&)
-{
-    notImplemented();
-}
-
 void QtPageClient::pageTransitionViewportReady()
 {
     PageViewportController* pvc = QQuickWebViewPrivate::get(m_webView)->viewportController();

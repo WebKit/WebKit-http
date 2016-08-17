@@ -865,7 +865,6 @@ public:
     bool isValid() const;
 
     const String& urlAtProcessExit() const { return m_urlAtProcessExit; }
-    FrameLoadState::LoadState loadStateAtProcessExit() const { return m_loadStateAtProcessExit; }
 
 #if ENABLE(DRAG_SUPPORT)
     WebCore::DragOperation currentDragOperation() const { return m_currentDragOperation; }
@@ -1631,7 +1630,6 @@ private:
     String m_toolTip;
 
     String m_urlAtProcessExit;
-    FrameLoadState::LoadState m_loadStateAtProcessExit;
 
     EditorState m_editorState;
     bool m_isEditable;
