@@ -41,7 +41,7 @@ QtNetworkReplyData::QtNetworkReplyData()
     : m_contentLength(0)
 { }
 
-void QtNetworkReplyData::encode(CoreIPC::ArgumentEncoder& encoder) const
+void QtNetworkReplyData::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << m_urlString;
     encoder << m_contentType;
@@ -50,7 +50,7 @@ void QtNetworkReplyData::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << m_dataHandle;
 }
 
-bool QtNetworkReplyData::decode(CoreIPC::ArgumentDecoder& decoder, QtNetworkReplyData& destination)
+bool QtNetworkReplyData::decode(IPC::ArgumentDecoder& decoder, QtNetworkReplyData& destination)
 {
     if (!decoder.decode(destination.m_urlString))
         return false;

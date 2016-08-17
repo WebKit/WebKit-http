@@ -29,7 +29,7 @@
 
 using namespace WebCore;
 
-namespace CoreIPC {
+namespace IPC {
 
 typedef HashMap<String , Vector<uint8_t> > MIMEDataHashMap;
 

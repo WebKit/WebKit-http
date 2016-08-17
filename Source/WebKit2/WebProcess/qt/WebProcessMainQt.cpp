@@ -232,13 +232,13 @@ Q_DECL_EXPORT int WebProcessMainQt(QGuiApplication* app)
         qDebug() << "Error: connection identifier wrong.";
         return 1;
     }
-    CoreIPC::Connection::Identifier identifier;
+    IPC::Connection::Identifier identifier;
 #if OS(WINDOWS)
     // Convert to HANDLE
-    identifier = reinterpret_cast<CoreIPC::Connection::Identifier>(id);
+    identifier = reinterpret_cast<IPC::Connection::Identifier>(id);
 #else
     // Convert to int
-    identifier = static_cast<CoreIPC::Connection::Identifier>(id);
+    identifier = static_cast<IPC::Connection::Identifier>(id);
 #endif
 #endif
 

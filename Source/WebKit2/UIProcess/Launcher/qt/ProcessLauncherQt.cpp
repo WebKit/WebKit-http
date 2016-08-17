@@ -143,8 +143,8 @@ void ProcessLauncher::launchProcess()
 
     commandLine = commandLine.arg(serviceName);
 #elif OS(WINDOWS)
-    CoreIPC::Connection::Identifier connector, clientIdentifier;
-    if (!CoreIPC::Connection::createServerAndClientIdentifiers(connector, clientIdentifier)) {
+    IPC::Connection::Identifier connector, clientIdentifier;
+    if (!IPC::Connection::createServerAndClientIdentifiers(connector, clientIdentifier)) {
         // FIXME: What should we do here?
         ASSERT_NOT_REACHED();
     }

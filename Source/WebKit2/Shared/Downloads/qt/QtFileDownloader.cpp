@@ -132,7 +132,7 @@ void QtFileDownloader::abortDownloadWritingAndEmitError(QtFileDownloader::Downlo
 
     // On network failures it's QNetworkReplyHandler::errorForReply who will handle errors.
     if (errorCode == QtFileDownloader::DownloadErrorNetworkFailure) {
-        m_download->didFail(QNetworkReplyHandler::errorForReply(m_reply.get()), CoreIPC::DataReference(0, 0));
+        m_download->didFail(QNetworkReplyHandler::errorForReply(m_reply.get()), IPC::DataReference(0, 0));
         return;
     }
 
@@ -162,7 +162,7 @@ void QtFileDownloader::abortDownloadWritingAndEmitError(QtFileDownloader::Downlo
 
     ResourceError downloadError("Download", errorCode, m_reply->url().toString(), translatedErrorMessage);
 
-    m_download->didFail(downloadError, CoreIPC::DataReference(0, 0));
+    m_download->didFail(downloadError, IPC::DataReference(0, 0));
 }
 
 void QtFileDownloader::handleDownloadResponse()

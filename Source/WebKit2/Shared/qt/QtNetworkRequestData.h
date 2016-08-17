@@ -29,7 +29,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
-namespace CoreIPC {
+namespace IPC {
 class ArgumentEncoder;
 class ArgumentDecoder;
 };
@@ -44,8 +44,8 @@ namespace WebKit {
 struct QtNetworkRequestData {
     QtNetworkRequestData();
     QtNetworkRequestData(const QNetworkRequest&, QNetworkReply*);
-    void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder&, QtNetworkRequestData&);
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, QtNetworkRequestData&);
 
     String m_scheme;
     String m_urlString;

@@ -32,7 +32,7 @@
 
 using namespace WebCore;
  
-namespace CoreIPC {
+namespace IPC {
 
 void ArgumentCoder<ResourceRequest>::encodePlatformData(ArgumentEncoder& encoder, const ResourceRequest& resourceRequest)
 {
@@ -63,4 +63,4 @@ bool ArgumentCoder<ResourceError>::decodePlatformData(ArgumentDecoder& decoder, 
     return true;
 }
 
-} // namespace CoreIPC
+} // namespace IPC

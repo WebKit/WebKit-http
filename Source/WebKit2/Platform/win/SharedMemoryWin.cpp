@@ -51,7 +51,7 @@ bool SharedMemory::Handle::isNull() const
     return !m_handle;
 }
 
-void SharedMemory::Handle::encode(CoreIPC::ArgumentEncoder& encoder) const
+void SharedMemory::Handle::encode(IPC::ArgumentEncoder& encoder) const
 {
     encoder << static_cast<uint64_t>(m_size);
 
@@ -84,7 +84,7 @@ static bool getDuplicatedHandle(HANDLE sourceHandle, DWORD sourcePID, HANDLE& du
     return success;
 }
 
-bool SharedMemory::Handle::decode(CoreIPC::ArgumentDecoder& decoder, Handle& handle)
+bool SharedMemory::Handle::decode(IPC::ArgumentDecoder& decoder, Handle& handle)
 {
     ASSERT_ARG(handle, !handle.m_handle);
     ASSERT_ARG(handle, !handle.m_size);

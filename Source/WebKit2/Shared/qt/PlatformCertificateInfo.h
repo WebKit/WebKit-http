@@ -42,11 +42,11 @@ public:
     {
     }
 
-    void encode(CoreIPC::ArgumentEncoder&) const
+    void encode(IPC::ArgumentEncoder&) const
     {
     }
 
-    static bool decode(CoreIPC::ArgumentDecoder&, PlatformCertificateInfo&)
+    static bool decode(IPC::ArgumentDecoder&, PlatformCertificateInfo&)
     {
         return true;
     }

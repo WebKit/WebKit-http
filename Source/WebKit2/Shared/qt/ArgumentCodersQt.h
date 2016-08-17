@@ -24,7 +24,7 @@
 #include "ArgumentEncoder.h"
 #include "DragData.h"
 
-namespace CoreIPC {
+namespace IPC {
 
 void encode(ArgumentEncoder&, const WebCore::DragData&);
 bool decode(ArgumentDecoder&, WebCore::DragData&);

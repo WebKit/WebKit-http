@@ -34,7 +34,7 @@
 
 using namespace std;
 
-namespace CoreIPC {
+namespace IPC {
 
 // FIXME: Rename this or use a different constant on windows.
 static const size_t inlineMessageMaxSize = 4096;
@@ -348,4 +348,4 @@ bool Connection::dispatchSentMessagesUntil(const Vector<HWND>& windows, WTF::Bin
     }
 }
 
-} // namespace CoreIPC
+} // namespace IPC
