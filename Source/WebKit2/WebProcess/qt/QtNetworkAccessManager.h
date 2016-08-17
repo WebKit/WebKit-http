@@ -44,7 +44,7 @@ public:
     void registerApplicationScheme(const WebPage*, const QString& scheme);
 
 protected:
-    virtual QNetworkReply* createRequest(Operation, const QNetworkRequest&, QIODevice* outgoingData = 0) OVERRIDE;
+    QNetworkReply* createRequest(Operation, const QNetworkRequest&, QIODevice* outgoingData = 0) override;
 
 private Q_SLOTS:
     void onAuthenticationRequired(QNetworkReply *, QAuthenticator *);

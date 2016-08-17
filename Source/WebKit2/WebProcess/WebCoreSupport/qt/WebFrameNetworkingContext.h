@@ -30,15 +30,16 @@ class WebFrame;
 class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
     static PassRefPtr<WebFrameNetworkingContext> create(WebFrame*);
-    QObject* originatingObject() const { return m_originatingObject.get(); }
+
+    QObject* originatingObject() const override { return m_originatingObject.get(); }
 
 private:
     WebFrameNetworkingContext(WebFrame*);
     ~WebFrameNetworkingContext() { }
 
-    QNetworkAccessManager* networkAccessManager() const { return WebProcess::shared().networkAccessManager(); }
-    bool mimeSniffingEnabled() const { return m_mimeSniffingEnabled; }
-    bool thirdPartyCookiePolicyPermission(const QUrl&) const { /*TODO. Used QWebSettings in WK1.*/ return true; }
+    QNetworkAccessManager* networkAccessManager() const override { return WebProcess::singleton().networkAccessManager(); }
+    bool mimeSniffingEnabled() const override { return m_mimeSniffingEnabled; }
+    bool thirdPartyCookiePolicyPermission(const QUrl&) const override { /*TODO. Used QWebSettings in WK1.*/ return true; }
 
     std::unique_ptr<QObject> m_originatingObject;
     bool m_mimeSniffingEnabled;

@@ -1146,8 +1146,8 @@ private:
     virtual void failedToShowPopupMenu() override;
 #endif
 #if PLATFORM(QT)
-    virtual void changeSelectedIndex(int32_t newSelectedIndex);
-    virtual void closePopupMenu();
+    void changeSelectedIndex(int32_t newSelectedIndex) override;
+    void closePopupMenu() override;
 #endif
 
     void didCreateMainFrame(uint64_t frameID);
