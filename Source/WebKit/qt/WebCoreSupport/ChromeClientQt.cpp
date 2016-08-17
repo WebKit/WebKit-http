@@ -526,17 +526,15 @@ void ChromeClientQt::print(Frame* frame)
     emit m_webPage->printRequested(QWebFrameAdapter::kit(frame));
 }
 
-#if ENABLE(SQL_DATABASE)
 void ChromeClientQt::exceededDatabaseQuota(Frame* frame, const String& databaseName, DatabaseDetails)
 {
     quint64 quota = QWebSettings::offlineStorageDefaultQuota();
 
-    if (!DatabaseManager::manager().hasEntryForOrigin(frame->document()->securityOrigin()))
-        DatabaseManager::manager().setQuota(frame->document()->securityOrigin(), quota);
+    if (!DatabaseManager::singleton().hasEntryForOrigin(frame->document()->securityOrigin()))
+        DatabaseManager::singleton().setQuota(frame->document()->securityOrigin(), quota);
 
     m_webPage->databaseQuotaExceeded(QWebFrameAdapter::kit(frame), databaseName);
 }
-#endif
 
 void ChromeClientQt::reachedMaxAppCacheSize(int64_t)
 {
@@ -748,10 +746,6 @@ RefPtr<PopupMenu> ChromeClientQt::createPopupMenu(PopupMenuClient* client) const
 RefPtr<SearchPopupMenu> ChromeClientQt::createSearchPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new SearchPopupMenuQt(createPopupMenu(client)));
-}
-
-void ChromeClientQt::exceededDatabaseQuota(WebCore::Frame*, const WTF::String& databaseName, WebCore::DatabaseDetails)
-{
 }
 
 void ChromeClientQt::attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*)

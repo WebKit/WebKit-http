@@ -134,9 +134,7 @@ public:
     void setToolTip(const String&, TextDirection) override;
 
     void print(Frame*) override;
-#if ENABLE(SQL_DATABASE)
-    virtual void exceededDatabaseQuota(Frame*, const String&, DatabaseDetails);
-#endif
+    void exceededDatabaseQuota(Frame*, const String&, DatabaseDetails) override;
     void reachedMaxAppCacheSize(int64_t spaceNeeded) override;
     void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) override;
 
@@ -192,7 +190,6 @@ public:
 
     void wheelEventHandlersChanged(bool) override { }
 
-    void exceededDatabaseQuota(Frame *, const WTF::String &databaseName, DatabaseDetails) override;
     void attachViewOverlayGraphicsLayer(Frame *, GraphicsLayer *) override;
 
     QWebFullScreenVideoHandler* createFullScreenVideoHandler();

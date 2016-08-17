@@ -247,9 +247,7 @@ void QWebSettingsPrivate::apply()
 
         value = attributes.value(QWebSettings::OfflineStorageDatabaseEnabled,
                                       global->attributes.value(QWebSettings::OfflineStorageDatabaseEnabled));
-#if ENABLE(SQL_DATABASE)
-        WebCore::DatabaseManager::manager().setIsAvailable(value);
-#endif
+        WebCore::DatabaseManager::singleton().setIsAvailable(value);
 
         value = attributes.value(QWebSettings::OfflineWebApplicationCacheEnabled,
                                       global->attributes.value(QWebSettings::OfflineWebApplicationCacheEnabled));
@@ -1064,9 +1062,7 @@ void QWebSettings::setOfflineStoragePath(const QString& path)
 {
     WebCore::initializeWebCoreQt();
     QWebSettings::globalSettings()->d->offlineDatabasePath = path;
-#if ENABLE(SQL_DATABASE)
-    WebCore::DatabaseManager::manager().setDatabaseDirectoryPath(path);
-#endif
+    WebCore::DatabaseManager::singleton().setDatabaseDirectoryPath(path);
 }
 
 /*!
