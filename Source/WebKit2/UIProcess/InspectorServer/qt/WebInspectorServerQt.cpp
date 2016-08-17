@@ -28,6 +28,7 @@
 #include "WebPageProxy.h"
 #include <QFile>
 #include <WebCore/MIMETypeRegistry.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -35,7 +36,7 @@ namespace WebKit {
 
 static String remoteInspectorPagePath()
 {
-    DEFINE_STATIC_LOCAL(String, pagePath, (ASCIILiteral("/webkit/inspector/inspector.html?page=")));
+    static NeverDestroyed<WTF::String> pagePath(ASCIILiteral("/webkit/inspector/inspector.html?page="));
     return pagePath;
 }
 

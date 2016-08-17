@@ -1155,9 +1155,9 @@ bool WebFrameLoaderClient::shouldFallBack(const ResourceError& error)
         return false;
 
 #if PLATFORM(QT)
-    DEFINE_STATIC_LOCAL(const ResourceError, errorInterruptedForPolicyChange, (this->interruptedForPolicyChangeError(ResourceRequest())));
+    static NeverDestroyed<const ResourceError> errorInterruptedForPolicyChange(this->interruptedForPolicyChangeError(ResourceRequest()));
 
-    if (error.errorCode() == errorInterruptedForPolicyChange.errorCode() && error.domain() == errorInterruptedForPolicyChange.domain())
+    if (error.errorCode() == errorInterruptedForPolicyChange.get().errorCode() && error.domain() == errorInterruptedForPolicyChange.get().domain())
         return false;
 #endif
 
