@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 
-#if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(BUILDING_GTK__)
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(BUILDING_GTK__) && !defined(BUILDING_QT__)
 #ifdef __OBJC__
 @class NSEvent;
 #elif __cplusplus
@@ -48,12 +48,20 @@ typedef const struct tagMSG* WKNativeEventPtr;
 #elif defined(BUILDING_GTK__)
 typedef union _GdkEvent GdkEvent;
 typedef const GdkEvent* WKNativeEventPtr;
-#else
+#elif !defined(BUILDING_QT__)
 typedef const void* WKNativeEventPtr;
 #endif
 
 #ifdef __cplusplus
 }
+#endif
+
+#if defined(BUILDING_QT__)
+#include <qglobal.h>
+QT_BEGIN_NAMESPACE
+class QEvent;
+QT_END_NAMESPACE
+typedef const QEvent* WKNativeEventPtr;
 #endif
 
 #endif /* WKNativeEvent_h */
