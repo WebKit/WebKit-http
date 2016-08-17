@@ -1506,6 +1506,8 @@ private:
 #endif
 #endif
 
+    void willAddDetailedMessageToConsole(const String& src, const String& level, uint64_t line, uint64_t col, const String& message, const String& url);
+
     void handleAutoFillButtonClick(const UserData&);
 
     void finishInitializingWebPageAfterProcessLaunch();

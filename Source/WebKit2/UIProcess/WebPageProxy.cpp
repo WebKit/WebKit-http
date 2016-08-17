@@ -6203,6 +6203,11 @@ void WebPageProxy::imageOrMediaDocumentSizeChanged(const WebCore::IntSize& newSi
     m_uiClient->imageOrMediaDocumentSizeChanged(newSize);
 }
 
+void WebPageProxy::willAddDetailedMessageToConsole(const String& src, const String& level, uint64_t line, uint64_t col, const String& message, const String& url)
+{
+    m_uiClient->willAddDetailedMessageToConsole(this, src, level, line, col, message, url);
+}
+
 void WebPageProxy::setShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
 {
     m_process->send(Messages::WebPage::SetShouldDispatchFakeMouseMoveEvents(shouldDispatchFakeMouseMoveEvents), m_pageID);
