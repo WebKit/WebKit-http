@@ -59,7 +59,7 @@ class NetworkingContext;
         {
         }
 
-        void updateFromDelegatePreservingOldHTTPBody(const ResourceRequest& delegateProvidedRequest) { *this = delegateProvidedRequest; }
+        void updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest) { *this = delegateProvidedRequest; }
 
         QNetworkRequest toNetworkRequest(NetworkingContext* = 0) const;
 
