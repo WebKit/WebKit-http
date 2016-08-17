@@ -45,3 +45,8 @@ WKURLResponseRef WKNavigationResponseGetURLResponse(WKNavigationResponseRef resp
 {
     return toAPI(toImpl(response)->response());
 }
+
+bool WKNavigationResponseIsMainFrame(WKNavigationResponseRef response)
+{
+    return toImpl(response)->frame().isMainFrame();
+}
