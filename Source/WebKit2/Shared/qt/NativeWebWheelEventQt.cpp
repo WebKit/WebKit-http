@@ -26,7 +26,7 @@
 #include "config.h"
 #include "NativeWebWheelEvent.h"
 
-#include "WebEventFactoryQt.h"
+#include "WebEventFactory.h"
 
 namespace WebKit {
 

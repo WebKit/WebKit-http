@@ -25,7 +25,7 @@
  */
 
 #include "config.h"
-#include "WebEventFactoryQt.h"
+#include "WebEventFactory.h"
 #include <QKeyEvent>
 #include <QLineF>
 #include <QTransform>

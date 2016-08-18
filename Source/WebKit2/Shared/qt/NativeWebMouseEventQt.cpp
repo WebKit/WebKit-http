@@ -26,7 +26,7 @@
 #include "config.h"
 #include "NativeWebMouseEvent.h"
 
-#include "WebEventFactoryQt.h"
+#include "WebEventFactory.h"
 
 namespace WebKit {
 
