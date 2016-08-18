@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebDragClient.h"
 
-#include "Clipboard.h"
+#include "DataTransfer.h"
 #include "DragData.h"
 #include "GraphicsContext.h"
 #include "Pasteboard.h"
@@ -51,11 +51,11 @@ static PassRefPtr<ShareableBitmap> convertQPixmapToShareableBitmap(QPixmap* pixm
     return bitmap.release();
 }
 
-void WebDragClient::startDrag(DragImageRef dragImage, const IntPoint& clientPosition, const IntPoint& globalPosition, Clipboard* clipboard, Frame*, bool)
+void WebDragClient::startDrag(DragImageRef dragImage, const IntPoint& clientPosition, const IntPoint& globalPosition, DataTransfer& dataTransfer, Frame&, bool)
 {
-    QMimeData* clipboardData = clipboard->pasteboard().clipboardData();
-    DragOperation dragOperationMask = clipboard->sourceOperation();
-    clipboard->pasteboard().invalidateWritableData();
+    QMimeData* clipboardData = dataTransfer.pasteboard().clipboardData();
+    DragOperation dragOperationMask = dataTransfer.sourceOperation();
+    dataTransfer.pasteboard().invalidateWritableData();
     DragData dragData(clipboardData, clientPosition, globalPosition, dragOperationMask);
 
     RefPtr<ShareableBitmap> bitmap = convertQPixmapToShareableBitmap(dragImage);
