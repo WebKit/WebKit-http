@@ -70,7 +70,7 @@
 #include <WKNumber.h>
 #include <WKOpenPanelResultListener.h>
 #include <WKPageGroup.h>
-#include <WKPreferences.h>
+#include <WKPreferencesRef.h>
 #include <WKSerializedScriptValue.h>
 #include <WKString.h>
 #include <WKStringQt.h>

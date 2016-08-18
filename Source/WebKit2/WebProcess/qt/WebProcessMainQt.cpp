@@ -36,7 +36,7 @@
 #include <QString>
 #include <QStringList>
 #include <QUrl>
-#include <WebCore/RunLoop.h>
+#include <wtf/RunLoop.h>
 #include <errno.h>
 
 #ifndef NDEBUG

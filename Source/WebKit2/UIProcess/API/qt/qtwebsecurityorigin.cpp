@@ -26,7 +26,7 @@
 #include <SecurityOrigin.h>
 #include <WebKit/WKBase.h>
 #include <WebKit/WKRetainPtr.h>
-#include <WebKit/WKSecurityOrigin.h>
+#include <WebKit/WKSecurityOriginRef.h>
 
 using namespace WebCore;
 

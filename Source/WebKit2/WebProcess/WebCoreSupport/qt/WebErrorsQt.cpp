@@ -27,7 +27,7 @@
 #include "config.h"
 #include "WebErrors.h"
 
-#include "WKError.h"
+#include "WKErrorRef.h"
 #include "WebError.h"
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceRequest.h>

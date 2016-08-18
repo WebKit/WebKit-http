@@ -36,9 +36,9 @@
 #include <QProcess>
 #include <QString>
 #include <QtCore/qglobal.h>
-#include <WebCore/RunLoop.h>
 #include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
+#include <wtf/RunLoop.h>
 #include <wtf/Threading.h>
 #include <wtf/text/WTFString.h>
 

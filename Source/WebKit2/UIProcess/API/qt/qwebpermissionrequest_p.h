@@ -27,7 +27,7 @@
 #include <QtCore/qshareddata.h>
 #include <WebKit/WKGeolocationPermissionRequest.h>
 #include <WebKit/WKNotificationPermissionRequest.h>
-#include <WebKit/WKSecurityOrigin.h>
+#include <WebKit/WKSecurityOriginRef.h>
 
 class QWebPermissionRequestPrivate;
 

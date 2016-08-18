@@ -27,10 +27,10 @@
 #include "config.h"
 #include "WebContext.h"
 
-#include "ApplicationCacheStorage.h"
 #include "WKSharedAPICast.h"
 #include "WebProcessCreationParameters.h"
 #include <QProcess>
+#include <WebCore/ApplicationCacheStorage.h>
 
 #if ENABLE(GEOLOCATION)
 #include "WebGeolocationManagerProxy.h"

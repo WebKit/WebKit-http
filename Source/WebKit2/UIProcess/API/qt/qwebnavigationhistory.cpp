@@ -26,7 +26,7 @@
 #include "config.h"
 #include "qwebnavigationhistory_p.h"
 
-#include "WKBackForwardList.h"
+#include "WKBackForwardListRef.h"
 #include "WKStringQt.h"
 #include "WKURL.h"
 #include "WKURLQt.h"
@@ -36,7 +36,7 @@
 #include <QUrl>
 #include <QtQml/QQmlEngine>
 #include <WebKit/WKArray.h>
-#include <WebKit/WKBackForwardListItem.h>
+#include <WebKit/WKBackForwardListItemRef.h>
 #include <WebKit/WKBase.h>
 #include <WebKit/WKPage.h>
 #include <WebKit/WKRetainPtr.h>

@@ -26,7 +26,7 @@
 #include <WKFrame.h>
 #include <WKGeolocationPermissionRequest.h>
 #include <WKPage.h>
-#include <WKSecurityOrigin.h>
+#include <WKSecurityOriginRef.h>
 
 class QQuickWebView;
 class QWebPermissionRequest;

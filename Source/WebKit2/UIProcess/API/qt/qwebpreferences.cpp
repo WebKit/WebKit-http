@@ -23,7 +23,7 @@
 #include "qquickwebview_p_p.h"
 #include "qwebpreferences_p_p.h"
 #include <WKPageGroup.h>
-#include <WKPreferences.h>
+#include <WKPreferencesRef.h>
 #include <WKRetainPtr.h>
 #include <WKStringQt.h>
 
