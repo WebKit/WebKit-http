@@ -261,12 +261,14 @@ void QtWebPageEventHandler::deactivateTapHighlight()
 
 void QtWebPageEventHandler::handleSingleTapEvent(const QTouchEvent::TouchPoint& point)
 {
+#if ENABLE(GESTURE_EVENTS)
     deactivateTapHighlight();
     m_postponeTextInputStateChanged = true;
 
     QTransform fromItemTransform = m_webPage->transformFromItem();
     WebGestureEvent gesture(WebEvent::GestureSingleTap, fromItemTransform.map(point.pos()).toPoint(), point.screenPos().toPoint(), WebEvent::Modifiers(0), 0, IntSize(point.rect().size().toSize()), FloatPoint(0, 0));
     m_webPageProxy->handleGestureEvent(gesture);
+#endif
 }
 
 void QtWebPageEventHandler::handleDoubleTapEvent(const QTouchEvent::TouchPoint& point)
@@ -446,6 +448,7 @@ void QtWebPageEventHandler::handleWillSetInputMethodState()
 
 void QtWebPageEventHandler::doneWithGestureEvent(const WebGestureEvent& event, bool wasEventHandled)
 {
+#if ENABLE(GESTURE_EVENTS)
     if (event.type() != WebEvent::GestureSingleTap)
         return;
 
@@ -455,6 +458,7 @@ void QtWebPageEventHandler::doneWithGestureEvent(const WebGestureEvent& event, b
         return;
 
     updateTextInputState();
+#endif
 }
 
 void QtWebPageEventHandler::handleInputEvent(const QInputEvent* event)
