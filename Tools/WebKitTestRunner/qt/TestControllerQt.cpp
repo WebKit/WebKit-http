@@ -38,6 +38,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QtGlobal>
+#include <WebKit/WKStringQt.h>
 #include <qquickwebview_p.h>
 #include <wtf/Platform.h>
 #include <wtf/text/WTFString.h>

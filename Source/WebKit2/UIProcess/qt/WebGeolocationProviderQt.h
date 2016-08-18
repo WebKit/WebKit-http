@@ -22,9 +22,9 @@
 #define WebGeolocationProviderQt_h
 
 #include <QObject>
-#include <WebKit2/WKGeolocationManager.h>
-#include <WebKit2/WKGeolocationPosition.h>
-#include <WebKit2/WKRetainPtr.h>
+#include <WebKit/WKGeolocationManager.h>
+#include <WebKit/WKGeolocationPosition.h>
+#include <WebKit/WKRetainPtr.h>
 
 QT_BEGIN_NAMESPACE
 class QGeoPositionInfoSource;

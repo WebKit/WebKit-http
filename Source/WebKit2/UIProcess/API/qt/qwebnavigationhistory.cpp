@@ -35,11 +35,11 @@
 #include <QString>
 #include <QUrl>
 #include <QtQml/QQmlEngine>
-#include <WebKit2/WKArray.h>
-#include <WebKit2/WKBackForwardListItem.h>
-#include <WebKit2/WKBase.h>
-#include <WebKit2/WKPage.h>
-#include <WebKit2/WKRetainPtr.h>
+#include <WebKit/WKArray.h>
+#include <WebKit/WKBackForwardListItem.h>
+#include <WebKit/WKBase.h>
+#include <WebKit/WKPage.h>
+#include <WebKit/WKRetainPtr.h>
 
 using namespace WebKit;
 

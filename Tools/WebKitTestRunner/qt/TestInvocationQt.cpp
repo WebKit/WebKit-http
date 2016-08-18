@@ -32,7 +32,7 @@
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QtGui/QPainter>
-#include <WebKit2/WKImageQt.h>
+#include <WebKit/WKImageQt.h>
 #include <stdio.h>
 #include <wtf/Assertions.h>
 

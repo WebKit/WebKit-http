@@ -31,8 +31,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QKeyEvent>
 #include <QtTest/QtTest>
-#include <WebKit2/WKPagePrivate.h>
-#include <WebKit2/WKStringQt.h>
+#include <WebKit/WKPagePrivate.h>
+#include <WebKit/WKStringQt.h>
 #include <qpa/qwindowsysteminterface.h>
 
 namespace WTR {

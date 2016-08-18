@@ -22,7 +22,7 @@
 #define WKStringQt_h
 
 #include <QString>
-#include <WebKit2/WKBase.h>
+#include <WebKit/WKBase.h>
 
 WK_EXPORT WKStringRef WKStringCreateWithQString(const QString& string);
 WK_EXPORT QString WKStringCopyQString(WKStringRef string);

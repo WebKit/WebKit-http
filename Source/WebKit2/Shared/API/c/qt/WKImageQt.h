@@ -23,8 +23,8 @@
 #define WKImageQt_h
 
 #include <QImage>
-#include <WebKit2/WKBase.h>
-#include <WebKit2/WKImage.h>
+#include <WebKit/WKBase.h>
+#include <WebKit/WKImage.h>
 
 WK_EXPORT QImage WKImageCreateQImage(WKImageRef image);
 WK_EXPORT WKImageRef WKImageCreateFromQImage(const QImage& image);

@@ -21,9 +21,9 @@
 #include "config.h"
 #include "PlatformUtilities.h"
 
-#include <WebKit2/WKStringQt.h>
-#include <WebKit2/WKNativeEvent.h>
-#include <WebKit2/WKURLQt.h>
+#include <WebKit/WKNativeEvent.h>
+#include <WebKit/WKStringQt.h>
+#include <WebKit/WKURLQt.h>
 
 #include <QCoreApplication>
 #include <QDir>

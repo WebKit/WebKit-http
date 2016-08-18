@@ -35,7 +35,7 @@
 #include <QQmlProperty>
 #include <QtQuick/QQuickView>
 #include <QtQuick/private/qquickwindow_p.h>
-#include <WebKit2/WKImageQt.h>
+#include <WebKit/WKImageQt.h>
 #include <qpa/qwindowsysteminterface.h>
 
 namespace WTR {

@@ -33,7 +33,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QScopedPointer>
 #include <WebCore/ViewportArguments.h>
-#include <WebKit2/WKRetainPtr.h>
+#include <WebKit/WKRetainPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {

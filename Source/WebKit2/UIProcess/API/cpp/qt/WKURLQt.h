@@ -22,8 +22,8 @@
 #define WKURLQt_h
 
 #include <QUrl>
-#include <WebKit2/WKBase.h>
-#include <WebKit2/WKURL.h>
+#include <WebKit/WKBase.h>
+#include <WebKit/WKURL.h>
 
 WK_EXPORT WKURLRef WKURLCreateWithQString(const QString& url);
 WK_EXPORT QString WKURLCopyQString(WKURLRef url);

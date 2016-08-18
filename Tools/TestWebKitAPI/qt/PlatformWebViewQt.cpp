@@ -31,7 +31,7 @@
 #include "qquickwebpage_p.h"
 #include "qquickwebview_p.h"
 
-#include <WebKit2/WKRetainPtr.h>
+#include <WebKit/WKRetainPtr.h>
 
 #include <QCoreApplication>
 #include <QEventLoop>

@@ -24,9 +24,9 @@
 #include <QtCore/QStringList>
 #include <SchemeRegistry.h>
 #include <SecurityOrigin.h>
-#include <WebKit2/WKBase.h>
-#include <WebKit2/WKRetainPtr.h>
-#include <WebKit2/WKSecurityOrigin.h>
+#include <WebKit/WKBase.h>
+#include <WebKit/WKRetainPtr.h>
+#include <WebKit/WKSecurityOrigin.h>
 
 using namespace WebCore;
 

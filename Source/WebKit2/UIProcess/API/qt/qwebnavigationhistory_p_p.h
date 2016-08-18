@@ -29,8 +29,8 @@
 #include "qwebkitglobal.h"
 
 #include <QObject>
-#include <WebKit2/WKBase.h>
-#include <WebKit2/WKRetainPtr.h>
+#include <WebKit/WKBase.h>
+#include <WebKit/WKRetainPtr.h>
 #include <wtf/PassRefPtr.h>
 
 namespace WebKit {
