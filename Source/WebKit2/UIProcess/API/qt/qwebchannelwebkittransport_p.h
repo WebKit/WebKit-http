@@ -39,8 +39,9 @@
 **
 ****************************************************************************/
 
-#ifndef QWEBCHANNELWEBKITTRANSPORT_H
-#define QWEBCHANNELWEBKITTRANSPORT_H
+#pragma once
+
+#ifdef HAVE_WEBCHANNEL
 
 #include <QtWebChannel/QWebChannelAbstractTransport>
 
@@ -60,4 +61,4 @@ private:
     QQuickWebViewExperimental* m_experimental;
 };
 
-#endif // QWEBCHANNELWEBKITTRANSPORT_H
+#endif // HAVE_WEBCHANNEL
