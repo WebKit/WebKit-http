@@ -51,7 +51,7 @@ void QtNetworkReply::setData(const SharedMemory::Handle& handle, qint64 dataSize
 {
     if (handle.isNull())
         return;
-    m_sharedMemory = SharedMemory::create(handle, SharedMemory::ReadOnly);
+    m_sharedMemory = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     if (!m_sharedMemory)
         return;
 

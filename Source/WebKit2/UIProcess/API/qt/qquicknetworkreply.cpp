@@ -82,14 +82,14 @@ void QQuickNetworkReply::send()
         return;
     }
 
-    WTF::RefPtr<WebKit::SharedMemory> sharedMemory = SharedMemory::create(smLength);
+    WTF::RefPtr<WebKit::SharedMemory> sharedMemory = SharedMemory::allocate(smLength);
     if (!sharedMemory)
         return;
     // The size of the allocated shared memory can be bigger than requested.
     // Usually the size will be rounded up to the next multiple of a page size.
     memcpy(sharedMemory->data(), ptrData, smLength);
 
-    if (sharedMemory->createHandle(m_networkReplyData->data().m_dataHandle, SharedMemory::ReadOnly)) {
+    if (sharedMemory->createHandle(m_networkReplyData->data().m_dataHandle, SharedMemory::Protection::ReadOnly)) {
         m_networkReplyData->data().m_contentLength = smLength;
         if (m_webViewExperimental)
             m_webViewExperimental.data()->sendApplicationSchemeReply(this);
