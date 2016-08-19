@@ -797,6 +797,18 @@ WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const Stri
 }
 #endif
 
+#if PLATFORM(QT)
+
+static Element* rootEditableElementRespectingShadowTree(const Frame& frame)
+{
+    Element* selectionRoot = frame.selection().selection().rootEditableElement();
+    if (selectionRoot && selectionRoot->isInShadowTree())
+        selectionRoot = selectionRoot->shadowHost();
+    return selectionRoot;
+}
+
+#endif
+
 EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -828,7 +840,7 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
     size_t location = 0;
     size_t length = 0;
 
-    Element* selectionRoot = frame.selection().rootEditableElementRespectingShadowTree();
+    Element* selectionRoot = rootEditableElementRespectingShadowTree(frame);
     Element* scope = selectionRoot ? selectionRoot : frame.document()->documentElement();
 
     if (!scope)
@@ -857,14 +869,14 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
         }
     }
 
-    if (selectionRoot)
-        result.editorRect = frame.view()->contentsToWindow(selectionRoot->pixelSnappedBoundingBox());
+    if (selectionRoot && selectionRoot->renderer())
+        result.editorRect = frame.view()->contentsToWindow(selectionRoot->renderer()->absoluteBoundingBoxRect());
 
     RefPtr<Range> range;
     if (result.hasComposition && (range = frame.editor().compositionRange())) {
         frame.editor().getCompositionSelection(result.anchorPosition, result.cursorPosition);
 
-        result.compositionRect = frame.view()->contentsToWindow(range->boundingBox());
+        result.compositionRect = frame.view()->contentsToWindow(range->absoluteBoundingBox());
     }
 
     if (!result.hasComposition && !result.selectionIsNone && (range = frame.selection().selection().firstRange())) {
