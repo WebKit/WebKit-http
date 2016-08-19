@@ -22,8 +22,8 @@
 #define QtWebError_h
 
 #include "qwebdownloaditem_p.h"
+#include <APIError.h>
 #include <QtNetwork/QNetworkReply>
-#include <WKError.h>
 #include <WKRetainPtr.h>
 
 QT_BEGIN_NAMESPACE

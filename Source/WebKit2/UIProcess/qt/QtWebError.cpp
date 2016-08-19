@@ -21,6 +21,8 @@
 #include "config.h"
 #include "QtWebError.h"
 
+#include "WKErrorRef.h"
+
 #include <QtCore/QUrl>
 #include <WKSharedAPICast.h>
 #include <WKString.h>
