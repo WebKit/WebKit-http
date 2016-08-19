@@ -33,7 +33,7 @@ WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
 {
     // Save the page ID for a valid page as it is needed later for HTTP authentication and SSL errors.
     if (frame->page()) {
-        m_originatingObject = adoptPtr(new QObject);
+        m_originatingObject.reset(new QObject);
         m_originatingObject->setProperty("pageID", qulonglong(frame->page()->pageID()));
     }
 }

@@ -29,7 +29,6 @@
 #include <QtQml/QQmlContext>
 #include <QtQml/QQmlEngine>
 #include <QtQuick/QQuickItem>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebKit {
 
@@ -413,7 +412,7 @@ bool QtDialogRunner::createDialog(QQmlComponent* component, QObject* contextObje
     QQmlContext* baseContext = component->creationContext();
     if (!baseContext)
         baseContext = QQmlEngine::contextForObject(m_webView);
-    m_dialogContext = adoptPtr(new QQmlContext(baseContext));
+    m_dialogContext = std::make_unique<QQmlContext>(baseContext);
 
     // This makes both "message" and "model.message" work for the dialog,
     // just like QtQuick's ListView delegates.
@@ -423,14 +422,13 @@ bool QtDialogRunner::createDialog(QQmlComponent* component, QObject* contextObje
 
     QObject* object = component->beginCreate(m_dialogContext.get());
     if (!object) {
-        m_dialogContext.clear();
+        m_dialogContext = nullptr;
         return false;
     }
 
-    m_dialog = adoptPtr(qobject_cast<QQuickItem*>(object));
+    m_dialog.reset(qobject_cast<QQuickItem*>(object));
     if (!m_dialog) {
-        m_dialogContext.clear();
-        m_dialog.clear();
+        m_dialogContext = nullptr;
         return false;
     }
 

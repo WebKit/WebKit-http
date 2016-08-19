@@ -82,7 +82,7 @@ private:
     String m_bindAddress;
     unsigned short m_port;
 #if PLATFORM(QT)
-    OwnPtr<QtTcpServerHandler> m_tcpServerHandler;
+    std::unique_ptr<QtTcpServerHandler> m_tcpServerHandler;
 #elif USE(SOUP)
     GRefPtr<GSocketService> m_socketService;
 #endif

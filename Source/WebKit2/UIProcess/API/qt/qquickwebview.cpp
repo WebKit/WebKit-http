@@ -376,7 +376,7 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
 
     pagePolicyClient.reset(new QtWebPagePolicyClient(webPage.get(), q_ptr));
     pageUIClient.reset(new QtWebPageUIClient(webPage.get(), q_ptr));
-    navigationHistory = adoptPtr(QWebNavigationHistoryPrivate::createHistory(webPage.get()));
+    navigationHistory.reset(QWebNavigationHistoryPrivate::createHistory(webPage.get()));
 
     QtWebIconDatabaseClient* iconDatabase = context->iconDatabase();
     QObject::connect(iconDatabase, SIGNAL(iconChangedForPageURL(QString)), q_ptr, SLOT(_q_onIconChangedForPageURL(QString)));
@@ -1295,7 +1295,7 @@ QWebPreferences* QQuickWebViewExperimental::preferences() const
 {
     QQuickWebViewPrivate* const d = d_ptr;
     if (!d->preferences)
-        d->preferences = adoptPtr(QWebPreferencesPrivate::createPreferences(d));
+        d->preferences.reset(QWebPreferencesPrivate::createPreferences(d));
     return d->preferences.get();
 }
 

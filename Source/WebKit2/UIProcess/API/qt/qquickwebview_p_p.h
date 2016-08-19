@@ -34,7 +34,6 @@
 #include <QtCore/QScopedPointer>
 #include <WebCore/ViewportArguments.h>
 #include <WebKit2/WKRetainPtr.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -189,8 +188,8 @@ protected:
 
     WebKit::QtPageClient pageClient;
     WebKit::DefaultUndoController undoController;
-    OwnPtr<QWebNavigationHistory> navigationHistory;
-    OwnPtr<QWebPreferences> preferences;
+    std::unique_ptr<QWebNavigationHistory> navigationHistory;
+    std::unique_ptr<QWebPreferences> preferences;
 
     QScopedPointer<WebKit::QtWebPagePolicyClient> pagePolicyClient;
     QScopedPointer<WebKit::QtWebPageUIClient> pageUIClient;

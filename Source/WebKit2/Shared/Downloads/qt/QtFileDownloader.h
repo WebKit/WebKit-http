@@ -23,8 +23,6 @@
 
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 
 QT_BEGIN_NAMESPACE
 class QFile;
@@ -42,7 +40,7 @@ class Download;
 class QtFileDownloader : public QObject {
     Q_OBJECT
 public:
-    QtFileDownloader(Download*, PassOwnPtr<QNetworkReply>);
+    QtFileDownloader(Download*, QNetworkReply*);
     virtual ~QtFileDownloader();
     void cancel();
     void init();
@@ -69,8 +67,8 @@ private:
     void handleDownloadResponse();
 
     Download* m_download;
-    OwnPtr<QNetworkReply> m_reply;
-    OwnPtr<QFile> m_destinationFile;
+    std::unique_ptr<QNetworkReply> m_reply;
+    std::unique_ptr<QFile> m_destinationFile;
     QNetworkReply::NetworkError m_error;
     bool m_headersRead;
 };

@@ -40,7 +40,6 @@
 #include <WebKit2/WKBase.h>
 #include <WebKit2/WKPage.h>
 #include <WebKit2/WKRetainPtr.h>
-#include <wtf/PassOwnPtr.h>
 
 using namespace WebKit;
 
@@ -61,8 +60,8 @@ QWebNavigationListModel* QWebNavigationListModelPrivate::createWebNavigationMode
 QWebNavigationHistoryPrivate::QWebNavigationHistoryPrivate(WKPageRef page)
     : m_page(page)
     , m_backForwardList(WKPageGetBackForwardList(page))
-    , m_backNavigationModel(adoptPtr(QWebNavigationListModelPrivate::createWebNavigationModel(m_backForwardList.get())))
-    , m_forwardNavigationModel(adoptPtr(QWebNavigationListModelPrivate::createWebNavigationModel(m_backForwardList.get())))
+    , m_backNavigationModel(QWebNavigationListModelPrivate::createWebNavigationModel(m_backForwardList.get()))
+    , m_forwardNavigationModel(QWebNavigationListModelPrivate::createWebNavigationModel(m_backForwardList.get()))
 {
     m_backNavigationModel->d->count = &WKBackForwardListGetBackListCount;
     m_backNavigationModel->d->indexSign = -1;

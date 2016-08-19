@@ -33,13 +33,12 @@
 #include "WKString.h"
 #include "WKStringQt.h"
 #include "WKType.h"
-#include <wtf/PassOwnPtr.h>
 
 namespace WebKit {
 
 QtBuiltinBundle::~QtBuiltinBundle()
 {
-    // For OwnPtr's sake.
+    // For unique_ptr's sake.
 }
 
 QtBuiltinBundle& QtBuiltinBundle::shared()
@@ -79,7 +78,7 @@ void QtBuiltinBundle::didReceiveMessageToPage(WKBundleRef, WKBundlePageRef page,
 
 void QtBuiltinBundle::didCreatePage(WKBundlePageRef page)
 {
-    m_pages.add(page, adoptPtr(new QtBuiltinBundlePage(this, page)));
+    m_pages.add(page, std::make_unique<QtBuiltinBundlePage>(this, page));
 }
 
 void QtBuiltinBundle::willDestroyPage(WKBundlePageRef page)

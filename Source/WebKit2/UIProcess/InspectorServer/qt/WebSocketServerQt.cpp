@@ -25,7 +25,6 @@
 #include "WebSocketServer.h"
 #include "WebSocketServerConnection.h"
 #include <WebCore/SocketStreamHandle.h>
-#include <wtf/PassOwnPtr.h>
 
 using namespace WebCore;
 
@@ -33,7 +32,7 @@ namespace WebKit {
 
 void WebSocketServer::platformInitialize()
 {
-    m_tcpServerHandler = adoptPtr(new QtTcpServerHandler(this));
+    m_tcpServerHandler.reset(new QtTcpServerHandler(this));
 }
 
 bool WebSocketServer::platformListen(const String& bindAddress, unsigned short port)
@@ -56,9 +55,9 @@ void QtTcpServerHandler::handleNewConnection()
 {
     QTcpSocket* socket = m_serverSocket.nextPendingConnection();
     ASSERT(socket);
-    OwnPtr<WebSocketServerConnection> conection = adoptPtr(new WebSocketServerConnection(m_webSocketServer->client(), m_webSocketServer));
-    conection->setSocketHandle(SocketStreamHandle::create(socket, conection.get()));
-    m_webSocketServer->didAcceptConnection(conection.release());
+    auto connection = std::make_unique<WebSocketServerConnection>(m_webSocketServer->client(), m_webSocketServer);
+    connection->setSocketHandle(SocketStreamHandle::create(socket, connection.get()));
+    m_webSocketServer->didAcceptConnection(WTFMove(connection));
 }
 
 bool QtTcpServerHandler::listen(const String& bindAddress, unsigned short port)

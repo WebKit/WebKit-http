@@ -22,7 +22,6 @@
 
 #include "WebProcess.h"
 #include <WebCore/FrameNetworkingContext.h>
-#include <wtf/OwnPtr.h>
 
 namespace WebKit {
 
@@ -41,7 +40,7 @@ private:
     bool mimeSniffingEnabled() const { return m_mimeSniffingEnabled; }
     bool thirdPartyCookiePolicyPermission(const QUrl&) const { /*TODO. Used QWebSettings in WK1.*/ return true; }
 
-    OwnPtr<QObject> m_originatingObject;
+    std::unique_ptr<QObject> m_originatingObject;
     bool m_mimeSniffingEnabled;
 };
 

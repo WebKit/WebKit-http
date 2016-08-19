@@ -30,7 +30,6 @@
 #include "WKBundle.h"
 #include "WKBundlePage.h"
 #include <wtf/HashMap.h>
-#include <wtf/OwnPtr.h>
 
 namespace WebKit {
 
@@ -61,7 +60,7 @@ private:
     void handleMessageToNavigatorQtWebChannelTransport(WKBundlePageRef, WKTypeRef messageBody);
 #endif
 
-    HashMap<WKBundlePageRef, OwnPtr<QtBuiltinBundlePage> > m_pages;
+    HashMap<WKBundlePageRef, std::unique_ptr<QtBuiltinBundlePage>> m_pages;
     WKBundleRef m_bundle;
 };
 

@@ -45,14 +45,14 @@ void Download::start()
     ASSERT(manager);
     ASSERT(!m_qtDownloader);
 
-    m_qtDownloader = new QtFileDownloader(this, adoptPtr(manager->get(m_request.toNetworkRequest())));
+    m_qtDownloader = new QtFileDownloader(this, manager->get(m_request.toNetworkRequest()));
     m_qtDownloader->init();
 }
 
 void Download::startWithHandle(ResourceHandle* handle, const ResourceResponse& resp)
 {
     ASSERT(!m_qtDownloader);
-    m_qtDownloader = new QtFileDownloader(this, adoptPtr(handle->getInternal()->m_job->release()));
+    m_qtDownloader = new QtFileDownloader(this, handle->getInternal()->m_job->release());
     m_qtDownloader->init();
 }
 

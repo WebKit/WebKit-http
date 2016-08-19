@@ -29,7 +29,6 @@
 
 #include "WebPopupMenuProxy.h"
 #include <QtCore/QObject>
-#include <wtf/OwnPtr.h>
 
 QT_BEGIN_NAMESPACE
 class QQmlComponent;
@@ -69,8 +68,8 @@ private:
     void createItem(QObject*);
     void createContext(QQmlComponent*, QObject*);
 
-    OwnPtr<QQmlContext> m_context;
-    OwnPtr<QQuickItem> m_itemSelector;
+    std::unique_ptr<QQmlContext> m_context;
+    std::unique_ptr<QQuickItem> m_itemSelector;
 
     QQuickWebView* m_webView;
     SelectionType m_selectionType;

@@ -37,7 +37,7 @@ using namespace WTF;
 
 namespace WebKit {
 
-QtFileDownloader::QtFileDownloader(Download* download, PassOwnPtr<QNetworkReply> reply)
+QtFileDownloader::QtFileDownloader(Download* download, QNetworkReply* reply)
     : m_download(download)
     , m_reply(reply)
     , m_error(QNetworkReply::NoError)
@@ -102,7 +102,7 @@ void QtFileDownloader::startTransfer(const QString& decidedFilePath)
         return;
     }
 
-    OwnPtr<QFile> downloadFile = adoptPtr(new QFile(decidedFilePath));
+    auto downloadFile = std::make_unique<QFile>(decidedFilePath);
 
     if (!downloadFile->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         abortDownloadWritingAndEmitError(QtFileDownloader::DownloadErrorCannotOpenFile);
@@ -111,7 +111,7 @@ void QtFileDownloader::startTransfer(const QString& decidedFilePath)
 
     // Assigning to m_destinationFile flags that either error or
     // finished shall be called in the end.
-    m_destinationFile = downloadFile.release();
+    m_destinationFile = WTFMove(downloadFile);
 
     m_download->didCreateDestination(m_destinationFile->fileName());
 
@@ -224,7 +224,7 @@ void QtFileDownloader::onFinished()
     if (!m_destinationFile)
         return;
 
-    m_destinationFile.clear();
+    m_destinationFile = nullptr;
 
     if (m_error == QNetworkReply::NoError)
         m_download->didFinish();

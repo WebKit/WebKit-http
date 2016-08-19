@@ -82,13 +82,13 @@ void WebColorPickerQt::createItem(QObject* contextObject)
     createContext(component, contextObject);
     QObject* object = component->beginCreate(m_context.get());
     if (!object) {
-        m_context.clear();
+        m_context = nullptr;
         return;
     }
 
-    m_colorChooser = adoptPtr(qobject_cast<QQuickItem*>(object));
+    m_colorChooser.reset(qobject_cast<QQuickItem*>(object));
     if (!m_colorChooser) {
-        m_context.clear();
+        m_context = nullptr;
         return;
     }
 
@@ -107,7 +107,7 @@ void WebColorPickerQt::createContext(QQmlComponent* component, QObject* contextO
     QQmlContext* baseContext = component->creationContext();
     if (!baseContext)
         baseContext = QQmlEngine::contextForObject(m_webView);
-    m_context = adoptPtr(new QQmlContext(baseContext));
+    m_context.reset(new QQmlContext(baseContext));
 
     contextObject->setParent(m_context.get());
     m_context->setContextProperty(QLatin1String("model"), contextObject);
@@ -137,8 +137,8 @@ void WebColorPickerQt::notifyColorSelected(const QColor& color)
 
 void WebColorPickerQt::endPicker()
 {
-    m_colorChooser.clear();
-    m_context.clear();
+    m_colorChooser = nullptr;
+    m_context = nullptr;
 
     if (!m_client)
         return;
