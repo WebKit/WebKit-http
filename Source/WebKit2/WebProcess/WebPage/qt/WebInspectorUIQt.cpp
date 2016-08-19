@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "WebInspector.h"
+#include "WebInspectorUI.h"
 
 #if ENABLE(INSPECTOR)
 
@@ -33,15 +33,14 @@
 
 namespace WebKit {
 
-bool WebInspector::canSave() const
+bool WebInspectorUI::canSave()
 {
     return false;
 }
 
-String WebInspector::localizedStringsURL() const
+String WebInspectorUI::localizedStringsURL()
 {
-    notImplemented();
-    return String();
+    return ASCIILiteral("qrc:///org/webkitgtk/inspector/Localizations/en.lproj/localizedStrings.js");
 }
 
 } // namespace WebKit
