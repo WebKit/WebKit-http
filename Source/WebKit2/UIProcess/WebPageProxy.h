@@ -110,6 +110,7 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #endif
 
 #if PLATFORM(QT)
+#include "ArgumentCodersQt.h"
 #include "QtNetworkRequestData.h"
 #endif
 
