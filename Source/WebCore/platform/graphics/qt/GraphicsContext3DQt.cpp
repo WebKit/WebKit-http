@@ -362,7 +362,7 @@ void GraphicsContext3DPrivate::createGraphicsSurfaces(const IntSize& size)
 {
 #if USE(GRAPHICS_SURFACE)
     if (size.isEmpty())
-        m_graphicsSurface.clear();
+        m_graphicsSurface = nullptr;
     else
         m_graphicsSurface = GraphicsSurface::create(size, m_surfaceFlags, m_platformContext);
 #endif
