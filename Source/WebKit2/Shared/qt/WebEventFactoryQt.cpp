@@ -192,7 +192,7 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(const QTouchEvent* event, con
 
     const QList<QTouchEvent::TouchPoint>& points = event->touchPoints();
     
-    Vector<WebPlatformTouchPoint, 6> m_touchPoints;
+    Vector<WebPlatformTouchPoint> touchPoints;
     for (int i = 0; i < points.count(); ++i) {
         const QTouchEvent::TouchPoint& touchPoint = points.at(i);
         id = static_cast<unsigned>(touchPoint.id());
@@ -220,10 +220,10 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(const QTouchEvent* event, con
             state = WebPlatformTouchPoint::TouchCancelled;
 
         IntSize radius(touchPoint.rect().width()/ 2, touchPoint.rect().height() / 2);
-        m_touchPoints.append(WebPlatformTouchPoint(id, state, touchPoint.screenPos().toPoint(), fromItemTransform.map(touchPoint.pos()).toPoint(), radius, 0.0, touchPoint.pressure()));
+        touchPoints.append(WebPlatformTouchPoint(id, state, touchPoint.screenPos().toPoint(), fromItemTransform.map(touchPoint.pos()).toPoint(), radius, 0.0, touchPoint.pressure()));
     }
 
-    return WebTouchEvent(type, m_touchPoints, modifiers, timestamp);
+    return WebTouchEvent(type, WTFMove(touchPoints), modifiers, timestamp);
 }
 #endif
 
