@@ -113,7 +113,7 @@ void QtWebProcess::setupChildProcess()
 void ProcessLauncher::launchProcess()
 {
     QString commandLine;
-    if (m_launchOptions.processType == WebProcess) {
+    if (m_launchOptions.processType == ProcessType::Web) {
         commandLine = QLatin1String("%1 \"%2\" %3");
         QByteArray webProcessPrefix = qgetenv("QT_WEBKIT2_WP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(webProcessPrefix.constData())).arg(QString(executablePathOfWebProcess()));
@@ -218,7 +218,10 @@ void ProcessLauncher::launchProcess()
 #if OS(UNIX)
     setpriority(PRIO_PROCESS, webProcessOrSUIDHelper->pid(), 10);
 #endif
-    RunLoop::main()->dispatch(bind(&WebKit::ProcessLauncher::didFinishLaunchingProcess, this, webProcessOrSUIDHelper, connector));
+    RefPtr<ProcessLauncher> protector(this);
+    RunLoop::main().dispatch([protector, webProcessOrSUIDHelper, connector] {
+        protector->didFinishLaunchingProcess(webProcessOrSUIDHelper, connector);
+    });
 }
 
 void ProcessLauncher::terminateProcess()
