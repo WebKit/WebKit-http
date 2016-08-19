@@ -93,7 +93,7 @@ void PluginInfoStore::loadPluginsIfNecessary()
     m_plugins.clear();
 
     for (const auto& pluginPath : uniquePluginPaths)
-        loadPlugin(m_plugins, *it);
+        loadPlugin(m_plugins, pluginPath);
 
     m_pluginListIsUpToDate = true;
 
