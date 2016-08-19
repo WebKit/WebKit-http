@@ -36,6 +36,7 @@ namespace WebCore {
 class Frame;
 class IntRect;
 class Node;
+class Page;
 }
 
 namespace WebKit {
@@ -54,11 +55,11 @@ public:
 
 private:
     // PageOverlay::Client.
-    virtual void pageOverlayDestroyed(WebCore::PageOverlay*);
-    virtual void willMoveToWebPage(WebCore::PageOverlay*, WebPage*);
-    virtual void didMoveToWebPage(WebCore::PageOverlay*, WebPage*);
-    virtual bool mouseEvent(WebCore::PageOverlay*, const WebMouseEvent&);
-    virtual void drawRect(WebCore::PageOverlay*, WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect);
+    void pageOverlayDestroyed(WebCore::PageOverlay&) override;
+    void willMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
+    void didMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
+    bool mouseEvent(WebCore::PageOverlay&, const WebCore::PlatformMouseEvent&) override;
+    void drawRect(WebCore::PageOverlay&, WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect) override;
 
 private:
     WebPage* m_webPage;

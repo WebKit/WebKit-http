@@ -75,11 +75,11 @@ void TapHighlightController::hideHighlight()
         m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(m_overlay, PageOverlay::FadeMode::Fade);
 }
 
-void TapHighlightController::pageOverlayDestroyed(PageOverlay*)
+void TapHighlightController::pageOverlayDestroyed(PageOverlay&)
 {
 }
 
-void TapHighlightController::willMoveToWebPage(PageOverlay*, WebPage* webPage)
+void TapHighlightController::willMoveToPage(PageOverlay&, WebCore::Page* webPage)
 {
     if (webPage)
         return;
@@ -89,7 +89,7 @@ void TapHighlightController::willMoveToWebPage(PageOverlay*, WebPage* webPage)
     m_overlay = 0;
 }
 
-void TapHighlightController::didMoveToWebPage(PageOverlay*, WebPage*)
+void TapHighlightController::didMoveToPage(PageOverlay&, WebCore::Page*)
 {
 }
 
@@ -98,19 +98,19 @@ static Color highlightColor(Color baseColor, float fractionFadedIn)
     return Color(baseColor.red(), baseColor.green(), baseColor.blue(), int(baseColor.alpha() * fractionFadedIn));
 }
 
-void TapHighlightController::drawRect(PageOverlay* /*pageOverlay*/, GraphicsContext& context, const IntRect& /*dirtyRect*/)
+void TapHighlightController::drawRect(PageOverlay& /*pageOverlay*/, GraphicsContext& context, const IntRect& /*dirtyRect*/)
 {
     if (m_path.isEmpty())
         return;
 
     {
         GraphicsContextStateSaver stateSaver(context);
-        context.setFillColor(highlightColor(m_color, 0.5f), ColorSpaceSRGB);
+        context.setFillColor(highlightColor(m_color, 0.5f));
         context.fillPath(m_path);
     }
 }
 
-bool TapHighlightController::mouseEvent(PageOverlay*, const WebMouseEvent&)
+bool TapHighlightController::mouseEvent(PageOverlay&, const WebCore::PlatformMouseEvent&)
 {
     return false;
 }

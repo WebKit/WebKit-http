@@ -83,6 +83,7 @@
 #include "QtNetworkReply.h"
 #include "QtNetworkReplyData.h"
 #include "QtNetworkRequestData.h"
+#include "TapHighlightController.h"
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #endif
