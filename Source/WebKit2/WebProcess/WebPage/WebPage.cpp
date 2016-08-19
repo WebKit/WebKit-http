@@ -834,8 +834,8 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
     if (!scope)
         return result;
 
-    if (isHTMLInputElement(scope)) {
-        HTMLInputElement* input = toHTMLInputElement(scope);
+    if (is<HTMLInputElement>(scope)) {
+        HTMLInputElement* input = downcast<HTMLInputElement>(scope);
         if (input->isTelephoneField())
             result.inputMethodHints |= Qt::ImhDialableCharactersOnly;
         else if (input->isNumberField())
@@ -881,8 +881,8 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
 
     // FIXME: We should only transfer innerText when it changes and do this on the UI side.
     if (result.isContentEditable) {
-        if (isHTMLTextFormControlElement(scope))
-            result.surroundingText = toHTMLTextFormControlElement(scope)->innerTextValue();
+        if (is<HTMLTextFormControlElement>(scope))
+            result.surroundingText = downcast<HTMLTextFormControlElement>(scope)->innerTextValue();
         else
             result.surroundingText = scope->innerText();
 
@@ -2306,7 +2306,7 @@ void WebPage::highlightPotentialActivation(const IntPoint& point, const IntSize&
                 break;
 
             // We always highlight focusable (form-elements), image links or content-editable elements.
-            if ((node->isElementNode() && toElement(node)->isMouseFocusable()) || node->isLink() || node->isContentEditable())
+            if ((node->isElementNode() && downcast<Element>(node)->isMouseFocusable()) || node->isLink() || node->isContentEditable())
                 activationNode = node;
             else if (node->willRespondToMouseClickEvents()) {
                 // Highlight elements with default mouse-click handlers, but highlight only inline elements with
