@@ -62,7 +62,7 @@ void WebPageProxy::loadRecentSearches(const String&, Vector<String>&)
 
 void WebPageProxy::registerApplicationScheme(const String& scheme)
 {
-    process()->send(Messages::WebPage::RegisterApplicationScheme(scheme), m_pageID);
+    process().send(Messages::WebPage::RegisterApplicationScheme(scheme), m_pageID);
 }
 
 void WebPageProxy::resolveApplicationSchemeRequest(QtNetworkRequestData request)
@@ -80,7 +80,7 @@ void WebPageProxy::sendApplicationSchemeReply(const QQuickNetworkReply* reply)
     RefPtr<QtRefCountedNetworkRequestData> requestData = reply->networkRequestData();
     if (m_applicationSchemeRequests.contains(requestData)) {
         RefPtr<QtRefCountedNetworkReplyData> replyData = reply->networkReplyData();
-        process()->send(Messages::WebPage::ApplicationSchemeReply(replyData->data()), pageID());
+        process().send(Messages::WebPage::ApplicationSchemeReply(replyData->data()), pageID());
         m_applicationSchemeRequests.remove(requestData);
     }
 #endif
@@ -88,17 +88,17 @@ void WebPageProxy::sendApplicationSchemeReply(const QQuickNetworkReply* reply)
 
 void WebPageProxy::authenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password)
 {
-    m_pageClient->handleAuthenticationRequiredRequest(hostname, realm, prefilledUsername, username, password);
+    m_pageClient.handleAuthenticationRequiredRequest(hostname, realm, prefilledUsername, username, password);
 }
 
 void WebPageProxy::proxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password)
 {
-    m_pageClient->handleProxyAuthenticationRequiredRequest(hostname, port, prefilledUsername, username, password);
+    m_pageClient.handleProxyAuthenticationRequiredRequest(hostname, port, prefilledUsername, username, password);
 }
 
 void WebPageProxy::certificateVerificationRequest(const String& hostname, bool& ignoreErrors)
 {
-    m_pageClient->handleCertificateVerificationRequest(hostname, ignoreErrors);
+    m_pageClient.handleCertificateVerificationRequest(hostname, ignoreErrors);
 }
 
 #if PLUGIN_ARCHITECTURE(X11)
@@ -115,17 +115,17 @@ void WebPageProxy::windowedPluginGeometryDidChange(const WebCore::IntRect& frame
 
 void WebPageProxy::changeSelectedIndex(int32_t selectedIndex)
 {
-    process()->send(Messages::WebPage::SelectedIndex(selectedIndex), m_pageID);
+    process().send(Messages::WebPage::SelectedIndex(selectedIndex), m_pageID);
 }
 
 void WebPageProxy::closePopupMenu()
 {
-    process()->send(Messages::WebPage::HidePopupMenu(), m_pageID);
+    process().send(Messages::WebPage::HidePopupMenu(), m_pageID);
 }
 
 void WebPageProxy::willSetInputMethodState()
 {
-    m_pageClient->handleWillSetInputMethodState();
+    m_pageClient.handleWillSetInputMethodState();
 }
 
 } // namespace WebKit

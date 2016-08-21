@@ -188,7 +188,7 @@ void QtWebPageEventHandler::handleDragEnterEvent(QDragEnterEvent* ev)
     QTransform fromItemTransform = m_webPage->transformFromItem();
     // FIXME: Should not use QCursor::pos()
     DragData dragData(ev->mimeData(), fromItemTransform.map(ev->pos()), QCursor::pos(), dropActionToDragOperation(ev->possibleActions()));
-    m_webPageProxy->dragEntered(&dragData);
+    m_webPageProxy->dragEntered(dragData);
     ev->acceptProposedAction();
 }
 
@@ -198,7 +198,7 @@ void QtWebPageEventHandler::handleDragLeaveEvent(QDragLeaveEvent* ev)
 
     // FIXME: Should not use QCursor::pos()
     DragData dragData(0, IntPoint(), QCursor::pos(), DragOperationNone);
-    m_webPageProxy->dragExited(&dragData);
+    m_webPageProxy->dragExited(dragData);
     m_webPageProxy->resetDragOperation();
 
     ev->setAccepted(accepted);
@@ -211,7 +211,7 @@ void QtWebPageEventHandler::handleDragMoveEvent(QDragMoveEvent* ev)
     QTransform fromItemTransform = m_webPage->transformFromItem();
     // FIXME: Should not use QCursor::pos()
     DragData dragData(ev->mimeData(), fromItemTransform.map(ev->pos()), QCursor::pos(), dropActionToDragOperation(ev->possibleActions()));
-    m_webPageProxy->dragUpdated(&dragData);
+    m_webPageProxy->dragUpdated(dragData);
     ev->setDropAction(dragOperationToDropAction(m_webPageProxy->dragSession().operation));
     if (m_webPageProxy->dragSession().operation != DragOperationNone)
         ev->accept();
@@ -227,7 +227,7 @@ void QtWebPageEventHandler::handleDropEvent(QDropEvent* ev)
     DragData dragData(ev->mimeData(), fromItemTransform.map(ev->pos()), QCursor::pos(), dropActionToDragOperation(ev->possibleActions()));
     SandboxExtension::Handle handle;
     SandboxExtension::HandleArray sandboxExtensionForUpload;
-    m_webPageProxy->performDrag(&dragData, String(), handle, sandboxExtensionForUpload);
+    m_webPageProxy->performDragOperation(dragData, String(), handle, sandboxExtensionForUpload);
     ev->setDropAction(dragOperationToDropAction(m_webPageProxy->dragSession().operation));
     ev->accept();
 

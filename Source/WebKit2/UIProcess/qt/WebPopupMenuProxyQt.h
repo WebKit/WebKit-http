@@ -49,9 +49,9 @@ public:
         MultipleSelection
     };
 
-    static PassRefPtr<WebPopupMenuProxyQt> create(WebPopupMenuProxy::Client* client, QQuickWebView* webView)
+    static Ref<WebPopupMenuProxyQt> create(WebPopupMenuProxy::Client& client, QQuickWebView* webView)
     {
-        return adoptRef(new WebPopupMenuProxyQt(client, webView));
+        return adoptRef(*new WebPopupMenuProxyQt(client, webView));
     }
     ~WebPopupMenuProxyQt();
 
@@ -64,7 +64,7 @@ private Q_SLOTS:
     void selectIndex(int);
 
 private:
-    WebPopupMenuProxyQt(WebPopupMenuProxy::Client*, QQuickWebView*);
+    WebPopupMenuProxyQt(WebPopupMenuProxy::Client&, QQuickWebView*);
     void createItem(QObject*);
     void createContext(QQmlComponent*, QObject*);
 

@@ -262,7 +262,7 @@ void PopupMenuItemModel::buildItems(const Vector<WebPopupItem>& webPopupItems)
     }
 }
 
-WebPopupMenuProxyQt::WebPopupMenuProxyQt(WebPopupMenuProxy::Client* client, QQuickWebView* webView)
+WebPopupMenuProxyQt::WebPopupMenuProxyQt(WebPopupMenuProxy::Client& client, QQuickWebView* webView)
     : WebPopupMenuProxy(client)
     , m_webView(webView)
 {

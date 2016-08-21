@@ -209,7 +209,7 @@ IntRect QtPageClient::windowToScreen(const IntRect& rect)
     return rect;
 }
 
-PassRefPtr<WebPopupMenuProxy> QtPageClient::createPopupMenuProxy(WebPageProxy* webPageProxy)
+RefPtr<WebPopupMenuProxy> QtPageClient::createPopupMenuProxy(WebPageProxy& webPageProxy)
 {
     return WebPopupMenuProxyQt::create(webPageProxy, m_webView);
 }

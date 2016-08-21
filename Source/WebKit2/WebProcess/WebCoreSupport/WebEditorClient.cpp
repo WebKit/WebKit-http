@@ -221,7 +221,7 @@ void WebEditorClient::discardedComposition(Frame*)
 void WebEditorClient::updateGlobalSelection(Frame* frame)
 {
     if (supportsGlobalSelection() && frame->selection().isRange())
-        Pasteboard::createForGlobalSelection()->writeSelection(frame->selection().toNormalizedRange().get(), frame->editor().canSmartCopyOrDelete(), frame);
+        Pasteboard::createForGlobalSelection()->writeSelection(*frame->selection().toNormalizedRange(), frame->editor().canSmartCopyOrDelete(), *frame);
 }
 
 #endif

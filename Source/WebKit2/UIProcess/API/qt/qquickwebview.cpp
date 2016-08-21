@@ -331,7 +331,7 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
         pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(0));
 
     context = contextRef ? QtWebContext::create(contextRef) : QtWebContext::defaultContext();
-    webPageProxy = toImpl(context->context())->createWebPage(&pageClient, toImpl(pageGroup.get()));
+    webPageProxy = toImpl(context->context())->createWebPage(pageClient, toImpl(pageGroup.get()));
     webPage = toAPI(webPageProxy.get());
     pageToView()->insert(webPage.get(), this);
 
@@ -389,7 +389,7 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     WKPreferencesSetCompositingRepaintCountersVisible(preferencesRef, showDebugVisuals);
     WKPreferencesSetFrameFlatteningEnabled(preferencesRef, true);
     WKPreferencesSetWebGLEnabled(preferencesRef, true);
-    webPageProxy->pageGroup()->preferences()->setForceCompositingMode(true);
+    webPageProxy->pageGroup().preferences().setForceCompositingMode(true);
 
     pageClient.initialize(q_ptr, pageEventHandler.data(), &undoController);
     webPageProxy->initializeWebPage();
@@ -644,7 +644,7 @@ void QQuickWebViewPrivate::processDidBecomeResponsive(WKPageRef, const void* cli
 
 std::unique_ptr<DrawingAreaProxy> QQuickWebViewPrivate::createDrawingAreaProxy()
 {
-    return std::make_unique<WebKit::DrawingAreaProxyImpl>(webPageProxy.get());
+    return std::make_unique<WebKit::DrawingAreaProxyImpl>(*webPageProxy.get());
 }
 
 void QQuickWebViewPrivate::handleDownloadRequest(DownloadProxy* download)
@@ -1064,7 +1064,7 @@ void QQuickWebViewFlickablePrivate::onComponentComplete()
 
     Q_Q(QQuickWebView);
     m_pageViewportControllerClient.reset(new PageViewportControllerClientQt(q, pageView.data()));
-    m_pageViewportController.reset(new PageViewportController(webPageProxy.get(), m_pageViewportControllerClient.data()));
+    m_pageViewportController.reset(new PageViewportController(webPageProxy.get(), *m_pageViewportControllerClient.data()));
     pageEventHandler->setViewportController(m_pageViewportControllerClient.data());
 
     // Trigger setting of correct visibility flags after everything was allocated and initialized.
@@ -1173,18 +1173,18 @@ void QQuickWebViewExperimental::setUseDefaultContentItemSize(bool enable)
 int QQuickWebViewExperimental::preferredMinimumContentsWidth() const
 {
     Q_D(const QQuickWebView);
-    return d->webPageProxy->pageGroup()->preferences()->layoutFallbackWidth();
+    return d->webPageProxy->pageGroup().preferences().layoutFallbackWidth();
 }
 
 void QQuickWebViewExperimental::setPreferredMinimumContentsWidth(int width)
 {
     Q_D(QQuickWebView);
-    WebPreferences* webPreferences = d->webPageProxy->pageGroup()->preferences();
+    WebPreferences& webPreferences = d->webPageProxy->pageGroup().preferences();
 
-    if (width == webPreferences->layoutFallbackWidth())
+    if (width == webPreferences.layoutFallbackWidth())
         return;
 
-    webPreferences->setLayoutFallbackWidth(width);
+    webPreferences.setLayoutFallbackWidth(width);
     emit preferredMinimumContentsWidthChanged();
 }
 
@@ -1446,13 +1446,13 @@ void QQuickWebViewExperimental::setUserAgent(const QString& userAgent)
 int QQuickWebViewExperimental::deviceWidth() const
 {
     Q_D(const QQuickWebView);
-    return d->webPageProxy->pageGroup()->preferences()->deviceWidth();
+    return d->webPageProxy->pageGroup().preferences().deviceWidth();
 }
 
 void QQuickWebViewExperimental::setDeviceWidth(int value)
 {
     Q_D(QQuickWebView);
-    d->webPageProxy->pageGroup()->preferences()->setDeviceWidth(qMax(0, value));
+    d->webPageProxy->pageGroup().preferences().setDeviceWidth(qMax(0, value));
     emit deviceWidthChanged();
 }
 
@@ -1470,13 +1470,13 @@ void QQuickWebViewExperimental::setDeviceWidth(int value)
 int QQuickWebViewExperimental::deviceHeight() const
 {
     Q_D(const QQuickWebView);
-    return d->webPageProxy->pageGroup()->preferences()->deviceHeight();
+    return d->webPageProxy->pageGroup().preferences().deviceHeight();
 }
 
 void QQuickWebViewExperimental::setDeviceHeight(int value)
 {
     Q_D(QQuickWebView);
-    d->webPageProxy->pageGroup()->preferences()->setDeviceHeight(qMax(0, value));
+    d->webPageProxy->pageGroup().preferences().setDeviceHeight(qMax(0, value));
     emit deviceHeightChanged();
 }
 

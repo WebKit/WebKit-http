@@ -85,7 +85,7 @@ public:
     WebCore::IntPoint screenToWindow(const WebCore::IntPoint&) override;
     WebCore::IntRect windowToScreen(const WebCore::IntRect&) override;
     void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool wasEventHandled) override { }
-    PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
+    RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
     std::unique_ptr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
 #if ENABLE(INPUT_TYPE_COLOR)
     virtual PassRefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&);
