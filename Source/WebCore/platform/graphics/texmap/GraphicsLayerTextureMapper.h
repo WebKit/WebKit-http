@@ -20,7 +20,7 @@
 #ifndef GraphicsLayerTextureMapper_h
 #define GraphicsLayerTextureMapper_h
 
-#if !USE(COORDINATED_GRAPHICS)
+#if !USE(COORDINATED_GRAPHICS) || PLATFORM(QT)
 
 #include "GraphicsLayer.h"
 #include "GraphicsLayerClient.h"

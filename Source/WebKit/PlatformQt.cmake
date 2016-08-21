@@ -18,6 +18,8 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}"
+    "${THIRDPARTY_DIR}/ANGLE"
+    "${THIRDPARTY_DIR}/ANGLE/include/KHR"
 
     # Copied from WebCore/CMakeLists.txt
     "${WEBCORE_DIR}/Modules/airplay"

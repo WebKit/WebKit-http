@@ -453,7 +453,7 @@ void ChromeClientQt::scroll(const IntSize& delta, const IntRect& scrollViewRect,
     QMetaObject::invokeMethod(m_webPage->handle(), "scrollRequested", Q_ARG(int, delta.width()), Q_ARG(int, delta.height()), Q_ARG(QRect, scrollViewRect));
 }
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
 void ChromeClientQt::delegatedScrollRequested(const IntPoint& point)
 {
 

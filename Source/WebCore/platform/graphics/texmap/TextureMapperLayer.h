@@ -76,7 +76,7 @@ public:
     TextureMapper* textureMapper() const { return rootLayer().m_textureMapper; }
     void setTextureMapper(TextureMapper* texmap) { m_textureMapper = texmap; }
 
-#if !USE(COORDINATED_GRAPHICS)
+#if !USE(COORDINATED_GRAPHICS) || PLATFORM(QT)
     void setChildren(const Vector<GraphicsLayer*>&);
 #endif
     void setChildren(const Vector<TextureMapperLayer*>&);

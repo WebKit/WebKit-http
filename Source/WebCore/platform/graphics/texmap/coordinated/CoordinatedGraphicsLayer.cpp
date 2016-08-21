@@ -42,6 +42,7 @@
 
 namespace WebCore {
 
+#if !PLATFORM(QT)
 std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* factory, GraphicsLayerClient& client, Type layerType)
 {
     if (!factory)
@@ -49,6 +50,7 @@ std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* facto
 
     return factory->createGraphicsLayer(layerType, client);
 }
+#endif
 
 static CoordinatedLayerID toCoordinatedLayerID(GraphicsLayer* layer)
 {

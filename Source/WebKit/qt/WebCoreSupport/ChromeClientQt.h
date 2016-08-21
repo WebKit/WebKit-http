@@ -119,7 +119,7 @@ public:
     void invalidateContentsAndRootView(const IntRect&) final;
     void invalidateContentsForSlowScroll(const IntRect&) final;
     void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) final;
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     void delegatedScrollRequested(const IntPoint& scrollPoint) final;
 #endif
 
