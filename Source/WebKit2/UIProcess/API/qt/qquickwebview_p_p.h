@@ -36,11 +36,8 @@
 #include <WebKit/WKRetainPtr.h>
 #include <wtf/RefPtr.h>
 
-namespace WebCore {
-class CoordinatedGraphicsScene;
-}
-
 namespace WebKit {
+class CoordinatedGraphicsScene;
 class DownloadProxy;
 class DrawingAreaProxy;
 class QtDialogRunner;
@@ -142,7 +139,7 @@ public:
     void didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKStringRef message);
 #endif
 
-    WebCore::CoordinatedGraphicsScene* coordinatedGraphicsScene();
+    WebKit::CoordinatedGraphicsScene* coordinatedGraphicsScene();
     float deviceScaleFactor();
     void setIntrinsicDeviceScaleFactor(float);
 

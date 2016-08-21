@@ -20,6 +20,7 @@
 #include "config.h"
 #include "qrawwebview_p.h"
 
+#include "CoordinatedGraphicsScene.h"
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "Cursor.h"
 #include "DrawingAreaProxyImpl.h"
@@ -34,7 +35,6 @@
 #include "WebPageGroup.h"
 #include "WebPreferences.h"
 #include "qrawwebview_p_p.h"
-#include <WebCore/CoordinatedGraphicsScene.h>
 #include <WebKit2/qrawwebview_p.h>
 
 void QRawWebViewPrivate::didChangeViewportProperties(const WebCore::ViewportAttributes& attr)
@@ -352,7 +352,7 @@ WKPageRef QRawWebView::pageRef()
     return toAPI(d->m_webPageProxy.get());
 }
 
-WebCore::CoordinatedGraphicsScene* QRawWebView::coordinatedGraphicsScene() const
+WebKit::CoordinatedGraphicsScene* QRawWebView::coordinatedGraphicsScene() const
 {
     WebKit::DrawingAreaProxy* drawingArea = d->m_webPageProxy->drawingArea();
     if (!drawingArea)

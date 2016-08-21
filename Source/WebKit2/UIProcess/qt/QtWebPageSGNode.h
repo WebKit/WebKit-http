@@ -29,20 +29,17 @@ class QQuickItem;
 class QSGSimpleRectNode;
 QT_END_NAMESPACE
 
-namespace WebCore {
-class CoordinatedGraphicsScene;
-}
-
 namespace WebKit {
 
 class ContentsSGNode;
+class CoordinatedGraphicsScene;
 
 class QtWebPageSGNode : public QSGTransformNode {
     public:
         QtWebPageSGNode();
         void setBackground(const QRectF&, const QColor&);
         void setScale(float);
-        void setCoordinatedGraphicsScene(PassRefPtr<WebCore::CoordinatedGraphicsScene>);
+        void setCoordinatedGraphicsScene(PassRefPtr<CoordinatedGraphicsScene>);
         qreal devicePixelRatio() const { return m_devicePixelRatio; }
         void setDevicePixelRatio(qreal devicePixelRatio) { m_devicePixelRatio = devicePixelRatio; }
 

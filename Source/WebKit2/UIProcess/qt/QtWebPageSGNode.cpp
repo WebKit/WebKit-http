@@ -21,11 +21,12 @@
 #include "config.h"
 #include "QtWebPageSGNode.h"
 
+#include "CoordinatedGraphicsScene.h"
+
 #include <QtGui/QPolygonF>
 #include <QtQuick/QQuickItem>
 #include <QtQuick/QQuickWindow>
 #include <QtQuick/QSGSimpleRectNode>
-#include <WebCore/CoordinatedGraphicsScene.h>
 #include <WebCore/TransformationMatrix.h>
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
@@ -110,7 +111,7 @@ public:
         return parent;
     }
 
-    WebCore::CoordinatedGraphicsScene* coordinatedGraphicsScene() const { return m_scene.get(); }
+    CoordinatedGraphicsScene* coordinatedGraphicsScene() const { return m_scene.get(); }
 
 private:
     QRectF clipRect() const
@@ -159,7 +160,7 @@ private:
         return resultRect;
     }
 
-    RefPtr<WebCore::CoordinatedGraphicsScene> m_scene;
+    RefPtr<CoordinatedGraphicsScene> m_scene;
 };
 
 QtWebPageSGNode::QtWebPageSGNode()
@@ -183,7 +184,7 @@ void QtWebPageSGNode::setScale(float scale)
     setMatrix(matrix);
 }
 
-void QtWebPageSGNode::setCoordinatedGraphicsScene(PassRefPtr<WebCore::CoordinatedGraphicsScene> scene)
+void QtWebPageSGNode::setCoordinatedGraphicsScene(PassRefPtr<CoordinatedGraphicsScene> scene)
 {
     if (m_contentsNode && m_contentsNode->coordinatedGraphicsScene() == scene)
         return;

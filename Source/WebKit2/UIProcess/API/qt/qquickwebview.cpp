@@ -23,6 +23,7 @@
 #include "config.h"
 #include "qquickwebview_p.h"
 
+#include "CoordinatedGraphicsScene.h"
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "DownloadProxy.h"
 #include "DrawingAreaProxyImpl.h"
@@ -75,7 +76,6 @@
 #include <WKString.h>
 #include <WKStringQt.h>
 #include <WKURLQt.h>
-#include <WebCore/CoordinatedGraphicsScene.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/IntRect.h>
 #include <limits>

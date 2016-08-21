@@ -47,7 +47,7 @@ QT_END_NAMESPACE
 
 class QRawWebViewPrivate;
 
-namespace WebCore {
+namespace WebKit {
 class CoordinatedGraphicsScene;
 }
 
@@ -101,7 +101,7 @@ public:
     void sendTouchEvent(QTouchEvent*);
 
 private:
-    WebCore::CoordinatedGraphicsScene* coordinatedGraphicsScene() const;
+    WebKit::CoordinatedGraphicsScene* coordinatedGraphicsScene() const;
 
     QRawWebViewPrivate* d;
 };
