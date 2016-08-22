@@ -374,10 +374,17 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
 
     // Position is only available if no async state change is going on and the state is either paused or playing.
     gint64 position = GST_CLOCK_TIME_NONE;
+    GstElement* videoDec = nullptr;
     GstQuery* query = gst_query_new_position(GST_FORMAT_TIME);
-    if (gst_element_query(m_pipeline.get(), query))
+#if USE(FUSION_SINK)
+    g_object_get(m_pipeline.get(), "video-sink", &videoDec, nullptr);
+    if (!GST_IS_ELEMENT(videoDec))
+        return 0.0f;
+#else
+    videoDec = m_pipeline.get();
+#endif
+    if (gst_element_query(videoDec, query))
         gst_query_parse_position(query, 0, &position);
-
     float result = 0.0f;
     if (static_cast<GstClockTime>(position) != GST_CLOCK_TIME_NONE)
         result = static_cast<double>(position) / GST_SECOND;
@@ -387,34 +394,20 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     gst_query_unref(query);
     LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
-#if PLATFORM(BCM_NEXUS) || USE(FUSION_SINK)
+#if PLATFORM(BCM_NEXUS)
     // implement getting pts time from broadcom decoder directly for seek functionality
     gint64 currentPts = -1;
-#if PLATFORM(BCM_NEXUS)
     GstElement* videoDec = findVideoDecoder(m_pipeline.get());
     const char* videoPtsPropertyName = "video_pts";
-#elif USE(FUSION_SINK)
-    GstElement* videoDec = nullptr;
-    g_object_get(m_pipeline.get(), "video-sink", &videoDec, nullptr);
-    const char* videoPtsPropertyName = "video-pts";
-#endif
-
     if (videoDec)
         g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
-
     if (currentPts > -1) {
-#if PLATFORM(BCM_NEXUS)
         result = (static_cast<double>(currentPts * GST_MSECOND) / 45) / GST_SECOND;
-#else
-        result = currentPts / GST_SECOND;
-#endif
         LOG_MEDIA_MESSAGE("Using position reported by the video decoder: %f", result);
     }
-
     if (!result && m_seekTime)
         result = m_seekTime;
 #endif
-
 
     m_cachedPosition = result;
     return result;
