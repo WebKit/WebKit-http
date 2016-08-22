@@ -662,7 +662,7 @@ void QQuickWebViewPrivate::handleDownloadRequest(DownloadProxy* download)
 
 void QQuickWebViewPrivate::_q_onVisibleChanged()
 {
-    webPageProxy->viewStateDidChange(WebPageProxy::ViewIsVisible);
+    webPageProxy->viewStateDidChange(ViewState::IsVisible);
 }
 
 void QQuickWebViewPrivate::_q_onUrlChanged()
