@@ -51,14 +51,14 @@ void QtBuiltinBundle::initialize(WKBundleRef bundle)
 {
     m_bundle = bundle;
 
-    WKBundleClient client;
-    memset(&client, 0, sizeof(WKBundleClient));
-    client.version = kWKBundleClientCurrentVersion;
-    client.clientInfo = this;
+    WKBundleClientV1 client;
+    memset(&client, 0, sizeof(WKBundleClientV1));
+    client.base.version = 1;
+    client.base.clientInfo = this;
     client.didCreatePage = QtBuiltinBundle::didCreatePage;
     client.willDestroyPage = QtBuiltinBundle::willDestroyPage;
     client.didReceiveMessageToPage = QtBuiltinBundle::didReceiveMessageToPage;
-    WKBundleSetClient(m_bundle, &client);
+    WKBundleSetClient(m_bundle, &client.base);
 }
 
 void QtBuiltinBundle::didCreatePage(WKBundleRef, WKBundlePageRef page, const void* clientInfo)

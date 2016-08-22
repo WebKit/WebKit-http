@@ -35,13 +35,14 @@ namespace WebKit {
 QtWebPagePolicyClient::QtWebPagePolicyClient(WKPageRef pageRef, QQuickWebView* webView)
     : m_webView(webView)
 {
-    WKPagePolicyClient policyClient;
-    memset(&policyClient, 0, sizeof(WKPagePolicyClient));
-    policyClient.version = kWKPagePolicyClientCurrentVersion;
-    policyClient.clientInfo = this;
-    policyClient.decidePolicyForNavigationAction = decidePolicyForNavigationAction;
-    policyClient.decidePolicyForResponse = decidePolicyForResponse;
-    WKPageSetPagePolicyClient(pageRef, &policyClient);
+    // QTFIXME: Use V1
+    WKPagePolicyClientV0 policyClient;
+    memset(&policyClient, 0, sizeof(WKPagePolicyClientV0));
+    policyClient.base.version = 0;
+    policyClient.base.clientInfo = this;
+    policyClient.decidePolicyForNavigationAction_deprecatedForUseWithV0 = decidePolicyForNavigationAction;
+    policyClient.decidePolicyForResponse_deprecatedForUseWithV0 = decidePolicyForResponse;
+    WKPageSetPagePolicyClient(pageRef, &policyClient.base);
 }
 
 void QtWebPagePolicyClient::decidePolicyForNavigationAction(const QUrl& url, Qt::MouseButton mouseButton, Qt::KeyboardModifiers keyboardModifiers, QQuickWebView::NavigationType navigationType, bool isMainFrame, WKFramePolicyListenerRef listener)

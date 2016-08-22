@@ -37,7 +37,7 @@ class WebGeolocationProviderQt final : public QObject {
     Q_OBJECT
 public:
     static WebGeolocationProviderQt* create(WKGeolocationManagerRef);
-    static WKGeolocationProvider* provider(const WebGeolocationProviderQt*);
+    static WKGeolocationProviderBase* provider(const WebGeolocationProviderQt*);
 
     virtual ~WebGeolocationProviderQt();
 

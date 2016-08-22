@@ -161,46 +161,12 @@ QtBuiltinBundlePage::QtBuiltinBundlePage(QtBuiltinBundle* bundle, WKBundlePageRe
     , m_navigatorQtWebChannelTransportObject(0)
 #endif
 {
-    WKBundlePageLoaderClient loaderClient = {
-        kWKBundlePageLoaderClientCurrentVersion,
-        this,
-        0, // didStartProvisionalLoadForFrame
-        0, // didReceiveServerRedirectForProvisionalLoadForFrame
-        0, // didFailProvisionalLoadWithErrorForFrame
-        0, // didCommitLoadForFrame
-        0, // didFinishDocumentLoadForFrame
-        0, // didFinishLoadForFrame
-        0, // didFailLoadWithErrorForFrame
-        0, // didSameDocumentNavigationForFrame
-        0, // didReceiveTitleForFrame
-        0, // didFirstLayoutForFrame
-        0, // didFirstVisuallyNonEmptyLayoutForFrame
-        0, // didRemoveFrameFromHierarchy
-        0, // didDisplayInsecureContentForFrame
-        0, // didRunInsecureContentForFrame
-        didClearWindowForFrame,
-        0, // didCancelClientRedirectForFrame
-        0, // willPerformClientRedirectForFrame
-        0, // didHandleOnloadEventsForFrame
-        0, // didLayoutForFrame
-        0, // didNewFirstVisuallyNonEmptyLayoutForFrame
-        0, // didDetectXSSForFrame
-        0, // shouldGoToBackForwardListItem
-        0, // didCreateGlobalObjectForFrame
-        0, // willDisconnectDOMWindowExtensionFromGlobalObject
-        0, // didReconnectDOMWindowExtensionToGlobalObject
-        0, // willDestroyGlobalObjectForDOMWindowExtension
-        0, // didFinishProgress
-        0, // shouldForceUniversalAccessFromLocalURL
-        0, // didReceiveIntentForFrame
-        0, // registerIntentServiceForFrame
-        0, // didLayout
-        0, // featuresUsedInPage
-        0, // willLoadURLRequest
-        0, // willLoadDataRequest
-        0, // willDestroyFrame
-    };
-    WKBundlePageSetPageLoaderClient(m_page, &loaderClient);
+    WKBundlePageLoaderClientV0 loaderClient;
+    memset(&loaderClient, 0, sizeof(WKBundlePageLoaderClientV0));
+    loaderClient.base.version = 0;
+    loaderClient.base.clientInfo = this;
+    loaderClient.didClearWindowObjectForFrame = didClearWindowForFrame;
+    WKBundlePageSetPageLoaderClient(m_page, &loaderClient.base);
 }
 
 QtBuiltinBundlePage::~QtBuiltinBundlePage()

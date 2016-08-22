@@ -119,11 +119,11 @@ static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messag
 
 static void initializeContextInjectedBundleClient(WKContextRef context)
 {
-    WKContextInjectedBundleClient injectedBundleClient;
-    memset(&injectedBundleClient, 0, sizeof(WKContextInjectedBundleClient));
-    injectedBundleClient.version = kWKContextInjectedBundleClientCurrentVersion;
+    WKContextInjectedBundleClientV0 injectedBundleClient;
+    memset(&injectedBundleClient, 0, sizeof(WKContextInjectedBundleClientV0));
+    injectedBundleClient.base.version = 0;
     injectedBundleClient.didReceiveMessageFromInjectedBundle = didReceiveMessageFromInjectedBundle;
-    WKContextSetInjectedBundleClient(context, &injectedBundleClient);
+    WKContextSetInjectedBundleClient(context, &injectedBundleClient.base);
 }
 
 QtWebContext::QtWebContext(WKContextRef context)

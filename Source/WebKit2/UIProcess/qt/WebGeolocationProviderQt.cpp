@@ -46,16 +46,16 @@ WebGeolocationProviderQt* WebGeolocationProviderQt::create(WKGeolocationManagerR
     return new WebGeolocationProviderQt(manager);
 }
 
-WKGeolocationProvider* WebGeolocationProviderQt::provider(const WebGeolocationProviderQt* location)
+WKGeolocationProviderBase* WebGeolocationProviderQt::provider(const WebGeolocationProviderQt* location)
 {
-    static WKGeolocationProvider provider = {
-        0, // This features the version.
-        location, // This points to the object implementer.
+    static WKGeolocationProviderV0 provider = {
+        { 0, // This features the version.
+        location }, // This points to the object implementer.
         locationStartUpdating, // The callbacks are next.
         locationStopUpdating
     };
 
-    return &provider;
+    return &provider.base;
 }
 
 WebGeolocationProviderQt::WebGeolocationProviderQt(WKGeolocationManagerRef manager)
