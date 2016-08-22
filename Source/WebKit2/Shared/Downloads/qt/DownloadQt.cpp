@@ -41,7 +41,7 @@ namespace WebKit {
 
 void Download::start()
 {
-    QNetworkAccessManager* manager = WebProcess::shared().networkAccessManager();
+    QNetworkAccessManager* manager = WebProcess::singleton().networkAccessManager();
     ASSERT(manager);
     ASSERT(!m_qtDownloader);
 

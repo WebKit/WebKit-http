@@ -1556,7 +1556,7 @@ void QQuickWebViewExperimental::setUserStyleSheets(const QList<QUrl>& userStyleS
 QUrl QQuickWebViewExperimental::remoteInspectorUrl() const
 {
 #if ENABLE(INSPECTOR_SERVER)
-    return QUrl(WebInspectorServer::shared().inspectorUrlForPageID(d_ptr->webPageProxy->inspector()->remoteInspectionPageID()));
+    return QUrl(WebInspectorServer::singleton().inspectorUrlForPageID(d_ptr->webPageProxy->inspector()->remoteInspectionPageID()));
 #else
     return QUrl();
 #endif

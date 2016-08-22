@@ -52,7 +52,7 @@ public:
 public Q_SLOTS:
     void timerFired()
     {
-        InjectedBundle::shared().testRunner()->waitToDumpWatchdogTimerFired();
+        InjectedBundle::singleton().testRunner()->waitToDumpWatchdogTimerFired();
     }
 
 private:

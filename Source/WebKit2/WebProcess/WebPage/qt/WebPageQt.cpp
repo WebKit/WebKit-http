@@ -300,7 +300,7 @@ PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
 
 void WebPage::registerApplicationScheme(const String& scheme)
 {
-    QtNetworkAccessManager* qnam = qobject_cast<QtNetworkAccessManager*>(WebProcess::shared().networkAccessManager());
+    QtNetworkAccessManager* qnam = qobject_cast<QtNetworkAccessManager*>(WebProcess::singleton().networkAccessManager());
     if (!qnam)
         return;
     qnam->registerApplicationScheme(this, QString(scheme));

@@ -176,7 +176,7 @@ void TestController::platformInitializeContext()
 
 void TestController::runModal(PlatformWebView* view)
 {
-    shared().m_runLoop->runModal(view);
+    singleton().m_runLoop->runModal(view);
 }
 
 const char* TestController::platformLibraryPathForTesting()

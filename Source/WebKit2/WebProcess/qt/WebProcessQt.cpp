@@ -84,10 +84,11 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     if (diskCache)
         diskCache->setMaximumCacheSize(urlCacheDiskCapacity);
 
-    memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    auto& memoryCache = MemoryCache::singleton();
+    memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
 
-    pageCache()->setCapacity(pageCacheCapacity);
+    PageCache::singleton().setMaxSize(pageCacheCapacity);
 
     // FIXME: Implement hybrid in-memory- and disk-caching as e.g. the Mac port does.
 }
