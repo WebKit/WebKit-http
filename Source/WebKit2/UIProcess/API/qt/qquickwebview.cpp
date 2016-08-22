@@ -24,6 +24,7 @@
 #include "qquickwebview_p.h"
 
 #include "APIPageConfiguration.h"
+#include "CoordinatedDrawingAreaProxy.h"
 #include "CoordinatedGraphicsScene.h"
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "DownloadProxy.h"
@@ -650,7 +651,7 @@ void QQuickWebViewPrivate::processDidBecomeResponsive(WKPageRef, const void* cli
 
 std::unique_ptr<DrawingAreaProxy> QQuickWebViewPrivate::createDrawingAreaProxy()
 {
-    return std::make_unique<WebKit::DrawingAreaProxyImpl>(*webPageProxy.get());
+    return std::make_unique<WebKit::CoordinatedDrawingAreaProxy>(*webPageProxy.get());
 }
 
 void QQuickWebViewPrivate::handleDownloadRequest(DownloadProxy* download)
@@ -999,10 +1000,14 @@ void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtWebChannelTransportOb
 
 CoordinatedGraphicsScene* QQuickWebViewPrivate::coordinatedGraphicsScene()
 {
-    if (webPageProxy && webPageProxy->drawingArea() && webPageProxy->drawingArea()->coordinatedLayerTreeHostProxy())
-        return webPageProxy->drawingArea()->coordinatedLayerTreeHostProxy()->coordinatedGraphicsScene();
+    // QTFIXME: redundant null check?
+//    if (!webPageProxy)
+//        return nullptr;
 
-    return 0;
+    if (CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(webPageProxy->drawingArea()))
+        return drawingArea->coordinatedLayerTreeHostProxy().coordinatedGraphicsScene();
+
+    return nullptr;
 }
 
 float QQuickWebViewPrivate::deviceScaleFactor()
@@ -1037,7 +1042,7 @@ void QQuickWebViewLegacyPrivate::updateViewportSize()
 
     pageView->setContentsSize(viewportSize);
 
-    if (DrawingAreaProxy *drawingArea = webPageProxy->drawingArea()) {
+    if (CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(webPageProxy->drawingArea())) {
         // The fixed layout is handled by the FrameView and the drawing area doesn't behave differently
         // whether its fixed or not. We still need to tell the drawing area which part of it
         // has to be rendered on tiles, and in desktop mode it's all of it.
