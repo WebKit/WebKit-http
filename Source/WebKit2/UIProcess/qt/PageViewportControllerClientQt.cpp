@@ -274,7 +274,7 @@ void PageViewportControllerClientQt::zoomToAreaGestureEnded(const QPointF& touch
     // Zoom back out if attempting to scale to the same current scale, or
     // attempting to continue scaling out from the inner most level.
     // Use fuzzy compare with a fixed error to be able to deal with largish differences due to pixel rounding.
-    if (!m_scaleStack.isEmpty() && fuzzyCompare(targetScale, currentScale, 0.01)) {
+    if (!m_scaleStack.isEmpty() && WTF::areEssentiallyEqual(targetScale, currentScale, qreal(0.01))) {
         // If moving the viewport would expose more of the targetRect and move at least 40 pixels, update position but do not scale out.
         QRectF currentContentRect(m_viewportItem->mapRectToWebContent(viewportRect));
         QRectF targetIntersection = endVisibleContentRect.intersected(targetArea);
@@ -284,7 +284,7 @@ void PageViewportControllerClientQt::zoomToAreaGestureEnded(const QPointF& touch
             zoomAction = NoZoom;
         else
             zoomAction = ZoomBack;
-    } else if (fuzzyCompare(targetScale, m_zoomOutScale, 0.01))
+    } else if (WTF::areEssentiallyEqual(targetScale, m_zoomOutScale, qreal(0.01)))
         zoomAction = ZoomBack;
     else if (targetScale < currentScale)
         zoomAction = ZoomOut;
