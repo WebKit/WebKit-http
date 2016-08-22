@@ -526,13 +526,12 @@ void QQuickWebViewPrivate::didChangeBackForwardList(WKPageRef, WKBackForwardList
 
 void QQuickWebViewPrivate::setTransparentBackground(bool enable)
 {
-    webPageProxy->setDrawsTransparentBackground(enable);
     webPageProxy->setDrawsBackground(!enable);
 }
 
 bool QQuickWebViewPrivate::transparentBackground() const
 {
-    return webPageProxy->drawsTransparentBackground();
+    return !webPageProxy->drawsBackground();
 }
 
 void QQuickWebViewPrivate::loadProgressDidChange(int loadProgress)
