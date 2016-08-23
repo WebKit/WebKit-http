@@ -24,7 +24,6 @@
 
 #include "CachedScript.h"
 #include "DOMConstructorWithDocument.h"
-#include "DOMStringList.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodeDescription.h"
 #include "ExceptionHeaders.h"
@@ -49,6 +48,7 @@
 #include <runtime/JSFunction.h>
 #include <stdarg.h>
 #include <wtf/MathExtras.h>
+#include <wtf/unicode/CharacterNames.h>
 
 using namespace JSC;
 using namespace Inspector;
@@ -117,6 +117,51 @@ String valueToStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
     return value.toString(exec)->value(exec);
 }
 
+String valueToUSVString(ExecState* exec, JSValue value)
+{
+    String string = value.toWTFString(exec);
+    if (exec->hadException())
+        return { };
+    StringView view { string };
+
+    // Fast path for 8-bit strings, since they can't have any surrogates.
+    if (view.is8Bit())
+        return string;
+
+    // Fast path for the case where there are no unpaired surrogates.
+    bool foundUnpairedSurrogate = false;
+    for (auto codePoint : view.codePoints()) {
+        if (U_IS_SURROGATE(codePoint)) {
+            foundUnpairedSurrogate = true;
+            break;
+        }
+    }
+    if (!foundUnpairedSurrogate)
+        return string;
+
+    // Slow path: http://heycam.github.io/webidl/#dfn-obtain-unicode
+    // Replaces unpaired surrogates with the replacement character.
+    StringBuilder result;
+    result.reserveCapacity(view.length());
+    for (auto codePoint : view.codePoints()) {
+        if (U_IS_SURROGATE(codePoint))
+            result.append(replacementCharacter);
+        else
+            result.append(codePoint);
+    }
+    return result.toString();
+}
+
+String valueToUSVStringTreatingNullAsEmptyString(ExecState* exec, JSValue value)
+{
+    return value.isNull() ? emptyString() : valueToUSVString(exec, value);
+}
+
+String valueToUSVStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
+{
+    return value.isUndefinedOrNull() ? String() : valueToUSVString(exec, value);
+}
+
 JSValue jsDateOrNaN(ExecState* exec, double value)
 {
     if (std::isnan(value))
@@ -138,16 +183,6 @@ double valueToDate(ExecState* exec, JSValue value)
     if (!value.inherits(DateInstance::info()))
         return std::numeric_limits<double>::quiet_NaN();
     return static_cast<DateInstance*>(value.toObject(exec))->internalNumber();
-}
-
-JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, DOMStringList* stringList)
-{
-    JSC::MarkedArgumentBuffer list;
-    if (stringList) {
-        for (unsigned i = 0; i < stringList->length(); ++i)
-            list.append(jsStringWithCache(exec, stringList->item(i)));
-    }
-    return JSC::constructArray(exec, 0, globalObject, list);
 }
 
 void reportException(ExecState* exec, JSValue exceptionValue, CachedScript* cachedScript)
@@ -318,6 +353,22 @@ void setDOMException(JSC::ExecState* exec, const ExceptionCodeWithMessage& ec)
 }
 
 #undef TRY_TO_CREATE_EXCEPTION
+
+bool hasIteratorMethod(JSC::ExecState& state, JSC::JSValue value)
+{
+    if (!value.isObject())
+        return false;
+
+    auto& vm = state.vm();
+    JSObject* object = JSC::asObject(value);
+    CallData callData;
+    CallType callType;
+    JSValue applyMethod = object->getMethod(&state, callData, callType, vm.propertyNames->iteratorSymbol, ASCIILiteral("Symbol.iterator property should be callable"));
+    if (vm.exception())
+        return false;
+
+    return !applyMethod.isUndefined();
+}
 
 bool shouldAllowAccessToNode(ExecState* exec, Node* node)
 {

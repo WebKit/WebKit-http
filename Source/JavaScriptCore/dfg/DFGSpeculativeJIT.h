@@ -760,6 +760,8 @@ public:
     void compileIsTypedArrayView(Node*);
 
     void emitCall(Node*);
+
+    void compileAllocateNewArrayWithSize(JSGlobalObject*, GPRReg resultGPR, GPRReg sizeGPR, IndexingType, bool shouldConvertLargeSizeToArrayStorage = true);
     
     // Called once a node has completed code generation but prior to setting
     // its result, to free up its children. (This must happen prior to setting
@@ -1274,10 +1276,10 @@ public:
         return appendCall(operation);
     }
 
-    JITCompiler::Call callOperation(V_JITOperation_ECRUiUi operation, GPRReg arg1, GPRReg arg2, Imm32 arg3, GPRReg arg4)
+    JITCompiler::Call callOperation(C_JITOperation_ERUiUi operation, GPRReg result, GPRReg arg1, Imm32 arg2, GPRReg arg3)
     {
-        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3.asTrustedImm32(), arg4);
-        return appendCall(operation);
+        m_jit.setupArgumentsWithExecState(arg1, arg2.asTrustedImm32(), arg3);
+        return appendCallSetResult(operation, result);
     }
 
     JITCompiler::Call callOperation(C_JITOperation_EJscI operation, GPRReg result, GPRReg arg1, UniquedStringImpl* impl)
@@ -1710,6 +1712,11 @@ public:
         m_jit.setupArgumentsWithExecState(regOp1, TrustedImmPtr(identOp2), TrustedImm32(op3), regOp4, regOp5);
         return appendCall(operation);
     }
+    JITCompiler::Call callOperation(D_JITOperation_EJ operation, FPRReg result, JSValueRegs arg1)
+    {
+        m_jit.setupArgumentsWithExecState(arg1.gpr());
+        return appendCallSetResult(operation, result);
+    }
 #else // USE(JSVALUE32_64)
 
     JITCompiler::Call callOperation(J_JITOperation_EJJMic operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2, TrustedImmPtr mathIC)
@@ -2136,6 +2143,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(identOp2), TrustedImm32(op3), arg4, arg5);
         return appendCall(operation);
     }
+    JITCompiler::Call callOperation(D_JITOperation_EJ operation, FPRReg result, JSValueRegs arg1)
+    {
+        m_jit.setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR());
+        return appendCallSetResult(operation, result);
+    }
 #endif // USE(JSVALUE32_64)
     
 #if !defined(NDEBUG) && !CPU(ARM) && !CPU(MIPS) && !CPU(SH4)
@@ -2487,7 +2499,7 @@ public:
     void compilePutToArguments(Node*);
     void compileCreateScopedArguments(Node*);
     void compileCreateClonedArguments(Node*);
-    void compileCopyRest(Node*);
+    void compileCreateRest(Node*);
     void compileGetRestLength(Node*);
     void compileNotifyWrite(Node*);
     bool compileRegExpExec(Node*);

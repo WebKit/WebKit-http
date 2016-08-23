@@ -29,6 +29,7 @@
 #include "Frame.h"
 #include "HTMLDocument.h"
 #include "JSDOMBinding.h"
+#include "JSDOMWindowBase.h"
 #include "JSElement.h"
 #include "JSHTMLCollection.h"
 
@@ -83,7 +84,8 @@ bool JSDOMWindowProperties::getOwnPropertySlot(JSObject* object, ExecState* stat
     if (proto.isObject() && jsCast<JSObject*>(proto)->hasProperty(state, propertyName))
         return false;
 
-    if (auto* frame = thisObject->m_window->frame())
+    auto& window = jsCast<JSDOMWindowBase*>(thisObject->globalObject())->wrapped();
+    if (auto* frame = window.frame())
         return jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(thisObject, *frame, state, propertyName, slot);
 
     return false;

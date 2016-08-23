@@ -59,6 +59,17 @@ public:
 
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
+    
+    void dismissFormAccessoryView();
+    void selectFormAccessoryPickerRow(long);
+    
+    void scrollToOffset(long x, long y);
+
+    void setDidStartFormControlInteractionCallback(JSValueRef);
+    JSValueRef didStartFormControlInteractionCallback() const;
+
+    void setDidEndFormControlInteractionCallback(JSValueRef);
+    JSValueRef didEndFormControlInteractionCallback() const;
 
     void setWillBeginZoomingCallback(JSValueRef);
     JSValueRef willBeginZoomingCallback() const;
@@ -81,14 +92,13 @@ public:
 
     JSObjectRef contentVisibleRect() const;
     
-    bool forceIPadStyleZoomOnInputFocus() const;
-    void setForceIPadStyleZoomOnInputFocus(bool);
-
     void uiScriptComplete(JSStringRef result);
 
 private:
     UIScriptController(UIScriptContext&);
-    
+
+    void platformSetDidStartFormControlInteractionCallback();
+    void platformSetDidEndFormControlInteractionCallback();
     void platformSetWillBeginZoomingCallback();
     void platformSetDidEndZoomingCallback();
     void platformSetDidShowKeyboardCallback();

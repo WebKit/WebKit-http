@@ -1,3 +1,286 @@
+2016-08-22  Keith Miller  <keith_miller@apple.com>
+
+        Actually enable the WASM build.
+        https://bugs.webkit.org/show_bug.cgi?id=160933
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/FeatureDefines.h:
+
+2016-08-17  Don Olmstead  <don.olmstead@am.sony.com>
+
+        Use find_library within Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=160904
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/CMakeLists.txt:
+
+2016-08-17  Anders Carlsson  <andersca@apple.com>
+
+        Move WKSignedPublicKeyAndChallengeString into WebCore and make it proper C++
+        https://bugs.webkit.org/show_bug.cgi?id=160945
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::operator&):
+        Cast this to the right type.
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Add new SPI.
+
+2016-08-17  Antti Koivisto  <antti@apple.com>
+
+        Remove CSS_IMAGE_SET feature define
+        https://bugs.webkit.org/show_bug.cgi?id=160944
+
+        Reviewed by Dean Jackson.
+
+        * wtf/FeatureDefines.h:
+
+2016-08-16  Keith Miller  <keith_miller@apple.com>
+
+        Enable WebAssembly in the build.
+        https://bugs.webkit.org/show_bug.cgi?id=160916
+
+        Reviewed by Benjamin Poulain.
+
+        This patch turns on WebAssembly on all the platforms that support B3.
+        Turning on WebAssembly by default lets us check the build on every
+        platform.
+
+        * wtf/FeatureDefines.h:
+
+2016-08-16  Anders Carlsson  <andersca@apple.com>
+
+        Fix a thinko.
+
+        * wtf/Scope.h:
+
+2016-08-16  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF::ScopeExit
+        https://bugs.webkit.org/show_bug.cgi?id=160908
+
+        Reviewed by Geoffrey Garen.
+
+        WTF::ScopeExit and WTF::makeScopeExit let you define an object that will invoke a function when the
+        object goes out of scope. This is going to be used to avoid spagetti-code and gotos in a future patch.
+
+        The class is modeled after the LWG paper "P0052 - Generic Scope Guard and RAII Wrapper for the Standard Library".
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Scope.h: Added.
+        (WTF::makeScopeExit):
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Add an address-of operator to RetainPtr
+        https://bugs.webkit.org/show_bug.cgi?id=160879
+
+        Reviewed by Tim Horton.
+
+        This will make some security-related code from WebKitSystemInterface easier to port.
+
+        * wtf/HashIterators.h:
+        (WTF::HashTableValuesIterator::get):
+        * wtf/HashTable.h:
+        (WTF::HashTableBucketInitializer<true>::initialize):
+        Use std::addressof instead of &, in case & is overloaded.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::operator&):
+        Implement this.
+
+2016-08-15  Sam Weinig  <sam@webkit.org>
+
+        Speed up compile times by not including wtf/Variant.h so much
+        https://bugs.webkit.org/show_bug.cgi?id=160847
+
+        Reviewed by Alex Christensen and Saam Barati.
+
+        * wtf/Forward.h:
+        Add forward declaration of std::variant.
+
+        * wtf/StdLibExtras.h:
+        Remove references to std::variant. Move them to wtf/Variant.h
+
+2016-08-15  Keith Miller  <keith_miller@apple.com>
+
+        Implement WASM Parser and B3 IR generator
+        https://bugs.webkit.org/show_bug.cgi?id=160681
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/DataLog.h:
+        (WTF::dataLogLn): Add a new dataLog function, dataLogLn that
+        automagically includes a new line at the end of the print.
+        * wtf/LEBDecoder.h:
+        (decodeUInt32):
+        (decodeInt32): Change the LEBDecoder to take a pointer and length
+        rather than a Vector.
+
+2016-08-15  Keith Rollin  <krollin@apple.com>
+
+        Rename LOG_ALWAYS
+        https://bugs.webkit.org/show_bug.cgi?id=160768
+
+        Rename LOG_ALWAYS and friends, given that the first parameter to it is
+        a boolean expression that determines whether or not logging should be
+        performed.
+
+        Reviewed by Chris Dumez.
+
+        * wtf/Assertions.h:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * wtf/BackwardsGraph.h:
+        * wtf/DataLog.cpp:
+        * wtf/WorkQueue.cpp:
+        * wtf/text/StringImpl.cpp:
+        * wtf/unicode/icu/CollatorICU.cpp:
+
+2016-08-14  Daniel Bates  <dabates@apple.com>
+
+        Fix compiler errors when building iOS WebKit using the iOS 10 beta SDK
+        https://bugs.webkit.org/show_bug.cgi?id=160725
+
+        Reviewed by Sam Weinig.
+
+        For now, disable OS_LOG when building with the iOS 10 beta SDK until
+        we have the fix for <rdar://problem/27758343>.
+
+        * wtf/Platform.h:
+
+2016-08-13  Dan Bernstein  <mitz@apple.com>
+
+        Build fix follow-up to r204433.
+
+        * wtf/StdLibExtras.h:
+        (WTF::makeVisitor): Don’t use an auto return type.
+
+2016-08-12  Sam Weinig  <sam@webkit.org>
+
+        Make variant only available when compiling for C++14 or greater
+        https://bugs.webkit.org/show_bug.cgi?id=160813
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h:
+        * wtf/StdLibExtras.h:
+        * wtf/Variant.h:
+
+2016-08-11  Maureen Daum  <mdaum@apple.com>
+
+        Add NSButtonType to AppKitCompatibilityDeclarations.h.
+        https://bugs.webkit.org/show_bug.cgi?id=160767.
+
+        Reviewed by Dan Bernstein.
+
+        Add NSButtonType to AppKitCompatibilityDeclarations.h so that we can use the new
+        names but still build successfully on older OS versions.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
+2016-08-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] TinyPtrSet::deleteListIfNecessary() no longer needs to test for reservedValue
+        https://bugs.webkit.org/show_bug.cgi?id=160721
+
+        Reviewed by Sam Weinig.
+
+        Previously, TinyPtrSet was using a ThinFlag if there was no OutOfLineList.
+        A side effect is that isThin() was false for reservedValue. When deleting
+        the list, we had to consider both cases: isThin() and reservedValue.
+
+        In r204065, I changed the flag to a FatFlag to ensure TinyPtrSet can be initialized
+        with bzero().
+        This changes the value of isThin() of reservedValue to true since reservedValue
+        does not have the FatFlag bit set.
+        This patch removes the useless condition from deleteListIfNecessary().
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::deleteListIfNecessary):
+
+2016-08-09  Sam Weinig  <sam@webkit.org>
+
+        Fix windows build.
+
+        * wtf/Variant.h:
+        (std::experimental::__visit_helper2::__visit):
+        MSVC does not support extended constexpr. Use a ternary operator instead of an if statement.
+
+2016-08-06  Sam Weinig  <sam@webkit.org>
+
+        Replace NodeOrString with std::variant<RefPtr<Node>, String>
+        https://bugs.webkit.org/show_bug.cgi?id=160638
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/StdLibExtras.h:
+        (WTF::Visitor::Visitor):
+        (WTF::makeVisitor):
+        Add WTF::makeVisitor() which takes a list of lambdas to use
+        an an overload set for a visitor object.
+
+        Also, re-export std::experimental::variant (and helpers) in the std
+        namespace using type aliasing.
+
+        * wtf/Variant.h:
+        Make std::experimental::variant work in WebCore.
+
+2016-08-06  Sam Weinig  <sam@webkit.org>
+
+        WTF needs a variant implementation
+        https://bugs.webkit.org/show_bug.cgi?id=160618
+
+        Reviewed by Darin Adler.
+
+        Add an implementation of std::experimental::variant matching the C++17 draft http://wg21.link/n4606 
+        taken from https://bitbucket.org/anthonyw/variant/src (5bce47fa788648f79e5ea1d77b0eef2e8f0b2999) and
+        modified to support compiling without exceptions (where it used to throw, we lovingly CRASH()).
+
+        * WTF.xcodeproj/project.pbxproj:
+        Add new file.
+
+        * wtf/Compiler.h:
+        Add COMPILER_SUPPORTS define for C++ exceptions.
+
+        * wtf/Variant.h: Added.
+
+2016-08-05  Keith Miller  <keith_miller@apple.com>
+
+        Add LEBDecoder and tests
+        https://bugs.webkit.org/show_bug.cgi?id=160625
+
+        Reviewed by Benjamin Poulain.
+
+        Adds some LEB decoder functions to WTF. These are used in the
+        WASM spec to encode numbers in a semi-compressed format.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/LEBDecoder.h: Added.
+        (decodeUInt32):
+        (decodeInt32):
+
+2016-08-05  Keith Miller  <keith_miller@apple.com>
+
+        Delete out of date WASM code.
+        https://bugs.webkit.org/show_bug.cgi?id=160603
+
+        Reviewed by Saam Barati.
+
+        Add Feature define for WebAssembly on mac.
+
+        * wtf/FeatureDefines.h:
+
 2016-08-03  Csaba Osztrogonác  <ossy@webkit.org>
 
         Lacking support on a arm-traditional disassembler.

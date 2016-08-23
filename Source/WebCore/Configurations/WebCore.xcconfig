@@ -26,8 +26,17 @@
 
 GCC_PREFIX_HEADER = WebCorePrefix.h;
 GCC_PREPROCESSOR_DEFINITIONS = $(DEBUG_DEFINES) $(FEATURE_DEFINES) $(inherited);
+
+WK_XCODE_SUPPORTS_TEXT_BASED_STUBS = $(WK_NOT_$(WK_EMPTY_$(TAPI_VERIFY_MODE)));
+WK_PRIVATE_FRAMEWORKS_DIR = $(WK_PRIVATE_FRAMEWORKS_DIR_$(USE_INTERNAL_SDK));
+WK_PRIVATE_FRAMEWORKS_DIR_YES = $(PRODUCTION_FRAMEWORKS_DIR);
+WK_PRIVATE_FRAMEWORKS_DIR_[sdk=iphonesimulator*] = $(PRODUCTION_FRAMEWORKS_DIR);
+WK_PRIVATE_FRAMEWORKS_DIR_[sdk=iphoneos*] = $(WK_PRIVATE_FRAMEWORKS_DIR_iphoneos_$(WK_XCODE_SUPPORTS_TEXT_BASED_STUBS));
+WK_PRIVATE_FRAMEWORKS_DIR_iphoneos_YES = $(SRCROOT)/../../WebKitLibraries/WebKitPrivateFrameworkStubs/iOS/$(WK_TARGET_IOS_VERSION_MAJOR);
+WK_PRIVATE_FRAMEWORKS_DIR_iphoneos_NO = $(PRODUCTION_FRAMEWORKS_DIR);
+
 FRAMEWORK_SEARCH_PATHS[sdk=iphone*] = $(FRAMEWORK_SEARCH_PATHS_ios_$(CONFIGURATION));
-FRAMEWORK_SEARCH_PATHS_ios_Debug = $(BUILT_PRODUCTS_DIR) $(PRODUCTION_FRAMEWORKS_DIR);
+FRAMEWORK_SEARCH_PATHS_ios_Debug = $(BUILT_PRODUCTS_DIR) $(WK_PRIVATE_FRAMEWORKS_DIR);
 FRAMEWORK_SEARCH_PATHS_ios_Release = $(FRAMEWORK_SEARCH_PATHS_ios_Debug);
 FRAMEWORK_SEARCH_PATHS_ios_Production = $(PRODUCTION_FRAMEWORKS_DIR);
 FRAMEWORK_SEARCH_PATHS[sdk=macosx*] = $(WK_QUOTED_OVERRIDE_FRAMEWORKS_DIR) $(inherited) $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
@@ -87,7 +96,7 @@ EXCLUDED_SOURCE_FILE_NAMES_FOR_TOUCH_EVENTS_IF_ENABLED_ = JSTouch*;
 EXCLUDED_SOURCE_FILE_NAMES_FOR_GESTURE_EVENTS = $(EXCLUDED_SOURCE_FILE_NAMES_FOR_GESTURE_EVENTS_IF_ENABLED_$(ENABLE_IOS_GESTURE_EVENTS)$(ENABLE_MAC_GESTURE_EVENTS));
 EXCLUDED_SOURCE_FILE_NAMES_FOR_GESTURE_EVENTS_IF_ENABLED_ = JSGesture* DOMGesture*;
 
-EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = *.tiff *Cursor.png AccessibilityObjectMac.mm AXObjectCacheMac.mm ColorMac.mm Cursor.cpp CursorMac.mm DataTransferMac.mm EditorMac.mm EventHandlerMac.mm EventLoopMac.mm GeolocationServiceMac.mm GraphicsContext3DOpenGLES.cpp IconDatabase.cpp IconMac.mm KillRingMac.mm LocalCurrentGraphicsContext.mm MIMETypeRegistryMac.mm MediaPlayerPrivateQTKit.mm NSScrollerImpDetails.mm NetworkStateNotifierMac.cpp PasteboardMac.mm PlatformEventFactoryMac.mm PlatformMouseEventMac.mm PlatformPasteboardMac.mm PlatformScreenMac.mm PlatformSpeechSynthesizerMac.mm RunLoopMac.mm SSLKeyGeneratorMac.cpp ScrollViewMac.mm ScrollbarThemeMac.mm SharedTimerMac.mm SoundMac.mm SystemTimeMac.cpp ThemeMac.mm ThreadCheck.mm UserAgentMac.mm WebAccessibilityObjectWrapperMac.mm WebCoreSystemInterface.mm WebCoreView.m WebVideoFullscreenController.mm WebVideoFullscreenHUDWindowController.mm WebWindowAnimation.mm WidgetMac.mm DisplayRefreshMonitorMac.cpp npapi.h npfunctions.h npruntime.h npruntime_internal.h $(EXCLUDED_SOURCE_FILE_NAMES_FOR_TOUCH_EVENTS) $(EXCLUDED_SOURCE_FILE_NAMES_FOR_GESTURE_EVENTS);
+EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = *.tiff *Cursor.png AccessibilityObjectMac.mm AXObjectCacheMac.mm ColorMac.mm Cursor.cpp CursorMac.mm DataTransferMac.mm EditorMac.mm EventHandlerMac.mm EventLoopMac.mm GeolocationServiceMac.mm GraphicsContext3DOpenGLES.cpp IconDatabase.cpp IconMac.mm KillRingMac.mm LocalCurrentGraphicsContext.mm MIMETypeRegistryMac.mm MediaPlayerPrivateQTKit.mm NSScrollerImpDetails.mm NetworkStateNotifierMac.cpp PasteboardMac.mm PlatformEventFactoryMac.mm PlatformMouseEventMac.mm PlatformPasteboardMac.mm PlatformScreenMac.mm PlatformSpeechSynthesizerMac.mm RunLoopMac.mm SSLKeyGeneratorMac.mm ScrollViewMac.mm ScrollbarThemeMac.mm SharedTimerMac.mm SoundMac.mm SystemTimeMac.cpp ThemeMac.mm ThreadCheck.mm UserAgentMac.mm WebAccessibilityObjectWrapperMac.mm WebCoreSystemInterface.mm WebCoreView.m WebVideoFullscreenController.mm WebVideoFullscreenHUDWindowController.mm WebWindowAnimation.mm WidgetMac.mm DisplayRefreshMonitorMac.cpp npapi.h npfunctions.h npruntime.h npruntime_internal.h $(EXCLUDED_SOURCE_FILE_NAMES_FOR_TOUCH_EVENTS) $(EXCLUDED_SOURCE_FILE_NAMES_FOR_GESTURE_EVENTS);
 EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*] = *IOS.h *IOS.cpp *IOS.mm KillRingNone.cpp WAKAppKitStubs.h WAKClipView.h WAKResponder.h WAKScrollView.h WAKView.h WAKViewPrivate.h WAKWindow.h WKContentObservation.h WKGraphics.h WKTypes.h WKUtilities.h WKView.h WKViewPrivate.h WebCoreThread.h WebCoreThreadMessage.h WebCoreThreadRun.h WebCoreThreadSystemInterface.h $(EXCLUDED_SOURCE_FILE_NAMES_FOR_TOUCH_EVENTS) $(EXCLUDED_SOURCE_FILE_NAMES_FOR_GESTURE_EVENTS);
 
 WK_EMPTY_ = YES;

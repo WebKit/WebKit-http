@@ -31,15 +31,15 @@
 OBJC_CLASS NSAttributedString;
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 struct AttributedString {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, AttributedString&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, AttributedString&);
     
     RetainPtr<NSAttributedString> string;
 };

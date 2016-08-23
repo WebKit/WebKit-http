@@ -27,9 +27,8 @@
 #define APINumber_h
 
 #include "APIObject.h"
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
-#include <wtf/PassRefPtr.h>
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace API {
 
@@ -43,12 +42,12 @@ public:
 
     NumberType value() const { return m_value; }
 
-    void encode(IPC::ArgumentEncoder& encoder) const
+    void encode(IPC::Encoder& encoder) const
     {
         encoder << m_value;
     }
 
-    static bool decode(IPC::ArgumentDecoder& decoder, RefPtr<Object>& result)
+    static bool decode(IPC::Decoder& decoder, RefPtr<Object>& result)
     {
         NumberType value;
         if (!decoder.decode(value))

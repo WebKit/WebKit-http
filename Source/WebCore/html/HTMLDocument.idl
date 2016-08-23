@@ -30,14 +30,7 @@
     [Custom] void write(optional DOMString text);
     [Custom] void writeln(optional DOMString text);
 
-    readonly attribute HTMLCollection embeds;
-    readonly attribute HTMLCollection plugins;
-    readonly attribute HTMLCollection scripts;
-
-    // Extensions
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // FIXME: This should eventually be available (if they are wanted) for all languages.
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     [Custom, Replaceable, Deletable] readonly attribute HTMLAllCollection all;
 #endif
 
@@ -46,14 +39,11 @@
     void captureEvents();
     void releaseEvents();
 
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     readonly attribute long width;
     readonly attribute long height;
     attribute DOMString dir;
 #endif
-
-    attribute DOMString designMode;
-    readonly attribute DOMString compatMode;
 
     // Deprecated attributes.
     [TreatNullAs=EmptyString] attribute DOMString bgColor;
@@ -62,4 +52,3 @@
     [TreatNullAs=EmptyString] attribute DOMString linkColor;
     [TreatNullAs=EmptyString] attribute DOMString vlinkColor;
 };
-

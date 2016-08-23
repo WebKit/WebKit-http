@@ -25,20 +25,11 @@ interface HTMLAreaElement : HTMLElement {
 
     // FIXME: This is supposed to be:
     // [PutForwards=value] readonly attribute DOMTokenList ping;
-    [Reflect] attribute DOMString ping;
+    [Reflect] attribute USVString ping;
 
     [Reflect] attribute DOMString rel;
     [Reflect] attribute DOMString shape;
     [Reflect] attribute DOMString target;
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString accessKey;
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extension:
-    readonly attribute URL absoluteLinkURL;
-#endif
 
     [PutForwards=value] readonly attribute DOMTokenList relList;
 };

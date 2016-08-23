@@ -30,8 +30,8 @@
 #include <wtf/Ref.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace API {
@@ -47,8 +47,8 @@ public:
     uint64_t frameID() const { return m_frameID; }
     bool isAutoconverting() const { return m_isAutoconverting; }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RefPtr<Object>&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RefPtr<Object>&);
 
 private:
     const uint64_t m_frameID;

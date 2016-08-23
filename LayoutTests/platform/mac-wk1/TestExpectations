@@ -228,17 +228,10 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 [ Sierra+ ] accessibility/parent-delete.html [ Failure ]
 
 # rdar://problem/26422051
-[ Sierra+ ] fast/html/marquee-scroll.html [ Failure ]
 [ Sierra+ ] fast/inline-block/003.html [ Failure ]
 
 # rdar://problem/26478296
 [ Sierra+ ] svg/hixie/text/003.html [ Failure ]
-
-# rdar://problem/26789221
-[ Sierra+ ] compositing/masks/compositing-clip-path-change-no-repaint.html [ Failure ]
-
-# rdar://problem/26422407
-[ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html  [ ImageOnlyFailure ]
 
 [ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
 
@@ -251,3 +244,8 @@ webkit.org/b/160101 userscripts/window-onerror-for-isolated-world-3.html [ Pass 
 webkit.org/b/105870 [ Debug ] webaudio/audionode-connect-order.html [ Pass Crash ]
 
 webkit.org/b/160227 [ ElCapitan Debug ] inspector/memory/tracking.html [ Pass Crash ]
+
+[ Yosemite ] js/dom/global-constructors-attributes.html [ Failure ]
+
+# rdar://problem/27723718
+[ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html [ ImageOnlyFailure ]

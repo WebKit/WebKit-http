@@ -38,12 +38,12 @@ const WTF::String& Error::webKitErrorDomain()
     return webKitErrorDomainString;
 }
 
-void Error::encode(IPC::ArgumentEncoder& encoder) const
+void Error::encode(IPC::Encoder& encoder) const
 {
     encoder << platformError();
 }
 
-bool Error::decode(IPC::ArgumentDecoder& decoder, RefPtr<Object>& result)
+bool Error::decode(IPC::Decoder& decoder, RefPtr<Object>& result)
 {
     WebCore::ResourceError error;
     if (!decoder.decode(error))

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UnlinkedCodeBlock_h
-#define UnlinkedCodeBlock_h
+#pragma once
 
 #include "BytecodeConventions.h"
 #include "CodeSpecializationKind.h"
@@ -41,14 +40,11 @@
 #include "UnlinkedFunctionExecutable.h"
 #include "VariableEnvironment.h"
 #include "VirtualRegister.h"
-#include <wtf/FastBitVector.h>
-#include <wtf/RefCountedArray.h>
 #include <wtf/TriState.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
 
-class Debugger;
 class FunctionMetadataNode;
 class FunctionExecutable;
 class JSScope;
@@ -208,6 +204,7 @@ public:
 
     ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
     SuperBinding superBinding() const { return static_cast<SuperBinding>(m_superBinding); }
+    JSParserCommentMode commentMode() const { return static_cast<JSParserCommentMode>(m_commentMode); }
 
     void shrinkToFit()
     {
@@ -409,13 +406,14 @@ private:
     unsigned m_isConstructor : 1;
     unsigned m_hasCapturedVariables : 1;
     unsigned m_isBuiltinFunction : 1;
-    unsigned m_constructorKind : 2;
     unsigned m_superBinding : 1;
-    unsigned m_derivedContextType : 2;
-    unsigned m_evalContextType : 2;
+    unsigned m_commentMode: 1;
     unsigned m_isArrowFunctionContext : 1;
     unsigned m_isClassContext : 1;
     unsigned m_wasCompiledWithDebuggingOpcodes : 1;
+    unsigned m_constructorKind : 2;
+    unsigned m_derivedContextType : 2;
+    unsigned m_evalContextType : 2;
     unsigned m_firstLine;
     unsigned m_lineCount;
     unsigned m_endColumn;
@@ -674,5 +672,3 @@ public:
 };
 
 }
-
-#endif // UnlinkedCodeBlock_h

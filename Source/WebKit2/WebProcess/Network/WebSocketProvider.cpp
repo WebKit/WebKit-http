@@ -33,26 +33,16 @@
 
 #if ENABLE(WEB_SOCKETS)
 
-#include <WebCore/Document.h>
-#include <WebCore/ScriptExecutionContext.h>
-#include <WebCore/SocketStreamHandle.h>
-#include <WebCore/ThreadableWebSocketChannelClientWrapper.h>
-#include <WebCore/WebSocketChannel.h>
-#include <WebCore/WebSocketChannelClient.h>
-#include <WebCore/WorkerGlobalScope.h>
-#include <WebCore/WorkerRunLoop.h>
-#include <WebCore/WorkerThread.h>
-#include <WebCore/WorkerThreadableWebSocketChannel.h>
-#include <wtf/text/StringBuilder.h>
+#include <WebCore/SocketStreamHandleImpl.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-Ref<SocketStreamHandle> WebSocketProvider::createSocketStreamHandle(const URL& url, SocketStreamHandleClient& client, NetworkingContext& context, SessionID sessionID)
+Ref<SocketStreamHandle> WebSocketProvider::createSocketStreamHandle(const URL& url, SocketStreamHandleClient& client, SessionID sessionID)
 {
     // FIXME: This should return a proxy so we can do the actual network interactions in the NetworkProcess.
-    return SocketStreamHandle::create(url, client, context, sessionID);
+    return SocketStreamHandleImpl::create(url, client, sessionID);
 }
 
 } // namespace WebKit

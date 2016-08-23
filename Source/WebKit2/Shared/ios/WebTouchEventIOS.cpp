@@ -29,12 +29,11 @@
 #if ENABLE(TOUCH_EVENTS)
 
 #include "ArgumentCoders.h"
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
 
-void WebTouchEvent::encode(IPC::ArgumentEncoder& encoder) const
+void WebTouchEvent::encode(IPC::Encoder& encoder) const
 {
     WebEvent::encode(encoder);
 
@@ -47,7 +46,7 @@ void WebTouchEvent::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_gestureRotation;
 }
 
-bool WebTouchEvent::decode(IPC::ArgumentDecoder& decoder, WebTouchEvent& result)
+bool WebTouchEvent::decode(IPC::Decoder& decoder, WebTouchEvent& result)
 {
     if (!WebEvent::decode(decoder, result))
         return false;

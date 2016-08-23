@@ -601,7 +601,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
                 if (role == StaticTextRole) {
                     // We should only set the text value as the label when there's no
                     // alternate text on the heading parent.
-                    NSString *headingLabel = [wrapper accessibilityLabel];
+                    NSString *headingLabel = [wrapper baseAccessibilityDescription];
                     if (![headingLabel length])
                         [self setAccessibilityLabel:m_object->stringValue()];
                     else
@@ -2590,6 +2590,13 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     if (!start || !end)
         return nil;
     return [NSArray arrayWithObjects:start, end, nil];
+}
+
+- (NSString *)accessibilityExpandedTextValue
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    return m_object->expandedTextValue();
 }
 
 - (NSString *)accessibilityIdentifier

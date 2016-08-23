@@ -52,6 +52,7 @@
 #include <WebCore/DNS.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/LogInitialization.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
@@ -132,7 +133,7 @@ bool NetworkProcess::shouldTerminate()
     return false;
 }
 
-void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
@@ -145,7 +146,7 @@ void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::Message
     didReceiveNetworkProcessMessage(connection, decoder);
 }
 
-void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     if (messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
@@ -156,12 +157,12 @@ void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Mes
 void NetworkProcess::didClose(IPC::Connection&)
 {
     // The UIProcess just exited.
-    RunLoop::current().stop();
+    stopRunLoop();
 }
 
 void NetworkProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
 {
-    RunLoop::current().stop();
+    stopRunLoop();
 }
 
 void NetworkProcess::didCreateDownload()
@@ -380,7 +381,7 @@ void NetworkProcess::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteData
     }));
 
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             getHostnamesWithCookies(*networkStorageSession, callbackAggregator->m_websiteData.hostNamesWithCookies);
     }
 
@@ -395,13 +396,13 @@ void NetworkProcess::deleteWebsiteData(SessionID sessionID, OptionSet<WebsiteDat
 {
 #if PLATFORM(COCOA)
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             clearHSTSCache(*networkStorageSession, modifiedSince);
     }
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             deleteAllCookiesModifiedSince(*networkStorageSession, modifiedSince);
     }
 
@@ -454,7 +455,7 @@ static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, Fun
 void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID)
 {
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             deleteCookiesForHostnames(*networkStorageSession, cookieHostNames);
     }
 
@@ -623,10 +624,10 @@ void NetworkProcess::processWillSuspendImminently(bool& handled)
 
 void NetworkProcess::prepareToSuspend()
 {
-    LOG_ALWAYS(true, "%p - NetworkProcess::prepareToSuspend()", this);
+    RELEASE_LOG("%p - NetworkProcess::prepareToSuspend()", this);
     lowMemoryHandler(Critical::Yes);
 
-    LOG_ALWAYS(true, "%p - NetworkProcess::prepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
+    RELEASE_LOG("%p - NetworkProcess::prepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
     parentProcessConnection()->send(Messages::NetworkProcessProxy::ProcessReadyToSuspend(), 0);
 }
 
@@ -636,12 +637,12 @@ void NetworkProcess::cancelPrepareToSuspend()
     // we do not because prepareToSuspend() already replied with a NetworkProcessProxy::ProcessReadyToSuspend
     // message. And NetworkProcessProxy expects to receive either a NetworkProcessProxy::ProcessReadyToSuspend-
     // or NetworkProcessProxy::DidCancelProcessSuspension- message, but not both.
-    LOG_ALWAYS(true, "%p - NetworkProcess::cancelPrepareToSuspend()", this);
+    RELEASE_LOG("%p - NetworkProcess::cancelPrepareToSuspend()", this);
 }
 
 void NetworkProcess::processDidResume()
 {
-    LOG_ALWAYS(true, "%p - NetworkProcess::processDidResume()", this);
+    RELEASE_LOG("%p - NetworkProcess::processDidResume()", this);
 }
 
 void NetworkProcess::prefetchDNS(const String& hostname)

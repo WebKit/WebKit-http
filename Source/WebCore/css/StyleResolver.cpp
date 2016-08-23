@@ -41,6 +41,7 @@
 #include "CSSFontSelector.h"
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
+#include "CSSImageSetValue.h"
 #include "CSSInheritedValue.h"
 #include "CSSInitialValue.h"
 #include "CSSKeyframeRule.h"
@@ -150,11 +151,6 @@
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
-#endif
-
-#if ENABLE(CSS_IMAGE_SET)
-#include "CSSImageSetValue.h"
-#include "StyleCachedImageSet.h"
 #endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -1061,10 +1057,10 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
 
 bool StyleResolver::checkRegionStyle(const Element* regionElement)
 {
-    unsigned rulesSize = m_ruleSets.authorStyle()->regionSelectorsAndRuleSets().size();
+    unsigned rulesSize = m_ruleSets.authorStyle().regionSelectorsAndRuleSets().size();
     for (unsigned i = 0; i < rulesSize; ++i) {
-        ASSERT(m_ruleSets.authorStyle()->regionSelectorsAndRuleSets().at(i).ruleSet.get());
-        if (checkRegionSelector(m_ruleSets.authorStyle()->regionSelectorsAndRuleSets().at(i).selector, regionElement))
+        ASSERT(m_ruleSets.authorStyle().regionSelectorsAndRuleSets().at(i).ruleSet.get());
+        if (checkRegionSelector(m_ruleSets.authorStyle().regionSelectorsAndRuleSets().at(i).selector, regionElement))
             return true;
     }
 
@@ -1716,10 +1712,8 @@ RefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValue& v
         return generatedOrPendingFromValue(property, downcast<CSSImageGeneratorValue>(value));
     }
 
-#if ENABLE(CSS_IMAGE_SET)
     if (is<CSSImageSetValue>(value))
         return setOrPendingFromValue(property, downcast<CSSImageSetValue>(value));
-#endif
 
     if (is<CSSCursorImageValue>(value))
         return cursorOrPendingFromValue(property, downcast<CSSCursorImageValue>(value));
@@ -1749,7 +1743,6 @@ Ref<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID propert
     return StyleGeneratedImage::create(value);
 }
 
-#if ENABLE(CSS_IMAGE_SET)
 RefPtr<StyleImage> StyleResolver::setOrPendingFromValue(CSSPropertyID property, CSSImageSetValue& value)
 {
     RefPtr<StyleImage> image = value.cachedOrPendingImageSet(document());
@@ -1757,7 +1750,6 @@ RefPtr<StyleImage> StyleResolver::setOrPendingFromValue(CSSPropertyID property, 
         m_state.ensurePendingResources().pendingImages.set(property, &value);
     return image;
 }
-#endif
 
 RefPtr<StyleImage> StyleResolver::cursorOrPendingFromValue(CSSPropertyID property, CSSCursorImageValue& value)
 {
@@ -2208,7 +2200,7 @@ void StyleResolver::CascadedProperties::setDeferred(CSSPropertyID id, CSSValue& 
     m_deferredProperties.append(property);
 }
 
-void StyleResolver::CascadedProperties::addStyleProperties(const StyleProperties& properties, StyleRule&, bool isImportant, bool inheritedOnly, PropertyWhitelistType propertyWhitelistType, unsigned linkMatchType, CascadeLevel cascadeLevel)
+void StyleResolver::CascadedProperties::addStyleProperties(const StyleProperties& properties, bool isImportant, bool inheritedOnly, PropertyWhitelistType propertyWhitelistType, unsigned linkMatchType, CascadeLevel cascadeLevel)
 {
     for (unsigned i = 0, count = properties.propertyCount(); i < count; ++i) {
         auto current = properties.propertyAt(i);
@@ -2252,7 +2244,7 @@ void StyleResolver::CascadedProperties::addMatch(const MatchResult& matchResult,
     auto propertyWhitelistType = static_cast<PropertyWhitelistType>(matchedProperties.whitelistType);
     auto cascadeLevel = cascadeLevelForIndex(matchResult, index);
 
-    addStyleProperties(*matchedProperties.properties, *matchResult.matchedRules[index], isImportant, inheritedOnly, propertyWhitelistType, matchedProperties.linkMatchType, cascadeLevel);
+    addStyleProperties(*matchedProperties.properties, isImportant, inheritedOnly, propertyWhitelistType, matchedProperties.linkMatchType, cascadeLevel);
 }
 
 void StyleResolver::CascadedProperties::addNormalMatches(const MatchResult& matchResult, int startIndex, int endIndex, bool inheritedOnly)

@@ -45,7 +45,6 @@
 #include "StringRecursionChecker.h"
 #include <algorithm>
 #include <wtf/Assertions.h>
-#include <wtf/HashSet.h>
 
 namespace JSC {
 
@@ -154,12 +153,12 @@ static ALWAYS_INLINE JSValue getProperty(ExecState* exec, JSObject* object, unsi
         return result;
     // We want to perform get and has in the same operation.
     // We can only do so when this behavior is not observable. The
-    // only time it is observable is when we encounter a ProxyObject
+    // only time it is observable is when we encounter an opaque objects (ProxyObject and JSModuleNamespaceObject)
     // somewhere in the prototype chain.
     PropertySlot slot(object, PropertySlot::InternalMethodType::HasProperty);
     if (!object->getPropertySlot(exec, index, slot))
         return JSValue();
-    if (UNLIKELY(slot.isTaintedByProxy()))
+    if (UNLIKELY(slot.isTaintedByOpaqueObject()))
         return object->get(exec, index);
     return slot.getValue(exec, index);
 }
@@ -1033,20 +1032,23 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncIndexOf(ExecState* exec)
     JSObject* thisObj = exec->thisValue().toThis(exec, StrictMode).toObject(exec);
     if (!thisObj)
         return JSValue::encode(JSValue());
+    VM& vm = exec->vm();
     unsigned length = getLength(exec, thisObj);
-    if (exec->hadException())
+    if (UNLIKELY(vm.exception()))
         return JSValue::encode(jsUndefined());
 
     unsigned index = argumentClampedIndexFromStartOrEnd(exec, 1, length);
     JSValue searchElement = exec->argument(0);
     for (; index < length; ++index) {
         JSValue e = getProperty(exec, thisObj, index);
-        if (exec->hadException())
+        if (UNLIKELY(vm.exception()))
             return JSValue::encode(jsUndefined());
         if (!e)
             continue;
         if (JSValue::strictEqual(exec, searchElement, e))
             return JSValue::encode(jsNumber(index));
+        if (UNLIKELY(vm.exception()))
+            return JSValue::encode(jsUndefined());
     }
 
     return JSValue::encode(jsNumber(-1));
@@ -1075,16 +1077,19 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState* exec)
             index = static_cast<unsigned>(fromDouble);
     }
 
+    VM& vm = exec->vm();
     JSValue searchElement = exec->argument(0);
     do {
         RELEASE_ASSERT(index < length);
         JSValue e = getProperty(exec, thisObj, index);
-        if (exec->hadException())
+        if (UNLIKELY(vm.exception()))
             return JSValue::encode(jsUndefined());
         if (!e)
             continue;
         if (JSValue::strictEqual(exec, searchElement, e))
             return JSValue::encode(jsNumber(index));
+        if (UNLIKELY(vm.exception()))
+            return JSValue::encode(jsUndefined());
     } while (index--);
 
     return JSValue::encode(jsNumber(-1));

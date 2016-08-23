@@ -37,8 +37,6 @@
 #include "DFGNodeOrigin.h"
 #include "DFGStructureClobberState.h"
 #include "Operands.h"
-#include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
@@ -257,7 +255,7 @@ struct BasicBlock : RefCounted<BasicBlock> {
             AbstractValue value;
         };
         Vector<NodeAbstractValuePair> valuesAtHead;
-        HashMap<Node*, AbstractValue> valuesAtTail;
+        Vector<NodeAbstractValuePair> valuesAtTail;
         
         SSAData(BasicBlock*);
         ~SSAData();

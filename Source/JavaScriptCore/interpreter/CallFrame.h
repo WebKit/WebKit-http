@@ -90,6 +90,7 @@ namespace JSC  {
         JSObject* callee() const { return this[CallFrameSlot::callee].object(); }
         SUPPRESS_ASAN JSValue unsafeCallee() const { return this[CallFrameSlot::callee].asanUnsafeJSValue(); }
         CodeBlock* codeBlock() const { return this[CallFrameSlot::codeBlock].Register::codeBlock(); }
+        CodeBlock** addressOfCodeBlock() const { return bitwise_cast<CodeBlock**>(this + CallFrameSlot::codeBlock); }
         SUPPRESS_ASAN CodeBlock* unsafeCodeBlock() const { return this[CallFrameSlot::codeBlock].Register::asanUnsafeCodeBlock(); }
         JSScope* scope(int scopeRegisterOffset) const
         {
@@ -210,6 +211,7 @@ namespace JSC  {
         // arguments(0) will not fetch the 'this' value. To get/set 'this',
         // use thisValue() and setThisValue() below.
 
+        JSValue* addressOfArgumentsStart() const { return bitwise_cast<JSValue*>(this + argumentOffset(0)); }
         JSValue argument(size_t argument)
         {
             if (argument >= argumentCount())

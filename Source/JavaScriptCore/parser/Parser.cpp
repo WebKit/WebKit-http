@@ -24,18 +24,12 @@
 #include "Parser.h"
 
 #include "ASTBuilder.h"
-#include "CodeBlock.h"
-#include "Debugger.h"
-#include "JSCJSValueInlines.h"
-#include "Lexer.h"
 #include "JSCInlines.h"
 #include "SetForScope.h"
 #include "SourceProvider.h"
 #include "VM.h"
 #include <utility>
-#include <wtf/HashFunctions.h>
 #include <wtf/StringPrintStream.h>
-#include <wtf/WTFThreadData.h>
 
 
 #define updateErrorMessage(shouldPrintToken, ...) do {\
@@ -195,7 +189,7 @@ void Parser<LexerType>::logError(bool shouldPrintToken, const A& value1, const B
 }
 
 template <typename LexerType>
-Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, SourceParseMode parseMode, SuperBinding superBinding, ConstructorKind defaultConstructorKind, DerivedContextType derivedContextType, bool isEvalContext, EvalContextType evalContextType)
+Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, JSParserCommentMode commentMode, SourceParseMode parseMode, SuperBinding superBinding, ConstructorKind defaultConstructorKind, DerivedContextType derivedContextType, bool isEvalContext, EvalContextType evalContextType)
     : m_vm(vm)
     , m_source(&source)
     , m_hasStackOverflow(false)
@@ -204,11 +198,12 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode 
     , m_statementDepth(0)
     , m_sourceElements(0)
     , m_parsingBuiltin(builtinMode == JSParserBuiltinMode::Builtin)
+    , m_commentMode(commentMode)
     , m_superBinding(superBinding)
     , m_defaultConstructorKind(defaultConstructorKind)
     , m_immediateParentAllowsFunctionDeclarationInStatement(false)
 {
-    m_lexer = std::make_unique<LexerType>(vm, builtinMode);
+    m_lexer = std::make_unique<LexerType>(vm, builtinMode, commentMode);
     m_lexer->setCode(source, &m_parserArena);
     m_token.m_location.line = source.firstLine();
     m_token.m_location.startOffset = source.startOffset();
@@ -239,6 +234,12 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode 
 
     next();
 }
+
+class Scope::MaybeParseAsGeneratorForScope : public SetForScope<bool> {
+public:
+    MaybeParseAsGeneratorForScope(ScopeRef& scope, bool shouldParseAsGenerator)
+        : SetForScope<bool>(scope->m_isGenerator, shouldParseAsGenerator) { }
+};
 
 template <typename LexerType>
 Parser<LexerType>::~Parser()
@@ -1933,6 +1934,8 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
 {
     RELEASE_ASSERT(isFunctionParseMode(mode));
 
+    ScopeRef parentScope = currentScope();
+
     bool upperScopeIsGenerator = currentScope()->isGenerator();
     AutoPopScopeRef functionScope(this, pushScope());
     functionScope->setSourceParseMode(mode);
@@ -1948,6 +1951,9 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
     FunctionBodyType functionBodyType;
 
     auto loadCachedFunction = [&] () -> bool {
+        if (UNLIKELY(!Options::useSourceProviderCache()))
+            return false;
+
         ASSERT(parametersStart != -1);
         ASSERT(startColumn != -1);
 
@@ -2026,8 +2032,14 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
 
         if (loadCachedFunction())
             return true;
-        parseFunctionParameters(syntaxChecker, mode, functionInfo);
-        propagateError();
+
+        {
+            // Parse formal parameters with [+Yield] parameterization, in order to ban YieldExpressions
+            // in ArrowFormalParameters, per ES6 #sec-arrow-function-definitions-static-semantics-early-errors.
+            Scope::MaybeParseAsGeneratorForScope parseAsGenerator(functionScope, upperScopeIsGenerator);
+            parseFunctionParameters(syntaxChecker, mode, functionInfo);
+            propagateError();
+        }
 
         matchOrFail(ARROWFUNCTION, "Expected a '=>' after arrow function parameter declaration");
 
@@ -2121,8 +2133,11 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
     // as their own scope).
     UniquedStringImplPtrSet nonLocalCapturesFromParameterExpressions;
     functionScope->forEachUsedVariable([&] (UniquedStringImpl* impl) {
-        if (!functionScope->hasDeclaredParameter(impl))
+        if (!functionScope->hasDeclaredParameter(impl)) {
             nonLocalCapturesFromParameterExpressions.add(impl);
+            if (TreeBuilder::NeedsFreeVariableInfo)
+                parentScope->addClosedVariableCandidateUnconditionally(impl);
+        }
     });
 
     auto performParsingFunctionBody = [&] {
@@ -3173,7 +3188,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseYieldExpress
     //     yield [no LineTerminator here] * AssignmentExpression[?In, Yield]
 
     // http://ecma-international.org/ecma-262/6.0/#sec-generator-function-definitions
-    failIfFalse(currentScope()->isGenerator(), "Cannot use yield expression out of generator");
+    failIfFalse(currentScope()->isGenerator() && !currentScope()->isArrowFunctionBoundary(), "Cannot use yield expression out of generator");
 
     // http://ecma-international.org/ecma-262/6.0/#sec-generator-function-definitions-static-semantics-early-errors
     failIfTrue(m_parserState.functionParsePhase == FunctionParsePhase::Parameters, "Cannot use yield expression within parameters");

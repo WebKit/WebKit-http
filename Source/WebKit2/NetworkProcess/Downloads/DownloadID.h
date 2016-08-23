@@ -27,8 +27,8 @@
 #define DownloadID_h
 
 #include "ArgumentCoder.h"
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 #include <wtf/HashTraits.h>
 
 namespace WebKit {
@@ -57,11 +57,11 @@ private:
 namespace IPC {
     
 template<> struct ArgumentCoder<WebKit::DownloadID> {
-    static void encode(ArgumentEncoder& encoder, const WebKit::DownloadID& downloadID)
+    static void encode(Encoder& encoder, const WebKit::DownloadID& downloadID)
     {
         encoder << downloadID.downloadID();
     }
-    static bool decode(ArgumentDecoder& decoder, WebKit::DownloadID& downloadID)
+    static bool decode(Decoder& decoder, WebKit::DownloadID& downloadID)
     {
         uint64_t id;
         if (!decoder.decode(id))

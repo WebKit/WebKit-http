@@ -748,6 +748,15 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     return _isEditable;
 }
 
+- (BOOL)setIsEditable:(BOOL)isEditable
+{
+    if (isEditable == _isEditable)
+        return NO;
+
+    _isEditable = isEditable;
+    return YES;
+}
+
 - (BOOL)canBecomeFirstResponder
 {
     if (_resigningFirstResponder)
@@ -1072,8 +1081,8 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
               maximumScale:_assistedNodeInformation.maximumScaleFactor
-              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && (!UICurrentUserInterfaceIdiomIsPad() || _forceIPadStyleZoomOnInputFocus))
-               forceScroll:[self requiresAccessoryView:_forceIPadStyleZoomOnInputFocus]];
+              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && !UICurrentUserInterfaceIdiomIsPad())
+               forceScroll:[self requiresAccessoryView]];
 
     _didAccessoryTabInitiateFocus = NO;
     [self _ensureFormAccessoryView];
@@ -1573,7 +1582,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     [_textSelectionAssistant didEndScrollingOverflow];
 }
 
-- (BOOL)requiresAccessoryView:(BOOL)forceIPadBehavior
+- (BOOL)requiresAccessoryView
 {
     if ([_formInputSession accessoryViewShouldNotShow])
         return NO;
@@ -1598,7 +1607,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Month:
     case InputType::Week:
     case InputType::Time:
-        return !(UICurrentUserInterfaceIdiomIsPad() || forceIPadBehavior);
+        return !UICurrentUserInterfaceIdiomIsPad();
     }
 }
 
@@ -1613,7 +1622,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (UIView *)inputAccessoryView
 {
-    if (![self requiresAccessoryView:NO])
+    if (![self requiresAccessoryView])
         return nil;
 
     return self.formAccessoryView;
@@ -3579,7 +3588,7 @@ static bool isAssistableInputType(InputType type)
     if (_assistedNodeInformation.elementType == information.elementType && _assistedNodeInformation.elementRect == information.elementRect)
         return;
 
-    _isEditable = YES;
+    BOOL editableChanged = [self setIsEditable:YES];
     _assistedNodeInformation = information;
     _inputPeripheral = nil;
     _traits = nil;
@@ -3600,7 +3609,8 @@ static bool isAssistableInputType(InputType type)
         break;
     }
     
-    if (information.insideFixedPosition)
+    // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
+    if (editableChanged)
         [_webView _updateVisibleContentRects];
     
     [self _displayFormNodeInputView];
@@ -3612,13 +3622,17 @@ static bool isAssistableInputType(InputType type)
         _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get() userObject:userObject]);
         [inputDelegate _webView:_webView didStartInputSession:_formInputSession.get()];
     }
+    
+    [_webView didStartFormControlInteraction];
 }
 
 - (void)_stopAssistingNode
 {
     [_formInputSession invalidate];
     _formInputSession = nil;
-    _isEditable = NO;
+
+    BOOL editableChanged = [self setIsEditable:NO];
+
     _assistedNodeInformation.elementType = InputType::None;
     _inputPeripheral = nil;
 
@@ -3628,6 +3642,12 @@ static bool isAssistableInputType(InputType type)
     [self _updateAccessory];
     // The name is misleading, but this actually clears the selection views and removes any selection.
     [_webSelectionAssistant resignedFirstResponder];
+
+    // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
+    if (editableChanged)
+        [_webView _updateVisibleContentRects];
+
+    [_webView didEndFormControlInteraction];
 }
 
 - (void)_selectionChanged
@@ -3793,6 +3813,16 @@ static bool isAssistableInputType(InputType type)
 - (NSString *)selectedTextForActionSheetAssistant:(WKActionSheetAssistant *)assistant
 {
     return [self selectedText];
+}
+
+@end
+
+@implementation WKContentView (WKTesting)
+
+- (void)selectFormAccessoryPickerRow:(NSInteger)rowIndex
+{
+    if ([_inputPeripheral isKindOfClass:[WKFormSelectControl self]])
+        [(WKFormSelectControl *)_inputPeripheral selectRow:rowIndex inComponent:0 extendingSelection:NO];
 }
 
 @end
@@ -4108,22 +4138,7 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 
 @end
 
-#endif
-
-@implementation WKContentView (WKInteractionTesting)
-
-- (BOOL)forceIPadStyleZoomOnInputFocus
-{
-    return _forceIPadStyleZoomOnInputFocus;
-}
-
-- (void)setForceIPadStyleZoomOnInputFocus:(BOOL)forceIPadStyleZoom
-{
-    _forceIPadStyleZoomOnInputFocus = forceIPadStyleZoom;
-}
-
-@end
-
+#endif // HAVE(LINK_PREVIEW)
 
 // UITextRange, UITextPosition and UITextSelectionRect implementations for WK2
 

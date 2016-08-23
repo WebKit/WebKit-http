@@ -28,7 +28,6 @@
 
 #include "PlatformExportMacros.h"
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -202,6 +201,7 @@ public:
     String serialize(bool omitFragment = false) const;
 
 private:
+    friend class URLParser;
     WEBCORE_EXPORT void invalidate();
     static bool protocolIs(const String&, const char*);
     void init(const URL&, const String&, const TextEncoding&);
@@ -219,16 +219,16 @@ private:
     bool m_isValid : 1;
     bool m_protocolIsInHTTPFamily : 1;
 
-    int m_schemeEnd;
-    int m_userStart;
-    int m_userEnd;
-    int m_passwordEnd;
-    int m_hostEnd;
-    int m_portEnd;
-    int m_pathAfterLastSlash;
-    int m_pathEnd;
-    int m_queryEnd;
-    int m_fragmentEnd;
+    unsigned m_schemeEnd;
+    unsigned m_userStart;
+    unsigned m_userEnd;
+    unsigned m_passwordEnd;
+    unsigned m_hostEnd;
+    unsigned m_portEnd;
+    unsigned m_pathAfterLastSlash;
+    unsigned m_pathEnd;
+    unsigned m_queryEnd;
+    unsigned m_fragmentEnd;
 };
 
 template <class Encoder>
@@ -312,7 +312,7 @@ WEBCORE_EXPORT bool protocolIsJavaScript(const String& url);
 WEBCORE_EXPORT bool protocolIsInHTTPFamily(const String& url);
 
 unsigned short defaultPortForProtocol(const String& protocol);
-bool isDefaultPortForProtocol(unsigned short port, const String& protocol);
+WEBCORE_EXPORT bool isDefaultPortForProtocol(unsigned short port, const String& protocol);
 WEBCORE_EXPORT bool portAllowed(const URL&); // Blacklist ports that should never be used for Web resources.
 
 bool isValidProtocol(const String&);

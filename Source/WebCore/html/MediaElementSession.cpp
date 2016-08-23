@@ -68,7 +68,7 @@ static String restrictionName(MediaElementSession::BehaviorRestrictions restrict
 #define CASE(restrictionType) \
     if (restriction & MediaElementSession::restrictionType) { \
         if (!restrictionBuilder.isEmpty()) \
-            restrictionBuilder.append(", "); \
+            restrictionBuilder.appendLiteral(", "); \
         restrictionBuilder.append(#restrictionType); \
     } \
 
@@ -470,6 +470,8 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
         return false;
 
 #if PLATFORM(IOS)
+    if (IOSApplication::isIBooks())
+        return !element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr) && !element.hasAttributeWithoutSynchronization(HTMLNames::playsinlineAttr);
     if (dyld_get_program_sdk_version() < DYLD_IOS_VERSION_10_0)
         return !element.hasAttributeWithoutSynchronization(HTMLNames::webkit_playsinlineAttr);
 #endif

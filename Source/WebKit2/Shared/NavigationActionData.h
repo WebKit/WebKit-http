@@ -30,15 +30,15 @@
 #include <WebCore/FrameLoaderTypes.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 struct NavigationActionData {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, NavigationActionData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, NavigationActionData&);
 
     WebCore::NavigationType navigationType { WebCore::NavigationType::Other };
     WebEvent::Modifiers modifiers { };

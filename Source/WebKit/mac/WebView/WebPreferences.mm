@@ -614,7 +614,7 @@ public:
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
 #if ENABLE(FETCH_API)
-        [NSNumber numberWithBool:NO], WebKitFetchAPIEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
         [NSNumber numberWithBool:NO], WebKitDownloadAttributeEnabledPreferenceKey,
@@ -622,6 +622,10 @@ public:
 #if ENABLE(CSS_GRID_LAYOUT)
         [NSNumber numberWithBool:YES], WebKitCSSGridLayoutEnabledPreferenceKey,
 #endif
+#if ENABLE(WEB_ANIMATIONS)
+        [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
+#endif
+        [NSNumber numberWithBool:NO], WebKitVisualViewportEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -2760,6 +2764,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setCSSGridLayoutEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitCSSGridLayoutEnabledPreferenceKey];
+}
+
+- (BOOL)visualViewportEnabled
+{
+    return [self _boolValueForKey:WebKitVisualViewportEnabledPreferenceKey];
+}
+
+- (void)setVisualViewportEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitVisualViewportEnabledPreferenceKey];
+}
+
+- (BOOL)webAnimationsEnabled
+{
+    return [self _boolValueForKey:WebKitWebAnimationsEnabledPreferenceKey];
+}
+
+- (void)setWebAnimationsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitWebAnimationsEnabledPreferenceKey];
 }
 
 @end

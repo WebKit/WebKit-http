@@ -28,7 +28,6 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include <wtf/MediaTime.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -66,7 +65,7 @@ public:
         Vector<TextTrackInformation> textTracks;
     };
     virtual void sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivate*, const InitializationSegment&) = 0;
-    virtual void sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, PassRefPtr<MediaSample>) = 0;
+    virtual void sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, MediaSample&) = 0;
     virtual bool sourceBufferPrivateHasAudio(const SourceBufferPrivate*) const = 0;
     virtual bool sourceBufferPrivateHasVideo(const SourceBufferPrivate*) const = 0;
 

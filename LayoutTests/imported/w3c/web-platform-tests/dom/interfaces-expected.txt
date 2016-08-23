@@ -342,7 +342,7 @@ PASS Node interface: new Document() must inherit property "DOCUMENT_FRAGMENT_NOD
 PASS Node interface: new Document() must inherit property "NOTATION_NODE" with the proper type (11) 
 PASS Node interface: new Document() must inherit property "nodeType" with the proper type (12) 
 PASS Node interface: new Document() must inherit property "nodeName" with the proper type (13) 
-FAIL Node interface: new Document() must inherit property "baseURI" with the proper type (14) assert_equals: expected "string" but got "object"
+PASS Node interface: new Document() must inherit property "baseURI" with the proper type (14) 
 PASS Node interface: new Document() must inherit property "isConnected" with the proper type (15) 
 PASS Node interface: new Document() must inherit property "ownerDocument" with the proper type (16) 
 PASS Node interface: new Document() must inherit property "parentNode" with the proper type (17) 
@@ -470,7 +470,7 @@ PASS Node interface: xmlDoc must inherit property "DOCUMENT_FRAGMENT_NODE" with 
 PASS Node interface: xmlDoc must inherit property "NOTATION_NODE" with the proper type (11) 
 PASS Node interface: xmlDoc must inherit property "nodeType" with the proper type (12) 
 PASS Node interface: xmlDoc must inherit property "nodeName" with the proper type (13) 
-FAIL Node interface: xmlDoc must inherit property "baseURI" with the proper type (14) assert_equals: expected "string" but got "object"
+PASS Node interface: xmlDoc must inherit property "baseURI" with the proper type (14) 
 PASS Node interface: xmlDoc must inherit property "isConnected" with the proper type (15) 
 PASS Node interface: xmlDoc must inherit property "ownerDocument" with the proper type (16) 
 PASS Node interface: xmlDoc must inherit property "parentNode" with the proper type (17) 
@@ -725,16 +725,16 @@ PASS ShadowRoot interface object length
 PASS ShadowRoot interface object name 
 PASS ShadowRoot interface: existence and properties of interface prototype object 
 PASS ShadowRoot interface: existence and properties of interface prototype object's "constructor" property 
-FAIL ShadowRoot interface: attribute mode assert_true: The prototype object must have a property "mode" expected true got false
+PASS ShadowRoot interface: attribute mode 
 PASS ShadowRoot interface: attribute host 
 PASS Element interface: existence and properties of interface object 
 PASS Element interface object length 
 PASS Element interface object name 
 PASS Element interface: existence and properties of interface prototype object 
 PASS Element interface: existence and properties of interface prototype object's "constructor" property 
-FAIL Element interface: attribute namespaceURI assert_own_property: expected property "namespaceURI" missing
-FAIL Element interface: attribute prefix assert_own_property: expected property "prefix" missing
-FAIL Element interface: attribute localName assert_own_property: expected property "localName" missing
+PASS Element interface: attribute namespaceURI 
+PASS Element interface: attribute prefix 
+PASS Element interface: attribute localName 
 PASS Element interface: attribute tagName 
 PASS Element interface: attribute id 
 PASS Element interface: attribute className 
@@ -764,8 +764,8 @@ PASS Element interface: operation webkitMatchesSelector(DOMString)
 PASS Element interface: operation getElementsByTagName(DOMString) 
 PASS Element interface: operation getElementsByTagNameNS(DOMString,DOMString) 
 PASS Element interface: operation getElementsByClassName(DOMString) 
-FAIL Element interface: operation insertAdjacentElement(DOMString,Element) assert_own_property: interface prototype object missing non-static operation expected property "insertAdjacentElement" missing
-FAIL Element interface: operation insertAdjacentText(DOMString,DOMString) assert_own_property: interface prototype object missing non-static operation expected property "insertAdjacentText" missing
+PASS Element interface: operation insertAdjacentElement(DOMString,Element) 
+PASS Element interface: operation insertAdjacentText(DOMString,DOMString) 
 PASS Element interface: attribute children 
 PASS Element interface: attribute firstElementChild 
 PASS Element interface: attribute lastElementChild 
@@ -835,10 +835,10 @@ PASS Element interface: element must inherit property "getElementsByTagNameNS" w
 PASS Element interface: calling getElementsByTagNameNS(DOMString,DOMString) on element with too few arguments must throw TypeError 
 PASS Element interface: element must inherit property "getElementsByClassName" with the proper type (31) 
 PASS Element interface: calling getElementsByClassName(DOMString) on element with too few arguments must throw TypeError 
-FAIL Element interface: element must inherit property "insertAdjacentElement" with the proper type (32) assert_inherits: property "insertAdjacentElement" not found in prototype chain
-FAIL Element interface: calling insertAdjacentElement(DOMString,Element) on element with too few arguments must throw TypeError assert_inherits: property "insertAdjacentElement" not found in prototype chain
-FAIL Element interface: element must inherit property "insertAdjacentText" with the proper type (33) assert_inherits: property "insertAdjacentText" not found in prototype chain
-FAIL Element interface: calling insertAdjacentText(DOMString,DOMString) on element with too few arguments must throw TypeError assert_inherits: property "insertAdjacentText" not found in prototype chain
+PASS Element interface: element must inherit property "insertAdjacentElement" with the proper type (32) 
+PASS Element interface: calling insertAdjacentElement(DOMString,Element) on element with too few arguments must throw TypeError 
+PASS Element interface: element must inherit property "insertAdjacentText" with the proper type (33) 
+PASS Element interface: calling insertAdjacentText(DOMString,DOMString) on element with too few arguments must throw TypeError 
 PASS Element interface: element must inherit property "children" with the proper type (34) 
 PASS Element interface: element must inherit property "firstElementChild" with the proper type (35) 
 PASS Element interface: element must inherit property "lastElementChild" with the proper type (36) 
@@ -875,7 +875,7 @@ PASS Node interface: element must inherit property "DOCUMENT_FRAGMENT_NODE" with
 PASS Node interface: element must inherit property "NOTATION_NODE" with the proper type (11) 
 PASS Node interface: element must inherit property "nodeType" with the proper type (12) 
 PASS Node interface: element must inherit property "nodeName" with the proper type (13) 
-FAIL Node interface: element must inherit property "baseURI" with the proper type (14) assert_equals: expected "string" but got "object"
+PASS Node interface: element must inherit property "baseURI" with the proper type (14) 
 PASS Node interface: element must inherit property "isConnected" with the proper type (15) 
 PASS Node interface: element must inherit property "ownerDocument" with the proper type (16) 
 PASS Node interface: element must inherit property "parentNode" with the proper type (17) 
@@ -947,9 +947,9 @@ PASS Attr interface object length
 PASS Attr interface object name 
 FAIL Attr interface: existence and properties of interface prototype object assert_equals: prototype of Attr.prototype is not Object.prototype expected object "[object Object]" but got object "[object NodePrototype]"
 PASS Attr interface: existence and properties of interface prototype object's "constructor" property 
-FAIL Attr interface: attribute namespaceURI assert_own_property: expected property "namespaceURI" missing
-FAIL Attr interface: attribute prefix assert_own_property: expected property "prefix" missing
-FAIL Attr interface: attribute localName assert_own_property: expected property "localName" missing
+PASS Attr interface: attribute namespaceURI 
+PASS Attr interface: attribute prefix 
+PASS Attr interface: attribute localName 
 PASS Attr interface: attribute name 
 FAIL Attr interface: attribute nodeName assert_own_property: expected property "nodeName" missing
 PASS Attr interface: attribute value 
@@ -1130,7 +1130,7 @@ PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inher
 PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "NOTATION_NODE" with the proper type (11) 
 PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "nodeType" with the proper type (12) 
 PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "nodeName" with the proper type (13) 
-FAIL Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "baseURI" with the proper type (14) assert_equals: expected "string" but got "object"
+PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "baseURI" with the proper type (14) 
 PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "isConnected" with the proper type (15) 
 PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "ownerDocument" with the proper type (16) 
 PASS Node interface: xmlDoc.createProcessingInstruction("abc", "def") must inherit property "parentNode" with the proper type (17) 
@@ -1458,9 +1458,7 @@ PASS TreeWalker interface: document.createTreeWalker(document.body, NodeFilter.S
 PASS TreeWalker interface: document.createTreeWalker(document.body, NodeFilter.SHOW_ALL, null, false) must inherit property "nextSibling" with the proper type (8) 
 PASS TreeWalker interface: document.createTreeWalker(document.body, NodeFilter.SHOW_ALL, null, false) must inherit property "previousNode" with the proper type (9) 
 PASS TreeWalker interface: document.createTreeWalker(document.body, NodeFilter.SHOW_ALL, null, false) must inherit property "nextNode" with the proper type (10) 
-FAIL NodeFilter interface: existence and properties of interface object assert_equals: prototype of self's property "NodeFilter" is not Object.prototype expected (object) object "[object Object]" but got (function) function "function () {
-    [native code]
-}"
+PASS NodeFilter interface: existence and properties of interface object 
 PASS NodeFilter interface object name 
 PASS NodeFilter interface: existence and properties of interface prototype object 
 PASS NodeFilter interface: existence and properties of interface prototype object's "constructor" property 
@@ -1508,7 +1506,7 @@ PASS DOMTokenList interface: operation contains(DOMString)
 PASS DOMTokenList interface: operation add(DOMString) 
 PASS DOMTokenList interface: operation remove(DOMString) 
 PASS DOMTokenList interface: operation toggle(DOMString,boolean) 
-FAIL DOMTokenList interface: operation replace(DOMString,DOMString) assert_own_property: interface prototype object missing non-static operation expected property "replace" missing
+PASS DOMTokenList interface: operation replace(DOMString,DOMString) 
 FAIL DOMTokenList interface: operation supports(DOMString) assert_own_property: interface prototype object missing non-static operation expected property "supports" missing
 PASS DOMTokenList interface: attribute value 
 PASS DOMTokenList interface: stringifier 
@@ -1525,8 +1523,8 @@ PASS DOMTokenList interface: document.body.classList must inherit property "remo
 PASS DOMTokenList interface: calling remove(DOMString) on document.body.classList with too few arguments must throw TypeError 
 PASS DOMTokenList interface: document.body.classList must inherit property "toggle" with the proper type (5) 
 PASS DOMTokenList interface: calling toggle(DOMString,boolean) on document.body.classList with too few arguments must throw TypeError 
-FAIL DOMTokenList interface: document.body.classList must inherit property "replace" with the proper type (6) assert_inherits: property "replace" not found in prototype chain
-FAIL DOMTokenList interface: calling replace(DOMString,DOMString) on document.body.classList with too few arguments must throw TypeError assert_inherits: property "replace" not found in prototype chain
+PASS DOMTokenList interface: document.body.classList must inherit property "replace" with the proper type (6) 
+PASS DOMTokenList interface: calling replace(DOMString,DOMString) on document.body.classList with too few arguments must throw TypeError 
 FAIL DOMTokenList interface: document.body.classList must inherit property "supports" with the proper type (7) assert_inherits: property "supports" not found in prototype chain
 FAIL DOMTokenList interface: calling supports(DOMString) on document.body.classList with too few arguments must throw TypeError assert_inherits: property "supports" not found in prototype chain
 PASS DOMTokenList interface: document.body.classList must inherit property "value" with the proper type (8) 

@@ -106,16 +106,16 @@ struct EditorState {
         String stringForCandidateRequest;
 #endif
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, PostLayoutData&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, PostLayoutData&);
     };
 
     const PostLayoutData& postLayoutData() const;
     PostLayoutData& postLayoutData();
 #endif // PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, EditorState&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, EditorState&);
 
 #if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 private:

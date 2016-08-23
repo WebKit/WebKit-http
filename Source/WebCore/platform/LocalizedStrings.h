@@ -266,6 +266,7 @@ namespace WebCore {
     String sdhTrackMenuItemText(const String&);
     String easyReaderTrackMenuItemText(const String&);
     String forcedTrackMenuItemText(const String&);
+    String audioDescriptionTrackSuffixText(const String&);
 #endif
 #endif
 
@@ -281,7 +282,6 @@ namespace WebCore {
 
 #if PLATFORM(MAC)
     WEBCORE_EXPORT String insertListTypeNone();
-    WEBCORE_EXPORT String insertListTypeNoneAccessibilityTitle();
     WEBCORE_EXPORT String insertListTypeBulleted();
     WEBCORE_EXPORT String insertListTypeBulletedAccessibilityTitle();
     WEBCORE_EXPORT String insertListTypeNumbered();

@@ -45,6 +45,7 @@
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
+#include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
 #include "CSSInheritedValue.h"
 #include "CSSInitialValue.h"
@@ -114,10 +115,6 @@
 #include "CSSGridAutoRepeatValue.h"
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
-#endif
-
-#if ENABLE(CSS_IMAGE_SET)
-#include "CSSImageSetValue.h"
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -1878,12 +1875,10 @@ RefPtr<CSSValue> CSSParser::parseVariableDependentValue(CSSPropertyID propID, co
     return nullptr;
 }
 
-#if ENABLE(CSS_IMAGE_SET)
 static bool isImageSetFunctionValue(const CSSParserValue& value)
 {
     return value.unit == CSSParserValue::Function && (equalLettersIgnoringASCIICase(value.function->name, "image-set(") || equalLettersIgnoringASCIICase(value.function->name, "-webkit-image-set("));
 }
-#endif
 
 bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 {
@@ -2100,7 +2095,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                 String uri = value->string;
                 if (!uri.isNull())
                     image = CSSImageValue::create(completeURL(uri));
-#if ENABLE(CSS_IMAGE_SET) && ENABLE(MOUSE_CURSOR_SCALE)
+#if ENABLE(MOUSE_CURSOR_SCALE)
             } else if (isImageSetFunctionValue(*value)) {
                 image = parseImageSet();
                 if (!image)
@@ -2232,15 +2227,12 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                 m_valueList->next();
             else
                 return false;
-        }
-#if ENABLE(CSS_IMAGE_SET)
-        else if (isImageSetFunctionValue(valueWithCalculation.value())) {
+        } else if (isImageSetFunctionValue(valueWithCalculation.value())) {
             parsedValue = parseImageSet();
             if (!parsedValue)
                 return false;
             m_valueList->next();
         }
-#endif
         break;
 
     case CSSPropertyWebkitTextStrokeWidth:
@@ -4288,12 +4280,10 @@ bool CSSParser::parseContent(CSSPropertyID propId, bool important)
                 parsedValue = parseCounterContent(*args, true);
                 if (!parsedValue)
                     return false;
-#if ENABLE(CSS_IMAGE_SET)
             } else if (isImageSetFunctionValue(*value)) {
                 parsedValue = parseImageSet();
                 if (!parsedValue)
                     return false;
-#endif
             } else if (isGeneratedImageValue(*value)) {
                 if (!parseGeneratedImage(*m_valueList, parsedValue))
                     return false;
@@ -4386,13 +4376,11 @@ bool CSSParser::parseFillImage(CSSParserValueList& valueList, RefPtr<CSSValue>& 
     if (isGeneratedImageValue(*valueList.current()))
         return parseGeneratedImage(valueList, value);
     
-#if ENABLE(CSS_IMAGE_SET)
     if (isImageSetFunctionValue(*valueList.current())) {
         value = parseImageSet();
         if (value)
             return true;
     }
-#endif
 
     return false;
 }
@@ -8345,14 +8333,12 @@ bool CSSParser::parseBorderImage(CSSPropertyID propId, RefPtr<CSSValue>& result,
                     context.commitImage(WTFMove(value));
                 else
                     return false;
-#if ENABLE(CSS_IMAGE_SET)
             } else if (isImageSetFunctionValue(*currentValue)) {
                 RefPtr<CSSValue> value = parseImageSet();
                 if (value)
                     context.commitImage(value.releaseNonNull());
                 else
                     return false;
-#endif
             } else if (currentValue->id == CSSValueNone)
                 context.commitImage(CSSValuePool::singleton().createIdentifierValue(CSSValueNone));
         }
@@ -9704,7 +9690,6 @@ RefPtr<CSSValueList> CSSParser::parseImageResolution()
 }
 #endif
 
-#if ENABLE(CSS_IMAGE_SET)
 RefPtr<CSSImageSetValue> CSSParser::parseImageSet()
 {
     CSSParserValue& value = *m_valueList->current();
@@ -9756,7 +9741,6 @@ RefPtr<CSSImageSetValue> CSSParser::parseImageSet()
 
     return WTFMove(imageSet);
 }
-#endif
 
 class TransformOperationInfo {
 public:
@@ -13105,6 +13089,13 @@ void CSSParser::addNamespace(const AtomicString& prefix, const AtomicString& uri
 
 QualifiedName CSSParser::determineNameInNamespace(const AtomicString& prefix, const AtomicString& localName)
 {
+    if (prefix.isNull())
+        return QualifiedName(nullAtom, localName, nullAtom); // No namespace. If an element/attribute has a namespace, we won't match it.
+    if (prefix.isEmpty())
+        return QualifiedName(emptyAtom, localName, emptyAtom); // Empty namespace.
+    if (prefix == starAtom)
+        return QualifiedName(prefix, localName, starAtom); // We'll match any namespace.
+
     if (!m_styleSheet)
         return QualifiedName(prefix, localName, m_defaultNamespace);
     return QualifiedName(prefix, localName, m_styleSheet->determineNamespace(prefix));
@@ -13112,15 +13103,20 @@ QualifiedName CSSParser::determineNameInNamespace(const AtomicString& prefix, co
 
 void CSSParser::rewriteSpecifiersWithNamespaceIfNeeded(CSSParserSelector& specifiers)
 {
-    if (m_defaultNamespace != starAtom || specifiers.isCustomPseudoElement())
-        rewriteSpecifiersWithElementName(nullAtom, starAtom, specifiers, /*tagIsForNamespaceRule*/true);
+    if (m_defaultNamespace != starAtom || specifiers.isCustomPseudoElement()) {
+        QualifiedName elementName(nullAtom, starAtom, m_defaultNamespace);
+        rewriteSpecifiersWithElementName(elementName, specifiers, /*tagIsForNamespaceRule*/true);
+    }
 }
 
-void CSSParser::rewriteSpecifiersWithElementName(const AtomicString& namespacePrefix, const AtomicString& elementName, CSSParserSelector& specifiers, bool tagIsForNamespaceRule)
+void CSSParser::rewriteSpecifiersWithElementName(const AtomicString& namespacePrefix, const AtomicString& elementName, CSSParserSelector& specifiers)
 {
-    AtomicString determinedNamespace = namespacePrefix != nullAtom && m_styleSheet ? m_styleSheet->determineNamespace(namespacePrefix) : m_defaultNamespace;
-    QualifiedName tag(namespacePrefix, elementName, determinedNamespace);
+    QualifiedName tag(determineNameInNamespace(namespacePrefix, elementName));
+    rewriteSpecifiersWithElementName(tag, specifiers, false);
+}
 
+void CSSParser::rewriteSpecifiersWithElementName(const QualifiedName& tag, CSSParserSelector& specifiers, bool tagIsForNamespaceRule)
+{
     if (!specifiers.isCustomPseudoElement()) {
         if (tag == anyQName())
             return;

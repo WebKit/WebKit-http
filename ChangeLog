@@ -1,3 +1,57 @@
+2016-08-19  Dean Jackson  <dino@apple.com>
+
+        Implement preferLowPowerToHighPerformance for WebGL
+        https://bugs.webkit.org/show_bug.cgi?id=161017
+        <rdar://problem/26819135>
+
+        Reviewed by Myles Maxfield.
+
+        A manual test that creates contexts with and without preferLowPowerToHighPerformance
+        to see what is used. This has to be manual because it depends on the hardware
+        configuration, and we don't have a way to detect it up-front. Also, if the
+        code was failing, it would be the same result as on a single GPU system.
+
+        * ManualTests/webgl-preferLowPowerToHighPerformance.html: Added.
+
+2016-08-19  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Warning fix.
+        https://bugs.webkit.org/show_bug.cgi?id=160994
+
+        Reviewed by Anders Carlsson.
+
+        Ignore warning when function declared with __declspec(noreturn) has non void return type.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2016-08-17  Don Olmstead  <don.olmstead@am.sony.com>
+
+        Use find_library within Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=160904
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/FindICU.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2016-08-17  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        [EFL] Bump efl version from 1.17 to 1.18
+        https://bugs.webkit.org/show_bug.cgi?id=160899
+
+        Reviewed by Antonio Gomes.
+
+        * Source/cmake/OptionsEfl.cmake: Update ewebkit version to 1.18.0.
+
+2016-08-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Mac][cmake] Fix the build after Objective-C bindings generator removal
+        https://bugs.webkit.org/show_bug.cgi?id=160545
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+
 2016-08-03  Csaba Osztrogonác  <ossy@webkit.org>
 
         Lacking support on a arm-traditional disassembler.

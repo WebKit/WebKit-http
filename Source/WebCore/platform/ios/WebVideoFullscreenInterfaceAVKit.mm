@@ -397,7 +397,7 @@ static UIView *WebAVPlayerLayerView_videoView(id aSelf, SEL)
     __AVPlayerLayerView *playerLayer = aSelf;
     WebAVPlayerLayer *webAVPlayerLayer = (WebAVPlayerLayer *)[playerLayer playerLayer];
     CALayer* videoLayer = [webAVPlayerLayer videoSublayer];
-    if (!videoLayer)
+    if (!videoLayer || !videoLayer.delegate)
         return nil;
     ASSERT([[videoLayer delegate] isKindOfClass:getUIViewClass()]);
     return (UIView *)[videoLayer delegate];
@@ -430,7 +430,8 @@ static void WebAVPlayerLayerView_startRoutingVideoToPictureInPicturePlayerLayerV
 static void WebAVPlayerLayerView_stopRoutingVideoToPictureInPicturePlayerLayerView(id aSelf, SEL)
 {
     WebAVPlayerLayerView *playerLayerView = aSelf;
-    [playerLayerView addSubview:playerLayerView.videoView];
+    if (UIView *videoView = playerLayerView.videoView)
+        [playerLayerView addSubview:videoView];
     WebAVPictureInPicturePlayerLayerView *pipView = (WebAVPictureInPicturePlayerLayerView *)[playerLayerView pictureInPicturePlayerLayerView];
     WebAVPlayerLayer *playerLayer = (WebAVPlayerLayer *)[playerLayerView playerLayer];
     WebAVPlayerLayer *pipPlayerLayer = (WebAVPlayerLayer *)[pipView layer];
@@ -780,6 +781,7 @@ void WebVideoFullscreenInterfaceAVKit::exitFullscreen(const WebCore::IntRect& fi
     } else if (isMode(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture | HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
         RefPtr<WebVideoFullscreenInterfaceAVKit> protectedThis(this);
         [m_playerViewController exitFullScreenAnimated:NO completionHandler:[protectedThis, this] (BOOL, NSError*) {
+            clearMode(HTMLMediaElementEnums::VideoFullscreenModeStandard);
             [m_window setHidden:NO];
             [m_playerViewController stopPictureInPicture];
         }];

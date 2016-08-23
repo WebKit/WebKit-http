@@ -38,17 +38,20 @@ public:
 
     // DOM Functions
 
-    void start();
-    void stop() final;
+    WEBCORE_EXPORT void start();
+    WEBCORE_EXPORT void stop() final;
     
-    unsigned scrollAmount() const;
-    void setScrollAmount(unsigned);
+    // Number of pixels to move on each scroll movement. Defaults to 6.
+    WEBCORE_EXPORT unsigned scrollAmount() const;
+    WEBCORE_EXPORT void setScrollAmount(unsigned);
     
-    unsigned scrollDelay() const;
-    void setScrollDelay(unsigned);
+    // Interval between each scroll movement, in milliseconds. Defaults to 60.
+    WEBCORE_EXPORT unsigned scrollDelay() const;
+    WEBCORE_EXPORT void setScrollDelay(unsigned);
     
-    int loop() const;
-    void setLoop(int, ExceptionCode&);
+    // Loop count. -1 means loop indefinitely.
+    WEBCORE_EXPORT int loop() const;
+    WEBCORE_EXPORT void setLoop(int, ExceptionCode&);
     
 private:
     HTMLMarqueeElement(const QualifiedName&, Document&);

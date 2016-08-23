@@ -48,7 +48,9 @@ set(TestWebCoreLib_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/TimeRanges.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/URLParser.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/win/DIBPixelData.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/win/LinkedFonts.cpp
 )
 
 if (${WTF_PLATFORM_WIN_CAIRO})
@@ -70,6 +72,7 @@ else ()
         CFNetwork${DEBUG_SUFFIX}
         CoreFoundation${DEBUG_SUFFIX}
         CoreGraphics${DEBUG_SUFFIX}
+        CoreText${DEBUG_SUFFIX}
         QuartzCore${DEBUG_SUFFIX}
         SQLite3${DEBUG_SUFFIX}
         WebKitSystemInterface${DEBUG_SUFFIX}

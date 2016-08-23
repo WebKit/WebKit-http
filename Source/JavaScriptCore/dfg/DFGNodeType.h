@@ -159,7 +159,7 @@ namespace JSC { namespace DFG {
     macro(ArithFloor, NodeResultNumber) \
     macro(ArithCeil, NodeResultNumber) \
     macro(ArithTrunc, NodeResultNumber) \
-    macro(ArithSqrt, NodeResultNumber) \
+    macro(ArithSqrt, NodeResultDouble) \
     macro(ArithSin, NodeResultNumber) \
     macro(ArithCos, NodeResultNumber) \
     macro(ArithLog, NodeResultNumber) \
@@ -291,7 +291,7 @@ namespace JSC { namespace DFG {
     macro(NewRegexp, NodeResultJS) \
     /* Rest Parameter */\
     macro(GetRestLength, NodeResultInt32) \
-    macro(CopyRest, NodeMustGenerate) \
+    macro(CreateRest, NodeResultJS | NodeMustGenerate) \
     \
     /* Support for allocation sinking. */\
     macro(PhantomNewObject, NodeResultJS | NodeMustGenerate) \

@@ -37,7 +37,6 @@
 #include "WebKitCSSFilterValue.h"
 #include <memory>
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/TextPosition.h>
@@ -62,6 +61,7 @@ class CSSBasicShapeInset;
 class CSSBasicShapePath;
 class CSSBasicShapePolygon;
 class CSSGridLineNamesValue;
+class CSSImageSetValue;
 class CSSVariableDependentValue;
 class Document;
 class Element;
@@ -86,10 +86,6 @@ class StyleKeyframe;
 class StyleSheetContents;
 class StyledElement;
 class WebKitCSSTransformValue;
-
-#if ENABLE(CSS_IMAGE_SET)
-class CSSImageSetValue;
-#endif
 
 class CSSParser {
     friend inline int cssyylex(void*, CSSParser*);
@@ -335,9 +331,7 @@ public:
     RefPtr<CSSValueList> parseImageResolution();
 #endif
 
-#if ENABLE(CSS_IMAGE_SET)
     RefPtr<CSSImageSetValue> parseImageSet();
-#endif
 
     bool parseFilterImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
@@ -409,7 +403,8 @@ public:
     void addNamespace(const AtomicString& prefix, const AtomicString& uri);
     QualifiedName determineNameInNamespace(const AtomicString& prefix, const AtomicString& localName);
 
-    void rewriteSpecifiersWithElementName(const AtomicString& namespacePrefix, const AtomicString& elementName, CSSParserSelector&, bool isNamespacePlaceholder = false);
+    void rewriteSpecifiersWithElementName(const AtomicString& namespacePrefix, const AtomicString& elementName, CSSParserSelector&);
+    void rewriteSpecifiersWithElementName(const QualifiedName& tagName, CSSParserSelector&, bool isNamespacePlaceholder = false);
     void rewriteSpecifiersWithNamespaceIfNeeded(CSSParserSelector&);
     std::unique_ptr<CSSParserSelector> rewriteSpecifiers(std::unique_ptr<CSSParserSelector>, std::unique_ptr<CSSParserSelector>);
 

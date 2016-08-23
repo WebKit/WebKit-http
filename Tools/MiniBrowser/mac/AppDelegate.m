@@ -38,6 +38,10 @@
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <WebKit/_WKUserContentExtensionStore.h>
 
+#if WK_API_ENABLED
+#import <WebKit/_WKExperimentalFeature.h>
+#endif
+
 enum {
     WebKit1NewWindowTag = 1,
     WebKit2NewWindowTag = 2
@@ -81,12 +85,26 @@ static WKWebViewConfiguration *defaultConfiguration()
             configuration.processPool = [[[WKProcessPool alloc] _initWithConfiguration:singleProcessConfiguration] autorelease];
             [singleProcessConfiguration release];
         }
+
+#if WK_API_ENABLED
+        NSArray<_WKExperimentalFeature *> *features = [WKPreferences _experimentalFeatures];
+        for (_WKExperimentalFeature *feature in features) {
+            BOOL enabled = [[NSUserDefaults standardUserDefaults] boolForKey:feature.key];
+            [configuration.preferences _setEnabled:enabled forFeature:feature];
+        }
+#endif
     }
 
     configuration.suppressesIncrementalRendering = [SettingsController shared].incrementalRenderingSuppressed;
     configuration.websiteDataStore._resourceLoadStatisticsEnabled = [SettingsController shared].resourceLoadStatisticsEnabled;
     return configuration;
 }
+
+WKPreferences *defaultPreferences()
+{
+    return defaultConfiguration().preferences;
+}
+
 #endif
 
 
