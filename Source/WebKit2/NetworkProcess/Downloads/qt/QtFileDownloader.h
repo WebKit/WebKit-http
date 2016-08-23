@@ -63,7 +63,6 @@ private Q_SLOTS:
 
 private:
     void abortDownloadWritingAndEmitError(QtFileDownloader::DownloadError);
-    QString determineFilename();
     void handleDownloadResponse();
 
     Download* m_download;

@@ -60,33 +60,6 @@ void QtFileDownloader::init()
     connect(m_reply.get(), SIGNAL(error(QNetworkReply::NetworkError)), SLOT(onError(QNetworkReply::NetworkError)));
 }
 
-QString QtFileDownloader::determineFilename()
-{
-    ASSERT(!m_destinationFile);
-
-    QString filenameCandidate = filenameFromHTTPContentDisposition(QString::fromLatin1(m_reply->rawHeader("Content-Disposition")));
-    if (filenameCandidate.isEmpty()) {
-        URL kurl = m_reply->url();
-        filenameCandidate = decodeURLEscapeSequences(kurl.lastPathComponent());
-    }
-
-    if (filenameCandidate.isEmpty()) {
-        abortDownloadWritingAndEmitError(QtFileDownloader::DownloadErrorCannotDetermineFilename);
-        return QString();
-    }
-
-    // Make sure that we remove possible "../.." parts in the given file name.
-    QFileInfo filenameFilter(filenameCandidate);
-    QString filename = filenameFilter.fileName();
-
-    if (filename.isEmpty()) {
-        abortDownloadWritingAndEmitError(QtFileDownloader::DownloadErrorCannotDetermineFilename);
-        return QString();
-    }
-
-    return filename;
-}
-
 void QtFileDownloader::startTransfer(const QString& decidedFilePath)
 {
     ASSERT(!m_destinationFile);
@@ -172,17 +145,12 @@ void QtFileDownloader::handleDownloadResponse()
     String contentType = m_reply->header(QNetworkRequest::ContentTypeHeader).toString();
     String encoding = extractCharsetFromMediaType(contentType);
     String mimeType = extractMIMETypeFromMediaType(contentType);
-    String filename = determineFilename();
-
-    // If filename is empty it means determineFilename aborted and emitted an error.
-    if (filename.isEmpty())
-        return;
 
     // Let's try to guess from the extension.
     if (mimeType.isEmpty())
         mimeType = MIMETypeRegistry::getMIMETypeForPath(m_reply->url().path());
 
-    ResourceResponse response(m_reply->url(), mimeType, m_reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(), encoding, filename);
+    ResourceResponse response(m_reply->url(), mimeType, m_reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(), encoding);
     m_download->didReceiveResponse(response);
 }
 
