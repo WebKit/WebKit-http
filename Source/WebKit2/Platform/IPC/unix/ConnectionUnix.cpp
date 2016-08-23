@@ -423,7 +423,10 @@ bool Connection::open()
         return G_SOURCE_REMOVE;
     });
 #elif PLATFORM(QT)
-    m_socketNotifier = m_connectionQueue->registerSocketEventHandler(m_socketDescriptor, QSocketNotifier::Read, WTF::bind(&Connection::readyReadHandler, this));
+    m_socketNotifier = m_connectionQueue->registerSocketEventHandler(m_socketDescriptor, QSocketNotifier::Read,
+        [protectedThis] {
+            protectedThis->readyReadHandler();
+        });
 #elif PLATFORM(EFL)
     m_connectionQueue->registerSocketEventHandler(m_socketDescriptor,
         [protectedThis] {
@@ -603,7 +606,11 @@ void Connection::didReceiveSyncReply(unsigned flags)
 #if PLATFORM(QT)
 void Connection::setShouldCloseConnectionOnProcessTermination(WebKit::PlatformProcessIdentifier process)
 {
-    m_connectionQueue->dispatchOnTermination(process, WTF::bind(&Connection::connectionDidClose, this));
+    RefPtr<Connection> protectedThis(this);
+    m_connectionQueue->dispatchOnTermination(process,
+        [protectedThis] {
+            protectedThis->connectionDidClose();
+        });
 }
 #endif
 
