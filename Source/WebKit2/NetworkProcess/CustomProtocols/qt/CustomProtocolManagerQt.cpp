@@ -28,6 +28,7 @@ const char* CustomProtocolManager::supplementName()
 }
 
 CustomProtocolManager::CustomProtocolManager(ChildProcess*)
+    : m_impl(nullptr)
 {
 }
 
@@ -41,6 +42,7 @@ void CustomProtocolManager::initialize(const NetworkProcessCreationParameters&)
 
 void CustomProtocolManager::registerScheme(const String&)
 {
+    ASSERT_NOT_REACHED();
 }
 
 void CustomProtocolManager::unregisterScheme(const String&)
@@ -54,6 +56,7 @@ bool CustomProtocolManager::supportsScheme(const String&)
 
 void CustomProtocolManager::didFailWithError(uint64_t, const WebCore::ResourceError&)
 {
+    ASSERT_NOT_REACHED();
 }
 
 void CustomProtocolManager::didLoadData(uint64_t, const IPC::DataReference&)
