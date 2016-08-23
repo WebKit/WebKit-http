@@ -22,6 +22,7 @@
 #include "QtWebPageSGNode.h"
 
 #include "CoordinatedGraphicsScene.h"
+#include "WebPageProxy.h"
 
 #include <QtGui/QPolygonF>
 #include <QtQuick/QQuickItem>
@@ -88,7 +89,9 @@ public:
         bool mirrored = projection && (*projection)(0, 0) * (*projection)(1, 1) - (*projection)(0, 1) * (*projection)(1, 0) > 0;
 
         // FIXME: Support non-rectangular clippings.
-        coordinatedGraphicsScene()->paintToCurrentGLContext(renderMatrix, inheritedOpacity(), clipRect(), mirrored ? TextureMapper::PaintingMirrored : 0);
+        coordinatedGraphicsScene()->paintToCurrentGLContext(renderMatrix, inheritedOpacity(), clipRect(),
+            pageNode()->page().pageExtendedBackgroundColor(), pageNode()->page().drawsBackground(), FloatPoint(),
+            mirrored ? TextureMapper::PaintingMirrored : 0);
     }
 
     void releaseResources()
@@ -163,8 +166,9 @@ private:
     RefPtr<CoordinatedGraphicsScene> m_scene;
 };
 
-QtWebPageSGNode::QtWebPageSGNode()
-    : m_contentsNode(0)
+QtWebPageSGNode::QtWebPageSGNode(WebPageProxy& page)
+    : m_page(page)
+    , m_contentsNode(0)
     , m_backgroundNode(new QSGSimpleRectNode)
     , m_devicePixelRatio(1)
 {

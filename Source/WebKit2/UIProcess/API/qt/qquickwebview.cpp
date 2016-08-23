@@ -582,7 +582,7 @@ void QQuickWebViewPrivate::setNeedsDisplay()
         // the web process when running tests even if the render loop is not active.
         QImage dummyImage(1, 1, QImage::Format_ARGB32);
         QPainter painter(&dummyImage);
-        q->page()->d->paint(&painter);
+        q->page()->d->paint(&painter, webPageProxy->pageExtendedBackgroundColor(), webPageProxy->drawsBackground());
         return;
     }
     q->page()->update();

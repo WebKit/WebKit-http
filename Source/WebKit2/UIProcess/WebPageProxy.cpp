@@ -500,7 +500,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
 WebPageProxy::~WebPageProxy()
 {
-    ASSERT(m_process->webPage(m_pageID) != this);
+    // QtWebPageSGNode may be the last owner of WebPageProxy, but it is destroyed
+    // in the renderer thread which causes assertion failure when accessing globalPageMap
+    ASSERT(!RunLoop::isMain() || m_process->webPage(m_pageID) != this);
 #if !ASSERT_DISABLED
     for (WebPageProxy* page : m_process->pages())
         ASSERT(page != this);
