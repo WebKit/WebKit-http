@@ -28,6 +28,7 @@
 #include "WorkQueue.h"
 
 #include <QObject>
+#include <QProcess>
 #include <QThread>
 #include <wtf/Threading.h>
 
@@ -119,6 +120,12 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<v
     ref();
     WorkQueue::WorkItemQt* itemQt = new WorkQueue::WorkItemQt(this, function);
     itemQt->startTimer(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
+    itemQt->moveToThread(m_workThread);
+}
+
+void WorkQueue::dispatchOnTermination(QProcess* process, std::function<void()> function)
+{
+    WorkQueue::WorkItemQt* itemQt = new WorkQueue::WorkItemQt(this, process, SIGNAL(finished(int, QProcess::ExitStatus)), function);
     itemQt->moveToThread(m_workThread);
 }
 

@@ -52,6 +52,12 @@
 #include <wtf/win/WorkItemWin.h>
 #endif
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QProcess;
+QT_END_NAMESPACE
+#endif
+
 namespace WTF {
 
 class WorkQueue final : public FunctionDispatcher {
@@ -83,6 +89,7 @@ public:
     void unregisterSocketEventHandler(int);
 #elif PLATFORM(QT)
     QSocketNotifier* registerSocketEventHandler(int, QSocketNotifier::Type, std::function<void()>);
+    void dispatchOnTermination(QProcess*, std::function<void()>);
 #elif OS(DARWIN)
     dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
 #endif
