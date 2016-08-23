@@ -54,4 +54,12 @@ bool InjectedBundle::load(APIObject* initializationUserData)
     return true;
 }
 
+void InjectedBundle::setBundleParameter(const WTF::String&, const IPC::DataReference&)
+{
+}
+
+void InjectedBundle::setBundleParameters(const IPC::DataReference&)
+{
+}
+
 } // namespace WebKit

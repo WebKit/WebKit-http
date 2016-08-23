@@ -62,13 +62,37 @@ void WebProcessPool::platformInvalidateContext()
 {
 }
 
+void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationParameters&)
+{
+    // QTFIXME
+}
 
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
     return String();
 }
 
-String WebProcessPool::platformDefaultLocalStorageDirectory() const
+String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
+{
+    return String();
+}
+
+String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
+{
+    return String();
+}
+
+String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
+{
+    return String();
+}
+
+String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
+{
+    return String();
+}
+
+String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
     return String();
 }

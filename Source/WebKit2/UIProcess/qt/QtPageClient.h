@@ -104,6 +104,28 @@ private:
     QQuickWebView* m_webView;
     QtWebPageEventHandler* m_eventHandler;
     DefaultUndoController* m_undoController;
+
+    // PageClient interface
+public:
+    void requestScroll(const WebCore::FloatPoint& scrollPosition, const WebCore::IntPoint& scrollOrigin, bool isProgrammaticScroll) override;
+    void didCommitLoadForMainFrame(const WTF::String& mimeType, bool useCustomContentProvider) override;
+    void willEnterAcceleratedCompositingMode() override;
+    void didFinishLoadingDataForCustomContentProvider(const WTF::String& suggestedFilename, const IPC::DataReference&) override;
+    void navigationGestureDidBegin() override;
+    void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&) override;
+    void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&) override;
+    void navigationGestureDidEnd() override;
+    void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
+    void didRemoveNavigationGestureSnapshot() override;
+    void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
+    void didFinishLoadForMainFrame() override;
+    void didFailLoadForMainFrame() override;
+    void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
+    void didChangeBackgroundColor() override;
+    void refView() override;
+    void derefView() override;
+    bool decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
+    void didRestoreScrollPosition() override;
 };
 
 } // namespace WebKit

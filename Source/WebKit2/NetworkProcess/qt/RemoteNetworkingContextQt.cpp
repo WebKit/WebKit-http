@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
- * Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013 University of Szeged. All rights reserved.
+ * Copyright (C) 2013 Company 100 Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,63 +26,33 @@
  */
 
 #include "config.h"
-#include "Download.h"
+#include "RemoteNetworkingContext.h"
 
-#include "QtFileDownloader.h"
-#include "WebProcess.h"
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
-#include <WebCore/QNetworkReplyHandler.h>
 #include <WebCore/ResourceHandle.h>
-#include <WebCore/ResourceHandleInternal.h>
-#include <WebCore/ResourceResponse.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void Download::start()
+RemoteNetworkingContext::~RemoteNetworkingContext()
 {
-    QNetworkAccessManager* manager = WebProcess::singleton().networkAccessManager();
-    ASSERT(manager);
-    ASSERT(!m_qtDownloader);
-
-    m_qtDownloader = new QtFileDownloader(this, manager->get(m_request.toNetworkRequest()));
-    m_qtDownloader->init();
 }
 
-void Download::startWithHandle(ResourceHandle* handle, const ResourceResponse& resp)
+bool RemoteNetworkingContext::isValid() const
 {
-    ASSERT(!m_qtDownloader);
-    m_qtDownloader = new QtFileDownloader(this, handle->getInternal()->m_job->release());
-    m_qtDownloader->init();
+    return true;
 }
 
-void Download::resume(const IPC::DataReference&, const WTF::String&, const SandboxExtension::Handle&)
+void RemoteNetworkingContext::ensurePrivateBrowsingSession(SessionID)
 {
     notImplemented();
 }
 
-void Download::cancel()
+NetworkStorageSession& RemoteNetworkingContext::storageSession() const
 {
-    ASSERT(m_qtDownloader);
-    m_qtDownloader->cancel();
+    return NetworkStorageSession::defaultStorageSession();
 }
 
-void Download::platformInvalidate()
-{
-    ASSERT(m_qtDownloader);
-    m_qtDownloader->deleteLater();
-    m_qtDownloader = 0;
 }
-
-void Download::startTransfer(const String& destination)
-{
-    m_qtDownloader->startTransfer(destination);
-}
-
-void Download::platformDidFinish()
-{
-    notImplemented();
-}
-
-} // namespace WebKit

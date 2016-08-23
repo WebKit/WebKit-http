@@ -328,4 +328,82 @@ void QtPageClient::updateAcceleratedCompositingMode(const LayerTreeContext&)
     // FIXME: Implement.
 }
 
+void QtPageClient::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin, bool isProgrammaticScroll)
+{
+}
+
+void QtPageClient::didCommitLoadForMainFrame(const WTF::String& mimeType, bool useCustomContentProvider)
+{
+}
+
+void QtPageClient::willEnterAcceleratedCompositingMode()
+{
+}
+
+void QtPageClient::didFinishLoadingDataForCustomContentProvider(const WTF::String& suggestedFilename, const IPC::DataReference&)
+{
+}
+
+void QtPageClient::navigationGestureDidBegin()
+{
+}
+
+void QtPageClient::navigationGestureWillEnd(bool willNavigate, WebKit::WebBackForwardListItem&)
+{
+}
+
+void QtPageClient::navigationGestureDidEnd(bool willNavigate, WebKit::WebBackForwardListItem&)
+{
+}
+
+void QtPageClient::navigationGestureDidEnd()
+{
+}
+
+void QtPageClient::willRecordNavigationSnapshot(WebKit::WebBackForwardListItem&)
+{
+}
+
+void QtPageClient::didRemoveNavigationGestureSnapshot()
+{
+}
+
+void QtPageClient::didFirstVisuallyNonEmptyLayoutForMainFrame()
+{
+}
+
+void QtPageClient::didFinishLoadForMainFrame()
+{
+}
+
+void QtPageClient::didFailLoadForMainFrame()
+{
+}
+
+void QtPageClient::didSameDocumentNavigationForMainFrame(WebKit::SameDocumentNavigationType)
+{
+}
+
+void QtPageClient::didChangeBackgroundColor()
+{
+}
+
+void QtPageClient::refView()
+{
+}
+
+void QtPageClient::derefView()
+{
+}
+
+bool QtPageClient::decidePolicyForInstallMissingMediaPluginsPermissionRequest(WebKit::InstallMissingMediaPluginsPermissionRequest&)
+{
+    // QTFIXME
+    return false;
+}
+
+void QtPageClient::didRestoreScrollPosition()
+{
+}
+
 } // namespace WebKit

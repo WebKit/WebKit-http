@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
- * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,25 +23,31 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebContextMenuProxyQt_h
-#define WebContextMenuProxyQt_h
+#include "config.h"
+#include "AuthenticationManager.h"
 
-#include "WebContextMenuProxy.h"
-#include <QtCore/QObject>
+using namespace WebCore;
 
 namespace WebKit {
 
-class WebPageProxy;
+void AuthenticationManager::receivedCredential(const AuthenticationChallenge&, const Credential&)
+{
+}
 
-class WebContextMenuProxyQt : public QObject, public WebContextMenuProxy {
-    Q_OBJECT
-public:
-    WebContextMenuProxyQt(const ContextMenuContextData&, const UserData&);
+void AuthenticationManager::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
+{
+}
 
-private:
-    void show() override;
-};
+void AuthenticationManager::receivedCancellation(const AuthenticationChallenge&)
+{
+}
 
-} // namespace WebKit
+void AuthenticationManager::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
+{
+}
 
-#endif // WebContextMenuProxyQt_h
+void AuthenticationManager::receivedChallengeRejection(const AuthenticationChallenge&)
+{
+}
+
+}

@@ -97,6 +97,19 @@ void WebPage::platformInitialize()
 {
 }
 
+void WebPage::platformDetach()
+{
+}
+
+String WebPage::platformUserAgent(const WebCore::URL&) const
+{
+    return String();
+}
+
+void WebPage::platformEditorState(Frame&, EditorState&, WebPage::IncludePostLayoutDataHint) const
+{
+}
+
 void WebPage::platformPreferencesDidChange(const WebPreferencesStore&)
 {
 }

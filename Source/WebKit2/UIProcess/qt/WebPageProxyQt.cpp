@@ -32,6 +32,7 @@
 #include "WebKitVersion.h"
 #include "WebPageMessages.h"
 #include "WebProcessProxy.h"
+#include "WebsiteDataStore.h"
 #include <WebCore/Editor.h>
 #include <WebCore/NotImplemented.h>
 
@@ -45,6 +46,10 @@ using namespace WebCore;
 
 namespace WebKit {
 
+void WebPageProxy::platformInitialize()
+{
+}
+
 String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
     return UserAgentQt::standardUserAgent(applicationNameForUserAgent, WEBKIT_MAJOR_VERSION, WEBKIT_MINOR_VERSION);
@@ -56,6 +61,11 @@ void WebPageProxy::saveRecentSearches(const String&, const Vector<String>&)
 }
 
 void WebPageProxy::loadRecentSearches(const String&, Vector<String>&)
+{
+    notImplemented();
+}
+
+void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::time_point oldestTimeToRemove)
 {
     notImplemented();
 }
