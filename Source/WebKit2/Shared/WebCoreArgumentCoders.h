@@ -342,8 +342,8 @@ template<> struct ArgumentCoder<WebCore::PasteboardImage> {
 
 #if PLATFORM(WPE)
 template<> struct ArgumentCoder<WebCore::PasteboardWebContent> {
-    static void encode(ArgumentEncoder&, const WebCore::PasteboardWebContent&);
-    static bool decode(ArgumentDecoder&, WebCore::PasteboardWebContent&);
+    static void encode(Encoder&, const WebCore::PasteboardWebContent&);
+    static bool decode(Decoder&, WebCore::PasteboardWebContent&);
 };
 #endif
 
