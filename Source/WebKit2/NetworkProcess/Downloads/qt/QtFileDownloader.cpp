@@ -160,7 +160,7 @@ void QtFileDownloader::abortDownloadWritingAndEmitError(QtFileDownloader::Downlo
         ASSERT_NOT_REACHED();
     }
 
-    ResourceError downloadError("Download", errorCode, m_reply->url().toString(), translatedErrorMessage);
+    ResourceError downloadError("Download", errorCode, m_reply->url(), translatedErrorMessage);
 
     m_download->didFail(downloadError, IPC::DataReference(0, 0));
 }
