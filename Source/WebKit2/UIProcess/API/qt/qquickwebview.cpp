@@ -1865,7 +1865,7 @@ void QQuickWebView::emitUrlChangeIfNeeded()
 {
     Q_D(QQuickWebView);
 
-    QString activeUrl = d->webPageProxy->activeURL();
+    QString activeUrl = d->webPageProxy->pageLoadState().activeURL();
     if (activeUrl != d->m_currentUrl) {
         d->m_currentUrl = activeUrl;
         emit urlChanged();

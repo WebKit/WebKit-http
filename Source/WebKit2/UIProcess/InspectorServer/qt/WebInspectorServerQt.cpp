@@ -91,9 +91,9 @@ void WebInspectorServer::buildPageList(Vector<char>& data, String& contentType)
         builder.appendLiteral("{ \"id\": ");
         builder.appendNumber(it->key);
         builder.appendLiteral(", \"title\": \"");
-        builder.append(webPage->pageTitle());
+        builder.append(webPage->pageLoadState().title());
         builder.appendLiteral("\", \"url\": \"");
-        builder.append(webPage->activeURL());
+        builder.append(webPage->pageLoadState().activeURL());
         builder.appendLiteral("\", \"inspectorUrl\": \"");
         builder.append(remoteInspectorPagePath());
         builder.appendNumber(it->key);
