@@ -21,7 +21,6 @@
 
 #include "qwebkitglobal.h"
 
-#include <QtCore/QDataStream>
 #include <QtCore/QObject>
 #include <QtCore/QString>
 #include <QtCore/QUrl>

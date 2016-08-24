@@ -21,7 +21,6 @@
 #ifndef QtPageClient_h
 #define QtPageClient_h
 
-#include "FindIndicator.h"
 #include "PageClient.h"
 
 class QQuickWebView;
