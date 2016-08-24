@@ -72,7 +72,7 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     unsigned cacheTotalCapacity = 0;
     unsigned cacheMinDeadCapacity = 0;
     unsigned cacheMaxDeadCapacity = 0;
-    double deadDecodedDataDeletionInterval = 0;
+    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
     unsigned pageCacheCapacity = 0;
     unsigned long urlCacheMemoryCapacity = 0;
     unsigned long urlCacheDiskCapacity = 0;
@@ -142,8 +142,7 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     // We'll only install the Qt builtin bundle if we don't have one given by the UI process.
     // Currently only WTR provides its own bundle.
     if (parameters.injectedBundlePath.isEmpty()) {
-        m_injectedBundle = InjectedBundle::create(String());
-        m_injectedBundle->setSandboxExtension(SandboxExtension::create(parameters.injectedBundlePathExtensionHandle));
+        InjectedBundle::create(parameters, transformHandlesToObjects(parameters.initializationUserData.object()).get());
         QtBuiltinBundle::shared().initialize(toAPI(m_injectedBundle.get()));
     }
 }

@@ -1821,7 +1821,7 @@ void QQuickWebView::reload()
         // about the unreachable url yet. If we just do a reload at this point WebCore will try to
         // reload the currently committed url instead of the unrachable url. To work around this
         // we override the reload here by doing a manual load.
-        d->webPageProxy->loadURL(mainFrame->unreachableURL());
+        d->webPageProxy->loadRequest(mainFrame->unreachableURL());
         // FIXME: We should make WebCore aware of the unreachable url regardless of substitute-loads
         return;
     }

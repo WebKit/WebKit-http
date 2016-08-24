@@ -334,7 +334,7 @@ void WebPage::hidePopupMenu()
         return;
 
     m_activePopupMenu->client()->popupDidHide();
-    m_activePopupMenu = 0;
+    m_activePopupMenu = nullptr;
 }
 
 } // namespace WebKit
