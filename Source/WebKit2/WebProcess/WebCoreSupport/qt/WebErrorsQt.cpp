@@ -54,6 +54,12 @@ ResourceError blockedError(const ResourceRequest& request)
                          QCoreApplication::translate("QWebFrame", "Request blocked"));
 }
 
+ResourceError blockedByContentBlockerError(const WebCore::ResourceRequest& request)
+{
+    return ResourceError(API::Error::webKitErrorDomain(), kWKErrorCodeFrameLoadBlockedByContentBlocker, request.url(),
+                         QCoreApplication::translate("QWebFrame", "The URL was blocked by a content blocker"));
+}
+
 ResourceError cannotShowURLError(const ResourceRequest& request)
 {
     return ResourceError(API::Error::webKitErrorDomain(), kWKErrorCodeCannotShowURL, request.url(),
@@ -82,6 +88,12 @@ ResourceError pluginWillHandleLoadError(const ResourceResponse& response)
 {
     return ResourceError(API::Error::webKitErrorDomain(), kWKErrorCodePlugInWillHandleLoad, response.url(),
                          QCoreApplication::translate("QWebFrame", "Loading is handled by the media engine"));
+}
+
+ResourceError internalError(const WebCore::URL& url)
+{
+    return ResourceError(API::Error::webKitErrorDomain(), kWKErrorInternal, url,
+                         QCoreApplication::translate("QWebFrame", "WebKit encountered an internal error"));
 }
 
 } // namespace WebKit
