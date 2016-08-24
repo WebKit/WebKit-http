@@ -119,8 +119,8 @@ bool QtWebPageUIClient::runJavaScriptConfirm(WKPageRef, WKStringRef message, WKF
 
 static inline WKStringRef createNullWKString()
 {
-    RefPtr<WebString> webString = WebString::createNull();
-    return toAPI(webString.release().leakRef());
+    RefPtr<API::String> apiString = API::String::createNull();
+    return toAPI(apiString.release().leakRef());
 }
 
 WKStringRef QtWebPageUIClient::runJavaScriptPrompt(WKPageRef, WKStringRef message, WKStringRef defaultValue, WKFrameRef, const void* clientInfo)
