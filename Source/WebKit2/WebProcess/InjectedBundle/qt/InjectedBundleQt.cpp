@@ -34,7 +34,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-bool InjectedBundle::load(APIObject* initializationUserData)
+bool InjectedBundle::initialize(const WebProcessCreationParameters&, API::Object* initializationUserData)
 {
     m_platformBundle.setFileName(static_cast<QString>(m_path));
     if (!m_platformBundle.load()) {

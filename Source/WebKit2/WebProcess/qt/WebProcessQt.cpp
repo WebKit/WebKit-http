@@ -104,7 +104,7 @@ static void parentProcessDiedCallback(void*)
 }
 #endif
 
-void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, IPC::MessageDecoder&)
+void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& parameters)
 {
 #if ENABLE(SECCOMP_FILTERS)
     {

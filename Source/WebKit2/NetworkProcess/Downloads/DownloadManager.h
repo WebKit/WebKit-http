@@ -96,7 +96,7 @@ public:
     AuthenticationManager& downloadsAuthenticationManager();
 
 #if PLATFORM(QT)
-    void startTransfer(uint64_t downloadID, const String& destination);
+    void startTransfer(DownloadID, const String& destination);
 #endif
 
 private:

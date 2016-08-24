@@ -150,7 +150,7 @@ AuthenticationManager& DownloadManager::downloadsAuthenticationManager()
 }
 
 #if PLATFORM(QT)
-void DownloadManager::startTransfer(uint64_t downloadID, const String& destination)
+void DownloadManager::startTransfer(DownloadID downloadID, const String& destination)
 {
     ASSERT(m_downloads.contains(downloadID));
     Download* download = m_downloads.get(downloadID);

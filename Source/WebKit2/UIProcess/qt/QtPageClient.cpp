@@ -88,7 +88,7 @@ void QtPageClient::pageDidRequestScroll(const IntPoint& pos)
     QQuickWebViewPrivate::get(m_webView)->pageDidRequestScroll(pos);
 }
 
-void QtPageClient::processDidCrash()
+void QtPageClient::processDidExit()
 {
     QQuickWebViewPrivate::get(m_webView)->processDidCrash();
 }
@@ -98,7 +98,7 @@ void QtPageClient::didRelaunchProcess()
     QQuickWebViewPrivate::get(m_webView)->didRelaunchProcess();
 }
 
-void QtPageClient::didChangeContentsSize(const IntSize& newSize)
+void QtPageClient::didChangeContentSize(const IntSize& newSize)
 {
     PageViewportController* pvc = QQuickWebViewPrivate::get(m_webView)->viewportController();
     if (pvc)
@@ -199,12 +199,12 @@ FloatRect QtPageClient::convertToUserSpace(const FloatRect& rect)
     return rect;
 }
 
-IntPoint QtPageClient::screenToWindow(const IntPoint& point)
+IntPoint QtPageClient::screenToRootView(const IntPoint& point)
 {
     return point;
 }
 
-IntRect QtPageClient::windowToScreen(const IntRect& rect)
+IntRect QtPageClient::rootViewToScreen(const IntRect& rect)
 {
     return rect;
 }
@@ -220,7 +220,7 @@ std::unique_ptr<WebContextMenuProxy> QtPageClient::createContextMenuProxy(WebPag
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassRefPtr<WebColorPicker> QtPageClient::createColorPicker(WebPageProxy* webPageProxy, const WebCore::Color& initialColor, const WebCore::IntRect& elementRect)
+RefPtr<WebColorPicker> QtPageClient::createColorPicker(WebPageProxy* webPageProxy, const WebCore::Color& initialColor, const WebCore::IntRect& elementRect)
 {
     return WebColorPickerQt::create(webPageProxy, m_webView, initialColor, elementRect);
 }
