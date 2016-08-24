@@ -37,11 +37,9 @@ class WebPageProxy;
 class WebContextMenuProxyQt : public QObject, public WebContextMenuProxy {
     Q_OBJECT
 public:
-    static PassRefPtr<WebContextMenuProxyQt> create(WebPageProxy*);
+    WebContextMenuProxyQt(const ContextMenuContextData&, const UserData&);
 
 private:
-    WebContextMenuProxyQt(WebPageProxy*);
-
     virtual void showContextMenu(const WebCore::IntPoint&, const Vector<WebContextMenuItemData>&);
     virtual void hideContextMenu();
 };

@@ -214,9 +214,9 @@ PassRefPtr<WebPopupMenuProxy> QtPageClient::createPopupMenuProxy(WebPageProxy* w
     return WebPopupMenuProxyQt::create(webPageProxy, m_webView);
 }
 
-PassRefPtr<WebContextMenuProxy> QtPageClient::createContextMenuProxy(WebPageProxy* webPageProxy)
+std::unique_ptr<WebContextMenuProxy> QtPageClient::createContextMenuProxy(WebPageProxy&, const ContextMenuContextData& context, const UserData& userData)
 {
-    return WebContextMenuProxyQt::create(webPageProxy);
+    return std::make_unique<WebContextMenuProxyQt>(context, userData);
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
