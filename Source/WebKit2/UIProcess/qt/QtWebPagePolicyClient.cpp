@@ -133,7 +133,7 @@ void QtWebPagePolicyClient::decidePolicyForNavigationAction(WKPageRef page, WKFr
 void QtWebPagePolicyClient::decidePolicyForResponse(WKPageRef page, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef, WKFramePolicyListenerRef listener, WKTypeRef, const void*)
 {
     String type = toImpl(response)->resourceResponse().mimeType();
-    type.makeLower();
+    type.convertToASCIILowercase(); // QTFIXME: See also FrameLoaderClientQt
     bool canShowMIMEType = toImpl(frame)->canShowMIMEType(type);
 
     if (WKPageGetMainFrame(page) == frame) {
