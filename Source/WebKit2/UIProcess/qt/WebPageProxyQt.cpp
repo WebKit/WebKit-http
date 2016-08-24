@@ -70,6 +70,15 @@ void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::t
     notImplemented();
 }
 
+void WebPageProxy::editorStateChanged(const EditorState& editorState)
+{
+    m_editorState = editorState;
+
+    if (editorState.shouldIgnoreCompositionSelectionChange)
+        return;
+    m_pageClient.updateTextInputState();
+}
+
 void WebPageProxy::registerApplicationScheme(const String& scheme)
 {
     process().send(Messages::WebPage::RegisterApplicationScheme(scheme), m_pageID);
