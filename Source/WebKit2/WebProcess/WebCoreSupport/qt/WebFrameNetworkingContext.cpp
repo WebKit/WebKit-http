@@ -66,6 +66,15 @@ WebFrameLoaderClient* WebFrameNetworkingContext::webFrameLoaderClient() const
     return toWebFrameLoaderClient(frame()->loader().client());
 }
 
+QNetworkAccessManager* WebFrameNetworkingContext::networkAccessManager() const
+{
+    // QTFIXME: This is a leftover of old process model
+    // QtMM player may call networkAccessManager() in WebProcess
+    // so we cannot just have ASSERT here.
+    qWarning("QtWebKit bug: WebFrameNetworkingContext::networkAccessManager() is called");
+    return nullptr;
+}
+
 WebCore::NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
     if (frame() && frame()->page()->usesEphemeralSession())

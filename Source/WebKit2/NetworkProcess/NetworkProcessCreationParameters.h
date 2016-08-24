@@ -97,6 +97,11 @@ struct NetworkProcessCreationParameters {
     bool ignoreTLSErrors;
     Vector<String> languages;
 #endif
+
+#if PLATFORM(QT)
+    String cookiePersistentStoragePath;
+    Vector<String> languages;
+#endif
 };
 
 } // namespace WebKit

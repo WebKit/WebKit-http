@@ -84,8 +84,6 @@
 #include "QtNetworkReplyData.h"
 #include "QtNetworkRequestData.h"
 #include "TapHighlightController.h"
-#include <QNetworkReply>
-#include <QNetworkRequest>
 #endif
 
 #if HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))

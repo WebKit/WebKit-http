@@ -236,11 +236,11 @@ void DownloadProxy::didCancel(const IPC::DataReference& resumeData)
 #if PLATFORM(QT)
 void DownloadProxy::startTransfer(const String& filename)
 {
-    if (!m_webContext)
+    if (!m_processPool)
         return;
 
-    // FIXME (Multi-WebProcess): <rdar://problem/12239483> Downloads shouldn't be handled in the web process.
-    m_webContext->sendToAllProcesses(Messages::WebProcess::StartTransfer(m_downloadID, filename));
+    if (NetworkProcessProxy* networkProcess = m_processPool->networkProcess())
+        networkProcess->connection()->send(Messages::NetworkProcess::StartTransfer(m_downloadID, filename), 0);
 }
 #endif
 

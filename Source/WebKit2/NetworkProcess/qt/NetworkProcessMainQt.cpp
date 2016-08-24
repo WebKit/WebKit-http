@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
- * Copyright (C) 2013 University of Szeged. All rights reserved.
+ * Copyright (C) 2016 Konstantin Tokarev <annulen@yandex.ru>
+ * Copyright (C) 2014 Igalia S.L.
  * Copyright (C) 2013 Company 100 Inc.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS''
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
@@ -26,40 +26,17 @@
  */
 
 #include "config.h"
-#include "RemoteNetworkingContext.h"
-
 #include "NetworkProcess.h"
-#include <WebCore/NetworkStorageSession.h>
-#include <WebCore/NotImplemented.h>
-#include <WebCore/ResourceHandle.h>
-#include <wtf/NeverDestroyed.h>
+
+#include "ChildProcessMain.h"
 
 using namespace WebCore;
 
 namespace WebKit {
 
-RemoteNetworkingContext::~RemoteNetworkingContext()
+Q_DECL_EXPORT int NetworkProcessMainQt(int argc, char** argv)
 {
+    return ChildProcessMain<NetworkProcess, ChildProcessMainBase>(argc, argv);
 }
 
-bool RemoteNetworkingContext::isValid() const
-{
-    return true;
-}
-
-void RemoteNetworkingContext::ensurePrivateBrowsingSession(SessionID)
-{
-    notImplemented();
-}
-
-NetworkStorageSession& RemoteNetworkingContext::storageSession() const
-{
-    return NetworkStorageSession::defaultStorageSession();
-}
-
-QNetworkAccessManager* RemoteNetworkingContext::networkAccessManager() const
-{
-     return NetworkProcess::singleton().networkAccessManager();
-}
-
-}
+} // namespace WebKit

@@ -28,16 +28,11 @@
 
 #include "InjectedBundle.h"
 #include "QtBuiltinBundle.h"
-#include "QtNetworkAccessManager.h"
 #include "SeccompFiltersWebProcessQt.h"
 #include "WKBundleAPICast.h"
 #include "WebProcessCreationParameters.h"
 
 #include <QCoreApplication>
-#include <QNetworkAccessManager>
-#include <QNetworkCookieJar>
-#include <QNetworkDiskCache>
-#include <WebCore/CookieJarQt.h>
 #include <WebCore/FileSystem.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/PageCache.h>
@@ -61,11 +56,15 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
 {
     uint64_t physicalMemorySizeInMegabytes = WTF::ramSize() / 1024 / 1024;
 
+    // QTFIXME: leftover of old process model
+#if 0
     // The Mac port of WebKit2 uses a fudge factor of 1000 here to account for misalignment, however,
     // that tends to overestimate the memory quite a bit (1 byte misalignment ~ 48 MiB misestimation).
     // We use 1024 * 1023 for now to keep the estimation error down to +/- ~1 MiB.
     QNetworkDiskCache* diskCache = qobject_cast<QNetworkDiskCache*>(m_networkAccessManager->cache());
     uint64_t freeVolumeSpace = !diskCache ? 0 : WebCore::getVolumeFreeSizeForPath(diskCache->cacheDirectory().toLocal8Bit().constData()) / 1024 / 1023;
+#endif
+    uint64_t freeVolumeSpace = 0;
 
     // The following variables are initialised to 0 because WebProcess::calculateCacheSizes might not
     // set them in some rare cases.
@@ -81,8 +80,11 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
                         cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
                         pageCacheCapacity, urlCacheMemoryCapacity, urlCacheDiskCapacity);
 
+    // QTFIXME: leftover of old process model
+#if 0
     if (diskCache)
         diskCache->setMaximumCacheSize(urlCacheDiskCapacity);
+#endif
 
     auto& memoryCache = MemoryCache::singleton();
     memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
@@ -113,6 +115,8 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     }
 #endif
 
+    // QTFIXME: leftover of old process model
+#if 0
     m_networkAccessManager = new QtNetworkAccessManager(this);
 
     if (!parameters.cookieStorageDirectory.isEmpty()) {
@@ -128,6 +132,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
         // The m_networkAccessManager takes ownership of the diskCache object upon the following call.
         m_networkAccessManager->setCache(diskCache);
     }
+#endif
 
 #if defined(Q_OS_MACX)
     pid_t ppid = getppid();
@@ -149,9 +154,12 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 
 void WebProcess::platformTerminate()
 {
+    // QTFIXME: leftover of old process model
+#if 0
     delete m_networkAccessManager;
     m_networkAccessManager = 0;
     WebCore::SharedCookieJarQt::shared()->destroy();
+#endif
 }
 
 } // namespace WebKit

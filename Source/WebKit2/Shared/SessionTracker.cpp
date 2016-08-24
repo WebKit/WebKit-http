@@ -95,6 +95,10 @@ NetworkSession* SessionTracker::networkSession(SessionID sessionID)
 
 SessionID SessionTracker::sessionID(const NetworkStorageSession& session)
 {
+    // QTFIXME: See issues #54 and #53
+#if PLATFORM(QT)
+    return SessionID::defaultSessionID();
+#endif
     if (&session == &NetworkStorageSession::defaultStorageSession())
         return SessionID::defaultSessionID();
     return storageSessionToID().get(&session);

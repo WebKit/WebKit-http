@@ -26,14 +26,34 @@
 #include "config.h"
 #include "NetworkProcess.h"
 
+#include "NetworkProcessCreationParameters.h"
+#include "QtNetworkAccessManager.h"
+
 #include <WebCore/CertificateInfo.h>
+#include <WebCore/CookieJarQt.h>
+#include <QNetworkDiskCache>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters&)
+void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
+    m_networkAccessManager = new QtNetworkAccessManager(nullptr);
+
+    if (!parameters.cookiePersistentStoragePath.isEmpty()) {
+        WebCore::SharedCookieJarQt* jar = WebCore::SharedCookieJarQt::create(parameters.cookiePersistentStoragePath);
+        m_networkAccessManager->setCookieJar(jar);
+        // Do not let QNetworkAccessManager delete the jar.
+        jar->setParent(0);
+    }
+
+    if (!parameters.diskCacheDirectory.isEmpty()) {
+        QNetworkDiskCache* diskCache = new QNetworkDiskCache();
+        diskCache->setCacheDirectory(parameters.diskCacheDirectory);
+        // The m_networkAccessManager takes ownership of the diskCache object upon the following call.
+        m_networkAccessManager.setCache(diskCache);
+    }
 }
 
 void NetworkProcess::platformTerminate()

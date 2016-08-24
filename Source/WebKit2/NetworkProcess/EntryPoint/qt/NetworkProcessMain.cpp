@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
- * Copyright (C) 2013 University of Szeged. All rights reserved.
- * Copyright (C) 2013 Company 100 Inc.
+ * Copyright (C) 2016 Konstantin Tokarev <annulen@yandex.ru>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,40 +24,12 @@
  */
 
 #include "config.h"
-#include "RemoteNetworkingContext.h"
-
-#include "NetworkProcess.h"
-#include <WebCore/NetworkStorageSession.h>
-#include <WebCore/NotImplemented.h>
-#include <WebCore/ResourceHandle.h>
-#include <wtf/NeverDestroyed.h>
-
-using namespace WebCore;
 
 namespace WebKit {
-
-RemoteNetworkingContext::~RemoteNetworkingContext()
-{
+Q_DECL_IMPORT int NetworkProcessMainQt(int argc, char** argv);
 }
 
-bool RemoteNetworkingContext::isValid() const
+int main(int argc, char** argv)
 {
-    return true;
-}
-
-void RemoteNetworkingContext::ensurePrivateBrowsingSession(SessionID)
-{
-    notImplemented();
-}
-
-NetworkStorageSession& RemoteNetworkingContext::storageSession() const
-{
-    return NetworkStorageSession::defaultStorageSession();
-}
-
-QNetworkAccessManager* RemoteNetworkingContext::networkAccessManager() const
-{
-     return NetworkProcess::singleton().networkAccessManager();
-}
-
+    return WebKit::NetworkProcessMainQt(argc, argv);
 }
