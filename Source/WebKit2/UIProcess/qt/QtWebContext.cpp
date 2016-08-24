@@ -155,10 +155,11 @@ QtWebContext* QtWebContext::defaultContext()
         WKContextSetCacheModel(wkContext.get(), kWKCacheModelDocumentBrowser);
 
         // Those paths have to be set before the first web process is spawned.
-        WKContextSetDatabaseDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DatabaseStorage))).get());
-        WKContextSetLocalStorageDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(LocalStorage))).get());
+// QTFIXME
+//        WKContextSetDatabaseDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DatabaseStorage))).get());
+//        WKContextSetLocalStorageDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(LocalStorage))).get());
         WKContextSetCookieStorageDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(CookieStorage))).get());
-        WKContextSetDiskCacheDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DiskCacheStorage))).get());
+//        WKContextSetDiskCacheDirectory(wkContext.get(), adoptWK(WKStringCreateWithQString(preparedStoragePath(DiskCacheStorage))).get());
 
         s_defaultQtWebContext = QtWebContext::create(wkContext.get());
     }

@@ -41,12 +41,14 @@ namespace WebKit {
 
 String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 {
-    const String cacheDirectory = WebCore::cacheStorage().cacheDirectory();
+// QTFIXME
+//    const String cacheDirectory = WebCore::cacheStorage().cacheDirectory();
 
-    if (cacheDirectory.isEmpty())
-        return diskCacheDirectory();
+//    if (cacheDirectory.isEmpty())
+//        return diskCacheDirectory();
 
-    return cacheDirectory;
+//    return cacheDirectory;
+    return API::WebsiteDataStore::defaultApplicationCacheDirectory();
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
