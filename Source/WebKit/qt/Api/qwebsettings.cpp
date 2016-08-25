@@ -250,7 +250,7 @@ void QWebSettingsPrivate::apply()
 
         value = attributes.value(QWebSettings::OfflineStorageDatabaseEnabled,
                                       global->attributes.value(QWebSettings::OfflineStorageDatabaseEnabled));
-        WebCore::DatabaseManager::singleton().setIsAvailable(value);
+        settings->setOfflineStorageDatabaseEnabled(value);
 
         value = attributes.value(QWebSettings::OfflineWebApplicationCacheEnabled,
                                       global->attributes.value(QWebSettings::OfflineWebApplicationCacheEnabled));

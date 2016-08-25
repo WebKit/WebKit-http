@@ -79,6 +79,7 @@ needsSiteSpecificQuirks initial=false
 domTimersThrottlingEnabled initial=true
 webArchiveDebugModeEnabled initial=false, conditional=WEB_ARCHIVE
 localFileContentSniffingEnabled initial=false
+offlineStorageDatabaseEnabled initial=false
 offlineWebApplicationCacheEnabled initial=false
 enforceCSSMIMETypeInNoQuirksMode initial=true
 usesEncodingDetector initial=false
