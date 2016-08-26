@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2016 Igalia S.L.
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,6 +49,7 @@ public:
     bool sendMessageToFrontend(const String& rspMsg);
     void setClient();
     void setProcessPool(WebKit::WebProcessPool* processPool);
+    void setSessionIdentifier(const String& sessionIdentifier);
 
 private:
     WebAutomation();

@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2016 Igalia S.L.
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,6 +70,12 @@ void WebAutomation::setProcessPool(WebKit::WebProcessPool* processPool)
 {
     //Link Process Pool and Automation Session together
     processPool->setAutomationSession(m_webAutomationSession);
+    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
+}
+
+void WebAutomation::setSessionIdentifier(const String& sessionIdentifier)
+{
+    m_webAutomationSession->setSessionIdentifier(sessionIdentifier);
     printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 }
 

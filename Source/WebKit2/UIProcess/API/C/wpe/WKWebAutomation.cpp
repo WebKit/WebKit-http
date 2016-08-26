@@ -1,5 +1,6 @@
- /*
- * Copyright (C) 2016 Igalia S.L.
+/*
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,6 +43,7 @@ WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKP
     WKWebAutomationSessionRef automationSession = toAPI(WKWPE::WebAutomation::create());
     printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     toImpl (automationSession)->setClient();
+    toImpl (automationSession)->setSessionIdentifier("wpe");
     printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     toImpl (automationSession)->setProcessPool(toImpl(context));
     printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
