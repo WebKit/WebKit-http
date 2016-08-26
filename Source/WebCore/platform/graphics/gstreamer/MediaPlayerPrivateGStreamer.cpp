@@ -397,7 +397,7 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
 #if PLATFORM(BCM_NEXUS)
     // implement getting pts time from broadcom decoder directly for seek functionality
     gint64 currentPts = -1;
-    GstElement* videoDec = findVideoDecoder(m_pipeline.get());
+    /*GstElement**/ videoDec = findVideoDecoder(m_pipeline.get());
     const char* videoPtsPropertyName = "video_pts";
     if (videoDec)
         g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
