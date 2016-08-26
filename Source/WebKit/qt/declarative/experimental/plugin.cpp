@@ -45,7 +45,7 @@ public:
 
 class WebKitQmlExperimentalExtensionPlugin: public QQmlExtensionPlugin {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QQmlExtensionInterface" FILE "plugin.json")
+    Q_PLUGIN_METADATA(IID QQmlExtensionInterface_iid FILE "plugin.json")
 public:
     void registerTypes(const char* uri) override
     {
