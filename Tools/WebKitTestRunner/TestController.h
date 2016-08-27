@@ -314,8 +314,8 @@ private:
     std::unique_ptr<EventSenderProxy> m_eventSenderProxy;
 
 #if PLATFORM(QT)
-    class RunLoop;
-    RunLoop* m_runLoop;
+    class RunLoopQt;
+    RunLoopQt* m_runLoop;
 #endif
 
     WorkQueueManager m_workQueueManager;

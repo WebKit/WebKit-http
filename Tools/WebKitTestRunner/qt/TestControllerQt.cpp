@@ -44,10 +44,10 @@
 
 namespace WTR {
 
-class TestController::RunLoop : public QObject {
+class TestController::RunLoopQt : public QObject {
     Q_OBJECT
 public:
-    RunLoop();
+    RunLoopQt();
 
     void runUntil(double timeout);
     void notifyDone();
@@ -61,14 +61,14 @@ private:
     bool m_runUntilLoopClosePending;
 };
 
-TestController::RunLoop::RunLoop()
+TestController::RunLoopQt::RunLoopQt()
     : m_runUntilLoopClosePending(false)
 {
     m_runUntilLoopTimer.setSingleShot(true);
     QObject::connect(&m_runUntilLoopTimer, SIGNAL(timeout()), this, SLOT(timerFired()));
 }
 
-void TestController::RunLoop::runUntil(double timeout)
+void TestController::RunLoopQt::runUntil(double timeout)
 {
     ASSERT(!m_runUntilLoop.isRunning());
     if (timeout) {
@@ -78,7 +78,7 @@ void TestController::RunLoop::runUntil(double timeout)
     m_runUntilLoop.exec(QEventLoop::ExcludeUserInputEvents);
 }
 
-void TestController::RunLoop::notifyDone()
+void TestController::RunLoopQt::notifyDone()
 {
     if (m_modalLoop.isRunning()) {
         // Wait for the modal loop first. We only kill it if we timeout.
@@ -90,7 +90,7 @@ void TestController::RunLoop::notifyDone()
     m_runUntilLoop.exit();
 }
 
-void TestController::RunLoop::timerFired()
+void TestController::RunLoopQt::timerFired()
 {
     if (m_modalLoop.isRunning()) {
         m_runUntilLoopClosePending = true;
@@ -101,7 +101,7 @@ void TestController::RunLoop::timerFired()
     m_runUntilLoop.exit();
 }
 
-void TestController::RunLoop::runModal(PlatformWebView* view)
+void TestController::RunLoopQt::runModal(PlatformWebView* view)
 {
     ASSERT(!m_modalLoop.isRunning());
     view->setModalEventLoop(&m_modalLoop);
@@ -118,7 +118,7 @@ void TestController::notifyDone()
 
 void TestController::platformInitialize()
 {
-    m_runLoop = new RunLoop;
+    m_runLoop = new RunLoopQt;
     QQuickWebView::platformInitialize();
 }
 
