@@ -131,7 +131,7 @@ void TestController::platformDestroy()
 void TestController::platformRunUntil(bool& condition, double timeout)
 {
     UNUSED_PARAM(condition);
-    const bool shouldTimeout = !(qgetenv("QT_WEBKIT2_DEBUG") == "1" || timeout == m_noTimeout);
+    const bool shouldTimeout = !(qgetenv("QT_WEBKIT2_DEBUG") == "1" || timeout <= 0);
     m_runLoop->runUntil(shouldTimeout ? timeout : 0);
 }
 
