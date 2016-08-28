@@ -80,11 +80,8 @@ void TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded()
 
     if (m_waitToDumpWatchdogTimer.isActive())
         return;
-    if (m_timeout > 0)
-        timerInterval = m_timeout;
-    else
-        timerInterval = waitToDumpWatchdogTimerInterval * 1000;
 
+    timerInterval = m_timeout;
     m_waitToDumpWatchdogTimer.start(timerInterval);
 }
 
