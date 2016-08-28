@@ -48,6 +48,16 @@ Ref<WebFrameNetworkingContext> WebFrameNetworkingContext::create(WebFrame* frame
     return adoptRef(*new WebFrameNetworkingContext(frame));
 }
 
+void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID)
+{
+    ASSERT(isMainThread());
+
+    if (SessionTracker::storageSession(sessionID))
+        return;
+
+    SessionTracker::setSession(sessionID, NetworkStorageSession::createPrivateBrowsingSession(String::number(sessionID.sessionID())));
+}
+
 WebFrameLoaderClient* WebFrameNetworkingContext::webFrameLoaderClient() const
 {
     if (!frame())

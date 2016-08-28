@@ -32,6 +32,8 @@ class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
     static Ref<WebFrameNetworkingContext> create(WebFrame*);
 
+    static void ensurePrivateBrowsingSession(WebCore::SessionID);
+
     WebFrameLoaderClient* webFrameLoaderClient() const;
 
     QObject* originatingObject() const override { return m_originatingObject.get(); }
