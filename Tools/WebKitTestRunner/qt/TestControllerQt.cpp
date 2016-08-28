@@ -123,6 +123,11 @@ void TestController::platformInitialize()
     QQuickWebView::platformInitialize();
 }
 
+WKPreferencesRef TestController::platformPreferences()
+{
+    return WKPageGroupGetPreferences(m_pageGroup.get());
+}
+
 void TestController::platformDestroy()
 {
     delete m_runLoop;

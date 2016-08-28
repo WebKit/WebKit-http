@@ -104,10 +104,9 @@ JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSStringRef url)
     return url;
 }
 
-JSRetainPtr<JSStringRef> TestRunner::platformName()
+JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
 {
-    JSRetainPtr<JSStringRef> platformName(Adopt, JSStringCreateWithUTF8CString("qt"));
-    return platformName;
+    return JSStringCreateWithUTF8CString("qrc:/webkit/inspector/UserInterface/TestStub.html");
 }
 
 } // namespace WTR

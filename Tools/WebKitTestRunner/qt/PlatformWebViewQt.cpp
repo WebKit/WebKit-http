@@ -107,6 +107,11 @@ PlatformWebView::~PlatformWebView()
         m_modalEventLoop->exit();
 }
 
+void PlatformWebView::setWindowIsKey(bool isKey)
+{
+    m_windowIsKey = isKey;
+}
+
 void PlatformWebView::resizeTo(unsigned width, unsigned height)
 {
     // If we do not have a platform window we will never get the necessary
