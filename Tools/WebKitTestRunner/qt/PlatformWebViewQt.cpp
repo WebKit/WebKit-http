@@ -30,7 +30,7 @@
 #include "qquickwebpage_p.h"
 #include "qquickwebview_p.h"
 
-#include <QCoreApplication>
+#include <QApplication>
 #include <QEventLoop>
 #include <QQmlProperty>
 #include <QtQuick/QQuickView>

@@ -28,7 +28,6 @@
 #include "TestController.h"
 
 #include "PlatformWebView.h"
-#include "WKStringQt.h"
 
 #include <cstdlib>
 #include <QCoreApplication>
