@@ -46,8 +46,8 @@ my $className = "";
 my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" => 1, "DOMImplementation" => 1,
                     "Event" => 1, "CSSRule" => 1, "CSSValue" => 1, "StyleSheet" => 1, "MediaList" => 1,
                     "Counter" => 1, "Rect" => 1, "RGBColor" => 1, "XPathExpression" => 1, "XPathResult" => 1,
-                    "NodeIterator" => 1, "TreeWalker" => 1, "AbstractView" => 1, "Blob" => 1, "DOMTokenList" => 1,
-                    "HTMLCollection" => 1, "TextTrackCue" => 1, "AnimationTimeline" => 1);
+                    "NodeIterator" => 1, "TreeWalker" => 1, "Blob" => 1, "DOMTokenList" => 1,
+                    "HTMLCollection" => 1, "TextTrackCue" => 1, "AnimationTimeline" => 1, "AnimationEffect" => 1);
 
 # Only objects derived from Node are released by the DOM object cache and can be
 # transfer none. Ideally we could use GetBaseClass with the parent type to check
@@ -63,9 +63,9 @@ my %transferFullTypeHash = ("AudioTrack" => 1, "AudioTrackList" => 1, "BarProp" 
     "DOMWindow" => 1, "DOMWindowCSS" => 1, "EventTarget" => 1,
     "File" => 1, "FileList" => 1, "Gamepad" => 1, "GamepadList" => 1,
     "Geolocation" => 1, "HTMLOptionsCollection" => 1, "History" => 1,
-    "KeyboardEvent" => 1, "MediaError" => 1, "MediaController" => 1,
+    "KeyboardEvent" => 1, "KeyframeEffect" => 1, "MediaError" => 1, "MediaController" => 1,
     "MouseEvent" => 1, "MediaQueryList" => 1, "Navigator" => 1, "NodeFilter" => 1,
-    "Performance" => 1, "PerformanceEntry" => 1, "PerformanceEntryList" => 1, "PerformanceNavigation" => 1, "PerformanceTiming" => 1,
+    "Performance" => 1, "PerformanceEntry" => 1, "PerformanceNavigation" => 1, "PerformanceTiming" => 1,
     "Range" => 1, "Screen" => 1, "SpeechSynthesis" => 1, "SpeechSynthesisVoice" => 1,
     "Storage" => 1, "StyleMedia" => 1, "TextTrack" => 1, "TextTrackCueList" => 1,
     "TimeRanges" => 1, "Touch" => 1, "UIEvent" => 1, "UserMessageHandler" => 1, "UserMessageHandlersNamespace" => 1,
@@ -244,12 +244,7 @@ sub SkipAttribute {
 
     return 1 if $attribute->isStatic;
     return 1 if $codeGenerator->IsTypedArrayType($propType);
-
-    $codeGenerator->AssertNotSequenceType($propType);
-
-    if ($codeGenerator->GetArrayType($propType)) {
-        return 1;
-    }
+    return 1 if $codeGenerator->IsSequenceOrFrozenArrayType($propType);
 
     if ($codeGenerator->IsEnumType($propType)) {
         return 1;
@@ -325,7 +320,7 @@ sub SkipFunction {
         return 1 if $param->extendedAttributes->{"Clamp"};
         return 1 if $param->type eq "MediaQueryListListener";
         return 1 if $param->type eq "EventListener";
-        return 1 if $codeGenerator->GetSequenceType($param->type);
+        return 1 if $codeGenerator->IsSequenceOrFrozenArrayType($param->type);
     }
 
     # This is for DataTransferItemList.idl add(File) method
@@ -338,7 +333,7 @@ sub SkipFunction {
         return 1;
     }
 
-    if ($codeGenerator->IsTypedArrayType($function->signature->type) || $codeGenerator->GetArrayType($function->signature->type)) {
+    if ($codeGenerator->IsTypedArrayType($function->signature->type)) {
         return 1;
     }
 
@@ -366,7 +361,7 @@ sub SkipFunction {
         return 1;
     }
 
-    if ($codeGenerator->GetSequenceType($functionReturnType)) {
+    if ($codeGenerator->IsSequenceOrFrozenArrayType($functionReturnType)) {
         return 1;
     }
 
@@ -391,6 +386,7 @@ sub GetGValueTypeName {
     my $type = shift;
 
     my %types = ("DOMString", "string",
+                 "USVString", "string",
                  "DOMTimeStamp", "uint",
                  "float", "float",
                  "unrestricted float", "float",
@@ -420,6 +416,7 @@ sub GetGlibTypeName {
     my $name = GetClassName($type);
 
     my %types = ("DOMString", "gchar*",
+                 "USVString", "gchar*",
                  "DOMTimeStamp", "guint32",
                  "SerializedScriptValue", "gchar*",
                  "float", "gfloat",
@@ -559,7 +556,7 @@ sub GenerateProperty {
         $mutableString = "read-write";
     }
 
-    my $getterFunctionName = "webkit_dom_${decamelizeInterfaceName}_get_" . $propFunctionName;
+    my $getterFunctionName = GetEffectiveFunctionName("webkit_dom_${decamelizeInterfaceName}_get_" . $propFunctionName);
     if (FunctionUsedToNotRaiseException($getterFunctionName)) {
         $getterFunctionName = $getterFunctionName . "_with_error";
     }
@@ -568,7 +565,7 @@ sub GenerateProperty {
     push(@getterArguments, "nullptr") if $hasGetterException || FunctionUsedToRaiseException($getterFunctionName);
 
     if (grep {$_ eq $attribute} @writeableProperties) {
-        my $setterFunctionName = "webkit_dom_${decamelizeInterfaceName}_set_" . $propFunctionName;
+        my $setterFunctionName = GetEffectiveFunctionName("webkit_dom_${decamelizeInterfaceName}_set_" . $propFunctionName);
         if (FunctionUsedToNotRaiseException($setterFunctionName)) {
             $setterFunctionName = $setterFunctionName . "_with_error";
         }
@@ -1025,6 +1022,12 @@ sub GetEffectiveFunctionName {
         return $functionName . "_as_html_collection";
     }
 
+    # Rename webkit_dom_html_input_element_get_capture as webkit_dom_html_input_element_get_capture_type since
+    # it changed the return value in r204312.
+    if ($functionName eq "webkit_dom_html_input_element_get_capture") {
+        return $functionName . "_type";
+    }
+
     return $functionName;
 }
 
@@ -1100,8 +1103,8 @@ sub GenerateFunction {
     my @callImplParams;
     foreach my $param (@{$function->parameters}) {
         my $paramIDLType = $param->type;
-        my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($paramIDLType);
-        $paramIDLType = $arrayOrSequenceType if $arrayOrSequenceType ne "";
+        my $sequenceType = $codeGenerator->GetSequenceInnerType($paramIDLType);
+        $paramIDLType = $sequenceType if $sequenceType ne "";
         my $paramType = GetGlibTypeName($paramIDLType);
         my $const = $paramType eq "gchar*" ? "const " : "";
         my $paramName = $param->name;
@@ -1119,7 +1122,7 @@ sub GenerateFunction {
                 $implIncludes{"WebKitDOM${paramIDLType}Private.h"} = 1;
             }
         }
-        if ($paramIsGDOMType || ($paramIDLType eq "DOMString") || $param->isVariadic) {
+        if ($paramIsGDOMType || $codeGenerator->IsStringType($paramIDLType) || $param->isVariadic) {
             $paramName = "converted" . $codeGenerator->WK_ucfirst($paramName);
             $paramName = "*$paramName" if $codeGenerator->ShouldPassWrapperByReference($param, $parentNode);
             $paramName = "WTFMove($paramName)" if $param->isVariadic;
@@ -1172,8 +1175,8 @@ sub GenerateFunction {
             last;
         }
         my $paramIDLType = $param->type;
-        my $arrayOrSequenceType = $codeGenerator->GetArrayOrSequenceType($paramIDLType);
-        $paramIDLType = $arrayOrSequenceType if $arrayOrSequenceType ne "";
+        my $sequenceType = $codeGenerator->GetSequenceInnerType($paramIDLType);
+        $paramIDLType = $sequenceType if $sequenceType ne "";
         my $paramType = GetGlibTypeName($paramIDLType);
         # $paramType can have a trailing * in some cases
         $paramType =~ s/\*$//;
@@ -1272,7 +1275,7 @@ sub GenerateFunction {
 
         my $paramCoreType = $paramType;
         my $paramConversionFunction = "";
-        if ($paramIDLType eq "DOMString") {
+        if ($codeGenerator->IsStringType($paramIDLType)) {
             $paramCoreType = "WTF::String";
             $paramConversionFunction = "WTF::String::fromUTF8";
         } elsif ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
@@ -1370,7 +1373,7 @@ EOF
         push(@cBody, "    return 0;\n");
         push(@cBody, "}\n\n");
         return;
-    } elsif ($functionSigType eq "DOMString") {
+    } elsif ($codeGenerator->IsStringType($functionSigType)) {
         my $getterContentHead;
         if ($prefix) {
             my ($functionName, @arguments) = $codeGenerator->GetterExpression(\%implIncludes, $interfaceName, $function);

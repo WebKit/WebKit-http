@@ -26,8 +26,6 @@
 #include "config.h"
 #include "CSSImageSetValue.h"
 
-#if ENABLE(CSS_IMAGE_SET)
-
 #include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CachedImage.h"
@@ -37,7 +35,7 @@
 #include "CrossOriginAccessControl.h"
 #include "Document.h"
 #include "Page.h"
-#include "StyleCachedImageSet.h"
+#include "StyleCachedImage.h"
 #include "StylePendingImage.h"
 #include <wtf/text/StringBuilder.h>
 
@@ -52,16 +50,16 @@ CSSImageSetValue::CSSImageSetValue()
 
 inline void CSSImageSetValue::detachPendingImage()
 {
-    if (is<StylePendingImage>(m_imageSet.get()))
-        downcast<StylePendingImage>(*m_imageSet).detachFromCSSValue();
+    if (is<StylePendingImage>(m_image.get()))
+        downcast<StylePendingImage>(*m_image).detachFromCSSValue();
 }
 
 CSSImageSetValue::~CSSImageSetValue()
 {
     detachPendingImage();
 
-    if (is<StyleCachedImageSet>(m_imageSet.get()))
-        downcast<StyleCachedImageSet>(*m_imageSet).clearImageSetValue();
+    if (is<StyleCachedImage>(m_image.get()))
+        downcast<StyleCachedImage>(*m_image).detachFromCSSValue();
 }
 
 void CSSImageSetValue::fillImageSet()
@@ -100,7 +98,7 @@ CSSImageSetValue::ImageWithScale CSSImageSetValue::bestImageForScaleFactor()
     return image;
 }
 
-StyleCachedImageSet* CSSImageSetValue::cachedImageSet(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
+StyleCachedImage* CSSImageSetValue::bestFitImage(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
     Document* document = loader.document();
     if (Page* page = document->page())
@@ -124,19 +122,19 @@ StyleCachedImageSet* CSSImageSetValue::cachedImageSet(CachedResourceLoader& load
         }
         if (CachedResourceHandle<CachedImage> cachedImage = loader.requestImage(request)) {
             detachPendingImage();
-            m_imageSet = StyleCachedImageSet::create(cachedImage.get(), image.scaleFactor, this);
+            m_image = StyleCachedImage::createForImageSet(cachedImage.get(), image.scaleFactor, *this);
             m_accessedBestFitImage = true;
         }
     }
 
-    return is<StyleCachedImageSet>(m_imageSet.get()) ? downcast<StyleCachedImageSet>(m_imageSet.get()) : nullptr;
+    return is<StyleCachedImage>(m_image.get()) ? downcast<StyleCachedImage>(m_image.get()) : nullptr;
 }
 
 StyleImage* CSSImageSetValue::cachedOrPendingImageSet(const Document& document)
 {
-    if (!m_imageSet)
-        m_imageSet = StylePendingImage::create(this);
-    else if (!m_imageSet->isPendingImage()) {
+    if (!m_image)
+        m_image = StylePendingImage::create(this);
+    else if (!m_image->isPendingImage()) {
         float deviceScaleFactor = 1;
         if (Page* page = document.page())
             deviceScaleFactor = page->deviceScaleFactor();
@@ -144,11 +142,11 @@ StyleImage* CSSImageSetValue::cachedOrPendingImageSet(const Document& document)
         // If the deviceScaleFactor has changed, we may not have the best image loaded, so we have to re-assess.
         if (deviceScaleFactor != m_scaleFactor) {
             m_accessedBestFitImage = false;
-            m_imageSet = StylePendingImage::create(this);
+            m_image = StylePendingImage::create(this);
         }
     }
 
-    return m_imageSet.get();
+    return m_image.get();
 }
 
 String CSSImageSetValue::customCSSText() const
@@ -183,9 +181,9 @@ String CSSImageSetValue::customCSSText() const
 
 bool CSSImageSetValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
-    if (!is<StyleCachedImageSet>(m_imageSet.get()))
+    if (!is<StyleCachedImage>(m_image.get()))
         return false;
-    CachedImage* cachedResource = downcast<StyleCachedImageSet>(*m_imageSet).cachedImage();
+    CachedImage* cachedResource = downcast<StyleCachedImage>(*m_image).cachedImage();
     ASSERT(cachedResource);
     return handler(*cachedResource);
 }
@@ -204,5 +202,3 @@ Ref<CSSImageSetValue> CSSImageSetValue::cloneForCSSOM() const
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(CSS_IMAGE_SET)

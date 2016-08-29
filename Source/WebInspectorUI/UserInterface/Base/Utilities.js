@@ -25,6 +25,7 @@
 
 var emDash = "\u2014";
 var enDash = "\u2013";
+var figureDash = "\u2012";
 var ellipsis = "\u2026";
 
 Object.defineProperty(Object, "shallowCopy",
@@ -466,6 +467,21 @@ Object.defineProperty(Array.prototype, "remove",
                     return;
             }
         }
+    }
+});
+
+Object.defineProperty(Array.prototype, "toggleIncludes",
+{
+    value: function(value, force)
+    {
+        let exists = this.includes(value);
+        if (exists === !!force)
+            return;
+
+        if (exists)
+            this.remove(value);
+        else
+            this.push(value);
     }
 });
 
@@ -917,6 +933,14 @@ Object.defineProperty(String.prototype, "toCamelCase",
     }
 });
 
+Object.defineProperty(String.prototype, "hasMatchingEscapedQuotes",
+{
+    value: function()
+    {
+        return /^\"(?:[^\"\\]|\\.)*\"$/.test(this) || /^\'(?:[^\'\\]|\\.)*\'$/.test(this);
+    }
+});
+
 Object.defineProperty(Math, "roundTo",
 {
     value: function(num, step)
@@ -1025,6 +1049,32 @@ Object.defineProperty(Number, "bytesToString",
         if (higherResolution || Math.abs(megabytes) < 10)
             return WebInspector.UIString("%.2f MB").format(megabytes);
         return WebInspector.UIString("%.1f MB").format(megabytes);
+    }
+});
+
+Object.defineProperty(Number, "abbreviate",
+{
+    value: function(num)
+    {
+        if (num < 1000)
+            return num;
+
+        if (num < 1000000)
+            return WebInspector.UIString("%.1fK").format(Math.round(num / 100) / 10);
+
+        if (num < 1000000000)
+            return WebInspector.UIString("%.1fM").format(Math.round(num / 100000) / 10);
+
+        return WebInspector.UIString("%.1fB").format(Math.round(num / 100000000) / 10);
+    }
+});
+
+Object.defineProperty(Number.prototype, "maxDecimals",
+{
+    value(decimals)
+    {
+        let power = 10 ** decimals;
+        return Math.round(this * power) / power;
     }
 });
 

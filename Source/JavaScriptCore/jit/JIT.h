@@ -493,7 +493,7 @@ namespace JSC {
         void emit_op_create_scoped_arguments(Instruction*);
         void emit_op_create_cloned_arguments(Instruction*);
         void emit_op_argument_count(Instruction*);
-        void emit_op_copy_rest(Instruction*);
+        void emit_op_create_rest(Instruction*);
         void emit_op_get_rest_length(Instruction*);
         void emit_op_check_tdz(Instruction*);
         void emit_op_assert(Instruction*);
@@ -943,6 +943,7 @@ namespace JSC {
 
         JumpList m_exceptionChecks;
         JumpList m_exceptionChecksWithCallFrameRollback;
+        Label m_exceptionHandler;
 
         unsigned m_getByIdIndex;
         unsigned m_putByIdIndex;

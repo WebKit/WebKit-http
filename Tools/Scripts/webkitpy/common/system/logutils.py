@@ -223,6 +223,7 @@ def configure_logger_to_log_to_file(logger, log_path, filesystem):
     handler.setFormatter(formatter)
 
     logger.addHandler(handler)
+    return handler
 
 
 class FileSystemHandler(FileHandler):
@@ -232,4 +233,4 @@ class FileSystemHandler(FileHandler):
         FileHandler.__init__(self, filename)
 
     def _open(self):
-        return self.filesystem.open_text_file_for_writing(self.filename)
+        return self.filesystem.open_text_file_for_writing(self.filename, should_append=True)

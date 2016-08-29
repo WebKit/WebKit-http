@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,11 +66,12 @@ static const char* dfgOpNames[] = {
 #undef STRINGIZE_DFG_OP_ENUM
 };
 
-Graph::Graph(VM& vm, Plan& plan)
+Graph::Graph(VM& vm, Plan& plan, LongLivedState& longLivedState)
     : m_vm(vm)
     , m_plan(plan)
     , m_codeBlock(m_plan.codeBlock)
     , m_profiledBlock(m_codeBlock->alternative())
+    , m_allocator(longLivedState.m_allocator)
     , m_cfg(std::make_unique<CFG>(*this))
     , m_nextMachineLocal(0)
     , m_fixpointState(BeforeFixpoint)
@@ -86,6 +87,17 @@ Graph::Graph(VM& vm, Plan& plan)
 
 Graph::~Graph()
 {
+    for (BlockIndex blockIndex = numBlocks(); blockIndex--;) {
+        BasicBlock* block = this->block(blockIndex);
+        if (!block)
+            continue;
+
+        for (unsigned phiIndex = block->phis.size(); phiIndex--;)
+            m_allocator.free(block->phis[phiIndex]);
+        for (unsigned nodeIndex = block->size(); nodeIndex--;)
+            m_allocator.free(block->at(nodeIndex));
+    }
+    m_allocator.freeAll();
 }
 
 const char *Graph::opName(NodeType op)
@@ -547,7 +559,7 @@ void Graph::dump(PrintStream& out, DumpContext* context)
             RELEASE_ASSERT(block->ssa);
             out.print("  Availability: ", block->ssa->availabilityAtTail, "\n");
             out.print("  Live: ", nodeListDump(block->ssa->liveAtTail), "\n");
-            out.print("  Values: ", nodeMapDump(block->ssa->valuesAtTail, context), "\n");
+            out.print("  Values: ", nodeValuePairListDump(block->ssa->valuesAtTail, context), "\n");
             break;
         } }
         out.print("\n");
@@ -567,6 +579,19 @@ void Graph::dump(PrintStream& out, DumpContext* context)
     }
 }
 
+void Graph::addNodeToMapByIndex(Node* node)
+{
+    if (m_nodeIndexFreeList.isEmpty()) {
+        node->m_index = m_nodesByIndex.size();
+        m_nodesByIndex.append(node);
+        return;
+    }
+    unsigned index = m_nodeIndexFreeList.takeLast();
+    node->m_index = index;
+    ASSERT(!m_nodesByIndex[index]);
+    m_nodesByIndex[index] = node;
+}
+
 void Graph::deleteNode(Node* node)
 {
     if (validationEnabled() && m_form == SSA) {
@@ -575,7 +600,49 @@ void Graph::deleteNode(Node* node)
             DFG_ASSERT(*this, node, !block->ssa->liveAtTail.contains(node));
         }
     }
-    m_nodes.remove(node);
+
+    RELEASE_ASSERT(m_nodesByIndex[node->m_index] == node);
+    unsigned nodeIndex = node->m_index;
+    m_nodesByIndex[nodeIndex] = nullptr;
+    m_nodeIndexFreeList.append(nodeIndex);
+
+    m_allocator.free(node);
+}
+
+void Graph::packNodeIndices()
+{
+    if (m_nodeIndexFreeList.isEmpty())
+        return;
+
+    unsigned holeIndex = 0;
+    unsigned endIndex = m_nodesByIndex.size();
+
+    while (true) {
+        while (holeIndex < endIndex && m_nodesByIndex[holeIndex])
+            ++holeIndex;
+
+        if (holeIndex == endIndex)
+            break;
+        ASSERT(holeIndex < m_nodesByIndex.size());
+        ASSERT(!m_nodesByIndex[holeIndex]);
+
+        do {
+            --endIndex;
+        } while (!m_nodesByIndex[endIndex] && endIndex > holeIndex);
+
+        if (holeIndex == endIndex)
+            break;
+        ASSERT(endIndex > holeIndex);
+        ASSERT(m_nodesByIndex[endIndex]);
+
+        auto& value = m_nodesByIndex[endIndex];
+        value->m_index = holeIndex;
+        m_nodesByIndex[holeIndex] = WTFMove(value);
+        ++holeIndex;
+    }
+
+    m_nodeIndexFreeList.resize(0);
+    m_nodesByIndex.resize(endIndex);
 }
 
 void Graph::dethread()

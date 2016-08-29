@@ -35,13 +35,13 @@ class IntSize;
 
 namespace WebKit {
 
-class CoordinatedDrawingAreaProxy;
+class WebPageProxy;
 
 class CoordinatedLayerTreeHostProxy : public CoordinatedGraphicsSceneClient, public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(CoordinatedLayerTreeHostProxy);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit CoordinatedLayerTreeHostProxy(CoordinatedDrawingAreaProxy*);
+    explicit CoordinatedLayerTreeHostProxy(WebPageProxy&);
     virtual ~CoordinatedLayerTreeHostProxy();
 
     void commitCoordinatedGraphicsState(const WebCore::CoordinatedGraphicsState&);
@@ -58,9 +58,9 @@ protected:
     void dispatchUpdate(std::function<void()>);
 
     // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    CoordinatedDrawingAreaProxy* m_drawingAreaProxy;
+    WebPageProxy& m_webPageProxy;
     RefPtr<CoordinatedGraphicsScene> m_scene;
     WebCore::FloatRect m_lastSentVisibleRect;
     WebCore::FloatPoint m_lastSentTrajectoryVector;

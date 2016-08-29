@@ -149,11 +149,4 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
     return WebCore::filenameToString(diskCacheDirectory.get());
 }
 
-void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
-{
-    m_ignoreTLSErrors = ignoreTLSErrors;
-    if (networkProcess())
-        networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
-}
-
 } // namespace WebKit

@@ -171,9 +171,6 @@ struct WKAutoCorrectionData {
     BOOL _showDebugTapHighlightsForFastClicking;
 
     BOOL _resigningFirstResponder;
-
-    // For testing.
-    BOOL _forceIPadStyleZoomOnInputFocus;
 }
 
 @end
@@ -226,6 +223,12 @@ struct WKAutoCorrectionData {
 - (NSArray *)_dataDetectionResults;
 @end
 
+@interface WKContentView (WKTesting)
+
+- (void)selectFormAccessoryPickerRow:(NSInteger)rowIndex;
+
+@end
+
 #if HAVE(LINK_PREVIEW)
 @interface WKContentView (WKInteractionPreview) <UIPreviewItemDelegate>
 
@@ -233,11 +236,5 @@ struct WKAutoCorrectionData {
 - (void)_unregisterPreview;
 @end
 #endif
-
-@interface WKContentView (WKInteractionTesting)
-
-@property (nonatomic) BOOL forceIPadStyleZoomOnInputFocus;
-
-@end
 
 #endif // PLATFORM(IOS)

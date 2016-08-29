@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,55 +23,45 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WASMModuleParser_h
-#define WASMModuleParser_h
+#pragma once
+
+#include "WASMOps.h"
+#include "WASMParser.h"
+#include <wtf/Vector.h>
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "Strong.h"
-#include "WASMReader.h"
-#include <wtf/text/WTFString.h>
-
 namespace JSC {
 
-class ExecState;
-class JSArrayBuffer;
-class JSGlobalObject;
-class JSWASMModule;
-class SourceCode;
-class VM;
+namespace WASM {
 
-class WASMModuleParser {
+class WASMModuleParser : public WASMParser {
 public:
-    WASMModuleParser(VM&, JSGlobalObject*, const SourceCode&, JSObject* imports, JSArrayBuffer*);
-    JSWASMModule* parse(ExecState*, String& errorMessage);
+
+    static const unsigned magicNumber = 0xc;
+
+    WASMModuleParser(const Vector<uint8_t>& sourceBuffer)
+        : WASMParser(sourceBuffer, 0, sourceBuffer.size())
+    {
+    }
+
+    bool WARN_UNUSED_RETURN parse();
+
+    const Vector<WASMFunctionInformation>& functionInformation() { return m_functions; }
 
 private:
-    void parseModule(ExecState*);
-    void parseConstantPoolSection();
-    void parseSignatureSection();
-    void parseFunctionImportSection(ExecState*);
-    void parseGlobalSection(ExecState*);
-    void parseFunctionDeclarationSection();
-    void parseFunctionPointerTableSection();
-    void parseFunctionDefinitionSection();
-    void parseFunctionDefinition(size_t functionIndex);
-    void parseExportSection();
-    void getImportedValue(ExecState*, const String& importName, JSValue&);
+    bool WARN_UNUSED_RETURN parseFunctionTypes();
+    bool WARN_UNUSED_RETURN parseFunctionSignatures();
+    bool WARN_UNUSED_RETURN parseFunctionDefinitions();
+    bool WARN_UNUSED_RETURN parseFunctionDefinition(uint32_t number);
+    bool WARN_UNUSED_RETURN parseBlock();
+    bool WARN_UNUSED_RETURN parseExpression(WASMOpType);
 
-    VM& m_vm;
-    Strong<JSGlobalObject> m_globalObject;
-    const SourceCode& m_source;
-    Strong<JSObject> m_imports;
-    WASMReader m_reader;
-    Strong<JSWASMModule> m_module;
-    String m_errorMessage;
+    Vector<WASMFunctionInformation> m_functions;
 };
 
-JS_EXPORT_PRIVATE JSWASMModule* parseWebAssembly(ExecState*, const SourceCode&, JSObject* imports, JSArrayBuffer*, String& errorMessage);
+} // namespace WASM
 
 } // namespace JSC
 
 #endif // ENABLE(WEBASSEMBLY)
-
-#endif // WASMModuleParser_h

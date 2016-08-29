@@ -29,8 +29,8 @@
 #include <WebCore/ScrollingStateTree.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -42,8 +42,8 @@ public:
     std::unique_ptr<WebCore::ScrollingStateTree>& scrollingStateTree() { return m_scrollingStateTree; }
 #endif // ENABLE(ASYNC_SCROLLING)
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RemoteScrollingCoordinatorTransaction&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RemoteScrollingCoordinatorTransaction&);
 
 #if !defined(NDEBUG) || !LOG_DISABLED
     WTF::CString description() const;
@@ -52,7 +52,7 @@ public:
 
 private:
 #if ENABLE(ASYNC_SCROLLING)
-    bool decode(IPC::ArgumentDecoder&);
+    bool decode(IPC::Decoder&);
     
     std::unique_ptr<WebCore::ScrollingStateTree> m_scrollingStateTree;
 #endif // ENABLE(ASYNC_SCROLLING)

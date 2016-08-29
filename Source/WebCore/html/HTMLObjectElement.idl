@@ -30,7 +30,7 @@
     [Reflect, TreatNullAs=EmptyString] attribute DOMString border;
     [Reflect] attribute DOMString codeBase;
     [Reflect] attribute DOMString codeType;
-    [Reflect, URL] attribute DOMString data;
+    [Reflect, URL] attribute USVString data;
     [Reflect] attribute boolean declare;
     [Reflect] attribute DOMString height;
     [Reflect] attribute long hspace;
@@ -49,13 +49,6 @@
     // Introduced in DOM Level 2:
     [CheckSecurityForNode] readonly attribute Document contentDocument;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
     [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extension:
-    readonly attribute URL absoluteImageURL;
-#endif
 };
 

@@ -19,13 +19,21 @@
 #include "config.h"
 #include "WebKitDOMDeprecated.h"
 
+#include "ConvertToUTF8String.h"
 #include "Document.h"
 #include "Element.h"
+#include "ExceptionCode.h"
+#include "ExceptionCodeDescription.h"
 #include "JSMainThreadExecState.h"
+#include "HTMLCollection.h"
 #include "WebKitDOMDocumentPrivate.h"
 #include "WebKitDOMElementPrivate.h"
+#include "WebKitDOMHTMLDocumentPrivate.h"
+#include "WebKitDOMHTMLInputElementPrivate.h"
 #include "WebKitDOMHTMLTitleElement.h"
 #include "WebKitDOMNodeListPrivate.h"
+#include "WebKitDOMPrivate.h"
+#include "WebKitDOMTextPrivate.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
@@ -67,7 +75,7 @@ WebKitDOMNodeList* webkit_dom_document_get_elements_by_tag_name(WebKitDOMDocumen
 
     WebCore::JSMainThreadNullState state;
     WebCore::Document* document = WebKit::core(self);
-    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(document->getElementsByTagNameForObjC(String::fromUTF8(tagName)));
+    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(document->getElementsByTagName(String::fromUTF8(tagName)));
     return WebKit::kit(nodeList.get());
 }
 
@@ -79,7 +87,7 @@ WebKitDOMNodeList* webkit_dom_document_get_elements_by_tag_name_ns(WebKitDOMDocu
 
     WebCore::JSMainThreadNullState state;
     WebCore::Document* document = WebKit::core(self);
-    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(document->getElementsByTagNameNSForObjC(String::fromUTF8(namespaceURI), String::fromUTF8(tagName)));
+    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(document->getElementsByTagNameNS(String::fromUTF8(namespaceURI), String::fromUTF8(tagName)));
     return WebKit::kit(nodeList.get());
 }
 
@@ -90,7 +98,7 @@ WebKitDOMNodeList* webkit_dom_document_get_elements_by_class_name(WebKitDOMDocum
 
     WebCore::JSMainThreadNullState state;
     WebCore::Document* document = WebKit::core(self);
-    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(document->getElementsByClassNameForObjC(String::fromUTF8(className)));
+    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(document->getElementsByClassName(String::fromUTF8(className)));
     return WebKit::kit(nodeList.get());
 }
 
@@ -101,7 +109,7 @@ WebKitDOMNodeList* webkit_dom_element_get_elements_by_tag_name(WebKitDOMElement*
 
     WebCore::JSMainThreadNullState state;
     WebCore::Element* element = WebKit::core(self);
-    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(element->getElementsByTagNameForObjC(String::fromUTF8(tagName)));
+    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(element->getElementsByTagName(String::fromUTF8(tagName)));
     return WebKit::kit(nodeList.get());
 }
 
@@ -113,7 +121,7 @@ WebKitDOMNodeList* webkit_dom_element_get_elements_by_tag_name_ns(WebKitDOMEleme
 
     WebCore::JSMainThreadNullState state;
     WebCore::Element* element = WebKit::core(self);
-    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(element->getElementsByTagNameNSForObjC(String::fromUTF8(namespaceURI), String::fromUTF8(tagName)));
+    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(element->getElementsByTagNameNS(String::fromUTF8(namespaceURI), String::fromUTF8(tagName)));
     return WebKit::kit(nodeList.get());
 }
 
@@ -124,7 +132,7 @@ WebKitDOMNodeList* webkit_dom_element_get_elements_by_class_name(WebKitDOMElemen
 
     WebCore::JSMainThreadNullState state;
     WebCore::Element* element = WebKit::core(self);
-    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(element->getElementsByClassNameForObjC(String::fromUTF8(className)));
+    RefPtr<WebCore::NodeList> nodeList = WTF::getPtr(element->getElementsByClassName(String::fromUTF8(className)));
     return WebKit::kit(nodeList.get());
 }
 
@@ -141,6 +149,82 @@ void webkit_dom_document_set_title(WebKitDOMDocument* self, const gchar* title)
 void webkit_dom_html_title_element_set_text(WebKitDOMHTMLTitleElement* self, const gchar* text)
 {
     webkit_dom_html_title_element_set_text_with_error(self, text, nullptr);
+}
+
+gchar* webkit_dom_document_get_default_charset(WebKitDOMDocument* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_DOCUMENT(self), nullptr);
+
+    WebCore::JSMainThreadNullState state;
+    return convertToUTF8String(WebKit::core(self)->defaultCharsetForBindings());
+}
+
+WebKitDOMText* webkit_dom_text_replace_whole_text(WebKitDOMText* self, const gchar* content, GError** error)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEXT(self), nullptr);
+    g_return_val_if_fail(content, nullptr);
+    g_return_val_if_fail(!error || !*error, nullptr);
+
+    WebCore::JSMainThreadNullState state;
+    WebCore::ExceptionCode ec = 0;
+    RefPtr<WebCore::Text> gobjectResult = WTF::getPtr(WebKit::core(self)->replaceWholeText(WTF::String::fromUTF8(content), ec));
+    if (ec) {
+        WebCore::ExceptionCodeDescription ecdesc(ec);
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+    }
+    return WebKit::kit(gobjectResult.get());
+}
+
+gboolean webkit_dom_html_input_element_get_capture(WebKitDOMHTMLInputElement* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_HTML_INPUT_ELEMENT(self), FALSE);
+
+#if ENABLE(MEDIA_CAPTURE)
+    WebCore::JSMainThreadNullState state;
+    WebCore::HTMLInputElement* item = WebKit::core(self);
+    return item->mediaCaptureType() != MediaCaptureTypeNone;
+#else
+    UNUSED_PARAM(self);
+    WEBKIT_WARN_FEATURE_NOT_PRESENT("Media Capture")
+    return FALSE;
+#endif /* ENABLE(MEDIA_CAPTURE) */
+}
+
+gchar* webkit_dom_html_document_get_design_mode(WebKitDOMHTMLDocument* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_HTML_DOCUMENT(self), nullptr);
+    return webkit_dom_document_get_design_mode(WEBKIT_DOM_DOCUMENT(self));
+}
+
+
+void webkit_dom_html_document_set_design_mode(WebKitDOMHTMLDocument* self, const gchar* value)
+{
+    g_return_if_fail(WEBKIT_DOM_IS_HTML_DOCUMENT(self));
+    webkit_dom_document_set_design_mode(WEBKIT_DOM_DOCUMENT(self), value);
+}
+
+gchar* webkit_dom_html_document_get_compat_mode(WebKitDOMHTMLDocument* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_HTML_DOCUMENT(self), nullptr);
+    return webkit_dom_document_get_compat_mode(WEBKIT_DOM_DOCUMENT(self));
+}
+
+WebKitDOMHTMLCollection* webkit_dom_html_document_get_embeds(WebKitDOMHTMLDocument* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_HTML_DOCUMENT(self), nullptr);
+    return webkit_dom_document_get_embeds(WEBKIT_DOM_DOCUMENT(self));
+}
+
+WebKitDOMHTMLCollection* webkit_dom_html_document_get_plugins(WebKitDOMHTMLDocument* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_HTML_DOCUMENT(self), nullptr);
+    return webkit_dom_document_get_plugins(WEBKIT_DOM_DOCUMENT(self));
+}
+
+WebKitDOMHTMLCollection* webkit_dom_html_document_get_scripts(WebKitDOMHTMLDocument* self)
+{
+    g_return_val_if_fail(WEBKIT_DOM_IS_HTML_DOCUMENT(self), nullptr);
+    return webkit_dom_document_get_scripts(WEBKIT_DOM_DOCUMENT(self));
 }
 
 G_DEFINE_TYPE(WebKitDOMEntityReference, webkit_dom_entity_reference, WEBKIT_DOM_TYPE_NODE)

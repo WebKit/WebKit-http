@@ -44,7 +44,8 @@
 #include "CompositionEvent.h"
 #include "ContentSecurityPolicy.h"
 #include "CookieJar.h"
-#include "CustomElementDefinitions.h"
+#include "CustomElementReactionQueue.h"
+#include "CustomElementRegistry.h"
 #include "CustomEvent.h"
 #include "DOMImplementation.h"
 #include "DOMNamedFlowCollection.h"
@@ -58,7 +59,6 @@
 #include "DocumentType.h"
 #include "Editor.h"
 #include "ElementIterator.h"
-#include "EntityReference.h"
 #include "EventHandler.h"
 #include "ExtensionStyleSheets.h"
 #include "FocusController.h"
@@ -101,11 +101,11 @@
 #include "IconController.h"
 #include "ImageLoader.h"
 #include "InspectorInstrumentation.h"
+#include "JSCustomElementInterface.h"
 #include "JSLazyEventListener.h"
 #include "JSModuleLoader.h"
 #include "KeyboardEvent.h"
 #include "Language.h"
-#include "LifecycleCallbackQueue.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
 #include "MainFrame.h"
@@ -122,6 +122,7 @@
 #include "NodeIterator.h"
 #include "NodeRareData.h"
 #include "NodeWithIndex.h"
+#include "OriginAccessEntry.h"
 #include "OverflowEvent.h"
 #include "PageConsoleClient.h"
 #include "PageGroup.h"
@@ -879,6 +880,22 @@ void Document::childrenChanged(const ChildChange& change)
     clearStyleResolver();
 }
 
+#if ENABLE(CUSTOM_ELEMENTS)
+static ALWAYS_INLINE RefPtr<HTMLElement> createUpgradeCandidateElement(Document& document, DOMWindow* window, const QualifiedName& name)
+{
+    if (!window || !RuntimeEnabledFeatures::sharedFeatures().customElementsEnabled())
+        return nullptr;
+
+    if (Document::validateCustomElementName(name.localName()) != CustomElementNameValidationStatus::Valid)
+        return nullptr;
+
+    auto element = HTMLElement::create(name, document);
+    element->setIsUnresolvedCustomElement();
+    window->ensureCustomElementRegistry().addUpgradeCandidate(element.get());
+    return WTFMove(element);
+}
+#endif
+
 static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, const AtomicString& localName, ExceptionCode& ec)
 {
     RefPtr<HTMLElement> element = HTMLElementFactory::createKnownElement(localName, document);
@@ -886,10 +903,13 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
         return element;
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    auto* definitions = document.customElementDefinitions();
-    if (UNLIKELY(definitions)) {
-        if (auto* elementInterface = definitions->findInterface(localName))
-            return elementInterface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
+    auto* window = document.domWindow();
+    if (window) {
+        auto* registry = window->customElementRegistry();
+        if (UNLIKELY(registry)) {
+            if (auto* elementInterface = registry->findInterface(localName))
+                return elementInterface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
+        }
     }
 #endif
 
@@ -901,13 +921,8 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
     QualifiedName qualifiedName(nullAtom, localName, xhtmlNamespaceURI);
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    if (RuntimeEnabledFeatures::sharedFeatures().customElementsEnabled()
-        && Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
-        Ref<HTMLElement> element = HTMLElement::create(qualifiedName, document);
-        element->setIsUnresolvedCustomElement();
-        document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
+    if (auto element = createUpgradeCandidateElement(document, window, qualifiedName))
         return WTFMove(element);
-    }
 #endif
 
     return HTMLUnknownElement::create(qualifiedName, document);
@@ -966,12 +981,6 @@ RefPtr<ProcessingInstruction> Document::createProcessingInstruction(const String
     }
 
     return ProcessingInstruction::create(*this, target, data);
-}
-
-RefPtr<EntityReference> Document::createEntityReference(const String&, ExceptionCode& ec)
-{
-    ec = NOT_SUPPORTED_ERR;
-    return nullptr;
 }
 
 Ref<Text> Document::createEditingTextNode(const String& text)
@@ -1077,22 +1086,21 @@ bool Document::hasValidNamespaceForAttributes(const QualifiedName& qName)
 static Ref<HTMLElement> createFallbackHTMLElement(Document& document, const QualifiedName& name)
 {
 #if ENABLE(CUSTOM_ELEMENTS)
-    auto* definitions = document.customElementDefinitions();
-    if (UNLIKELY(definitions)) {
-        if (auto* elementInterface = definitions->findInterface(name)) {
-            Ref<HTMLElement> element = HTMLElement::create(name, document);
-            element->setIsUnresolvedCustomElement();
-            LifecycleCallbackQueue::enqueueElementUpgrade(element.get(), *elementInterface);
-            return element;
+    auto* window = document.domWindow();
+    if (window) {
+        auto* registry = window->customElementRegistry();
+        if (UNLIKELY(registry)) {
+            if (auto* elementInterface = registry->findInterface(name)) {
+                auto element = HTMLElement::create(name, document);
+                element->setIsUnresolvedCustomElement();
+                CustomElementReactionQueue::enqueueElementUpgrade(element.get(), *elementInterface);
+                return element;
+            }
         }
     }
     // FIXME: Should we also check the equality of prefix between the custom element and name?
-    if (Document::validateCustomElementName(name.localName()) == CustomElementNameValidationStatus::Valid) {
-        Ref<HTMLElement> element = HTMLElement::create(name, document);
-        element->setIsUnresolvedCustomElement();
-        document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
-        return element;
-    }
+    if (auto element = createUpgradeCandidateElement(document, window, name))
+        return element.releaseNonNull();
 #endif
     return HTMLUnknownElement::create(name, document);
 }
@@ -1297,7 +1305,7 @@ void Document::setVisualUpdatesAllowed(bool visualUpdatesAllowed)
         if (frame()->isMainFrame()) {
             frameView->addPaintPendingMilestones(DidFirstPaintAfterSuppressedIncrementalRendering);
             if (page->requestedLayoutMilestones() & DidFirstLayoutAfterSuppressedIncrementalRendering)
-                frame()->loader().didLayout(DidFirstLayoutAfterSuppressedIncrementalRendering);
+                frame()->loader().didReachLayoutMilestone(DidFirstLayoutAfterSuppressedIncrementalRendering);
         }
     }
 
@@ -1340,7 +1348,7 @@ String Document::characterSetWithUTF8Fallback() const
     return UTF8Encoding().domName();
 }
 
-String Document::defaultCharset() const
+String Document::defaultCharsetForBindings() const
 {
     if (Settings* settings = this->settings())
         return settings->defaultTextEncodingName();
@@ -2212,9 +2220,9 @@ StyleResolver& Document::userAgentShadowTreeStyleResolver()
         m_userAgentShadowTreeStyleResolver = std::make_unique<StyleResolver>(*this);
 
         // FIXME: Filter out shadow pseudo elements we don't want to expose to authors.
-        auto& documentAuthorStyle = *ensureStyleResolver().ruleSets().authorStyle();
+        auto& documentAuthorStyle = ensureStyleResolver().ruleSets().authorStyle();
         if (documentAuthorStyle.hasShadowPseudoElementRules())
-            m_userAgentShadowTreeStyleResolver->ruleSets().authorStyle()->copyShadowPseudoElementRulesFrom(documentAuthorStyle);
+            m_userAgentShadowTreeStyleResolver->ruleSets().authorStyle().copyShadowPseudoElementRulesFrom(documentAuthorStyle);
     }
 
     return *m_userAgentShadowTreeStyleResolver;
@@ -4429,7 +4437,7 @@ String Document::cookie(ExceptionCode& ec)
         return String();
 
     if (!isDOMCookieCacheValid())
-        setCachedDOMCookies(cookies(this, cookieURL));
+        setCachedDOMCookies(cookies(*this, cookieURL));
 
     return cachedDOMCookies();
 }
@@ -4453,7 +4461,7 @@ void Document::setCookie(const String& value, ExceptionCode& ec)
         return;
 
     invalidateDOMCookieCache();
-    setCookies(this, cookieURL, value);
+    setCookies(*this, cookieURL, value);
 }
 
 String Document::referrer() const
@@ -4500,6 +4508,13 @@ void Document::setDomain(const String& newDomain, ExceptionCode& ec)
     int newLength = newDomain.length();
     // e.g. newDomain = webkit.org (10) and domain() = www.webkit.org (14)
     if (newLength >= oldLength) {
+        ec = SECURITY_ERR;
+        return;
+    }
+
+    OriginAccessEntry::IPAddressSetting ipAddressSetting = settings() && settings()->treatIPAddressAsDomain() ? OriginAccessEntry::TreatIPAddressAsDomain : OriginAccessEntry::TreatIPAddressAsIPAddress;
+    OriginAccessEntry accessEntry(securityOrigin()->protocol(), newDomain, OriginAccessEntry::AllowSubdomains, ipAddressSetting);
+    if (!accessEntry.matchesOrigin(*securityOrigin())) {
         ec = SECURITY_ERR;
         return;
     }
@@ -5016,7 +5031,24 @@ void Document::setDesignMode(InheritedBool value)
         frame->document()->scheduleForcedStyleRecalc();
 }
 
-Document::InheritedBool Document::getDesignMode() const
+String Document::designMode() const
+{
+    return inDesignMode() ? ASCIILiteral("on") : ASCIILiteral("off");
+}
+
+void Document::setDesignMode(const String& value)
+{
+    InheritedBool mode;
+    if (equalLettersIgnoringASCIICase(value, "on"))
+        mode = on;
+    else if (equalLettersIgnoringASCIICase(value, "off"))
+        mode = off;
+    else
+        mode = inherit;
+    setDesignMode(mode);
+}
+
+auto Document::getDesignMode() const -> InheritedBool
 {
     return m_designMode;
 }
@@ -5357,9 +5389,18 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree().parent() || (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()))
+    if (!m_frame->tree().parent())
         return;
 
+    if (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()) {
+        // Per <http://www.w3.org/TR/upgrade-insecure-requests/>, we need to retain an ongoing set of upgraded
+        // requests in new navigation contexts. Although this information is present when we construct the
+        // Document object, it is discard in the subsequent 'clear' statements below. So, we must capture it
+        ASSERT(m_frame->tree().parent()->document());
+        contentSecurityPolicy()->copyUpgradeInsecureRequestStateFrom(*m_frame->tree().parent()->document()->contentSecurityPolicy());
+        return;
+    }
+    
     contentSecurityPolicy()->copyStateFrom(m_frame->tree().parent()->document()->contentSecurityPolicy());
 }
 
@@ -6494,15 +6535,6 @@ unsigned Document::touchEventHandlerCount() const
     return 0;
 #endif
 }
-
-#if ENABLE(CUSTOM_ELEMENTS)
-CustomElementDefinitions& Document::ensureCustomElementDefinitions()
-{
-    if (!m_customElementDefinitions)
-        m_customElementDefinitions = std::make_unique<CustomElementDefinitions>();
-    return *m_customElementDefinitions;
-}
-#endif
 
 LayoutRect Document::absoluteEventHandlerBounds(bool& includesFixedPositionElements)
 {

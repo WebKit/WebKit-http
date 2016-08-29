@@ -32,12 +32,12 @@
 
 namespace IPC {
 
-void ArgumentCoder<std::chrono::system_clock::time_point>::encode(IPC::ArgumentEncoder& encoder, const std::chrono::system_clock::time_point& timePoint)
+void ArgumentCoder<std::chrono::system_clock::time_point>::encode(IPC::Encoder& encoder, const std::chrono::system_clock::time_point& timePoint)
 {
     encoder << static_cast<int64_t>(timePoint.time_since_epoch().count());
 }
 
-bool ArgumentCoder<std::chrono::system_clock::time_point>::decode(ArgumentDecoder& decoder, std::chrono::system_clock::time_point& result)
+bool ArgumentCoder<std::chrono::system_clock::time_point>::decode(Decoder& decoder, std::chrono::system_clock::time_point& result)
 {
     int64_t time;
     if (!decoder.decode(time))
@@ -47,12 +47,12 @@ bool ArgumentCoder<std::chrono::system_clock::time_point>::decode(ArgumentDecode
     return true;
 }
 
-void ArgumentCoder<AtomicString>::encode(ArgumentEncoder& encoder, const AtomicString& atomicString)
+void ArgumentCoder<AtomicString>::encode(Encoder& encoder, const AtomicString& atomicString)
 {
     encoder << atomicString.string();
 }
 
-bool ArgumentCoder<AtomicString>::decode(ArgumentDecoder& decoder, AtomicString& atomicString)
+bool ArgumentCoder<AtomicString>::decode(Decoder& decoder, AtomicString& atomicString)
 {
     String string;
     if (!decoder.decode(string))
@@ -62,7 +62,7 @@ bool ArgumentCoder<AtomicString>::decode(ArgumentDecoder& decoder, AtomicString&
     return true;
 }
 
-void ArgumentCoder<CString>::encode(ArgumentEncoder& encoder, const CString& string)
+void ArgumentCoder<CString>::encode(Encoder& encoder, const CString& string)
 {
     // Special case the null string.
     if (string.isNull()) {
@@ -75,7 +75,7 @@ void ArgumentCoder<CString>::encode(ArgumentEncoder& encoder, const CString& str
     encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.data()), length, 1);
 }
 
-bool ArgumentCoder<CString>::decode(ArgumentDecoder& decoder, CString& result)
+bool ArgumentCoder<CString>::decode(Decoder& decoder, CString& result)
 {
     uint32_t length;
     if (!decoder.decode(length))
@@ -103,7 +103,7 @@ bool ArgumentCoder<CString>::decode(ArgumentDecoder& decoder, CString& result)
 }
 
 
-void ArgumentCoder<String>::encode(ArgumentEncoder& encoder, const String& string)
+void ArgumentCoder<String>::encode(Encoder& encoder, const String& string)
 {
     // Special case the null string.
     if (string.isNull()) {
@@ -123,7 +123,7 @@ void ArgumentCoder<String>::encode(ArgumentEncoder& encoder, const String& strin
 }
 
 template <typename CharacterType>
-static inline bool decodeStringText(ArgumentDecoder& decoder, uint32_t length, String& result)
+static inline bool decodeStringText(Decoder& decoder, uint32_t length, String& result)
 {
     // Before allocating the string, make sure that the decoder buffer is big enough.
     if (!decoder.bufferIsLargeEnoughToContain<CharacterType>(length)) {
@@ -140,7 +140,7 @@ static inline bool decodeStringText(ArgumentDecoder& decoder, uint32_t length, S
     return true;    
 }
 
-bool ArgumentCoder<String>::decode(ArgumentDecoder& decoder, String& result)
+bool ArgumentCoder<String>::decode(Decoder& decoder, String& result)
 {
     uint32_t length;
     if (!decoder.decode(length))
@@ -161,17 +161,5 @@ bool ArgumentCoder<String>::decode(ArgumentDecoder& decoder, String& result)
         return decodeStringText<LChar>(decoder, length, result);
     return decodeStringText<UChar>(decoder, length, result);
 }
-
-#if HAVE(DTRACE)
-void ArgumentCoder<uuid_t>::encode(ArgumentEncoder& encoder, const uuid_t& uuid)
-{
-    SimpleArgumentCoder<uuid_t>::encode(encoder, uuid);
-}
-
-bool ArgumentCoder<uuid_t>::decode(ArgumentDecoder& decoder, uuid_t& uuid)
-{
-    return SimpleArgumentCoder<uuid_t>::decode(decoder, uuid);
-}
-#endif
 
 } // namespace IPC

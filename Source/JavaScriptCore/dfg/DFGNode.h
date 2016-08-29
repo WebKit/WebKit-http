@@ -28,7 +28,6 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "B3SparseCollection.h"
 #include "BasicBlockLocation.h"
 #include "CodeBlock.h"
 #include "DFGAbstractValue.h"
@@ -231,7 +230,6 @@ struct StackAccessData {
 //
 // Node represents a single operation in the data flow graph.
 struct Node {
-    WTF_MAKE_FAST_ALLOCATED;
 public:
     enum VarArgTag { VarArg };
     
@@ -2321,7 +2319,7 @@ public:
 
     unsigned numberOfArgumentsToSkip()
     {
-        ASSERT(op() == CopyRest || op() == GetRestLength);
+        ASSERT(op() == CreateRest || op() == GetRestLength);
         return static_cast<unsigned>(m_opInfo);
     }
 
@@ -2346,7 +2344,7 @@ public:
     AdjacencyList children;
 
 private:
-    friend class B3::SparseCollection<Node>;
+    friend class Graph;
 
     unsigned m_index { std::numeric_limits<unsigned>::max() };
     unsigned m_op : 10; // real type is NodeType
@@ -2362,10 +2360,6 @@ private:
     uintptr_t m_opInfo;
     uintptr_t m_opInfo2;
 
-public:
-    // Fields used by various analyses.
-    AbstractValue value;
-    
     // Miscellaneous data that is usually meaningless, but can hold some analysis results
     // if you ask right. For example, if you do Graph::initializeNodeOwners(), Node::owner
     // will tell you which basic block a node belongs to. You cannot rely on this persisting

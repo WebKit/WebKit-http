@@ -53,9 +53,6 @@ accessibility/children-changed-sends-notification.html
 accessibility/menu-list-sends-change-notification.html
 accessibility/multiselect-list-reports-active-option.html
 
-# Need to add functionality to DumpRenderTree to handle error pages
-fast/history/back-forward-reset-after-error-handling.html
-
 # Need to implement this in plugins code in WebKit
 plugins/reloadplugins-and-pages.html
 
@@ -1217,7 +1214,6 @@ webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
 webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
 webkit.org/b/159684 [ Debug ] inspector/indexeddb/deleteDatabaseNamesWithSpace.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
-webkit.org/b/148636 inspector/model/remote-object-get-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Failure ]
@@ -1263,6 +1259,7 @@ imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ 
 
 webkit.org/b/150806 imported/w3c/web-platform-tests/XMLHttpRequest/send-timeout-events.htm [ Pass Failure ]
 webkit.org/b/150823 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
+webkit.org/b/159724 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Skip ]
 
 # WOFF2 is only supported on certain Operating Systems.
 webkit.org/b/150830 [ Yosemite ElCapitan ] fast/text/woff2.html [ ImageOnlyFailure ]
@@ -1373,10 +1370,6 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 [ Sierra+ ] css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
 [ Sierra+ ] css3/font-variant-petite-caps-synthesis.html [ ImageOnlyFailure ]
 
-# <rdar://problem/24025664> 2d.gradient.interpolate.colouralpha.html LayoutTests failing
-[ Sierra+ ] imported/w3c/canvas/2d.gradient.interpolate.colouralpha.html [ Skip ]
-[ Sierra+ ] canvas/philip/tests/2d.gradient.interpolate.colouralpha.html [ Skip ]
-
 # <rdar://problem/25279189> LayoutTest http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html is flaky
 [ Sierra+ ] http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Pass Failure ]
 
@@ -1386,6 +1379,10 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 [ Sierra+ ] http/tests/security/anchor-download-allow-data.html [ Skip ]
 [ Sierra+ ] http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 [ Sierra+ ] http/tests/security/anchor-download-allow-blob.html [ Skip ]
+
+# <rdar://problem/25780035> CSP does not ignore paths for media redirects
+[ Sierra+ ] http/tests/security/contentSecurityPolicy/audio-redirect-allowed2.html [ Skip ]
+[ Sierra+ ] http/tests/security/contentSecurityPolicy/video-redirect-allowed2.html [ Skip ]
 
 # <rdar://problem/26590623> LayoutTest http/tests/preload/single_download_preload_runner.html failing
 [ Sierra+ ] http/tests/preload/single_download_preload_runner.html [ Pass Timeout Failure ]

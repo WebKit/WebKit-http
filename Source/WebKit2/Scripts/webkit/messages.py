@@ -97,11 +97,7 @@ def arguments_type(message):
 
 
 def reply_type(message):
-    return 'IPC::Arguments<%s>' % (', '.join(reply_parameter_type(parameter.type) for parameter in message.reply_parameters))
-
-
-def decode_type(message):
-    return 'std::tuple<%s>' % ', '.join(parameter.type for parameter in message.parameters)
+    return 'std::tuple<%s>' % (', '.join(reply_parameter_type(parameter.type) for parameter in message.reply_parameters))
 
 
 def message_to_struct_declaration(message):
@@ -109,7 +105,7 @@ def message_to_struct_declaration(message):
     function_parameters = [(function_parameter_type(x.type), x.name) for x in message.parameters]
     result.append('class %s {\n' % message.name)
     result.append('public:\n')
-    result.append('    typedef %s DecodeType;\n' % decode_type(message))
+    result.append('    typedef %s Arguments;\n' % arguments_type(message))
     result.append('\n')
     result.append('    static IPC::StringReference receiverName() { return messageReceiverName(); }\n')
     result.append('    static IPC::StringReference name() { return IPC::StringReference("%s"); }\n' % message.name)
@@ -119,14 +115,14 @@ def message_to_struct_declaration(message):
         if message.has_attribute(DELAYED_ATTRIBUTE):
             send_parameters = [(function_parameter_type(x.type), x.name) for x in message.reply_parameters]
             result.append('    struct DelayedReply : public ThreadSafeRefCounted<DelayedReply> {\n')
-            result.append('        DelayedReply(PassRefPtr<IPC::Connection>, std::unique_ptr<IPC::MessageEncoder>);\n')
+            result.append('        DelayedReply(PassRefPtr<IPC::Connection>, std::unique_ptr<IPC::Encoder>);\n')
             result.append('        ~DelayedReply();\n')
             result.append('\n')
             result.append('        bool send(%s);\n' % ', '.join([' '.join(x) for x in send_parameters]))
             result.append('\n')
             result.append('    private:\n')
             result.append('        RefPtr<IPC::Connection> m_connection;\n')
-            result.append('        std::unique_ptr<IPC::MessageEncoder> m_encoder;\n')
+            result.append('        std::unique_ptr<IPC::Encoder> m_encoder;\n')
             result.append('    };\n\n')
 
         result.append('    typedef %s Reply;\n' % reply_type(message))
@@ -136,13 +132,13 @@ def message_to_struct_declaration(message):
         result.append('\n        : m_arguments(%s)\n' % ', '.join([x[1] for x in function_parameters]))
         result.append('    {\n')
         result.append('    }\n\n')
-    result.append('    const %s& arguments() const\n' % arguments_type(message))
+    result.append('    const Arguments& arguments() const\n')
     result.append('    {\n')
     result.append('        return m_arguments;\n')
     result.append('    }\n')
     result.append('\n')
     result.append('private:\n')
-    result.append('    %s m_arguments;\n' % arguments_type(message))
+    result.append('    Arguments m_arguments;\n')
     result.append('};\n')
     return surround_in_condition(''.join(result), message.condition)
 
@@ -169,9 +165,7 @@ def forward_declarations_and_headers(receiver):
     types_by_namespace = collections.defaultdict(set)
 
     headers = set([
-        '"Arguments.h"',
-        '"MessageEncoder.h"',
-        '"StringReference.h"',
+        '"ArgumentCoders.h"',
     ])
 
     non_template_wtf_types = frozenset([
@@ -214,14 +208,13 @@ def forward_declarations_and_headers(receiver):
 
 def generate_messages_header(file):
     receiver = parser.parse(file)
-    header_guard = messages_header_filename(receiver).replace('.', '_')
 
     result = []
 
     result.append(_license_header)
 
-    result.append('#ifndef %s\n' % header_guard)
-    result.append('#define %s\n\n' % header_guard)
+    result.append('#pragma once\n')
+    result.append('\n')
 
     if receiver.condition:
         result.append('#if %s\n\n' % receiver.condition)
@@ -247,8 +240,6 @@ def generate_messages_header(file):
 
     if receiver.condition:
         result.append('\n#endif // %s\n' % receiver.condition)
-
-    result.append('\n#endif // %s\n' % header_guard)
 
     return ''.join(result)
 
@@ -369,9 +360,7 @@ def headers_for_type(type):
         'WebCore::TextIndicatorData': ['<WebCore/TextIndicator.h>'],
         'WebCore::ViewportAttributes': ['<WebCore/ViewportArguments.h>'],
         'WebKit::BackForwardListItemState': ['"SessionState.h"'],
-        'WebKit::InjectedBundleUserMessageEncoder': [],
         'WebKit::PageState': ['"SessionState.h"'],
-        'WebKit::WebContextUserMessageEncoder': [],
         'WebKit::WebGestureEvent': ['"WebEvent.h"'],
         'WebKit::WebKeyboardEvent': ['"WebEvent.h"'],
         'WebKit::WebMouseEvent': ['"WebEvent.h"'],
@@ -410,7 +399,7 @@ def generate_message_handler(file):
     header_conditions = {
         '"%s"' % messages_header_filename(receiver): [None],
         '"HandleMessage.h"': [None],
-        '"MessageDecoder.h"': [None],
+        '"Decoder.h"': [None],
     }
 
     type_conditions = {}
@@ -489,7 +478,7 @@ def generate_message_handler(file):
             if message.condition:
                 result.append('#if %s\n\n' % message.condition)
 
-            result.append('%s::DelayedReply::DelayedReply(PassRefPtr<IPC::Connection> connection, std::unique_ptr<IPC::MessageEncoder> encoder)\n' % message.name)
+            result.append('%s::DelayedReply::DelayedReply(PassRefPtr<IPC::Connection> connection, std::unique_ptr<IPC::Encoder> encoder)\n' % message.name)
             result.append('    : m_connection(connection)\n')
             result.append('    , m_encoder(WTFMove(encoder))\n')
             result.append('{\n')
@@ -526,7 +515,7 @@ def generate_message_handler(file):
             async_messages.append(message)
 
     if async_messages:
-        result.append('void %s::didReceive%sMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)\n' % (receiver.name, receiver.name if receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE) else ''))
+        result.append('void %s::didReceive%sMessage(IPC::Connection& connection, IPC::Decoder& decoder)\n' % (receiver.name, receiver.name if receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE) else ''))
         result.append('{\n')
         result += [async_message_statement(receiver, message) for message in async_messages]
         if (receiver.superclass):
@@ -539,7 +528,7 @@ def generate_message_handler(file):
 
     if sync_messages:
         result.append('\n')
-        result.append('void %s::didReceiveSync%sMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)\n' % (receiver.name, receiver.name if receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE) else ''))
+        result.append('void %s::didReceiveSync%sMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)\n' % (receiver.name, receiver.name if receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE) else ''))
         result.append('{\n')
         result += [sync_message_statement(receiver, message) for message in sync_messages]
         result.append('    UNUSED_PARAM(connection);\n')

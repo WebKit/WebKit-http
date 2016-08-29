@@ -46,14 +46,16 @@ public:
 
     void sendInvocation(const RemoteObjectInvocation&);
     void sendReplyBlock(uint64_t replyID, const UserData& blockInvocation);
+    void sendUnusedReply(uint64_t replyID);
 
 private:
     // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // Message handlers
     void invokeMethod(const RemoteObjectInvocation&);
     void callReplyBlock(uint64_t replyID, const UserData& blockInvocation);
+    void releaseUnusedReplyBlock(uint64_t replyID);
 
     _WKRemoteObjectRegistry *m_remoteObjectRegistry;
     IPC::MessageSender& m_messageSender;

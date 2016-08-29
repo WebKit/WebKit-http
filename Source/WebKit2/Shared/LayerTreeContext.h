@@ -29,8 +29,8 @@
 #include <stdint.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -47,8 +47,8 @@ public:
     LayerTreeContext();
     ~LayerTreeContext();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, LayerTreeContext&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, LayerTreeContext&);
 
     bool isEmpty() const;
 

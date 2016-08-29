@@ -27,17 +27,20 @@
 #define WebGeolocationPosition_h
 
 #include "APIObject.h"
-#include "ArgumentEncoder.h"
-#include "ArgumentDecoder.h"
 #include <wtf/PassRefPtr.h>
+
+namespace IPC {
+class Decoder;
+class Encoder;
+}
 
 namespace WebKit {
 
 class WebGeolocationPosition : public API::ObjectImpl<API::Object::Type::GeolocationPosition> {
 public:
     struct Data {
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Data&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Data&);
 
         double timestamp;
         double latitude;

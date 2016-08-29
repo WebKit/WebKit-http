@@ -82,6 +82,8 @@ class Port(object):
 
     DEFAULT_ARCHITECTURE = 'x86'
 
+    CUSTOM_DEVICE_CLASSES = []
+
     @classmethod
     def determine_full_port_name(cls, host, options, port_name):
         """Return a fully-specified port name that can be used to construct objects."""
@@ -656,7 +658,7 @@ class Port(object):
             return test_name + '/'
         return test_name
 
-    def driver_cmd_line(self):
+    def driver_cmd_line_for_logging(self):
         """Prints the DRT command line that will be used."""
         driver = self.create_driver(0)
         return driver.cmd_line(self.get_option('pixel_tests'), [])
@@ -803,7 +805,7 @@ class Port(object):
         # to have multiple copies of webkit checked out and built.
         return self._build_path('layout-test-results')
 
-    def setup_test_run(self):
+    def setup_test_run(self, device_class=None):
         """Perform port-specific work at the beginning of a test run."""
         pass
 
@@ -829,11 +831,12 @@ class Port(object):
         clean_env = {}
         variables_to_copy = [
             # For Linux:
-            'XAUTHORITY',
+            'ALSA_CARD',
+            'DBUS_SESSION_BUS_ADDRESS',
             'HOME',
             'LANG',
             'LD_LIBRARY_PATH',
-            'DBUS_SESSION_BUS_ADDRESS',
+            'XAUTHORITY',
             'XDG_DATA_DIRS',
             'XDG_RUNTIME_DIR',
 

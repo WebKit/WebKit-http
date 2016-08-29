@@ -28,8 +28,8 @@
 
 #if USE(QUICK_LOOK)
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace WebKit {
 
@@ -51,7 +51,7 @@ void QuickLookDocumentData::clear()
     m_data.clear();
 }
 
-void QuickLookDocumentData::encode(IPC::ArgumentEncoder& encoder) const
+void QuickLookDocumentData::encode(IPC::Encoder& encoder) const
 {
     uint64_t size = 0;
     for (const auto& data : m_data)
@@ -62,7 +62,7 @@ void QuickLookDocumentData::encode(IPC::ArgumentEncoder& encoder) const
         encoder.encodeFixedLengthData(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()), 1);
 }
 
-bool QuickLookDocumentData::decode(IPC::ArgumentDecoder& decoder, QuickLookDocumentData& documentData)
+bool QuickLookDocumentData::decode(IPC::Decoder& decoder, QuickLookDocumentData& documentData)
 {
     uint64_t size;
     if (!decoder.decode(size))

@@ -10,6 +10,7 @@ accessibility/ios-simulator [ Pass ]
 displaylists [ Pass ]
 quicklook [ Pass ]
 http/tests/quicklook [ Pass ]
+media/controls/ipad [ Pass ]
 
 fast/text-autosizing/ios [ Pass ]
 
@@ -315,8 +316,6 @@ fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
-
-webkit.org/b/156857 http/tests/navigation/ping-attribute [ Skip ]
 
 # RTL Scrollbars are only implemented on certain versions of OS X
 fast/scrolling/rtl-scrollbars-iframe-scrolled.html [ Skip ]
@@ -1856,7 +1855,6 @@ fast/frames/sandboxed-iframe-navigation-allowed.html [ Failure ]
 fast/frames/valid.html [ Failure ]
 fast/gradients/background-clipped.html [ Failure ]
 fast/hidpi/image-srcset-data-srcset.html [ Failure ]
-fast/history/back-forward-reset-after-error-handling.html [ Failure ]
 fast/images/gif-large-checkerboard.html [ Failure ]
 fast/images/gray-scale-jpeg-with-color-profile.html [ Failure ]
 fast/images/icon-decoding.html [ Failure ]
@@ -2878,19 +2876,10 @@ webkit.org/b/152449 fast/events/can-click-element-on-page-with-active-pseudo-cla
 
 webkit.org/b/152701 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
-webkit.org/b/152439 compositing/overflow/dynamic-composited-scrolling-status.html [ Failure ]
-
 webkit.org/b/152282 css3/filters/composited-during-animation-layertree.html [ Failure ]
 webkit.org/b/152282 css3/filters/composited-during-transition-layertree.html [ Failure ]
 
 webkit.org/b/152935 fast/scrolling/scroll-position-on-reload-rtl.html [ Failure ]
-
-# Since this test directory is explicitly enabled for iOS, the passing tests are being re-enabled individually until flakiness is resolved
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
-fast/viewport/ios/width-is-device-width.html [ Pass ]
-fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass ]
 
 webkit.org/b/153371 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
 

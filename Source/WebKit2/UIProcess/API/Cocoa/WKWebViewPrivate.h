@@ -62,7 +62,6 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @protocol WKHistoryDelegatePrivate;
 @protocol _WKDiagnosticLoggingDelegate;
 @protocol _WKFindDelegate;
-@protocol _WKFormDelegate;
 @protocol _WKInputDelegate;
 
 @interface WKWebView (WKPrivate)
@@ -231,7 +230,6 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_countStringMatches:(NSString *)string options:(_WKFindOptions)options maxCount:(NSUInteger)maxCount;
 - (void)_hideFindUI;
 
-@property (nonatomic, weak, setter=_setFormDelegate:) id <_WKFormDelegate> _formDelegate WK_API_DEPRECATED_WITH_REPLACEMENT("_inputDelegate", macosx(10.10, WK_MAC_TBA), ios(8.0, WK_IOS_TBA));
 @property (nonatomic, weak, setter=_setInputDelegate:) id <_WKInputDelegate> _inputDelegate WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, readonly, getter=_isDisplayingStandaloneImageDocument) BOOL _displayingStandaloneImageDocument;
@@ -256,14 +254,19 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @interface WKWebView (WKTesting)
 
 #if TARGET_OS_IPHONE
+
 @property (nonatomic, readonly) CGRect _contentVisibleRect WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (CGPoint)_convertPointFromContentsToView:(CGPoint)point WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (CGPoint)_convertPointFromViewToContents:(CGPoint)point WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)keyboardAccessoryBarNext WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)keyboardAccessoryBarPrevious WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)dismissFormAccessoryView WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)selectFormAccessoryPickerRow:(int)rowIndex WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
-@property (nonatomic) BOOL forceIPadStyleZoomOnInputFocus WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)didStartFormControlInteraction WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)didEndFormControlInteraction WK_API_AVAILABLE(ios(WK_IOS_TBA));
+
 #endif
 
 #if !TARGET_OS_IPHONE

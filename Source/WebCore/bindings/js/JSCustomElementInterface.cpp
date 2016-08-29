@@ -151,38 +151,31 @@ void JSCustomElementInterface::upgradeElement(Element& element)
     ASSERT(wrappedElement->isCustomElement());
 }
 
-void JSCustomElementInterface::attributeChanged(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
+void JSCustomElementInterface::invokeCallback(Element& element, JSObject* callback, const WTF::Function<void(ExecState*, MarkedArgumentBuffer&)>& addArguments)
 {
     if (!canInvokeCallback())
         return;
 
-    Ref<JSCustomElementInterface> protectedThis(*this);
-
-    JSLockHolder lock(m_isolatedWorld->vm());
-
-    ScriptExecutionContext* context = scriptExecutionContext();
+    auto* context = scriptExecutionContext();
     if (!context)
         return;
 
+    Ref<JSCustomElementInterface> protectedThis(*this);
+    JSLockHolder lock(m_isolatedWorld->vm());
+
+    ASSERT(context);
     ASSERT(context->isDocument());
     JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
     ExecState* state = globalObject->globalExec();
 
     JSObject* jsElement = asObject(toJS(state, globalObject, element));
 
-    PropertyName attributeChanged(Identifier::fromString(state, "attributeChangedCallback"));
-    JSValue callback = jsElement->get(state, attributeChanged);
     CallData callData;
-    CallType callType = getCallData(callback, callData);
-    if (callType == CallType::None)
-        return;
+    CallType callType = callback->methodTable()->getCallData(callback, callData);
+    ASSERT(callType != CallType::None);
 
-    const AtomicString& namespaceURI = attributeName.namespaceURI();
     MarkedArgumentBuffer args;
-    args.append(jsStringWithCache(state, attributeName.localName()));
-    args.append(oldValue == nullAtom ? jsNull() : jsStringWithCache(state, oldValue));
-    args.append(newValue == nullAtom ? jsNull() : jsStringWithCache(state, newValue));
-    args.append(namespaceURI == nullAtom ? jsNull() : jsStringWithCache(state, attributeName.namespaceURI()));
+    addArguments(state, args);
 
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(context, callType, callData);
 
@@ -194,7 +187,45 @@ void JSCustomElementInterface::attributeChanged(Element& element, const Qualifie
     if (exception)
         reportException(state, exception);
 }
-    
+
+void JSCustomElementInterface::setConnectedCallback(JSC::JSObject* callback)
+{
+    m_connectedCallback = callback;
+}
+
+void JSCustomElementInterface::invokeConnectedCallback(Element& element)
+{
+    invokeCallback(element, m_connectedCallback.get());
+}
+
+void JSCustomElementInterface::setDisconnectedCallback(JSC::JSObject* callback)
+{
+    m_disconnectedCallback = callback;
+}
+
+void JSCustomElementInterface::invokeDisconnectedCallback(Element& element)
+{
+    invokeCallback(element, m_disconnectedCallback.get());
+}
+
+void JSCustomElementInterface::setAttributeChangedCallback(JSC::JSObject* callback, const Vector<String>& observedAttributes)
+{
+    m_attributeChangedCallback = callback;
+    m_observedAttributes.clear();
+    for (auto& name : observedAttributes)
+        m_observedAttributes.add(name);
+}
+
+void JSCustomElementInterface::invokeAttributeChangedCallback(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
+{
+    invokeCallback(element, m_attributeChangedCallback.get(), [&](ExecState* state, MarkedArgumentBuffer& args) {
+        args.append(jsStringWithCache(state, attributeName.localName()));
+        args.append(jsStringOrNull(state, oldValue));
+        args.append(jsStringOrNull(state, newValue));
+        args.append(jsStringOrNull(state, attributeName.namespaceURI()));
+    });
+}
+
 void JSCustomElementInterface::didUpgradeLastElementInConstructionStack()
 {
     m_constructionStack.last() = nullptr;

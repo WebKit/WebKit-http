@@ -566,7 +566,7 @@ void WebFrameLoaderClient::forcePageTransitionIfNeeded()
     m_didCompletePageTransition = true;
 }
 
-void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
+void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones milestones)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
@@ -595,7 +595,7 @@ void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
     }
 
     // Send this after DidFirstLayout-specific calls since some clients expect to get those messages first.
-    webPage->dispatchDidLayout(milestones);
+    webPage->dispatchDidReachLayoutMilestone(milestones);
 
     if (milestones & DidFirstVisuallyNonEmptyLayout) {
         if (m_frame->isMainFrame() && !m_didCompletePageTransition && !webPage->corePage()->settings().suppressesIncrementalRendering()) {
@@ -1525,7 +1525,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
         String path = url.path();
         auto dotPosition = path.reverseFind('.');
         if (dotPosition == notFound)
-            return ObjectContentFrame;
+            return ObjectContentType::Frame;
         String extension = path.substring(dotPosition + 1).convertToASCIILowercase();
 
         // Try to guess the MIME type from the extension.
@@ -1534,32 +1534,32 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
             // Check if there's a plug-in around that can handle the extension.
             if (WebPage* webPage = m_frame->page()) {
                 if (pluginSupportsExtension(webPage->corePage()->pluginData(), extension))
-                    return ObjectContentNetscapePlugin;
+                    return ObjectContentType::PlugIn;
             }
-            return ObjectContentFrame;
+            return ObjectContentType::Frame;
         }
     }
 
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return ObjectContentImage;
+        return ObjectContentType::Image;
 
     if (WebPage* webPage = m_frame->page()) {
         auto allowedPluginTypes = webFrame()->coreFrame()->loader().subframeLoader().allowPlugins()
             ? PluginData::AllPlugins : PluginData::OnlyApplicationPlugins;
         if (webPage->corePage()->pluginData().supportsMimeType(mimeType, allowedPluginTypes))
-            return ObjectContentNetscapePlugin;
+            return ObjectContentType::PlugIn;
     }
 
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
-        return ObjectContentFrame;
+        return ObjectContentType::Frame;
 
 #if PLATFORM(IOS)
     // iOS can render PDF in <object>/<embed> via PDFDocumentImage.
     if (MIMETypeRegistry::isPDFOrPostScriptMIMEType(mimeType))
-        return ObjectContentImage;
+        return ObjectContentType::Image;
 #endif
 
-    return ObjectContentNone;
+    return ObjectContentType::None;
 }
 
 String WebFrameLoaderClient::overrideMediaType() const

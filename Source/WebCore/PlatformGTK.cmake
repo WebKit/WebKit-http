@@ -34,6 +34,9 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/editing/atk"
     "${WEBCORE_DIR}/page/gtk"
     "${WEBCORE_DIR}/platform/cairo"
+    "${WEBCORE_DIR}/platform/gamepad"
+    "${WEBCORE_DIR}/platform/gamepad/deprecated"
+    "${WEBCORE_DIR}/platform/gamepad/glib"
     "${WEBCORE_DIR}/platform/geoclue"
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/cairo"
@@ -85,12 +88,13 @@ list(APPEND WebCore_SOURCES
 
     platform/crypto/gnutls/CryptoDigestGnuTLS.cpp
 
+    platform/gamepad/glib/GamepadsGlib.cpp
+
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
 
     platform/glib/EventLoopGlib.cpp
     platform/glib/FileSystemGlib.cpp
-    platform/glib/GamepadsGlib.cpp
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
@@ -168,7 +172,7 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/ResourceHandleSoup.cpp
     platform/network/soup/ResourceRequestSoup.cpp
     platform/network/soup/ResourceResponseSoup.cpp
-    platform/network/soup/SocketStreamHandleSoup.cpp
+    platform/network/soup/SocketStreamHandleImplSoup.cpp
     platform/network/soup/SoupNetworkSession.cpp
     platform/network/soup/SynchronousLoaderClientSoup.cpp
     platform/network/soup/WebKitSoupRequestGeneric.cpp
@@ -574,7 +578,6 @@ list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
     page/Navigator.idl
     page/Performance.idl
     page/PerformanceEntry.idl
-    page/PerformanceEntryList.idl
     page/PerformanceNavigation.idl
     page/PerformanceTiming.idl
     page/Screen.idl
@@ -593,9 +596,13 @@ list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
 
 if (ENABLE_WEB_ANIMATIONS)
     list(APPEND GObjectDOMBindingsUnstable_IDL_FILES
+        animation/Animatable.idl
+        animation/AnimationEffect.idl
         animation/AnimationTimeline.idl
         animation/DocumentAnimation.idl
         animation/DocumentTimeline.idl
+        animation/KeyframeEffect.idl
+        animation/WebAnimation.idl
     )
 endif ()
 

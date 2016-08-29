@@ -35,7 +35,6 @@
 #include "GraphicsContext3D.h"
 #include "NotImplemented.h"
 #include <EGL/egl.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
