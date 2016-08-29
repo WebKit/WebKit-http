@@ -27,7 +27,7 @@
 #include <wpe/renderer-backend-egl.h>
 
 #include "loader-private.h"
-#include "renderer-private.h"
+#include "renderer-backend-egl-private.h"
 #include <stdlib.h>
 
 
