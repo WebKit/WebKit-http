@@ -69,7 +69,8 @@ void QWebChannelWebKitTransport::receiveMessage(const QByteArray& message)
         qWarning() << "Failed to parse the client WebKit QWebChannel message as JSON: " << message
                    << "Error message is:" << error.errorString();
         return;
-    } else if (!doc.isObject()) {
+    }
+    if (!doc.isObject()) {
         qWarning() << "Received WebKit QWebChannel message is not a JSON object: " << message;
         return;
     }

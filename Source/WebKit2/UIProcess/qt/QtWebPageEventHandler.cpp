@@ -566,7 +566,9 @@ void QtWebPageEventHandler::handleInputEvent(const QInputEvent* event)
 
         // Early return since this was a touch-end event.
         return;
-    } else if (activeTouchPointCount == 1) {
+    }
+
+    if (activeTouchPointCount == 1) {
         // If the pinch gesture recognizer was previously in active state the content might
         // be out of valid zoom boundaries, thus we need to finish the pinch gesture here.
         // This will resume the content to valid zoom levels before the pan gesture is started.
@@ -642,4 +644,3 @@ void QtWebPageEventHandler::startDrag(const WebCore::DragData& dragData, PassRef
 } // namespace WebKit
 
 #include "moc_QtWebPageEventHandler.cpp"
-
