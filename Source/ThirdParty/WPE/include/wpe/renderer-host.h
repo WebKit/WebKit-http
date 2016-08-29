@@ -24,23 +24,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_renderer_gbm_h
-#define wpe_renderer_gbm_h
-
-#define __GBM__
-
-#include <wpe/renderer-backend-egl.h>
+#ifndef wpe_renderer_host_h
+#define wpe_renderer_host_h
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface;
-extern struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target_interface;
-extern struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_egl_offscreen_target_interface;
+struct wpe_renderer_host_interface {
+    void* (*create)();
+    void (*destroy)(void*);
+
+    int (*create_client)(void*);
+};
+
+int
+wpe_renderer_host_create_client();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // wpe_renderer_gbm_h
+#endif // wpe_renderer_host_h

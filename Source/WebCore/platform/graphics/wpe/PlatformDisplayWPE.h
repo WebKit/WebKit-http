@@ -44,6 +44,8 @@ public:
     PlatformDisplayWPE();
     virtual ~PlatformDisplayWPE();
 
+    void initialize(int);
+
     class EGLTarget {
     public:
         class Client {

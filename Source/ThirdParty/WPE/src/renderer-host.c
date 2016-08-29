@@ -24,23 +24,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_renderer_gbm_h
-#define wpe_renderer_gbm_h
+#include <wpe/renderer-host.h>
 
-#define __GBM__
+#include "loader-private.h"
+#include "renderer-host-private.h"
+#include <stdlib.h>
 
-#include <wpe/renderer-backend-egl.h>
+__attribute__((visibility("default")))
+int
+wpe_renderer_host_create_client()
+{
+    static struct wpe_renderer_host* s_renderer_host = 0;
+    if (!s_renderer_host) {
+        s_renderer_host = malloc(sizeof(struct wpe_renderer_host));
+        if (!s_renderer_host)
+            return -1;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+        s_renderer_host->interface = wpe_load_object("_wpe_renderer_host_interface");
+        s_renderer_host->interface_data = s_renderer_host->interface->create();
 
-extern struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface;
-extern struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target_interface;
-extern struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_egl_offscreen_target_interface;
+        // FIXME: atexit() should clean up the object.
+    }
 
-#ifdef __cplusplus
+    return s_renderer_host->interface->create_client(s_renderer_host->interface_data);
 }
-#endif
-
-#endif // wpe_renderer_gbm_h

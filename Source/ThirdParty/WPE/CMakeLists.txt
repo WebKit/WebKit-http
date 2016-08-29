@@ -21,6 +21,7 @@ set(WPE_SOURCES
     src/pasteboard-generic.cpp
     src/pasteboard-noop.cpp
     src/renderer.c
+    src/renderer-host.c
     src/view-backend.c
 )
 

@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
+#include <wpe/renderer-host.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -77,9 +78,14 @@ void ProcessLauncher::launchProcess()
     }
 
     realExecutablePath = fileSystemRepresentation(executablePath);
-    GUniquePtr<gchar> socket(g_strdup_printf("%d", socketPair.client));
+    GUniquePtr<gchar> wkSocket(g_strdup_printf("%d", socketPair.client));
+    GUniquePtr<gchar> wpeSocket;
 
     unsigned nargs = 4; // size of the argv array for g_spawn_async()
+    if (m_launchOptions.processType == ProcessLauncher::ProcessType::Web) {
+        wpeSocket = GUniquePtr<gchar>(g_strdup_printf("%d", wpe_renderer_host_create_client()));
+        nargs = 5;
+    }
 
 #ifndef NDEBUG
     Vector<CString> prefixArgs;
@@ -100,8 +106,10 @@ void ProcessLauncher::launchProcess()
         argv[i++] = const_cast<char*>(it->data());
 #endif
     argv[i++] = const_cast<char*>(realExecutablePath.data());
-    argv[i++] = socket.get();
-    argv[i++] = 0;
+    argv[i++] = wkSocket.get();
+    if (m_launchOptions.processType == ProcessLauncher::ProcessType::Web)
+        argv[i++] = wpeSocket.get();
+    argv[i++] = nullptr;
 
     GUniqueOutPtr<GError> error;
     if (!g_spawn_async(0, argv, 0, G_SPAWN_LEAVE_DESCRIPTORS_OPEN, childSetupFunction, GINT_TO_POINTER(socketPair.server), &pid, &error.outPtr())) {
