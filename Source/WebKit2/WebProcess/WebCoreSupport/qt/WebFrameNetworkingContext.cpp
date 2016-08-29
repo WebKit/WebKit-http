@@ -20,10 +20,15 @@
 #include "config.h"
 #include "WebFrameNetworkingContext.h"
 
+#include "SessionTracker.h"
 #include "WebFrame.h"
 #include "WebPage.h"
+
 #include <QObject>
 #include <QVariant>
+#include <WebCore/SessionID.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -38,9 +43,26 @@ WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
     }
 }
 
-PassRefPtr<WebFrameNetworkingContext> WebFrameNetworkingContext::create(WebFrame* frame)
+Ref<WebFrameNetworkingContext> WebFrameNetworkingContext::create(WebFrame* frame)
 {
-    return adoptRef(new WebFrameNetworkingContext(frame));
+    return adoptRef(*new WebFrameNetworkingContext(frame));
+}
+
+WebFrameLoaderClient* WebFrameNetworkingContext::webFrameLoaderClient() const
+{
+    if (!frame())
+        return nullptr;
+
+    return toWebFrameLoaderClient(frame()->loader().client());
+}
+
+WebCore::NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
+{
+    if (frame() && frame()->page()->usesEphemeralSession())
+        return *SessionTracker::storageSession(SessionID::legacyPrivateSessionID());
+
+    return NetworkStorageSession::defaultStorageSession();
+
 }
 
 }
