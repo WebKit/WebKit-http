@@ -146,13 +146,13 @@ list(APPEND WebKit2_SOURCES
     UIProcess/qt/TextCheckerQt.cpp
     UIProcess/qt/WebColorPickerQt.cpp
     UIProcess/qt/WebContextMenuProxyQt.cpp
-    UIProcess/qt/WebContextQt.cpp
     UIProcess/qt/WebFullScreenManagerProxyQt.cpp
     UIProcess/qt/WebGeolocationProviderQt.cpp
     UIProcess/qt/WebInspectorProxyQt.cpp
     UIProcess/qt/WebPageProxyQt.cpp
     UIProcess/qt/WebPopupMenuProxyQt.cpp
     UIProcess/qt/WebPreferencesQt.cpp
+    UIProcess/qt/WebProcessPoolQt.cpp
 
     WebProcess/Cookies/qt/WebCookieManagerQt.cpp
 
