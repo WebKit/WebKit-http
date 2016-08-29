@@ -58,7 +58,7 @@ PassRefPtr<Image> ShareableBitmap::createImage()
 
 std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
 {
-    // FIXME: Should this be OwnPtr<QImage>?
+    // QTFIXME: Shallow QImage leaks here, but it should not be destroyed earlier than QPainter
     QImage* image = new QImage(createQImage());
     QPainter* painter = new QPainter(image);
     painter->setRenderHint(QPainter::SmoothPixmapTransform, true);
