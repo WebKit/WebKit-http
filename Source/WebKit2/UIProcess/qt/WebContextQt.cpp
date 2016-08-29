@@ -52,7 +52,7 @@ String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
     qRegisterMetaType<QProcess::ExitStatus>("QProcess::ExitStatus");
-#if ENABLE(GEOLOCATION) && HAVE(QTLOCATION)
+#if ENABLE(GEOLOCATION) && HAVE(QTPOSITIONING)
     static WebGeolocationProviderQt* location = WebGeolocationProviderQt::create(toAPI(supplement<WebGeolocationManagerProxy>()));
     WKGeolocationManagerSetProvider(toAPI(supplement<WebGeolocationManagerProxy>()), WebGeolocationProviderQt::provider(location));
 #endif
