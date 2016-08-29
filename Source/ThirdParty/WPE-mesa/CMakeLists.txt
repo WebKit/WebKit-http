@@ -49,7 +49,7 @@ set(WPE_MESA_SOURCES
 
     src/exportable/view-backend-exportable.cpp
 
-    src/gbm/renderer-gbm.cpp
+    src/gbm/renderer-backend-egl-gbm.cpp
     src/gbm/renderer-host-gbm.cpp
 
     src/libxkbcommon/input-libxkbcommon.cpp
