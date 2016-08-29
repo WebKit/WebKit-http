@@ -93,4 +93,3 @@ void QWebDownloadItem::start()
 
     d->downloadProxy->startTransfer(d->destinationPath);
 }
-

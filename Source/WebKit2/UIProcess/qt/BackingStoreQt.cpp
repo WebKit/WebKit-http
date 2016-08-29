@@ -28,8 +28,8 @@
 #include "config.h"
 #include "BackingStore.h"
 
-#include "UpdateInfo.h"
 #include "ShareableBitmap.h"
+#include "UpdateInfo.h"
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/IntRect.h>
 

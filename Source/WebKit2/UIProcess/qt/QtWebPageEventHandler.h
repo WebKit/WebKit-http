@@ -84,7 +84,7 @@ public:
 
     void didFindZoomableArea(const WebCore::IntPoint& target, const WebCore::IntRect& area);
     void updateTextInputState();
-    void doneWithGestureEvent(const WebGestureEvent& event, bool wasEventHandled);
+    void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled);
 #if ENABLE(TOUCH_EVENTS)
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled);
 #endif

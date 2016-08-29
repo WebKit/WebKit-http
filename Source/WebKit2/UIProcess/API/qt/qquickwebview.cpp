@@ -85,8 +85,8 @@
 #include <wtf/text/WTFString.h>
 
 #ifdef HAVE_WEBCHANNEL
-#include <QtWebChannel/QQmlWebChannel>
 #include "qwebchannelwebkittransport_p.h"
+#include <QtWebChannel/QQmlWebChannel>
 #endif
 
 using namespace WebCore;
@@ -2001,7 +2001,7 @@ QVariant QQuickWebView::inputMethodQuery(Qt::InputMethodQuery property) const
     Q_D(const QQuickWebView);
     const EditorState& state = d->webPageProxy->editorState();
 
-    switch(property) {
+    switch (property) {
     case Qt::ImCursorRectangle:
         return QRectF(state.cursorRect);
     case Qt::ImFont:

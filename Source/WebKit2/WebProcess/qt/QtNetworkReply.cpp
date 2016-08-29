@@ -98,4 +98,3 @@ void QtNetworkReply::finalize()
 }
 
 } // namespace WebKit
-

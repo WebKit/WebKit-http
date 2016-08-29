@@ -158,4 +158,3 @@ void QtWebPagePolicyClient::decidePolicyForResponse(WKPageRef page, WKFrameRef f
 }
 
 } // namespace WebKit
-

@@ -45,4 +45,3 @@ QUrl QQuickNetworkRequest::url() const
 }
 
 #include "moc_qquicknetworkrequest_p.cpp"
-

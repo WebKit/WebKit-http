@@ -44,10 +44,10 @@
 
 #ifdef HAVE_WEBCHANNEL
 
-#include <QJsonObject>
-#include <QJsonDocument>
-
 #include "qquickwebview_p.h"
+
+#include <QJsonDocument>
+#include <QJsonObject>
 
 QWebChannelWebKitTransport::QWebChannelWebKitTransport(QQuickWebViewExperimental* experimental)
     : QWebChannelAbstractTransport(experimental)

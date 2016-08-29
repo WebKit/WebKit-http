@@ -478,4 +478,3 @@ void QtDialogRunner::onDatabaseQuotaAccepted(quint64 quota)
 
 #include "QtDialogRunner.moc"
 #include "moc_QtDialogRunner.cpp"
-

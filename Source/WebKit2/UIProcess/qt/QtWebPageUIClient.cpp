@@ -174,4 +174,3 @@ void QtWebPageUIClient::policyForNotificationPermissionRequest(WKPageRef page, W
 }
 
 } // namespace WebKit
-

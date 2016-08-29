@@ -47,8 +47,7 @@
 
 class QQuickWebViewExperimental;
 
-class QWebChannelWebKitTransport : public QWebChannelAbstractTransport
-{
+class QWebChannelWebKitTransport : public QWebChannelAbstractTransport {
     Q_OBJECT
 public:
     explicit QWebChannelWebKitTransport(QQuickWebViewExperimental* experimental);

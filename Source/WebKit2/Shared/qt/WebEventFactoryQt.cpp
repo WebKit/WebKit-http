@@ -26,6 +26,7 @@
 
 #include "config.h"
 #include "WebEventFactory.h"
+
 #include <QKeyEvent>
 #include <QLineF>
 #include <QTransform>
@@ -186,7 +187,7 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(const QTouchEvent* event, con
 {
     WebEvent::Type type  = webEventTypeForEvent(event);
     WebPlatformTouchPoint::TouchPointState state = static_cast<WebPlatformTouchPoint::TouchPointState>(0);
-    unsigned int id;
+    unsigned id;
     WebEvent::Modifiers modifiers   = modifiersForEvent(event->modifiers());
     double timestamp                = currentTimeForEvent(event);
 

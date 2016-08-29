@@ -27,8 +27,8 @@
 #include "QtNetworkReplyData.h"
 
 #include "ArgumentCodersQt.h"
-#include "URL.h"
 #include "SharedMemory.h"
+#include "URL.h"
 #include "WebCoreArgumentCoders.h"
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
@@ -66,5 +66,3 @@ bool QtNetworkReplyData::decode(IPC::ArgumentDecoder& decoder, QtNetworkReplyDat
 }
 
 } // namespace WebKit
-
-

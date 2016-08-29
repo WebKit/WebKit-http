@@ -54,8 +54,8 @@
 #endif
 
 #if defined(Q_OS_LINUX)
-#include <sys/prctl.h>
 #include <signal.h>
+#include <sys/prctl.h>
 #endif
 
 #if OS(WINDOWS)
@@ -84,8 +84,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-class QtWebProcess : public QProcess
-{
+class QtWebProcess : public QProcess {
     Q_OBJECT
 public:
     QtWebProcess(QObject* parent = 0)

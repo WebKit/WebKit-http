@@ -21,8 +21,8 @@
 #ifndef qwebkittest_p_h
 #define qwebkittest_p_h
 
-#include "qwebkitglobal.h"
 #include "qquickwebview_p.h"
+#include "qwebkitglobal.h"
 
 #include <QtCore/QJsonObject>
 #include <QtCore/QObject>

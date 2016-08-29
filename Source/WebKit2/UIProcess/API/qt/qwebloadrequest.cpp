@@ -18,7 +18,6 @@
 */
 
 #include "config.h"
-
 #include "qwebloadrequest_p.h"
 
 class QWebLoadRequestPrivate {

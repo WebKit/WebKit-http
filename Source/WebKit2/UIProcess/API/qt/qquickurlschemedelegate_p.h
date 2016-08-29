@@ -68,5 +68,3 @@ private:
 };
 
 #endif // qquickurlschemedelegate_p_h
-
-

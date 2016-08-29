@@ -18,7 +18,6 @@
 */
 
 #include "config.h"
-
 #include "qwebpermissionrequest_p.h"
 
 #include "WKStringQt.h"
@@ -118,4 +117,3 @@ QtWebSecurityOrigin* QWebPermissionRequest::securityOrigin()
 {
     return &(d->securityInfo);
 }
-

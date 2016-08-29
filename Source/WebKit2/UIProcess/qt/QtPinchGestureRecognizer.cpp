@@ -103,4 +103,3 @@ void QtPinchGestureRecognizer::cancel()
 }
 
 } // namespace WebKit
-

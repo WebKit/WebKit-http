@@ -27,8 +27,8 @@
 #include "QtPageClient.h"
 #include "QtWebPageUIClient.h"
 
-#include "qquickwebview_p.h"
 #include "qquickwebpage_p.h"
+#include "qquickwebview_p.h"
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QObject>
 #include <QtCore/QScopedPointer>

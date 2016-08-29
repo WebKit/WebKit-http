@@ -29,12 +29,11 @@
 
 #include "APIError.h"
 #include "WKErrorRef.h"
+#include <QCoreApplication>
+#include <QNetworkReply>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
-
-#include <QCoreApplication>
-#include <QNetworkReply>
 
 using namespace WebCore;
 

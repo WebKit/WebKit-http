@@ -22,11 +22,11 @@
 #define qquicknetworkrequest_p_h
 
 #include "QtNetworkRequestData.h"
-#include "wtf/RefPtr.h"
 #include "qwebkitglobal.h"
 #include <QObject>
 #include <QtQml/qqmllist.h>
 #include <QtQuick/qquickitem.h>
+#include <wtf/RefPtr.h>
 
 class QWEBKIT_EXPORT QQuickNetworkRequest : public QObject {
     Q_OBJECT
@@ -46,4 +46,3 @@ private:
 QML_DECLARE_TYPE(QQuickNetworkRequest)
 
 #endif // qquicknetworkrequest_p_h
-

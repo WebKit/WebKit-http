@@ -68,4 +68,3 @@ bool QtNetworkRequestData::decode(IPC::ArgumentDecoder& decoder, QtNetworkReques
 }
 
 } // namespace WebKit
-

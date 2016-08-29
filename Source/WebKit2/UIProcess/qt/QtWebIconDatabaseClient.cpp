@@ -92,4 +92,3 @@ void QtWebIconDatabaseClient::releaseIconForPageURL(const QString& pageURL)
 } // namespace WebKit
 
 #include "moc_QtWebIconDatabaseClient.cpp"
-

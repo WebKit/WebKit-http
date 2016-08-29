@@ -18,7 +18,6 @@
 */
 
 #include "config.h"
-
 #include "qwebnavigationrequest_p.h"
 
 #include "qquickwebview_p.h"

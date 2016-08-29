@@ -23,8 +23,8 @@
 
 #include "QtNetworkReplyData.h"
 #include "QtNetworkRequestData.h"
-#include "qquickwebview_p.h"
 #include "SharedMemory.h"
+#include "qquickwebview_p.h"
 #include "qwebkitglobal.h"
 #include <QNetworkAccessManager>
 #include <QObject>
@@ -64,4 +64,3 @@ private:
 QML_DECLARE_TYPE(QQuickNetworkReply)
 
 #endif // qquicknetworkreply_p_h
-

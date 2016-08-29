@@ -36,8 +36,8 @@
 #include <QString>
 #include <QStringList>
 #include <QUrl>
-#include <wtf/RunLoop.h>
 #include <errno.h>
+#include <wtf/RunLoop.h>
 
 #ifndef NDEBUG
 #if !OS(WINDOWS)
@@ -72,14 +72,13 @@ static void sleep(unsigned seconds)
 #endif
 #endif
 
-class EnvHttpProxyFactory : public QNetworkProxyFactory
-{
+class EnvHttpProxyFactory : public QNetworkProxyFactory {
 public:
     EnvHttpProxyFactory() { }
 
     bool initializeFromEnvironment();
 
-    QList<QNetworkProxy> queryProxy(const QNetworkProxyQuery& query = QNetworkProxyQuery());
+    QList<QNetworkProxy> queryProxy(const QNetworkProxyQuery& = QNetworkProxyQuery());
 
 private:
     QList<QNetworkProxy> m_httpProxy;
