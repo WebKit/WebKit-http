@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Igalia S.L.
+ * Copyright (C) 2016 Igalia S.L.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,26 +24,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_renderer_gbm_h
-#define wpe_renderer_gbm_h
+#include "renderer-gbm.h"
 
-#define __GBM__
-
-#include <wpe/renderer-backend-egl.h>
-#include <wpe/renderer-host.h>
-
-#ifdef __cplusplus
 extern "C" {
-#endif
 
-extern struct wpe_renderer_host_interface gbm_renderer_host_interface;
+struct wpe_renderer_host_interface gbm_renderer_host_interface = {
+    // create
+    []() -> void*
+    {
+        return nullptr;
+    },
+    // destroy
+    [](void* data)
+    {
+    },
+    // create_client
+    [](void* data) -> int
+    {
+        return -1;
+    },
+};
 
-extern struct wpe_renderer_backend_egl_interface gbm_renderer_backend_egl_interface;
-extern struct wpe_renderer_backend_egl_target_interface gbm_renderer_backend_egl_target_interface;
-extern struct wpe_renderer_backend_egl_offscreen_target_interface gbm_renderer_backend_egl_offscreen_target_interface;
-
-#ifdef __cplusplus
 }
-#endif
-
-#endif // wpe_renderer_gbm_h
