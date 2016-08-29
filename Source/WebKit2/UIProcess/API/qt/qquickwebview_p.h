@@ -65,8 +65,7 @@ namespace WTF {
 template<class T> class PassRefPtr;
 }
 
-typedef const struct OpaqueWKContext* WKContextRef;
-typedef const struct OpaqueWKPageGroup* WKPageGroupRef;
+typedef const struct OpaqueWKPageConfiguration* WKPageConfigurationRef;
 typedef const struct OpaqueWKPage* WKPageRef;
 
 QT_BEGIN_NAMESPACE
@@ -210,7 +209,7 @@ private:
     QPointF contentPos() const;
     void setContentPos(const QPointF&);
 
-    QQuickWebView(WKContextRef, WKPageGroupRef, QQuickItem* parent = 0);
+    QQuickWebView(WKPageConfigurationRef);
     WKPageRef pageRef() const;
 
     void emitUrlChangeIfNeeded();

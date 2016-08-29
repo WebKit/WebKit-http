@@ -23,6 +23,7 @@
 #include "config.h"
 #include "qquickwebview_p.h"
 
+#include "APIPageConfiguration.h"
 #include "CoordinatedGraphicsScene.h"
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "DownloadProxy.h"
@@ -69,6 +70,7 @@
 #include <QtQuick/QQuickView>
 #include <WKNumber.h>
 #include <WKOpenPanelResultListener.h>
+#include <WKPageConfigurationRef.h>
 #include <WKPageGroup.h>
 #include <WKPreferencesRef.h>
 #include <WKSerializedScriptValue.h>
@@ -323,14 +325,23 @@ QQuickWebViewPrivate::~QQuickWebViewPrivate()
 }
 
 // Note: we delay this initialization to make sure that QQuickWebView has its d-ptr in-place.
-void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
+void QQuickWebViewPrivate::initialize(WKPageConfigurationRef configurationRef)
 {
-    pageGroup = pageGroupRef;
-    if (!pageGroup)
-        pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(0));
+    WKRetainPtr<WKPageConfigurationRef> pageConfiguration;
+    WKContextRef contextRef = nullptr;
 
-    context = contextRef ? QtWebContext::create(contextRef) : QtWebContext::defaultContext();
-    webPageProxy = toImpl(context->context())->createWebPage(pageClient, toImpl(pageGroup.get()));
+    if (configurationRef) {
+        pageConfiguration = adoptWK(configurationRef);
+        contextRef = WKPageConfigurationGetContext(configurationRef);
+        context = QtWebContext::create(contextRef);
+    } else {
+        pageConfiguration = adoptWK(WKPageConfigurationCreate());
+        WKRetainPtr<WKPageGroupRef> pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(0));
+        WKPageConfigurationSetPageGroup(pageConfiguration.get(), pageGroup.get());
+        context = QtWebContext::defaultContext();
+    }
+
+    webPageProxy = toImpl(context->context())->createWebPage(pageClient, toImpl(pageConfiguration.get())->copy());
     webPage = toAPI(webPageProxy.get());
     pageToView()->insert(webPage.get(), this);
 
@@ -378,14 +389,14 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     QObject::connect(iconDatabase, SIGNAL(iconChangedForPageURL(QString)), q_ptr, SLOT(_q_onIconChangedForPageURL(QString)));
 
     // Any page setting should preferrable be set before creating the page.
-    WKPreferencesRef preferencesRef = WKPageGroupGetPreferences(pageGroup.get());
-    WKPreferencesSetAcceleratedCompositingEnabled(preferencesRef, true);
+    auto& preferences = webPageProxy->pageGroup().preferences();
+    preferences.setAcceleratedCompositingEnabled(true);
     bool showDebugVisuals = qgetenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS") == "1";
-    WKPreferencesSetCompositingBordersVisible(preferencesRef, showDebugVisuals);
-    WKPreferencesSetCompositingRepaintCountersVisible(preferencesRef, showDebugVisuals);
-    WKPreferencesSetFrameFlatteningEnabled(preferencesRef, true);
-    WKPreferencesSetWebGLEnabled(preferencesRef, true);
-    webPageProxy->pageGroup().preferences().setForceCompositingMode(true);
+    preferences.setCompositingBordersVisible(showDebugVisuals);
+    preferences.setCompositingRepaintCountersVisible(showDebugVisuals);
+    preferences.setFrameFlatteningEnabled(true);
+    preferences.setWebGLEnabled(true);
+    preferences.setForceCompositingMode(true);
 
     pageClient.initialize(q_ptr, pageEventHandler.data(), &undoController);
     webPageProxy->initializeWebPage();
@@ -1005,9 +1016,9 @@ QQuickWebViewLegacyPrivate::QQuickWebViewLegacyPrivate(QQuickWebView* viewport)
 {
 }
 
-void QQuickWebViewLegacyPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
+void QQuickWebViewLegacyPrivate::initialize(WKPageConfigurationRef configurationRef)
 {
-    QQuickWebViewPrivate::initialize(contextRef, pageGroupRef);
+    QQuickWebViewPrivate::initialize(configurationRef);
 
     // Trigger setting of correct visibility flags after everything was allocated and initialized.
     _q_onVisibleChanged();
@@ -1048,9 +1059,9 @@ QQuickWebViewFlickablePrivate::QQuickWebViewFlickablePrivate(QQuickWebView* view
 {
 }
 
-void QQuickWebViewFlickablePrivate::initialize(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
+void QQuickWebViewFlickablePrivate::initialize(WKPageConfigurationRef configurationRef)
 {
-    QQuickWebViewPrivate::initialize(contextRef, pageGroupRef);
+    QQuickWebViewPrivate::initialize(configurationRef);
 }
 
 void QQuickWebViewFlickablePrivate::onComponentComplete()
@@ -1745,12 +1756,12 @@ QQuickWebView::QQuickWebView(QQuickItem* parent)
     d->initialize();
 }
 
-QQuickWebView::QQuickWebView(WKContextRef contextRef, WKPageGroupRef pageGroupRef, QQuickItem* parent)
-    : QQuickFlickable(parent)
+QQuickWebView::QQuickWebView(WKPageConfigurationRef configurationRef)
+    : QQuickFlickable()
     , d_ptr(createPrivateObject(this))
 {
     Q_D(QQuickWebView);
-    d->initialize(contextRef, pageGroupRef);
+    d->initialize(configurationRef);
 }
 
 QQuickWebView::~QQuickWebView()
