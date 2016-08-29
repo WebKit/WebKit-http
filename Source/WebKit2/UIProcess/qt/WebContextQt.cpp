@@ -25,7 +25,7 @@
  */
 
 #include "config.h"
-#include "WebContext.h"
+#include "WebProcessPool.h"
 
 #include "WKSharedAPICast.h"
 #include "WebProcessCreationParameters.h"
@@ -39,7 +39,7 @@
 
 namespace WebKit {
 
-String WebContext::platformDefaultApplicationCacheDirectory() const
+String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 {
     const String cacheDirectory = WebCore::cacheStorage().cacheDirectory();
 
@@ -49,7 +49,7 @@ String WebContext::platformDefaultApplicationCacheDirectory() const
     return cacheDirectory;
 }
 
-void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
+void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
     qRegisterMetaType<QProcess::ExitStatus>("QProcess::ExitStatus");
 #if ENABLE(GEOLOCATION) && HAVE(QTLOCATION)
@@ -58,31 +58,17 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
 #endif
 }
 
-void WebContext::platformInvalidateContext()
+void WebProcessPool::platformInvalidateContext()
 {
 }
 
-String WebContext::platformDefaultDatabaseDirectory() const
-{
-    return String();
-}
 
-String WebContext::platformDefaultIconDatabasePath() const
+String WebProcessPool::platformDefaultIconDatabasePath() const
 {
     return String();
 }
 
-String WebContext::platformDefaultLocalStorageDirectory() const
-{
-    return String();
-}
-
-String WebContext::platformDefaultDiskCacheDirectory() const
-{
-    return String();
-}
-
-String WebContext::platformDefaultCookieStorageDirectory() const
+String WebProcessPool::platformDefaultLocalStorageDirectory() const
 {
     return String();
 }

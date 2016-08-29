@@ -35,7 +35,6 @@
 #include "QtWebPageEventHandler.h"
 #include "QtWebPagePolicyClient.h"
 #include "WebBackForwardList.h"
-#include "WebContext.h"
 #include "WebFindOptions.h"
 #if ENABLE(INSPECTOR_SERVER)
 #include "WebInspectorProxy.h"
@@ -46,6 +45,7 @@
 #endif
 #include "WebPageGroup.h"
 #include "WebPreferences.h"
+#include "WebProcessPool.h"
 #include "qglobal.h"
 #include "qquicknetworkreply_p.h"
 #include "qquicknetworkrequest_p.h"
