@@ -20,7 +20,7 @@ set(WPE_SOURCES
     src/pasteboard.c
     src/pasteboard-generic.cpp
     src/pasteboard-noop.cpp
-    src/renderer.c
+    src/renderer-backend-egl.c
     src/renderer-host.c
     src/view-backend.c
 )
