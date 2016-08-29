@@ -52,7 +52,7 @@ class QWebChannelWebKitTransport : public QWebChannelAbstractTransport {
 public:
     explicit QWebChannelWebKitTransport(QQuickWebViewExperimental* experimental);
 
-    void sendMessage(const QJsonObject& message) Q_DECL_OVERRIDE;
+    void sendMessage(const QJsonObject& message) override;
 
     void receiveMessage(const QByteArray& message);
 
