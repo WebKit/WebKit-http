@@ -105,7 +105,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
 
     UIProcess/API/C/wpe/WKView.cpp
-
     UIProcess/API/C/wpe/WKWebAutomation.cpp
 
     UIProcess/API/wpe/CompositingManagerProxy.cpp
@@ -113,7 +112,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/API/wpe/WPEViewClient.cpp
-
     UIProcess/API/wpe/WPEWebAutomation.cpp
     UIProcess/API/wpe/WPEWebAutomationClient.cpp
 
