@@ -23,6 +23,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include "config.h"
 #include "WKWebAutomation.h"
 #include "WKPage.h"
@@ -39,21 +40,15 @@ using namespace WebKit;
 
 WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKPageRef page)
 {
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     WKWebAutomationSessionRef automationSession = toAPI(WKWPE::WebAutomation::create());
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     toImpl (automationSession)->setClient();
     toImpl (automationSession)->setSessionIdentifier("wpe");
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     toImpl (automationSession)->setProcessPool(toImpl(context));
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     WKPageSetControlledByAutomation(page, true);
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     return automationSession;
 }
 
 void WKWebAutomationExecuteCommand(WKWebAutomationSessionRef automationSession, WKStringRef command, WKAutomationCommandStatusCallback callback)
 {
-     printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
      toImpl(automationSession)->sendMessageToTarget(toImpl(command)->string(), callback);
 }

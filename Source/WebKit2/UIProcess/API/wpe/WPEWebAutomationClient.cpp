@@ -35,15 +35,12 @@
 namespace WKWPE {
 
 AutomationSessionClient::AutomationSessionClient() {
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 }
 
 AutomationSessionClient::~AutomationSessionClient() {
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);fflush(stdout);
 }
 
 String AutomationSessionClient::sessionIdentifier() const { 
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     return emptyString(); 
 }
 
@@ -52,17 +49,14 @@ void AutomationSessionClient::didDisconnectFromRemote(WebKit::WebAutomationSessi
 
 WebKit::WebPageProxy* AutomationSessionClient::didRequestNewWindow(WebKit::WebAutomationSession* webAutomationSession) { 
 
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     for (auto& process : webAutomationSession->processPool()->processes()) {
         for (auto* page : process->pages()) {
             ASSERT(page);
             if (!page->isControlledByAutomation())
                 continue;
-            printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
             return page;
         }
     }
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     return nullptr; 
 }
 

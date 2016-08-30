@@ -85,13 +85,11 @@ public:
     void navigationOccurredForPage(const WebPageProxy&);
     void inspectorFrontendLoaded(const WebPageProxy&);
 
-//#if ENABLE(REMOTE_INSPECTOR)
     // Inspector::RemoteAutomationTarget API
     String name() const { return m_sessionIdentifier; }
     void dispatchMessageFromRemote(const String& message);
     void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false);
     void disconnect(Inspector::FrontendChannel*);
-//#endif
 
     // Inspector::AutomationBackendDispatcherHandler API
     void getBrowsingContexts(Inspector::ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>>&) override;

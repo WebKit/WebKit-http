@@ -33,11 +33,9 @@
 namespace WKWPE {
 
 WebAutomation::WebAutomation () {
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     m_webAutomationSession = new WebKit::WebAutomationSession();
     m_webAutomationSession->connect((Inspector::FrontendChannel*) this, true);
     m_connected = true;
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 }
 
 WebAutomation::~WebAutomation () {
@@ -45,56 +43,41 @@ WebAutomation::~WebAutomation () {
         m_webAutomationSession->disconnect((Inspector::FrontendChannel*) this);	
         m_connected = false;	
     }
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__); fflush(stdout);
     delete m_webAutomationSession;
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__); fflush(stdout);
-//    delete m_webAutomationSessionClient;
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__); fflush(stdout);
 }
 
 WebAutomation* WebAutomation::create () {
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     return new WebAutomation();
 }
 
 void WebAutomation::setClient()
 {
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     m_webAutomationSessionClient = new AutomationSessionClient();
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     m_webAutomationSession->setClient((std::unique_ptr<API::AutomationSessionClient>) m_webAutomationSessionClient);    
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 }
 
 void WebAutomation::setProcessPool(WebKit::WebProcessPool* processPool) 
 {
     //Link Process Pool and Automation Session together
     processPool->setAutomationSession(m_webAutomationSession);
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 }
 
 void WebAutomation::setSessionIdentifier(const String& sessionIdentifier)
 {
     m_webAutomationSession->setSessionIdentifier(sessionIdentifier);
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 }
 
 void (*s_commandStatusCallback)(WKStringRef rspMsg);
 
 void WebAutomation::sendMessageToTarget(const String& command, void (*commandCallback)(WKStringRef rspMsg)) {
     s_commandStatusCallback = commandCallback;
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
     if (m_connected)
         m_webAutomationSession->dispatchMessageFromRemote(command);
-    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
-    fflush(stdout);    printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 }
 
 bool WebAutomation::sendMessageToFrontend(const String& rspMsg) {
-   printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
    s_commandStatusCallback (WebKit::toAPI(API::String::create(rspMsg).ptr()));
    return true; 
 }
 
 } // WKWPE
-

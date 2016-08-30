@@ -31,7 +31,7 @@
 #include "WebInspectorProxy.h"
 #include "WPEWebAutomationClient.h"
 
-#include <inspector/InspectorFrontendChannel.h>
+#include <JavaScriptCore/InspectorFrontendChannel.h>
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <JavaScriptCore/InspectorFrontendRouter.h>
 #include <wtf/RefPtr.h>
@@ -53,7 +53,7 @@ public:
 
 private:
     WebAutomation();
-    ~WebAutomation();
+    virtual ~WebAutomation();
 
     bool m_connected;
     WebKit::WebAutomationSession* m_webAutomationSession;

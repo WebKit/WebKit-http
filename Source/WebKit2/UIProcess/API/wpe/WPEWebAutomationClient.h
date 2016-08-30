@@ -35,7 +35,7 @@ public:
 
     // From API::AutomationSessionClient
     AutomationSessionClient();
-    ~AutomationSessionClient();
+    virtual ~AutomationSessionClient();
 
     String sessionIdentifier() const override;
     WebKit::WebPageProxy* didRequestNewWindow(WebKit::WebAutomationSession*) override;
@@ -47,6 +47,7 @@ public:
     String messageOfCurrentJavaScriptDialogOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*) override;
     void setUserInputForCurrentJavaScriptPromptOnPage(WebKit::WebAutomationSession*, WebKit::WebPageProxy*, const String&) override;
 
+private:
     struct {
         bool didRequestNewWindow : 1;
         bool didDisconnectFromRemote : 1;

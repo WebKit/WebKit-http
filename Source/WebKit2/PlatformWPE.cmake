@@ -483,6 +483,7 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     
     ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKView.h
     ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKWebAutomation.h
+
     ${WEBKIT2_DIR}/UIProcess/API/C/soup/WKCookieManagerSoup.h
 )
 
