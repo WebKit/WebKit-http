@@ -12,6 +12,7 @@ set(WPE_INCLUDE_DIRECTORIES
 )
 
 set(WPE_LIBRARIES
+    dl
 )
 
 set(WPE_SOURCES
