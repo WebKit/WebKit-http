@@ -425,17 +425,6 @@ static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, Gs
             }
             break;
         }
-        case GST_FORMAT_BYTES: {
-            if (src->priv) {
-                gint64 duration = webKitMediaSrcGetSize(src);
-                if (duration) {
-                    gst_query_set_duration(query, format, duration);
-                    GST_DEBUG_OBJECT(src, "size: %" G_GINT64_FORMAT, duration);
-                    result = TRUE;
-                }
-            }
-            break;
-        }
         default:
             break;
         }

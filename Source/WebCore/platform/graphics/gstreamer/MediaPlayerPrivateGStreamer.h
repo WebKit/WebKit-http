@@ -105,8 +105,8 @@ public:
 
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
     virtual float maxTimeSeekable() const override;
-    bool didLoadingProgress() const override;
-    unsigned long long totalBytes() const override;
+    virtual bool didLoadingProgress() const override;
+    virtual unsigned long long totalBytes() const override;
     float maxTimeLoaded() const override;
 
     void loadStateChanged();

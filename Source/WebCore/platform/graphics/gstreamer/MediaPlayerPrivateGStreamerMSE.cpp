@@ -227,6 +227,7 @@ MediaPlayerPrivateGStreamerMSE::MediaPlayerPrivateGStreamerMSE(MediaPlayer* play
     : MediaPlayerPrivateGStreamer(player)
     , m_mseSeekCompleted(true)
     , m_gstSeekCompleted(true)
+    , m_loadingProgressed(false)
 {
     m_eosPending = false;
     LOG_MEDIA_MESSAGE("%p", this);
@@ -841,6 +842,18 @@ RefPtr<AppendPipeline> MediaPlayerPrivateGStreamerMSE::appendPipelineByTrackId(c
             return it->value;
 
     return RefPtr<AppendPipeline>(0);
+}
+
+bool MediaPlayerPrivateGStreamerMSE::loadingProgressed() const
+{
+    bool loadingProgressed = m_loadingProgressed;
+    m_loadingProgressed = false;
+    return loadingProgressed;
+}
+
+void MediaPlayerPrivateGStreamerMSE::setLoadingProgressed(bool loadingProgressed)
+{
+    m_loadingProgressed = loadingProgressed;
 }
 
 void MediaPlayerPrivateGStreamerMSE::durationChanged()
@@ -2456,6 +2469,9 @@ void MediaSourceClientGStreamerMSE::didReceiveInitializationSegment(SourceBuffer
 {
     ASSERT(WTF::isMainThread());
 
+    if (m_playerPrivate)
+        m_playerPrivate->setLoadingProgressed(true);
+
     sourceBuffer->didReceiveInitializationSegment(initializationSegment);
 }
 
@@ -2464,6 +2480,10 @@ void MediaSourceClientGStreamerMSE::didReceiveAllPendingSamples(SourceBufferPriv
     ASSERT(WTF::isMainThread());
 
     LOG_MEDIA_MESSAGE("received all pending samples");
+
+    if (m_playerPrivate)
+        m_playerPrivate->setLoadingProgressed(true);
+
     sourceBuffer->didReceiveAllPendingSamples();
 }
 
@@ -2503,6 +2523,11 @@ float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
     }
 
     return result;
+}
+
+bool MediaPlayerPrivateGStreamerMSE::didLoadingProgress() const
+{
+    return loadingProgressed();
 }
 
 } // namespace WebCore

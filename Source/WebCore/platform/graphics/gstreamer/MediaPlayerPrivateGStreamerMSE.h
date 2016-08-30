@@ -71,6 +71,8 @@ public:
     void setRate(float) override;
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
     virtual float maxTimeSeekable() const override;
+    bool didLoadingProgress() const override;
+    unsigned long long totalBytes() const override { return 0; }
 
     void sourceChanged() override;
 
@@ -119,6 +121,8 @@ private:
     RefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient();
 
     RefPtr<AppendPipeline> appendPipelineByTrackId(const AtomicString& trackId);
+    bool loadingProgressed() const;
+    void setLoadingProgressed(bool loadingProgressed);
 
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
     bool m_mseSeekCompleted;
@@ -129,6 +133,7 @@ private:
     RefPtr<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     MediaTime m_mediaTimeDuration;
     mutable bool m_eosPending;
+    mutable bool m_loadingProgressed;
 };
 
 class GStreamerMediaSample : public MediaSample
