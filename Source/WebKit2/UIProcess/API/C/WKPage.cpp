@@ -241,11 +241,6 @@ void WKPageStopLoading(WKPageRef pageRef)
     toImpl(pageRef)->stopLoading();
 }
 
-bool WKPageCanShowMIMEType(WKPageRef pageRef, WKStringRef mimeType)
-{
-    return toImpl(pageRef)->canShowMIMEType(toWTFString (mimeType));
-}
-
 void WKPageReload(WKPageRef pageRef)
 {
     const bool reloadFromOrigin = false;
