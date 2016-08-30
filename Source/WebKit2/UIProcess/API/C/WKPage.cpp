@@ -390,8 +390,6 @@ void WKPageSetCustomUserAgent(WKPageRef pageRef, WKStringRef userAgentRef)
 void WKPageSetProxies(WKPageRef pageRef, WKArrayRef proxies)
 {
     size_t size = proxies ? WKArrayGetSize(proxies) : 0;
-    if (!size)
-        return;
 
     Vector<WebCore::Proxy> passProxies(size);
 
