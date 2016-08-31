@@ -152,6 +152,12 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             message(FATAL_ERROR "GCC 4.8.0 is required to build QtWebKit, use a newer GCC version or clang")
         endif ()
     endif ()
+elseif (MSVC AND MSVC_VERSION LESS 1900)
+    message(FATAL_ERROR "MSVC 2015 is required to build QtWebKit, use a newer MSVC version")
+endif ()
+
+if (APPLE AND CMAKE_SYSTEM_VERSION VERSION_LESS 14.0.0)
+    message(FATAL_ERROR "macOS 10.10 or higher is required to build and run QtWebKit")
 endif ()
 
 set(ENABLE_WEBKIT ON)
