@@ -64,11 +64,9 @@ public:
     virtual void scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset);
     virtual bool isViewWindowActive();
     virtual bool isViewInWindow();
-#if USE(ACCELERATED_COMPOSITING)
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&);
-#endif // USE(ACCELERATED_COMPOSITING)
     virtual void pageClosed() { }
     virtual void preferencesDidChange() { }
     virtual void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage);
