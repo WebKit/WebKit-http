@@ -179,6 +179,9 @@ void QWebSettingsPrivate::apply()
         settings->setMediaSourceEnabled(value);
 #endif
 
+        value = attributes.value(QWebSettings::MediaEnabled, global->attributes.value(QWebSettings::MediaEnabled));
+        settings->setMediaEnabled(value);
+
         value = attributes.value(QWebSettings::CSSRegionsEnabled,
                                  global->attributes.value(QWebSettings::CSSRegionsEnabled));
         WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(value);
@@ -552,6 +555,7 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::WebGLEnabled, true);
     d->attributes.insert(QWebSettings::WebAudioEnabled, false);
     d->attributes.insert(QWebSettings::MediaSourceEnabled, false);
+    d->attributes.insert(QWebSettings::MediaEnabled, true);
     d->attributes.insert(QWebSettings::CSSRegionsEnabled, true);
     d->attributes.insert(QWebSettings::CSSGridLayoutEnabled, false);
     d->attributes.insert(QWebSettings::HyperlinkAuditingEnabled, false);
