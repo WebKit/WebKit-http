@@ -24,6 +24,7 @@
 #include "ContainerNode.h"
 
 #include "AXObjectCache.h"
+#include "AllDescendantsCollection.h"
 #include "ChildListMutationScope.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
@@ -44,7 +45,6 @@
 #include "MutationEvent.h"
 #include "NameNodeList.h"
 #include "NoEventDispatchAssertion.h"
-#include "NodeOrString.h"
 #include "NodeRareData.h"
 #include "NodeRenderStyle.h"
 #include "RadioNodeList.h"
@@ -60,6 +60,7 @@
 #include "TemplateContentDocumentFragment.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
+#include <wtf/Variant.h>
 
 namespace WebCore {
 
@@ -184,6 +185,8 @@ static inline ExceptionCode checkAcceptChild(ContainerNode& newParent, Node& new
         ASSERT(isChildTypeAllowed(newParent, newChild));
         if (containsConsideringHostElements(newChild, newParent))
             return HIERARCHY_REQUEST_ERR;
+        if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
+            return NOT_FOUND_ERR;
         return 0;
     }
 
@@ -194,6 +197,9 @@ static inline ExceptionCode checkAcceptChild(ContainerNode& newParent, Node& new
 
     if (containsConsideringHostElements(newChild, newParent))
         return HIERARCHY_REQUEST_ERR;
+
+    if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
+        return NOT_FOUND_ERR;
 
     if (is<Document>(newParent)) {
         if (!downcast<Document>(newParent).canAcceptChild(newChild, refChild, operation))
@@ -236,27 +242,20 @@ bool ContainerNode::insertBefore(Node& newChild, Node* refChild, ExceptionCode& 
     // If it is, it can be deleted as a side effect of sending mutation events.
     ASSERT(refCount() || parentOrShadowHostNode());
 
-    Ref<ContainerNode> protectedThis(*this);
-
     ec = 0;
-
-    // insertBefore(node, 0) is equivalent to appendChild(node)
-    if (!refChild)
-        return appendChild(newChild, ec);
 
     // Make sure adding the new child is OK.
     if (!ensurePreInsertionValidity(newChild, refChild, ec))
         return false;
 
-    // NOT_FOUND_ERR: Raised if refChild is not a child of this node
-    if (refChild->parentNode() != this) {
-        ec = NOT_FOUND_ERR;
-        return false;
-    }
+    if (refChild == &newChild)
+        refChild = newChild.nextSibling();
 
-    if (refChild->previousSibling() == &newChild || refChild == &newChild) // nothing to do
-        return true;
+    // insertBefore(node, null) is equivalent to appendChild(node)
+    if (!refChild)
+        return appendChildWithoutPreInsertionValidityCheck(newChild, ec);
 
+    Ref<ContainerNode> protectedThis(*this);
     Ref<Node> next(*refChild);
 
     NodeVector targets;
@@ -393,9 +392,6 @@ bool ContainerNode::replaceChild(Node& newChild, Node& oldChild, ExceptionCode& 
 
     ec = 0;
 
-    if (&oldChild == &newChild) // nothing to do
-        return true;
-
     // Make sure replacing the old child with the new is ok
     if (!checkPreReplacementValidity(*this, newChild, oldChild, ec))
         return false;
@@ -406,16 +402,17 @@ bool ContainerNode::replaceChild(Node& newChild, Node& oldChild, ExceptionCode& 
         return false;
     }
 
-    ChildListMutationScope mutation(*this);
-
     RefPtr<Node> refChild = oldChild.nextSibling();
     if (refChild.get() == &newChild)
         refChild = refChild->nextSibling();
 
     NodeVector targets;
-    collectChildrenAndRemoveFromOldParent(newChild, targets, ec);
-    if (ec)
-        return false;
+    {
+        ChildListMutationScope mutation(*this);
+        collectChildrenAndRemoveFromOldParent(newChild, targets, ec);
+        if (ec)
+            return false;
+    }
 
     // Does this one more time because collectChildrenAndRemoveFromOldParent() fires a MutationEvent.
     if (!checkPreReplacementValidity(*this, newChild, oldChild, ec))
@@ -423,13 +420,19 @@ bool ContainerNode::replaceChild(Node& newChild, Node& oldChild, ExceptionCode& 
 
     // Remove the node we're replacing.
     Ref<Node> protectOldChild(oldChild);
-    removeChild(oldChild, ec);
-    if (ec)
-        return false;
 
-    // Does this one more time because removeChild() fires a MutationEvent.
-    if (!checkPreReplacementValidity(*this, newChild, oldChild, ec))
-        return false;
+    ChildListMutationScope mutation(*this);
+
+    // If oldChild == newChild then oldChild no longer has a parent at this point.
+    if (oldChild.parentNode()) {
+        removeChild(oldChild, ec);
+        if (ec)
+            return false;
+
+        // Does this one more time because removeChild() fires a MutationEvent.
+        if (!checkPreReplacementValidity(*this, newChild, oldChild, ec))
+            return false;
+    }
 
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
@@ -637,8 +640,6 @@ void ContainerNode::removeChildren()
 
 bool ContainerNode::appendChild(Node& newChild, ExceptionCode& ec)
 {
-    Ref<ContainerNode> protectedThis(*this);
-
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
     ASSERT(refCount() || parentOrShadowHostNode());
@@ -649,8 +650,12 @@ bool ContainerNode::appendChild(Node& newChild, ExceptionCode& ec)
     if (!ensurePreInsertionValidity(newChild, nullptr, ec))
         return false;
 
-    if (&newChild == m_lastChild) // nothing to do
-        return true;
+    return appendChildWithoutPreInsertionValidityCheck(newChild, ec);
+}
+
+bool ContainerNode::appendChildWithoutPreInsertionValidityCheck(Node& newChild, ExceptionCode& ec)
+{
+    Ref<ContainerNode> protectedThis(*this);
 
     NodeVector targets;
     collectChildrenAndRemoveFromOldParent(newChild, targets, ec);
@@ -817,39 +822,22 @@ RefPtr<NodeList> ContainerNode::querySelectorAll(const String& selectors, Except
     return nullptr;
 }
 
-Ref<HTMLCollection> ContainerNode::getElementsByTagName(const AtomicString& localName)
+Ref<HTMLCollection> ContainerNode::getElementsByTagName(const AtomicString& qualifiedName)
 {
-    ASSERT(!localName.isNull());
+    ASSERT(!qualifiedName.isNull());
+
+    if (qualifiedName == starAtom)
+        return ensureRareData().ensureNodeLists().addCachedCollection<AllDescendantsCollection>(*this, AllDescendants);
 
     if (document().isHTMLDocument())
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTagCollection>(*this, ByHTMLTag, localName);
-    return ensureRareData().ensureNodeLists().addCachedCollection<TagCollection>(*this, ByTag, localName);
-}
-
-RefPtr<NodeList> ContainerNode::getElementsByTagNameForObjC(const AtomicString& localName)
-{
-    if (localName.isNull())
-        return nullptr;
-
-    return getElementsByTagName(localName);
+        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTagCollection>(*this, ByHTMLTag, qualifiedName);
+    return ensureRareData().ensureNodeLists().addCachedCollection<TagCollection>(*this, ByTag, qualifiedName);
 }
 
 Ref<HTMLCollection> ContainerNode::getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName)
 {
     ASSERT(!localName.isNull());
-
-    if (namespaceURI == starAtom)
-        return getElementsByTagName(localName);
-
-    return ensureRareData().ensureNodeLists().addCachedCollectionWithQualifiedName(*this, namespaceURI.isEmpty() ? nullAtom : namespaceURI, localName);
-}
-
-RefPtr<NodeList> ContainerNode::getElementsByTagNameNSForObjC(const AtomicString& namespaceURI, const AtomicString& localName)
-{
-    if (localName.isNull())
-        return nullptr;
-
-    return getElementsByTagNameNS(namespaceURI, localName);
+    return ensureRareData().ensureNodeLists().addCachedTagCollectionNS(*this, namespaceURI.isEmpty() ? nullAtom : namespaceURI, localName);
 }
 
 Ref<NodeList> ContainerNode::getElementsByName(const String& elementName)
@@ -860,11 +848,6 @@ Ref<NodeList> ContainerNode::getElementsByName(const String& elementName)
 Ref<HTMLCollection> ContainerNode::getElementsByClassName(const AtomicString& classNames)
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<ClassCollection>(*this, ByClass, classNames);
-}
-
-Ref<NodeList> ContainerNode::getElementsByClassNameForObjC(const AtomicString& classNames)
-{
-    return getElementsByClassName(classNames);
 }
 
 Ref<RadioNodeList> ContainerNode::radioNodeList(const AtomicString& name)
@@ -894,18 +877,18 @@ unsigned ContainerNode::childElementCount() const
     return std::distance(children.begin(), children.end());
 }
 
-void ContainerNode::append(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
+void ContainerNode::append(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
-    RefPtr<Node> node = convertNodesOrStringsIntoNode(*this, WTFMove(nodeOrStringVector), ec);
+    RefPtr<Node> node = convertNodesOrStringsIntoNode(WTFMove(nodeOrStringVector), ec);
     if (ec || !node)
         return;
 
     appendChild(*node, ec);
 }
 
-void ContainerNode::prepend(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
+void ContainerNode::prepend(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
-    RefPtr<Node> node = convertNodesOrStringsIntoNode(*this, WTFMove(nodeOrStringVector), ec);
+    RefPtr<Node> node = convertNodesOrStringsIntoNode(WTFMove(nodeOrStringVector), ec);
     if (ec || !node)
         return;
 

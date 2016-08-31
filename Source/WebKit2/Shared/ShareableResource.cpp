@@ -39,14 +39,14 @@ ShareableResource::Handle::Handle()
 {
 }
 
-void ShareableResource::Handle::encode(IPC::ArgumentEncoder& encoder) const
+void ShareableResource::Handle::encode(IPC::Encoder& encoder) const
 {
     encoder << m_handle;
     encoder << m_offset;
     encoder << m_size;
 }
 
-bool ShareableResource::Handle::decode(IPC::ArgumentDecoder& decoder, Handle& handle)
+bool ShareableResource::Handle::decode(IPC::Decoder& decoder, Handle& handle)
 {
     if (!decoder.decode(handle.m_handle))
         return false;

@@ -19,8 +19,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// FIXME: This interface no longer exists in SVG2.
-interface SVGDocument : XMLDocument {
+partial interface Document {
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     readonly attribute SVGSVGElement? rootElement;
+#endif
 };
-

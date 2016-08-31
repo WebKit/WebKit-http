@@ -1,3 +1,420 @@
+2016-08-22  Darin Adler  <darin@apple.com>
+
+        Move Objective-C DOM bindings from WebCore to legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=160654
+
+        Reviewed by Alex Christensen.
+
+        * DOM: Added lots of files to the directory.
+        The files are just as they were in bindings/objc except that the paths of includes
+        have been updated as needed, and the code no longer is defined inside the WebCore
+        namespace, requring changes to various functions and their call sites. Also removed
+        all the WEBCORE_EXPORT since we export differently here in legacy WebKit.
+
+        * DOM/DOMInternal.h: Moved. Replaced createDOMWrapper with initializeDOMWrapperHooks.
+        * DOM/DOMUtility.mm: Moved.
+        (createDOMWrapper): Simplified to use toWrapped and not do unneeded namespace tricks.
+        (disconnectWindowWrapper): Added.
+        (initializeDOMWrapperHooks): Added.
+
+        * MigrateHeaders.make: Removed all the internal headers since they are now just
+        normal project headers. Added the "DOM" directory to the VPATH. Some of the headers
+        from WebCore are still being migrated, so we can't remove WebCorePrivateHeaders yet.
+
+        * WebCoreSupport/WebEditorClient.h: Updated to return RefPtr<DocumentFragment>.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::documentFragmentFromDelegate): Use RefPtr.
+
+        * WebKit.exp: Added exports for all the classes that used to use WEBCORE_EXPORT to
+        be exported from WebCore.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame innerLineHeight:]): Moved code from WebCore::Frame::innerLineHeight here.
+        No longer depend on whether this node happens to be in this frame. Also removed
+        unneeded null check since a node's document can't be null.
+
+        * WebView/WebHTMLView.mm: Removed uneeded include of ExceptionHandlers.h, which
+        is now here in WebKitLegacy instead of WebCore. But no need to include it at all.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Call
+        initializeDOMWrapperHooks so WebScriptObject can create DOM binding wrappers when
+        making a script object for a DOM object, rather than just a generic script object.
+        (+[WebView enableWebThread]): Added a call to WebCoreObjCDeallocOnWebThread here for
+        DOMObject along with the other classes. This was done in WebCore before, but DOMObject is now
+        defined here in legacy WebKit.
+        (-[WebView styleAtSelectionStart]): Moved code from WebCore::Frame::styleAtSelectionStart here.
+        Replaced incorrect code that called "new PropertySetCSSStyleDeclaration" with a misleading comment
+        about reference counting; that code was leaking all the style declarations. Instead use
+        MutableStyleProperties::ensureCSSStyleDeclaration, which is designed for this purpose.
+
+2016-08-22  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Activate fetch api runtime flag by default
+        https://bugs.webkit.org/show_bug.cgi?id=160452
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2016-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Use Document& instead of Document* when getting cookies
+        https://bugs.webkit.org/show_bug.cgi?id=161011
+
+        Reviewed by Darin Adler.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::getCookies):
+        (WebKit::NetscapePluginInstanceProxy::setCookies):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView getVariable:forURL:value:length:]):
+        (-[WebNetscapePluginView setVariable:forURL:value:length:]):
+
+2016-08-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename didLayout(LayoutMilestones) to didReachLayoutMilestone(), and related WK2 functions
+        https://bugs.webkit.org/show_bug.cgi?id=160923
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidReachLayoutMilestone):
+        (WebFrameLoaderClient::dispatchDidLayout): Deleted.
+
+2016-08-18  Daniel Bates  <dabates@apple.com>
+
+        Ld warns of non-existent PrivateFrameworks directory when building WebKit with the public iOS 9.3 SDK
+        https://bugs.webkit.org/show_bug.cgi?id=160979
+
+        Rubber-stamped by Simon Fraser.
+
+        Only add the SDK PrivateFrameworks directory to the FRAMEWORK_SEARCH_PATH when building for
+        iOS Simulator, building with an iOS SDK that does not support text-based stubs, or building
+        an Apple-internal build.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2016-08-18  Anders Carlsson  <andersca@apple.com>
+
+        Move an NPAPI-only function from WebCore to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=160967
+
+        Reviewed by Sam Weinig.
+
+        * Plugins/WebNetscapePluginView.h:
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView getVariable:value:]):
+        (-[WebNetscapePluginView _destroyPlugin]):
+
+2016-08-18  Rawinder Singh  <rawinder.singh-webkit@cisra.canon.com.au>
+
+        [web-animations] Add Animatable, AnimationEffect, KeyframeEffect and Animation interface
+        https://bugs.webkit.org/show_bug.cgi?id=156096
+
+        Reviewed by Dean Jackson.
+
+        Adds:
+        - Setup interface for enabling runtime flag for Web animations through preferences.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webAnimationsEnabled]):
+        (-[WebPreferences setWebAnimationsEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-08-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove a couple of unused WKSI function pointers
+        https://bugs.webkit.org/show_bug.cgi?id=160946
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+
+2016-08-16  Daniel Bates  <dabates@apple.com>
+
+        WKSI static library should be named by major iOS revision, not individual updates
+        https://bugs.webkit.org/show_bug.cgi?id=160727
+        <rdar://problem/22274848>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+
+2016-08-16  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove dependency on Objective-C bindings in WebKit2 editing code
+        https://bugs.webkit.org/show_bug.cgi?id=160891
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebEditorClient.h: Removed documentFragmentFromAttributedString.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (attributesForAttributedStringConversion): Replaced the
+        createExcludedElementsForAttributedStringConversion function with this one.
+        No good reason to keep the array around instead of the dictionary.
+        (_WebCreateFragment): Renamed from documentFragmentFromAttributedString.
+        This is now a global function exported so it can be called by WebCore with
+        a different way of returning its value.
+
+        * WebKit.exp: Added _WebCreateFragment.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _documentFragmentFromPasteboard:forType:inContext:subresources:]):
+        Removed long-ago-obsolete workaround for Radar bug 5052369.
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Another build fix.
+
+        * WebKit.exp:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * WebKit.mac.exp:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove OldWebAssertions.c
+        https://bugs.webkit.org/show_bug.cgi?id=160862
+
+        Reviewed by Dan Bernstein.
+
+        These functions were used by an old version of iWeb. The latest version of iWeb no longer uses them.
+
+        * Misc/OldWebAssertions.c: Removed.
+        (WebReportAssertionFailure): Deleted.
+        (WebReportError): Deleted.
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebKeyGenerator
+        https://bugs.webkit.org/show_bug.cgi?id=160854
+
+        Reviewed by Dan Bernstein.
+
+        This SPI class is no longer used by Safari.
+
+        * WebCoreSupport/WebKeyGenerator.h: Removed.
+        * WebCoreSupport/WebKeyGenerator.mm: Removed.
+        (+[WebKeyGenerator sharedGenerator]): Deleted.
+        (toWebCertificateParseResult): Deleted.
+        (-[WebKeyGenerator addCertificatesToKeychainFromData:]): Deleted.
+        * WebView/WebFrameView.mm:
+
+2016-08-15  Daniel Bates  <dabates@apple.com>
+
+        Cannot build WebKit for iOS device using Xcode 7.3/iOS 9.3 public SDK due to missing
+        private frameworks and libraries
+        https://bugs.webkit.org/show_bug.cgi?id=155931
+        <rdar://problem/25807989>
+
+        Reviewed by Dan Bernstein.
+
+        Add directory WebKitLibraries/WebKitPrivateFrameworkStubs/iOS/X to the framework search path
+        where X is the major version of the active iOS SDK.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2016-08-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a setting and preferences to enable visual viewport mode
+        https://bugs.webkit.org/show_bug.cgi?id=160843
+
+        Reviewed by Sam Weinig.
+
+        Hook up the visualViewportEnabled setting for WebKit1.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences visualViewportEnabled]):
+        (-[WebPreferences setVisualViewportEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * History/BinaryPropertyList.cpp:
+        * History/WebBackForwardList.mm:
+        * History/WebHistoryItemInternal.h:
+        * Misc/WebNSFileManagerExtras.mm:
+        * Plugins/Hosted/NetscapePluginHostProxy.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        * WebCoreSupport/WebSelectionServiceController.mm:
+        * WebCoreSupport/WebUserMediaClient.h:
+
+2016-08-12  Anders Carlsson  <andersca@apple.com>
+
+        Move the plug-in and WebGL blacklist code to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=160831
+
+        Reviewed by Sam Weinig.
+
+        Adopt the plug-in and WebGL blacklist code from WebCore instead of using the code from WebKitSystemInterface.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (shouldBlockPlugin):
+        (WebFrameLoaderClient::createPlugin):
+        (WebFrameLoaderClient::createJavaAppletWidget):
+        (shouldBlockWebGL):
+        (WebFrameLoaderClient::webGLPolicyForURL):
+        (WebFrameLoaderClient::resolveWebGLPolicyForURL):
+
+2016-08-14  Daniel Bates  <dabates@apple.com>
+
+        Fix compiler errors when building iOS WebKit using the iOS 10 beta SDK
+        https://bugs.webkit.org/show_bug.cgi?id=160725
+
+        Reviewed by Sam Weinig.
+
+        OSAtomicCompareAndSwap32() has been deprecated as of the iOS 10 beta SDK. For now,
+        silence the complier warning.
+
+        * WebView/WebView.mm:
+        (-[WebView _dispatchTileDidDraw:]):
+
+2016-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove always true JSC::Debugger::needPauseHandling virtual method
+        https://bugs.webkit.org/show_bug.cgi?id=160822
+
+        Reviewed by Mark Lam.
+
+        * WebView/WebScriptDebugger.h:
+
+2016-08-11  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r204268): Mail crashes when trying to compose an email
+        https://bugs.webkit.org/show_bug.cgi?id=160775
+
+        Reviewed by Anders Carlsson.
+
+        Properly initialize PageConfiguration.pluginInfoProvider in
+        [WebView initSimpleHTMLDocumentWithStyle] to avoid a null
+        dereference in Mail when trying to compose an email.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-08-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Sort the feature flags in the FEATURE_DEFINES lines
+        https://bugs.webkit.org/show_bug.cgi?id=160742
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-08-09  Alex Christensen  <achristensen@webkit.org>
+
+        Move NetworkStorageSession management to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=160173
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        * WebView/WebView.mm:
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Instantiate WebKit plug-ins at layout time, instead of at style resolution time
+        https://bugs.webkit.org/show_bug.cgi?id=160715
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::objectContentType):
+
+2016-08-09  George Ruan  <gruan@apple.com>
+
+        Implement functionality of media capture on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=158945
+        <rdar://problem/26893343>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig: Enable Media Capture feature
+        for iOS.
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160696
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createPluginStrategy): Deleted.
+        * WebCoreSupport/WebPluginInfoProvider.h:
+        * WebCoreSupport/WebPluginInfoProvider.mm:
+        (WebPluginInfoProvider::setPluginLoadClientPolicy): Deleted.
+        (WebPluginInfoProvider::clearPluginClientPolicies): Deleted.
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Move plug-in enumeration from WebPlatformStrategies to WebPluginInfoProvider
+        https://bugs.webkit.org/show_bug.cgi?id=160694
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createPluginStrategy):
+        (WebPlatformStrategies::refreshPlugins): Deleted.
+        (WebPlatformStrategies::getPluginInfo): Deleted.
+        (WebPlatformStrategies::getWebVisiblePluginInfo): Deleted.
+        (WebPlatformStrategies::setPluginLoadClientPolicy): Deleted.
+        (WebPlatformStrategies::clearPluginClientPolicies): Deleted.
+        * WebCoreSupport/WebPluginInfoProvider.mm:
+        (WebPluginInfoProvider::refreshPlugins):
+        (WebPluginInfoProvider::getPluginInfo):
+        (WebPluginInfoProvider::getWebVisiblePluginInfo):
+
+2016-08-08  Anders Carlsson  <andersca@apple.com>
+
+        Add a new PluginInfoProvider class, to replace PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160670
+
+        Reviewed by Sam Weinig.
+
+        Add a new WebPluginInfoProvider - it just calls through to the plug-in strategy for now.
+
+        * WebCoreSupport/WebPluginInfoProvider.h: Added.
+        * WebCoreSupport/WebPluginInfoProvider.mm: Added.
+        (WebPluginInfoProvider::singleton):
+        (WebPluginInfoProvider::WebPluginInfoProvider):
+        (WebPluginInfoProvider::~WebPluginInfoProvider):
+        (WebPluginInfoProvider::refreshPlugins):
+        (WebPluginInfoProvider::getPluginInfo):
+        (WebPluginInfoProvider::getWebVisiblePluginInfo):
+        (WebPluginInfoProvider::setPluginLoadClientPolicy):
+        (WebPluginInfoProvider::clearPluginClientPolicies):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
 2016-08-02  Enrica Casucci  <enrica@apple.com>
 
         Allow building with content filtering disabled.

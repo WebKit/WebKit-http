@@ -19,35 +19,25 @@
  */
 
 [
+    ExportToWrappedFunction,
     GenerateIsReachable=ImplDocument,
     ImplementationLacksVTable,
 ] interface DOMImplementation {
-
-    // DOM Level 1
-
     // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] boolean hasFeature(optional DOMString feature = "undefined",
-        [TreatNullAs=EmptyString] optional DOMString version = "undefined");
+    boolean hasFeature(optional DOMString feature = "undefined", [TreatNullAs=EmptyString] optional DOMString version = "undefined");
 
-    // DOM Level 2
+    [RaisesException, NewObject] DocumentType createDocumentType(DOMString qualifiedName, DOMString publicId, DOMString systemId);
 
-    [ObjCLegacyUnnamedParameters, RaisesException, NewObject] DocumentType createDocumentType(DOMString qualifiedName, DOMString publicId, DOMString systemId);
-
-    [NewObject, ObjCLegacyUnnamedParameters, RaisesException]
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
+    [NewObject, RaisesException]
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
         Document
 #else
         XMLDocument
 #endif
     createDocument(DOMString? namespaceURI, [TreatNullAs=EmptyString] DOMString qualifiedName, optional DocumentType? doctype = null);
 
-    // DOMImplementationCSS interface from DOM Level 2 CSS
-
     // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters, RaisesException] CSSStyleSheet createCSSStyleSheet(optional DOMString title = "undefined", optional DOMString media = "undefined");
-
-    // HTMLDOMImplementation interface from DOM Level 2 HTML
+    [RaisesException] CSSStyleSheet createCSSStyleSheet(optional DOMString title = "undefined", optional DOMString media = "undefined");
 
     [NewObject] HTMLDocument createHTMLDocument(optional DOMString title);
-
 };

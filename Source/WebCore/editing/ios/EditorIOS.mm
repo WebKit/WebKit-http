@@ -30,7 +30,6 @@
 #include "CSSPrimitiveValueMappings.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
-#include "DOMRangeInternal.h"
 #include "DataTransfer.h"
 #include "DocumentFragment.h"
 #include "DocumentLoader.h"
@@ -566,11 +565,10 @@ RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedStrin
     if (wasImagesEnabled)
         cachedResourceLoader.setImagesEnabled(false);
 
-    Vector<RefPtr<ArchiveResource>> resources;
-    RefPtr<DocumentFragment> fragment = client()->documentFragmentFromAttributedString(string, resources);
+    auto fragmentAndResources = createFragment(string);
 
     if (DocumentLoader* loader = m_frame.loader().documentLoader()) {
-        for (auto& resource : resources) {
+        for (auto& resource : fragmentAndResources.resources) {
             if (resource)
                 loader->addArchiveResource(resource.releaseNonNull());
         }
@@ -581,7 +579,7 @@ RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedStrin
     if (!wasDeferringCallbacks)
         m_frame.page()->setDefersLoading(false);
     
-    return fragment;
+    return WTFMove(fragmentAndResources.fragment);
 }
 
 RefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResource(RefPtr<ArchiveResource>&& resource)

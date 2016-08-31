@@ -60,3 +60,4 @@
     unrestricted double now();
 };
 
+typedef sequence<PerformanceEntry> PerformanceEntryList;

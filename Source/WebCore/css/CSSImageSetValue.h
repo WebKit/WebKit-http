@@ -26,15 +26,13 @@
 #ifndef CSSImageSetValue_h
 #define CSSImageSetValue_h
 
-#if ENABLE(CSS_IMAGE_SET)
-
 #include "CSSValueList.h"
 
 namespace WebCore {
 
 class CachedResourceLoader;
 class Document;
-class StyleCachedImageSet;
+class StyleCachedImage;
 class StyleImage;
 struct ResourceLoaderOptions;
 
@@ -47,9 +45,9 @@ public:
     }
     ~CSSImageSetValue();
 
-    StyleCachedImageSet* cachedImageSet(CachedResourceLoader&, const ResourceLoaderOptions&);
+    StyleCachedImage* bestFitImage(CachedResourceLoader&, const ResourceLoaderOptions&);
 
-    // Returns a StyleCachedImageSet if the best fit image has been cached already, otherwise a StylePendingImage.
+    // Returns a StyleCachedImage if the best fit image has been cached already, otherwise a StylePendingImage.
     StyleImage* cachedOrPendingImageSet(const Document&);
 
     String customCSSText() const;
@@ -76,7 +74,7 @@ private:
     void fillImageSet();
     static inline bool compareByScaleFactor(ImageWithScale first, ImageWithScale second) { return first.scaleFactor < second.scaleFactor; }
 
-    RefPtr<StyleImage> m_imageSet;
+    RefPtr<StyleImage> m_image;
     bool m_accessedBestFitImage;
 
     // This represents the scale factor that we used to find the best fit image. It does not necessarily
@@ -89,7 +87,5 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSImageSetValue, isImageSetValue())
-
-#endif // ENABLE(CSS_IMAGE_SET)
 
 #endif // CSSImageSetValue_h

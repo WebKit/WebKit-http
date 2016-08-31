@@ -309,6 +309,36 @@ bool checkAndSet(T& left, U right)
     return true;
 }
 
+// Visitor adapted from http://stackoverflow.com/questions/25338795/is-there-a-name-for-this-tuple-creation-idiom
+
+template <class A, class... B>
+struct Visitor : Visitor<A>, Visitor<B...> {
+    Visitor(A a, B... b)
+        : Visitor<A>(a)
+        , Visitor<B...>(b...)
+    {
+    }
+
+    using Visitor<A>::operator ();
+    using Visitor<B...>::operator ();
+};
+  
+template <class A>
+struct Visitor<A> : A {
+    Visitor(A a)
+        : A(a)
+    {
+    }
+
+    using A::operator();
+};
+ 
+template <class... F>
+Visitor<F...> makeVisitor(F... f)
+{
+    return Visitor<F...>(f...);
+}
+
 } // namespace WTF
 
 // This version of placement new omits a 0 check.

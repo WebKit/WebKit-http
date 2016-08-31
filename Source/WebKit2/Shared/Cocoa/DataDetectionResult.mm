@@ -27,7 +27,6 @@
 #import "DataDetectionResult.h"
 
 #import "ArgumentCodersCF.h"
-#import "Arguments.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/DataDetectorsCoreSPI.h>
 #import <WebCore/SoftLinking.h>
@@ -39,7 +38,7 @@ namespace WebKit {
 
 #if ENABLE(DATA_DETECTION)
 
-void DataDetectionResult::encode(IPC::ArgumentEncoder& encoder) const
+void DataDetectionResult::encode(IPC::Encoder& encoder) const
 {
     RetainPtr<NSMutableData> data = adoptNS([[NSMutableData alloc] init]);
     RetainPtr<NSKeyedArchiver> archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
@@ -50,7 +49,7 @@ void DataDetectionResult::encode(IPC::ArgumentEncoder& encoder) const
     IPC::encode(encoder, reinterpret_cast<CFDataRef>(data.get()));        
 }
 
-bool DataDetectionResult::decode(IPC::ArgumentDecoder& decoder, DataDetectionResult& result)
+bool DataDetectionResult::decode(IPC::Decoder& decoder, DataDetectionResult& result)
 {
     RetainPtr<CFDataRef> data;
     if (!IPC::decode(decoder, data))

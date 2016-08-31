@@ -36,69 +36,69 @@
 
 namespace IPC {
 
-class ArgumentEncoder;
-class ArgumentDecoder;
+class Encoder;
+class Decoder;
 
 // CFArrayRef
-void encode(ArgumentEncoder&, CFArrayRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFArrayRef>& result);
+void encode(Encoder&, CFArrayRef);
+bool decode(Decoder&, RetainPtr<CFArrayRef>& result);
 
 // CFBooleanRef
-void encode(ArgumentEncoder&, CFBooleanRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFBooleanRef>& result);
+void encode(Encoder&, CFBooleanRef);
+bool decode(Decoder&, RetainPtr<CFBooleanRef>& result);
 
 // CFDataRef
-void encode(ArgumentEncoder&, CFDataRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFDataRef>& result);
+void encode(Encoder&, CFDataRef);
+bool decode(Decoder&, RetainPtr<CFDataRef>& result);
 
 // CFDateRef
-void encode(ArgumentEncoder&, CFDateRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFDateRef>& result);
+void encode(Encoder&, CFDateRef);
+bool decode(Decoder&, RetainPtr<CFDateRef>& result);
 
 // CFDictionaryRef
-void encode(ArgumentEncoder&, CFDictionaryRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFDictionaryRef>& result);
+void encode(Encoder&, CFDictionaryRef);
+bool decode(Decoder&, RetainPtr<CFDictionaryRef>& result);
 
 // CFNumberRef
-void encode(ArgumentEncoder&, CFNumberRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFNumberRef>& result);
+void encode(Encoder&, CFNumberRef);
+bool decode(Decoder&, RetainPtr<CFNumberRef>& result);
 
 // CFStringRef
-void encode(ArgumentEncoder&, CFStringRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFStringRef>& result);
+void encode(Encoder&, CFStringRef);
+bool decode(Decoder&, RetainPtr<CFStringRef>& result);
 
 // CFTypeRef
-void encode(ArgumentEncoder&, CFTypeRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFTypeRef>& result);
+void encode(Encoder&, CFTypeRef);
+bool decode(Decoder&, RetainPtr<CFTypeRef>& result);
 
 // CFURLRef
-void encode(ArgumentEncoder&, CFURLRef);
-bool decode(ArgumentDecoder&, RetainPtr<CFURLRef>& result);
+void encode(Encoder&, CFURLRef);
+bool decode(Decoder&, RetainPtr<CFURLRef>& result);
 
 // SecCertificateRef
-void encode(ArgumentEncoder&, SecCertificateRef);
-bool decode(ArgumentDecoder&, RetainPtr<SecCertificateRef>& result);
+void encode(Encoder&, SecCertificateRef);
+bool decode(Decoder&, RetainPtr<SecCertificateRef>& result);
 
 // SecIdentityRef
-void encode(ArgumentEncoder&, SecIdentityRef);
-bool decode(ArgumentDecoder&, RetainPtr<SecIdentityRef>& result);
+void encode(Encoder&, SecIdentityRef);
+bool decode(Decoder&, RetainPtr<SecIdentityRef>& result);
 
 #if HAVE(SEC_KEYCHAIN)
 // SecKeychainItemRef
-void encode(ArgumentEncoder&, SecKeychainItemRef);
-bool decode(ArgumentDecoder&, RetainPtr<SecKeychainItemRef>& result);
+void encode(Encoder&, SecKeychainItemRef);
+bool decode(Decoder&, RetainPtr<SecKeychainItemRef>& result);
 #endif
 
 #if HAVE(SEC_ACCESS_CONTROL)
 // SecAccessControlRef
-void encode(ArgumentEncoder&, SecAccessControlRef);
-bool decode(ArgumentDecoder&, RetainPtr<SecAccessControlRef>& result);
+void encode(Encoder&, SecAccessControlRef);
+bool decode(Decoder&, RetainPtr<SecAccessControlRef>& result);
 #endif
 
 #if HAVE(SEC_TRUST_SERIALIZATION)
 // SecTrustRef
-void encode(ArgumentEncoder&, SecTrustRef);
-bool decode(ArgumentDecoder&, RetainPtr<SecTrustRef>&);
+void encode(Encoder&, SecTrustRef);
+bool decode(Decoder&, RetainPtr<SecTrustRef>&);
 #endif
 
 #if PLATFORM(IOS)

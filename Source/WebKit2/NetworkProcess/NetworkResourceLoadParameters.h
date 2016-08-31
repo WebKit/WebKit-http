@@ -34,8 +34,8 @@
 #include <WebCore/SessionID.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -44,8 +44,8 @@ typedef uint64_t ResourceLoadIdentifier;
 
 class NetworkResourceLoadParameters : public NetworkLoadParameters {
 public:
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, NetworkResourceLoadParameters&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, NetworkResourceLoadParameters&);
 
     ResourceLoadIdentifier identifier { 0 };
     Vector<RefPtr<SandboxExtension>> requestBodySandboxExtensions; // Created automatically for the sender.

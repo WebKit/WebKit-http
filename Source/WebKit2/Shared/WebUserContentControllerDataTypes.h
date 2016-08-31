@@ -30,15 +30,15 @@
 #include <WebCore/UserStyleSheet.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 struct WebUserScriptData {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebUserScriptData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebUserScriptData&);
 
     uint64_t identifier;
     uint64_t worldIdentifier;
@@ -46,8 +46,8 @@ struct WebUserScriptData {
 };
 
 struct WebUserStyleSheetData {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebUserStyleSheetData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebUserStyleSheetData&);
 
     uint64_t identifier;
     uint64_t worldIdentifier;
@@ -55,8 +55,8 @@ struct WebUserStyleSheetData {
 };
 
 struct WebScriptMessageHandlerData {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebScriptMessageHandlerData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebScriptMessageHandlerData&);
 
     uint64_t identifier;
     uint64_t worldIdentifier;

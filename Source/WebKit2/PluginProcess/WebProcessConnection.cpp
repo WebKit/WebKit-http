@@ -39,7 +39,6 @@
 #include "PluginProxyMessages.h"
 #include "WebProcessConnectionMessages.h"
 #include <unistd.h>
-#include <wtf/RunLoop.h>
 #include <wtf/TemporaryChange.h>
 
 using namespace WebCore;
@@ -119,7 +118,7 @@ void WebProcessConnection::setGlobalException(const String& exceptionString)
     currentConnection->sendSync(Messages::PluginProcessConnection::SetException(exceptionString), Messages::PluginProcessConnection::SetException::Reply(), 0);
 }
 
-void WebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void WebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     TemporaryChange<IPC::Connection*> currentConnectionChange(currentConnection, &connection);
 
@@ -141,7 +140,7 @@ void WebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::M
     pluginControllerProxy->didReceivePluginControllerProxyMessage(connection, decoder);
 }
 
-void WebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void WebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     TemporaryChange<IPC::Connection*> currentConnectionChange(currentConnection, &connection);
 

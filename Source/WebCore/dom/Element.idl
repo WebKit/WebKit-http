@@ -24,76 +24,44 @@
     JSGenerateToNativeObject,
     ExportMacro=WEBCORE_EXPORT,
 ] interface Element : Node {
-
-    // DOM Level 1 Core
-
     readonly attribute DOMString? tagName;
 
     DOMString? getAttribute(DOMString name);
 
-    [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
+    [RaisesException, CEReactions] void setAttribute(DOMString name, DOMString value);
 
-    void setAttribute(DOMString name, DOMString value);
-
-    [InvokesCustomElementLifecycleCallbacks] void removeAttribute(DOMString name);
+    [CEReactions] void removeAttribute(DOMString name);
     Attr? getAttributeNode(DOMString name);
 
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr? setAttributeNode(Attr newAttr);
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr removeAttributeNode(Attr oldAttr);
+    [RaisesException, CEReactions] Attr? setAttributeNode(Attr newAttr);
+    [RaisesException, CEReactions] Attr removeAttributeNode(Attr oldAttr);
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ImplementedAs=getElementsByTagNameForObjC] NodeList getElementsByTagName(DOMString name);
-#else
     HTMLCollection getElementsByTagName(DOMString name);
-#endif
 
-#if !defined(LANGUAGE_OBJECTIVE_C)
-    // For ObjC this is defined on Node for legacy support.
     readonly attribute NamedNodeMap attributes;
     boolean hasAttributes();
-#endif
 
-    // DOM Level 2 Core
+    DOMString? getAttributeNS(DOMString? namespaceURI, DOMString localName);
 
-    [ObjCLegacyUnnamedParameters] DOMString? getAttributeNS(DOMString? namespaceURI, DOMString localName);
+    [RaisesException, CEReactions] void setAttributeNS(DOMString? namespaceURI, DOMString qualifiedName, DOMString value);
+    [CEReactions] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
 
-    [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
-
-    void setAttributeNS(DOMString? namespaceURI, DOMString qualifiedName, DOMString value);
-
-    [ObjCLegacyUnnamedParameters, InvokesCustomElementLifecycleCallbacks] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
-#else
     HTMLCollection getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
-#endif
 
-    [ObjCLegacyUnnamedParameters] Attr? getAttributeNodeNS(DOMString? namespaceURI, DOMString localName);
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr? setAttributeNodeNS(Attr newAttr);
+    Attr? getAttributeNodeNS(DOMString? namespaceURI, DOMString localName);
+    [RaisesException, CEReactions] Attr? setAttributeNodeNS(Attr newAttr);
     boolean hasAttribute(DOMString name);
 
-    [ObjCLegacyUnnamedParameters] boolean hasAttributeNS(DOMString? namespaceURI, DOMString localName);
+    boolean hasAttributeNS(DOMString? namespaceURI, DOMString localName);
 
     [ImplementedAs=cssomStyle] readonly attribute CSSStyleDeclaration style;
 
-    // DOM 4
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
     [Reflect] attribute DOMString id;
-#endif
 
-    // Common extensions
+    readonly attribute DOMString? namespaceURI;
+    readonly attribute DOMString? prefix;
+    readonly attribute DOMString localName;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute long offsetLeft;
-    readonly attribute long offsetTop;
-    readonly attribute long offsetWidth;
-    readonly attribute long offsetHeight;
-    readonly attribute long clientLeft;
-    readonly attribute long clientTop;
-    readonly attribute long clientWidth;
-    readonly attribute long clientHeight;
-#else
     readonly attribute double offsetLeft;
     readonly attribute double offsetTop;
     readonly attribute double offsetWidth;
@@ -102,7 +70,6 @@
     readonly attribute double clientTop;
     readonly attribute double clientWidth;
     readonly attribute double clientHeight;
-#endif
 
     attribute long scrollLeft;
     attribute long scrollTop;
@@ -111,7 +78,7 @@
 
     [ImplementedAs=bindingsOffsetParent] readonly attribute Element offsetParent;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     void focus();
     void blur();
 #endif
@@ -120,42 +87,25 @@
 
     sequence<DOMString> getAttributeNames();
 
-    // WebKit extensions
-
     void scrollIntoViewIfNeeded(optional boolean centerIfNeeded = true);
     void scrollByLines(optional long lines = 0);
     void scrollByPages(optional long pages = 0);
 
-    // HTML 5
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ImplementedAs=getElementsByClassNameForObjC] NodeList getElementsByClassName(DOMString name);
-#else
     HTMLCollection getElementsByClassName(DOMString name);
-#endif
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString innerHTML;
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString outerHTML;
 
-
     [Reflect=class] attribute DOMString className;
     [PutForwards=value] readonly attribute DOMTokenList classList;
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    readonly attribute DOMStringMap dataset;
-#endif
 
     [RaisesException] boolean matches(DOMString selectors);
     [RaisesException] Element closest(DOMString selectors);    
     [ImplementedAs=matches, RaisesException] boolean webkitMatchesSelector(DOMString selectors);
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     // CSSOM View Module API
     ClientRectList getClientRects();
     ClientRect getBoundingClientRect();
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extensions
-    readonly attribute DOMString innerText;
 #endif
 
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
@@ -171,14 +121,18 @@
     [Reflect] attribute DOMString uiactions;
 #endif
 
+    [RaisesException] Element insertAdjacentElement(DOMString where, Element element);
+    [RaisesException] void insertAdjacentHTML(DOMString where, DOMString html);
+    [RaisesException] void insertAdjacentText(DOMString where, DOMString text);
+
     [Conditional=POINTER_LOCK] void requestPointerLock();
 
     // CSS Regions API
     [Conditional=CSS_REGIONS] readonly attribute DOMString webkitRegionOverset;
     [Conditional=CSS_REGIONS] sequence<Range> webkitGetRegionFlowRanges();
 
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     // Shadow DOM API
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [EnabledAtRuntime=ShadowDOM, RaisesException] ShadowRoot attachShadow(ShadowRootInit init);
     [EnabledAtRuntime=ShadowDOM, ImplementedAs=shadowRootForBindings, CallWith=ScriptState] readonly attribute ShadowRoot shadowRoot;
     [EnabledAtRuntime=ShadowDOM, Reflect] attribute DOMString slot;
@@ -233,6 +187,7 @@ dictionary ShadowRootInit {
     required ShadowRootMode mode;
 };
 
+Element implements Animatable;
 Element implements ChildNode;
 Element implements NonDocumentTypeChildNode;
 Element implements ParentNode;

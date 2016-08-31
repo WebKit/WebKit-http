@@ -76,6 +76,15 @@
     completionHandler(result);
 }
 
+- (void)takeRange:(NSRange)range completionHandler:(void (^)(NSUInteger location, NSUInteger length))completionHandler
+{
+    completionHandler(range.location, range.length);
+}
+
+- (void)doNotCallCompletionHandler:(void (^)())completionHandler
+{
+}
+
 @end
 
 #endif // WK_API_ENABLED

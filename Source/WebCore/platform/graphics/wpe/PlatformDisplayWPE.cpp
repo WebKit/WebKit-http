@@ -34,9 +34,16 @@
 
 namespace WebCore {
 
-PlatformDisplayWPE::PlatformDisplayWPE()
+PlatformDisplayWPE::PlatformDisplayWPE() = default;
+
+PlatformDisplayWPE::~PlatformDisplayWPE()
 {
-    m_backend = wpe_renderer_backend_egl_create();
+    wpe_renderer_backend_egl_destroy(m_backend);
+}
+
+void PlatformDisplayWPE::initialize(int hostFd)
+{
+    m_backend = wpe_renderer_backend_egl_create(hostFd);
 
     m_eglDisplay = eglGetDisplay(wpe_renderer_backend_egl_get_native_display(m_backend));
     if (m_eglDisplay == EGL_NO_DISPLAY) {
@@ -45,11 +52,6 @@ PlatformDisplayWPE::PlatformDisplayWPE()
     }
 
     PlatformDisplay::initializeEGLDisplay();
-}
-
-PlatformDisplayWPE::~PlatformDisplayWPE()
-{
-    wpe_renderer_backend_egl_destroy(m_backend);
 }
 
 std::unique_ptr<PlatformDisplayWPE::EGLTarget> PlatformDisplayWPE::createEGLTarget(EGLTarget::Client& client, int hostFd)

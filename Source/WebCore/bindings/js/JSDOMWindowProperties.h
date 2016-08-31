@@ -33,10 +33,10 @@ namespace WebCore {
 
 class JSDOMWindowProperties : public JSDOMObject {
 public:
-    static JSDOMWindowProperties* create(JSC::Structure* structure, JSDOMWindow& jsDOMWindow)
+    static JSDOMWindowProperties* create(JSC::Structure* structure, JSC::JSGlobalObject& globalObject)
     {
-        JSDOMWindowProperties* ptr = new (NotNull, JSC::allocateCell<JSDOMWindowProperties>(jsDOMWindow.vm().heap)) JSDOMWindowProperties(structure, jsDOMWindow);
-        ptr->finishCreation(jsDOMWindow.vm());
+        JSDOMWindowProperties* ptr = new (NotNull, JSC::allocateCell<JSDOMWindowProperties>(globalObject.vm().heap)) JSDOMWindowProperties(structure, globalObject);
+        ptr->finishCreation(globalObject.vm());
         return ptr;
     }
 
@@ -53,12 +53,9 @@ public:
     static const unsigned StructureFlags = JSC::GetOwnPropertySlotIsImpureForPropertyAbsence | JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | JSC::OverridesGetOwnPropertySlot | Base::StructureFlags;
 
 protected:
-    JSDOMWindowProperties(JSC::Structure* structure, JSDOMWindow& jsDOMWindow)
-        : JSDOMObject(structure, jsDOMWindow)
-        , m_window(jsDOMWindow.wrapped())
+    JSDOMWindowProperties(JSC::Structure* structure, JSC::JSGlobalObject& globalObject)
+        : JSDOMObject(structure, globalObject)
     { }
-
-    Ref<DOMWindow> m_window;
 };
 
 } // namespace WebCore

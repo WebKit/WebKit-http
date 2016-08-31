@@ -99,6 +99,12 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
 
     m_options.allowCredentials = (m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_sameOriginRequest)) ? AllowStoredCredentials : DoNotAllowStoredCredentials;
 
+    ASSERT(!request.httpHeaderFields().contains(HTTPHeaderName::Origin));
+
+    // Copy headers if we need to replay the request after a redirection.
+    if (m_async && m_options.mode == FetchOptions::Mode::Cors)
+        m_originalHeaders = request.httpHeaderFields();
+
     if (m_sameOriginRequest || m_options.mode == FetchOptions::Mode::NoCors) {
         loadRequest(WTFMove(request), DoSecurityCheck);
         return;
@@ -220,43 +226,33 @@ void DocumentThreadableLoader::redirectReceived(CachedResource* resource, Resour
     if (isAllowedRedirect(request.url()))
         return;
 
-    // When using access control, only simple cross origin requests are allowed to redirect. The new request URL must have a supported
-    // scheme and not contain the userinfo production. In addition, the redirect response must pass the access control check if the
-    // original request was not same-origin.
-    if (m_options.mode == FetchOptions::Mode::Cors) {
-        bool allowRedirect = false;
-        if (m_simpleRequest) {
-            String accessControlErrorDescription;
-            allowRedirect = isValidCrossOriginRedirectionURL(request.url())
-                && (m_sameOriginRequest || passesAccessControlCheck(redirectResponse, m_options.allowCredentials, securityOrigin(), accessControlErrorDescription));
-        }
+    // Force any subsequent request to use these checks.
+    m_sameOriginRequest = false;
 
-        if (allowRedirect) {
-            if (m_resource)
-                clearResource();
+    ASSERT(m_resource);
+    ASSERT(m_resource->loader());
+    ASSERT(m_options.mode == FetchOptions::Mode::Cors);
+    ASSERT(m_originalHeaders);
 
-            RefPtr<SecurityOrigin> originalOrigin = SecurityOrigin::createFromString(redirectResponse.url());
-            RefPtr<SecurityOrigin> requestOrigin = SecurityOrigin::createFromString(request.url());
-            // If the original request wasn't same-origin, then if the request URL origin is not same origin with the original URL origin,
-            // set the source origin to a globally unique identifier. (If the original request was same-origin, the origin of the new request
-            // should be the original URL origin.)
-            if (!m_sameOriginRequest && !originalOrigin->isSameSchemeHostPort(requestOrigin.get()))
-                m_origin = SecurityOrigin::createUnique();
-            // Force any subsequent request to use these checks.
-            m_sameOriginRequest = false;
+    // Loader might have modified the origin to a unique one, let's reuse it for subsequent loads.
+    m_origin = m_resource->loader()->origin();
 
-            if (m_options.credentials == FetchOptions::Credentials::SameOrigin)
-                m_options.allowCredentials = DoNotAllowStoredCredentials;
+    // Except in case where preflight is needed, loading should be able to continue on its own.
+    // But we also handle credentials here if it is restricted to SameOrigin.
+    if (m_options.credentials != FetchOptions::Credentials::SameOrigin && m_simpleRequest && isSimpleCrossOriginAccessRequest(request.httpMethod(), *m_originalHeaders))
+        return;
 
-            cleanRedirectedRequestForAccessControl(request);
+    m_options.allowCredentials = DoNotAllowStoredCredentials;
 
-            makeCrossOriginAccessRequest(ResourceRequest(request));
-            return;
-        }
-    }
+    clearResource();
 
-    reportCrossOriginResourceSharingError(*m_client, redirectResponse.url());
-    request = ResourceRequest();
+    // Let's fetch the request with the original headers (equivalent to request cloning specified by fetch algorithm).
+    // Do not copy the Authorization header if removed by the network layer.
+    if (!request.httpHeaderFields().contains(HTTPHeaderName::Authorization))
+        m_originalHeaders->remove(HTTPHeaderName::Authorization);
+    request.setHTTPHeaderFields(*m_originalHeaders);
+
+    makeCrossOriginAccessRequest(ResourceRequest(request));
 }
 
 void DocumentThreadableLoader::dataSent(CachedResource* resource, unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
@@ -285,12 +281,9 @@ void DocumentThreadableLoader::didReceiveResponse(unsigned long identifier, cons
     }
 
     ASSERT(response.type() != ResourceResponse::Type::Error);
-    if (response.type() == ResourceResponse::Type::Default) {
-        // FIXME: To be removed once the real fetch mode is passed to underlying loaders.
-        if (options().mode == FetchOptions::Mode::Cors && tainting == ResourceResponse::Tainting::Opaque)
-            tainting = ResourceResponse::Tainting::Cors;
+    if (response.type() == ResourceResponse::Type::Default)
         m_client->didReceiveResponse(identifier, ResourceResponse::filterResponse(response, tainting));
-    } else {
+    else {
         ASSERT(response.isNull() && response.type() == ResourceResponse::Type::Opaqueredirect);
         m_client->didReceiveResponse(identifier, response);
     }
@@ -369,9 +362,6 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         ThreadableLoaderOptions options = m_options;
         options.clientCredentialPolicy = m_sameOriginRequest ? ClientCredentialPolicy::MayAskClientForCredentials : ClientCredentialPolicy::CannotAskClientForCredentials;
 
-        // Set to NoCors as CORS checks are done in DocumentThreadableLoader
-        options.mode = FetchOptions::Mode::NoCors;
-
         CachedResourceRequest newRequest(WTFMove(request), options);
         if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
             newRequest.setInitiator(m_options.initiator);
@@ -381,7 +371,10 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         m_resource = m_document.cachedResourceLoader().requestRawResource(newRequest);
         if (m_resource)
             m_resource->addClient(this);
-
+        else {
+            // FIXME: Since we receive a synchronous error, this is probably due to some AccessControl checks. We should try to retrieve the actual error.
+            m_client->didFail(ResourceError(String(), 0, newRequest.resourceRequest().url(), String(), ResourceError::Type::AccessControl));
+        }
         return;
     }
 

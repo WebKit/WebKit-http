@@ -36,7 +36,6 @@
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
 #include "WebsiteData.h"
-#include <wtf/RunLoop.h>
 
 #if ENABLE(SEC_ITEM_SHIM)
 #include "SecItemShimProxy.h"
@@ -126,11 +125,11 @@ void NetworkProcessProxy::fetchWebsiteData(SessionID sessionID, OptionSet<Websit
 
     uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
-    LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is taking a background assertion because the Network process is fetching Website data", this);
+    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is taking a background assertion because the Network process is fetching Website data", this);
 
     m_pendingFetchWebsiteDataCallbacks.add(callbackID, [this, token, completionHandler, sessionID](WebsiteData websiteData) {
         completionHandler(WTFMove(websiteData));
-        LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is releasing a background assertion because the Network process is done fetching Website data", this);
+        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is releasing a background assertion because the Network process is done fetching Website data", this);
     });
 
     send(Messages::NetworkProcess::FetchWebsiteData(sessionID, dataTypes, fetchOptions, callbackID), 0);
@@ -140,11 +139,11 @@ void NetworkProcessProxy::deleteWebsiteData(WebCore::SessionID sessionID, Option
 {
     auto callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
-    LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is taking a background assertion because the Network process is deleting Website data", this);
+    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is taking a background assertion because the Network process is deleting Website data", this);
 
     m_pendingDeleteWebsiteDataCallbacks.add(callbackID, [this, token, completionHandler, sessionID] {
         completionHandler();
-        LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is releasing a background assertion because the Network process is done deleting Website data", this);
+        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is releasing a background assertion because the Network process is done deleting Website data", this);
     });
     send(Messages::NetworkProcess::DeleteWebsiteData(sessionID, dataTypes, modifiedSince, callbackID), 0);
 }
@@ -155,11 +154,11 @@ void NetworkProcessProxy::deleteWebsiteDataForOrigins(SessionID sessionID, Optio
 
     uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
-    LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is taking a background assertion because the Network process is deleting Website data for several origins", this);
+    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is taking a background assertion because the Network process is deleting Website data for several origins", this);
 
     m_pendingDeleteWebsiteDataForOriginsCallbacks.add(callbackID, [this, token, completionHandler, sessionID] {
         completionHandler();
-        LOG_ALWAYS(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is releasing a background assertion because the Network process is done deleting Website data for several origins", this);
+        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - NetworkProcessProxy is releasing a background assertion because the Network process is done deleting Website data for several origins", this);
     });
 
     Vector<SecurityOriginData> originData;
@@ -200,7 +199,7 @@ void NetworkProcessProxy::networkProcessCrashedOrFailedToLaunch()
     m_processPool.networkProcessCrashed(this);
 }
 
-void NetworkProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void NetworkProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (dispatchMessage(connection, decoder))
         return;
@@ -211,7 +210,7 @@ void NetworkProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::Me
     didReceiveNetworkProcessProxyMessage(connection, decoder);
 }
 
-void NetworkProcessProxy::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void NetworkProcessProxy::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     if (dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
@@ -299,7 +298,7 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Con
     ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
     if (IPC::Connection::identifierIsNull(connectionIdentifier)) {
-        // FIXME: Do better cleanup here.
+        networkProcessCrashedOrFailedToLaunch();
         return;
     }
 
@@ -402,12 +401,12 @@ void NetworkProcessProxy::didSetAssertionState(AssertionState)
 void NetworkProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
 {
     if (!isHoldingLockedFiles) {
-        LOG_ALWAYS(true, "UIProcess is releasing a background assertion because the Network process is no longer holding locked files");
+        RELEASE_LOG("UIProcess is releasing a background assertion because the Network process is no longer holding locked files");
         m_tokenForHoldingLockedFiles = nullptr;
         return;
     }
     if (!m_tokenForHoldingLockedFiles) {
-        LOG_ALWAYS(true, "UIProcess is taking a background assertion because the Network process is holding locked files");
+        RELEASE_LOG("UIProcess is taking a background assertion because the Network process is holding locked files");
         m_tokenForHoldingLockedFiles = m_throttler.backgroundActivityToken();
     }
 }

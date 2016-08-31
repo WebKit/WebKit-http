@@ -28,9 +28,9 @@
 
 #if ENABLE(SANDBOX_EXTENSIONS)
 
-#import "ArgumentDecoder.h"
-#import "ArgumentEncoder.h"
 #import "DataReference.h"
+#import "Decoder.h"
+#import "Encoder.h"
 #import "WebKitSystemInterface.h"
 #import <WebCore/FileSystem.h>
 #import <sys/stat.h>
@@ -53,7 +53,7 @@ SandboxExtension::Handle::~Handle()
     }
 }
 
-void SandboxExtension::Handle::encode(IPC::ArgumentEncoder& encoder) const
+void SandboxExtension::Handle::encode(IPC::Encoder& encoder) const
 {
     if (!m_sandboxExtension) {
         encoder << IPC::DataReference();
@@ -71,7 +71,7 @@ void SandboxExtension::Handle::encode(IPC::ArgumentEncoder& encoder) const
     m_sandboxExtension = 0;
 }
 
-bool SandboxExtension::Handle::decode(IPC::ArgumentDecoder& decoder, Handle& result)
+bool SandboxExtension::Handle::decode(IPC::Decoder& decoder, Handle& result)
 {
     ASSERT(!result.m_sandboxExtension);
 
@@ -123,7 +123,7 @@ size_t SandboxExtension::HandleArray::size() const
     return m_size;
 }
 
-void SandboxExtension::HandleArray::encode(IPC::ArgumentEncoder& encoder) const
+void SandboxExtension::HandleArray::encode(IPC::Encoder& encoder) const
 {
     encoder << static_cast<uint64_t>(size());
     for (size_t i = 0; i < m_size; ++i)
@@ -131,7 +131,7 @@ void SandboxExtension::HandleArray::encode(IPC::ArgumentEncoder& encoder) const
     
 }
 
-bool SandboxExtension::HandleArray::decode(IPC::ArgumentDecoder& decoder, SandboxExtension::HandleArray& handles)
+bool SandboxExtension::HandleArray::decode(IPC::Decoder& decoder, SandboxExtension::HandleArray& handles)
 {
     uint64_t size;
     if (!decoder.decode(size))

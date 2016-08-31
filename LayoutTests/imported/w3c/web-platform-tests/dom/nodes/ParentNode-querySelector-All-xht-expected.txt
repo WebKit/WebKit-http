@@ -109,18 +109,10 @@ PASS Document.querySelector: Unknown pseudo-element: ::example
 PASS Document.querySelectorAll: Unknown pseudo-element: ::example 
 PASS Document.querySelector: Invalid pseudo-element: :::before 
 PASS Document.querySelectorAll: Invalid pseudo-element: :::before 
-FAIL Document.querySelector: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Document.querySelectorAll: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Document.querySelector: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Document.querySelectorAll: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
+PASS Document.querySelector: Undeclared namespace: ns|div 
+PASS Document.querySelectorAll: Undeclared namespace: ns|div 
+PASS Document.querySelector: Undeclared namespace: :not(ns|div) 
+PASS Document.querySelectorAll: Undeclared namespace: :not(ns|div) 
 PASS Document.querySelector: Invalid namespace: ^|div 
 PASS Document.querySelectorAll: Invalid namespace: ^|div 
 PASS Document.querySelector: Invalid namespace: $|div 
@@ -185,18 +177,10 @@ PASS Detached Element.querySelector: Unknown pseudo-element: ::example
 PASS Detached Element.querySelectorAll: Unknown pseudo-element: ::example 
 PASS Detached Element.querySelector: Invalid pseudo-element: :::before 
 PASS Detached Element.querySelectorAll: Invalid pseudo-element: :::before 
-FAIL Detached Element.querySelector: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Detached Element.querySelectorAll: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Detached Element.querySelector: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Detached Element.querySelectorAll: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
+PASS Detached Element.querySelector: Undeclared namespace: ns|div 
+PASS Detached Element.querySelectorAll: Undeclared namespace: ns|div 
+PASS Detached Element.querySelector: Undeclared namespace: :not(ns|div) 
+PASS Detached Element.querySelectorAll: Undeclared namespace: :not(ns|div) 
 PASS Detached Element.querySelector: Invalid namespace: ^|div 
 PASS Detached Element.querySelectorAll: Invalid namespace: ^|div 
 PASS Detached Element.querySelector: Invalid namespace: $|div 
@@ -261,18 +245,10 @@ PASS Fragment.querySelector: Unknown pseudo-element: ::example
 PASS Fragment.querySelectorAll: Unknown pseudo-element: ::example 
 PASS Fragment.querySelector: Invalid pseudo-element: :::before 
 PASS Fragment.querySelectorAll: Invalid pseudo-element: :::before 
-FAIL Fragment.querySelector: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Fragment.querySelectorAll: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Fragment.querySelector: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL Fragment.querySelectorAll: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
+PASS Fragment.querySelector: Undeclared namespace: ns|div 
+PASS Fragment.querySelectorAll: Undeclared namespace: ns|div 
+PASS Fragment.querySelector: Undeclared namespace: :not(ns|div) 
+PASS Fragment.querySelectorAll: Undeclared namespace: :not(ns|div) 
 PASS Fragment.querySelector: Invalid namespace: ^|div 
 PASS Fragment.querySelectorAll: Invalid namespace: ^|div 
 PASS Fragment.querySelector: Invalid namespace: $|div 
@@ -337,18 +313,10 @@ PASS In-document Element.querySelector: Unknown pseudo-element: ::example
 PASS In-document Element.querySelectorAll: Unknown pseudo-element: ::example 
 PASS In-document Element.querySelector: Invalid pseudo-element: :::before 
 PASS In-document Element.querySelectorAll: Invalid pseudo-element: :::before 
-FAIL In-document Element.querySelector: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL In-document Element.querySelectorAll: Undeclared namespace: ns|div assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL In-document Element.querySelector: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelector(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
-FAIL In-document Element.querySelectorAll: Undeclared namespace: :not(ns|div) assert_throws: function "function () {
-        root.querySelectorAll(q)
-      }" threw object "NamespaceError (DOM Exception 14): The operation is not a..." that is not a DOMException SyntaxError: property "code" is equal to 14, expected 12
+PASS In-document Element.querySelector: Undeclared namespace: ns|div 
+PASS In-document Element.querySelectorAll: Undeclared namespace: ns|div 
+PASS In-document Element.querySelector: Undeclared namespace: :not(ns|div) 
+PASS In-document Element.querySelectorAll: Undeclared namespace: :not(ns|div) 
 PASS In-document Element.querySelector: Invalid namespace: ^|div 
 PASS In-document Element.querySelectorAll: Invalid namespace: ^|div 
 PASS In-document Element.querySelector: Invalid namespace: $|div 
@@ -635,10 +603,10 @@ PASS Document.querySelectorAll: ID selector, matching element with id with escap
 PASS Document.querySelector: ID selector, matching element with id with escaped character: #test\.foo\[5\]bar 
 PASS Document.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div 
 PASS Document.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div 
-FAIL Document.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL Document.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
-FAIL Document.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL Document.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
+PASS Document.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS Document.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS Document.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
+PASS Document.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
 PASS Document.querySelectorAll: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS Document.querySelector: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS Document.querySelectorAll: Descendant combinator, matching element with id that is a descendant of an element: body #descendant-div1 
@@ -1053,10 +1021,10 @@ PASS Detached Element.querySelectorAll: ID selector, matching element with id wi
 PASS Detached Element.querySelector: ID selector, matching element with id with escaped character: #test\.foo\[5\]bar 
 PASS Detached Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div 
 PASS Detached Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div 
-FAIL Detached Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL Detached Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
-FAIL Detached Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL Detached Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
+PASS Detached Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS Detached Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS Detached Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
+PASS Detached Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
 PASS Detached Element.querySelectorAll: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS Detached Element.querySelector: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS Detached Element.querySelectorAll: Descendant combinator, matching element with id that is a descendant of an element: div #descendant-div1 
@@ -1469,10 +1437,10 @@ PASS Fragment.querySelectorAll: ID selector, matching element with id with escap
 PASS Fragment.querySelector: ID selector, matching element with id with escaped character: #test\.foo\[5\]bar 
 PASS Fragment.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div 
 PASS Fragment.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div 
-FAIL Fragment.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL Fragment.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
-FAIL Fragment.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL Fragment.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
+PASS Fragment.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS Fragment.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS Fragment.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
+PASS Fragment.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
 PASS Fragment.querySelectorAll: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS Fragment.querySelector: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS Fragment.querySelectorAll: Descendant combinator, matching element with id that is a descendant of an element: div #descendant-div1 
@@ -1885,10 +1853,10 @@ PASS In-document Element.querySelectorAll: ID selector, matching element with id
 PASS In-document Element.querySelector: ID selector, matching element with id with escaped character: #test\.foo\[5\]bar 
 PASS In-document Element.querySelectorAll: Namespace selector, matching element with any namespace: #any-namespace *|div 
 PASS In-document Element.querySelector: Namespace selector, matching element with any namespace: #any-namespace *|div 
-FAIL In-document Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL In-document Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
-FAIL In-document Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the expected number of matches. expected 1 but got 4
-FAIL In-document Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* assert_equals: The method should return the first match. expected "no-namespace-div3" but got "no-namespace-div1"
+PASS In-document Element.querySelectorAll: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS In-document Element.querySelector: Namespace selector, matching div elements in no namespace only: #no-namespace |div 
+PASS In-document Element.querySelectorAll: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
+PASS In-document Element.querySelector: Namespace selector, matching any elements in no namespace only: #no-namespace |* 
 PASS In-document Element.querySelectorAll: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS In-document Element.querySelector: Descendant combinator, matching element that is a descendant of an element with id: #descendant div 
 PASS In-document Element.querySelectorAll: Descendant combinator, matching element with id that is a descendant of an element: body #descendant-div1 

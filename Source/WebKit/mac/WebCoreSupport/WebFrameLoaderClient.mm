@@ -108,6 +108,7 @@
 #import <WebCore/NSURLDownloadSPI.h>
 #import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/Page.h>
+#import <WebCore/PluginBlacklist.h>
 #import <WebCore/PluginViewBase.h>
 #import <WebCore/ProtectionSpace.h>
 #import <WebCore/ResourceError.h>
@@ -118,6 +119,7 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SubresourceLoader.h>
 #import <WebCore/WebCoreObjCExtras.h>
+#import <WebCore/WebGLBlacklist.h>
 #import <WebCore/WebScriptObjectPrivate.h>
 #import <WebCore/Widget.h>
 #import <WebKitLegacy/DOMElement.h>
@@ -782,7 +784,7 @@ void WebFrameLoaderClient::dispatchDidFinishLoad()
     [m_webFrame->_private->internalLoadDelegate webFrame:m_webFrame.get() didFinishLoadWithError:nil];
 }
 
-void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
+void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones milestones)
 {
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -1662,51 +1664,33 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
             type = [[NSURLFileTypeMappings sharedMappings] MIMETypeForExtension:extension];
             if (type.isEmpty()) {
                 // If no MIME type is specified, use a plug-in if we have one that can handle the extension.
-                if (WebBasePluginPackage *package = [getWebView(m_webFrame.get()) _pluginForExtension:extension]) {
-                    if ([package isKindOfClass:[WebPluginPackage class]]) 
-                        return ObjectContentOtherPlugin;
-#if ENABLE(NETSCAPE_PLUGIN_API)
-                    else {
-                        ASSERT([package isKindOfClass:[WebNetscapePluginPackage class]]);
-                        return ObjectContentNetscapePlugin;
-                    }
-#endif
-                }
+                if ([getWebView(m_webFrame.get()) _pluginForExtension:extension])
+                    return ObjectContentType::PlugIn;
             }
         }
     }
 
     if (type.isEmpty())
-        return ObjectContentFrame; // Go ahead and hope that we can display the content.
+        return ObjectContentType::Frame; // Go ahead and hope that we can display the content.
 
-    WebBasePluginPackage *package = [getWebView(m_webFrame.get()) _pluginForMIMEType:type];
-    ObjectContentType plugInType = ObjectContentNone;
-    if (package) {
-#if ENABLE(NETSCAPE_PLUGIN_API)
-        if ([package isKindOfClass:[WebNetscapePluginPackage class]])
-            plugInType = ObjectContentNetscapePlugin;
-        else
-#endif
-        {
-            ASSERT([package isKindOfClass:[WebPluginPackage class]]);
-            plugInType = ObjectContentOtherPlugin;
-        }
-    }
-    
+    ObjectContentType plugInType = ObjectContentType::None;
+    if ([getWebView(m_webFrame.get()) _pluginForMIMEType:type])
+        plugInType = ObjectContentType::PlugIn;
+
     if (MIMETypeRegistry::isSupportedImageMIMEType(type))
-        return ObjectContentImage;
+        return ObjectContentType::Image;
 
-    if (plugInType != ObjectContentNone)
+    if (plugInType != ObjectContentType::None)
         return plugInType;
 
     if ([m_webFrame->_private->webFrameView _viewClassForMIMEType:type])
-        return ObjectContentFrame;
+        return ObjectContentType::Frame;
     
-    return ObjectContentNone;
+    return ObjectContentType::None;
 
     END_BLOCK_OBJC_EXCEPTIONS;
 
-    return ObjectContentNone;
+    return ObjectContentType::None;
 }
 
 static NSMutableArray* kit(const Vector<String>& vector)
@@ -1908,6 +1892,17 @@ private:
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
+static bool shouldBlockPlugin(WebBasePluginPackage *pluginPackage)
+{
+#if PLATFORM(MAC)
+    auto loadPolicy = PluginBlacklist::loadPolicyForPluginVersion(pluginPackage.bundleIdentifier, pluginPackage.bundleVersion);
+    return loadPolicy == PluginBlacklist::LoadPolicy::BlockedForSecurity || loadPolicy == PluginBlacklist::LoadPolicy::BlockedForCompatibility;
+#else
+    UNUSED_PARAM(pluginPackage);
+    return false;
+#endif
+}
+
 RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLPlugInElement* element, const URL& url,
     const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)
 {
@@ -1991,7 +1986,7 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLPlugI
     NSView *view = nil;
 
     if (pluginPackage) {
-        if (WKShouldBlockPlugin([pluginPackage bundleIdentifier], [pluginPackage bundleVersion])) {
+        if (shouldBlockPlugin(pluginPackage)) {
             errorCode = WebKitErrorBlockedPlugInVersion;
             if (is<RenderEmbeddedObject>(element->renderer()))
                 downcast<RenderEmbeddedObject>(*element->renderer()).setPluginUnavailabilityReason(RenderEmbeddedObject::InsecurePluginVersion);
@@ -2096,7 +2091,7 @@ PassRefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& s
     int errorCode = WebKitErrorJavaUnavailable;
 
     if (pluginPackage) {
-        if (WKShouldBlockPlugin([pluginPackage bundleIdentifier], [pluginPackage bundleVersion])) {
+        if (shouldBlockPlugin(pluginPackage)) {
             errorCode = WebKitErrorBlockedPlugInVersion;
             if (is<RenderEmbeddedObject>(element->renderer()))
                 downcast<RenderEmbeddedObject>(*element->renderer()).setPluginUnavailabilityReason(RenderEmbeddedObject::InsecurePluginVersion);
@@ -2144,14 +2139,23 @@ String WebFrameLoaderClient::overrideMediaType() const
 }
 
 #if ENABLE(WEBGL)
+static bool shouldBlockWebGL()
+{
+#if PLATFORM(MAC)
+    return WebGLBlacklist::shouldBlockWebGL();
+#else
+    return false;
+#endif
+}
+
 WebCore::WebGLLoadPolicy WebFrameLoaderClient::webGLPolicyForURL(const String&) const
 {
-    return WKShouldBlockWebGL() ? WebGLBlockCreation : WebGLAllowCreation;
+    return shouldBlockWebGL() ? WebGLBlockCreation : WebGLAllowCreation;
 }
 
 WebCore::WebGLLoadPolicy WebFrameLoaderClient::resolveWebGLPolicyForURL(const String&) const
 {
-    return WKShouldBlockWebGL() ? WebGLBlockCreation : WebGLAllowCreation;
+    return shouldBlockWebGL() ? WebGLBlockCreation : WebGLAllowCreation;
 }
 #endif // ENABLE(WEBGL)
 

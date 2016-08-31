@@ -38,20 +38,9 @@ WebInspector.CSSSelector = class CSSSelector extends WebInspector.Object
 
     // Public
 
-    get text()
-    {
-        return this._text;
-    }
-
-    get specificity()
-    {
-        return this._specificity;
-    }
-
-    get dynamic()
-    {
-        return this._dynamic;
-    }
+    get text() { return this._text; }
+    get specificity() { return this._specificity; }
+    get dynamic() { return this._dynamic; }
 
     isGreaterThan(selector)
     {
@@ -66,5 +55,10 @@ WebInspector.CSSSelector = class CSSSelector extends WebInspector.Object
         }
 
         return false;
+    }
+
+    isPseudoElementSelector()
+    {
+        return WebInspector.CSSStyleManager.PseudoElementNames.some((name) => this._text.includes(`:${name}`));
     }
 };

@@ -57,7 +57,7 @@ my $installHeaders;
 my $installLibs;
 my $prefixPath;
 my $makeArgs = "";
-my $cmakeArgs = "";
+my @cmakeArgs;
 my $onlyWebKitProject = 0;
 my $coverageSupport = 0;
 my $shouldRunStaticAnalyzer = 0;
@@ -102,7 +102,7 @@ Usage: $programName [options] [options to pass to build system]
 
   --prefix=<path>                   Set installation prefix to the given path (Gtk/Efl only)
   --makeargs=<arguments>            Optional Makefile flags
-  --cmakeargs=<arguments>           Optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
+  --cmakeargs=<arguments>           One or more optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
 
   --minimal                         No optional features, unless explicitly enabled
 
@@ -117,7 +117,7 @@ my %options = (
     'install-libs=s' => \$installLibs,
     'prefix=s' => \$prefixPath,
     'makeargs=s' => \$makeArgs,
-    'cmakeargs=s' => \$cmakeArgs,
+    'cmakeargs=s' => \@cmakeArgs,
     'minimal' => \$minimal,
     'only-webkit' => \$onlyWebKitProject,
     'coverage' => \$coverageSupport,
@@ -147,17 +147,20 @@ my $productDir = productDir();
 my @projects = ("Source/JavaScriptCore", "Source/WebCore", "Source/WebKit");
 
 # Build WTF as a separate static library on ports which support it.
-splice @projects, 0, 0, "Source/WTF" if isAppleMacWebKit() or isAppleWinWebKit() or isWinCairo();
+splice @projects, 0, 0, "Source/WTF" if isAppleWebKit() or isWinCairo();
 
 splice @projects, 0, 0, "Source/bmalloc" if isAppleMacWebKit();
 
-for my $dir (@projects) {
-    if (! -d $dir) {
-        die "Error: No $dir directory found. Please do a fresh checkout.\n";
+# Ports using CMake will check if directories exist in the CMake configuration.
+if (!isCMakeBuild()) {
+    for my $dir (@projects) {
+        if (! -d $dir) {
+            die "Error: No $dir directory found. Please do a fresh checkout.\n";
+        }
     }
 }
 
-if (!isIOSWebKit() && !-d "WebKitLibraries") {
+if ((isAppleWebKit() || isWinCairo()) && !-d "WebKitLibraries") {
     die "Error: No WebKitLibraries directory found. Please do a fresh checkout.\n";
 }
 
@@ -239,7 +242,7 @@ if (isCMakeBuild() && !isAnyWindows()) {
     my @featureArgs = cMakeArgsFromFeatures();
     removeCMakeCache(@featureArgs);
 
-    buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, (cmakeBasedPortArguments(), @featureArgs), $cmakeArgs);
+    buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, (cmakeBasedPortArguments(), @featureArgs), @cmakeArgs);
 }
 
 my $baseProductDir = baseProductDir();

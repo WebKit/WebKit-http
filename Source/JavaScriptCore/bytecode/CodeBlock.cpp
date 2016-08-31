@@ -832,11 +832,11 @@ void CodeBlock::dumpBytecode(
             printLocationOpAndRegisterOperand(out, exec, location, it, "argument_count", r0);
             break;
         }
-        case op_copy_rest: {
+        case op_create_rest: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             unsigned argumentOffset = (++it)->u.unsignedValue;
-            printLocationAndOp(out, exec, location, it, "copy_rest");
+            printLocationAndOp(out, exec, location, it, "create_rest");
             out.printf("%s, %s, ", registerName(r0).data(), registerName(r1).data());
             out.printf("ArgumentsOffset: %u", argumentOffset);
             break;
@@ -2651,9 +2651,51 @@ bool CodeBlock::shouldJettisonDueToWeakReference()
     return !Heap::isMarked(this);
 }
 
+static std::chrono::milliseconds timeToLive(JITCode::JITType jitType)
+{
+    if (UNLIKELY(Options::useEagerCodeBlockJettisonTiming())) {
+        switch (jitType) {
+        case JITCode::InterpreterThunk:
+            return std::chrono::milliseconds(10);
+        case JITCode::BaselineJIT:
+            return std::chrono::milliseconds(10 + 20);
+        case JITCode::DFGJIT:
+            return std::chrono::milliseconds(40);
+        case JITCode::FTLJIT:
+            return std::chrono::milliseconds(120);
+        default:
+            return std::chrono::milliseconds::max();
+        }
+    }
+
+    switch (jitType) {
+    case JITCode::InterpreterThunk:
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(5));
+    case JITCode::BaselineJIT:
+        // Effectively 10 additional seconds, since BaselineJIT and
+        // InterpreterThunk share a CodeBlock.
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(5 + 10));
+    case JITCode::DFGJIT:
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(20));
+    case JITCode::FTLJIT:
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(60));
+    default:
+        return std::chrono::milliseconds::max();
+    }
+}
+
 bool CodeBlock::shouldJettisonDueToOldAge()
 {
-    return false;
+    if (Heap::isMarked(this))
+        return false;
+
+    if (UNLIKELY(Options::forceCodeBlockToJettisonDueToOldAge()))
+        return true;
+    
+    if (timeSinceCreation() < timeToLive(jitType()))
+        return false;
+    
+    return true;
 }
 
 #if ENABLE(DFG_JIT)

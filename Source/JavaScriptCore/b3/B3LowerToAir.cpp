@@ -1835,7 +1835,7 @@ private:
                 }
             }
 
-            appendUnOp<Neg32, Neg64, NegateDouble, Air::Oops>(m_value->child(0));
+            appendUnOp<Neg32, Neg64, NegateDouble, NegateFloat>(m_value->child(0));
             return;
         }
 
@@ -2431,6 +2431,10 @@ private:
         }
 
         case Return: {
+            if (!m_value->numChildren()) {
+                append(RetVoid);
+                return;
+            }
             Value* value = m_value->child(0);
             Tmp returnValueGPR = Tmp(GPRInfo::returnValueGPR);
             Tmp returnValueFPR = Tmp(FPRInfo::returnValueFPR);

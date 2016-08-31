@@ -24,6 +24,7 @@ fast/events/touch/ios [ Skip ]
 fast/scrolling/ios [ Skip ]
 fast/content-observation [ Skip ]
 media/mac [ Skip ]
+media/controls/ipad [ Skip ]
 
 fast/forms/attributed-strings.html [ Skip ]
 fast/scrolling/latching [ Skip ]
@@ -312,7 +313,7 @@ webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflectio
 webkit.org/b/154310 [ Debug ] imported/w3c/web-platform-tests/html/dom/reflection-text.html  [ Skip ]
 
 # WPT tests that fail after doing full test repository reimport and need further investigation
-imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-document.htm [ Pass Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-document.htm [ Pass Failure Timeout ]
 imported/w3c/web-platform-tests/dom/nodes/Document-createElement-namespace.html [ Pass Failure ]
 webkit.org/b/155516 [ Debug ] imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-coords.html [ Skip ]
 webkit.org/b/155516 [ Release ] imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-coords.html [ Failure ]
@@ -338,6 +339,7 @@ imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-to-non-cors.htm [ S
 # Failing assertion with dynamic message
 imported/w3c/web-platform-tests/XMLHttpRequest/responsexml-document-properties.htm [ Failure ]
 
+webkit.org/b/160510 http/tests/fetch/fetch-in-worker-crash.html [ Failure Crash Pass ]
 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Skip ]
 [ Release ] imported/w3c/web-platform-tests/fetch/api/cors/cors-cookies-worker.html [ Failure Pass ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-basic-worker.html [ Skip ]
@@ -352,6 +354,7 @@ imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-preflight-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/credentials/authentication-basic-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/credentials/cookies-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/policies/csp-blocked-worker.html [ Skip ]
@@ -362,6 +365,7 @@ imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode-worker.html [ Skip ]
+[ Debug ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-origin-worker.html [ Skip ]
 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/worker.html [ Skip ]
 
 webkit.org/b/157068 imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Skip ]
@@ -371,7 +375,7 @@ webkit.org/b/159712 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 webkit.org/b/159712 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping.html [ Failure Pass ]
 webkit.org/b/159712 imported/w3c/web-platform-tests/XMLHttpRequest/open-url-multi-window-6.htm [ Pass Timeout ]
 
-webkit.org/b/159724 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure Crash Pass ]
+webkit.org/b/159724 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure Pass ]
 
 # New W3C ref tests that are failing.
 webkit.org/b/148856 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-video-element/video_initially_paused.html [ ImageOnlyFailure ]
@@ -695,6 +699,7 @@ webkit.org/b/141695 [ Debug ] fast/selectors/nth-last-child-of-register-requirem
 
 # Content extensions are Mac-WK2-only for now
 http/tests/contentextensions [ Skip ]
+http/tests/websocket/tests/hybi/contentextensions [ Skip ]
 
 webkit.org/b/149072 svg/animations/svgboolean-animation-1.html [ Pass Failure ]
 
@@ -998,6 +1003,7 @@ webkit.org/b/158085 http/tests/css/shared-stylesheet-mutation.html [ Pass Failur
 # PiP tests are only relevant on macOS Sierra and newer.
 media/click-placeholder-not-pausing.html [ WontFix ]
 media/controls/picture-in-picture.html [ WontFix ]
+media/controls/pip-placeholder-without-video-controls.html [ WontFix ]
 media/element-containing-pip-video-going-into-fullscreen.html [ WontFix ]
 media/fullscreen-api-enabled-media-with-presentation-mode.html [ WontFix ]
 media/fullscreen-video-going-into-pip.html [ WontFix ]
@@ -1008,6 +1014,9 @@ media/video-contained-in-fullscreen-element-going-into-pip.html [ WontFix ]
 webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Skip ]
 
 [ Debug ] js/regress/misc-bugs-847389-jpeg2000.html [ Skip ]
+
+# This runs slowly in debug.
+[ Debug ] js/regress/bound-function-construction-performance.html [ Skip ]
 
 webkit.org/b/159678 http/tests/preload/single_download_preload_runner.html [ Timeout ]
 

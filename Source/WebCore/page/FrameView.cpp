@@ -2115,7 +2115,7 @@ bool FrameView::scrollToAnchor(const String& name)
     document.setCSSTarget(anchorElement);
 
     if (is<SVGDocument>(document)) {
-        if (auto* rootElement = downcast<SVGDocument>(document).rootElement()) {
+        if (auto* rootElement = SVGDocument::rootElement(document)) {
             rootElement->scrollToAnchor(name, anchorElement);
             if (!anchorElement)
                 return true;
@@ -3126,7 +3126,7 @@ void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
             return;
         }
         if (pluginElement.needsWidgetUpdate())
-            pluginElement.updateWidget(CreateAnyWidgetType);
+            pluginElement.updateWidget(CreatePlugins::Yes);
     } else
         ASSERT_NOT_REACHED();
 
@@ -4849,7 +4849,7 @@ void FrameView::fireLayoutRelatedMilestonesIfNeeded()
     }
 
     if (milestonesAchieved && frame().isMainFrame())
-        frame().loader().didLayout(milestonesAchieved);
+        frame().loader().didReachLayoutMilestone(milestonesAchieved);
 }
 
 void FrameView::firePaintRelatedMilestonesIfNeeded()
@@ -4874,7 +4874,7 @@ void FrameView::firePaintRelatedMilestonesIfNeeded()
     m_milestonesPendingPaint = 0;
 
     if (milestonesAchieved)
-        page->mainFrame().loader().didLayout(milestonesAchieved);
+        page->mainFrame().loader().didReachLayoutMilestone(milestonesAchieved);
 }
 
 void FrameView::setVisualUpdatesAllowedByClient(bool visualUpdatesAllowed)

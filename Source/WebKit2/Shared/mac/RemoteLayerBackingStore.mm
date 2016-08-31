@@ -110,7 +110,7 @@ void RemoteLayerBackingStore::clearBackingStore()
 #endif
 }
 
-void RemoteLayerBackingStore::encode(IPC::ArgumentEncoder& encoder) const
+void RemoteLayerBackingStore::encode(IPC::Encoder& encoder) const
 {
     encoder << m_size;
     encoder << m_scale;
@@ -134,7 +134,7 @@ void RemoteLayerBackingStore::encode(IPC::ArgumentEncoder& encoder) const
     encoder << handle;
 }
 
-bool RemoteLayerBackingStore::decode(IPC::ArgumentDecoder& decoder, RemoteLayerBackingStore& result)
+bool RemoteLayerBackingStore::decode(IPC::Decoder& decoder, RemoteLayerBackingStore& result)
 {
     if (!decoder.decode(result.m_size))
         return false;

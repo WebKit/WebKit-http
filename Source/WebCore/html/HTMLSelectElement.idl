@@ -30,7 +30,7 @@
     [Reflect] attribute DOMString name;
     [Reflect] attribute boolean required;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     attribute long size;
 #else
     attribute unsigned long size;
@@ -39,13 +39,9 @@
     readonly attribute DOMString type;
 
     readonly attribute HTMLOptionsCollection options;
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute long length;
-#else
     [SetterRaisesException] attribute unsigned long length;
-#endif
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     getter Node item(unsigned long index);
     Node namedItem(DOMString name);
 #else
@@ -53,19 +49,17 @@
     HTMLOptionElement? namedItem(DOMString name);
 #endif
 
-    [ObjCLegacyUnnamedParameters, RaisesException] void add(HTMLElement element, HTMLElement? before);
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+    [RaisesException] void add(HTMLElement element, optional HTMLElement? before = null);
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     // FIXME: Should be:
     // void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
     [RaisesException] void add(HTMLElement element, long index);
-    [RaisesException] void add(HTMLElement element);
 
     [RaisesException] void remove(); // ChildNode overload
     // FIXME: This overload is not in the specification and was dropped in Blink.
     void remove(HTMLOptionElement option);
 #endif
     [ImplementedAs=removeByIndex] void remove(long index);
-
 
     readonly attribute HTMLCollection selectedOptions;
     attribute long selectedIndex;

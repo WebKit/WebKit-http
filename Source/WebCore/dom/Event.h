@@ -27,8 +27,6 @@
 #include "DOMTimeStamp.h"
 #include "EventInterfaces.h"
 #include "ScriptWrappable.h"
-#include <wtf/HashMap.h>
-#include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/AtomicString.h>
@@ -99,7 +97,7 @@ public:
 
     virtual ~Event();
 
-    void initEvent(const AtomicString& type, bool canBubble, bool cancelable);
+    WEBCORE_EXPORT void initEvent(const AtomicString& type, bool canBubble, bool cancelable);
     bool isInitialized() const { return m_isInitialized; }
 
     const AtomicString& type() const { return m_type; }
@@ -116,7 +114,7 @@ public:
 
     bool bubbles() const { return m_canBubble; }
     bool cancelable() const { return m_cancelable; }
-    bool composed() const;
+    WEBCORE_EXPORT bool composed() const;
 
     DOMTimeStamp timeStamp() const { return m_createTime; }
 
@@ -167,6 +165,8 @@ public:
 
     bool propagationStopped() const { return m_propagationStopped || m_immediatePropagationStopped; }
     bool immediatePropagationStopped() const { return m_immediatePropagationStopped; }
+
+    void resetPropagationFlags();
 
     bool defaultPrevented() const { return m_defaultPrevented; }
     void preventDefault()
@@ -228,6 +228,12 @@ private:
 
     RefPtr<Event> m_underlyingEvent;
 };
+
+inline void Event::resetPropagationFlags()
+{
+    m_propagationStopped = false;
+    m_immediatePropagationStopped = false;
+}
 
 } // namespace WebCore
 

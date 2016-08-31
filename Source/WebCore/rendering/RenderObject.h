@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef RenderObject_h
-#define RenderObject_h
+#pragma once
 
 #include "CachedImageClient.h"
 #include "Element.h"
@@ -158,7 +157,7 @@ public:
     WEBCORE_EXPORT bool scrollRectToVisible(SelectionRevealMode, const LayoutRect&, const ScrollAlignment& alignX = ScrollAlignment::alignCenterIfNeeded, const ScrollAlignment& alignY = ScrollAlignment::alignCenterIfNeeded);
 
     // Convenience function for getting to the nearest enclosing box of a RenderObject.
-    RenderBox& enclosingBox() const;
+    WEBCORE_EXPORT RenderBox& enclosingBox() const;
     RenderBoxModelObject& enclosingBoxModelObject() const;
 
     bool fixedPositionedWithNamedFlowContainingBlock() const;
@@ -599,9 +598,7 @@ public:
     VisiblePosition createVisiblePosition(const Position&) const;
 
     // returns the containing block level element for this element.
-    RenderBlock* containingBlock() const;
-    RenderBlock* containingBlockForFixedPosition() const;
-    RenderBlock* containingBlockForAbsolutePosition() const;
+    WEBCORE_EXPORT RenderBlock* containingBlock() const;
     RenderBlock* containingBlockForObjectInFlow() const;
 
     // Convert the given local point to absolute coordinates. If MapCoordinatesFlags includes UseTransforms, take transforms into account.
@@ -749,7 +746,7 @@ public:
      * @param extraWidthToEndOfLine optional out arg to give extra width to end of line -
      * useful for character range rect computations
      */
-    virtual LayoutRect localCaretRect(InlineBox*, int caretOffset, LayoutUnit* extraWidthToEndOfLine = nullptr);
+    virtual LayoutRect localCaretRect(InlineBox*, unsigned caretOffset, LayoutUnit* extraWidthToEndOfLine = nullptr);
 
     // When performing a global document tear-down, the renderer of the document is cleared.  We use this
     // as a hook to detect the case of document destruction and don't waste time doing unnecessary work.
@@ -782,7 +779,7 @@ public:
     virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) { }
 
     SelectionSubtreeRoot& selectionRoot() const;
-    void selectionStartEnd(int& spos, int& epos) const;
+    void selectionStartEnd(unsigned& spos, unsigned& epos) const;
     
     void removeFromParent();
 
@@ -1132,5 +1129,3 @@ void showNodeTree(const WebCore::RenderObject*);
 void showLineTree(const WebCore::RenderObject*);
 void showRenderTree(const WebCore::RenderObject*);
 #endif
-
-#endif // RenderObject_h

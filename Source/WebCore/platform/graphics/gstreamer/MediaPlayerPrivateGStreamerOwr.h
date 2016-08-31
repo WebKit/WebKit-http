@@ -40,6 +40,8 @@ public:
 
     static void registerMediaEngine(MediaEngineRegistrar);
 
+    void setSize(const IntSize&) override;
+
 private:
     GstElement* createVideoSink() override;
     GstElement* audioSink() const override { return m_audioSink.get(); }
@@ -94,11 +96,10 @@ private:
     static bool initializeGStreamerAndGStreamerDebugging();
     void createGSTAudioSinkBin();
     void loadingFailed(MediaPlayer::NetworkState error);
-    bool internalLoad();
     void stop();
+    void maybeHandleChangeMutedState(MediaStreamTrackPrivate&);
 
     bool m_paused { true };
-    bool m_stopped { true };
     RefPtr<MediaStreamTrackPrivate> m_videoTrack;
     RefPtr<MediaStreamTrackPrivate> m_audioTrack;
     GRefPtr<GstElement> m_audioSink;

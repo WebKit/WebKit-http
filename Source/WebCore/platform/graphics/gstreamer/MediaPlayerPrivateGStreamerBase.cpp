@@ -1027,6 +1027,22 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamerBase::movieLoadType() cons
 }
 
 #if USE(GSTREAMER_GL)
+GstElement* MediaPlayerPrivateGStreamerBase::createGLAppSink()
+{
+    if (!webkitGstCheckVersion(1, 8, 0))
+        return nullptr;
+
+    GstElement* appsink = gst_element_factory_make("appsink", "webkit-gl-video-sink");
+    if (!appsink)
+        return nullptr;
+
+    g_object_set(appsink, "enable-last-sample", FALSE, "emit-signals", TRUE, "max-buffers", 1, nullptr);
+    g_signal_connect(appsink, "new-sample", G_CALLBACK(newSampleCallback), this);
+    g_signal_connect(appsink, "new-preroll", G_CALLBACK(newPrerollCallback), this);
+
+    return appsink;
+}
+
 gboolean appSinkSinkQuery(GstPad* pad, GstObject* parent, GstQuery* query)
 {
     gboolean result = FALSE;
@@ -1059,8 +1075,9 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
     GstElement* videoSink = gst_bin_new("webkitvideosinkbin");
     GstElement* upload = gst_element_factory_make("glupload", nullptr);
     GstElement* colorconvert = gst_element_factory_make("glcolorconvert", nullptr);
+    GstElement* appsink = createGLAppSink();
 
-    if (!upload || !colorconvert) {
+    if (!appsink || !upload || !colorconvert) {
         GST_WARNING("Failed to create GstGL elements");
         gst_object_unref(videoSink);
 
@@ -1068,11 +1085,11 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
             gst_object_unref(upload);
         if (colorconvert)
             gst_object_unref(colorconvert);
+        if (appsink)
+            gst_object_unref(appsink);
 
         return nullptr;
     }
-
-    GstElement* appsink = gst_element_factory_make("appsink", "webkit-gl-video-sink");
 
     gst_bin_add_many(GST_BIN(videoSink), upload, colorconvert, appsink, nullptr);
 

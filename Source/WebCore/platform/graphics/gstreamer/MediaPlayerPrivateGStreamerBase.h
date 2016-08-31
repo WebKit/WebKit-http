@@ -173,6 +173,7 @@ protected:
 #if USE(GSTREAMER_GL)
     static GstFlowReturn newSampleCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
     static GstFlowReturn newPrerollCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
+    GstElement* createGLAppSink();
     GstElement* createVideoSinkGL();
 #endif
 

@@ -26,22 +26,22 @@
 #include "config.h"
 #include "DataReference.h"
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace IPC {
 
-void DataReference::encode(ArgumentEncoder& encoder) const
+void DataReference::encode(Encoder& encoder) const
 {
     encoder.encodeVariableLengthByteArray(*this);
 }
 
-bool DataReference::decode(ArgumentDecoder& decoder, DataReference& dataReference)
+bool DataReference::decode(Decoder& decoder, DataReference& dataReference)
 {
     return decoder.decodeVariableLengthByteArray(dataReference);
 }
 
-void SharedBufferDataReference::encode(ArgumentEncoder& encoder) const
+void SharedBufferDataReference::encode(Encoder& encoder) const
 {
     uint64_t bufferSize = static_cast<uint64_t>(m_buffer->size());
     encoder.reserve(bufferSize + sizeof(uint64_t));

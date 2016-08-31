@@ -226,9 +226,9 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
 #if PLATFORM(WPE)
 #define STRING_SPECIFICATION "%s"
 #define MEMORYPRESSURE_LOG(...) LOG(MemoryPressure, __VA_ARGS__)
-#elif !LOG_ALWAYS_DISABLED
+#elif !RELEASE_LOG_DISABLED
 #define STRING_SPECIFICATION "%{public}s"
-#define MEMORYPRESSURE_LOG(...) LOG_ALWAYS(true, __VA_ARGS__)
+#define MEMORYPRESSURE_LOG(...) RELEASE_LOG(__VA_ARGS__)
 #else
 #define STRING_SPECIFICATION "%s"
 #define MEMORYPRESSURE_LOG(...) WTFLogAlways(__VA_ARGS__)

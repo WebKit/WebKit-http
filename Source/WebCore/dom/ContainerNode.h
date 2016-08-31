@@ -85,25 +85,22 @@ public:
     // This gives the area within which events may get handled by a hander registered on this node.
     virtual LayoutRect absoluteEventHandlerBounds(bool& /* includesFixedPositionElements */) { return LayoutRect(); }
 
-    Element* querySelector(const String& selectors, ExceptionCode&);
-    RefPtr<NodeList> querySelectorAll(const String& selectors, ExceptionCode&);
+    WEBCORE_EXPORT Element* querySelector(const String& selectors, ExceptionCode&);
+    WEBCORE_EXPORT RefPtr<NodeList> querySelectorAll(const String& selectors, ExceptionCode&);
 
-    Ref<HTMLCollection> getElementsByTagName(const AtomicString&);
-    RefPtr<NodeList> getElementsByTagNameForObjC(const AtomicString&);
-    Ref<HTMLCollection> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RefPtr<NodeList> getElementsByTagNameNSForObjC(const AtomicString& namespaceURI, const AtomicString& localName);
-    Ref<NodeList> getElementsByName(const String& elementName);
-    Ref<HTMLCollection> getElementsByClassName(const AtomicString& classNames);
-    Ref<NodeList> getElementsByClassNameForObjC(const AtomicString& classNames);
+    WEBCORE_EXPORT Ref<HTMLCollection> getElementsByTagName(const AtomicString&);
+    WEBCORE_EXPORT Ref<HTMLCollection> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    WEBCORE_EXPORT Ref<NodeList> getElementsByName(const String& elementName);
+    WEBCORE_EXPORT Ref<HTMLCollection> getElementsByClassName(const AtomicString& classNames);
     Ref<RadioNodeList> radioNodeList(const AtomicString&);
 
     // From the ParentNode interface - https://dom.spec.whatwg.org/#interface-parentnode
-    Ref<HTMLCollection> children();
-    Element* firstElementChild() const;
-    Element* lastElementChild() const;
-    unsigned childElementCount() const;
-    void append(Vector<NodeOrString>&&, ExceptionCode&);
-    void prepend(Vector<NodeOrString>&&, ExceptionCode&);
+    WEBCORE_EXPORT Ref<HTMLCollection> children();
+    WEBCORE_EXPORT Element* firstElementChild() const;
+    WEBCORE_EXPORT Element* lastElementChild() const;
+    WEBCORE_EXPORT unsigned childElementCount() const;
+    void append(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
+    void prepend(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
 
     bool ensurePreInsertionValidity(Node& newChild, Node* refChild, ExceptionCode&);
 
@@ -120,6 +117,7 @@ protected:
 
 private:
     void removeBetween(Node* previousChild, Node* nextChild, Node& oldChild);
+    bool appendChildWithoutPreInsertionValidityCheck(Node&, ExceptionCode&);
     void insertBeforeCommon(Node& nextChild, Node& oldChild);
     void appendChildCommon(Node&);
 

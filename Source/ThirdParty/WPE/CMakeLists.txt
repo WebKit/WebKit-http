@@ -1,6 +1,6 @@
 set(WPE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_POSIX_SOURCE")
 
 if(WPE_BACKEND)
   add_definitions(-DWPE_BACKEND=\"${WPE_BACKEND}\")
@@ -13,6 +13,7 @@ set(WPE_INCLUDE_DIRECTORIES
 )
 
 set(WPE_LIBRARIES
+    dl
 )
 
 set(WPE_SOURCES
@@ -21,7 +22,8 @@ set(WPE_SOURCES
     src/pasteboard.c
     src/pasteboard-generic.cpp
     src/pasteboard-noop.cpp
-    src/renderer.c
+    src/renderer-backend-egl.c
+    src/renderer-host.c
     src/view-backend.c
 )
 

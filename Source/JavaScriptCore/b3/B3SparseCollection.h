@@ -26,6 +26,8 @@
 #ifndef B3SparseCollection_h
 #define B3SparseCollection_h
 
+#if ENABLE(B3_JIT)
+
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -55,8 +57,8 @@ public:
             index = m_indexFreeList.takeLast();
 
         value->m_index = index;
-
-        m_vector[index] = WTFMove(value);
+        ASSERT(!m_vector[index]);
+        new (NotNull, &m_vector[index]) std::unique_ptr<T>(WTFMove(value));
 
         return result;
     }
@@ -132,11 +134,13 @@ public:
     iterator end() const { return iterator(*this, size()); }
 
 private:
-    Vector<std::unique_ptr<T>> m_vector;
-    Vector<size_t> m_indexFreeList;
+    Vector<std::unique_ptr<T>, 0, UnsafeVectorOverflow> m_vector;
+    Vector<size_t, 0, UnsafeVectorOverflow> m_indexFreeList;
 };
 
 } } // namespace JSC::B3
+
+#endif // ENABLE(B3_JIT)
 
 #endif // B3SparseCollection_h
 

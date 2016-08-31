@@ -135,7 +135,7 @@ class DriverTest(unittest.TestCase):
             'Content-Transfer-Encoding: none',
             "#EOF",
         ])
-        content_block = driver._read_block(0)
+        content_block = driver._read_block(0, "")
         self.assertEqual(content_block.content_type, 'my_type')
         self.assertEqual(content_block.encoding, 'none')
         self.assertEqual(content_block.content_hash, 'foobar')
@@ -152,7 +152,7 @@ class DriverTest(unittest.TestCase):
             "12345678",
             "#EOF",
         ])
-        content_block = driver._read_block(0)
+        content_block = driver._read_block(0, "")
         self.assertEqual(content_block.content_type, 'image/png')
         self.assertEqual(content_block.content_hash, 'actual')
         self.assertEqual(content_block.content, '12345678\n')
@@ -170,7 +170,7 @@ class DriverTest(unittest.TestCase):
             'Content-Length: 12',
             'MTIzNDU2NzgK#EOF',
         ])
-        content_block = driver._read_block(0)
+        content_block = driver._read_block(0, "")
         self.assertEqual(content_block.content_type, 'image/png')
         self.assertEqual(content_block.content_hash, 'actual')
         self.assertEqual(content_block.encoding, 'base64')
@@ -204,6 +204,9 @@ class DriverTest(unittest.TestCase):
                 return self.crashed
 
             def stop(self, timeout):
+                pass
+
+            def write(self, bytes, ignore_crash=False):
                 pass
 
         def assert_crash(driver, error_line, crashed, name, pid, unresponsive=False):

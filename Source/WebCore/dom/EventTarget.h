@@ -28,15 +28,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EventTarget_h
-#define EventTarget_h
+#pragma once
 
 #include "EventListenerMap.h"
 #include "EventTargetInterfaces.h"
 #include "ScriptWrappable.h"
 #include <memory>
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
 
 namespace WTF {
 class AtomicString;
@@ -97,7 +95,7 @@ public:
     ~EventTargetData();
 
     EventListenerMap eventListenerMap;
-    std::unique_ptr<FiringEventIteratorVector> firingEventIterators;
+    bool isFiringEventListeners { false };
 };
 
 enum EventTargetInterface {
@@ -141,14 +139,14 @@ public:
 
     void addEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&&, bool useCapture = false);
     void removeEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&&, bool useCapture = false);
-    void addEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&&, const AddEventListenerOptions&);
-    void removeEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&&, const ListenerOptions&);
+    WEBCORE_EXPORT void addEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&&, const AddEventListenerOptions&);
+    WEBCORE_EXPORT void removeEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&&, const ListenerOptions&);
     virtual bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions& = { });
     virtual bool removeEventListener(const AtomicString& eventType, EventListener&, const ListenerOptions&);
 
     virtual void removeAllEventListeners();
     virtual bool dispatchEvent(Event&);
-    bool dispatchEventForBindings(Event&, ExceptionCode&); // DOM API
+    WEBCORE_EXPORT bool dispatchEventForBindings(Event&, ExceptionCode&); // DOM API
     virtual void uncaughtExceptionInEventHandler();
 
     // Used for legacy "onEvent" attribute APIs.
@@ -182,7 +180,7 @@ private:
     virtual void refEventTarget() = 0;
     virtual void derefEventTarget() = 0;
     
-    void fireEventListeners(Event&, EventTargetData*, EventListenerVector&);
+    void fireEventListeners(Event&, EventListenerVector);
 
     friend class EventListenerIterator;
 };
@@ -207,7 +205,7 @@ inline bool EventTarget::isFiringEventListeners()
     EventTargetData* d = eventTargetData();
     if (!d)
         return false;
-    return d->firingEventIterators && !d->firingEventIterators->isEmpty();
+    return d->isFiringEventListeners;
 }
 
 inline bool EventTarget::hasEventListeners() const
@@ -245,5 +243,3 @@ inline void EventTarget::removeEventListenerForBindings(const AtomicString& even
 }
 
 } // namespace WebCore
-
-#endif // EventTarget_h

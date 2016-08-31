@@ -30,8 +30,8 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-class ArgumentEncoder;
-class ArgumentDecoder;
+class Encoder;
+class Decoder;
 }
 
 namespace WebKit {
@@ -57,8 +57,8 @@ public:
     const API::Dictionary* encodedInvocation() const { return m_encodedInvocation.get(); }
     const ReplyInfo* replyInfo() const { return m_replyInfo.get(); }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RemoteObjectInvocation&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RemoteObjectInvocation&);
 
 private:
     String m_interfaceIdentifier;

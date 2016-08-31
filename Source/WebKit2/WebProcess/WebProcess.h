@@ -43,7 +43,6 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -87,6 +86,7 @@ class WebPage;
 class WebPageGroupProxy;
 class WebProcessSupplement;
 enum class WebsiteDataType;
+struct GamepadData;
 struct WebPageCreationParameters;
 struct WebPageGroupData;
 struct WebPreferencesStore;
@@ -275,6 +275,12 @@ private:
 
     void mainThreadPing();
 
+#if ENABLE(GAMEPAD)
+    void setInitialGamepads(const Vector<GamepadData>&);
+    void gamepadConnected(const GamepadData&);
+    void gamepadDisconnected(unsigned index);
+#endif
+
     void releasePageCache();
 
     void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, uint64_t callbackID);
@@ -313,16 +319,16 @@ private:
 
     // IPC::Connection::Client
     friend class WebConnectionToUIProcess;
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
     IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
     IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
 
     // Implemented in generated WebProcessMessageReceiver.cpp
-    void didReceiveWebProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
-    void didReceiveSyncWebProcessMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    void didReceiveWebProcessMessage(IPC::Connection&, IPC::Decoder&);
+    void didReceiveSyncWebProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 

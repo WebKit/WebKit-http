@@ -28,6 +28,8 @@
 #ifndef bcm_rpi_interfaces_h
 #define bcm_rpi_interfaces_h
 
+#define __GBM__
+
 #include <wpe/renderer-backend-egl.h>
 #include <wpe/view-backend.h>
 

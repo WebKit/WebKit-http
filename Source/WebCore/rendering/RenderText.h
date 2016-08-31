@@ -119,7 +119,7 @@ public:
     bool canBeSelectionLeaf() const override { return true; }
     void setSelectionState(SelectionState) final;
     LayoutRect selectionRectForRepaint(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent = true) override;
-    LayoutRect localCaretRect(InlineBox*, int caretOffset, LayoutUnit* extraWidthToEndOfLine = 0) override;
+    LayoutRect localCaretRect(InlineBox*, unsigned caretOffset, LayoutUnit* extraWidthToEndOfLine = 0) override;
 
     LayoutRect collectSelectionRectsForLineBoxes(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent, Vector<LayoutRect>& rects);
 
@@ -167,7 +167,7 @@ public:
     void deleteLineBoxesBeforeSimpleLineLayout();
     const SimpleLineLayout::Layout* simpleLineLayout() const;
 
-    StringView stringView(int start = 0, int stop = -1) const;
+    StringView stringView(unsigned start = 0, Optional<unsigned> stop = Nullopt) const;
 
     LayoutUnit topOfFirstText() const;
     

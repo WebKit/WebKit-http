@@ -101,7 +101,7 @@ public:
 
     bool empty() const;
     void clear();
-    void addSample(PassRefPtr<MediaSample>);
+    void addSample(MediaSample&);
     void removeSample(MediaSample*);
     size_t sizeInBytes() const { return m_totalSize; }
 
@@ -122,7 +122,7 @@ template<typename I>
 void SampleMap::addRange(I begin, I end)
 {
     for (I iter = begin; iter != end; ++iter)
-        addSample(iter->second);
+        addSample(*iter->second);
 }
 
 }

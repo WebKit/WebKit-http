@@ -84,6 +84,8 @@ const ClassInfo ObjectConstructor::s_info = { "Function", &InternalFunction::s_i
   isExtensible              objectConstructorIsExtensible               DontEnum|Function 1
   is                        objectConstructorIs                         DontEnum|Function 2
   assign                    JSBuiltin                                   DontEnum|Function 2
+  values                    JSBuiltin                                   DontEnum|Function 1
+  entries                   JSBuiltin                                   DontEnum|Function 1
 @end
 */
 

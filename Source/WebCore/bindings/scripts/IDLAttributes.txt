@@ -21,6 +21,7 @@
 ActiveDOMObject
 AppleCopyright
 AtomicString
+CEReactions
 CachedAttribute
 CallbackNeedsOperatorEqual
 Callback=FunctionOnly
@@ -60,9 +61,10 @@ EnabledAtRuntime=*
 EnabledBySetting=*
 EnforceRange
 ExportMacro=WEBCORE_EXPORT|WEBCORE_TESTSUPPORT_EXPORT
+ExportToWrappedFunction
 Exposed=*
 ForwardDeclareInHeader
-GenerateIsReachable=|Impl|ImplWebGLRenderingContext|ImplDocument|ImplElementRoot|ImplFrame|ImplOwnerNodeRoot
+GenerateIsReachable=|Impl|ImplWebGLRenderingContext|ImplDocument|ImplElementRoot|ImplFrame|ImplOwnerNodeRoot|ImplScriptExecutionContext
 GetterRaisesException
 GetterRaisesExceptionWithMessage
 Immutable
@@ -91,19 +93,11 @@ JSLegacyParent=*
 LenientThis
 MasqueradesAsUndefined
 NamedConstructor=*
-InvokesCustomElementLifecycleCallbacks
 NewImpurePropertyFiresWatchpoints
 NewObject
 NoInterfaceObject
 Nondeterministic
 NotEnumerable
-ObjCCustomImplementation
-ObjCExplicitAtomicString
-ObjCImplementedAsUnsignedLong
-ObjCLegacyUnnamedParameters
-ObjCPolymorphic
-ObjCProtocol
-ObjCUseDefaultView
 OverrideBuiltins
 PassContext
 PrivateIdentifier
@@ -126,4 +120,5 @@ TreatReturnedNaNDateAs=Null|NaN
 TypedArray=*
 URL
 Unforgeable
+Unscopable
 WindowEventHandler

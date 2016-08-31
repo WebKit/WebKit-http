@@ -29,6 +29,7 @@
 
 #include "ChildProcessMain.h"
 #include "WebProcess.h"
+#include <WebCore/PlatformDisplayWPE.h>
 #include <WebCore/SoupNetworkSession.h>
 #include <glib.h>
 #include <libsoup/soup.h>
@@ -49,6 +50,24 @@ public:
             WTF::sleep(30);
         }
 
+        return true;
+    }
+
+    bool parseCommandLine(int argc, char** argv) override
+    {
+        ASSERT(argc == 3);
+        if (argc < 3)
+            return false;
+
+        if (!ChildProcessMainBase::parseCommandLine(argc, argv))
+            return false;
+
+        int wpeFd = atoi(argv[2]);
+        RunLoop::main().dispatch(
+            [wpeFd] {
+                RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
+                downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).initialize(wpeFd);
+            });
         return true;
     }
 

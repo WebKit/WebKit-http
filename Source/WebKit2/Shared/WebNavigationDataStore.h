@@ -26,8 +26,8 @@
 #ifndef WebNavigationDataStore_h
 #define WebNavigationDataStore_h
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
@@ -36,7 +36,7 @@
 namespace WebKit {
 
 struct WebNavigationDataStore {
-    void encode(IPC::ArgumentEncoder& encoder) const
+    void encode(IPC::Encoder& encoder) const
     {
         encoder << url;
         encoder << title;
@@ -44,7 +44,7 @@ struct WebNavigationDataStore {
         encoder << response;
     }
 
-    static bool decode(IPC::ArgumentDecoder& decoder, WebNavigationDataStore& store)
+    static bool decode(IPC::Decoder& decoder, WebNavigationDataStore& store)
     {
         if (!decoder.decode(store.url))
             return false;

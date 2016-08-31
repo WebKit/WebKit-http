@@ -645,16 +645,6 @@ void CanvasRenderingContext2D::setLineDashOffset(float offset)
     applyLineDash();
 }
 
-float CanvasRenderingContext2D::webkitLineDashOffset() const
-{
-    return lineDashOffset();
-}
-
-void CanvasRenderingContext2D::setWebkitLineDashOffset(float offset)
-{
-    setLineDashOffset(offset);
-}
-
 void CanvasRenderingContext2D::applyLineDash() const
 {
     GraphicsContext* c = drawingContext();
@@ -1390,8 +1380,20 @@ void CanvasRenderingContext2D::drawImage(HTMLImageElement& imageElement, const F
         ec = INDEX_SIZE_ERR;
         return;
     }
-    if (!imageRect.contains(normalizedSrcRect))
+
+    // When the source rectangle is outside the source image, the source rectangle must be clipped
+    // to the source image and the destination rectangle must be clipped in the same proportion.
+    FloatRect originalNormalizedSrcRect = normalizedSrcRect;
+    normalizedSrcRect.intersect(imageRect);
+    if (normalizedSrcRect.isEmpty())
         return;
+
+    if (normalizedSrcRect != originalNormalizedSrcRect) {
+        normalizedDstRect.setWidth(normalizedDstRect.width() * normalizedSrcRect.width() / originalNormalizedSrcRect.width());
+        normalizedDstRect.setHeight(normalizedDstRect.height() * normalizedSrcRect.height() / originalNormalizedSrcRect.height());
+        if (normalizedDstRect.isEmpty())
+            return;
+    }
 
     GraphicsContext* c = drawingContext();
     if (!c)

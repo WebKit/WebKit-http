@@ -25,9 +25,8 @@ interface HTMLAnchorElement : HTMLElement {
     [Reflect] attribute DOMString hreflang;
     [Reflect] attribute DOMString name;
 
-    // FIXME: This is supposed to be:
-    // [PutForwards=value] readonly attribute DOMTokenList ping;
-    [Reflect] attribute DOMString ping;
+    // FIXME: This is supposed to be: [PutForwards=value] readonly attribute DOMTokenList ping;
+    [Reflect] attribute USVString ping;
 
     [Reflect] attribute DOMString rel;
     [Reflect] attribute DOMString rev;
@@ -35,23 +34,10 @@ interface HTMLAnchorElement : HTMLElement {
     [Reflect] attribute DOMString target;
     [Reflect] attribute DOMString type;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString accessKey;
-#endif
+    [SetterRaisesException] attribute DOMString text;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute DOMString text;
-#else
-    [SetterRaisesException]  attribute DOMString text;
-#endif
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     [NotEnumerable] DOMString toString();
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extension:
-    readonly attribute URL absoluteLinkURL;
 #endif
 
     [PutForwards=value] readonly attribute DOMTokenList relList;
