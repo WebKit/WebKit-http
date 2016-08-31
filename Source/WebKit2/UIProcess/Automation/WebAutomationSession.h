@@ -199,9 +199,7 @@ private:
     uint64_t m_nextDeleteCookieCallbackID { 1 };
     HashMap<uint64_t, RefPtr<Inspector::AutomationBackendDispatcherHandler::DeleteSingleCookieCallback>> m_deleteCookieCallbacks;
 
-//#if ENABLE(REMOTE_INSPECTOR)
     Inspector::FrontendChannel* m_remoteChannel { nullptr };
-//#endif
 };
 
 } // namespace WebKit
