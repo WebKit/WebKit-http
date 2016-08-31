@@ -11,5 +11,9 @@ if (ENABLE_TEST_SUPPORT)
     add_subdirectory(ImageDiff)
 endif ()
 
+if (ENABLE_WEBKIT2)
+    add_subdirectory(MiniBrowser/qt)
+endif ()
+
 # FIXME: Remove when WK2 Tools patches are merged
 set(ENABLE_WEBKIT2 0)
