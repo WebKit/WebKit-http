@@ -326,6 +326,8 @@ set(WebKit2_SOURCES
     Shared/Databases/IndexedDB/IDBUtilities.cpp
     Shared/Databases/IndexedDB/WebIDBResult.cpp
 
+    Shared/Gamepad/GamepadData.cpp
+
     Shared/Plugins/NPIdentifierData.cpp
     Shared/Plugins/NPObjectMessageReceiver.cpp
     Shared/Plugins/NPObjectProxy.cpp
@@ -478,6 +480,7 @@ set(WebKit2_SOURCES
     UIProcess/Downloads/DownloadProxy.cpp
     UIProcess/Downloads/DownloadProxyMap.cpp
 
+    UIProcess/Gamepad/UIGamepad.cpp
     UIProcess/Gamepad/UIGamepadProvider.cpp
 
     UIProcess/InspectorServer/HTTPRequest.cpp

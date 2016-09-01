@@ -31,7 +31,7 @@
 #include "GamepadData.h"
 #include "UIGamepad.h"
 #include "WebProcessPool.h"
-#include <WebCore/HIDGamepadProvider.h>
+#include <WebCore/PlatformGamepad.h>
 #include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
@@ -237,9 +237,10 @@ const Vector<PlatformGamepad*>& UIGamepadProvider::platformGamepads()
     // FIXME: Implement for other platforms
 }
 
-WebProcessProxy* UIGamepadProvider::platformWebProcessProxyForGamepadInput()
+WebPageProxy* UIGamepadProvider::platformWebPageProxyForGamepadInput()
 {
     // FIXME: Implement for other platforms
+    return nullptr;
 }
 
 void UIGamepadProvider::platformStopMonitoringInput()
