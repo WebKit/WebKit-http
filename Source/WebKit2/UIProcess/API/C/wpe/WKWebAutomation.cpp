@@ -41,14 +41,13 @@ using namespace WebKit;
 WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKPageRef page)
 {
     WKWebAutomationSessionRef automationSession = toAPI(WKWPE::WebAutomation::create());
-    toImpl (automationSession)->setClient();
-    toImpl (automationSession)->setSessionIdentifier("wpe");
-    toImpl (automationSession)->setProcessPool(toImpl(context));
+    toImpl(automationSession)->setSessionIdentifier("wpe");
+    toImpl(automationSession)->setProcessPool(toImpl(context));
     WKPageSetControlledByAutomation(page, true);
     return automationSession;
 }
 
 void WKWebAutomationExecuteCommand(WKWebAutomationSessionRef automationSession, WKStringRef command, WKAutomationCommandStatusCallback callback)
 {
-     toImpl(automationSession)->sendMessageToTarget(toImpl(command)->string(), callback);
+    toImpl(automationSession)->sendMessageToTarget(toImpl(command)->string(), callback);
 }

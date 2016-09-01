@@ -47,7 +47,6 @@ public:
     
     ConnectionType connectionType() const override { return ConnectionType::Remote; }
     bool sendMessageToFrontend(const String& rspMsg);
-    void setClient();
     void setProcessPool(WebKit::WebProcessPool* processPool);
     void setSessionIdentifier(const String& sessionIdentifier);
 
@@ -55,9 +54,8 @@ private:
     WebAutomation();
     virtual ~WebAutomation();
 
-    bool m_connected;
-    WebKit::WebAutomationSession* m_webAutomationSession;
-    AutomationSessionClient*  m_webAutomationSessionClient;
+    void (*m_commandStatusCallback)(WKStringRef rspMsg);
+    std::unique_ptr<WebKit::WebAutomationSession> m_webAutomationSession;
 };
 
 } // WKWPE
