@@ -37,7 +37,7 @@ WebAutomation::WebAutomation()
     m_webAutomationSession.reset(new WebKit::WebAutomationSession());
     if (m_webAutomationSession) {
         m_webAutomationSession->connect((Inspector::FrontendChannel*) this, true);
-        m_webAutomationSession->setClient((std::unique_ptr<API::AutomationSessionClient>) (new AutomationSessionClient()));
+        m_webAutomationSession->setClient(std::make_unique<AutomationSessionClient>());
     }
 }
 
