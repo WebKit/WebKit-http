@@ -22,6 +22,7 @@
 #include "config.h"
 #include "TextureMapperLayerClientQt.h"
 
+#include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsLayerTextureMapper.h"
 #include "QWebFrameAdapter.h"

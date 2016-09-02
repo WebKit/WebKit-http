@@ -32,7 +32,6 @@
 #ifndef NotificationPresenterClientQt_h
 #define NotificationPresenterClientQt_h
 
-#include "Notification.h"
 #include "NotificationClient.h"
 #include "QtPlatformPlugin.h"
 #include "Timer.h"

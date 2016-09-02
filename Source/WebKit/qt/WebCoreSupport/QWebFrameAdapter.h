@@ -41,6 +41,7 @@
 
 namespace WebCore {
 class Frame;
+class HitTestResult;
 class GraphicsContext;
 class IntRect;
 class Scrollbar;

@@ -27,6 +27,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkCookie>
 #include <QNetworkCookieJar>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 

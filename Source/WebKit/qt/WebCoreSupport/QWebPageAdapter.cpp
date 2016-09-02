@@ -42,6 +42,7 @@
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "GeolocationPermissionClientQt.h"
+#include "HTMLFormElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
