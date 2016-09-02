@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,39 +24,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKAPICastWPE_h
-#define WKAPICastWPE_h
+#ifndef WKWebAutomation_h
+#define WKWebAutomation_h
 
-#ifndef WKAPICast_h
-#error "Please #include \"WKAPICast.h\" instead of this file directly."
+#include <WebKit/WKBase.h>
+#include <WebKit/WKGeometry.h>
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include "WKView.h"
-#include "WKWebAutomation.h"
-#include <WebCore/ViewState.h>
+typedef void (*WKAutomationCommandStatusCallback)(WKStringRef command);
 
-namespace WKWPE {
-class View;
-class WebAutomation;
+WK_EXPORT WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKPageRef page);
+WK_EXPORT void WKWebAutomationExecuteCommand(WKWebAutomationSessionRef automationSession, WKStringRef command, WKAutomationCommandStatusCallback callback);
+
+#ifdef __cplusplus
 }
+#endif
 
-namespace WebKit {
+#endif // WKWebAutomation_h
 
-WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
-WK_ADD_API_MAPPING(WKWebAutomationSessionRef, WKWPE::WebAutomation)
 
-inline WebCore::ViewState::Flags toViewStateFlags(WKViewState wkViewState)
-{
-    unsigned viewStateFlags = 0;
-
-    if (wkViewState & kWKViewStateIsInWindow)
-        viewStateFlags |= WebCore::ViewState::IsInWindow;
-    if (wkViewState & kWKViewStateIsVisible)
-        viewStateFlags |= WebCore::ViewState::IsVisible;
-
-    return static_cast<WebCore::ViewState::Flags>(viewStateFlags);
-}
-
-}
-
-#endif // WKAPICastWPE_h

@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,39 +24,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKAPICastWPE_h
-#define WKAPICastWPE_h
-
-#ifndef WKAPICast_h
-#error "Please #include \"WKAPICast.h\" instead of this file directly."
-#endif
-
-#include "WKView.h"
+#include "config.h"
 #include "WKWebAutomation.h"
-#include <WebCore/ViewState.h>
+#include "WKPage.h"
+#include "WKPagePrivate.h"
 
-namespace WKWPE {
-class View;
-class WebAutomation;
-}
+#include "APIAutomationSessionClient.h"
+#include "WKPageConfigurationRef.h"
+#include "APIPageConfiguration.h"
+#include "WKAPICast.h"
+#include "WPEWebAutomation.h"
+#include "WebProcessPool.h"
 
-namespace WebKit {
+using namespace WebKit;
 
-WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
-WK_ADD_API_MAPPING(WKWebAutomationSessionRef, WKWPE::WebAutomation)
-
-inline WebCore::ViewState::Flags toViewStateFlags(WKViewState wkViewState)
+WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKPageRef page)
 {
-    unsigned viewStateFlags = 0;
-
-    if (wkViewState & kWKViewStateIsInWindow)
-        viewStateFlags |= WebCore::ViewState::IsInWindow;
-    if (wkViewState & kWKViewStateIsVisible)
-        viewStateFlags |= WebCore::ViewState::IsVisible;
-
-    return static_cast<WebCore::ViewState::Flags>(viewStateFlags);
+    WKWebAutomationSessionRef automationSession = toAPI(WKWPE::WebAutomation::create());
+    toImpl(automationSession)->setSessionIdentifier("wpe");
+    toImpl(automationSession)->setProcessPool(toImpl(context));
+    WKPageSetControlledByAutomation(page, true);
+    return automationSession;
 }
 
+void WKWebAutomationExecuteCommand(WKWebAutomationSessionRef automationSession, WKStringRef command, WKAutomationCommandStatusCallback callback)
+{
+    toImpl(automationSession)->sendMessageToTarget(toImpl(command)->string(), callback);
 }
-
-#endif // WKAPICastWPE_h

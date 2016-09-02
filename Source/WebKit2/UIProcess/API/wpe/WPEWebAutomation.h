@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,39 +24,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKAPICastWPE_h
-#define WKAPICastWPE_h
+#ifndef WPEWebAutomation_h
+#define WPEWebAutomation_h
 
-#ifndef WKAPICast_h
-#error "Please #include \"WKAPICast.h\" instead of this file directly."
-#endif
+#include "APIObject.h"
+#include "WebInspectorProxy.h"
+#include "WPEWebAutomationClient.h"
 
-#include "WKView.h"
-#include "WKWebAutomation.h"
-#include <WebCore/ViewState.h>
+#include <JavaScriptCore/InspectorFrontendChannel.h>
+#include <JavaScriptCore/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
+#include <wtf/RefPtr.h>
+
 
 namespace WKWPE {
-class View;
-class WebAutomation;
-}
+class WebAutomation final: public API::ObjectImpl<API::Object::Type::AutomationSession>, public Inspector::FrontendChannel {
 
-namespace WebKit {
+public:
+    static WebAutomation* create();
 
-WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
-WK_ADD_API_MAPPING(WKWebAutomationSessionRef, WKWPE::WebAutomation)
+    void sendMessageToTarget(const String& command, void (*commandCallback)(WKStringRef rspMsg));
+    
+    ConnectionType connectionType() const override { return ConnectionType::Remote; }
+    bool sendMessageToFrontend(const String& rspMsg);
+    void setProcessPool(WebKit::WebProcessPool* processPool);
+    void setSessionIdentifier(const String& sessionIdentifier);
 
-inline WebCore::ViewState::Flags toViewStateFlags(WKViewState wkViewState)
-{
-    unsigned viewStateFlags = 0;
+private:
+    WebAutomation();
+    virtual ~WebAutomation();
 
-    if (wkViewState & kWKViewStateIsInWindow)
-        viewStateFlags |= WebCore::ViewState::IsInWindow;
-    if (wkViewState & kWKViewStateIsVisible)
-        viewStateFlags |= WebCore::ViewState::IsVisible;
+    void (*m_commandStatusCallback)(WKStringRef rspMsg);
+    std::unique_ptr<WebKit::WebAutomationSession> m_webAutomationSession;
+};
 
-    return static_cast<WebCore::ViewState::Flags>(viewStateFlags);
-}
+} // WKWPE
 
-}
-
-#endif // WKAPICastWPE_h
+#endif // WPEWebAutomation_h

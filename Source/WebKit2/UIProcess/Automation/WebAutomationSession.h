@@ -85,13 +85,11 @@ public:
     void navigationOccurredForPage(const WebPageProxy&);
     void inspectorFrontendLoaded(const WebPageProxy&);
 
-#if ENABLE(REMOTE_INSPECTOR)
     // Inspector::RemoteAutomationTarget API
-    String name() const override { return m_sessionIdentifier; }
-    void dispatchMessageFromRemote(const String& message) override;
-    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false) override;
-    void disconnect(Inspector::FrontendChannel*) override;
-#endif
+    String name() const { return m_sessionIdentifier; }
+    void dispatchMessageFromRemote(const String& message);
+    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false);
+    void disconnect(Inspector::FrontendChannel*);
 
     // Inspector::AutomationBackendDispatcherHandler API
     void getBrowsingContexts(Inspector::ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>>&) override;
@@ -201,9 +199,7 @@ private:
     uint64_t m_nextDeleteCookieCallbackID { 1 };
     HashMap<uint64_t, RefPtr<Inspector::AutomationBackendDispatcherHandler::DeleteSingleCookieCallback>> m_deleteCookieCallbacks;
 
-#if ENABLE(REMOTE_INSPECTOR)
     Inspector::FrontendChannel* m_remoteChannel { nullptr };
-#endif
 };
 
 } // namespace WebKit
