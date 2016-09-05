@@ -442,7 +442,7 @@ QWebSettings* QWebSettings::globalSettings()
     \value PrivateBrowsingEnabled Private browsing prevents WebKit from
         recording visited pages in the history and storing web page icons. This is disabled by default.
     \value JavascriptCanOpenWindows Specifies whether JavaScript programs
-        can open new windows. This is disabled by default.
+        can open popup windows without user interaction. This is disabled by default.
     \value JavascriptCanCloseWindows Specifies whether JavaScript programs
         can close windows. This is disabled by default.
     \value JavascriptCanAccessClipboard Specifies whether JavaScript programs
