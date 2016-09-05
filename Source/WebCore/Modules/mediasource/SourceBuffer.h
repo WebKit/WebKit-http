@@ -89,6 +89,7 @@ public:
     void remove(double start, double end, ExceptionCode&, bool sync = false);
     void remove(const MediaTime&, const MediaTime&, ExceptionCode&, bool sync = false);
 
+    void appendError(bool);
     void abortIfUpdating();
     void removedFromMediaSource();
 #if ENABLE(VIDEO_TRACK)

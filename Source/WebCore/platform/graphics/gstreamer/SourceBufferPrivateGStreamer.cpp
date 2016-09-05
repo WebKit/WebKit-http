@@ -168,7 +168,7 @@ void SourceBufferPrivateGStreamer::didReceiveSample(PassRefPtr<MediaSample> prpS
 {
     RefPtr<MediaSample> sample = prpSample;
     if (m_sourceBufferPrivateClient)
-        m_sourceBufferPrivateClient->sourceBufferPrivateDidReceiveSample(this, sample);
+        m_sourceBufferPrivateClient->sourceBufferPrivateDidReceiveSample(this, *sample);
 }
 
 void SourceBufferPrivateGStreamer::didReceiveAllPendingSamples()

@@ -1426,10 +1426,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
             decodeTimestamp = sample.decodeTime();
         }
 
-        // 1.2 Let decode timestamp be a double precision floating point representation of the coded frame's
-        // decode timestamp in seconds.
-        MediaTime decodeTimestamp = sample->decodeTime();
-
         // 1.3 Let frame duration be a double precision floating point representation of the coded frame's
         // duration in seconds.
         MediaTime frameDuration = sample.duration();
@@ -1495,6 +1491,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
             continue;
         }
 
+#if ENABLE(QUIQUE)
         if (m_mode == AppendMode::Sequence) {
             // Use the generated timestamps instead of the sample's timestamps.
             sample.setTimestamps(presentationTimestamp, decodeTimestamp);
@@ -1502,6 +1499,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
             // Reflect the timestamp offset into the sample.
             sample.offsetTimestampsBy(m_timestampOffset);
         }
+#endif
 
         // 1.7 Let frame end timestamp equal the sum of presentation timestamp and frame duration.
         MediaTime frameEndTimestamp = presentationTimestamp + frameDuration;
@@ -1650,7 +1648,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
 #if USE(GSTREAMER)
         // METRO FIXME: Apply timestampOffset at buffering time. Can this be done in SourceBufferPrivate?
         if (m_timestampOffset)
-            sample->offsetTimestampsBy(m_timestampOffset);
+            sample.offsetTimestampsBy(m_timestampOffset);
 #endif
 
         // Otherwise:

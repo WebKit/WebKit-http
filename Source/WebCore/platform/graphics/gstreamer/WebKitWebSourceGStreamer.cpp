@@ -694,7 +694,7 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
 
             callOnMainThread([&] {
                     LockHolder locker(cookiesMutex);
-                    c = WebCore::cookies(src->priv->player->cachedResourceLoader()->document(), url);
+                    c = WebCore::cookies(*src->priv->player->cachedResourceLoader()->document(), url);
                     cookiesCondition.notifyOne();
             });
             cookiesCondition.wait(cookiesMutex);
