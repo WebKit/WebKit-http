@@ -287,9 +287,6 @@ http/tests/media/media-source
 # ENBALE(SPEECH_SYNTHESIS) is disabled
 fast/speechsynthesis
 
-# No woff2 yet
-fast/text/woff2.html [ ImageOnlyFailure ]
-
 # CSS image-resolution is not yet enabled.
 webkit.org/b/85262 fast/css/image-resolution
 

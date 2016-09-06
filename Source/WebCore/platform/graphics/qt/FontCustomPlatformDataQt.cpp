@@ -24,9 +24,7 @@
 
 #include "FontPlatformData.h"
 #include "SharedBuffer.h"
-#if USE(ZLIB)
 #include "WOFFFileFormat.h"
-#endif
 #include <QStringList>
 
 namespace WebCore {
@@ -41,7 +39,6 @@ FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription&
 
 std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer& buffer)
 {
-#if USE(ZLIB)
     SharedBuffer* fontBuffer = &buffer;
     RefPtr<SharedBuffer> sfntBuffer;
     if (isWOFF(&buffer)) {
@@ -52,15 +49,9 @@ std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffe
         sfntBuffer = SharedBuffer::adoptVector(sfnt);
         fontBuffer = sfntBuffer.get();
     }
-#endif // USE(ZLIB)
 
     const QByteArray fontData(fontBuffer->data(), fontBuffer->size());
-#if !USE(ZLIB)
-    if (fontData.startsWith("wOFF")) {
-        qWarning("WOFF support requires QtWebKit to be built with zlib support.");
-        return 0;
-    }
-#endif // !USE(ZLIB)
+
     // Pixel size doesn't matter at this point, it is set in FontCustomPlatformData::fontPlatformData.
     QRawFont rawFont(fontData, /*pixelSize = */0, QFont::PreferDefaultHinting);
     if (!rawFont.isValid())
@@ -75,8 +66,9 @@ bool FontCustomPlatformData::supportsFormat(const String& format)
 {
     return equalLettersIgnoringASCIICase(format, "truetype")
         || equalLettersIgnoringASCIICase(format, "opentype")
-#if USE(ZLIB)
         || equalLettersIgnoringASCIICase(format, "woff")
+#if USE(WOFF2)
+        || equalLettersIgnoringASCIICase(format, "woff2")
 #endif
     ;
 }
