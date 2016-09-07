@@ -665,6 +665,20 @@ IntRect ChromeClientQt::visibleRectForTiledBackingStore() const
 }
 #endif
 
+void ChromeClientQt::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state, uint64_t)
+{
+    if (state == m_mediaState)
+        return;
+
+    MediaProducer::MediaStateFlags oldState = m_mediaState;
+    m_mediaState = state;
+
+    if ((oldState & MediaProducer::IsPlayingAudio) == (m_mediaState & MediaProducer::IsPlayingAudio))
+        return;
+
+    m_webPage->recentlyAudibleChanged(m_mediaState & MediaProducer::IsPlayingAudio);
+}
+
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
 FullScreenVideoQt* ChromeClientQt::fullScreenVideo()
 {

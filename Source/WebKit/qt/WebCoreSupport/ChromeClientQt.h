@@ -31,6 +31,7 @@
 
 #include "ChromeClient.h"
 #include "FloatRect.h"
+#include "MediaProducer.h"
 #include "QtPlatformPlugin.h"
 #include "URL.h"
 #include <wtf/RefCounted.h>
@@ -153,6 +154,8 @@ public:
     void needTouchEvents(bool) override { }
 #endif
 
+    void isPlayingMediaDidChange(MediaProducer::MediaStateFlags, uint64_t) override;
+
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
     bool supportsVideoFullscreen(MediaPlayerEnums::VideoFullscreenMode) override;
     void enterVideoFullscreenForVideoElement(HTMLVideoElement&, MediaPlayerEnums::VideoFullscreenMode) override;
@@ -206,6 +209,7 @@ public:
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
     std::unique_ptr<RefreshAnimation> m_refreshAnimation;
 #endif
+    MediaProducer::MediaStateFlags m_mediaState { WebCore::MediaProducer::IsNotPlaying };
 
 #if ENABLE(VIDEO) && (USE(GSTREAMER) || USE(QT_MULTIMEDIA))
     FullScreenVideoQt* m_fullScreenVideo;

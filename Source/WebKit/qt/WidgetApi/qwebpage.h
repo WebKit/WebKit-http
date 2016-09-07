@@ -80,6 +80,7 @@ class QWEBKITWIDGETS_EXPORT QWebPage : public QObject {
     Q_PROPERTY(QPalette palette READ palette WRITE setPalette)
     Q_PROPERTY(bool contentEditable READ isContentEditable WRITE setContentEditable)
     Q_PROPERTY(VisibilityState visibilityState READ visibilityState WRITE setVisibilityState)
+    Q_PROPERTY(bool recentlyAudible READ recentlyAudible NOTIFY recentlyAudibleChanged)
     Q_ENUMS(LinkDelegationPolicy MessageLevel MessageSource NavigationType VisibilityState WebAction)
 public:
     enum NavigationType {
@@ -317,6 +318,8 @@ public:
     VisibilityState visibilityState() const;
     void setVisibilityState(VisibilityState);
 
+    bool recentlyAudible() const;
+
     bool hasSelection() const;
     QString selectedText() const;
     QString selectedHtml() const;
@@ -449,6 +452,8 @@ Q_SIGNALS:
     void featurePermissionRequestCanceled(QWebFrame* frame, QWebPage::Feature feature);
 
     void consoleMessageReceived(MessageSource source, MessageLevel level, const QString& message, int lineNumber, const QString& sourceID);
+
+    void recentlyAudibleChanged(bool recentlyAudible);
 
 protected:
     virtual QWebPage *createWindow(WebWindowType type);

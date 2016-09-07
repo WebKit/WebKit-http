@@ -52,3 +52,8 @@ QWebPagePrivate::~QWebPagePrivate()
 }
 
 QWebFramePrivate::~QWebFramePrivate() = default;
+
+void QWebPagePrivate::recentlyAudibleChanged(bool recentlyAudible)
+{
+    emit q->recentlyAudibleChanged(recentlyAudible);
+}

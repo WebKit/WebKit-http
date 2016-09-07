@@ -140,6 +140,7 @@ public:
     bool requestSoftwareInputPanel() const override;
     void createAndSetCurrentContextMenu(const QList<MenuItemDescription>&, QBitArray*) override;
     bool handleScrollbarContextMenuEvent(QContextMenuEvent*, bool, ScrollDirection*, ScrollGranularity*) override;
+    void recentlyAudibleChanged(bool) override;
 
 
     void createMainFrame();

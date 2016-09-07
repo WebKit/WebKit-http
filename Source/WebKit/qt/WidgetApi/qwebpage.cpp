@@ -3223,6 +3223,12 @@ QWebPage::VisibilityState QWebPage::visibilityState() const
 }
 
 
+bool QWebPage::recentlyAudible() const
+{
+    return d->isPlayingAudio();
+}
+
+
 /*!
     \since 4.8
     \fn void QWebPage::viewportChangeRequested()
