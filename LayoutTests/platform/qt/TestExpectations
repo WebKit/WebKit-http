@@ -65,7 +65,6 @@ ietestcenter
 imported
 inspector
 loader
-mathml
 media
 pageoverlay
 plugins
@@ -261,6 +260,7 @@ compositing/backface-visibility/backface-visibility-webgl.html [ Failure ]
 # ENABLE(DASHBOARD_SUPPORT) is disabled
 http/tests/xmlhttprequest/default-content-type-dashboard.html
 http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html
+mathml/mathml-in-dashboard.html
 svg/custom/embedded-svg-allowed-in-dashboard.xml
 svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html
 svg/custom/manually-parsed-svg-allowed-in-dashboard.html
@@ -1464,6 +1464,15 @@ http/tests/xmlhttprequest/xmlhttprequest-check-get-readystate-for-404-without-bo
 #271
 js/date-constructor.html [ Failure ]
 
+
+# ============================================================================= #
+# Failing mathml Tests
+# ============================================================================= #
+
+  mathml/opentype/vertical.html [ Failure ]
+  mathml/presentation/foreign-element-in-token.html [ Failure ]
+  mathml/presentation/bug97990.html [ ImageOnlyFailure ]
+  mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 
 # Unsorted
 
