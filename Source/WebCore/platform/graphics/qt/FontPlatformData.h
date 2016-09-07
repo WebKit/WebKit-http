@@ -34,6 +34,8 @@
 
 namespace WebCore {
 
+class SharedBuffer;
+
 class FontPlatformDataPrivate : public RefCounted<FontPlatformDataPrivate> {
     WTF_MAKE_NONCOPYABLE(FontPlatformDataPrivate); WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -117,6 +119,7 @@ public:
 
     FontOrientation orientation() const { return Horizontal; } // FIXME: Implement.
     void setOrientation(FontOrientation) { } // FIXME: Implement.
+    PassRefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 
     unsigned hash() const;
 
