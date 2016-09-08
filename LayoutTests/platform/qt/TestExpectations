@@ -1480,6 +1480,8 @@ js/date-constructor.html [ Failure ]
 # compositing
 # ============================================================================= #
 
+  compositing/video/video-object-position.html [ Failure ]
+
   compositing/absolute-inside-out-of-view-fixed.html [ Failure ]
   compositing/animation/animation-backing.html [ Failure ]
   compositing/animation/animation-compositing.html [ Failure ]
