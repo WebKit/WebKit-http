@@ -154,15 +154,15 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     // challenge to be returned.
     dr = Drm_LicenseAcq_GenerateChallenge(m_poAppContext,
                                           g_rgpdstrRights,
-                                          NO_OF(g_rgpdstrRights),
+                                          sizeof(g_rgpdstrRights) / sizeof(DRM_CONST_STRING*),
                                           NULL,
-                                          dastrCustomData.pszString, //m_pchCustomData,
-                                          dastrCustomData.cchString, //m_cchCustomData,
+                                          NULL, //m_pchCustomData,
+                                          0, //m_cchCustomData,
                                           NULL,
                                           &cchSilentURL,
                                           NULL,
                                           NULL,
-                                          pbChallenge,
+                                          NULL,
                                           &cbChallenge);
  
     if (dr == DRM_E_BUFFERTOOSMALL) {
@@ -173,8 +173,10 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
 
         // Allocate buffer that is sufficient to store the license acquisition
         // challenge.
-        if (cbChallenge > 0)
+        if (cbChallenge > 0) {
             ChkMem(pbChallenge = (DRM_BYTE *)Oem_MemAlloc(cbChallenge));
+            ZEROMEM(pbChallenge, cbChallenge);
+        }
 
         dr = DRM_SUCCESS;
     } else {
@@ -185,7 +187,7 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     // Supply a buffer to receive the license acquisition challenge.
     ChkDR(Drm_LicenseAcq_GenerateChallenge(m_poAppContext,
                                            g_rgpdstrRights,
-                                           NO_OF(g_rgpdstrRights),
+                                           sizeof(g_rgpdstrRights) / sizeof(DRM_CONST_STRING*),
                                            NULL,
                                            NULL,
                                            0,
