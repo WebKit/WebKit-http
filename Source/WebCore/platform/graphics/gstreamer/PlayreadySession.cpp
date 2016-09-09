@@ -34,6 +34,8 @@
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_playready_decrypt_debug_category
 
+G_LOCK_DEFINE_STATIC (pr_decoder_lock);
+
 namespace WebCore {
 
 // The default location of CDM DRM store.
@@ -270,8 +272,10 @@ int PlayreadySession::processPayload(const void* iv, uint32_t ivSize, void* payl
 {
     DRM_RESULT dr = DRM_SUCCESS;
     DRM_AES_COUNTER_MODE_CONTEXT oAESContext = {0};
+
     uint8_t* ivData = (uint8_t*) iv;
 
+    G_LOCK (pr_decoder_lock);
     ChkDR(Drm_Reader_InitDecrypt(&m_oDecryptContext, NULL, 0));
 
     // FIXME: IV bytes need to be swapped ???
@@ -291,9 +295,12 @@ int PlayreadySession::processPayload(const void* iv, uint32_t ivSize, void* payl
         m_fCommit = TRUE;
     }
 
+    G_UNLOCK (pr_decoder_lock);
+
     return 0;
 
 ErrorExit:
+    G_UNLOCK (pr_decoder_lock);
     return 1;
 }
 }
