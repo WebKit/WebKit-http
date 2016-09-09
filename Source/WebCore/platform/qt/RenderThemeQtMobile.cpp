@@ -275,9 +275,13 @@ QSizeF StylePainterMobile::sizeForPainterScale(const QRectF& rect) const
 void StylePainterMobile::drawChecker(QPainter* painter, const QRect& rect, const QColor& color) const
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
-    QPen pen(Qt::darkGray);
+    int minSideSize = qMin(rect.width(), rect.height());
+    QPen pen(minSideSize < 12 ? color : Qt::darkGray);
     pen.setCosmetic(true);
-    painter->setPen(pen);
+    if (minSideSize < 12 || minSideSize >= 16)
+        painter->setPen(pen);
+    else
+        painter->setPen(Qt::NoPen);
     painter->scale(rect.width(), rect.height());
     QPainterPath path;
     path.moveTo(0.18, 0.47);
