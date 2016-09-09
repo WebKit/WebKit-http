@@ -229,7 +229,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) { return MediaPlayer::KeySystemNotSupported; }
-    virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned) { return MediaPlayer::KeySystemNotSupported; }
+    virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) { return MediaPlayer::KeySystemNotSupported; }
     virtual MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) { return MediaPlayer::KeySystemNotSupported; }
 #endif
 

@@ -165,7 +165,7 @@ public:
     bool hasSingleSecurityOrigin() const override { return true; }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned) override { return MediaPlayer::InvalidPlayerState; }
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) override { return MediaPlayer::InvalidPlayerState; }
     MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override { return MediaPlayer::InvalidPlayerState; }
     MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override { return MediaPlayer::InvalidPlayerState; }
 #endif
@@ -545,9 +545,9 @@ void MediaPlayer::setShouldBufferData(bool shouldBuffer)
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-MediaPlayer::MediaKeyException MediaPlayer::generateKeyRequest(const String& keySystem, const unsigned char* initData, unsigned initDataLength)
+MediaPlayer::MediaKeyException MediaPlayer::generateKeyRequest(const String& keySystem, const unsigned char* initData, unsigned initDataLength, const String& customData)
 {
-    return m_private->generateKeyRequest(keySystem.convertToASCIILowercase(), initData, initDataLength);
+    return m_private->generateKeyRequest(keySystem.convertToASCIILowercase(), initData, initDataLength, customData);
 }
 
 MediaPlayer::MediaKeyException MediaPlayer::addKey(const String& keySystem, const unsigned char* key, unsigned keyLength, const unsigned char* initData, unsigned initDataLength, const String& sessionId)

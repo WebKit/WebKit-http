@@ -119,7 +119,7 @@ DRM_RESULT DRM_CALL PlayreadySession::_PolicyCallback(const DRM_VOID *f_pvOutput
 //
 // Expected synchronisation from caller. This method is not thread-safe!
 //
-RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
+RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* initData, const String& customData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
     RefPtr<Uint8Array> result;
     DRM_RESULT dr = DRM_SUCCESS;
@@ -154,15 +154,15 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     // challenge to be returned.
     dr = Drm_LicenseAcq_GenerateChallenge(m_poAppContext,
                                           g_rgpdstrRights,
-                                          NO_OF(g_rgpdstrRights),
+                                          sizeof(g_rgpdstrRights) / sizeof(DRM_CONST_STRING*),
                                           NULL,
-                                          dastrCustomData.pszString, //m_pchCustomData,
-                                          dastrCustomData.cchString, //m_cchCustomData,
+                                          customData.isEmpty() ? NULL: customData.utf8().data(),
+                                          customData.isEmpty() ? 0 : customData.length(),
                                           NULL,
                                           &cchSilentURL,
                                           NULL,
                                           NULL,
-                                          pbChallenge,
+                                          NULL,
                                           &cbChallenge);
  
     if (dr == DRM_E_BUFFERTOOSMALL) {
@@ -185,10 +185,10 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     // Supply a buffer to receive the license acquisition challenge.
     ChkDR(Drm_LicenseAcq_GenerateChallenge(m_poAppContext,
                                            g_rgpdstrRights,
-                                           NO_OF(g_rgpdstrRights),
+                                           sizeof(g_rgpdstrRights) / sizeof(DRM_CONST_STRING*),
                                            NULL,
-                                           NULL,
-                                           0,
+                                           customData.isEmpty() ? NULL: customData.utf8().data(),
+                                           customData.isEmpty() ? 0 : customData.length(),
                                            pchSilentURL,
                                            &cchSilentURL,
                                            NULL,

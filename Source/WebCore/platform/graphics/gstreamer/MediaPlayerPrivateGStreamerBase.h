@@ -134,7 +134,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&);
-    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned);
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&);
     MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
     void needKey(const String&, const String&, const unsigned char*, unsigned);
 #endif

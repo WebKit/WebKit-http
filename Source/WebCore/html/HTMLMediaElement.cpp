@@ -3186,7 +3186,7 @@ void HTMLMediaElement::closeMediaSource()
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-void HTMLMediaElement::webkitGenerateKeyRequest(const String& keySystem, const RefPtr<Uint8Array>& initData, ExceptionCode& ec)
+void HTMLMediaElement::webkitGenerateKeyRequest(const String& keySystem, const RefPtr<Uint8Array>& initData, const String& customData, ExceptionCode& ec)
 {
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     static bool firstTime = true;
@@ -3213,7 +3213,7 @@ void HTMLMediaElement::webkitGenerateKeyRequest(const String& keySystem, const R
         initDataLength = initData->length();
     }
 
-    MediaPlayer::MediaKeyException result = m_player->generateKeyRequest(keySystem, initDataPointer, initDataLength);
+    MediaPlayer::MediaKeyException result = m_player->generateKeyRequest(keySystem, initDataPointer, initDataLength, customData);
     ec = exceptionCodeForMediaKeyException(result);
 }
 
