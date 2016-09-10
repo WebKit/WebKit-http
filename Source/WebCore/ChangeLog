@@ -1,3 +1,70 @@
+2016-09-10  Chris Dumez  <cdumez@apple.com>
+
+        It is possible for Document::m_frame pointer to become stale
+        https://bugs.webkit.org/show_bug.cgi?id=161812
+        <rdar://problem/27745023>
+
+        Reviewed by Ryosuke Niwa.
+
+        Document::m_frame is supposed to get cleared by Document::prepareForDestruction().
+        The Frame destructor calls Frame::setView(nullptr) which is supposed to call the
+        prepareForDestruction() on the Frame's associated document. However,
+        Frame::setView(nullptr) was calling prepareForDestruction() only if
+        Document::inPageCache() returned true. This is because, we allow Documents to
+        stay alive in the PageCache even though they don't have a frame.
+
+        The issue is that Document::m_inPageCache flag was set to true right before
+        firing the pagehide event, so technically before really entering PageCache.
+        Therefore, we can run into problems if a Frame gets destroyed by a pagehide
+        EventHandler because ~Frame() will not call Document::prepareForDestruction()
+        due to Document::m_inPageCache being true. After the frame is destroyed,
+        Document::m_frame becomes stale and any action on the document will likely
+        lead to crashes (such as the one in the layout test and the radar which
+        happens when trying to unregister event listeners from the document).
+
+        The solution adopted in this patch is to replace the m_inPageCache boolean
+        with a m_pageCacheState enumeration that has 3 states:
+        - NotInPageCache
+        - AboutToEnterPageCache
+        - InPageCache
+
+        Frame::setView() / Frame::setDocument() were then updated to call
+        Document::prepareForDestruction() on the associated document whenever
+        the document's pageCacheState is not InPageCache. This means that we
+        will now call Document::prepareForDestruction() when the document is
+        being detached from its frame while firing the pagehide event.
+
+        Note that I tried to keep this patch minimal. Therefore, I kept
+        the Document::inPageCache() getter for now. I plan to switch all its
+        calls sites to the new Document::pageCacheState() getter in a follow-up
+        patch so that we can finally drop the confusing Document::inPageCache().
+
+        Test: fast/history/pagehide-remove-iframe-crash.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::Document):
+        (WebCore::Document::~Document):
+        (WebCore::Document::createRenderTree):
+        (WebCore::Document::destroyRenderTree):
+        (WebCore::Document::setFocusedElement):
+        (WebCore::Document::setPageCacheState):
+        (WebCore::Document::topDocument):
+        * dom/Document.h:
+        (WebCore::Document::pageCacheState):
+        (WebCore::Document::inPageCache):
+        * history/CachedFrame.cpp:
+        (WebCore::CachedFrame::destroy):
+        * history/PageCache.cpp:
+        (WebCore::setPageCacheState):
+        (WebCore::PageCache::addIfCacheable):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::stopAllLoaders):
+        (WebCore::FrameLoader::open):
+        * loader/HistoryController.cpp:
+        (WebCore::HistoryController::invalidateCurrentItemCachedPage):
+        * page/Frame.cpp:
+        (WebCore::Frame::setView):
+
 2016-08-08  John Wilander  <wilander@apple.com>
 
         Popups opened from a sandboxed iframe should themselves be sandboxed
