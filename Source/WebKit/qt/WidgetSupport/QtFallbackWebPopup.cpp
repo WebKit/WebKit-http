@@ -71,6 +71,9 @@ void QtFallbackWebPopup::show(const QWebSelectData& data)
         m_combo->setGeometry(QRect(rect.left(), rect.top(), rect.width(), m_combo->sizeHint().height()));
     }
 
+    // adjust the size of combo box to the longest name
+    m_combo->adjustSize();
+
     m_combo->showPopupAtCursorPosition();
 }
 
