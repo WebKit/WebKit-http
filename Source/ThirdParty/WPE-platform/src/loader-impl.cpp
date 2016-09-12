@@ -29,6 +29,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <wpe/renderer-host.h>
 
 #ifdef BACKEND_BCM_NEXUS
 #include "bcm-nexus/interfaces.h"
@@ -64,9 +65,29 @@
 
 extern "C" {
 
+struct wpe_renderer_host_interface noop_renderer_host_interface = {
+    // create
+    []() -> void*
+    {
+        return nullptr;
+    },
+    // destroy
+    [](void* data)
+    {
+    },
+    // create_client
+    [](void* data) -> int
+    {
+        return -1;
+    },
+};
+
 __attribute__((visibility("default")))
 struct wpe_loader_interface _wpe_loader_interface = {
     [](const char* object_name) -> void* {
+
+        if (!std::strcmp(object_name, "_wpe_renderer_host_interface"))
+            return &noop_renderer_host_interface;
 
 #ifdef BACKEND_BCM_NEXUS
         if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_interface"))
