@@ -1109,28 +1109,6 @@ private:
     RefPtr<AppendPipeline> m_appendPipeline;
 };
 
-// Auxiliar to pass several parameters to appendPipelineAppSinkDemuxerPadAddedMainThread().
-class PadInfo
-{
-public:
-    PadInfo(GstPad* demuxerSrcPad, AppendPipeline* appendPipeline)
-    {
-        m_demuxerSrcPad = GST_PAD(gst_object_ref(demuxerSrcPad));
-        m_ap = appendPipeline;
-    }
-    virtual ~PadInfo()
-    {
-        gst_object_unref(m_demuxerSrcPad);
-    }
-
-    GstPad* demuxerSrcPad() { return m_demuxerSrcPad; }
-    RefPtr<AppendPipeline> ap() { return m_ap; }
-
-private:
-    GstPad* m_demuxerSrcPad;
-    RefPtr<AppendPipeline> m_ap;
-};
-
 static const char* dumpAppendState(AppendPipeline::AppendState appendState)
 {
     switch (appendState) {
@@ -1158,7 +1136,6 @@ static const char* dumpAppendState(AppendPipeline::AppendState appendState)
 static void appendPipelineAppsrcNeedData(GstAppSrc*, guint, AppendPipeline*);
 static void appendPipelineDemuxerPadAdded(GstElement*, GstPad*, AppendPipeline*);
 static void appendPipelineDemuxerPadRemoved(GstElement*, GstPad*, AppendPipeline*);
-static gboolean appendPipelineDemuxerDisconnectFromAppsinkMainThread(PadInfo*);
 static void appendPipelineAppsinkCapsChanged(GObject*, GParamSpec*, AppendPipeline*);
 static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInfo*, AppendPipeline*);
 #ifdef DEBUG_APPEND_PIPELINE_PADS
@@ -1372,6 +1349,11 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         ASSERT(demuxerSrcPad);
         connectDemuxerSrcPadToAppsink(demuxerSrcPad);
         gst_object_unref(demuxerSrcPad);
+        return;
+    }
+
+    if (gst_structure_has_name(structure, "demuxer-disconnect-from-appsink")) {
+        disconnectDemuxerSrcPadFromAppsink();
         return;
     }
 
@@ -2110,9 +2092,9 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread()
 
     // Call disconnectDemuxerSrcPadFromAppsink() in the main thread and wait.
     // TODO: Optimize this and call only when there's m_decryptor. By now I call it always to keep code symmetry.
-    if (WTF::isMainThread()) {
+    if (WTF::isMainThread())
         disconnectDemuxerSrcPadFromAppsink();
-    } else {
+    else {
         LockHolder locker(m_padAddRemoveLock);
         if (!m_playerPrivate) {
             if (m_decryptor) {
@@ -2121,8 +2103,12 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread()
             }
             return;
         }
-        PadInfo* info = new PadInfo(NULL, this);  // will be deleted on main thread
-        g_timeout_add(0, GSourceFunc(appendPipelineDemuxerDisconnectFromAppsinkMainThread), info);
+
+        GstStructure* structure = gst_structure_new_empty("demuxer-disconnect-from-appsink");
+        GstMessage* message = gst_message_new_application(GST_OBJECT(m_qtdemux.get()), structure);
+        gst_bus_post(m_bus.get(), message);
+        GST_TRACE("demuxer-disconnect-from-appsink message posted to bus");
+
         m_padAddRemoveCondition.wait(m_padAddRemoveLock);
     }
 }
@@ -2183,13 +2169,6 @@ static void appendPipelineAppsrcNeedData(GstAppSrc*, guint, AppendPipeline* appe
 static void appendPipelineDemuxerPadAdded(GstElement*, GstPad* demuxerSrcPad, AppendPipeline* appendPipeline)
 {
     appendPipeline->connectDemuxerSrcPadToAppsinkFromAnyThread(demuxerSrcPad);
-}
-
-static gboolean appendPipelineDemuxerDisconnectFromAppsinkMainThread(PadInfo* info)
-{
-    info->ap()->disconnectDemuxerSrcPadFromAppsink();
-    delete info;
-    return G_SOURCE_REMOVE;
 }
 
 static void appendPipelineDemuxerPadRemoved(GstElement*, GstPad*, AppendPipeline* appendPipeline)
