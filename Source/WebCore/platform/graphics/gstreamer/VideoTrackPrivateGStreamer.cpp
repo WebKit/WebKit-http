@@ -37,7 +37,7 @@ VideoTrackPrivateGStreamer::VideoTrackPrivateGStreamer(GRefPtr<GstElement> playb
     : TrackPrivateBaseGStreamer(this, index, pad)
     , m_playbin(playbin)
 {
-    // FIXME: Get a real ID here
+    // FIXME: Get a real ID from the tkhd atom.
     m_id = "V" + String::number(index);
     notifyTrackOfActiveChanged();
 }
