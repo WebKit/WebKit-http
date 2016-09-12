@@ -82,7 +82,7 @@ extern "C" {
 
 struct wpe_renderer_backend_egl_interface intelce_renderer_backend_egl_interface = {
     // create
-    []() -> void*
+    [](int) -> void*
     {
         return nullptr;
     },

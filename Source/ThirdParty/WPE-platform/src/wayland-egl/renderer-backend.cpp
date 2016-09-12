@@ -166,7 +166,7 @@ extern "C" {
 
 struct wpe_renderer_backend_egl_interface wayland_egl_renderer_backend_egl_interface = {
     // create
-    []() -> void*
+    [](int) -> void*
     {
         return new WaylandEGL::Backend;
     },

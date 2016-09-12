@@ -236,7 +236,7 @@ extern "C" {
 
 struct wpe_renderer_backend_egl_interface westeros_renderer_backend_egl_interface = {
     // create
-    []() -> void*
+    [](int) -> void*
     {
         return new Westeros::Backend;
     },
