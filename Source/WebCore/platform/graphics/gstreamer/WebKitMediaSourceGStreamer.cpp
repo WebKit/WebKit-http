@@ -758,7 +758,7 @@ static gboolean seekNeedsDataMainThread (gpointer user_data)
         }
     }
 
-    mediaPlayerPrivate->notifySeekNeedsData(seekTime);
+    mediaPlayerPrivate->notifySeekNeedsDataForTime(seekTime);
 
     return G_SOURCE_REMOVE;
 }
