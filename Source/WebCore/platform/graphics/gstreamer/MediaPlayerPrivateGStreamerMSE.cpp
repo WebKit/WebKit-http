@@ -189,6 +189,10 @@ private:
     RefPtr<WebCore::TrackPrivateBase> m_track;
 
     GRefPtr<GstBuffer> m_pendingBuffer;
+
+    static gint totalAudio;
+    static gint totalVideo;
+    static gint totalText;
 };
 
 void MediaPlayerPrivateGStreamerMSE::registerMediaEngine(MediaEngineRegistrar registrar)
@@ -1154,6 +1158,10 @@ static void appendPipelineApplicationMessageCallback(GstBus*, GstMessage* messag
     appendPipeline->handleApplicationMessage(message);
 }
 
+gint AppendPipeline::totalAudio = 0;
+gint AppendPipeline::totalVideo = 0;
+gint AppendPipeline::totalText = 0;
+
 AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient, PassRefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE* playerPrivate)
     : m_mediaSourceClient(mediaSourceClient)
     , m_sourceBufferPrivate(sourceBufferPrivate)
@@ -1394,10 +1402,6 @@ void AppendPipeline::handleAppsrcAtLeastABufferLeft()
 gint AppendPipeline::id()
 {
     ASSERT(WTF::isMainThread());
-
-    static gint totalAudio = 0;
-    static gint totalVideo = 0;
-    static gint totalText = 0;
 
     if (m_id)
         return m_id;
