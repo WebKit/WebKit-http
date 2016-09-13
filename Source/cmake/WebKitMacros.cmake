@@ -281,7 +281,7 @@ macro(WEBKIT_CREATE_FORWARDING_HEADER _target_directory _file)
     # Try to make the path in the forwarding header relative to the Source directory
     # so that these forwarding headers are compatible with the ones created by the
     # WebKit2 generate-forwarding-headers script.
-    string(REGEX REPLACE "${_source_path}/" "" _relative ${_absolute})
+    string(REPLACE "${_source_path}/" "" _relative ${_absolute})
 
     set(_content "#include \"${_relative}\"\n")
 
