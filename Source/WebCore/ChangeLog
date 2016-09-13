@@ -1,3 +1,18 @@
+2016-09-12  Zalan Bujtas  <zalan@apple.com>
+
+        Input type object and the associated render can go out of sync.
+        https://bugs.webkit.org/show_bug.cgi?id=161871
+        <rdar://problem/28178094>
+
+        Reviewed by Antti Koivisto.
+
+        Bail out when we've got a mismatched renderer.
+
+        Test: fast/forms/assert-on-input-type-change.html
+
+        * html/ImageInputType.cpp:
+        (WebCore::ImageInputType::altAttributeChanged):
+
 2016-09-22  Zalan Bujtas  <zalan@apple.com>
 
         Replace redundant prepareForDestruction() call with RELEASE_ASSERT in Document::removedLastRef.
