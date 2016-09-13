@@ -2236,8 +2236,12 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
         // If not using accelerated compositing, let GStreamer handle
         // the image-orientation tag.
         GstElement* videoFlip = gst_element_factory_make("videoflip", nullptr);
-        g_object_set(videoFlip, "method", 8, nullptr);
-        g_object_set(m_pipeline.get(), "video-filter", videoFlip, nullptr);
+        if (!videoFlip)
+            GST_WARNING("Failed to create videoflip");
+        else {
+            g_object_set(videoFlip, "method", 8, nullptr);
+            g_object_set(m_pipeline.get(), "video-filter", videoFlip, nullptr);
+        }
     }
 }
 
