@@ -68,13 +68,13 @@ protected:
 private:
     static DRM_RESULT DRM_CALL _PolicyCallback(const DRM_VOID* f_pvOutputLevelsData, DRM_POLICY_CALLBACK_TYPE f_dwCallbackType, const DRM_VOID* f_pv);
 
-    DRM_APP_CONTEXT* m_poAppContext;
+    DRM_APP_CONTEXT* m_poAppContext { nullptr };
     DRM_DECRYPT_CONTEXT m_oDecryptContext;
 
-    DRM_BYTE* m_pbOpaqueBuffer;
+    DRM_BYTE* m_pbOpaqueBuffer { nullptr };
     DRM_DWORD m_cbOpaqueBuffer;
 
-    DRM_BYTE* m_pbRevocationBuffer;
+    DRM_BYTE* m_pbRevocationBuffer { nullptr };
     KeyState m_eKeyState;
     DRM_CHAR m_rgchSessionID[CCH_BASE64_EQUIV(SIZEOF(DRM_ID)) + 1];
     DRM_BOOL m_fCommit;
