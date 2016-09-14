@@ -388,17 +388,29 @@ ecm_generate_pkgconfig_file(
     INSTALL
 )
 
+if (KDE_INSTALL_USE_QT_SYS_PATHS)
+    set(WebKit_PRI_ARGUMENTS
+        INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE"
+        INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKit"
+        LIB_INSTALL_DIR "$$QT_MODULE_LIB_BASE"
+    )
+else ()
+    set(WebKit_PRI_ARGUMENTS
+        INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
+        INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
+        SET_RPATH ON
+    )
+endif ()
+
 ecm_generate_pri_file(
     BASE_NAME webkit
     LIB_NAME QtWebKit
-    INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
-    INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
     DEPS "core gui network"
     RUNTIME_DEPS "sensors positioning qml quick webchannel sql core_private gui_private"
     DEFINES QT_WEBKIT_LIB
-    SET_RPATH ON
     QT_MODULES webkit
     FILENAME_VAR WebKit_PRI_FILENAME
+    ${WebKit_PRI_ARGUMENTS}
 )
 install(FILES ${WebKit_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
 
@@ -536,17 +548,29 @@ ecm_generate_pkgconfig_file(
     INSTALL
 )
 
+if (KDE_INSTALL_USE_QT_SYS_PATHS)
+    set(WebKitWidgets_PRI_ARGUMENTS
+        INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE"
+        INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKitWidgets"
+        LIB_INSTALL_DIR "$$QT_MODULE_LIB_BASE"
+    )
+else ()
+    set(WebKitWidgets_PRI_ARGUMENTS
+        INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
+        INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
+        SET_RPATH ON
+    )
+endif ()
+
 ecm_generate_pri_file(
     BASE_NAME webkitwidgets
     LIB_NAME QtWebKitWidgets
-    INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
-    INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
     DEPS "core gui network widgets webkit"
     RUNTIME_DEPS "sensors positioning widgets_private printsupport opengl sql core_private gui_private"
     DEFINES QT_WEBKITWIDGETS_LIB
-    SET_RPATH ON
     QT_MODULES webkitwidgets
     FILENAME_VAR WebKitWidgets_PRI_FILENAME
+    ${WebKitWidgets_PRI_ARGUMENTS}
 )
 install(FILES ${WebKitWidgets_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR})
 
