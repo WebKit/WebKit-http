@@ -398,7 +398,7 @@ static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, Gs
         switch (format) {
         case GST_FORMAT_TIME: {
             float duration;
-            if (source->priv && source->priv->mediaPlayerPrivate && ((duration = source->priv->mediaPlayerPrivate->duration()) > 0)) {
+            if (source->priv && source->priv->mediaPlayerPrivate && ((duration = source->priv->mediaPlayerPrivate->durationMediaTime().toDouble()) > 0)) {
                 gst_query_set_duration(query, format, WebCore::toGstClockTime(duration));
                 GST_DEBUG_OBJECT(source, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(WebCore::toGstClockTime(duration)));
                 result = TRUE;

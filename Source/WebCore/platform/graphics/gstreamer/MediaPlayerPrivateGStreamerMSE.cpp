@@ -292,12 +292,12 @@ void MediaPlayerPrivateGStreamerMSE::pause()
     MediaPlayerPrivateGStreamer::pause();
 }
 
-float MediaPlayerPrivateGStreamerMSE::duration() const
+MediaTime MediaPlayerPrivateGStreamerMSE::durationMediaTime() const
 {
     if (!m_pipeline || m_errorOccured)
-        return 0;
+        return { };
 
-    return m_mediaTimeDuration.toFloat();
+    return m_mediaTimeDuration;
 }
 
 void MediaPlayerPrivateGStreamerMSE::seek(float time)
@@ -308,7 +308,7 @@ void MediaPlayerPrivateGStreamerMSE::seek(float time)
     GST_INFO("[Seek] seek attempt to %f secs", time);
 
     // Avoid useless seeking.
-    float current = currentTime();
+    float current = currentMediaTime().toDouble();
     if (time == current) {
         if (!m_seeking)
             timeChanged();
@@ -1026,12 +1026,18 @@ GStreamerMediaSample::GStreamerMediaSample(GstSample* sample, const FloatSize& p
     if (!buffer)
         return;
 
+    auto createMediaTime =
+        [](GstClockTime time) -> MediaTime {
+            return MediaTime(GST_TIME_AS_USECONDS(time), G_USEC_PER_SEC);
+        };
+
     if (GST_BUFFER_PTS_IS_VALID(buffer))
-        m_pts = MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND);
+        m_pts = createMediaTime(GST_BUFFER_PTS(buffer));
     if (GST_BUFFER_DTS_IS_VALID(buffer))
-        m_dts = MediaTime(GST_BUFFER_DTS(buffer), GST_SECOND);
+        m_dts = createMediaTime(GST_BUFFER_DTS(buffer));
     if (GST_BUFFER_DURATION_IS_VALID(buffer))
-        m_duration = MediaTime(GST_BUFFER_DURATION(buffer), GST_SECOND);
+        m_duration = createMediaTime(GST_BUFFER_DURATION(buffer));
+
     m_size = gst_buffer_get_size(buffer);
     m_sample = sample;
 
@@ -1958,7 +1964,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
     gint64 timeLength = 0;
     if (gst_element_query_duration(m_qtdemux.get(), GST_FORMAT_TIME, &timeLength)
         && static_cast<guint64>(timeLength) != GST_CLOCK_TIME_NONE)
-        m_initialDuration = MediaTime(timeLength, GST_SECOND);
+        m_initialDuration = MediaTime(GST_TIME_AS_USECONDS(timeLength), G_USEC_PER_SEC);
     else
         m_initialDuration = MediaTime::positiveInfiniteTime();
 
@@ -2229,11 +2235,11 @@ MediaSourcePrivate::AddStatus MediaSourceClientGStreamerMSE::addSourceBuffer(Ref
     return m_playerPrivate->m_playbackPipeline->addSourceBuffer(sourceBufferPrivate);
 }
 
-float MediaPlayerPrivateGStreamerMSE::currentTime() const
+MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
-    float position = MediaPlayerPrivateGStreamer::currentTime();
+    auto position = MediaPlayerPrivateGStreamer::currentMediaTime();
 
-    if (m_eosPending && (paused() || (position >= duration()))) {
+    if (m_eosPending && (paused() || (position >= durationMediaTime()))) {
         if (m_networkState != MediaPlayer::Loaded) {
             m_networkState = MediaPlayer::Loaded;
             m_player->networkStateChanged();
@@ -2385,7 +2391,7 @@ float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
         return 0;
 
     GST_DEBUG("maxTimeSeekable");
-    float result = duration();
+    float result = durationMediaTime().toDouble();
     // Infinite duration means live stream.
     if (isinf(result)) {
         MediaTime maxBufferedTime = buffered()->maximumBufferedTime();

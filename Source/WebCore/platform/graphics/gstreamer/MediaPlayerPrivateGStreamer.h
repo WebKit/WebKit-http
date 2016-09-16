@@ -92,8 +92,8 @@ public:
     bool paused() const override;
     bool seeking() const override;
 
-    float duration() const override;
-    float currentTime() const override;
+    MediaTime durationMediaTime() const override;
+    MediaTime currentMediaTime() const override;
     void seek(float) override;
 
     void setRate(float) override;
@@ -141,7 +141,7 @@ private:
 
     GstElement* createAudioSink() override;
 
-    float playbackPosition() const;
+    double playbackPosition() const;
 
     virtual void updateStates();
     virtual void asyncStateChangeDone();

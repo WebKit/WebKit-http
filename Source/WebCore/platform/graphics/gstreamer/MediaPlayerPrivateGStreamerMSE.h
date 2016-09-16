@@ -58,7 +58,7 @@ public:
     void setDownloadBuffering() override { };
 
     bool isLiveStream() const override { return false; }
-    float currentTime() const override;
+    MediaTime currentMediaTime() const override;
 
     void pause() override;
     bool seeking() const override;
@@ -67,8 +67,7 @@ public:
     bool changePipelineState(GstState) override;
 
     void durationChanged() override;
-    MediaTime durationMediaTime() const override { return m_mediaTimeDuration; }
-    float duration() const override;
+    MediaTime durationMediaTime() const override;
 
     void setRate(float) override;
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
