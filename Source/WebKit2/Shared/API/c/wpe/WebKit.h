@@ -85,6 +85,7 @@
 #include <WebKit/WKContext.h>
 #include <WebKit/WKCredential.h>
 #include <WebKit/WKCredentialTypes.h>
+#include <WebKit/WKCookie.h>
 #include <WebKit/WKCookieManager.h>
 #include <WebKit/WKFrame.h>
 #include <WebKit/WKFrameInfoRef.h>

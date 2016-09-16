@@ -29,6 +29,8 @@
 #include "WKAPICast.h"
 #include "WebCookieManagerProxy.h"
 #include "WKArray.h"
+#include "APIWebCookie.h"
+#include "WKCookie.h"
 
 using namespace WebKit;
 
@@ -79,13 +81,11 @@ void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cook
 {
     size_t size = cookies ? WKArrayGetSize(cookies) : 0;
 
-    Vector<String> passCookies(size);
+    Vector<WebCore::Cookie> passCookies(size);
 
     for (size_t i = 0; i < size; ++i)
-    {
-        WKTypeRef cookie = WKArrayGetItemAtIndex(cookies, i);
-        passCookies[i] = toWTFString(static_cast<WKStringRef>(cookie));
-    }
+        passCookies[i] = toImpl(static_cast<WKCookieRef>(WKArrayGetItemAtIndex(cookies, i)))->cookie();
+
     toImpl(cookieManager)->setCookies(passCookies);
 }
 
