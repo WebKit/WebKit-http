@@ -21,9 +21,9 @@
  */
 
 #include "config.h"
+#include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
 #if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
-#include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
 #include "GRefPtrGStreamer.h"
 #include <wtf/Condition.h>
@@ -379,4 +379,4 @@ static void webKitMediaCommonEncryptionDecryptDefaultReleaseCipher(WebKitMediaCo
 }
 
 
-#endif
+#endif // (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
