@@ -43,6 +43,7 @@
 #include "SourceBufferPrivateGStreamer.h"
 #include "TimeRanges.h"
 #include "WebKitMediaSourceGStreamer.h"
+#include <wtf/PassRefPtr.h>
 #include <wtf/glib/GRefPtr.h>
 
 namespace WebCore {
@@ -70,13 +71,6 @@ MediaSourceGStreamer::~MediaSourceGStreamer()
 
 MediaSourceGStreamer::AddStatus MediaSourceGStreamer::addSourceBuffer(const ContentType& contentType, RefPtr<SourceBufferPrivate>& sourceBufferPrivate)
 {
-    // MediaEngineSupportParameters parameters;
-    // parameters.isMediaSource = true;
-    // parameters.type = contentType.type();
-    // parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
-    // if (MediaPlayerPrivateGStreamer::supportsType(parameters) == MediaPlayer::IsNotSupported)
-    //     return NotSupported;
-
     RefPtr<SourceBufferPrivateGStreamer> buffer = SourceBufferPrivateGStreamer::create(this, m_client, contentType);
     m_sourceBuffers.add(buffer.get());
     sourceBufferPrivate = buffer;

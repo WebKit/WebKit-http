@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Google Inc. All rights reserved.
  * Copyright (C) 2013 Orange
  * Copyright (C) 2014 Sebastian Dröge <sebastian@centricular.com>
+ * Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -49,7 +50,7 @@ class MediaPlayerPrivateGStreamerMSE;
 class PlatformTimeRanges;
 
 // FIXME: Should this be called MediaSourcePrivateGStreamer?
-class MediaSourceGStreamer : public MediaSourcePrivate {
+class MediaSourceGStreamer final : public MediaSourcePrivate {
 public:
     static void open(MediaSourcePrivateClient*, MediaPlayerPrivateGStreamerMSE*);
     virtual ~MediaSourceGStreamer();
@@ -68,12 +69,12 @@ public:
     virtual void waitForSeekCompleted();
     virtual void seekCompleted();
 
-    void sourceBufferPrivateDidChangeActiveState(SourceBufferPrivateGStreamer*, bool isActive);
+    void sourceBufferPrivateDidChangeActiveState(SourceBufferPrivateGStreamer*, bool);
 
     std::unique_ptr<PlatformTimeRanges> buffered();
 
 private:
-    MediaSourceGStreamer(MediaSourcePrivateClient*, MediaPlayerPrivateGStreamerMSE* playerPrivate);
+    MediaSourceGStreamer(MediaSourcePrivateClient*, MediaPlayerPrivateGStreamerMSE*);
 
     HashSet<SourceBufferPrivateGStreamer*> m_sourceBuffers;
     HashSet<SourceBufferPrivateGStreamer*> m_activeSourceBuffers;
