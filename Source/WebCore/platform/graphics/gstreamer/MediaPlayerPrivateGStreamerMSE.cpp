@@ -300,12 +300,6 @@ float MediaPlayerPrivateGStreamerMSE::duration() const
     return m_mediaTimeDuration.toFloat();
 }
 
-float MediaPlayerPrivateGStreamerMSE::mediaTimeForTimeValue(float timeValue) const
-{
-    GstClockTime position = toGstClockTime(timeValue);
-    return MediaTime(position, GST_SECOND).toFloat();
-}
-
 void MediaPlayerPrivateGStreamerMSE::seek(float time)
 {
     if (!m_pipeline || m_errorOccured)

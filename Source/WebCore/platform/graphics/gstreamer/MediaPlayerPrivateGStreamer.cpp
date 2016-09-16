@@ -139,8 +139,11 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_buffering(false)
     , m_bufferingPercentage(0)
     , m_cachedPosition(-1)
+    , m_canFallBackToLastFinishedSeekPosition(false)
+    , m_changingRate(false)
     , m_downloadFinished(false)
     , m_errorOccured(false)
+    , m_isStreaming(false)
     , m_durationAtEOS(0)
     , m_paused(true)
     , m_playbackRate(1)
@@ -148,18 +151,14 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_resetPipeline(false)
     , m_seeking(false)
     , m_seekIsPending(false)
+    , m_seekTime(0)
+    , m_source(0)
     , m_volumeAndMuteInitialized(false)
     , m_weakPtrFactory(this)
-    , m_source(0)
-    , m_seekTime(0)
-    , m_changingRate(false)
-    , m_isEndReached(false)
-    , m_isStreaming(false)
     , m_mediaLocations(0)
     , m_mediaLocationCurrentIndex(0)
     , m_playbackRatePause(false)
     , m_timeOfOverlappingSeek(-1)
-    , m_canFallBackToLastFinishedSeekPosition(false)
     , m_lastPlaybackRate(1)
     , m_fillTimer(*this, &MediaPlayerPrivateGStreamer::fillTimerFired)
     , m_maxTimeLoaded(0)
@@ -175,7 +174,6 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
 #if ENABLE(WEB_AUDIO)
     , m_audioSourceProvider(std::make_unique<AudioSourceProviderGStreamer>())
 #endif
-    , m_pendingAsyncOperations(nullptr)
 {
 #if USE(GLIB) && !PLATFORM(EFL)
     m_readyTimerHandler.setPriority(G_PRIORITY_DEFAULT_IDLE);
@@ -228,15 +226,6 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         g_signal_handlers_disconnect_matched(m_pipeline.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
     }
-
-    // Cancel pending mediaPlayerPrivateNotifyDurationChanged() delayed calls
-    m_pendingAsyncOperationsLock.lock();
-    while (m_pendingAsyncOperations) {
-        g_source_remove(GPOINTER_TO_UINT(m_pendingAsyncOperations->data));
-        m_pendingAsyncOperations = g_list_remove(m_pendingAsyncOperations, m_pendingAsyncOperations->data);
-    }
-    m_pendingAsyncOperationsLock.unlock();
-
 }
 
 #if ENABLE(MEDIA_SOURCE)
@@ -891,12 +880,6 @@ GstFlowReturn MediaPlayerPrivateGStreamer::newTextSampleCallback(MediaPlayerPriv
     return GST_FLOW_OK;
 }
 
-gboolean MediaPlayerPrivateGStreamer::durationChangedCallback(MediaPlayerPrivateGStreamer* player)
-{
-    player->notifyDurationChanged();
-    return G_SOURCE_REMOVE;
-}
-
 void MediaPlayerPrivateGStreamer::newTextSample()
 {
     if (!m_textAppSink)
@@ -1400,7 +1383,7 @@ float MediaPlayerPrivateGStreamer::maxTimeLoaded() const
         else if (m_durationAtEOS)
             loaded = m_durationAtEOS;
     }
-    if (m_isEndReached && m_durationAtEOS){
+    if (m_isEndReached && m_durationAtEOS) {
         GST_DEBUG("maxTimeLoaded at EOS: %f", loaded);
         loaded = m_durationAtEOS;
     }
@@ -1806,16 +1789,6 @@ void MediaPlayerPrivateGStreamer::didEnd()
         changePipelineState(GST_STATE_READY);
         m_downloadFinished = false;
     }
-}
-
-void MediaPlayerPrivateGStreamer::notifyDurationChanged()
-{
-    m_pendingAsyncOperationsLock.lock();
-    ASSERT(m_pendingAsyncOperations);
-    m_pendingAsyncOperations = g_list_remove(m_pendingAsyncOperations, m_pendingAsyncOperations->data);
-    m_pendingAsyncOperationsLock.unlock();
-
-    durationChanged();
 }
 
 void MediaPlayerPrivateGStreamer::durationChanged()
@@ -2271,19 +2244,6 @@ bool MediaPlayerPrivateGStreamer::canSaveMediaData() const
         return true;
 
     return false;
-}
-
-bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
-{
-    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_DURATION_CHANGED) {
-        m_pendingAsyncOperationsLock.lock();
-        guint asyncOperationId = g_timeout_add(0, (GSourceFunc)MediaPlayerPrivateGStreamer::durationChangedCallback, this);
-        m_pendingAsyncOperations = g_list_append(m_pendingAsyncOperations, GUINT_TO_POINTER(asyncOperationId));
-        m_pendingAsyncOperationsLock.unlock();
-        return true;
-    }
-
-    return MediaPlayerPrivateGStreamerBase::handleSyncMessage(message);
 }
 
 }

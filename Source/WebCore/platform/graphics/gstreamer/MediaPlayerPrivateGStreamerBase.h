@@ -154,14 +154,16 @@ public:
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
     static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType);
 
-    GstElement* pipeline() const { return m_pipeline.get(); }
-
 #if USE(GSTREAMER_GL)
     NativeImagePtr nativeImageForCurrentTime() override;
     void clearCurrentBuffer();
 #endif
 
     void setVideoSourceOrientation(const ImageOrientation&);
+
+    GstElement* pipeline() const { return m_pipeline.get(); }
+
+    virtual bool handleSyncMessage(GstMessage*);
 
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
@@ -183,8 +185,6 @@ protected:
 
     void setPipeline(GstElement*);
     void clearSamples();
-
-    virtual bool handleSyncMessage(GstMessage*);
 
     void triggerRepaint(GstSample*);
     void repaint();
@@ -231,7 +231,6 @@ protected:
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    guint m_orientation;
     void updateTexture(BitmapTextureGL&, GstVideoInfo&);
 #endif
 #if USE(GSTREAMER_GL)

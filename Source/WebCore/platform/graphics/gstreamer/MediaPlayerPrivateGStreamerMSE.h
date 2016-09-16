@@ -70,7 +70,6 @@ public:
     MediaTime durationMediaTime() const override { return m_mediaTimeDuration; }
     float duration() const override;
 
-    float mediaTimeForTimeValue(float timeValue) const;
     void setRate(float) override;
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
     float maxTimeSeekable() const override;
@@ -125,12 +124,10 @@ private:
     bool m_eosMarked;
     mutable bool m_eosPending;
     bool m_gstSeekCompleted;
-
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
     RefPtr<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     MediaTime m_mediaTimeDuration;
     bool m_mseSeekCompleted;
-
     RefPtr<PlaybackPipeline> m_playbackPipeline;
 };
 

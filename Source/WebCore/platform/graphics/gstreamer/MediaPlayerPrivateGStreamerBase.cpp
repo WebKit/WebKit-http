@@ -309,6 +309,7 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
 
 bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 {
+    UNUSED_PARAM(message);
 #if USE(GSTREAMER_GL)
     if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_NEED_CONTEXT) {
         const gchar* contextType;
@@ -337,50 +338,49 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ELEMENT) {
         const GstStructure* structure = gst_message_get_structure(message);
-        if (!gst_structure_has_name(structure, "drm-key-needed"))
-            return false;
-
-        GST_DEBUG("handling drm-key-needed message");
+        if (gst_structure_has_name(structure, "drm-key-needed")) {
+            GST_DEBUG("handling drm-key-needed message");
 #if USE(PLAYREADY)
-        PlayreadySession* session = prSession();
-        if (session && session->keyRequested()) {
-            GST_DEBUG("key requested already");
-            if (session->ready()) {
-                GST_DEBUG("key already negotiated");
-                emitSession();
+            PlayreadySession* session = prSession();
+            if (session && session->keyRequested()) {
+                GST_DEBUG("key requested already");
+                if (session->ready()) {
+                    GST_DEBUG("key already negotiated");
+                    emitSession();
+                }
+                return false;
             }
-            return false;
-        }
 #endif
-        // Here we receive the DRM init data from the pipeline: we will emit
-        // the needkey event with that data and the browser might create a
-        // CDMSession from this event handler. If such a session was created
-        // We will emit the message event from the session to provide the
-        // DRM challenge to the browser and wait for an update. If on the
-        // contrary no session was created we won't wait and let the pipeline
-        // error out by itself.
-        GstBuffer* data;
-        const char* keySystemId;
-        gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
-                                           "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
-        GstMapInfo mapInfo;
-        if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
-            return false;
+            // Here we receive the DRM init data from the pipeline: we will emit
+            // the needkey event with that data and the browser might create a
+            // CDMSession from this event handler. If such a session was created
+            // We will emit the message event from the session to provide the
+            // DRM challenge to the browser and wait for an update. If on the
+            // contrary no session was created we won't wait and let the pipeline
+            // error out by itself.
+            GstBuffer* data;
+            const char* keySystemId;
+            gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
+                                               "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
+            GstMapInfo mapInfo;
+            if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
+                return false;
 
-        GST_DEBUG("scheduling keyNeeded event");
-        // FIXME: Provide a somehow valid sessionId.
+            GST_DEBUG("scheduling keyNeeded event");
+            // FIXME: Provide a somehow valid sessionId.
 #if ENABLE(ENCRYPTED_MEDIA)
-        needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+            needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
 #elif ENABLE(ENCRYPTED_MEDIA_V2)
-        RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-        needKey(initData);
+            RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+            needKey(initData);
 #else
-        ASSERT_NOT_REACHED();
+            ASSERT_NOT_REACHED();
 #endif
-        gst_buffer_unmap(data, &mapInfo);
-        return true;
+            gst_buffer_unmap(data, &mapInfo);
+            return true;
+        }
     }
-#endif
+#endif // ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 
     return false;
 }
@@ -681,7 +681,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         if (UNLIKELY(!m_context3D))
             m_context3D = GraphicsContext3D::create(GraphicsContext3D::Attributes(), nullptr, GraphicsContext3D::RenderToCurrentGLContext);
 
-        RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D.copyRef()));
+        RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D));
         texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
         buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
     }
@@ -1111,7 +1111,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
         return GST_PAD_PROBE_OK;
      }, this, nullptr);
  
-     g_object_set_data(G_OBJECT(appsink), "player", (gpointer)this);
+     g_object_set_data(G_OBJECT(appsink), "player", (gpointer) this);
      gst_pad_set_query_function(pad.get(), appSinkSinkQuery);
 
     if (!result) {
@@ -1225,24 +1225,6 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
     return static_cast<unsigned>(position);
 }
 
-bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem, const String& mimeType)
-{
-    GST_DEBUG("Checking for KeySystem support with %s and type %s", keySystem.utf8().data(), mimeType.utf8().data());
-
-#if ENABLE(ENCRYPTED_MEDIA)
-    if (equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
-        return true;
-#endif
-
-#if USE(PLAYREADY) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
-    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
-        || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
-        return true;
-#endif
-
-    return false;
-}
-
 #if USE(PLAYREADY)
 PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 {
@@ -1268,14 +1250,6 @@ void MediaPlayerPrivateGStreamerBase::emitSession()
 
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
-}
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
-{
-    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
 }
 #endif
 
@@ -1380,6 +1354,19 @@ void MediaPlayerPrivateGStreamerBase::needKey(RefPtr<Uint8Array> initData)
         GST_DEBUG("no event handler for key needed");
 }
 
+void MediaPlayerPrivateGStreamerBase::setCDMSession(CDMSession* session)
+{
+    GST_DEBUG("setting CDM session to %p", session);
+    m_cdmSession = session;
+}
+
+void MediaPlayerPrivateGStreamerBase::keyAdded()
+{
+#if USE(PLAYREADY)
+    emitSession();
+#endif
+}
+
 std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const String& keySystem, CDMSessionClient* client)
 {
     if (!supportsKeySystem(keySystem, emptyString()))
@@ -1394,20 +1381,33 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
 
     return nullptr;
 }
+#endif // ENABLE(ENCRYPTED_MEDIA_V2)
 
-void MediaPlayerPrivateGStreamerBase::setCDMSession(CDMSession* session)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 {
-    GST_DEBUG("setting CDM session to %p", session);
-    m_cdmSession = session;
-}
-
-void MediaPlayerPrivateGStreamerBase::keyAdded()
-{
-#if USE(PLAYREADY)
-    emitSession();
-#endif
+    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+        gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
 }
 #endif
+
+bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem, const String& mimeType)
+{
+    GST_DEBUG("Checking for KeySystem support with %s and type %s", keySystem.utf8().data(), mimeType.utf8().data());
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
+        return true;
+#endif
+
+#if USE(PLAYREADY) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
+    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
+        || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
+        return true;
+#endif
+
+    return false;
+}
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType result)
 {
