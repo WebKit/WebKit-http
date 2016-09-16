@@ -20,9 +20,9 @@
  */
 
 #include "config.h"
-
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 #include "WebKitClearKeyDecryptorGStreamer.h"
+
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
 #include <gcrypt.h>
@@ -270,4 +270,4 @@ static void webKitMediaClearKeyDecryptorReleaseCipher(WebKitMediaCommonEncryptio
     gcry_cipher_close(priv->handle);
 }
 
-#endif
+#endif // (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER)
