@@ -2,7 +2,8 @@
  *  Copyright (C) 2009, 2010 Sebastian Dröge <sebastian.droege@collabora.co.uk>
  *  Copyright (C) 2013 Collabora Ltd.
  *  Copyright (C) 2013 Orange
- *  Copyright (C) 2014 Sebastian Dröge <sebastian@centricular.com>
+ *  Copyright (C) 2014, 2015 Sebastian Dröge <sebastian@centricular.com>
+ *  Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -23,13 +24,11 @@
 #define WebKitMediaSourceGStreamer_h
 #if ENABLE(VIDEO) && ENABLE(MEDIA_SOURCE) && USE(GSTREAMER)
 
+#include "GRefPtrGStreamer.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
-#include "SourceBufferPrivateClient.h"
 #include "SourceBufferPrivate.h"
-
-#include "GRefPtrGStreamer.h"
-
+#include "SourceBufferPrivateClient.h"
 #include <gst/gst.h>
 
 namespace WebCore {
@@ -61,15 +60,15 @@ struct _WebKitMediaSrc {
 struct _WebKitMediaSrcClass {
     GstBinClass parentClass;
 
-    /* notify app that number of audio/video/text streams changed */
-    void (*video_changed) (WebKitMediaSrc* webKitMediaSrc);
-    void (*audio_changed) (WebKitMediaSrc* webKitMediaSrc);
-    void (*text_changed) (WebKitMediaSrc* webKitMediaSrc);
+    // Notify app that number of audio/video/text streams changed.
+    void (*videoChanged)(WebKitMediaSrc*);
+    void (*audioChanged)(WebKitMediaSrc*);
+    void (*textChanged)(WebKitMediaSrc*);
 };
 
 GType webkit_media_src_get_type(void);
 
-void webkit_media_src_set_mediaplayerprivate(WebKitMediaSrc* src, WebCore::MediaPlayerPrivateGStreamerMSE* player);
+void webkit_media_src_set_mediaplayerprivate(WebKitMediaSrc*, WebCore::MediaPlayerPrivateGStreamerMSE*);
 
 void webkit_media_src_prepare_seek(WebKitMediaSrc*, const MediaTime&);
 void webkit_media_src_set_readyforsamples(WebKitMediaSrc*, bool);
@@ -77,9 +76,9 @@ void webkit_media_src_set_readyforsamples(WebKitMediaSrc*, bool);
 G_END_DECLS
 
 namespace WTF {
-template<> GRefPtr<WebKitMediaSrc> adoptGRef(WebKitMediaSrc* ptr);
-template<> WebKitMediaSrc* refGPtr<WebKitMediaSrc>(WebKitMediaSrc* ptr);
-template<> void derefGPtr<WebKitMediaSrc>(WebKitMediaSrc* ptr);
+template<> GRefPtr<WebKitMediaSrc> adoptGRef(WebKitMediaSrc*);
+template<> WebKitMediaSrc* refGPtr<WebKitMediaSrc>(WebKitMediaSrc*);
+template<> void derefGPtr<WebKitMediaSrc>(WebKitMediaSrc*);
 };
 
 namespace WebCore {
@@ -106,7 +105,7 @@ class PlaybackPipeline: public RefCounted<PlaybackPipeline> {
         void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
         // From SourceBufferPrivateGStreamer
-        void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> >);
+        void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>);
         void enqueueSample(PassRefPtr<MediaSample>);
 
         GstElement* pipeline();
