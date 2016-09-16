@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Google Inc. All rights reserved.
  * Copyright (C) 2013 Orange
  * Copyright (C) 2014 Sebastian Dröge <sebastian@centricular.com>
+ * Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -51,24 +52,24 @@ public:
     static Ref<SourceBufferPrivateGStreamer> create(MediaSourceGStreamer*, PassRefPtr<MediaSourceClientGStreamerMSE>, const ContentType&);
     virtual ~SourceBufferPrivateGStreamer();
 
-    void clearMediaSource() { m_mediaSource = 0; }
+    void clearMediaSource() { m_mediaSource = nullptr; }
 
-    virtual void setClient(SourceBufferPrivateClient*) override;
-    virtual void append(const unsigned char* data, unsigned length) override;
-    virtual void abort() override;
-    virtual void removedFromMediaSource() override;
-    virtual MediaPlayer::ReadyState readyState() const override;
-    virtual void setReadyState(MediaPlayer::ReadyState) override;
+    void setClient(SourceBufferPrivateClient*) override;
+    void append(const unsigned char*, unsigned) override;
+    void abort() override;
+    void removedFromMediaSource() override;
+    MediaPlayer::ReadyState readyState() const override;
+    void setReadyState(MediaPlayer::ReadyState) override;
 
-    virtual void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> >, AtomicString) override;
-    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString) override;
-    virtual bool isReadyForMoreSamples(AtomicString) override;
-    virtual void setActive(bool) override;
-    virtual void stopAskingForMoreSamples(AtomicString) override;
-    virtual void notifyClientWhenReadyForMoreSamples(AtomicString) override;
+    void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString) override;
+    void enqueueSample(PassRefPtr<MediaSample>, AtomicString) override;
+    bool isReadyForMoreSamples(AtomicString) override;
+    void setActive(bool) override;
+    void stopAskingForMoreSamples(AtomicString) override;
+    void notifyClientWhenReadyForMoreSamples(AtomicString) override;
     virtual double timestampOffset() const;
 
-    void setReadyForMoreSamples(bool isReady);
+    void setReadyForMoreSamples(bool);
     void notifyReadyForMoreSamples();
 
 #if ENABLE(VIDEO_TRACK)

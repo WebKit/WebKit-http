@@ -2,6 +2,7 @@
  * Copyright (C) 2013 Google Inc. All rights reserved.
  * Copyright (C) 2013 Orange
  * Copyright (C) 2014 Sebastian Dröge <sebastian@centricular.com>
+ * Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -72,10 +73,14 @@ void SourceBufferPrivateGStreamer::setClient(SourceBufferPrivateClient* client)
 void SourceBufferPrivateGStreamer::append(const unsigned char* data, unsigned length)
 {
     ASSERT(m_mediaSource);
-    ASSERT(m_sourceBufferPrivateClient);
 
-    if (!m_client->append(this, data, length) && m_sourceBufferPrivateClient)
-        m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, SourceBufferPrivateClient::ReadStreamFailed);
+    if (!m_sourceBufferPrivateClient)
+        return;
+
+    if (m_client->append(this, data, length))
+        return;
+
+    m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, SourceBufferPrivateClient::ReadStreamFailed);
 }
 
 void SourceBufferPrivateGStreamer::abort()
@@ -102,19 +107,17 @@ void SourceBufferPrivateGStreamer::setReadyState(MediaPlayer::ReadyState state)
     m_mediaSource->setReadyState(state);
 }
 
-void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> > samples, AtomicString trackIDString)
+void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>> samples, AtomicString)
 {
-    UNUSED_PARAM(trackIDString);
     if (m_client)
         m_client->flushAndEnqueueNonDisplayingSamples(samples);
 }
 
-void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample> prpSample, AtomicString trackIDString)
+void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample> prpSample, AtomicString)
 {
     m_notifyWhenReadyForMoreSamples = false;
 
     RefPtr<MediaSample> sample = prpSample;
-    UNUSED_PARAM(trackIDString);
     if (m_client)
         m_client->enqueueSample(sample);
 }
@@ -134,9 +137,8 @@ void SourceBufferPrivateGStreamer::notifyReadyForMoreSamples()
 {
     ASSERT(WTF::isMainThread());
     setReadyForMoreSamples(true);
-    if (m_notifyWhenReadyForMoreSamples) {
+    if (m_notifyWhenReadyForMoreSamples)
         m_sourceBufferPrivateClient->sourceBufferPrivateDidBecomeReadyForMoreSamples(this, m_trackId);
-    }
 }
 
 void SourceBufferPrivateGStreamer::setActive(bool isActive)
@@ -173,18 +175,17 @@ void SourceBufferPrivateGStreamer::didReceiveSample(PassRefPtr<MediaSample> prpS
 
 void SourceBufferPrivateGStreamer::didReceiveAllPendingSamples()
 {
-    if (m_sourceBufferPrivateClient) {
+    if (m_sourceBufferPrivateClient)
         m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(this, SourceBufferPrivateClient::AppendSucceeded);
-    }
 }
 #endif
 
 double SourceBufferPrivateGStreamer::timestampOffset() const
 {
-    if (m_sourceBufferPrivateClient)
-        return m_sourceBufferPrivateClient->timestampOffset();
-    else
-        return 0.0;
+    if (!m_sourceBufferPrivateClient)
+        return 0;
+
+    return m_sourceBufferPrivateClient->timestampOffset();
 }
 
 }
