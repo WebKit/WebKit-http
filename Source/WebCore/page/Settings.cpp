@@ -218,6 +218,11 @@ Settings::Settings(Page* page)
     AtomicString::init();
     initializeDefaultFontFamilies();
     m_page = page; // Page is not yet fully initialized when constructing Settings, so keeping m_page null over initializeDefaultFontFamilies() call.
+
+#if USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
+    // Use a lower default value to make the "29. VideoBufferSize" YoutubeTV 2016 test pass.
+    m_maximumSourceBufferSize = 130 * 1024 * 1024;
+#endif
 }
 
 Settings::~Settings()
