@@ -97,7 +97,8 @@ WorkerThreadableLoader::MainThreadBridge::MainThreadBridge(PassRefPtr<Threadable
 
     ASSERT(securityOrigin);
     ASSERT(contentSecurityPolicy);
-    auto* contentSecurityPolicyCopy = std::make_unique<ContentSecurityPolicy>(*securityOrigin).release();
+
+    auto* contentSecurityPolicyCopy = std::make_unique<ContentSecurityPolicy>(securityOrigin->isolatedCopy()).release();
     contentSecurityPolicyCopy->copyStateFrom(contentSecurityPolicy);
 
     StringCapture capturedOutgoingReferrer(outgoingReferrer);

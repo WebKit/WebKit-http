@@ -1,3 +1,19 @@
+2016-09-17  David Kilzer  <ddkilzer@apple.com>
+
+        MainThreadBridge needs an isolatedCopy() of SecurityOrigin
+        <https://webkit.org/b/162116>
+        <rdar://problem/27525870>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Covered by existing tests.
+
+        * loader/WorkerThreadableLoader.cpp:
+        (WebCore::WorkerThreadableLoader::MainThreadBridge::MainThreadBridge):
+        Make an isolatedCopy() of SecurityOrigin here since that's the
+        correct idiom to use when the object is passed from a worker
+        thread back to the main thread.  Fix suggested by Daniel Bates.
+
 2016-09-19  Anders Carlsson  <andersca@apple.com>
 
         Suppress JavaScript prompts early on in certain cases
