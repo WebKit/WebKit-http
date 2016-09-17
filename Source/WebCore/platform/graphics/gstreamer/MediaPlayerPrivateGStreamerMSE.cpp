@@ -384,7 +384,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64, float, GstSeekFlags)
 bool MediaPlayerPrivateGStreamerMSE::doSeek()
 {
     GstClockTime position = toGstClockTime(m_seekTime);
-    MediaTime seekTime = MediaTime::createWithDouble(m_seekTime + MediaTime::FuzzinessThreshold);
+    MediaTime seekTime = MediaTime::createWithDouble(m_seekTime);
     double rate = m_player->rate();
     GstSeekFlags seekType = static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE);
 

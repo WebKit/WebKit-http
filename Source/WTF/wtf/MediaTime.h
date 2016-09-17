@@ -119,7 +119,7 @@ public:
 
     static const int32_t DefaultTimeScale = 10000000;
     static const int32_t MaximumTimeScale;
-    static const double FuzzinessThreshold;
+
 private:
     void setTimeScale(int32_t);
 
