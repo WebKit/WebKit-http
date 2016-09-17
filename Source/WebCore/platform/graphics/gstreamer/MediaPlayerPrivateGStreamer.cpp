@@ -78,6 +78,11 @@ using namespace std;
 
 namespace WebCore {
 
+static void busMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
+{
+    player->handleMessage(message);
+}
+
 void MediaPlayerPrivateGStreamer::setAudioStreamPropertiesCallback(MediaPlayerPrivateGStreamer* player, GObject* object)
 {
     player->setAudioStreamProperties(object);
@@ -222,6 +227,8 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
     if (m_pipeline) {
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
         ASSERT(bus);
+        g_signal_handlers_disconnect_by_func(bus.get(), gpointer(busMessageCallback), this);
+        gst_bus_remove_signal_watch(bus.get());
         gst_bus_set_sync_handler(bus.get(), nullptr, nullptr, nullptr);
         g_signal_handlers_disconnect_matched(m_pipeline.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
@@ -2127,17 +2134,17 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     gst_bus_set_sync_handler(bus.get(), [](GstBus*, GstMessage* message, gpointer userData) {
         auto& player = *static_cast<MediaPlayerPrivateGStreamer*>(userData);
 
-        if (!player.handleSyncMessage(message)) {
-            GRefPtr<GstMessage> protectedMessage(message);
-            auto weakThis = player.createWeakPtr();
-            RunLoop::main().dispatch([weakThis, protectedMessage] {
-                if (weakThis)
-                    weakThis->handleMessage(protectedMessage.get());
-            });
+        if (player.handleSyncMessage(message)) {
+            gst_message_unref(message);
+            return GST_BUS_DROP;
         }
-        gst_message_unref(message);
-        return GST_BUS_DROP;
+
+        return GST_BUS_PASS;
     }, this, nullptr);
+
+    // Let also other listeners subscribe to (application) messages in this bus.
+    gst_bus_add_signal_watch(bus.get());
+    g_signal_connect(bus.get(), "message", G_CALLBACK(busMessageCallback), this);
 
     g_object_set(m_pipeline.get(), "mute", m_player->muted(), nullptr);
 
