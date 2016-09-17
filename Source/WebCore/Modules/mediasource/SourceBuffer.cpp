@@ -583,30 +583,6 @@ void SourceBuffer::sourceBufferPrivateAppendComplete(SourceBufferPrivate*, Appen
     if (isRemoved())
         return;
 
-#if USE(GSTREAMER)
-    // Remove some small gaps (less than lastFrameDuration) from reported buffered region.
-    // FIXME: Ideally, this fix shouldn't be needed, but small gaps can cause problems with seeks.
-    MediaTime largestLastFrameDuration = MediaTime::invalidTime();
-    for (HashMap<AtomicString, TrackBuffer>::iterator iterator = m_trackBufferMap.begin(), iteratorEnd = m_trackBufferMap.end(); iterator != iteratorEnd; ++iterator) {
-        TrackBuffer& trackBuffer = iterator->value;
-        const MediaTime& lastFrameDuration = trackBuffer.lastFrameDuration;
-        if (lastFrameDuration.isValid() && (largestLastFrameDuration.isInvalid() || largestLastFrameDuration < lastFrameDuration))
-            largestLastFrameDuration = lastFrameDuration;
-    }
-
-    if (largestLastFrameDuration.isValid()) {
-        PlatformTimeRanges& trackRanges = m_buffered->ranges();
-        MediaTime microsecond(1, 1000000);
-        for (int i = trackRanges.length() - 1;  i > 0; --i) {
-            const MediaTime priorEnd = trackRanges.end(i - 1);
-            const MediaTime currentStart = trackRanges.start(i);
-            const MediaTime delta = currentStart - priorEnd;
-            if (delta > MediaTime::zeroTime() && delta <= largestLastFrameDuration)
-                m_buffered->add(priorEnd.toDouble(), (currentStart + microsecond).toDouble());
-        }
-    }
-#endif
-
     // Section 3.5.5 Buffer Append Algorithm, ctd.
     // https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#sourcebuffer-buffer-append
 
@@ -796,9 +772,6 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         DecodeOrderSampleMap::MapType erasedSamples(removeDecodeStart, removeDecodeEnd);
         PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(erasedSamples, trackBuffer, this, "removeCodedFrames");
 
-        // GStreamer backend doesn't support re-enqueue without preceding flushing seek, so just avoid adding
-        // same data to pipeline.
-#if !USE(GSTREAMER)
         // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
         // not yet displayed samples.
         if (currentMediaTime < trackBuffer.lastEnqueuedPresentationTime) {
@@ -807,7 +780,6 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
             if (possiblyEnqueuedRanges.length())
                 trackBuffer.needsReenqueueing = true;
         }
-#endif
 
         erasedRanges.invert();
         m_buffered->ranges().intersectWith(erasedRanges);
@@ -1410,19 +1382,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
             it = m_trackBufferMap.add(trackID, TrackBuffer()).iterator;
         TrackBuffer& trackBuffer = it->value;
 
-#if USE(GSTREAMER)
-        // FIXME: Hack to add gap range to fill start hole when the difference with the previous
-        // buffered region is small. This avoids small gaps in the buffered ranges. Some
-        // JavaScript players break when those small gaps are present.
-        MediaTime gapRangeEnd;
-        if (buffered() && buffered()->length()) {
-            ExceptionCode exceptionCode;
-            MediaTime previousRangeEnd = MediaTime::createWithDouble(m_buffered->end(m_buffered->length() - 1, exceptionCode));
-            if (previousRangeEnd <= presentationTimestamp + MediaTime::createWithDouble(0.1))
-                gapRangeEnd = presentationTimestamp;
-        }
-#endif
-
         // 1.6 ↳ If last decode timestamp for track buffer is set and decode timestamp is less than last
         // decode timestamp:
         // OR
@@ -1601,9 +1560,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
 
             PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(dependentSamples, trackBuffer, this, "sourceBufferPrivateDidReceiveSample");
 
-            // GStreamer backend doesn't support re-enqueue without preceding flushing seek, so just
-            // avoid adding same data to pipeline.
-#if !USE(GSTREAMER)
             // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
             // not yet displayed samples.
             MediaTime currentMediaTime = m_source->currentTime();
@@ -1613,7 +1569,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
                 if (possiblyEnqueuedRanges.length())
                     trackBuffer.needsReenqueueing = true;
             }
-#endif
 
             erasedRanges.invert();
             m_buffered->ranges().intersectWith(erasedRanges);
@@ -1655,14 +1610,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
         // 1.22 If generate timestamps flag equals true, then set timestampOffset equal to frame end timestamp.
         if (m_shouldGenerateTimestamps)
             m_timestampOffset = frameEndTimestamp;
-
-#if USE(GSTREAMER)
-        // FIXME: Hack to add gap range to fill start hole (continued)
-        if (gapRangeEnd > MediaTime()) {
-            LOG(MediaSource, "SourceBuffer::sourceBufferPrivateDidReceiveSample(%p) - Adding a gap range to fill start hole", this);
-            m_buffered->ranges().add(m_timestampOffset, gapRangeEnd);
-        }
-#endif
 
         // Eliminate small gaps between buffered ranges by coalescing
         // disjoint ranges separated by less than a "fudge factor".
@@ -1869,12 +1816,6 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, AtomicString 
 {
     // Find the sample which contains the current presentation time.
     auto currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleContainingPresentationTime(time);
-
-#if USE(GSTREAMER)
-    // FIXME: Skip small gaps. If there's no sample with the target PTS but there's PTS+lastFrameDuration, use the latter.
-    if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end() && trackBuffer.lastFrameDuration.isValid())
-        currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleContainingPresentationTime(time + trackBuffer.lastFrameDuration);
-#endif
 
     if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end()) {
         trackBuffer.decodeQueue.clear();
