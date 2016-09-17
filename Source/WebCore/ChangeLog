@@ -1,3 +1,34 @@
+2016-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Cancelling one frame's load cancels load in other frames that have the same URL as well
+        https://bugs.webkit.org/show_bug.cgi?id=162094
+
+        Reviewed by Antti Koivisto.
+
+        Cancelling one frame's load cancels load in other frames that have the same URL as well.
+
+        So if you have several frames that are loading URL X and you navigate one of the frames
+        to Y, then the load of X will be cancelled and this frame will navigate to Y. All other
+        frames will not load URL X even though they should.
+
+        The issue is that all the DocumentLoaders share the same CachedResource because of the
+        memoryCache. When we call DocumentLoader::stopLoading(), it will cancel the
+        CachedResource's load even though there are several clients for this CachedResource
+        and other clients still want the load.
+
+        The approach chosen in this patch is to not reuse CachedResources that are still
+        loading when trying to load a main resource. This is not the most efficient approach.
+        I still chose this approach because:
+        - It is very unlikely to introduce new bugs.
+        - The change is very simple.
+        - This is a corner case (several iframes having the same URL and cancelling the load in
+          one of them).
+
+        Test: http/tests/navigation/frames-same-url-cancel-load.html
+
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::determineRevalidationPolicy):
+
 2017-04-21  Zalan Bujtas  <zalan@apple.com>
 
         REGRESSION(r205374): <li> content inside <ul> should mid-word wrap when word-break: break-word is present.
