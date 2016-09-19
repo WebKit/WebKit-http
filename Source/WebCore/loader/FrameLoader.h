@@ -227,7 +227,7 @@ public:
 
     bool checkIfFormActionAllowedByCSP(const URL&) const;
 
-    Frame* opener();
+    WEBCORE_EXPORT Frame* opener();
     WEBCORE_EXPORT void setOpener(Frame*);
 
     void resetMultipleFormSubmissionProtection();
