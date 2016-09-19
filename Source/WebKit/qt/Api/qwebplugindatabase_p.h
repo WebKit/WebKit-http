@@ -78,11 +78,6 @@ private:
 public:
     QList<QWebPluginInfo> plugins() const;
 
-    static QStringList defaultSearchPaths();
-    QStringList searchPaths() const;
-    void setSearchPaths(const QStringList& paths);
-    void addSearchPath(const QString& path);
-
     void refresh();
 
     QWebPluginInfo pluginForMimeType(const QString& mimeType);

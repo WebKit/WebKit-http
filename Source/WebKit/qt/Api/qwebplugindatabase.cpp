@@ -295,68 +295,6 @@ QList<QWebPluginInfo> QWebPluginDatabase::plugins() const
 }
 
 /*!
-    Returns a default set of search paths.
-
-    \sa searchPaths(), setSearchPaths()
-*/
-QStringList QWebPluginDatabase::defaultSearchPaths()
-{
-    QStringList paths;
-
-    const Vector<String>& directories = PluginDatabase::defaultPluginDirectories();
-    for (unsigned int i = 0; i < directories.size(); ++i)
-        paths.append(directories[i]);
-
-    return paths;
-}
-
-/*!
-    Returns a list of search paths that are used by WebKit to look for plugins.
-
-    \sa defaultSearchPaths(), setSearchPaths()
-*/
-QStringList QWebPluginDatabase::searchPaths() const
-{
-    QStringList paths;
-
-    const Vector<String>& directories = m_database->pluginDirectories();
-    for (unsigned int i = 0; i < directories.size(); ++i)
-        paths.append(directories[i]);
-
-    return paths;
-}
-
-/*!
-    Changes the search paths to \a paths.
-    The database is automatically refreshed.
-
-    \sa searchPaths(), defaultSearchPaths()
-*/
-void QWebPluginDatabase::setSearchPaths(const QStringList& paths)
-{
-    Vector<String> directories;
-
-    for (int i = 0; i < paths.count(); ++i)
-        directories.append(paths.at(i));
-
-    m_database->setPluginDirectories(directories);
-    // PluginDatabase::setPluginDirectories() does not refresh the database.
-    m_database->refresh();
-}
-
-/*!
-    Adds an additional \a path to the current set.
-    The database is automatically refreshed.
-
-    \sa searchPaths(), setSearchPaths()
-*/
-void QWebPluginDatabase::addSearchPath(const QString& path)
-{
-    m_database->addExtraPluginDirectory(path);
-    // PluginDatabase::addExtraPluginDirectory() does refresh the database.
-}
-
-/*!
     Refreshes the plugin database, adds new plugins that have been found and removes
     the ones that are no longer available in the search paths.
 

@@ -763,6 +763,43 @@ QIcon QWebSettings::iconForUrl(const QUrl& url)
     return* icon;
 }
 
+/*!
+    Changes the NPAPI plugin search paths to \a paths.
+
+    \sa pluginSearchPaths()
+*/
+void QWebSettings::setPluginSearchPaths(const QStringList& paths)
+{
+    WebCore::initializeWebCoreQt();
+
+    Vector<String> directories;
+
+    for (int i = 0; i < paths.count(); ++i)
+        directories.append(paths.at(i));
+
+    WebCore::PluginDatabase::installedPlugins()->setPluginDirectories(directories);
+    // PluginDatabase::setPluginDirectories() does not refresh the database.
+    WebCore::PluginDatabase::installedPlugins()->refresh();
+}
+
+/*!
+    Returns a list of search paths that are used by WebKit to look for NPAPI plugins.
+
+    \sa setPluginSearchPaths()
+*/
+QStringList QWebSettings::pluginSearchPaths()
+{
+    WebCore::initializeWebCoreQt();
+
+    QStringList paths;
+
+    const Vector<String>& directories = WebCore::PluginDatabase::installedPlugins()->pluginDirectories();
+    for (unsigned i = 0; i < directories.size(); ++i)
+        paths.append(directories[i]);
+
+    return paths;
+}
+
 /*
     Returns the plugin database object.
 
