@@ -1175,7 +1175,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     m_pipeline = adoptGRef(gst_pipeline_new(nullptr));
 
     m_bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
-    gst_bus_add_signal_watch(m_bus.get());
+    gst_bus_add_signal_watch_full(m_bus.get(), G_PRIORITY_HIGH + 30);
     gst_bus_enable_sync_message_emission(m_bus.get());
 
     g_signal_connect(m_bus.get(), "sync-message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
@@ -1354,6 +1354,22 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
 
     if (gst_structure_has_name(structure, "demuxer-disconnect-from-appsink")) {
         disconnectDemuxerSrcPadFromAppsink();
+        return;
+    }
+
+    if (gst_structure_has_name(structure, "appsink-caps-changed")) {
+        appsinkCapsChanged();
+        deref();
+        return;
+    }
+
+    if (gst_structure_has_name(structure, "appsink-new-sample")) {
+        GstSample* newSample = nullptr;
+        gst_structure_get(structure, "new-sample", G_TYPE_POINTER, &newSample, nullptr);
+
+        appsinkNewSample(newSample);
+        gst_sample_unref(newSample);
+        deref();
         return;
     }
 
@@ -1930,14 +1946,12 @@ GstFlowReturn AppendPipeline::handleNewAppsinkSample(GstElement* appsink)
 
     LockHolder locker2(m_newSampleLock);
     if (!(!m_playerPrivate || m_appendState == Invalid)) {
-        // Note: Don't try to convert this g_timeout_add() to bus calls, because the performance decrease makes some tests fail.
-        NewSampleInfo* info = new NewSampleInfo(sample.get(), this);
-        g_timeout_add(0, GSourceFunc([](gpointer userData) -> gboolean {
-            NewSampleInfo* info = static_cast<NewSampleInfo*>(userData);
-            info->appendPipeline()->appsinkNewSample(info->sample());
-            delete info;
-            return G_SOURCE_REMOVE;
-        }), info);
+        ref();
+        gst_sample_ref(sample.get());
+        GstStructure* structure = gst_structure_new("appsink-new-sample", "new-sample", G_TYPE_POINTER, sample.get(), nullptr);
+        GstMessage* message = gst_message_new_application(GST_OBJECT(appsink), structure);
+        gst_bus_post(m_bus.get(), message);
+        GST_TRACE("appsink-new-sample message posted to bus");
 
         m_newSampleCondition.wait(m_newSampleLock);
         // We've been awaken because the sample was processed or because of
@@ -2125,16 +2139,14 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsink()
     m_padAddRemoveCondition.notifyOne();
 }
 
-static void appendPipelineAppsinkCapsChanged(GObject*, GParamSpec*, AppendPipeline* appendPipeline)
+static void appendPipelineAppsinkCapsChanged(GObject* appsinkPad, GParamSpec*, AppendPipeline* appendPipeline)
 {
     appendPipeline->ref();
-    // Note: Don't try to convert this g_timeout_add() to bus calls, because the bus flush on pipeline change to GST_STATE_NULL makes some tests fail.
-    g_timeout_add(0, GSourceFunc([](gpointer userData) -> gboolean {
-        AppendPipeline* appendPipeline = reinterpret_cast<AppendPipeline*>(userData);
-        appendPipeline->appsinkCapsChanged();
-        appendPipeline->deref();
-        return G_SOURCE_REMOVE;
-    }), appendPipeline);
+
+    GstStructure* structure = gst_structure_new_empty("appsink-caps-changed");
+    GstMessage* message = gst_message_new_application(GST_OBJECT(appsinkPad), structure);
+    gst_bus_post(appendPipeline->bus(), message);
+    GST_TRACE("appsink-caps-changed message posted to bus");
 }
 
 static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInfo* info, AppendPipeline* appendPipeline)

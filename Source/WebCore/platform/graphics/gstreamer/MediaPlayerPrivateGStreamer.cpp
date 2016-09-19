@@ -2143,7 +2143,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     }, this, nullptr);
 
     // Let also other listeners subscribe to (application) messages in this bus.
-    gst_bus_add_signal_watch(bus.get());
+    gst_bus_add_signal_watch_full(bus.get(), G_PRIORITY_HIGH + 30);
     g_signal_connect(bus.get(), "message", G_CALLBACK(busMessageCallback), this);
 
     g_object_set(m_pipeline.get(), "mute", m_player->muted(), nullptr);
