@@ -841,7 +841,9 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
 #if !USE(HOLE_PUNCH_EXTERNAL)
             "video/mp4",
 #endif
-            "audio/mp4"
+            "video/webm",
+            "audio/mp4",
+            "audio/webm"
         };
         for (auto& type : mimeTypes)
             set.add(type);
@@ -886,10 +888,6 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 {
     MediaPlayer::SupportsType result = MediaPlayer::IsNotSupported;
     if (!parameters.isMediaSource)
-        return result;
-
-    // Disable VPX/Opus on MSE for now, mp4/avc1 seems way more reliable currently.
-    if (parameters.type.endsWith("webm"))
         return result;
 
     // YouTube TV provides empty types for some videos and we want to be selected as best media engine for them.
@@ -1192,16 +1190,15 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     // We assign the created instances here instead of adoptRef() because gst_bin_add_many()
     // below will already take the initial reference and we need an additional one for us.
     m_appsrc = gst_element_factory_make("appsrc", nullptr);
-    m_demux = gst_element_factory_make("qtdemux", nullptr);
-    m_appsink = gst_element_factory_make("appsink", nullptr);
 
-    {
-        GValue val = G_VALUE_INIT;
-        g_value_init(&val, G_TYPE_BOOLEAN);
-        g_value_set_boolean(&val, TRUE);
-        g_object_set_property(G_OBJECT(m_demux.get()), "always-honor-tfdt", &val);
-        g_value_unset(&val);
-    }
+    String type = m_sourceBufferPrivate->type().type();
+    if (type.endsWith("mp4")) {
+        m_demux = gst_element_factory_make("qtdemux", nullptr);
+        g_object_set(m_demux.get(), "always-honor-tfdt", TRUE, nullptr);
+    } else if (type.endsWith("webm"))
+        m_demux = gst_element_factory_make("matroskademux", nullptr);
+
+    m_appsink = gst_element_factory_make("appsink", nullptr);
     gst_app_sink_set_emit_signals(GST_APP_SINK(m_appsink.get()), TRUE);
     gst_base_sink_set_sync(GST_BASE_SINK(m_appsink.get()), FALSE);
 

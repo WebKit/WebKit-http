@@ -475,7 +475,7 @@ static void webKitMediaSrcUpdatePresentationSize(GstCaps* caps, Stream* stream)
 
 static void webKitMediaSrcLinkStreamToSrcPad(GstPad* sourcePad, Stream* stream)
 {
-    unsigned padId = static_cast<unsigned>(GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sourcePad), "id")));
+    unsigned padId = static_cast<unsigned>(GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sourcePad), "padId")));
     GST_DEBUG_OBJECT(stream->parent, "linking stream to src pad (id: %u)", padId);
 
     GUniquePtr<gchar> padName(g_strdup_printf("src_%u", padId));
@@ -968,7 +968,6 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
     GUniquePtr<gchar> parserBinName(g_strdup_printf("streamparser%u", padId));
-    stream->parser = gst_bin_new(parserBinName.get());
 
     GST_DEBUG_OBJECT(webKitMediaSrc, "Configured track %s: appsrc=%s, padId=%u, mediaType=%s", trackPrivate->id().string().utf8().data(), GST_ELEMENT_NAME(stream->appsrc), padId, mediaType);
 
@@ -982,6 +981,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         capsfilter = gst_element_factory_make("capsfilter", nullptr);
         g_object_set(capsfilter, "caps", filterCaps.get(), nullptr);
 
+        stream->parser = gst_bin_new(parserBinName.get());
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, nullptr);
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
@@ -1002,6 +1002,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         capsfilter = gst_element_factory_make("capsfilter", nullptr);
         g_object_set(capsfilter, "caps", filterCaps.get(), nullptr);
 
+        stream->parser = gst_bin_new(parserBinName.get());
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, nullptr);
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
@@ -1025,6 +1026,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         else
             ASSERT_NOT_REACHED();
 
+        stream->parser = gst_bin_new(parserBinName.get());
         gst_bin_add(GST_BIN(stream->parser), parser);
 
         pad = gst_element_get_static_pad(parser, "sink");
@@ -1034,9 +1036,10 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         pad = gst_element_get_static_pad(parser, "src");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("src", pad));
         gst_object_unref(pad);
-    } else {
+    } else if (!g_strcmp0(mediaType, "video/x-vp9"))
+        stream->parser = nullptr;
+    else {
         GST_ERROR_OBJECT(stream->parent, "Unsupported media format: %s", mediaType);
-        gst_object_unref(GST_OBJECT(stream->parser));
         return;
     }
 
@@ -1044,21 +1047,28 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     stream->type = Unknown;
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
-    ASSERT(stream->parser);
-    gst_bin_add(GST_BIN(stream->parent), stream->parser);
-    gst_element_sync_state_with_parent(stream->parser);
+    GstPad* sourcePad = nullptr;
+    if (stream->parser) {
+        gst_bin_add(GST_BIN(stream->parent), stream->parser);
+        gst_element_sync_state_with_parent(stream->parser);
 
-    GstPad* sinkPad = gst_element_get_static_pad(stream->parser, "sink");
-    GstPad* sourcePad = gst_element_get_static_pad(stream->appsrc, "src");
-    gst_pad_link(sourcePad, sinkPad);
-    gst_object_unref(sourcePad);
-    sourcePad = nullptr;
-    gst_object_unref(sinkPad);
-    sinkPad = nullptr;
+        GstPad* sinkPad = gst_element_get_static_pad(stream->parser, "sink");
+        sourcePad = gst_element_get_static_pad(stream->appsrc, "src");
+        gst_pad_link(sourcePad, sinkPad);
+        gst_object_unref(sourcePad);
+        sourcePad = nullptr;
+        gst_object_unref(sinkPad);
+        sinkPad = nullptr;
 
-    sourcePad = gst_element_get_static_pad(stream->parser, "src");
+        sourcePad = gst_element_get_static_pad(stream->parser, "src");
+    } else {
+        GST_DEBUG_OBJECT(m_webKitMediaSrc.get(), "Stream of type %s doesn't require a parser bin", mediaType);
+        sourcePad = gst_element_get_static_pad(stream->appsrc, "src");
+    }
+    ASSERT(sourcePad);
+
     // FIXME: Is padId the best way to identify the Stream? What about trackId?.
-    g_object_set_data(G_OBJECT(sourcePad), "id", GINT_TO_POINTER(padId));
+    g_object_set_data(G_OBJECT(sourcePad), "padId", GINT_TO_POINTER(padId));
     webKitMediaSrcLinkParser(sourcePad, caps, stream);
 
     ASSERT(stream->parent->priv->mediaPlayerPrivate);

@@ -72,6 +72,8 @@ public:
     void setReadyForMoreSamples(bool);
     void notifyReadyForMoreSamples();
 
+    const ContentType& type() { return m_type; }
+
 #if ENABLE(VIDEO_TRACK)
     void didReceiveInitializationSegment(const SourceBufferPrivateClient::InitializationSegment&);
     void didReceiveSample(PassRefPtr<MediaSample>);
