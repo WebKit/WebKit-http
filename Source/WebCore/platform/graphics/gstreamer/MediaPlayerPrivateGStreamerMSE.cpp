@@ -841,9 +841,7 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
 #if !USE(HOLE_PUNCH_EXTERNAL)
             "video/mp4",
 #endif
-            "video/webm",
-            "audio/mp4",
-            "audio/webm"
+            "audio/mp4"
         };
         for (auto& type : mimeTypes)
             set.add(type);
@@ -888,6 +886,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 {
     MediaPlayer::SupportsType result = MediaPlayer::IsNotSupported;
     if (!parameters.isMediaSource)
+        return result;
+
+    // Disable VPX/Opus on MSE for now, mp4/avc1 seems way more reliable currently.
+    if (parameters.type.endsWith("webm"))
         return result;
 
     // YouTube TV provides empty types for some videos and we want to be selected as best media engine for them.
@@ -1190,15 +1192,11 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     // We assign the created instances here instead of adoptRef() because gst_bin_add_many()
     // below will already take the initial reference and we need an additional one for us.
     m_appsrc = gst_element_factory_make("appsrc", nullptr);
-
-    String type = m_sourceBufferPrivate->type().type();
-    if (type.endsWith("mp4")) {
-        m_demux = gst_element_factory_make("qtdemux", nullptr);
-        g_object_set(m_demux.get(), "always-honor-tfdt", TRUE, nullptr);
-    } else if (type.endsWith("webm"))
-        m_demux = gst_element_factory_make("matroskademux", nullptr);
-
+    m_demux = gst_element_factory_make("qtdemux", nullptr);
     m_appsink = gst_element_factory_make("appsink", nullptr);
+
+    g_object_set(G_OBJECT(m_demux.get()), "always-honor-tfdt", TRUE, nullptr);
+
     gst_app_sink_set_emit_signals(GST_APP_SINK(m_appsink.get()), TRUE);
     gst_base_sink_set_sync(GST_BASE_SINK(m_appsink.get()), FALSE);
 
@@ -2120,7 +2118,7 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread()
         }
 
         GstStructure* structure = gst_structure_new_empty("demuxer-disconnect-from-appsink");
-        GstMessage* message = gst_message_new_application(GST_OBJECT(m_qtdemux.get()), structure);
+        GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
         gst_bus_post(m_bus.get(), message);
         GST_TRACE("demuxer-disconnect-from-appsink message posted to bus");
 
