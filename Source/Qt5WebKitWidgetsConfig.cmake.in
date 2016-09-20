@@ -1,9 +1,9 @@
 @PACKAGE_INIT@
 
-find_dependency(Qt5Core    @REQUIRED_QT_VERSION@ REQUIRED)
-find_dependency(Qt5Gui     @REQUIRED_QT_VERSION@ REQUIRED)
-find_dependency(Qt5Network @REQUIRED_QT_VERSION@ REQUIRED)
-find_dependency(Qt5Widgets @REQUIRED_QT_VERSION@ REQUIRED)
+find_dependency(Qt5Core    @Qt5_VERSION@ EXACT)
+find_dependency(Qt5Gui     @Qt5_VERSION@ EXACT)
+find_dependency(Qt5Network @Qt5_VERSION@ EXACT)
+find_dependency(Qt5Widgets @Qt5_VERSION@ EXACT)
 
 find_dependency(Qt5WebKit @PROJECT_VERSION_STRING@ EXACT)
 
