@@ -150,7 +150,7 @@ private:
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstBus> m_bus;
     GRefPtr<GstElement> m_appsrc;
-    GRefPtr<GstElement> m_qtdemux;
+    GRefPtr<GstElement> m_demux;
     GRefPtr<GstElement> m_decryptor;
     GRefPtr<GstElement> m_appsink;
     // The demuxer has one src Stream only, so only one appsink is needed and linked to it.
@@ -1192,14 +1192,14 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     // We assign the created instances here instead of adoptRef() because gst_bin_add_many()
     // below will already take the initial reference and we need an additional one for us.
     m_appsrc = gst_element_factory_make("appsrc", nullptr);
-    m_qtdemux = gst_element_factory_make("qtdemux", nullptr);
+    m_demux = gst_element_factory_make("qtdemux", nullptr);
     m_appsink = gst_element_factory_make("appsink", nullptr);
 
     {
         GValue val = G_VALUE_INIT;
         g_value_init(&val, G_TYPE_BOOLEAN);
         g_value_set_boolean(&val, TRUE);
-        g_object_set_property(G_OBJECT(m_qtdemux.get()), "always-honor-tfdt", &val);
+        g_object_set_property(G_OBJECT(m_demux.get()), "always-honor-tfdt", &val);
         g_value_unset(&val);
     }
     gst_app_sink_set_emit_signals(GST_APP_SINK(m_appsink.get()), TRUE);
@@ -1211,7 +1211,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     setAppsrcDataLeavingProbe();
 
 #ifdef DEBUG_APPEND_PIPELINE_PADS
-    GRefPtr<GstPad> demuxerPad = adoptGRef(gst_element_get_static_pad(m_qtdemux.get(), "sink"));
+    GRefPtr<GstPad> demuxerPad = adoptGRef(gst_element_get_static_pad(m_demux.get(), "sink"));
     m_demuxerDataEnteringPadProbeInformation.appendPipeline = this;
     m_demuxerDataEnteringPadProbeInformation.description = "demuxer data entering";
     m_demuxerDataEnteringPadProbeInformation.probeId = gst_pad_add_probe(demuxerPad.get(), GST_PAD_PROBE_TYPE_BUFFER, reinterpret_cast<GstPadProbeCallback>(appendPipelinePadProbeDebugInformation), &m_demuxerDataEnteringPadProbeInformation, nullptr);
@@ -1222,14 +1222,14 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
 
     // These signals won't be connected outside of the lifetime of "this".
     g_signal_connect(m_appsrc.get(), "need-data", G_CALLBACK(appendPipelineAppsrcNeedData), this);
-    g_signal_connect(m_qtdemux.get(), "pad-added", G_CALLBACK(appendPipelineDemuxerPadAdded), this);
-    g_signal_connect(m_qtdemux.get(), "pad-removed", G_CALLBACK(appendPipelineDemuxerPadRemoved), this);
+    g_signal_connect(m_demux.get(), "pad-added", G_CALLBACK(appendPipelineDemuxerPadAdded), this);
+    g_signal_connect(m_demux.get(), "pad-removed", G_CALLBACK(appendPipelineDemuxerPadRemoved), this);
     g_signal_connect(m_appsink.get(), "new-sample", G_CALLBACK(appendPipelineAppsinkNewSample), this);
     g_signal_connect(m_appsink.get(), "eos", G_CALLBACK(appendPipelineAppsinkEOS), this);
 
     // Add_many will take ownership of a reference. That's why we used an assignment before.
-    gst_bin_add_many(GST_BIN(m_pipeline.get()), m_appsrc.get(), m_qtdemux.get(), nullptr);
-    gst_element_link(m_appsrc.get(), m_qtdemux.get());
+    gst_bin_add_many(GST_BIN(m_pipeline.get()), m_appsrc.get(), m_demux.get(), nullptr);
+    gst_element_link(m_appsrc.get(), m_demux.get());
 
     gst_element_set_state(m_pipeline.get(), GST_STATE_READY);
 };
@@ -1268,14 +1268,14 @@ AppendPipeline::~AppendPipeline()
         m_appsrc = nullptr;
     }
 
-    if (m_qtdemux) {
+    if (m_demux) {
 #ifdef DEBUG_APPEND_PIPELINE_PADS
-        GRefPtr<GstPad> demuxerPad = adoptGRef(gst_element_get_static_pad(m_qtdemux.get(), "sink"));
+        GRefPtr<GstPad> demuxerPad = adoptGRef(gst_element_get_static_pad(m_demux.get(), "sink"));
         gst_pad_remove_probe(demuxerPad.get(), m_demuxerDataEnteringPadProbeInformation.probeId);
 #endif
 
-        g_signal_handlers_disconnect_by_data(m_qtdemux.get(), this);
-        m_qtdemux = nullptr;
+        g_signal_handlers_disconnect_by_data(m_demux.get(), this);
+        m_demux = nullptr;
     }
 
     if (m_appsink) {
@@ -1980,7 +1980,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
     ASSERT(!gst_pad_is_linked(sinkSinkPad.get()));
 
     gint64 timeLength = 0;
-    if (gst_element_query_duration(m_qtdemux.get(), GST_FORMAT_TIME, &timeLength)
+    if (gst_element_query_duration(m_demux.get(), GST_FORMAT_TIME, &timeLength)
         && static_cast<guint64>(timeLength) != GST_CLOCK_TIME_NONE)
         m_initialDuration = MediaTime(GST_TIME_AS_USECONDS(timeLength), G_USEC_PER_SEC);
     else
@@ -1996,7 +1996,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 
         gst_object_ref(GST_OBJECT(demuxerSrcPad));
         GstStructure* structure = gst_structure_new("demuxer-connect-to-appsink", "demuxer-src-pad", G_TYPE_POINTER, demuxerSrcPad, nullptr);
-        GstMessage* message = gst_message_new_application(GST_OBJECT(m_qtdemux.get()), structure);
+        GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
         gst_bus_post(m_bus.get(), message);
         GST_TRACE("demuxer-connect-to-appsink message posted to bus");
 
@@ -2102,11 +2102,11 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread()
     // Must be done in the thread we were called from (usually streaming thread).
     if (m_decryptor) {
         gst_element_unlink(m_decryptor.get(), m_appsink.get());
-        gst_element_unlink(m_qtdemux.get(), m_decryptor.get());
+        gst_element_unlink(m_demux.get(), m_decryptor.get());
         gst_element_set_state(m_decryptor.get(), GST_STATE_NULL);
         gst_bin_remove(GST_BIN(m_pipeline.get()), m_decryptor.get());
     } else
-        gst_element_unlink(m_qtdemux.get(), m_appsink.get());
+        gst_element_unlink(m_demux.get(), m_appsink.get());
 
     // Call disconnectDemuxerSrcPadFromAppsink() in the main thread and wait.
     // TODO: Optimize this and call only when there's m_decryptor. By now I call it always to keep code symmetry.
