@@ -27,6 +27,7 @@
 #include "WebCookieManagerProxy.h"
 
 #include "APIArray.h"
+#include "APIWebCookie.h"
 #include "APISecurityOrigin.h"
 #include "WebCookieManagerMessages.h"
 #include "WebCookieManagerProxyMessages.h"
@@ -186,7 +187,7 @@ void WebCookieManagerProxy::didGetHTTPCookieAcceptPolicy(uint32_t policy, uint64
     callback->performCallbackWithReturnValue(policy);
 }
 
-void WebCookieManagerProxy::setCookies(const Vector<String>& cookies)
+void WebCookieManagerProxy::setCookies(const Vector<WebCore::Cookie>& cookies)
 {
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies(cookies));
 }
@@ -200,7 +201,7 @@ void WebCookieManagerProxy::getCookies(std::function<void (API::Array*, Callback
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies(callbackID));
 }
 
-void WebCookieManagerProxy::didGetCookies(Vector<String> cookies, uint64_t callbackID)
+void WebCookieManagerProxy::didGetCookies(Vector<WebCore::Cookie> cookies, uint64_t callbackID)
 {
     RefPtr<ArrayCallback> callback = m_arrayCallbacks.take(callbackID);
     if (!callback)
@@ -213,7 +214,7 @@ void WebCookieManagerProxy::didGetCookies(Vector<String> cookies, uint64_t callb
 
     for (size_t i = 0; i < cookiesSize; ++i)
     {
-        passCookies[i] = API::String::create(WTFMove(cookies[i]));
+        passCookies[i] = WebCookie::create(cookies[i]);
     }
     callback->performCallbackWithReturnValue(API::Array::create(WTFMove(passCookies)).ptr());
 }

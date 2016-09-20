@@ -51,8 +51,8 @@ WEBCORE_EXPORT void getHostnamesWithCookies(const NetworkStorageSession&, HashSe
 WEBCORE_EXPORT void deleteCookiesForHostnames(const NetworkStorageSession&, const Vector<String>& cookieHostNames);
 WEBCORE_EXPORT void deleteAllCookies(const NetworkStorageSession&);
 WEBCORE_EXPORT void deleteAllCookiesModifiedSince(const NetworkStorageSession&, std::chrono::system_clock::time_point);
-WEBCORE_EXPORT void setCookies(const NetworkStorageSession&, const Vector<String>&);
-WEBCORE_EXPORT bool getCookies(const NetworkStorageSession&, Vector<String>&);
+WEBCORE_EXPORT void setCookies(const NetworkStorageSession&, const Vector<Cookie>&);
+WEBCORE_EXPORT bool getCookies(const NetworkStorageSession&, Vector<Cookie>&);
 
 }
 

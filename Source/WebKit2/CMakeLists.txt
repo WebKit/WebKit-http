@@ -419,6 +419,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKBatteryStatus.cpp
     UIProcess/API/C/WKContext.cpp
     UIProcess/API/C/WKContextConfigurationRef.cpp
+    UIProcess/API/C/WKCookie.cpp
     UIProcess/API/C/WKCookieManager.cpp
     UIProcess/API/C/WKCredential.cpp
     UIProcess/API/C/WKDownload.cpp

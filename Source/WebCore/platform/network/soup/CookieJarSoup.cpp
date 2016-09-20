@@ -72,6 +72,18 @@ void setSoupCookieJar(SoupCookieJar* jar)
     defaultCookieJar() = jar;
 }
 
+static Cookie toWebCoreCookie(const SoupCookie* cookie)
+{
+    return Cookie(String::fromUTF8(cookie->name),
+                  String::fromUTF8(cookie->value),
+                  String::fromUTF8(cookie->domain),
+                  String::fromUTF8(cookie->path),
+                  cookie->expires ? static_cast<double>(soup_date_to_time_t(cookie->expires)) * 1000 : 0,
+                  cookie->http_only,
+                  cookie->secure,
+                  !cookie->expires);
+}
+
 static inline bool httpOnlyCookieExists(const GSList* cookies, const gchar* name, const gchar* path)
 {
     for (const GSList* iter = cookies; iter; iter = g_slist_next(iter)) {
@@ -160,9 +172,7 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& /*firstParty
 
     for (GSList* iter = cookies.get(); iter; iter = g_slist_next(iter)) {
         SoupCookie* cookie = static_cast<SoupCookie*>(iter->data);
-        rawCookies.append(Cookie(String::fromUTF8(cookie->name), String::fromUTF8(cookie->value), String::fromUTF8(cookie->domain),
-            String::fromUTF8(cookie->path), cookie->expires ? static_cast<double>(soup_date_to_time_t(cookie->expires)) * 1000 : 0,
-            cookie->http_only, cookie->secure, !cookie->expires));
+        rawCookies.append(toWebCoreCookie(cookie));
         soup_cookie_free(cookie);
     }
 
@@ -261,7 +271,7 @@ void deleteAllCookiesModifiedSince(const NetworkStorageSession&, std::chrono::sy
 {
 }
 
-void setCookies(const NetworkStorageSession& session, const Vector<String>& cookies)
+void setCookies(const NetworkStorageSession& session, const Vector<Cookie>& cookies)
 {
     SoupCookieJar* jar = cookieJarForSession(session);
 
@@ -270,26 +280,25 @@ void setCookies(const NetworkStorageSession& session, const Vector<String>& cook
     // To prevent from calling cookie change handlers during it
     // blocking all the handlers and then unblocking after the cookies are set
     guint signal_id = g_signal_lookup("changed", soup_cookie_jar_get_type());
-    GArray* blocked_handler_id_array = g_array_new(FALSE, FALSE, sizeof(guint));
+    GArray* blocked_handler_id_array = g_array_new(FALSE, FALSE, sizeof(gulong));
     gulong handler_id;
     while ((handler_id = g_signal_handler_find(jar, (GSignalMatchType)(G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_UNBLOCKED), signal_id, 0, NULL, NULL, NULL))) {
         g_array_append_val(blocked_handler_id_array, handler_id);
         g_signal_handler_block(jar, handler_id);
     }
     deleteAllCookies(session);
-    for (const auto& cookie : cookies) {
-        SoupCookie* soupCookie = soup_cookie_parse(cookie.utf8().data(), NULL);
-        soup_cookie_jar_add_cookie(jar, soupCookie);
-    }
+    for (const auto& cookie : cookies)
+        soup_cookie_jar_add_cookie(jar, toSoupCookie(cookie));
+
     for (guint i = 0; i < blocked_handler_id_array->len; ++i)
     {
-        handler_id = g_array_index(blocked_handler_id_array, guint, i);
+        handler_id = g_array_index(blocked_handler_id_array, gulong, i);
         g_signal_handler_unblock(jar, handler_id);
     }
     g_array_unref(blocked_handler_id_array);
 }
 
-bool getCookies(const NetworkStorageSession& session, Vector<String>& returnCookies)
+bool getCookies(const NetworkStorageSession& session, Vector<Cookie>& returnCookies)
 {
     SoupCookieJar* jar = cookieJarForSession(session);
     if (!jar)
@@ -301,7 +310,7 @@ bool getCookies(const NetworkStorageSession& session, Vector<String>& returnCook
 
     for (GSList* iter = cookies.get(); iter; iter = g_slist_next(iter)) {
         SoupCookie* cookie = static_cast<SoupCookie*>(iter->data);
-        returnCookies.append(soup_cookie_to_set_cookie_header(cookie));
+        returnCookies.append(toWebCoreCookie(cookie));
         soup_cookie_free(cookie);
     }
     return true;
