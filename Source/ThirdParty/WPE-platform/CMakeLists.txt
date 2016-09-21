@@ -13,11 +13,10 @@ option(USE_WPE_BACKEND_DRM "Whether to enable support for the DRM WPE backend" O
 option(USE_WPE_BACKEND_DRM_TEGRA "Whether to enable support for the Tegra-specific quirks in the DRM WPE backend" OFF)
 option(USE_WPE_BACKEND_WAYLAND "Whether to enable support for the Wayland WPE backend" OFF)
 
+option(USE_WPE_INPUT_LIBINPUT "Whether to enable support for the libinput input backend" ON)
 set(USE_KEY_INPUT_HANDLING_LINUX_INPUT OFF CACHE BOOL "Whether to use <linux/input.h> event codes for keyboard event handling")
 
 find_package(GLIB 2.38.0 REQUIRED COMPONENTS gio gio-unix)
-find_package(Libinput REQUIRED)
-find_package(Libudev REQUIRED)
 
 if (USE_WPE_VIRTUAL_KEYBOARD)
     find_package(LibVirtualKeyboard REQUIRED)
@@ -38,15 +37,11 @@ set(WPE_PLATFORM_INCLUDE_DIRECTORIES
     "${WPE_PLATFORM_SOURCE_DIR}/src/util"
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
-    ${LIBINPUT_INCLUDE_DIRS}
-    ${LIBUDEV_INCLUDE_DIRS}
 )
 
 set(WPE_PLATFORM_LIBRARIES
     WPE
     ${GLIB_GIO_LIBRARIES}
-    ${LIBINPUT_LIBRARIES}
-    ${LIBUDEV_LIBRARIES}
 )
 
 if (NOT USE_KEY_INPUT_HANDLING_LINUX_INPUT)
@@ -67,9 +62,6 @@ endif ()
 set(WPE_PLATFORM_SOURCES
     src/loader-impl.cpp
 
-    src/input/KeyboardEventRepeating.cpp
-    src/input/LibinputServer.cpp
-
     src/input/LinuxInput/KeyboardEventHandlerLinuxInput.cpp
     src/input/LinuxInput/input-linuxinput.cpp
 
@@ -78,6 +70,24 @@ set(WPE_PLATFORM_SOURCES
 
     src/util/ipc.cpp
 )
+
+if (USE_WPE_INPUT_LIBINPUT)
+    find_package(Libinput REQUIRED)
+    find_package(Libudev REQUIRED)
+
+    list(APPEND WPE_PLATFORM_INCLUDE_DIRECTORIES
+        ${LIBINPUT_INCLUDE_DIRS}
+        ${LIBUDEV_INCLUDE_DIRS}
+    )
+    list(APPEND WPE_PLATFORM_LIBRARIES
+        ${LIBINPUT_LIBRARIES}
+        ${LIBUDEV_LIBRARIES}
+    )
+    list(APPEND WPE_PLATFORM_SOURCES
+        src/input/KeyboardEventRepeating.cpp
+        src/input/LibinputServer.cpp
+    )
+endif()
 
 if (USE_WPE_BACKEND_BCM_NEXUS)
     include(src/bcm-nexus/CMakeLists.txt)
