@@ -435,6 +435,7 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/WKContextHistoryClient.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKContextInjectedBundleClient.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKContext.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKCookie.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKCookieManager.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKCredential.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKCredentialTypes.h
