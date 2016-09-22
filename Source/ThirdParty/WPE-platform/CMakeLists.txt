@@ -84,8 +84,8 @@ if (USE_WPE_INPUT_LIBINPUT)
         ${LIBUDEV_LIBRARIES}
     )
     list(APPEND WPE_PLATFORM_SOURCES
-        src/input/KeyboardEventRepeating.cpp
-        src/input/LibinputServer.cpp
+        src/input/Libinput/KeyboardEventRepeating.cpp
+        src/input/Libinput/LibinputServer.cpp
     )
 endif()
 
