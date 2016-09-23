@@ -120,14 +120,14 @@ void WebCookieManager::getHTTPCookieAcceptPolicy(uint64_t callbackID)
     m_process->send(Messages::WebCookieManagerProxy::DidGetHTTPCookieAcceptPolicy(platformGetHTTPCookieAcceptPolicy(), callbackID), 0);
 }
 
-void WebCookieManager::setCookies(const Vector<String>& cookies)
+void WebCookieManager::setCookies(const Vector<WebCore::Cookie>& cookies)
 {
     WebCore::setCookies(NetworkStorageSession::defaultStorageSession(), cookies);
 }
 
 void WebCookieManager::getCookies(uint64_t callbackID)
 {
-    Vector<String> cookies;
+    Vector<WebCore::Cookie> cookies;
     WebCore::getCookies(NetworkStorageSession::defaultStorageSession(), cookies);
     m_process->send(Messages::WebCookieManagerProxy::DidGetCookies(cookies, callbackID), 0);
 }

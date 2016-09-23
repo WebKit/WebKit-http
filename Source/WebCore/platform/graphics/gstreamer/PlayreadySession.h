@@ -55,7 +55,7 @@ public:
     PlayreadySession();
     ~PlayreadySession();
 
-    RefPtr<Uint8Array> playreadyGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode);
+    RefPtr<Uint8Array> playreadyGenerateKeyRequest(Uint8Array* initData, const String& customData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode);
     bool playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode);
 
     bool keyRequested() const { return m_eKeyState == KEY_PENDING; }

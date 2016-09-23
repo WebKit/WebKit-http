@@ -81,6 +81,12 @@ if (ENABLE_VIDEO)
         )
     endif ()
 
+    if (NOT USE_HOLE_PUNCH_GSTREAMER)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/VideoSinkGStreamer.cpp
+        )
+    endif()
+
     if (USE_GSTREAMER_GL)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${GSTREAMER_GL_INCLUDE_DIRS}
@@ -152,20 +158,6 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
         )
     endif ()
 endif ()
-
-if (NOT USE_HOLE_PUNCH_GSTREAMER)
-    list(APPEND WebCore_SOURCES
-      platform/graphics/gstreamer/VideoSinkGStreamer.cpp
-    )
-
-    list(APPEND WebCore_LIBRARIES
-      ${GSTREAMER_GL_LIBRARIES}
-    )
-
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-      ${GSTREAMER_GL_INCLUDE_DIRS}
-    )
-endif()
 
 if (USE_HOLE_PUNCH_EXTERNAL)
     list(APPEND WebCore_SOURCES

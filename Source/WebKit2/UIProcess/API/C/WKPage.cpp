@@ -112,7 +112,7 @@ template<> struct ClientTraits<WKPagePolicyClientBase> {
 };
 
 template<> struct ClientTraits<WKPageUIClientBase> {
-    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7> Versions;
+    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7, WKPageUIClientV8> Versions;
 };
 
 #if ENABLE(CONTEXT_MENUS)
@@ -240,6 +240,11 @@ void WKPageLoadWebArchiveDataWithUserData(WKPageRef pageRef, WKDataRef webArchiv
 void WKPageStopLoading(WKPageRef pageRef)
 {
     toImpl(pageRef)->stopLoading();
+}
+
+bool WKPageCanShowMIMEType(WKPageRef pageRef, WKStringRef mimeType)
+{
+    return toImpl(pageRef)->canShowMIMEType(toWTFString (mimeType));
 }
 
 void WKPageReload(WKPageRef pageRef)
@@ -391,8 +396,6 @@ void WKPageSetCustomUserAgent(WKPageRef pageRef, WKStringRef userAgentRef)
 void WKPageSetProxies(WKPageRef pageRef, WKArrayRef proxies)
 {
     size_t size = proxies ? WKArrayGetSize(proxies) : 0;
-    if (!size)
-        return;
 
     Vector<WebCore::Proxy> passProxies(size);
 
@@ -2231,6 +2234,16 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.mediaSessionMetadataDidChange(toAPI(&page), toAPI(metadata), m_client.base.clientInfo);
         }
 #endif
+
+        void willAddDetailedMessageToConsole(WebPageProxy* page, const String& source, const String& level,
+                uint64_t line, uint64_t column, const String& message, const String& url)
+        {
+            if (!m_client.willAddDetailedMessageToConsole)
+                return;
+
+            m_client.willAddDetailedMessageToConsole(toAPI(page), toAPI(source.impl()), toAPI(level.impl()),
+                    line, column, toAPI(message.impl()), toAPI(url.impl()), m_client.base.clientInfo);
+        }
     };
 
     toImpl(pageRef)->setUIClient(std::make_unique<UIClient>(wkClient));

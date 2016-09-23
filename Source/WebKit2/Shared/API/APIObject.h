@@ -156,6 +156,7 @@ public:
         Vibration,
         ViewportAttributes,
         VisitedLinkStore,
+        WebCookie,
         WebsiteDataRecord,
         WebsiteDataStore,
         WindowFeatures,

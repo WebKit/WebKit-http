@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,30 +24,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WKNavigationResponseRef.h"
+#ifndef WPEWebAutomation_h
+#define WPEWebAutomation_h
 
-#include "APINavigationResponse.h"
-#include "WKAPICast.h"
+#include "APIObject.h"
+#include "WebInspectorProxy.h"
+#include "WPEWebAutomationClient.h"
 
-using namespace WebKit;
+#include <JavaScriptCore/InspectorFrontendChannel.h>
+#include <JavaScriptCore/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
+#include <wtf/RefPtr.h>
 
-WKTypeID WKNavigationResponseGetTypeID()
-{
-    return toAPI(API::NavigationResponse::APIType);
-}
 
-bool WKNavigationResponseCanShowMIMEType(WKNavigationResponseRef response)
-{
-    return toImpl(response)->canShowMIMEType();
-}
+namespace WKWPE {
+class WebAutomation final: public API::ObjectImpl<API::Object::Type::AutomationSession>, public Inspector::FrontendChannel {
 
-WKURLResponseRef WKNavigationResponseGetURLResponse(WKNavigationResponseRef response)
-{
-    return toAPI(toImpl(response)->response());
-}
+public:
+    static WebAutomation* create();
 
-bool WKNavigationResponseIsMainFrame(WKNavigationResponseRef response)
-{
-    return toImpl(response)->frame().isMainFrame();
-}
+    void sendMessageToTarget(const String& command, void (*commandCallback)(WKStringRef rspMsg));
+    
+    ConnectionType connectionType() const override { return ConnectionType::Remote; }
+    bool sendMessageToFrontend(const String& rspMsg);
+    void setProcessPool(WebKit::WebProcessPool* processPool);
+    void setSessionIdentifier(const String& sessionIdentifier);
+
+private:
+    WebAutomation();
+    virtual ~WebAutomation();
+
+    void (*m_commandStatusCallback)(WKStringRef rspMsg);
+    std::unique_ptr<WebKit::WebAutomationSession> m_webAutomationSession;
+};
+
+} // WKWPE
+
+#endif // WPEWebAutomation_h

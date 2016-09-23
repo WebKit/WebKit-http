@@ -45,7 +45,7 @@ typedef struct
 {
     gchar *pattern;
     gchar *proxy;
-} Proxy;
+} GWildcardProxyResolverProxy;
 
 struct _GWildcardProxyResolver
 {

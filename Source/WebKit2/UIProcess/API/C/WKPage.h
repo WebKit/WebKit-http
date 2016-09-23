@@ -81,6 +81,7 @@ WK_EXPORT void WKPageLoadPlainTextStringWithUserData(WKPageRef page, WKStringRef
 WK_EXPORT void WKPageLoadWebArchiveData(WKPageRef page, WKDataRef webArchiveData);
 WK_EXPORT void WKPageLoadWebArchiveDataWithUserData(WKPageRef page, WKDataRef webArchiveData, WKTypeRef userData);
 
+WK_EXPORT bool WKPageCanShowMIMEType(WKPageRef pageRef, WKStringRef mimeType);
 WK_EXPORT void WKPageStopLoading(WKPageRef page);
 WK_EXPORT void WKPageReload(WKPageRef page);
 WK_EXPORT void WKPageReloadWithoutContentBlockers(WKPageRef page);

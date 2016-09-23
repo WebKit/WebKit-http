@@ -1293,7 +1293,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     return MediaPlayer::NoError;
 }
 
-MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
+MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength, const String& customData)
 {
     GST_DEBUG("generating key request for system: %s", keySystem.utf8().data());
 #if USE(PLAYREADY)
@@ -1310,7 +1310,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
         uint32_t systemCode;
         RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
         String destinationURL;
-        RefPtr<Uint8Array> result = m_prSession->playreadyGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
+        RefPtr<Uint8Array> result = m_prSession->playreadyGenerateKeyRequest(initData.get(), customData, destinationURL, errorCode, systemCode);
         if (errorCode) {
             GST_ERROR("the key request wasn't properly generated");
             return MediaPlayer::InvalidPlayerState;
@@ -1320,7 +1320,6 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
             emitSession();
             return MediaPlayer::NoError;
         }
-
         URL url(URL(), destinationURL);
         m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);
         return MediaPlayer::NoError;

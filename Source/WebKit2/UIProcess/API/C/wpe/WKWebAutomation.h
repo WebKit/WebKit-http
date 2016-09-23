@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,30 +24,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WKNavigationResponseRef.h"
+#ifndef WKWebAutomation_h
+#define WKWebAutomation_h
 
-#include "APINavigationResponse.h"
-#include "WKAPICast.h"
+#include <WebKit/WKBase.h>
+#include <WebKit/WKGeometry.h>
 
-using namespace WebKit;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-WKTypeID WKNavigationResponseGetTypeID()
-{
-    return toAPI(API::NavigationResponse::APIType);
+typedef void (*WKAutomationCommandStatusCallback)(WKStringRef command);
+
+WK_EXPORT WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKPageRef page);
+WK_EXPORT void WKWebAutomationExecuteCommand(WKWebAutomationSessionRef automationSession, WKStringRef command, WKAutomationCommandStatusCallback callback);
+
+#ifdef __cplusplus
 }
+#endif
 
-bool WKNavigationResponseCanShowMIMEType(WKNavigationResponseRef response)
-{
-    return toImpl(response)->canShowMIMEType();
-}
+#endif // WKWebAutomation_h
 
-WKURLResponseRef WKNavigationResponseGetURLResponse(WKNavigationResponseRef response)
-{
-    return toAPI(toImpl(response)->response());
-}
 
-bool WKNavigationResponseIsMainFrame(WKNavigationResponseRef response)
-{
-    return toImpl(response)->frame().isMainFrame();
-}

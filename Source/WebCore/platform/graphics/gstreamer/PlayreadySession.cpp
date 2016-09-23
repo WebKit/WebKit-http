@@ -34,6 +34,8 @@
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_playready_decrypt_debug_category
 
+G_LOCK_DEFINE_STATIC (pr_decoder_lock);
+
 namespace WebCore {
 
 // The default location of CDM DRM store.
@@ -119,7 +121,7 @@ DRM_RESULT DRM_CALL PlayreadySession::_PolicyCallback(const DRM_VOID *f_pvOutput
 //
 // Expected synchronisation from caller. This method is not thread-safe!
 //
-RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
+RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* initData, const String& customData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
     RefPtr<Uint8Array> result;
     DRM_RESULT dr = DRM_SUCCESS;
@@ -154,15 +156,15 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     // challenge to be returned.
     dr = Drm_LicenseAcq_GenerateChallenge(m_poAppContext,
                                           g_rgpdstrRights,
-                                          NO_OF(g_rgpdstrRights),
+                                          sizeof(g_rgpdstrRights) / sizeof(DRM_CONST_STRING*),
                                           NULL,
-                                          dastrCustomData.pszString, //m_pchCustomData,
-                                          dastrCustomData.cchString, //m_cchCustomData,
+                                          customData.isEmpty() ? NULL: customData.utf8().data(),
+                                          customData.isEmpty() ? 0 : customData.length(),
                                           NULL,
                                           &cchSilentURL,
                                           NULL,
                                           NULL,
-                                          pbChallenge,
+                                          NULL,
                                           &cbChallenge);
  
     if (dr == DRM_E_BUFFERTOOSMALL) {
@@ -185,10 +187,10 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     // Supply a buffer to receive the license acquisition challenge.
     ChkDR(Drm_LicenseAcq_GenerateChallenge(m_poAppContext,
                                            g_rgpdstrRights,
-                                           NO_OF(g_rgpdstrRights),
+                                           sizeof(g_rgpdstrRights) / sizeof(DRM_CONST_STRING*),
                                            NULL,
-                                           NULL,
-                                           0,
+                                           customData.isEmpty() ? NULL: customData.utf8().data(),
+                                           customData.isEmpty() ? 0 : customData.length(),
                                            pchSilentURL,
                                            &cchSilentURL,
                                            NULL,
@@ -270,8 +272,10 @@ int PlayreadySession::processPayload(const void* iv, uint32_t ivSize, void* payl
 {
     DRM_RESULT dr = DRM_SUCCESS;
     DRM_AES_COUNTER_MODE_CONTEXT oAESContext = {0};
+
     uint8_t* ivData = (uint8_t*) iv;
 
+    G_LOCK (pr_decoder_lock);
     ChkDR(Drm_Reader_InitDecrypt(&m_oDecryptContext, NULL, 0));
 
     // FIXME: IV bytes need to be swapped ???
@@ -291,9 +295,12 @@ int PlayreadySession::processPayload(const void* iv, uint32_t ivSize, void* payl
         m_fCommit = TRUE;
     }
 
+    G_UNLOCK (pr_decoder_lock);
+
     return 0;
 
 ErrorExit:
+    G_UNLOCK (pr_decoder_lock);
     return 1;
 }
 }

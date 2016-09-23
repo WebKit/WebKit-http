@@ -38,7 +38,7 @@ struct _GWildcardProxyResolverPrivate
 
 static void free_proxies(gpointer data)
 {
-    Proxy *p = (Proxy*)(data);
+    GWildcardProxyResolverProxy *p = (GWildcardProxyResolverProxy*)(data);
     g_free(p->pattern);
     g_free(p->proxy);
     g_free(p);
@@ -197,7 +197,7 @@ static gchar** g_wildcard_proxy_resolver_lookup(GProxyResolver *proxy_resolver,
         GRegex *regex_wildcard = (GRegex*)g_ptr_array_index(resolver->priv->regex_wildcard, i);
         if (g_regex_match(regex_wildcard, uri, (GRegexMatchFlags)0, NULL))
         {
-            Proxy *p = (Proxy*)g_ptr_array_index(resolver->priv->proxies, i);
+            GWildcardProxyResolverProxy *p = (GWildcardProxyResolverProxy*)g_ptr_array_index(resolver->priv->proxies, i);
             if (!p->proxy || !strlen(p->proxy) || !strncmp(p->proxy, "direct", 6))
                 proxy = "direct://";
             else
@@ -318,7 +318,7 @@ void g_wildcard_proxy_resolver_set_proxies(GWildcardProxyResolver  *resolver,
     for (guint i = 0; i < length; ++i)
     {
         GError *error = NULL;
-        Proxy *p = (Proxy*)g_ptr_array_index(proxies, i);
+        GWildcardProxyResolverProxy *p = (GWildcardProxyResolverProxy*)g_ptr_array_index(proxies, i);
         gchar *regex_wildcard = glob_to_regex(p->pattern);
         g_ptr_array_add(resolver->priv->regex_wildcard,
                         g_regex_new(regex_wildcard,

@@ -27,7 +27,7 @@
 
 #include <wpe/view-backend.h>
 
-#include "LibinputServer.h"
+#include "Libinput/LibinputServer.h"
 #include "cursor-data.h"
 #include "ipc.h"
 #include "ipc-rpi.h"

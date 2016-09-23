@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 SoftAtHome. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,7 +10,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
@@ -23,30 +23,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WKNavigationResponseRef.h"
+#ifndef TvKeyboardCodes_h
+#define TvKeyboardCodes_h
 
-#include "APINavigationResponse.h"
-#include "WKAPICast.h"
+// From DASE, also used in CE-HTML
+// http://atsc.org/wp-content/uploads/2015/03/a_100_2.pdf
+#define VK_DASE_CANCEL 3
 
-using namespace WebKit;
+// From HAVi, used in DASE and OCAP
+#define VK_HAVI_COLORED_KEY_0 403
+#define VK_HAVI_COLORED_KEY_1 404
+#define VK_HAVI_COLORED_KEY_2 405
+#define VK_HAVI_COLORED_KEY_3 406
+#define VK_HAVI_POWER 409
+#define VK_HAVI_PLAY 415
+#define VK_HAVI_RECORD 416
+#define VK_HAVI_DISPLAY_SWAP 444
+#define VK_HAVI_SUBTITLE 460
 
-WKTypeID WKNavigationResponseGetTypeID()
-{
-    return toAPI(API::NavigationResponse::APIType);
-}
+// OCAP
+// http://www.cablelabs.com/wp-content/uploads/specdocs/OC-SP-OCAP1.3.1-130530.pdf
+#define VK_OCAP_ON_DEMAND 623
 
-bool WKNavigationResponseCanShowMIMEType(WKNavigationResponseRef response)
-{
-    return toImpl(response)->canShowMIMEType();
-}
-
-WKURLResponseRef WKNavigationResponseGetURLResponse(WKNavigationResponseRef response)
-{
-    return toAPI(toImpl(response)->response());
-}
-
-bool WKNavigationResponseIsMainFrame(WKNavigationResponseRef response)
-{
-    return toImpl(response)->frame().isMainFrame();
-}
+#endif // TvKeyboardCodes_h

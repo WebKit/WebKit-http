@@ -261,7 +261,7 @@ void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
     GPtrArray* array = g_ptr_array_sized_new(proxies.size());
     for (size_t i = 0; i < proxies.size(); ++i)
     {
-        Proxy* p = g_new(Proxy, 1);
+        GWildcardProxyResolverProxy* p = g_new(GWildcardProxyResolverProxy, 1);
         p->pattern = g_strdup(proxies[i].pattern.utf8().data());
         p->proxy = g_strdup(proxies[i].proxy.utf8().data());
         g_ptr_array_add(array, p);

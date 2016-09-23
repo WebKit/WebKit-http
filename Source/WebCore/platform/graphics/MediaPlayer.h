@@ -356,7 +356,7 @@ public:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    MediaKeyException generateKeyRequest(const String& keySystem, const unsigned char* initData, unsigned initDataLength);
+    MediaKeyException generateKeyRequest(const String& keySystem, const unsigned char* initData, unsigned initDataLength, const String& customData);
     MediaKeyException addKey(const String& keySystem, const unsigned char* key, unsigned keyLength, const unsigned char* initData, unsigned initDataLength, const String& sessionId);
     MediaKeyException cancelKeyRequest(const String& keySystem, const String& sessionId);
 #endif

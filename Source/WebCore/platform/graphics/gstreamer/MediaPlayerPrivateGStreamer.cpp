@@ -375,8 +375,16 @@ double MediaPlayerPrivateGStreamer::playbackPosition() const
 
     // Position is only available if no async state change is going on and the state is either paused or playing.
     gint64 position = GST_CLOCK_TIME_NONE;
+    GstElement* videoDec = nullptr;
     GstQuery* query = gst_query_new_position(GST_FORMAT_TIME);
-    if (gst_element_query(m_pipeline.get(), query))
+#if USE(FUSION_SINK)
+    g_object_get(m_pipeline.get(), "video-sink", &videoDec, nullptr);
+    if (!GST_IS_ELEMENT(videoDec))
+        return 0.0f;
+#else
+    videoDec = m_pipeline.get();
+#endif
+    if (gst_element_query(videoDec, query))
         gst_query_parse_position(query, 0, &position);
     gst_query_unref(query);
 
@@ -390,34 +398,20 @@ double MediaPlayerPrivateGStreamer::playbackPosition() const
     } else if (m_canFallBackToLastFinishedSeekPosition)
         result = m_seekTime;
 
-#if PLATFORM(BCM_NEXUS) || USE(FUSION_SINK)
+#if PLATFORM(BCM_NEXUS)
     // implement getting pts time from broadcom decoder directly for seek functionality
     gint64 currentPts = -1;
-#if PLATFORM(BCM_NEXUS)
-    GstElement* videoDec = findVideoDecoder(m_pipeline.get());
+    /*GstElement**/ videoDec = findVideoDecoder(m_pipeline.get());
     const char* videoPtsPropertyName = "video_pts";
-#elif USE(FUSION_SINK)
-    GstElement* videoDec = nullptr;
-    g_object_get(m_pipeline.get(), "video-sink", &videoDec, nullptr);
-    const char* videoPtsPropertyName = "video-pts";
-#endif
-
     if (videoDec)
         g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
-
     if (currentPts > -1) {
-#if PLATFORM(BCM_NEXUS)
         result = (static_cast<double>(currentPts * GST_MSECOND) / 45) / GST_SECOND;
-#else
-        result = currentPts / GST_SECOND;
-#endif
         GST_DEBUG("Using position reported by the video decoder: %f", result);
     }
-
     if (!result && m_seekTime)
         result = m_seekTime;
 #endif
-
 
     m_cachedPosition = result;
     return result;
@@ -1082,14 +1076,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
     case GST_MESSAGE_STATE_CHANGED: {
         gst_message_parse_state_changed(message, &currentState, &newState, 0);
         GST_TRACE("State changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
-
-#if USE(FUSION_SINK)
-        if (g_strstr_len(GST_MESSAGE_SRC_NAME(message), 9, "h264parse")) {
-            // Force regular H264 SPS/PPS updates.
-            if (currentState == GST_STATE_NULL && newState == GST_STATE_READY)
-                g_object_set(GST_MESSAGE_SRC(message), "config-interval", 1, nullptr);
-        }
-#endif
 
         if (!messageSourceIsPlaybin || m_delayingLoad)
             break;
