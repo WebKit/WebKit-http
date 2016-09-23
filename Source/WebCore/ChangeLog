@@ -1,3 +1,18 @@
+2016-09-22  Zalan Bujtas  <zalan@apple.com>
+
+        Replace redundant prepareForDestruction() call with RELEASE_ASSERT in Document::removedLastRef.
+        https://bugs.webkit.org/show_bug.cgi?id=162467
+
+        Reviewed by Chris Dumez.
+
+        Since r205786 fixed the root cause of webkit.org/b/159372, we no longer need the workaround.
+        Replace it with a RELEASE_ASSERT to ensure clean state.
+
+        No new tests, covered by existing test.
+
+        * dom/Document.cpp:
+        (WebCore::Document::removedLastRef):
+
 2016-09-10  Chris Dumez  <cdumez@apple.com>
 
         It is possible for Document::m_frame pointer to become stale
